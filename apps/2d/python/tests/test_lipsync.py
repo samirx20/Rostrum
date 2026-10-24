@@ -3,7 +3,7 @@ keeps a person's mouth key; the cache key changes with the words."""
 from rostrum_core import Document, Who
 
 from rostrum2d import KIND, run_source
-from rostrum2d.lipsync import phonemes, visemes
+from rostrum_core.lipsync import phonemes, visemes
 
 SAM = Who.person("sam")
 PHONES = [{"phone": "m", "start": 0.50, "end": 0.52}, {"phone": "ɑː", "start": 0.60, "end": 0.62},   # 1 frame of D

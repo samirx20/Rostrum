@@ -3,7 +3,7 @@
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
     keydrag <key id> <frame> | keys-stretch <grabbed key> <frame> <picked key> … | keys-menu <key id> (key_steps.py) | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
-    context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
+    context <item id | -> (the right-click menu) | lipsync <mouth group id> (its Lip sync… sheet) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
     svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
@@ -142,6 +142,8 @@ def do_step(bridge, win, step):
         bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
     elif word == "context":        # context <item id | -> : the right-click menu for that item (- = empty space)
         QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
+    elif word == "lipsync":        # lipsync <mouth group id>: the right-click menu's Lip sync… (lipsync3d.py)
+        bridge.open_lipsync(rest[0])
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
     elif word == "panel":          # panel poses | onion: the Animate rail's own small panels (Rail3D.qml)

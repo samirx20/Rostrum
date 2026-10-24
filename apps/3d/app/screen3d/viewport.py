@@ -84,6 +84,8 @@ class Viewport(QObject):
         self.focus = FocusPick(self)                           # a camera's focus set by clicking (focus_pick.py)
         from .onion_qt import Onion
         self.onion = Onion(self)                               # onion skin: ghosts at other frames (onion_qt.py)
+        from .bones_qt import Bones
+        self.bone_tool = Bones(self)                           # Bones: place a chain by clicking, see it (bones_qt.py)
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -110,7 +112,8 @@ class Viewport(QObject):
     dim = Property(bool, lambda s: s._dim, notify=settingsChanged)
     # the shot frame in the viewport, as parts of its width and height [x, y, w, h]; shown in the shot camera only
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
-    onionSkin = Property(QObject, lambda s: s.onion, constant=True)     # QML: viewport.onionSkin (onion_qt.py)
+    onionSkin = Property(QObject, lambda s: s.onion, constant=True)
+    bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)     # QML: viewport.onionSkin (onion_qt.py)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -316,6 +319,8 @@ class Viewport(QObject):
             self._guard(lambda: self.focus.click(x, y))
         elif self._size is not None and self.place.wants_click():
             self._guard(lambda: self.place.click(x, y))
+        elif self._size is not None and self.bone_tool.wants_click():
+            self._guard(lambda: self.bone_tool.click(x, y))
         elif self._size is not None:
             self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
 

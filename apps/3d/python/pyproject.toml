@@ -10,6 +10,7 @@ rostrum-3d = "rostrum3d.mcp.server:main"
 
 [project.optional-dependencies]
 mcp = ["rostrum_core[mcp]"]
+lipsync = ["rostrum_core[lipsync]"]   # lip sync (rostrum_core.lipsync): numpy, scipy, soundfile, onnxruntime
 test = ["pytest"]
 
 [build-system]

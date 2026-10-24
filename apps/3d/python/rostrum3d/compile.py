@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, fields as F, follow, material_scene, outline as outlines, rigs
+from . import aim, fields as F, follow, material_scene, outline as outlines, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -18,7 +18,8 @@ AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-
 ROTATION = ("rx", "ry", "rz")
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
 CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
-RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | {FOCUS_ITEM, TIMING}   # fields the compiler resolves, never sent
+SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
+RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | {FOCUS_ITEM, TIMING, SKINNED}   # fields the compiler resolves, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
@@ -121,6 +122,8 @@ def _node(item: dict, fr: _Frames) -> dict:
             anim["focusDistance"] = [_out(p, x) for x in focus]
     if anim:
         node["anim"] = anim
+    if type_ == "mesh" and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]))):
+        node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "import":
         node["props"]["parts"] = [{"path": pt["path"], "material": pt["material"], "visible": pt["visible"]}
                                   for pt in item.get("parts", [])]

@@ -36,7 +36,7 @@ def _held(item: dict) -> list[str]:
 
 @R.operation("pose.save", "Save the selected items' Position, Turn and Scale as they are at `at` as a named pose "
              "(an aimed item's turn is left out: its aim decides it). Apply it later with pose.apply.",
-             target=F.ITEMS, label="Save pose", params=[ID, NAME, AT])
+             target=F.KEYED, label="Save pose", params=[ID, NAME, AT])
 def pose_save(ctx, targets, args):
     fields, values = [], []
     for t in targets:
@@ -87,7 +87,7 @@ def pose_apply(ctx, targets, args):
 def _find(ctx, id_: str):
     """The scene item, or None when it is gone (skipped and named, never a crash)."""
     loc = ctx.idx.get(id_)
-    return loc.item if loc and loc.item.get("type") in F.ITEMS else None
+    return loc.item if loc and loc.item.get("type") in F.KEYED else None
 
 
 @R.operation("pose.rename", "Rename a pose.", target="pose", label="Rename pose",

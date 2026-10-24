@@ -31,7 +31,8 @@ Item {
         path2d: "M2.5 13.5c3-1 2.5-8 6.5-8s3.5 6 6.5 7M2.5 13.5v-.01M15.5 12.5v-.01" + e(9, 5.5, 1.2, 1.2),
         rig: e(9, 11, 7, 3.5) + "M5 3h7v5.5H5z",
         pose: e(9, 3.2, 1.7, 1.7) + "M9 5v6M4 6.5l5 1.5 4.5-3M9 11l-3 5M9 11l3.5 4.5",    // a figure mid-move
-        onion: e(5.5, 9, 3.5, 3.5) + e(9, 9, 3.5, 3.5) + e(12.5, 9, 3.5, 3.5)                // three steps of one shape
+        onion: e(5.5, 9, 3.5, 3.5) + e(9, 9, 3.5, 3.5) + e(12.5, 9, 3.5, 3.5),               // three steps of one shape
+        bone: e(4, 14, 2, 2) + "M5.5 12.5L8 7.5 15 3 10.5 10z"                                   // a bone: head and diamond
     })
     Shape {
         x: 1; y: 1

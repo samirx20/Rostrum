@@ -27,7 +27,9 @@ sits on top of it.
   the dimming off.)
 - Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. A click selects what is there; a click
   on empty space selects nothing. Double-click goes back to the shot's view.
-- **Right-click** an item (here or in the scene list): Duplicate, Delete, Look through (lights), Copy material /
+- **Right-click** an item (here or in the scene list): Duplicate, Delete, Lip sync… (a mouth group: a group whose children
+  are mouth shapes named like `mouth_rest`, `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a
+  voice line from RostrumSound, check the mesh each shape shows, Apply: one undo step, keys on the timeline), Look through (lights), Copy material /
   Paste material (shapes). Right-click empty space: Frame all, New shot.
 
 ### The gizmo
@@ -73,7 +75,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   **Handheld** start at once and run the way the camera looks. The new rig is selected: its Distance, Angle, Lift …
   are in the settings panel (guides/camera-rigs.md).
 
-**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), Lights and Camera:
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (while a mesh is selected), Lights and Camera:
 
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
   and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
@@ -83,6 +85,15 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
   time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
   each way. The quick look only: Final shows no ghosts. It never changes the scene.
+- **Bones** (shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
+  points along the mesh, root first: dots and a line show them; **Backspace** takes the last one back. **Enter** makes the
+  chain (one undo step), **Esc** cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
+  Select a bone and key its **Turn X / Y / Z** (the Turn it has plus the bend you want): the mesh bends with it and the
+  bones after it, in the viewport and the render alike. On this page the selected mesh's bones are drawn over the picture
+  as thin diamonds, posed at the playhead (the selected bone in blue). The mesh's **Bend with bones** turns the bending off
+  and on. A mesh bends only where it has points along its length: the ready shapes have none along their straight part (a
+  capsule's or cylinder's Segments go around it), so make it an editable mesh (Tab) and cut across it with the Knife
+  (K) every few centimetres first.
 - The Poses and Onion skin panels open and close on their own: click a rail button to open its panel, again to close it, Esc
   closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
 

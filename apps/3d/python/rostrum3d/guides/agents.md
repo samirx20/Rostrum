@@ -127,6 +127,30 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_sheet` shows whether the rider stays put after it is let go.
+- **Bones.** `bone.chain` (target: one mesh; `points`: two or more `[x, y, z]`, root first, world positions at time 0,
+  or the mesh's own space with `space: "mesh"`) lays len(points) − 1 bones, each from one point to the next, nested
+  (mesh › `<mesh>_bone1` › `_bone2` …), and binds the mesh (`skinned`), in one undo step; a chain the mesh had is
+  replaced. A bone's own +Y runs along it from its head; its fields are `rx ry rz` (Turn, keyable) and `length`; its
+  head `x y z` is data the chain wrote. Bend it by keying Turn: `key.add` (target the bone, `prop` rx / ry / rz, `v` =
+  its rest turn plus the bend, in degrees); poses and `anim.ease` work on bones too. The core weights the mesh to the
+  bones itself. `bone.bind` (`off: true`) stops the bending and keeps the bones; `mesh.set skinned` is the same. The mesh
+  bends only where it has points along its length: the ready shapes have none along their straight part (`segments`
+  go around), so use an editable mesh (`mesh.add shape="poly"` with your own `points` / `faceCounts` / `faceIndices`,
+  or `mesh.edit` then `mesh.knife` across it). Check the bend with `look_sheet`.
+- **Lip sync.** A mouth is a group whose children are the mouth shapes: one mesh (or group) per shape of the nine
+  (X rest, A closed M B P, B slightly open, C open, D wide open, E rounded, F puckered OO W, G teeth on lip F V, H tongue
+  up L). Name the children so they say the shape (`mouth_rest`, `mouth_closed`, `mouth_wide`, `mouth_puckered` …; as
+  in 2D a lone letter is the sound it makes, so "mouth A" is the wide AH), or give `shapeX` … `shapeH` yourself; any
+  subset works, a missing shape shows the nearest one given. `inspect_voice_lines` lists the project's voice lines
+  from RostrumSound (`<song>/<line id>`, the words, where each starts, whether its voice is made) and the mouths it
+  finds in the scene. `lipsync.make` (target: the mouth group; `line`; or `file` + `text` + `at` for a WAV that is not
+  a project line) hears the line once (the phone model; a few seconds to a minute, then cached), turns it into mouth
+  shapes in time (the same timing as 2D) and keys every child's Scale X Y Z, held: its own Scale while its shape
+  shows, almost nothing (0.0001) while another does, so one shape shows at a time. One undo step; the keys are
+  ordinary keys, move or delete them on the timeline like any other. A second run adds keys only where there is
+  none at that time. Keep a shape's own Scale for its size and let the group carry the placement. The person does
+  the same: right-click the mouth group › **Lip sync…**, click a voice line, check the shape for each row, Apply.
+  Check with `look_sheet` over the line's seconds.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 

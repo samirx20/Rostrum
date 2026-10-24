@@ -1,7 +1,7 @@
 """What the scene list and its keys show, from one 3D document. No Qt.
 
 Scene list (the bottom panel's left column, SPEC §1): the item tree (a group's or import's children indented under it,
-an import's parts too; the arrow folds them; a combine is a group with the Combine icon, and in a Subtract every
+an import's parts and a mesh's bone chain too; the arrow folds them; a combine is a group with the Combine icon, and in a Subtract every
 child after the first, a cutter, has `cutter` set: the row shows a minus before its name), each row with its material's name, dim. The keys sit on the same rows
 (scene_rows): all of an item's keys on its own line; the selected item (or the owner of the selected key) opens into
 one row per animated field, so its keys can be picked and dragged one by one. An item's line carries what the kit's
@@ -82,10 +82,10 @@ def scene_rows(data: dict, folded: set[str], opened: str, fps: float = 24) -> li
 
     def walk(items, depth, cutters=False):
         for n, it in enumerate(items):
-            inside = it.get("children", []) + it.get("parts", [])
+            inside = it.get("children", []) + it.get("bones", []) + it.get("parts", [])    # a mesh's bones: its chain
             add(it, depth, "" if not inside else ("closed" if it["id"] in folded else "open"), cutter=cutters and n > 0)
             if inside and it["id"] not in folded:
-                walk(it.get("children", []), depth + 1, it.get("type") == "combine" and it.get("op", "subtract") == "subtract")
+                walk(it.get("children", []) + it.get("bones", []), depth + 1, it.get("type") == "combine" and it.get("op", "subtract") == "subtract")
                 for p in it.get("parts", []):
                     add(p, depth + 1, row="part")
 
@@ -98,7 +98,7 @@ def scene_items(data: dict):
     while stack:
         it = stack.pop()
         yield it
-        stack.extend(reversed(it.get("children", [])))
+        stack.extend(reversed(it.get("children", []) + it.get("bones", [])))
 
 
 def _keys(owner: dict, prop: str) -> list[dict]:

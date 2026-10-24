@@ -5,7 +5,7 @@ place that knows the words (RIG.md › Bones from part names). Pure; `rig.guess_
 """
 from __future__ import annotations
 
-import re
+from rostrum_core.names import tokens
 
 # (role, words): the first role whose words appear in the name, as whole words, wins (so "upper arm" before "arm").
 ROLES = [
@@ -26,12 +26,6 @@ LIMBS = {"arm": ("upperarm", "forearm", "hand"), "leg": ("thigh", "shin", "foot"
 SIDES = {"l": "L", "left": "L", "lt": "L", "r": "R", "right": "R", "rt": "R"}
 WORDS = {"upperarm": "upper arm", "forearm": "forearm", "hand": "hand", "thigh": "thigh", "shin": "shin",
          "foot": "foot", "neck": "neck", "head": "head", "torso": "body"}
-
-
-def tokens(name: str) -> list[str]:
-    """Lower-case words of a name: camelCase, _ - . and digits split ("leftUpperArm_2" -> left upper arm 2)."""
-    spaced = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", name)
-    return [w for w in re.split(r"[^a-z0-9]+", spaced.lower()) if w]
 
 
 def part(name: str) -> tuple[str, str] | None:

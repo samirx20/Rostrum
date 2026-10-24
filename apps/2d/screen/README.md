@@ -411,7 +411,7 @@ A step that leaves an error in the status line fails the run.
 Text on the canvas is measured by the engine (rostrum2d/textsize.py); drawing ignores rotation. No live sync between two
 processes on one file (each saves; reopen to see the other's).
 
-## Characters (H32: `rig_view.py`, `rig_drag.py`, `rig_poses.py`, `rig_lipsync.py`, `rig_blinks.py`, `rig_mouths.py`, `rig_voice.py`)
+## Characters (H32: `rig_view.py`, `rig_drag.py`, `rig_poses.py`, `rig_lipsync.py`, `rig_blinks.py`, `rig_mouths.py`)
 
 - **Make rig** is the context bar's first button on a group (or layers) whose parts are named like a body, outside a rig
   (fact `body_parts`; `promoted` in `actions.py`: a secondary action promoted now joins the bar on its own).
@@ -427,7 +427,7 @@ processes on one file (each saves; reopen to see the other's).
 - **Poses** under the settings (`qml/RigPoses.qml`, `backend.poses`): Save pose, click = apply at the playhead, slider = part
   of the way (one change on release), right-click › Delete.
 - **Lip sync…** on a mouth swap set (`qml/LipSyncSheet.qml`, `backend.lipsync`): the project's voice lines from RostrumSound
-  (`rig_voice.lines`), a row per mouth shape guessed from the drawings' names, Apply = one `lipsync.apply` (a line not heard
+  (`rostrum_core.lipsync.voice.lines`), a row per mouth shape guessed from the drawings' names, Apply = one `lipsync.apply` (a line not heard
   before is listened to off the screen's thread first). **Add blinks…** on an eyes swap set (`qml/BlinkSheet.qml`): Every,
   Varies by, open / closed / half, Apply = one `blink.add`.
 - Steps (`rig_steps.py`): `bones`, `jointdrag`, `posedrag`, `bonepick`, `pin`, `posesave`, `poseapply`, `poseblend`,

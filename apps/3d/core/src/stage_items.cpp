@@ -20,6 +20,7 @@
 #include "item_track.h"
 #include "materials.h"
 #include "mesh_build.h"
+#include "skin.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -86,12 +87,13 @@ void bind_parts(Item& it, const UsdGeomMesh& m, const FaceGroups& groups, const 
   api.SetMaterialBindSubsetsFamilyType(UsdGeomTokens->partition);
 }
 
-void build_mesh(Item& it, const SdfPath& path) {
+void build_mesh(Item& it, const SdfPath& path, const JsObject* skin) {
   UsdGeomMesh m = UsdGeomMesh::Define(it.ctx.stage, path);
   author_transform(it, m.GetPrim());
   FaceGroups groups;
   const MeshData d = shape(it.props, groups);
   write_mesh(m, d);
+  if (skin) skin_mesh(m, d, *skin, it.ctx.start, it.id + ".skin");
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);
   if (!groups[kFront].empty()) bind_parts(it, m, groups, mat);
@@ -169,7 +171,7 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   Item it(ctx, id, r.object("props"), r.has("anim") ? &r.object("anim") : nullptr);
   ++ctx.items;
   if (type == "group") author_transform(it, UsdGeomXform::Define(ctx.stage, path).GetPrim());
-  if (type == "mesh") build_mesh(it, path);
+  if (type == "mesh") build_mesh(it, path, r.has("skin") ? &r.object("skin") : nullptr);
   if (type == "combine") build_combine(it, r.list("children"), path);
   if (type == "import") build_import(it, path);
   if (type == "light") build_light(it, path);

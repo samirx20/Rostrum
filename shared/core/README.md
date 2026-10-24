@@ -47,6 +47,10 @@ doc.save()                                                   # docs/itm_shot.trd
 
 `rostrum_core.toy` is a small stand-in document (camera, light, rectangle, text with the S3 mockup's controls) shared by the tests, the MCP demo server and the GUI kit demo.
 
+## Lip sync (`rostrum_core.lipsync`)
+
+Shared by 2D and 3D, no Qt: `audio`, `english` (CMUdict), `model` + `ctc` (the phone model, run on demand) and `phonemes` (the cached job) hear a voice clip; `visemes` is the nine mouth shapes and the timing tools; `mouths` reads a shape from a name; `keys` plans one-shape-at-a-time keys; `track` is the whole job; `voice` lists the project's voice lines from RostrumSound. An app adds its own operation on top (2D `lipsync.apply`, 3D `lipsync.make`) and the kit's `rostrum_gui.lipsync_sheet` is the one sheet. Install the heavy parts with `rostrum_core[lipsync]`.
+
 ## Keys (`rostrum_core.keys`)
 
 The one animation model, shared by every app: `easing.py` (the easing table), `evaluate.py` (`keys_of`, `track_value`,

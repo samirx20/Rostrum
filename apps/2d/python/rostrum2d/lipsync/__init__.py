@@ -1,4 +1,3 @@
-"""Lip sync from a voice recording (design: apps/2d/LIPSYNC.md). `audio.py` reads the clip, `english.py` turns text
-into the aligner's phone labels (CMUdict, our own ARPAbet → IPA table), `model.py` runs the phone model on demand,
-`ctc.py` aligns or decodes, `phonemes.py` is the cached job, `visemes.py` the mouth shapes and timing tools, `keys.py`
-the plain opacity keys, `ops.py` the `lipsync.apply` operation, `script.py` the `lipsync(...)` script call."""
+"""2D's lip sync: `ops.py` is the `lipsync.apply` operation (mouth layers or a swap set's Shows), `script.py` the
+`lipsync(...)` script call. The shared part (audio, phone model, aligner, mouth shapes, timing, voice lines) lives in
+`rostrum_core.lipsync`; design: apps/2d/LIPSYNC.md."""

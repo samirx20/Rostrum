@@ -103,6 +103,7 @@ Rectangle {
     HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
     // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
+    Bones { anchors.fill: parent; z: 10.5 }  // a mesh's bone chain (Animate) and the points Bones is placing; draws only
     Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above
     TypeInPlace { }                  // a 3D text just placed: its cursor where it landed, typing changes the words
 

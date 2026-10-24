@@ -12,4 +12,4 @@ from .anims import NAMES
 from .kind import REGISTRY as R
 from .ops_keys import put_key
 
-register_anim_ops(R, owners=F.ITEMS, put_key=put_key, names=NAMES)
+register_anim_ops(R, owners=F.KEYED, put_key=put_key, names=NAMES)

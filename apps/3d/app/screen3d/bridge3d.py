@@ -23,7 +23,7 @@ from rostrum_gui.time_snap import TimeSnap
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
 from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
 
-from . import outline, route
+from . import lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .bridge_rows import RowsMixin
@@ -73,6 +73,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.add = Adder(self)
         self.ctx = Context(self)
         self._poses = Poses(self)
+        self._lipsync, self.open_lipsync = lipsync3d.make(self)     # Lip sync… on a mouth group (lipsync3d.py)
         self._mover, self._time_snap = Mover(self), TimeSnap(self)        # the timeline (timeline3d.py, key_pick3d.py)
         self._keys, self._key_bar, self._multi = KeyPick3D(self, self), KeyBar3D(self, self), Multi3D(self, self)
         self._stretch = Stretch3D(self, self)
@@ -103,6 +104,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     actions = Property(QObject, lambda self: self._hub, constant=True)     # the panel's actions (action_preview3d.py)
     poses = Property(QObject, lambda self: self._poses, constant=True)  # QML: backend.poses (poses_qt.py)
     mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
+    lipsync = Property(QObject, lambda self: self._lipsync, constant=True)   # QML: backend.lipsync (the kit's LipSyncSheet)
 
     @Property(QObject, constant=True)
     def adder(self):

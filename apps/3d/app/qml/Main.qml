@@ -54,7 +54,7 @@ AppShell {
     Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
     Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && shell.renderIdle; onActivated: backend.keys.clear() }
     Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
+               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !viewport.bones.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
                onActivated: backend.select("") }
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
@@ -174,6 +174,7 @@ AppShell {
         }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
         MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
+        FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
         AnimPanel { anchors.fill: parent; allowed: !meshEdit.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: SceneList { anchors.fill: parent }

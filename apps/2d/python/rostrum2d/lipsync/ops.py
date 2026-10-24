@@ -6,16 +6,15 @@ from __future__ import annotations
 from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import key_id
+from rostrum_core.lipsync import keys as K, visemes as V
+from rostrum_core.lipsync.mouths import WORDS
+from rostrum_core.lipsync.phonemes import LANGUAGES
+from rostrum_core.lipsync.track import TIMING, track
 from rostrum_core.tree import index
 
 from ..kind import REGISTRY as R
 from ..ops_keys import put_key
-from . import keys as K, visemes as V
-from .phonemes import LANGUAGES
-from .track import TIMING, track
 
-WORDS = {"X": "rest", "A": "closed (M B P)", "B": "slightly open", "C": "open", "D": "wide open", "E": "rounded",
-         "F": "puckered (OO W)", "G": "teeth on lip (F V)", "H": "tongue up (L)"}
 SECONDS = dict(min=0, max=36000, unit="s")
 PARAMS = [
     Param.text("source", label="Voice clip", required=True, control="file", filters=["WAV sound (*.wav)"], help="A WAV file (a made take, or a recording)"),

@@ -4,7 +4,7 @@ You draw a mouth in a few shapes (closed, open, wide, rounded …), one layer pe
 clip, works out which sound is said when, and keys the mouth layers so the right shape shows at the right moment. The
 result is ordinary keys on the timeline: you can move, retime or change any of them by hand afterwards.
 
-Code: `python/rostrum2d/lipsync/` (Python only; the engine just shows the keyed layers).
+Code: `shared/core/rostrum_core/lipsync/` (shared with 3D: audio, phone model, aligner, shapes, timing, voice lines) and `python/rostrum2d/lipsync/` (the operation and script call). Python only; the engine just shows the keyed layers.
 
 ## The nine mouth shapes
 
@@ -132,7 +132,7 @@ closed mouths (A) on the M / B / P? Then look at frames (`look_frame`, `look_she
 - Model folder: `ROSTRUM_PHONES_DIR`, else `~/.rostrum/models/wav2vec2-lv60-espeak-fp16/` (`model_fp16.onnx`,
   `vocab.json`, `device.json`). `ROSTRUM_AI_DEVICE` (`cpu`, `dml:0`, `dml:1`) forces a device.
 - Dictionary: `ROSTRUM_CMUDICT`, else `~/.rostrum/models/cmudict-7479086/cmudict.dict`.
-- Runtime: `pip install rostrum2d[lipsync]` (onnxruntime-directml on Windows, onnxruntime elsewhere; numpy, scipy,
+- Runtime: `pip install rostrum_core[lipsync]` (onnxruntime-directml on Windows, onnxruntime elsewhere; numpy, scipy,
   soundfile).
 - On the CPU, onnxruntime 1.24's full graph fusion breaks on this fp16 model, so the CPU runs with basic
   optimisation only (`model.py`).
