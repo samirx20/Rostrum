@@ -7,7 +7,8 @@ document values (a dict subclass: the document and the engine see `{"beat": n}`)
     length ± length = length     length * k = length     length / k = length
     times compare with times (bar(5) < beat(20)), lengths with lengths
 
-A bare number is seconds everywhere else, so `bar(5) + 0.5` would mix beats and seconds: that is refused with the two
+`plain(tree)` turns them back into plain dicts where the script hands its tree to the document (the history and the
+file store plain values only). A bare number is seconds everywhere else, so `bar(5) + 0.5` would mix beats and seconds: that is refused with the two
 forms that say what was meant (never guessed).
 """
 from __future__ import annotations
@@ -44,6 +45,17 @@ def _ordered(kind, key):
         return compare
     return {"__lt__": make("<", lambda a, b: a < b), "__le__": make("<=", lambda a, b: a <= b),
             "__gt__": make(">", lambda a, b: a > b), "__ge__": make(">=", lambda a, b: a >= b)}
+
+
+def plain(v):
+    """`v` with every Beat / Beats (anywhere inside lists and dicts) a plain dict."""
+    if isinstance(v, dict):
+        return {k: plain(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [plain(x) for x in v]
+    if isinstance(v, tuple):
+        return tuple(plain(x) for x in v)
+    return v
 
 
 def _show(v) -> str:

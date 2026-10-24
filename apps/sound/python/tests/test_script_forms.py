@@ -1,9 +1,13 @@
 """The script forms agents write first: beat arithmetic, drum names, plain Python, and the before-render checks."""
+import json
+
 import pytest
 
-from rostrum_core import RostrumError
+from rostrum_core import Document, RostrumError, Who
 from rostrum_sound import run_source
 from rostrum_sound.doc import KIND
+from rostrum_sound.mcp.app import make_app
+from rostrum_sound.mcp.server import make_runtime
 from rostrum_sound.script_scope import printed
 
 
@@ -11,9 +15,30 @@ def notes(src):
     return run_source("tempo(120); length(bar(9)); s = track('k', builtIn='grandPiano')\n" + src, "t.py")["tracks"][0]["notes"]
 
 
-def test_beat_arithmetic_gives_document_values():
-    n = notes("for i in range(2):\n    s.note('C4', at=bar(2) + i * beats(1), dur=beats(1) * 2)")
+def server(tmp_path, monkeypatch):
+    monkeypatch.setenv("ROSTRUM_SCRIPTED_HOME", str(tmp_path))
+    monkeypatch.setenv("ROSTRUM_SETTINGS_DIR", str(tmp_path / "settings"))
+    (tmp_path / "engine.exe").write_bytes(b"")              # the engine starts on first use; never used here
+    monkeypatch.setenv("ROSTRUM_SOUND_ENGINE", str(tmp_path / "engine.exe"))
+    Document.new(KIND, folder=str(tmp_path / "song"), item="main").save()
+    app = make_app(tmp_path / "song", ["main"])
+    return app, make_runtime(app)
+
+
+def test_beat_arithmetic_gives_plain_values_the_history_can_write(tmp_path, monkeypatch):
+    src = "tempo(120); s = track('k', builtIn='grandPiano')\nfor i in range(2):\n    s.note('C4', at=bar(2) + i * beats(1), dur=beats(1) * 2)"
+    n = run_source(src, "t.py")["tracks"][0]["notes"]
     assert [x["at"] for x in n] == [{"beat": 4}, {"beat": 5}] and n[0]["dur"] == {"beats": 2}
+    doc = Document.new(KIND, folder=str(tmp_path / "plain"), item="main")
+    doc.save()
+    json.dumps(doc.run_script("t.py", run_source(src, "t.py"), Who.agent("t")).change.to_dict())
+    app, rt = server(tmp_path, monkeypatch)
+    try:                                                    # through the server; print lines come back
+        reply, _ = rt.call("run_script", {"source": src + "\nprint('two notes')"}, Who.agent("tester"))
+        assert reply["ok"], reply
+        assert "print: two notes" in reply["warnings"]
+    finally:
+        app.state.engine.close()
 
 
 @pytest.mark.parametrize("src", ["s.note('C4', at=bar(2) + 0.5, dur=1)", "x = bar(2) < 3.0", "s.note('C4', at='#a' + beats(1), dur=1)"])
