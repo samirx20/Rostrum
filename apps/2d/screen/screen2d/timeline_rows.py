@@ -10,7 +10,7 @@ from __future__ import annotations
 from rostrum_gui import row_facts
 from rostrum_gui.rows_model import RowsModel
 
-from . import outline
+from . import outline, painting_open
 
 
 class TimelineRows:
@@ -20,7 +20,15 @@ class TimelineRows:
     _facts_told = None       # the row facts it was last told (row_facts.py)
 
     def layer_rows(self) -> list[dict]:
-        """The timeline's rows as the document is now (read by QML's `layers` and by the screen's own code)."""
+        """The timeline's rows as the document is now (read by QML's `layers` and by the screen's own code); a
+        painting opened on its own: its one row (painting_open.row)."""
+        opened = self._opened.item() if getattr(self, "_opened", None) is not None else None
+        if opened is not None:
+            c = self.comp()
+            got = self._rows_at
+            if got is None or got[0] is not opened or got[1:3] != (c["fps"], c["duration"]):
+                got = self._rows_at = (opened, c["fps"], c["duration"], [painting_open.row(opened, c["fps"], c["duration"])])
+            return got[3]
         placed, flipped, only = self.placed(), frozenset(self._flipped), frozenset(self._anim_only)
         got = self._rows_at
         if self._rows_kept is None:

@@ -26,6 +26,7 @@ from .action_preview import PREVIEW_TAG, ActionPreview
 from .agent_view import AgentView
 from .layer_order import LayerOrder
 from .painter import Painter
+from .painting_open import OpenedPainting
 from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
 from .frame_view import FrameView
@@ -93,6 +94,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
+        self._opened = OpenedPainting(self)                 # a painting opened on its own (painting_open.py)
         self.painter = Painter(self)
         self._paint_edge, self._world = PaintEdge(self), WorldView(self)   # paint_edge.py, world_view.py
         self.frames.pictured.connect(self._world.shown)
@@ -135,6 +137,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
+    opened = Property(QObject, lambda self: self._opened, constant=True)         # a painting open on its own (painting_open.py)
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     world = Property(QObject, lambda self: self._world, constant=True)           # the world picture on the canvas (world_view.py)
     frameView = Property(QObject, lambda self: self._frame_view, constant=True)   # the frame's box on the canvas (frame_view.py)
@@ -336,6 +339,14 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         length, background)."""
         return self._multi.pick(x, y, "click")
 
+    @Slot(str)
+    def select(self, item_id):
+        """One item ("" = none). The painting open on its own is where you are, not something picked (its timeline
+        row and cells select it): nothing changes."""
+        opened = getattr(self, "_opened", None)          # (the kit selects the first item before it is made)
+        if not (item_id and opened is not None and item_id == opened.id):
+            super().select(item_id)
+
     # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------
     def guard(self, fn) -> bool:
         return self._guard(fn)
@@ -449,6 +460,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         route.drop(self._where)
         self.frames.close()
         self._pictures.close()
+        self._opened.close_down()
         self._problems.close()
         self._cuepick.close()
         self.r3d.close()

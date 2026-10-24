@@ -58,3 +58,17 @@ def shown(item: dict, painting: dict, n: int, fps: float) -> dict | None:
     loop, begin = _run(item, painting, drawings)
     start = drawing.frame_number(item.get("start", 0.0), fps)
     return drawing.frame_at(loop, begin + max(n, start) - start)
+
+
+def when_shown(item: dict, painting: dict, at: int, now: int, fps: float) -> int:
+    """The layer's own frame, from `now` on (else from its start), at which it next shows the painting's drawing that
+    starts at painting frame `at`: where a frame tool painting in place puts the playhead. `now` when none does."""
+    want = next((f for f in drawing.shown_frames(painting) if f["at"] == at), None)
+    if want is None:
+        return now
+    start = drawing.frame_number(item.get("start", 0.0), fps)
+    span = 2 * (max(f["at"] for f in drawing.shown_frames(painting)) + 1) + 240    # a whole round (ping-pong, a long last hold)
+    for n in [*range(max(now, start), max(now, start) + span), *range(start, max(now, start))]:
+        if shown(item, painting, n, fps) is want:
+            return n
+    return now

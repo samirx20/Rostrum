@@ -59,7 +59,7 @@ class PaintEdge(QObject):
         super().__init__(bridge)
         self.b = bridge
         self._asked, self._layer, self._path, self._at = [], "", "", (0.0, 0.0)
-        self._others, self._others_at = "", (0.0, 0.0)
+        self._others, self._others_at, self.places = "", (0.0, 0.0), {}
         bridge.frames.placed.connect(self._on_placed)
         for s in (bridge.toolChanged, bridge.selectedItemsChanged, bridge.painter.changed):
             s.connect(self._retarget)
@@ -88,6 +88,7 @@ class PaintEdge(QObject):
             self.b._show()
 
     def _on_placed(self, places: dict):
+        self.places = places                # the painting's users' places, for wet ink on each of them (wet_uses.py)
         asked = [i for i in self._asked if i in places]
         layer = asked[0] if asked else next(iter(places), "")
         path, at = _from_corner(outer(places[layer]["edge"]) if layer else "")

@@ -22,6 +22,17 @@ PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
 IN_PLACE = ["selectmany card rule", "run layer:painted_new", "select card", "painttool brush"]     # card and rule share a painting
 FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320 520 340 720 320", "newframe copy",
           "draw 340 340 540 360 740 340"]
+_P = 'paintingop painting.add - '
+_STROKE = 'paintingop paint.stroke {} {{"points":[[0,20,0.8],[64,45,0.8],[128,20,0.8]],"color":"{}","size":9}}'
+LIBRARY_PAINTINGS = [          # four paintings: seamless and used twice, a long name, one used by the dot, one not used
+    _P + '{"name":"Paper grain","w":128,"h":128,"seamless":true,"onto":["card","rule"]}', _STROKE.format("painting_1", "#c1683a"),
+    _P + '{"name":"Bark from the old oak by the river at the bottom of the garden","w":256,"h":256,"seamless":false}', _STROKE.format("painting_2", "#6a4a2a"),
+    _P + '{"name":"Ink spots","w":600,"h":400,"onto":["dot"]}', _STROKE.format("painting_3", "#222222"),
+    _P + '{"name":"Rain","w":128,"h":128,"seamless":true}', _STROKE.format("painting_4", "#5a7aa8"),
+    "selectmany card rule", "library open"]
+OPENED = [_P + '{"name":"Paper grain","w":128,"h":128,"seamless":true,"onto":["card","rule"],"fit":"tile"}',   # P6: opened on its own
+          _STROKE.format("painting_1", "#c1683a").replace('"color"', '"space":"canvas","color"'), "paintingopen painting_1",
+          "draw 60 30 100 64 140 100"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
 # What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design (a motion
@@ -32,7 +43,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "painting-opened", "painting-opened-boil", "paint-in-place-select",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -285,6 +296,16 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-in-place-layer", ["--sample"], [*IN_PLACE, "clickobj paintingOnLayer"]),
         # painted fill P5: Seamless on while painting in place; a stroke leaving the card comes back on its other side
         ("paint-in-place-seamless", ["--sample"], [*IN_PLACE, "painttoggle seamless on", "draw 1150 560 1350 600 1500 640"]),
+        # painted fill P6: the Library's Paintings (long name, seamless four repeats, uses), two layers picked; its right-click menu
+        ("library-paintings", ["--sample"], LIBRARY_PAINTINGS),
+        ("library-paintings-menu", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj paintingRow:painting_2 0.5 0.5 right"]),
+        # P6: a painting opened on its own (its repeats round it, the path chip, Size and Used by); it boiling, three
+        # drawings as cells with the onion skin; Select strokes on a painted fill painted in place
+        ("painting-opened", ["--sample"], OPENED),
+        ("painting-opened-boil", ["--sample"], [*OPENED, "timeline full", "painttoggle eachFrame on", "newframe",
+                                                "draw 20 90 60 120", "newframe", "draw 30 20 90 40", "onion on"]),
+        ("paint-in-place-select", ["--sample"], [*IN_PLACE, "draw 900 500 1000 560 1100 500", "painttool select",
+                                                 "lasso 880,470 1120,470 1120,590 880,590"]),
         ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),

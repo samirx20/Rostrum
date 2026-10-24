@@ -15,6 +15,8 @@ from rostrum2d import brand_kit as B
 from rostrum2d import fields as F, text_styles
 from rostrum2d.ops_look import COLOUR
 
+from .painting_library import PaintingLibrary
+
 
 class LibraryView(QObject):
     changed = Signal()
@@ -23,6 +25,7 @@ class LibraryView(QObject):
         super().__init__(parent or bridge)
         self.b, self._open, self._kit = bridge, False, {s: [] for s in B.SECTIONS}
         self._logos, self._told = [], None
+        self._paintings = PaintingLibrary(bridge, self)      # its Paintings section (painting_library.py)
         bridge.docChanged.connect(self._check)
         bridge.selectedItemsChanged.connect(self._check)
 
@@ -51,6 +54,7 @@ class LibraryView(QObject):
 
     # ---- what QML shows ------------------------------------------------------------------------------------------
     open = Property(bool, lambda self: self._open, notify=changed)
+    paintings = Property(QObject, lambda self: self._paintings, constant=True)
     hasProject = Property(bool, lambda self: bool(self._folder()), notify=changed)
     colors = Property("QVariantList", lambda self: self._kit["colors"], notify=changed)
     textStyles = Property("QVariantList", lambda self: self._kit["textStyles"], notify=changed)
@@ -79,6 +83,7 @@ class LibraryView(QObject):
     @Slot(bool)
     def setOpen(self, on):
         self._open = bool(on)
+        self._paintings.setOpen(self._open)
         if self._open:
             self._reload()
         self.changed.emit()

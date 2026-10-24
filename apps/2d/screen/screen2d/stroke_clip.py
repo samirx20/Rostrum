@@ -53,7 +53,7 @@ class StrokeClip(SlotMixin):
         if d is None or not clip:
             self.b._set_status("Nothing to paste here: select what the strokes go on")
             return False
-        self._layer, self._place = d["id"], self.b.place_of(d["id"])
+        self._seen_on(d)
         layer, frame = self.b._paint_layers.current(), max(0, self.b.painter._n())
         calls = []
         for s in clip:
@@ -68,7 +68,8 @@ class StrokeClip(SlotMixin):
         if not self._change("Paste strokes", lambda: calls):
             return False
         # the exact picture takes about a second: the pasted strokes show flat at once, until it lands (flat_cue.py)
-        self.b.painter._wet.flat(flat_cue.for_layer(self.b, d["id"], flat_cue.new_items(frame0, self.b._paint_layers._frame()), self._place), lambda: self.b._waiting is None)
+        if self._thru is None:      # (through a painted fill the strokes land with the frame)
+            self.b.painter._wet.flat(flat_cue.for_layer(self.b, d["id"], flat_cue.new_items(frame0, self.b._paint_layers._frame()), self._place), lambda: self.b._waiting is None)
         self._ids = [x["id"] for x in self._strokes(self.b.doc.item(d["id"])) if x["id"] not in before]      # the paste is what is picked now:
         self._at = self._here()                                                      # Delete, move and turn act on it
         self._load()

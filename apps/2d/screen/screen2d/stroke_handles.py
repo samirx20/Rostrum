@@ -33,7 +33,7 @@ class StrokeHandles(SlotMixin):
         centre = (b["x"] + b["w"] / 2, b["y"] + b["h"] / 2)
 
         def go():
-            self._place = self.b.place_of(self._layer)
+            self._seen_on(self._target())
             self._begin_drag(LABELS[kind])
         if not self.b.guard(go):
             return False

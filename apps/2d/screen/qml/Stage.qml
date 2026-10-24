@@ -44,7 +44,18 @@ Rectangle {
     function fromComp(x, y) { return Qt.point(compOrigin.x + x * compScale, compOrigin.y + y * compScale) }
     function inWell(x, y) { return Qt.point((x - view.ox) / view.zoom, (y - view.oy) / view.zoom) }   // the same, in the well
     // the view, for the keys, the menu and scripted steps (view_steps.py)
-    function fitAll() { view.fitAll(backend.frameView.fitRect()) }      // the frame where it is at the playhead
+    function fitAll() { if (opened) fitPainting(); else view.fitAll(backend.frameView.fitRect()) }   // the frame where it is at the playhead
+    // A painting opened on its own (OpenedPainting.qml): the view fits it (seamless: with a repeat round it), and goes
+    // back to where it was when it closes
+    readonly property bool opened: backend.opened.on
+    property var viewBefore: null
+    function fitPainting() { const i = backend.opened.info, w = i.w || 1, h = i.h || 1
+                             if (i.seamless) view.fitBox(-w, -h, 2 * w, 2 * h); else view.fitBox(0, 0, w, h) }
+    onOpenedChanged: {
+        if (opened) { viewBefore = { cx: view.cx, cy: view.cy, asked: view.asked, fitted: view.fitted }; fitPainting() }
+        else if (viewBefore) { view.cx = viewBefore.cx; view.cy = viewBefore.cy; view.asked = viewBefore.asked
+                               view.fitted = viewBefore.fitted; viewBefore = null }
+    }
     function fitEverything() { view.fitEverything(backend.frameView.everythingRect()) }
     function zoomPercent(p) { view.show(p / 100) }
     function centreOn(x, y) { view.centreOn(x, y) }
@@ -85,23 +96,28 @@ Rectangle {
             width: panel.info.width * view.zoom; height: panel.info.height * view.zoom
             Image {  // the world picture (backend.world: world_view.py), laid at its world rectangle; panning moves it at once
                 readonly property var p: backend.world.picture
-                visible: p.world === true && !backend.playing
+                visible: p.world === true && !backend.playing && !panel.opened
                 x: (p.x || 0) * view.zoom; y: (p.y || 0) * view.zoom
                 width: (p.w || 0) * view.zoom; height: (p.h || 0) * view.zoom
                 source: p.world === true ? "image://frame/" + p.serial : ""
                 cache: false; smooth: true
             }
-            Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box
-                readonly property var b: backend.selBox
+            OpenedPainting {   // a painting opened on its own: it and its repeats, in world px (painting_open.py)
+                visible: panel.opened; zoom: view.zoom
+                visibleWorld: { view.zoom; view.ox; view.oy; const a = panel.inWell(0, 0), b = panel.inWell(well.width, well.height)
+                                return Qt.rect(a.x, a.y, b.x - a.x, b.y - a.y) }
+            }
+            Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box (an opened painting's own)
+                readonly property var b: panel.opened ? { x: 0, y: 0, w: backend.opened.info.w, h: backend.opened.info.h } : backend.selBox
                 visible: painter.onionSerial > 0 && b.w !== undefined
                 x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
                 width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""
                 cache: false; smooth: true
             }
-            Image {  // wet ink's settled part (screen2d/wet.py)
+            Image {  // wet ink's settled part (screen2d/wet.py; an opened painting shows its own: OpenedPainting.qml)
                 readonly property var w: painter.wet
-                visible: w.drySerial > 0
+                visible: w.drySerial > 0 && !panel.opened && w.uses.length === 0
                 x: (w.dryBox.x || 0) * view.zoom; y: (w.dryBox.y || 0) * view.zoom
                 width: (w.dryBox.w || 0) * view.zoom; height: (w.dryBox.h || 0) * view.zoom
                 source: w.drySerial > 0 ? "image://wet/dry-" + w.drySerial : ""
@@ -109,12 +125,13 @@ Rectangle {
             }
             Image {  // wet ink: the stroke being drawn, at once, until the frame with it saved lands (screen2d/wet.py)
                 readonly property var w: painter.wet
-                visible: w.serial > 0
+                visible: w.serial > 0 && !panel.opened && w.uses.length === 0
                 x: (w.box.x || 0) * view.zoom; y: (w.box.y || 0) * view.zoom
                 width: (w.box.w || 0) * view.zoom; height: (w.box.h || 0) * view.zoom
                 source: w.serial > 0 ? "image://wet/tip-" + w.serial : ""
                 cache: false; smooth: true; asynchronous: false
             }
+            WetUses { zoom: view.zoom }   // painting a painted fill in place: the stroke on every layer using the painting
             Item {  // wet ink on a seamless painting: where the stroke crosses its edge it shows on the other side too (wet_wrap.py), inside the element
                 id: wetCopies
                 readonly property var w: painter.wet
@@ -133,7 +150,7 @@ Rectangle {
                             x: ((parent.w.dryBox.x || 0) + parent.modelData.x - (wetCopies.b.x || 0)) * view.zoom
                             y: ((parent.w.dryBox.y || 0) + parent.modelData.y - (wetCopies.b.y || 0)) * view.zoom
                             width: (parent.w.dryBox.w || 0) * view.zoom; height: (parent.w.dryBox.h || 0) * view.zoom
-                            source: parent.w.drySerial > 0 ? "image://wet/dry-" + parent.w.drySerial : ""
+                            source: parent.w.drySerial > 0 ? "image://wet/dry" + (parent.modelData.own !== undefined ? "c" + parent.modelData.own : "") + "-" + parent.w.drySerial : ""
                             cache: false; smooth: true; asynchronous: false
                         }
                         Image {
@@ -141,7 +158,7 @@ Rectangle {
                             x: ((parent.w.box.x || 0) + parent.modelData.x - (wetCopies.b.x || 0)) * view.zoom
                             y: ((parent.w.box.y || 0) + parent.modelData.y - (wetCopies.b.y || 0)) * view.zoom
                             width: (parent.w.box.w || 0) * view.zoom; height: (parent.w.box.h || 0) * view.zoom
-                            source: parent.w.serial > 0 ? "image://wet/tip-" + parent.w.serial : ""
+                            source: parent.w.serial > 0 ? "image://wet/tip" + (parent.modelData.own !== undefined ? "c" + parent.modelData.own : "") + "-" + parent.w.serial : ""
                             cache: false; smooth: true; asynchronous: false
                         }
                     }
@@ -156,7 +173,8 @@ Rectangle {
             source: p.world === false ? "image://frame/" + p.serial : ""
             cache: false; smooth: true; mipmap: true
         }
-        WorldFrame { id: worldFrame; view: view; through: look.on }   // the dimmed outside, the frame's outline and name tab (frameView); the chip: below
+        Item { anchors.fill: parent; visible: !panel.opened   // the scene's frame: not while a painting is open
+               WorldFrame { id: worldFrame; view: view; through: look.on } }   // the dimmed outside, the frame's outline and name tab (frameView); the chip: below
         Item {  // the pen
             anchors.fill: parent
             visible: well.drawing
@@ -293,7 +311,8 @@ Rectangle {
             }
             onCanceled: stop()
         }
-        FrameHandles { world: worldFrame; stage: panel }   // the frame: its tab picks it; picked, drag inside / corners / turn zones (frame_drag.py)
+        Item { anchors.fill: parent; visible: !panel.opened
+               FrameHandles { world: worldFrame; stage: panel } }   // the frame: its tab picks it; picked, drag inside / corners / turn zones (frame_drag.py)
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
             visible: !backend.playing && !well.drawing && ["text", "bone"].concat(backend.create.kinds.map(k => k.kind)).indexOf(backend.tool) < 0   // one input layer per tool
@@ -303,7 +322,7 @@ Rectangle {
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         MotionPath {    // where the selection (or the frame) travels: dots per frame, key squares, handles (motion_path.py)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && !backend.pen.on
+            visible: !backend.playing && !well.drawing && !backend.pen.on && !panel.opened
             interactive: backend.tool === "move"
             noFrame: look.on
             fit: view.zoom; ox: view.ox; oy: view.oy
@@ -311,7 +330,7 @@ Rectangle {
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
             x: view.ox; y: view.oy
-            visible: !backend.playing           // they follow the playhead again when it stops (playback.py)
+            visible: !backend.playing && !panel.opened          // they follow the playhead again when it stops (playback.py)
             CoverBand {     // the edges the frame sees past over the piece (cover_band.py); not while looking through
                 box: backend.selBox; fit: view.zoom
                 visible: edges.length > 0 && box.w !== undefined && !look.on && backend.multi.count === 1 && !well.drawing
@@ -402,7 +421,9 @@ Rectangle {
             onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
         }
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
-        FrameChip { world: worldFrame; onClicked: panel.fitAll() }   // "‹ Frame": the frame is out of view; a click fits it
+        Item { anchors.fill: parent; visible: !panel.opened
+               FrameChip { world: worldFrame; onClicked: panel.fitAll() } }
+        PathChip { visible: panel.opened; anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // "Autumn menu › Paper grain"   // "‹ Frame": the frame is out of view; a click fits it
         LookThrough { id: look; view: view }                         // "Through the frame ×", bottom-left, while on
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // only while strokes are picked: what applies to them (StrokeBar.qml)

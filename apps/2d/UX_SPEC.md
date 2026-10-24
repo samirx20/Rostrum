@@ -796,6 +796,56 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **3E:** *Effective:* strokes are kept as strokes (PLAN), so moving them stays sharp. *Rejected:* a pixel-only
   selection (blurs on every move).
 
+### A painting many layers share (painted fill) · Now (P1–P6)
+Design and mockups: `C:\Users\Sam\.rostrum\waves\results\2d-painted-fill\DESIGN.md` (mock-1 … mock-4). How-to:
+`guides/drawing.md` part 9; the Library: `guides/characters-sound-styles.md`.
+- **Goal:** one painted texture (paper grain, rain, bark, a boiling scribble) on many shapes at once; paint it once and
+  every layer using it changes, in the canvas and the export.
+- **The model:** a **painting** is an item of the scene (the document's `paintings`, beside its text styles): a canvas
+  with its own size, **Seamless**, paint layers and, with **Draw each frame**, drawings. It is not a layer (no place in
+  the stack, no bar, no eye). A shape's or path's fill of kind **Painted** names it; *what it is* belongs to the
+  painting, *how it sits* (Fit · Scale · Offset · Rotation · Drift · Colour under it · Blend · Opacity · Start at
+  drawing) to each layer. Texts take one later (the engine can't fill text with a picture yet: absent, not greyed).
+- **Steps (clicks after the layers are picked):**
+  - *New painted fill:* Fill swatch → **Painted** (2). No painting yet: one is made the layers' size, stretched, and
+    the brush is on. With paintings: tiles, **+ New painting** or a tile (3).
+  - *Use one on more layers:* the Library's **Paintings** row (1), or its right-click › **Use as the fill of N layers**;
+    with nothing picked a click picks its uses. From the picker: Fill → Painted → its tile (3).
+  - *Paint it where it shows:* pick any use → **B** (1), or **Paint it** in the picker. The stroke is stamped once in
+    the painting's px and shows on **every use as it is drawn** (one texture laid through each use's place and
+    mapping, wrapped on a seamless painting); the other uses get a faint dotted edge; the panel heads "Paper grain ·
+    painted fill of card 2 · used by 3 layers". **Layer ▾** offers the layer's own paint and the painting. Fill (G),
+    the eraser (its view under the paint, wrapped too), a smudge (on the painting's own paint) and **Select strokes
+    (S)** all work through the layer by the same one mapping (`painted.to_painting`).
+  - *Open it on its own (tiling work):* double-click its Library row, or right-click › **Open** (1). The canvas shows
+    it alone (its px are world px) with its size above it; seamless: its repeats all round, darker, the wet stroke in
+    the nine around the middle. Path chip "Scene › Paper grain" at the top left; the scene's name or **Esc** goes
+    back (1), picking and tool as before. Panel: brush, **Seamless**, **Draw each frame**, **Size** W H, **Loop**,
+    **Used by** (a name goes back with that layer picked). Timeline: the painting's one row, its drawings as cells.
+  - *Boil:* **Draw each frame** (1) under Painting on, in place or opened; then New / Copy / ‹ › / New ones hold, the
+    onion skin opened. Every use boils from its own start and always loops; **Start at drawing** puts neighbours out
+    of step.
+  - *Make one from paint that is there:* right-click a painted shape or a drawing › **Make painted fill** (2), or the
+    Library's **+ From card 2's paint** (1).
+  - *Rename, Duplicate, Delete:* the Library row's right-click (2 each). Delete asks nothing: uses turn into a solid
+    fill of its average colour, the top bar says so, Ctrl+Z brings everything back.
+- **Where and when (rule of individuality):** the Paintings section shows only when the scene has a painting or the
+  pick can make one; **Use as the fill of …** only with shapes / paths picked; Rotation and Drift only on Tile; Loop
+  only while it draws each frame; the onion skin only where it lies right (opened, not in place); Layer ▾ is not shown
+  opened (the painting is all there is to paint).
+- **Speed (measured 2026-10-25, real window, 50 cards using one 1024 px seamless painting on Tile):** pen moves 5–7 ms
+  median on the screen thread (worst 16–43 ms when a settled part is taken in); every use shows the stroke while it
+  is drawn, so all are updated at release (0 ms after it); the saved stroke's picture replaces the identical wet ink
+  ~0.3 s later. Press 25–55 ms and release 24–36 ms (one-off at pen-down and pen-up; over the 16 ms bar, see
+  HANDOFF). Boil playback reads one file per drawing, as drawings do.
+- **Agent:** `painting.add / set / duplicate / remove`, `layer.fill {type: "painted", painting, fit, …}`,
+  `paint.stroke {target: painting, through?: layer, space}`, `frame.add {target: painting}`; eyes `look_painting
+  {repeats}`, `inspect_painting` (uses, seam check), `look_at` (where a point lands in it).
+- **3E:** *Effective:* one source, many uses, preview ≡ export (one PNG per drawing read by every use). *Efficient:*
+  1 click to reuse, 1 key to paint it where it shows, nothing to "update". *Easy:* "a painting is a fill you paint";
+  open it only to work on how it tiles. *Rejected:* frozen pattern copies (Photoshop: editing the source doesn't
+  update the uses); a separate texture editor page; fixing seams after the fact (Seamless prevents them).
+
 ### Painted backgrounds at depths · Next
 - **Goal:** a painted scene with far, middle and near parts that move at different speeds as the frame moves.
 - **Steps:** paint it as one drawing or several; select the drawings → context bar **Set depth ▾** (Far · Middle ·
