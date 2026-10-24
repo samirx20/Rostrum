@@ -18,6 +18,7 @@ from rostrum_core import Document
 from rostrum_core.mcp import App, Guides, run_stdio
 from rostrum_core.storage import paths
 
+from rostrum3d import ops_mesh
 from rostrum3d.engine import Engine
 from rostrum3d.kind import KIND
 from rostrum3d.script import run_source
@@ -56,6 +57,7 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
     app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES), folder=project)
     app.state = ThreeDState(engine or Engine())          # the process starts on the first request, not now
     atexit.register(app.state.engine.close)
+    ops_mesh.use_engine(app.state.engine, project)          # mesh.edit reads a shape's mesh from this engine
     return app
 
 

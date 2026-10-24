@@ -22,6 +22,7 @@ class Core {
   PXR_NS::JsObject render(const PXR_NS::JsObject& a, const std::function<void(const PXR_NS::JsObject&)>& progress);
   PXR_NS::JsObject view(const PXR_NS::JsObject& a);
   PXR_NS::JsObject pick(const PXR_NS::JsObject& a);
+  PXR_NS::JsObject geometry(const PXR_NS::JsObject& a);  // geometry_request.cpp
   PXR_NS::JsObject save(const PXR_NS::JsObject& a);
   PXR_NS::JsObject info();
 
@@ -37,6 +38,7 @@ class Core {
   GpuMemWatch mem_;
   bool loaded_ = false;
   BuildResult built_;
+  PXR_NS::JsObject scene_;  // the loaded scene as sent (geometry names combine inputs from it)
   std::unique_ptr<Shm> shm_;  // the live viewport's pictures
   std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
 };
