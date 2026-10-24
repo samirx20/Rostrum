@@ -121,6 +121,8 @@ DATA = [
     # a painted fill (rostrum2d/paintings.py): the fill picker's + New painting; Make painted fill from paint already there
     _a("painted_new", "New painted fill", rank=82, group="look", kinds=SHAPES, panel=False,
        calls=_op("painting.add", None, onto="$ids", id="$new:painting")),
+    _a("paint_fill", "Paint the painted fill", rank=82, group="look", kinds=SHAPES, max_targets=1, panel=False,
+       when=FACT("painted_fill"), do="paint_fill"),
     _a("make_painted_fill", "Make painted fill", rank=82, group="look", job="make_painted_fill", max_targets=1,
        kinds=(*SHAPES, "drawing"), when=FACT("paint_makeable"), panel=False,
        calls=_op("painting.add", None, id="$new:painting", **{"from": "$first"})),

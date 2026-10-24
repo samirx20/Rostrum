@@ -1,11 +1,15 @@
 """Fill (G while Draw is on; UX_SPEC.md §3.8): a click inside a closed area of the painting fills it with the brush's
 colour and opacity, on the highlighted paint layer (or a new one when + Paint layer is armed): one `paint.fill`, one
 change. Close gaps (small, medium, large) is screen state, like the brush. A click with nothing closed to fill is
-refused by the operation and said in the status; nothing changes.
+refused by the operation and said in the status; nothing changes. On an element's painted fill (painting in place) the
+click goes through the element into its painting (paint_through.mapping, as the pen's strokes do).
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum2d import paint_through
+from rostrum2d.evaluate import resolve
+from rostrum2d.placement import own_point
 from rostrum_paint.fill import GAPS
 
 from . import flat_cue
@@ -50,6 +54,10 @@ class Filler(QObject):
                 "layer": "new" if p.newLayerNext else self.b._paint_layers.current(),
                 "frame": max(0, p._n())}
 
+        through = p.through()
+        if through is not None:
+            return self.b.guard(lambda: self._fill_through(d, through, args))
+
         def go():
             place, before = self.b.place_of(d["id"]), self.b._paint_layers._frame()
             self.b.done(self.b.doc.apply([{"op": "paint.fill", "target": [d["id"]], "args": args}], self.b.who,
@@ -60,3 +68,14 @@ class Filler(QObject):
             if p.newLayerNext:
                 p.newPaintLayer()                       # the new paint layer is made: later fills and strokes go on it
         return self.b.guard(go)
+
+    def _fill_through(self, painting: dict, layer: dict, args: dict):
+        """Fill in the painting under the click on the element it fills: its picture lands with the frame (no flat cue:
+        the cue is drawn in the element's own paint px, not through its fill)."""
+        place, t = self.b.place_of(layer["id"]), self.b.own_t(layer["id"])
+        m = paint_through.mapping(layer, resolve(layer, t), painting, t, (place["w"], place["h"]))
+        x, y = m.wrapped(*m.to_painting(*own_point(place, *args["at"][0])))
+        self.b.done(self.b.doc.apply([{"op": "paint.fill", "target": [painting["id"]],
+                                       "args": {**args, "at": [[x, y]], "space": "canvas"}}], self.b.who, label="Fill"), "")
+        if self.b.painter.newLayerNext:
+            self.b.painter.newPaintLayer()

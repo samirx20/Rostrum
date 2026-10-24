@@ -9,8 +9,9 @@ drawing, making what it needs on the way, in one change (one undo step):
   side a new drawing beside it that takes the stroke (paint_overflow.py).
 
 Points are composition px (`space: "comp"`, the default: where the element is at `frame`) or the paint canvas's own
-px (`space: "canvas"`, what look_drawing shows and what the screen's pen sends). The stroke itself is the painting
-kit's (`build`), so a scripted stroke and a painted one are the same item.
+px (`space: "canvas"`, what look_drawing shows and what the screen's pen sends). A painting is painted in its own px,
+or `through` a layer it fills (paint_through.py: painting in place). The stroke itself is the painting kit's (`build`),
+so a scripted stroke and a painted one are the same item.
 """
 from __future__ import annotations
 
@@ -21,7 +22,7 @@ from rostrum_paint.ops import build
 
 from rostrum_paint import linked
 
-from . import drawing as D, paint_fields, paint_grow, paint_overflow, placement, shared_paints
+from . import drawing as D, paint_fields, paint_grow, paint_overflow, paint_through, placement, shared_paints
 from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
@@ -35,13 +36,21 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
              "with it. Makes the drawing at that frame and the paint layer if missing; several calls in one list are one "
              "undo step. A drawing layer grows to hold the stroke, in any direction, nothing painted moving on screen (its "
              "canvas px shift by the growth left / up); past 8192 px a side the stroke starts a new drawing just above it "
-             "(\"<name> 2\"), in the same undo step.", target=PAINTABLE, label="Paint",
+             "(\"<name> 2\"), in the same undo step. A painting (painted fill): its own px, or `through` a layer filled with it "
+             "(the stroke goes through that layer's fit, scale, offset, rotation and drift into the painting, and shows on "
+             "every layer using it; on Tile it carries on across tile edges).", target=PAINTABLE, label="Paint",
              params=[Param.points("points", label="Path", min=2, max=5, required=True,
                                   help="[[x, y, pressure 0..1, tilt x°, tilt y°], …]; pressure 1 and no lean when "
                                        "left out (tilt: the pen's lean each way, -60..60)"),
-                     Param.choice("space", ["comp", "canvas"], label="Points in", default="comp", importance="secondary",
-                                  labels={"comp": "Composition px", "canvas": "Paint canvas px"},
-                                  help="comp: where the element is at `frame`; canvas: the paint's own px (look_drawing's)"),
+                     Param.choice("space", ["comp", "canvas", "layer"], label="Points in", default="comp", importance="secondary",
+                                  labels={"comp": "Composition px", "canvas": "Paint canvas px", "layer": "The layer's own px"},
+                                  help="comp: where the element is at `frame`; canvas: the paint's own px (look_drawing's); "
+                                       "layer (with `through`): the px of the layer's box, before its move, scale and turn"),
+                     Param.id("through", label="Through layer", importance="secondary",
+                              help="On a painting: a layer filled with it. The points are that layer's (comp or layer px) and "
+                                   "go through its Fit, Scale, Offset, Rotation and Drift at `frame` into the painting, into "
+                                   "the drawing it shows then; on Tile a stroke crossing a tile edge goes on in the next tile. "
+                                   "Without it a painting's points are its own px"),
                      Param.text("layer", label="Paint layer", default="", importance="secondary",
                                 help='"new" = a new paint layer on top (in every drawing of the layer); a paint layer '
                                      'id or its shared key (the same in every drawing); empty = the top unlocked one'),
@@ -50,12 +59,18 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
                      Param.text("id", label="Stroke id", importance="deep", help="Optional; counted when left out"),
                      *rostrum_paint.BRUSH, MASK])
 def paint_stroke(ctx, targets, args):
-    brush = {k: v for k, v in args.items() if k not in ("points", "space", "layer", "frame", "id")}
+    brush = {k: v for k, v in args.items() if k not in ("points", "space", "layer", "frame", "id", "through")}
+    if args.get("space") == "layer" and not args.get("through"):
+        ctx.fail(codes.BAD_ARGUMENT, 'space "layer"', "needs `through`: the layer whose painted fill the stroke is painted on")
     for t in targets:
         item = ctx.item(t)
         n = args.get("frame", 0)
-        pts = args["points"]
-        if item["type"] != "painting":                   # a painting has no place in the scene: its points are always its own px
+        pts, more = args["points"], []
+        if args.get("through"):
+            if item["type"] != "painting":
+                ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "is not a painting: `through` paints a painting through a layer it fills")
+            n, (pts, *more) = paint_through.stroke(ctx, t, args, brush, _fps(ctx, args["through"]), _place)
+        elif item["type"] != "painting":                   # a painting has no place in the scene: its points are always its own px
             props = resolve(item, n / _fps(ctx, t))
             cw, ch = D.paint_size(item, props)
             if args.get("space", "comp") == "comp":     # where the engine draws the layer at that frame (placement.py)
@@ -71,6 +86,8 @@ def paint_stroke(ctx, targets, args):
         if sid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{sid}"', "is already used in this document")
         ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, "points": pts}, ctx.where))
+        for piece in more:              # the same stroke in the other tiles it crossed into (paint_through.py)
+            ctx.insert(paint["id"], "strokes", build("stroke", ctx.new_id("stroke"), {**brush, "points": piece}, ctx.where))
 
 
 def _fit(ctx, t: str, pts, brush: dict) -> tuple[str, list]:

@@ -307,6 +307,16 @@ Rectangle {
                        font.family: uiFont; font.pixelSize: Theme.label }
             }
             BoneOverlay { fit: view.zoom; space: marks }   // a rig in hand: its bones and joints, posing and fixing drags (rig_view.py)
+            Shape {  // painting a painted fill in place: the painting's other users, a faint dotted edge (no words on the canvas)
+                visible: well.drawing && backend.paintEdge.others !== ""
+                x: backend.paintEdge.othersAt.x * view.zoom; y: backend.paintEdge.othersAt.y * view.zoom
+                scale: view.zoom; transformOrigin: Item.TopLeft
+                ShapePath {
+                    strokeWidth: 1.5 / view.zoom; strokeColor: Qt.alpha(Theme.accent, 0.6); fillColor: "transparent"   // reads on light and dark
+                    strokeStyle: ShapePath.DashLine; dashPattern: [1, 2.5]
+                    PathSvg { path: backend.paintEdge.others }
+                }
+            }
             Shape {  // painting: the target's true edge, the limit its paint stays inside (backend.paintEdge, composition px)
                 visible: well.drawing && backend.paintEdge.path !== ""
                 x: backend.paintEdge.at.x * view.zoom; y: backend.paintEdge.at.y * view.zoom   // the path is sent from its corner (paint_edge.py)

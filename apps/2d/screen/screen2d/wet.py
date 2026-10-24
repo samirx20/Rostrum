@@ -135,10 +135,13 @@ def reveal_rect(visible: dict | None, x: float, y: float) -> dict:
     return {"x": x0, "y": y0, "w": max(1, math.ceil(x1) - x0), "h": max(1, math.ceil(y1) - y0), "scale": 1.0}
 
 
-def without_paint(scene: dict, layer_id: str) -> dict | None:
-    """The scene with that layer's paint left out (a drawing draws nothing; an element still draws its own look);
-    None if the layer isn't in it. Only the nodes on the way are copied (the scene is shared)."""
+def without_paint(scene: dict, layer_id: str, fill: bool = False) -> dict | None:
+    """The scene with that layer's paint left out (a drawing draws nothing; an element still draws its own look), or
+    with `fill` its painted fill's painting (the colour under it stays); None if the layer isn't in it. Only the nodes
+    on the way are copied (the scene is shared)."""
     def walk(node):
+        if node.get("id") == layer_id and fill:
+            return {**{k: v for k, v in node.items() if k != "fillFrames"}, "props": {**node["props"], "fillPicture": ""}}
         if node.get("id") == layer_id:
             out = {k: v for k, v in node.items() if k != "paint"}
             if node["type"] == "drawing":

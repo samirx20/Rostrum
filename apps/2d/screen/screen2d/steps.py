@@ -11,7 +11,7 @@
     (plays, with full motion blur or not, at that Preview size, then prints the frames shown per second and each stage's time: screen2d/playstats.py)
     marker add <s> | marker move <name> <s> | marker rename <name> <new name> | marker remove <name> (ruler flags; _ for spaces)
   timeline compact|full (this tool's timeline height) | Draw tool (tool draw; paints on the selected drawing layer, or makes one): draw <x> <y> <x> <y> … (one stroke, composition px)
-    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off | paintlayer | painton selected|new
+    brush <setting> <value> | newframe [copy] | hold <+n|-n> | frame next|prev | onion on|off | paintlayer | painton selected|new|own|fill
   Paths (tool pen): pen <x,y> <x,y,hx,hy> … [close] (one new path: a point, or a press at x,y dragged to hx,hy =
     a smooth point; composition px) | pointpick <layer> <i> (select a point: its handles show) | pointdrag <layer> <i> <dx> <dy> [in|out] (a point, or its handle)
   Handles: resize <layer> <nw|n|ne|e|se|s|sw|w> <dx> <dy> [shift] [alt] | rotate <layer> <deg> [shift] (turn by that many
@@ -45,6 +45,7 @@
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame [n] [profile]
   Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n]
+  Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -68,6 +69,7 @@ from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
 from .rig_steps import WORDS as RIG_WORDS, do_rig_step
 from .drag_steps import WORDS as DRAG_WORDS, do_drag_step
 from .edit_steps import WORDS as EDIT_WORDS, do_edit_step
+from .stroke_time import WORDS as STROKE_TIME_WORDS, do_stroke_time
 
 
 def value(text):
@@ -283,7 +285,7 @@ def do_step(bridge, win, step):
         bridge.painter.setOnion(rest[0] == "on")
     elif word == "paintlayer":                   # "Paint layers +": a new paint layer on top, highlighted
         bridge._paint_layers.add()
-    elif word == "painton":                      # painton selected|new: the "Painting on: … ▸" menu
+    elif word == "painton":                      # painton selected|new|own|fill: Painting on › Layer ▾
         bridge.painter.paintOn(rest[0])
     elif word == "marker":                       # the ruler's flag edits, through the same MarkerWatch slots
         from rostrum_core.markers import find
@@ -451,6 +453,8 @@ def do_step(bridge, win, step):
         do_stroke_step(bridge, win, word, rest, step)
     elif word in DRAG_WORDS:                     # dragtime bar|trim|key|layer|frame [n] [profile] (drag_steps.py)
         do_drag_step(bridge, word, rest, step)
+    elif word in STROKE_TIME_WORDS:              # painttime <layer> <x0> <y0> <x1> <y1> [n] (stroke_time.py)
+        do_stroke_time(bridge, step, rest)
     elif word in EDIT_WORDS:                     # edittime field|dragend|key|pin|undo [n] (edit_steps.py)
         do_edit_step(bridge, word, rest, step)
     elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)

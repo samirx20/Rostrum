@@ -12,12 +12,13 @@ kind shows the scene's paintings as tiles (`options.sources`) and "+ New paintin
 layer:painted_new, one change). No Qt."""
 from __future__ import annotations
 
-from rostrum2d import drawing, fill_fields, fill_paint
+from rostrum2d import drawing, fill_fields, fill_paint, paintings
 from rostrum2d.evaluate import resolve
 from rostrum_core.keys import keys_of
 from rostrum_gui.rows import matches
 
 from . import route
+from .fill_aim import used_by
 
 ROW = "paint"
 HIDDEN = {"filled", "fillOpacity", *fill_fields.NAMES, *(p.name for p in fill_fields.PICTURE)}
@@ -26,6 +27,7 @@ INSIDE = ("fillScale", "fillOffsetX", "fillOffsetY", "fillRotation", "fillDriftX
 WORDS = {"fillScale": "Scale", "fillOpacity": "Opacity"}   # the picker's words: no "Picture scale" on a painting
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 NEW = "layer:painted_new"                               # + New painting (actions.py)
+PAINT_IT = "layer:paint_fill"                           # Paint it: the Brush on the painted fill (actions.py)
 
 
 def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0, query: str = "",
@@ -43,7 +45,8 @@ def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0,
         if r["row"] == "param" and r["id"] == colour:
             out.append({**r, "id": ROW, "label": "Fill" if colour == "fill" else "Colour", "type": "paint", "valid": r["valid"] or own,
                         "value": value(item, t, doc), "anim": anim_state(item, t, fps), "default": None,
-                        "options": {**OPTIONS, "types": types, **({"sources": sources(doc), "add": NEW} if raster else {})}})
+                        "options": {**OPTIONS, "types": types, **({"sources": sources(doc), "add": NEW} if raster else {}),
+                                    **paint_it(item, doc)}})
         elif raster and r["row"] == "param" and r["id"] in INSIDE:
             out.append(_inside(r, item))
         elif not (r["row"] == "param" and r["id"] in HIDDEN) and not (r.get("members") and set(r["members"]) <= HIDDEN):
@@ -75,6 +78,13 @@ def picture(painting: dict) -> str:
     screen's thread (its last one, or a blank one, stands in meanwhile)."""
     frames = drawing.shown_frames(painting)
     return str(drawing.picture(painting, frames[0], later=[])) if frames else ""
+
+
+def paint_it(item: dict, doc: dict | None) -> dict:
+    """A painted fill's Paint it (the action PAINT_IT) and the words beside it: "used by 3 layers"."""
+    if item.get("fillType") != "painted" or not doc:
+        return {}
+    return {"paintIt": PAINT_IT, "paintItNote": used_by(len(paintings.uses(doc, item.get("fillPainting", ""))))}
 
 
 def sources(doc: dict | None) -> list[dict]:

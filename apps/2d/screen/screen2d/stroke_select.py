@@ -82,8 +82,10 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     # ---- the mapping: a stroke's canvas px <-> composition px, through the layer's place ---------------------------
     def _target(self) -> dict | None:
+        """What the pen paints on, holding strokes; not a painted fill painted in place (its strokes are the painting's,
+        picked in the painting opened on its own)."""
         d = self.b.painter._aim()
-        return d if d is not None and d.get("frames") else None
+        return d if d is not None and d.get("frames") and self.b.painter.through() is None else None
 
     def _frame(self, d: dict) -> dict | None:
         return self.b._paint_layers._frame() or frame_at(d, self.b.painter._n())

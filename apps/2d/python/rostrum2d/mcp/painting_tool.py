@@ -5,7 +5,9 @@
 
 `look_drawing`, `inspect_drawing_at`, `inspect_stroke_landed` and `look_drawing_change` also take a painting's id (its px
 are the canvas's). Making and changing one: painting.add / painting.set / painting.duplicate / painting.remove, strokes
-with paint.stroke or stroke.add on its drawings, using it with layer.fill {type: "painted"}.
+with paint.stroke or stroke.add on its drawings, using it with layer.fill {type: "painted"}. Painting it where a layer
+shows it: paint.stroke {target: the painting, through: the layer, space: "layer" or "comp"}; look_at says where a point
+lands in the painting.
 """
 from __future__ import annotations
 
@@ -42,7 +44,8 @@ def look_painting(ctx, args):
 @tools.tool("inspect_painting", {"properties": {**draw.ITEM, "painting": {"type": "string", "description": "A painting's id. Left out: every painting of the document."}}})
 def inspect_painting(ctx, args):
     """Each painting: its size, Seamless, paint layers, drawings (and holds), and every layer using it with how it sits
-    (fit, scale, offset, rotation, drift, colour under it, opacity)."""
+    (fit, scale, offset, rotation, drift, colour under it, opacity). To paint it where one of those layers shows it:
+    paint.stroke {target: the painting, through: that layer, space: "layer" (its box px) or "comp"}."""
     doc = ctx.document(args.get("item"))
     chosen = [_painting(ctx, doc, args["painting"])] if args.get("painting") else paintings.all_of(doc.data)
     rows, lines = [], []

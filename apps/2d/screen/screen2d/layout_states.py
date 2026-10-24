@@ -19,6 +19,7 @@ LONG_PROJECT = "Summer_launch_film_for_the_new_headphones_-_final_cut_v3"   # a 
 PICTURE = (Path(__file__).resolve().parents[4] / "proofs" / "3d-painterly" / "paint" / "textures" / "cloth.png").as_posix()  # a real
 # picture for a fill (a screenshot of the app, dark, reads as a broken fill)
 PAINTED = ["select card", "tool draw", "draw 600 300 900 330 1200 300"]
+IN_PLACE = ["selectmany card rule", "run layer:painted_new", "select card", "painttool brush"]     # card and rule share a painting
 FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320 520 340 720 320", "newframe copy",
           "draw 340 340 540 360 740 340"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
@@ -31,7 +32,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -278,6 +279,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                "clickobj swatch", "clickobj fillType:painted"]),
         ("fill-painted-tile-rows", ["--sample"], ["select card", "run layer:painted_new", "clickobj swatch", "clickobj paintFit 0.55 0.5"]),
         ("make-painted-fill-menu", ["--sample"], [*PAINTED, "tool move", "canvasmenu"]),
+        # painted fill P4: painting a shared painting in place (the other user dotted, the panel's words), Layer ▾ with the
+        # element's own paint and its painted fill
+        ("paint-in-place", ["--sample"], [*IN_PLACE, "draw 600 300 900 330 1200 300"]),
+        ("paint-in-place-layer", ["--sample"], [*IN_PLACE, "clickobj paintingOnLayer"]),
         ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),
