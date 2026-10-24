@@ -22,7 +22,7 @@ REGISTRY.operation("marker.set", "Rename or move a marker.", target="marker", pa
                    label="Edit marker", fields=True)(set_fields)
 
 
-@REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's, bus' or the master's inserts.",
+@REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's, bus' or the master's inserts. It starts valid and playable (an EQ with one flat band you then move).",
                     target=INSERTS, label="Add effect", params=[
                         Param.choice("effect", FX.TYPES, label="Effect type", required=True),
                         Param.text("id", label="Id", help="Optional; counted per place (pad.eq_1 …)."),

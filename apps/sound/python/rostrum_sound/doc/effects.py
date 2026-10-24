@@ -51,6 +51,7 @@ EFFECTS = {
     "plugin": {},               # a CLAP / VST3 plug-in: its one `plugin` record, doc/plugins.py
 }
 TYPES = list(EFFECTS)
+FLAT_BAND = [{"shape": "peak", "freq": 1000, "gain": 0, "q": 1}]   # a new EQ: one band that changes nothing, ready to move
 FREEVERB_ONLY = ("decay", "damping", "size")
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
 
@@ -98,7 +99,7 @@ def defaults(type_: str) -> dict:
     out = {}
     for n, s in EFFECTS[type_].items():
         if s.default == BANDS:
-            out[n] = []
+            out[n] = [dict(b) for b in FLAT_BAND]
         elif s.default == SPACE:
             out[n] = "hall"
         elif s.default == TOGGLE:

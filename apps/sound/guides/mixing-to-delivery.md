@@ -8,9 +8,9 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
-- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`), pan, mute. **Buses:** `bus.add` / `bus.set` (`output` routes a bus into another
+- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
-- **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; settings depend on it: an EQ has `bands`,
+- **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; every new effect starts valid and playable with its default settings: an EQ starts with one flat band (peak, 1000 Hz, 0 dB, q 1) that changes nothing until you move it, and settings depend on the kind: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).
   `effect.set` changes one, `bypass` switches it off without losing settings. On screen an effect's amounts (mix,
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
