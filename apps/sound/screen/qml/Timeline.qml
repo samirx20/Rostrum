@@ -91,7 +91,7 @@ Rectangle {
         id: list
         anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: parent.bottom
                   leftMargin: Theme.gap; rightMargin: Theme.pad; topMargin: Theme.grid
-                  bottomMargin: Theme.gap + (scrollbar.visible ? scrollbar.height + Theme.grid : 0) }
+                  bottomMargin: Theme.gap + scrollbar.height + Theme.grid }   // room kept: rows never move when it shows
         contentHeight: column.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: false
         Column {
             id: column
@@ -169,7 +169,7 @@ Rectangle {
         }
         LaneInput {   // every click, drag, box and right-click on the lanes (select first, then act)
             id: lanes
-            x: bars.x - list.x; width: bars.width; height: column.height
+            x: bars.x - list.x; width: bars.width; height: Math.max(column.height, list.height)   // the space below Master too: a click there clears
             tl: tl; bars: bars; flick: list
             onMenuAt: (entries, px, py) => tl.openMenu(entries, lanes.mapToItem(tl, px, py))
         }

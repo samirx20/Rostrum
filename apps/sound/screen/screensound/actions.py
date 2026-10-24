@@ -125,9 +125,10 @@ ACTIONS = [
     act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
         importance="primary", group="section"),
     act("section_inside", "Select inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
-        group="section", do="inside"),
+        group="section", do="inside_section"),
     # a time range (a section is made from the range whatever else is selected; the rest when the range is newer)
-    act("section", "Make a section", lambda f: bool(f.range), C.section, importance="primary", group="range"),
+    act("section", "Make a section", lambda f: bool(f.range), C.section, group="range",
+        promoted_when=lambda f: f.on_range),      # first only while the range is what you mean, not an old one under a pick
     act("inside", "Select inside", lambda f: f.on_range, importance="primary", group="range",
         do="inside"),
     act("delete_time", "Delete time", lambda f: bool(f.range), C.delete_time, group="range",
@@ -148,10 +149,11 @@ ACTIONS = [
         "Ctrl+D", group="edit"),
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",
         needs="Rename needs one track, marker or section selected"),
-    act("cut_range", "Delete and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="range",
-        needs="Delete and close the gap needs a time range over a clip"),
+    act("cut_range", "Cut out and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="range",
+        needs="Cut out and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),
 ]
+RANGE = frozenset(a["key"] for a in ACTIONS if a["group"] == "range") | {"range_duplicate"}   # they act on the time range
 # the kit's adapter doesn't read `release` or `panel` yet (kit request in the P30 report): put them on the Actions here
 LIST = ActionList([replace(a, release=d["release"], panel=d["panel"]) for a, d in zip(from_dicts(ACTIONS, KEYMAP), ACTIONS)],
                   KEYMAP, noun="item", short_menu=SHORT_MENU)

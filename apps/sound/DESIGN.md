@@ -1925,10 +1925,10 @@ Job B (placing a stinger on a cut). Job A (a recorded part, a sample loop). Job 
 15. **Slip** (move the sound inside the clip without moving the clip). In the Editor (E), drag the waveform sideways:
     the clip's window stays put and the file slides under it (`clip.set {in}`, exists). In the arrangement:
     **Ctrl+Alt drag** on the clip body does the same (proposed). The waveform slides; the edges stay.
-16. **Delete and close the gap.**
+16. **Cut out and close the gap.**
     - **Delete** removes the clips and leaves the gap. This is the default, because closing gaps would move everything
       later out of sync with the picture.
-    - **Shift+Delete** (proposed) = "Delete and close the gap": the clip goes, and everything after it **on the same
+    - **Shift+Delete** (proposed) = "Cut out and close the gap": the clip goes, and everything after it **on the same
       track** moves earlier by its length. This is what cutting a fluff in a voice-over needs.
     - Items on other tracks never move. Times written on a marker keep their form; the offset changes.
 
@@ -3619,7 +3619,7 @@ that don't touch, the velocity strip without notes, Loop without a range. The da
 | | Ctrl+D | Duplicate right after | shared |
 | | Alt+drag | Drag a copy | shared |
 | | Delete (or Backspace) | Delete; on a range inside a clip, cut it out and close the gap | shared |
-| | Shift+Delete | Delete and close the gap on that track | shared |
+| | Shift+Delete | Cut out and close the gap on that track | shared |
 | | F2 | Rename | shared |
 | | ← → | Nudge a grid step (Shift: a bar; **Alt: fine**, 10 ms or 1/32 beat) | shared · changed (fine was Ctrl) |
 | | ↑ ↓ | Notes: half step (Shift: octave); clips / sounds: track above / below | shared meaning (move the selection) |

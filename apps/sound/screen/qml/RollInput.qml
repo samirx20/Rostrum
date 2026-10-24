@@ -6,7 +6,8 @@ import RostrumKit
 // drags every selected item in time and (notes) in pitch (Ctrl: no snapping, Shift: only in time, Alt: a copy;
 // one undo step). Empty space: a click clears the selection (the playhead stays; only the ruler moves it), a drag draws a box (Ctrl adds),
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
-// a note Note ▾ long (drag on: longer) or a hit. The two tools' buttons are on the dock's top line (EditorHeader). A note's right end sets its length (every selected note by the same amount, one undo
+// a note Note ▾ long (drag on: longer) or a hit. The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
+// just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
 // step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
 MouseArea {
     id: m
@@ -18,7 +19,8 @@ MouseArea {
     signal menuAt(var entries, real x, real y)
     preventStealing: true
     hoverEnabled: true
-    readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11)
+    enabled: !!bars && !!grid            // no pointer before its ruler and rows are linked (a roll being made or freed)
+    readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11); a note's end handle is its last 6 px
     property string hover: ""
     cursorShape: mode === "handle" || hover !== "" ? Qt.SizeHorCursor : backend.tool === "draw" ? Qt.CrossCursor : Qt.ArrowCursor
     function endUnder(e) { return kind === "notes" ? backend.rollHandleAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec) : ({}) }

@@ -1,16 +1,16 @@
 """What is under the pointer, from the data the screen draws (no Qt). The Timeline and the piano roll each take
 clicks in one place and ask here, so a drag keeps working while the blocks it moves are redrawn.
 
-`tol` is a few pixels, in seconds; `lane` / `row` say where in the row the pointer is.
+`tol` is a few pixels, in seconds; `lane` / `row` say where in the row the pointer is. A block takes only the clicks
+on what is drawn of it (its own time, at least `tol` wide so a hit or a tiny note can be caught), never the empty
+space around it: a click just past a note's end, or just before its start, is empty space (Draw adds a note there).
 """
 from __future__ import annotations
 
 
 def _score(b, t, tol):
-    """0 inside a block, the distance outside it (seconds), None when farther than tol."""
-    end = b["t"] + max(b["dur"], tol)
-    d = 0.0 if b["t"] - tol <= t <= end else min(abs(t - b["t"]), abs(t - end))
-    return None if d > tol else d
+    """0 on a block (its drawn time: start .. end, at least tol wide), None off it."""
+    return 0.0 if b["t"] <= t <= b["t"] + max(b["dur"], tol) else None
 
 
 def block_at(blocks: list[dict], t: float, lane: float, tol: float, lane_tol: float = 1.0) -> str:

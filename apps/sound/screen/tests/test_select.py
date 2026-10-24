@@ -162,3 +162,12 @@ def test_split_here_from_the_clip_menu_is_one_undo_step(bridge):
     assert len([c for t in doc.data["tracks"] for c in t.get("clips", [])]) == 2
     bridge.undo()
     assert len([c for t in doc.data["tracks"] for c in t.get("clips", [])]) == 1
+
+
+def test_select_inside_a_range_works_with_a_track_picked(bridge):
+    """A new track is picked, so a range drawn then must still select what is inside it (critic r4 M2: KeyError)."""
+    bridge.select("lead")
+    bridge.setRange(0.0, 3.0, True)
+    bridge.actions.run("inside")
+    picked = bridge.selectedIds
+    assert picked and "lead" not in picked and all(bridge.doc.item(i)["type"] != "track" for i in picked)

@@ -12,6 +12,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import commands
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.action_views import commands as do_commands
+from rostrum_sound.doc import musical
 from rostrum_sound.doc import select_time as ST
 
 from rostrum_sound import main_mix
@@ -19,7 +20,7 @@ from rostrum_sound import main_mix
 from . import action_calls as C
 from . import voice_actions as V
 from . import block_menu, clipboard, timing
-from .actions import LIST
+from .actions import LIST, RANGE
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
 
@@ -50,6 +51,14 @@ class SoundHub(ActionHub):
             self.refresh()
             return
         super().key(job)
+
+    def _go(self, entry):
+        """Which action runs, so its step and message name what it acts on (`_subject`)."""
+        self.bridge.__dict__["_acting"] = entry["id"]
+        try:
+            super()._go(entry)
+        finally:
+            self.bridge.__dict__["_acting"] = ""
 
 
 class ActionSlots:
@@ -90,9 +99,18 @@ class ActionSlots:
     def _what(self, f) -> str:
         return self.selectionWords or ("Time range" if self._picks.range else "")
 
+    def _subject(self, key) -> str:
+        """What action `key` acts on, in words: a time range action names the range ("time range 5.1–9.1"), even with
+        items selected too (critic r4: "Duplicate · 26 drum hits" duplicated the whole range); the rest the selection."""
+        rng = self._picks.range
+        if key in RANGE and rng:
+            at = [".".join(musical.position(t, self.doc.data).split(".")[:2]) for t in rng]
+            return f"time range {at[0]}–{at[1]}"
+        return self.selectionWords
+
     # ---- running ----------------------------------------------------------------------------------------------
     def _act_apply(self, calls, label):
-        words = self.selectionWords
+        words = self._subject(self.__dict__.get("_acting", ""))
         made = any(c["op"] in MAKES for c in calls)
         if self._act(calls, f"{label} · {words}" if words else label, made) and any(c["op"] == "section.add" for c in calls):
             self.clearRange()
@@ -102,10 +120,12 @@ class ActionSlots:
     def _act_do(self, name, entry):
         """Sound's actions that are not operations by themselves."""
         ids, words = self._picks.ids, self.selectionWords
-        if name == "inside":                                    # of the time range, or of the selected section
-            sec = self.doc.item(ids[0]) if ids else None
-            rng = (ST.start_of(self.doc.data, sec), ST.start_of(self.doc.data, {**sec, "at": sec["end"]})) if sec \
-                else self._picks.range
+        if name in ("inside", "inside_section"):                # of the time range, or of the selected section
+            if name == "inside_section":                        # each action names its subject, never guessed from the
+                sec = self.doc.item(ids[0])                     # selection (a picked track is not a section, critic r4 M2)
+                rng = (ST.start_of(self.doc.data, sec), ST.start_of(self.doc.data, {**sec, "at": sec["end"]}))
+            else:
+                rng = self._picks.range
             self._pick(C.inside(C.Facts(self.doc, [], rng=rng)))
         elif name == "rename":
             self.startRename(ids[0])
@@ -272,6 +292,7 @@ class ActionSlots:
         f = self._facts()
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
+        mine = [{**c, "hint": self._subject(c["key"]) or c["hint"]} for c in mine]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
                               where=self._what(f))
