@@ -10,8 +10,9 @@ Every top-level layer has a **depth**: how far behind the frame's plane it sits.
 more and far layers less (parallax). A layer **Pinned to frame** (`screenLock`) moves with the frame, not the world: a
 title, a border, a logo bug.
 
-Code: Python `apps/2d/python/rostrum2d/frame/` (`fields.py` the fields, `view.py` the maths, `rules.py` what is
-refused, `make.py` a new frame, `convert.py` + `shots.py` + `split.py` older files); engine
+Code: Python `apps/2d/python/rostrum2d/frame/` (`fields.py` the fields, `view.py` the maths, `fit.py` framing,
+`rules.py` what is refused, `make.py` a new frame, `convert.py` + `shots.py` + `split.py` older files), the framing
+operations `ops_frame_fit.py` (script side `script_frame.py`); engine
 `apps/2d/engine/render/src/frame/mod.rs`.
 
 ## The document
@@ -42,9 +43,33 @@ through 0); a depth of −1 or less. `layer.remove` refuses the frame by name (i
 screen picks what that operation takes); the other layer operations that never apply to it (add, duplicate, rename,
 arrange, group, mask, effects, paste, shift, trim, stagger, paste style) take `fields.PLACED`.
 
-**Scripts:** `f = frame()` is the current scene's frame (made with `comp()`); `f.key(...)`, `f.set(...)` as any item.
+**Scripts:** `f = frame()` is the current scene's frame (made with `comp()`); `f.key(...)`, `f.set(...)` as any item;
+`f.fit(["hills", "tree"], at=4)`, `f.fit(rect=(x, y, w, h), at=4)`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`,
+`f.cut(at="#logo lands")`, `f.home(at=8)` run the operations below on the script's tree.
 `camera("cam", x=…)` (an older script) is the frame too; `camera(…, start=…, end=…, marker=…)` is refused with how to
 write a cut. A re-run never wipes a frame key a person dragged (the document rule).
+
+## Framing and cuts
+
+Three operations on the frame (target: the frame's id, `"frame"`), each one change = one undo step. `at` is
+composition seconds (the playhead) or a shared marker (`"#logo lands"`, `"#drop+0.2"`): a key written on a marker
+stays on it, so moving the marker moves the framing or the cut.
+
+| Operation | Args | Does | Valid when |
+|---|---|---|---|
+| `frame.fit` | `to` `view` / `rect` / `items`; `rect` `[x, y, w, h]` world px (the screen sends its visible view); `ids` (layers); `at` (default 0); `pad` (share of the output per side: 0.05 for layers, 0 for a rectangle); `keepRotation` (default true); `cut` (true = `frame.cut` with this `to`) | A rectangle: the largest output-shaped box inside it, turned as the frame is. Layers: the frame that shows them as they will look **in the export at `at`**, depth counted (a far layer moves less, so the frame goes further), as close as `pad` allows, centred (`frame/fit.py`). | not locked |
+| `frame.cut` | `at` (required, at least one frame after 0); optional `to`, `ids`, `rect`, `pad`, `keepRotation` as `frame.fit` | x, y, zoom, rotation each get the place the frame has one frame before `at`, keyed there with the `hold` ease (the screen's *Jump*), and at `at` the same place, or with `to` the new one (the jump and the next shot in one step). On a marker the key before is the marker minus one frame (`"#logo lands-0.033333"`). | not locked |
+| `frame.home` | `at` (default 0) | x, y back to home, zoom 1, rotation 0: a still field changes, an animated one gets a key at `at`. Refused when the frame is already home there. | not locked, and the frame is away (fact `frameAway`: keyed, or still off home) |
+
+**The keying rule of a fit:** x, y and zoom (and rotation when the turn isn't kept) get a key at `at`; a field with no
+keys yet is also keyed at 0 s with its value now, so the frame starts where it was and arrives there. At 0 s with no
+keys the still values just change (the frame moves for the whole piece). A fit or cut on a field driven by an
+expression, on a frame riding a path, with a locked or pinned layer, unknown or no `ids`, a rectangle with no area, or a
+zoom outside 0.01 to 100 is refused, naming the item and field.
+
+**Status words:** the operations return nothing; `ops_frame_fit.words(op, frame, args, t)` (the frame as it is before
+the call, `t` = `at` in seconds) gives the screen's line: "Frame keyed at 0 s (where it was) and 3 s", "Cut at 2.40 s.
+Move the frame to the next shot.", "Frame home".
 
 ### Changing the size
 

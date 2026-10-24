@@ -12,6 +12,7 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
         shape("dot", shape="ellipse", w=24, h=24)
     f = frame()                                                       # the scene's frame (its camera), made with comp()
     f.key("x", {0: 960, 4: 2600}, ease="easeInOut")                   # a push across the world
+    f.fit(["hills", "tree"], at=6); f.cut(at="#logo lands", to="rect", rect=(3200, 0, 1920, 1080))   # frame layers; a cut
     flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
     ink = flame.frame(0).paint("ink")                                 # drawing at frame 0, its paint layer
     ink.stroke([(400, 900), (380, 600, 0.6), (420, 300, 0.2)], color="#ffb040", size=40, brush="bristle")
@@ -30,7 +31,7 @@ from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 
-from . import fields as F, fontlist, pathdata, script_words as W
+from . import fields as F, fontlist, pathdata, script_frame, script_words as W
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -152,6 +153,22 @@ class Item:
             fit(self.node)
 
 
+class FrameItem(Item):
+    """The scene's frame: an Item that also frames and cuts, through the operations (script_frame.py)."""
+
+    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation))
+        return self
+
+    def cut(self, at, to=None, items=None, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.cut", script_frame.args_of(items, at=at, to=to, rect=rect, pad=pad, keep_rotation=keep_rotation))
+        return self
+
+    def home(self, at=0) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.home", {"at": at})
+        return self
+
+
 class Build:
     def __init__(self, reserved=()):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
@@ -214,7 +231,7 @@ class Build:
         """The current scene's frame (made with comp()), its fields set from `values`."""
         if not self.holders:
             raise ValueError("make a composition first: comp(...) before frame()")
-        return Item(self, frame_view.of(self.holders[0])).set(**values)
+        return FrameItem(self, frame_view.of(self.holders[0])).set(**values)
 
     def camera(self, id=None, **values) -> Item:
         """An older script's camera: the scene's one frame now (FRAME.md). Several cameras are cuts of the frame."""
@@ -284,7 +301,8 @@ def run_source(source: str, name: str) -> dict:
     return b.root
 
 
-API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame", "item.key(field, {time: value}, ease=)",
+API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
+       "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "item.key(field, {time: value}, ease=)",
        "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",
