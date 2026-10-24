@@ -30,7 +30,7 @@ IGNORE = ("/MotionPath#",)
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-layers", "fill-gradient-handles",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
          "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -242,6 +242,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("brush-panel", ["--sample"], ["select card", "flyout brush"]),
         ("brush-edit", ["--sample"], ["select card", "tool draw", "brushedit on"]),
         ("paint-new-drawing", ["--sample"], ["tool draw"]),
+        # each paint tool shows only its own rows (brush.TOOL_PARTS): Eraser (no Colour), Pick and Select (no brush rows)
+        ("paint-eraser", ["--sample"], [*PAINTED, "painttool eraser"]),
+        ("paint-pick", ["--sample"], [*PAINTED, "painttool pick"]),
+        ("paint-select", ["--sample"], [*PAINTED, "painttool select"]),
         # H51: each shape kind's own settings (a star, an arrow drawn start to end); the picture fill's picker;
         # the gradient's canvas handles with the picker open
         ("shape-star", ["--sample"], ["shape star 700 300 1000 600"]),

@@ -45,7 +45,7 @@ class WetView(QObject):
     def __init__(self, frame_changed, parent=None):
         super().__init__(parent)
         self.provider, self._ink, self._serial, self._box, self._lifted = WetProvider(), None, 0, {}, False
-        self._dry_serial, self._dry_box = 0, {}
+        self._dry_serial, self._dry_box, self._settled = 0, {}, lambda: True
         frame_changed.connect(self._frame)
         self._dried.connect(self.show)
 
@@ -96,8 +96,17 @@ class WetView(QObject):
         if not saved:
             self._clear()
 
+    def flat(self, got, settled=lambda: True):
+        """A Fill's or a paste's flat colour (flat_cue.draw's (image, box)) shows at once; the frame with the real paint
+        takes it away when it lands, like a lifted stroke's wet ink. Nothing to show (None): nothing changes."""
+        if got is None or self._ink is not None:
+            return
+        self.provider.put("dry", got[0])
+        self._dry_serial, self._dry_box, self._lifted, self._settled = self._dry_serial + 1, got[1], True, settled
+        self.changed.emit()
+
     def _frame(self):
-        if self._lifted:
+        if self._lifted and self._settled():
             self._clear()
 
     def _clear(self):

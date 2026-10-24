@@ -35,7 +35,10 @@ def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: 
     try:
         out = _fonts(comp)
         try:
-            engine.load(describe(doc_data, comp_id, markers, folder, (0.0, comp.get("duration", 5.0))))    # a 3D layer not rendered yet is reported by `_renders`, not refused here
+            # A 3D layer not rendered yet is reported by `_renders`, not refused here. Only whether the engine accepts the
+            # scene is asked, never its pixels: paint pictures not made yet stay stand-ins (`later`), so this check never
+            # stamps strokes (seconds of work, a second time, taking the screen's thread's turn).
+            engine.load(describe(doc_data, comp_id, markers, folder, (0.0, comp.get("duration", 5.0)), later=[]))
         except (EngineError, ValueError, RostrumError) as e:
             msg = str(e)
             if not (out and "font" in msg and ("not found" in msg or "italic" in msg)):     # that font is listed already

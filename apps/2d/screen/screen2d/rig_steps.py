@@ -6,13 +6,14 @@ or the sheets' clicks make. Bones, chains, poses and drawings are named by id or
     posedrag <bone> <dx> <dy>      press the bone's middle and drag by (dx, dy) composition px (FK turn, or IK pull)
     bonepick <bone>                click a bone (it is picked); `bonepick <bone> ctrl` = Ctrl+click (joins the part picked)
     bonerealclick <bone> [ctrl]    a real mouse click (Ctrl held: `ctrl`) in the window on the bone's middle
+    bonerealdrag <bone> <dx> <dy>  a real mouse press, slow drag and release from the bone's middle, by (dx, dy) composition px
     boneclick <x> <y>              with the Bone tool (J): a click at (x, y) composition px (a joint)
     bonedrag <x0> <y0> <x1> <y1>   with the Bone tool: press at (x0, y0), drag to (x1, y1), let go (one bone)
     bonehover <x> <y>              the pointer over (x, y): the line of the bone a click would make
     boneend                        Esc with the Bone tool: the chain ends (again: back to Move)
     pin <bone> on|off              right-click the chain end at that bone's joint › Pin / Unpin
     posesave | poseapply <pose> | poseblend <pose> <amount>    the Poses list in the settings
-    lipsync open|close|apply | lipsync line <item/line> | lipsync shape <X|A…|H> <drawing|->
+    lipsync open|close|apply|start|wait | lipsync snap <png> (start = Apply without waiting; snap = a picture of the window now) | lipsync line <item/line> | lipsync shape <X|A…|H> <drawing|->
     blinks open|close|apply | blinks every <s> | blinks vary <0..1> | blinks pick open|closed|half <drawing|->
 """
 from __future__ import annotations
@@ -21,7 +22,7 @@ import time
 
 from PySide6.QtCore import QCoreApplication
 
-WORDS = ("bones", "jointdrag", "posedrag", "bonepick", "bonerealclick", "boneclick", "bonedrag", "bonehover", "boneend", "pin", "posesave", "poseapply", "poseblend", "lipsync", "blinks")
+WORDS = ("bones", "jointdrag", "posedrag", "bonepick", "bonerealclick", "bonerealdrag", "boneclick", "bonedrag", "bonehover", "boneend", "pin", "posesave", "poseapply", "poseblend", "lipsync", "blinks")
 
 
 def _id(bridge, name: str, kinds=None) -> str:
@@ -78,6 +79,9 @@ def do_rig_step(bridge, word, rest, step):
     elif word == "bonerealclick":
         wait_bones(bridge)
         _real_click(bridge, _id(bridge, rest[0], ("bone",)), rest[1:2] == ["ctrl"])
+    elif word == "bonerealdrag":
+        wait_bones(bridge)
+        _real_drag(bridge, _id(bridge, rest[0], ("bone",)), float(rest[1]), float(rest[2]))
     elif word in ("boneclick", "bonedrag", "bonehover", "boneend"):
         _bone_tool(bridge, word, [float(v) for v in rest], step)
     elif word == "pin":
@@ -101,9 +105,14 @@ def do_rig_step(bridge, word, rest, step):
         what = rest[0]
         if what == "open" and not sheet.start():
             raise RuntimeError(f"step {step!r}: {bridge.status}")
-        elif what in ("close", "apply"):
-            getattr(sheet, what)()
-            if word == "lipsync" and what == "apply":
+        elif what == "snap":
+            from PySide6.QtGui import QGuiApplication
+            if not QGuiApplication.topLevelWindows()[0].grabWindow().save(rest[1]):
+                raise RuntimeError(f"step {step!r}: could not save {rest[1]}")
+        elif what in ("close", "apply", "start", "wait"):
+            if what != "wait":
+                getattr(sheet, "apply" if what == "start" else what)()
+            if word == "lipsync" and what in ("apply", "wait"):
                 end = time.time() + 600                  # a line not heard before is listened to first (off the thread)
                 while sheet._busy and time.time() < end:
                     QCoreApplication.processEvents()
@@ -143,18 +152,42 @@ def _bone_tool(bridge, word, xy, step):
     tool.release(x1, y1, near)
 
 
-def _real_click(bridge, bone, ctrl):
-    """A real press and release from the mouse (QTest) on the bone's middle, as a person's click reaches BoneOverlay.qml."""
-    from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+def _window_point(bridge, bone, dx=0.0, dy=0.0):
+    """(window, QPoint) of the bone's middle, moved by (dx, dy) composition px: where a person's pointer would be."""
+    from PySide6.QtCore import QObject, QPoint, QPointF
     from PySide6.QtGui import QGuiApplication
-    from PySide6.QtTest import QTest
     win = next(w for w in QGuiApplication.topLevelWindows() if w.findChild(QObject, "stage"))
     b = next(p for p in bridge.rig.bones if p["id"] == bone)
     stage = win.findChild(QObject, "stage")
     o, k = stage.property("compOrigin"), stage.property("compScale")
-    c = stage.mapToScene(QPointF(o.x() + (b["x"] + b["tipX"]) / 2 * k, o.y() + (b["y"] + b["tipY"]) / 2 * k))
-    p, mod = QPoint(int(c.x()), int(c.y())), Qt.KeyboardModifier.ControlModifier if ctrl else Qt.KeyboardModifier.NoModifier
+    c = stage.mapToScene(QPointF(o.x() + ((b["x"] + b["tipX"]) / 2 + dx) * k, o.y() + ((b["y"] + b["tipY"]) / 2 + dy) * k))
+    return win, QPoint(int(c.x()), int(c.y()))
+
+
+def _real_click(bridge, bone, ctrl):
+    """A real press and release from the mouse (QTest) on the bone's middle, as a person's click reaches BoneOverlay.qml."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    win, p = _window_point(bridge, bone)
+    mod = Qt.KeyboardModifier.ControlModifier if ctrl else Qt.KeyboardModifier.NoModifier
     QTest.mouseMove(win, p)
     QTest.qWait(80)
     QTest.mouseClick(win, Qt.MouseButton.LeftButton, mod, p)
+    QTest.qWait(250)
+
+
+def _real_drag(bridge, bone, dx, dy):
+    """A real press, twenty small moves and a release from the mouse (QTest): the posing drag as a hand makes it."""
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtTest import QTest
+    win, p0 = _window_point(bridge, bone)           # the bone moves while it is posed: the path is made from where it began
+    p1 = _window_point(bridge, bone, dx, dy)[1]
+    QTest.mouseMove(win, p0)
+    QTest.qWait(80)
+    QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p0)
+    QTest.qWait(40)
+    for k in range(1, 21):
+        QTest.mouseMove(win, QPoint(p0.x() + (p1.x() - p0.x()) * k // 20, p0.y() + (p1.y() - p0.y()) * k // 20))
+        QTest.qWait(16)
+    QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p1)
     QTest.qWait(250)

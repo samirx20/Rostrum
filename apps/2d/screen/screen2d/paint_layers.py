@@ -93,7 +93,7 @@ class PaintLayers(QObject):
             return []
         params = paint_fields.DRAWING if d["type"] == "drawing" else paint_fields.ELEMENT
         return [{"id": p.name, "label": p.label, "help": p.help, "value": d.get(p.name, p.default)}
-                for p in params if p.type == "toggle"]
+                for p in params if p.type == "toggle" and (p.name == "eachFrame" or p.valid_when is None or d.get("frames"))]
 
     @Property(bool, notify=changed)
     def onionApplies(self):

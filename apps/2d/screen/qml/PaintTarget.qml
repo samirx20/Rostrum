@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // Under the brush's quick rows while painting (painting design §2.1, §2.2, mockup paint-01): "Edit brush ›" (every
-// brush setting on the same grid: painter.setEditing), Close gaps while Fill is on, then "Painting on": Layer ▾ (the
+// brush setting on the same grid: painter.setEditing), Close gaps while Fill is on, Edit brush › only for the Brush and Eraser (painter.toolParts), then "Painting on": Layer ▾ (the
 // selected layer, the other painted layers, New drawing: painter.targetChoices), Inside the outline (an element only:
 // a drawing has no outline) and Draw each frame (backend.paintLayers.toggles), then the drawing tools while it is on (DrawEachFrame.qml), the paint layers (PaintOn.qml).
 // Absent while editing the brush.
@@ -12,7 +12,7 @@ Column {
     visible: !painter.editing
     readonly property int labelColumn: Theme.labelColumnFor(width)
     readonly property real fieldW: width - labelColumn - Theme.keyGutter
-    readonly property bool filling: backend.paintTool.now === "fill"
+    readonly property bool gaps: painter.toolParts.gaps          // Fill: Close gaps
     readonly property bool tight: Theme.tightFor(Window.height)    // 720 / 768 high: rows 24, headings shorter, pressure rows on "Edit brush ›"
     readonly property int rowH: tight ? Theme.rowTight : Theme.row
     onTightChanged: painter.setTight(tight)
@@ -31,14 +31,14 @@ Column {
     }
 
     Line {      // Fill: how far apart lines may be and still close an area
-        visible: tg.filling
+        visible: tg.gaps
         Label { text: "Close gaps" }
         Segmented { x: tg.labelColumn; anchors.verticalCenter: parent.verticalCenter
                     options: backend.fill.gaps; current: backend.fill.gap; onPicked: (v) => backend.fill.setGap(v) }
     }
     Line {      // Edit brush ›
         objectName: "editBrush"
-        visible: !tg.filling
+        visible: painter.toolParts.brush      // the Brush's and Eraser's
         Rectangle { width: Theme.wideFor(tg.width); height: parent.height; radius: Theme.radiusCtl; color: Theme.hover; visible: editArea.containsMouse }
         Label { x: 0; text: "Edit brush"; color: editArea.containsMouse ? Theme.fg : Theme.fg2 }
         Chevron { x: Theme.wideFor(tg.width) - width - Theme.grid; anchors.verticalCenter: parent.verticalCenter

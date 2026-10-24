@@ -41,7 +41,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
 
 ![The brush's quick rows and Painting on, with Draw each frame turned on](pictures/draw-each-frame.png)
 
-1. **The brush row**: a stroke of the current brush and its name. Click it to open the brush panel again.
+1. **The brush name** (Brush and Eraser only): the current brush's name as a plain label. Click it to open the brush panel again: that panel is the one place a brush is chosen. Each tool shows only what it uses: the Eraser has no Colour, Fill shows Colour and Close gaps only, and Pick and Select show no brush settings at all (Select's Copy, Paste and Delete are in the bar over the strokes).
 2. **The quick rows**: **Size**, **Opacity**, **Colour** (a swatch plus a hex box: click the swatch for the picker, or type `#rrggbb`), **Pressure → size** and **Pressure → opacity** for a pressure pen. The ink brushes also show **Steadiness**. On a short window (under 800 px high, such as 1280×720) the two pressure rows are not in the quick rows: they stay under **Edit brush ›**, and the rows below sit a little closer so the whole panel, down to **Lock**, fits without scrolling.
 3. **Edit brush ›** opens every setting, with **‹ Back** to return. Only the settings that apply to the tip you chose are shown:
 
@@ -81,15 +81,15 @@ Press **I**, or hold **Alt** while painting. The pointer becomes a picker, and a
 
 1. Press **S** (or choose **Select**), then drag a loop round the strokes and fills you want; or hold **Ctrl** and drag while painting. Anything with most of its length inside the loop is picked, and outlined.
 2. A small strip over the canvas shows **Copy**, **Paste** and **Delete**. Drag the picked strokes to move them; drag a corner of their box to scale them and the knob to turn them. They stay strokes, so they stay sharp.
-3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals; the pasted copy is what stays picked, so **Delete**, a drag or a turn acts on it, not on the original. **Delete** removes the picked strokes. A single straight stroke can be picked and dragged too. **Esc** lets go.
+3. **Ctrl+C** copies them and **Ctrl+V** pastes them a little down and right of the originals; the pasted copy shows at once in flat colour, then in its true brush look a moment later, and is what stays picked, so **Delete**, a drag or a turn acts on it, not on the original. **Delete** removes the picked strokes. A single straight stroke can be picked and dragged too. **Esc** lets go.
 
 Each of these is one change, so **Ctrl+Z** takes back a move, a paste or a delete. Only paint layers that are not locked can be picked from.
 
 ## 5. Fill a closed shape
 
 1. Draw the lines around an area, closed or nearly closed.
-2. Press **G**, or choose **Fill** in the brush panel. The panel shows **Close gaps** (Small, Medium, Large) in place of Edit brush; the fill uses the brush's colour and opacity.
-3. Click inside the area. It fills right up to the lines and a little under them, so no thin light edge shows between line and colour.
+2. Press **G**, or choose **Fill** in the brush panel. The panel shows **Close gaps** (Small, Medium, Large) and **Colour** (no Size, Opacity or Pressure: they don't apply); the fill uses the brush's colour.
+3. Click inside the area. The area turns the brush's colour at once; a moment later (a second or two on a big drawing) the exact fill replaces it. It fills right up to the lines and a little under them, so no thin light edge shows between line and colour.
 4. Lines that don't quite meet: pick **Medium** or **Large** under **Close gaps** and click again.
 5. A click on a line, or in an area that is open to the edge of the painting, fills nothing and says why in plain words in the top bar ("This area has a gap. Try Medium or Large under Close gaps.").
 6. The fill finds its edges in **all** the visible paint layers of the drawing, so you can fill "Colour" up to the lines of "Ink". A locked layer refuses a fill.
@@ -103,7 +103,7 @@ Under the brush, **Painting on** shows:
 
 1. **Layer ▾**: what the paint goes onto: the picked layer, other painted layers, or **New drawing**.
 2. **Inside the outline**: on by default. Turn it off and the paint can spill over the whole box around the thing. (A drawing has no outline, so it does not have this switch.)
-3. **Draw each frame**: off means the thing has one painting that holds the whole time. On means each frame can have its own drawing (part 7).
+3. **Draw each frame**: off means the thing has one painting that holds the whole time. On means each frame can have its own drawing (part 7). The switch works before anything is painted: the first stroke then makes drawing 1 at the playhead. Its hover help stands beside the panel, wrapped, so it never hides the rows under it.
    (On every switch in the panels, clicking its words flips it too, not only the switch itself.)
 4. **Paint layers +**. A thing starts with one paint layer, called "Paint", so at first this is one line with its **+**. To keep lines above colour, press **+**: a new layer, "Paint 2", goes on top and is highlighted, and your next stroke or fill goes into it. With two or more, the list shows, the top one first. Each row has an eye, a small picture of that layer's paint (on grey squares, so white ink shows as well as black) and its name; in grey its blend and opacity when they are not Normal · 100 % ("Multiply · 70 %"), and a lock when it is locked.
    - Click a row to paint on that layer; it is highlighted in blue.
@@ -136,7 +136,7 @@ The onion skin (next part) still shows the whole drawings before and after.
 
 ![Three drawings sharing a Paint layer and a Colour layer](pictures/paint-layers-shared.png)
 
-In the timeline the drawing's row shows its drawings as numbered cells; a drawing is held until the next cell. To repeat a hand-drawn cycle (a walk, a flicker), set the layer's **Loop** (in its Timing settings) to **Loop** or **Ping-pong**: the drawings repeat for the layer's whole length, and the repeats show as fainter cells on the row (they follow the drawings, so change a drawing and every repeat changes). Agents: `set drawing_1 loop "loop"` (`off`, `loop`, `pingpong`). The last drawing is held as long as the one before it. The number is its place in the row. When the drawing itself is animated (moved, turned), its keys sit as diamonds on top of the cells: click a diamond for the key, the cell around it for the drawing. Open the row (its ›) to see each animated setting on its own line.
+In the timeline the drawing's row shows its drawings as numbered cells; a drawing is held until the next cell. To repeat a hand-drawn cycle (a walk, a flicker), set the layer's **Loop** (in its Timing settings) to **Loop** or **Ping-pong**: the drawings repeat for the layer's whole length, and the repeats show as fainter cells on the row (they follow the drawings, so change a drawing and every repeat changes). Agents: `set drawing_1 loop "loop"` (`off`, `loop`, `pingpong`). The last drawing is held as long as the one before it. The number is its place in the row; a cell too narrow to show it whole has none, and hovering it says "Drawing 3" (zoom the timeline in to see them). When the drawing itself is animated (moved, turned), its keys sit as diamonds on top of the cells: click a diamond for the key, the cell around it for the drawing. Open the row (its ›) to see each animated setting on its own line.
 
 ## 8. Onion skin
 

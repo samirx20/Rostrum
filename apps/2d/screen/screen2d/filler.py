@@ -8,6 +8,8 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_paint.fill import GAPS
 
+from . import flat_cue
+
 
 class Filler(QObject):
     changed = Signal()
@@ -49,8 +51,12 @@ class Filler(QObject):
                 "frame": max(0, p._n())}
 
         def go():
+            place, before = self.b.place_of(d["id"]), self.b._paint_layers._frame()
             self.b.done(self.b.doc.apply([{"op": "paint.fill", "target": [d["id"]], "args": args}], self.b.who,
                                          label="Fill"), "")
+            # the exact picture takes 1 to 3 s: the fill's flat colour shows now, until it lands (flat_cue.py)
+            p.wet.flat(flat_cue.for_layer(self.b, d["id"], flat_cue.new_items(before, self.b._paint_layers._frame()), place),
+                        lambda: self.b._waiting is None)
             if p.newLayerNext:
                 p.newPaintLayer()                       # the new paint layer is made: later fills and strokes go on it
         return self.b.guard(go)

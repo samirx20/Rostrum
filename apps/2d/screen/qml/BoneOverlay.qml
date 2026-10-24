@@ -47,15 +47,16 @@ Item {
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 property bool on: false
                 property point p0
-                onPressed: (m) => { p0 = Qt.point(m.x, m.y); const p = ov.at(area, m); on = ov.rig.drag.beginPose(bone.modelData.id, p.x, p.y) }
-                onPositionChanged: (m) => { if (on) { const p = ov.at(area, m); ov.rig.drag.moveTo(p.x, p.y) } }
+                property bool ctrl: false       // Ctrl at the press or the release: a window that was not active at the press may only report it later
+                onPressed: (m) => { p0 = Qt.point(m.x, m.y); ctrl = (m.modifiers & Qt.ControlModifier) !== 0; const p = ov.at(area, m); on = ov.rig.dragger.beginPose(bone.modelData.id, p.x, p.y) }
+                onPositionChanged: (m) => { if (on) { const p = ov.at(area, m); ov.rig.dragger.moveTo(p.x, p.y) } }
                 onReleased: (m) => {
                     const still = Math.abs(m.x - p0.x) + Math.abs(m.y - p0.y) < 3
-                    if (on) { if (still) ov.rig.drag.cancel(); else ov.rig.drag.end() }
-                    if (still) ov.rig.pickBone(bone.modelData.id, (m.modifiers & Qt.ControlModifier) !== 0)   // a click picks the bone; Ctrl+click adds it to the part picked
+                    if (on) { if (still) ov.rig.dragger.cancel(); else ov.rig.dragger.end() }
+                    if (still) ov.rig.pickBone(bone.modelData.id, ctrl || (m.modifiers & Qt.ControlModifier) !== 0)   // a click picks the bone; Ctrl+click adds it to the part picked
                     on = false
                 }
-                onCanceled: { if (on) ov.rig.drag.cancel(); on = false }
+                onCanceled: { if (on) ov.rig.dragger.cancel(); on = false }
             }
             HoverTip { hovered: area.containsMouse && !area.pressed   // the colour is the kind: orange bends as a chain, blue is picked, white turns alone
                        text: bone.modelData.name + (bone.modelData.chain !== "" ? " · bends as a chain" : "") }
@@ -82,11 +83,11 @@ Item {
                     if (m.button === Qt.RightButton) { const g = jarea.mapToItem(null, m.x, m.y); pinMenu.ik = joint.modelData.ik
                         pinMenu.entries = [{ value: joint.modelData.pinned ? "unpin" : "pin", label: joint.modelData.pinned ? "Unpin" : "Pin" }]
                         pinMenu.openAt(g.x, g.y); return }
-                    on = ov.rig.drag.beginJoint(joint.modelData.bone, joint.modelData.end)
+                    on = ov.rig.dragger.beginJoint(joint.modelData.bone, joint.modelData.end)
                 }
-                onPositionChanged: (m) => { if (on) { const p = ov.at(jarea, m); ov.rig.drag.moveTo(p.x, p.y) } }
-                onReleased: { if (on) ov.rig.drag.end(); on = false }
-                onCanceled: { if (on) ov.rig.drag.cancel(); on = false }
+                onPositionChanged: (m) => { if (on) { const p = ov.at(jarea, m); ov.rig.dragger.moveTo(p.x, p.y) } }
+                onReleased: { if (on) ov.rig.dragger.end(); on = false }
+                onCanceled: { if (on) ov.rig.dragger.cancel(); on = false }
             }
             HoverTip { hovered: jarea.containsMouse && !jarea.pressed
                        text: joint.modelData.ik !== "" ? "Drag to fix the joint · right-click to pin" : "Drag to fix the joint" }
@@ -95,6 +96,6 @@ Item {
     ActionMenu {
         id: pinMenu
         property string ik: ""
-        onPicked: (v) => ov.rig.drag.pin(ik, v === "pin")
+        onPicked: (v) => ov.rig.dragger.pin(ik, v === "pin")
     }
 }

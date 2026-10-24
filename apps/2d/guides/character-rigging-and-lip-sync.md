@@ -148,7 +148,7 @@ with rig("puppet", w=1920, h=1080):
 Or as an operation: `lipsync.apply` with `target` = the rig or group, `source`, `at`, `text`, `shapeX` … `shapeH`, `leadFrames`.
 It only adds keys; to redo a mouth, `key.clear` its opacity first. Words the dictionary lacks need
 `pronounce={"rostrum": "R AA1 S T R AH0 M"}`. Check with `look_frame` on the mouth at a few word starts, then listen to a render.
-The first run on a clip loads a speech model (a GPU job, a few seconds); after that it reads the cache.
+The first run on a clip loads a speech model (a GPU job, a few seconds, longer on a busy computer); after that it reads the cache. On the screen the Lip sync sheet shows its progress (step 1 to 3 of 3, a moving bar) and the window stays free.
 
 Not yet: lip sync from a RostrumSound voice line or a shared marker as `at` (today `source` is a WAV and `at` is seconds),
 languages other than English with words.

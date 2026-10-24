@@ -30,7 +30,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
-  `eachFrame` (the screen's "Draw each frame") on. A blank drawing starts with the same paint layers, empty; a copy
+  `eachFrame` (the screen's "Draw each frame") on. `set <element> eachFrame true` works on an element that has no paint yet
+  too: its first stroke then makes drawing 1 at that frame. A blank drawing starts with the same paint layers, empty; a copy
   puts the current drawing's strokes into those same paint layers.
 - Redraw: `paint.clear` on the paint layer, then new strokes; or `stroke.remove` single strokes. Both stay per drawing:
   they touch only that drawing's strokes.
