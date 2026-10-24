@@ -37,7 +37,9 @@ def _instrument(track) -> list[str]:
             unknown.setdefault(d, []).append(h["id"])
     for d, ids in unknown.items():
         more = f" and {len(ids) - 1} more hit(s)" if len(ids) > 1 else ""
-        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit (accepted: {', '.join(drums)})")
+        near = names.KIT_NEAREST[kind].get(names.drum_key(d)) if isinstance(d, str) else None
+        write = f': write "{near}" (the nearest drum this kit has)' if near else ""
+        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit{write} (accepted: {', '.join(drums)})")
     return out + playing(track)
 
 

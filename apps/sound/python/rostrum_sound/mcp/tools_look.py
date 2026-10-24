@@ -2,6 +2,7 @@
 where a picture helps, a PNG the agent sees at once. They never change the document."""
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 from rostrum_core import RostrumError, codes
@@ -67,11 +68,15 @@ def register(tools: Tools):
 
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
-        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix; flags buried tracks. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
-        _, wav, stems = _source(ctx, args, "look_levels")
+        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB (volume_db); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
+        doc, wav, stems = _source(ctx, args, "look_levels")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_levels", "stems", "were not rendered", hint="render_mix with stems: true.")
         r = listen.levels(stems, mix=wav)
+        gains = {t["id"]: t.get("volume", 1) for t in doc.data.get("tracks", [])}
+        for k, row in r["stems"].items():
+            g = gains.get(k)
+            row["volume_db"] = round(20 * math.log10(g), 1) if isinstance(g, (int, float)) and g > 0 else None
         return Reply(_levels_line(r), r)
 
     @tools.tool("look_events", {"properties": {**ITEM, **WAV,
@@ -139,11 +144,16 @@ def register(tools: Tools):
 
     @tools.tool("look_low_end", {"properties": {**ITEM}})
     def look_low_end(ctx, args):
-        """Each track's share of energy under 150 Hz and 60 Hz (from the last render's stems); flags boomy tracks."""
+        """Each track's share of energy under 150 Hz and 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy), from the last render's stems, and the same for the whole mix; flags boomy tracks."""
         _, wav, stems = _source(ctx, args, "look_low_end")
-        r = listen.low_end(stems or wav)
-        return Reply(f"{len(r['tracks'])} measured; flagged: {'; '.join(map(str, r['flags'])) or 'none'}.", r)
+        r = listen.low_end(stems or wav, mix=wav if stems else None)
+        each = ", ".join(f"{k} {v['low_end_pct']:.0f}% / {v['low_mid_pct']:.0f}%" for k, v in r["tracks"].items())
+        flags = "; ".join(f["detail"] + f" ({f['track']})" for f in r["flags"]) or "none"
+        return Reply(f"Under 150 Hz / 150–500 Hz: {each}. Flagged: {flags}.", r)
 
 
 def _levels_line(r: dict) -> str:
-    return f"{len(r['stems'])} stems measured against a {r['mix_lufs']:.1f} LUFS mix; flags: {'; '.join(map(str, r['flags'])) or 'none'}."
+    each = ", ".join(f"{k} {v['db_vs_mix']:+.1f} dB (volume {v['volume_db']:+.1f} dB)" if v.get("volume_db") is not None
+                     else f"{k} {v['db_vs_mix']:+.1f} dB" for k, v in r["stems"].items())
+    flags = "; ".join(f"{f['stem']} {f['flag']}" for f in r["flags"]) or "none"
+    return f"{len(r['stems'])} stems against a {r['mix_lufs']:.1f} LUFS mix: {each}. Flags: {flags} (details in data.flags)."

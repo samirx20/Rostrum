@@ -22,7 +22,7 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 |---|---|
 | `12.5` | 12.5 seconds from the start (a bare number is always seconds) |
 | `{"beat": 32}` | beat 32 on the song's tempo map (a time says `beat`; a length says `{"beats": n}`) |
-| `"#logo"` | the marker named `logo` |
+| `"#logo"` | the marker named `logo` (a name with spaces as written: `"#logo lands"`) |
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
@@ -47,9 +47,13 @@ instead:
 
 So a pad that swells into "land" and holds to the end is two notes: `at "#spark", dur "next"` and
 `at "#land", dur {"to": "#end"}`. Move "land" and the first note grows, the second shrinks, and there is never a gap.
+The same goes for a cue's last notes: put a marker on the cue's end (`marker("end", at=20)`) and tie them to it
+(`{"to": "#end"}`). A note at `"#drop+5"` that ends at a fixed `19.5` breaks when the drop moves later (it would end
+before it starts, and the render refuses it, naming the note); tied to `"#end"` it just gets shorter.
 A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so it stretches with it and still peaks
-where the note ends. A tie that would end at or before its note's start (a marker moved past it) fails the check and
-the render, naming the note; it is never played as a silent note. Typing a length in the settings panel sets a fixed one
+where the note ends. A tie that would end at or before its note's start (a marker moved past it) is a warning in every
+reply and the Problems list, naming the note, and the render refuses it; it is never played as a silent note, and the
+song still opens. Typing a length in the settings panel sets a fixed one
 (the tie is the agent's or the person's choice, kept until someone types over it).
 
 ## 3. Make the grid serve the picture
@@ -74,13 +78,15 @@ the render, naming the note; it is never played as a silent note. Typing a lengt
 
 ## 4. Check that it lands
 
-1. `render_mix` (stems on), then `inspect_job` until done.
-2. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
+1. Before rendering, `look_arrangement`: per marker, which tracks start on it (within 10 ms) and how far off the
+   others are, in ms and beats, with a picture of every part against the markers.
+2. `render_mix` (stems on), then `inspect_job` until done.
+3. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
    when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,
    and the mix's own nearest onset.
-3. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
-4. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
+4. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
+5. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 
 Read onset times as measurements: a soft sound reads 10–30 ms late. Whether a sound *fits* the image is decided by a
 person watching and listening; say so in your report.

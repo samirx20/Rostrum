@@ -1,9 +1,12 @@
 """Clash finder: where two stems are both loud in the same frequency band at the same time.
 
 Each stem is cut into 1/3-octave bands over time (level in dB, a full-scale sine reads about -3). A cell is a clash for a
-pair when both stems stand above `floor_db` and within `within_db` of each other (the quieter one is then hard to hear
+pair when both stems stand above the floor and within `within_db` of each other (the quieter one is then hard to hear
 under the louder). Touching cells merge into spans: when, which band range, which two tracks, how much each stands over
-the other."""
+the other.
+
+The floor follows the mix: FLOOR_UNDER dB under the loudest band level of all stems (its 99th percentile), so making
+the whole mix louder or quieter changes no clash; a fixed `floor_db` (absolute) can still be given."""
 from __future__ import annotations
 
 from itertools import combinations
@@ -18,6 +21,13 @@ N_FFT, HOP = 4096, 2048
 CENTRES = [1000.0 * 2 ** (k / 3) for k in range(-13, 13)]          # 50 Hz … 16 kHz
 EDGES = [(c * 2 ** (-1 / 6), c * 2 ** (1 / 6)) for c in CENTRES]
 MAX_STEMS = 12
+FLOOR_UNDER = 40.0
+
+
+def floor_for(levels: dict) -> float:
+    """The default floor: FLOOR_UNDER dB under the loudest band level (99th percentile over every stem's cells)."""
+    top = max(float(np.percentile(v, 99)) for v in levels.values()) if levels else 0.0
+    return top - FLOOR_UNDER
 
 
 def band_levels(wav, sr_to: int | None = None):

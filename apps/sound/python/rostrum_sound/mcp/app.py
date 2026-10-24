@@ -23,8 +23,9 @@ from ..script import run_source
 GUIDES = Path(__file__).resolve().parents[3] / "guides"         # apps/sound/guides
 INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document holds tracks (an instrument, notes, "
                 "drum hits, recorded clips), effects, automation, markers and the master. Write with run_script (the "
-                "Python script API in inspect_guide 'script'), adjust with edit_document, render with render_mix, then "
-                "listen with the look_* tools. A voice track speaks lines: add them with line.add, make their audio "
+                "Python script API in inspect_guide 'script'), check what you wrote with look_arrangement (a picture, and "
+                "which tracks start on each marker), adjust with edit_document, render with render_mix, then listen "
+                "with the look_* tools. A voice track speaks lines: add them with line.add, make their audio "
                 "with render_voice, then render. The server opens the person's last song; inspect_recent_projects and "
                 "run_open_project switch.")
 

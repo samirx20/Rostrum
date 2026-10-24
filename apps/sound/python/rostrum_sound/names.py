@@ -20,6 +20,23 @@ SYNTH_DRUMS = ["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"
 GM_DRUMS = ["kick", "rim", "snare", "clap", "hat", "pedalHat", "openHat", "tomLow", "tom", "tomHigh", "crash",
             "cymbal", "ride", "china", "rideBell", "splash", "crash2", "ride2"]
 GM_KEYS = (27, 87)
+# Drum names agents and people reach for first, one meaning on every kit: written as the kit's own name.
+# Keys are compared lower case without spaces, "-" or "_" (drum_key), so "Hi-Hat", "hi_hat" and "hihat" are one.
+DRUM_ALIASES = {**{k: "hat" for k in ("hat", "hihat", "hh", "chh", "closedhat", "closedhihat", "closedhh", "hats")},
+                **{k: "openHat" for k in ("openhat", "openhihat", "ohh", "openhh")},
+                **{k: "kick" for k in ("kick", "bd", "kickdrum", "bassdrum")},
+                **{k: "snare" for k in ("snare", "sd", "snaredrum")},
+                **{k: "rim" for k in ("rim", "rimshot", "sidestick", "crossstick")},
+                **{k: "clap" for k in ("clap", "handclap", "claps")},
+                **{k: "pedalHat" for k in ("pedalhat", "pedalhihat", "foothat")}}
+# Names that mean one drum on one kind of kit only: the check names the drum to write instead.
+KIT_NEAREST = {"kit": {**{k: "cymbal" for k in ("crash", "crash2", "ride", "ride2", "ridebell", "splash", "china")},
+                       **{k: "tom" for k in ("tomlow", "lowtom", "floortom", "tomhigh", "hightom", "hitom", "midtom", "tom1", "tom2", "tom3")}},
+               "kitSfz": {**{k: "tomLow" for k in ("lowtom", "floortom")}, **{k: "tomHigh" for k in ("hightom", "hitom")}}}
+
+
+def drum_key(name: str) -> str:
+    return "".join(c for c in name.lower() if c not in " -_")
 
 # The forms a track's instrument takes ("none": a track of recorded clips only; "voice": a track of spoken lines, `doc/ops_voice.py`).
 INSTRUMENTS = ["none", "builtIn", "sfz", "kit", "kitSfz", "model", "synth", "voice", "plugin"]
