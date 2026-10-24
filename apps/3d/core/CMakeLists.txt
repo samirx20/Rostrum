@@ -30,6 +30,13 @@ target_compile_definitions(opensubdiv_far PRIVATE NOMINMAX _USE_MATH_DEFINES)
 target_include_directories(opensubdiv_far PUBLIC third_party/opensubdiv)
 target_compile_options(opensubdiv_far PRIVATE /EHsc /utf-8 /W0)
 
+# xatlas (third_party/xatlas, MIT, jpcy/xatlas @ f700c77, unmodified: xatlas.cpp, xatlas.h, LICENSE): automatic
+# unfolding of a mesh for painting (src/unfold.cpp, the `unfold` request).
+add_library(xatlas STATIC third_party/xatlas/xatlas.cpp)
+target_compile_definitions(xatlas PRIVATE NOMINMAX _USE_MATH_DEFINES)
+target_include_directories(xatlas PUBLIC third_party/xatlas)
+target_compile_options(xatlas PRIVATE /EHsc /utf-8 /bigobj /W0)
+
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp src/*.h)
 add_executable(rostrum3d-core ${SRC})
 target_include_directories(rostrum3d-core SYSTEM PRIVATE
@@ -43,6 +50,6 @@ target_link_directories(rostrum3d-core PRIVATE ${BUNDLE}/python/313/libs ${BUNDL
 target_link_libraries(rostrum3d-core PRIVATE
   ${BUNDLE}/usd/lib/usd_ms.lib ${BUNDLE}/tbb/lib/tbb.lib ${BUNDLE}/epoxy/lib/epoxy.lib
   ${BUNDLE}/OpenImageIO/lib/OpenImageIO.lib ${BUNDLE}/OpenImageIO/lib/OpenImageIO_Util.lib ${BUNDLE}/opencolorio/lib/OpenColorIO.lib
-  manifold opensubdiv_far opengl32 dxgi psapi)
+  manifold opensubdiv_far xatlas opengl32 dxgi psapi)
 
 install(TARGETS rostrum3d-core RUNTIME DESTINATION .)

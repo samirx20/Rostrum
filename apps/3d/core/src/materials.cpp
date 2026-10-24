@@ -56,7 +56,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   UsdShadeMaterial mat = UsdShadeMaterial::Define(stage, path);
   const GfVec3f base = p.vec3("baseColor");
   const Picture base_tex = still_picture(p, "baseColorTexture"), rough_tex = still_picture(p, "roughnessTexture");
-  const Picture bump_tex = still_picture(p, "bumpTexture");
+  const Picture bump_tex = still_picture(p, "bumpTexture"), metal_tex = still_picture(p, "metallicTexture");
   const Picture glow_tex = emission_picture(p, anim, id, start, end);
   const float metallic = float(p.num("metallic")), roughness = float(p.num("roughness"));
   const float transmission = float(p.num("transmission")), ior = float(p.num("ior"));
@@ -94,6 +94,10 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
     UsdShadeShader t = cycles_image(stage, path, "RoughnessTexture", rough_tex, false);
     link(c, "roughness", kFloat, t, "color", kColor);
   }
+  if (!metal_tex.empty()) {
+    UsdShadeShader t = cycles_image(stage, path, "MetallicTexture", metal_tex, false);
+    link(c, "metallic", kFloat, t, "color", kColor);
+  }
   if (!glow_tex.empty()) {  // the picture is the glow colour; emission_strength still scales it
     UsdShadeShader t = cycles_image(stage, path, "EmissionTexture", glow_tex, true);
     link(c, "emission_color", kColor, t, "color", kColor);
@@ -125,7 +129,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(v, "clearcoatRoughness", kFloat, coat_roughness);
   set(v, "emissiveColor", kColor, emission * emission_strength);
   set(v, "opacity", kFloat, 1.0f - 0.92f * see_through);
-  if (!base_tex.empty() || !rough_tex.empty() || !glow_tex.empty()) {
+  if (!base_tex.empty() || !rough_tex.empty() || !metal_tex.empty() || !glow_tex.empty()) {
     UsdShadeShader st = shader(stage, path, "PreviewUV", "UsdPrimvarReader_float2");
     set(st, "varname", SdfValueTypeNames->String, std::string("st"));
     if (!base_tex.empty()) {
@@ -135,6 +139,10 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
     if (!rough_tex.empty()) {
       UsdShadeShader t = preview_image(stage, path, "PreviewRoughness", rough_tex, false, st);
       link(v, "roughness", kFloat, t, "r", kFloat);
+    }
+    if (!metal_tex.empty()) {
+      UsdShadeShader t = preview_image(stage, path, "PreviewMetallic", metal_tex, false, st);
+      link(v, "metallic", kFloat, t, "r", kFloat);
     }
     if (!glow_tex.empty()) {
       UsdShadeShader t = preview_image(stage, path, "PreviewEmission", glow_tex, true, st);

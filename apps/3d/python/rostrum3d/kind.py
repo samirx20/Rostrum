@@ -12,14 +12,15 @@ from __future__ import annotations
 
 import re
 
+import rostrum_paint
 from rostrum_core import DocKind, Registry
 from rostrum_core.tree import walk
 
-from . import fields as F
+from . import fields as F, paint_fields
 
-LISTS = F.LISTS
+LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
-         "parts": ("part",), "keys": ("key",)}
+         "parts": ("part",), "keys": ("key",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -40,6 +41,8 @@ for _type, _params in F.FIELDS.items():
 def facts(item: dict) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item}
+    if item.get("type") == "mesh":
+        return {"painted": bool(item.get("paints"))}
     return {}
 
 
@@ -130,4 +133,7 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": []})
 
-from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+# painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel
+rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=paint_fields.LAYER)
+
+from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_rigs, ops_scene, unfold  # noqa: E402,F401  (they register on REGISTRY)

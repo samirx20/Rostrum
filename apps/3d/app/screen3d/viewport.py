@@ -75,6 +75,8 @@ class Viewport(QObject):
         from .gizmo_qt import Gizmo
         from .mesh_edit_qt import MeshEdit
         self.mesh_edit = MeshEdit(bridge, self)                # Edit mesh: points / edges / faces (mesh_edit_qt.py)
+        from .paint_mode_qt import PaintMode
+        self.paint = PaintMode(bridge, self)                   # Paint (B): brush strokes on a mesh (paint_mode_qt.py)
         self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
         ops_mesh.use_engine(EngineVia(self._r), bridge.doc.folder)   # mesh.edit asks this engine for a shape's mesh
         _ENGINE_FOR_OPS[0] = self                              # (the newest window's; an old one closing leaves it)

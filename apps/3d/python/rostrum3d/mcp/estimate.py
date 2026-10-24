@@ -73,6 +73,7 @@ def scale(m: dict, s: dict, frames: int, mp4: bool) -> dict:
     line = m["fixed_ms"] + m["per_px_ms"] * px                  # between the probe's two sizes: the measured line
     floor = (m["fixed_ms"] + m["per_px_ms"] * pq) * px / pq if pq else 0.0   # under the quarter: in step with the pixels
     per_frame = max(line, floor, 0.0) / 1000 * sample_factor(m, s.get("samples", 0))
+    per_frame *= 2 if "shadow" in s.get("passes", ()) else 1     # the Shadow pass draws each frame twice (core passes.h)
     start = (m["load_ms"] + m["warmup_ms"]) / 1000
     encode = ENCODE_S_PER_FRAME * frames * s["width"] * s["height"] / HD_PIXELS if mp4 else 0.0
     total = start + per_frame * frames + encode

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from rostrum_core.keys import keys_of, track_value
 
-from . import aim, fields as F, material_scene, outline as outlines, rigs
+from . import aim, fields as F, material_scene, outline as outlines, paint_scene, rigs
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
@@ -19,7 +19,7 @@ ROTATION = ("rx", "ry", "rz")
 PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
 RESOLVED = AIM_FIELDS | set(PIVOT) | {FOCUS_ITEM}   # fields the compiler resolves into others, never sent
-DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
+DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
 def _shot(data: dict, shot_id: str) -> dict:
@@ -208,7 +208,7 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')
-    return {
+    scene = {
         "format": FORMAT, "version": VERSION,
         # shutter: frames the shutter is open, centred on each frame (USD's camera shutter is frame-relative and
         # Cycles' default motion position is the centre), so the sharp picture of frame n sits in the middle of its
@@ -218,3 +218,5 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
         "materials": material_scene.materials(data, frames, info["fps"], folder, _out),
         "items": [_node(i, fr) for i in data.get("items", [])],
     }
+    paint_scene.paint(scene, data, _out)          # painted meshes get their own material with the painted pictures
+    return scene

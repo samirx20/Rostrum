@@ -57,7 +57,7 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
     app = App("rostrum-3d", docs, run_source=run_source, instructions=INSTRUCTIONS, guides=Guides().load_folder(GUIDES), folder=project)
     app.state = ThreeDState(engine or Engine())          # the process starts on the first request, not now
     atexit.register(app.state.engine.close)
-    ops_mesh.use_engine(app.state.engine, project)          # mesh.edit reads a shape's mesh from this engine
+    ops_mesh.use_engine(app.state.engine, project)          # mesh.edit and mesh.unfold read a shape's mesh from this engine
     return app
 
 

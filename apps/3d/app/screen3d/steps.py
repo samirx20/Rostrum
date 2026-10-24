@@ -15,7 +15,7 @@
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
     render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
-    estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
+    estimate-wait (until its time is measured) | budget <time, e.g. 10 min> | sheet-format png|exr|both (its Save as: a shot edit)
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, places the armed shape,
@@ -24,6 +24,7 @@
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
   Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow | mesh-material | mesh-xray | mesh-knife* | mesh-esc (mesh_steps.py)
+  Paint: paint-b | paint-layer | paint-channel | paint-brush | paint-drag (paint_steps.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -185,6 +186,9 @@ def do_step(bridge, win, step):
     elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
         from . import mesh_steps
         mesh_steps.do(bridge, word, rest)
+    elif word.startswith("paint-"):               # Paint mode (paint_steps.py)
+        from . import paint_steps
+        paint_steps.do(bridge, win, word, rest)
     elif word == "render-sheet":
         bridge.exporter.openFor()
     elif word == "estimate-recorded":
@@ -202,6 +206,8 @@ def do_step(bridge, win, step):
     elif word == "budget":
         if why := bridge.exporter.estimate.setBudget(" ".join(rest)):
             raise RuntimeError(f"step {step!r}: {why}")
+    elif word == "sheet-format":
+        bridge.exporter.setFormat(rest[0])
     elif word == "sheet-render":
         sheet, t0 = bridge.exporter, time.monotonic()
         said = sheet.estimate.text

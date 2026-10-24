@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
-VERSION = "5.2.2-cycles-a456b76-r2"                       # same name as in apps/3d/libs/lay_out.py
+VERSION = "5.2.2-cycles-a456b76-r3"                       # same name as in apps/3d/libs/lay_out.py
 
 
 class LibsMissing(RuntimeError):

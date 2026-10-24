@@ -1,7 +1,7 @@
 """The Render button: one final picture (Cycles) of the shot through its camera at the playhead frame, as a job off the
 GUI thread with its own engine process (never the viewport's), through the same code as the MCP tool render_still
 (rostrum3d.mcp.render.still): the same folder (the project's next render version, or the render cache), the same files
-(png + exr) and manifest. The engine process is ended when the job is over, so its GPU memory goes back.
+(png + exr, the EXR with the shot's passes as layers) and manifest. The engine process is ended when the job is over, so its GPU memory goes back.
 
 A render reads a snapshot taken on press (scene, shot, history step), so edits made while it runs are not in it, and
 its manifest says exactly which step it shows. Cancel ends that process by its own handle (never by name); the job then says "Render cancelled", shows no picture and
@@ -19,7 +19,7 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.render import DocView, still
-from rostrum3d.render_fields import settings
+from rostrum3d.render_fields import passes, settings
 
 FORMATS = ["png", "exr"]
 
@@ -75,7 +75,8 @@ class RenderJob(QObject):
         frame, self._at = b.frame, b.frame
         self._stop = stop = threading.Event()
         snap = DocView.of(b.doc)                      # what the manifest records: the same view the render_still tool takes
-        s = settings(next(x for x in b.doc.data["shots"] if x["id"] == b.shot_id), info)   # the shot's render settings, as agents read them
+        shot = next(x for x in b.doc.data["shots"] if x["id"] == b.shot_id)
+        s, layers = settings(shot, info), passes(shot)   # the shot's render settings and EXR passes, as render_still reads them
         size, folder, cyc = (s["width"], s["height"]), b.doc.folder, {"samples": s["samples"], "denoise": s["denoise"]}
         self._state, self._note = "running", f"Rendering frame {frame} with Cycles…"
         self.changed.emit()
@@ -87,7 +88,7 @@ class RenderJob(QObject):
                 engine = self._engine = self._make_engine()
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
-                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder)
+                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder, layers)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was

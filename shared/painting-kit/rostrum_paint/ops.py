@@ -27,16 +27,17 @@ def seed_of(stroke_id: str) -> int:
     return zlib.crc32(stroke_id.encode("utf-8")) & 0x7FFFFFFF
 
 
-def build(type_: str, id_: str, values: dict, where: str = "") -> dict:
+def build(type_: str, id_: str, values: dict, where: str = "", extra=()) -> dict:
     """A new kit item from checked values, defaults filled in: the one builder, used by the operations and by an
     app's script layer, so a scripted stroke and a painted one are the same item. Every brush setting is stored
-    (and the seed fixed), so the stroke replays the same even if a default changes later."""
-    params = {p.name: p for p in F.FIELDS[type_]}
+    (and the seed fixed), so the stroke replays the same even if a default changes later. `extra`: the host's own
+    fields of this type (a paint layer's `layer_fields`, `register`)."""
+    params = {p.name: p for p in [*F.FIELDS[type_], *extra]}
     for k in values:
         if k not in params:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'"{k}"', f"is not a field of a {F.LABELS[type_].lower()}",
                                sorted(params), did_you_mean(k, params))
-    item = {"id": id_, "type": type_, **F.defaults(type_),
+    item = {"id": id_, "type": type_, **F.defaults(type_), **{p.name: p.default for p in extra if p.default is not None},
             **{k: params[k].check(v, where) for k, v in values.items()}}
     for key in F.LISTS[type_]:
         item[key] = []
@@ -53,11 +54,11 @@ def with_pressure(points) -> list:
     return [list(q) if len(q) > 2 else [*q, 1.0] for q in points]
 
 
-def _new(ctx, type_, args) -> dict:
+def _new(ctx, type_, args, extra=()) -> dict:
     id_ = args.get("id") or ctx.new_id(type_)
     if id_ in index(ctx.doc, ctx.kind.lists):
         ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
-    return build(type_, id_, {k: v for k, v in args.items() if k not in ("id", "index")}, ctx.where)
+    return build(type_, id_, {k: v for k, v in args.items() if k not in ("id", "index")}, ctx.where, extra)
 
 
 def canvas_of(doc_data, kind_lists, item_id) -> dict:
@@ -83,10 +84,12 @@ def _alone(ctx, canvas_id):
     return [canvas_id]
 
 
-def register(registry, canvas_types=("frame",), peers=_alone):
+def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=()):
     """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases;
-    `peers(ctx, canvas_id)`: the canvases sharing paint layers with it (linked.py), itself included."""
-    canvas_types = tuple(canvas_types)
+    `peers(ctx, canvas_id)`: the canvases sharing paint layers with it (linked.py), itself included;
+    `layer_fields`: the host's own paint layer fields (Params), on paint.add and paint.set (3D: which surface
+    channel a layer paints)."""
+    canvas_types, extra = tuple(canvas_types), tuple(layer_fields)
 
     def every(ctx, targets):
         """Each target paint layer with its copies in the canvases sharing with it, each once, in order."""
@@ -94,16 +97,16 @@ def register(registry, canvas_types=("frame",), peers=_alone):
         for t in targets:
             out += [c for c in linked.copies(ctx, t, canvas_of(ctx.doc, ctx.kind.lists, t)["id"], peers) if c not in out]
         return out
-    _field_op(registry, "paint", every)
+    _field_op(registry, "paint", every, extra)
     for type_ in ("stroke", "fill", "paintmask"):
         _field_op(registry, type_)
 
     @registry.operation("paint.add", "Add a paint layer to a canvas (on top unless index is given); where canvases share paint "
                         "layers (the drawings of a Draw each frame layer) an empty copy goes into each of them.", target=canvas_types,
-                        label="Add paint layer", params=[ID, *F.FIELDS["paint"], INDEX])
+                        label="Add paint layer", params=[ID, *F.FIELDS["paint"], *extra, INDEX])
     def paint_add(ctx, targets, args):
         for t in targets:
-            linked.add(ctx, t, _new(ctx, "paint", args if len(targets) == 1 else {**args, "id": None}),
+            linked.add(ctx, t, _new(ctx, "paint", args if len(targets) == 1 else {**args, "id": None}, extra),
                        args.get("index"), peers)
 
     @registry.operation("paint.remove", "Delete paint layers with their strokes (in every drawing sharing them).", target="paint",
@@ -191,7 +194,7 @@ def _required(p: Param) -> Param:
     return replace(p, required=True)
 
 
-def _field_op(registry, type_, every=lambda ctx, targets: targets):
+def _field_op(registry, type_, every=lambda ctx, targets: targets, extra=()):
     def set_fields(ctx, targets, args):
         for t in every(ctx, targets):
             for k, v in args.items():
@@ -201,5 +204,5 @@ def _field_op(registry, type_, every=lambda ctx, targets: targets):
                     _check_mask(ctx, t, v, t)
                 ctx.set(t, k, v)
     label = F.LABELS[type_].lower()
-    registry.operation(f"{type_}.set", f"Change a {label}'s settings.", target=type_, params=F.FIELDS[type_],
+    registry.operation(f"{type_}.set", f"Change a {label}'s settings.", target=type_, params=[*F.FIELDS[type_], *extra],
                        label=f"Edit {label}", fields=True)(set_fields)

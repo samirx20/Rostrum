@@ -27,9 +27,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "5.2.2-cycles-a456b76-r2"   # r2 (3D-11b): Cycles' Hydra plug-in with cycles-rostrum.patch (lights + object motion blur)
+VERSION = "5.2.2-cycles-a456b76-r3"   # r3 (3D-15): Cycles' Hydra plug-in with cycles-rostrum.patch (lights, object motion blur, light passes)
 BUNDLE_TAG, BUNDLE_COMMIT, CYCLES_COMMIT = "v5.2.2", "60d6e96", "a456b76"
-CYCLES_INSTALL = "install-r2"         # made by build_cycles.bat (the proof's unpatched build is install\)
+CYCLES_INSTALL = "install-r3"         # made by build_cycles.bat (the proof's unpatched build is install\)
 CYCLES_PATCH = "cycles-rostrum.patch"
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION

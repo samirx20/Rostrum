@@ -80,6 +80,7 @@ from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_K
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
 from .render_fields import RENDER  # noqa: E402  (needs the helpers above)
+from .paint_fields import MESH as PAINT_MESH  # noqa: E402  (needs the helpers above)
 
 FIELDS: dict[str, list[Param]] = {
     "group": list(TRANSFORM),
@@ -116,6 +117,7 @@ FIELDS: dict[str, list[Param]] = {
                    default=[], help='A material id per face ("" = the item\'s); empty = every face the item\'s'),
         N("subdivide", "Smooth surface", "Shape", 0, 3, 1, "", S, POLY, integer=True, default=0,
           help="Rounds the whole mesh (OpenSubdiv Catmull-Clark), 1 to 3 times; sharp edges stay sharp. 0 = off"),
+        *PAINT_MESH,                    # a mesh is a paint canvas (paint_fields.py)
         X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     # A live boolean (Manifold, ops_combine.py): its children are the solids (meshes or combines), the first the base;
@@ -175,10 +177,10 @@ KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its ch
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
 HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
-         "import": ["children", "parts", "keys"], "mesh": ["keys"], "light": ["keys"], "camera": ["keys"],
+         "import": ["children", "parts", "keys"], "mesh": ["keys", "paints", "paintmasks"], "light": ["keys"], "camera": ["keys"],
          "combine": ["children", "keys"],
          "rig": ["children", "keys"]}
-STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group == "Shape"},     # a mesh's shape is built once
+STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
          "*": {"aim"}}

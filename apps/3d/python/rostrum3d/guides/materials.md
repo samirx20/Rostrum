@@ -86,7 +86,9 @@ Bare metal shows only what it reflects. Metal lettering on a dark face in a dark
 - **`baseColorTexture`**: an image painted or printed onto the surface along its UVs (a label, a painted pattern). It replaces `baseColor`.
 - **`roughnessTexture`**: a grey image for where the surface is shinier or duller (fingerprints, worn edges, glossy print on matte card).
 - **`bumpTexture`** with **`bumpStrength`**: a grey height image (white is raised) for small relief that catches light: embossing, brush strokes, grain. Bump doesn't change the outline; the shape itself comes from the mesh.
-- Our own painting tools (the painting kit) can make these images; any image file works.
+- **`metallicTexture`**: a grey image for where the surface is metal (white) or not (black): bare metal where paint wore off.
+- Any image file works. To paint them by hand on the model instead, use Paint (B): its layers paint colour, roughness,
+  height, metal or glow over this material, and the material's own values stay where nothing is painted (guide `painting`).
 
 ## Things that glow
 

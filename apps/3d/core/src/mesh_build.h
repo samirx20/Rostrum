@@ -20,6 +20,9 @@ namespace r3d {
 MeshData shape(Reader& p, FaceGroups& groups);
 // Marks the mesh fields the chosen shape doesn't use as known (the compiler sends every field).
 void mesh_known(Reader& p);
+// A mesh item's own `uvs` (mesh.unfold: one (u, v) per face corner of the built mesh, flat) become its `st`;
+// an empty list keeps the shape's own. A count that doesn't match the built mesh is an error, never stretched.
+void own_uvs(Reader& p, MeshData& d);
 // Points, vertex normals, counts, indices, face-varying st and extent; no subdivision.
 void write_mesh(PXR_NS::UsdGeomMesh m, const MeshData& d);
 // Binds material `mat` ("" = none) to `prim`; `where` names the field in errors (stage_items.cpp).

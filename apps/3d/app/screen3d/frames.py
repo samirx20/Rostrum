@@ -101,7 +101,7 @@ class ViewRenderer(PictureWorker):
 
 
 class EngineVia:
-    """The viewport's engine as mesh.edit asks for it (ops_mesh.use_engine): each call waited for on its thread."""
+    """The viewport's engine as mesh.edit and mesh.unfold ask for it (ops_mesh.use_engine): each call waited for on its thread."""
 
     def __init__(self, worker):
         self.worker = worker
@@ -111,3 +111,6 @@ class EngineVia:
 
     def geometry(self, item):
         return self.worker.wait_for(lambda e: e.geometry(item))
+
+    def unfold(self, item, size):
+        return self.worker.wait_for(lambda e: e.unfold(item, size))

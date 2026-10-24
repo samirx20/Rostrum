@@ -100,6 +100,7 @@ class MeshEdit(MeshActions, MeshKnife, MeshGizmo, QObject):
         it = self._item()
         if it is None:
             return self.bridge.fail_line("Edit mesh needs one shape or combine selected.")
+        self.vp.paint.leave()                   # one mode at a time
         self._on, self._id, self._sel = True, it["id"], set()
         self._last, self._knife = None, None
         self._refresh()

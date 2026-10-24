@@ -16,6 +16,8 @@
 #include "inspect.h"
 #include "cycles_lights.h"
 #include "light_extras.h"
+#include "passes.h"
+#include "surface_spot.h"
 #include "view_camera.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -90,7 +92,7 @@ JsObject Core::scene(const JsObject& a) {
 
 JsObject Core::render(const JsObject& o, const std::function<void(const JsObject&)>& progress) {
   Args a(o, "render", {"camera", "renderer", "frame", "frames", "width", "height", "samples", "denoise", "exr",
-                       "png", "view", "exposure", "timeoutS", "progress"});
+                       "png", "view", "exposure", "timeoutS", "progress", "passes"});
   need_scene("render");
   const std::string renderer = a.str("renderer");
   Hydra::plugin_for(renderer);  // an unknown name fails before anything else
@@ -123,6 +125,11 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   s.denoise = a.flag("denoise", s.denoise);
   s.timeoutS = a.num("timeoutS", s.timeoutS);
   if (s.samples < 1 || s.samples > 65536) throw Error("render.samples: must be 1..65536");
+  const std::vector<std::string> passes = a.has("passes") ? read_passes(a.need("passes"), "render.passes")
+                                                          : std::vector<std::string>{};
+  if (!passes.empty() && exr.empty()) throw Error("render.passes: passes are layers of the EXR; give exr too");
+  if (!passes.empty() && renderer != "cycles") throw Error("render.passes: only the cycles renderer makes passes");
+  s.aovs = aovs_for(passes);
   const bool report = a.flag("progress", false);
   float bg[3];
   background(stage_, bg);
@@ -132,13 +139,26 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   JsArray frames;
   const auto t0 = Clock::now();
   double first_ms = 0;
+  JsArray channels;  // the EXR's channel names, the same for every frame
   for (int f = first; f <= last; ++f) {
     const auto tf = Clock::now();
-    Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_);
+    Aovs lit, unshadowed;
+    Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_, &lit);
+    if (needs_unshadowed(passes)) {  // the Shadow pass: the same frame again with no shadows
+      DrawSettings no_shadows = s;
+      no_shadows.castShadows = false;
+      hy.draw(renderer, cam, f, w, h, no_shadows, mem_, &unshadowed);
+    }
     JsObject fo{{"frame", JsValue(f)}};
     if (!exr.empty()) {
-      color_.write_exr(pic, frame_path(exr, f));
+      const std::vector<ExrLayer> layers = pass_layers(passes, lit, unshadowed, stage_);
+      color_.write_exr(pic, frame_path(exr, f), layers);
       fo["exr"] = JsValue(frame_path(exr, f));
+      if (channels.empty()) {
+        for (const char* c : {"R", "G", "B", "A"}) channels.push_back(JsValue(std::string(c)));
+        for (const auto& l : layers)
+          for (const auto& c : l.channels) channels.push_back(JsValue(c));
+      }
     }
     if (!png.empty()) {
       color_.write_png(pic, frame_path(png, f), view, exposure, bg);
@@ -157,6 +177,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   return JsObject{
       {"ok", JsValue(true)}, {"frames", JsValue(frames)}, {"renderer", JsValue(renderer)},
       {"camera", JsValue(cam.GetString())}, {"view", JsValue(view)}, {"gpu", JsValue(hy.gl_renderer())},
+      {"channels", JsValue(channels)},
       {"timing", JsValue(JsObject{{"totalMs", JsValue(r1(total))}, {"firstMs", JsValue(r1(first_ms))},
                                   {"meanMs", JsValue(r1(total / (last - first + 1)))}})},
       {"vram", JsValue(JsObject{{"processPeakMb", JsValue(r1(mem_.peak_mb()))},
@@ -263,9 +284,15 @@ JsObject Core::pick(const JsObject& o) {
   const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
   const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point, &normal);
   if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
-  return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
-                  {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
-                  {"point", vec3(point)}, {"normal", vec3(normal)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
+  JsObject out{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
+               {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
+               {"point", vec3(point)}, {"normal", vec3(normal)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
+  const GfRay ray = fr.ComputeRay(GfVec2d(2.0 * (x + 0.5) / w - 1.0, 1.0 - 2.0 * (y + 0.5) / h));
+  if (const auto spot = surface_spot(stage_, hit, f, ray)) {  // the face and its (u, v): where a brush lands
+    out["face"] = JsValue(spot->face);
+    if (spot->uv) out["uv"] = JsValue(JsArray{JsValue(double((*spot->uv)[0])), JsValue(double((*spot->uv)[1]))});
+  }
+  return out;
 }
 
 JsObject Core::save(const JsObject& o) {

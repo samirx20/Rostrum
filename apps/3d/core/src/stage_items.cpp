@@ -90,7 +90,8 @@ void build_mesh(Item& it, const SdfPath& path) {
   UsdGeomMesh m = UsdGeomMesh::Define(it.ctx.stage, path);
   author_transform(it, m.GetPrim());
   FaceGroups groups;
-  const MeshData d = shape(it.props, groups);
+  MeshData d = shape(it.props, groups);
+  own_uvs(it.props, d);
   write_mesh(m, d);
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);

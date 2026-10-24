@@ -4,6 +4,7 @@
 #include <OpenImageIO/imagebuf.h>
 #include <OpenImageIO/imagebufalgo.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -77,7 +78,7 @@ void write_whole(OIIO::ImageBuf& buf, const std::string& file, OIIO::TypeDesc ty
   if (target.has_parent_path()) fs::create_directories(target.parent_path());
   // keep the real extension last so OpenImageIO picks the right writer
   fs::path partial = target.parent_path() / (target.stem().string() + ".partial" + target.extension().string());
-  buf.set_write_format(type);
+  if (type != OIIO::TypeDesc::UNKNOWN) buf.set_write_format(type);  // UNKNOWN: the caller set each channel's type
   if (!buf.write(partial.string()))
     throw Error("render: could not write " + partial.string() + ": " + buf.geterror());
   std::error_code ec;
@@ -87,10 +88,38 @@ void write_whole(OIIO::ImageBuf& buf, const std::string& file, OIIO::TypeDesc ty
 }
 }  // namespace
 
-void ColorOut::write_exr(const Picture& p, const std::string& file) const {
-  auto buf = to_buf(p);
-  buf.specmod().attribute("compression", "zip");
-  write_whole(buf, file, OIIO::TypeDesc::HALF);
+void ColorOut::write_exr(const Picture& p, const std::string& file, const std::vector<ExrLayer>& layers) const {
+  if (layers.empty()) {
+    auto buf = to_buf(p);
+    buf.specmod().attribute("compression", "zip");
+    write_whole(buf, file, OIIO::TypeDesc::HALF);
+    return;
+  }
+  // R G B A first, then every layer's channels, interleaved into one picture; each channel keeps its own type
+  std::vector<std::string> names{"R", "G", "B", "A"};
+  std::vector<OIIO::TypeDesc> types(4, OIIO::TypeDesc::HALF);
+  for (const auto& l : layers) {
+    if (l.pixels.size() != size_t(p.width) * p.height * l.channels.size())
+      throw Error("render: the " + l.channels.front() + " layer has the wrong number of pixels");
+    for (const auto& c : l.channels) names.push_back(c), types.push_back(l.full ? OIIO::TypeDesc::FLOAT : OIIO::TypeDesc::HALF);
+  }
+  const size_t n = names.size(), count = size_t(p.width) * p.height;
+  std::vector<float> all(count * n);
+  for (size_t i = 0; i < count; ++i) std::copy_n(&p.rgba[i * 4], 4, &all[i * n]);
+  size_t at = 4;
+  for (const auto& l : layers) {
+    const size_t k = l.channels.size();
+    for (size_t i = 0; i < count; ++i) std::copy_n(&l.pixels[i * k], k, &all[i * n + at]);
+    at += k;
+  }
+  OIIO::ImageSpec spec(p.width, p.height, int(n), OIIO::TypeDesc::FLOAT);
+  spec.channelnames = names;
+  spec.alpha_channel = 3;
+  spec.attribute("compression", "zip");
+  OIIO::ImageBuf buf(spec);
+  buf.set_pixels(OIIO::ROI::All(), OIIO::TypeDesc::FLOAT, all.data());
+  buf.set_write_format(types);
+  write_whole(buf, file, OIIO::TypeDesc::UNKNOWN);
 }
 
 // The picture path for files (the live viewport does the same on the graphics card: view_post.h): exposure, the background laid in where the picture is

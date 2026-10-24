@@ -71,7 +71,23 @@ MeshData shape(Reader& p, FaceGroups& groups) {
 
 void mesh_known(Reader& p) {
   p.known({"width", "height", "depth", "radius", "tube", "bevel", "segments", "outline", "points", "faceCounts",
-           "faceIndices", "creases", "faceMaterials", "subdivide", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
+           "faceIndices", "creases", "faceMaterials", "subdivide", "uvs", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"});
+}
+
+void own_uvs(Reader& p, MeshData& d) {
+  if (!p.has("uvs")) return;
+  const JsArray& uv = p.list("uvs");
+  if (uv.empty()) return;
+  if (uv.size() != 2 * d.indices.size())
+    fail(p.at("uvs"), std::to_string(uv.size() / 2) + " (u, v) pairs for the built mesh's " +
+         std::to_string(d.indices.size()) + " face corners (the shape changed since it was unfolded)",
+         "one (u, v) per face corner, or an empty list; unfold it again (mesh.unfold)");
+  d.st.resize(d.indices.size());
+  for (size_t k = 0; k < d.st.size(); ++k) {
+    const JsValue &u = uv[2 * k], &v = uv[2 * k + 1];
+    if (!is_number(u) || !is_number(v)) fail(p.at("uvs") + "[" + std::to_string(2 * k) + "]", "is not a number", "numbers");
+    d.st[k] = GfVec2f(float(to_number(u)), float(to_number(v)));
+  }
 }
 
 void write_mesh(UsdGeomMesh m, const MeshData& d) {
