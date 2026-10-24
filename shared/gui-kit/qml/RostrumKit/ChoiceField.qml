@@ -12,7 +12,7 @@ FieldFrame {
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
     property var current: ""              // a value of any type: matched to the options as text (48000 == "48000")
     property string more: ""              // a last entry that adds an option ("Load picture…"): picking it is moreChosen()
-    readonly property bool opened: menu.opened
+    readonly property bool opened: pop.item ? pop.item.opened : false
     signal moreChosen()
     signal picked(var value)              // the option's own value, type kept (a number stays a number)
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
@@ -29,17 +29,21 @@ FieldFrame {
         for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
         return out
     }
-    function open() { query = ""; menu.highlighted = Math.max(0, shown.indexOf(indexOf(current))); menu.open() }
+    function open() { query = ""; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
-    engaged: menu.opened
+    engaged: f.opened
     activeFocusOnTab: true
     Keys.onSpacePressed: open()
     Keys.onReturnPressed: open()
-    trailing: Chevron { open: menu.opened }
+    trailing: Chevron { open: f.opened }
 
     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { f.forceActiveFocus(); f.open() } }
 
+    // The list is made at the first opening only: a settings panel has a choice on most kinds' rows, and a popup with
+    // its search line and list per field made each selection switch ~15 ms slower per choice.
+    Loader { id: pop; active: false; sourceComponent: popup }
+    Component { id: popup
     QQC.Popup {
         id: menu
         property int highlighted: 0
@@ -156,5 +160,6 @@ FieldFrame {
                             onClicked: { menu.close(); f.moreChosen() } }
             }
         }
+    }
     }
 }

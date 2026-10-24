@@ -35,10 +35,39 @@ class ImageProvider(QQuickImageProvider):
             return self._image
 
 
-def image_from_pixels(view, w: int, h: int, stride: int) -> QImage:
-    """An RGBA picture from the engine's shared-memory slot; copied, because the slot is reused."""
+FORMATS = {"rgba8": QImage.Format.Format_RGBA8888, "bgra8-premul": QImage.Format.Format_ARGB32_Premultiplied}
+
+
+class ImagePool:
+    """Pictures from an engine's shared-memory slot (copied, because the slot is reused), into a few pictures kept per
+    size and reused in turn, so a frame costs one copy and no new memory. A picture still held elsewhere (the canvas
+    showing it, a cache) is never written over: the pool's own copy is made anew then (QImage's copy on write).
+    `bgra8-premul` is the screen's own form (Qt's ARGB32_Premultiplied): shown without a step on the screen thread.
+    `keep`: how many in turn: more than the pictures kept elsewhere at once (a cache of recent pictures), made as needed."""
+
+    def __init__(self, keep: int = 3):
+        self._keep, self._kept, self._next = keep, [], 0
+
+    def take(self, view, w: int, h: int, stride: int, fmt: str = "rgba8") -> QImage:
+        try:
+            form = FORMATS[fmt]
+            first = self._kept[0] if self._kept else None
+            if first is None or first.size().toTuple() != (w, h) or first.format() != form or first.bytesPerLine() != stride:
+                self._kept, self._next = [], 0
+            if self._next == len(self._kept):
+                self._kept.append(QImage(w, h, form))
+            img = self._kept[self._next]
+            self._next = (self._next + 1) % self._keep
+            img.bits()[:] = view                      # bits() first copies a picture still shared elsewhere
+            return QImage(img)                        # shared: whoever keeps it keeps these pixels
+        finally:
+            view.release()
+
+
+def image_from_pixels(view, w: int, h: int, stride: int, fmt: str = "rgba8") -> QImage:
+    """A picture from an engine's shared-memory slot; copied, because the slot is reused (`ImagePool` for a stream)."""
     try:
-        return QImage(view, w, h, stride, QImage.Format.Format_RGBA8888).copy()
+        return QImage(view, w, h, stride, FORMATS[fmt]).copy()
     finally:
         view.release()
 

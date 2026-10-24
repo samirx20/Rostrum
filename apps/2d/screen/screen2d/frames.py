@@ -3,8 +3,9 @@ thread, newest request wins. The newest picture is served to QML as image://fram
 kit's (rostrum_gui.frames.PictureWorker); this file is what is 2D's: the engine, the scene sent only when it
 changed, and how a frame is read.
 
-On Windows the frame comes through the engine's shared memory (`pixels`, no PNG); elsewhere, until the engine has
-it there, through a PNG.
+On Windows the frame comes through the engine's shared memory (`pixels`, no PNG) in the screen's own form, copied
+into pictures reused in turn (the kit's ImagePool); elsewhere, until the engine has it there, through a PNG. While
+playing each frame asks for the next one ahead (playback.py `ahead`): the engine draws it while this one is shown.
 
 Paused, a job asks for the world picture (`world`: the world rectangle the view shows, at the size shown, the
 frame's quad holding the export; world_view.py), served as image://frame/<n> with its rectangle (`pictured`); the
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QImage
-from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
+from rostrum_gui.frames import ImagePool, ImageProvider, PictureWorker, image_from_pixels
 from rostrum2d import settings
 from rostrum_core import scratch
 
@@ -39,13 +40,16 @@ def open_engine():
     return Engine()
 
 
-def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=None, view=None, world=None) -> QImage:
+def _frame(eng, t: float, png: Path, samples: int | None, scale: float, place=None, view=None, world=None,
+           pool: ImagePool | None = None, ahead: float | None = None) -> QImage:
+    """The frame as a picture. With `pool` (the canvas) in the screen's own form, into the pool's reused pictures;
+    without, straight RGBA8, a picture of its own."""
     if sys.platform == "win32":
         with STATS.stage("pixels"):
-            got = eng.pixels(t, samples, scale, view, place, world)
+            got = eng.pixels(t, samples, scale, view, place, world, screen=pool is not None, ahead=ahead)
         STATS.engine(eng.timing)
         with STATS.stage("image"):
-            return image_from_pixels(*got)
+            return pool.take(*got, eng.format) if pool is not None else image_from_pixels(*got)
     if view or world:                                      # a crop or the world needs the engine's pixels (Windows for now)
         raise RuntimeError("the world view needs the engine's shared pixels (Windows for now)")
     eng.still(t, png)                                      # full size until the engine's pixels come to the Mac
@@ -70,7 +74,9 @@ class WorldCache:
         return None if place or world is None else (t, samples, tuple(sorted(world.items())))
 
     def get(self, scene, key):
-        if not key or scene is not self._scene:
+        if scene is not self._scene:            # pictures of an older scene never show again: let them go now
+            self._scene, self._kept = scene, []
+        if not key:
             return None
         return next((img for k, img in self._kept if k == key), None)
 
@@ -90,18 +96,21 @@ class FrameRenderer(PictureWorker):
     def __init__(self, parent=None):
         super().__init__("frames2d", parent)
         self._kept = WorldCache()
+        self._pool = ImagePool(WorldCache.MOST + 3)
         self._loaded = None
         SCRATCH.mkdir(parents=True, exist_ok=True)
         scratch.sweep_later(SCRATCH.parent)      # folders killed runs left (a day old, no process owns): once, well after the start
         self.start()
 
-    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, world=None, place=None):
+    def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, world=None, place=None,
+                ahead: float | None = None):
         """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: 1, 0.5 or 0.25 of
         its size (the export while playing). The same scene and engine either way (preview ≡ export). `tag` comes back
         with the frame (`ready`): the state it was rendered from (shown.py). `world` {x, y, w, h, scale}: the world
         picture of that rectangle instead (`pictured` says which); `place`: layer ids whose places come with the frame
-        (`placed`, world px with a world picture)."""
-        self.post_latest((scene, t, samples, scale, tag, world, place))
+        (`placed`, world px with a world picture). `ahead`: the time asked for next (playing): the engine draws it while
+        this one is shown (ENGINE_CONTRACT.md › ahead)."""
+        self.post_latest((scene, t, samples, scale, tag, world, place, ahead))
 
     def place(self, scene: dict, t: float, ids: list[str], timeout_s: float = 10.0, world: bool = False) -> dict:
         """The layers' places at `t` now (ahead of the next picture), from the engine that draws the canvas. Raises
@@ -164,12 +173,12 @@ class FrameRenderer(PictureWorker):
             except Exception as e:  # noqa: BLE001  handed to the asker, who says it
                 return done(None, e)
             return done(answer, None)
-        scene, t, samples, scale, tag, world, place = job
+        scene, t, samples, scale, tag, world, place, ahead = job
         key = WorldCache.key(scene, t, samples, world, place)
         image = self._kept.get(scene, key)
         if image is None:
             self._load(eng, scene)
-            image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place, None, world)
+            image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place, None, world, self._pool, ahead)
             if image.isNull():
                 raise RuntimeError(f"the engine's frame could not be read: {SCRATCH / 'frame.png'}")
             self._kept.put(scene, key, image)

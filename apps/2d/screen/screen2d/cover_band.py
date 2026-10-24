@@ -25,25 +25,27 @@ class CoverBand(QObject):
     edges = Property("QVariantList", lambda self: self._rows, notify=changed)    # [{edge, words}] of the picked layer
 
     def _update(self):
+        """Worked out again only when what the band reads changed: the picked layer, the frame, the scene's size and
+        times, the markers. A change to any other layer leaves the band as it is (the same items, by identity)."""
         b = self.b
         ids = b.selected_layers()
-        key = (b.doc.data, b.marks.times if b.marks else None, tuple(ids))
-        if self._key is not None and self._key[0] is key[0] and self._key[1] is key[1] and self._key[2] == key[2]:
+        comp = b.placed()
+        layer = next((l for l in comp.get("layers", []) if l["id"] == ids[0]), None) if len(ids) == 1 else None
+        key = (layer, view.of(b.comp()), tuple(comp.get(k) for k in ("fps", "duration", "width", "height")),
+               b.marks.times if b.marks else None)
+        same = self._key is not None and all(x is y or (i == 2 and x == y) for i, (x, y) in enumerate(zip(self._key, key)))
+        if same:
             return
         self._key = key
-        rows = self._rows_for(ids[0]) if len(ids) == 1 else []
+        rows = self._rows_for(layer) if layer is not None else []
         if rows != self._rows:
             self._rows = rows
             self.changed.emit()
 
-    def _rows_for(self, id_: str) -> list[dict]:
-        doc = self.b.doc
-        if not doc.has(id_) or doc.item(doc.parent_of(id_)[0])["type"] != "comp":
+    def _rows_for(self, layer: dict) -> list[dict]:
+        if layer["type"] not in SIZED or layer.get("screenLock"):
             return []
         comp = self.b.placed()                                    # times in scene seconds (keys on markers placed)
-        layer = next((l for l in comp.get("layers", []) if l["id"] == id_), None)
-        if layer is None or layer["type"] not in SIZED or layer.get("screenLock"):
-            return []
         found, once = cover.report(comp, layer, self._shots_of(comp), float(comp.get("fps", 30)) or 30.0)
         return [{"edge": e["edge"], "words": cover.words(e)} for e in found] if once else []
 

@@ -37,7 +37,7 @@ SwatchHex {
 
     property var cur: paint               // what the swatch shows while the picker is open
     property bool changing: false
-    readonly property int stop: body.sel
+    readonly property int stop: pk.item ? pk.item.stopSel : -1
     onPaintChanged: cur = paint
     readonly property string kind: cur && cur.type ? cur.type : "none"
     readonly property int count: cur && cur.stops ? cur.stops.length : 0
@@ -49,24 +49,29 @@ SwatchHex {
     property string atRest: ""
     look: f.cur
     words: f.atRest !== "" ? f.atRest : f.kind === "solid" ? "" : f.name
-    engaged: picker.visible
+    engaged: pk.item ? pk.item.visible : false
     onPick: f.open()
     onTyped: (hx) => f.edited(Object.assign({}, f.paint, { type: "solid", color: hx }))
-    function open() { picker.openBeside(f) }
+    function open() { pk.active = true; pk.item.openBeside(f) }
     function settle() {           // the picker's open change ends: at the close, and before "+" saves a colour (a
         if (!f.changing) return   // document change of its own; the next edit in the picker starts a new undo step)
         f.changing = false
         if (f.scrubbed) f.ended(); else f.edited(f.cur)
     }
-    function saveSwatch(hx) { f.settle(); if (picker.banked) colourBank.add(hx) }
+    function saveSwatch(hx) { f.settle(); if (typeof colourBank !== "undefined") colourBank.add(hx) }
     function take(p) {
         f.cur = p
         if (f.scrubbed) { if (!f.changing) f.began(); f.live(p) }
         f.changing = true
     }
 
+    // The picker is made at the first opening only: a settings panel has a colour or a fill on most kinds' rows, and a
+    // popup with its whole picker per field made each selection switch slower (~40 ms for a fill).
+    Loader { id: pk; active: false; sourceComponent: pickerPopup }
+    Component { id: pickerPopup
     SidePopup {
         id: picker
+        readonly property alias stopSel: body.sel
         readonly property bool banked: typeof colourBank !== "undefined"
         closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.CloseOnEscape
                                                                    : QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
@@ -87,5 +92,6 @@ SwatchHex {
             onPaintAsked: { picker.close(); f.asked(f.paintIt) }
             onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
+    }
     }
 }

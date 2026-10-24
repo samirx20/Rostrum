@@ -26,7 +26,6 @@ from rostrum2d.rig.bodynames import bodylike
 from rostrum2d.rig.guess import guessable
 from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
-from rostrum_core.tree import index
 
 from . import cover_move, frame_actions, pin_depth, rig_attach
 from .rig_mouths import is_eyes, is_mouth
@@ -126,7 +125,7 @@ def _arg(v, f: Facts, at):
         return v
     name, _, rest = v[1:].partition(":")
     if name == "new":
-        return counted(index(f.doc.data, f.doc.kind.lists), rest)
+        return counted(f.doc._index(), rest)      # the document's own kept index: one build per change, not one per action
     if name == "at":
         return at(f.ids[0])
     if name == "ids":

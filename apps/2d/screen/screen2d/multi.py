@@ -27,8 +27,7 @@ class Multi(QObject):
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
         shows them (shown.py; a layer newer than the picture has none yet)."""
-        by = {x["id"]: x for x in self.b.shown_boxes()}
-        return [by[i] for i in self.layers() if i in by]
+        return self.b.shown_boxes(self.layers())
 
     @Property("QVariantMap", notify=changed)
     def groupBox(self):

@@ -43,9 +43,10 @@
     wav <path> | pick <item|-> | menu | open [dry] | problem <png>
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
-  Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame [n] [profile]
+  Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame|scrub [n] [profile]
   Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n]
   Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n]
+  Selection cost (rostrum_gui/select_steps.py, any app): selecttime <id> <id> … [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -143,19 +144,20 @@ def steps_cancel(bridge, step, rest):
 
 def steps_play(bridge, seconds, blur, size="full"):
     """Play for `seconds` (after the Problems list's first look, which shares the CPU) at Preview size `size`, then
-    print the frames shown."""
+    print the frames shown and the screen thread's busy time per frame shown (its event loop runs as a person's does)."""
+    from .drag_steps import Busy, _wait
     from .playstats import STATS
     bridge.problems.wait(60)
     bridge.playback.setBlur(blur)
     bridge.playback.setSize(size)
     STATS.on = True
     STATS.reset()
+    busy = Busy()
     bridge.togglePlay()
-    end = time.perf_counter() + seconds
-    while time.perf_counter() < end:
-        QCoreApplication.processEvents()
+    _wait(seconds * 1000)
     bridge.togglePlay()
-    print(f"play {seconds:g} s from the playhead: {STATS.report()}")
+    busy.close()
+    print(f"play {seconds:g} s from the playhead: {STATS.report()};  screen thread {busy.now() / max(STATS.shown, 1):.1f} ms per frame shown")
     STATS.on = STATS.log
 
 

@@ -22,17 +22,21 @@ SwatchHex {
     onHexChanged: shown = hex
     look: f.atRest !== "" ? ({ type: "mixed" }) : ({ type: "solid", color: f.shown })   // several colours: an empty swatch, not one of them
     words: f.atRest
-    engaged: picker.visible
+    engaged: pk.item ? pk.item.visible : false
     onPick: f.open()
     onTyped: (hx) => f.edited(hx)
-    function open() { picker.openBeside(f) }
+    function open() { pk.active = true; pk.item.openBeside(f) }
     function settle() {           // the picker's open change ends: at the close, and before "+" saves a colour (a
         if (!f.changing) return   // document change of its own; the next edit in the picker starts a new undo step)
         f.changing = false
         if (f.scrubbed) f.ended(); else f.edited(f.shown)
     }
-    function saveSwatch(hx) { f.settle(); if (picker.banked) colourBank.add(hx) }
+    function saveSwatch(hx) { f.settle(); if (typeof colourBank !== "undefined") colourBank.add(hx) }
 
+    // The picker is made at the first opening only: a settings panel has a colour or a fill on most kinds' rows, and a
+    // popup with its whole picker per field made each selection switch slower (~40 ms for a fill).
+    Loader { id: pk; active: false; sourceComponent: pickerPopup }
+    Component { id: pickerPopup
     SidePopup {
         id: picker
         readonly property bool banked: typeof colourBank !== "undefined"
@@ -50,5 +54,6 @@ SwatchHex {
             }
             onSwatchAdd: (hx) => f.saveSwatch(hx)
         }
+    }
     }
 }

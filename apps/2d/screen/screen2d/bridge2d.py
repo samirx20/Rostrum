@@ -5,7 +5,7 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge, effects, news
+from rostrum_gui import DocBridge, effects, news, row_facts
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
@@ -54,6 +54,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     frameChanged = Signal()
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
+    rowFactsChanged = Signal()                              # what the timeline asks of its rows differs (row_facts.py)
     layersChanged = Signal()                                # the timeline's rows really changed (timeline_rows.py)
     layerChanged = Signal()                                 # selectedLayer is another layer (sent with outlineChanged, only then)
     frameInfoChanged = Signal()                             # the scene's size, rate, length or label changed (the same)
@@ -244,6 +245,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         Announced only when they change (timeline_rows.py)."""
         return self.layer_rows()
 
+    @Property("QVariantMap", notify=rowFactsChanged)
+    def rowFacts(self):
+        """What the timeline asks of its rows besides drawing them (rostrum_gui/row_facts.py): QML reads this, not `layers`."""
+        return row_facts.of(self.layer_rows())
+
     @Property(QObject, constant=True)
     def rowsModel(self):
         """The timeline's rows as a list model, changed row by row (timeline_rows.py): what the Animate timeline shows."""
@@ -268,7 +274,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     def selBox(self):
         """The selected layer's box as the picture on screen shows it (shown.py)."""
         layer = self.selectedLayer
-        return next((b for b in self.shown_boxes() if b["id"] == layer), {})
+        return next(iter(self.shown_boxes([layer])), {})
 
     def _first(self):
         layers = self.comp().get("layers", [])

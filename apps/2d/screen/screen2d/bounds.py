@@ -35,9 +35,9 @@ def _compose(m, a, b, c, d, e, f):
             m[0] * e + m[2] * f + m[4], m[1] * e + m[3] * f + m[5])
 
 
-def boxes(comp: dict, t: float) -> list[dict]:
-    """[{id, x, y, w, h, rot, ax, ay}] for every layer showing at t, bottom of the stack first (a group before its
-    layers), all on the canvas (world px): x, y is the unturned top-left of the box about its anchor, w x h the size on
+def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
+    """[{id, x, y, w, h, rot, ax, ay}] for every layer showing at t (with `only`: those layers and the groups they are
+    in, nothing else worked out), bottom of the stack first (a group before its layers), all on the canvas (world px): x, y is the unturned top-left of the box about its anchor, w x h the size on
     screen. A layer inside groups is carried through their whole chain (position, turn, scale, anchor), as the engine
     does: a layer sits at (x, y) inside its parent and turns and scales about its anchor, and a group's layers live in
     the group's own px, so they follow the group's turn. Also `lw lh lrot` (the box in its parent's px) and `m` (the
@@ -55,10 +55,13 @@ def boxes(comp: dict, t: float) -> list[dict]:
             placed[te] = solve(comp, te)
         return placed[te]
 
+    def wanted(lay) -> bool:
+        return only is None or lay["id"] in only or any(wanted(c) for c in lay.get("layers", ()))
+
     def walk(layers, m, n, locked=False, up=(), seen=1.0):
         mattes = {lay.get("matte") for lay in layers if lay.get("matte")}
         for lay in layers:
-            if lay["type"] == "camera" or lay.get("hidden"):         # not drawn: no box (and no scale)
+            if lay["type"] == "camera" or lay.get("hidden") or not wanted(lay):     # not drawn: no box (and no scale)
                 continue
             own = lay.get(STEPS, "group")
             ln = n if own == "group" else int(own)

@@ -69,6 +69,7 @@ class ActionHub(QObject):
     def refresh(self):
         """Call after the selection or the document changed. Re-sends only what changed: a drag step that leaves the
         actions alone redraws neither row."""
+        self._refreshed = True
         facts, entries = self._now()
         bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
         if bar != self._bar:
@@ -142,8 +143,10 @@ class ActionHub(QObject):
             self.refresh()
 
     def _go(self, entry):
+        self._refreshed = False
         if entry["do"]:
             self._do(entry["do"], entry)
         else:
             self._apply(entry["calls"], entry["label"])
-        self.refresh()
+        if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough)
+            self.refresh()

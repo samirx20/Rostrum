@@ -107,6 +107,8 @@ pub struct Painter {
     pub last_tap_write_ms: f64,
     /// Device px a paint leaves alone (`paint`): the frame's quad in the world picture, which the export fills.
     pub clip_out: Option<skia_safe::Path>,
+    /// An output started on the GPU and not finished (`output_start`): deep, screen.
+    out_pending: Option<(bool, bool)>,
 }
 
 /// One set of picture surfaces and their size and view (`swap_aside`).
@@ -339,12 +341,12 @@ impl Painter {
     pub fn gpu_on(mut gl: Gl, width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         gl.gr.set_resource_cache_limit(gpu_budget(width, height));
         let surface = new_surface(Some(&mut gl), width, height, &space)?;
-        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None })
+        Ok(Self { gl: Some(gl), surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     pub fn cpu(width: u32, height: u32, space: Option<ColorSpace>) -> Result<Self, String> {
         let surface = new_surface(None, width, height, &space)?;
-        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None })
+        Ok(Self { gl: None, surface, acc: None, held: None, last: Last::Frame, width, height, view: (1.0, 0.0, 0.0), space, in_flight: Default::default(), cache: SkiaSceneCache::default(), out8: None, last_draw_ms: 0.0, last_flush_ms: 0.0, last_read_ms: 0.0, last_gpu_ms: 0.0, last_convert_ms: 0.0, last_taps: 0, last_tap_read_ms: 0.0, last_tap_write_ms: 0.0, aside: None, clip_out: None, out_pending: None })
     }
 
     /// Paints from now on the page's part `v` (ENGINE_CONTRACT.md § 1 `scale`, `view`): the whole comp at 1, a smaller
@@ -665,10 +667,20 @@ impl Painter {
     }
 
     /// The last picture through the output step on the GPU, exact (gpu_output.rs): into `out` (the frame's size), the same
-    /// bytes `color::output_into` gives from `read`, at a fraction of the time (8-bit read back, no step per pixel on the
-    /// CPU but for rows holding partly transparent pixels, which are read and converted here). None where it can't
-    /// run (on the CPU, or an output step without a channel table): use `read` and `color::output_into`.
-    pub fn output_into(&mut self, spec: &crate::color::Spec, deep: bool, out: &mut [u8]) -> Option<Result<(), String>> {
+    /// bytes `color::output_into` gives from `read` (with `screen`, as `pixels::to_screen` turns them), at a fraction of the
+    /// time. None where it can't run (on the CPU, or an output step without a channel table): use `read` and
+    /// `color::output_into`.
+    pub fn output_into(&mut self, spec: &crate::color::Spec, deep: bool, screen: bool, out: &mut [u8]) -> Option<Result<(), String>> {
+        match self.output_start(spec, deep, screen, None)? {
+            Ok(()) => Some(self.output_finish(spec, out).map(|_| ())),
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    /// `output_into` in two halves: the GPU's passes queued now, nothing waited for (`output_finish` reads them; the
+    /// picture must not be painted over in between). `holds`: the canvas memory's slot the bytes go into (only what
+    /// changed from what it holds is read back: gpu_output.rs).
+    pub fn output_start(&mut self, spec: &crate::color::Spec, deep: bool, screen: bool, holds: Option<crate::gpu_output::Holds>) -> Option<Result<(), String>> {
         let codes = crate::color::gpu_codes(spec, deep)?;
         self.gl.as_ref()?.exact.as_ref().ok()?;
         let (w, h) = (self.width, self.height);
@@ -678,35 +690,64 @@ impl Painter {
             .filter(|i| i.target == 0x0DE1)?; // TEXTURE_2D
         let gl = self.gl.as_mut().unwrap();
         gl.gr.flush_and_submit();
-        let rows = gl.exact.as_mut().unwrap().run(tex.id, (w, h), &codes, deep, out).and_then(|r| gpu_failed(gl).map(|_| r));
+        let started = gl.exact.as_mut().unwrap().start(tex.id, (w, h), &codes, deep, screen, holds);
+        gl.gr.reset(None);
+        self.out_pending = Some((deep, screen));
+        self.last_flush_ms += t0.elapsed().as_secs_f64() * 1000.0;
+        Some(started)
+    }
+
+    /// The output started by `output_start`, into `out`: waits for the GPU (`last_gpu_ms`), reads back the rows that
+    /// changed (their count returned) and redoes on the CPU the rows the GPU can't answer exactly (`last_convert_ms`).
+    pub fn output_finish(&mut self, spec: &crate::color::Spec, out: &mut [u8]) -> Result<u32, String> {
+        let (deep, screen) = self.out_pending.take().ok_or("output_finish without output_start")?;
+        let (w, h) = (self.width, self.height);
+        let t0 = std::time::Instant::now();
+        let gl = self.gl.as_mut().ok_or("no GPU")?;
+        let done = gl.exact.as_mut().map_err(|e| e.clone())?.finish(out).and_then(|r| gpu_failed(gl).map(|_| r));
         gl.gr.reset(None);
         self.last_gpu_ms = t0.elapsed().as_secs_f64() * 1000.0;
         self.last_read_ms = self.last_gpu_ms;
-        let rows = match rows {
-            Ok(r) => r,
-            Err(e) => return Some(Err(e)),
-        };
+        let done = done?;
         // Rows the table can't answer, in runs: read as stored and converted as `output` would.
         let t1 = std::time::Instant::now();
         let bpp = if deep { 8 } else { 4 };
         let mut y = 0;
         while y < h as usize {
-            if !rows[y] {
+            if !done.cpu_rows[y] {
                 y += 1;
                 continue;
             }
-            let n = rows[y..].iter().take_while(|&&r| r).count();
+            let n = done.cpu_rows[y..].iter().take_while(|&&r| r).count();
             let src = info(w, n as u32, self.space.clone());
             let mut raw = vec![0u8; src.min_row_bytes() * n];
             if !self.last_surface().read_pixels(&src, &mut raw, src.min_row_bytes(), (0, y as i32)) {
-                return Some(Err("frame readback (rows for the output step) failed".into()));
+                return Err("frame readback (rows for the output step) failed".into());
             }
-            let at = y * w as usize * bpp;
-            crate::color::output_rows(spec, &raw, w, y as u32, deep, false, &mut out[at..at + n * w as usize * bpp]);
+            let rows = &mut out[y * w as usize * bpp..(y + n) * w as usize * bpp];
+            crate::color::output_rows(spec, &raw, w, y as u32, deep, false, rows);
+            if screen {
+                crate::pixels::to_screen(rows);
+            }
             y += n;
         }
         self.last_convert_ms = t1.elapsed().as_secs_f64() * 1000.0;
-        Some(Ok(()))
+        Ok(done.rows_read)
+    }
+
+    /// Drops an output started and not finished.
+    pub fn output_cancel(&mut self) {
+        self.out_pending = None;
+        if let Some(Ok(x)) = self.gl.as_mut().map(|g| &mut g.exact) {
+            x.cancel();
+        }
+    }
+
+    /// The canvas memory's slot `slot` was written without the GPU output step: what it holds is no longer known there.
+    pub fn output_forget(&mut self, slot: usize) {
+        if let Some(Ok(x)) = self.gl.as_mut().map(|g| &mut g.exact) {
+            x.forget(slot);
+        }
     }
 
     /// The last picture (a frame, the motion-blur sum or a held paint) as stored: premultiplied half floats, row by
@@ -732,6 +773,10 @@ impl Painter {
         Ok(raw)
     }
 }
+
+#[cfg(test)]
+#[path = "handoff_tests.rs"]
+mod handoff_tests;
 
 #[cfg(test)]
 mod tests {
@@ -784,7 +829,7 @@ mod tests {
                 if let Err(e) = &p.gl.as_ref().unwrap().exact {
                     panic!("{e}");
                 }
-                p.output_into(&spec, deep, &mut gpu).expect("the frame's texture").expect("the GPU output step");
+                p.output_into(&spec, deep, false, &mut gpu).expect("the frame's texture").expect("the GPU output step");
                 let off = gpu.iter().zip(&cpu).position(|(a, b)| a != b);
                 assert!(off.is_none(), "{color} deep {deep}: first different byte {off:?} of {}", gpu.len());
             }

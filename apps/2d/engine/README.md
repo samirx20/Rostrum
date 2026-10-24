@@ -136,6 +136,12 @@ writes the frame's output pixels straight into one of two slots of a named block
 - Same bytes as `rgba` (straight-alpha RGBA, or `rgba64le` at depth 16; the same output step as stills and export).
 - The slots alternate, so the canvas can read frame n while frame n + 1 is drawn. It must be done with a slot
   before it asks for the frame after next.
+- `screen: true`: the screen's own form (`bgra8-premul`: BGRA, premultiplied, Qt's ARGB32_Premultiplied), so the
+  canvas shows the frame without converting it on the screen thread (`render/src/handoff.rs`, `pixels.rs to_screen`).
+- Only the rows that changed are copied back: a slot holds the frame before last, the GPU keeps the output of what each
+  slot holds and compares (`gpu_output.rs`, `gpu_output.glsl`); `timing.rowsRead` counts the rows read.
+- `ahead: t2` (playing): the engine draws the frame at `t2` right after answering and starts its output on the GPU;
+  the next request for exactly that frame is answered from it (`render/src/serve_ahead.rs`).
 - A new block (a new `name`) is made when the frame size changes.
 - Reading it: Python `mmap.mmap(-1, size, tagname=name)`; Qt `OpenFileMappingW` + `MapViewOfFile`, or a
   `QImage` over the mapped pointer (no copy).

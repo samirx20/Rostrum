@@ -32,6 +32,11 @@ def has_layout(item: dict) -> bool:
     return item.get("type") == "group" and item.get("layout", "none") != "none"
 
 
+def laid_out(item: dict) -> bool:
+    """It, or a group inside it, has an auto layout (nothing else ever gets a place from `solve`)."""
+    return has_layout(item) or any(laid_out(c) for c in item.get("layers", ()))
+
+
 def members(group: dict, t: float, p_of=None) -> list[dict]:
     """The layers of a laid-out group that take a slot at t, in slot order (not cameras, not set apart, showing)."""
     p_of = p_of or (lambda c: resolve(c, t))
@@ -92,13 +97,17 @@ def solve(comp: dict, t: float, props=None) -> dict[str, dict]:
 
     def free(child):
         """A layer no layout places: its own x, y, with a hugging group's size (and pinned edge) from its layers."""
+        if not laid_out(child):                    # nothing in it is laid out: nothing to place (and nothing read)
+            return
         size = measure(child)
         if has_layout(child) and size != own_size(child["type"], p_of(child)):
             out[child["id"]] = hugged(p_of(child), size)
         place(child, size)
 
-    textsize.prime([p_of(i) for i in items_of(comp).values() if i["type"] == "text"])    # the frame's texts, one engine trip
-    for layer in comp.get("layers", []):
+    laid = [layer for layer in comp.get("layers", []) if laid_out(layer)]
+    if laid:
+        textsize.prime([p_of(i) for i in items_of(comp).values() if i["type"] == "text"])    # the frame's texts, one engine trip
+    for layer in laid:
         free(layer)
     return out
 

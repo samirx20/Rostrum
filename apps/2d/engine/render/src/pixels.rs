@@ -39,6 +39,26 @@ where
     });
 }
 
+/// Straight RGBA8 (an output step's bytes) into the screen's form, in place: BGRA, premultiplied (Qt's
+/// ARGB32_Premultiplied, a GPU's own texture form), so the canvas shows them without a step of its own. An opaque or
+/// clear pixel keeps its values (only their order changes).
+pub fn to_screen(px: &mut [u8]) {
+    let premul = |c: u8, a: u8| ((c as u32 * a as u32 + 127) / 255) as u8;
+    let one = |p: &mut [u8]| {
+        let a = p[3];
+        let (r, g, b) = if a == 255 { (p[0], p[1], p[2]) } else { (premul(p[0], a), premul(p[1], a), premul(p[2], a)) };
+        p[..3].copy_from_slice(&[b, g, r]);
+    };
+    if px.len() < 1 << 16 {
+        return px.chunks_exact_mut(4).for_each(one);
+    }
+    let src = px.to_vec();
+    bands(px.len() / 4, |r, dst| {
+        dst.copy_from_slice(&src[r.start * 4..r.end * 4]);
+        dst.chunks_exact_mut(4).for_each(one);
+    }, px, 4);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

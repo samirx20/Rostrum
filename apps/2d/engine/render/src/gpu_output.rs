@@ -1,12 +1,18 @@
-//! The output step on the GPU, exact (painter.rs `output_into`): a frame's half floats become the same bytes as
-//! color.rs `output` gives, bit for bit, so a still, a scrubbed frame, the canvas's pixels and the export agree.
+//! The output step on the GPU, exact (painter.rs `output_start` / `output_finish`): a frame's half floats become the same
+//! bytes as color.rs `output` gives, bit for bit, so a still, a scrubbed frame, the canvas's pixels and the export agree.
 //!
 //! No float maths is left on the GPU: each channel's half bits index a table of integer codes made on the CPU from the
 //! output step itself (color.rs `gpu_codes`), and the dither is the same integer hash. That covers every opaque pixel
 //! with finite channels (and transparent ones), which is every pixel of a frame with a background. A pixel the table
 //! can't answer exactly (partly transparent: its colour is divided by its alpha; or a channel not finite) is marked,
 //! and a second pass reports which rows hold one, in blocks of `BLOCK` pixels; the painter redoes those rows on the CPU.
-//! Raw OpenGL 3.3 (Skia's runtime shaders have no integers); Skia's GL state is reset afterwards.
+//!
+//! The hand-off to the canvas's shared memory (shm.rs) reads back only what changed: the output of the frame last
+//! written into each of the memory's slots is kept on the GPU, and the second pass also marks the blocks that differ
+//! from it; only rows holding one are read into the slot (the rest of the slot already holds those bytes). `start`
+//! queues both passes and the marks' readback behind a fence without waiting, so a frame can be finished later
+//! (`finish`, a frame drawn ahead while playing: serve_ahead.rs). Raw OpenGL 3.3 (Skia's runtime shaders have no
+//! integers); Skia's GL state is reset afterwards.
 
 use std::ffi::{c_void, CString};
 
@@ -16,60 +22,14 @@ pub const BLOCK: u32 = 32;
 const VS: &str = "#version 330 core
 void main() { vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2)); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }";
 
-const FS: &str = "
-uniform sampler2D src;
-uniform usampler2D codes;
-uniform uint deep;
-uniform int width;
-// The half a value read from the F16 frame came from (exact: every half is an f32). Not finite: kept not finite.
-uint bits(float v) {
-    uint u = floatBitsToUint(v), s = (u >> 16u) & 0x8000u, e = (u >> 23u) & 0xFFu, m = u & 0x7FFFFFu;
-    if (e == 255u) return s | 0x7C00u | (m != 0u ? 0x200u : 0u);
-    if (e > 112u) return s | ((e - 112u) << 10u) | (m >> 13u);
-    if (e < 103u) return s;
-    return s | ((m | 0x800000u) >> (126u - e));
-}
-bool finite(uint h) { return (h & 0x7C00u) != 0x7C00u; }
-// 0: transparent, 1: opaque with finite channels (the table answers), 2: the CPU's.
-uint kind(uvec4 h) {
-    if (!finite(h.a) || (h.a & 0x8000u) != 0u || h.a == 0u) return 0u;
-    return h.a >= 0x3C00u && finite(h.r) && finite(h.g) && finite(h.b) ? 1u : 2u;
-}
-uvec4 halves(ivec2 p) { vec4 c = texelFetch(src, p, 0); return uvec4(bits(c.r), bits(c.g), bits(c.b), bits(c.a)); }
-uint dither(uint x, uint y, uint c) {
-    uint h = (x * 0x9E3779B1u) ^ (y * 0x85EBCA77u) ^ (c * 0xC2B2AE3Du);
-    h ^= h >> 15u; h *= 0x2C1B3C6Du; h ^= h >> 12u; h *= 0x297A2D39u; h ^= h >> 15u;
-    return h >> 8u;
-}
-uint code(uint h, uvec2 p, uint k) {
-    uint e = texelFetch(codes, ivec2(int(h & 255u), int(h >> 8u)), 0).r;
-    if (deep != 0u) return e;
-    uint t = e >> 8u;
-    return (e & 255u) + (t != 0u && dither(p.x, p.y, k) >= t ? 1u : 0u);
-}
-#ifdef FLAGS
-layout(location = 0) out uint o;
-void main() {
-    int y = int(gl_FragCoord.y), x0 = int(gl_FragCoord.x) * BLOCK;
-    o = 0u;
-    for (int x = x0; x < min(x0 + BLOCK, width); x++) if (kind(halves(ivec2(x, y))) == 2u) { o = 1u; return; }
-}
-#else
-layout(location = 0) out uvec4 o;
-void main() {
-    uvec2 p = uvec2(gl_FragCoord.xy);
-    uvec4 h = halves(ivec2(p));
-    if (kind(h) != 1u) { o = uvec4(0u); return; }
-    o = uvec4(code(h.r, p, 0u), code(h.g, p, 1u), code(h.b, p, 2u), deep != 0u ? 65535u : 255u);
-}
-#endif
-";
+const FS: &str = include_str!("gpu_output.glsl");
 
 const TEXTURE_2D: u32 = 0x0DE1;
 const FRAMEBUFFER: u32 = 0x8D40;
 const COLOR_ATTACHMENT0: u32 = 0x8CE0;
 const RGBA_INTEGER: u32 = 0x8D99;
 const RED_INTEGER: u32 = 0x8D94;
+const PIXEL_PACK_BUFFER: u32 = 0x88EB;
 
 macro_rules! gl_fns {
     ($($name:ident: fn($($a:ty),*) $(-> $r:ty)?;)*) => {
@@ -96,7 +56,10 @@ gl_fns! {
     FramebufferTexture2D: fn(u32, u32, u32, u32, i32); CheckFramebufferStatus: fn(u32) -> u32; GenVertexArrays: fn(i32, *mut u32);
     BindVertexArray: fn(u32); BindBuffer: fn(u32, u32); Viewport: fn(i32, i32, i32, i32); Disable: fn(u32);
     ColorMask: fn(u8, u8, u8, u8); DrawArrays: fn(u32, i32, i32); PixelStorei: fn(u32, i32);
-    ReadPixels: fn(i32, i32, i32, i32, u32, u32, *mut c_void); GetError: fn() -> u32;
+    ReadPixels: fn(i32, i32, i32, i32, u32, u32, *mut c_void); GetError: fn() -> u32; GenBuffers: fn(i32, *mut u32);
+    BufferData: fn(u32, isize, *const c_void, u32); FenceSync: fn(u32, u32) -> *const c_void;
+    ClientWaitSync: fn(*const c_void, u32, u64) -> u32; DeleteSync: fn(*const c_void);
+    MapBufferRange: fn(u32, isize, isize, u32) -> *const u8; UnmapBuffer: fn(u32) -> u8;
 }
 
 /// One output target: its texture and framebuffer, at a size and format.
@@ -106,6 +69,25 @@ struct Target {
     size: (u32, u32, u32),
 }
 
+/// What a slot holds: the block (shm.rs), the slot, and the form of its bytes (w, h, deep, screen).
+pub type Holds = (u64, usize, u32, u32, bool, bool);
+
+/// The output of a frame started and not finished: where it goes and the fence after its marks' readback.
+struct Pending {
+    fence: *const c_void,
+    holds: Option<Holds>,
+    compare: bool,
+    w: u32,
+    h: u32,
+    deep: bool,
+}
+
+/// A finished output: rows the CPU must redo, and how many rows were read back from the GPU.
+pub struct Done {
+    pub cpu_rows: Vec<bool>,
+    pub rows_read: u32,
+}
+
 pub struct GpuOutput {
     f: Fns,
     programs: [u32; 2],
@@ -113,8 +95,13 @@ pub struct GpuOutput {
     codes: u32,
     /// Which table is in `codes` (its address).
     codes_key: usize,
-    out: Option<Target>,
+    /// The frame being output now.
+    cur: Option<Target>,
+    /// Per slot of the canvas's memory: the output it holds, and what it is (`Holds`).
+    kept: [Option<(Target, Holds)>; 2],
     flags: Option<Target>,
+    pbo: (u32, usize),
+    pending: Option<Pending>,
 }
 
 impl GpuOutput {
@@ -122,20 +109,22 @@ impl GpuOutput {
     pub fn new(load: impl Fn(&CString) -> *const c_void) -> Result<GpuOutput, String> {
         let f = Fns::load(&load).ok_or("the GPU output step needs OpenGL 3.3")?;
         let programs = [program(&f, "")?, program(&f, &format!("#define FLAGS\n#define BLOCK {BLOCK}\n"))?];
-        let (mut vao, mut codes) = (0, 0);
+        let (mut vao, mut codes, mut pbo) = (0, 0, 0);
         (f.GenVertexArrays)(1, &mut vao);
         (f.GenTextures)(1, &mut codes);
-        Ok(GpuOutput { f, programs, vao, codes, codes_key: 0, out: None, flags: None })
+        (f.GenBuffers)(1, &mut pbo);
+        Ok(GpuOutput { f, programs, vao, codes, codes_key: 0, cur: None, kept: [None, None], flags: None, pbo: (pbo, 0), pending: None })
     }
 
-    /// Converts texture `src` (the frame, RGBA16F, w × h, top row first) with `codes` (color.rs `gpu_codes`) into `out`
-    /// (RGBA8, or RGBA16 little-endian when `deep`), and returns per row whether it holds a pixel the CPU must redo.
-    /// The caller has flushed Skia's work and resets Skia's GL state afterwards.
-    pub fn run(&mut self, src: u32, (w, h): (u32, u32), codes: &std::sync::Arc<[u32]>, deep: bool, out: &mut [u8]) -> Result<Vec<bool>, String> {
+    /// Queues the output of texture `src` (the frame, RGBA16F, w × h, top row first) with `codes` (color.rs `gpu_codes`):
+    /// RGBA8 (RGBA16 little-endian when `deep`; BGRA, premultiplied, when `screen`: see `finish`), and the marks of rows
+    /// the CPU redoes and, with `holds` (the slot it goes into and its form), of blocks differing from what that slot
+    /// holds. Nothing waits. The caller has flushed Skia's work and resets Skia's GL state afterwards.
+    pub fn start(&mut self, src: u32, (w, h): (u32, u32), codes: &std::sync::Arc<[u32]>, deep: bool, screen: bool, holds: Option<Holds>) -> Result<(), String> {
+        self.cancel();
         let f = &self.f;
         while (f.GetError)() != 0 {} // an earlier error is not ours
-        assert_eq!(out.len(), (w * h) as usize * if deep { 8 } else { 4 }, "output buffer size");
-        (f.BindBuffer)(0x88EB, 0); // PIXEL_PACK_BUFFER
+        (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
         (f.BindBuffer)(0x88EC, 0); // PIXEL_UNPACK_BUFFER
         for p in [0x0CF2, 0x0D02, 0x0CF3, 0x0CF4, 0x0D03, 0x0D04] {
             (f.PixelStorei)(p, 0); // (UN)PACK_ROW_LENGTH, SKIP_ROWS, SKIP_PIXELS
@@ -144,9 +133,12 @@ impl GpuOutput {
         (f.PixelStorei)(0x0D05, 1); // PACK_ALIGNMENT
         // The targets first: making one binds its texture.
         let fw = w.div_ceil(BLOCK);
-        let (fmt, ty) = if deep { (0x8D76, 0x1403) } else { (0x8D7C, 0x1401) }; // RGBA16UI / RGBA8UI
+        let fmt = if deep { 0x8D76 } else { 0x8D7C }; // RGBA16UI / RGBA8UI
         (f.ActiveTexture)(0x84C2);
-        let outs = [target(f, &mut self.out, (w, h, fmt))?, target(f, &mut self.flags, (fw, h, 0x8232))?]; // R8UI
+        let out = target(f, &mut self.cur, (w, h, fmt))?;
+        let flags = target(f, &mut self.flags, (fw, h, 0x8232))?; // R8UI
+        let slot = holds.map(|k| k.1);
+        let prev = slot.and_then(|s| self.kept[s].as_ref()).filter(|k| Some(k.1) == holds).map(|k| k.0.tex);
         (f.ActiveTexture)(0x84C1);
         (f.BindSampler)(1, 0);
         (f.BindTexture)(TEXTURE_2D, self.codes);
@@ -165,28 +157,115 @@ impl GpuOutput {
         }
         (f.ColorMask)(1, 1, 1, 1);
         (f.BindVertexArray)(self.vao);
-        for (k, &(fbo, tw, th)) in outs.iter().enumerate() {
+        for (k, (fbo, tw, th, _)) in [out, flags].into_iter().enumerate() {
+            if k == 1 {
+                // The marks read this frame's output and the slot's: units 3 and 4.
+                for (unit, tex) in [(0x84C3, out.3), (0x84C4, prev.unwrap_or(out.3))] {
+                    (f.ActiveTexture)(unit);
+                    (f.BindSampler)(unit - 0x84C0, 0);
+                    (f.BindTexture)(TEXTURE_2D, tex);
+                }
+                (f.ActiveTexture)(0x84C0);
+            }
             let prog = self.programs[k];
             (f.UseProgram)(prog);
             let loc = |n: &str| (f.GetUniformLocation)(prog, CString::new(n).unwrap().as_ptr() as *const u8);
-            (f.Uniform1i)(loc("src"), 0);
-            (f.Uniform1i)(loc("codes"), 1);
-            (f.Uniform1ui)(loc("deep"), deep as u32);
-            (f.Uniform1i)(loc("width"), w as i32);
+            for (n, v) in [("src", 0), ("codes", 1), ("cur", 3), ("prev", 4), ("width", w as i32)] {
+                (f.Uniform1i)(loc(n), v);
+            }
+            for (n, v) in [("deep", deep), ("screen", screen), ("compare", prev.is_some())] {
+                (f.Uniform1ui)(loc(n), v as u32);
+            }
             (f.BindFramebuffer)(FRAMEBUFFER, fbo);
             (f.Viewport)(0, 0, tw as i32, th as i32);
             (f.DrawArrays)(0x0004, 0, 3);
         }
-        (f.BindFramebuffer)(FRAMEBUFFER, outs[0].0);
-        (f.ReadPixels)(0, 0, w as i32, h as i32, RGBA_INTEGER, ty, out.as_mut_ptr() as *mut c_void);
-        let mut flags = vec![0u8; (fw * h) as usize];
-        (f.BindFramebuffer)(FRAMEBUFFER, outs[1].0);
-        (f.ReadPixels)(0, 0, fw as i32, h as i32, RED_INTEGER, 0x1401, flags.as_mut_ptr() as *mut c_void);
-        (f.BindFramebuffer)(FRAMEBUFFER, 0);
-        match (f.GetError)() {
-            0 => Ok(flags.chunks(fw as usize).map(|r| r.iter().any(|&b| b != 0)).collect()),
-            e => Err(format!("the GPU output step: GL error 0x{e:x}")),
+        // The marks into the pixel buffer, read when the fence has passed.
+        let bytes = (fw * h) as usize;
+        (f.BindBuffer)(PIXEL_PACK_BUFFER, self.pbo.0);
+        if self.pbo.1 < bytes {
+            (f.BufferData)(PIXEL_PACK_BUFFER, bytes as isize, std::ptr::null(), 0x88E1); // STREAM_READ
+            self.pbo.1 = bytes;
         }
+        (f.ReadPixels)(0, 0, fw as i32, h as i32, RED_INTEGER, 0x1401, std::ptr::null_mut());
+        (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
+        (f.BindFramebuffer)(FRAMEBUFFER, 0);
+        let fence = (f.FenceSync)(0x9117, 0); // SYNC_GPU_COMMANDS_COMPLETE
+        match (f.GetError)() {
+            0 => {
+                self.pending = Some(Pending { fence, holds, compare: prev.is_some(), w, h, deep });
+                Ok(())
+            }
+            e => {
+                (f.DeleteSync)(fence);
+                Err(format!("the GPU output step: GL error 0x{e:x}"))
+            }
+        }
+    }
+
+    /// The started output into `out` (exactly its size): waits for the GPU, then reads the rows that changed (all of
+    /// them without a slot or when the slot held something else) and are not the CPU's; returns the CPU's rows. With a
+    /// slot, `out` must be that slot's bytes, as last written (rows not read are left as they are).
+    pub fn finish(&mut self, out: &mut [u8]) -> Result<Done, String> {
+        let p = self.pending.take().ok_or("the GPU output step: nothing started")?;
+        let f = &self.f;
+        let waited = (f.ClientWaitSync)(p.fence, 0x1, u64::MAX); // SYNC_FLUSH_COMMANDS_BIT
+        (f.DeleteSync)(p.fence);
+        if waited == 0x911D {
+            return Err("the GPU output step: waiting for the GPU failed".into());
+        }
+        let (w, h, bpp) = (p.w as usize, p.h as usize, if p.deep { 8 } else { 4 });
+        assert_eq!(out.len(), w * h * bpp, "output buffer size");
+        let fw = (p.w.div_ceil(BLOCK)) as usize;
+        (f.BindBuffer)(PIXEL_PACK_BUFFER, self.pbo.0);
+        let ptr = (f.MapBufferRange)(PIXEL_PACK_BUFFER, 0, (fw * h) as isize, 0x1); // MAP_READ_BIT
+        if ptr.is_null() {
+            (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
+            return Err("the GPU output step: mapping its marks failed".into());
+        }
+        let marks: Vec<u8> = unsafe { std::slice::from_raw_parts(ptr, fw * h) }.chunks(fw).map(|r| r.iter().fold(0, |a, b| a | b)).collect();
+        (f.UnmapBuffer)(PIXEL_PACK_BUFFER);
+        (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
+        let read = |m: u8| m & 1 == 0 && (!p.compare || m & 2 != 0);
+        let ty = if p.deep { 0x1403 } else { 0x1401 };
+        let cur = self.cur.as_ref().ok_or("the GPU output step: no output")?;
+        (f.BindFramebuffer)(FRAMEBUFFER, cur.fbo);
+        (f.PixelStorei)(0x0D05, 1);
+        let (mut y, mut rows_read) = (0, 0);
+        while y < h {
+            if !read(marks[y]) {
+                y += 1;
+                continue;
+            }
+            let n = marks[y..].iter().take_while(|&&m| read(m)).count();
+            (f.ReadPixels)(0, y as i32, w as i32, n as i32, RGBA_INTEGER, ty, out[y * w * bpp..].as_mut_ptr() as *mut c_void);
+            rows_read += n as u32;
+            y += n;
+        }
+        (f.BindFramebuffer)(FRAMEBUFFER, 0);
+        if let Some(e) = Some((f.GetError)()).filter(|&e| e != 0) {
+            self.kept = [None, None];
+            return Err(format!("the GPU output step: GL error 0x{e:x}"));
+        }
+        // The slot now holds this output: its target is kept for the next frame into that slot.
+        if let Some(holds) = p.holds {
+            let old = self.kept[holds.1].take().map(|k| k.0);
+            self.kept[holds.1] = Some((self.cur.take().unwrap(), holds));
+            self.cur = old;
+        }
+        Ok(Done { cpu_rows: marks.iter().map(|m| m & 1 != 0).collect(), rows_read })
+    }
+
+    /// Drops an output started and not finished (the slot it was for keeps what it holds).
+    pub fn cancel(&mut self) {
+        if let Some(p) = self.pending.take() {
+            (self.f.DeleteSync)(p.fence);
+        }
+    }
+
+    /// A slot was written some other way: what it holds is no longer known here.
+    pub fn forget(&mut self, slot: usize) {
+        self.kept[slot] = None;
     }
 }
 
@@ -197,8 +276,8 @@ fn nearest(f: &Fns) {
     (f.TexParameteri)(TEXTURE_2D, 0x813D, 0); // MAX_LEVEL
 }
 
-/// The target at `size` (w, h, internal format), made or remade; (framebuffer, w, h).
-fn target(f: &Fns, t: &mut Option<Target>, size: (u32, u32, u32)) -> Result<(u32, u32, u32), String> {
+/// The target at `size` (w, h, internal format), made or remade; (framebuffer, w, h, texture).
+fn target(f: &Fns, t: &mut Option<Target>, size: (u32, u32, u32)) -> Result<(u32, u32, u32, u32), String> {
     if t.as_ref().is_none_or(|t| t.size != size) {
         let (mut tex, mut fbo) = t.as_ref().map_or((0, 0), |t| (t.tex, t.fbo));
         if tex == 0 {
@@ -217,7 +296,7 @@ fn target(f: &Fns, t: &mut Option<Target>, size: (u32, u32, u32)) -> Result<(u32
         *t = Some(Target { tex, fbo, size });
     }
     let t = t.as_ref().unwrap();
-    Ok((t.fbo, size.0, size.1))
+    Ok((t.fbo, size.0, size.1, t.tex))
 }
 
 fn program(f: &Fns, defines: &str) -> Result<u32, String> {
