@@ -51,7 +51,10 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
 // around full-size bulbs (a small bulb hundreds of times too bright, the same at any radius) and made normalize
 // 10 000x too bright (H23); brief 10b.
 // Motion blur is on when the camera looked through has an open shutter (the shot's, lights_cameras.cpp); a free
-// camera has none. Cycles then samples the camera's moves within the shutter.
+// camera has none. Cycles then samples the camera's moves within the shutter, and every object's moves within the
+// shutter it was told (rostrum:shutterOpen / Close, our patch: libs/cycles-rostrum.patch). That one is only set from
+// an open shutter and kept while a free camera looks: objects sample their moves when they change, not when the
+// camera does, so the samples are still right when the shot camera looks again (a new shutter rewrites them anyway).
 void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStageRefPtr& stage,
                      const SdfPath& camera) {
   const auto set = [&](const char* key, const VtValue& v) {
@@ -67,6 +70,10 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
       cam.GetShutterCloseAttr().Get(&close);
     }
   set("cycles:integrator:motion_blur", VtValue(close > open));
+  if (close > open) {
+    set("rostrum:shutterOpen", VtValue(open));
+    set("rostrum:shutterClose", VtValue(close));
+  }
 }
 
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
