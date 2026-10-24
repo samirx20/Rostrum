@@ -256,8 +256,9 @@ every dialog, the sizes and the wireframes.
 - **Ruler** (two lines high): bars on top, seconds below; the **section band** (names as labels you can drag); the
   **marker band** (shared markers solid with a small chain, this song's own hollow *(S30, as §3.12)*; tied items show a small flag); the time range and a
   time-range selection as a shaded band; the playhead.
-- **Track headers** (left column): colour stripe, name, **M** (mute) **S** (solo), **Rec** on tracks that can record,
-  a small level meter while playing; "Auto" (automation lanes, A) on hover or when the track has automation.
+- **Track headers** (left column): colour stripe, name, then four buttons in fixed places whatever the selection (**R** on tracks that can
+  record, **M** mute, **S** solo, **A** automation lanes), a small level meter while playing; a small padlock
+  only on a locked track (lock itself: right-click, Ctrl+Shift+L). No volume readout on the header.
   Below the last track: **+ Track**. The **Master** row is last, always.
 - **Lanes:** notes as a mini piano roll, drum hits as ticks, clips as waveforms,
   voice lines as word blocks, automation lanes opened under their track.

@@ -76,7 +76,7 @@ def strip(item: dict, name: str, meter: dict, routing: dict | None = None, vendo
     kind = item["type"]
     return {"id": item["id"], "name": name, "hue": hue, "volume": item.get("volume", 1), "pan": item.get("pan", 0),
             "mute": bool(item.get("mute")), "solo": bool(item.get("solo")), "effects": chain(item, vendor_of), "meter": meter,
-            "reverb": item.get("reverb", 0) if kind == "track" else None, "canSolo": kind == "track", "canArm": kind == "track", "canMute": kind != MASTER, "canPan": kind != MASTER,
+            "reverb": item.get("reverb", 0) if kind == "track" else None, "canSolo": kind == "track", "canArm": kind == "track" and item.get("instrument") != "voice", "canMute": kind != MASTER, "canPan": kind != MASTER,
             **(routing or ROUTING_NONE)}
 
 

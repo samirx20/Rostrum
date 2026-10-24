@@ -58,6 +58,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("mixer", ["--sample"], ["dock mixer", "select drums"]),
         ("f11-track", ["--sample"], ["select melody"]),                         # F11: the track's settings panel
         ("f11-clip", ["--sample"], ["select-clip door"]),                       # F11: a clip's settings panel
+        ("header-long-name-selected", long_project(), [f"select {LONG_TRACK}"]),               # B3: the name keeps its room, buttons stay put
+        ("header-long-name-locked", long_project(), ["select drums", f"lock {LONG_TRACK}"]),    # B3: a padlock by the name, the unselected row
         ("library", ["--sample"], ["library"]),
         ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:grandPiano"]),
         ("library-trying-long", long_project(), [*busy, f"select {LONG_TRACK}", "library", "audition builtIn:grandPiano"]),   # P29: Keep / Revert
