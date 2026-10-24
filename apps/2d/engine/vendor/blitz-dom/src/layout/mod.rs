@@ -882,7 +882,16 @@ impl RoundTree for LayoutPassState<'_> {
     }
 
     fn set_final_layout(&mut self, node_id: NodeId, layout: &Layout) {
+        let old = *self.node_from_id(node_id).final_layout();
         *self.node_from_id_mut(node_id).final_layout_mut() = *layout;
+        // Rostrum patch (J1): boxes are rounded in page coordinates, so a box nothing restyled can round to another size
+        // or offset when an ancestor moves by a fraction of a pixel (a 26.4 px line is 26 or 27 px tall). Its transform
+        // (`translate(-50%)` resolves against the rounded size) and the overflow rects up its positioning chain are kept
+        // between frames unless the box carries RECALCULATE_OVERFLOW (resolve.rs `resolve_transforms`), so they stayed
+        // those of an earlier frame and incremental layout drew such text half a pixel off a fresh layout's.
+        if old.size != layout.size || old.location != layout.location {
+            mark_overflow_stale(self, dom_node_id(node_id));
+        }
     }
 
     fn is_out_of_flow(&self, node_id: NodeId) -> bool {
@@ -998,5 +1007,20 @@ impl Iterator for RefCellChildIter<'_> {
             self.idx += 1;
             taffy_node_id(*id)
         })
+    }
+}
+
+/// Rostrum patch (J1): `node` and every box up its positioning chain (the chain `resolve_transforms` walks down) get
+/// their transform and overflow recomputed this frame. Stops at a box already marked: its chain is marked too.
+fn mark_overflow_stale(doc: &mut BaseDocument, node: crate::NodeId) {
+    use style::selector_parser::RestyleDamage;
+    let mut current = Some(node);
+    while let Some(id) = current {
+        let Some(n) = doc.nodes.get_mut(id) else { return };
+        if n.damage().is_some_and(|d| d.contains(RestyleDamage::RECALCULATE_OVERFLOW)) {
+            return;
+        }
+        n.insert_damage(RestyleDamage::RECALCULATE_OVERFLOW);
+        current = n.containing_block();
     }
 }

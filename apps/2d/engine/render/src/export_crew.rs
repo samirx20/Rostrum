@@ -185,21 +185,12 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, (w, of): (usize,
     })
 }
 
-/// Draws `frames` on `s`, each laid out whole (not incrementally): an exported frame is a function of its time alone,
-/// whichever frames this worker (or the canvas before the export) drew first. Incremental layout kept state from earlier
-/// frames that moved Lull's small phone texts by a pixel (still open for the live canvas: C:\Users\Sam\.rostrum\waves\results\2d-export-speed\REPORT.md); an export's motion-blur
-/// samples restyle nearly every piece anyway, so the whole layout costs no measurable time (Lull 100 ms a frame either way).
+/// Draws `frames` on `s`, laid out incrementally as the canvas lays out its frames (one path: preview = export). An
+/// exported frame is still a function of its time alone, whichever frames this worker (or the canvas before the export)
+/// drew first: incremental layout gives a fresh layout's boxes (vendor/PATCHES.md J1; incremental_tests.rs). Laying every
+/// export frame out whole cost Night Bloom ~40 % more layout (calm 4-5 s: 256 vs 147 ms a frame per worker).
 #[allow(clippy::too_many_arguments)]
 fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: impl Iterator<Item = u64>, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
-    let was = s.doc.incremental_layout();
-    s.doc.set_incremental_layout(false);
-    let r = draw_whole(held, s, req, span, frames, rx, failed, on_row);
-    s.doc.set_incremental_layout(was);
-    r
-}
-
-#[allow(clippy::too_many_arguments)]
-fn draw_whole(held: &Held, s: &mut Session, req: &Value, span: Span, frames: impl Iterator<Item = u64>, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let mut costs = Costs::default();
     for i in frames {
         if let Some(e) = failed.lock().unwrap().as_ref() {
