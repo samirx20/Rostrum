@@ -28,11 +28,11 @@ from . import expression as EX
 from .builder import Song
 from .doc import KIND, meter
 from . import script_scope
-from .script_time import Beat, Beats, plain
+from .script_time import Beat, Beats, plain, until
 
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)",
        "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
-       "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
+       "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)"]
 
 
 def scope(song: Song) -> dict:
@@ -55,7 +55,7 @@ def scope(song: Song) -> dict:
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
-        "beat": Beat, "beats": Beats, "bar": bar, "vel_curve": vel_curve,
+        "beat": Beat, "beats": Beats, "bar": bar, "until": until, "vel_curve": vel_curve,
     }
 
 

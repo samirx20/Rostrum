@@ -22,7 +22,7 @@ def ties(data: dict) -> list[str]:
                 try:
                     times.length_seconds(d, data, times.seconds(n["at"], data, n["id"]), n, n["id"])
                 except RostrumError as e:
-                    out.append(f"{n['id']}: {e.subject} {e.problem}: render_mix refuses it until the note ends after it starts")
+                    out.append(f"{n['id']}: {e.subject} {e.problem}: render_mix refuses it until the note ends after it starts. {e.hint}")
     return out
 
 

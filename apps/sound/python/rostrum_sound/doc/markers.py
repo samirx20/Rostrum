@@ -4,7 +4,9 @@
     markers.all(doc)               # [(name, seconds)] by time (own=True: only the document's own)
     markers.time_of(doc, "drop")   # seconds; raises a not-found error naming the marker (and the ones that exist)
     markers.resolve(doc, "#drop+0.5", where)   # seconds; any other time is returned as written
+                                   # ("#drop+2beats": two beats after it, on the tempo map where it sits)
     markers.ref("#logo lands+0.5") # "logo lands" (the marker a time names) or None
+    markers.parts("#end-2beats")   # ("end", -2.0, "beats"): the marker, the offset, its unit ("s" or "beats")
     markers.used(doc)              # {name: seconds} of the markers the document names: part of a render's key
 
 `doc` is a document's root dict. Two kinds of marker:
@@ -21,12 +23,18 @@ operation `marker.follow` rewrites them (doc/ops_mix.py), all in one change.
 """
 from __future__ import annotations
 
+import re
 from contextlib import contextmanager
 
 from rostrum_core import markers as shared
 from rostrum_core.edits import Set
 from rostrum_core.errors import RostrumError, codes
-from rostrum_core.marker_times import REF, _key as key, ref, split  # the one reader of "#drop+0.5" (every app)
+from rostrum_core.marker_times import _key as key
+
+# A time written on a marker: "#drop", "#drop+0.5" (seconds), "#drop-1", "#drop+2beats" (beats on the tempo map; "beat"
+# too). The shared reader (rostrum_core.marker_times, 2D) knows seconds only; Sound adds the beat unit here, in the
+# one place Sound reads it.
+REF = re.compile(r"^#(\S(?:.*?\S)?)\s*(?:([+-])\s*(\d+(?:\.\d+)?)\s*(beats?)?)?$")
 
 from . import tempo
 
@@ -99,16 +107,31 @@ def time_of(doc: dict, name: str, where: str = "marker", seen=()) -> float:
     return _at(m, n, doc, (*seen, key(name)))
 
 
+def parts(value) -> tuple[str, float, str] | None:
+    """(marker name, signed offset, "s" | "beats") for "#drop+0.5" / "#drop-2beats"; None when not a marker reference."""
+    m = REF.match(value) if isinstance(value, str) else None
+    if not m:
+        return None
+    return m.group(1), float(m.group(3) or 0) * (-1 if m.group(2) == "-" else 1), "beats" if m.group(4) else "s"
+
+
+def ref(value) -> str | None:
+    """The marker a time names ("#drop+0.5" -> "drop"), or None."""
+    got = parts(value)
+    return got[0] if got else None
+
+
 def resolve(doc: dict, value, where: str, seen=()):
     """The time with a marker reference made seconds; seconds and beats are kept as written."""
-    parts = split(value)
-    if parts is None:
+    got = parts(value)
+    if got is None:
         return value
-    name, offset = parts
+    name, offset, unit = got
     at = time_of(doc, name, where, seen)
-    if at + offset < 0:
+    end = tempo.seconds_at(doc, tempo.beat_at(doc, at) + offset) if unit == "beats" else at + offset
+    if end < 0:
         raise RostrumError(codes.BAD_ARGUMENT, where, value, "lands before the start of the mix")
-    return round(at + offset, 6)
+    return round(end, 6)
 
 
 def refs_in(node):

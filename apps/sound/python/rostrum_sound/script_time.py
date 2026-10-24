@@ -10,10 +10,40 @@ document values (a dict subclass: the document and the engine see `{"beat": n}`)
 `plain(tree)` turns them back into plain dicts where the script hands its tree to the document (the history and the
 file store plain values only). A bare number is seconds everywhere else, so `bar(5) + 0.5` would mix beats and seconds: that is refused with the two
 forms that say what was meant (never guessed).
+
+A marker plus or minus beats is a time on that marker, in beats: `"#end" + beats(2)` is `"#end+2beats"`, `"#drop" -
+beats(1)` is `"#drop-1beats"` (worked out on the tempo map where the marker sits, so it follows the marker). A marker that
+already has a seconds offset ("#drop+0.5") takes no beats: that mixes the two. `until(t)` is a note's length that ends
+at `t` (a time or a marker): `until("#end")`, the same as `end="#end"` on a note.
 """
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
+
+from .doc import markers
+
+
+def _on_marker(ref: str, beats: float, op, other):
+    """`ref` (a marker time) moved by `beats`: "#end" + beats(2) -> "#end+2beats". A marker that has an offset already
+    can't take a second one in another unit."""
+    got = markers.parts(ref)
+    if got is None:
+        _refuse(ref, op, other)
+    if got[1]:
+        raise RostrumError(codes.BAD_ARGUMENT, "beat arithmetic", f"{ref!r} {op} {_show(other)}",
+                           "can't be worked out: the marker time already has an offset, and adding beats to it mixes "
+                           "seconds and beats",
+                           [f'"#{got[0]}" {op} beats(2)', f'"#{got[0]}+{abs(got[1]):g}" (seconds only)'])
+    return f"#{got[0]}{beats:+g}beats"
+
+
+def until(time):
+    """A note's length that ends at `time` (a time or a marker): `until("#end")`, `until(bar(9))`: the note stays tied
+    to where that is. Also written `end=time` on a note."""
+    if isinstance(time, bool) or not isinstance(time, (int, float, str, Beat)):
+        raise RostrumError(codes.BAD_ARGUMENT, "until", repr(time), "is not a time",
+                           ['until("#end")', "until(bar(9))", "until(20.5)"])
+    return {"to": time}
 
 
 def _refuse(a, op, b):
@@ -22,8 +52,8 @@ def _refuse(a, op, b):
         why = "a time compares with a time and a length with a length (a bare number is seconds)"
         accepted = ["bar(5) < beat(20)", "beats(2) <= beats(4)", "t[\"beat\"] < 20 (the beat number itself)"]
     elif isinstance(a, str) or isinstance(b, str):
-        why = "a marker is a moment in seconds, so beats after it have no one meaning (the tempo there decides)"
-        accepted = ['"#drop+0.5" (seconds after a marker)', "a marker on the grid: marker(\"drop\", at=bar(5)); then bar(5) + beats(1)"]
+        why = "a marker plus a length is `marker + beats(n)`; anything else added to a marker text is not a time"
+        accepted = ['"#drop" + beats(1) (a beat after the marker)', '"#drop+0.5" (seconds after a marker)']
     elif isinstance(a, (int, float)) or isinstance(b, (int, float)):
         why = "a bare number is seconds, so a beat time plus a number mixes beats and seconds"
         accepted = ["bar(5) + beats(0.5) (half a beat later)", "beat(16.5) (a beat number)", "18.5 (seconds, a bare number)"]
@@ -117,6 +147,8 @@ class Beats(dict):
     def __radd__(self, other):
         if isinstance(other, (Beat, Beats)) or _zero(other):
             return self + other
+        if isinstance(other, str):
+            return _on_marker(other, self["beats"], "+", self)
         _refuse(other, "+", self)
 
     def __sub__(self, other):
@@ -125,6 +157,8 @@ class Beats(dict):
         _refuse(self, "-", other)
 
     def __rsub__(self, other):
+        if isinstance(other, str):
+            return _on_marker(other, -self["beats"], "-", self)
         _refuse(other, "-", self)
 
     def __mul__(self, k):
