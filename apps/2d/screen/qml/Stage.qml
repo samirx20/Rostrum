@@ -105,6 +105,22 @@ Rectangle {
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""
                 cache: false; smooth: true
             }
+            Image {  // wet ink's settled part (screen2d/wet.py)
+                readonly property var w: painter.wet
+                visible: w.drySerial > 0
+                x: (w.dryBox.x || 0) * view.zoom; y: (w.dryBox.y || 0) * view.zoom
+                width: (w.dryBox.w || 0) * view.zoom; height: (w.dryBox.h || 0) * view.zoom
+                source: w.drySerial > 0 ? "image://wet/dry-" + w.drySerial : ""
+                cache: false; smooth: true; asynchronous: false
+            }
+            Image {  // wet ink: the stroke being drawn, at once, until the frame with it saved lands (screen2d/wet.py)
+                readonly property var w: painter.wet
+                visible: w.serial > 0
+                x: (w.box.x || 0) * view.zoom; y: (w.box.y || 0) * view.zoom
+                width: (w.box.w || 0) * view.zoom; height: (w.box.h || 0) * view.zoom
+                source: w.serial > 0 ? "image://wet/tip-" + w.serial : ""
+                cache: false; smooth: true; asynchronous: false
+            }
         }
         Shape {  // the frame's edge, so a dark composition still shows where it ends; dotted once zoomed or panned off Fit
             x: frame.x - 1; y: frame.y - 1

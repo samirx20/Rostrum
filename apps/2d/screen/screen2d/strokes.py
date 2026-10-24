@@ -3,7 +3,8 @@ inside its outline and moves with it): one press-drag-release = one Drag = one c
 
 Press: previews `paint.stroke` (a fixed id, the points so far, in the paint canvas's px) at the frame the playhead is
 on: the operation makes the drawing, the paint layer and the paint size if missing, in the same change. Each move
-previews `stroke.set {points}`; release records the one change. Canvas px come from composition px through the
+previews `stroke.set {points}`; release records the one change. With `wet` (wet.py shows the stroke meanwhile) only release
+writes it: the whole stroke in one call. Canvas px come from composition px through the
 layer's place at the press (`placer(layer id)`: the engine's own placement through its groups, the camera and tilt;
 rostrum2d/placement.py, the one mapping agents' strokes use too). A pen's lean (pen_tilt.py, screen directions) goes
 through the same placement, so on a turned layer it still points the way the pen leans on screen. With `make` (the Add menu's layer.add calls for a drawing) the same change first
@@ -37,8 +38,8 @@ def check_showing(item: dict, own_t: float, playhead: float) -> None:
 
 class StrokeDrag:
     def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, placer, pressure=1.0,
-                 make=None, layer: str = "", lean=None):
-        self.doc, self.sid, self.points, self._waiting = doc, random_id("stroke"), [], False
+                 make=None, layer: str = "", lean=None, wet: bool = False):
+        self.doc, self.sid, self.points, self._waiting, self.wet = doc, random_id("stroke"), [], False, wet
         self._drag = Drag(doc, who, "Paint")
         try:
             if make:
@@ -47,9 +48,11 @@ class StrokeDrag:
             self.props = resolve(self.item, t)
             self.place = placer(layer_id)
             self._add(x, y, pressure, lean)
-            self._drag.preview([{"op": "paint.stroke", "target": [layer_id],
-                                 "args": {**brush, "id": self.sid, "points": self.points, "space": "canvas", "layer": layer,
-                                          "frame": max(0, frame_number(t, fps))}}])
+            self._call = {"op": "paint.stroke", "target": [layer_id],
+                          "args": {**brush, "id": self.sid, "points": self.points, "space": "canvas", "layer": layer,
+                                   "frame": max(0, frame_number(t, fps))}}
+            if not wet:                 # wet: the document gets the stroke once, at the end (wet.py shows it till then)
+                self._drag.preview([self._call])
         except Exception:
             self._drag.end(cancel=True)
             raise
@@ -81,14 +84,24 @@ class StrokeDrag:
         self._waiting |= self._add(x, y, pressure, lean)
         return self._waiting
 
+    def scale(self, x: float, y: float) -> float:
+        """Canvas px per composition px here (the brush size is in canvas px)."""
+        a, b = canvas_points(self.item, self.props, self.place, [[x, y], [x + LEAN_STEP, y]])
+        return math.hypot(b[0] - a[0], b[1] - a[1]) / LEAN_STEP
+
     def show(self):
+        if self.wet:
+            return
         if self._waiting:
             self._waiting = False
             self._drag.preview([{"op": "stroke.set", "target": [self.sid], "args": {"points": self.points}}])
 
     def end(self):
         """The one change, or None if the stroke was refused."""
-        self.show()
+        if self.wet:
+            self._drag.preview([self._call])
+        else:
+            self.show()
         return self._drag.end()
 
     def cancel(self):

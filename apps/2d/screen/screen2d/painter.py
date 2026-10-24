@@ -6,7 +6,7 @@ on this object (brush_panel.py), so the panel is built from the brush settings' 
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum2d.drawing import each_frame, frame_at, frame_number
 from rostrum2d.names import display_name
 from rostrum2d.ops_paint import PAINTABLE
@@ -14,6 +14,7 @@ from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, brush_presets, framing, onion
+from .wet import WetInk, WetView, shows
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -36,6 +37,7 @@ class Painter(BrushPanel):
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
+        self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
         self.model = RowsModel(rows.ROLES, self)
@@ -159,9 +161,14 @@ class Painter(BrushPanel):
         def go():
             if not make:
                 check_showing(self.b.doc.item(d["id"]), self.b.own_t(d["id"]), self.b.time)
-            self._stroke = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]), c["fps"],
-                                      self.brush.stroke_args(), x, y, self.b.place_of, pressure, make, layer,
-                                      self.tilt.lean())
+            args = self.brush.stroke_args()
+            wet = shows(args)
+            self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
+                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), wet)
+            if wet:
+                self._wet.start(WetInk(args, s.sid, s.scale(x, y), (c["width"], c["height"])))
+                self._wet.add(x, y, pressure)
+                self._wet.show()
             if make:
                 self._fresh = None
                 self.b.select(d["id"])
@@ -170,6 +177,8 @@ class Painter(BrushPanel):
     @Slot(float, float, float)
     def strokeTo(self, x, y, pressure):
         s = self._stroke
+        if s is not None and s.wet:
+            self._wet.add(x, y, pressure)
         if s is not None and self.b.guard(lambda: s.move(x, y, pressure, self.tilt.lean())) and not self._showing:
             self._showing = True                    # after the moves already queued: one picture for all of them
             QTimer.singleShot(0, self._show_stroke)
@@ -178,13 +187,18 @@ class Painter(BrushPanel):
         self._showing = False
         s = self._stroke
         if s is not None:
-            self.b.guard(s.show)
+            self.b.guard(self._wet.show if s.wet else s.show)
+
+    wet = Property(QObject, lambda self: self._wet, constant=True)
 
     @Slot()
     def endStroke(self):
         s, self._stroke = self._stroke, None
         if s is not None:
-            if self.b.guard(lambda: self.b.done(s.end(), "")):
+            saved = self.b.guard(lambda: self.b.done(s.end(), ""))
+            if s.wet:
+                self._wet.lift(saved)
+            if saved:
                 self._new_layer = False             # the new paint layer is made: later strokes go on it
             self._refresh()
 
