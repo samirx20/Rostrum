@@ -17,7 +17,7 @@ use tip::Tip;
 
 /// The layout of `params` and `dabs` and the meaning of the tip / mode ids (the kit's native.py writes the same).
 /// Bump it with any change to the call: native.py reads `rostrum2d_stamp_layout` on load and refuses another build.
-pub const LAYOUT: f64 = 3.0;
+pub const LAYOUT: f64 = 4.0;
 const P_LAYOUT: usize = 0;
 const P_TIP: usize = 1;
 const P_MODE: usize = 2;
@@ -36,8 +36,9 @@ const P_D: usize = 17;
 const P_H: usize = 18;
 const P_W: usize = 19;
 const P_TEX: usize = 20; // the tip picture's side; 0: none
-pub const PARAMS: usize = 21;
-pub const DAB: usize = 21; // x y r a cos sin t s lay take take_weak wv x0 x1 y0 y1 oy ox r g b
+const P_WRAP: usize = 21; // 1: a seamless canvas, its opposite edges joined (the kit's wrap.py)
+pub const PARAMS: usize = 22;
+pub const DAB: usize = 22; // x y r a cos sin t s lay take take_weak wv x0 x1 y0 y1 oy ox r g b again
 
 pub struct Stroke<'a> {
     pub tip: Tip,
@@ -48,6 +49,8 @@ pub struct Stroke<'a> {
     pub cj: f64,
     pub wet: f64,
     pub sample_all: bool,
+    /// The canvas's opposite edges are joined: the reservoir picks up across them, not the edge repeated.
+    pub wrap: bool,
     pub grain: Option<f64>,
     pub r0: f64,
     pub rl: f64,
@@ -84,6 +87,9 @@ pub struct Dab {
     pub bx: [i64; 4], // x0 x1 y0 y1
     pub at: [i64; 2], // the reservoir's window: oy, ox
     pub col: [f32; 3],
+    /// Another part of the dab before it (a seamless canvas lays a dab crossing an edge on both sides): it lays with
+    /// the reservoir that dab picked up, picking up nothing itself.
+    pub again: bool,
 }
 
 impl Dab {
@@ -93,6 +99,7 @@ impl Dab {
             x: row[0], y: row[1], r: row[2], a: row[3], cos: row[4], sin: row[5], t: row[6], s: row[7],
             lay: row[8], take: row[9], take_weak: row[10] != 0.0, wv: row[11],
             bx: [i(12), i(13), i(14), i(15)], at: [i(16), i(17)], col: [row[18] as f32, row[19] as f32, row[20] as f32],
+            again: row[21] != 0.0,
         }
     }
 }
@@ -114,7 +121,7 @@ unsafe fn stroke<'a>(p: &[f64], profiles: *const f64, mask: *const f32, g: *cons
     let st = Stroke {
         tip: Tip::from_id(p[P_TIP]).ok_or("unknown tip")?,
         mode: Mode::from_id(p[P_MODE]).ok_or("unknown mode")?,
-        kr, soft: p[P_SOFT], along: p[P_ALONG], cj: p[P_CJ], wet: p[P_WET], sample_all: p[P_SAMPLE_ALL] != 0.0, grain,
+        kr, soft: p[P_SOFT], along: p[P_ALONG], cj: p[P_CJ], wet: p[P_WET], sample_all: p[P_SAMPLE_ALL] != 0.0, wrap: p[P_WRAP] != 0.0, grain,
         r0: p[P_R0], rl: p[P_RL], length: p[P_LENGTH], w: p[P_W] as usize,
         prof: &prof[..kr], start: &prof[kr..2 * kr], end: &prof[2 * kr..3 * kr], streak: &prof[3 * kr..],
         mask: field(mask), paper_g: field(g), paper_f: field(f),

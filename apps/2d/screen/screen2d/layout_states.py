@@ -32,7 +32,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -283,6 +283,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # element's own paint and its painted fill
         ("paint-in-place", ["--sample"], [*IN_PLACE, "draw 600 300 900 330 1200 300"]),
         ("paint-in-place-layer", ["--sample"], [*IN_PLACE, "clickobj paintingOnLayer"]),
+        # painted fill P5: Seamless on while painting in place; a stroke leaving the card comes back on its other side
+        ("paint-in-place-seamless", ["--sample"], [*IN_PLACE, "painttoggle seamless on", "draw 1150 560 1350 600 1500 640"]),
         ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),

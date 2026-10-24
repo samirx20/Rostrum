@@ -113,6 +113,9 @@ FIELDS: dict[str, list[Param]] = {
         *BRUSH,
         Param.text("mask", label="Mask", default="", importance=S, group="Mask",
                    help="A paint mask's id: the stroke only paints inside it (empty = no mask)"),
+        Param.toggle("wrap", label="Seamless", group="Path", importance=D,
+                     help="The canvas's opposite edges are joined: paint that crosses an edge comes back on the other "
+                          "side (wrap.py). Set when the stroke is made on a seamless canvas; left out = off"),
     ],
     "fill": [       # a closed area filled with one colour, kept as its outline (fill.py): it stays sharp
         Param.points("points", label="Outline", min=2, max=3, importance=D, group="Path",

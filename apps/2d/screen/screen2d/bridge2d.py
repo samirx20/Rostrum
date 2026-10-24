@@ -345,6 +345,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         if self.held_view is None:
             self._show()
 
+    def drawn(self) -> bool:
+        """The document's own picture is on screen: a frame landed, none is being drawn, and no paint picture of the
+        state shown is still being made (until then the frame shows the last ones; a scripted picture waits for this)."""
+        return self.frames.idle() and self._frame > 0 and self._waiting is None
+
     def _render_all(self):
         """Something outside the document changed (the markers, a 3D render): every node is described again."""
         self._keeper.forget()

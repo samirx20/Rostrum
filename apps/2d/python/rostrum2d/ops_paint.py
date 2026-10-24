@@ -22,7 +22,7 @@ from rostrum_paint.ops import build
 
 from rostrum_paint import linked
 
-from . import drawing as D, paint_fields, paint_grow, paint_overflow, paint_through, placement, shared_paints
+from . import drawing as D, paint_fields, paint_grow, paint_overflow, paint_through, paintings, placement, shared_paints
 from .engine import EngineError
 from .evaluate import resolve
 from .kind import REGISTRY as R
@@ -38,7 +38,7 @@ MASK = next(p for p in rostrum_paint.FIELDS["stroke"] if p.name == "mask")
              "canvas px shift by the growth left / up); past 8192 px a side the stroke starts a new drawing just above it "
              "(\"<name> 2\"), in the same undo step. A painting (painted fill): its own px, or `through` a layer filled with it "
              "(the stroke goes through that layer's fit, scale, offset, rotation and drift into the painting, and shows on "
-             "every layer using it; on Tile it carries on across tile edges).", target=PAINTABLE, label="Paint",
+             "every layer using it; on Tile it carries on across tile edges; on a seamless painting a stroke that crosses the painting's edge comes back on the opposite side).", target=PAINTABLE, label="Paint",
              params=[Param.points("points", label="Path", min=2, max=5, required=True,
                                   help="[[x, y, pressure 0..1, tilt x°, tilt y°], …]; pressure 1 and no lean when "
                                        "left out (tilt: the pen's lean each way, -60..60)"),
@@ -85,7 +85,8 @@ def paint_stroke(ctx, targets, args):
         sid = args.get("id") if len(targets) == 1 and args.get("id") else ctx.new_id("stroke")
         if sid in ctx.idx:
             ctx.fail(codes.BAD_ARGUMENT, f'id "{sid}"', "is already used in this document")
-        ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, "points": pts}, ctx.where))
+        wrap = {"wrap": True} if paintings.seamless(item) else {}       # a seamless painting: it wraps (the kit's wrap.py)
+        ctx.insert(paint["id"], "strokes", build("stroke", sid, {**brush, **wrap, "points": pts}, ctx.where))
         for piece in more:              # the same stroke in the other tiles it crossed into (paint_through.py)
             ctx.insert(paint["id"], "strokes", build("stroke", ctx.new_id("stroke"), {**brush, "points": piece}, ctx.where))
 

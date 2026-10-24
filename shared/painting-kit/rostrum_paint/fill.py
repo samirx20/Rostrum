@@ -7,7 +7,9 @@ stays as sharp as the strokes around it and replays like them.
 Finding the area (`region`): the lines are where the paint covers at least half; **Close gaps** thickens them by
 `gap` px first, so lines that don't quite meet still close the area; the area is then grown back by `gap` px plus
 one, so it tucks under the lines (no light seam between line and colour). An area that reaches the canvas's edge is
-not closed: `NotClosed` says so (never a fill of the whole canvas). The outline is traced along pixel edges and
+not closed: `NotClosed` says so (never a fill of the whole canvas). On a seamless canvas (`wrap`, wrap.py) the edges
+are joined: an area closed only across them is closed, and it is filled on both sides; only a canvas with no lines at
+all has nothing to close it. The outline is traced along pixel edges and
 simplified; each point is [x, y, ring]: ring 0 is the outside, 1, 2 … are holes (a closed shape inside the area).
 """
 from __future__ import annotations
@@ -27,9 +29,11 @@ class NotClosed(ValueError):
         self.plain = plain
 
 
-def _grow(m: np.ndarray, r: int) -> np.ndarray:
+def _grow(m: np.ndarray, r: int, wrap: bool = False) -> np.ndarray:
     """m thickened by about r px, roundly (one px at a time, crosses and squares in turn: an octagon, so a closed gap
-    has round ends like the brush's, not square corners)."""
+    has round ends like the brush's, not square corners). `wrap`: across the joined edges too."""
+    if wrap:            # grown on the canvas with r px of the opposite sides round it, then cut back
+        return _grow(np.pad(m, r, mode="wrap"), r)[r:r + m.shape[0], r:r + m.shape[1]] if r else m.copy()
     out = m.copy()
     for i in range(r):
         src = out.copy()
@@ -59,20 +63,26 @@ def _runs(free: np.ndarray, reached: np.ndarray) -> np.ndarray:
     return hit[ids].reshape(h, w)
 
 
-def _flood(free: np.ndarray, x: int, y: int) -> np.ndarray:
-    """The free pixels connected to (x, y), 4-neighbours: row and column spreads until nothing changes."""
+def _flood(free: np.ndarray, x: int, y: int, wrap: bool = False) -> np.ndarray:
+    """The free pixels connected to (x, y), 4-neighbours: row and column spreads until nothing changes (`wrap`: and
+    across the joined edges)."""
     got = np.zeros_like(free)
     got[y, x] = True
     while True:
         new = _runs(free.T.copy(), _runs(free, got).T.copy()).T
+        if wrap:
+            new[:, 0] |= new[:, -1] & free[:, 0]
+            new[:, -1] |= new[:, 0] & free[:, -1]
+            new[0] |= new[-1] & free[0]
+            new[-1] |= new[0] & free[-1]
         if (new == got).all():
             return got
         got = new
 
 
-def region(alpha: np.ndarray, at, gap: str = "small") -> list[list[float]]:
+def region(alpha: np.ndarray, at, gap: str = "small", wrap: bool = False) -> list[list[float]]:
     """The outline ([[x, y, ring], …], canvas px) of the closed area around `at` = (x, y) in the coverage `alpha`
-    (HxW 0..1: every paint layer the fill should stop at). Raises NotClosed."""
+    (HxW 0..1: every paint layer the fill should stop at); `wrap`: a seamless canvas. Raises NotClosed."""
     if gap not in GAPS:
         raise ValueError(f"gap must be one of {', '.join(GAPS)}, got {gap!r}")
     h, w = alpha.shape
@@ -81,16 +91,18 @@ def region(alpha: np.ndarray, at, gap: str = "small") -> list[list[float]]:
         raise NotClosed(f"({at[0]:g}, {at[1]:g}) is outside the painting ({w}×{h} px)", "That click is outside the drawing.")
     r = GAPS[gap]
     line = alpha >= 0.5
-    walls = _grow(line, r)
+    walls = _grow(line, r, wrap)
     if walls[y, x]:
         raise NotClosed(f"({at[0]:g}, {at[1]:g}) is on a line (or within the {gap} gap of one): click inside an area",
                         "That click is on a line. Click inside an area instead.")
-    area = _flood(~walls, x, y)
-    if area[0].any() or area[-1].any() or area[:, 0].any() or area[:, -1].any():
+    if wrap and not line.any():
+        raise NotClosed("the seamless painting has no lines to close an area", "There are no lines here to fill inside.")
+    area = _flood(~walls, x, y, wrap)
+    if not wrap and (area[0].any() or area[-1].any() or area[:, 0].any() or area[:, -1].any()):
         raise NotClosed(f"the area at ({at[0]:g}, {at[1]:g}) is not closed: it reaches the edge of the painting "
                         f"(close the lines, or a larger Close gaps)",
                         "This area isn't closed: it runs out to the drawing's edge. Close the gap, or raise Close gaps.")
-    area = _grow(_grow(area, r) & ~line, 1)
+    area = _grow(_grow(area, r, wrap) & ~line, 1, wrap)
     return [[float(px), float(py), ring] for ring, loop in enumerate(_loops(area)) for px, py in loop]
 
 
@@ -169,7 +181,9 @@ def _dp(pts, tol) -> list[tuple]:
 
 
 def coverage(points, w: int, h: int) -> np.ndarray:
-    """A fill's outline ([[x, y, ring], …]) as HxW float32 0..1, antialiased (4×4 samples a pixel); holes cut out."""
+    """A fill's outline ([[x, y, ring], …]) as HxW float32 0..1, antialiased (4×4 samples a pixel); holes cut out. A
+    ring wound like ring 0 is another outside (an area cut by a seamless canvas's edges is in pieces), one wound the
+    other way a hole: outsides first, then holes."""
     from PIL import Image, ImageDraw
     ss = 4
     im = Image.new("L", (w * ss, h * ss), 0)
@@ -177,9 +191,11 @@ def coverage(points, w: int, h: int) -> np.ndarray:
     rings: dict[int, list] = {}
     for q in points:
         rings.setdefault(int(q[2]) if len(q) > 2 else 0, []).append((q[0] * ss, q[1] * ss))
-    for ring in sorted(rings):
-        if len(rings[ring]) >= 3:
-            draw.polygon(rings[ring], fill=255 if ring == 0 else 0)
+    rings = {k: v for k, v in rings.items() if len(v) >= 3}
+    wound = {k: _area(v) > 0 for k, v in rings.items()}
+    outside = wound.get(0)
+    for ring in sorted(rings, key=lambda k: (wound[k] != outside, k)):
+        draw.polygon(rings[ring], fill=255 if wound[ring] == outside else 0)
     return np.asarray(im.reduce(ss), np.float32) / 255
 
 

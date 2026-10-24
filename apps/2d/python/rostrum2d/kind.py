@@ -201,7 +201,7 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, up
                version=migrations.FORMAT, migrations=migrations.STEPS,
                new=lambda: {"id": "root", "type": "doc", "comps": [], "paintings": []})
 
-rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers)
+rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers, seamless=paintings.seamless_canvas)
 from . import ops_draw, ops_expr, ops_items, ops_keys, ops_painting  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)

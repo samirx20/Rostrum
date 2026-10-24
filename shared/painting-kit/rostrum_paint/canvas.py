@@ -34,7 +34,8 @@ CHECKPOINT = 24                  # during a long replay, keep a state every N st
 _HERE = Path(__file__).resolve().parent
 _LOCK = threading.RLock()        # the kept states, the memos and the paper: shared by a screen's threads
 ENGINE_VERSION = hashlib.sha1(b"".join((_HERE / f).read_bytes() for f in ("marks.py", "brush.py", "canvas.py",
-                                                                           "compose.py", "fill.py", "shape.py", "pictures.py"))).hexdigest()[:12]
+                                                                           "compose.py", "fill.py", "shape.py", "pictures.py",
+                                                                           "wrap.py"))).hexdigest()[:12]
 
 
 @dataclass
@@ -105,15 +106,15 @@ def origin(canvas: dict) -> tuple[int, int]:
     return int(canvas.get("paperX", 0)), int(canvas.get("paperY", 0))
 
 
-def _paper(w, h, picture="tooth", scale=1.0, at=(0, 0)):
+def _paper(w, h, picture="tooth", scale=1.0, at=(0, 0), wrap=False):
     """The canvas's paper (kept: a stroke and the next on the same paper share it). Strokes made before paper
-    choice name none: the engine's tooth, at its first size."""
-    key = (w, h, picture, scale, at)
+    choice name none: the engine's tooth, at its first size. `wrap`: the paper of a seamless canvas (marks.Paper)."""
+    key = (w, h, picture, scale, at, wrap)
     with _LOCK:
         if key not in _PAPER:
             if len(_PAPER) > 4:
                 _PAPER.clear()
-            _PAPER[key] = marks.Paper(h, w, 0, 3.0 * scale, picture, scale, at)
+            _PAPER[key] = marks.Paper(h, w, 0, 3.0 * scale, picture, scale, at, wrap)
         return _PAPER[key]
 
 
@@ -129,8 +130,9 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0)):
                   color_jitter=s["color_jitter"], hue_jitter=s["hue_jitter"], size_pressure=s["size_pressure"],
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
                   sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS},
-                  even=s.get("even", False), texture=s.get("texture", "none"))   # absent: made before they were
-    paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0), at)
+                  even=s.get("even", False), texture=s.get("texture", "none"),   # absent: made before they were
+                  wrap=bool(s.get("wrap")))     # seamless: the canvas's edges joined (wrap.py)
+    paper = _paper(w, h, s.get("paper", "tooth"), s.get("paper_scale", 1.0), at, params["wrap"])
     return brush.stamp_stroke(layer_px, s["points"], rgb, s["size"], s["brush"], mask=mask,
                               under=under if params["sample_all"] else None, paper=paper, lay=LAY, **params)
 

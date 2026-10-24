@@ -18,6 +18,17 @@ def all_of(doc: dict) -> list[dict]:
     return doc.get("paintings", [])
 
 
+def seamless(item: dict) -> bool:
+    """Whether paint on this item wraps at its edges (a seamless painting's; the kit's wrap.py)."""
+    return item.get("type") == "painting" and bool(item.get("seamless"))
+
+
+def seamless_canvas(ctx, canvas: dict) -> bool:
+    """The kit's hook (rostrum_paint.register): a drawing of a seamless painting is a seamless canvas."""
+    loc = ctx.idx.get(canvas["id"])
+    return loc is not None and seamless(ctx.item(loc.parent))
+
+
 def uses(doc: dict, painting_id: str, lists: dict | None = None) -> list[dict]:
     """The layers filled with this painting, in document order."""
     from .kind import LISTS
@@ -38,6 +49,24 @@ def average(painting: dict) -> tuple[str, float]:
         return "#000000", 0.0
     rgb = (px[..., :3] * alpha[..., None]).sum(axis=(0, 1)) / alpha.sum()
     return "#%02x%02x%02x" % tuple(int(round(c)) for c in rgb), round(cover, 4)
+
+
+def seams(rgba8: np.ndarray) -> list[str]:
+    """Whether the picture's opposite edges meet, in words: "left and right edges meet: no seam", or "top and bottom
+    differ by 14 %: seam at y = 0". An edge pair differs when the step across it (premultiplied, 0..1) is well above
+    the picture's own steps between neighbouring px (paint's texture is not a seam)."""
+    px = rgba8.astype(np.float32) / 255
+    px = np.concatenate([px[..., :3] * px[..., 3:], px[..., 3:]], -1)
+    out = []
+    for axis, (a, b), at in ((1, ("left", "right"), "x"), (0, ("top", "bottom"), "y")):
+        n = px.shape[axis]
+        if n < 3:
+            continue
+        step = float(np.abs(np.take(px, 0, axis) - np.take(px, n - 1, axis)).mean())
+        inside = float(np.abs(np.diff(px, axis=axis)).mean())
+        out.append(f"{a} and {b} edges meet: no seam" if step <= 2 * inside + 0.01
+                   else f"{a} and {b} differ by {round(100 * step)} %: seam at {at} = 0")
+    return out
 
 
 def problems(data: dict, items=None) -> list[str]:

@@ -1,5 +1,5 @@
 """The settings panel's paint groups while Brush is on (painting design §2.3, mockup paint-02): Inside the outline and
-Draw each frame (`toggles`), and "Paint layers +": the paint layers of the drawing the pen paints on now (eye,
+Draw each frame (`toggles`; a painted fill painted in place: its painting's Seamless), and "Paint layers +": the paint layers of the drawing the pen paints on now (eye,
 thumbnail, name, its blend and opacity in grey when not Normal · 100 %, a lock when locked), top first. With one paint
 layer only the "Paint layers +" line shows; + adds one on top, highlighted (the next stroke goes into it).
 
@@ -16,7 +16,7 @@ to drawing.
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum2d import paint_fields
+from rostrum2d import paint_fields, painting_fields
 from rostrum2d.drawing import canvas_size, each_frame, frame_at
 from rostrum_gui.edits import Drag
 from rostrum_paint import linked
@@ -89,8 +89,11 @@ class PaintLayers(QObject):
         (an element: a drawing has no outline) and Draw each frame, from the first moment, before any paint, so an
         animation can start on an empty layer (painting design §2.2, §2.5)."""
         d = self._item()
-        if not d or d["type"] == "painting":      # painting a fill in place: the painting's own switches are not set here
+        if not d:
             return []
+        if d["type"] == "painting":     # painting a fill in place: the painting's Seamless (painting design § 3.7)
+            return [{"id": p.name, "label": p.label, "help": p.help, "value": bool(d.get(p.name))}
+                    for p in painting_fields.FIELDS if p.name == "seamless"]
         params = paint_fields.DRAWING if d["type"] == "drawing" else paint_fields.ELEMENT
         return [{"id": p.name, "label": p.label, "help": p.help, "value": d.get(p.name, p.default)}
                 for p in params if p.type == "toggle" and (p.name == "eachFrame" or p.valid_when is None or d.get("frames"))]

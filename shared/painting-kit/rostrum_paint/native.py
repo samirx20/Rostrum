@@ -16,7 +16,7 @@ import numpy as np
 
 from .marks import ALONG, MODES, TIPS, Coverage
 
-LAYOUT, PARAMS, DAB = 3.0, 21, 21           # apps/2d/engine/stamp/src/lib.rs: the same numbers
+LAYOUT, PARAMS, DAB = 4.0, 22, 22           # apps/2d/engine/stamp/src/lib.rs: the same numbers
 _NAME = {"nt": "rostrum2d_stamp.dll", "posix": "librostrum2d_stamp.dylib"}[os.name]
 _LIB = None
 
@@ -99,12 +99,13 @@ def lay(layer, P, mask=None, under=None):
     grain = float(P.grain) if P.G is not None and P.grain > 0 else 0.0
     params = np.array([LAYOUT, TIPS.index(P.tip), MODES.index(P.mode), P.Kr, P.soft, ALONG[P.tip], P.cj, P.wet,
                        P.sample_all, grain, P.R[0], P.R[-1], P.L[-1], bx0, by0, bx1, by1, P.D, H, W,
-                       0 if P.tex is None else P.tex.shape[0]], np.float64)
+                       0 if P.tex is None else P.tex.shape[0], P.wrap], np.float64)
     col = lambda a: np.asarray(a, np.float64).reshape(P.n, -1)  # noqa: E731
     weak = [type(k[1]) is float for k in P.wetk]                    # numpy takes up a Python float in f32
     rows = np.ascontiguousarray(np.hstack([col(P.X), col(P.Y), col(P.R), col(P.A), col(P.cs), col(P.t), col(P.S),
                                            col(P.wetk), col(weak), col(P.wv if P.wv is not None else np.zeros(P.n)),
-                                           col(P.box), col(P.at), col(P.cols)]))
+                                           col(P.box), col(P.at), col(P.cols),
+                                           col(np.zeros(P.n) if P.again is None else P.again)]))
     assert rows.shape == (P.n, DAB)
     prof = np.ascontiguousarray(np.stack([P.prof, P.start, P.end, P.streak]), np.float64)
     cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)

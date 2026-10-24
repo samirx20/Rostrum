@@ -105,11 +105,15 @@ def _built_paper(name):
     return np.ascontiguousarray(_paper(name), np.float32)
 
 
-def tiled(tile, h, w, scale, origin=(0, 0)):
+def tiled(tile, h, w, scale, origin=(0, 0), wrap=False):
     """The tile repeated over an h x w canvas at `scale` (bilinear, wrapping, so the seams never show), from canvas px
-    `origin` (where the paper starts: marks.Paper)."""
+    `origin` (where the paper starts: marks.Paper). `wrap`: a whole number of tiles across and down (the scale a hair
+    off on each axis), so the paper itself repeats with a seamless canvas."""
     n = tile.shape[0]
-    fy, fx = ((np.arange(h) - origin[1]) / scale) % n, ((np.arange(w) - origin[0]) / scale) % n
+    sx = sy = scale
+    if wrap:
+        sx, sy = w / max(1, round(w / (n * scale))) / n, h / max(1, round(h / (n * scale))) / n
+    fy, fx = ((np.arange(h) - origin[1]) / sy) % n, ((np.arange(w) - origin[0]) / sx) % n
     y0, x0 = fy.astype(int), fx.astype(int)
     gy, gx = (fy - y0)[:, None], (fx - x0)[None, :]
     y1, x1 = (y0 + 1) % n, (x0 + 1) % n

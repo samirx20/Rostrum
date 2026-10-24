@@ -143,7 +143,7 @@ def main():
             from screen2d.layout_states import IGNORE
             bridge = session.bridge
             layout_run.sweep(app, session.win, args.check_layout, args.check_name,
-                             lambda: bridge.frames.idle() and bridge.frame > 0, IGNORE)
+                             bridge.drawn, IGNORE)
         elif args.shot:          # the closing picture's own time limit counts from here: a step waits (and fails) on its own
             QTimer.singleShot(30000, lambda: (print("FAIL: timeout: the closing picture's frame never landed", file=sys.stderr),
                                               app.exit(4)))
@@ -153,7 +153,7 @@ def main():
 
     def wait_frame(n):       # the newest frame has landed, then the screen holds still
         bridge = session.bridge
-        if bridge.frames.idle() and bridge.frame > 0:      # then frames until the screen holds still (settle.py)
+        if bridge.drawn():      # (its paint pictures made too) then frames until the screen holds still (settle.py)
             settle(session.win, lambda img: guarded(lambda: shoot(img)), lambda why: guarded(lambda: fail(why)))
         else:
             QTimer.singleShot(100, lambda: guarded(lambda: wait_frame(n + 1)))
