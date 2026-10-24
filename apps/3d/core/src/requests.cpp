@@ -152,6 +152,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
     JsObject fo{{"frame", JsValue(f)}};
     if (!exr.empty()) {
       const std::vector<ExrLayer> layers = pass_layers(passes, lit, unshadowed, stage_);
+      check_beauty(pic, layers, f);
       color_.write_exr(pic, frame_path(exr, f), layers);
       fo["exr"] = JsValue(frame_path(exr, f));
       if (channels.empty()) {

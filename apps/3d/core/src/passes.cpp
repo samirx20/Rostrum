@@ -121,9 +121,23 @@ std::vector<ExrLayer> pass_layers(const std::vector<std::string>& passes, const 
   if (has(passes, "shadow")) out.push_back(ExrLayer{{"shadow.A"}, shadow(lit, unshadowed), false});
   if (has(passes, "masks"))
     for (auto& m : masks(lit, stage)) out.push_back(std::move(m));
-  if (has(passes, "depth")) out.push_back(ExrLayer{{"depth.Z"}, lit.plane("depth"), true});
+  if (has(passes, "depth")) {  // Cycles says 1e10 where its ray met nothing; the layer says 0 there (passes.h)
+    std::vector<float> z = lit.plane("depth");
+    for (float& d : z)
+      if (!(d < 1e9f)) d = 0.0f;
+    out.push_back(ExrLayer{{"depth.Z"}, std::move(z), true});
+  }
   if (has(passes, "normal")) out.push_back(ExrLayer{{"normal.X", "normal.Y", "normal.Z"}, lit.plane("normal"), false});
   return out;
+}
+
+void check_beauty(const Picture& beauty, const std::vector<ExrLayer>& layers, int frame) {
+  const auto any = [](const std::vector<float>& v) { return std::any_of(v.begin(), v.end(), [](float x) { return x != 0.0f; }); };
+  if (any(beauty.rgba)) return;
+  for (const auto& l : layers)
+    if (l.channels.front().rfind("masks.", 0) != 0 && any(l.pixels))
+      throw Error("render: frame " + std::to_string(frame) + ": the picture came out empty while its " +
+                  l.channels.front() + " layer is not; no file written");
 }
 
 }  // namespace r3d

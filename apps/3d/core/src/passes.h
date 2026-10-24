@@ -35,4 +35,7 @@ bool needs_unshadowed(const std::vector<std::string>& passes);
 std::vector<ExrLayer> pass_layers(const std::vector<std::string>& passes, const Aovs& lit, const Aovs& unshadowed,
                                   const PXR_NS::UsdStageRefPtr& stage);
 
+// loud when the picture came out empty while a layer is not (the colour output went missing: brief 15)
+void check_beauty(const Picture& beauty, const std::vector<ExrLayer>& layers, int frame);
+
 }  // namespace r3d

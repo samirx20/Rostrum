@@ -168,7 +168,7 @@ index 1457e775..39b31f7a 100644
    Shader *const shader = lock.scene->create_node<Shader>();
    array<Node *> used_shaders;
 diff --git a/src/hydra/render_delegate.cpp b/src/hydra/render_delegate.cpp
-index 3cda4a57..5728ed2f 100644
+index 3cda4a57..6dc3b946 100644
 --- a/src/hydra/render_delegate.cpp
 +++ b/src/hydra/render_delegate.cpp
 @@ -18,6 +18,7 @@
@@ -179,6 +179,22 @@ index 3cda4a57..5728ed2f 100644
  #include "scene/scene.h"
  #include "session/session.h"
  
+@@ -154,11 +155,11 @@ void HdCyclesDelegate::SetDrivers(const HdDriverVector &drivers)
+ 
+ bool HdCyclesDelegate::IsDisplaySupported() const
+ {
+-#if defined(_WIN32) && defined(WITH_HYDRA_DISPLAY_DRIVER)
+-  return _hgi && _hgi->GetAPIName() == HgiTokens->OpenGL;
+-#else
++  /* Rostrum: never Cycles' OpenGL display driver. It needs a GL context of its own that it fails to
++   * make in our engine ("PathTraceDisplay could not begin update"); once it took the colour output
++   * (as soon as more outputs than colour were bound, and in the progressive viewport) the colour
++   * stayed black. Without it every output, colour too, goes through the output driver on the CPU. */
+   return false;
+-#endif
+ }
+ 
+ const TfTokenVector &HdCyclesDelegate::GetSupportedRprimTypes() const
 @@ -369,6 +370,14 @@ HdAovDescriptor HdCyclesDelegate::GetDefaultAovDescriptor(const TfToken &name) c
    {
      return HdAovDescriptor(HdFormatInt32, false, VtValue(-1));
