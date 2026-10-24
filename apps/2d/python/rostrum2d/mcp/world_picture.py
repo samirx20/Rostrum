@@ -18,7 +18,7 @@ AREAS = {"area": {"anyOf": [{"type": "string", "enum": ["all", "frame"]},
                   "description": 'What part of the world: "all" (every layer and the frame\'s whole path; default), "frame" (the frame\'s own box now), '
                                  "or {x, y, w, h} in world px."}}
 MOST_PX = 8192                      # the engine's limit: a world picture is at most this many px a side
-VEIL, FRAME, PATH, KEY = 0.55, (255, 210, 63), (0, 229, 255), (255, 255, 255)
+VEIL, FRAME, PATH, KEY, CUT = 0.55, (255, 210, 63), (0, 229, 255), (255, 255, 255), (255, 120, 30)
 
 
 def area_rect(where: str, comp: dict, area, t: float) -> tuple[float, float, float, float]:
@@ -91,15 +91,17 @@ def draw_overlay(src: Path, dest: Path, comp: dict, t: float, shown: dict, path:
     line = max(2, round(img.width / 640))
     frame, moves = view.of(comp), view.leaves_home(view.of(comp), comp)
     if path and moves:
+        taken: list[tuple] = []                      # the key labels already placed, so no two overlap
         for kt in wf.key_times(comp):
             q = [pt(p) for p in wf.quad(comp, kt)]
             d.polygon(q, outline=(*KEY, 110), width=1)
-            d.text((q[3][0] + 3, q[3][1] - 15), f"key {kt:.2f} s", fill=(*KEY, 170), font=small)
+            d.text(_free_spot(d, f"key {kt:.2f} s", small, (q[3][0] + 3, q[3][1] - 15), taken, img.size), f"key {kt:.2f} s", fill=(*KEY, 210), font=small)
         times, cuts = wf.frame_times(comp), wf.cuts(comp)
         dots = [pt(_centre(wf.quad(comp, s))) for s in times]
         for (ta, a), (tb, b) in zip(zip(times, dots), zip(times[1:], dots[1:])):
-            if any(ta < c <= tb for c in cuts):
-                _dashed(d, a, b, (*PATH, 200), line)
+            if any(ta < c <= tb for c in cuts):      # a cut: nothing travels, so a bold orange dashed line on a dark edge
+                _dashed(d, a, b, (0, 0, 0, 230), line + 4, dash=16)
+                _dashed(d, a, b, (*CUT, 255), line + 2, dash=16)
             else:
                 d.line([a, b], fill=(*PATH, 200), width=line)
         for p in dots:
@@ -115,6 +117,24 @@ def draw_overlay(src: Path, dest: Path, comp: dict, t: float, shown: dict, path:
 
 def _centre(q) -> tuple[float, float]:
     return (q[0][0] + q[2][0]) / 2, (q[0][1] + q[2][1]) / 2
+
+
+def _free_spot(d, text, font, want, taken, size):
+    """Where `text` can be written near `want` without touching a label already placed (tried down, up, then further
+    down in steps) and inside the picture; the spot is added to `taken`. Out of room, the first try is kept."""
+    w, h = (lambda b: (b[2] - b[0], b[3] - b[1]))(d.textbbox((0, 0), text, font=font))
+    step = h + 5
+    tries = [(want[0], want[1] + dy) for dy in (0, -step, step, 2 * step, -2 * step, 3 * step, -3 * step, 4 * step)]
+    tries += [(want[0] + dx, want[1] + dy) for dx in (w + 8, -w - 8) for dy in (0, step, -step)]
+    for x, y in tries:
+        box = (x - 2, y - 2, x + w + 2, y + h + 2)
+        if box[0] < 0 or box[1] < 0 or box[2] > size[0] or box[3] > size[1]:
+            continue
+        if not any(box[0] < t[2] and t[0] < box[2] and box[1] < t[3] and t[1] < box[3] for t in taken):
+            taken.append(box)
+            return x, y
+    taken.append((want[0] - 2, want[1] - 2, want[0] + w + 2, want[1] + h + 2))
+    return want
 
 
 def _dashed(d, a, b, fill, width, dash: float = 10.0):

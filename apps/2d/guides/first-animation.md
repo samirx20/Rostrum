@@ -76,7 +76,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 ## 8. Play it
 
 1. Press **Space**, or click the play button, to play from the playhead. Press Space again to stop. While it plays, the canvas shows exactly the video (what the frame sees); when it stops, your own view comes back. To see the video alone without playing, press **Shift+C** (look through the frame); press it again, or click the × on its label, to go back.
-2. **Preview size** (**Full**, **Half**, **Quarter**) is in the **Fit · 54 % ▾** menu in the top bar. It makes playback lighter on a slow computer. It does not change what you export.
+2. **Preview size** (**Full**, **Half**, **Quarter**) is in the **Fit · 53 % ▾** menu in the top bar. It makes playback lighter on a slow computer. It does not change what you export.
 
 ## 9. Do something to several layers at once
 

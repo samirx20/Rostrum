@@ -1,4 +1,4 @@
-# Characters, sound, camera and styles
+# Characters, sound and styles
 
 Short how-tos for the parts of the screen that are not on every project.
 
@@ -44,9 +44,9 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 - **A video's own sound** shows as a thin row **Its sound** under the video layer. Its speaker button mutes it in the song's mix. **Ctrl+Z** brings it back.
 - **MP4 with the project's sound:** open **Export**, pick **MP4**, and leave **Project sound** on. It shows only when the project has sound. See [exporting.md](exporting.md).
 
-## Moving the frame (the camera)
+## Moving the frame
 
-Every scene has one **frame**: the box that is exported. It is the camera; there is no camera tool. Press **C** (or click
+Every scene has one **frame**: the box that is exported. There is no camera tool. Press **C** (or click
 the frame's name tab, or its **Frame** row at the top of the timeline) to pick it, then drag inside it to move it, drag
 a corner square to zoom, and drag just outside a corner to turn it. With no keys a drag moves it for the whole piece;
 once it has keys, a drag sets a key at the playhead. One drag is one undo step. With it picked, **Frame the view** fits

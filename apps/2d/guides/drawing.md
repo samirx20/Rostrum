@@ -23,7 +23,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 3. Under them are **19 brushes in five groups**: Sketch, Ink, Paint, Light and Texture. Each shows a real stroke of itself; rest the pointer on one and its stroke shows larger. Click one; it sets every brush setting but your colour.
 4. Last come **My brushes**: the brushes you saved, from this project and from your own library (see "Save your own brush" below). A brush kept in only one of the two says which, small, on the corner of its stroke: **project** or **library**. Right-click one for what you can do with it: **Rename** (type, then Enter), **Duplicate** (a copy named "… copy", to change without losing the first), **Also keep in my library** or **Also keep in this project** (when it is only in one), **Remove from this project** or **Remove from my library** (when it is in both), and **Delete** (gone from both).
 
-![The brush panel beside the tool rail; under My brushes, one brush marked "project" (kept only in this project) and the right-click menu of one kept in both places](pictures/brush-panel.png)
+![The brush panel beside the tool rail; under My brushes, a brush you saved](pictures/brush-panel.png)
 
 5. What you paint on depends on what is picked:
    - **a shape, a text, a picture or a path**: the paint goes onto it, kept inside its outline. Strokes that go past the edge are simply not shown there. Its edge is drawn dashed so you can see what you are painting on.
@@ -61,7 +61,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
 
 Once a brush is how you like it, click **+ Save this brush**: at the right of **‹ Back** on Edit brush, or the last tile under **My brushes** in the brush panel. A name box opens in place with the brush's name; type a name and press **Enter** (**Esc** leaves it). The brush joins **My brushes** with a stroke of itself, and it is the brush you paint with. It keeps every setting but the colour, including a tip picture or paper you loaded. A saved brush is kept in two places: in the project, so agents working on it see and use the same ones, and in your own library, so it is in **My brushes** in every project you open. A tip picture or paper you loaded goes into your library with it, so the brush paints the same in another project (the picture is copied into that project when you pick the brush). The right-click menu takes it out of either place. With no project open, it goes into your library alone.
 
-![Save this brush on Edit brush: the name box open](pictures/brush-save.png)
+![Edit brush: + Save this brush at the right of ‹ Back](pictures/brush-save.png)
 
 ## 3. Draw a stroke
 

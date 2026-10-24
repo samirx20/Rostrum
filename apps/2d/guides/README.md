@@ -13,7 +13,7 @@ Short pages in everyday words, with the names of the real buttons. The app is on
 7. [Timing to music](timing-to-music.md): hear the project's sound from RostrumSound, the Sound row, mute, pick the soundtrack, show beats, snap and tie to beats and markers, jump beat to beat, open the song in RostrumSound.
 8. [Text on a path](text-on-a-path.md): draw a path, put text on it, slide and align it, animate along it.
 9. [The curve editor](curve-editor.md): open Curves, read the lines, drag keys and handles, change an ease, the ease keys.
-10. [Characters, sound, camera and styles](characters-sound-camera.md): bones, poses, lip sync and blinks, Add a sound here, moving the frame (the camera), text Styles, the Library and Brand kit, Add from a file.
+10. [Characters, sound and styles](characters-sound-styles.md): bones, poses, lip sync and blinks, Add a sound here, moving the frame, text Styles, the Library and Brand kit, Add from a file.
 
 ## For agents
 
@@ -28,7 +28,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [curve-editor.md](curve-editor.md): the curve editor (also a people page above).
 - [expressions.md](expressions.md): fields that follow something instead of being keyed.
 - [colour-and-blending.md](colour-and-blending.md): blend modes and colour adjustments.
-- [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md): the frame (the camera), moving and cutting it, looking through it, pinned layers, depth and motion blur.
+- [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md): the frame, moving and cutting it, looking through it, pinned layers, depth and motion blur.
 - [drawing-and-frame-by-frame.md](drawing-and-frame-by-frame.md): drawing layers and frame-by-frame work, by tool.
 - [painted-backgrounds.md](painted-backgrounds.md): large painted backgrounds with the painting kit.
 - [character-rigging-and-lip-sync.md](character-rigging-and-lip-sync.md): joints, poses and lip sync.

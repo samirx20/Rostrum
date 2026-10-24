@@ -1,12 +1,14 @@
 # The frame, parallax and motion blur
 
-Tools for a shot that moves over the scene (the frame is the camera), for looking through it, for titles pinned to it,
+Tools for a shot that moves over the scene, for looking through it, for titles pinned to it,
 for layers that sit at different distances, and for showing speed: motion blur, smears and trails. Read `start-here`
 first. Exact maths: `apps/2d/FRAME.md` and `apps/2d/MOTION.md`.
 
 ## The frame
 
-Every scene has exactly one **frame**: the box that is exported, and the scene's camera. It comes with the scene (you
+![The frame picked: its path, a faint outline at each key, a dashed cut, and its settings](pictures/frame-picked.png)
+
+Every scene has exactly one **frame**: the box that is exported. It comes with the scene (you
 never add or delete it) and starts at **home**, still: then every layer shows exactly as placed. In the document it is
 the scene's first layer, of type `camera`, id `frame` (in a second scene `<scene id>-frame`).
 
@@ -87,9 +89,11 @@ Old scripts' `camera("cam", …)` gives the frame; `camera(…, start=…)` is r
 
 ## Looking through the frame
 
+![Looking through the frame: only the export, with the label at the bottom left](pictures/frame-look-through.png)
+
 The canvas normally shows the world around the frame, with the export inside its outline. To see the export alone:
 
-- **Shift+C**, or **Look through the frame** in the **Fit · 54 % ▾** menu (a check mark shows it is on). The canvas
+- **Shift+C**, or **Look through the frame** in the **Fit · 53 % ▾** menu (a check mark shows it is on). The canvas
   fits the frame and shows exactly what is exported, nothing outside it. A small **Through the frame ×** label sits at
   the bottom-left of the canvas; its **×**, Shift+C again, or the menu item turns it off, and your own view (where you
   had scrolled, at the same zoom) comes back.
@@ -139,6 +143,8 @@ along, so its motion keeps its shape); `keep: "values"` changes only the depth (
 `set_depth("hills", 3)`. Setting the `depth` field itself (`value.set`, `shape(..., depth=3)`) changes only the number.
 
 ## Pinned to frame
+
+![A title pinned to the frame rides inside its box](pictures/frame-pinned-title.png)
 
 A title, a logo bug or a border that belongs to the shot, not the world, is **pinned to the frame**: it moves, zooms
 and turns with the frame, and its X, Y are in the frame's own pixels (960, 540 is the middle of the shot).
