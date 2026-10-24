@@ -25,8 +25,10 @@ def key(wav, start=0.0, end=None, text=None, language="english", pronounce=None)
 
 
 def analyse(wav, start: float = 0.0, end: float | None = None, text: str | None = None, language: str = "english",
-            pronounce: dict | None = None, where: str = "lipsync") -> dict:
-    """The whole result: phones, words (with text), the device and how it was made. From the cache when there."""
+            pronounce: dict | None = None, where: str = "lipsync", progress=None) -> dict:
+    """The whole result: phones, words (with text), the device and how it was made. From the cache when there.
+    `progress(step, of, words, fraction)`: 1 of 3 reading the voice, 2 listening (the model; `fraction` of the audio
+    heard), 3 placing the phones. Called from the thread that works (a screen hands it over to its own)."""
     if text and language not in LANGUAGES:
         raise RostrumError.not_found(where, "language", language, LANGUAGES, in_="the languages with a dictionary")
     k = key(wav, start, end, text, language, pronounce)
@@ -34,7 +36,7 @@ def analyse(wav, start: float = 0.0, end: float | None = None, text: str | None 
     if entry is None:
         recipe = {"engine": model.ENGINE, "wav": str(wav), "text": text, "start": start, "end": end,
                   "language": language}
-        entry = CACHE.put("lipsync", k, lambda tmp: _make(tmp, wav, start, end, text, pronounce, where), recipe)
+        entry = CACHE.put("lipsync", k, lambda tmp: _make(tmp, wav, start, end, text, pronounce, where, progress), recipe)
         made = True
     else:
         made = False
@@ -46,13 +48,17 @@ def phonemes(wav, start: float = 0.0, end: float | None = None, text: str | None
     return analyse(wav, start, end, text, language, pronounce)["phones"]
 
 
-def _make(tmp, wav, start, end, text, pronounce, where):
+def _make(tmp, wav, start, end, text, pronounce, where, progress=None):
+    say = progress or (lambda *a: None)
+    say(1, 3, "Opening the voice", 0.0)
     samples, total = audio.clip(wav, start, end, where)
     said = english.words(text, pronounce, where) if text else None
     if said == []:
         raise RostrumError(codes.BAD_ARGUMENT, where, "text", "has no words")
     labels = model.vocab(where)
-    logp, device = model.emissions(samples, where)
+    say(2, 3, "Listening to the line", 0.0)
+    logp, device = model.emissions(samples, where, lambda f: say(2, 3, "Listening to the line", f))
+    say(3, 3, "Placing the mouth shapes", 0.0)
     phones = _aligned(logp, said, labels, where) if said else _decoded(logp, labels)
     for p in phones:
         p["start"], p["end"] = round(start + p["start"], 3), round(start + p["end"], 3)

@@ -15,9 +15,24 @@ QQC.Popup {
     property bool pressed: false
     readonly property var win: parent ? parent.Window.window : null
     readonly property int most: win ? Math.min(560, win.width - 16) : 560
-    y: parent ? parent.height + 4 : 0
+    readonly property int oneLine: 420        // a tip longer than this wraps and stands beside its control
+    readonly property int wrapW: 300
+    readonly property bool wraps: whole.advanceWidth > oneLine
+    TextMetrics { id: whole; font.family: uiFont; font.pixelSize: Theme.label; text: tip.help ? tip.text + "  " + tip.help : tip.text }
+    readonly property int side: {      // -1 left of the control, 1 right of it, 0 under it
+        if (!wraps || !parent || !win || !visible) return 0
+        const at = parent.mapToItem(null, 0, 0).x
+        return at - width - 8 >= 8 ? -1 : at + parent.width + 8 + width <= win.width - 8 ? 1 : 0
+    }
+    y: {
+        if (!parent) return 0
+        if (side === 0) return parent.height + 4
+        const top = parent.mapToItem(null, 0, 0).y + (parent.height - height) / 2      // centred on the control, inside the window
+        return Math.max(8, Math.min(win.height - 8 - height, top)) - parent.mapToItem(null, 0, 0).y
+    }
     x: {
         if (!parent) return 0
+        if (side !== 0) return side < 0 ? -width - 8 : parent.width + 8
         const want = (parent.width - width) / 2
         if (!win || !visible) return want
         const at = parent.mapToItem(null, want, 0).x                  // keep the whole line inside the window
@@ -32,8 +47,9 @@ QQC.Popup {
         leftPadding: Theme.grid + 2; rightPadding: Theme.grid + 2; topPadding: 3; bottomPadding: 3
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(implicitWidth, tip.most - (keyHint.visible ? keyHint.width + Theme.grid : 0) - 2 * Theme.grid - 4)
-            elide: Text.ElideRight; textFormat: Text.StyledText
+            width: tip.wraps ? tip.wrapW : Math.min(implicitWidth, tip.most - (keyHint.visible ? keyHint.width + Theme.grid : 0) - 2 * Theme.grid - 4)
+            wrapMode: tip.wraps ? Text.WordWrap : Text.NoWrap
+            elide: tip.wraps ? Text.ElideNone : Text.ElideRight; textFormat: Text.StyledText
             text: tip.help ? "<b>" + tip.esc(tip.text) + "</b>  " + tip.esc(tip.help) : tip.esc(tip.text)
             color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
         }
