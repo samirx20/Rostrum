@@ -1,33 +1,29 @@
 //! serve's `export` (scene_serve.rs § export): every frame from start to end at the comp's fps, into the encoder or
-//! pictures, and where the time went. The reply's `timing` holds the whole run (`totalS`, the median and slowest
-//! frame) and, summed over every frame in seconds, each step serve.rs `frame` times (`evalS`, `diffS`, `layoutS`,
-//! `paintS`, `gpuS`, `readS`, `encodeWaitS` …), so people and agents can see what a slow export spends its time on.
+//! pictures, and where the time went. The reply's `timing` holds the whole run (`totalS`, wall time; the median and
+//! slowest frame) and, summed over every frame in seconds, each step serve.rs `frame` times (`evalS`, `diffS`,
+//! `layoutS`, `paintS`, `gpuS`, `readS`, `encodeWaitS` …), so people and agents can see what a slow export spends its
+//! time on. With several drawing workers the steps add up over all of them (so they can sum to more than `totalS`).
 //! `timing.layers`: where the paint time goes per layer, the 10 costliest (render_costs.rs); `stillPieces`: how many
 //! pieces were drawn once for a frame's motion-blur samples, not per sample (still_runs.rs).
 //! `timingCsv`: the same per frame, one row each. What painted (`gpu`, `adapter`, `fallback`) is in the reply, and
 //! `warning` says in words when that was not the computer's main graphics card; `encoder` names the MP4 encoder
-//! used and whether it ran on the graphics card (sink.rs `encoder`).
+//! used and whether it ran on the graphics card (sink.rs `encoder`); `workers` how many drew and `budgetMB` each
+//! one's Skia budget.
 //!
-//! Two stages run side by side (E7): a worker thread builds the next frames' stage markup (keys, easing, the
-//! motion-blur sub-frames; scene_serve.rs `stage_at`) while this thread lays out and paints the current one, so the
-//! graphics card is not left idle while the processor writes markup. At most `AHEAD` frames wait between the two
-//! (bounded memory); they arrive in order and each is checked to be the frame expected. A failure in either stage
-//! stops the export with the frame it failed at; the encoder must then have taken exactly every frame, in order.
+//! The frames are drawn by `workers` drawing workers side by side (export_crew.rs: request `workers`, else
+//! ROSTRUM2D_EXPORT_WORKERS, else from the processor's cores), each with its own session and its own thread building
+//! its next frames' stage markup (E7) while it lays out and paints, so the processor's cores and the graphics card
+//! are kept busy. The pictures are the same whatever the count (a frame is a function of its time). A failure on any
+//! worker stops the export with the frame it failed at; the encoder must then have taken exactly every frame, in order.
 
-use std::sync::mpsc::{sync_channel, Receiver};
 use std::time::Instant;
 
 use serde_json::{json, Map, Value};
 
-use crate::scene_serve::{draw, stage_at, Held, Staged};
+use crate::export_crew::{self, Row, Span, STEPS};
+use crate::scene_serve::Held;
 use crate::serve::{self, Session};
 use crate::sink::Sink;
-
-/// The frame reply's timing fields summed (ms in the reply, seconds in the sum), in this order in the CSV.
-const STEPS: [&str; 11] = ["evalMs", "decodeMs", "diffMs", "layoutMs", "paintMs", "stillMs", "recordMs", "gpuMs", "readMs", "convertMs", "encodeWaitMs"];
-
-/// Frames whose markup may be built ahead of the one being drawn.
-const AHEAD: usize = 2;
 
 /// Words for an adapter that is not a main graphics card: the processor's own graphics or a software stand-in.
 const NOT_MAIN: [&str; 6] = ["intel", "microsoft basic", "gdi generic", "llvmpipe", "swiftshader", "software"];
@@ -68,28 +64,10 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     if let Some(w) = &warning {
         eprintln!("2D engine: {w}");
     }
+    let workers = crate::export_workers::workers(req, n)?;
     let t0 = Instant::now();
-    let time = |i: u64| start + i as f64 / fps;
-    // The markup thread: frame i's stage, in order, until the last frame or its first failure.
-    let drawn = std::thread::scope(|sc| {
-        let (tx, rx) = sync_channel::<(u64, Result<Staged, String>)>(AHEAD);
-        let builder = sc.spawn(move || {
-            for i in 0..n {
-                let staged = stage_at(scene, time(i), req);
-                let failed = staged.is_err();
-                if tx.send((i, staged)).is_err() || failed {
-                    break; // the drawing side stopped (its error is the export's), or this frame failed
-                }
-            }
-        });
-        let drawn = draw_all(held, s, req, rx, n, time, progress);
-        // `rx` is gone with draw_all: a builder still working stops at its next frame.
-        match builder.join() {
-            Ok(()) => drawn,
-            Err(_) => Err("export: the thread building the frames' markup panicked".to_string()),
-        }
-    });
-    let Drawn { ms, rows, sums, costs, still } = drawn?;
+    let span = Span { start, fps, n };
+    let (rows, costs) = export_crew::draw_all(held, s, req, span, workers, progress)?;
     let code = if images.is_none() { Some(serve::finish(s)?) } else { None };
     if let Some(sink) = &s.sink {
         // Every frame, once, in order (sink.rs `push` notes each frame's number as it is queued).
@@ -105,6 +83,7 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     if let Some(csv) = req["timingCsv"].as_str() {
         write_csv(csv, start, fps, &rows)?;
     }
+    let ms: Vec<f64> = rows.iter().map(|r| r.took).collect();
     let mut sorted = ms.clone();
     sorted.sort_by(f64::total_cmp);
     let mut timing = Map::new();
@@ -112,74 +91,24 @@ pub fn export(held: &Held, s: &mut Session, req: &Value, progress: &mut dyn FnMu
     timing.insert("medianMs".into(), json!(sorted[sorted.len() / 2]));
     timing.insert("maxMs".into(), json!(sorted[sorted.len() - 1]));
     timing.insert("firstMs".into(), json!(ms[0]));
-    timing.insert("samples".into(), json!(rows.iter().map(|r| r.2).sum::<u64>()));
-    for (k, v) in STEPS.iter().zip(sums) {
-        timing.insert(k.replace("Ms", "S"), json!(v));
+    timing.insert("samples".into(), json!(rows.iter().map(|r| r.samples).sum::<u64>()));
+    for (j, k) in STEPS.iter().enumerate() {
+        timing.insert(k.replace("Ms", "S"), json!(rows.iter().map(|r| r.steps[j]).sum::<f64>() / 1000.0));
     }
-    timing.insert("stillPieces".into(), json!(still));
+    timing.insert("stillPieces".into(), json!(rows.iter().map(|r| r.still).sum::<u64>()));
     timing.insert("layers".into(), costs.report(scene));
     let encoder = s.sink.as_ref().and_then(Sink::encoder);
-    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder });
+    let budget_mb = crate::export_workers::budget(s.width, s.height, workers) >> 20;
+    let mut reply = json!({ "ok": true, "frames": n, "fps": fps, "code": code, "timing": timing, "warning": warning, "encoder": encoder, "workers": workers, "budgetMB": budget_mb });
     serve::with_painting(&mut reply, &s.painting);
     Ok(reply)
 }
 
-
-/// What drawing every frame measured (the reply's `timing`).
-struct Drawn {
-    ms: Vec<f64>,
-    rows: Vec<(f64, Vec<f64>, u64)>,
-    sums: [f64; STEPS.len()],
-    costs: crate::render_costs::Costs,
-    still: u64,
-}
-
-/// Draws each frame as its markup arrives (`rx`, in order), into the encoder or pictures.
-fn draw_all(held: &Held, s: &mut Session, req: &Value, rx: Receiver<(u64, Result<Staged, String>)>, n: u64, time: impl Fn(u64) -> f64, progress: &mut dyn FnMut(Value)) -> Result<Drawn, String> {
-    let fps = held.scene()?.fps();
-    let images = req["images"].as_str();
-    let t0 = Instant::now();
-    let (mut ms, mut rows) = (vec![], vec![]);
-    let mut sums = [0.0f64; STEPS.len()];
-    let (mut costs, mut still) = (crate::render_costs::Costs::default(), 0u64);
-    for i in 0..n {
-        let t = time(i);
-        let tf = Instant::now();
-        let staged = match rx.recv() {
-            Ok((got, _)) if got != i => return Err(format!("export: frame {got}'s markup came when frame {i}'s was due")),
-            Ok((_, staged)) => staged.map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?,
-            Err(_) => return Err(format!("export: the markup thread stopped before frame {i} (t={t:.3} s)")),
-        };
-        let mut f = json!({ "t": t, "index": (t * fps).round() as u64, "alpha": req["alpha"].as_bool() == Some(true) });
-        match images {
-            Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", (t * fps).round() as u64))),
-            None => f["encode"] = json!(true),
-        }
-        let (reply, _) = draw(held, s, &f, staged).map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?;
-        let took = tf.elapsed().as_secs_f64() * 1000.0;
-        still += reply["timing"]["stillPieces"].as_u64().unwrap_or(0);
-        if i % crate::render_costs::EVERY == crate::render_costs::EVERY / 2 || n <= crate::render_costs::EVERY / 2 && i == 0 {
-            costs.sample(s).map_err(|e| format!("export frame {i}: timing its layers: {e}"))?;
-        }
-        ms.push(took);
-        let steps: Vec<f64> = STEPS.iter().map(|k| reply["timing"][*k].as_f64().unwrap_or(0.0)).collect();
-        for (sum, v) in sums.iter_mut().zip(&steps) {
-            *sum += v / 1000.0;
-        }
-        rows.push((took, steps, reply["timing"]["samples"].as_u64().unwrap_or(1)));
-        if req["progress"].as_bool() == Some(true) {
-            let elapsed = t0.elapsed().as_secs_f64();
-            progress(json!({ "progress": i + 1, "of": n, "elapsedS": elapsed, "leftS": elapsed / (i + 1) as f64 * (n - i - 1) as f64 }));
-        }
-    }
-    Ok(Drawn { ms, rows, sums, costs, still })
-}
-
-fn write_csv(path: &str, start: f64, fps: f64, rows: &[(f64, Vec<f64>, u64)]) -> Result<(), String> {
+fn write_csv(path: &str, start: f64, fps: f64, rows: &[Row]) -> Result<(), String> {
     let mut out = format!("frame,frameMs,samples,{}\n", STEPS.join(","));
-    for (i, (took, steps, samples)) in rows.iter().enumerate() {
-        let cells: Vec<String> = steps.iter().map(|v| format!("{v:.2}")).collect();
-        out += &format!("{},{took:.2},{samples},{}\n", ((start + i as f64 / fps) * fps).round() as u64, cells.join(","));
+    for r in rows {
+        let cells: Vec<String> = r.steps.iter().map(|v| format!("{v:.2}")).collect();
+        out += &format!("{},{:.2},{},{}\n", ((start + r.i as f64 / fps) * fps).round() as u64, r.took, r.samples, cells.join(","));
     }
     std::fs::write(path, out).map_err(|e| format!("writing the export's timing {path}: {e}"))
 }

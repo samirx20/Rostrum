@@ -225,7 +225,7 @@ pub const GLYPH_OUTLINE_PX: f32 = 32.0;
 /// 20 frame-sized half-float textures; under Skia's default 256 MB they were thrown away and made again every frame
 /// (H25: Lull's 13-18 s at 1080p, 37 ms a frame of which 20 ms was that, 18 ms with room). 32 frames' worth, at least
 /// 512 MB and at most 1.5 GB (the laptop's GPU has 4 GB, shared with the 3D app); what goes unused is freed (`paint`).
-fn gpu_budget(width: u32, height: u32) -> usize {
+pub(crate) fn gpu_budget(width: u32, height: u32) -> usize {
     let frame = width as usize * height as usize * 8;
     (32 * frame).clamp(512 << 20, 1536 << 20)
 }
@@ -382,6 +382,14 @@ impl Painter {
             while (g.get_error)() != 0 {} // the old painter's errors are not the next one's
         }
         gl
+    }
+
+    /// Skia's GPU resource budget, in bytes (an export's drawing workers share the card: export_crew.rs). Only what
+    /// is kept between draws depends on it, never the pixels.
+    pub fn set_budget(&mut self, bytes: usize) {
+        if let Some(gl) = self.gl.as_mut() {
+            gl.gr.set_resource_cache_limit(bytes);
+        }
     }
 
     /// The size of the pictures it paints (`set_view`'s).

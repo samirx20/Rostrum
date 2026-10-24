@@ -35,6 +35,15 @@ impl Costs {
         Ok(())
     }
 
+    /// Another drawing worker's timings added in (export_crew.rs).
+    pub fn merge(&mut self, other: Costs) {
+        for (id, (ms, n)) in other.by {
+            let e = self.by.entry(id).or_default();
+            (e.0, e.1) = (e.0 + ms, e.1 + n);
+        }
+        self.frames += other.frames;
+    }
+
     /// The top layers, most costly first, for the export's reply.
     pub fn report(&self, scene: &Scene) -> Value {
         let total: f64 = self.by.values().map(|v| v.0).sum::<f64>().max(1e-9);
