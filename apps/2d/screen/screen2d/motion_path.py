@@ -47,8 +47,10 @@ class MotionPath(QObject):
         self.b, self._frame_path = bridge, True
         self._tracks = None            # (doc.data, selection, frame path on, [(owner id, faint, track, frame keys)])
         self._view = None              # (tracks, t, the canvas paths)
-        for sig in (bridge.docChanged, bridge.docStepped, bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
+        for sig in (bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
+        for sig in (bridge.docChanged, bridge.docStepped):      # a change or drag step elsewhere leaves the paths be
+            sig.connect(lambda: self.b.reached([o for o, _ in self._owners()]) and self.changed.emit())
 
     # ---- the View menu's "Show the frame's path" (screen state, never the document) -------------------------
     @Property(bool, notify=changed)

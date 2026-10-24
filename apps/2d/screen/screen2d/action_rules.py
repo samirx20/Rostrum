@@ -7,7 +7,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
     {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
     {"rule": "depth", "value": 3.0}                      Set depth: drawing.set depth + background.fit
-    {"rule": "attach"}                                   Attach to bone: bind.add or bind.set (rig_attach.py)
+    {"rule": "attach"} · {"rule": "frame", "how": "view"}  Attach to bone (rig_attach.py) · the frame's (frame_actions.py)
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied · styled (texts following a style). Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
@@ -26,7 +26,7 @@ from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
 
-from . import rig_attach
+from . import frame_actions, rig_attach
 from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
@@ -85,7 +85,8 @@ class Facts:
             "body_parts": groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items)),   # Make rig first
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
-            "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp"}   # Set depth: drawings of the scene itself
+            "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
+            **frame_actions.facts(self)}                    # Frame the view, Cut here … (frame_actions.py)
 
 
 def _comp_of(doc, id_: str) -> str:
@@ -195,5 +196,5 @@ def _depth(f: Facts, value: float) -> list[dict]:
             {"op": "background.fit", "target": todo, "args": {}}]
 
 
-RULES = {"order": _order, "pose": _pose, "depth": _depth,
+RULES = {"order": _order, "pose": _pose, "depth": _depth, "frame": frame_actions.calls,
          "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}

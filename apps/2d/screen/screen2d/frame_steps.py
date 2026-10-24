@@ -6,6 +6,8 @@ FrameHandles.qml calls (backend.frameDrag: frame_drag.py), so a check or an agen
     frame drag <dx> <dy>         drag inside it by world px (one change)
     frame corner <dx>            drag its bottom-right square outward by dx world px (bigger box = zoom down)
     frame turn <deg>             drag a turn zone round its centre by deg degrees
+    framefit view|sel            Frame the view (the canvas's view) / Frame these (the picked layers): frame_actions.py
+    framecut [view|sel]          Cut here / Cut to the view / Cut to these, at the playhead
     frametime drag|zoom|turn [n] n pointer moves of that drag (default 60), each waited out: prints each move's
                                  GUI-thread ms, its time to the picture that shows it, and the release's
 """
@@ -20,7 +22,11 @@ from . import frame_view
 from .playstats import STATS
 from .view_steps import _picture, _spread
 
-WORDS = ("frame", "frametime")
+WORDS = ("frame", "frametime", "framefit", "framecut")
+# the action a framefit / framecut step clicks: (with the frame picked, with nothing picked); "sel" needs layers picked
+ACTIONS = {("framefit", "view"): ("frame_view", "frame_view_any"), ("framefit", "sel"): ("frame_these",) * 2,
+           ("framecut", ""): ("cut_here",) * 2, ("framecut", "view"): ("cut_view", "cut_view_any"),
+           ("framecut", "sel"): ("cut_these",) * 2}
 
 
 def _box(bridge) -> dict:
@@ -91,7 +97,20 @@ def frame_time(bridge, kind, n):
     STATS.on = STATS.log
 
 
+def _act(bridge, word, how, step):
+    """The frame action a person clicks (the actions row, ⋯, Ctrl+K), by its id; fails saying why when not offered."""
+    ids = ACTIONS.get((word, how))
+    if ids is None:
+        raise ValueError(f"unknown step {step!r} (framefit view|sel | framecut [view|sel])")
+    key = "layer:" + ids[0 if bridge.selected_layers() else 1]
+    if not bridge.run(key):
+        raise RuntimeError(f"step {step!r}: {bridge.status or 'not offered now'}")
+    print(f"{step}: {bridge.status}")
+
+
 def do_frame_step(bridge, word, rest, step):
+    if word in ("framefit", "framecut"):
+        return _act(bridge, word, rest[0] if rest else "", step)
     if word == "frametime":
         return frame_time(bridge, rest[0], int(rest[1]) if rest[1:] else 60)
     what = rest[0]

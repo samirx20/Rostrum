@@ -49,8 +49,9 @@ Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you 
 Every scene has one **frame**: the box that is exported. It is the camera; there is no camera tool. Press **C** (or click
 the frame's name tab, or its **Frame** row at the top of the timeline) to pick it, then drag inside it to move it, drag
 a corner square to zoom, and drag just outside a corner to turn it. With no keys a drag moves it for the whole piece;
-once it has keys, a drag sets a key at the playhead. One drag is one undo step. Its path, a faint outline at each key
-and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
+once it has keys, a drag sets a key at the playhead. One drag is one undo step. With it picked, **Frame the view** fits
+it to what your canvas shows and **Cut here** makes a jump at the playhead (**⋯** has **Frame home**). Its path, a faint
+outline at each key and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
 [camera-parallax-motion-blur.md](camera-parallax-motion-blur.md).
 
 ## Styles

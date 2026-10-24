@@ -26,7 +26,7 @@ import sys
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 
-from . import kit_state, rows
+from . import kit_state, news, rows
 from . import touched as touch
 from .agent_watch import AgentWatch
 from .bridge_edits import EditSlots
@@ -64,6 +64,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self.doc, self.who = doc, who or Who.person("sam")
         self.model = RowsModel(rows.ROLES, self)
         self._kit.agent = AgentWatch(self)
+        self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.select(self._first())
@@ -230,8 +231,10 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
 
     def _on_doc(self, event):
         """A drag's step (a gesture preview) is only docStepped: the rows' values and the picture follow it live; the
-        actions row, history, ↶ ↷ and item lists wait for docChanged, sent once when the drag ends (its change or reset)."""
-        self._follow_doc()
+        actions row, history, ↶ ↷ and item lists wait for docChanged, sent once when the drag ends (its change or reset).
+        First, what the change or step touched (touched.py): every part reads it to skip work elsewhere."""
+        self._kit.touched = touch.of(self.doc, event)
+        self._follow_doc(event.kind == "preview")
         if event.kind == "preview":
             self.docStepped.emit()
             return

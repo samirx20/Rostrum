@@ -12,13 +12,15 @@ from rostrum_gui.action_views import commands as do_commands
 from rostrum_gui.parts import SlotMixin
 from rostrum_gui.selection_rules import esc_step
 
+from . import frame_actions
 from .action_rules import said
 from .actions import LIST, Facts
 
 # What actions.py covers, as the kit's operation commands would list it again in Ctrl+K.
 COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release", "shape.boolean", "path.boolean",
            "layer.align", "layer.distribute", "layer.match_size", "style.apply", "layer.lock", "layer.unlock",
-           "layer.hide", "layer.remove", "layer.duplicate", "style.define", "style.use", "style.detach")
+           "layer.hide", "layer.remove", "layer.duplicate", "style.define", "style.use", "style.detach",
+           "frame.fit", "frame.cut", "frame.home")
 MAKES = ("group.make", "rig.make", "mask.make", "shape.boolean")        # operations that make a layer: it is selected after
 
 
@@ -33,12 +35,20 @@ class ActionSlots(SlotMixin):
         self.selectedItemsChanged.connect(self._hub.refresh)
         self.docChanged.connect(self._hub.refresh)
         self._keys.changed.connect(self._hub.refresh)       # Ease's keys (F9 …) follow the keys picked
+        for sig in (self.timeChanged, self.playingChanged, self.markersChanged):   # Cut here, Frame home: at the playhead
+            sig.connect(self._hub_at)
         self._hub.refresh()
 
     def _facts(self) -> Facts:
         return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids,
                                                          "sound": self._soundtrack.present, "picked": list(self._kit.selection),
+                                                         "frame": frame_actions.state(self),
                                                          "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
+
+    def _hub_at(self):
+        """The playhead or the markers moved: the frame's actions follow (not while playing: nothing is picked then)."""
+        if not self.play.playing:
+            self._hub.refresh()
 
     def _what(self, f) -> str:
         """What the bar acts on: "title", "3 layers" ("" = nothing selected: no bar)."""
@@ -52,10 +62,11 @@ class ActionSlots(SlotMixin):
         after = [k["id"] for c in calls if c["op"] == "group.release" for g in c["target"]
                  for k in self.doc.item(g).get("layers", [])]
         after += [c["args"]["id"] for c in calls if c["op"] in MAKES and c["args"].get("id")]
+        framed = frame_actions.told(calls, self._facts()) if any(c["op"] in frame_actions.OPS for c in calls) else ""   # said before
         if not self._guard(lambda: self._apply(calls, label)):
             return
-        if said(calls, label, self.doc) != label:      # K: "Keyed 4 settings on 3 layers" (action_rules.said)
-            self._set_status(said(calls, label, self.doc))
+        if framed or said(calls, label, self.doc) != label:   # K: "Keyed 4 settings on 3 layers" (action_rules.said)
+            self._set_status(framed or said(calls, label, self.doc))
         if any(c["op"] == "layer.duplicate" for c in calls):
             after = [self.doc.item(parent)[k][at + 1]["id"] for parent, k, at in (self.doc.parent_of(i) for i in layers)]
         if after:
@@ -134,7 +145,8 @@ class ActionSlots(SlotMixin):
 
     @Slot(result="QVariantList")
     def actionMenu(self):
-        return self._hub.menu()
+        """Right-click: the frame's block first (Frame the view, Cut here …: frame_actions.menu_rows), then the short menu."""
+        return frame_actions.menu_rows(LIST.available(self._facts())) + self._hub.menu()
 
     @Slot(str, result="QVariantList")
     def layerMenu(self, layer_id):

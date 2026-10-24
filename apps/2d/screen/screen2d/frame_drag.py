@@ -113,7 +113,7 @@ class FrameDrag(QObject):
         if f.get("locked"):
             self.b._fail("Error: the frame is locked (the lock on its Frame row); unlock it to move it.")
             return False
-        p = resolve(f, self.b.own_t(f["id"]))
+        p = resolve(self.b.placed_item(f["id"]), self.b._t)          # keys on a marker placed
         g = Grab(f["id"], kind, p["x"], p["y"], p["zoom"] or 1.0, p.get("rotation", 0.0), px, py, int(corner) % 4,
                  *_size(self.b.comp()))
         if not self.b._begin(LABELS[kind], g):

@@ -24,3 +24,4 @@ FIELDS = {
 }
 LABELS = {"camera": "Frame"}
 STILL = {"camera": {"homeX", "homeY"}}
+FIXED = {"camera": {"homeX", "homeY"}}     # written by the scene only (make.py): camera.set never takes them

@@ -5,6 +5,7 @@ hands these over). The view is screen state: these only move what the window sho
     pan <dx> <dy> [hold]       move the view by screen px (as Space+drag); hold: again after the next refit (layout check)
     viewmenu                   open the "Fit · 50 % ▾" menu
     fitsel                     F: zoom to the selection (nothing selected: everything)
+    fitall                     Shift+1: zoom to everything (every layer and the frame's whole path)
     draghold <layer> <dx> <dy> [ctrl] [shift]   press on a layer and drag it by composition px without letting go
                                (for a picture of the snap lines; ctrl = pressed after the drag began, shift = straight)
     viewtime pan <n> <dx> <dy> | zoom <n> <factor> | drag <layer> <n> <dx> <dy>   n view steps (or n moves of a layer
@@ -21,7 +22,7 @@ from PySide6.QtCore import Q_ARG, QCoreApplication, QEventLoop, QMetaObject, QOb
 
 from .playstats import STATS
 
-WORDS = ("zoom", "pan", "fitsel", "draghold", "viewmenu", "viewtime")
+WORDS = ("zoom", "pan", "fitsel", "fitall", "draghold", "viewmenu", "viewtime")
 
 
 def _call(win, fn, *args):
@@ -58,6 +59,8 @@ def do_view_step(bridge, win, word, rest, step):
         view_time(bridge, win, rest)
     elif word == "fitsel":
         _call(win, "fitSelection")
+    elif word == "fitall":                       # Shift+1: every layer and the frame's whole path
+        _call(win, "fitEverything")
     elif word == "draghold":
         bridge.select(rest[0])
         if not bridge.beginMove():

@@ -11,21 +11,21 @@ one condition language: action_rules.Facts lists them), `panel` (False: not in t
 first; a secondary one is then the context bar's first button, out of its `bar` menu: Make rig on parts named like a
 body), `calls` (an operation, a target rule and argument rules: action_rules.py) or `do` (not a document change: the clipboard, copy style, rename). A selection holding a locked
 layer is offered only what is marked `locked_ok` (Unlock, Paste); one holding the frame (what the scene exports, never
-grouped, masked, copied or deleted) only what is marked `frame_ok` (Lock, Unlock, K and the eases of its keys).
+grouped, masked, copied or deleted) only what is marked `frame_ok` (Lock, Unlock, K, its keys' eases, frame_actions.py).
 """
 from __future__ import annotations
 
 from rostrum2d import fields as F
 from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
+from . import frame_actions
 from .action_rules import Facts, calls_of
 from .eases import EASES
 from .keys2d import KEYS2D
 
 __all__ = ["ACTIONS", "DATA", "Facts", "LIST"]
 
-FACT = lambda name: {"fact": name}            # noqa: E731
-NOT = lambda name: {"not": {"fact": name}}    # noqa: E731
+FACT, NOT = (lambda name: {"fact": name}), (lambda name: {"not": {"fact": name}})
 ALL = lambda *names: {"all": [{"fact": n} for n in names]}   # noqa: E731
 
 
@@ -109,7 +109,7 @@ DATA = [
     _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}, panel=False, frame_ok=True),   # K; the diamonds
-
+    *frame_actions.data(_a, lambda how: {"rule": "frame", "how": how}),    # Frame the view, Cut here … (frame_actions.py)
     *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
          when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"]), panel=False, frame_ok=True) for e in EASES if e["value"] != "custom"],
     # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)

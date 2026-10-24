@@ -19,7 +19,13 @@ def offscreen_env() -> dict:
 def background() -> bool:
     """A real window opened by a script or an agent (ROSTRUM_BACKGROUND_WINDOWS=1, or any scripted run): it opens
     behind the person's windows and never takes the keyboard, so a check running while someone works never jumps in
-    front of them. It still draws (only a minimised window stops drawing), so its timings are the real window's."""
+    front of them. It still draws (only a minimised window stops drawing).
+
+    It draws on the screen's own thread (Qt's "basic" loop, set in qt_app): Qt's threaded loop on Windows draws a
+    frame only when one can be shown, and a window behind others never shows one, so not one animation advanced in it
+    (a popup's fade-in stayed at nothing: Ctrl+K never settled, the action menu's picture was taken without the menu).
+    The basic loop runs animations on the clock and draws every frame on the screen's thread, so a check's timings
+    include the drawing: never kinder than the person's window."""
     from rostrum_core import userhome
     return os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1" or userhome.scripted() is not None
 
@@ -45,6 +51,8 @@ def qt_app():
     if QGuiApplication.instance() is None and any(a.split("=", 1)[0] in FLAGS for a in sys.argv[1:]):
         for k, v in offscreen_env().items():
             os.environ.setdefault(k, v)
+    if QGuiApplication.instance() is None and background():
+        os.environ.setdefault("QSG_RENDER_LOOP", "basic")   # a window behind others: see background()
     return QGuiApplication.instance() or QGuiApplication(sys.argv)
 
 

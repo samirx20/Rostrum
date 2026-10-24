@@ -8,8 +8,15 @@ only when one differs. A part that changes for its own reasons still sends `chan
 it again (what QML read in between is not known).
 
     bridge.outlineChanged.connect(news.relay(self))      # instead of bridge.outlineChanged.connect(self.changed)
+
+`OnceAFrame`: what a drag's step sets off beside the dragged thing itself (the settings panel, the parts that follow
+the outline) runs at most once per screen refresh, however fast the pointer moves.
 """
 from __future__ import annotations
+
+import time
+
+from PySide6.QtCore import QTimer
 
 
 def _names(part, signal: str) -> list[str]:
@@ -42,3 +49,34 @@ def relay(part, signal: str = "changed"):
                 state["mine"] = False
     sig.connect(own)
     return check
+
+
+FRAME_MS = 16          # one screen refresh
+
+
+class OnceAFrame:
+    """Work a drag sets off on every pointer move, run at most once per screen refresh: `ask()` runs `fn` at once
+    when it last ran a refresh ago or more, else once when that refresh is over (the asks in between are that one
+    run, so the last state always shows). `cancel()` drops a run still waiting (the work was just done in full)."""
+
+    def __init__(self, fn, parent):
+        self._fn, self._last = fn, -1e9
+        self._timer = QTimer(parent)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._run)
+
+    def ask(self):
+        if self._timer.isActive():
+            return
+        wait = FRAME_MS - (time.perf_counter() - self._last) * 1000
+        if wait <= 0:
+            self._run()
+        else:
+            self._timer.start(int(wait) + 1)
+
+    def cancel(self):
+        self._timer.stop()
+
+    def _run(self):
+        self._last = time.perf_counter()
+        self._fn()

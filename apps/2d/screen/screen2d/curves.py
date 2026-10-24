@@ -69,7 +69,10 @@ class Curves(QObject):
 
     @Property("QVariantList", notify=changed)
     def fields(self):
-        """One entry per curve: id, label, colour, range lo..hi, shown, path [[t, v] …], keys, stretches (handles)."""
+        """One entry per curve: id, label, colour, range lo..hi, shown, path [[t, v] …], keys, stretches (handles).
+        Empty while the editor is off: nothing samples curves no one sees (news.relay reads this on every outline)."""
+        if not self._on:
+            return []
         picked = self.b._keys.ids
         out, sel, layer = [], picked[0] if picked else "", self.b.selectedLayer
         for n, (owner, prop) in enumerate(self._numbers()):

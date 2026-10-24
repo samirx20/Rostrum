@@ -41,6 +41,7 @@ def _through_door(fn):
 class Event:
     kind: str          # "change" | "preview" | "reset"
     change: Change | None = None
+    edits: list | None = None      # a preview's: what this step changed on top of the last one (a change's are its own)
 
 
 class Document:

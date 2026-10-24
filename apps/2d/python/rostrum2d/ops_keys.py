@@ -47,11 +47,14 @@ def settable(ctx, owner: dict, prop: str):
     `valid_when`; e.g. a text following a path layer takes x, y, turn and scale from the path). Else refused, loudly."""
     from rostrum_core.conditions import holds
     from .exprbake import source_of
+    if prop in F.FIXED.get(owner["type"], ()):
+        ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "is written by the scene itself and never changed",
+                 hint="Home is where the frame's centre was when the scene was made; move the frame with x and y.")
     if source := source_of(owner, prop):
         ctx.fail(codes.CONFLICT, f'{owner["id"]}.{prop}', f"is driven by an expression ({source}); a value or key would do nothing",
                  hint="expr.clear it first.")
     p = F.param(owner["type"], prop)
-    if p is not None and not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}):
+    if p is not None and not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}, ctx.facts(owner)):
         ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "doesn't apply right now", hint=f"It shows in the inspector only when it applies (fields.py valid_when {p.valid_when}).")
 
 
@@ -79,7 +82,7 @@ def _value_now(ctx, owner: dict, prop: str, t):
     if prop not in F.animatable(owner["type"]) or source_of(owner, prop) or isinstance(t, str):
         return None
     p = F.param(owner["type"], prop)
-    if not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}):
+    if not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}, ctx.facts(owner)):
         return None
     keys = keys_of(owner, prop)
     if any(isinstance(k["t"], str) for k in keys):     # timed on a marker: the value needs the markers; left out

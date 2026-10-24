@@ -29,7 +29,7 @@ class DragSlots(SlotMixin):
             self._fail("Error: move: x or y is driven by an expression; clear it first (the cross on its row).")
             return False
         more = self._multi.extras()
-        p = resolve(self.doc.item(layer), self.own_t(layer))
+        p = resolve(self.placed_item(layer), self._t)          # keys on a marker placed
         ok = self._begin_many([layer] + more) if more else self._begin(label, (layer, p["x"], p["y"]))
         if ok:
             self._snap.begin([layer] + more)            # what the drag may snap to (snapper.py)
@@ -43,7 +43,7 @@ class DragSlots(SlotMixin):
             if layout_drag.begin(self.doc, self.placed(), lay, self._t) or any(exprs.drives(item, a) for a in ("x", "y")):
                 self._fail(f"Error: move: {self.label_of(item)} is placed by an auto layout or an expression; select it alone to move it.")
                 return False
-            p = resolve(item, self.own_t(lay))
+            p = resolve(self.placed_item(lay), self._t)
             grab.append((lay, p["x"], p["y"]))
         return self._begin(f"Move {len(layers)} layers", grab)
 

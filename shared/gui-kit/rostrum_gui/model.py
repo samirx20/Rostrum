@@ -63,6 +63,8 @@ class RowsModel(QAbstractListModel):
     def _send(self, rows: list[dict], at: int = 0):
         for i, new in enumerate(rows, at):
             old = self.rows[i]
+            if old == new:                  # most rows of an edit are as they were: one compare, not one per role
+                continue
             changed = [self._ids[n] for n in self._names if old.get(n) != new.get(n)]
             if changed:
                 self.rows[i] = new

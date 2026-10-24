@@ -54,8 +54,8 @@ def _set_fields(ctx, targets, args):
 
 for _type, _params in F.FIELDS.items():
     _label = F.LABELS[_type].lower()
-    REGISTRY.operation(f"{_type}.set", f"Change a {_label}'s settings.", target=_type, params=_params,
-                       label=f"Edit {_label}", fields=True)(_set_fields)
+    REGISTRY.operation(f"{_type}.set", f"Change a {_label}'s settings.", target=_type, label=f"Edit {_label}",
+                       params=[p for p in _params if p.name not in F.FIXED.get(_type, ())], fields=True)(_set_fields)
 
 
 def facts(item: dict, doc=None) -> dict:
@@ -63,6 +63,9 @@ def facts(item: dict, doc=None) -> dict:
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item,      # rawSpring: keys.spring
                 "rawSpring": not {"bounce", "speed"} & set(item)}
     out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
+    if item.get("type") == "camera":                       # frame.home is offered only while the frame is away
+        from .ops_frame_fit import away
+        out["frameAway"] = away(item)
     if item.get("type") in ("text", "textstyle"):         # Italic shows where the family has one (or it is on)
         out["fontItalic"] = bool(item.get("italic")) or _has_italic(item.get("font", F.defaults("text")["font"]))
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
@@ -201,6 +204,7 @@ from . import ops_group, ops_mask, ops_state, ops_align, ops_look  # noqa: E402,
 from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of layers)
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
+from . import ops_frame_fit  # noqa: E402,F401  (frame.fit, frame.cut, frame.home: framing and cuts)
 from . import ops_stagger  # noqa: E402,F401  (layer.stagger: retiming)
 from . import ops_path_handles  # noqa: E402,F401  (key.path_handles: the path a moving layer travels)
 from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: anim.list)
