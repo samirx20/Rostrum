@@ -5,8 +5,8 @@ from pathlib import Path
 
 from rostrum_core.mcp import Reply, Tools
 
-from ..lipsync.track import TIMING, track
-from ..lipsync.visemes import SHAPES
+from rostrum_core.lipsync.track import TIMING, track
+from rostrum_core.lipsync.visemes import SHAPES
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()

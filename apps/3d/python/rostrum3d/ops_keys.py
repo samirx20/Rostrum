@@ -38,5 +38,5 @@ def _check_still(ctx, owner: dict, prop: str, args: dict):
     return value
 
 
-put_key = register_key_ops(R, owners=F.ITEMS, check_key=_check_key, check_still=_check_still,
+put_key = register_key_ops(R, owners=F.KEYED, check_key=_check_key, check_still=_check_still,
                            prop_help="The field to animate (x, ry, intensity, color …)")

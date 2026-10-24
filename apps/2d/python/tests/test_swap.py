@@ -4,7 +4,7 @@ from rostrum_core import Document, Who
 from rostrum_core.keys import keys_of, track_value
 
 from rostrum2d import KIND, run_source
-from rostrum2d.lipsync import phonemes
+from rostrum_core.lipsync import phonemes
 from rostrum2d.scene import describe
 
 SAM = Who.person("sam")

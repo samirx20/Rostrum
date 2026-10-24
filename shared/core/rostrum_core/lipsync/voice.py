@@ -1,12 +1,12 @@
-"""The project's voice lines, as Lip sync… lists them (UX_SPEC 3.23 › Lip sync): read from RostrumSound's items through
-the project service and Sound's read-only API (rostrum_core.project, rostrum_sound.soundtrack.read, voice_lines), never
-a file path a person types. One source of truth: the words, the time and the take are Sound's. No Qt.
+"""The project's voice lines as Lip sync lists them (UX_SPEC 3.23 > Lip sync): read from RostrumSound's items through
+the project service and Sound's read-only API (rostrum_sound.soundtrack.read, voice_lines), never a file path a person
+types. One source of truth: the words, the time and the take are Sound's. Shared by 2D and 3D. No Qt.
 
     lines(folder) -> [{"id": "voice/hello", "item", "line", "text", "at": s, "file": take wav or "", "english": bool}]
 """
 from __future__ import annotations
 
-from rostrum_core import project
+from .. import project
 
 
 def lines(folder) -> list[dict]:
@@ -30,6 +30,6 @@ def lines(folder) -> list[dict]:
 
 def heard(line: dict) -> bool:
     """Its phones are in the cache already (Apply is quick); else Apply listens first (the phone model, a while)."""
-    from rostrum2d.lipsync import phonemes
+    from . import phonemes
     k = phonemes.key(line["file"], 0.0, None, line["text"] if line["english"] else None, "english", None)
     return phonemes.CACHE.get("lipsync", k) is not None

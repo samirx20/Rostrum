@@ -52,3 +52,22 @@ def test_follow_and_stick_undo_and_save(tmp_path):
     again = Document.open(tmp_path, "scene", KIND)
     assert again.item("bud")["follow"] == "lid" and again.item("lid")["stick"] == "floor"
     assert _where(again.data, "bud", 40) == _where(d.data, "bud", 40)
+
+
+def test_the_gizmo_stands_where_a_followed_or_stuck_item_is_seen(tmp_path):
+    """18b: the seen placement (resolve.Frames.carrier) carries the item's own x y z to where it is drawn, and a
+    change to its own offset moves it there by exactly the carrier's step, so a gizmo drag lands under the pointer."""
+    from rostrum3d.resolve import seen
+    d = _doc(tmp_path)
+    d.apply({"op": "mesh.set", "target": ["floor"], "args": {"y": 0.1}}, SAM)
+    d.apply({"op": "stick.add", "target": ["lid"], "args": {"item": "floor", "height": 0.3}}, SAM)
+    for id_, f in (("bud", 33), ("lid", 20)):
+        own = {k: d.item(id_).get(k, 0.0) for k in ("x", "y", "z")}
+        m = seen(d.data, id_, f, FPS)
+        here = aim.point(m, [own["x"], own["y"], own["z"]])
+        pivot = [d.item(id_).get(k, 0.0) for k in ("px", "py", "pz")]
+        assert all(abs(a - b) < 1e-9 for a, b in zip(here, _where(d.data, id_, f, pivot))), id_
+        d.apply({"op": "mesh.set", "target": [id_], "args": {"x": own["x"] + 0.1}}, SAM)
+        moved = _where(d.data, id_, f, pivot)
+        step = aim.point(m, [own["x"] + 0.1, own["y"], own["z"]])
+        assert all(abs(a - b) < 1e-6 for a, b in zip(step, moved)), id_

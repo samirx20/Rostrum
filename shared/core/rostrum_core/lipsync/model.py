@@ -13,8 +13,6 @@ from pathlib import Path
 
 from rostrum_core import RostrumError, codes
 
-from .. import settings
-
 from .audio import RATE
 
 ENGINE = "wav2vec2-lv60-espeak@1"     # our version of the whole job: bump when audio, alignment or timing changes
@@ -23,9 +21,14 @@ CHUNK_S, CONTEXT_S = 20, 1            # long audio runs in pieces, each with con
 MIN_FREE_GB = 2.5
 
 
+def models_dir() -> Path:
+    """The person's Rostrum models folder: ROSTRUM_DATA/models, else ~/.rostrum/models."""
+    return Path(os.environ.get("ROSTRUM_DATA") or Path.home() / ".rostrum") / "models"
+
+
 def folder() -> Path:
     return Path(os.environ.get("ROSTRUM_PHONES_DIR") or
-                settings.models_dir() / "wav2vec2-lv60-espeak-fp16")
+                models_dir() / "wav2vec2-lv60-espeak-fp16")
 
 
 def vocab(where="lipsync") -> dict:
@@ -49,7 +52,7 @@ def _session(where):
         import onnxruntime as ort
     except ImportError as e:
         raise RostrumError(codes.MODEL_MISSING, where, "onnxruntime", "is not installed",
-                           hint="pip install rostrum2d[lipsync] (onnxruntime-directml on Windows)") from e
+                           hint="pip install rostrum_core[lipsync] (onnxruntime-directml on Windows)") from e
     f, dev = folder() / "model_fp16.onnx", _device()
     if not f.is_file():
         raise RostrumError(codes.MODEL_MISSING, where, "the phone model", f"is not installed in {folder()}")

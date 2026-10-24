@@ -10,7 +10,7 @@ from .materials import USERS
 
 FINAL_TIP = "Shows in Final, not in the Quick view"
 NONE_FIRST = {"material", "item"}       # fields naming another item that may name none ("" = no material, focus on a distance)
-DATA_GROUPS = {"Mesh data"}             # groups that are data an operation writes (an editable mesh's points), never rows
+DATA_GROUPS = F.DATA_GROUPS              # data an operation writes (a mesh's points, a bone's head), never rows
 
 
 def _is_data(type_, r) -> bool:

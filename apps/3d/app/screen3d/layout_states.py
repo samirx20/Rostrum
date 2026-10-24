@@ -50,6 +50,15 @@ def lid_turn() -> list[str]:
     return ["--script", str(script)]
 
 
+def mouth_group() -> list[str]:
+    """Start args for the sample with a mouth: a group of three flat shapes named as mouth shapes (Lip sync…)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "mouth_group.py"
+    lines = ["with group('mouth', y=0.5):", "    mesh('mouth_rest', shape='disc', radius=0.05)",
+             "    mesh('mouth_closed', shape='disc', radius=0.04)", "    mesh('mouth_wide', shape='disc', radius=0.07)"]
+    script.write_text(SOURCE + "\n".join(lines) + "\n", encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -65,6 +74,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("combine-folded", s, ["selectmany block vase", "action combine:union", "fold combine_1"]),
         ("light-selected", s, ["select key"]),
         ("light-final-only", s, ["select key", "set spread 60", "set lightsOnly block"]),   # the Final badges
+        ("lipsync-sheet", mouth_group(), ["lipsync mouth"]),                            # Lip sync… on a mouth group (the kit's sheet)
         ("context-light", s, ["context key"]),                                          # Pick what it lights
         ("dome-selected", s, ["select sky"]),
         ("camera-selected", s, ["select cam"]),

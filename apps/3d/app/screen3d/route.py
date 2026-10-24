@@ -19,7 +19,7 @@ def value_at(item: dict, prop: str, t: float):
 
 
 def shown_values(item: dict, t: float) -> dict:
-    if item["type"] not in F.ITEMS:
+    if item["type"] not in F.KEYED:
         return item
     return {**item, **{p: value_at(item, p, t) for p in {k["prop"] for k in item.get("keys", [])}}}
 

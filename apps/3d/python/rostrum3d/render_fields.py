@@ -7,7 +7,7 @@ numbers themselves. Size is the shot's own frame size, half or double. Range: th
 """
 from __future__ import annotations
 
-from .fields import CH, D, IS, N, S, T
+from .field_kit import CH, D, IS, N, S, T
 
 QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128, "denoise": True},
              "final": {"samples": 512, "denoise": True}}
