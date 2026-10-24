@@ -110,7 +110,8 @@ A pose library keeps named poses on the rig, so a person or an agent can reuse a
 - **Ways to use it:** block a shot with key poses first, then key the in-betweens; keep a library per character
   (`item.rename target=wave_up name="Wave up"` renames; `pose.remove` deletes); make a variation by blending two poses a little instead of
   posing a third by hand.
-- Not yet: mirroring a pose, copying poses between rigs.
+- **Mirror.** `pose.mirror target=puppet t=1.2 how=left_to_right` keys the right side of the rig from its left side at that time (`right_to_left` the other way; `swap` makes the whole pose as seen in a mirror). Sides are read from names (`arm L`, `hand R`, `left`, `right`); a rig with no sided names is refused with the names to give. On the screen it is the **Mirror pose** menu at the top of the settings panel with the rig picked (left to right, right to left, swap); it shows only when the rig has left and right names. One undo step; like Apply it only puts keys at that time.
+- Not yet: copying poses between rigs.
 
 ## Long chains: spines, tails, arms with hands
 

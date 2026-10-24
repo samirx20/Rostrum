@@ -107,7 +107,9 @@ Rectangle {
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (pin.visible ? pin.width + 4 : 0)
         anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
-        HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
+        HoverTip { hovered: hover.containsMouse      // the whole name; the frame also says when Cut here is there
+                   text: name.isFrame ? "Frame" : labelText.truncated ? name.rowData.label : ""
+                   help: name.isFrame ? "What the export shows. Cut here (a jump to the next shot) is there once the playhead is past 0 s." : "" }
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.selected ? Theme.accentHover : name.isLayer ? Theme.fg : Theme.fg2
     }

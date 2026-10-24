@@ -58,10 +58,10 @@ shows as a dashed line with no dots. The faint path and outlines also show while
 them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
 
 **Framing by clicks.** With the frame picked, the top of the settings panel has **Frame the view** and **Cut here**, and
-its **⋯** has **Frame home** (only when the frame is away from home at the playhead) and **Lock**. The same are on
+its **⋯** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on
 right-click (the Frame row, or the canvas) and in **Ctrl+K**, which also has **Cut to the view**. With layers picked,
-**⋯** has **Frame these** and **Cut to these**. Only what applies shows: no Cut here at 0 s, and a locked frame offers
-only Unlock.
+**⋯** has **Frame these** and **Cut to these**. Only what applies shows: no Cut here at 0 s (hover the Frame row: its tip says so), and a locked frame offers
+only Unlock. **Frame the view** on a view the frame already shows keys nothing and says "Already framed" (an agent's `frame.fit` refuses it the same way).
 
 - **A push:** pick the frame (**C**) at 0 s, move the playhead to 3 s, pan and zoom your view until the second place
   fills the canvas the way you want it, then **Frame the view**. The frame fits what you see (leaving the same room

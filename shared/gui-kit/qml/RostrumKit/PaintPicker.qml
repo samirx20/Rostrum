@@ -104,6 +104,8 @@ Column {
         }
     }
 
+    Text { objectName: "fillTypeName"; text: pp.names[pp.shown]; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }   // the active mode in words
+
     GradientBar {
         id: bar
         visible: pp.gradient && pp.coloured
@@ -184,5 +186,4 @@ Column {
         Text { anchors { left: paintItButton.right; leftMargin: Theme.gap; right: parent.right; verticalCenter: paintItButton.verticalCenter }
                text: pp.paintItNote; elide: Text.ElideRight; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
     }
-    Text { visible: pp.shown === "none"; text: "No fill"; color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont }
 }

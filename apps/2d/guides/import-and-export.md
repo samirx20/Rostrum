@@ -2,9 +2,7 @@
 
 What can come into a Rostrum2D document, and what can go out. Read `start-here` first.
 
-**Where each is today.** Import (SVG, PDF, PSD, Figma) and export (every format but the project mp4) are a **Python
-library**, `rostrum2d.io`, used by the screen; they are **not yet MCP tools**. From an MCP-only agent the way out is
-`render_video` (mp4). The Python calls below are for code running next to the document (a screen, a Python agent).
+**Where each is today.** An agent has MCP tools for both: `run_import` (SVG, PDF, PSD, an image or video, or a Figma frame, into a composition as one undo step) and `render_export` (mp4, webm, prores4444, gif, png, exr, lottie, motion; always a job, follow it with `inspect_job`). `render_video` is the older mp4-only call. The Python calls below are the library, `rostrum2d.io`, for code running next to the document (the screen, a Python agent).
 
 ## Import
 
@@ -29,7 +27,7 @@ Check an import: `look_frame` at full width next to the source, `inspect_item` (
 
 ## Export
 
-`render_video` (MCP) exports an **mp4** (H.264, Rec.709) of a composition, always a job: `inspect_job` with `wait_s` to follow
+`render_export` (MCP) exports any format below; `render_video` exports an **mp4** (H.264, Rec.709) of a composition, always a job: `inspect_job` with `wait_s` to follow
 it. In a project it lands in `renders/<item>/vNNN/` with a manifest Sound and the Editor can find; a failed export stays in a
 `.partial` folder and is never listed. `start` and `end` (seconds) pick a range.
 
@@ -51,10 +49,10 @@ path as `look_frame`**, then reads the file back (frame count, size, alpha, dept
 
 Asking a format for what it cannot carry (alpha on mp4; 16 bits on gif; a quality on png) is refused with the list of ones
 that can. The mp4 is made by Windows' own H.264 encoder (the graphics card's encoder when it has one), with no FFmpeg; its width
-and height must be even numbers (H.264 needs it), and an odd size is refused before anything is written. A see-through part of
+and height must be even numbers (H.264 needs it), and an odd size is refused at once, before any frame is drawn (the reply says to make the scene one pixel wider or taller). A see-through part of
 the picture comes out black. webm and ProRes go through FFmpeg; PNG and EXR are written by the engine, and a GIF by `io/gif_encode.py` (one palette for the whole GIF, a fixed ordered dither, only the changed part of each frame stored).
 
-**GIF size and rate:** `render_export` takes `size` (`full` | `half` | `480`, 480 px wide; default `half`) and `rate` (`15` | `scene`; default `15`) for `gif` only (other formats refuse them). A GIF is for chats and pages: a full-HD one at the scene's rate is many times the size of a half-size 15 fps one. The facts it returns give the GIF's own size, frame count and rate. Files are named after the item (`loop.gif`), see exporting.md.
+**GIF size and rate:** `render_export` takes `size` (`full` | `half` | `480`, 480 px wide; default `half`) and `rate` (`15` | `scene`; default `15`) for `gif` only (other formats refuse them). A GIF is for chats and pages: a full-HD one at the scene's rate is many times the size of a half-size 15 fps one. The facts it returns give the GIF's own size, frame count and rate. A GIF stores identical neighbouring frames once and holds them longer (the time is still exact), so the read-back `checked.frames` can be a little under the frames asked for; `checked.merged` says how many were joined. Files are named after the item (`loop.gif`), see exporting.md.
 
 ### Lottie
 
@@ -75,5 +73,4 @@ the picture comes out black. webm and ProRes go through FFmpeg; PNG and EXR are 
 
 ## Not yet
 
-MCP tools for import and for the formats other than mp4; sound in a 2D video export (sound is RostrumSound's: 2D mp4 has none);
 MP4 on the Mac (it will use the Mac's own encoder; today it says it is not built yet).

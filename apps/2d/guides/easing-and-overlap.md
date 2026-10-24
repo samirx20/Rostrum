@@ -33,7 +33,7 @@ that the file says what you decided.
 - `look_motion` lists every pair of entrances that overlap with the overlap in seconds, and whether they start together.
   A stagger you meant as "one after another" that shows a large overlap, or a "together" that shows an offset, is a script
   mistake you can read without rendering.
-- `layer.stagger {ids, by, order}` spreads layers so each starts `by` seconds after the one before, counting from the
+- `layer.stagger {target: [layer ids], by, order}` spreads layers so each starts `by` seconds after the one before, counting from the
   earliest start among them, in an order: `stack`, `picked`, `left_to_right`, `top_to_bottom`, `centre` (equal
   distances start together) or `random` (the same every time). Calling it again re-spreads them, so the rhythm is one
   number. In the screen: **Stagger…** at the top of the settings panel.

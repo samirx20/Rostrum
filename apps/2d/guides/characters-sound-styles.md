@@ -23,7 +23,7 @@ Pose the character on the canvas by dragging its bones: press on a bone's middle
 
 ### Lip sync
 
-1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**). Name them by mouth shape, or name the set "mouth".
+1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**, which is under **⋯** at the end of the settings panel's top row). Name them by mouth shape, or name the set "mouth".
 2. Select the set. **Lip sync…** appears at the top of the settings panel.
 3. In the sheet, click a **Voice line**. Voice lines come from RostrumSound. Check the drawing shown for each mouth shape and change a wrong one in its list.
 4. Click **Apply**. The first time a voice line is used, the sheet listens to it: it shows **Step 1 of 3**, **2 of 3**, **3 of 3** with a moving bar, takes a few seconds (longer on a busy computer), and you can keep working meanwhile. A line heard before applies at once. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.
@@ -50,7 +50,7 @@ Every scene has one **frame**: the box that is exported. There is no camera tool
 the frame's name tab, or its **Frame** row at the top of the timeline) to pick it, then drag inside it to move it, drag
 a corner square to zoom, and drag just outside a corner to turn it. With no keys a drag moves it for the whole piece;
 once it has keys, a drag sets a key at the playhead. One drag is one undo step. With it picked, **Frame the view** fits
-it to what your canvas shows and **Cut here** makes a jump at the playhead (**⋯** has **Frame home**). Its path, a faint
+it to what your canvas shows and **Cut here** makes a jump at the playhead (**⋯** has **Frame home**, when the frame is away from home; **Cut here** shows once the playhead is after 0 s). Its path, a faint
 outline at each key and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
 [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md).
 
@@ -69,7 +69,7 @@ Press **Ctrl+L**, or click **Library** (the books icon) in the tool rail, to ope
 
 - **Brand kit** keeps the project's **colours**, **text styles** and **logos**. Every scene of the project sees them. It needs the scene to be in a project; if it is not, the drawer says so.
 - The Library shows only what fits what you have picked. **Logos** (with **+ Logo…**) is always there. Pick a shape or path and **Colours** (with **+ This colour**) joins it; pick a text and **Text styles** (with **+ This text's style**) joins it; pick a group and you see only Logos. A section with nothing in it is not shown until you pick something that can fill it.
-- **Paintings** are this scene's own (see [drawing.md](drawing.md) part 9), so they show with or without a project. The section is there once the scene has a painting, or when what you picked can make one. Each painting is a row: a small picture (four repeats of it when it is seamless, so you see the repeat), its name, and one line, like "Seamless · 128 × 128 · 3 uses", "12 drawings · 1 use" or "not used".
+- **Paintings** are this scene's own (see [drawing.md](drawing.md) part 9), so they show with or without a project. The section is there once the scene has a painting, or when the layer you picked already has paint of its own (then a row **From <layer>'s paint** makes a painting from it). With no painting yet and a plain shape picked, there is no Paintings section: make the first one with **+ New painting** in the Fill picker (set the shape's fill to **Painted**), or from paint on a layer. Once the section shows it ends with **+ New painting** (a blank 512 × 512 painting that repeats seamlessly, opened to paint). Each painting is a row: a small picture (four repeats of it when it is seamless, so you see the repeat), its name, and one line, like "Seamless · 128 × 128 · 3 uses", "12 drawings · 1 use" or "not used".
   - **Click** a row to use it on what you picked: every picked shape and path gets it as its fill, in one step (a layer that already has a painted fill keeps how it sits; others are stretched; a layer's solid colour stays as its Colour under it). Texts and locked layers are skipped, and the top bar says so if none can take it. With nothing picked, a click picks the layers that use it.
   - **Double-click** a row to open the painting on its own.
   - **Right-click** a row: **Use as the fill of 2 layers** (only when you picked shapes or paths), **Open**, **Rename** (type in the row, **Enter** keeps it, **Esc** leaves it), **Duplicate** (a copy named "… copy", not used by anything), **Delete**. Delete asks nothing: layers using it get a solid fill of its average colour, the top bar says "Paper grain deleted; 3 layers now have a solid fill", and **Ctrl+Z** brings the painting and every use back.

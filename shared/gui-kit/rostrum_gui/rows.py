@@ -39,6 +39,8 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # (None) when there is nothing to say: no gap is left. Worked out live from the document, like every other row value.
 # button: optional (an app adds it from its actions, action_views.row_buttons): {"label", "id", "menu": [{value, label}]}, a
 # small button (or a menu when `menu` has entries) at the right of the field; a click runs the action through bridge.rowAction(id).
+# With an `icon` (a ToolIcon name) and `set` [param id, value] instead: a small icon square (the label on hover) that
+# sets that other setting (2D's Each corner on the Corner radius row).
 # inside: optional (an app adds it to a param row): the id of another row whose picker draws this one (a fill's Scale,
 # Offset … inside the Fill row's picker: InspectorRow `inside`); the panel's own list leaves it out.
 # own: a fold row of the kind's own group (sections.OWN): always open, never folded.

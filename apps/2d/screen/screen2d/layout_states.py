@@ -35,10 +35,9 @@ OPENED = [_P + '{"name":"Paper grain","w":128,"h":128,"seamless":true,"onto":["c
           "draw 60 30 100 64 140 100"]
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
-# What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design (a motion
-# path's key squares and handle ends lie where the path goes, so close keys put them on each other); a bar's trim ends
-# (16 px, centred on its edges) lie under a key at that end on purpose: the key wins, the rest of the end trims.
-IGNORE = ("/MotionPath#", "/barEnd:")
+# What the check leaves out on purpose: nothing now. A motion path's key squares merge when their targets would touch, and a
+# bar's trim end gives way to a key's diamond at that end (LayerTrack.qml, MotionPath.qml), so no two targets share a pixel.
+IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
@@ -122,6 +121,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # F4: the world view (mock-1, mock-2): a new piece fitted (veil, outline, name tab); the view panned so the frame is
         # out of view (the "‹ Frame" chip); the same with long names everywhere (tab and chip never cut off)
         ("frame-new", ["--sample"], ["zoom fit"]),
+        # batch 6: the split icon on Corner radius (and its way back), an open path's panel (no Outline switch), a picture's
+        # one Fit (the rest folded), the fill picker with the kind's name under its buttons
+        ("rect-each-corner", ["--sample"], ["select card", "set eachCorner true"]),
+        ("open-path-picked", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move"]),
+        ("picture-picked", ["--sample"], [f"drop {picture()} 900 500", "select image_1"]),
+        ("fill-picker-solid", ["--sample"], ["select card", "clickobj swatch"]),
         ("frame-world-panned", ["--sample"], ["select title", "zoom fit", "pan -1800 0 hold"]),
         ("frame-off-view-long", long(), [*busy, "zoom fit", "pan -1800 0 hold"]),
         ("rig-make-first", with_character(), ["select max"]),                # H32: parts named like a body: Make rig first

@@ -49,8 +49,8 @@ def CH(name, options, label, group, default, imp=P, when=None, help="", labels=N
                         help=help, labels=labels or {})
 
 
-def T(name, label, group, default, imp=P, when=None, help=""):
-    return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
+def T(name, label, group, default, imp=P, when=None, help="", shown=""):
+    return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help, shown=shown)
 
 
 def X(name, label, group, default, imp=P, help="", when=None, control="", filters=(), words=None, shown=""):
@@ -208,7 +208,8 @@ FIELDS: dict[str, list[Param]] = {
         N("h", "Height", "Shape", 0, 20000, 1, "px", default=200.0),
         N("radius", "Corner radius", "Shape", 0, 10000, 1, "px", when={"any": [{"all": [IS("shape", "rect"), IS("eachCorner", False)]},
                                                                          *(IS("shape", k) for k in ("triangle", "polygon", "star"))]}),
-        T("eachCorner", "Each corner", "Shape", False, D, IS("shape", "rect"), help="A radius per corner"),
+        T("eachCorner", "Each corner", "Shape", False, D, IS("shape", "rect"), help="A radius per corner",
+          shown="script"),      # screens: the split icon on the Corner radius row (screen2d/corner_rows.py)
         *(N(f"radius{c}", f"Corner radius {w}", "Shape", 0, 10000, 1, "px", when={"all": [IS("shape", "rect"), IS("eachCorner", True)]})
           for c, w in (("TL", "top left"), ("TR", "top right"), ("BR", "bottom right"), ("BL", "bottom left"))),
         N("sides", "Sides", "Shape", 3, 60, 1, "", when=IS("shape", "polygon"), default=6.0),
@@ -260,7 +261,7 @@ FIELDS: dict[str, list[Param]] = {
           filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
         N("w", "Width", "Image", 0, 20000, 1, "px", default=640.0),
         N("h", "Height", "Image", 0, 20000, 1, "px", default=360.0),
-        CH("fit", ["cover", "contain", "stretch"], "Fit", "Image", "cover", S),
+        CH("fit", ["cover", "contain", "stretch"], "Fit in box", "Fit in box", "cover", S),
         N("radius", "Corner radius", "Image", 0, 10000, 1, "px", S),
     ] + TRANSFORM + GRADED,
     # A video: its frames are decoded once (video.py) at the comp's fps and this size; the engine shows the frame the time asks for.
@@ -270,7 +271,7 @@ FIELDS: dict[str, list[Param]] = {
           filters=["Videos (*.mp4 *.mov *.webm *.mkv *.avi)"]),
         N("w", "Width", "Video", 2, 8192, 1, "px", integer=True, default=640),
         N("h", "Height", "Video", 2, 8192, 1, "px", integer=True, default=360),
-        CH("fit", ["cover", "contain", "stretch"], "Fit", "Video", "cover", S),
+        CH("fit", ["cover", "contain", "stretch"], "Fit in box", "Fit in box", "cover", S),
         N("radius", "Corner radius", "Video", 0, 10000, 1, "px", S),
         N("offset", "Clip starts at", "Video", 0, 36000, 0.01, "s", S, help="Seconds into the clip where the layer's first frame is taken"),
         N("speed", "Speed", "Video", 0, 100, 0.01, "×", S, default=1.0),
@@ -287,7 +288,7 @@ FIELDS: dict[str, list[Param]] = {
           help="0 = always the newest render (follows new renders); a number keeps that version"),
         N("w", "Width", "3D render", 2, 8192, 1, "px", integer=True, default=1920),
         N("h", "Height", "3D render", 2, 8192, 1, "px", integer=True, default=1080),
-        CH("fit", ["cover", "contain", "stretch"], "Fit", "3D render", "contain", S),
+        CH("fit", ["cover", "contain", "stretch"], "Fit in box", "Fit in box", "contain", S),
         N("radius", "Corner radius", "3D render", 0, 10000, 1, "px", D),
         N("offset", "Render starts at", "3D render", 0, 36000, 0.01, "s", D, help="Seconds into the render where the layer's first frame is taken"),
         N("speed", "Speed", "3D render", 0, 100, 0.01, "×", D, default=1.0),
@@ -321,7 +322,7 @@ FIELDS: dict[str, list[Param]] = {
         C("fill", "Fill colour", "Fill", NEW_FILL, when=IS("filled", True)),
         *_fill.OPACITY,
         CH("fillRule", ["nonzero", "evenodd"], "Fill rule", "Overlaps", "nonzero", D, IS("filled", True)),
-        T("stroke", "Outline", "Outline", False),
+        T("stroke", "Outline", "Outline", False),     # an open path's switch is not shown while on: it is only its line (hooks.on_page)
         C("strokeColor", "Outline colour", "Outline", "#ffffff", when=STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", when=STROKE, default=4.0),
         CH("cap", ["butt", "round", "square"], "Ends", "Line ends", "round", S, STROKE),

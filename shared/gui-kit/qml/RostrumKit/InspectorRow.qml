@@ -302,11 +302,18 @@ Item {
                 readonly property var input: inner.item ? inner.item.input : null      // focusWidget types here
                 readonly property bool editable: inner.item ? !!inner.item.editable : false
                 implicitHeight: inner.item ? inner.item.implicitHeight : Theme.field
-                Loader { id: inner; anchors.left: parent.left; anchors.right: rowButton.left; anchors.rightMargin: Theme.grid
+                Loader { id: inner; anchors.left: parent.left; anchors.right: iconButton.visible ? iconButton.left : rowButton.left; anchors.rightMargin: Theme.grid
                          height: parent.height; sourceComponent: plain }
                 RowButton { id: rowButton; objectName: "rowbutton:" + row.model.id; anchors.right: parent.right; height: parent.height
+                            visible: !iconButton.visible
                             text: row.model.button ? row.model.button.label : ""; menu: row.model.button ? row.model.button.menu : []
                             onChosen: (v) => row.bridge.rowAction(v || row.model.button.id) }
+                IconButton {   // a button with an `icon` and a `set` [param, value]: a small square that sets another setting (Each corner)
+                    id: iconButton; objectName: "rowicon:" + row.model.id; anchors.right: parent.right; height: parent.height; width: height
+                    visible: !!row.model.button && !!row.model.button.icon
+                    icon: visible ? row.model.button.icon : ""; tip: visible ? row.model.button.label : ""
+                    onClicked: row.bridge.setValue(row.model.button.set[0], row.model.button.set[1])
+                }
             } }
             Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
             Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)

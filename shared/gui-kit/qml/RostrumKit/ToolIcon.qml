@@ -5,7 +5,7 @@ import "."
 // screen at any size (a smaller icon is not a thinner one: the rail's and the settings panel's icons match).
 // Every app's tool rail and flyouts use these by `name` (2D's rail; Sound can reuse them). An unknown name draws
 // nothing, so a missing icon shows up at once.
-// select, rect, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, sound-off, camera, hand, zoom, bone,
+// select, rect, corners, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, sound-off, camera, hand, zoom, bone,
 // menu, help,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude, metronome
@@ -33,6 +33,12 @@ Canvas {
             g.beginPath(); g.moveTo(7.5, 3.5); g.lineTo(12.5, 3.5); g.lineTo(16, 17); g.lineTo(4, 17); g.closePath(); g.stroke()
             line([10, 13.5, 13.5, 6]); dot(12.2, 8.8, 1.2); break
         case "rect": box(3.5, 4.5, 13, 11, 2); break
+        case "corners":      // a rounded square (faint) with its four corners drawn on their own
+            g.save(); g.globalAlpha = 0.4; box(3.5, 3.5, 13, 13, 3); g.restore()
+            g.beginPath(); g.moveTo(3.5, 8); g.arcTo(3.5, 3.5, 8, 3.5, 3); g.stroke()
+            g.beginPath(); g.moveTo(12, 3.5); g.arcTo(16.5, 3.5, 16.5, 8, 3); g.stroke()
+            g.beginPath(); g.moveTo(16.5, 12); g.arcTo(16.5, 16.5, 12, 16.5, 3); g.stroke()
+            g.beginPath(); g.moveTo(8, 16.5); g.arcTo(3.5, 16.5, 3.5, 12, 3); g.stroke(); break
         case "ellipse": g.beginPath(); g.ellipse(3, 4, 14, 12); g.stroke(); break
         case "pen":          // a pen nib over its point
             g.beginPath(); g.moveTo(10, 3); g.lineTo(15.5, 10); g.lineTo(12.5, 16); g.lineTo(7.5, 16); g.lineTo(4.5, 10); g.closePath(); g.stroke()

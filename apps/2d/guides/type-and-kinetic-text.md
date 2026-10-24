@@ -96,7 +96,7 @@ layer inside it. Masks cut before effects, so a glow cannot spill past a mask.
 
 ## Text on a path
 
-The fields `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text layer; the guide for them is
+To make a text follow a path layer, use `text.follow` with `path:"<path layer id>"` (a script writes `pathLayer="<id>"`); the text's own `path` field holds raw path data, not a layer id. The fields `pathLayer`, `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text layer; the guide for them is
 [text-on-a-path.md](text-on-a-path.md). Easing and timing of the moves: [curve-editor.md](curve-editor.md) and [expressions.md](expressions.md).
 
 ## Fonts
