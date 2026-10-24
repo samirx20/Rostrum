@@ -50,3 +50,18 @@ def test_keys_show_at_play_time_and_write_in_own_seconds(bridge):
     shown = bridge.shown_values(bridge.doc.item("dot"))["opacity"]
     engine = resolve(next(l for l in timed(bridge.comp(), bridge.times(), 10)["layers"] if l["id"] == "dot"), 12.3)["opacity"]
     assert shown == pytest.approx(engine) and 0 < shown < 1
+
+
+def test_a_cut_on_a_marker_stays_tied_when_the_next_shot_is_dragged(bridge):
+    """Cut here with the playhead on a marker ties the cut to it; dragging the frame to the next shot there changes
+    that key (no second key beside it), so moving the marker moves the cut (camera spec § 5 #20)."""
+    fd = bridge.frameDrag
+    fd.pick()
+    bridge.setTime(11.6)
+    assert bridge.run("layer:cut_here"), bridge.status
+    x0 = bridge.doc.item(fd.id).get("x", 960.0)
+    assert fd.begin("move", x0, 540.0, 0)
+    bridge.snap.keys(True, False)                  # Ctrl: free
+    fd.moveBy(500, 0)
+    fd.end()
+    assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item(fd.id), "x")} == {"#reveal-0.1": x0, "#reveal": x0 + 500}

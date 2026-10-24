@@ -10,7 +10,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
-from rostrum2d import fields as F, placement, project_sound, retime
+from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 
 from . import bounds, colour_feed, outline, screen_seen
 from .drags import DragSlots
@@ -96,6 +96,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
+        ops_timing.use_project(doc.folder)                  # every operation's "#drop" reads this project's markers
         self.marks.changed.connect(self.markersChanged)
         self.marks.changed.connect(self._layers_check)      # keys timed on a marker move with it
         self.marks.changed.connect(lambda: self.model.update(self._rows()))   # the marker picks list them

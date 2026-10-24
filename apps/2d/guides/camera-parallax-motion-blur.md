@@ -27,9 +27,23 @@ f.key("zoom", {1.5: 1, 4: 1.35}, ease="easeInOut")    # a push in
 
 From an agent: `value.set target=frame prop=x v=1300 at=4` (a key at 4 s once the field has keys), or `key.add`.
 
-**A cut** is a jump of the frame from one place to another on one frame: a key with the **hold** ease, then the next
-key. `f.key("x", {2.4: (960, "hold"), 2.5: 3200})` holds the first shot until 2.5 s and jumps there. Key times can sit on
-a shared marker (`"#reveal"`, `"#reveal-0.033"`), so moving the marker moves the cut. Motion blur never crosses a cut.
+**A cut** is a jump of the frame from one place to another on one frame: a key with the **hold** ease (the screen's
+**Jump**), then the next key. `f.key("x", {2.4: (960, "hold"), 2.5: 3200})` holds the first shot until 2.5 s and jumps
+there. Key times can sit on a shared marker (`"#reveal"`, `"#reveal-0.033"`), so moving the marker moves the cut.
+Motion blur never crosses a cut.
+
+**Framing and cutting in one step** (each one change, one undo step; `at` is seconds or a marker such as
+`"#logo lands"`, and a key written on a marker stays on it):
+
+| Operation | Does |
+|---|---|
+| `frame.fit to=view rect=[x, y, w, h] at=3` | The frame becomes the largest frame-shaped box in that rectangle (world px), keeping its turn, keyed at `at`. If the frame had no keys yet, its place now is also keyed at 0 s, so it starts where it was and arrives there. |
+| `frame.fit to=items ids=[hills, tree] at=3` | The frame shows those layers as they will look in the export at `at` (depth included), with 5 % room (`pad`). |
+| `frame.cut at=2.4` | Two keys: the frame's place one frame before `at` with the Jump ease, and the same place at `at`. Then move the frame to the next shot: that sets the key at `at`. |
+| `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
+| `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. |
+
+In a script: `f.fit(["hills", "tree"], at=4)`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`.
 
 **On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
 (**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
@@ -39,6 +53,25 @@ that key (one undo step; it snaps like any dragged thing, **Ctrl** or **Alt** fr
 its handles to curve the move. So a push along a curve is two or three keys and a few drags, no typed numbers. A cut
 shows as a dashed line with no dots. The faint path and outlines also show while something else is picked; switch
 them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
+
+**Framing by clicks.** With the frame picked, the top of the settings panel has **Frame the view** and **Cut here**, and
+its **⋯** has **Frame home** (only when the frame is away from home at the playhead) and **Lock**. The same are on
+right-click (the Frame row, or the canvas) and in **Ctrl+K**, which also has **Cut to the view**. With layers picked,
+**⋯** has **Frame these** and **Cut to these**. Only what applies shows: no Cut here at 0 s, and a locked frame offers
+only Unlock.
+
+- **A push:** pick the frame (**C**) at 0 s, move the playhead to 3 s, pan and zoom your view until the second place
+  fills the canvas the way you want it, then **Frame the view**. The frame fits what you see (leaving the same room
+  round it as **Ctrl+0**) and is keyed at 3 s; the status line says "Frame keyed at 0 s (where it was) and 3 s". Or
+  pick the layers you want in the shot and use **⋯ › Frame these**. Then shape the move as any move: drag its key
+  squares, bend its handles, ease it in the key bar.
+- **A cut:** put the playhead where the cut happens and click **Cut here** ("Cut at 2.40 s. Move the frame to the next
+  shot."). Then drag the frame to the next shot, or pan there and **Frame the view**: either sets the key at the
+  playhead. Faster: pan to the next shot and **Ctrl+K › Cut to the view**, or pick layers and **⋯ › Cut to these**.
+  The cut shows as an orange tick on the Frame row and a dashed path on the canvas. Any frame key can also be made a
+  cut by hand: pick it on the timeline and choose **Jump** in the key bar's **Ease** (or press **Ctrl+Alt+J**).
+- **On a marker:** with the playhead on a marker (**Alt+M** goes to the next one), Frame the view and Cut here tie their keys to
+  that marker. Move the marker on the ruler and the cut moves with it, so RostrumSound can put a hit on it.
 
 The frame can also ride a path layer beside it: `layer.ride target=frame path=road at=along`, then key `rideAlong` 0 → 1.
 Its centre sits on the path, its own `x` / `y` become an offset, and `turn=true` rolls it with the path's direction

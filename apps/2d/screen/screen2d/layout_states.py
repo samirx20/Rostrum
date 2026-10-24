@@ -32,7 +32,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 QUICK = ("workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
-         "sound-row", "rig-bones", "frame-picked", "frame-turned", "frame-ride", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -326,6 +326,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                         "set zoom 1.4", "keybox time 2.5 2.5 frame", "easekey jump", "time 2.6",
                                         "set x 1500", "set y 1900", "time 1", "frame pick", "zoom 20", "pan -330 -60"]),
         ("frame-turned", ["--sample"], ["frame pick", "set rotation 12", "set zoom 0.8"]),   # the tab and handles turned
+        # F6: Cut here then the frame dragged to the next shot (dashed path, the tick on the Frame row; the actions row
+        # with Frame the view · Cut here · ⋯); the right-click with the frame's block (Frame the view, Cut here, Frame home)
+        ("frame-cut", ["--sample"], ["frame pick", "time 2.4", "framecut", "frame drag 2400 300", "time 3", "zoom 30 2400 700"]),
+        ("frame-menu", ["--sample"], ["frame pick", "frame drag 2200 0", "time 2", "zoom 30 2000 540", "canvasmenu"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
     ]
