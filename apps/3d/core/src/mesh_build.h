@@ -25,6 +25,9 @@ void write_mesh(PXR_NS::UsdGeomMesh m, const MeshData& d);
 // Binds material `mat` ("" = none) to `prim`; `where` names the field in errors (stage_items.cpp).
 void bind_material(Item& it, const PXR_NS::UsdPrim& prim, const std::string& mat, const std::string& where,
                    const PXR_NS::TfToken& strength);
+// An editable mesh's `faceMaterials` as a "materialBind" partition of GeomSubsets over the drawn faces `d`
+// (after smoothing, through d.base_face); "" = the mesh's material `mat`. Nothing when every face is the item's.
+void bind_face_materials(Item& it, PXR_NS::UsdGeomMesh m, const MeshData& d, const std::string& mat);
 // A `combine` item at `path`: one mesh made from its children, which are inputs only (stage_combine.cpp).
 void build_combine(Item& it, const PXR_NS::JsArray& children, const PXR_NS::SdfPath& path);
 

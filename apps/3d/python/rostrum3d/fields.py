@@ -109,6 +109,13 @@ FIELDS: dict[str, list[Param]] = {
                    min=3, max=1000, integer=True, default=[], help="Corners of each face"),
         Param.list("faceIndices", "number", label="Face points", group="Mesh data", importance=D, valid_when=POLY,
                    min=0, max=10**7, integer=True, default=[], help="Each face's points, in turn, anticlockwise seen from outside"),
+        Param.list("creases", "number", label="Sharp edges", group="Mesh data", importance=D, valid_when=POLY,
+                   min=0, max=10**7, integer=True, default=[],
+                   help="Edges that stay sharp when the surface is smoothed, as point pairs a, b, a, b …"),
+        Param.list("faceMaterials", "text", label="Face materials", group="Mesh data", importance=D, valid_when=POLY,
+                   default=[], help='A material id per face ("" = the item\'s); empty = every face the item\'s'),
+        N("subdivide", "Smooth surface", "Shape", 0, 3, 1, "", S, POLY, integer=True, default=0,
+          help="Rounds the whole mesh (OpenSubdiv Catmull-Clark), 1 to 3 times; sharp edges stay sharp. 0 = off"),
         X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     # A live boolean (Manifold, ops_combine.py): its children are the solids (meshes or combines), the first the base;

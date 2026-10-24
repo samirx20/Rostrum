@@ -19,6 +19,17 @@ target_compile_definitions(manifold PUBLIC MANIFOLD_PAR=-1 PRIVATE NOMINMAX _USE
 target_include_directories(manifold PUBLIC third_party/manifold/include PRIVATE third_party/manifold/src)
 target_compile_options(manifold PRIVATE /EHsc /utf-8 /bigobj /W0)
 
+# OpenSubdiv 3.7.0 (third_party/opensubdiv, Tomorrow Open Source Technology License 1.0 = Apache-2.0 with a
+# trademark clause, unmodified): only Sdc, Vtr and Far's topology refiner, for an editable mesh's Smooth surface.
+# USD has its own copy inside usd_ms.dll, but doesn't export it.
+file(GLOB OSD_SRC CONFIGURE_DEPENDS third_party/opensubdiv/opensubdiv/sdc/*.cpp third_party/opensubdiv/opensubdiv/vtr/*.cpp)
+add_library(opensubdiv_far STATIC ${OSD_SRC} third_party/opensubdiv/opensubdiv/far/error.cpp
+  third_party/opensubdiv/opensubdiv/far/topologyDescriptor.cpp third_party/opensubdiv/opensubdiv/far/topologyRefiner.cpp
+  third_party/opensubdiv/opensubdiv/far/topologyRefinerFactory.cpp)
+target_compile_definitions(opensubdiv_far PRIVATE NOMINMAX _USE_MATH_DEFINES)
+target_include_directories(opensubdiv_far PUBLIC third_party/opensubdiv)
+target_compile_options(opensubdiv_far PRIVATE /EHsc /utf-8 /W0)
+
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp src/*.h)
 add_executable(rostrum3d-core ${SRC})
 target_include_directories(rostrum3d-core SYSTEM PRIVATE
@@ -32,6 +43,6 @@ target_link_directories(rostrum3d-core PRIVATE ${BUNDLE}/python/313/libs ${BUNDL
 target_link_libraries(rostrum3d-core PRIVATE
   ${BUNDLE}/usd/lib/usd_ms.lib ${BUNDLE}/tbb/lib/tbb.lib ${BUNDLE}/epoxy/lib/epoxy.lib
   ${BUNDLE}/OpenImageIO/lib/OpenImageIO.lib ${BUNDLE}/OpenImageIO/lib/OpenImageIO_Util.lib ${BUNDLE}/opencolorio/lib/OpenColorIO.lib
-  manifold opengl32 dxgi psapi)
+  manifold opensubdiv_far opengl32 dxgi psapi)
 
 install(TARGETS rostrum3d-core RUNTIME DESTINATION .)

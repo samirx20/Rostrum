@@ -1,5 +1,7 @@
 #include "poly.h"
 
+#include "subdivide.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -14,7 +16,7 @@ int whole_at(const JsValue& v, const std::string& where) {
 }
 
 // Newell's normal: its length is twice the face's area, so summing these weights by area.
-GfVec3f newell(const VtArray<GfVec3f>& pts, const int* idx, int n) {
+GfVec3f newell(const std::vector<GfVec3f>& pts, const int* idx, int n) {
   GfVec3f s(0);
   for (int i = 0; i < n; ++i) {
     const GfVec3f& a = pts[idx[i]];
@@ -31,7 +33,9 @@ GfVec3f unit(const GfVec3f& v) {
 
 }  // namespace
 
-MeshData make_poly(Reader& p, bool smooth) {
+namespace {
+
+PolyCage read_cage(Reader& p) {
   const JsArray& jp = p.list("points");
   const JsArray& jc = p.list("faceCounts");
   const JsArray& ji = p.list("faceIndices");
@@ -57,6 +61,32 @@ MeshData make_poly(Reader& p, bool smooth) {
       fail(w, std::to_string(idx[k]) + " is out of range", "0 .. " + std::to_string(pts.size() - 1));
   }
 
+  PolyCage c;
+  c.points.assign(pts.begin(), pts.end());
+  c.counts = std::move(counts);
+  c.indices = std::move(idx);
+  return c;
+}
+
+// The sharp edges as point pairs, each checked against the mesh's points.
+std::vector<int> read_creases(Reader& p, size_t n_points) {
+  if (!p.has("creases")) return {};
+  const JsArray& jc = p.list("creases");
+  if (jc.size() % 2) fail(p.at("creases"), std::to_string(jc.size()) + " numbers", "point pairs: an even count");
+  std::vector<int> out(jc.size());
+  for (size_t k = 0; k < jc.size(); ++k) {
+    const std::string w = p.at("creases") + "[" + std::to_string(k) + "]";
+    out[k] = whole_at(jc[k], w);
+    if (out[k] < 0 || size_t(out[k]) >= n_points)
+      fail(w, std::to_string(out[k]) + " is out of range", "0 .. " + std::to_string(n_points - 1));
+  }
+  return out;
+}
+
+MeshData corners(const PolyCage& cage, bool smooth) {
+  const std::vector<GfVec3f>& pts = cage.points;
+  const std::vector<int>& counts = cage.counts;
+  const std::vector<int>& idx = cage.indices;
   // Face normals (area-weighted) and the faces at each point.
   std::vector<GfVec3f> fn(counts.size());
   std::vector<std::vector<int>> at_point(pts.size());
@@ -85,8 +115,9 @@ MeshData make_poly(Reader& p, bool smooth) {
       GfVec3f n = own;
       if (smooth) {
         GfVec3f sum(0);
+        const bool all = !cage.on_crease.empty() && !cage.on_crease[pi];  // a smoothed surface away from sharp edges
         for (int g : at_point[pi])
-          if (GfDot(unit(fn[g]), own) >= cos30) sum += fn[g];
+          if (all || GfDot(unit(fn[g]), own) >= cos30) sum += fn[g];
         n = sum.GetLength() > 1e-20f ? unit(sum) : own;
       }
       const GfVec3f& q = pts[pi];
@@ -98,7 +129,20 @@ MeshData make_poly(Reader& p, bool smooth) {
       d.st.push_back(GfVec2f(su, sv));
     }
   }
+  d.base_face = cage.base_face;
   return d;
+}
+
+}  // namespace
+
+MeshData make_poly(Reader& p, bool smooth) {
+  PolyCage cage = read_cage(p);
+  const int level = p.has("subdivide") ? p.count("subdivide", 0, 3) : 0;
+  const std::vector<int> creases = read_creases(p, cage.points.size());
+  if (level > 0) return corners(subdivide(cage, creases, level), smooth);
+  cage.base_face.resize(cage.counts.size());
+  for (size_t f = 0; f < cage.base_face.size(); ++f) cage.base_face[f] = int(f);
+  return corners(cage, smooth);
 }
 
 }  // namespace r3d
