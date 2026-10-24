@@ -22,11 +22,10 @@ from rostrum3d import highlight as H
 from rostrum3d.kind import KIND
 from rostrum3d.outline_fields import OUTLINE_SHAPES
 
-from . import placing
+from . import placing, rigging
 from .type_in_place import Typer
 
 LIGHT_NAMES = {"rect": "Softbox", "disk": "Round softbox", "strip": "Strip", "sphere": "Bulb", "spot": "Spot", "distant": "Sun", "dome": "Sky"}
-NOT_DRAWN = {"spot"}      # written to the stage, but no renderer draws its cone yet (Cycles plug-in patch pending): not offered
 RAIL_SHAPES = ("box", "sphere", "cylinder", "cone", "torus", "capsule", "plane", "disc")   # SPEC §2's order
 RAIL_TYPE = (("text", "3D text"), ("svg", "SVG logo"), ("path2d", "2D drawing"))   # Type & logo (T)
 OUTLINE_NAMES = {"text": "Text", "svg": "Logo", "path2d": "Drawing"}          # a new outline's name (and the hint's word)
@@ -37,20 +36,19 @@ COPIES = (*F.ITEMS, "material", "shot")
 
 def _entries(cameras: bool) -> list[dict]:
     out = [{"value": f"mesh:{s}", "label": f"Mesh · {s.capitalize()}"} for s in F.SHAPES]
-    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS
-            if k not in NOT_DRAWN]
+    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS]
     out += [{"value": t, "label": F.LABELS[t]} for t in ("camera", "rig", "group", "material")]
     return out + ([{"value": "shot", "label": "Shot"}] if cameras else [])
 
 
-def _rail() -> dict:
-    """The rail's flyouts, filled from today's add operations: {group: [{value (an add choice), name, icon}]}."""
+def _rail(rigs: list[dict]) -> dict:
+    """The rail's flyouts, filled from today's add operations: {group: [{value (an add choice), name, icon}]}; the Camera
+    flyout's rigs put the camera on one (rigging.py)."""
     return {"shapes": [{"value": f"mesh:{s}", "name": s.capitalize(), "icon": s} for s in RAIL_SHAPES if s in F.SHAPES],
             "type": [{"value": f"mesh:{s}", "name": n, "icon": s} for s, n in RAIL_TYPE if s in F.SHAPES],
             "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}"}
-                       for k in F.LIGHT_KINDS if k not in NOT_DRAWN],
-            "camera": [{"value": "camera", "name": "Camera", "icon": "camera"},
-                       {"value": "rig", "name": "Camera rig", "icon": "rig"}]}
+                       for k in F.LIGHT_KINDS],
+            "camera": [{"value": "camera", "name": "Camera", "icon": "camera"}, *rigs]}
 
 
 class Adder(QObject):
@@ -71,9 +69,9 @@ class Adder(QObject):
     def entries(self):
         return _entries(any(i.get("type") == "camera" for i in self.b.doc.items()))
 
-    @Property("QVariantMap", constant=True)
+    @Property("QVariantMap", notify=changed)
     def rail(self):
-        return _rail()
+        return _rail(rigging.entries(self.b))
 
     typer = Property(QObject, lambda s: s._typer, constant=True)        # typing a placed 3D text (type_in_place.py)
 
@@ -138,6 +136,8 @@ class Adder(QObject):
         `on` = (world transform, compiled props) of the item clicked, None for the ground. One undo step; selected."""
         choice, shape, extra = self._armed, self._armed.partition(":")[2], self._extra
         self.disarm()
+        if choice in rigging.RIGS:
+            return rigging.wrap(self, choice, hit)
         size = placing.size_class(*on) if on else placing.PRODUCT
         if shape not in OUTLINE_SHAPES:
             return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size))
@@ -167,7 +167,13 @@ class Adder(QObject):
 
     @Slot(str)
     def add(self, choice, at: dict | None = None):
-        """Add `choice` (an entries value); `at` = fields of where it goes (world space; placing.placed's)."""
+        """Add `choice` (an entries value); `at` = fields of where it goes (world space; placing.placed's). A rig choice
+        puts the camera on that rig (an orbit waits for the click on what it circles)."""
+        if choice in rigging.RIGS:
+            if not rigging.needs_click(choice):
+                return rigging.wrap(self, choice)
+            self._set_armed(choice)
+            return self.b.say("Click what the camera circles  ·  Esc cancels")
         type_, _, detail = choice.partition(":")
         if choice not in [e["value"] for e in self.entries]:
             return self.b.fail_line(f"Error: add: {choice!r} can't be added right now.")

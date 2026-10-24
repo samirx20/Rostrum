@@ -10,6 +10,7 @@
 #include <pxr/imaging/hdx/taskControllerSceneIndex.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/camera.h>
+#include <pxr/usd/usdGeom/metrics.h>
 
 #include <chrono>
 #include <thread>
@@ -18,6 +19,7 @@
 #include "dome_cycles.h"
 #include "error.h"
 #include "sky.h"
+#include "storm_lights.h"
 #include "storm_sun.h"
 #include "studio.h"
 
@@ -43,13 +45,28 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
 }
 
 // Cycles' Hydra plug-in counts every samples / integrator setting as a change and starts over (render_delegate.cpp,
-// SetRenderSetting), even with the same value: set only what differs, so the Final look keeps refining
-void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s) {
+// SetRenderSetting), even with the same value: set only what differs, so the Final look keeps refining.
+// The stage's units go first: the plug-in scales every transform by them but not a bulb's radius or a panel's
+// size, and without being told it takes centimetres (session.h: 0.01). In a metre scene that shrank the scene 100x
+// around full-size bulbs (a small bulb hundreds of times too bright, the same at any radius) and made normalize
+// 10 000x too bright (H23); brief 10b.
+// Motion blur is on when the camera looked through has an open shutter (the shot's, lights_cameras.cpp); a free
+// camera has none. Cycles then samples the camera's moves within the shutter.
+void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStageRefPtr& stage,
+                     const SdfPath& camera) {
   const auto set = [&](const char* key, const VtValue& v) {
     if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
   };
+  if (stage) set("stageMetersPerUnit", VtValue(UsdGeomGetStageMetersPerUnit(stage)));
   set("cycles:samples", VtValue(s.samples));
   set("cycles:integrator:use_denoise", VtValue(s.denoise));
+  double open = 0, close = 0;
+  if (stage && !camera.IsEmpty())
+    if (const UsdGeomCamera cam{stage->GetPrimAtPath(camera)}) {
+      cam.GetShutterOpenAttr().Get(&open);
+      cam.GetShutterCloseAttr().Get(&close);
+    }
+  set("cycles:integrator:motion_blur", VtValue(close > open));
 }
 
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
@@ -98,6 +115,7 @@ Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
   register_cycles_dome_fix();
   register_cycles_lights();
   register_storm_sun();
+  register_storm_lights();
 }
 
 Hydra::~Hydra() {
@@ -167,7 +185,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   const UsdGeomCamera cam = camera_at(stage_, camera);
   TfErrorMark mark;
   auto& e = engine(renderer);
-  if (renderer == "cycles") cycles_settings(e, s);
+  if (renderer == "cycles") cycles_settings(e, s, stage_, camera);
   if (renderer != "cycles")  // a render never sees the studio
     e.light_raster(stage_, frame, true, {}, cam.GetCamera(UsdTimeCode(frame)).GetFrustum());
   e.SetCameraPath(camera);
@@ -250,7 +268,7 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
                             const DrawSettings& s, GpuMemWatch& mem) {
   TfErrorMark mark;
   auto& e = engine("cycles", true);
-  cycles_settings(e, s);
+  cycles_settings(e, s, stage_, camera);
   if (camera.IsEmpty()) {
     e.SetCameraPath(SdfPath());
     e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());

@@ -29,6 +29,8 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   const double fps = shot.num_min("fps", 0.0, false);
   const int start = shot.count("start", -1000000, 1000000);
   const int end = shot.count("end", start, 1000000);
+  const double shutter = shot.num("shutter");  // frames; 0 = no motion blur (ENGINE_CONTRACT.md § 2)
+  if (shutter < 0 || shutter > 1) fail(shot.at("shutter"), std::to_string(shutter), "0 (off) to 1 frame");
   shot.finish();
 
   Reader world(s.object("world"), "world");
@@ -59,6 +61,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   ctx.stage = built;
   ctx.start = start;
   ctx.end = end;
+  ctx.shutter = shutter;
   ctx.materials = build_materials(built, s.list("materials"), start, end);
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
   link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists

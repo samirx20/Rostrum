@@ -38,11 +38,11 @@ void author_transform(Item& it, const UsdPrim& prim) {
   const auto rx = it.nums("rx"), ry = it.nums("ry"), rz = it.nums("rz");
   const auto sx = it.nums("sx"), sy = it.nums("sy"), sz = it.nums("sz");
   const std::vector<bool> visible = it.flags("visible");
-  it.write<GfVec3d>(x.AddTranslateOp().GetAttr(), frames({px.size(), py.size(), pz.size()}),
+  it.write_moving<GfVec3d>(x.AddTranslateOp().GetAttr(), frames({px.size(), py.size(), pz.size()}),
                     [&](size_t i) { return GfVec3d(pick(px, i), pick(py, i), pick(pz, i)); });
-  it.write<GfVec3f>(x.AddRotateXYZOp().GetAttr(), frames({rx.size(), ry.size(), rz.size()}),
+  it.write_moving<GfVec3f>(x.AddRotateXYZOp().GetAttr(), frames({rx.size(), ry.size(), rz.size()}),
                     [&](size_t i) { return GfVec3f(float(pick(rx, i)), float(pick(ry, i)), float(pick(rz, i))); });
-  it.write<GfVec3f>(x.AddScaleOp().GetAttr(), frames({sx.size(), sy.size(), sz.size()}),
+  it.write_moving<GfVec3f>(x.AddScaleOp().GetAttr(), frames({sx.size(), sy.size(), sz.size()}),
                     [&](size_t i) { return GfVec3f(float(pick(sx, i)), float(pick(sy, i)), float(pick(sz, i))); });
   it.write<TfToken>(UsdGeomImageable(prim).CreateVisibilityAttr(), visible.size(), [&](size_t i) {
     return pick(visible, i) ? UsdGeomTokens->inherited : UsdGeomTokens->invisible;

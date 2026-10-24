@@ -1,9 +1,9 @@
-"""Proves the render time estimate is honest: for a still (1920x1080, good = 128 samples) and a 24-frame mp4 (half size, draft = 32
-samples) of one small moving scene, the estimate (estimate_job.measure on a fresh scratch cache + estimate.scale) is set against a real
+"""Proves the render time estimate is honest: for a still (1920x1080, good = 128 samples), a 24-frame mp4 at full size (draft = 32
+samples) and the same at half size (re-scaled from the same kept probe, no new one) of one small moving scene, the estimate (estimate_job.measure on a fresh scratch cache + estimate.scale) is set against a real
 render made the way the Render button does it (a NEW Engine, wall-clock from creating it to the last file written, the mp4 encode
-included). Prints a table and writes estimate_check.json (estimate, real, error %, per-frame figures, the measurement).
+included). Prints a table (with the probe's own wall time) and writes estimate_check.json (estimate, real, error %, per-frame figures, the measurement).
 Through the lock: heavy.ps1 run "<team>: estimate check" gpu <python> apps/3d/tools/estimate_check.py (PYTHONPATH apps/3d/python;shared/core;shared/gui-kit)."""
-import json, os, shutil, sys, tempfile, time
+import json, os, shutil, sys, tempfile, threading, time
 from pathlib import Path
 
 OUT = Path(tempfile.gettempdir()) / "rostrum3d_estimate_check"
@@ -13,7 +13,7 @@ os.environ["ROSTRUM_CACHE_DIR"] = str(OUT / "cache")            # fresh cache: t
 WT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(WT / "apps" / "3d" / "python"), str(WT / "shared" / "core")]
 from rostrum_core import Document                                # noqa: E402
-from rostrum3d import KIND, run_source, estimate_job            # noqa: E402
+from rostrum3d import KIND, run_source, estimate_job, gpu_busy  # noqa: E402
 from rostrum3d.compile import describe, shot_info               # noqa: E402
 from rostrum3d.engine import Engine                             # noqa: E402
 from rostrum3d.render_fields import settings                    # noqa: E402
@@ -50,6 +50,8 @@ def real_still(scene, info, s):
 
 def real_video(scene, info, s):
     pngs = OUT / "_png"
+    shutil.rmtree(pngs, ignore_errors=True)
+    (OUT / "v.mp4").unlink(missing_ok=True)
     pngs.mkdir()
     t0 = time.perf_counter()
     e = Engine()
@@ -76,24 +78,33 @@ def main():
     scene, info = describe(doc.data, "s", None), shot_info(doc.data, "s")
     rows = []
     for name, shot, still in (("still", {"renderQuality": "good"}, True),
-                              ("animation", {"renderQuality": "draft", "renderSize": "half"}, False)):
+                              ("anim full", {"renderQuality": "draft"}, False),
+                              ("anim half", {"renderQuality": "draft", "renderSize": "half"}, False)):
         s = settings(shot, info)
         if still:
             s["start"] = s["end"] = (s["start"] + s["end"]) // 2
         frames = s["end"] - s["start"] + 1
+        t0 = time.perf_counter()
         m = estimate_job.measure(scene, info, s)
+        probe_wall = time.perf_counter() - t0
         est = estimate.scale(m, s, frames, mp4=not still)
+        seen = {}                                                # the card caveat must fire while our own render runs
+        spy = threading.Timer(4.0, lambda: seen.setdefault("during_render", gpu_busy.busy()))
+        spy.start()
         real, ms, parts = (real_still if still else real_video)(scene, info, s)
+        spy.cancel()
+        parts.update(seen)
         per_real = sum(ms) / len(ms) / 1000
         rows.append({"shot": name, "frames": frames, "size": [s["width"], s["height"]], "samples": s["samples"], "estimate_s": est["seconds"],
-                     "real_s": round(real, 1), "error_pct": round((est["seconds"] - real) / real * 100, 1),
+                     "real_s": round(real, 1), "probe_wall_s": round(probe_wall, 1), "cached": m["cached"],
+                     "gpu_busy": m["gpu_busy"], "error_pct": round((est["seconds"] - real) / real * 100, 1),
                      "est_per_frame_s": est["seconds_per_frame"], "real_per_frame_s": round(per_real, 3), "est_start_s": est["start_s"],
                      "est_encode_s": est["encode_s"], "real_parts": parts, "measurement": {k: v for k, v in m.items() if k != "picture"}})
         print(json.dumps({k: v for k, v in rows[-1].items() if k != "measurement"}), flush=True)
     (OUT / "estimate_check.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
-    print(f'\n{"shot":10}{"frames":>7}{"size":>12}{"samples":>8}{"est s":>8}{"real s":>8}{"error %":>9}')
+    print(f'\n{"shot":10}{"frames":>7}{"size":>12}{"samples":>8}{"est s":>8}{"real s":>8}{"error %":>9}{"probe s":>9}')
     for r in rows:
-        print(f'{r["shot"]:10}{r["frames"]:>7}{"x".join(map(str, r["size"])):>12}{r["samples"]:>8}{r["estimate_s"]:>8}{r["real_s"]:>8}{r["error_pct"]:>9}')
+        print(f'{r["shot"]:10}{r["frames"]:>7}{"x".join(map(str, r["size"])):>12}{r["samples"]:>8}{r["estimate_s"]:>8}{r["real_s"]:>8}{r["error_pct"]:>9}{"kept" if r["cached"] else r["probe_wall_s"]:>9}')
 
 
 if __name__ == "__main__":

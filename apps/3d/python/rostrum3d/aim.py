@@ -76,3 +76,12 @@ def _euler(m) -> tuple[float, float, float]:
     else:                                                 # pointing straight up or down: put it all in rx
         rx, rz = math.atan2(-m[1][2], m[1][1]), 0.0
     return math.degrees(rx), math.degrees(ry), math.degrees(rz)
+
+
+def ahead(world, p) -> float:
+    """How far in front of an item (along its −Z, the way a camera looks and a lens measures focus) the world point
+    `p` is; negative behind it."""
+    eye, front = point(world, [0.0, 0.0, 0.0]), point(world, [0.0, 0.0, -1.0])
+    forward = [a - e for a, e in zip(front, eye)]
+    n = sum(x * x for x in forward) ** 0.5 or 1.0
+    return sum((q - e) * f for q, e, f in zip(p, eye, forward)) / n

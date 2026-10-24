@@ -23,7 +23,7 @@ from rostrum3d import fields as F
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
 from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
 
-from . import outline, route, scene_state
+from . import outline, route, scene_state, shots as shot_list
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .context_qt import Context
@@ -38,6 +38,7 @@ sections.OWN.update({"mesh": "Shape", "import": "File", "part": "Part", "light":
 FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: their rows get a "Final" tag
 FINAL_TIP = "Shows in Final, not in the Quick view"
 PAGES = ("build", "animate", "render")
+NONE_FIRST = {"material", "item"}       # fields naming another item that may name none ("" = no material, focus on a distance)
 
 
 DATA_GROUPS = {"Mesh data"}             # groups that are data an operation writes (an editable mesh's points), never rows
@@ -65,6 +66,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
     playingChanged = Signal()
     markersChanged = Signal()
     pageChanged = Signal()
+    shotChanged = Signal()              # the screen shows another shot (showShot): the viewport starts from its camera
 
     def __init__(self, doc, shot_id=None, autosave=False, viewport=_viewport, render_engine=None, parent=None):
         shots = doc.data.get("shots", [])
@@ -142,6 +144,39 @@ class Bridge3D(ActionPreview3D, DocBridge):
     @Property("QVariantList", notify=outlineChanged)
     def shots(self):
         return outline.named(self.doc.data, "shots")
+
+    @Slot(str, result="QVariantList")
+    def shotEntries(self, view_mode):
+        """The crumb's list (shots.crumb_entries): the shots, the shown one checked, then New shot (from this view)."""
+        return shot_list.crumb_entries(self.shots, self.shot_id, view_mode, self.add.canAddShot)
+
+    @Slot(str)
+    def showShot(self, shot_id):
+        """Show another shot (screen state, not an edit): its time, its frame size, its camera in the viewport."""
+        if not shot_id or shot_id == self.shot_id:      # "": a failed New shot already said why
+            return
+        try:
+            info = shot_info(self.doc.data, shot_id)
+        except ValueError as e:
+            return self.fail_line(f"Error: shot: {e}")
+        if self._timer.isActive():
+            self.togglePlay()
+        self.shot_id, self._info = shot_id, info
+        self._frame = min(max(self._frame, info["start"]), info["end"])
+        self.model.update(self._rows())
+        self.shotChanged.emit()
+        self.outlineChanged.emit()
+        self.frameChanged.emit()
+
+    @Slot()
+    def newShotFromView(self):
+        """A camera where the viewport looks from, a shot through it (shot.from_view: one undo step); then show it."""
+        if self.viewport is None:
+            return self.fail_line("Error: new shot from this view: there is no viewport to take the view from.")
+        first = shot_info(self.doc.data, self.doc.data["shots"][0]["id"])     # the new shot is framed like the first
+        call, new = shot_list.from_view_call(self.doc, self.viewport.cam, first)
+        if self._guard(lambda: self._done(self.doc.apply([call], self.who, label="New shot from this view"), "")):
+            self.showShot(new)
 
     @Property(str, notify=pageChanged)
     def page(self):
@@ -242,8 +277,9 @@ class Bridge3D(ActionPreview3D, DocBridge):
             p = F.param(type_, r["id"]) if r["row"] == "param" else None
             if p is not None and p.type == "text" and p.kind:
                 doc_items = doc_items or list(self.doc.items())
-                named = [{"value": i["id"], "label": outline.label_of(i)} for i in doc_items if i.get("type") == p.kind]
-                r["type"], r["options"] = "choice", ([{"value": "", "label": "None"}] if p.kind == "material" else []) + named
+                named = [{"value": i["id"], "label": outline.label_of(i)} for i in doc_items if i["id"] != self._sel
+                         and (i.get("type") == p.kind or (p.kind == "item" and i.get("type") in F.ITEMS))]
+                r["type"], r["options"] = "choice", ([{"value": "", "label": "None"}] if p.kind in NONE_FIRST else []) + named
         return rows
 
     def _first(self):

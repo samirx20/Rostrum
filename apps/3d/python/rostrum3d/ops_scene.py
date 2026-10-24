@@ -5,6 +5,7 @@ and a stretch of time.
 from __future__ import annotations
 
 from rostrum_core import Param
+from rostrum_core.conditions import holds
 from rostrum_core.errors import codes
 from rostrum_core.tree import walk
 
@@ -51,6 +52,37 @@ def material_remove(ctx, targets, args):
 def shot_add(ctx, targets, args):
     fields = [p.name for p in F.FIELDS["shot"]]
     ctx.insert("root", "shots", new_item(ctx, "shot", args, {k: v for k, v in args.items() if k in fields}))
+
+
+VIEW = [Param.list("position", "number", label="Position", min_items=3, max_items=3, unit="m", required=True,
+                   help="Where the camera stands (x y z)"),
+        Param.list("turn", "number", label="Turn", min_items=3, max_items=3, unit="°", required=True,
+                   help="Its turn rx ry rz in degrees (it looks along its −Z)"),
+        Param.number("focalLength", label="Focal length", min=1, max=2000, unit="mm", default=50.0),
+        Param.text("cameraId", label="Camera id", help="Optional id for the new camera; counted when left out")]
+
+
+@R.operation("shot.from_view", "New shot from a view: a camera standing at `position`, turned `turn`, with "
+             "`focalLength`, and a shot looking through it (named \"Shot N\"; its size, frame rate, time and render "
+             "settings copied from the first shot). One step: one undo takes both back.",
+             label="New shot from this view", params=[ID, NAME, *VIEW])
+def shot_from_view(ctx, targets, args):
+    shots = ctx.doc.get("shots", [])
+    if not shots:
+        ctx.fail(codes.BAD_ARGUMENT, "shots", "there is no first shot to copy the size and time from",
+                 hint="Add one with shot.add first.")
+    first = shots[0]
+    name = args.get("name") or f"Shot {len(shots) + 1}"
+    rx, ry, rz = args["turn"]
+    x, y, z = args["position"]
+    cam_args = {"id": args.get("cameraId"), "name": f"{name} camera"}
+    camera = new_item(ctx, "camera", cam_args, {"x": x, "y": y, "z": z, "rx": rx, "ry": ry, "rz": rz,
+                                                "focalLength": args.get("focalLength", 50.0)})
+    ctx.insert("root", "items", camera)
+    copied = {p.name: first[p.name] for p in F.FIELDS["shot"]
+              if p.name in first and p.name != "camera" and holds(p.valid_when, first)}
+    ctx.insert("root", "shots", new_item(ctx, "shot", {"id": args.get("id"), "name": name},
+                                         {**copied, "camera": camera["id"]}))
 
 
 @R.operation("shot.remove", "Delete shots (the items stay).", target="shot", label="Delete", importance="secondary")

@@ -43,16 +43,20 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 
 `render_estimate` says how long a render will take, measured on this machine, without rendering it. It is a job: ask with `inspect_job`.
 
-- The first call for a scene draws a small probe picture (the middle frame at a quarter of the pixels) and keeps the timing.
-  It can take up to a minute and a half; past that it stops and tells you the job is at least that slow.
+- The first call for a scene draws the middle frame a few times and keeps the timing: tiny (the warm-up), at a quarter of the
+  pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size with 8 samples,
+  because a full-size frame costs far more than four quarter-size ones. About 10-15 s at full HD; past a minute and a half it
+  stops and tells you the job is at least that slow.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
 - `quality`, `samples`, `size`, `start` / `end` try other settings without touching the shot. `frame` estimates a still.
   `all_shots: true` gives each shot with its own settings, and a total.
 - `budget_min` is the minutes you can spend. Over it, the reply names one-setting changes that should fit (fewer samples, a smaller size).
 - Look at the probe picture it returns: it is what is about to be drawn.
-- It is a close guide, not a promise: start-up and encoding do not shrink with the settings. Another render on the graphics card
-  at the same time slows the probe and the real job.
+- It is a close guide, not a promise: start-up and encoding do not shrink with the settings, and time grows with samples much
+  less than in step (a straight line in the log of the samples, as measured).
+- When another job is using the graphics card, the reply says so (`gpu_busy`, also in the text): renders are slower while it runs,
+  about twice. A probe taken then is not kept; ask again once the card is free for a clean figure.
 
 ## Techniques
 
@@ -62,7 +66,12 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   Storm, then confirm light and materials with one `final` look at the frame that matters most. (A person on the screen gets the
   same with Shift+F, Look: Final: the viewport itself runs Cycles with the Render button's settings and cleans up sample by sample.)
 - **Depth of field is a choice of three numbers.** The focus distance is the distance from the camera to what must be sharp. Get
-  it from `look_at` (its `distance`) instead of measuring by eye.
+  it from `look_at` (its `distance`) instead of measuring by eye. Or name what must stay sharp: `camera.set focusItem=<item id>`
+  (with `dof` on); the distance then follows that item's origin every frame, along the way the camera looks. `focusItem=""`
+  goes back to `focusDistance`. Real lenses: 24, 35, 50, 85, 105, 135 mm (`focalLength`; any value works).
+- **Another angle is another shot.** `shot.from_view` with `position` [x, y, z], `turn` [rx, ry, rz] (degrees, it looks along
+  its −Z) and `focalLength` makes a camera and a shot through it in one step ("Shot N", the first shot's size, frame rate, time
+  and render settings; `id`, `name`, `cameraId` optional). A camera may serve several shots; each shot is its own window of time.
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the
   replies carry both `time` and `frame`.
 - **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.

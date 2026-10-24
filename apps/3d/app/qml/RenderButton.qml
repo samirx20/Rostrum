@@ -1,8 +1,9 @@
 import QtQuick
 import RostrumKit
 
-// The top bar's Render: one final (Cycles) picture of the playhead frame through the shot's camera. While a render
-// runs, the button is replaced by what is happening (nothing greyed out).
+// The header's Render (F12): opens the render sheet (the kit's export sheet in the settings panel's place: what, quality,
+// size, save as, the measured time, Render). While a render runs, the button is replaced by what is happening (nothing
+// greyed out); the sheet's own job shows in the kit's job chip.
 Item {
     implicitWidth: running ? busy.implicitWidth : button.implicitWidth
     implicitHeight: Theme.button
@@ -12,7 +13,7 @@ Item {
         id: button
         visible: !parent.running
         text: "Render"; hint: "F12"; kind: "primary"
-        onClicked: backend.renderStill()
+        onClicked: backend.exporter.openFor()
     }
     Row {
         id: busy

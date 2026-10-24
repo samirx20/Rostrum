@@ -19,7 +19,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife")
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife",
+         "render-sheet-shot")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -29,6 +30,15 @@ def long_names() -> list[str]:
     script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "long_names.py"
     script.write_text(SOURCE.replace('"block"', f'"{LONG_NAME}"').replace('"clay"', f'"{LONG_NAME}_material"')
                       .replace('"key"', f'"{LONG_NAME}_key"'), encoding="utf-8")
+    return ["--script", str(script)]
+
+
+def two_shots() -> list[str]:
+    """Start args for the sample with a second shot through a second camera ("Hero 01", "Close 02")."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "two_shots.py"
+    script.write_text(SOURCE.replace('shot("hero", ', 'shot("hero", name="Hero 01", ') +
+                      'close = camera("close_cam", focalLength=105, x=0.5, y=0.45, z=1.6).aim((0, 0.3, 0))\n'
+                      'shot("close", name="Close 02", camera=close, fps=24, start=0, end=2)\n', encoding="utf-8")
     return ["--script", str(script)]
 
 
@@ -66,12 +76,20 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shapes-flyout", s, ["rail shapes"]),
         ("lights-flyout", s, ["rail lights"]),
         ("camera-flyout", s, ["rail camera"]),
+        ("rig-orbit-armed", s, ["rail camera", "click Orbit"]),                # waiting for the click on what to circle
+        ("rig-selected", s, ["rail camera", "click Crane"]),                   # the camera on a new crane: its settings
         ("type-flyout", s, ["rail type"]),
         ("text-typing", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "type AURORA", "wait 600"]),
         ("drawings-list", s, ["drawings"]),
         ("bevel-too-big", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "typeend", "set bevel 0.01", "wait 2500"]),
         ("materials-menu", s, ["materials"]),
         ("shots-menu", s, ["shots"]),
+        ("shots-two", two_shots(), ["mode free", "orbit 30 5", "shots"]),       # Hero 01 ✓, Close 02, New shot from this view
+        ("shot-switched", two_shots(), ["showshot close"]),
+        ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
+        ("focus-picking", s, ["select cam", "set dof true", "action focus:point"]),
+        ("focus-on-item", s, ["select cam", "set dof true", "set focusItem \"vase\""]),
+        ("lens-menu", s, ["select cam", "click Lens"]),
         ("context-item", s, ["context block"]),
         ("context-empty", s, ["context -"]),
         ("view-menu", s, ["select key", "view"]),
@@ -80,6 +98,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
         ("export-sheet", s, ["export-open"]),
+        ("render-sheet", s, ["render-sheet"]),
+        ("render-sheet-shot", s, ["page animate", "render-sheet", "estimate-wait"]),
+        ("render-sheet-budget", s, ["page animate", "render-sheet", "estimate-wait", "budget 1 s"]),
         ("commands", s, ["commands"]),
         ("commands-search", s, ["commands light"]),
         ("guides-list", s, ["guides open"]),

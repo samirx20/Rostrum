@@ -15,6 +15,7 @@ Panel {
     property var model
     readonly property int edge: 20                  // rows end where the settings panel's fields do (the keyframe column's width)
     property alias settings: settingsSlot.data      // the chosen item's settings only (the app's rows)
+    property alias summary: summarySlot.data        // what it will come to, pinned just above the button (an app's estimate)
     readonly property bool running: model && model.state === "running"
     // titled by what it is; the chosen item is the list's highlighted row (never said twice), or the model's own `sheetTitle`
     title: model && model.sheetTitle ? model.sheetTitle : "Export"
@@ -101,7 +102,6 @@ Panel {
                              enabled: !sheet.running; onClicked: sheet.model.setFolder("") }
                 }
             }
-
         }
     }
     Column {        // Export and what it is doing: right under the rows, never scrolled out of sight (S36)
@@ -109,10 +109,11 @@ Panel {
         anchors { left: parent.left; top: flick.bottom }
         width: parent.width - sheet.edge
         topPadding: Theme.gap; spacing: Theme.gap
+        Column { id: summarySlot; width: footer.width; spacing: Theme.gap; visible: children.length > 0 }   // never scrolled away
         Button {
             width: footer.width
             visible: !sheet.running
-            text: "Export"; kind: "primary"
+            text: sheet.model ? sheet.model.actionText : "Export"; kind: "primary"
             onClicked: sheet.model.request()
         }
         Row {           // while it runs: how far, and Cancel
@@ -139,7 +140,7 @@ Panel {
         Row {           // done: Exported · Play · Show in folder
             visible: sheet.model && sheet.model.state === "done"
             spacing: Theme.gap
-            Text { text: "Exported"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
+            Text { text: sheet.model ? sheet.model.doneWord : "Exported"; color: Theme.ok; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
                    height: 16; verticalAlignment: Text.AlignVCenter }
             Link { text: "Play"; onClicked: sheet.model.play() }
             Link { text: "Show in folder"; onClicked: sheet.model.showInFolder() }

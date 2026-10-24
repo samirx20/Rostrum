@@ -7,9 +7,9 @@ sits on top of it.
 
 | Piece | What it does |
 |---|---|
-| **≡** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E) |
+| **≡** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E: the render sheet) |
 | **Rostrum3D**, then the project's name | Click the name to rename the project |
-| **› Hero 01 ▾** | The shot this window shows. Click for the list of shots: pick one to see its settings (camera, length, size), or **New shot** |
+| **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
 | **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
 | **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows |
 | **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
@@ -17,7 +17,7 @@ sits on top of it.
 | **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
 | **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
 | **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
-| **Render** | One final picture of the playhead's frame through the shot camera (F12). Esc cancels it |
+| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 
 ## The viewport (middle)
@@ -66,8 +66,12 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   words and they change in the viewport as you type; Enter or Esc ends. The whole typing is one undo step; ending with
   nothing typed keeps the word "Text". **SVG logo** asks for the .svg file first. **2D drawing** lists the 2D items in
   this project, then the picked one's path layers; it stays linked, so a change in Rostrum2D shows here.
-- **Lights** (L): Softbox, Round softbox, Strip, Bulb, Sun, Sky.
-- **Camera** (C): Camera, Camera rig.
+- **Lights** (L): Softbox, Round softbox, Strip, Bulb, Spot, Sun, Sky.
+- **Camera** (C): Camera; then the rigs, which put the camera on a rig in one step, starting exactly where it
+  was (the selected camera, else the shot camera; absent while it already rides one): **Orbit** and **Turntable** wait
+  for a click on what to circle (a turntable also turns once round over the shot); **Crane**, **Dolly** and
+  **Handheld** start at once and run the way the camera looks. The new rig is selected: its Distance, Angle, Lift …
+  are in the settings panel (guides/camera-rigs.md).
 
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
 selected item. The rail only shows tools that work today. Others (type and logos, editing faces, painting,
@@ -93,6 +97,13 @@ An item's rows come from its own settings:
 - The rest sit as **one row of names** ("+ Rotation · + Scale · + Display · + Aim"). Click a name to open that group.
 
 The diamond at a row's right end keys that setting at the playhead.
+
+**A camera** offers at the top of its panel **Lens ▾**: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
+one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on, two more:
+**Focus on a point**, then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
+camera that spot is. **Focus on an item**, then click the item (or Alt+click while focusing on a point): the camera keeps
+it sharp as it moves; **Focus on** names it and Focus distance goes (it is worked out every frame). Set Focus on back to
+None to type a distance again. Each click is one undo step.
 
 **An item's material** sits under its settings: the **Material** row (click its ball to pick another, or start a new one
 from a substance), and under it the material's own settings, including "Used by 3 items" and **Make its own** when the
@@ -123,6 +134,5 @@ shown, so with one thing selected there is no Combine.
 - The ≡ menu and the start screen work the same in every Rostrum app.
 - A new scene is "Untitled scene" in your projects folder. It saves after every change, so there is no Save and no
   question when you close.
-- **Export** (≡ › Export…, or Ctrl+E) opens in the settings panel's place. Pick this frame or the whole shot, as PNG,
-  EXR or both. It renders through the same path as the Render button and agents' renders, so the file matches what you
-  see in Final.
+- **Export** (≡ › Export…, or Ctrl+E) opens the render sheet, the same as Render and F12 (see [Rendering](rendering.md)).
+  It renders through the same path as agents' renders, so the file matches what you see in Final.

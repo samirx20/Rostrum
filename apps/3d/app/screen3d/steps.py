@@ -2,7 +2,8 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | context <item id | -> (the right-click menu) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    keydrag <key id> <frame> | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
     svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
@@ -13,6 +14,8 @@
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
+    render-sheet (F12: the render sheet) | estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
+    sheet-render (the sheet's Render; waits for the job, up to 10 min)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, places the armed shape,
     or, while placing or linking a light, that; named apart from the kit's `click <text>`, which runs first)
@@ -24,7 +27,7 @@ A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
-import functools, json, operator  # noqa: E401
+import functools, json, operator, time  # noqa: E401
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
@@ -90,6 +93,10 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openCommands", Q_ARG("QVariant", " ".join(rest)))
     elif word == "run":
         bridge.run(rest[0])
+    elif word == "showshot":
+        bridge.showShot(rest[0])
+    elif word == "shot-from-view":
+        bridge.newShotFromView()
     elif word == "add":
         bridge.adder.add(rest[0])
     elif word == "arm":            # arm <choice> [field=value …]: a flyout's pick; the next viewport click (`mouseclick`, `viewclick`) places it
@@ -160,6 +167,27 @@ def do_step(bridge, win, step):
     elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
         from . import mesh_steps
         mesh_steps.do(bridge, word, rest)
+    elif word == "render-sheet":
+        bridge.exporter.openFor()
+    elif word == "estimate-wait":
+        est = bridge.exporter.estimate
+        for _ in range(RENDER_WAIT_S * 10):           # the 0.4 s wait, then the probe on its own thread
+            QCoreApplication.processEvents()
+            if est.state in ("ready", "failed"):
+                break
+            QTest.qWait(100)
+        if est.state != "ready":
+            raise RuntimeError(f"step {step!r}: the estimate is {est.state!r}: {est.text}")
+    elif word == "budget":
+        if why := bridge.exporter.estimate.setBudget(" ".join(rest)):
+            raise RuntimeError(f"step {step!r}: {why}")
+    elif word == "sheet-render":
+        sheet, t0 = bridge.exporter, time.monotonic()
+        said = sheet.estimate.text
+        sheet.request()
+        if not sheet.wait(RENDER_WAIT_S) or sheet.state != "done":
+            raise RuntimeError(f"step {step!r}: {sheet.state}: {sheet.note}")
+        print(f"sheet-render: the sheet said {said!r}; rendered in {time.monotonic() - t0:.1f} s: {sheet.path}", flush=True)
     elif word in VIEW:
         if bridge.viewport is None:
             raise RuntimeError(f"step {step!r}: no viewport")

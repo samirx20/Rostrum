@@ -7,7 +7,7 @@ import RostrumKit
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
 // own group open, changed groups open, the rest a row of names). Bottom, full width: the scene list with its keys on
 // the same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
-// nothing to reopen. Export (Ctrl+E) is the kit's sheet in the settings panel's place.
+// nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
 AppShell {
     id: shell
     bridge: backend
@@ -21,6 +21,7 @@ AppShell {
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     exporter: backend.exporter
     exportSettings: ExportSettings3D { }
+    exportSummary: RenderEstimate { }
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
@@ -28,7 +29,10 @@ AppShell {
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsList.openFrom(materialsChip) }
     function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
-    function openShots() { shotsMenu.openFrom(crumb, "left") }
+    function openShots() {         // read as it opens: the shown shot checked, "from this view" only off the shot camera
+        shotsMenu.entries = backend.shotEntries(viewport.mode)
+        shotsMenu.openFrom(crumb, "left")
+    }
     function openView() {          // its choices are read as it opens (the light choice follows the selection)
         viewMenu.entries = [{ value: "shot", label: "Shot camera", checked: viewport.mode === "shot" },
                             { value: "free", label: "Free camera", checked: viewport.mode === "free" }]
@@ -39,7 +43,7 @@ AppShell {
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
     Shortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
     Shortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
-    Shortcut { sequence: "F12"; onActivated: backend.renderStill() }
+    Shortcut { sequence: "F12"; onActivated: backend.exporter.openFor() }   // the render sheet
     Shortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
@@ -86,7 +90,7 @@ AppShell {
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }
 
-    crumb: Item {   // "› Hero 01 ▾": the shot this screen shows; its list opens a shot's settings or makes a new one
+    crumb: Item {   // "› Hero 01 ▾": the shot this screen shows; its list switches to another shot or makes a new one
         id: crumb
         implicitWidth: crumbRow.implicitWidth + 2 * Theme.grid; implicitHeight: Theme.button
         Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: crumbArea.containsMouse ? Theme.hover : "transparent" }
@@ -102,8 +106,7 @@ AppShell {
         Menu {
             id: shotsMenu
             width: 200
-            entries: backend.shots.concat(backend.adder.canAddShot ? [{ value: "+shot", label: "New shot" }] : [])
-            onPicked: (v) => v === "+shot" ? backend.adder.add("shot") : backend.select(v)
+            onPicked: (v) => v === "+view" ? backend.newShotFromView() : v === "+shot" ? backend.showShot(backend.adder.add("shot")) : backend.showShot(v)
         }
     }
     tools: Segmented {   // the pages (Ctrl+1 / 2 / 3)
