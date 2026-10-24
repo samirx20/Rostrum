@@ -17,6 +17,7 @@
 //!   With `"alpha": true` the comp's background is left out, so the frames are transparent where nothing is drawn.
 //!   With `"progress": true`, a line `{"progress": i, "of": n, "elapsedS", "leftS"}` after each frame, before the reply.
 //!   The reply's `timing` sums where the time went (scene_export.rs); `"timingCsv": path` writes it per frame too.
+//!   `"workers": n` (1–4): frames drawn side by side by n drawing workers (export_crew.rs); the same pictures.
 //! - `{"edit": [{"id", "props"?: {…}, "anim"?: {field: [keys] | null}}, …]}` → `{"ok": true, "edits": n}`: small
 //!   changes to the held scene (a drag), checked as a load is; the next frame shows them.
 //! - `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {…}}`: every rig's posed bones and IK targets in comp px (rig/bones.rs, RIG.md).
@@ -77,7 +78,7 @@ fn check_part(scene: &Scene, part: Option<&crate::scene::Node>) -> Result<(), St
 }
 
 /// The page shell of the scene: its size, and the faces of the fonts its texts use (only those are embedded).
-fn shell_of(scene: &Scene, w: u32, h: u32) -> Result<String, String> {
+pub(crate) fn shell_of(scene: &Scene, w: u32, h: u32) -> Result<String, String> {
     stage::shell(w, h, &fonts::faces_of(&scene.fonts, &fonts::used(&scene.comp)))
 }
 

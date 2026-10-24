@@ -3,12 +3,18 @@
 //! frames never pass through the host and painting the next frame overlaps writing this one. A bounded
 //! queue of two frames holds memory and keeps the order. `finish` closes its input and waits for it; an
 //! encoder that stopped fails the next frame with what it said (AGENTS.md rule 6).
+//!
+//! A sink is either that encoder or a turn at one encoder shared by an export's drawing workers (sink_turn.rs):
+//! each worker's frames wait there until every frame before them has gone in, so the encoder still gets every
+//! frame once, in order.
 
 use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+
+use crate::sink_turn::Turn;
 
 /// A queued frame as the surface stores it (premultiplied half floats in the working space), put through the
 /// output step (color.rs) on the writer thread, off the paint loop: 16-bit (`deep`) or 8-bit with dither.
@@ -30,20 +36,84 @@ impl Pixels {
 }
 
 pub struct Sink {
-    tx: Option<SyncSender<Pixels>>,
-    writer: Option<JoinHandle<Result<(), String>>>,
-    child: Child,
-    /// The end of the encoder's stderr (what it says when it fails).
-    said: Arc<Mutex<String>>,
-    reader: Option<JoinHandle<()>>,
+    to: To,
     /// Frames queued so far, and whether each came right after the one before (an export checks both).
     pushed: u64,
     last: Option<u32>,
     in_order: bool,
 }
 
+enum To {
+    Encoder(Encoder),
+    /// A drawing worker's frames, through the export's one encoder in frame order.
+    Turn(Arc<Turn>),
+}
+
+struct Encoder {
+    tx: Option<SyncSender<Pixels>>,
+    writer: Option<JoinHandle<Result<(), String>>>,
+    child: Child,
+    /// The end of the encoder's stderr (what it says when it fails).
+    said: Arc<Mutex<String>>,
+    reader: Option<JoinHandle<()>>,
+}
+
 impl Sink {
     pub fn start(program: &str, args: &[String]) -> Result<Sink, String> {
+        Ok(Sink::of(To::Encoder(Encoder::start(program, args)?)))
+    }
+
+    /// A worker's sink: its frames go to `turn`'s encoder when their turn comes.
+    pub fn turn(turn: Arc<Turn>) -> Sink {
+        Sink::of(To::Turn(turn))
+    }
+
+    fn of(to: To) -> Sink {
+        Sink { to, pushed: 0, last: None, in_order: true }
+    }
+
+    /// Queues a frame's pixels (waits while two are queued; a worker's, until the frames before it are in).
+    pub fn push(&mut self, pixels: Pixels) -> Result<(), String> {
+        self.in_order &= self.last.map_or(true, |l| pixels.index == l + 1);
+        (self.pushed, self.last) = (self.pushed + 1, Some(pixels.index));
+        match &mut self.to {
+            To::Encoder(e) => e.push(pixels),
+            To::Turn(t) => t.push(pixels),
+        }
+    }
+
+    /// How many frames were queued.
+    pub fn pushed(&self) -> u64 {
+        self.pushed
+    }
+
+    /// Whether every frame's number was one more than the frame before.
+    pub fn in_order(&self) -> bool {
+        self.in_order
+    }
+
+    /// The encoder it used, as encode_mp4.rs names it on stderr ("encode-mp4: encoder <name> (graphics card)" or
+    /// "(processor: …)"): {name, gpu}; None from an encoder that doesn't say (FFmpeg, pictures) and from a worker's turn.
+    pub fn encoder(&self) -> Option<serde_json::Value> {
+        let To::Encoder(e) = &self.to else { return None };
+        let said = e.said.lock().unwrap();
+        let line = said.lines().find_map(|l| l.strip_prefix("encode-mp4: encoder "))?;
+        let gpu = line.ends_with("(graphics card)");
+        let name = line.rsplit_once(" (").map_or(line, |(n, _)| n);
+        Some(serde_json::json!({ "name": name, "gpu": gpu }))
+    }
+
+    /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
+    pub fn finish(&mut self) -> Result<i32, String> {
+        match &mut self.to {
+            To::Encoder(e) => e.finish(),
+            To::Turn(_) => Err("a drawing worker's frames are finished by the export, not the worker".into()),
+        }
+    }
+}
+
+impl Encoder {
+    fn start(program: &str, args: &[String]) -> Result<Encoder, String> {
         let mut cmd = Command::new(program);
         cmd.args(args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped());
         #[cfg(windows)]
@@ -78,7 +148,7 @@ impl Sink {
             }
             Ok(())
         });
-        Ok(Sink { tx: Some(tx), writer: Some(writer), child, said, reader: Some(reader), pushed: 0, last: None, in_order: true })
+        Ok(Encoder { tx: Some(tx), writer: Some(writer), child, said, reader: Some(reader) })
     }
 
     fn stopped(&mut self) -> String {
@@ -87,10 +157,7 @@ impl Sink {
         format!("the encoder stopped{}: {said}", code.map(|c| format!(" (code {c})")).unwrap_or_default())
     }
 
-    /// Queues a frame's pixels (waits while two are queued).
-    pub fn push(&mut self, pixels: Pixels) -> Result<(), String> {
-        self.in_order &= self.last.map_or(true, |l| pixels.index == l + 1);
-        (self.pushed, self.last) = (self.pushed + 1, Some(pixels.index));
+    fn push(&mut self, pixels: Pixels) -> Result<(), String> {
         let sent = self.tx.as_ref().ok_or("the encoder is finished")?.send(pixels);
         if sent.is_err() {
             // The writer quit: the encoder closed its input.
@@ -106,28 +173,7 @@ impl Sink {
         Ok(())
     }
 
-    /// How many frames were queued.
-    pub fn pushed(&self) -> u64 {
-        self.pushed
-    }
-
-    /// Whether every frame's number was one more than the frame before.
-    pub fn in_order(&self) -> bool {
-        self.in_order
-    }
-
-    /// The encoder it used, as encode_mp4.rs names it on stderr ("encode-mp4: encoder <name> (graphics card)" or
-    /// "(processor: …)"): {name, gpu}; None from an encoder that doesn't say (FFmpeg, pictures).
-    pub fn encoder(&self) -> Option<serde_json::Value> {
-        let said = self.said.lock().unwrap();
-        let line = said.lines().find_map(|l| l.strip_prefix("encode-mp4: encoder "))?;
-        let gpu = line.ends_with("(graphics card)");
-        let name = line.rsplit_once(" (").map_or(line, |(n, _)| n);
-        Some(serde_json::json!({ "name": name, "gpu": gpu }))
-    }
-
-    /// Closes the encoder's input and waits for it: its exit code, or an error with what it said.
-    pub fn finish(&mut self) -> Result<i32, String> {
+    fn finish(&mut self) -> Result<i32, String> {
         drop(self.tx.take());
         let wrote = self.writer.take().map(|w| w.join().unwrap_or(Err("the frame writer panicked".into()))).unwrap_or(Ok(()));
         let status = self.child.wait().map_err(|e| e.to_string())?;
@@ -142,7 +188,7 @@ impl Sink {
     }
 }
 
-impl Drop for Sink {
+impl Drop for Encoder {
     /// A render that ends without `finish` (an error, a closed host) stops its encoder.
     fn drop(&mut self) {
         if self.tx.is_some() {
