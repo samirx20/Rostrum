@@ -5,8 +5,8 @@ operations as the screen and agents (ops_frame_fit.py) on the tree the script is
 checks and refusals; the keys they write are ordinary keys with the usual ids, so a re-run finds them again."""
 from __future__ import annotations
 
-from rostrum_core.conditions import describe, holds
-from rostrum_core.run import Context, _check_args
+from rostrum_core.conditions import holds
+from rostrum_core.run import Context, _check_args, refusal
 
 
 def _ids(items) -> list[str]:
@@ -30,7 +30,7 @@ def run(build, node: dict, op_name: str, args: dict) -> None:
     args = _check_args(op, args, where)
     ctx = Context(KIND, build.root, where)
     if not holds(op.valid_when, node, ctx.facts(node)):
-        raise ValueError(f"{where}: {node['id']} can't take {op_name} now: it needs {describe(op.valid_when)}")
+        raise ValueError(f"{where}: {node['id']} {refusal(op)}")
     op.fn(ctx, [node["id"]], args)
 
 
