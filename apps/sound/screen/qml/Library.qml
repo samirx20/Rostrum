@@ -7,9 +7,8 @@ import RostrumKit
 // open on it — the microphone's track comes armed, ready to record. Add always adds: changing a track's sound is the track's own
 // Sound ▾ picker, never a question here. "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
-// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
-// on Strings"): Enter / Add / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
-// original back. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
+// through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it.
+// A click only previews: it never changes a track's sound. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
 Panel {
     id: p
     title: "Library"
@@ -22,14 +21,12 @@ Panel {
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: 28; height: 28
                               onClicked: workspace.setLibrary(false) }
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0; noHear = "" }
-    Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "" || soundLibrary.trying.key !== undefined) soundLibrary.revert(); else e.accepted = false }
+    Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else e.accepted = false }
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound"
     onFoundChanged: { current = 0; noHear = "" }
     onChipChanged: noHear = ""
-    // the row of the sound being tried, however the try started (a click, an agent, a step); -1 when none
-    readonly property int triedAt: soundLibrary.trying.key === undefined ? -1 : found.findIndex(e => e.key === soundLibrary.trying.key)
-    readonly property int shownAt: triedAt >= 0 ? triedAt : current
+    readonly property int shownAt: current
 
     function pick(i) {                                   // click or arrow: select it and hear it
         current = i
@@ -92,7 +89,7 @@ Panel {
             color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: p.pick(row.index) }
-            readonly property bool heard: p.shownAt === index && (soundLibrary.auditioning !== "" || p.triedAt >= 0)
+            readonly property bool heard: p.shownAt === index && soundLibrary.auditioning !== ""
             Row {   // Add on every row (the row itself hears it); Loop beside it, only while it plays
                 id: hear
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
@@ -135,23 +132,19 @@ Panel {
         text: "Add a folder of my sounds…"; kind: "normal"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
-    Item {      // only while something plays or is tried: what it is, and Keep / Revert (or the way to stop it)
+    Item {      // only while something plays: what it is, and the way to stop it
         id: heard
-        readonly property bool trying: soundLibrary.trying.key !== undefined
-        visible: soundLibrary.auditioning !== "" || trying || p.noHear !== ""
+        visible: soundLibrary.auditioning !== "" || p.noHear !== ""
         height: visible ? heardCol.height : 0
         anchors { left: parent.left; right: parent.right; bottom: foot.top }
         Column {
             id: heardCol
             x: Theme.gap; width: parent.width - 2 * Theme.gap; spacing: Theme.grid
             Text { width: parent.width; wrapMode: Text.Wrap
-                   text: p.noHear !== "" ? p.noHear : heard.trying ? "Trying " + soundLibrary.trying.label + " on " + soundLibrary.trying.trackName
-                                      : "Hearing " + soundLibrary.auditioning
+                   text: p.noHear !== "" ? p.noHear : "Hearing " + soundLibrary.auditioning
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
-                  Button { visible: !heard.trying && p.noHear === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
-                  Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.finish() } }
-                  Button { visible: heard.trying; text: "Revert"; kind: "normal"; onClicked: soundLibrary.revert() } }
+                  Button { visible: p.noHear === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() } }
         }
     }
 }

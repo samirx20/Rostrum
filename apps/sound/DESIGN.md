@@ -925,14 +925,12 @@ that loops its contents). We take the corner loop drag and the named block; we r
 
 **Goal.** "Which pad sounds right *for this part*?"
 **Who / when.** A every song, several times; B often.
-**How it works.**
-1. Select the track (click its header), then **L**. The Library opens filtered to what this track can play (an
-   instrument track: instruments; a drum track: kits; a voice track: voices). A small line at the top says "Trying
-   sounds on **Pad**"; "Show everything" removes the filter.
-2. **Click** a sound (or move with **↑ / ↓**): Rostrum **plays this track's own notes with that sound** — the loop
-   range if one is set, otherwise 4 bars from the playhead — looping while you browse. Nothing is written yet; the
-   track header shows the sound's name in italics ("trying").
-3. **Enter** or **double-click** keeps it (one change). **Esc**, or clicking another track, puts the old sound back.
+**How it works.** *(Manager decision, 2026-10-25: a Library click only previews.)*
+1. **L** (or Ctrl+L) opens the Library. **Click** a sound (or move with **↑ / ↓**): Rostrum **plays the selected
+   track's own notes with that sound**, looping while you browse (■ Stop, Esc, or another pick ends it). It never
+   changes a track: nothing is written, nothing is "kept".
+2. **Add** on a row makes a new track with that sound. To change an existing track's sound use the **Sound ▾** picker
+   in its settings panel (the notes stay; one `track.set`, one undo step).
 4. With **no track selected**, or a track with no notes yet, the audition is neutral: one held middle C, then the same
    note soft and loud (instrument); one hit per drum (kit); one sentence (voice: "This is how this voice sounds",
    in the chosen language). With a MIDI keyboard connected, playing keys plays the highlighted sound.
@@ -941,8 +939,8 @@ that loops its contents). We take the corner loop drag and the named block; we r
 **Feedback.** Sound within ~300 ms of the click (built-ins, synth, played); SFZ shows "Loading 120 MB…" on its row
 the first time, then plays; a plug-in may take a few seconds (row shows "Loading plug-in…"). A voice that needs its
 model first asks the model download question (shared dialog: size and licence).
-**Undo and adjust.** Trying is not a change. Keeping is one `track.set {instrument, …}` step.
-**Keys.** L · ↑/↓ try next / previous · Enter keep · Esc put back.
+**Undo and adjust.** Hearing is not a change. Changing a track's sound is one `track.set {instrument, …}` step (the Sound ▾ picker).
+**Keys.** L · ↑/↓ hear next / previous · Enter adds · Esc stops.
 **Agent.** `inspect_instrument` (exists: what an instrument is and can play), `inspect_plugins` (exists),
 `inspect_library kind="instruments"` (exists); keep = `track.set {instrument, builtIn | model | synth | sfz | plugin
 | kit | kitSfz | voice}` (exists). An agent "hears" by `render_mix` + `look_*` tools; **(new)** `render_audition {track,
@@ -3760,7 +3758,7 @@ Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\sound-redesign\p29\RE
 |---|---|---|
 | 3.1 / 3.15 Groups | Drag a track header into / out of a group (`bus.add_track` / `bus.remove_track`, the selection goes along, one undo step, settings kept; the target group tinted, a name chip follows the pointer); M / S on the group header (M: `bus.set mute`; S: solo on every track of the group, lit when all are) | The real mouse drag not driven by a test; dropping does not reorder |
 | 3.3 Notes | Fold the velocity strip (screen state); a dot on notes outside the key at their time (the key shading's one rule, `in_key_then`); the key's root marked on the keyboard | — |
-| 3.7 / 3.2b Library | Trying a sound on a track writes nothing; Keep (one `track.set`) / Revert / Esc; Loop while browsing (through the engine) | Voices auditioned with a sentence; the italic "trying" in the track header |
+| 3.7 / 3.2b Library | A Library click only previews (nothing written; never changes a track); Loop while browsing (through the engine) | Voices auditioned with a sentence |
 | 3.10 Clean-up | Measurement line from `look_cleanup`'s numbers, measured once per take and stored (noise, voice level, room echo; a warning when the voice got quieter); Cancel (the job runs in its own process; nothing half-made kept; the clip plays its original, one undo step) | Hold-H (Team Sam: key release in the kit's KeyMap) |
 | 3.11 Voice | Take arrows on the voice line's block (shown only with more than one take); the voice model in the download registry: a missing model asks the download question | The voice files have no web address yet (not hosted: needs Sam's OK, like UMX-HQ); a real progress figure while speaking |
 | 3.13 Sound for motion | Swap stepping: ↑ / ↓ through the results, each swapped from the original (`clip.swap` with the original's values), a 1 s loop round the spot, Enter keeps (one history entry), Esc puts the original back | — |

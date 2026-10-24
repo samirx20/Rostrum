@@ -36,7 +36,7 @@ you close the window and every 20 changes; the change log beside it always has t
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
 2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
    **Voice**, **My sounds**.
-3. Click a row to hear it, then press that row's **Add** (or select it and press **Enter**). A new track with that
+3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
    sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
@@ -44,7 +44,7 @@ you close the window and every 20 changes; the change log beside it always has t
    - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
      or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
      move the folder, and nothing is raised under **Problems**.
-   - **Add** always makes a new track. To give an existing track another sound, use the **Sound ▾** picker in its settings panel (the notes stay).
+   - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel (the notes stay).
 4. The Library closes after each use. Close it any time with × or Ctrl+L.
 
 ## 3. Shape the sound

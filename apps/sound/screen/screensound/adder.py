@@ -76,7 +76,6 @@ def _entries() -> list[dict]:
 
 
 ENTRIES = _entries()
-PLAYS = {"instrument": ("builtIn", "sfz", "synth", "model", "plugin"), "drums": ("kit", "kitSfz"), "voice": ("voice",)}
 OLD_KEYS = {"piano": "builtIn:grandPiano", "strings": "builtIn:analogStrings", "pad": "builtIn:warmPad",   # `add-track`
             "bass": "builtIn:subBass", "drums": "kit", "voice": "voice:ryan", "audio": "files"}
 
@@ -126,34 +125,6 @@ class Adder(QObject):
     @Slot(str, str, result="QVariantList")
     def find(self, text, kind):
         return find(text, kind)
-
-    @Slot(str, result="QVariantMap")
-    def match(self, key):
-        """{track, from, to} when the selection's track plays the same kind of sound as entry `key` (the panel then
-        offers to change it); {} when using the entry makes a new track."""
-        e, t = _entry_of(key), self._selected_track()
-        if not e or not t or t.get("instrument", "none") not in PLAYS.get(e["kind"], ()):
-            return {}
-        return {"track": t["id"], "from": t.get("name") or t["id"], "to": e["label"]}
-
-    @Slot(str, str, result=bool)
-    def swap(self, key, track_id):
-        """Change that track's sound to entry `key` (one `track.set`, one undo step; its notes stay). A track still
-        named after its old sound takes the new sound's name."""
-        b, e = self.bridge, _entry_of(key)
-        t = b.doc.item(track_id)
-        args = {k: v for k, v in e["fields"].items() if k != "name"}
-        old = next((x for x in ENTRIES if all(t.get(k) == v for k, v in x["fields"].items() if k != "name")), None)
-        if old and t.get("name") == old["fields"]["name"]:
-            args["name"] = e["fields"]["name"]
-        return b._guard(lambda: b._apply([{"op": "track.set", "target": [track_id], "args": args}],
-                                         f"Change sound to {_plain(e)}"))
-
-    def _selected_track(self) -> dict | None:
-        doc, i = self.bridge.doc, self.bridge.selected
-        while i and doc.has(i) and doc.item(i)["type"] != "track":
-            i = doc.parent_of(i)[0] if doc.item(i)["type"] not in ("doc", "master", "marker") else ""
-        return doc.item(i) if i and doc.has(i) else None
 
     @Slot(str, result=bool)
     def add(self, key):

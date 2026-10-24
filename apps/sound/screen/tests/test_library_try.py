@@ -43,22 +43,11 @@ def panel(monkeypatch):
     b.close()
 
 
-def test_trying_writes_nothing_and_revert_restores_the_original(panel):
+def test_hearing_a_library_sound_never_changes_the_track(panel):
     doc, before = panel.bridge.doc, copy.deepcopy(panel.bridge.doc.data)
     n = len(doc.history.changes)
     panel.auditionEntry("builtIn:grandPiano")
-    assert panel.trying["track"] == "lead" and len(doc.history.changes) == n and doc.data == before
-    panel.revert()
-    assert panel.trying == {} and len(doc.history.changes) == n and doc.data == before
-
-
-def test_keep_is_one_undo_step(panel):
-    doc, n = panel.bridge.doc, len(panel.bridge.doc.history.changes)
-    panel.auditionEntry("builtIn:grandPiano")
-    assert panel.keep() and panel.trying == {}
-    assert doc.item("lead")["builtIn"] == "grandPiano" and len(doc.history.changes) == n + 1
-    panel.bridge.undo()
-    assert doc.item("lead")["builtIn"] == "feltPiano"
+    assert len(doc.history.changes) == n and doc.data == before
 
 
 def test_cancelled_cleanup_leaves_the_original_playing(panel, tmp_path, monkeypatch):
@@ -86,9 +75,3 @@ def test_cancelled_cleanup_leaves_the_original_playing(panel, tmp_path, monkeypa
     assert "Cancelled" in take.status and Cache().get("cleanup", "x") is None
     b.undo()
     assert b.doc.item(clip).get("useCleaned", True) is True
-
-
-def test_picking_another_track_ends_the_try(panel):
-    panel.auditionEntry("builtIn:grandPiano")
-    panel.bridge.select("pad")
-    assert panel.trying == {} and panel.bridge.doc.item("lead")["builtIn"] == "feltPiano"
