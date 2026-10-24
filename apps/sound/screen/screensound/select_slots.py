@@ -91,7 +91,7 @@ class SelectSlots:
             QTimer.singleShot(SETTLE_MS, self, self._settled)
 
     def _settled(self):
-        if self.__dict__.get("_unsettled") and self._drag is None:
+        if self.__dict__.get("_unsettled") and self._drag is None and self._kit.scrub is None:
             self._pick([i for i in self._picks.ids if self.doc.has(i)], self._picks.anchor)
 
     @Slot(str, bool, bool)

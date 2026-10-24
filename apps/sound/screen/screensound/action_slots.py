@@ -8,7 +8,7 @@ SoundBridge; the empty-space menus ("Paste here", "Add marker here") are Sound's
 from __future__ import annotations
 
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import commands
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.action_views import commands as do_commands
@@ -21,6 +21,7 @@ from . import voice_actions as V
 from . import clipboard, timing
 from .actions import LIST
 from .keys import ROUTES, SKIP
+from .select_slots import SETTLE_MS
 
 # Ctrl+K lists only the named things you would go to, in our words (never a single note, hit or effect)
 KINDS = {"track": "Track", "bus": "Group", "marker": "Marker", "section": "Section", "clip": "Clip"}
@@ -66,10 +67,19 @@ class ActionSlots:
 
     def _make_actions(self):
         self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._refuse)
-        for sig in (self.picksChanged, self.rangeChanged, self.docChanged):       # picks follow the selected items
-            sig.connect(self._hub.refresh)
-        self.timeChanged.connect(lambda: None if self.playing else self._hub.refresh())   # Split at playhead
+        for sig in (self.picksChanged, self.docChanged):       # picks follow the selected items
+            sig.connect(self._refresh_actions)
+        later = QTimer(self, singleShot=True, interval=SETTLE_MS, timeout=self._refresh_actions)
+        self.rangeChanged.connect(later.start)           # a range drawn on the ruler: its band at once, its actions after the frame
+        self.timeChanged.connect(lambda: None if self.playing else self._refresh_actions())   # Split at playhead
         self._hub.refresh()
+
+    def _refresh_actions(self):
+        """The actions follow the selection the panel shows: while a press or a drag has picked and not settled yet
+        (select_slots._pick `later`), they wait with the panel and come once with it (making them costs the press
+        ~35 ms of redrawn rows)."""
+        if not self.__dict__.get("_unsettled"):
+            self._hub.refresh()
 
     actions = Property(QObject, lambda self: self._hub, constant=True)
 

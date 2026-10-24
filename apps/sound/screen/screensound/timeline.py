@@ -268,7 +268,9 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "s
     if hi - lo < 24:
         mid = (lo + hi) // 2
         lo, hi = mid - 12, mid + 12
-    lo, hi = max(0, lo), min(127, hi)
+    # Whole octaves (C up to B): a note drawn a key past the edge rarely changes the range, and a range that changes
+    # makes every key row on screen again (~18 ms of one press).
+    lo, hi = max(0, lo // 12 * 12), min(127, -(-(hi + 1) // 12) * 12 - 1)
     if keep:
         lo, hi = min(lo, keep[0]), max(hi, keep[1])
     # The rows' names, by the one speller, once per key in force: [{t, names}] from time 0 (the key before the

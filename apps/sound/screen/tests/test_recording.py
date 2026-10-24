@@ -143,6 +143,7 @@ def test_keyboard_take_is_one_step_on_the_beats_of_its_mix_times(bridge):
 
 
 def test_a_player_that_cannot_open_is_loud_and_the_playhead_runs_on(bridge):
+    bridge.transport.player.close()            # the first render opened the real player (warm): this one can't open
     bridge.transport.player.program = [sys.executable, "-c", "import sys; sys.stderr.write('no output device'); sys.exit(3)"]
     bridge.setTime(1.0)
     bridge.togglePlay()

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui import snap
-from rostrum_gui.edits import Drag
+from rostrum_gui.edits import Drag, Scrub
 
 from . import handles, moves, timing
 from .actions import LIST
@@ -27,6 +27,22 @@ class EditSlots:
         if caught != getattr(self, "_snap", {}):
             self._snap = caught
             self.snapChanged.emit()
+
+    @Slot(str, str)
+    def beginScrubOn(self, item_id, param):
+        """A mixer strip's fader, pan or level press: the scrub works on that strip's item at once; the strip is
+        picked now and the settings panel follows once the scrub ends (pressSelect, `_settle`), so the press waits
+        for neither (making the panel's rows cost the press ~50 ms)."""
+        self.endScrub()
+        if self.selectedIds != [item_id]:
+            self.pressSelect(item_id)
+        self._guard(lambda: setattr(self._kit, "scrub", Scrub(self.doc, self.who, [item_id], param, self.edit_call)))
+
+    @Slot()
+    def endScrubOn(self):
+        """The release of `beginScrubOn`: one change, then the settings panel shows the strip's item."""
+        self.endScrub()
+        self._settle()
 
     @Slot(str, str)
     def toggleTrack(self, track_id, field):

@@ -6,7 +6,7 @@ import "MixFormat.js" as F
 
 // One track's, bus' or the master's strip, top to bottom: a cap in the track's colour and its name, its effects (one
 // line each, "+ Effect"), its sends and ducks, where it plays to, pan, the level block (dB scale, fader, meter with its
-// peak), M S R and the volume. Editing selects the item first, so the inspector shows it and the edit is one change on it.
+// peak), M S R and the volume. Editing works on the strip at once (one change on it) and selects it; the inspector follows the release.
 Rectangle {
     id: s
     required property var model          // roles: mixer.py ROLES (id, name, hue, volume, pan, effects, meter, canSolo, canArm, output, sends, …)
@@ -98,18 +98,18 @@ Rectangle {
             Slider {
                 Layout.fillWidth: true; implicitWidth: 10
                 from: -1; to: 1; step: 0.01; value: s.model.pan; origin: 0; defaultValue: 0
-                onScrubStarted: { s.pick(); backend.beginScrub("pan") }
+                onScrubStarted: backend.beginScrubOn(s.model.id, "pan")      // the strip at once, the panel after the release
                 onScrubbed: (v) => backend.scrub("pan", v)
-                onScrubEnded: backend.endScrub()
+                onScrubEnded: backend.endScrubOn()
                 onEdited: (v) => { s.pick(); backend.beginScrub("pan"); backend.scrub("pan", v); backend.endScrub() }   // wheel, ← / →: one change
             }
         }
         MixLevel {
             Layout.alignment: Qt.AlignHCenter; Layout.fillHeight: true; Layout.minimumHeight: 72; Layout.preferredHeight: 1000
             gain: s.model.volume; meter: s.model.meter; peak: mixer.peaks[s.model.id] !== undefined ? mixer.peaks[s.model.id] : null; live: s.visible ? mixer.live[s.model.id] || null : null   // hidden (the Editor shows): the meter rests
-            onScrubStarted: { s.pick(); backend.beginScrub("volume") }
+            onScrubStarted: backend.beginScrubOn(s.model.id, "volume")
             onScrubbed: (g) => backend.scrub("volume", g)
-            onScrubEnded: backend.endScrub()
+            onScrubEnded: backend.endScrubOn()
             onReset: { s.pick(); backend.setValue("volume", 1) }
             onNudged: (g) => { s.pick(); backend.setValue("volume", g) }
             onTypeIt: { level.forceActiveFocus(); level.input.forceActiveFocus(); level.input.selectAll() }
@@ -119,9 +119,9 @@ Rectangle {
             id: level
             Layout.fillWidth: true; Layout.preferredHeight: 24
             from: 0; to: 4; step: 0.1; display: "db"; label: "Volume"; value: s.model.volume; defaultValue: 1
-            onScrubStarted: { s.pick(); backend.beginScrub("volume") }
+            onScrubStarted: backend.beginScrubOn(s.model.id, "volume")
             onScrubbed: (v) => backend.scrub("volume", v)
-            onScrubEnded: backend.endScrub()
+            onScrubEnded: backend.endScrubOn()
             onEdited: (v) => { s.pick(); backend.setValue("volume", v) }
         }
     }

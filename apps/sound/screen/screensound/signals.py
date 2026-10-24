@@ -9,6 +9,7 @@ class SoundSignals:
     timeChanged = Signal()
     playingChanged = Signal()
     timelineChanged = Signal()
+    markersChanged = Signal()       # the markers only: a note's edit leaves every marker flag as it is
     rollChanged = Signal()          # the Editor's piano roll only (a selection on another track): the rows stay
     renderChanged = Signal()
     soundChanged = Signal()

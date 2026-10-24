@@ -1,6 +1,6 @@
 """Play / stop and keeping the sound current: the document is re-rendered (debounced) after each change, the
-newest render goes to the engine's live transport (live_transport.py: the first one waits for the first play, later
-ones are loaded while it plays on), and the playhead follows the speaker's position the engine reports.
+newest render goes to the engine's live transport (live_transport.py: the first one opens it, stopped, so the first
+play starts at once, unless the person chose Use speakers alone; later ones are loaded while it plays on), and the playhead follows the speaker's position the engine reports.
 
 Nothing renders while a drag is open (`held`): a draw-click followed by a drag on its length, or the next drag
 right after a release, never shares the machine with a render; the drag's change renders once, when it lands. The
@@ -13,6 +13,8 @@ engine's player cannot open (no sound output) or dies, that is loud too and the 
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, QTimer, Signal
+
+from rostrum_sound import settings
 
 from .live_transport import LivePlay
 from .playback import Renderer
@@ -43,6 +45,7 @@ class Transport(QObject):
         self.player.ended.connect(self._ended)
         self._tick = QTimer(self, interval=33, timeout=self._advance)
         self._debounce = QTimer(self, singleShot=True, interval=DEBOUNCE_MS, timeout=self.render)
+        self._told = QTimer(self, singleShot=True, interval=50, timeout=self._tell)
 
     @property
     def playing(self) -> bool:
@@ -97,11 +100,22 @@ class Transport(QObject):
             self.said.emit(result["restarted"])
         self.last, self.stale, self._render_failed = dict(result), False, False
         self.player.load(self.last["file"])
-        self.renderChanged.emit()
-        self._show_state()
+        if not self._want and not settings.load()["exclusive"]:
+            self.player.warm()       # the first render opens the player, stopped: the first Play starts at once (it
+                                     # waited ~0.5 s for the process); "Use speakers alone" keeps them free until Play
+        if self._held():
+            self._told.start()       # a drag is open: what shows the render (loudness, meters, Problems) follows
+        else:                        # when it lands (~20 ms the pointer must not wait for; the drop renders again)
+            self._tell()
         if self._want:
             self._want = False
             self._play(self._at)
+
+    def _tell(self):
+        if self._held():
+            return self._told.start()
+        self.renderChanged.emit()
+        self._show_state()
 
     def _failed(self, line):
         self.stale, self._render_failed = False, True
@@ -148,5 +162,6 @@ class Transport(QObject):
     def close(self):
         self._tick.stop()
         self._debounce.stop()
+        self._told.stop()
         self.player.close()
         self.renderer.close()
