@@ -1083,6 +1083,11 @@ changes (`python\rostrum3d\guides\` and the MCP tool descriptions) in the same c
 adds (rule 4). **[Kit]** = needs Team Sam's shared-kit change merged first. **[C++]** = needs a heavy core build
 (through the heavy-job lock; one at a time).
 
+**Progress (2026-10-24, evening):** K1–K4 and briefs **1–20 are built and merged** (plus 3D-8's, 13's and 16's
+follow-ups: 11b moving-object blur, 13c/13d steadier estimate and one-pass noise clean-up, 16b, 18b). **Next: 21–29.**
+Every leftover found on the way has an owner in `C:\Users\Sam\.rostrum\waves\results\audit\TRIAGE.md` (rows starting
+"3D-"). 3D has not had its look / works audit or a critic yet.
+
 ### First: the shared kit (Team Sam, alone, merges first)
 
 | # | Brief | Files touched | Done when (a person can see) |
