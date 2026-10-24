@@ -87,7 +87,7 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
 
 Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`, `scrub <setting> <v> <v> …`,
 `animate <setting>`, `keydrag <key id> <frame>`, `fold <id>`, `undo`, `redo`, `more`, `commands [text]`,
-`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
+`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `stretch <key id>`, `ease <preset>`, `panel poses|onion`, `pose <name>`, `onion on|off|keys|frames`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
 `snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
 `zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `viewclick x y` (selects, or places the shape picked in the Shapes flyout).
 A scripted run (--shot, --step, --check-layout) never writes into a real project: `--doc` opens a scratch copy (`screen3d/scratch_doc.py`).

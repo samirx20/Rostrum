@@ -2,7 +2,7 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    keydrag <key id> <frame> | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
@@ -93,7 +93,7 @@ def do_step(bridge, win, step):
     elif word == "keydrag":
         if not bridge.beginKeyDrag(rest[0]):
             raise RuntimeError(f"step {step!r}: {bridge.status}")
-        bridge.keyDragTo(float(rest[1]))
+        bridge.keyDragTo(float(rest[1]) / bridge.shot_info()["fps"])
         bridge.endDrag()
     elif word == "fold":
         bridge.toggleFold(rest[0])
@@ -144,8 +144,20 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
+    elif word == "panel":          # panel poses | onion: the Animate rail's own small panels (Rail3D.qml)
+        QMetaObject.invokeMethod(win, "openRailPanel", Q_ARG("QVariant", rest[0]))
+    elif word == "pose":           # pose <name…>: Save pose from the selection at the playhead (poses_qt.py)
+        bridge.poses.save(" ".join(rest))
+    elif word == "onion":          # onion on | off | keys | frames (onion_qt.py)
+        o = bridge.viewport.onion
+        o.setOn(rest[0] != "off") if rest[0] in ("on", "off") else o.setMode(rest[0])
     elif word == "page":
         bridge.setPage(rest[0])
+    elif word == "stretch":        # stretch <key id>: the click on the stretch that key starts (its item's, StretchBand.qml)
+        bridge.stretch.pick(bridge.doc.parent_of(rest[0])[0], [rest[0]])
+    elif word == "ease":           # ease <linear | smooth | in | out | spring | bounce | hold>: a preset in the animation panel
+        if not bridge.stretch.setEase(rest[0]):
+            raise RuntimeError(f"step {step!r}: no stretch picked, or {bridge.status}")
     elif word == "startfrom":
         bridge.mats.startFrom(" ".join(rest))
     elif word == "assign":

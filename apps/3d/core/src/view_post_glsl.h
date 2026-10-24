@@ -76,6 +76,23 @@ void main() {
   lit = vec4(c.rgb * pow(sum / wsum, strength), c.a);
 })";
 
+// Onion skin: one ghost (its items alone, lit, at another frame) laid over the picture, see-through, in its tint;
+// its own light and shade kept as brightness so the shape still reads. Premultiplied "over", like Storm's colour.
+constexpr const char* kGhost = R"(
+uniform sampler2D litTex;
+uniform sampler2D ghostTex;
+uniform vec3 tint;
+uniform float opacity;
+out vec4 lit;
+void main() {
+  ivec2 p = ivec2(gl_FragCoord.xy);
+  vec4 c = texelFetch(litTex, p, 0), g = texelFetch(ghostTex, p, 0);
+  float a = clamp(g.a, 0.0, 1.0) * opacity;
+  float l = dot(max(g.rgb, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722));
+  vec3 col = tint * (0.35 + 0.65 * l / (l + 0.18));
+  lit = vec4(c.rgb * (1.0 - a) + col * a, c.a * (1.0 - a) + a);
+})";
+
 // The shown picture: depth of field (a gather over a disc as wide as the lens blurs that point), exposure, the
 // background where the picture is transparent, OpenColorIO's display transform, the selection ring. Written top
 // row first, so the read-back needs no flip.

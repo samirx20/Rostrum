@@ -16,6 +16,9 @@ Rectangle {
     signal resized(real height)                 // the top edge dragged to this height (Main.qml clamps it)
     property bool compact: false
     property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent
+    property bool canResize: true               // false where the app sets the height itself (3D's pages): no grab edge
+    property bool canCurves: true               // false where the app has no curve view yet (3D): Keys | Curves is absent
+    property string emptyText: "Your layers appear here as bars. Drag a bar to change when it shows."   // with no rows yet (the app words its items)
     signal compactAsked(bool on)
     property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
     property Item curves                        // the app's curve view, in the same place while Curves is on
@@ -34,6 +37,7 @@ Rectangle {
 
     MouseArea {  // the top edge: in the gap above the timeline, so it never takes a click meant for the canvas
         id: edge
+        visible: tl.canResize
         anchors { left: parent.left; right: parent.right; verticalCenter: parent.top }
         height: 2 * Theme.gap          // 16 px: easy to grab; half in the gap above, half on the timeline's own edge
         hoverEnabled: true; preventStealing: true
@@ -61,10 +65,11 @@ Rectangle {
     Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
         id: keysCurves
         objectName: "keysCurves"
+        visible: tl.canCurves
         anchors { right: ruler.left; rightMargin: Theme.pad + 8; verticalCenter: ruler.verticalCenter }   // the names column's right edge
         implicitHeight: 26
         options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
-        current: backend.curves.on ? "curves" : "keys"
+        current: tl.canCurves && backend.curves.on ? "curves" : "keys"
         onPicked: (v) => backend.curves.setOn(v === "curves")
     }
     TimeRuler {
@@ -86,20 +91,20 @@ Rectangle {
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
     Item {   // where `curves` lies
         id: curvesBox
-        visible: backend.curves.on
+        visible: tl.canCurves && backend.curves.on
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
     }
     Item {   // where `rows` lies, with its fade and scroll bar
         id: rowsBox
-        visible: !backend.curves.on
+        visible: !tl.canCurves || !backend.curves.on
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
         EdgeFade { flick: tl.rows; anchors.fill: parent; color: Theme.panel }   // a half-shown row fades, never a sliver
         VScrollBar { flick: tl.rows; visible: !!tl.rows && needed }
     }
     MouseArea {  // compact: the one row's name is a list of every layer
-        visible: tl.compact && !backend.curves.on && backend.layers.length > 0
+        visible: tl.compact && !(tl.canCurves && backend.curves.on) && backend.layers.length > 0
         x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense; z: 2
         cursorShape: Qt.PointingHandCursor
         onClicked: { picker.entries = backend.layers.filter(r => r.row === "layer")
@@ -110,7 +115,7 @@ Rectangle {
     EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): gone with the first layer
         visible: backend.layers.length === 0
         x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
-        text: "Your layers appear here as bars. Drag a bar to change when it shows."
+        text: tl.emptyText
     }
     Item { id: overlayBox; anchors.fill: parent }   // where `overlay` lies
     Repeater {   // the project's shared markers, a faint line across every row (their flags are on the ruler)

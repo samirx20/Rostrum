@@ -19,7 +19,7 @@ from . import fields as F
 
 LISTS = F.LISTS
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
-         "parts": ("part",), "keys": ("key",)}
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",)}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -40,6 +40,8 @@ for _type, _params in F.FIELDS.items():
 def facts(item: dict) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item}
+    if item.get("type") in F.ITEMS:
+        return {"animated": F.animated_fact(item)}
     return {}
 
 
@@ -128,6 +130,7 @@ def check(data: dict) -> list[str]:
 
 
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
-               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": []})
+               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
-from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations)

@@ -86,6 +86,7 @@ AnimPanel 1.0 AnimPanel.qml
 EaseCurve 1.0 EaseCurve.qml
 LayerTrack 1.0 LayerTrack.qml
 KeyDot 1.0 KeyDot.qml
+KeyBox 1.0 KeyBox.qml
 TimeRuler 1.0 TimeRuler.qml
 TimeReadout 1.0 TimeReadout.qml
 AddMarker 1.0 AddMarker.qml
