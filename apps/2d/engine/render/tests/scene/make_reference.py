@@ -8,17 +8,18 @@ Run it again when rostrum_core/keys/easing.py, evaluate.py, fields.py or stopgap
 import json
 from pathlib import Path
 
-from rostrum2d import fields as F
+from rostrum2d import fields as F, fill_paint
 from rostrum_core.keys import easing
 from rostrum2d.evaluate import resolve
 from rostrum2d.scene import FORMAT, VERSION, python_only
 
 HERE = Path(__file__).with_name("reference.json")
-SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame", "pose", "render3d", "textstyle", "swatch")]  # a drawing's frame, a saved pose, a named text style: document items, not scene ones; a 3D render reaches the engine as a video (scene.py)
+SCENE_TYPES = [t for t in F.FIELDS if t not in ("key", "frame", "pose", "render3d", "textstyle", "swatch", "painting")]  # a drawing's frame, a saved pose, a named text style: document items, not scene ones; a 3D render reaches the engine as a video (scene.py)
 
 
 def item(id, type, anim=None, **props):
-    node = {"id": id, "type": type, "props": {k: v for k, v in {**F.defaults(type), **props}.items() if k not in python_only(type)}}
+    values = {**F.defaults(type), **props}
+    node = {"id": id, "type": type, "props": fill_paint.engine_props({"type": type, **values}, {k: v for k, v in values.items() if k not in python_only(type)})}
     if anim:
         node["anim"] = anim
     return node

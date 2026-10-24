@@ -36,6 +36,7 @@ pub(super) fn neutral(kind: &str) -> Map<String, Value> {
         let v = match (name, k) {
             ("scale" | "scaleX" | "scaleY" | "opacity", _) => json!(1.0),
             ("end", _) => json!(1e9),
+            ("fillUnder", _) => json!("#00000000"),
             (_, Kind::Number) => json!(0.0),
             (_, Kind::Color) => json!("#000000"),
             (_, Kind::Toggle) => json!(false),
@@ -101,7 +102,7 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     comp_props.insert("height".into(), json!(ROOM));
     comp_props.insert("fps".into(), json!(30.0));
     comp_props.insert("background".into(), json!("#000000"));
-    let comp = Node { id: "measure".into(), kind: "comp", role: fields::Role::Comp, props: comp_props, anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, rig: vec![], stops: vec![] };
+    let comp = Node { id: "measure".into(), kind: "comp", role: fields::Role::Comp, props: comp_props, anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, fill_frames: vec![], rig: vec![], stops: vec![] };
     let named = |e: String| ids.iter().enumerate().rev().fold(e, |e, (i, id)| e.replace(&page_id(i), id));
     let markup = stage::stage(&eval::whole(&comp, 0.0)).map_err(named)?;
     let empty = "<div id=\"rostrum-stage\"></div>";

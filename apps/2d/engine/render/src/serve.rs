@@ -177,11 +177,20 @@ pub(crate) fn page_config(width: u32, height: u32, assets: &Assets) -> DocumentC
     }
 }
 
+/// Lays the page out with every picture it names in place. Pictures named by CSS (`background-image`, `mask-image`)
+/// are asked for while styles resolve; their bytes come back (at once: Assets::fetch is synchronous) as messages,
+/// taken in here, so the frame drawn next shows them. Without it a picture used only as a background (a tiled fill)
+/// drew as nothing on its first frame, and on every frame of a still or a fresh export.
+pub(crate) fn settle(doc: &mut HtmlDocument) {
+    doc.handle_messages();
+    doc.resolve(0.0);
+    doc.handle_messages();
+}
+
 /// A page shell parsed and resolved, and its stage element.
 fn shell(html: &str, config: DocumentConfig, assets: &Assets) -> Result<(HtmlDocument, NodeId), String> {
     let mut doc = HtmlDocument::from_html(html, config);
-    doc.handle_messages();
-    doc.resolve(0.0);
+    settle(&mut doc);
     failures(assets)?;
     let stage = doc.query_selector(STAGE).map_err(|_| "bad selector")?.ok_or("the page shell has no <div id=\"rostrum-stage\">")?;
     Ok((doc, stage))
@@ -249,6 +258,7 @@ pub(crate) fn apply(s: &mut Session, markup: &str) -> Result<(f64, f64, usize), 
     s.doc.handle_messages();
     crate::stage_profile::note(crate::stage_profile::APPLY, t1.elapsed().as_secs_f64() * 1000.0);
     s.doc.resolve(0.0);
+    s.doc.handle_messages();          // pictures CSS asked for while resolving (settle)
     crate::stage_profile::note(crate::stage_profile::EDITS, edits.count() as f64);
     crate::stage_profile::note(crate::stage_profile::DIFF, diff_ms);
     crate::stage_profile::row();

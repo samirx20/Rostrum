@@ -22,6 +22,8 @@ pub const SHAPE_KINDS: &[&str] = &["rect", "ellipse", "arc", "triangle", "polygo
 pub const HEADS: &[&str] = &["none", "triangle", "open", "circle", "square", "bar"];
 /// How a picture fills a shape (super::stage_fill).
 pub const PICTURE_FITS: &[&str] = &["fill", "fit", "tile", "stretch"];
+/// How a picture or painted fill meets its colour under it (stage_raster.rs; rostrum2d/fill_fields.py BLENDS).
+pub const FILL_BLENDS: &[&str] = &["normal", "multiply", "screen", "overlay"];
 /// How a video layer repeats its clip (stage_fx.rs `fold`; the Python layer's looping.py MODES).
 pub const LOOP_MODES: &[&str] = &["off", "loop", "pingpong"];
 /// Where a rider sits on its path (super::follow `ride`): the drawn-on tip, the trim's start, or `rideAlong`.
@@ -33,7 +35,7 @@ pub const RIDE: &[Field] = &[("ridePath", Text), ("rideAt", Choice(RIDE_AT)), ("
 
 const TRANSFORM: &[Field] = &[
     ("x", Number), ("y", Number), ("scale", Number), ("rotation", Number), ("opacity", Number),
-    ("anchorX", Number), ("anchorY", Number), ("scaleX", Number), ("scaleY", Number),
+    ("scaleX", Number), ("scaleY", Number), ("anchorX", Number), ("anchorY", Number),
     ("tiltX", Number), ("tiltY", Number), ("start", Number), ("end", Number),
 ];
 /// After the blend (its options are the one list, super::blends) and before the layout's own fields.
@@ -70,6 +72,8 @@ const SHAPE: &[Field] = &[
     ("filled", Toggle), ("fill", Color), ("fillOpacity", Number),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
     ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
+    ("fillOffsetX", Number), ("fillOffsetY", Number), ("fillRotation", Number), ("fillDriftX", Number), ("fillDriftY", Number),
+    ("fillUnder", Color), ("fillBlend", Choice(FILL_BLENDS)),
 ];
 const TEXT: &[Field] = &[
     ("body", Text), ("font", Text), ("size", Number), ("weight", Number), ("italic", Toggle), ("color", Color), ("fillOpacity", Number), ("align", Choice(&["left", "center", "right"])),
@@ -97,6 +101,8 @@ const PATH: &[Field] = &[
     ("join", Choice(&["miter", "round", "bevel"])), ("miter", Number), ("dash", Number), ("gap", Number), ("dashOffset", Number),
     ("trimStart", Number), ("trimEnd", Number),
     ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
+    ("fillOffsetX", Number), ("fillOffsetY", Number), ("fillRotation", Number), ("fillDriftX", Number), ("fillDriftY", Number),
+    ("fillUnder", Color), ("fillBlend", Choice(FILL_BLENDS)),
     // A varied width (super::width_profile, drawn by super::stroke_width); widthProfile keys blend by width_profile::blend.
     ("taperStart", Number), ("taperEnd", Number), ("widthProfile", Text), ("taperAlong", Choice(&["line", "drawn"])),
 ];
@@ -165,7 +171,7 @@ pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group",
 /// Fields keys may drive: numbers, colours, a path's shape `d` and its `widthProfile`, except those that describe the item rather than a moment
 /// (fields.py `STILL`).
 pub fn animatable(kind: &str, field: &Field) -> bool {
-    (matches!(field.1, Number | Color) || (kind == "path" && matches!(field.0, "d" | "widthProfile"))) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth")
+    (matches!(field.1, Number | Color) || (kind == "path" && matches!(field.0, "d" | "widthProfile"))) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth" | "fillDriftX" | "fillDriftY")
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
         && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))

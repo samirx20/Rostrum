@@ -23,7 +23,7 @@ pub fn shapes(req: &Value) -> Result<Value, String> {
         layers.push(super::node(&json!({ "id": id, "type": "shape", "props": props }), "shapes")?);
         ids.push(id.to_string());
     }
-    let comp = Node { id: "shapes".into(), kind: "comp", role: Role::Comp, props: neutral("comp"), anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, rig: vec![], stops: vec![] };
+    let comp = Node { id: "shapes".into(), kind: "comp", role: Role::Comp, props: neutral("comp"), anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, fill_frames: vec![], rig: vec![], stops: vec![] };
     let whole = eval::whole(&comp, 0.0);
     let path_fields: Vec<&str> = fields::of("path").unwrap().1.iter().map(|f| f.0).collect();
     let mut paths = Map::new();

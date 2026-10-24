@@ -1,10 +1,11 @@
 //! A layer's fill beyond one colour (ENGINE_CONTRACT.md § 4): a gradient effect (its stops, or color1 / color2 /
-//! middle when it has none, and its geometry) as CSS for boxes and text and as SVG for paths, and a picture fill.
+//! middle when it has none, and its geometry) as CSS for boxes and text and as SVG for paths (a picture or painted
+//! fill is stage_raster.rs).
 //! A paint SVG has no form for (a conic gradient, a picture) fills an SVG-drawn outline as a CSS box cut by that
 //! outline (`masked`): the same paint and the same render path in preview and export.
 
 use super::eval::Item;
-use super::stage::{percent, v};
+use super::stage::v;
 
 type R<T> = Result<T, String>;
 
@@ -110,47 +111,6 @@ pub fn svg_def(e: &Item, gid: &str, w: f64, h: f64) -> R<String> {
         }
         s => Err(format!("{}: a {s} gradient has no SVG form (it is drawn as a masked box)", e.id)),
     }
-}
-
-/// More tiles than this in one picture fill is refused (a tiny scale over a big shape).
-const MAX_TILES: usize = 2_000;
-
-/// A picture fill (`fillPicture`; "" = none) over a w × h box placed `pad` px in from its parent's corner: the file
-/// sized by `fillFit` (fill = cover the box, fit = inside it, stretch = the box, tile = its own size, repeated from the
-/// centre) times `fillScale`, centred. `<img>` elements (the asset cache loads them as it loads image layers); the
-/// parent clips them.
-pub fn picture(it: &Item, w: f64, h: f64, pad: f64) -> R<Option<String>> {
-    let src = it.str("fillPicture");
-    if src.is_empty() {
-        return Ok(None);
-    }
-    let (iw, ih) = image::image_dimensions(src).map_err(|e| format!("{}.fillPicture: can't read {src}: {e}", it.id))?;
-    let (iw, ih, s) = (iw as f64, ih as f64, it.num("fillScale"));
-    if !(s > 0.0) {
-        return Err(format!("{}.fillScale: {s} must be more than 0", it.id));
-    }
-    let (bw, bh) = match it.str("fillFit") {
-        "fill" => { let k = (w / iw).max(h / ih) * s; (iw * k, ih * k) }
-        "fit" => { let k = (w / iw).min(h / ih) * s; (iw * k, ih * k) }
-        "stretch" => (w * s, h * s),
-        _ => (iw * s, ih * s),
-    };
-    let img = |x: f64, y: f64| format!(
-        "<img src=\"/__local_asset?p={}\" style=\"position:absolute;left:{:.3}px;top:{:.3}px;width:{bw:.3}px;height:{bh:.3}px;\">",
-        percent(src), pad + x, pad + y
-    );
-    let (x0, y0) = ((w - bw) / 2.0, (h - bh) / 2.0);
-    if it.str("fillFit") != "tile" {
-        return Ok(Some(img(x0, y0)));
-    }
-    // Tiles from the centred one outward, covering the box grown by `pad`.
-    let (i0, i1) = (((-pad - x0) / bw).floor() as i64, ((w + pad - x0) / bw).ceil() as i64);
-    let (j0, j1) = (((-pad - y0) / bh).floor() as i64, ((h + pad - y0) / bh).ceil() as i64);
-    let count = ((i1 - i0) * (j1 - j0)).max(0) as usize;
-    if count > MAX_TILES {
-        return Err(format!("{}.fillScale: {count} tiles (more than {MAX_TILES}); use a larger scale", it.id));
-    }
-    Ok(Some((j0..j1).flat_map(|j| (i0..i1).map(move |i| (i, j))).map(|(i, j)| img(x0 + i as f64 * bw, y0 + j as f64 * bh)).collect()))
 }
 
 /// A box `pad` px bigger than w × h on every side painted with `background` (CSS) and `inner` (markup), cut by
