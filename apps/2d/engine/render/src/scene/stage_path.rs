@@ -132,7 +132,7 @@ pub fn content(it: &Item, look: Look) -> R<(String, String)> {
     let grad = look.gradient.and_then(|_| it.effects.iter().find(|e| e.kind == "gradient"));
     let filled = it.on("filled");
     let pad = if it.on("stroke") { it.num("strokeWidth").max(0.0) + 2.0 } else { 2.0 };
-    let picture = fill::picture(it, w, h, pad)?;
+    let picture = crate::scene::stage_raster::picture(it, w, h, pad)?;
     if grad.is_some() && picture.is_some() {
         return Err(format!("{}: a path has a picture fill and a gradient; it takes one fill", it.id));
     }

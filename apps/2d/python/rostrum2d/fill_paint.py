@@ -9,8 +9,9 @@ bring an old file's gradient effect into the fill (`upgrade`).
 The engine draws a gradient as its `gradient` effect with the stops as its `stops` children (any number, anywhere in
 0..1, see-through allowed; each stop's colour, position and opacity keyed like any field). A stop colour written
 #rrggbbaa (keyed too) goes as written; the engine multiplies its alpha into the stop's opacity. A solid fill's opacity is the layer's own `fillOpacity` (the engine multiplies it into the colour's alpha, keys too). A picture fill is the layer's own
-fillPicture / fillFit / fillScale (fill_fields.PICTURE), read by the engine. A painted fill names a painting of the
-document (`fillPainting`, paintings.py) and shares Fit, Scale and the per-use fields with a picture fill.
+fillPicture / fillFit / fillScale … (fill_fields.PICTURE), read by the engine. A painted fill names a painting of the
+document (`fillPainting`, paintings.py), shares Fit, Scale and the per-use fields with a picture fill and goes to the engine
+as the node's `fillFrames` (painted_fill.py).
 """
 from __future__ import annotations
 
@@ -97,14 +98,27 @@ def _stop(item: dict, i: int, stop: dict) -> dict:
             "color": stop.get("color", "#ffffff"), "opacity": stop.get("opacity", 1.0), "keys": stop.get("keys", [])}
 
 
+RASTER_KINDS = ("picture", "painted")
+NO_COLOUR = "#00000000"                      # the engine reads a fully see-through colour as "no colour under it"
+
+
 def engine_props(item: dict, props: dict) -> dict:
-    """A shape's or path's props as sent: its picture only while the fill type is picture. A painted fill is not drawn
-    by the engine yet (brief P2): the shape shows no fill rather than a stray colour."""
-    if "fillPicture" in props and kind_of(item) != "picture":
+    """A shape's or path's props as sent: its picture only while the fill type is picture (a painted fill goes as the node's
+    `fillFrames`, painted_fill.py), its colour under it only while the fill is a picture or a painting (a colour chosen once
+    and then left for a colour fill is kept but not drawn)."""
+    kind = kind_of(item)
+    if "fillPicture" in props and kind != "picture":
         props["fillPicture"] = ""
-    if kind_of(item) == "painted" and "filled" in props:
-        props["filled"] = False
+    if "fillUnder" in props and (kind not in RASTER_KINDS or props["fillUnder"] is None):
+        props["fillUnder"] = NO_COLOUR
     return props
+
+
+def engine_anim(item: dict, anim: dict) -> dict:
+    """The animated fields as sent: a picture or painting's own keys (offset, rotation, colour under it …) only while the
+    fill is one; the Python-only ones (fillPainting, fillPhase) and a gradient's (its effect carries them) never."""
+    keep = kind_of(item) in RASTER_KINDS
+    return {k: v for k, v in anim.items() if k not in FF.NAMES and (keep or k not in FF.PICTURE_NAMES)}
 
 
 # ── old files: a gradient effect becomes the fill (one way, on open: rostrum_core DocKind.upgrade) ──────────────────

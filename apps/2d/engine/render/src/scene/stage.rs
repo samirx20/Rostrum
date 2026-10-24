@@ -138,7 +138,7 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
                 _ if it.on("eachCorner") => format!("border-radius:{}px {}px {}px {}px;", v(it, "radiusTL"), v(it, "radiusTR"), v(it, "radiusBR"), v(it, "radiusBL")),
                 _ => format!("border-radius:{}px;", v(it, "radius")),
             };
-            let picture = super::stage_fill::picture(it, it.num("w"), it.num("h"), 0.0)?;
+            let picture = super::stage_raster::picture(it, it.num("w"), it.num("h"), 0.0)?;
             if picture.is_some() && grad.is_some() {
                 return Err(format!("{}: a shape has a picture fill and a gradient; it takes one fill", it.id));
             }

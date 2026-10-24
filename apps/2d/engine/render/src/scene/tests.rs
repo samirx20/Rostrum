@@ -111,16 +111,15 @@ fn unknown_names_are_refused() {
     assert!(Scene::load(&s).unwrap_err().contains("card: a shape has no field \"colour\""));
     s = r["scene"].clone();
     s["version"] = 1.into();                         // cameras with start / end: Python converts them first
-    assert_eq!(Scene::load(&s).unwrap_err(), "scene version 1; this engine reads 2");
+    assert_eq!(Scene::load(&s).unwrap_err(), "scene version 1; this engine reads 3");
 }
 
 /// The frame's display RGBA, the stage markup drawn in the scene shell on the CPU.
-fn draw(markup: &str, w: u32, h: u32, fonts: &[super::fonts::Font]) -> Vec<u8> {
+pub(super) fn draw(markup: &str, w: u32, h: u32, fonts: &[super::fonts::Font]) -> Vec<u8> {
     let html = stage::shell(w, h, fonts).unwrap().replace("<div id=\"rostrum-stage\"></div>", &format!("<div id=\"rostrum-stage\">{markup}</div>"));
     let assets = crate::assets::Assets::new(crate::color::Spec::default());
     let mut doc = blitz_html::HtmlDocument::from_html(&html, crate::serve::page_config(w, h, &assets));
-    doc.handle_messages();
-    doc.resolve(0.0);
+    crate::serve::settle(&mut doc);
     let mut painter = crate::painter::Painter::cpu(w, h, None).unwrap();
     painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, w, h, 0, 0)).unwrap();
     let mut px = vec![];

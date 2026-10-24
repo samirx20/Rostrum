@@ -70,6 +70,10 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, t, fps)));
         props.insert("paintInside".into(), Value::from(node.paint_inside));
     }
+    if !node.fill_frames.is_empty() {
+        // A painted fill (stage_raster.rs): the painting's drawing showing now is the fill's picture.
+        props.insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, t, fps)));
+    }
     if node.kind == "grain" {
         props.insert("frame".into(), Value::from((t * fps + 1e-6).floor()));
     }

@@ -24,12 +24,15 @@ pub mod shape_geom;
 pub mod stage;
 pub mod stage_type;
 pub mod stage_fill;
+pub mod stage_raster;
 pub mod stage_fx;
 pub mod stroke_width;
 pub mod type_font;
 pub mod width_profile;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod raster_tests;
 
 use std::collections::HashSet;
 
@@ -39,7 +42,7 @@ use ease::Ease;
 use fields::{Kind, Role};
 
 pub const FORMAT: &str = "rostrum-2d-scene";
-pub const VERSION: u64 = 2;      // 2: the scene's frame (FRAME.md) in place of cameras
+pub const VERSION: u64 = 3;      // 2: the scene's frame (FRAME.md) in place of cameras; 3: picture and painted fill per use (fillOffsetX … fillBlend, fillFrames)
 
 /// One key: its time, its value (a number, a colour kept as written and in linear light, a path's shape or width profile) and the ease of
 /// the stretch it starts; a number key's optional spatial handles `out` (leaving it) and `in` (arriving at it), offsets
@@ -81,6 +84,9 @@ pub struct Node {
     /// element's own pixels. Empty: no paint.
     pub paint: Vec<(i64, String)>,
     pub paint_inside: bool,
+    /// A painted fill's drawings (contract § 2 `fillFrames`; a shape or path), as `frames` are: the one showing is the
+    /// fill's picture (stage_raster.rs). Empty: the fill is `fillPicture` as written.
+    pub fill_frames: Vec<(i64, String)>,
     /// A rig's bones, iks and binds (crate::rig; RIG.md).
     pub rig: Vec<Node>,
     /// A gradient's colour stops (stage_fill.rs).
@@ -195,8 +201,8 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
     let kind = fields::TYPES.iter().copied().find(|t| *t == ty).ok_or_else(|| format!("{id}: unknown item type \"{ty}\"; this engine draws: {}", fields::TYPES.join(", ")))?;
     let (role, fields) = fields::of(kind).unwrap();
     for k in obj.keys() {
-        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") && !(k == "stops" && kind == "gradient") && !(k == "paint" && PAINTED.contains(&kind)) {
-            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig; a gradient also stops; a {} also paint)", PAINTED.join(", ")));
+        if !matches!(k.as_str(), "id" | "type" | "props" | "anim" | "effects" | "masks" | "layers") && !(k == "frames" && matches!(kind, "drawing" | "video")) && !(k == "rig" && kind == "rig") && !(k == "stops" && kind == "gradient") && !(k == "paint" && PAINTED.contains(&kind)) && !(k == "fillFrames" && RASTER_FILLED.contains(&kind)) {
+            return Err(format!("{id}: unknown part \"{k}\" (an item has id, type, props, anim, effects, masks, layers; a drawing or video also frames; a rig also rig; a gradient also stops; a {} also paint; a {} also fillFrames)", PAINTED.join(", "), RASTER_FILLED.join(", ")));
         }
     }
     let props = v["props"].as_object().ok_or_else(|| format!("{id}: no props"))?.clone();
@@ -235,12 +241,16 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         frames: if matches!(kind, "drawing" | "video") { drawings(&id, &v["frames"])? } else { vec![] },
         paint: if v.get("paint").is_some() { drawings(&format!("{id}.paint"), &v["paint"]["frames"])? } else { vec![] },
         paint_inside: v["paint"]["inside"].as_bool().unwrap_or(true),
+        fill_frames: if v.get("fillFrames").is_some() { drawings(&format!("{id}.fillFrames"), &v["fillFrames"])? } else { vec![] },
         id, kind, role, props, anim,
     })
 }
 
 /// The item types that may carry paint (rostrum2d/paint_fields.py TYPES).
 pub const PAINTED: &[&str] = &["shape", "text", "image", "video", "path"];
+
+/// The item types a picture or painted fill fills (stage_raster.rs).
+pub const RASTER_FILLED: &[&str] = &["shape", "path"];
 
 /// A drawing's `frames: [{"at": n, "src": "…png"}, …]`, sorted by `at`; every picture must exist.
 fn drawings(id: &str, v: &Value) -> Result<Vec<(i64, String)>, String> {

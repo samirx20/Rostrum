@@ -1,6 +1,6 @@
 # Rostrum2D engine contract — the scene description
 
-*Team Sam, brief S5, 2026-10-21. Version **2** (the frame, camera spec F2, 2026-10-24). Between the Python layer (`apps/2d/python/rostrum2d/`) and the Rust engine (`apps/2d/engine/`, Team Hem).*
+*Team Sam, brief S5, 2026-10-21. Version **3** (picture and painted fill per use, painted fill P2, 2026-10-24). Between the Python layer (`apps/2d/python/rostrum2d/`) and the Rust engine (`apps/2d/engine/`, Team Hem).*
 
 The Python layer owns the document (OPERATIONS.md § 1). It sends the engine a **scene description**: one composition, every item's still values, and the keys of its animated fields. The **engine evaluates the scene per frame** (keys, easing, then drawing), so scrubbing is fast and the canvas, the look tools and the export all draw the same way (AGENTS.md rule 5: preview ≡ export).
 
@@ -33,7 +33,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 ```json
 {
-  "format": "rostrum-2d-scene", "version": 2,
+  "format": "rostrum-2d-scene", "version": 3,
   "comp": {
     "id": "intro", "type": "comp",
     "props": {"width": 1920, "height": 1080, "fps": 30, "duration": 3.0, "background": "#05050a"},
@@ -79,6 +79,11 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   drawn over the element's own look, before masks and effects (they see element and paint together; a shadow then
   follows both, as a drop shadow; a glow in its own colours glows the paint too). `inside` true: drawn source-atop,
   so it shows only where the element itself is drawn (its fill, letters, picture, stroke); false: over the whole box.
+- **`fillFrames`** (added P2, version 3): a painted fill. A `shape` or `path` may carry `fillFrames: [{"at", "src"}, …]`:
+  the drawings of the painting that fills it (comp frame numbers, already shifted by the layer's start and its Start at
+  drawing, a boil's loop written out by Python), picked at `t` by the drawing rule above; the one showing is the layer's
+  `fillPicture` at that frame (§ 4 › Picture and painted fill). Layers sharing a painting name the same files: one
+  picture per drawing, decoded once. Every file must exist.
 - **`path`** (added S8, same version): a vector path. `props.d` is SVG path data with absolute commands only — `M x y`,
   `L x y`, `C x1 y1 x2 y2 x y`, `Z` (numbers separated by spaces or commas; a command's numbers may repeat; extra pairs
   after `M` are lines; after `Z` a new `M` is needed) — in the layer's own px from its box's top-left. `w × h` is its box
@@ -123,6 +128,15 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - **Transform:** the layer's anchor (`anchorX`, `anchorY`, fractions of its box; 0.5 = centre) sits at (`x`, `y`) in its parent's space. Order: tilt (`tiltX`, `tiltY`, 2.5D, perspective 1600 px per layer), then `rotation`, then scale (`scale·scaleX`, `scale·scaleY`), all about the anchor. Then `opacity`, then `blend` (`normal`, `screen`, `add`, `multiply`, `overlay`, `soft-light`).
 - **Box:** shape and image `w × h`; group `w × h` (`clip` hides children outside it); text: its laid-out size (one line, or `boxWidth` wide and wrapped).
 - **shape:** `rect` (corner `radius`) or `ellipse`; `filled` → `fill` (with `filled` off only the outline is drawn); optional outline (`stroke`, `strokeColor`, `strokeWidth`), drawn inside the box.
+- **Picture and painted fill** (shape, path; P2, version 3): with the layer filled and `fillPicture` a file (or
+  `fillFrames`' picture now), the fill is, bottom to top: `fillUnder` (a colour; a fully see-through one, `#00000000`, is
+  none), then the picture blended onto it by `fillBlend` (`normal`, `multiply`, `screen`, `overlay`; only over a colour
+  under it), all of it at `fillOpacity`, clipped to the outline. The picture's size by `fillFit`: `fill` covers the box,
+  `fit` sits inside it, `tile` is its own size repeated, each times `fillScale` and centred, then moved by `fillOffsetX`,
+  `fillOffsetY` (px, keyable); `stretch` is the box itself (scale and offset don't apply). A tile also turns by
+  `fillRotation` (°, keyable) about the box's centre and slides by `fillDriftX`, `fillDriftY` (px per second, in the
+  element's axes) × (t − `start`). Tiles are one repeating picture (no seam where tiles meet, at any scale, turn or
+  transform). A picture that can't be read, or a scale ≤ 0 (not stretch), is an error naming the layer and field.
 - **path:** `filled` → `fill` with `fillRule` (`nonzero`, `evenodd`); `stroke` → `strokeColor`, `strokeWidth`, centred on
   the line, `cap` (`butt`, `round`, `square`), `join` (`miter`, `round`, `bevel`), `miter` (limit, ≥ 1). Dashes: `dash` px
   drawn, `gap` px skipped (`dash` 0 = solid), shifted by `dashOffset`; they start again at each subpath. Trim: only
@@ -238,6 +252,9 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H41 (same version): every layer may ride a path layer (`ridePath`, `rideAt`, `rideAlong`, `rideTurn`), per frame.
 - F2 (**version 2**, 2026-10-24): cameras become the scene's one frame (`type: "camera"` with `homeX`, `homeY`, no `start` / `end`; first in the comp's layers; wrappers only when it leaves home); motion blur's sub-frames never cross a jump (a key after a `hold` key) on any field; the `bones` reply's per-rig matrix is `frame` (was `camera`). Python converts older documents' cameras before sending (FRAME.md › Older files).
+- P2 (**version 3**, 2026-10-24): shape and path `fillOffsetX`, `fillOffsetY`, `fillRotation`, `fillDriftX`, `fillDriftY`,
+  `fillUnder`, `fillBlend` (required fields), `fillOpacity` now also fades a picture fill, `fillFrames` (a painted fill);
+  `stretch` no longer takes `fillScale`; tiles are one repeating picture (the 2,000-tile limit is gone).
 - E9 (same version): the camera rides a path too; colours may be `#rrggbbaa`; the `shapes` request; an arrow is one merged outline.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).
