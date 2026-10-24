@@ -209,6 +209,16 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         Announced only when they change (timeline_rows.py)."""
         return self.layer_rows()
 
+    @Property(QObject, constant=True)
+    def rowsModel(self):
+        """The timeline's rows as a list model, changed row by row (timeline_rows.py): what the Animate timeline shows."""
+        return self.row_models()[0]
+
+    @Property(QObject, constant=True)
+    def rowsCompact(self):
+        """The same, only the selected layer's row (the first layer's when none is selected): the small timeline."""
+        return self.row_models()[1]
+
     @Property(str, notify=outlineChanged)
     def selectedLayer(self):
         """The layer the selection belongs to (itself, or the layer of a selected effect, mask or key). The panels ask

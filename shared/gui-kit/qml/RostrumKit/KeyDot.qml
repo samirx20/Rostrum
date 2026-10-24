@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // One key on a timeline row (LayerTrack.qml): a diamond at its time; on a layer's bar it stands for every key of the
-// layer at that frame (modelData.ids). Click picks it (the settings panel's Key block shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
+// layer at that frame (dot.ids). Click picks it (the settings panel's Key block shows its ease; the panel keeps the layer, its keyed setting highlighted); Ctrl+click adds or removes
 // it, Shift+click picks the run between (backend.keys, screen2d/key_select.py). Drag moves it, or every picked key
 // together (key.set t, one change; within 6 px the grabbed key snaps: screen2d/time_snap.py; Ctrl: free; the "+6 f"
 // label beside the key: DragLabel.qml). Alt+drag the first or last picked
@@ -10,17 +10,20 @@ import RostrumKit
 // (a layer's bar), so it sits at its time whatever holds it.
 Item {
     id: key
-    required property var modelData
+    required property int index
+    property var list                 // the row's dots (LayerTrack.barDots / loneDots); this one is list[index], kept while the list is shorter
+    property var dot: ({ t: 0, id: "", ids: [] })
+    Binding { target: key; property: "dot"; value: key.list[key.index]; when: key.index < key.list.length }
     property Item row               // the LayerTrack it belongs to (not "track": a delegate's "track: track" would bind to itself)
     property real shift: 0
     property real room: -1             // the bar's width (its pad is half a dot, so a dot never needs sliding)
-    readonly property real at: row.xOf(modelData.t) - shift - width / 2      // where the diamond is centred, minus half
-    readonly property var ids: modelData.ids || [modelData.id]
+    readonly property real at: row.xOf(dot.t) - shift - width / 2      // where the diamond is centred, minus half
+    readonly property var ids: dot.ids || [dot.id]
     readonly property bool on: backend.keys.count > 0 && backend.keys.has(ids)
                                || backend.stretch.shown && ids.some(i => backend.stretch.ids.indexOf(i) >= 0)   // a picked stretch's keys
     x: at
     width: 16; height: Math.max(18, parent.height); y: Math.round((parent.height - height) / 2)   // the track's height; in a slim bar, 18
-    readonly property int n: modelData.n || 1          // more than one: keys too close to tell apart, shown as one dot
+    readonly property int n: dot.n || 1          // more than one: keys too close to tell apart, shown as one dot
     KeyMark {   // the second diamond peeking out behind: this dot holds several keys
         visible: key.n > 1
         anchors.centerIn: parent; anchors.horizontalCenterOffset: key.at - key.x + 4
@@ -48,8 +51,9 @@ Item {
                 return
             }
             if ((m.modifiers & Qt.AltModifier) && backend.keys.has(key.ids)          // Alt+drag an end: stretch them all
-                    && backend.keys.beginStretch(key.modelData.id, key.row.tAt(keyArea, m.x))) {
+                    && backend.keys.beginStretch(key.dot.id, key.row.tAt(keyArea, m.x))) {
                 held = "many"
+                key.row.hold()
                 return
             }
             if (m.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) {        // add / remove, or the run between
@@ -57,8 +61,9 @@ Item {
                 return
             }
             if (!backend.keys.has(key.ids)) backend.keys.click(key.ids, "", rowIds())
-            if (backend.keys.count > 1) held = backend.keys.beginDrag(key.modelData.id, key.row.tAt(keyArea, m.x)) ? "many" : ""
-            else held = backend.beginKeyDrag(key.modelData.id) !== false ? "one" : ""
+            if (backend.keys.count > 1) held = backend.keys.beginDrag(key.dot.id, key.row.tAt(keyArea, m.x)) ? "many" : ""
+            else held = backend.beginKeyDrag(key.dot.id) !== false ? "one" : ""
+            if (held) key.row.hold()                // the row keeps these very dots until the release (a rebuilt dot would drop the drag)
         }
         onPositionChanged: (m) => {
             if (!held) return
@@ -66,8 +71,9 @@ Item {
             if (held === "one") backend.keyDragTo(key.row.tAt(keyArea, m.x), reach)
             else backend.keys.dragTo(key.row.tAt(keyArea, m.x), reach)
         }
-        function stop() { if (held === "one") backend.endDrag(); else if (held === "many") backend.keys.endDrag(); held = "" }
+        function stop() { if (held === "one") backend.endDrag(); else if (held === "many") backend.keys.endDrag(); held = ""; key.row.release() }
         onReleased: stop()
         onCanceled: stop()
+        Component.onDestruction: if (held && typeof backend !== "undefined" && backend) stop()     // never leave a drag open: it would block every later gesture
     }
 }

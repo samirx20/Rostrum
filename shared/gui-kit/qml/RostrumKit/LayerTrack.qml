@@ -23,9 +23,16 @@ Rectangle {
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
-    function dots(keys) { return KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
+    property var frozen: null           // while a key is held: the dots as they were at the press (hold / release)
+    function dots(keys) { return frozen ? KeyGroups.regroup(keys, frozen) : KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
+    function hold() { frozen = barDots.concat(loneDots).map(d => d.members) }
+    function release() { frozen = null }
     readonly property bool hasCells: (rowData.frames || []).length > 0     // a drawing's cells are its bar: no second one over them
     readonly property var barKeys: isLayer && rowData.bar === true && !hasCells ? rowData.keys.filter(k => onBar(k)) : []
+    // The dots, as lists: a Repeater over a count keeps its delegates when the data changes (a Repeater over the list
+    // itself rebuilds every dot at each change of the document, which dropped a key under the pointer mid-drag).
+    readonly property var barDots: bar.visible ? dots(rowData.keys.filter(k => onBar(k))) : []
+    readonly property var loneDots: dots(bar.visible ? rowData.keys.filter(k => !onBar(k)) : rowData.keys)
     radius: Theme.radiusCtl
     color: isLayer ? Theme.sunken : Qt.darker(Theme.panel, 1.15)
 
@@ -90,8 +97,8 @@ Rectangle {
             delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
         }
         Repeater {   // a layer's keys lie in its bar: pressed on a key, the key moves; anywhere else, the bar
-            model: bar.visible ? track.dots(track.rowData.keys.filter(k => track.onBar(k))) : []
-            delegate: KeyDot { row: track; shift: bar.x; room: bar.width }
+            model: track.barDots.length
+            delegate: KeyDot { row: track; list: track.barDots; shift: bar.x; room: bar.width }
         }
     }
     Loader { anchors.fill: parent; sourceComponent: track.cells }   // the app's own marks on the row (2D: a drawing's cells, FrameMarks.qml)
@@ -131,7 +138,7 @@ Rectangle {
         delegate: StretchBand { row: track }
     }
     Repeater {   // the keys of a row with no bar (a setting, an effect, a mask)
-        model: track.dots(bar.visible ? track.rowData.keys.filter(k => !track.onBar(k)) : track.rowData.keys)
-        delegate: KeyDot { row: track }
+        model: track.loneDots.length
+        delegate: KeyDot { row: track; list: track.loneDots }
     }
 }
