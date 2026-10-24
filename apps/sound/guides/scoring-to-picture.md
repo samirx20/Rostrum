@@ -26,7 +26,8 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
-When the cut moves, move the marker once (`marker.set`, or drag it on the arrangement's marker band) and everything on it
+When the cut moves, move the marker once (`marker.move`: `edit_markers` for a project marker, `edit_document` for one of the song's own,
+the same name for both; `marker.set` is read as it; or drag it on the arrangement's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.
 
 Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`
@@ -48,8 +49,9 @@ instead:
 So a pad that swells into "land" and holds to the end is two notes: `at "#spark", dur "next"` and
 `at "#land", dur {"to": "#end"}`. Move "land" and the first note grows, the second shrinks, and there is never a gap.
 The same goes for a cue's last notes: put a marker on the cue's end (`marker("end", at=20)`) and tie them to it
-(`{"to": "#end"}`). A note at `"#drop+5"` that ends at a fixed `19.5` breaks when the drop moves later (it would end
-before it starts, and the render refuses it, naming the note); tied to `"#end"` it just gets shorter.
+(`end="#end"` in a script, `{"to": "#end"}` in an operation; `end="#end" + beats(2)` ends two beats after it). A note at
+`"#drop+5"` that ends at a fixed `19.5` breaks when the drop moves later (it would end before it starts, and the render
+refuses it, naming the note and writing out the fix); tied to `"#end"` it just gets shorter.
 A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so it stretches with it and still peaks
 where the note ends. A tie that would end at or before its note's start (a marker moved past it) is a warning in every
 reply and the Problems list, naming the note, and the render refuses it; it is never played as a silent note, and the

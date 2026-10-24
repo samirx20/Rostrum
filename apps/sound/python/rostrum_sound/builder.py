@@ -40,10 +40,15 @@ class Track(Inserts):
         self.fields = checked("track", fields, f"track {self.id}", self.fields, facts)
         return self
 
-    def note(self, pitch, at, dur, vel=None, pan=None, id=None, **playing_):
-        """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7). A list of pitches is a chord. Playing fields:
-        art, position, damping, hardness, dynamics=[(0, 0.6), (1, 1)], vibrato={...}, bend=[(0, -100), (0.1, 0)]."""
+    def note(self, pitch, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
+        """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7), or one that ends on a time or a marker:
+        note("D4", at="#drop+5", end="#end") (`end="#end" + beats(1)` a beat after it). A list of pitches is a chord.
+        Playing fields: art, position, damping, hardness, dynamics=[(0, 0.6), (1, 1)], vibrato={...}, bend=[(0, -100), (0.1, 0)]."""
         where = f"track {self.id} › note"
+        if (dur is None) == (end is None):
+            raise RostrumError(codes.BAD_ARGUMENT, where, f"note {pitch!r}", "needs a length (dur=) or the time it ends at "
+                               "(end=), one of them", ["dur=beats(2)", "dur=1.5 (seconds)", 'end="#end"', 'end="#end" + beats(1)', 'dur="next"'])
+        dur = dur if end is None else {"to": end}
         f = checked("note", dict(pitch=pitch, at=at, dur=dur, vel=vel, pan=pan, **playing_), where,
                     FD.DEFAULTS["note"], item_facts({"type": "track", **self.fields}))    # a note asks its track
         wrong = playing({**self.fields, "id": self.id, "notes": [{"id": f"note at {at!r}", **f}]})
@@ -52,8 +57,8 @@ class Track(Inserts):
         self.notes.append((id, f, vel is not None))
         return self
 
-    def chord(self, pitches, at, dur, vel=None, pan=None, id=None, **playing_):
-        return self.note(list(pitches), at, dur, vel, pan, id, **playing_)
+    def chord(self, pitches, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
+        return self.note(list(pitches), at, dur, vel, pan, id, end, **playing_)
 
     def hit(self, drum, at, vel=None, pan=None, tune=None, decay=None, id=None):
         """One drum hit: hit("kick", at=beat(0))."""

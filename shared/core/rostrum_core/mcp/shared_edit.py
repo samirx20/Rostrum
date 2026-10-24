@@ -38,7 +38,7 @@ def register(tools: Tools):
             return Reply(f"Nothing changed: {', '.join(names)} left every value as it was; no history step recorded.", {"seq": doc.seq})
         new = [json.loads(p) for p in sorted(_problems(doc) - before)]
         changed = {"seq": change.seq, "ops": names, "group": group, "new_check_failures": new}
-        warn = [f"This change broke a check: {p}" for p in new]
+        warn = [f"This change broke a check: {p}" for p in new] + doc.kind.registry.alias_notes(args["ops"])
         return Reply(f"Applied {len(names)} operation{'s' * (len(names) != 1)} ({', '.join(names)}) as change {change.seq}, group {group}.",
                      {"seq": change.seq}, warnings=warn, changed=changed)
 

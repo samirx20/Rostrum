@@ -70,7 +70,8 @@ def length_seconds(value, root: dict, start: float = 0.0, note: dict | None = No
         end = _next_start(root, note, start, where) if value == NEXT else seconds(value["to"], root, where)
         if end <= start + 1e-6:
             raise RostrumError(codes.CHECK_FAILED, where, f"length {value!r}",
-                               f"ends at {end:.3f} s, not after its start at {start:.3f} s")
+                               f"ends at {end:.3f} s, not after its start at {start:.3f} s",
+                               hint=_tie_fix(value, note, start, end))
         return end - start
     if isinstance(value, dict):
         b = tempo.beat_at(root, start)
@@ -78,6 +79,22 @@ def length_seconds(value, root: dict, start: float = 0.0, note: dict | None = No
     return float(value)
 
 
+
+def _tie_fix(value, note, start: float, end: float) -> str:
+    """What to write instead of a tie that ends before its note starts, said for the case at hand (a fixed end under a
+    moved start, a marker moved past the start, a "next" with nothing after)."""
+    to = value["to"] if isinstance(value, dict) else None
+    on = markers.ref(note.get("at")) if note else None
+    if value == NEXT:
+        return 'The note has no later note to hold to: give it a length (dur=beats(2)) or end it on a marker (end="#end").'
+    if markers.ref(to) is not None:
+        return (f'The marker "{markers.ref(to)}" is now before the note starts ({start:.2f} s): move that marker later than '
+                f'{start:.2f} s, or end the note on a marker that is after it (end="#other").')
+    if on is not None:
+        return (f'The note starts on the marker "{on}" but its end is fixed at {end:g} s, so moving the marker past it breaks '
+                f'it. Put a marker on that end, marker("end", at={end:g}), and write end="#end" (until("#end")): a later '
+                f'start then makes the note shorter, never refused.')
+    return 'End it later (end=...), or give a length (dur=beats(2)).'
 
 def _next_start(root: dict, note: dict | None, start: float, where: str) -> float:
     """Where the next note on `note`'s track starts (notes of the same chord or at the same moment don't count);

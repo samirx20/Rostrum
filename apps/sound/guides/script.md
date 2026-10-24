@@ -9,6 +9,7 @@ marker("drop", at=bar(5))                                 # name a moment; other
 s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=
 s.note("D4", at=beat(0), dur=beats(4), vel=0.7)
 s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
+s.note("A4", at="#drop+5", end="#end")                    # ends ON the marker "end" (a note can end on a time or a marker)
 d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")   # drums: see Notes
 v = track("door"); v.clip(r"C:\...\door.wav", at=3.0, in_=0.42, length=1.2)
 s.effect("reverb", space="hall", mix=0.3)
@@ -119,12 +120,20 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 ## Notes
 
 - Times: seconds (`2.5`), `beat(n)` (from the start, 0-based), `bar(n)` (1-based), or a marker (`"#drop"`; a name
-  with spaces works as written: `"#logo lands"`, `"#logo lands+0.5"`). Lengths: seconds or `beats(n)`.
+  with spaces works as written: `"#logo lands"`, `"#logo lands+0.5"`, `"#logo lands" + beats(2)`). Lengths: seconds or `beats(n)`;
+  a note's length may also be `end=` a time or marker, or `"next"`.
 - **Beat arithmetic:** a time plus or minus a length is a time (`bar(5) + beats(2)`, `beat(i * 4) - beats(0.5)`), two
   times give the length between them (`bar(9) - bar(5)`), lengths add and scale (`beats(1) * 3`, `i * beats(0.5)`),
   and times compare with times (`bar(5) < bar(9)`); adding 0 changes nothing. Any other bare number is seconds, so `bar(5) + 0.5` or `bar(5) < 3.0`
   is refused, naming the forms to write instead (`bar(5) + beats(0.5)`, or `t["beat"]` for the beat number itself).
-  A marker is a moment in seconds: write `"#drop+0.5"` for half a second after it, or put the marker on the grid.
+  A marker plus beats is a time on that marker (`"#drop" + beats(2)`); seconds after it are `"#drop+0.5"` (not both).
+- **End on a marker, not on a number.** `end=` instead of `dur=` ties a note's end to a time or a marker:
+  `s.note("A4", at="#drop+5", end="#end")` (same as `dur=until("#end")`), `end="#end" - beats(1)` one beat before it,
+  `end="#end" + beats(2)` two beats after it (a section too: `section("outro", "#drop", "#end" + beats(2))`; in an
+  operation the same time is the text `"#end+2beats"`, and it follows the marker on the tempo map). A cue that starts on a
+  moved marker but ends at a fixed `19.5` breaks when the marker moves past it (the render refuses it, naming the note and
+  what to write); put a marker on the cue's end (`marker("end", at=19.5)`) and write `end="#end"`: a later start only
+  makes the note shorter.
 - **Drums.** The synth kit (`kit="synth"`): `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write
   it for a crash or a ride), `tom`, `rim`. An SFZ kit on General MIDI keys (`kitSfz=`) also has `pedalHat`, `tomLow`,
   `tomHigh`, `crash`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, or any GM key number 27 … 87.

@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from rostrum_core import marker_times
 from rostrum_sound import clean_clips, names, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import media as mediafile
@@ -83,8 +82,8 @@ def hit_block(h, root):
 def tie_of(item: dict) -> dict | None:
     """The project marker an item's start is written on ("#logo lands+0.1" -> {name, offset}); None when it is not tied.
     A clip tied to a marker follows it when the marker moves (2D's "Add a sound here" writes its cues this way)."""
-    parts = marker_times.split(item.get("at"))
-    return {"name": parts[0], "offset": parts[1]} if parts else None
+    parts = mk.parts(item.get("at"))
+    return {"name": parts[0], "offset": parts[1], "unit": parts[2]} if parts else None
 
 
 TIE_NAME = 14           # characters of a marker's name in the inspector's subtitle (the block shows it whole)
@@ -95,7 +94,8 @@ def tie_words(item: dict) -> str:
     tie = tie_of(item)
     if not tie:
         return ""
-    off = f" · {abs(tie['offset']):g} s {'after' if tie['offset'] > 0 else 'before'}" if abs(tie["offset"]) > 1e-6 else ""
+    unit = "beats" if tie["unit"] == "beats" else "s"
+    off = f" · {abs(tie['offset']):g} {unit} {'after' if tie['offset'] > 0 else 'before'}" if abs(tie["offset"]) > 1e-6 else ""
     name = tie["name"] if len(tie["name"]) <= TIE_NAME else tie["name"][:TIE_NAME - 1].rstrip() + "…"
     return f"tied to marker “{name}”{off}"
 

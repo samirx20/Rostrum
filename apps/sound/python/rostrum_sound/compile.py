@@ -7,6 +7,8 @@ are not written out: only what the document holds. Options:
   solo=[ids]   these tracks (plus any whose `solo` is on) are heard; every other track gets mute: true
   mute=[ids]   these tracks get mute: true
   master=False the mix as it reaches the master bus: no master inserts, reverb, glue, fades or loudness target
+  matched=False no level matching (doc/preset_level.py): the tracks at the volumes the document holds; only the
+                devtools that measure the instruments ask for it
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from rostrum_core import RostrumError
 from . import clean_clips, names, voice_lines
 from .doc import effects as FX
 from .doc import playing as PL
+from .doc import preset_level
 from .doc import plugins
 from .doc import markers, tempo, times
 
@@ -29,8 +32,9 @@ MASTERING = ("reverb", "fadeIn", "fadeOut", "truePeak", "glue", "safetyClip")
 
 
 class _Compiler:
-    def __init__(self, root: dict):
+    def __init__(self, root: dict, matched: bool = True):
         self.root = root
+        self.matched = matched
 
     def time(self, value, where):
         return markers.resolve(self.root, value, where)
@@ -113,11 +117,23 @@ class _Compiler:
         if clips:
             out["clips"] = clips
         out.update(_nonempty("effects", self.effects(track, w)), **self.lanes(track, w))
+        self.match_level(track, out)
         if track.get("output", names.MASTER_OUT) != names.MASTER_OUT:
             out["output"] = track["output"]
         out.update(_nonempty("sends", [self.send(s, w) for s in track.get("sends", [])]),
                    **_nonempty("ducks", [{k: d[k] for k in DUCK_KEYS if k in d} for d in track.get("ducks", [])]))
         return out
+
+    def match_level(self, track, out):
+        """The instrument's measured gain under the track's own volume (and its volume lane): equal volumes sound
+        balanced. The engine's fader stops at 4."""
+        g = preset_level.gain(track) if self.matched else 1.0
+        if g == 1.0:
+            return
+        out["volume"] = min(4.0, round(track.get("volume", 0.85) * g, 6))
+        lane = out.get("automation", {}).get("volume")
+        if lane:
+            out["automation"]["volume"] = preset_level.scaled(lane, g, cap=4.0)
 
     def send(self, s, where):
         """A send: its level is a number, or the points of its `level` lane when it has one."""
@@ -155,18 +171,18 @@ def _ids(given, tracks, what):
     return set(given or ())
 
 
-def compile(doc, solo=None, mute=None, master=True) -> dict:
+def compile(doc, solo=None, mute=None, master=True, matched=True) -> dict:
     """The schedule for a Document (or its data dict). Pure: the document is not touched. A Document in a project
     folder reads that project's shared markers (doc/markers.py)."""
     folder = getattr(doc, "folder", None)
     if folder is not None:
         with markers.project(folder):
-            return compile(doc.data, solo, mute, master)
+            return compile(doc.data, solo, mute, master, matched)
     root = getattr(doc, "data", doc)
     tracks = root.get("tracks", [])
     heard = _ids(solo, tracks, "solo") | {t["id"] for t in tracks if t.get("solo")}
     silent = _ids(mute, tracks, "mute")
-    c = _Compiler(root)
+    c = _Compiler(root, matched)
     out = {"contract": names.CONTRACT, "sampleRate": root.get("sampleRate", 48000), "tempo": tempo.contract(root)}
     if root.get("length") is not None:
         out["length"] = c.time(root["length"], "length")

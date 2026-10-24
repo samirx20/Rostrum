@@ -12,6 +12,8 @@ operation in one history (undo, who changed what) like any other document:
     marker.follow  item, part, use                     → keep a marker on another app's item (links.py)
     marker.unfollow                                    → let it stand on its own again
     marker.keep    at                                  → a following marker put back on its item (links.refresh)
+    marker.set     name, at, colour                    → read as marker.move / rename / colour (what Sound's own markers
+                                                         call it), with a note saying so
 
 Times are seconds on the project timeline. Names are unique (case and spaces at the ends ignored).
 Apps call `edit(folder, calls, who)` to change it and `listing(folder)` / `at(folder, name)` to read it.
@@ -66,6 +68,13 @@ def marker_move(ctx, targets, args):
             ctx.fail(codes.BAD_ARGUMENT, f'marker "{ctx.item(t)["name"]}"', f'follows "{f["part"]}" in "{f["item"]}"; '
                      "it moves with it", hint="Move that instead, or marker.unfollow first.")
         ctx.set(t, "at", args["at"])
+
+
+_SET_AS = {"at": "marker.move", "name": "marker.rename", "colour": "marker.colour"}
+REGISTRY.alias("marker.set", expand=lambda call: [{**call, "op": op, "args": {k: v}} for k, v in call["args"].items()
+                                                  for op in [_SET_AS.get(k, "marker.move")]] or [{**call, "op": "marker.move"}],
+               note='marker.set is written marker.move here (marker.rename for a name, marker.colour for a colour): '
+                    'a marker moves with the one name in every app, and I ran it as that.')
 
 
 @REGISTRY.operation("marker.keep", "Put following markers back on their item's time (links.refresh does this).",

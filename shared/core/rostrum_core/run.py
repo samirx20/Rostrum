@@ -104,8 +104,10 @@ def _check_targets(kind, op, targets, view, where):
         raise RostrumError(codes.BAD_ARGUMENT, where, f"target {targets}", f"{op.name} needs {op.min_targets} or more")
     for t in targets:
         if t not in idx:
-            raise RostrumError.not_found(where, '/'.join(op.targets), t,
+            err = RostrumError.not_found(where, '/'.join(op.targets), t,
                                          [i for i, l in idx.items() if l.item.get("type") in op.targets])
+            err.hint = (kind.elsewhere(t) if kind.elsewhere else None) or err.hint
+            raise RostrumError(err.code, err.where, err.subject, err.problem, err.accepted, err.hint) from None
         it = idx[t].item
         if it.get("type") not in op.targets:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'target "{t}"', f"is a {it.get('type')}, not a "
@@ -145,7 +147,7 @@ def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list,
 
 def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
     """plan, plus the new document's index (its positions may be stale). `idx`: data's index, when known."""
-    calls = normalize(calls)
+    calls = kind.registry.resolve(normalize(calls))
     work, idx = E.fork(data, kind.lists, idx)          # one index for the whole call, kept up to date by its edits
     applied = []
     for n, call in enumerate(calls, 1):
