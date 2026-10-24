@@ -5,7 +5,7 @@ import "MixFormat.js" as F
 // The top bar's loudness against the target (once the song makes a sound), in words and a dot: "Ready for streaming"
 // (green, inside ±1 of the target), "Quieter than streaming wants" / "Louder than streaming wants" (amber, never red: it
 // is not an error). The number is on hover. The target is the master's own loudness number, always (a target other than
-// streaming's −14 says "the target"). Not a button: the Mixer tab shows the same with its curve. `compact`: "Ready", "Too quiet".
+// streaming's −14 says "the target"). A click opens the Mixer, which shows the same with its curve. `compact`: "Ready", "Too quiet".
 Rectangle {
     id: r
     property bool compact: false
@@ -34,7 +34,7 @@ Rectangle {
             color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
         }
     }
-    MouseArea { id: area; anchors.fill: parent; hoverEnabled: true }
-    HoverTip { text: r.measured ? "The whole song is " + F.num(r.lufs, 1) + " LUFS; the target is " + F.num(r.goal, 0) + " LUFS"
-                                : "Measuring the loudness of the whole song"; hovered: area.containsMouse }
+    MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: workspace.setDock("mixer") }
+    HoverTip { text: (r.measured ? "The whole song is " + F.num(r.lufs, 1) + " LUFS; the target is " + F.num(r.goal, 0) + " LUFS"
+                                 : "Measuring the loudness of the whole song") + ". Click to open the Mixer"; hovered: area.containsMouse }
 }

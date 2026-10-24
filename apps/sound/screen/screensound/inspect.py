@@ -59,6 +59,8 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
                  "help": f"{help_}Now {sec:.2f} s. Type " + ("a note value (1/8), " if kind == "length" and item["type"] != "clip" else "") + "bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
         elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
             r = {**r, "value": musical.note_name(r["value"])}
+        elif r["row"] == "param" and item["type"] == "hit" and r["id"] == "drum" and isinstance(r["value"], str):
+            r = {**r, "value": drum_words(r["value"])}          # as the roll's rows say it ("Open hat"); typing it back is understood
         out.append(r)
     return pitch_merge.merge_rows(item, eq_rows.band_rows(item, out))
 
@@ -121,13 +123,19 @@ def name_of(item: dict) -> str:
     return f"{word} {n}" if n and t in COUNTED else word
 
 
+def drum_words(drum) -> str:
+    """A drum's stored name ("openHat", "kick") in words, as the roll's rows say it: "Open hat", "Kick"."""
+    s = re.sub(r"([a-z])([A-Z0-9])", r"\1 \2", str(drum).replace("_", " ")).lower()
+    return s[:1].upper() + s[1:]
+
+
 def label(item: dict) -> str:
     t = item.get("type")
     if t == "note":
         keys = timing.keys(item["pitch"])
         return " ".join(timing.name(k) for k in keys) + (" chord" if len(keys) > 1 else " note")
     if t == "hit":
-        return f"{item['drum']} hit"
+        return f"{drum_words(item['drum'])} hit"
     if t == "clip":
         return str(item["media"]).replace("\\", "/").rsplit("/", 1)[-1]
     if t == "line":

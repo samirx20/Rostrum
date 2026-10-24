@@ -32,6 +32,9 @@ def listed() -> list[dict]:
     return [{"value": k, "label": v["label"], "detail": v["detail"]} for k, v in presets.PRESETS.items()]
 
 
-def matching(now: dict) -> str:
-    """The preset the sheet's choices (format, sampleRate, trim, stems, markers) equal, "" when none."""
-    return next((k for k, p in presets.PRESETS.items() if all(now[f] == p[f] for f in now)), "")
+def matching(now: dict, root: dict) -> str:
+    """The preset the sheet's choices (format, sampleRate, trim, stems, markers) equal, "" when none. A preset's stems are
+    read the way the sheet reads its own (`mode`): a song with no group has no "groups", so "all" is what the preset gives there."""
+    def same(p: dict, f: str) -> bool:
+        return now[f] == (mode(p[f], root) if f == "stems" else p[f])
+    return next((k for k, p in presets.PRESETS.items() if all(same(p, f) for f in now)), "")

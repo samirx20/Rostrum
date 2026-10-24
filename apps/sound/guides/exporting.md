@@ -14,8 +14,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
 
-Pick where it is going: **Streaming**, **Apple Music**, **Broadcast**, **US TV** or
-**Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
+Pick where it is going. The list starts with **As the mix plays now** (it says "No loudness target": nothing is changed; it is there while the song's loudness matches no choice, and it goes once you pick one), then **Streaming**, **Apple Music**, **Broadcast**, **US TV**, **Podcast** and **MIDI file**. Each target choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
 
 The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum hits, sustain pedal, expression and
 pitch bend, tempo map, time signature, keys, markers and sections as a `.mid` for another music app. The sound
@@ -31,7 +30,7 @@ When the master's numbers match none of the choices the picker reads "As the mix
 there is no target to meet or miss until you pick one.
 
 The top bar's **Loudness** chip shows the same: the song's loudness, the target, and a green dot within 1 of it
-(amber outside). Click the chip to open the Mixer.
+(amber outside). Click the chip to open the Mixer, where the loudness curve is.
 
 ## 2. File
 
