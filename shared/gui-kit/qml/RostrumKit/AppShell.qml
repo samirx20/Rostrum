@@ -43,6 +43,7 @@ QQC.ApplicationWindow {
     // own settings rows, inside the sheet.
     property var exporter: null
     property alias exportSettings: exportSheet.settings
+    property alias exportSummary: exportSheet.summary   // the app's line above the sheet's button (3D: the time estimate)
     readonly property bool exportOpen: !!exporter && exporter.open
     property alias problems: topBar.problems    // the Problems chip's source ({rows}, jump(row))
     onHistoryOpenChanged: if (historyOpen && exportOpen) exporter.setOpen(false)

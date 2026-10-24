@@ -7,7 +7,7 @@ import RostrumKit
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
 // own group open, changed groups open, the rest a row of names). Bottom, full width: the scene list with its keys on
 // the same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
-// nothing to reopen. Export (Ctrl+E) is the kit's sheet in the settings panel's place.
+// nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
 AppShell {
     id: shell
     bridge: backend
@@ -21,6 +21,7 @@ AppShell {
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     exporter: backend.exporter
     exportSettings: ExportSettings3D { }
+    exportSummary: RenderEstimate { }
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
@@ -36,7 +37,7 @@ AppShell {
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
     Shortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
     Shortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
-    Shortcut { sequence: "F12"; onActivated: backend.renderStill() }
+    Shortcut { sequence: "F12"; onActivated: backend.exporter.openFor() }   // the render sheet
     Shortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }

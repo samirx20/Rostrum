@@ -7,6 +7,8 @@
     rail <shapes|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
+    render-sheet (F12: the render sheet) | estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
+    sheet-render (the sheet's Render; waits for the job, up to 10 min)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | click <x> <y> (viewport pixels: selects what is there)
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
@@ -15,6 +17,7 @@ A step that leaves an error in the status fails (nonzero exit).
 from __future__ import annotations
 
 import json
+import time
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QPoint, Qt
 from PySide6.QtTest import QTest
@@ -96,6 +99,27 @@ def do_step(bridge, win, step):
             raise RuntimeError(f"step {step!r}: {bridge.render.note}")
     elif word == "closerender":
         bridge.render.dismiss()
+    elif word == "render-sheet":
+        bridge.exporter.openFor()
+    elif word == "estimate-wait":
+        est = bridge.exporter.estimate
+        for _ in range(RENDER_WAIT_S * 10):           # the 0.4 s wait, then the probe on its own thread
+            QCoreApplication.processEvents()
+            if est.state in ("ready", "failed"):
+                break
+            QTest.qWait(100)
+        if est.state != "ready":
+            raise RuntimeError(f"step {step!r}: the estimate is {est.state!r}: {est.text}")
+    elif word == "budget":
+        if why := bridge.exporter.estimate.setBudget(" ".join(rest)):
+            raise RuntimeError(f"step {step!r}: {why}")
+    elif word == "sheet-render":
+        sheet, t0 = bridge.exporter, time.monotonic()
+        said = sheet.estimate.text
+        sheet.request()
+        if not sheet.wait(RENDER_WAIT_S) or sheet.state != "done":
+            raise RuntimeError(f"step {step!r}: {sheet.state}: {sheet.note}")
+        print(f"sheet-render: the sheet said {said!r}; rendered in {time.monotonic() - t0:.1f} s: {sheet.path}", flush=True)
     elif word in VIEW:
         if bridge.viewport is None:
             raise RuntimeError(f"step {step!r}: no viewport")

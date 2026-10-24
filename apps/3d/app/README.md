@@ -20,8 +20,9 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   import's parts too. Click a row to select it. A row shows its material's name at the right (while the name has its
   whole room): click it to edit the material. Materials and shots are not rows: the header's Materials chip and the
   shot crumb list them.
-- **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); Export (Ctrl+E) is the
-  kit's sheet (screen3d/export3d.py, qml/ExportSettings3D.qml).
+- **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); the render sheet
+  (F12, the top bar's Render, Ctrl+E) is the kit's export sheet (screen3d/export3d.py, qml/ExportSettings3D.qml; its
+  measured time: screen3d/estimate_sheet.py, qml/RenderEstimate.qml).
 - **Inspector.** The kit's inspector, built from the selected type's field operation (`mesh.set`, `light.set` …):
   only the settings that apply right now are there (a sphere has no width; turn on depth of field and its f-stop
   appears). Values are shown at the playhead. A number or colour that can move goes through `value.set` at the
@@ -31,11 +32,12 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   drag the ruler or a row to move the playhead (the viewport draws that frame). Click a diamond to select the key
   (the inspector shows its time, value and ease); drag it to move it, in whole frames.
   The project's shared markers show as named flags on the ruler (placed in frames); a key drag lands on a marker's frame within 6 px.
-- **Render** (top bar, or F12). One final picture (Cycles) of the playhead frame through the shot's camera, at the
-  shot's size. It runs as a job with its own engine process (the viewport keeps working), through the same code as
-  the MCP tool `render_still`: a project render version with its manifest under the project folder, or the render
-  cache (`%USERPROFILE%\.rostrum\cache\render\`) when the screen has no project folder. The picture then shows over
-  the viewport with its file path and time; Close or Esc hides it. A failure shows in red, never as a picture.
+- **Render** (top bar, or F12) opens the render sheet (guides/rendering.md): This frame or the shot; Quality and Size,
+  which are the shot's own render settings (a shot edit, saved; `rostrum3d/render_fields.py`); Save as; the measured
+  time ("Measuring…", then "About 6 min · 120 frames · 3.0 s a frame", the probe's picture, a note when the card was
+  busy, a budget with the one-setting changes that fit); Render. The render runs as a job with its own engine process,
+  through the same code as `render_still` (a frame) and the project's render versions (a shot). The scripted
+  `render` step still makes one still through screen3d/render_job.py (the picture over the viewport; Esc hides it).
 
 - **Add, Duplicate, Delete.** The rail's Shapes, Lights and Camera flyouts add those; the Materials chip has New
   material; the shot crumb has New shot (only once a camera exists). Groups come with the multi-selection actions (later). A new item goes into the selected group (or the group holding the selected item),
