@@ -290,3 +290,10 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-paint | `runs.rs` `set_viewport(Option<Rect>)`: the page px rectangle the next paints on this thread cull against (None: the page's width × height from its top-left, as before) | the 2D engine's world picture draws any part of the endless canvas, left of or above the page's origin too, and skips the layers wholly outside the rectangle shown |
+
+## Export speed (layers sized to what they hold; 2026-10-25)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | `ink.rs`: the subtree's ink follows a 2D-transformed descendant (mapped through its location and transform, as `render.rs` places it) and an inline `<svg>` drawn at its own size (its tree's layer bounds, 4 px wider); a descendant's `data-glow` widens it by the glow's blur; an emitter (`data-particles`), trails or the held motion-blur sum make it unbounded. `subtree_ink(…, follow)`: only layers without a filter follow transforms and SVGs (a filtered layer's blur depends on where its layer starts, so it keeps H27's bound). `render.rs`: a blend-only group's layer uses the same bound (was always unbounded) | Night Bloom: every petal and flower layer holds a rotated child or a path's `<svg>`, so H27 left them unbounded: ~613 frame-sized opacity layers and ~100 blend layers a motion-blur sample, ~70 % of the card's time. Drop section 1409 → ~745 ms a frame, card 62 → 34 % busy. Pictures: ≤ 2/255, speckled over soft glows (rounding where a glow's parent layer now starts elsewhere); H27's latent cut of a child's glow under a bounded parent is fixed on the way |
+| anyrender_skia | `layer_census.rs` (new): with `ROSTRUM2D_PROFILE` set, each offscreen layer or surface is counted by the code that opened it and its size (`push_layer_*`, `soft_clip`, `draw_capture`, `capture_*`, `paint_offscreen`); the engine's profile writes it per paint | measurement only: find which layers cost the card its time. Off, nothing changes |

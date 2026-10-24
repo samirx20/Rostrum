@@ -157,6 +157,47 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, deferred: None, painting, over: None, stage_open: false }, reply))
 }
 
+/// What a drawing worker's session copies from the export's (`twin`): size, depth, colour and what paints.
+pub(crate) struct Like {
+    width: u32,
+    height: u32,
+    deep: bool,
+    color: Spec,
+    /// The graphics card's name when it paints on the GPU, None on the CPU.
+    gpu: Option<String>,
+    painting: Value,
+}
+
+impl Session {
+    pub(crate) fn like(&self) -> Like {
+        let gpu = self.painter.is_gpu().then(|| self.painter.gpu_name().unwrap_or("").to_string());
+        Like { width: self.width, height: self.height, deep: self.deep, color: self.color, gpu, painting: self.painting.clone() }
+    }
+}
+
+/// A session like `like` on the page shell `html`, made on the calling thread: an export's drawing worker
+/// (export_crew.rs). It paints as the export's session does, never otherwise: on the GPU through its own GL context
+/// (made and used on this thread only) on the same graphics card, or on the CPU; a worker that can't is an error,
+/// never a different picture. No encoder of its own; the loader feImages decode through stays the export's (the same colour).
+pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
+    let Like { width, height, deep, color, .. } = *like;
+    let assets = Assets::new(color);
+    let (doc, stage) = shell(html, page_config(width, height, &assets), &assets)?;
+    let painter = match &like.gpu {
+        Some(card) => {
+            let p = Painter::gpu_on(crate::painter::gl_context()?, width, height, color.surface_space())?;
+            if p.gpu_name().unwrap_or("") != card {
+                return Err(format!("a drawing worker got the graphics card \"{}\", not \"{card}\"", p.gpu_name().unwrap_or("")));
+            }
+            p
+        }
+        None => Painter::cpu(width, height, color.surface_space())?,
+    };
+    let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
+    let painting = like.painting.clone();
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting, over: None, stage_open: false })
+}
+
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
 pub(crate) fn with_painting(reply: &mut Value, painting: &Value) {
     if let (Some(r), Some(p)) = (reply.as_object_mut(), painting.as_object()) {
@@ -662,10 +703,25 @@ fn collect(s: &mut Session) -> Result<f64, String> {
 
 /// Every frame in flight to the encoder, then the encoder closed and waited for.
 pub(crate) fn finish(s: &mut Session) -> Result<i32, String> {
+    drain(s)?;
+    s.sink.as_mut().ok_or("finish without an encoder (open.encode)")?.finish()
+}
+
+/// Every frame in flight read back and queued for the encoder.
+pub(crate) fn drain(s: &mut Session) -> Result<(), String> {
     while s.painter.reads_in_flight() > 0 {
         collect(s)?;
     }
-    s.sink.as_mut().ok_or("finish without an encoder (open.encode)")?.finish()
+    Ok(())
+}
+
+/// Every frame in flight read back and dropped (an export that failed): the next export starts with none of its frames.
+pub(crate) fn drop_in_flight(s: &mut Session) {
+    while s.painter.reads_in_flight() > 0 {
+        if s.painter.finish_read().is_err() {
+            break;
+        }
+    }
 }
 
 fn reply(out: &mut impl Write, v: &Value) {

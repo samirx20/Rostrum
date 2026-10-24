@@ -83,6 +83,6 @@ def render_video(ctx, args):
                      f'on {info.get("adapter") or "the processor"}.{said}',
                      {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       "project_copy": str(beside) if said else None, "seconds": round(took, 1), "adapter": info.get("adapter"),
-                      "timing": info["timing"]}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
+                      "timing": info["timing"], "workers": info.get("workers")}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}")

@@ -242,6 +242,7 @@ impl SkiaScenePainter<'_> {
         let (w, h) = (w.ceil().clamp(1.0, 8192.0) as i32, h.ceil().clamp(1.0, 8192.0) as i32);
         let base = self.inner.image_info();
         let info = skia_safe::ImageInfo::new((w, h), base.color_type(), skia_safe::AlphaType::Premul, base.color_space());
+        crate::layer_census::note("paint_offscreen", w, h);
         let mut surface = self.inner.new_surface(&info, None).or_else(|| skia_safe::surfaces::raster_n32_premul((w, h)))?;
         {
             let canvas = surface.canvas();
@@ -315,6 +316,7 @@ impl SkiaScenePainter<'_> {
             Some(r) => (skia_safe::ImageInfo::new((r.width(), r.height()), base.color_type(), skia_safe::AlphaType::Premul, base.color_space()), (r.left, r.top)),
             None => (base, self.cache.origin),
         };
+        crate::layer_census::note(if region.is_some() { "capture_region" } else { "capture_full" }, info.width(), info.height());
         let Some(mut surface) = self.inner.new_surface(&info, None) else { return false };
         // The enclosing clips stay: content outside them is not part of the layer, so not of the filter's source.
         let device_clip = self.inner.device_clip_bounds().filter(|_| region.is_none());
@@ -351,6 +353,7 @@ impl SkiaScenePainter<'_> {
             None => self.replay_clip(cap),
         }
         self.inner.save_layer(&SaveLayerRec::default().paint(&self.cache.paint));
+        crate::layer_census::note_layer("draw_capture", self.inner);
         self.draw_at_origin(src, cap.origin, None);
         self.inner.restore();
         self.inner.restore();
@@ -1003,6 +1006,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         }
 
         self.inner.save_layer(&save_layer_rec);
+        crate::layer_census::note_layer(if filter.is_some() { "push_layer_filter" } else if alpha < 1.0 { "push_layer_alpha" } else { "push_layer_blend" }, self.inner);
     }
 
     fn push_clip_layer(
@@ -1038,6 +1042,7 @@ impl PaintScene for SkiaScenePainter<'_> {
         self.inner.clip_irect(bounds.unwrap_or_default(), None);
         self.cache.soft_clips.push(Some(SoftClip { transform, fill, path: front.unwrap_or_else(|| clip.to_path(0.01)) }));
         self.inner.save_layer(&SaveLayerRec::default());
+        crate::layer_census::note_layer("soft_clip", self.inner);
     }
 
     fn pop_layer(&mut self) {

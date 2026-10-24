@@ -1,5 +1,6 @@
 mod avar; // Rostrum patch (H5): undo `avar` before Skia sees variation coords
 mod image_renderer;
+pub mod layer_census; // Rostrum patch (export speed): which code opens each layer, when profiling
 mod plane; // Rostrum patch (round 14, H5): what part of a tilted plane is on screen / in front
 mod scene;
 mod window_renderer;
