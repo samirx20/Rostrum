@@ -186,9 +186,10 @@ fn share(held: &Held, s: &mut Session, req: &Value, span: Span, (w, of): (usize,
 }
 
 /// Draws `frames` on `s`, each laid out whole (not incrementally): an exported frame is a function of its time alone,
-/// whichever frames this worker (or the canvas before the export) drew first. Incremental layout kept state from earlier
-/// frames that moved Lull's small phone texts by a pixel (still open for the live canvas: C:\Users\Sam\.rostrum\waves\results\2d-export-speed\REPORT.md); an export's motion-blur
-/// samples restyle nearly every piece anyway, so the whole layout costs no measurable time (Lull 100 ms a frame either way).
+/// whichever frames this worker (or the canvas before the export) drew first. Incremental layout now gives a fresh
+/// layout's boxes (vendor/PATCHES.md J1: it had drawn Lull's small phone texts half a pixel off); laying out whole stays
+/// the guarantee, as it costs nothing measurable: an export's motion-blur samples restyle nearly every piece anyway
+/// (Lull 53 ms a frame either way, 3 workers, 2026-10-25).
 #[allow(clippy::too_many_arguments)]
 fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: impl Iterator<Item = u64>, rx: Receiver<(u64, Result<Staged, String>)>, failed: &Mutex<Option<String>>, on_row: &mut dyn FnMut(Row)) -> Result<Costs, String> {
     let was = s.doc.incremental_layout();

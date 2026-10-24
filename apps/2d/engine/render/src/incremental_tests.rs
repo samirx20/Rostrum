@@ -15,7 +15,8 @@ fn doc(markup: &str, incremental: bool) -> HtmlDocument {
     d
 }
 
-/// Every element's laid-out box (page position, size) in tree order, and each inline root's line heights.
+/// Every element's laid-out box (page position, size), its transform and overflow rect in tree order, and each inline
+/// root's line heights.
 fn dump(d: &BaseDocument) -> Vec<String> {
     let mut out = vec![];
     fn walk(d: &BaseDocument, id: NodeId, x: f32, y: f32, out: &mut Vec<String>) {
@@ -24,7 +25,7 @@ fn dump(d: &BaseDocument) -> Vec<String> {
         if let Some(el) = n.element_data() {
             let l = n.final_layout();
             (x, y) = (x + l.location.x, y + l.location.y);
-            let mut s = format!("{} {x:.1},{y:.1} {:.1}x{:.1}", el.name.local, l.size.width, l.size.height);
+            let mut s = format!("{} {x:.1},{y:.1} {:.1}x{:.1} {:?} {:?}", el.name.local, l.size.width, l.size.height, n.transform().as_deref().map(|t| t.as_coeffs()), n.scrollable_overflow());
             if let Some(t) = &el.inline_layout_data {
                 for line in t.layout.lines() {
                     let m = line.metrics();
@@ -93,4 +94,16 @@ fn staging_only_changed_pieces_lays_out_as_a_fresh_page() {
         kept.resolve(0.0);
         assert_eq!(dump(&kept), dump(&doc(&m, false)), "frame {k} differs from staging it whole");
     }
+}
+
+fn phone_text(top: f32) -> String {
+    format!("<div style=\"position:absolute;left:100px;top:{top}px\"><div style=\"font-size:22px;line-height:26.4px;transform:translate(0px,-50%)\">9:41</div></div>")
+}
+
+/// Boxes are rounded in page px, so a text box nothing restyled rounds to 26 or 27 px tall as its parent moves by a
+/// fraction of a pixel; its `translate(-50%)` and overflow must follow, as on a fresh page (Lull's phone texts moved
+/// half a pixel depending on the frame drawn before; vendor/PATCHES.md J1).
+#[test]
+fn a_box_rounded_to_another_size_by_a_moving_parent_is_transformed_as_on_a_fresh_page() {
+    check(&[phone_text(549.8), phone_text(550.3), phone_text(549.8)]);
 }
