@@ -40,6 +40,7 @@ class WetInk:
         self.reach = self.size / 2 + PAD + 3 * brush.get("jitter", 0) * self.size
         self.points: list[list[float]] = []
         self.smears, self.place, self.reveal, self._origin = under is not None, place, None, (0, 0)
+        self.shift = (0.0, 0.0)                                         # added to each point (a smear's tile: wet_through.py)
         self._base = under                                              # what the stroke starts on (None: nothing)
         self._dry = under.copy() if under is not None else None        # a smear's paint so far (its tip smears it)
         self._settled, self._dry_box, self._dry_pic = 0, None, None     # points in the dry part; its box; its picture
@@ -54,7 +55,7 @@ class WetInk:
         self.reveal, self._origin = frame, origin
 
     def add(self, x: float, y: float, pressure: float):
-        self.points.append([x, y, round(min(max(pressure, 0.0), 1.0), 3)])
+        self.points.append([x + self.shift[0], y + self.shift[1], round(min(max(pressure, 0.0), 1.0), 3)])
 
     def _box(self, pts) -> tuple[int, int, int, int] | None:
         xs, ys = [p[0] for p in pts], [p[1] for p in pts]
@@ -128,6 +129,15 @@ class WetInk:
         else:
             u8 = np.ascontiguousarray(compose.straight8(px[y0:y1, x0:x1]))
         return QImage(u8.data, w, h, w * 4, QImage.Format.Format_RGBA8888).copy(), {"x": ax, "y": ay, "w": w, "h": h}
+
+    def moved(self, image: QImage, box: dict, dx: float, dy: float) -> QImage:
+        """An eraser's picture (box: where it lies, world px) as it shows moved by dx, dy: the same coverage, and there
+        the world without the layer at that place (a seamless painting's wrapped copy: wet_wrap.py)."""
+        w, h = image.width(), image.height()
+        a = np.frombuffer(image.constBits(), np.uint8).reshape(h, image.bytesPerLine())[:, :w * 4].reshape(h, w, 4)[..., 3]
+        u8 = self._revealed(round(box["x"] + dx), round(box["y"] + dy), w, h)
+        u8[..., 3] = np.minimum(u8[..., 3], a)
+        return QImage(u8.data, w, h, w * 4, QImage.Format.Format_RGBA8888).copy()
 
     def _revealed(self, x: int, y: int, w: int, h: int) -> np.ndarray:
         """The reveal picture over world px x, y, w × h; where it doesn't reach, see-through (alpha 0)."""

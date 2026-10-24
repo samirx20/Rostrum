@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per item kind: rectangle / ellipse shape, text, image, video (a film strip), group, drawing, path, the frame (kind "camera": a box with corner marks), rig, mask, and (any other) effect.
+// A small drawn icon per item kind: rectangle / ellipse shape, text, image, video (a film strip), group, drawing (and a painting), path, the frame (kind "camera": a box with corner marks), rig, mask, and (any other) effect.
 Canvas {
     id: c
     property string kind: "shape"
@@ -27,7 +27,7 @@ Canvas {
             g.beginPath(); g.moveTo(3, 10); g.lineTo(6, 6.5); g.lineTo(8, 8.5); g.lineTo(9.5, 7); g.lineTo(11, 10); g.stroke()
         } else if (kind === "group") {
             rr(1.5, 4.5, 8, 8, 1.5); g.stroke(); rr(4.5, 1.5, 8, 8, 1.5); g.stroke()
-        } else if (kind === "drawing") {   // a pen stroke
+        } else if (kind === "drawing" || kind === "painting") {   // a pen stroke (a painting opened on its own too)
             g.beginPath(); g.moveTo(2, 10.5); g.bezierCurveTo(4, 2, 7, 2, 7, 7); g.bezierCurveTo(7, 12, 10, 11, 12, 3.5); g.stroke()
         } else if (kind === "path") {      // a Bézier curve between two square points
             g.beginPath(); g.moveTo(3.5, 10.5); g.bezierCurveTo(3.5, 3, 10.5, 11, 10.5, 3.5); g.stroke()

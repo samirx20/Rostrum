@@ -91,9 +91,9 @@ class PaintLayers(QObject):
         d = self._item()
         if not d:
             return []
-        if d["type"] == "painting":     # painting a fill in place: the painting's Seamless (painting design § 3.7)
+        if d["type"] == "painting":     # a painting (in place or opened): its Seamless and Draw each frame (design § 3.7, 3.8)
             return [{"id": p.name, "label": p.label, "help": p.help, "value": bool(d.get(p.name))}
-                    for p in painting_fields.FIELDS if p.name == "seamless"]
+                    for p in painting_fields.FIELDS if p.name in ("seamless", "eachFrame")]
         params = paint_fields.DRAWING if d["type"] == "drawing" else paint_fields.ELEMENT
         return [{"id": p.name, "label": p.label, "help": p.help, "value": d.get(p.name, p.default)}
                 for p in params if p.type == "toggle" and (p.name == "eachFrame" or p.valid_when is None or d.get("frames"))]
@@ -159,6 +159,14 @@ class PaintLayers(QObject):
         d = self._item()
         if d:
             self._apply([{"op": f'{d["type"]}.set', "target": [d["id"]], "args": {name: value}}], "Paint")
+
+    @Slot(str, "QVariant")
+    def setPainting(self, name, value):
+        """An opened painting's own setting (Size W / H, Loop): painting.set, one change."""
+        d = self._item()
+        if d and d["type"] == "painting":
+            label = {"w": "Painting size", "h": "Painting size", "loop": "Painting loop"}.get(name, "Painting")
+            self._apply([{"op": "painting.set", "target": [d["id"]], "args": {name: value}}], label)
 
     @Slot(str)
     def beginScrub(self, paint_id):

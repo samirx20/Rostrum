@@ -35,12 +35,13 @@ def _place(frames, at) -> int:
     return sum(1 for f in frames if f["at"] < at)
 
 
-@R.operation("frame.add", "Add a drawing at a frame to a drawing layer or a painted element (blank, or a copy of "
-             "another drawing to redraw on). It shows until the next drawing; Draw each frame turns on in the same change. "
+@R.operation("frame.add", "Add a drawing at a frame to a drawing layer, a painted element or a painting (blank, or a copy "
+             "of another drawing to redraw on; a painting's drawings boil in every layer using it, each use from its own "
+             "start, and always loop). It shows until the next drawing; Draw each frame turns on in the same change. "
              "Frame left out: after the last drawing, its hold being the layer's New ones hold (newHold, default 2). "
              "Every drawing of a layer has the same paint layers: a blank one starts with them empty, a copy with the "
              "copied strokes in them.",
-             target=("drawing", *paint_fields.TYPES), label="New drawing",
+             target=("drawing", "painting", *paint_fields.TYPES), label="New drawing",
              params=[Param.number("at", label="Frame", min=0, max=10**7, integer=True),
                      Param.id("copy", kind="frame", label="Copy of", importance="secondary",
                               help="A frame id whose paint layers are copied"),

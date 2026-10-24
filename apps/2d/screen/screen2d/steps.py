@@ -37,6 +37,8 @@
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>
   Paint (paint_steps.py): preset <id> | painttool <tool> | brushedit on|off | keytap <key> [mods] | fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
     paintmove <paint> <row> | painttoggle <field> on|off
+  Paintings (painting_steps.py): paintingop <op> <target|-> [<json>] | paintingsay
+    | paintingopen <id> | paintingclose | paintinguse <layer> (open_steps.py: a painting opened on its own)
   Strokes (stroke_steps.py): altpick <x> <y> [click] | altoff | lasso <x,y> … [open] | selectstrokes on|off | strokesmove <dx> <dy> |
     strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
   Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
@@ -45,7 +47,7 @@
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame|scrub [n] [profile]
   Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n]
-  Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n]
+  Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n] | painthold <x> <y> <x> <y> … (the pen left down)
   Selection cost (rostrum_gui/select_steps.py, any app): selecttime <id> <id> … [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
@@ -63,6 +65,8 @@ from .export_steps import WORDS as EXPORT_WORDS, do_export_step
 from .key_steps import WORDS as KEY_WORDS, do_key_step
 from .file_steps import WORDS as FILE_WORDS, do_file_step
 from .paint_steps import WORDS as PAINT_WORDS, do_paint_step
+from .painting_steps import WORDS as PAINTING_WORDS, do_painting_step
+from .open_steps import WORDS as OPEN_WORDS, do_open_step
 from .stroke_steps import WORDS as STROKE_WORDS, do_stroke_step
 from .view_steps import WORDS as VIEW_WORDS, do_view_step
 from .frame_steps import WORDS as FRAME_WORDS, do_frame_step
@@ -449,6 +453,10 @@ def do_step(bridge, win, step):
         do_create_step(bridge, word, rest, step)
     elif word in PAINT_WORDS:                    # Fill, the paint layers panel (paint_steps.py)
         do_paint_step(bridge, word, rest, step, win)
+    elif word in OPEN_WORDS:                     # paintingopen <id>, paintingclose, paintinguse <layer> (open_steps.py)
+        do_open_step(bridge, word, rest, step)
+    elif word in PAINTING_WORDS:                 # paintingop <op> <target> <json>, paintingsay (painting_steps.py)
+        do_painting_step(bridge, word, rest, step)
     elif word in SOUND_WORDS:                    # the project's sound, Show beats (soundtrack_steps.py)
         do_sound_step(bridge, win, word, rest, step)
     elif word in STROKE_WORDS:                   # Alt picks a colour, the lasso, the focused area (stroke_steps.py)

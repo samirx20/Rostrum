@@ -4,7 +4,8 @@ import RostrumKit
 // Under the brush's quick rows while painting (painting design §2.1, §2.2, mockup paint-01): "Edit brush ›" (every
 // brush setting on the same grid: painter.setEditing), Close gaps while Fill is on, Edit brush › only for the Brush and Eraser (painter.toolParts), then "Painting on": Layer ▾ (the
 // selected layer, the other painted layers, New drawing: painter.targetChoices), Inside the outline (an element only:
-// a drawing has no outline) and Draw each frame (backend.paintLayers.toggles), then the drawing tools while it is on (DrawEachFrame.qml), the paint layers (PaintOn.qml).
+// a drawing has no outline) and Draw each frame (backend.paintLayers.toggles; a painting: Seamless and Draw each frame), a painting
+// opened on its own: its Size, Loop and Used by (OpenedRows.qml), then the drawing tools while it is on (DrawEachFrame.qml), the paint layers (PaintOn.qml).
 // Absent while editing the brush.
 Column {
     id: tg
@@ -48,6 +49,7 @@ Column {
     }
     Heading { text: "Painting on" }
     Line {
+        visible: !backend.opened.on      // a painting opened on its own is all the pen paints on
         Label { text: "Layer" }
         ChoiceField {
             objectName: "paintingOnLayer"
@@ -68,6 +70,7 @@ Column {
             HoverTip { hovered: tHover.hovered; text: tl.modelData.help || "" }
         }
     }
+    OpenedRows { labelColumn: tg.labelColumn; rowH: tg.rowH }   // opened on its own: Size, Loop, Used by
     DrawEachFrame { }
     PaintOn { }
 }

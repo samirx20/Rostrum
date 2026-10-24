@@ -74,11 +74,11 @@ Column {
         }
     }
     SwitchRow {      // Onion skin; while on, Show before (red) and Show after (green)
-        switchName: "onionSkin"; height: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row; labelColumn: de.labelColumn; label: "Onion skin"
+        switchName: "onionSkin"; visible: painter.onionHere; height: Theme.tightFor(Window.height) ? Theme.rowTight : Theme.row; labelColumn: de.labelColumn; label: "Onion skin"
         checked: painter.onionOn; onToggled: (v) => painter.setOnion(v)
     }
     Repeater {      // how many drawings each way
-        model: painter.onionOn ? [{ side: "before", label: "Show before", colour: Theme.danger },
+        model: painter.onionOn && painter.onionHere ? [{ side: "before", label: "Show before", colour: Theme.danger },
                                   { side: "after", label: "Show after", colour: Theme.ok }] : []
         delegate: Line {
             id: ol

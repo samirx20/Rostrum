@@ -23,7 +23,7 @@ from PySide6.QtCore import Slot
 from rostrum_core.tree import index
 from rostrum2d import retime
 
-from . import bounds
+from . import bounds, painting_open
 from .playstats import STATS
 
 VIEW_SCALES = (0.25, 0.5, 1.0)   # the engine's sizes, smallest first: the first one at least as big as the view shows
@@ -78,7 +78,9 @@ class ShownState:
 
     def place_of(self, layer_id: str) -> dict:
         """The layer's place at the playhead now, from the canvas's engine and the scene as the document is
-        (rostrum2d/placement.py: painting's one mapping)."""
+        (rostrum2d/placement.py: painting's one mapping). The painting open on its own: its px are world px."""
+        if layer_id and layer_id == self._opened._id:
+            return painting_open.place(self._opened.item())
         if not self._scene:
             raise RuntimeError("the canvas can't be drawn right now, so there is nowhere to paint (see the status line)")
         return self.frames.place(self._scene, self._t, [layer_id], world=not self.play.playing)[layer_id]

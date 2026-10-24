@@ -107,6 +107,8 @@ class BrushPanel(QObject):
         if self.brush.editing:
             return {"id": "brush", "label": self.brush.label(), "kind": "brush", "subtitle": ""}   # its first group says "Brush"
         d, through = self._aim(), self.through()
+        if self.b.opened.on:                # opened on its own: "Paper grain · 128 × 128 · used by 3 layers"
+            return {"id": "brush", "label": "Painting", "kind": "brush", "kindLabel": self.b.opened.info.get("sub", "")}
         if through is not None:             # painting in place: "Paper grain · painted fill of card 2 · used by 3 layers"
             return {"id": "brush", "label": "Painting", "kind": "brush", "kindLabel": fill_aim.heading(self.b.doc, d, through)}
         name, kind = (display_name(d), self.b.kind_label(d)) if d else ("New drawing", "")

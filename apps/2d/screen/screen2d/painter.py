@@ -6,6 +6,8 @@ on this object (brush_panel.py), so the panel is built from the brush settings' 
 """
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum2d.drawing import each_frame, frame_at, frame_number
 from rostrum2d.names import display_name
@@ -16,7 +18,7 @@ from rostrum_gui.model import RowsModel
 
 from rostrum2d import painted_fill, paintings
 
-from . import adding, brush_presets, fill_aim, framing, onion, wet_wrap
+from . import adding, brush_presets, fill_aim, framing, onion, wet_through, wet_uses, wet_wrap
 from .wet import WetView, reveal_rect, smear_ink, without_paint
 from .pen_tilt import PenTilt
 from .brush import Brush
@@ -43,6 +45,7 @@ class Painter(BrushPanel):
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
         self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
+        bridge.opened.landed.connect(self._wet.landed)     # ... on a painting opened on its own, until its picture lands
         self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
@@ -59,6 +62,9 @@ class Painter(BrushPanel):
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def target(self) -> dict | None:
         """The selected layer the pen paints on: a drawing, or any element that can hold paint (ops_paint.PAINTABLE)."""
+        opened = self.b.opened.item()
+        if opened is not None:                  # a painting open on its own (painting_open.py): the pen paints on it
+            return opened
         layer, data, got = self.b.selectedLayer, self.b.doc.data, self._target
         if got is None or got[0] is not data or got[1] != layer:     # once per document state (never changed in place)
             item = self.b.doc.item(layer) if layer else None
@@ -66,16 +72,24 @@ class Painter(BrushPanel):
         return got[2]
 
     def drawing(self) -> dict | None:
-        """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint. None while
-        painting an element's painted fill (its painting's drawings are worked on opened, on its own)."""
-        item = self.target()
-        if self.through() is not None:
-            return None
+        """What the frame tools work on: the selected drawing, an element holding paint, a painting opened on its own,
+        or, painting a painted fill in place, its painting (the drawing that layer shows at the playhead)."""
+        t, aim = self.target(), self._aim()
+        item = aim if aim is not None and aim is not t else t
         return item if item and (item["type"] == "drawing" or item.get("frames")) else None
+
+    onionHere = Property(bool, lambda self: self.through() is None, notify=changed)   # the onion skin lies over the layer's box
+
+    def _cells(self) -> dict | None:
+        """The drawing whose cells the timeline shows (and the onion skin, over its box): not a painting painted in
+        place (its drawings run through that layer's start, phase and loop, not the layer's row)."""
+        return None if self.through() is not None else self.drawing()
 
     def _n(self) -> int:
         """The frame the pen paints at, in what it paints on: the selected layer's own frame, or, painting its painted
         fill, the painting's drawing that layer shows now."""
+        if self.b.opened.on:
+            return self.b.opened.frame()
         n = frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
         through = self.through()
         if through is None:
@@ -92,7 +106,7 @@ class Painter(BrushPanel):
     def drawingId(self):
         """The selected frame-by-frame layer (Draw each frame on): only it shows the timeline's frame tools (UX_SPEC
         3.9). Alt+N works on any painted element (it turns Draw each frame on): it reads drawing(), not this."""
-        d = self.drawing()
+        d = self._cells()
         return d["id"] if d and each_frame(d) else ""
 
     @Property("QVariantMap", notify=changed)
@@ -103,7 +117,7 @@ class Painter(BrushPanel):
 
     @Property("QVariantList", notify=changed)
     def frameMarks(self):
-        d = self.drawing()
+        d = self._cells()
         return framing.marks(self.b.placed_item(d["id"]), self.b.comp()["fps"], self.b.comp()["duration"]) if d else []     # composition seconds
 
     onionOn = Property(bool, lambda self: self._onion, notify=changed)
@@ -122,7 +136,7 @@ class Painter(BrushPanel):
     def _aim(self) -> dict | None:
         """What the pen paints on: the target, or the painting it is filled with (fill_aim.on_fill); None when "New
         drawing" was picked for this selection."""
-        if self._fresh == self.b.selectedLayer and self._fresh is not None:
+        if self._fresh == self.b.selectedLayer and self._fresh is not None and not self.b.opened.on:
             return None
         t = self.target()
         p = fill_aim.painting_of(self.b.doc, t)
@@ -146,6 +160,8 @@ class Painter(BrushPanel):
         """Painting on › Layer ▾: the selected layer (an element with a painted fill: its own paint and the painting),
         the other painted layers (newest first), New drawing."""
         d = self.target()
+        if self.b.opened.on:                     # only the painting: Layer ▾ is not shown then (PaintTarget.qml)
+            return [{"value": "selected", "label": display_name(d)}]
         fill = fill_aim.painting_of(self.b.doc, d)
         painted = [it for it in reversed(list(self.b.doc.items())) if it["type"] in PAINTABLE and it["type"] != "painting"
                    and (it["type"] == "drawing" or it.get("frames")) and (not d or it["id"] != d["id"])]     # (a painting is no layer)
@@ -221,13 +237,25 @@ class Painter(BrushPanel):
             self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
                                           c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), True,
                                           fill)
-            if args.get("smudge") and args.get("mode") != "erase" and fill is None:     # a smudge smears the layer's own paint (wet.py)
-                self._wet.start(smear_ink(self._wet, args, s, self.b.selBox, self._n()))
+            settled = self.b.opened.shows_now if self.b.opened.on else None     # opened: its own picture lands
+            smear = (args.get("smudge") and args.get("mode") != "erase"
+                     and (smear_ink(self._wet, args, s, self.b.selBox, self._n()) if fill is None
+                          else wet_through.smear(self._wet, args, s, fill, self._n())))
+            if smear:                       # a smudge smears the paint it is on (its own, or its painting's: wet.py)
+                self._wet.start(smear, settled=settled)
+                self._wet.add(*s.points[-1][:3])
+            elif fill is not None and args.get("mode") != "erase" and (uses := wet_uses.uses(
+                    self.b, fill, [through["id"], *fill_aim.others_in(self.b.comp(), fill["id"], through["id"])])):
+                ink = self._wet.ink(args, s.sid, 1.0)              # in the painting's px, on every layer using it
+                if s._map.tiled:
+                    kx, ky = wet_uses.start_tile(s)
+                    ink.shift = (-kx * s._map.pw, -ky * s._map.ph)
+                self._wet.start(ink, None, settled, [{**u, "pad": math.ceil(ink.reach) + 2} for u in uses])
                 self._wet.add(*s.points[-1][:3])
             else:
                 ink = self._wet.ink(args, s.sid, s.scale(x, y))         # world px: anywhere on the canvas
-                wraps = fill is not None and not ink.erasing and paintings.seamless(fill)
-                self._wet.start(ink, (lambda: wet_wrap.copies(s, fill, args.get("size", 10))) if wraps else None)
+                wraps = fill is not None and paintings.seamless(fill)
+                self._wet.start(ink, (lambda: wet_wrap.copies(s, fill, args.get("size", 10))) if wraps else None, settled)
                 self._wet.add(x, y, pressure)
                 if ink.erasing:
                     self._ask_reveal(ink, d["id"], x, y, fill is not None)
@@ -262,6 +290,8 @@ class Painter(BrushPanel):
     def _ask_reveal(self, ink, layer_id, x, y, fill=False):
         """The eraser's ink shows the world the canvas shows without the layer it erases: asked of the canvas's engine
         now, off this thread (a frame's time); its ink shows once it comes (wet.py)."""
+        if self.b.opened.on:                # opened on its own: under the painting is the empty canvas
+            return self._wet.reveal(ink, *wet_through.bare(self.b.world.visible(), x, y))
         scene = without_paint(self.b._scene, layer_id, fill) if self.b._scene else None
         if scene is None:
             raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")
@@ -277,7 +307,7 @@ class Painter(BrushPanel):
 
     def _wet_add(self, s, n, x, y, pressure):
         """The move's point to the wet ink: a smudge's in canvas px, as the stroke took it (if it did)."""
-        if not self._wet.smearing:
+        if not self._wet.in_canvas:
             self._wet.add(x, y, pressure)
         elif len(s.points) > n:
             self._wet.add(*s.points[-1][:3])
@@ -286,6 +316,7 @@ class Painter(BrushPanel):
     def endStroke(self):
         s, self._stroke = self._stroke, None
         if s is not None:
+
             saved = self.b.guard(lambda: self._saved(s.end()))
             if s.wet:
                 self._wet.lift(saved)
@@ -355,7 +386,13 @@ class Painter(BrushPanel):
             self._go(at, d["id"])
 
     def _go(self, at, layer):
-        self.b.setTime(at / self.b.comp()["fps"] + self.b.offset(layer))
+        """The playhead to where drawing frame `at` shows: on the layer (its own frames), or, painting a painted fill
+        in place, where that layer next shows the painting's drawing at `at`."""
+        through, fps = self.through(), self.b.comp()["fps"]
+        if through is not None:
+            own = frame_number(self.b.own_t(through["id"]), fps)
+            at, layer = painted_fill.when_shown(through, self._aim(), at, own, fps), through["id"]
+        self.b.setTime(at / fps + self.b.offset(layer))
 
     @Slot()
     def clearDrawing(self):
@@ -413,14 +450,14 @@ class Painter(BrushPanel):
         if self._stroke is None:                    # not while a stroke is being drawn: the neighbours don't change
             self._rebuild_onion()
         told = (self.drawingId, self.now, self.frameMarks, self.onionOn, self.onionReach, self.newHold,
-                self.onionSerial, self.targetName, self.targetValue, self.targetChoices, self.canErase,
+                self.onionSerial, self.onionHere, self.targetName, self.targetValue, self.targetChoices, self.canErase,
                 self.canNewLayer, self.newLayerNext)
         if told != self._told:
             self._told = told
             self.changed.emit()
 
     def _rebuild_onion(self):
-        d = self.drawing()
+        d = self._cells()
         if not (self._onion and d):
             return
         here = frame_at(d, self._n())

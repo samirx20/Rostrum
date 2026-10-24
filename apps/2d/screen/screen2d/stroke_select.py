@@ -22,6 +22,7 @@ from rostrum_gui.edits import Drag
 from . import stroke_geom as G
 from .stroke_clip import StrokeClip
 from .stroke_handles import StrokeHandles
+from .stroke_through import Through
 
 
 MIN_BOX = 16.0              # composition px: the picked strokes' box is at least this thick, so a press can hit a straight line
@@ -36,6 +37,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         self.b = bridge
         self._armed, self._ids, self._lasso, self._drag = False, [], [], None
         self._layer, self._place, self._comp, self._start, self._size0 = "", None, {}, {}, {}
+        self._thru = None                               # a painted fill painted in place: its mapping (stroke_through.py)
         self._xf = {}                                   # the drag so far as stroke.transform's numbers
         self._knob_below = False                        # the turn knob under the box (StrokeOverlay.qml: the bar covers above)
         QGuiApplication.clipboard().dataChanged.connect(self.changed)       # Paste appears when strokes are copied
@@ -82,19 +84,35 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     # ---- the mapping: a stroke's canvas px <-> composition px, through the layer's place ---------------------------
     def _target(self) -> dict | None:
-        """What the pen paints on, holding strokes; not a painted fill painted in place (its strokes are the painting's,
-        picked in the painting opened on its own)."""
+        """What the pen paints on, holding strokes (a painted fill painted in place: its painting)."""
         d = self.b.painter._aim()
-        return d if d is not None and d.get("frames") and self.b.painter.through() is None else None
+        return d if d is not None and d.get("frames") else None
+
+    def _seen_on(self, d: dict, at=None):
+        """Where the strokes of `d` are seen: its own place, or painting a painted fill in place, the element's place
+        and the fill's mapping (`at`: the lasso's middle picks the tile)."""
+        through = self.b.painter.through()
+        if through is None:
+            self._layer, self._place, self._thru = d["id"], self.b.place_of(d["id"]), None
+        else:
+            self._layer, self._place = through["id"], self.b.place_of(through["id"])
+            keep = (self._thru.dx, self._thru.dy) if self._thru is not None and at is None else None
+            self._thru = Through(self.b, through, d, self._place, at)
+            if keep is not None:
+                self._thru.dx, self._thru.dy = keep
 
     def _frame(self, d: dict) -> dict | None:
         return self.b._paint_layers._frame() or frame_at(d, self.b.painter._n())
 
     def _to_comp(self, points: list) -> list:
+        if self._thru is not None:
+            return self._thru.to_comp(points)
         d = self.b.doc.item(self._layer)
         return placement.comp_points(d, resolve(d, self.b.own_t(d["id"])), self._place, points)
 
     def _to_canvas(self, points: list) -> list:
+        if self._thru is not None:
+            return self._thru.to_canvas(points)
         d = self.b.doc.item(self._layer)
         return placement.canvas_points(d, resolve(d, self.b.own_t(d["id"])), self._place, points)
 
@@ -145,7 +163,8 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         self._ids, self._comp = [], {}
         if d is None:
             return 0
-        self._layer, self._place, self._at = d["id"], self.b.place_of(d["id"]), self._here()
+        self._seen_on(d, (sum(q[0] for q in poly) / len(poly), sum(q[1] for q in poly) / len(poly)) if poly else None)
+        self._at = self._here()
         for s in self._strokes(d):
             pts = self._to_comp(s["points"])
             if G.picked(poly, pts):
@@ -188,7 +207,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
             self.b.guard(self._begin)
 
     def _begin(self):
-        self._place = self.b.place_of(self._layer)
+        self._seen_on(self._target())
         self._begin_drag("Move strokes")
 
     def _begin_drag(self, label):
@@ -216,6 +235,10 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         self._xf = {}
         if d is None:
             return
+        if self._thru is not None:          # through a painted fill: the strokes as previewed, in the painting's px
+            self.b.guard(lambda: self.b.done(d.end(), ""))
+            self.changed.emit()
+            return
         d.end(cancel=True)
         if xf:
             self._change(self._label, lambda: [self._xf_call(xf)])
@@ -236,7 +259,15 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
 
     @Slot(float, float, result=bool)
     def transform(self, scale, turn):
-        """The picked strokes scaled and turned about their box's centre: one change (stroke.transform)."""
+        """The picked strokes scaled and turned about their box's centre: one change (stroke.transform; through a
+        painted fill, their points set as seen)."""
+        if self._ids and self._thru is not None:
+            b = self.box
+            c = (b["x"] + b["w"] / 2, b["y"] + b["h"] / 2)
+            self._size0 = {i: self.b.doc.item(i).get("size") for i in self._ids}
+            self._comp = {i: G.transformed(p, c, scale, turn) for i, p in self._comp.items()}
+            return self._change("Scale strokes" if turn == 0 else "Turn strokes",
+                                lambda: self._set_calls(lambda p: (p, scale if scale != 1 else 0)))
         return bool(self._ids) and self._change("Scale strokes" if turn == 0 else "Turn strokes",
                                                 lambda: [self._xf_call({"scale": scale, "turn": turn})])
 

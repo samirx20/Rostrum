@@ -38,7 +38,7 @@ class WetProvider(QQuickImageProvider):
 
     def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
         with self._lock:
-            return self._images[id_.split("-")[0]]
+            return self._images.get(id_.split("-")[0], QImage())
 
 
 class WetView(QObject):
@@ -52,6 +52,7 @@ class WetView(QObject):
         self.provider, self._ink, self._serial, self._box, self._lifted = WetProvider(), None, 0, {}, False
         self._dry_serial, self._dry_box, self._settled = 0, {}, lambda: True
         self._copies, self._copies_of = [], None        # a seamless painting's wrapped copies (wet_wrap.py)
+        self._uses = []                                 # ink in a painting's px, on every layer using it (wet_uses.py)
         frame_changed.connect(self._frame)
         self._dried.connect(self.show)
 
@@ -65,14 +66,27 @@ class WetView(QObject):
     drySerial = Property(int, lambda self: self._dry_serial, notify=changed)
     dryBox = Property("QVariantMap", lambda self: self._dry_box, notify=changed)
     copies = Property("QVariantList", lambda self: self._copies, notify=changed)    # [{x, y}] moves of both pictures
+    usesChanged = Signal()          # its own: the uses are laid out once a stroke, not at each move
+    uses = Property("QVariantList", lambda self: self._uses, notify=usesChanged)    # [{own, w, h, pw, ph, inner, offsets, clip}]
 
-    def start(self, ink: WetInk, copies_of=None):
-        """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else."""
+    def start(self, ink: WetInk, copies_of=None, settled=None, uses=None):
+        """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else.
+        `settled()`: whether the picture with the saved stroke is shown (default: the frame that lands has it).
+        `uses`: the ink is in a painting's px and shows on these layers (wet_uses.uses), not where it lies."""
         self._ink, self._lifted, self._copies_of = ink, False, copies_of
+        if self._uses or uses:
+            self._uses = list(uses or [])
+            self.usesChanged.emit()
+        self._settled = settled or (lambda: True)
 
     @property
     def smearing(self) -> bool:
         return self._ink is not None and self._ink.smears
+
+    @property
+    def in_canvas(self) -> bool:
+        """The ink's points are the stroke's own (canvas px: a smear, or a painting's ink shown on its uses)."""
+        return self._ink is not None and (self._ink.smears or bool(self._uses))
 
     def add(self, x, y, pressure):
         if self._ink is not None:
@@ -99,6 +113,13 @@ class WetView(QObject):
             self._serial, self._box = self._serial + 1, got[1]
         if self._copies_of is not None:
             self._copies = self._copies_of()
+            if self._ink.erasing:           # each copy shows what is under it there, not what is under the pen
+                self._copies = [{**c, "own": i} for i, c in enumerate(self._copies)]
+                for i, c in enumerate(self._copies):
+                    for part, box in (("dry", self._dry_box), ("tip", self._box)):
+                        image = self.provider._images.get(part)
+                        if box and image is not None and not image.isNull():
+                            self.provider.put(f"{part}c{i}", self._ink.moved(image, box, c["x"], c["y"]))
         self.changed.emit()
 
     def lift(self, saved: bool):
@@ -121,11 +142,18 @@ class WetView(QObject):
         if self._lifted and self._settled():
             self._clear()
 
+    def landed(self):
+        """A picture outside the frame landed (an opened painting's): the lifted ink goes if it shows the stroke."""
+        self._frame()
+
     def _clear(self):
         self._lifted = False
         self._copies_of = None
-        if self._serial or self._dry_serial or self._copies:
+        if self._serial or self._dry_serial or self._copies or self._uses:
             self._serial, self._box, self._dry_serial, self._dry_box, self._copies = 0, {}, 0, {}, []
+            if self._uses:
+                self._uses = []
+                self.usesChanged.emit()
             self.changed.emit()
 
 

@@ -11,6 +11,7 @@ import RostrumKit
 Rectangle {
     id: drawer
     readonly property var lib: backend.library
+    readonly property var paint: backend.library.paintings
     color: Theme.panel; radius: Theme.radiusPanel
 
     Text {
@@ -126,6 +127,19 @@ Rectangle {
             AddRow { visible: drawer.lib.hasProject; text: "Logo…"
                      help: "Keep a logo file in the project's brand kit."
                      onClicked: logoDialog.open() }
+            // the scene's own paintings (painting_library.py): shown with or without a project
+            Heading { visible: drawer.paint.shown; text: "Paintings" }
+            Repeater { model: drawer.paint.rows
+                       delegate: PaintingRow { required property var modelData; p: modelData; width: col.width; canUse: drawer.paint.canUse
+                                               onAsked: (what) => what === "use" ? drawer.paint.use(p.id) : what === "open" ? drawer.paint.open(p.id)
+                                                        : what === "duplicate" ? drawer.paint.duplicate(p.id) : drawer.paint.remove(p.id)
+                                               onRenamed: (name) => drawer.paint.rename(p.id, name) } }
+            AddRow { visible: drawer.paint.shown; objectName: "newPainting"; text: "New painting"
+                     help: "A blank 512 × 512 painting that repeats seamlessly, opened to paint."
+                     onClicked: drawer.paint.newPainting() }
+            AddRow { visible: drawer.paint.makerName !== ""; objectName: "paintingFromPicked"; text: "From " + drawer.paint.makerName + "'s paint"
+                     help: "Make a painting from the paint on the picked layer: it becomes the layer's fill, ready to use on other layers."
+                     onClicked: drawer.paint.fromPicked() }
             Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene's text styles" }
             Repeater { model: drawer.lib.docStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color
