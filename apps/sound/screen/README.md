@@ -70,10 +70,10 @@ Switching songs rebuilds the bridge and its parts and reloads the window (`main.
 
 - **Master loudness, live** (`loudness.py`, `MixLoudness.qml`, `LoudnessCurve.qml`): the short-term loudness (LUFS-S) and the
   true peak follow the playhead, read from the series of the render that plays (preview ≡ export). While playing, the
-  integrated loudness is the one so far ("Integrated so far": BS.1770's gated mean of the render's 400 ms blocks up to
+  integrated loudness is the one so far ("So far": BS.1770's gated mean of the render's 400 ms blocks up to
   the playhead, `loudness.integrated`); stopped, it is the whole mix's, from the engine. The curve shows the short-term
   series with the target as a dashed line. The first 3 s show "—" (the first short-term window ends at 3 s). On the
-  screen it is the panel right of the Master strip (Integrated · Short-term · True peak, then the curve), taking the width
+  screen it is the panel right of the Master strip (Whole song · Now · Loudest peak, then the curve), taking the width
   the strips leave (at least 300 px: strips scroll sideways first). The target is the master's own `loudness` (`goal`,
   the same the top bar's chip uses), named after the delivery target while Normalize applies it.
 - **Delivery target** (`delivery.py`: a small table of published specs with a source per row; streaming −14 / −1,

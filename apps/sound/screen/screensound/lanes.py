@@ -7,6 +7,7 @@ quarter beat unless free, and stays inside the lane's range.
 """
 from __future__ import annotations
 
+from rostrum_sound.doc import effects
 from rostrum_sound.doc import lanes as LN
 
 from . import timing
@@ -17,7 +18,7 @@ MELODIC_ONLY = ("dynamics", "vibrato", "sustain", "bend")   # expression lanes: 
 PLAYED = ("sustain", "dynamics", "bend")    # the Editor's playing lane, under its velocity strip: pedal, CC 11, wheel
 BAND_WORDS = {"freq": "frequency", "gain": "gain", "q": "width (Q)"}
 GAIN_LANES = ("volume", "level")            # 0 … 4, drawn 0 … 2 unless a point is higher
-EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
+EFFECT_NAMES = effects.WORDS
 BUS_HUE, MASTER_HUE = "#9aa1aa", "#d9dde2"  # bus and master rows: greys, apart from the tracks' hues
 
 

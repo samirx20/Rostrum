@@ -145,11 +145,13 @@ def build(a) -> int:
     for r in rows:   # fonts, models, data and engine parts that ship with this app and are not Python packages
         ships = r["ships"].lower().startswith(("ship", "yes"))
         mine = any(w in r["used"].lower() for w in APP_WORDS[a.app]) or "shared" in r["used"].lower()
-        crate = engine_loaded and "/engine" in r["used"] and r["linked"].lower().startswith(("static", "vendored"))
+        crate = engine_loaded and ("/engine" in r["used"] or "engine crates" in r["name"].lower()) and r["linked"].lower().startswith(("static", "vendored"))
         if ships and mine and "python package" not in r["linked"].lower() and not crate:
             note = " (downloaded on demand)" if "download" in r["ships"].lower() else ""
-            items.append(({"name": r["name"], "version": r["version"], "licence": r["licence"], "asks": r["asks"] + note,
-                           "source": r["source"], "missing_row": False}, []))
+            plain = lambda t: t.replace("`", "")      # noqa: E731  the window shows words, never markdown or a repo path
+            version = "" if r["version"].lower().startswith("see ") else plain(r["version"])
+            items.append(({"name": plain(r["name"]), "version": version, "licence": plain(r["licence"]), "asks": plain(r["asks"]) + note,
+                           "source": plain(r["source"]), "missing_row": False}, []))
     bad = []
     for item, _ in items:
         if GPL.search(NOT.sub("", item["licence"])):

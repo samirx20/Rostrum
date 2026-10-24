@@ -11,7 +11,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_gui.edits import field_call
 
 from rostrum_sound.doc import fields as FD
-from rostrum_sound.doc import musical
+from rostrum_sound.doc import effects, musical
 
 from . import timeline, timing
 
@@ -77,12 +77,10 @@ def edit_call(doc, item_id, param, value) -> dict:
 
 
 KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",
-              "marker": "Marker", "track": "Track", "bus": "Bus", "group": "Group", "line": "Line", "doc": "Song",
+              "marker": "Marker", "track": "Track", "bus": "Group", "group": "Group", "line": "Line", "doc": "Song",
               "effect": "Effect", "lane": "Automation", "send": "Send", "duck": "Duck", "note": "Note", "hit": "Hit",
               "clip": "Clip", "master": "Master"}
-EFFECT_WORDS = {"eq": "EQ", "compressor": "Compressor", "reverb": "Reverb", "delay": "Delay", "saturate": "Saturation",
-                "tape": "Tape", "limiter": "Limiter", "width": "Stereo width", "gate": "Gate", "deess": "De-esser",
-                "dehum": "De-hum", "plugin": "Plug-in"}
+EFFECT_WORDS = effects.WORDS
 ONLY_ONE = ("master", "doc")                   # one per song: never called by its id
 COUNTED = ("track", "bus", "group", "section")           # several of these share a word: "Track 2"
 # the ids the document hands out: "tempo_1", "meter_2", and the ones inside a track: "pad.delay_1", "pad.n1500", "marker.drop"

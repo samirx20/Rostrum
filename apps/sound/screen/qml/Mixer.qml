@@ -45,7 +45,7 @@ Rectangle {
                 Item {   // "+ Group" at the end of the strips, level with the strip names
                     width: addGroup.width; height: row.height
                     Button { id: addGroup; y: Theme.gap + 2 + (22 - height) / 2; text: "+ Group"; kind: "ghost"
-                             tip: "New group"; help: "A shared channel several tracks play into (a bus)"; onClicked: mixer.addBus() }
+                             tip: "New group"; help: "A shared channel several tracks play into"; onClicked: mixer.addBus() }
                 }
             }
             Rectangle {   // where the view is along the strips, only while they overflow (drag or wheel to scroll)

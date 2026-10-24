@@ -51,6 +51,9 @@ EFFECTS = {
     "plugin": {},               # a CLAP / VST3 plug-in: its one `plugin` record, doc/plugins.py
 }
 TYPES = list(EFFECTS)
+WORDS = {"eq": "EQ", "compressor": "Compressor", "reverb": "Reverb", "delay": "Delay", "saturate": "Saturation", "tape": "Tape",
+         "limiter": "Limiter", "width": "Stereo width", "gate": "Gate", "deess": "De-esser", "dehum": "De-hum",
+         "plugin": "Plug-in"}                  # the one place an effect's name in words is written
 FLAT_BAND = [{"shape": "peak", "freq": 1000, "gain": 0, "q": 1}]   # a new EQ: one band that changes nothing, ready to move
 FREEVERB_ONLY = ("decay", "damping", "size")
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731

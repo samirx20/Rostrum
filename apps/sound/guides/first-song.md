@@ -4,8 +4,9 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## The screen in one look
 
-- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** ("−14.2 LUFS · target −14"
-  with a dot: green within 1 of the target, amber outside; click it to open the Mixer) and **Export** (both once the
+- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** (in words with a dot:
+  "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber; rest the pointer
+  on it for the number; the Mixer tab shows the same with its curve) and **Export** (both once the
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
@@ -14,9 +15,10 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
   it away.
 - **Right: the settings panel.** It shows what is selected, or the song when nothing is. Times there read in
-  **bars.beats**, like the ruler: At **5.3** is bar 5, beat 3 (**5.3.480** when it falls between beats; 960 ticks make
-  a beat), and a Length counts from 0 (**0.2** is two beats, **2.0** two bars). Hover the label for the seconds. Type
-  `5.3`, `5.3.240`, `5` (a bar), `9.6 s` or `0:09.6`; it is stored the way the item was written (beats stay beats,
+  **bars.beats**, like the ruler: At **5.3** is bar 5, beat 3 (**5.3.2** when it falls a sixteenth into the beat: the
+  sixteenths are 1 to 4), and a Length is in words (**1 beat**, **2 bars 1 beat**) or a note value (**1/8**, **dotted 1/4**)
+  when it is one. Hover the label for the seconds. Type `5.3`, `5.3.2`, `5` (a bar), `1 bar 2 beats`, `1/8`, `9.6 s` or
+  `0:09.6` (the old `5.3.480` in ticks and `0.2` for a length still work); it is stored the way the item was written (beats stay beats,
   seconds stay seconds, a marker time stays on its marker). A pitch reads as a note name (G4); type G4 or a number.
 - **Left: the Library** (Ctrl+L), where every track starts from a sound.
 
@@ -32,20 +34,19 @@ you close the window and every 20 changes; the change log beside it always has t
 
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
-2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Record**,
+2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
    **Voice**, **My sounds**.
-3. **Double-click** a sound, or select it and press **Enter**. A new track with that sound appears, selected, and the
-   **Editor** opens under the arrangement.
+3. Click a row to hear it, then press that row's **Add** (or select it and press **Enter**). A new track with that
+   sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
-     type a line, then press Play. Voices have no ▶.
+     type a line, then press Play. Voice rows have no preview.
    - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
      or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
      move the folder, and nothing is raised under **Problems**.
    - With a track of the same kind already selected, the Library asks "Change Piano to Strings? The notes stay."
      Pick **Change** to swap that track's sound, or **New track** for a new one.
-4. On a narrow window the Library floats over the arrangement and closes after each use. On a wide one it stays open
-   beside it. Close it with × or Ctrl+L.
+4. The Library closes after each use. Close it any time with × or Ctrl+L.
 
 ## 3. Shape the sound
 
@@ -104,7 +105,8 @@ The **Colour** row shows the colour the track is drawn in.
   makes one first: the selection's span, else the bar at the playhead and the next three. The loop shows as a solid
   blue band on the ruler's top strip, with the track lanes under it (only the lanes, not the empty space below) shaded and edged to match; drag either edge to change it, double-click the band to clear it (that also
   ends the loop).
-- Click the ruler to move the playhead there.
+- Click the ruler to move the playhead there. A click on empty space in the arrangement clears the selection and
+  makes that track the Editor's, but never moves the playhead; only the ruler (and Play) does.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
   microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
@@ -122,12 +124,13 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 - The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
   strip, and they show what plays at the playhead. Type the tempo or drag it; pick the beats and the key from their
   lists. Nothing has to be selected first.
-- With nothing selected, the settings panel shows the song's timeline as lists: **Tempo**, **Time signature**, **Key**,
-  **Sections** and **Markers**, then **Song** (its **Length**, "until the last sound" unless you set one, and **More**).
-  **Bar 1** under Tempo and Time signature is the song's own start: type or drag the tempo, pick the time signature
-  there. Every change after it is a row ("Bar 5 · drop", its value at the right): click a row and the playhead jumps
-  there and the change is selected, so the panel shows its settings (Delete removes it). A time signature change
-  has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
+- With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first
+  tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
+  and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** ("until the
+  last sound" unless you set one: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
+  room to write in) and **More**. Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
+  playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
+  signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change**, **+ Section** and **+ Marker**
   add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
   (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's

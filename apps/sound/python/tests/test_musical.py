@@ -28,11 +28,13 @@ def _doc():
 
 def test_typed_positions_round_trip():
     root = _doc().data
-    for text in ("1.1", "2.3", "3.5", "4.6.480", "5.2", "6.3", "7.1", "8.2"):      # 6/8 from bar 3, glide bars 5-7
+    for text in ("1.1", "2.3", "3.5", "4.6.3", "5.2", "6.3", "7.1", "8.2"):      # 6/8 from bar 3, glide bars 5-7
         assert musical.position(musical.parse(text, root), root) == text
     assert musical.parse("5", root) == musical.parse("5.1", root)
     assert abs(musical.parse("0:09.6", root) - 9.6) < 1e-9 and abs(musical.parse("9.6 s", root) - 9.6) < 1e-9
-    assert musical.length(musical.parse("1.2", root, True, 5.0), root, 5.0) == "1.2"
+    assert musical.length(musical.parse("1.2", root, True, 5.0), root, 5.0) == "1 bar 2 beats"       # the old "1.2" still types
+    assert musical.parse("1 bar 2 beats", root, True, 5.0) == musical.parse("1.2", root, True, 5.0)
+    assert musical.parse("5.3.480", root) == musical.parse("5.3.3", root)                  # old ticks and sixteenths agree
 
 
 def test_inspector_edit_keeps_the_form():
@@ -58,4 +60,4 @@ def test_note_length_in_note_values():
     from rostrum_sound.doc import musical as M
     for words, sec in (("1/4", 0.5), ("1/8", 0.25), ("1/16", 0.125), ("dotted 1/4", 0.75), ("1/1", 2.0)):
         assert M.note_length(sec, root) == words and abs(M.parse(words, root, True) - sec) < 1e-6
-    assert M.note_length(0.3, root) == M.length(0.3, root)       # not a note value: bars.beats.ticks
+    assert M.note_length(0.3, root) == M.length(0.3, root) == "2 sixteenths"       # not a note value: words

@@ -29,14 +29,14 @@ Rectangle {
     }
     // the three numbers: what, its value, its unit, the plain-words tip, and whether it is inside the target (null: no colour)
     readonly property var numbers: [
-        { what: l.playing ? "Integrated so far" : "Integrated", unit: "LUFS",
-          tip: l.playing ? "Integrated loudness (LUFS) from the start up to now" : "Integrated loudness (LUFS): how loud the whole mix is, as streaming sites and broadcasters measure it",
+        { what: l.playing ? "So far" : "Whole song", unit: "LUFS",
+          tip: l.playing ? "How loud the song has been from the start up to now (LUFS, as streaming sites measure it)" : "How loud the whole song is (LUFS, as streaming sites and broadcasters measure it)",
           v: l.playing && l.meter.integratedNow != null ? l.meter.integratedNow : l.info.meter.lufs,
           ok: (v) => Math.abs(v - l.goal) <= 1 },
-        { what: "Short-term", unit: "LUFS", tip: "Short-term loudness (LUFS-S): how loud the 3 seconds before the playhead are",
+        { what: "Now", unit: "LUFS", tip: "How loud the 3 seconds before the playhead are (LUFS)",
           v: l.stale ? l.lastShort : l.meter.shortTerm, stale: l.stale, ok: (v) => null },
-        { what: l.playing ? "True peak so far" : "True peak", unit: "dBTP",
-          tip: "True peak (dBTP): the highest level the sound reaches between samples",
+        { what: l.playing ? "Loudest so far" : "Loudest peak", unit: "dBTP",
+          tip: "The highest level the sound reaches, between samples too (dBTP)",
           v: l.playing && l.meter.peakNow != null ? l.meter.peakNow : l.info.meter.truePeak,
           ok: (v) => !l.target.shown || v <= l.target.peak ? null : false } ]   // plain under the ceiling, amber over it
 
@@ -57,21 +57,26 @@ Rectangle {
             Layout.fillWidth: true; spacing: l.wide ? Theme.groupGap + Theme.gap : Theme.groupGap
             Repeater {
                 model: l.numbers
-                delegate: Column {
+                delegate: Item {   // an Item round the Column: the tip fills its parent, which a Column does not allow
+                    id: num
                     required property var modelData
-                    visible: modelData.what !== "Short-term" || modelData.v != null
+                    visible: modelData.what !== "Now" || modelData.v != null
                     readonly property var ok: modelData.v == null ? null : modelData.ok(modelData.v)
-                    spacing: 2
+                    width: numCol.width; height: numCol.height
                     HoverHandler { id: numHover }
-                    HoverTip { y: parent.height + 2; text: modelData.tip; hovered: numHover.hovered }
-                    Text { text: modelData.what; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
-                    Row {
-                        spacing: Theme.grid + 1
-                        Text { id: big; text: F.num(modelData.v, 1); font.family: uiFont; font.pixelSize: l.wide ? 26 : 20
-                               color: modelData.v == null || modelData.stale ? Theme.fg3 : ok === null ? Theme.fg : ok ? Theme.ok : Theme.warn
-                               font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
-                        Text { anchors.baseline: big.baseline; visible: modelData.v != null; text: modelData.unit; color: Theme.fg3
-                               font.family: uiFont; font.pixelSize: Theme.label }
+                    HoverTip { y: num.height + 2; text: num.modelData.tip; hovered: numHover.hovered }
+                    Column {
+                        id: numCol
+                        spacing: 2
+                        Text { text: num.modelData.what; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                        Row {
+                            spacing: Theme.grid + 1
+                            Text { id: big; text: F.num(num.modelData.v, 1); font.family: uiFont; font.pixelSize: l.wide ? 26 : 20
+                                   color: num.modelData.v == null || num.modelData.stale ? Theme.fg3 : num.ok === null ? Theme.fg : num.ok ? Theme.ok : Theme.warn
+                                   font.weight: Font.DemiBold; font.features: { "tnum": 1 } }
+                            Text { anchors.baseline: big.baseline; visible: num.modelData.v != null; text: num.modelData.unit; color: Theme.fg3
+                                   font.family: uiFont; font.pixelSize: Theme.label }
+                        }
                     }
                 }
             }

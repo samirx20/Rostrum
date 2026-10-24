@@ -56,7 +56,7 @@ Column {
     MixPick {
         visible: c.targets.length > 0
         width: parent.width; height: 22
-        row: true; flat: true; text: "+ Send"; tip: "Send part of this track to a bus (a shared reverb, say)"; choices: c.targets.map(t => ({ id: t.id, label: t.name }))
+        row: true; flat: true; text: "+ Send"; tip: "Send part of this track to a group (a shared reverb, say)"; choices: c.targets.map(t => ({ id: t.id, label: t.name }))
         onPicked: (id) => mixer.addSend(c.ownerId, id)
     }
 }

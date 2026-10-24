@@ -82,7 +82,7 @@ def bus_ungroup(ctx, targets, args):
 
 @REGISTRY.operation("send.add", "Send some of a track to a bus (the way a reverb bus is fed); one send per bus.",
                     target="track", label="Add send", params=[
-                        Param.text("bus", label="Bus", required=True, help="The bus id."), *FD.params("send")[1:]])
+                        Param.text("bus", label="Group", required=True, help="The group id (a bus)."), *FD.params("send")[1:]])
 def send_add(ctx, targets, args):
     for t in targets:
         need_bus(ctx, args["bus"], "send to")
