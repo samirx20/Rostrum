@@ -35,7 +35,7 @@ def op_words(op) -> str:
 
 def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> list[dict]:
     """`kind_of(item)`: an item's kind in words (default: its type, capitalised); `where`: what the selection is
-    called in hints (default: the one item's name, or "N items")."""
+    called in hints (default: the one item's name, or "N items"). An operation on the whole document has no hint."""
     reg = doc.kind.registry
     where = where or (name_of(doc.item(selection[0])) if len(selection) == 1 else f"{len(selection)} items")
     out = _field_commands(doc, selection, where) if selection else []
@@ -43,7 +43,7 @@ def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> 
         if op.fields:
             continue
         target = list(selection) if op.targets else None
-        hint = where if target else "Document"
+        hint = where if target else ""     # no scope word for what is the whole document
         missing = [p for p in op.params if p.required and p.default is None]
         found = {"words": op_words(op) + " " + " ".join(field_words(p) for p in op.params),
                  "weight": IMPORTANCE.index(op.importance)}

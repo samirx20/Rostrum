@@ -484,8 +484,9 @@ the selection (Sound P26), because F already means it in 2D curves and in 3D.
   - **Settings:** go to a setting. It opens its group, puts the cursor in it, and flashes it.
   - **Add:** sounds, symbols, project items by name.
   - **Learn:** sections of the guides.
-- ↑ ↓ Enter runs a result; Esc closes.
-- Each result shows its key.
+- ↑ ↓ Enter runs a result; Esc closes (also while the cursor is in the search field).
+- Each result shows its key, and (once per run of rows) what it acts on: "3 notes", "Time range". A command on the
+  whole song or project has no scope word, never "Document".
 - Search matches the start of words and people's words ("transparency" finds Opacity, "import" finds Add from a file).
 - An action that isn't valid now is not listed. If you type its exact name, one line says why ("Join needs two clips
   that touch").

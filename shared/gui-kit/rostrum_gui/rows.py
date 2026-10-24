@@ -47,7 +47,8 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # names: the "folds" row's folded groups that apply, [{"group", "label", "changed", "switch"}] in panel order (sections.py).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
-# display: how a number shows ("percent", "db", "pan"; "" = plain), ValueKinds.js; amounts get a slider too.
+# display: how a number shows ("percent", "db", "pan"; "" = plain), ValueKinds.js; amounts get a slider too. A colour
+# with display "swatch" shows the swatch alone, no hex code beside it (a label colour: Sound's track colour).
 # default: the param's own default (None = none: no reset); a number field puts itself back to it on a double-click.
 
 

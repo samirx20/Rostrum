@@ -89,11 +89,11 @@ class Adder(QObject):
     def commands(self) -> list[dict]:
         """Ctrl+K's Add commands: the same entries, each doing what its menu entry does. A picture, video and the other
         files are one command, "Add from a file…" (the rail's one door, Ctrl+I)."""
-        out = [{"key": "add:file", "label": "Add from a file…", "hint": "Document", "keys": "Ctrl+I",
+        out = [{"key": "add:file", "label": "Add from a file…", "hint": "", "keys": "Ctrl+I",
                 "words": "add new layer picture video image svg lottie pdf psd import", "do": lambda: self.fileWanted.emit("file")}]
         return out + [{"key": "add:" + e["type"] + (":" + e["item"] if "item" in e else ""),
                        "label": "Add " + (lower(F.LABELS["render3d"]) + ": " + e["label"] if "item" in e else lower(e["label"])),
-                       "hint": "Document", "words": "add new layer " + e["type"],
+                       "hint": "", "words": "add new layer " + e["type"],
                        "do": (lambda k=e["type"] + (":" + e["item"] if "item" in e else ""): self.add(k))}
                       for e in self.entries if e["type"] not in ASKS_FILE]
 

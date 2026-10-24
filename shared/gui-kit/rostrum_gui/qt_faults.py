@@ -6,6 +6,9 @@ New, H43). Those are faults: in a scripted run (rostrum_core.userhome.scripted: 
 check, a test) the first one ends the run with exit code 6, so a screen test can never pass over one. In a person's
 run it goes to the log as "FAULT: …".
 
+A QML `TypeError` / `ReferenceError` (Qt prints "file.qml:24: TypeError: …" and the handler does nothing) is a fault
+too: that is how the empty-state button was dead in every app for a long time without a test failing.
+
 A Python error that escapes into Qt (a slot, a QML call into Python, an event filter, a worker thread) is a fault the
 same way: PySide would only print it and carry on, so `watch` routes it here (sys.excepthook, threading.excepthook)
 with its traceback. The app survives it; a scripted run fails on it.
@@ -24,6 +27,8 @@ FAULTS = (
     "destroyed while one of its QML signal handlers is in progress",
     "must be called before loading QML",
     "This behavior is NOT supported",
+    "TypeError:",                       # QML ran code that cannot work: a dead button, a missing value (H61: EmptyHint)
+    "ReferenceError:",
 )
 EXIT = 6
 _found: list[str] = []

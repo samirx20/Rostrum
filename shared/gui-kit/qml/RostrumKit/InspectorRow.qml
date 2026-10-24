@@ -330,6 +330,7 @@ Item {
                                                   more: row.model.more || ""; onMoreChosen: moreDialog.open()
                                                   onPicked: (v) => row.set(v) } }
             Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
+                showHex: row.model.display !== "swatch"      // a param with display "swatch": no code beside it
                 onEdited: (v) => row.set(v)
                 onTypingStarted: row.hold(true)
                 onTypingEnded: row.hold(false)

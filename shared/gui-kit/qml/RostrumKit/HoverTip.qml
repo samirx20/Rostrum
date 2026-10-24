@@ -4,7 +4,9 @@ import "."
 
 // Hover help (INTERACTION.md 1.17): after 500 ms over a control, one line under it: its name, one plain sentence of
 // what it does (`help`, from the operation's or setting's own help) and its key (`key`, from the key map). Gone as
-// soon as the pointer leaves or the control is pressed; in the window's overlay, so nothing clips it, and kept inside
+// soon as the pointer leaves or the control is pressed (the tip watches the press itself, on its parent, so a caller
+// never has to pass `pressed`; the pointer stays on the control after the click, and the tip stays away until it
+// has left and come back); in the window's overlay, so nothing clips it, and kept inside
 // the window (a line too long ends in "…"). `text` empty: never shown.
 QQC.Popup {
     id: tip
@@ -41,8 +43,32 @@ QQC.Popup {
                   anchors.verticalCenter: parent.verticalCenter }
     }
     function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;") }
-    Timer { id: rest; interval: 500; onTriggered: if (tip.text !== "") tip.open() }
-    onHoveredChanged: hovered && !pressed ? rest.restart() : (rest.stop(), tip.close())
+    property var spot: null              // the layer over the parent, which knows where the pointer is on it
+    property bool held: false            // the screen moved under a still pointer: no tip until the pointer moves
+    property bool clicked: false         // this control was pressed: no tip until the pointer has left and come back
+    function pressedNow(at) { TipGate.pressAt = at; clicked = true; rest.stop(); tip.close() }
+    function waited() {
+        if (text === "") return
+        if (spot && TipGate.near(spot.point.scenePosition)) { held = true; return }   // the screen moved under a still pointer
+        held = false; open()
+    }
+    // an invisible layer over the control, above whatever takes its clicks (a MouseArea inside it would eat the press
+    // before a handler on the control itself heard it); its handlers only look: the click goes on underneath
+    Component { id: layer
+        Item {
+            z: 10000; anchors.fill: parent
+            property alias point: where.point
+            PointHandler { acceptedButtons: Qt.AllButtons; onActiveChanged: if (active) tip.pressedNow(point.scenePosition) }
+            HoverHandler { id: where; onPointChanged: if (tip.held && !tip.clicked && tip.hovered && !TipGate.near(point.scenePosition)) rest.restart() }
+        } }
+    Timer { id: rest; interval: 500; onTriggered: tip.waited() }
+    onHoveredChanged: {
+        if (hovered && !pressed && !clicked) rest.restart()
+        else { rest.stop(); tip.close(); if (!hovered) { clicked = false; held = false } }
+    }
     onPressedChanged: if (pressed) { rest.stop(); tip.close() }
-    Component.onCompleted: if (hovered && !pressed) rest.restart()   // made already hovered (a tip loaded on hover)
+    Component.onCompleted: {
+        if (parent) spot = layer.createObject(parent)      // a press anywhere on the control ends the tip, whoever wired `pressed`
+        if (hovered && !pressed) rest.restart()      // made already hovered (a tip loaded on hover)
+    }
 }

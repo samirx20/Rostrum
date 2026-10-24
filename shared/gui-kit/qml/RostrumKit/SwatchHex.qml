@@ -7,19 +7,21 @@ import "ColourMath.js" as M
 // (# optional, 3 / 6 / 8 digits) and goes out on Enter or on leaving the box as `typed("#rrggbb")`, one change; a
 // value that is not a colour is refused in place: the box turns red and says why, the old colour stays. With `words`
 // set (a gradient: "Linear · 3 stops", "None", "Mixed") the box shows them instead and a click on it opens the picker.
+// `showHex: false` leaves the swatch alone: the picker (with its hex) opens on a click.
 //   look: {type: "solid" | "none" | "mixed" | "linear" | "radial" | "angular" | "image" | "picture", color, stops, picture}; "mixed": several colours, an empty swatch
 Item {
     id: s
     property var look: ({ type: "solid", color: "#ffffff" })
     property string words: ""
     property bool engaged: false
+    property bool showHex: true // false: the swatch alone (a colour whose code means nothing to the person, e.g. a track's colour)
     signal pick()
     signal typed(string hex)
     signal typingStarted()      // the hex box's caret went in / left (FieldFrame)
     signal typingEnded()
     readonly property string lookKind: look && look.type ? look.type : "none"
     readonly property string lookHex: look && look.color ? String(look.color) : "#ffffff"
-    implicitWidth: 140
+    implicitWidth: showHex ? 140 : Theme.field
     implicitHeight: Theme.field
 
     Item {
@@ -67,6 +69,7 @@ Item {
     FieldFrame {
         id: box
         objectName: "hexField"
+        visible: s.showHex
         x: Theme.field + Theme.grid + 2; width: s.width - x; height: s.height
         editable: s.words === ""
         engaged: s.engaged && s.words !== ""

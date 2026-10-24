@@ -41,7 +41,7 @@ FIELDS = {
     ],
     "track": [
         Param.text("name", group="Track", importance="secondary"),
-        Param.color("colour", group="Track", importance="secondary", label="Colour",
+        Param.color("colour", group="Track", importance="secondary", label="Colour", display="swatch",
                     help="The track's colour on the Timeline and Mixer (a hex like #4aa3ff); optional."),
         *PL.INSTRUMENT,
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
