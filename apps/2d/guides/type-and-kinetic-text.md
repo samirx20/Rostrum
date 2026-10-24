@@ -115,8 +115,11 @@ the app runs shows after a restart.
 
 **A missing font is never swapped.** Setting a font that isn't there is refused at once, naming the closest names. A
 project opened on a computer that lacks one of its fonts shows a **Missing font** problem naming every text that uses it
-(`inspect_diagnose`, and the Problems chip on the screen); the canvas and every export refuse to draw the scene until the
-font is installed or the texts are set in another font, so no file ever goes out with the wrong letters. For a piece
+(`inspect_diagnose`, and the Problems chip on the screen). The canvas never goes blank: it draws everything else, and each
+such text shows as its own box with a dashed red edge and the font's name (looks and part renders carry a warning too).
+A whole-film export refuses, naming the texts, so no file ever goes out with the wrong letters. The fix is one change for
+all the texts that use the font: on the screen, the problem's **Use another font** list; for an agent,
+`font.replace {from: "Söhne", to: "Roboto Flex"}` (texts and text styles, one undo step). For a piece
 that has to open anywhere, use a shipped font. A scene can also name project fonts (absolute file paths), which win
 over both.
 

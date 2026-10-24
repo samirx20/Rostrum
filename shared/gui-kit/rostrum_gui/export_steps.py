@@ -18,7 +18,7 @@ WORDS = ("exportsheet", "exportwhere", "exportnow", "problems", "problems-demo",
 LONG_PROBLEMS = [
     {"label": "Missing font", "message": "The font “Söhne Breit Kräftig Kursiv” used by Summer launch title card isn't on "
               "this computer, so the text is drawn with a stand-in.", "fix": "Pick another font, or install it and it will be used.",
-     "item": ""},
+     "item": "", "action": "Use another font", "options": [{"value": n, "label": n} for n in ("Roboto Flex", "Inter", "Source Serif")]},
     {"label": "Missing file", "message": "C:\\Users\\Sam\\Documents\\Rostrum projects\\Summer launch film for the new "
               "headphones\\footage\\drone_take_07_final_graded.mov isn't there any more.",
      "fix": "Use Find… to look in a folder: every missing file found there is relinked in one change.", "item": "", "danger": True},

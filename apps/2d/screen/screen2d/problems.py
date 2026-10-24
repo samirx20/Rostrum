@@ -11,6 +11,8 @@ from PySide6.QtCore import Property, QTimer, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_gui.frames import PictureWorker
 
+from . import project_picks
+
 WORDS = {"refused": "Can't be drawn", "missing-font": "Missing font", "missing-file": "Missing file", "outside-project": "File outside the project",
          "broken-link": "Broken link", "missing-marker": "Missing marker", "expression": "Expression",
          "invisible": "Never seen", "off-canvas": "Off the frame", "unused-keys": "Keys that do nothing",
@@ -49,6 +51,14 @@ class Problems(PictureWorker):
         except RostrumError:
             return
         self.bridge.select(row["item"])
+
+    @Slot("QVariant", str)
+    def act(self, row, value):
+        """A row's own picker (a Missing font's "Use another font"): one change for every text using that font (font.replace)."""
+        row, b = dict(row), self.bridge
+        if row.get("family"):
+            b.guard(lambda: b.done(b.doc.apply([{"op": "font.replace", "args": {"from": row["family"], "to": value}}], b.who,
+                                              label="Use another font"), ""))
 
     def show_rows(self, rows):
         """A scripted list (the layout check's long problems), until the next look."""
@@ -93,6 +103,7 @@ class Problems(PictureWorker):
 
     def _take(self, rows):
         self._done = True
+        rows = [{**r, "options": project_picks.fonts()} if r.get("family") else r for r in rows]     # (the faces: the GUI thread's)
         if rows != self._rows:
             self._rows = rows
             self.changed.emit()

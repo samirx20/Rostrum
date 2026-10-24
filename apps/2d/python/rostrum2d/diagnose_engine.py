@@ -63,8 +63,11 @@ def _fonts(comp: dict) -> list[dict]:
     out = []
     for family, ids in sorted(users.items()):
         if family not in have:
-            out.append(_p("missing-font", ids[0], f'{", ".join(ids)}: {fontlist.missing_words(family)}',
-                          f'Install "{family}" on this computer, or pick another font in Font. Until then the scene is not drawn or exported'))
+            said = fontlist.missing_words(family).split("; inspect_fonts")[0]       # (the agents' hint is not for the list)
+            out.append({**_p("missing-font", ids[0], f'{", ".join(ids)}: {said}',
+                             f'Pick another font, or install "{family}" on this computer. Until then each of them shows as a dashed red box '
+                             "with the font's name, and an export is refused"),
+                        "action": "Use another font", "family": family})      # the list's picker: font.replace on all of them
         elif ids_ := slanted.get(family):
             if not (fontlist.family(family) or {}).get("italic"):
                 out.append(_p("missing-font", ids_[0], f'{", ".join(ids_)}: the font "{family}" has no italic',

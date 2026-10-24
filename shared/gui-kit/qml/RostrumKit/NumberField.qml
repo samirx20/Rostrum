@@ -56,8 +56,9 @@ FieldFrame {
         while (d > 0 && !fits(Number(v).toFixed(d).replace("-", "−"))) d--
         return Number(v).toFixed(d).replace("-", "−")      // a real minus, like the rest of the app
     }
-    function fits(t) { metrics.text = t; return metrics.advanceWidth <= roomForText }
-    TextMetrics { id: metrics; font: f.input.font }
+    // FontMetrics.advanceWidth(text) reads without writing: a TextMetrics' text set inside the `text` binding looped on itself
+    function fits(t) { return metrics.advanceWidth(t) <= roomForText }
+    FontMetrics { id: metrics; font: f.input.font }
     readonly property string fullText: {                         // typing starts from every digit the value has
         if (display || word || !isFinite(value)) return ""
         const t = String(Number(Number(value).toFixed(9))).replace("-", "−")
