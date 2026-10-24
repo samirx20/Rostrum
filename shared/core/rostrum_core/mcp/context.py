@@ -31,6 +31,7 @@ class App:
     folder: str | None = None                               # the project folder: inspect_project lists its items
     no_project_hint: str = ""                               # with no folder and nothing open: what to do (inspect_project)
     recent: Callable[[], list] | None = None                # the person's recent projects, shown when none is open
+    script_help: str = ""                                   # the script layer in brief: added to run_script's description
 
 
 class Groups:

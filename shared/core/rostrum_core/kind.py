@@ -6,7 +6,7 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Callable
 
-from .errors import RostrumError
+from .errors import RostrumError, codes
 from .registry import Registry
 from .tree import View, fields, walk
 
@@ -76,10 +76,14 @@ class DocKind:
                 p = op.param(name)
                 if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
                     continue
+                where = f'{item.get("type")} "{item.get("id")}"'
                 try:
-                    p.check(value, f'{item.get("type")} "{item.get("id")}"')
+                    stored = p.check(value, where)
                 except RostrumError as e:
                     yield e
+                    continue
+                if stored != value:     # checks take forms people write ("#fff"); a file holds only the stored one
+                    yield RostrumError(codes.BAD_ARGUMENT, where, f"{name}={value!r}", "is not written as stored", [repr(stored)])
 
     def problems(self, data: dict, items=None) -> list[str]:
         """The whole-document check: every field value (or only `items`', the ones a call changed) against its

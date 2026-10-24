@@ -106,6 +106,11 @@ class Tools:
             raise RostrumError(codes.UNKNOWN_TOOL, name, f'"{name}"', "was renamed", [self._renamed[name]], f"Use {self._renamed[name]}.")
         raise RostrumError(codes.UNKNOWN_TOOL, name, f'"{name}"', "is not a tool of this server", sorted(self._tools), did_you_mean(name, self._tools))
 
+    def described(self, name: str, more: str):
+        """Add an app's own words to a shared tool's description (run_script: what the app's script layer offers)."""
+        t = self._tools[name]
+        self._tools[name] = Tool(t.name, f"{t.description} {more}", t.schema, t.model, t.fn)
+
     def all(self) -> list[Tool]:
         return list(self._tools.values())
 
