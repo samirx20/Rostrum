@@ -100,9 +100,10 @@ Item {
         readonly property bool on: ov.create.typing && ov.box.kind === "text"
         visible: on
         x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
-        width: on ? (ov.box.wrap ? ov.box.w * ov.scale : Math.max(ov.box.w * ov.scale, edit.contentWidth) + 4) : 0
+        width: on ? (ov.box.wrap ? ov.box.w * ov.scale : Math.max(ov.box.w * ov.scale, words.contentWidth) + 4) : 0     // the words' own width, measured apart: edit.contentWidth reads back this width (binding loop)
         height: on ? Math.max(ov.box.h * ov.scale, edit.contentHeight) : 0
         property alias text: edit.text
+        Text { id: words; visible: false; text: edit.text; font: edit.font }     // the one place the typed width is measured
         HaloLine { anchors.fill: parent; anchors.margins: -4; radius: 2 }
         TextEdit {
             id: edit

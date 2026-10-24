@@ -69,11 +69,12 @@ A style keeps the look of a text (font, size, weight, colour ...) so other texts
 Press **Ctrl+L**, or click **Library** (the books icon) in the tool rail, to open the **Library** beside the tool rail, over the left edge of the canvas; the rail stays where it is and the canvas keeps its size. Press again to close.
 
 - **Brand kit** keeps the project's **colours**, **text styles** and **logos**. Every scene of the project sees them. It needs the scene to be in a project; if it is not, the drawer says so.
+- The Library shows only what fits what you have picked. **Logos** (with **+ Logo…**) is always there. Pick a shape or path and **Colours** (with **+ This colour**) joins it; pick a text and **Text styles** (with **+ This text's style**) joins it; pick a group and you see only Logos. A section with nothing in it is not shown until you pick something that can fill it.
 - Click a colour: the selected shapes, paths and texts take it. Click a text style: the selected texts follow it. Click a logo: it goes onto the canvas.
-- To add: select a text and click **+ This text's style**, or select a layer and click **+ This colour**. Click **+ Logo…** to keep a logo file. A section with nothing in it is not shown: select a layer and **+ This colour** (and its **Colours** heading) appear.
-- **This scene · text styles** lists the styles made in this scene.
+- To add: pick a shape and click **+ This colour**, pick a text and click **+ This text's style**, or click **+ Logo…** to keep a logo file.
+- **This scene's text styles** lists the styles made in this scene (it shows only when there are some).
 
 ## Adding a file
 
 In the tool rail, the picture icon is **Add from a file…** (Ctrl+I): one door for pictures, videos, SVG, Lottie, PDFs and Photoshop files. It opens the file picker at once and the file comes in straight away (see [importing.md](importing.md)); a Figma frame comes in by pasting its link. The **Library** (Ctrl+L) is the books icon under it.
-- **3D render** adds a Rostrum3D render. It is there only when Rostrum3D is installed.
+Once a Rostrum3D item of the project has a finished render, the picture icon opens a short list instead: **Add from a file…** first, then each rendered item by its name. Click an item's name to place its render.

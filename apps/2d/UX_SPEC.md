@@ -654,6 +654,11 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
   background; the screen never freezes) and then one line: "Placed logo.svg: 14 layers". If anything didn't come
   across, the line says how many, with **Show what** (the list in words: "2 gradients on outlines, drawn as flat
   colour"). A fully clean import closes the panel by itself after 3 s. Choosing files uses the system's own file window.
+  *(Built, 2026-10-24:)* the count is every layer made ("Imported scene.psd: 14 layers"); each kind that didn't come
+  across is one line with how many layers it touched; what came across in another form is said above that list in plain
+  words ("Came across as a mask: sky, sun…", "Kept hidden, as in the file: hidden note") and keeps the panel open; a PDF's
+  text comes in as one layer per line; a Photoshop file works in a scene with no project yet (pictures kept in a temporary
+  folder); a Figma import without a token says "Type your Figma token in the Token box".
 - **Undo and adjust:** the whole placement is one step.
 - **Keys:** Ctrl+I; drop.
 - **Agent:** `run_import {file, page, at}`; `layer.add {type: image|video}`.
@@ -1623,8 +1628,8 @@ operation is one (`mask.make`).
 
 ### Missing files and fonts · Now
 - A missing picture or font shows in Problems (3.36) and on its layer's row (a small warning). **Find it…** relinks
-  every layer using that file at once (`asset.relink` *(new)*); a missing font offers **Use another font** (a list) or installs from the brand
-  kit.
+  every layer using that file at once (`asset.relink` *(new)*); a missing font offers **Use another font** (a list in the problem's row; one pick sets it on every text using that font, one undo step: `font.replace`) or installs from the brand
+  kit. The canvas never goes blank for it: the text shows as its box with a dashed red edge and the font's name; a whole-film export refuses, naming the texts.
 
 ## 3.33 Help and learning
 
