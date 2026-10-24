@@ -67,7 +67,7 @@ AppShell {
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
         LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
-        Button { visible: shell.hasSound && !mixer.export.open; text: "Export"; kind: "primary"; down: mixer.export.open
+        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
                  anchors.verticalCenter: parent.verticalCenter
                  onClicked: mixer.export.setOpen(!mixer.export.open)
                  HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }

@@ -2,14 +2,14 @@ import QtQuick
 import RostrumKit
 
 // The Library (DESIGN.md §2.2, decision 3; INTERACTION.md "Library", Ctrl+L): adding a track is choosing its sound. A search box (focused on open),
-// kind chips (All · Instruments · Drums · Record · Voice · My sounds; the picked one is lit) and the list (adder.find). Click picks an entry;
-// double-click or Enter uses it: a new track with that sound (one operation, one undo step), selected, the Editor
+// kind chips (All · Instruments · Drums · Mic and files · Voice · My sounds; the picked one is lit) and the list (adder.find). Click picks an entry and plays it;
+// the Add button on its row (or Enter) uses it: a new track with that sound (one operation, one undo step), selected, the Editor
 // open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
 // "Change Piano to Strings? The notes stay." and changes that track's sound instead (adder.swap, one undo step). "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
-// on Strings"): Enter / double-click / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
-// original back. Loop (the loop mark beside ▶ on the row that plays) repeats what you hear. Closes with × or Ctrl+L; on a narrow window it floats and closes after each use (`used`).
+// on Strings"): Enter / Add / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
+// original back. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
 Panel {
     id: p
     title: "Library"
@@ -39,17 +39,19 @@ Panel {
         else if (e) soundLibrary.stopAudition()
     }
 
+    function finish() { soundLibrary.stopAudition(); workspace.setLibrary(false); p.used() }   // after an add: the preview stops and the Library closes
+
     function use(i) {
         const e = found[i]
         if (!e) return
         const m = adder.match(e.key)
-        if (m.track && soundLibrary.trying.key === e.key) { if (soundLibrary.keep()) p.used(); return }   // a tried sound: Enter keeps it
+        if (m.track && soundLibrary.trying.key === e.key) { if (soundLibrary.keep()) finish(); return }   // a tried sound: Enter keeps it
         if (m.track) { swap.entry = e.key; swap.track = m.track
                        swap.heading = "Change " + m.from + " to " + m.to + "?"; swap.open(); return }
         if (!adder.add(e.key)) return
         if (e.arm) recorder.arm(backend.selected)
         workspace.setDock("editor")
-        p.used()
+        finish()
     }
 
     FieldFrame {
@@ -80,7 +82,7 @@ Panel {
         id: list
         visible: p.chip !== "mine"
         readonly property int rowH: 40
-        readonly property real room: parent.height - chips.y - chips.height - Theme.gap - (heard.visible ? heard.height + Theme.gap : 0) - foot.height - Theme.gap
+        readonly property real room: parent.height - chips.y - chips.height - Theme.gap - (heard.visible ? heard.height + Theme.gap : 0) - (foot.visible ? foot.height + Theme.gap : 0)
         anchors { left: parent.left; right: parent.right; top: chips.bottom; topMargin: Theme.gap }
         height: Math.max(rowH, Math.floor((room + spacing) / (rowH + spacing)) * (rowH + spacing) - spacing)   // whole rows only: the strip never slices one
         clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds; snapMode: ListView.SnapToItem
@@ -93,22 +95,21 @@ Panel {
             width: list.width; height: list.rowH; radius: Theme.radiusCtl
             color: p.shownAt === index ? Theme.accentSoft : hover.hovered ? Theme.hover : "transparent"
             HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: p.pick(row.index); onDoubleTapped: p.use(row.index) }
+            TapHandler { onTapped: p.pick(row.index) }
             readonly property bool heard: p.shownAt === index && (soundLibrary.auditioning !== "" || p.triedAt >= 0)
-            Row {   // ▶ on the row under the pointer and on the one being heard; Loop beside it, only while it plays
+            Row {   // Add on every row (the row itself hears it); Loop beside it, only while it plays
                 id: hear
-                visible: (hover.hovered || row.heard) && row.modelData.hearable
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
                 spacing: 2
                 IconButton { mark: "loop"; kind: "ghost"; tip: "Repeat what you hear"; visible: row.heard; down: soundLibrary.loop
                              onClicked: soundLibrary.setLoop(!soundLibrary.loop) }
-                IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: p.pick(row.index) }
+                Button { text: "Add"; height: Theme.field; onClicked: p.use(row.index) }
             }
             Column {
-                anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 5; leftMargin: Theme.gap; rightMargin: Theme.gap + (hear.visible ? hear.width : 0) }   // names on one line down the list, with or without a note
+                anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 5; leftMargin: Theme.gap; rightMargin: Theme.gap + hear.width }   // names on one line down the list, with or without a note
                 spacing: 2
                 NameLabel { width: parent.width; text: row.modelData.label }
-                Text { id: noteText; visible: row.modelData.note !== ""; width: parent.width; text: row.modelData.note
+                Text { id: noteText; width: parent.width; text: row.modelData.note
                        HoverTip { text: noteText.truncated ? noteText.text : ""; hovered: hover.hovered }
                        elide: Text.ElideRight; color: Theme.fg3
                        font.family: uiFont; font.pixelSize: Theme.label }
@@ -121,18 +122,20 @@ Panel {
         anchors { left: parent.left; right: parent.right; top: chips.bottom; topMargin: Theme.pad }
         spacing: Theme.gap
         Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
-               text: "No sound called “" + p.query + "”. Try a shorter word, or add a folder of your sounds." }
+               text: "No sound called “" + p.query + "”. Try a shorter word." }
     }
     LibraryPanel {
         id: mine
         visible: p.chip === "mine"
         query: p.chip === "mine" ? p.query : ""
         anchors { left: parent.left; right: parent.right; top: chips.bottom; bottom: heard.top; topMargin: Theme.gap; bottomMargin: Theme.gap }
-        onUsed: p.used()
+        onUsed: p.finish()
     }
     Button {
         id: foot
         anchors { left: parent.left; bottom: parent.bottom }
+        visible: p.chip === "mine" && soundLibrary.hasFolders
+        height: visible ? implicitHeight : 0
         text: "Add a folder of my sounds…"; kind: "normal"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
@@ -151,7 +154,7 @@ Panel {
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
                   Button { visible: !heard.trying && p.noHear === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
-                  Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
+                  Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.finish() } }
                   Button { visible: heard.trying; text: "Revert"; kind: "normal"; onClicked: soundLibrary.revert() } }
         }
     }
@@ -160,8 +163,8 @@ Panel {
         property string entry: ""
         property string track: ""
         message: "The notes stay. Or add the sound as a new track."
-        Button { text: "New track"; kind: "ghost"; onClicked: { swap.close(); if (adder.add(swap.entry)) { workspace.setDock("editor"); p.used() } } }
+        Button { text: "New track"; kind: "ghost"; onClicked: { swap.close(); if (adder.add(swap.entry)) { workspace.setDock("editor"); p.finish() } } }
         Button { text: "Cancel"; kind: "ghost"; onClicked: swap.close() }
-        Button { text: "Change"; kind: "primary"; onClicked: { swap.close(); if (adder.swap(swap.entry, swap.track)) p.used() } }
+        Button { text: "Change"; kind: "primary"; onClicked: { swap.close(); if (adder.swap(swap.entry, swap.track)) p.finish() } }
     }
 }

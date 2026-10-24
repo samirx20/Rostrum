@@ -6,8 +6,8 @@ import RostrumKit
 // double-click selects it and opens the Editor. A press that moves 4 px or more drags every selected item (Ctrl: no
 // snapping, Shift: only in time, Alt: a copy; clips also go to the track under the pointer; one undo step).
 // A selected clip's handles (handles.py): edges trim, top corners fade, bottom-right stretches, the level line sets
-// its volume; the pointer shape says which. On empty lane space: a click clears the selection, puts the playhead
-// there and makes that track the Editor's; a drag draws a box that selects what it touches across tracks (Ctrl
+// its volume; the pointer shape says which. On empty lane space: a click clears the selection and makes that track
+// the Editor's (the playhead stays: only the ruler moves it); a drag draws a box that selects what it touches across tracks (Ctrl
 // adds). Right-click: an item's actions (selected alone first unless already selected), or the lane's own menu.
 // An open automation lane keeps its own clicks (backend.laneBegin …). `tl` is the Timeline, `bars` its ruler.
 MouseArea {
@@ -108,8 +108,7 @@ MouseArea {
         else if (mode === "empty") {
             backend.clearPoint()
             if (!ctrl(e)) backend.pickMany([])
-            if (row0 >= 0 && !tl.rows[row0].mix) backend.focusTrack(tl.rows[row0].id)
-            backend.setTime(bars.tOf(e.x))
+            if (row0 >= 0 && !tl.rows[row0].mix) backend.focusTrack(tl.rows[row0].id)     // only the ruler moves the playhead
         }
         else if (mode === "drag" || mode === "point" || mode === "handle") backend.endDrag()
         else if (mode === "box") backend.endBox()

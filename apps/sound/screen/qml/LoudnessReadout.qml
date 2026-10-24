@@ -2,9 +2,10 @@ import QtQuick
 import RostrumKit
 import "MixFormat.js" as F
 
-// The top bar's loudness against the target (once the song makes a sound): "−15.2 LUFS · target −14" and a dot,
-// green inside ±1 of the target, amber outside (never red: it is not an error). The target is the master's own
-// loudness number, always. Click: the Mixer, with the master's loudness curve. `compact` (a small window): "−15.2 LUFS · −14".
+// The top bar's loudness against the target (once the song makes a sound), in words and a dot: "Ready for streaming"
+// (green, inside ±1 of the target), "Quieter than streaming wants" / "Louder than streaming wants" (amber, never red: it
+// is not an error). The number is on hover. The target is the master's own loudness number, always (a target other than
+// streaming's −14 says "the target"). Not a button: the Mixer tab shows the same with its curve. `compact`: "Ready", "Too quiet".
 Rectangle {
     id: r
     property bool compact: false
@@ -13,6 +14,9 @@ Rectangle {
     readonly property bool measured: lufs !== undefined && lufs !== null && lufs > -70
     readonly property real goal: mixer.loudness.goal
     readonly property bool near: measured && Math.abs(lufs - goal) <= 1
+    readonly property string aim: Math.round(goal) === -14 ? "streaming" : "the target"
+    readonly property string said: !measured ? "" : near ? (r.compact ? "Ready" : "Ready for " + aim)
+        : lufs < goal ? (r.compact ? "Too quiet" : "Quieter than " + aim + " wants") : (r.compact ? "Too loud" : "Louder than " + aim + " wants")
     implicitWidth: row.implicitWidth + 2 * Theme.gap; implicitHeight: Theme.button
     width: implicitWidth; height: implicitHeight
     radius: Theme.radiusCtl
@@ -26,13 +30,11 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; color: r.near ? Theme.ok : Theme.warn }
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: !r.measured ? (r.compact ? "LUFS …" : "Loudness: rendering…")
-                  : F.num(r.lufs, 1) + " LUFS" + (r.compact ? " · " : "  ·  target ") + F.num(r.goal, 0)
+            text: !r.measured ? (r.compact ? "Loudness …" : "Loudness: rendering…") : r.said
             color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
         }
     }
-    MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: workspace.setDock("mixer") }
-    HoverTip { text: "Loudness (LUFS) of the whole song, against the master's target of " + F.num(r.goal, 0)
-                     + ". Click: the Mixer"; hovered: area.containsMouse }
+    MouseArea { id: area; anchors.fill: parent; hoverEnabled: true }
+    HoverTip { text: r.measured ? "The whole song is " + F.num(r.lufs, 1) + " LUFS; the target is " + F.num(r.goal, 0) + " LUFS"
+                                : "Measuring the loudness of the whole song"; hovered: area.containsMouse }
 }

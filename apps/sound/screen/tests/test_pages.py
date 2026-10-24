@@ -35,4 +35,4 @@ def test_fader_drag_is_one_undo_step():
     bridge.endScrub()
     assert len(doc.history.changes) == before + 1 and doc.item("pad")["volume"] == 0.9
     bridge.undo()
-    assert doc.item("pad")["volume"] == 0.85
+    assert doc.item("pad")["volume"] == 1

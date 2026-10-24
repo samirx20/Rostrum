@@ -19,7 +19,7 @@ A group is one shared channel that several tracks play into. It gives you one ro
 Try another sound in the same place, keeping the timing and the notes.
 
 1. Select one clip and press **S**, or choose **Swap…** at the top of the settings panel. The Library opens.
-2. Each result has a **Swap** button next to **Place**. Click it to put that sound where the old one was.
+2. Each result has a **Swap** button next to **Add**. Click it to put that sound where the old one was.
 3. **Ctrl+Z** puts the old one back.
 
 ## 3. Before / After (key H)

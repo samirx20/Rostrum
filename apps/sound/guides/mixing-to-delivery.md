@@ -49,16 +49,16 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
 
 The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into the **…** button on the output line (click it: the reverb send, the group
 sends and **+ Duck** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
-the master's too.
+the master's too: a new track starts at 0 dB (gain 1), and headroom is the main bus's business, not each track's.
 
 ## The Mixer's loudness panel
 
 The strips sit side by side from the left, the Master right after the last one; with many tracks they scroll sideways
 and the Master stays in place. The rest of the width is the loudness panel: its title names the target ("Loudness ·
-target −14 LUFS (Streaming)"), then three numbers, **Integrated** (the whole mix; "so far" while playing),
-**Short-term** (the 3 seconds before the playhead; before the first 3 seconds, or when stopped at the start, it shows the last value in grey, and is absent until the song has had one) and **True peak** ("so far" while playing), and under them
-the short-term loudness over the song, with the target as a dashed line and the playhead. Integrated is green within
-1 of the target and amber outside; True peak is amber only over the ceiling. The Master strip's meter number, when
+target −14 LUFS (Streaming)"), then three numbers, **Whole song** (how loud the whole mix is; "So far" while playing),
+**Now** (the 3 seconds before the playhead; before the first 3 seconds, or when stopped at the start, it shows the last value in grey, and is absent until the song has had one) and **Loudest peak** ("Loudest so far" while playing), and under them
+the short-term loudness over the song, with the target as a dashed line and the playhead. Whole song is green within
+1 of the target and amber outside; Loudest peak is amber only over the ceiling. The Master strip's meter number, when
 stopped, is the same true peak. Rest the pointer on a number for what it means.
 An open effect's settings or a duck sit at the right end while they are open.
 

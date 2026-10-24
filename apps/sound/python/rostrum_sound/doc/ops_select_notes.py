@@ -26,7 +26,7 @@ VELOCITY = N("velocity", 0, 1, "Humanize", default=0.05, label="Velocity", displ
              help="Each velocity changes by up to this much (0 … 1 scale). Left out = 0.05.")
 SEED = N("seed", 1, 999999, "Humanize", imp="secondary", integer=True, default=1, label="Seed",
          help="The same seed on the same notes gives the same result every time; another seed, another feel.")
-SEMITONES = Param.number("semitones", min=-48, max=48, integer=True, required=True, group="Transpose", unit="st",
+SEMITONES = Param.number("semitones", min=-48, max=48, integer=True, required=True, group="Transpose", unit="semitones",
                          label="Semitones", help="How far up (+) or down (−), in half steps; 12 = an octave. A "
                                                  "chord moves together.")
 LABELS = {"note": "note", "hit": "drum hit"}

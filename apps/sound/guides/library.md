@@ -1,14 +1,15 @@
 # Your own sound library
 
-Point Rostrum at a folder of sound effects you own: a Sonniss GDC bundle, BOOM, Soundly exports, your own
+Point Rostrum at a folder of sound effects you own: a bought sound-effects bundle, Soundly exports, your own
 recordings. Rostrum indexes it **once**: every file is split into its single sounds and each is measured. Nothing is
 copied out of the folder; the index keeps file paths and measurements only, in the shared cache. The folder list lives
 in your settings (`~/.rostrum/settings/sound-library.json`), not in a project.
 
-**On the screen:** open the **Library** (Ctrl+L) and click **My sounds**, or **Add a folder of my sounds…** at its
-bottom. Search with the Library's search box, narrow by kind, length and brightness, hear a sound with ▶ (voices have none: they are made from a line you type, see [voice.md](voice.md)), and
-double-click it (or **Place**) to put it at the playhead: on the selected recordings track, else on a "Sound effects"
-track (one undo step).
+**On the screen:** open the **Library** (Ctrl+L) and click **My sounds**; with the chip on, **Add a folder of my
+sounds…** sits at its bottom. Search with the Library's search box, narrow by kind, length and brightness, click a row
+to hear it (voice rows have no preview: they are made from a line you type, see [voice.md](voice.md)), and press the
+row's **Add** to put it at the playhead: on the selected recordings track, else on a "Sound effects" track (one undo
+step). The Library closes after an add and the preview stops.
 
 ## Add a folder
 

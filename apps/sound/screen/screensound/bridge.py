@@ -23,6 +23,7 @@ from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
 from . import voice_card, voice_takes
+from .plain_errors import say as say_error
 from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
@@ -83,7 +84,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
-        self.transport.failed.connect(self._fail)
+        self.transport.failed.connect(lambda line: self._fail(say_error(line, self.doc.data)))
         self.transport.said.connect(self.say)
         self.transport.moved.connect(self._moved)
         self.transport.render()

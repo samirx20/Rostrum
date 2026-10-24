@@ -59,7 +59,7 @@ Rectangle {
                               rightMargin: sendsBtn.visible ? Theme.grid : 0 }
                     row: true
                     text: s.model.output; choices: s.model.outputs
-                    tip: "Plays to " + s.model.output.replace(/^→\s*/, "") + ". Click to pick the master or a bus"
+                    tip: "Plays to " + s.model.output.replace(/^→\s*/, "") + ". Click to pick the master or a group"
                     onPicked: (id) => mixer.setOutput(s.model.id, id)
                 }
                 Text {

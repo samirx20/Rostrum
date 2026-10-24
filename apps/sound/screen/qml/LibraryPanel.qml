@@ -4,8 +4,8 @@ import RostrumKit
 
 // "My sounds" in the Sounds panel: the person's own sound folders (library_panel.py, `soundLibrary`), searched by the
 // panel's words (`query`) and narrowed by kind and shape. With no folder yet it offers only "Add a folder of my
-// sounds"; the choices and results appear once there is something to search. Each result plays on its own through the engine (click it, or ▶; ■ Stop in the Library ends it) and
-// goes on the selected track at the playhead (double-click or Place: one operation, one undo step). With one clip
+// sounds"; the choices and results appear once there is something to search. Each result plays on its own through the engine (click it; ■ Stop in the Library ends it) and
+// goes on the selected track at the playhead (the Add button on its row, or double-click: one operation, one undo step). With one clip
 // selected each result also has Swap (double-click swaps): clip.swap keeps the clip's time, length, level and fades.
 // ↑ / ↓ (in the search box) step through the results in the clip's place with a loop round it; Enter keeps (one undo step),
 // Esc puts the original back (swap_trial.py). The step bar appears only while stepping.
@@ -36,7 +36,7 @@ Item {
         visible: !soundLibrary.hasFolders && soundLibrary.busy === ""
         width: parent.width; spacing: Theme.gap; topPadding: Theme.pad
         Text { width: parent.width; wrapMode: Text.WordWrap
-               text: "Use recordings you own: your own takes, a Sonniss bundle, BOOM. Nothing is copied."
+               text: "Use sound recordings you own, from any folder. Nothing is copied."
                color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
         Button { kind: "primary"; text: "Add a folder…"; onClicked: picker.open() }
         Text { visible: soundLibrary.status !== ""; width: parent.width; wrapMode: Text.WordWrap; text: soundLibrary.status
@@ -104,8 +104,7 @@ Item {
                     id: buttons
                     anchors.right: parent.right; anchors.rightMargin: Theme.grid; anchors.verticalCenter: parent.verticalCenter
                     spacing: 2
-                    IconButton { glyph: "▶"; kind: "ghost"; tip: "Hear it"; onClicked: soundLibrary.audition(row.index) }
-                    Button { text: "Place"; onClicked: { soundLibrary.place(row.index); lib.used() } }
+                    Button { text: "Add"; onClicked: { soundLibrary.place(row.index); lib.used() } }
                     Button { visible: soundLibrary.swapTarget !== "" && soundLibrary.swapRow !== row.index; kind: "primary"; text: "Swap"
                              onClicked: { soundLibrary.swap(row.index); lib.used() } }
                 }

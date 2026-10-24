@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import math
 
+from rostrum_sound.doc import effects
+
 from . import plugin_rows
 
 MASTER = "master"
-EFFECT_NAMES = {"eq": "EQ", "deess": "De-ess", "dehum": "De-hum"}
+EFFECT_NAMES = effects.WORDS
 
 
 def effect_name(kind: str) -> str:
@@ -102,7 +104,7 @@ def routing(item: dict, buses: list[dict], label) -> dict:
     now = item.get("output", MASTER)
     to = f"→ {label(by_id[now])}" if now in by_id else "→ Master"
     choices = [{"id": MASTER, "label": "Master"}] + [
-        {"id": b["id"], "label": label(b) + " bus"} for b in buses
+        {"id": b["id"], "label": label(b) + " group"} for b in buses
         if b["id"] != item["id"] and not (item["type"] == "bus" and _feeds(by_id, b["id"], item["id"]))]
     sends = [{"id": s["id"], "name": label(by_id[s["bus"]]) if s["bus"] in by_id else s["bus"],
               "level": s.get("level", 1) if not isinstance(s.get("level"), list) else 1} for s in item.get("sends", [])]

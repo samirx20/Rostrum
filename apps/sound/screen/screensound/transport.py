@@ -113,9 +113,14 @@ class Transport(QObject):
             text = ""
         self._set_state(text)
 
+    def end(self) -> float:
+        """Where the song ends: the render's own length (the last sound, or the length that was set), the one source
+        for "the end". The ruler's room to write in (the view) is a different thing and never stops playback."""
+        return float(self.last["seconds"]) if self.last.get("seconds") else self._length()
+
     def _ended(self, t):
         self._tick.stop()
-        self.moved.emit(t)
+        self.moved.emit(min(t, self.end()))     # the player says the length of the render it was opened with; the newest wins
         self.playingChanged.emit()
 
     def _advance(self):
@@ -123,9 +128,9 @@ class Transport(QObject):
         if self.loop and self.player.playing and t >= self.loop[1]:   # ⟳ Loop: back to the range's start
             self.player.seek(self.loop[0])
             t = self.loop[0]
-        if t >= self._length():                # on the clock (no player), the song's end stops it
+        if t >= self.end():                    # on the clock (no player), the song's end stops it
             self.toggle(t)
-            t = self._length()
+            t = self.end()
         self.moved.emit(t)
 
     def _set_state(self, text):
