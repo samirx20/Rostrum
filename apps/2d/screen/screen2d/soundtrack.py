@@ -14,7 +14,8 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from rostrum2d import sound_cues
+from rostrum2d import project_sound, sound_cues
+from rostrum_core import filestamps
 
 from .song_history import SongHistory
 from .soundtrack_play import SoundtrackPlay
@@ -41,7 +42,9 @@ class Soundtrack(QObject):
         self.history = SongHistory(bridge, self)
         bridge.join_history(self.history)                           # Ctrl+Z takes back Add a sound here (song_history.py)
         self._videos = VideoSound(self, bridge)                     # the timeline's Video sound rows (video_sound.py)
-        self._poll = QTimer(self, interval=1000, timeout=self.check)
+        self._unwatch_files = filestamps.watching()             # lookups of files are kept between this timer's ticks
+        self._unwatch = project_sound.watch(bridge.doc.folder) if bridge.doc.folder else (lambda: None)
+        self._poll = QTimer(self, interval=1000, timeout=self._tick)
         self._poll.start()
         self.check()
 
@@ -82,13 +85,19 @@ class Soundtrack(QObject):
                 "problem": self._problem} if self._song else {}
 
     # ---- what the screen calls --------------------------------------------------------------------------------
+    def _tick(self):
+        """The poll: the one place that looks at the project's sound files (a document change never does)."""
+        filestamps.tick()
+        if self.b.doc.folder:
+            project_sound.refresh(self.b.doc.folder)
+        self.check()
+
     @Slot()
     def check(self):
         """The song, the markers or the scene's choice changed: render again (newest wins)."""
         folder = self.b.doc.folder
         try:
             from rostrum_sound import soundtrack
-            from rostrum2d import project_sound
             song = project_sound.song(folder, self.b.comp().get("soundtrack", ""))
             stamp = soundtrack.stamp(folder, song["id"]) if song else None
         except Exception as e:  # noqa: BLE001  a named song that isn't there, rostrum_sound missing: loud
@@ -188,5 +197,7 @@ class Soundtrack(QObject):
         self._unfollow()
         self._videos.close()
         self._poll.stop()
+        self._unwatch()
+        self._unwatch_files()
         self._play.close()
         self._render.close()

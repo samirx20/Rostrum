@@ -27,6 +27,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 
 from . import kit_state, rows
+from . import touched as touch
 from .agent_watch import AgentWatch
 from .bridge_edits import EditSlots
 from .bridge_history import HistoryParts
@@ -230,6 +231,16 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
             self.docStepped.emit()
             return
         self._heard(event.change if event.kind == "change" else None)
+
+    def touched(self):
+        """What the change being announced touched (touched.Touched: `reaches(doc, ids)`); None = can't tell, so a
+        part redoes its work. Read it in a docChanged / outline listener to skip a change that is elsewhere."""
+        return self._kit.touched
+
+    def reached(self, ids) -> bool:
+        """The change being announced touched `ids` (or items above or inside them), or can't tell."""
+        t = self._kit.touched
+        return t is None or t.reaches(self.doc, list(ids))
 
     @Slot(str)
     def setFocusArea(self, name):

@@ -141,6 +141,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     def times(self) -> dict:
         """The project's shared markers {name: seconds} (keys timed on a marker are placed through them)."""
+        if self.marks is not None:                          # the watch's own copy: no file look per call (it polls)
+            return self.marks.times
         return marker_times.times(self.doc.folder) if self.doc.folder else {}
 
     def placed(self) -> dict:
@@ -359,7 +361,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     def _on_doc(self, event):
         self._note_change()
         super()._on_doc(event)
-        self.outlineChanged.emit()
+        if self.reached(self.selection or [self.comp_id]):     # the selection's overlays, bars and panels
+            self.outlineChanged.emit()
+        else:                                               # a change elsewhere (an agent's, an undo): only the
+            self._layers_check()                            # timeline's rows (outline's first listener); the canvas
+                                                            # overlays follow the new picture (shownChanged)
         self._render()
         self._problems.touch()
 

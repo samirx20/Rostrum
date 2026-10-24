@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from rostrum2d import fontlist, render3d, settings
-from rostrum_core import project
+from rostrum_core import filestamps, project
 
 _faces: list[dict] | None = None
 SECTIONS = {"shipped": "In Rostrum", "installed": "On this computer"}
@@ -62,18 +62,21 @@ def choices(item: dict, param: str, folder) -> list[dict] | None:
     return None
 
 
-_names: tuple = (None, 0.0, {})      # (project.json, its time, {file: "pic.png"}): read again only when it changes
+_names: tuple = (None, None, {})     # (project.json, its stamp, {file: "pic.png"}): read again only when it changes
 
 
 def file_name(folder, src: str) -> str:
     """What a picture's or video's File row says at rest: the name the file came in with ("pic.png"), not the store's
-    content-named copy ("media/image/ed2d1ea4….png"); "" for a file the project doesn't keep (the row shows its own name)."""
+    content-named copy ("media/image/ed2d1ea4….png"); "" for a file the project doesn't keep (the row shows its own name).
+    Asked per row on every change: project.json is looked at through rostrum_core.filestamps (once per screen tick)."""
     global _names
     meta = Path(folder) / "project.json" if folder else None
-    if not src or meta is None or not meta.is_file():
+    if not src or meta is None:
         return ""
-    when = meta.stat().st_mtime
-    if _names[0] != meta or _names[1] != when:
+    when = filestamps.stamp(meta)
+    if when is None:
+        return ""
+    if _names[:2] != (meta, when):
         rows = json.loads(meta.read_text(encoding="utf-8")).get("items", [])
         _names = (meta, when, {r["file"]: (r.get("name") or Path(r["file"]).stem) + Path(r["file"]).suffix
                                for r in rows if r.get("file")})

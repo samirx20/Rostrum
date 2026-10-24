@@ -14,6 +14,7 @@ import re
 import shutil
 from pathlib import Path
 
+from . import filestamps
 from .errors import RostrumError, codes
 
 KIND_OF_EXT = {".mtn": "2d", ".trk": "sound", ".trd": "3d", ".rsm": "edit"}
@@ -101,6 +102,7 @@ def set_main(folder, kind: str, item_id: str | None):
     marks = {k: v for k, v in data.pop("main", {}).items() if k != kind} | ({kind: item_id} if item_id else {})
     from .storage import write_atomic
     write_atomic(meta, json.dumps(data | ({"main": marks} if marks else {}), indent=1, ensure_ascii=False))
+    filestamps.forget(meta)
 
 
 def add_file(folder, kind: str, name: str, source) -> dict:
@@ -125,6 +127,7 @@ def add_file(folder, kind: str, name: str, source) -> dict:
     data = _read_json(meta, "project") if meta.is_file() else {}
     data["items"] = [r for r in data.get("items", []) if r.get("id") != row["id"]] + [row]
     write_atomic(meta, json.dumps(data, indent=1, ensure_ascii=False))
+    filestamps.forget(meta)
     return row
 
 
@@ -203,6 +206,7 @@ def change_file_item(folder, item_id: str, name: str | None) -> None:
     else:
         row["name"] = name
     write_atomic(meta, json.dumps(data, indent=1, ensure_ascii=False))
+    filestamps.forget(meta)
 
 
 def latest_render(folder, item_id: str, kind: str | None = None) -> dict | None:

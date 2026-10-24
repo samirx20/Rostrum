@@ -118,9 +118,9 @@ def save(doc, document=True):
     if w is None:
         write_atomic(hist, text)
     elif text:
-        with open(hist, "r+b") as fh:
-            fh.truncate(w.size)                   # a last line cut off by a crash goes before the next whole one
-            fh.seek(w.size)
+        if hist.stat().st_size != w.size:
+            os.truncate(hist, w.size)             # a last line cut off by a crash goes before the next whole one
+        with open(hist, "ab") as fh:              # appending: a seek-and-write handle cost ~6 ms per change on Windows
             fh.write(text.encode("utf-8"))
     for c in ch[(w.n - 1 if w and w.n else 0):-1]:
         c._after = None                           # written without its hash: no tree kept for it
@@ -146,10 +146,12 @@ def _appendable(w, hist, n) -> bool:
 
 
 def _wrote(doc, hist, end=None):
-    """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line)."""
+    """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line).
+    The script bases are copied shallow: a run replaces its base, never changes it in place (merge.py), so that tells
+    a new one apart; a deep copy of every base cost milliseconds on every change."""
     st, ch = hist.stat(), doc.history.changes
     doc._written = Written(st.st_ino, st.st_size if end is None else end, len(ch), ch[-1].t if ch else 0.0,
-                           dict(doc.history.versions), copy.deepcopy(doc.script_bases))
+                           dict(doc.history.versions), dict(doc.script_bases))
 
 
 def _read_json(path: Path, where: str):

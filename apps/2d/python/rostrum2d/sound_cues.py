@@ -18,6 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rostrum_core import RostrumError, Who, codes, joint, links, markers
+from rostrum_core import edits as E
 
 from . import fields as F
 from . import project_sound, retime, sound_cue_music
@@ -135,6 +136,23 @@ def choices(words: str = "", limit: int = 40, folder=None, chosen: str = "") -> 
     return out[:limit]
 
 
+# What a layer's time and its video's sound are read from (layer_start, links2d.time_of, sync_sound.wanted, names):
+# a change that sets none of these, and adds or removes no layer, leaves every cue and video sound where it was.
+TIMED = frozenset({retime.FIELD, retime.END, "start", "end", "timing", "speed", "src", "offset", "loop", "fps",
+                   "duration", "name", "body", "shape", "type"})
+
+
+def moves_sound(change) -> bool:
+    """Can this change move a cue marker or a video's sound? (No for a look edit, a key, a stroke: most edits.)"""
+    for e in change.edits:
+        if isinstance(e, E.Set):
+            if e.path and e.path[0] in TIMED:
+                return True
+        elif not isinstance(e, (E.Insert, E.Remove)) or not e.item or e.item.get("type") in (*F.LAYERS, "comp"):
+            return True
+    return False
+
+
 def watch(doc, said) -> callable:
     """Keep this document's cue markers on their layers and its videos' own sound in Sound's song (sync_sound.py) after
     every change (the screen's window and the agent server both watch the document they hold). A failure is handed to
@@ -150,4 +168,5 @@ def watch(doc, said) -> callable:
         except Exception as e:  # noqa: BLE001  never silent: said where the person or the agent reads it
             said(e.line() if hasattr(e, "line") else f"Error: 2D's sound in Sound: {e}")
     keep()
-    return doc.subscribe(lambda ev: keep() if ev.kind in ("change", "reset") else None)
+    return doc.subscribe(lambda ev: keep() if ev.kind == "reset" or ev.kind == "change" and moves_sound(ev.change)
+                         else None)

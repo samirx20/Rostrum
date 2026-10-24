@@ -123,6 +123,6 @@ class SelectSlots(SlotMixin):
         if any(not self.doc.has(i) for i in sel):
             kept = [i for i in sel if self.doc.has(i)]
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
-        else:
+        elif self.reached(sel):                            # a change elsewhere leaves these rows as they are
             self._refresh()
             self._announce()                               # only if its name or kind changed (an agent's rename)
