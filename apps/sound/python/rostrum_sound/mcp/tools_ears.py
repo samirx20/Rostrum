@@ -36,6 +36,20 @@ def _cap(rows, args, n=40):
     return rows if args.get("detail") == "full" or len(rows) <= n else rows[:n]
 
 
+def _out_of_key_line(found: list) -> str:
+    """Which notes on which tracks are out of key, so the clashing part is named in the summary: " Out of key: lead Bb4 ×8 …"."""
+    seen: dict = {}
+    for e in found:
+        if e["kind"] == "out_of_key":
+            for t in e["tracks"]:
+                for n in e["notes"]:
+                    seen.setdefault(t, {}).setdefault(n, []).extend([e["at_s"]] * e.get("count", 1))
+    if not seen:
+        return ""
+    return " Out of key: " + "; ".join(f"{t} " + ", ".join(f"{n} ×{len(at)} (from {min(at):.1f} s)" for n, at in notes.items())
+                                       for t, notes in seen.items()) + "."
+
+
 def register(tools: Tools):
     @tools.tool("look_beats", {"properties": {**ITEM, **WAV, **TRACK, **DETAIL,
         "stems": {"type": "boolean", "default": False, "description": "List the onsets of every stem, not just the mix."},
@@ -140,7 +154,7 @@ def register(tools: Tools):
              "floor_db": round(floor, 1), "left_out_quietest": left_out, "note": "a clash is both stems loud in one band; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried)"}
         return Reply(f"{len(spans)} clashes among {len(levels)} tracks" + (f"; worst: {C.line(spans[0])}" if spans else "") + ".", r, [str(png)], [str(png)])
 
-    @tools.tool("inspect_harmony", {"properties": {**ITEM, **WAV, **TRACK,
+    @tools.tool("inspect_harmony", {"properties": {**ITEM, **WAV, **TRACK, **DETAIL,
         "source": {"type": "string", "enum": ["auto", "notes", "audio"], "default": "auto", "description": "auto: the document's notes when it has any, else the audio's chroma."},
         "per": {"type": "string", "enum": ["bar", "beat"], "default": "bar"},
         "key": {"type": "string", "description": "Check notes against this key (\"D minor\") instead of the document's key map or the estimate."},
@@ -195,5 +209,6 @@ def register(tools: Tools):
         if "checks" in r:
             c = r["checks"]["counts"]
             said += " Checks: " + (", ".join(f"{n} {k.replace('_', ' ')}" for k, n in c.items()) if c else "no problems found") + "."
+            said += _out_of_key_line(found)
         return Reply(said, r, warnings=warnings)
 

@@ -122,7 +122,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   with spaces works as written: `"#logo lands"`, `"#logo lands+0.5"`). Lengths: seconds or `beats(n)`.
 - **Beat arithmetic:** a time plus or minus a length is a time (`bar(5) + beats(2)`, `beat(i * 4) - beats(0.5)`), two
   times give the length between them (`bar(9) - bar(5)`), lengths add and scale (`beats(1) * 3`, `i * beats(0.5)`),
-  and times compare with times (`bar(5) < bar(9)`). A bare number is seconds, so `bar(5) + 0.5` or `bar(5) < 3.0`
+  and times compare with times (`bar(5) < bar(9)`); adding 0 changes nothing. Any other bare number is seconds, so `bar(5) + 0.5` or `bar(5) < 3.0`
   is refused, naming the forms to write instead (`bar(5) + beats(0.5)`, or `t["beat"]` for the beat number itself).
   A marker is a moment in seconds: write `"#drop+0.5"` for half a second after it, or put the marker on the grid.
 - **Drums.** The synth kit (`kit="synth"`): `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write

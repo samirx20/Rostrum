@@ -66,6 +66,11 @@ def _show(v) -> str:
     return repr(v)
 
 
+def _zero(v) -> bool:
+    """0 is the same in beats and seconds: adding it means nothing changes, so it is never refused."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == 0
+
+
 class Beat(dict):
     """A time on the beat grid, `{"beat": n}` (0-based)."""
 
@@ -75,6 +80,8 @@ class Beat(dict):
     def __add__(self, other):
         if isinstance(other, Beats):
             return Beat(self["beat"] + other["beats"])
+        if _zero(other):
+            return self
         _refuse(self, "+", other)
 
     __radd__ = __add__
@@ -84,6 +91,8 @@ class Beat(dict):
             return Beat(self["beat"] - other["beats"])
         if isinstance(other, Beat):
             return Beats(self["beat"] - other["beat"])
+        if _zero(other):
+            return self
         _refuse(self, "-", other)
 
     def __rsub__(self, other):
@@ -101,10 +110,12 @@ class Beats(dict):
             return Beats(self["beats"] + other["beats"])
         if isinstance(other, Beat):
             return Beat(other["beat"] + self["beats"])
+        if _zero(other):
+            return self
         _refuse(self, "+", other)
 
     def __radd__(self, other):
-        if isinstance(other, (Beat, Beats)):
+        if isinstance(other, (Beat, Beats)) or _zero(other):
             return self + other
         _refuse(other, "+", self)
 

@@ -29,6 +29,7 @@ def test_beat_arithmetic_gives_plain_values_the_history_can_write(tmp_path, monk
     src = "tempo(120); s = track('k', builtIn='grandPiano')\nfor i in range(2):\n    s.note('C4', at=bar(2) + i * beats(1), dur=beats(1) * 2)"
     n = run_source(src, "t.py")["tracks"][0]["notes"]
     assert [x["at"] for x in n] == [{"beat": 4}, {"beat": 5}] and n[0]["dur"] == {"beats": 2}
+    assert notes("s.note('C4', at=beat(16) + 0, dur=1)")[0]["at"] == {"beat": 16}     # 0 is the same in beats and seconds
     doc = Document.new(KIND, folder=str(tmp_path / "plain"), item="main")
     doc.save()
     json.dumps(doc.run_script("t.py", run_source(src, "t.py"), Who.agent("t")).change.to_dict())
