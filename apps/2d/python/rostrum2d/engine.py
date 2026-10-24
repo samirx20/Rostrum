@@ -287,7 +287,7 @@ class Engine:
         if out.get("warning"):
             _log_line(f"2D export: {out['warning']}")
         return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"], "adapter": out.get("adapter"),
-                "gpu": out.get("gpu"), "warning": out.get("warning"),
+                "gpu": out.get("gpu"), "warning": out.get("warning"), "workers": out.get("workers"),
                 **(encoded(out["encoder"]) if out.get("encoder") else {})}
 
     def kill(self):

@@ -50,4 +50,11 @@ Only the settings that apply to the chosen format are shown.
 3. Click **Show in folder** to open where it went.
 4. If something goes wrong the panel says so in red. Nothing is reported as done unless the file was made.
 
+## 6. How long it takes
+
+1. The app draws several frames at once on your graphics card (three on a laptop with 8 processor threads) and writes the MP4 with the card's own video encoder, so a simple film exports in about its own length or less.
+2. What makes an export slow is work repeated in every frame: **motion blur** draws each frame several times (its **Samples**), and big blurs, glows and depth of field over the whole picture cost the most. A 28-second film full of glowing, blurred flowers with 4 samples takes several minutes.
+3. The export never lowers quality to go faster: the file shows exactly what the canvas shows.
+4. Agents: the result of `render_video` lists where the time went (`timing`: drawing, layout, encoding) and how many workers drew (`workers`).
+
 Next: [first-animation.md](first-animation.md), [files.md](files.md).
