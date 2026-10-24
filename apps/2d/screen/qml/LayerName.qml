@@ -14,8 +14,9 @@ Rectangle {
     enabled: !rows.compact           // compact: the one name row is the list of every layer (LayerTimeline.qml)
     readonly property bool isLayer: rowData.row === "layer"
     readonly property bool isFrame: rowData.frame === true     // the frame: pinned on top, a lock but no eye, never renamed or moved
-    readonly property bool selected: rowData.id === backend.selected || isLayer && backend.multi.ids.indexOf(rowData.id) >= 0 && backend.multi.count > 1
-    readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
+    readonly property string lit: rows.lit[rowData.id] || ""     // the list's one lookup (multi.py `lit`)
+    readonly property bool selected: lit === "sel"
+    readonly property bool inSelected: isLayer && lit === "in"   // a key, effect or mask of it is selected
     readonly property int indent: Theme.gap + rowData.depth * 16
     radius: Theme.radiusCtl
     color: hover.containsMouse || inSelected ? Theme.hover : "transparent"

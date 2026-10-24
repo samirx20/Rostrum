@@ -21,7 +21,8 @@ Rectangle {
     property var rowData
     property Item ruler
     readonly property bool isLayer: rowData.row === "layer"
-    readonly property bool lit: rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0   // every selected layer's bar
+    readonly property bool lit: rows && rows.lit !== undefined ? rows.lit[rowData.owner] !== undefined     // every selected layer's bar: the list's one
+                                : rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0  // lookup (2D LayerRows.qml), else read here
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }

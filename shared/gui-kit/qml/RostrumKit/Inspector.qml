@@ -21,6 +21,9 @@ Panel {
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var actions: null           // the app's ActionHub: the selection's actions first (ActionsSection), above everything
+    // the rows' `instant`, read from the model once here: each row reading it (two Python reads a row, twice a pick) cost
+    // ~8 ms a pick over a panel's rows
+    readonly property bool instant: panel.bridge.rows.instant
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias above: aboveSlot.data // an app's own group above the rows, in the same scroll (2D: a rig's Poses)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
@@ -94,7 +97,7 @@ Panel {
             Repeater {
                 id: rowsView
                 model: panel.bridge.rows
-                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks; instant: panel.bridge.rows.instant
+                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks; instant: panel.instant
                                          highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
             }
             EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
@@ -133,7 +136,7 @@ Panel {
         onTriggered: {
             for (let i = 0; i < rowsView.count; i++) {
                 const r = rowsView.itemAt(i)
-                if (!r || r.model.id !== field || r.model.row !== "param") continue
+                if (!r || r.model.id !== field || r.model.row !== "param" || !r.model.valid) continue   // (not a parked row)
                 const top = r.y, bottom = r.y + r.height
                 if (top < scroller.contentY || bottom > scroller.contentY + scroller.height)
                     scroller.contentY = Math.max(0, Math.min(top - Theme.row, scroller.contentHeight - scroller.height))
