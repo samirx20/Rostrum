@@ -35,7 +35,8 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   (the inspector shows its time, value and ease); drag it to move it, in whole frames.
   The project's shared markers show as named flags on the ruler (placed in frames); a key drag lands on a marker's frame within 6 px.
 - **Render** (top bar, or F12) opens the render sheet (guides/rendering.md): This frame or the shot; Quality and Size,
-  which are the shot's own render settings (a shot edit, saved; `rostrum3d/render_fields.py`); Save as; the measured
+  which are the shot's own render settings (a shot edit, saved; `rostrum3d/render_fields.py`); Save as and, only for
+  an EXR, Passes (its layers, also the shot's own; brief 15); the measured
   time ("Measuring…", then "About 6 min · 120 frames · 3.0 s a frame", the probe's picture, a note when the card was
   busy, a budget with the one-setting changes that fit); Render. The render runs as a job with its own engine process,
   through the same code as `render_still` (a frame) and the project's render versions (a shot). The scripted

@@ -17,15 +17,42 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 | **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The line under it says the numbers. Custom numbers are set on the shot (select the shot, then its Render group) |
 | **Size** | The shot's own size, **½** or **× 2**. The line under it says the size in pixels when it isn't the shot's own |
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
+| **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
 | **The time** | How long it will take, measured on this computer (below) |
 | **Render this frame / Render 120 frames** | Starts it. It runs in the background on its own engine; the top bar's job chip shows how far it is, with Cancel |
 
-Quality and Size are **the shot's own settings**. Changing them in the sheet changes the shot (one step in the history;
+Quality, Size, Save as and Passes are **the shot's own settings**. Changing them in the sheet changes the shot (one step in the history;
 ↶ undoes it) and they are saved with it. Agents read and set the same settings, so a render an agent starts looks the
 same as yours.
 
 When it is done the line under the button says "Rendered …" with **Play** and **Show in folder**. A failure says what
 went wrong in red, and nothing is called finished.
+
+## Passes
+
+An EXR can carry the picture split into layers, so the Editor can change one part without rendering again: brighten
+the reflections, soften the shadows, colour one item. Each pass is a named layer of the same file, and the render's
+`manifest.json` lists them (its `exr` part: every channel name, which layer it belongs to, and which item each mask is).
+
+| Pass | Layer in the EXR | What it holds |
+|---|---|---|
+| The picture | `R G B A` | always there: the finished picture, alpha = where something is |
+| **Light** | `light.R G B` | the light falling on matte surfaces, direct and bounced, with their colour |
+| **Reflections** | `reflections.R G B` | reflections and highlights on shiny surfaces |
+| (with either) | `rest.R G B` | everything else: glass, glowing things, the sky, haze |
+| **Shadow** | `shadow.A` | 0 where a matte surface is fully lit, 1 where it is in full shadow from the lights |
+| **Masks per item** | `masks.<item id>` | one per item (groups too): white where the item is, black elsewhere |
+| **Depth** | `depth.Z` | distance from the camera in metres (full precision); 0 where nothing is |
+| **Surface direction** | `normal.X Y Z` | which way each surface faces, in the scene's directions (Y up) |
+
+**They add back up.** Light + Reflections + Rest = the picture. With noise clean-up on, the picture is cleaned but the
+layers are not, so they add up to a slightly grainier picture; with it off they add up exactly.
+
+Things to know:
+- **Shadow doubles the render time**: each frame is drawn a second time with no shadows, to see what the shadows took
+  away. The time row counts it.
+- **Masks have hard edges** (one sample a pixel), so an edge can look stepped when a mask is used on its own.
+- Passes need the final renderer (Cycles); a quick (Storm) render saves the picture alone.
 
 ## The time
 
@@ -90,5 +117,6 @@ Send to Editor comes with the Editor (not built yet).
 ## For agents
 
 The sheet is built on the same pieces agents use: `render_estimate` (the same test and the same arithmetic),
-`render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`). See
+`render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`,
+and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".

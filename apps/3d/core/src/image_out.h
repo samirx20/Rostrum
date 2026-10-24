@@ -13,6 +13,14 @@ struct Picture {
   std::vector<float> rgba;  // scene-linear, straight from Hydra, top row first
 };
 
+// one more layer of a layered EXR (passes.h): its full channel names ("light.R" ...) and their pixels, top row first,
+// as many floats a pixel as it has channels; half-float unless `full` (32-bit, for depth)
+struct ExrLayer {
+  std::vector<std::string> channels;
+  std::vector<float> pixels;
+  bool full = false;
+};
+
 class ColorOut {
  public:
   ColorOut();  // the config named by $OCIO, else OpenColorIO's built-in CG config
@@ -23,7 +31,8 @@ class ColorOut {
   std::map<std::string, std::vector<std::string>> views() const;
   // throws r3d::Error listing the accepted views when `view` is unknown ("" = the display's default)
   std::string check_view(const std::string& view) const;
-  void write_exr(const Picture& p, const std::string& file) const;
+  // the picture as R G B A, then `layers` (passes.h) as named channels of the same file
+  void write_exr(const Picture& p, const std::string& file, const std::vector<ExrLayer>& layers = {}) const;
   // exposure in stops; the picture is laid over `background` (linear RGB) where it is transparent
   void write_png(const Picture& p, const std::string& file, const std::string& view, double exposure,
                  const float background[3]) const;

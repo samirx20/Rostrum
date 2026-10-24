@@ -120,7 +120,9 @@ def look_sheet(ctx, args):
                                         "height": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Height of that picture. Default: follows the shot's shape."}}})
 def look_at(ctx, args):
     """What is at a pixel (x, y) of a picture from the shot camera at a frame: the item id, the part (prim), its material, the point in the
-    world (metres) and the distance from the camera. Counted from the top-left of a width×height picture, the same whatever renderer drew it."""
+    world (metres) and the distance from the camera; on a mesh also `uv`, the spot on its unfolded surface (paint canvas pixel
+    x = u × paintSize, y = (1 − v) × paintSize; guide `painting`). Counted from the top-left of a width×height picture, the same whatever
+    renderer drew it."""
     doc, info = doc_and_shot(ctx, args)
     points = args.get("points") or ([[args["x"], args["y"]]] if "x" in args and "y" in args else None)
     if not points or ("points" in args and ("x" in args or "y" in args)):
@@ -137,6 +139,7 @@ def look_at(ctx, args):
             rows.append({"pixel": [x, y], **{k: v for k, v in r.items() if k not in ("ok", "ms")}})
         lines = [f'({r["pixel"][0]:g}, {r["pixel"][1]:g}): ' + (f'{r["item"]} ({r["prim"]}), material {r.get("material") or "none"}, '
                                                               f'{r["distance"]:.3g} m away at {[round(c, 3) for c in r["point"]]}'
+                                                              + (f', uv {[round(c, 4) for c in r["uv"]]}' if r.get("uv") else "")
                                                               if r.get("hit") else "nothing (background)") for r in rows]
         t = seconds(info, frame)
         return Reply(f'At frame {frame} ({t:.3f} s) of {info["id"]}, picture {w}×{h}: ' + "; ".join(lines) + ".",

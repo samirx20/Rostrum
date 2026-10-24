@@ -22,7 +22,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.mcp.files import render_cache_folder
 
-from . import draw, estimate
+from . import draw, estimate, layers
 from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot, frame_of, render_settings, renderer_of, seconds, size_of
 
 tools = Tools()
@@ -34,6 +34,7 @@ SETTINGS = {
     "samples": {"type": "integer", "minimum": 1, "maximum": 8192, "description": "Cycles samples per pixel. Default: the shot's render quality (draft 32, good 128, final 512)."},
     "denoise": {"type": "boolean", "description": "Cycles noise clean-up. Default: the shot's render settings (on)."},
     "exposure": {"type": "number", "default": 0, "description": "Stops, applied to the PNG only (the EXR stays scene-linear)."},
+    "passes": layers.PASSES_ARG,
 }
 
 
@@ -56,7 +57,13 @@ def _cycles(args: dict, renderer: str, s: dict) -> dict:
     return {"samples": args.get("samples", s["samples"]), "denoise": args.get("denoise", s["denoise"])} if renderer == "cycles" else {}
 
 
-def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[int], files: list[str], first_file: int) -> dict:
+def _shot(doc, info: dict) -> dict:
+    return next(x for x in doc.data["shots"] if x["id"] == info["id"])
+
+
+def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[int], files: list[str], first_file: int,
+              channels: list[str] | None = None) -> dict:
+    """The render's manifest; `channels` (the core's reply, when an EXR was written) adds what the EXR's layers are."""
     fps = info["fps"]
     return {"item": item, "version": int(m.group(1)) if (m := re.match(r"^v(\d+)\.partial$", partial.name)) else 0, "kind": "pictures",
             "made_by": "agent:rostrum-3d", "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -64,7 +71,8 @@ def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[
             "engine": f"rostrum-3d ({renderer})", "frames": {"first": first_file, "last": first_file + len(frames) - 1, "fps": f"{fps:g}/1",
                                                             "shot_frames": [frames[0], frames[-1]]},
             "size": list(size), "colour": {"space": "scene-linear Rec.709 (EXR), sRGB display (PNG, OpenColorIO)"},
-            "files": files, "checks": {"frame_count": "ok", "readable": "ok"}}
+            "files": files, "checks": {"frame_count": "ok", "readable": "ok"},
+            **({"exr": layers.describe(channels, doc.data)} if channels else {})}
 
 
 def _hashes(data: dict) -> dict:
@@ -98,7 +106,7 @@ def _renumber(folder: Path, name: str, ext: str, start: int, first_file: int):
 
 
 def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer: str, size: tuple[int, int], formats: list[str],
-          exposure: float = 0, settings: dict | None = None, folder=None) -> tuple[Path, list[Path], dict]:
+          exposure: float = 0, settings: dict | None = None, folder=None, passes: list[str] | None = None) -> tuple[Path, list[Path], dict]:
     """One picture of a shot frame through its camera, as a whole project render version (or in the render cache without a
     project folder). The one code path of the render_still tool and the 3D screen's Render button. Blocking: call it from a job.
     Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial."""
@@ -108,8 +116,9 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
     name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
     req = {f: str(partial / f"{name}.{f}") for f in formats}
     out = draw.render(where, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                      width=w, height=h, exposure=exposure, **req, **(settings or {}))
-    done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST))
+                      width=w, height=h, exposure=exposure, **req, **(settings or {}), **({"passes": passes} if passes else {}))
+    done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST,
+                                                  out.get("channels")))
     return done, [done / Path(p).name for p in req.values()], out
 
 
@@ -118,18 +127,19 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
     """One final picture of a shot through the shot camera (Cycles by default), as a project render with a manifest: png (sRGB, through
-    OpenColorIO) and/or exr (scene-linear, for the Editor). Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25)."""
+    OpenColorIO) and/or exr (scene-linear, for the Editor; its passes as named layers, listed in the manifest's `exr`). Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25)."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     frame, renderer = frame_of(ctx, info, args), renderer_of(args, "final")
     s = render_settings(doc, info)
     w, h = size_of(info, args, s["width"])
     formats = args.get("formats", ["png", "exr"])
+    passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, "exr" in formats)
     engine, item = draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
-                                 _cycles(args, renderer, s), ctx.app.folder)
+                                 _cycles(args, renderer, s), ctx.app.folder, passes)
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
                       "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=engine.take_notices())
@@ -140,7 +150,7 @@ def render_still(ctx, args):
 @tools.tool("render_video", {"properties": {**ITEM_SHOT, "quality": QUALITY_ARG, **SETTINGS,
                                              "start": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot. Default 0."},
                                              "end": {"type": "number", "minimum": 0, "description": "Seconds from the start of the shot (the frame at this time is the last one). Default: the last frame of the shot."},
-                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants)."},
+                                             "exr": {"type": "boolean", "default": False, "description": "Also keep every frame as scene-linear EXR next to the mp4 (what the Editor wants), with its passes as layers (passes)."},
                                              "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. One probe frame is timed first; if the estimate is over this, nothing is rendered and the error names settings that should fit."},
                                              "estimate_only": {"type": "boolean", "default": False, "description": "Time one probe frame (the middle one) and return the estimate; render no video."}}})
 def render_video(ctx, args):
@@ -167,10 +177,13 @@ def video_job(ctx, args):
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
     engine, item, count = draw.engine_of(ctx), doc.item_id, f1 - f0 + 1
     keep_exr = args.get("exr", False)
+    passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, keep_exr)
 
     def job_fn(job):
         t_start = time.perf_counter()
         probe_ms, probe_note = _probe(ctx.tool, engine, scene, info, (f0 + f1) // 2, renderer, (w, h), args, s)
+        if "shadow" in passes:                     # the Shadow pass draws every frame twice (core passes.h); the probe draws once
+            probe_ms, probe_note = probe_ms * 2, probe_note + ", doubled for the Shadow pass"
         est = estimate.total_seconds(probe_ms, count)
         note = f"estimated {est:.0f} s ({probe_ms:.0f} ms a frame; {probe_note})"
         data_est = {"estimate_s": round(est, 1), "probe_ms": round(probe_ms), "probe_note": probe_note}
@@ -188,9 +201,10 @@ def video_job(ctx, args):
         pngs = partial / "_png"
         pngs.mkdir()
         req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
-        draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene, progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
-                    camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
-                    timeoutS=3600, **req, **_cycles(args, renderer, s))
+        out = draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene,
+                          progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
+                          camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
+                          timeoutS=3600, **req, **_cycles(args, renderer, s), **({"passes": passes} if passes else {}))
         made = sorted(pngs.glob("*.png"))
         if len(made) != count or any(p.stat().st_size == 0 for p in made):        # fail loudly: the .partial stays, nothing is finished
             raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the frames of {info['id']}", f"are {len(made)} pictures, expected {count}", hint=f"Left in {partial}.")
@@ -199,7 +213,8 @@ def video_job(ctx, args):
             _renumber(partial, name, "exr", f0, FIRST)
         shutil.rmtree(pngs)
         files = [mp4.name, *(sorted(p.name for p in partial.glob("*.exr")))]
-        done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST))
+        done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST,
+                                                      out.get("channels")))
         took = time.perf_counter() - t_start
         return Reply(f'Rendered {info["id"]}: {count} frames at {fps:g} fps, {w}×{h}, {renderer}, as {mp4.name}, in {took:.0f} s '
                      f'({took / count:.2f} s a frame; estimated {est:.0f} s).',

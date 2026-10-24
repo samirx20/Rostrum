@@ -80,7 +80,7 @@ index 9c1f3e45..f8d3ec3e 100644
    // based on it (e.g. check whether an attribute is actually needed)
    bool rebuild = false;
 diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
-index 1457e775..0d8201af 100644
+index 1457e775..39b31f7a 100644
 --- a/src/hydra/light.cpp
 +++ b/src/hydra/light.cpp
 @@ -31,6 +31,7 @@ TF_DEFINE_PRIVATE_TOKENS(_tokens,
@@ -91,7 +91,21 @@ index 1457e775..0d8201af 100644
  );
  // clang-format on
  
-@@ -134,7 +135,25 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+@@ -108,8 +109,11 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+       }
+     }
+ 
+-    if (auto ds = GetTypedDataSource<bool>(lightDs, HdLightTokens->shadowEnable)) {
+-      _light->set_cast_shadow(ds->GetTypedValue(0.0f));
++    {
++      /* Rostrum: the light's own shadow:enable, unless rostrum:castShadows is off (session.h) */
++      const auto ds = GetTypedDataSource<bool>(lightDs, HdLightTokens->shadowEnable);
++      _light->set_cast_shadow(static_cast<HdCyclesSession *>(renderParam)
++                                  ->LightShadow(_light, ds ? ds->GetTypedValue(0.0f) : true));
+     }
+ 
+     if (_lightType == HdPrimTypeTokens->distantLight) {
+@@ -134,7 +138,25 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
          area_light->set_sizev(ds->GetTypedValue(0.0f));
        }
      }
@@ -118,7 +132,7 @@ index 1457e775..0d8201af 100644
        SpotLight *spot_light = static_cast<SpotLight *>(_light);
        const bool treatAsPoint = GetTypedValue<bool>(lightDs, _tokens->treatAsPoint, false);
        if (treatAsPoint) {
-@@ -184,6 +203,14 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
+@@ -184,6 +206,14 @@ void HdCyclesLight::Sync(HdSceneDelegate *sceneDelegate,
    if (_light->is_modified()) {
      _light->tag_update(lock.scene);
    }
@@ -133,7 +147,15 @@ index 1457e775..0d8201af 100644
  
    *dirtyBits = DirtyBits::Clean;
  }
-@@ -396,7 +423,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
+@@ -349,6 +379,7 @@ void HdCyclesLight::Finalize(HdRenderParam *renderParam)
+ 
+   const SceneLock lock(renderParam);
+   const bool keep_nodes = static_cast<const HdCyclesSession *>(renderParam)->keep_nodes;
++  static_cast<HdCyclesSession *>(renderParam)->ForgetLight(_light);
+ 
+   if (!keep_nodes) {
+     /* Delete the object before the light, since the object references the light. */
+@@ -396,7 +427,10 @@ void HdCyclesLight::Initialize(HdRenderParam *renderParam)
  
    _object->set_geometry(_light);
    _object->set_random_id(hash_uint2(hash_string(_light->name.c_str()), 0));
@@ -146,7 +168,7 @@ index 1457e775..0d8201af 100644
    Shader *const shader = lock.scene->create_node<Shader>();
    array<Node *> used_shaders;
 diff --git a/src/hydra/render_delegate.cpp b/src/hydra/render_delegate.cpp
-index 3cda4a57..7ef721ce 100644
+index 3cda4a57..6dc3b946 100644
 --- a/src/hydra/render_delegate.cpp
 +++ b/src/hydra/render_delegate.cpp
 @@ -18,6 +18,7 @@
@@ -157,7 +179,38 @@ index 3cda4a57..7ef721ce 100644
  #include "scene/scene.h"
  #include "session/session.h"
  
-@@ -413,6 +414,14 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+@@ -154,11 +155,11 @@ void HdCyclesDelegate::SetDrivers(const HdDriverVector &drivers)
+ 
+ bool HdCyclesDelegate::IsDisplaySupported() const
+ {
+-#if defined(_WIN32) && defined(WITH_HYDRA_DISPLAY_DRIVER)
+-  return _hgi && _hgi->GetAPIName() == HgiTokens->OpenGL;
+-#else
++  /* Rostrum: never Cycles' OpenGL display driver. It needs a GL context of its own that it fails to
++   * make in our engine ("PathTraceDisplay could not begin update"); once it took the colour output
++   * (as soon as more outputs than colour were bound, and in the progressive viewport) the colour
++   * stayed black. Without it every output, colour too, goes through the output driver on the CPU. */
+   return false;
+-#endif
+ }
+ 
+ const TfTokenVector &HdCyclesDelegate::GetSupportedRprimTypes() const
+@@ -369,6 +370,14 @@ HdAovDescriptor HdCyclesDelegate::GetDefaultAovDescriptor(const TfToken &name) c
+   {
+     return HdAovDescriptor(HdFormatInt32, false, VtValue(-1));
+   }
++  /* Rostrum: the light passes (session.cpp, kAovToPass) */
++  for (const char *light :
++       {"diffuse", "glossy", "transmission", "volume", "emission", "background", "diffuseDirect"})
++  {
++    if (name.GetString() == light) {
++      return HdAovDescriptor(HdFormatFloat32Vec3, false, VtValue(GfVec3f(0.0f)));
++    }
++  }
+ 
+   return HdAovDescriptor();
+ }
+@@ -413,6 +422,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
      _renderParam->SetStageMetersPerUnit(
          VtValue::Cast<double>(value).GetWithDefault(_renderParam->GetStageMetersPerUnit()));
    }
@@ -169,10 +222,14 @@ index 3cda4a57..7ef721ce 100644
 +    _renderParam->SetShutter(_renderParam->GetShutterOpen(),
 +                             float(VtValue::Cast<double>(value).GetWithDefault(0.0)));
 +  }
++  else if (key == HdCyclesRenderSettingsTokens->castShadows) {
++    _renderParam->SetCastShadows(VtValue::Cast<bool>(value).GetWithDefault(true));
++    ++_settingsVersion;
++  }
    else if (key == HdCyclesRenderSettingsTokens->timeLimit) {
      session->set_time_limit(
          VtValue::Cast<double>(value).GetWithDefault(session->params.time_limit));
-@@ -436,6 +445,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
+@@ -436,6 +457,18 @@ void HdCyclesDelegate::SetRenderSetting(const PXR_NS::TfToken &key, const PXR_NS
        const ustring socketName(keyString, sizeof("cycles:integrator:") - 1);
        if (const SocketType *socket = scene->integrator->type->find_input(socketName)) {
          SetNodeValue(scene->integrator, *socket, value);
@@ -191,7 +248,7 @@ index 3cda4a57..7ef721ce 100644
          ++_settingsVersion;
        }
      }
-@@ -450,6 +471,12 @@ VtValue HdCyclesDelegate::GetRenderSetting(const TfToken &key) const
+@@ -450,6 +483,15 @@ VtValue HdCyclesDelegate::GetRenderSetting(const TfToken &key) const
    if (key == HdCyclesRenderSettingsTokens->stageMetersPerUnit) {
      return VtValue(_renderParam->GetStageMetersPerUnit());
    }
@@ -201,11 +258,14 @@ index 3cda4a57..7ef721ce 100644
 +  if (key == HdCyclesRenderSettingsTokens->shutterClose) {
 +    return VtValue(double(_renderParam->GetShutterClose()));
 +  }
++  if (key == HdCyclesRenderSettingsTokens->castShadows) {
++    return VtValue(_renderParam->GetCastShadows());
++  }
    if (key == HdCyclesRenderSettingsTokens->device) {
      return VtValue(TfToken(Device::string_from_type(session->params.device.type)));
    }
 diff --git a/src/hydra/render_delegate.h b/src/hydra/render_delegate.h
-index f6148481..5efa8761 100644
+index f6148481..3b984866 100644
 --- a/src/hydra/render_delegate.h
 +++ b/src/hydra/render_delegate.h
 @@ -14,7 +14,7 @@ HDCYCLES_NAMESPACE_OPEN_SCOPE
@@ -213,15 +273,32 @@ index f6148481..5efa8761 100644
  // clang-format off
  #define HD_CYCLES_RENDER_SETTINGS_TOKENS \
 -    (stageMetersPerUnit) \
-+    (stageMetersPerUnit)     ((shutterOpen, "rostrum:shutterOpen"))     ((shutterClose, "rostrum:shutterClose")) \
++    (stageMetersPerUnit)     ((shutterOpen, "rostrum:shutterOpen"))     ((shutterClose, "rostrum:shutterClose"))     ((castShadows, "rostrum:castShadows")) \
      ((device, "cycles:device")) \
      ((threads, "cycles:threads")) \
      ((timeLimit, "cycles:time_limit")) \
 diff --git a/src/hydra/session.cpp b/src/hydra/session.cpp
-index ae1ede13..afa1db60 100644
+index ae1ede13..979ae5c8 100644
 --- a/src/hydra/session.cpp
 +++ b/src/hydra/session.cpp
-@@ -100,6 +100,7 @@ void HdCyclesSession::UpdateScene()
+@@ -24,6 +24,16 @@ const std::unordered_map<TfToken, PassType, TfToken::HashFunctor> kAovToPass = {
+     {HdAovTokens->normal, PASS_NORMAL},
+     {HdAovTokens->primId, PASS_OBJECT_ID},
+     {HdAovTokens->instanceId, PASS_AOV_VALUE},
++    /* Rostrum: the light passes, each the light as it reaches the camera (surface colour
++     * included), so diffuse + glossy + transmission + volume + emission + background add up
++     * to color before the noise clean-up. diffuseDirect is for the Shadow pass. */
++    {TfToken("diffuse"), PASS_DIFFUSE},
++    {TfToken("glossy"), PASS_GLOSSY},
++    {TfToken("transmission"), PASS_TRANSMISSION},
++    {TfToken("volume"), PASS_VOLUME},
++    {TfToken("emission"), PASS_EMISSION},
++    {TfToken("background"), PASS_BACKGROUND},
++    {TfToken("diffuseDirect"), PASS_DIFFUSE_DIRECT},
+ };
+ 
+ }  // namespace
+@@ -100,6 +110,7 @@ void HdCyclesSession::UpdateScene()
    // Update background depending on presence of a background light
    if (scene->light_manager->need_update()) {
      Light *background_light = nullptr;
@@ -229,7 +306,7 @@ index ae1ede13..afa1db60 100644
      bool have_lights = false;
      for (Object *object : scene->objects) {
        if (!object->get_geometry()->is_light()) {
-@@ -111,6 +112,7 @@ void HdCyclesSession::UpdateScene()
+@@ -111,6 +122,7 @@ void HdCyclesSession::UpdateScene()
        Light *light = static_cast<Light *>(object->get_geometry());
        if (light->is_background_light()) {
          background_light = light;
@@ -237,7 +314,7 @@ index ae1ede13..afa1db60 100644
          break;
        }
      }
-@@ -130,7 +132,11 @@ void HdCyclesSession::UpdateScene()
+@@ -130,7 +142,11 @@ void HdCyclesSession::UpdateScene()
      }
      else {
        scene->background->set_shader(background_light->get_shader());
@@ -250,11 +327,51 @@ index ae1ede13..afa1db60 100644
      }
  
      scene->background->tag_update(scene);
+@@ -162,9 +178,26 @@ void HdCyclesSession::SyncAovBindings(const HdRenderPassAovBindingVector &aovBin
+     pass->set_type(type);
+     pass->set_mode(mode);
+     pass->set_name(ustring(aovBinding.aovName.GetString()));
++    pass->set_include_albedo(true); /* Rostrum: light passes as seen, not divided by the colour */
+   }
+ }
+ 
++void HdCyclesSession::SetCastShadows(const bool on)
++{
++  if (on == _castShadows) {
++    return;
++  }
++  const SceneLock lock(this);
++  _castShadows = on;
++  for (const auto &[light, own] : _lightShadows) {
++    light->set_cast_shadow(own && on);
++    if (light->is_modified()) {
++      light->tag_update(lock.scene);
++    }
++  }
++  lock.scene->light_manager->tag_update(lock.scene, LightManager::LIGHT_MODIFIED);
++}
++
+ void HdCyclesSession::RemoveAovBinding(HdRenderBuffer *renderBuffer)
+ {
+   for (HdRenderPassAovBinding &aovBinding : _aovBindings) {
 diff --git a/src/hydra/session.h b/src/hydra/session.h
-index 4c4e8ff6..52d86352 100644
+index 4c4e8ff6..368489cf 100644
 --- a/src/hydra/session.h
 +++ b/src/hydra/session.h
-@@ -40,6 +40,22 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
+@@ -10,6 +10,12 @@
+ 
+ #include <pxr/imaging/hd/renderDelegate.h>
+ 
++#include <unordered_map>
++
++CCL_NAMESPACE_BEGIN
++class Light;
++CCL_NAMESPACE_END
++
+ HDCYCLES_NAMESPACE_OPEN_SCOPE
+ 
+ struct SceneLock {
+@@ -40,6 +46,41 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
      _stageMetersPerUnit = stageMetersPerUnit;
    }
  
@@ -274,15 +391,36 @@ index 4c4e8ff6..52d86352 100644
 +    _shutterClose = close;
 +  }
 +
++  /* Rostrum: the rostrum:castShadows render setting. Off, no light casts a shadow (the Shadow pass
++   * renders the scene's direct light once with shadows and once without); on, each light casts
++   * shadows as its own shadow:enable says. LightShadow records a light's own value and returns
++   * what to give Cycles; ForgetLight drops a light that is deleted. */
++  bool GetCastShadows() const
++  {
++    return _castShadows;
++  }
++  void SetCastShadows(bool on);
++  bool LightShadow(CCL_NS::Light *light, const bool own)
++  {
++    _lightShadows[light] = own;
++    return own && _castShadows;
++  }
++  void ForgetLight(CCL_NS::Light *light)
++  {
++    _lightShadows.erase(light);
++  }
++
    PXR_NS::HdRenderPassAovBinding GetDisplayAovBinding() const
    {
      return _displayAovBinding;
-@@ -65,6 +81,8 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
+@@ -65,6 +106,10 @@ class HdCyclesSession final : public PXR_NS::HdRenderParam {
   private:
    const bool _ownCyclesSession;
    double _stageMetersPerUnit = 0.01;
 +  float _shutterOpen = 0.0f;
 +  float _shutterClose = 0.0f;
++  bool _castShadows = true;
++  std::unordered_map<CCL_NS::Light *, bool> _lightShadows;
    PXR_NS::HdRenderPassAovBindingVector _aovBindings;
    PXR_NS::HdRenderPassAovBinding _displayAovBinding;
  };

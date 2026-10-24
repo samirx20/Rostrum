@@ -91,7 +91,8 @@ void build_mesh(Item& it, const SdfPath& path, const JsObject* skin) {
   UsdGeomMesh m = UsdGeomMesh::Define(it.ctx.stage, path);
   author_transform(it, m.GetPrim());
   FaceGroups groups;
-  const MeshData d = shape(it.props, groups);
+  MeshData d = shape(it.props, groups);
+  own_uvs(it.props, d);
   write_mesh(m, d);
   if (skin) skin_mesh(m, d, *skin, it.ctx.start, it.id + ".skin");
   const std::string mat = it.props.str("material");

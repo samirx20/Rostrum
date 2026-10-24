@@ -9,6 +9,7 @@ from rostrum_core import Param
 
 from .field_kit import ANY, CH, D, IS, NOT, N, POLY, S, T, TRANSFORM, X
 from .outline_fields import FIELDS as OUTLINE_FIELDS, OUTLINE_SHAPES
+from .paint_fields import MESH as PAINT_MESH
 
 SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
 
@@ -48,5 +49,6 @@ MESH = [
     T("skinned", "Bend with bones", "Bones", True, S, {"fact": "boned"},
       help="The mesh bends with its bone chain (each point follows the bones nearest it). Off: the bones stay but "
            "the mesh keeps its shape"),
+    *PAINT_MESH,                    # a mesh is a paint canvas (paint_fields.py)
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
 ] + TRANSFORM

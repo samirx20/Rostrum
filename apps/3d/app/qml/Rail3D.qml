@@ -9,11 +9,11 @@ import RostrumKit
 // Logo from SVG asks for the file first, From a 2D drawing for the 2D item and its path layer (one list, two levels);
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
-// selected, the tool Select again. The groups that aren't built yet (Edit mesh, Paint, Simulate, Import) are absent
-// until they work (rule of individuality).
+// selected, the tool Select again. Paint (B) shows while one mesh is selected (paint_mode_qt.py) and stays on while
+// painting. The groups that aren't built yet (Simulate, Import) are absent until they work (rule of individuality).
 ToolRail {
     id: rail
-    current: "select"
+    current: paintMode.on ? "paint" : "select"
     iconKinds: ({ shape3d: icon3d })
     Component { id: icon3d; Icon3D { } }
     function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value })) }
@@ -37,7 +37,10 @@ ToolRail {
         { sep: true },
         { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
-    ]
+    ].concat(paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh selected
+             ? [{ sep: true }, { id: "paint", items: [{ name: "Paint", icon: "brush", tool: "paint", job: "paint_tool",
+                                                       help: "Paint on the selected mesh: colour, roughness, height, metal or glow." }] }]
+             : [])
     // Poses and Onion skin each open and close on their own (PosesPanel.qml, OnionPanel.qml): their button toggles its panel,
     // Esc closes the one with the keys, and clicking elsewhere leaves them open (you work in the viewport with the ghosts on).
     // `panelOpen` stays false so the kit's rail never closes one for the other's button.
@@ -60,6 +63,7 @@ ToolRail {
     }
     // a shape waits for a click in the viewport (it lands on the surface there); lights and cameras are added at once
     onPicked: (e) => {
+        if (e.tool === "paint" || (e.tool === "select" && paintMode.on)) return paintMode.toggle()
         if (e.act === "bones") viewport.bones.start()
         else if (e.act === "mesh:svg") svgDialog.open()
         else if (e.act === "mesh:path2d") rail.openDrawings()

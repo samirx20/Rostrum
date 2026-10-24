@@ -22,7 +22,7 @@ scene from the document each time you look. Imported USD files stay untouched; y
      and to check a thing is where you meant (several points at once with `points`).
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
-5. **Render last.** `render_still` (png for people, exr for the Editor) and `render_video` are jobs: they return a job id at once;
+5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` are jobs: they return a job id at once;
    `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
@@ -47,6 +47,17 @@ A shot carries its own render settings as fields, set like any other shot field 
 - `renderSize` `full`, `half` or `double` of the shot's `width` x `height`.
 - `renderRange` `shot` (all of it) or `range`; then `renderStart` and `renderEnd` are seconds from the start of the shot,
   and the frame at `renderEnd` is the last one.
+- `renderFormat` `png` (the default), `exr` or `both`: what the screen's render sheet saves.
+- The passes an EXR carries, switches that exist only while `renderFormat` is `exr` or `both`: `passLight`, `passShadow`,
+  `passReflections`, `passMasks` (on by default), `passDepth`, `passNormal`. A call's `passes` (`["light", "shadow",
+  "reflections", "masks", "depth", "normal"]`, `[]` = the picture alone) overrides them for that call; without it,
+  `render_still` and `render_video` (with `exr`) use the shot's switches.
+
+**Passes in the EXR** (Cycles only; the manifest's `exr` part lists every channel, its layer and which item each mask is):
+`light.R/G/B` (matte surfaces' light), `reflections.R/G/B` (glossy), with either `rest.R/G/B` (glass, glow, sky, haze), so
+`R G B = light + reflections + rest` before noise clean-up (exactly with `denoise: false`); `shadow.A` (0 lit .. 1 in full
+shadow; it renders each frame twice, so it doubles the time, and the estimate counts it); `masks.<item id>` (hard-edged);
+`depth.Z` (metres, 32-bit; 0 where nothing is); `normal.X/Y/Z` (world space, Y up).
 
 `render_still`, `render_video` and the Render button all read these same fields, so what you time is what is drawn.
 Asking for something else in a call (`quality`, `width`) changes only that call, not the shot.
@@ -108,6 +119,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
   guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
+- **Paint on a model.** `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height, metal, glow) and
+  `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the `uv` under a pixel.
+  Guide `painting`.
 - **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
   lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
   one "Turn"; Scale (sx, sy, sz) one "Scale"; any other field its own. Each has its stretches (the time between two
@@ -169,3 +183,5 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 A failed look or render says what failed (the frame, the camera, the item) and, when the engine had stopped, that it was started
 again. Read the line; it names what is accepted. A scene the engine refuses is refused whole, and the engine keeps the previous
 scene, so a look after a refused change shows the last good state, not the new one.
+A render with passes that "came out empty while its <layer> layer is not" wrote no file: the picture was lost on the way,
+not the scene. Render again; if it repeats, report it with the engine log the message names.

@@ -24,12 +24,13 @@ ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # 
 KEYED = (*ITEMS, "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
-         "import": ["children", "parts", "keys"], "mesh": ["bones", "keys"], "light": ["keys"], "camera": ["keys"],
+         "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
+         "camera": ["keys"],
          "combine": ["children", "keys"],
          "rig": ["children", "keys"],
-         "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py)
+         "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
 DATA_GROUPS = {"Mesh data", "Bone data"}       # data an operation writes (a mesh's points, a bone's head), never rows
-STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group == "Shape"},     # a mesh's shape is built once
+STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
          "bone": {"x", "y", "z", "length"},       # a bone moves only by its Turn

@@ -34,13 +34,14 @@ from screen3d.bridge3d import Bridge3D  # noqa: E402
 from screen3d.files_3d import FILES_3D  # noqa: E402
 from screen3d.sample import SOURCE  # noqa: E402
 from screen3d.scratch_doc import isolated  # noqa: E402
-from screen3d.steps import do_step  # noqa: E402
+from screen3d.steps import do_step, step_waits_ms  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      # Help's guides (also the agents' guides)
     ("window.md", "The Rostrum3D window"), ("rendering.md", "Rendering"),
     ("agents.md", "Working with an AI agent"), ("script.md", "Building a scene with a script"), ("materials.md", "Materials"),
-    ("lighting.md", "Lighting"), ("camera-rigs.md", "Camera rigs")])
+    ("lighting.md", "Lighting"), ("camera-rigs.md", "Camera rigs"),
+    ("painting.md", "Painting on a model")])
 
 
 def load_doc(args) -> tuple[Document, bool]:
@@ -76,7 +77,7 @@ class Screen:
         old = (self.engine, self.win, self.bridge)
         self.bridge = bridge = Bridge3D(doc, shot_id, autosave=autosave)
         _, self.engine, self.win = start(HERE / "qml" / "Main.qml",
-                                         {"backend": bridge, "sender": bridge.send_to, "viewport": bridge.viewport, "gizmo": bridge.viewport.gizmo, "meshEdit": bridge.viewport.mesh_edit, "guides": GUIDES, "files": self.files}, self.size,
+                                         {"backend": bridge, "sender": bridge.send_to, "viewport": bridge.viewport, "gizmo": bridge.viewport.gizmo, "meshEdit": bridge.viewport.mesh_edit, "paintMode": bridge.viewport.paint, "guides": GUIDES, "files": self.files}, self.size,
                                          providers={"view": bridge.viewport.provider, "ball": bridge.balls.provider})
         if old[0] is not None:
             stop(old[0], old[1], then=lambda: self._free(old[2]))
@@ -217,8 +218,8 @@ def main():
         app.quit()
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot or args.check_layout:
-        QTimer.singleShot(30000 + (600000 if any(s.startswith("render") for s in args.step) else 0),
+    if args.shot or args.check_layout:      # 30 s for the run's own work, plus every wait the steps ask for
+        QTimer.singleShot(30000 + step_waits_ms(args.step),
                           lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     screen.close()

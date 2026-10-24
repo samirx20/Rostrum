@@ -21,7 +21,9 @@ def ALL(*conditions):
 MATERIAL = [
     C("baseColor", "Base colour", "Surface", "#cccccc", when=IS("baseColorTexture", "")),
     X("baseColorTexture", "Base colour image", "Surface", "", S, help='Absolute path of an sRGB image on the UVs; replaces the base colour'),
-    N("metallic", "Metallic", "Surface", 0, 1, 0.01, help="1 = metal (its colour tints the reflections)"),
+    N("metallic", "Metallic", "Surface", 0, 1, 0.01, when=IS("metallicTexture", ""),
+      help="1 = metal (its colour tints the reflections)"),
+    X("metallicTexture", "Metallic image", "Surface", "", D, help="A grey image read as raw numbers: white = metal"),
     N("roughness", "Roughness", "Surface", 0, 1, 0.01, default=0.5, when=IS("roughnessTexture", ""),
       help="0 = mirror, 1 = chalk. On glass it also blurs what is seen through it (frosted glass)"),
     X("roughnessTexture", "Roughness image", "Surface", "", D, help="A grey image read as raw numbers"),

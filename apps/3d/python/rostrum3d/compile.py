@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, fields as F, follow, material_scene, outline as outlines, rigs, skin
+from . import aim, fields as F, follow, material_scene, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -20,7 +20,7 @@ FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns 
 CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
 RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | {FOCUS_ITEM, TIMING, SKINNED}   # fields the compiler resolves, never sent
-DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
+DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
 def _shot(data: dict, shot_id: str) -> dict:
@@ -140,7 +140,7 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')
-    return {
+    scene = {
         "format": FORMAT, "version": VERSION,
         # shutter: frames the shutter is open, centred on each frame (USD's camera shutter is frame-relative and
         # Cycles' default motion position is the centre), so the sharp picture of frame n sits in the middle of its
@@ -150,3 +150,5 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
         "materials": material_scene.materials(data, frames, info["fps"], folder, _out),
         "items": [_node(i, fr) for i in data.get("items", [])],
     }
+    paint_scene.paint(scene, data, _out)          # painted meshes get their own material with the painted pictures
+    return scene

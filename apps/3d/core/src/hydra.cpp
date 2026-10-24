@@ -67,6 +67,10 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
   set("cycles:samples", VtValue(s.samples));
   set("cycles:integrator:use_denoise", VtValue(s.denoise));
   set("cycles:integrator:denoise_start_sample", VtValue(progressive ? 0 : s.samples));
+  // our patch (-r3); off only for the Shadow pass (passes.h). A plug-in without it reports nothing: left alone then,
+  // as setting an unknown key would start the Final look over on every step.
+  if (!s.castShadows || !e.GetRendererSetting(TfToken("rostrum:castShadows")).IsEmpty())
+    set("rostrum:castShadows", VtValue(s.castShadows));
   double open = 0, close = 0;
   if (stage && !camera.IsEmpty())
     if (const UsdGeomCamera cam{stage->GetPrimAtPath(camera)}) {
@@ -114,12 +118,29 @@ class Hydra::Engine : public UsdImagingGLEngine {
   }
   bool storm = false;  // set when made: Storm alone gets the sun light (storm_sun.h)
 
+  // The colour output plus `extra` (Cycles' passes, passes.h). Set only on a change: each change starts Cycles over.
+  void use_aovs(const std::vector<std::string>& extra) {
+    if (extra == aovs_) return;
+    TfTokenVector want{HdAovTokens->color};
+    for (const auto& n : extra) want.emplace_back(n);
+    if (!SetRendererAovs(want)) throw Error("render.passes: the renderer could not make the outputs they need");
+    aovs_ = extra;
+  }
+  // the scene prim a Hydra prim id (the primId output) stands for; empty when it names none. Through the engine's
+  // public decoding, which works with Hydra 2.0 too: there the engine has no render index of its own (null), and
+  // asking for one crashed the engine on the first render with masks (brief 15).
+  SdfPath rprim(int id) {
+    SdfPath path;
+    return DecodeIntersection(id, 0, &path) ? path : SdfPath();
+  }
+
  private:
   // Storm's shadow pass runs only when the task controller says so (hdx simpleLightTask: enableShadows)
   void enable_shadows(bool on) {
     if (_taskControllerSceneIndex) _taskControllerSceneIndex->SetEnableShadows(on);
     else if (_taskController) _taskController->SetEnableShadows(on);
   }
+  std::vector<std::string> aovs_;  // the extra outputs set now (use_aovs)
 };
 
 Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
@@ -193,11 +214,16 @@ Framebuffer& Hydra::mask_framebuffer(int w, int h) {
 }
 
 Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int frame, int w, int h,
-                    const DrawSettings& s, GpuMemWatch& mem) {
+                    const DrawSettings& s, GpuMemWatch& mem, Aovs* aovs) {
   const UsdGeomCamera cam = camera_at(stage_, camera);
   TfErrorMark mark;
   auto& e = engine(renderer);
-  if (renderer == "cycles") cycles_settings(e, s, stage_, camera, false);
+  if (!s.aovs.empty() && renderer != "cycles")
+    throw Error("render.passes: only the cycles renderer makes passes, not " + renderer);
+  if (renderer == "cycles") {
+    cycles_settings(e, s, stage_, camera, false);
+    e.use_aovs(s.aovs);
+  }
   if (renderer != "cycles")  // a render never sees the studio
     e.light_raster(stage_, frame, true, {}, cam.GetCamera(UsdTimeCode(frame)).GetFrustum());
   e.SetCameraPath(camera);
@@ -224,7 +250,16 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
                   std::to_string(int(s.timeoutS)) + " s (timeoutS); no file written");
     if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
-  Picture p{w, h, fb.read_rgba()};
+  if (s.aovs.empty()) return Picture{w, h, fb.read_rgba()};
+  // With more outputs than colour the engine presents nothing into our framebuffer (brief 15: an empty picture), so
+  // the colour is read from its own output like the others (on the CPU: the patch keeps Cycles' GL display off).
+  std::vector<std::string> names = s.aovs;
+  names.push_back(HdAovTokens->color.GetString());
+  Aovs read = read_aovs(e, names, w, h, [&](int id) { return e.rprim(id); });
+  if (read.channels[HdAovTokens->color.GetString()] != 4) throw Error("render: the colour output is not RGBA");
+  Picture p{w, h, std::move(read.planes[HdAovTokens->color.GetString()])};
+  read.planes.erase(HdAovTokens->color.GetString());
+  if (aovs) *aovs = std::move(read);
   return p;
 }
 

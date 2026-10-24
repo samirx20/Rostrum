@@ -13,14 +13,15 @@ from __future__ import annotations
 
 import re
 
+import rostrum_paint
 from rostrum_core import DocKind, Registry
 from rostrum_core.tree import walk
 
-from . import fields as F
+from . import fields as F, paint_fields
 
-LISTS = F.LISTS
+LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
-         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",)}
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -43,7 +44,8 @@ def facts(item: dict) -> dict:
         return {"number": "v" in item, "color": "c" in item}
     if item.get("type") in F.KEYED:
         return {"animated": F.animated_fact(item), "animating": True,    # a screen overrides animating with its page
-                "boned": bool(item.get("bones"))}                         # a mesh with a chain: Bend with bones shows
+                "boned": bool(item.get("bones")),                         # a mesh with a chain: Bend with bones shows
+                "painted": bool(item.get("paints"))}                      # a mesh with paint layers: Paint size shows
     return {}
 
 
@@ -138,5 +140,8 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
-from . import ops_bones, ops_combine, ops_follow, ops_items, ops_keys, ops_lipsync, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+# painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel
+rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=paint_fields.LAYER)
+
+from . import ops_bones, ops_combine, ops_follow, ops_items, ops_keys, ops_lipsync, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene, unfold  # noqa: E402,F401  (they register on REGISTRY)
 from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations)

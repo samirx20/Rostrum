@@ -2,6 +2,7 @@
 #pragma once
 #include <pxr/base/js/value.h>
 #include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/mesh.h>
 
 #include <functional>
 #include <memory>
@@ -23,6 +24,7 @@ class Core {
   PXR_NS::JsObject view(const PXR_NS::JsObject& a);
   PXR_NS::JsObject pick(const PXR_NS::JsObject& a);
   PXR_NS::JsObject geometry(const PXR_NS::JsObject& a);  // geometry_request.cpp
+  PXR_NS::JsObject unfold(const PXR_NS::JsObject& a);    // geometry_request.cpp (unfold.h)
   PXR_NS::JsObject save(const PXR_NS::JsObject& a);
   PXR_NS::JsObject info();
 
@@ -31,6 +33,8 @@ class Core {
   void need_scene(const char* request) const;
   PXR_NS::SdfPath camera(const std::string& id, const char* request) const;
   void check_frame(int frame, const char* where) const;
+  // the built mesh of a top-level `mesh` or `combine` item (geometry, unfold); loud about anything else
+  PXR_NS::UsdGeomMesh built_mesh(const std::string& id, const char* request) const;
 
   PXR_NS::UsdStageRefPtr stage_;
   std::unique_ptr<Hydra> hydra_;

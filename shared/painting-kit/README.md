@@ -25,6 +25,8 @@ see the canvas and know where each stroke landed (`docs/PLAN.md` › Tools for a
 import rostrum_paint
 rostrum_paint.register(REGISTRY, canvas_types=("frame",))      # paint.add/set/move/remove/clear/unlock,
                                                                # stroke.add/set/remove, fill.set, paintmask.add/set
+rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=[channel])   # a host's own paint layer fields
+                                                               # (3D: what a layer paints), on paint.add and paint.set
 KIND = DocKind(..., lists={..., "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS})
 
 doc.apply([{"op": "stroke.add", "target": "ink", "args": {"points": [[x, y, pressure], …], "color": "#ffb040",

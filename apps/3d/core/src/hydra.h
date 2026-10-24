@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "aovs.h"
 #include "ghosts.h"
 #include "gl_context.h"
 #include "gpu_mem.h"
@@ -56,6 +57,8 @@ struct DrawSettings {
   int samples = 128;      // Cycles
   bool denoise = true;    // Cycles
   double timeoutS = 600;  // a progressive renderer must finish within this
+  std::vector<std::string> aovs;  // Cycles: the extra outputs to read back (passes.h aovs_for), into draw()'s `aovs`
+  bool castShadows = true;        // Cycles: off, no light casts a shadow (the Shadow pass's second render)
 };
 
 class Hydra {
@@ -68,8 +71,9 @@ class Hydra {
   std::vector<std::string> available() const;  // the names whose plug-in this machine has
   std::string gl_renderer() const { return gl_.renderer(); }
 
+  // one render through a scene camera; with `s.aovs` (Cycles only) their outputs are read into `aovs`
   Picture draw(const std::string& renderer, const PXR_NS::SdfPath& camera, int frame, int width, int height,
-               const DrawSettings& s, GpuMemWatch& mem);
+               const DrawSettings& s, GpuMemWatch& mem, Aovs* aovs = nullptr);
   // one live viewport picture through `frustum` (a scene camera's or the free camera's)
   ViewDrawn view(const std::string& renderer, const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
                  const ViewLook& look, GpuMemWatch& mem);

@@ -75,6 +75,10 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   **Handheld** start at once and run the way the camera looks. The new rig is selected: its Distance, Angle, Lift …
   are in the settings panel (guides/camera-rigs.md).
 
+- **Paint** (B), at the bottom while one mesh is selected: paint on it (colour, roughness, height, metal, glow). The
+  settings panel becomes Brush and Paint layers; a drag on the mesh paints, one undo step per stroke; B or Esc leaves.
+  The guide `painting` has it all.
+
 **On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (while a mesh is selected), Lights and Camera:
 
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
@@ -98,8 +102,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
 
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
-selected item. The rail only shows tools that work today. Others (type and logos, editing faces, painting,
-simulation, import) appear as they are built.
+selected item. The rail only shows tools that work today. Others (simulation, import) appear as they are built.
 
 ## The settings panel (right)
 

@@ -161,6 +161,10 @@ class Engine:
         """The built mesh of a `mesh` or `combine` item in its own space: points, faceCounts, faceIndices."""
         return self._request({"geometry": {"item": item}})
 
+    def unfold(self, item: str, size: int = 2048) -> dict:
+        """A `mesh` item's built mesh laid flat (xatlas): uvs (one u, v per face corner), charts, used."""
+        return self._request({"unfold": {"item": item, "size": size}})
+
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""

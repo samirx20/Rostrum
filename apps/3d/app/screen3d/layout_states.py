@@ -19,8 +19,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife",
-         "render-sheet-shot", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers",
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -128,6 +128,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("export-sheet", s, ["export-open"]),
         ("render-sheet", s, ["estimate-recorded", "render-sheet"]),
         ("render-sheet-shot", s, ["page animate", "estimate-recorded", "render-sheet", "estimate-wait"]),
+        ("render-sheet-exr", s, ["page animate", "estimate-recorded", "render-sheet", "estimate-wait", "sheet-format both"]),
         ("render-sheet-budget", s, ["page animate", "estimate-recorded", "render-sheet", "estimate-wait", "budget 1 s"]),
         ("commands", s, ["commands"]),
         ("commands-search", s, ["commands light"]),
@@ -148,6 +149,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                 "mesh-knife-at 0.6 0.5", "wait 400"]),
         ("mesh-edit-xray", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-xray", "mesh-kind points",
                                "mesh-box 0.3 0.3 0.7 0.7", "wait 600"]),
+        ("paint-mode", s, ["select block", "paint-b", "wait 1500"]),                    # Brush, Paint layers (none yet)
+        ("paint-layers", s, ["select block", "paint-b", "wait 1500", "paint-layer", "paint-channel roughness",
+                             "paint-drag 0.42 0.5 0.58 0.55", "wait 1500"]),            # a roughness stroke, its layer
+        ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),
         ("long-status", s, [f"say {LONG_STATUS}"]),

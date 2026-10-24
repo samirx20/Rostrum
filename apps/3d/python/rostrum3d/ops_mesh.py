@@ -18,7 +18,7 @@ _GEOMETRY = None          # (doc, item id) -> {"points", "faceCounts", "faceIndi
 
 
 def use_engine(engine, folder=None):
-    """Let mesh.edit ask this engine for a shape's mesh (through the document's first shot's scene)."""
+    """Let mesh.edit (and mesh.unfold) ask this engine for a shape's mesh (through the document's first shot's scene)."""
     global _GEOMETRY
 
     def geometry(doc: dict, id_: str) -> dict:
@@ -28,6 +28,8 @@ def use_engine(engine, folder=None):
         engine.ensure_scene(C.describe(doc, shots[0]["id"], folder))
         return engine.geometry(id_)
     _GEOMETRY = geometry if engine is not None else None
+    from . import unfold
+    unfold.use_engine(engine, folder)                # mesh.unfold asks the same engine
 
 
 def use_geometry(fn):

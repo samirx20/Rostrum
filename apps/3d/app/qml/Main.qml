@@ -55,16 +55,19 @@ AppShell {
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
     Shortcut { sequence: "Escape"; enabled: backend.renderQueue.shown.state === "done"; onActivated: backend.renderQueue.shown.dismiss() }
     readonly property bool renderIdle: (backend.renderJob.state === "idle" || backend.renderJob.state === "") && backend.renderQueue.shown.state === ""
-    Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
-    Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && shell.renderIdle; onActivated: backend.keys.clear() }
+    Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
+    Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.keys.clear() }
     Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !viewport.bones.on && !startScreen.visible && shell.renderIdle
+               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.bones.on && !startScreen.visible && shell.renderIdle
                onActivated: backend.select("") }
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
     // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
     Shortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
                onActivated: meshEdit.toggle() }
+    // Paint (paint_mode_qt.py): B in and out on the selected mesh (Esc leaves too)
+    Shortcut { sequence: "B"; enabled: !startScreen.visible && (paintMode.on || paintMode.can) && !typing; onActivated: paintMode.toggle() }
+    Shortcut { sequence: "Escape"; enabled: paintMode.on; onActivated: paintMode.leave() }
     Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
     Shortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
     Shortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
@@ -167,7 +170,7 @@ AppShell {
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
-            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !backend.stretch.shown
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !backend.stretch.shown
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 MaterialRow { id: materialRow; width: parent.width }
@@ -180,8 +183,9 @@ AppShell {
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" }
         RenderSettings { anchors.fill: parent; visible: backend.selected === "" && backend.page === "render" }   // the shot's render settings
         MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
+        PaintPanel { anchors.fill: parent; visible: paintMode.on }     // Paint: Brush, then Paint layers (mockup 06)
         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
-        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
+        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: [
         SceneList { anchors.fill: parent; visible: backend.page !== "render" },

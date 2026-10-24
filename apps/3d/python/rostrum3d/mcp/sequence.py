@@ -14,16 +14,18 @@ from .render import FIRST, _finish, _folder, _manifest, _renumber
 
 
 def sequence(where: str, doc, info: dict, scene: dict, engine, size: tuple[int, int], formats: list[str], cycles: dict,
-             folder=None, stem: str | None = None, progress=None) -> tuple[Path, list[Path]]:
+             folder=None, stem: str | None = None, progress=None, passes: list[str] | None = None) -> tuple[Path, list[Path]]:
     """Frames info["start"]..info["end"] of the shot through its camera with Cycles. `progress(done, total)` is called
-    as frames land (it may raise to stop). Blocking: call it from a job. Returns (the finished folder, its files)."""
+    as frames land (it may raise to stop). `passes`: the EXR's extra layers (render_fields.PASSES; only with an exr),
+    listed in the manifest's `exr`. Blocking: call it from a job. Returns (the finished folder, its files)."""
     f0, f1, (w, h) = info["start"], info["end"], size
     name = stem or f'{doc.item_id or "doc"}_{info["id"]}'
     partial, is_version = _folder(folder, doc, info)
     req = {e: str(partial / f"{name}.{{frame}}.{e}") for e in formats}
-    draw.render(where, f"frames {f0}-{f1} of {info['id']}", engine, scene, camera=info["camera"], renderer="cycles",
-                frames=[f0, f1], width=w, height=h, exposure=0, timeoutS=3600, **cycles,
-                progress=(lambda i, n, _=None: progress(i, n)) if progress else None, **req)
+    out = draw.render(where, f"frames {f0}-{f1} of {info['id']}", engine, scene, camera=info["camera"], renderer="cycles",
+                      frames=[f0, f1], width=w, height=h, exposure=0, timeoutS=3600, **cycles,
+                      progress=(lambda i, n, _=None: progress(i, n)) if progress else None, **req,
+                      **({"passes": passes} if passes and "exr" in formats else {}))
     for e in formats:
         _renumber(partial, name, e, f0, FIRST)
     want = (f1 - f0 + 1) * len(formats)
@@ -32,5 +34,6 @@ def sequence(where: str, doc, info: dict, scene: dict, engine, size: tuple[int, 
         raise RostrumError(codes.RENDER_FAILED, where, f"the frames of {info['id']}", f"came out as {len(made)} files, expected {want}",
                            hint=f"They are left in {partial}; nothing was listed as a version.")
     done = _finish(partial, is_version, _manifest(doc.item_id, doc, info, partial, "cycles", (w, h),
-                                                  list(range(f0, f1 + 1)), [p.name for p in made], FIRST))
+                                                  list(range(f0, f1 + 1)), [p.name for p in made], FIRST,
+                                                  out.get("channels")))
     return done, [done / p.name for p in made]

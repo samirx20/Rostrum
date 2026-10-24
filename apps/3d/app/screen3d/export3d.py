@@ -4,7 +4,8 @@ and Ctrl+E open it.
 
 What: "This frame" (the playhead frame as a picture) or the shot (its frames: the whole shot or the stretch set on it).
 Quality and Size are the shot's own render settings (render_fields): changing them here is a shot edit, one undo step,
-saved on the shot, the same fields agents set and read. Save as: png, exr, or both. Both go through the SAME code the agents' tools use (rostrum3d.mcp.render: `still` for a frame; the same
+saved on the shot, the same fields agents set and read. So are Save as (png, exr, or both) and, only while it saves an
+EXR, the Passes row (its layers: Light, Shadow, Reflections, Masks per item, Depth, Surface direction). Both go through the SAME code the agents' tools use (rostrum3d.mcp.render: `still` for a frame; the same
 folder, files, numbering and manifest for a sequence): a project render version `renders/<item>/vNNN/`, in the
 background on its own engine process, so the picture exported is the one the Render button and render_still make.
 Browse: the files are also copied into that folder (a sequence into a new folder there). A failure is words and the
@@ -25,12 +26,11 @@ from rostrum3d.engine import Engine
 from rostrum3d.mcp.estimate import scale
 from rostrum3d.mcp.render import DocView, still
 from rostrum3d.mcp.sequence import sequence
-from rostrum3d.render_fields import QUALITIES, SIZES, settings
+from rostrum3d.render_fields import FORMATS, PASS_HELP, PASSES, QUALITIES, SIZES, settings
 
 from .estimate_sheet import Estimate
 
 FRAME, SHOT = "frame", "shot"
-FORMATS = {"png": ["png"], "exr": ["exr"], "both": ["png", "exr"]}
 FORMAT_ROWS = [{"value": "png", "label": "PNG picture"}, {"value": "exr", "label": "EXR (for the Editor)"},
                {"value": "both", "label": "PNG and EXR"}]
 QUALITY_ROWS = [{"value": q, "label": q.capitalize()} for q in QUALITIES]
@@ -44,7 +44,7 @@ class Export3D(ExportSheet):
         super().__init__(bridge, parent)
         self.changed.connect(self.own)
         self._make_engine, self._engine, self._halt = make_engine, None, threading.Event()
-        self._choice, self._format = FRAME, "png"
+        self._choice = FRAME
         self.estimate = Estimate(self, make_engine)
         bridge.frameChanged.connect(self.changed)       # the file's name follows the playhead
         bridge.pageChanged.connect(self._on_page)
@@ -101,7 +101,7 @@ class Export3D(ExportSheet):
         return f'{self.bridge.doc.item_id or "doc"}_{self.bridge.shot_id}'
 
     def file_name(self):
-        ext = FORMATS[self._format][0]
+        ext = self._settings()["formats"][0]
         return f"{self._stem()}_f{self.bridge.frame:04d}.{ext}" if self._choice == FRAME else f"{self._stem()}.{{frame}}.{ext}"
 
     def default_folder(self):
@@ -189,14 +189,30 @@ class Export3D(ExportSheet):
 
     @Property(str, notify=own)
     def format(self):
-        return self._format
+        return self._shot().get("renderFormat", "png")
 
     @Slot(str)
     def setFormat(self, value):
-        if value in FORMATS and not self.running():
-            self._format = value
-            self.stale()
-            self.changed.emit()
+        if value in FORMATS:
+            self.setShot("renderFormat", value)
+
+    @Property("QVariantList", notify=own)
+    def passes(self):
+        """The Passes row: only while the shot saves an EXR (absent for PNG, never greyed); Beauty is always in it."""
+        if "exr" not in self._settings()["formats"]:
+            return []
+        on = set(self._settings()["passes"])
+        return [{"value": field, "label": label, "on": name in on, "help": PASS_HELP[name]} for name, (field, label, _) in PASSES.items()]
+
+    @Slot(str, bool)
+    def setPass(self, field, on):
+        """A pass switched on or off: a change to the shot's render settings, like Quality (one undo step)."""
+        b, sid = self.bridge, self.bridge.shot_id
+        if self.running() or self._shot().get(field) == on:
+            return
+        b._guard(lambda: b._apply([field_call(b.doc, sid, field, on)], edit_label(b.doc, sid, field, on)))
+        self.stale()
+        self.changed.emit()
 
     # ---- the job ----------------------------------------------------------------------------------------------
     def begin(self, out, overwrite):
@@ -207,8 +223,8 @@ class Export3D(ExportSheet):
         info = {**info, "start": s["start"], "end": s["end"]}
         return {"info": info, "cycles": {"samples": s["samples"], "denoise": s["denoise"]}, "scene": scene, "doc": DocView.of(b.doc),
                 "frame": b.frame, "folder": b.doc.folder, "out": out, "size": (s["width"], s["height"]),
-                "shot": self._choice == SHOT, "formats": FORMATS[self._format], "stem": self._stem(),
-                "main": FORMATS[self._format][0]}
+                "shot": self._choice == SHOT, "formats": s["formats"], "passes": s["passes"], "stem": self._stem(),
+                "main": s["formats"][0]}
 
     def work(self, plan, progress):
         self._halt = halt = threading.Event()
@@ -229,13 +245,13 @@ class Export3D(ExportSheet):
     @staticmethod
     def _frame(plan, engine, progress):
         done, files, _ = still("export", plan["doc"], plan["info"], plan["scene"], engine, plan["frame"], "cycles",
-                               plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"])
+                               plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"], plan["passes"])
         return done, files
 
     @staticmethod
     def _sequence(plan, engine, progress):
         return sequence("export", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
-                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)))
+                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"])
 
     @staticmethod
     def _copy(plan, files):

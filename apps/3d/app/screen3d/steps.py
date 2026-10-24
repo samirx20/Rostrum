@@ -15,7 +15,7 @@
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
     render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
-    estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
+    estimate-wait (until its time is measured) | budget <time, e.g. 10 min> | sheet-format png|exr|both (its Save as: a shot edit)
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
     queue add <shot> [first] | move <row> <index> | cancel <row> | show <row> | wait-frames <n> | wait-idle | report | demo
     (the Render page's queue: queue_steps.py)
@@ -26,6 +26,7 @@
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
   Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow | mesh-material | mesh-xray | mesh-knife* | mesh-esc (mesh_steps.py)
+  Paint: paint-b | paint-layer | paint-channel | paint-brush | paint-drag (paint_steps.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
@@ -37,6 +38,18 @@ from PySide6.QtTest import QTest
 from rostrum_gui.settle import save_snap
 
 RENDER_WAIT_S = 600
+PAINT_DRAG_S = 20                                     # a paint-drag waits for one engine pick per point
+
+
+def step_waits_ms(steps) -> int:
+    """The time a scripted run's steps may take on purpose (their `wait`s, a render, a paint drag's picks): the run's
+    timeout adds it to its own 30 s, so a long walk is never cut short while a hung one still fails."""
+    words = [s.split() for s in steps if s.strip()]
+    return (sum(int(w[1]) for w in words if w[0] == "wait" and len(w) > 1)
+            + (RENDER_WAIT_S * 1000 if any(w[0].startswith("render") or w[0] == "sheet-render" for w in words) else 0)
+            + PAINT_DRAG_S * 1000 * sum(w[0] == "paint-drag" for w in words))
+
+
 VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v, a: v.pan(float(a[0]), float(a[1])),
         "zoom": lambda v, a: v.zoom(float(a[0])), "mode": lambda v, a: v.setMode(a[0]),
         "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
@@ -207,6 +220,9 @@ def do_step(bridge, win, step):
     elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
         from . import mesh_steps
         mesh_steps.do(bridge, word, rest)
+    elif word.startswith("paint-"):               # Paint mode (paint_steps.py)
+        from . import paint_steps
+        paint_steps.do(bridge, win, word, rest)
     elif word == "render-sheet":
         bridge.exporter.openFor()
     elif word == "estimate-recorded":
@@ -224,6 +240,8 @@ def do_step(bridge, win, step):
     elif word == "budget":
         if why := bridge.exporter.estimate.setBudget(" ".join(rest)):
             raise RuntimeError(f"step {step!r}: {why}")
+    elif word == "sheet-format":
+        bridge.exporter.setFormat(rest[0])
     elif word == "sheet-render":
         sheet, t0 = bridge.exporter, time.monotonic()
         said = sheet.estimate.text
