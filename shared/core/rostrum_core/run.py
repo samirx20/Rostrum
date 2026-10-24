@@ -23,6 +23,11 @@ class Context:
             raise RostrumError.not_found(self.where, "item", id_, idx)
         return idx[id_].item
 
+    def facts(self, item: dict) -> dict:
+        """The item's facts as the document stands now (the app's kind.facts with the document): what a field's
+        `valid_when` reads besides the item's own values, the same as the operation checks (_check_targets)."""
+        return self.kind.facts(item, View(self.doc, self.kind.lists, self.idx))
+
     def _do(self, edit):
         self.edits.append(E.apply(self.doc, self.kind.lists, edit, self.where, self.idx))
 
