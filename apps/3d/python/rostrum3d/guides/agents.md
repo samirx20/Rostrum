@@ -26,6 +26,16 @@ scene from the document each time you look. Imported USD files stay untouched; y
    `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
+   Jobs run one heavy job at a time, the rest waiting in order: `inspect_job` without `job_id` lists them (running, waiting,
+   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled render leaves only `vNNN.partial`.
+   The person's Render page queue (render.queue.add / move / cancel) is the same kind of queue.
+
+6. **Hand it on.** `render_send_shot shot=<id> scene=<2D item>/<scene id>` puts the shot into a 2D scene as a 3D render layer
+   (2D's `render3d`, with `shot` set), one step in that 2D document's history. It uses the shot's newest render if its
+   manifest's `scene_hash` matches the document now; else it renders first (`render_video` with EXR frames, the shot's
+   own render settings) and is a job. Sending again updates the same layer. 2D says "out of date" when this document's
+   content changes after the render (an identical script re-run is not a change). `target: "editor"` fails: the Editor
+   isn't built yet.
 
 ## Render settings and the time estimate
 

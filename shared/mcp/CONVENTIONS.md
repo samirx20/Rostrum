@@ -42,7 +42,7 @@ Every tool starts with one of five verbs. The verb tells the agent what the tool
 | `inspect_operations` | The operations this app accepts, read from the one registry (name, arguments, what it does) |
 | `inspect_guide` | A how-to guide by topic. With no topic, the list of topics |
 | `inspect_tools` | This server's own tools, grouped by verb, each with a one-line purpose; `verb` shows one group, `name` one tool's full description and arguments |
-| `inspect_job` | A job's status and, when it is done, its result |
+| `inspect_job` | A job's status and, when it is done, its result; without `job_id`, every job in the queue's order |
 | `edit_document` | Applies a list of operations, all or nothing |
 | `run_script` | Runs a Python script. The script's changes are merged in and never wipe what a person moved |
 | `run_stop` | Stops a job by its id |
