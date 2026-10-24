@@ -17,9 +17,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
-from PySide6.QtQuick import QQuickImageProvider
 from rostrum_core.cache import default_root, put_file
 from rostrum_gui.frames import PictureWorker, image_from_pixels
+from rostrum_gui.screen_images import ScreenImages
 
 from screen3d.ball_studio import LOOK as STUDIO_LOOK, studio_picture
 from rostrum3d import build, fields as F, run_source
@@ -111,12 +111,12 @@ class BallRenderer(PictureWorker):
         return f"Error: material balls: {error}"
 
 
-class BallProvider(QQuickImageProvider):
+class BallProvider(ScreenImages):
     def __init__(self, images: dict, lock):
-        super().__init__(QQuickImageProvider.ImageType.Image)
+        super().__init__()
         self._images, self._lock = images, lock
 
-    def requestImage(self, id_, size, requested):  # noqa: N802 (Qt's name)
+    def picture(self, id_):
         with self._lock:
             return self._images.get(id_, QImage())
 

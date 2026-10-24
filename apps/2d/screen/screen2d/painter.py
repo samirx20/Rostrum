@@ -14,6 +14,7 @@ from rostrum2d.names import display_name
 from rostrum2d import paint_overflow
 from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
+from rostrum_gui.frames import ImageProvider
 from rostrum_gui.model import RowsModel
 
 from rostrum2d import painted_fill, paintings
@@ -43,7 +44,7 @@ class Painter(BrushPanel):
         self.tilt.changed.connect(self._tilt_pen)
         self._serial, self._built, self._rev = 0, None, 0        # _rev: the document changed (the onion is stale)
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
-        self.provider = onion.OnionProvider()
+        self.provider = ImageProvider()                  # image://onion: the newest onion picture
         self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
         bridge.opened.landed.connect(self._wet.landed)     # ... on a painting opened on its own, until its picture lands
         self._revealed.connect(self._reveal)

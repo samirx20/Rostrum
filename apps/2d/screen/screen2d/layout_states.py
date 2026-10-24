@@ -270,7 +270,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                               '{"at":0,"color":"#ff7a45","opacity":1},{"at":1,"color":"#8a4cff","opacity":1}]}']),
         # H50 (painting phase 1): the brush panel beside the rail; Edit brush › (every setting); painting with nothing
         # selected (a new drawing); a long layer name in "Painting on"
-        ("brush-panel", ["--sample"], ["select card", "flyout brush"]),
+        ("brush-panel", ["--sample"], ["select card", "clickobj rail_brush"]),   # the real click: a first opening once froze the app
         ("brush-edit", ["--sample"], ["select card", "tool draw", "brushedit on"]),
         ("paint-new-drawing", ["--sample"], ["tool draw"]),
         # each paint tool shows only its own rows (brush.TOOL_PARTS): Eraser (no Colour), Pick and Select (no brush rows)

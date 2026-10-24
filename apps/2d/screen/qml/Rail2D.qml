@@ -61,7 +61,7 @@ ToolRail {
         if (backend.tool !== "draw") backend.paintTool.use("brush")
         brushes.get().show(rail.buttonOf("brush"))
     }
-    FirstUse { id: brushes; sourceComponent: Component { BrushFlyout { } } }   // made at its first opening: its strokes are painted then (H65)
+    FirstUse { id: brushes; ahead: true; sourceComponent: Component { BrushFlyout { } } }   // made while idle after the window shows: the first click is instant
 
     FileDialog {    // Ctrl+K's Add picture / Add video (scripted: add image <file>): the file first, then one layer, centred (backend.adder.addFile)
         id: dialog

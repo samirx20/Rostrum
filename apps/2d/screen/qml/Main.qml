@@ -186,7 +186,7 @@ AppShell {
                     sheets: [   // Lip sync… / Add blinks… in the panel's place; each is made when first opened (FirstUse, H66)
                         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } },
                         FirstUse { anchors.fill: parent; visible: backend.blinks.open; when: visible; sourceComponent: Component { BlinkSheet { } } } ] },
-        FirstUse { id: settingsDraw; anchors.fill: parent; visible: backend.tool === "draw"; when: visible   // the painting settings: made when Draw is first picked
+        FirstUse { id: settingsDraw; anchors.fill: parent; visible: backend.tool === "draw"; when: visible; ahead: true   // the painting settings: made while idle after the window shows
                    sourceComponent: Component {
                        Inspector { anchors.fill: parent; bridge: painter
                                    above: BrushHead { }      // the brush's own row (or ‹ back while editing it), then its quick rows
