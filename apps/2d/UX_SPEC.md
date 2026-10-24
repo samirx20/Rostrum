@@ -33,7 +33,7 @@ Rive, Jitter, Cavalry, Figma, Apple Motion, Toon Boom Harmony, Moho and Procreat
 >    - **⟳ Loop is Shift+L**;
 >    - dragging on the time scale scrubs.
 > 9. **History** opens as a **sheet in the right column**, in the settings panel's place.
-> 10. **Help keys:** F1 opens Guides, Ctrl+/ the key list. Ctrl+, opens **Preferences** in a dialog.
+> 10. **Help keys:** F1 opens Guides, Ctrl+/ the key list. 2D has no Preferences (2026-10-24): no setting of it is a person's to change, so Ctrl+, does nothing and is not in the key list; when one exists, the dialog and the key come back together.
 > 11. **New file keys:**
 >     - Ctrl+Shift+S makes a separate copy (**Duplicate**);
 >     - Ctrl+Q quits;
@@ -2008,7 +2008,7 @@ the rest of the screen.
 | Problems | popover | the Problems chip | problems in words with fixes | click away |
 | Ctrl+K | overlay at the top | Ctrl+K | Do / Go to a setting / Learn | Enter / Esc |
 | Crash message | message from the launcher | a crash (S27) | one plain sentence, the log's place, Open again | a click |
-| Preferences | dialog *(S30)* | ≡ › Preferences, Ctrl+, | pen pressure curve, scratch space cap, interface size, connected agents | × |
+| Preferences | dialog *(S30; not built for 2D: nothing to set yet, 2026-10-24)* | ≡ › Preferences, Ctrl+, | pen pressure curve, scratch space cap, interface size, connected agents | × |
 
 ## 4.8 Hem's H28 draft: kept, changed, added
 
@@ -2563,7 +2563,7 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 | **Frame-by-frame** | `,` / `.` previous / next drawing *(S30: Alt+arrows are the fine nudge now)* · Alt+N new drawing · Alt+Shift+N copy of this drawing · = / − hold longer / shorter *(S30)* · Alt+O onion skin · hold `,` or `.` to flip through |
 | **Paint** | E eraser · G fill · [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |
 | **View** | Shift+H mirror the view · Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · **F** (or Shift+2) zoom to selection *(S30)* · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
-| **Find and help** | Ctrl+K search and run · Ctrl+F find a setting · Ctrl+Shift+F find a layer · Ctrl+/ key list · F1 guides *(S30)* · Ctrl+L library · Ctrl+H history · Ctrl+S save a version · Ctrl+, preferences *(S30)* |
+| **Find and help** | Ctrl+K search and run · Ctrl+F find a setting · Ctrl+Shift+F find a layer · Ctrl+/ key list · F1 guides *(S30)* · Ctrl+L library · Ctrl+H history · Ctrl+S save a version |
 | **Export** | Ctrl+E export · Ctrl+Shift+E export again |
 
 # Appendix B · The operations the screen calls

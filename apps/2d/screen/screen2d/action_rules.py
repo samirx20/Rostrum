@@ -64,6 +64,7 @@ class Facts:
             "one_group": self.count == 1 and groups,       # a group alone: Ungroup, not "Group" echoing its own title
             "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_camera": "camera" in self.kinds,
             "releasable": groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items),
+            "rigable": self.count > 1 or groups,           # Make rig: several parts, or a group of them (one rectangle has nothing to rig)
             "maskable": groupable and all(F.param(it["type"], "matte") for it in self.items),
             "matted": any(it.get("matte") for it in self.items) or (
                 bool(p) and any(s.get("matte") in ids for s in p.get("layers", []))),

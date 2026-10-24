@@ -32,6 +32,11 @@ def entries(folder=None) -> list[dict]:
     return out
 
 
+def lower(label: str) -> str:
+    """A layer kind's name inside a sentence ("Add 3D render"): lower case, but 3D stays 3D."""
+    return label.lower().replace("3d", "3D")
+
+
 def new_layer_calls(doc, comp: dict, type_: str, more: dict | None = None) -> tuple[list[dict], str]:
     """layer.add + the type's field op placing it at the composition's centre (a camera has its own view, not placed);
     `more`: other fields set in the same call (a 3D render's item)."""
@@ -78,15 +83,19 @@ class Adder(QObject):
             self.b.pen.setOn(True)
         else:
             more = {"item": item} if item else None
-            if self._apply(lambda: new_layer_calls(self.b.doc, self.b.comp(), type_, more)[0], f"Add {F.LABELS[type_].lower()}")                     and type_ == "drawing":
+            if self._apply(lambda: new_layer_calls(self.b.doc, self.b.comp(), type_, more)[0], f"Add {lower(F.LABELS[type_])}")                     and type_ == "drawing":
                 self.b.setTool("draw")
 
     def commands(self) -> list[dict]:
-        """Ctrl+K's Add commands: the same entries, each doing what its menu entry does (a file first for a picture)."""
-        return [{"key": "add:" + e["type"] + (":" + e["item"] if "item" in e else ""),
-                 "label": "Add " + (F.LABELS["render3d"].lower() + ": " + e["label"] if "item" in e else e["label"].lower()),
-                 "hint": "Document", "words": "add new layer " + e["type"],
-                 "do": (lambda k=e["type"] + (":" + e["item"] if "item" in e else ""): self.add(k))} for e in self.entries]
+        """Ctrl+K's Add commands: the same entries, each doing what its menu entry does. A picture, video and the other
+        files are one command, "Add from a file…" (the rail's one door, Ctrl+I)."""
+        out = [{"key": "add:file", "label": "Add from a file…", "hint": "Document", "keys": "Ctrl+I",
+                "words": "add new layer picture video image svg lottie pdf psd import", "do": lambda: self.fileWanted.emit("file")}]
+        return out + [{"key": "add:" + e["type"] + (":" + e["item"] if "item" in e else ""),
+                       "label": "Add " + (lower(F.LABELS["render3d"]) + ": " + e["label"] if "item" in e else lower(e["label"])),
+                       "hint": "Document", "words": "add new layer " + e["type"],
+                       "do": (lambda k=e["type"] + (":" + e["item"] if "item" in e else ""): self.add(k))}
+                      for e in self.entries if e["type"] not in ASKS_FILE]
 
     @Slot(str, str)
     def addFile(self, type_, url):

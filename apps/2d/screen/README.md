@@ -119,7 +119,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   `strokespaste`, `strokesclear`, `clickarea`, `clickat` (`stroke_steps.py`).
 - **Set depth ▾** (actions.py `depth_far|middle|near`, rule `depth` in action_rules.py): on drawings of a composition that
   has a camera: `drawing.set {depth}` then `background.fit` in one change (3 / 1 / 0.25, the `background.add` defaults).
-  Without a camera it is absent; Ctrl+K typing "set depth" shows why (`action_slots._whys`, the action's `why`).
+  Without a camera it is absent, in Ctrl+K too (a key pressed for it says why in the status line: the action's `why`).
 - **Focused area** (`backend.setFocusArea`, tools2d.py; Main.qml): the keyboard focus or a click in the canvas, timeline or
   settings sets it; `inspect_screen`'s `focus` reads it (`screen_seen.py`). The kit's AppShell version (S34) can replace it.
 
@@ -370,15 +370,16 @@ A step that leaves an error in the status line fails the run.
 ## Add and import
 
 - **Tool rail** (`qml/Rail2D.qml` fills the kit's `ToolRail.qml` / `ToolFlyout.qml` with 2D's tools; icons: the kit's `ToolIcon.qml`, 2D's `ShapeIcon.qml` and `PaintToolIcon.qml`): icons only, its own column
-  left of the canvas. Select V · Shapes (Rectangle R, Ellipse O) · Pen P · Text T · Brush B | Media Ctrl+I (Picture,
-  Video, one entry per rendered 3D item of the project (`render3d.placeable`; none without one), Import…, Library) · Sound (only while the selection can take a cue) · Camera C
-  (the first use adds one) | Hand H / Zoom Z · Bone J (only with a rig in hand). A group with more than one entry opens a
-  flyout beside the rail; its icon is its last-used tool. Media's entries go through `screen2d/adding.py` (one change,
-  centred, selected, one undo step; picture and video ask for a file first); Ctrl+K's Add commands are the same entries
-  (`file_commands.py`: never a bare `layer.add` that would make an empty layer). Every entry does its job on the click.
+  left of the canvas. Select V · Shapes (Rectangle R, Ellipse O) · Pen P · Text T · Brush B | Add from a file… Ctrl+I (one door
+  for picture, video, SVG, Lottie, PDF, PSD: the file picker, then `importer.dropFiles`; with a rendered 3D item in the project
+  (`render3d.placeable`) the button opens a list of those items after it) · Library Ctrl+L · Sound (only while the selection can take a cue) · Camera C
+  (the first use adds one) · Bone J (only with a rig in hand). Hand H / Zoom Z are keys only (no rail group). A group with more than one entry opens a
+  flyout beside the rail; its icon is its last-used tool. Shapes has `pickOnClick`: a click picks the shown shape, press-and-hold or the corner mark opens the flyout. A 3D render goes through `screen2d/adding.py` (one change,
+  centred, selected, one undo step); Ctrl+K's Add commands are the same (`file_commands.py`: never a bare `layer.add` that would make an empty layer;
+  "Add from a file…" is the one command for files). Every entry does its job on the click.
   Step: `flyout <group>|close`.
-- **Import** (Media › Import…: the file picker, then the file comes in at once with the defaults, as a drop does:
-  `importer.dropFiles`). The panel (`qml/ImportPanel.qml`, `screen2d/importer.py`) opens for a pasted Figma link, or by
+- **Import** (Add from a file…: the file picker, then the file comes in at once with the defaults, as a drop does:
+  `importer.dropFiles`; a PDF of several pages asks which page first: the panel opens with its Page box). The panel (`qml/ImportPanel.qml`, `screen2d/importer.py`) opens for a pasted Figma link, for that page question, or by
   itself when something didn't come across; it can also take a file (SVG, PDF with its page, PSD, image,
   video; what the file is decides which settings show) or a Figma file key + frame + your own token (typed into the panel,
   never stored, printed or sent anywhere but Figma). One change, one undo step; afterwards the layers that came in and the

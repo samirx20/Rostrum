@@ -6,8 +6,8 @@ and time it like any layer; you change the product itself in Rostrum3D.
 
 ## Placing one
 
-- In the tool rail, open **Media**: every Rostrum3D item of this project that has a finished render (with EXR frames)
-  is listed by its name. A click places that item's render, centred, as one step. An item not rendered yet is not
+- In the tool rail, the **Add** button (the picture icon) opens a short list once a render exists: every Rostrum3D item of this project that has a finished render (with EXR frames)
+  is listed by its name, after **Add from a file…**. A click places that item's render, centred, as one step. An item not rendered yet is not
   listed (render it in Rostrum3D first); with none, nothing 3D is offered. Ctrl+K lists the same ("Add 3D render: …").
 - In the settings panel, **3D item** and **3D shot** are lists of what the project has, never ids to type.
 

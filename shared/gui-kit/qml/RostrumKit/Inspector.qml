@@ -30,7 +30,7 @@ Panel {
     property int tick: 0                 // "2 min ago" ages while the panel stays open
     readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
     readonly property var last: { panel.bridge.selection; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged ? panel.bridge.lastChanged() : ({}) }   // a page bridge (Brush, Settings) has neither
-    readonly property bool hasLast: panel.bridge.selected !== "" && !!panel.last.who
+    readonly property bool hasLast: panel.bridge.selected !== "" && !!panel.last.who && panel.last.who !== "You"   // only when someone else (an agent) changed it: "You · just now" is noise
 
     NameLabel { id: name; text: panel.bridge.selectedItem.label; font.pixelSize: Theme.heading; font.weight: Font.DemiBold
                 anchors.left: parent.left; anchors.right: parent.right }   // a long name, whole on hover

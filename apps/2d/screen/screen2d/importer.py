@@ -17,6 +17,17 @@ from rostrum2d.io.figma import link_parts
 
 from .import_job import Job
 
+def pdf_pages(path: str) -> int:
+    """How many pages a PDF has (0 for any other file, or one that cannot be read: the import then says what is wrong)."""
+    if Path(path).suffix.lower() != ".pdf":
+        return 0
+    try:
+        from pypdf import PdfReader
+        return len(PdfReader(path).pages)
+    except Exception:  # noqa: BLE001  an unreadable PDF is reported by the import itself
+        return 0
+
+
 FITTED = ("svg", "pdf", "psd", "figma")          # the kinds whose page lands fitted in the composition (media is always)
 
 
@@ -37,6 +48,7 @@ class Importer(QObject):
         super().__init__(parent or bridge)
         self.b, self.job = bridge, Job()
         self._source, self._file, self._page, self._text, self._keep = "file", "", 1, "text", False
+        self._pages = 0                                              # the picked PDF's page count (0 = not a PDF)
         self._state, self._note, self._progress, self._layers, self._report = "", "", 0.0, [], []
         self._queue, self._at, self._figma = [], None, ("", "")     # dropped / pasted files waiting; where they land; a link's key, frame
         self._landed.connect(self._finish)
@@ -89,6 +101,11 @@ class Importer(QObject):
         return self._figma[1]
 
     @Property(int, notify=changed)
+    def pageCount(self):
+        """How many pages the picked PDF has (the Page row's limit)."""
+        return max(self._pages, 1)
+
+    @Property(int, notify=changed)
     def page(self):
         return self._page
 
@@ -133,6 +150,7 @@ class Importer(QObject):
     @Slot(str)
     def setFile(self, url):
         self._file = QUrl(url).toLocalFile() if url.startswith("file:") else url
+        self._pages = pdf_pages(self._file)
         self._clear()
 
     @Slot(int)
@@ -197,8 +215,13 @@ class Importer(QObject):
     def _next(self):
         if self._queue:
             f = self._queue.pop(0)
-            self._file, self._source = f, "file"
-            self._go(dict(path=f, page=self._page, text=self._text, at=self._at))
+            self._file, self._source, self._pages = f, "file", pdf_pages(f)
+            if self._pages > 1:                      # a PDF of several pages: which one? The panel asks (its Page row), nothing comes in yet
+                self._page = 1
+                self._clear()
+                self._queue = []
+                return self.wantPanel.emit()
+            self._go(dict(path=f, page=1, text=self._text, at=self._at))
 
     @Slot()
     def cancel(self):

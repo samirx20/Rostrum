@@ -43,22 +43,27 @@ _MATTES = {"luma": "By its brightness", "alphaInverted": "Outside its shape", "l
 _EDGES = {"left": ("Align left", "align_left"), "hcenter": ("Align centre", "centre_across"),
           "right": ("Align right", "align_right"), "top": ("Align top", "align_top"),
           "vcenter": ("Align middle", "centre_down"), "bottom": ("Align bottom", "align_bottom")}
+def _to_frame(words: str):
+    """An align's label: one layer aligns to the frame, so it says so ("Align left to the frame")."""
+    return lambda f, w=words: w + " to the frame" if f.count == 1 else w
+
+
 _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
 _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the camera depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 DATA = [
-    _a("group", "Group", rank=10, importance="primary", group="make", job="group", when={"all": [FACT("groupable"), NOT("one_group")]},
-       calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
+    _a("group", "Group", rank=10, importance="primary", group="make", job="group", min_targets=2,
+       when={"all": [FACT("groupable"), NOT("one_group")]}, calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
     _a("ungroup", "Ungroup", rank=10, importance="primary", group="make", job="ungroup", when=FACT("releasable"),
        calls=_op("group.release", "ids")),
-    _a("clip", "Clip to a box", rank=60, group="make", bar="Make", when=FACT("groupable"),
+    _a("clip", "Crop to a box", rank=60, group="make", bar="Make", when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "clip"})),
     _a("layout", "Auto layout (a row)", rank=60, group="make", bar="Make", job="auto_layout", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "layout"})),
     _a("swap", "Make swap set", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", **{"as": "swap"})),
-    _a("rig", "Make rig", rank=60, group="make", bar="Make", when=FACT("groupable"), promoted="body_parts",
+    _a("rig", "Make rig", rank=60, group="make", bar="Make", when=ALL("groupable", "rigable"), promoted="body_parts",
        calls=_op("rig.make", "stack", id="$new:rig")),
     # a character (UX_SPEC 3.23): a rig with no bones named like a body; a mouth or an eyes swap set
     _a("guess_bones", "Bones from part names", rank=8, importance="primary", group="make", max_targets=1,
@@ -79,7 +84,7 @@ DATA = [
     *[_a(op, op.capitalize(), rank=5, importance="primary", group="shape", bar="Combine", job=op, min_targets=2,
          when=ALL("shapes", "same_parent"), promoted=True, calls=_op("shape.boolean", "stack", op=op, id="$new:path"), icon=op)
       for op in ("union", "subtract", "intersect", "exclude")],
-    *[_a(f"align_{e}", words, rank=30, importance="primary", group="arrange", bar="Align", job=job, when=FACT("groupable"),
+    *[_a(f"align_{e}", _to_frame(words), rank=30, importance="primary", group="arrange", bar="Align", job=job, when=FACT("groupable"),
          calls=_op("layer.align", "ids", edge=e, at="$at"), icon="align-" + e) for e, (words, job) in _EDGES.items()],
     *[_a(f"distribute_{ax}", words, rank=40, importance="primary", group="arrange", bar="Distribute", min_targets=3,
          when=FACT("same_parent"), calls=_op("layer.distribute", "ids", axis=ax, at="$at"), icon="distribute-" + ax)
@@ -89,10 +94,10 @@ DATA = [
          calls=_op("layer.match_size", "rest", to="$first", dims=d, at="$at"),
          why=f"{words} needs two or more layers (shapes, pictures, groups) in one place. Text and a camera have no size of their own: leave them out.")
       for d, words in (("w", "Match width"), ("h", "Match height"), ("both", "Match size"))],
-    _a("fill_frame", "Fill the frame", rank=65, group="arrange", when={"all": [FACT("groupable"), NOT("has_text")]}, promoted="picture",
-       calls=_op("layer.fill_frame", "ids", mode="cover", at="$at")),
-    _a("fit_inside", "Fit inside the frame", rank=66, group="arrange", when={"all": [FACT("groupable"), NOT("has_text")]},
-       calls=_op("layer.fill_frame", "ids", mode="inside", at="$at")),
+    _a("fill_frame", "Fill the frame", rank=65, group="arrange", bar="Fit to frame",   # one control, two ways (on the bar for a picture or clip, else under ⋯)
+       when={"all": [FACT("groupable"), NOT("has_text")]}, calls=_op("layer.fill_frame", "ids", mode="cover", at="$at")),
+    _a("fit_inside", "Fit inside the frame", rank=66, group="arrange", bar="Fit to frame",
+       when={"all": [FACT("groupable"), NOT("has_text")]}, calls=_op("layer.fill_frame", "ids", mode="inside", at="$at")),
     *[_a(f"depth_{k}", f"{k.capitalize()} ({v:g})", rank=75, importance="primary", group="arrange", bar="Set depth",
          kinds=("drawing",), when=FACT("depth_ok"), calls={"rule": "depth", "value": v},
          why="Set depth needs a camera: + › Camera (drawings of the composition, not inside a group).")
@@ -156,7 +161,12 @@ class _List(ActionList):
     def available(self, facts) -> list[dict]:
         now = {a.id for a in self.actions if a.promoted and a.importance != "primary" and a.promoted(facts)}
         out = [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts)]
+        if facts.facts.get("picture"):                # a photo or clip: Fit to frame is on the bar, first
+            out = [{**e, "importance": "primary", "rank": 0} if e["bar"] == "Fit to frame" else e for e in out]
+            out.sort(key=lambda e: e["rank"] != 0)
         uses = _style_uses(facts)
+        if not facts.doc.data.get("textStyles"):      # no style yet: no Styles ▾, Save as style sits under ⋯
+            out = [{**e, "importance": "secondary", "bar": ""} if e["bar"] == "Styles" else e for e in out]
         at = next((n for n, e in enumerate(out) if e["bar"] == "Styles"), len(out))
         return out[:at] + uses + out[at:]
 
@@ -180,4 +190,6 @@ def _style_uses(f) -> list[dict]:
 
 
 ACTIONS = [_action(d) for d in DATA]
-LIST = _List(ACTIONS, KEYS2D, noun="layer", short_menu=SHORT_MENU)
+# the right-click's Order block is all four moves (only those that would move something are there), never one alone
+SHORT = tuple((n, ("front", "forward", "backward", "back") if n == "order" else jobs) for n, jobs in SHORT_MENU)
+LIST = _List(ACTIONS, KEYS2D, noun="layer", short_menu=SHORT)

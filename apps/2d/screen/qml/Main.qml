@@ -35,6 +35,7 @@ AppShell {
     timelineLeast: 7 * Theme.row + Theme.gap      // the header row, then 6 rows of 28 px (204: §1.2), never the content
     frameFolded: timelineFolded && !bottomBeside ? timeline.compactHeight : -1
     bottomHeight: -Theme.gap            // the start screen is not the workspace: no timeline under it
+    rightWidth: 0                       // ... and no settings panel under it (frameAspect is 0 only while it shows)
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
     Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
@@ -58,7 +59,7 @@ AppShell {
                                                                     backend.setTool("camera") } }
     Shortcut { sequence: "H"; enabled: !shell.typing; onActivated: backend.setTool("hand") }       // view tools (Stage.qml)
     Shortcut { sequence: "Z"; enabled: !shell.typing; onActivated: backend.setTool("zoom") }
-    Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.openGroup("media") }  // the kit's add_file: the Media flyout
+    Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.addFile() }  // the kit's add_file: the file picker
     Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
     Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
     // Esc steps back one level at a time, the same whichever way the tool was entered (key, rail or a step): a rail menu closes, then
@@ -116,9 +117,9 @@ AppShell {
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys
         onActivated: {
-            const open = backend.exporter.open || importPanel.shown || fileMenu.menuOpen || rail.flyoutOpen
+            const open = shell.guidesOpen || backend.exporter.open || importPanel.shown || fileMenu.menuOpen || rail.flyoutOpen
             if (backend.stepBack({ popover: open }) === "close") {
-                shell.setExportOpen(false); shell.setImportOpen(false)
+                shell.closeGuides(); shell.setExportOpen(false); shell.setImportOpen(false)
                 fileMenu.closeMenu(); rail.openGroup("")
             }
         }
@@ -157,6 +158,7 @@ AppShell {
     // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
+    Connections { target: startScreen; function onVisibleChanged() { if (startScreen.visible) shell.closeGuides() } }   // the start screen is over everything: no drawer left open beside it
     StaggerPopover { }   // the context bar's Stagger… (stagger.py): under the bar
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar

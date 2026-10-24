@@ -151,8 +151,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("history-agent-run", ["--sample"], ["select title", "agent-run 6", "history open"]),
         ("agent-chip-long", long(), [*busy, "agent-run 3", f"agent-say {LONG_AGENT}"]),
         ("flyout-shapes", ["--sample"], ["flyout shapes"]),
-        ("flyout-media", ["--sample"], ["flyout media"]),
-        ("flyout-view", ["--sample"], ["tool zoom", "flyout view"]),
+        ("tool-zoom", ["--sample"], ["tool zoom"]),
         ("export-sheet", long(), [*busy, "exportsheet open png", f"exportwhere {LONG_FOLDER}"]),     # S34: the kit sheet
         ("job-chip", long(), [*busy, "job-show 42"]),
         ("job-failed", long(), [*busy, "job-failed The engine stopped while drawing frame 112: the GPU ran out of memory. Try a smaller size."]),
