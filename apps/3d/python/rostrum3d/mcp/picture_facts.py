@@ -38,18 +38,5 @@ def line(png, scene: dict, renderer: str) -> tuple[str, dict]:
     text = f" Clipped: {pct:g} % of pixels" + (" (blown out: lower Exposure)" if pct >= 2 else "") + "."
     if final:
         text += (" Applied in Final: " if renderer != "cycles" else " Applied here (Final only): ") + ", ".join(final) + "."
-    spots = not_drawn(scene)
-    if spots:
-        text += f" Not drawn by any renderer yet: the cone of {', '.join(spots)} (a spot lights all around like a bulb for now)."
-    return text, {"clippedPercent": pct, "appliedInFinal": final, "notDrawn": spots}
+    return text, {"clippedPercent": pct, "appliedInFinal": final}
 
-
-def not_drawn(scene: dict) -> list[str]:
-    """Spot lights: their cone is saved, but neither Storm nor our Cycles plug-in cuts the light to it yet."""
-    out, stack = [], list(scene.get("items", []))
-    while stack:
-        node = stack.pop(0)
-        if node.get("type") == "light" and node.get("props", {}).get("kind") == "spot":
-            out.append(node["id"])
-        stack += node.get("children", [])
-    return out

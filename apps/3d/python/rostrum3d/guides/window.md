@@ -66,7 +66,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   words and they change in the viewport as you type; Enter or Esc ends. The whole typing is one undo step; ending with
   nothing typed keeps the word "Text". **SVG logo** asks for the .svg file first. **2D drawing** lists the 2D items in
   this project, then the picked one's path layers; it stays linked, so a change in Rostrum2D shows here.
-- **Lights** (L): Softbox, Round softbox, Strip, Bulb, Sun, Sky.
+- **Lights** (L): Softbox, Round softbox, Strip, Bulb, Spot, Sun, Sky.
 - **Camera** (C): Camera, Camera rig.
 
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
