@@ -17,10 +17,12 @@ from .scene import describe
 SAID_BEFORE = ("broken-link", "missing-marker", "expression", "missing-file", "missing-render")    # kinds the engine may refuse for too
 
 
-def everything(doc_data: dict, comp_id: str, folder=None, markers: dict | None = None, engine: Engine | None = None) -> list[dict]:
-    """Every problem of one composition: the engine's first (it can't draw the scene), then the document's."""
+def everything(doc_data: dict, comp_id: str, folder=None, markers: dict | None = None, engine: Engine | None = None,
+               keeper=None) -> list[dict]:
+    """Every problem of one composition: the engine's first (it can't draw the scene), then the document's. `keeper`
+    (scene_keep.Keeper): describes only what changed since its last call, so a held engine is sent only the change."""
     comp = next(c for c in doc_data["comps"] if c["id"] == comp_id)
-    found = problems(doc_data, comp_id, markers, engine, folder)
+    found = problems(doc_data, comp_id, markers, engine, folder, keeper)
     own = diagnose.problems(comp, folder, markers)
     if any(p["kind"] == "missing-font" for p in found):     # "can't measure every text" is that font again
         own = [p for p in own if p["kind"] != "refused"]
@@ -28,7 +30,8 @@ def everything(doc_data: dict, comp_id: str, folder=None, markers: dict | None =
     return [p for p in found if not (p["kind"] == "refused" and p["item"] in said)] + own
 
 
-def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: Engine | None = None, folder=None) -> list[dict]:
+def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: Engine | None = None, folder=None,
+             keeper=None) -> list[dict]:
     comp = next(c for c in doc_data["comps"] if c["id"] == comp_id)
     own = engine is None
     engine = engine or Engine()
@@ -38,7 +41,7 @@ def problems(doc_data: dict, comp_id: str, markers: dict | None = None, engine: 
             # A 3D layer not rendered yet is reported by `_renders`, not refused here. Only whether the engine accepts the
             # scene is asked, never its pixels: paint pictures not made yet stay stand-ins (`later`), so this check never
             # stamps strokes (seconds of work, a second time, taking the screen's thread's turn).
-            engine.load(describe(doc_data, comp_id, markers, folder, (0.0, comp.get("duration", 5.0)), later=[]))
+            engine.load((keeper.describe if keeper else describe)(doc_data, comp_id, markers, folder, (0.0, comp.get("duration", 5.0)), later=[]))
         except (EngineError, ValueError, RostrumError) as e:
             msg = str(e)
             if not (out and "font" in msg and ("not found" in msg or "italic" in msg)):     # that font is listed already

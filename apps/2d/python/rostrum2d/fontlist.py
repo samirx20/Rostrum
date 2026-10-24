@@ -14,13 +14,28 @@ from .engine import EngineError, find_exe
 
 
 @lru_cache(maxsize=1)
-def _listed() -> dict:
-    exe = find_exe()
-    run = subprocess.run([str(exe), "fonts"], capture_output=True, text=True, encoding="utf-8", timeout=120,
-                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+def _read() -> tuple[dict | None, EngineError | OSError | None]:
+    """The engine's list, or why there is none (no engine built, it failed): either way once per run, so a text asked
+    about per scene description never looks for the engine's file again."""
+    try:
+        exe = find_exe()
+        run = subprocess.run([str(exe), "fonts"], capture_output=True, text=True, encoding="utf-8", timeout=120,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (EngineError, OSError) as e:
+        return None, e
     if run.returncode != 0:
-        raise EngineError(f"the 2D engine could not list the fonts: {run.stderr.strip() or run.returncode}")
-    return json.loads(run.stdout)
+        return None, EngineError(f"the 2D engine could not list the fonts: {run.stderr.strip() or run.returncode}")
+    listed = json.loads(run.stdout)
+    listed["names"] = frozenset({f["family"] for f in listed["families"]} | set(listed["aliases"]))
+    listed["by_name"] = {f["family"]: f for f in listed["families"]}
+    return listed, None
+
+
+def _listed() -> dict:
+    listed, why = _read()
+    if why is not None:
+        raise why
+    return listed
 
 
 def families() -> list[dict]:
@@ -28,13 +43,13 @@ def families() -> list[dict]:
     return _listed()["families"]
 
 
-def names() -> set[str]:
+def names() -> frozenset[str]:
     """Every family name a text may give (a variable font's second name, "Inter Variable", too)."""
-    return {f["family"] for f in families()} | set(_listed()["aliases"])
+    return _listed()["names"]
 
 
 def family(name: str) -> dict | None:
-    return next((f for f in families() if f["family"] == name), None)
+    return _listed()["by_name"].get(name)
 
 
 def missing_words(name: str) -> str:

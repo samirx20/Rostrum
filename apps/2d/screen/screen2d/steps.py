@@ -44,6 +44,7 @@
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame [n] [profile]
+  Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -66,6 +67,7 @@ from .frame_steps import WORDS as FRAME_WORDS, do_frame_step
 from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
 from .rig_steps import WORDS as RIG_WORDS, do_rig_step
 from .drag_steps import WORDS as DRAG_WORDS, do_drag_step
+from .edit_steps import WORDS as EDIT_WORDS, do_edit_step
 
 
 def value(text):
@@ -449,6 +451,8 @@ def do_step(bridge, win, step):
         do_stroke_step(bridge, win, word, rest, step)
     elif word in DRAG_WORDS:                     # dragtime bar|trim|key|layer|frame [n] [profile] (drag_steps.py)
         do_drag_step(bridge, word, rest, step)
+    elif word in EDIT_WORDS:                     # edittime field|dragend|key|pin|undo [n] (edit_steps.py)
+        do_edit_step(bridge, word, rest, step)
     elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)
         do_rig_step(bridge, word, rest, step)
     elif word == "canvasreport":                 # canvasreport: print the canvas picture's fingerprint and the history length (hover-preview walks)

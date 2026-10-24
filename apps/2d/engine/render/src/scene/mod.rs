@@ -3,6 +3,7 @@
 //! serve's `scene`, `frame {t}`, `export` and `edit` requests are in scene_serve.rs.
 
 pub mod blends;
+pub mod change;
 pub mod ease;
 pub mod eval;
 pub mod fields;
@@ -35,8 +36,11 @@ mod tests;
 mod raster_tests;
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use serde_json::{Map, Value};
+
+use change::Refs;
 
 use ease::Ease;
 use fields::{Kind, Role};
@@ -98,11 +102,21 @@ pub struct Node {
 pub struct Scene {
     pub comp: Node,
     /// The fonts its text can name (fonts.rs): the scene's own `fonts`, then the app's, then the computer's.
-    pub fonts: Vec<fonts::Font>,
+    pub fonts: Arc<Vec<fonts::Font>>,
+    /// The `fonts` the scene gave (null: none): a later load giving the same takes `fonts` as they are.
+    fonts_given: Value,
 }
 
 impl Scene {
+    /// A `scene` load with nothing held (the tests' way in).
+    #[cfg(test)]
     pub fn load(v: &Value) -> Result<Scene, String> {
+        Scene::read(v, &mut Refs::none(), None)
+    }
+
+    /// A load (scene_serve.rs `scene` / `change`): `refs` resolves the ids a `change` keeps from the held scene
+    /// (change.rs); `held`'s fonts are taken as they are when the same `fonts` are given.
+    pub fn read(v: &Value, refs: &mut Refs, held: Option<&Scene>) -> Result<Scene, String> {
         if v["format"] != FORMAT {
             return Err(format!("not a scene description: format {} (expected \"{FORMAT}\")", v["format"]));
         }
@@ -110,7 +124,7 @@ impl Scene {
             Some(VERSION) => {}
             other => return Err(format!("scene version {}; this engine reads {VERSION}", other.map_or(v["version"].to_string(), |n| n.to_string()))),
         }
-        let comp = node(&v["comp"], "scene")?;
+        let comp = node_in(&v["comp"], "scene", refs)?;
         if comp.role != Role::Comp {
             return Err(format!("{}: the scene's top item is a {}, not a comp", comp.id, comp.kind));
         }
@@ -121,9 +135,13 @@ impl Scene {
         follow::check(&comp)?;
         matte::check(&comp)?;
         grade::check(&comp)?;
-        let fonts = fonts::list(&v["fonts"])?;
+        let given = v.get("fonts").cloned().unwrap_or(Value::Null);
+        let fonts = match held {
+            Some(h) if h.fonts_given == given => h.fonts.clone(),
+            _ => Arc::new(fonts::list(&given)?),
+        };
         type_font::register(&fonts);
-        Ok(Scene { comp, fonts })
+        Ok(Scene { comp, fonts, fonts_given: given })
     }
 
     pub fn width(&self) -> u32 {
@@ -196,6 +214,11 @@ fn unknown_field(id: &str, kind: &str, name: &str, fields: &[fields::Field]) -> 
 /// One item, checked: its type known, every field present with a value of the right kind, nothing unknown,
 /// children only where its role allows them.
 fn node(v: &Value, parent: &str) -> Result<Node, String> {
+    node_in(v, parent, &mut Refs::none())
+}
+
+/// `node`, where a child given as an id is the held scene's item of that id, kept as it is (change.rs).
+fn node_in(v: &Value, parent: &str, refs: &mut Refs) -> Result<Node, String> {
     let obj = v.as_object().ok_or_else(|| format!("{parent}: an item must be an object"))?;
     let id = v["id"].as_str().ok_or_else(|| format!("{parent}: an item without an id"))?.to_string();
     let ty = v["type"].as_str().ok_or_else(|| format!("{id}: no type"))?;
@@ -220,13 +243,16 @@ fn node(v: &Value, parent: &str) -> Result<Node, String> {
         let f = fields.iter().find(|f| f.0 == name).ok_or_else(|| unknown_field(&id, kind, name, &fields))?;
         anim.push((name.clone(), track(&id, kind, f, keys)?));
     }
-    let kids = |part: &str, allowed: bool, want: &[Role]| -> Result<Vec<Node>, String> {
+    let mut kids = |part: &str, allowed: bool, want: &[Role]| -> Result<Vec<Node>, String> {
         let Some(list) = v.get(part) else { return Ok(vec![]) };
         if !allowed {
             return Err(format!("{id}: a {kind} has no {part}"));
         }
         let list = list.as_array().ok_or_else(|| format!("{id}: {part} must be a list"))?;
-        let out = list.iter().map(|c| node(c, &id)).collect::<Result<Vec<_>, _>>()?;
+        let out = list.iter().map(|c| match c.as_str() {
+            Some(kept) => refs.take(kept, &id),
+            None => node_in(c, &id, refs),
+        }).collect::<Result<Vec<_>, _>>()?;
         match out.iter().find(|c| !want.contains(&c.role)) {
             Some(c) => Err(format!("{}: a {} can't be in {id}'s {part}", c.id, c.kind)),
             None => Ok(out),

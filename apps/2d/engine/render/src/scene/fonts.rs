@@ -10,6 +10,7 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde_json::Value;
 
@@ -76,9 +77,15 @@ pub fn list(project: &Value) -> Result<Vec<Font>, String> {
         }
         _ => return Err("fonts: must be an object, family name → font file".into()),
     }
-    add(fonts_scan::folder(&app_folder()?, Source::Shipped));
+    add(shipped()?.to_vec());
     add(fonts_scan::installed().to_vec());
     Ok(out)
+}
+
+/// The app's shipped fonts, read once per run as the installed ones are (a scene load lists them every time).
+fn shipped() -> Result<&'static [Font], String> {
+    static ONCE: OnceLock<Result<Vec<Font>, String>> = OnceLock::new();
+    ONCE.get_or_init(|| Ok(fonts_scan::folder(&app_folder()?, Source::Shipped))).as_deref().map_err(Clone::clone)
 }
 
 /// The face of `family` the page draws for this weight and slope: CSS font matching (a face whose weights hold it,

@@ -224,6 +224,10 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   key on the timeline (`key.set` t) are each one `doc.gesture`.
 - **Preview ≡ export**: the canvas is rendered by `rostrum2d.engine.Engine`, off the GUI thread, newest request
   wins (`screen2d/frames.py`; `open_engine` is the one line to swap).
+- **A change describes only what it touched**: the bridge describes through one `rostrum2d.scene_keep.Keeper` (equal to
+  `scene.describe`; untouched items keep their node objects, decided by the document's copy on write), and
+  `Engine.load` sends the engine only the new nodes (`scene_change.py`). A marker move or a 3D render finishing makes
+  the keeper describe everything again (`_render_all`).
 - **Drawings' pictures are made off the GUI thread**: a change to a drawing describes the scene with stand-ins for
   pictures not made yet (`scene.describe(later=…)`), `screen2d/paint_pictures.py` makes them (the same `canvas.png`
   export uses), then the scene is described again and drawn. Painting's wet ink (`wet.py`, `wet_ink.py`) shows the

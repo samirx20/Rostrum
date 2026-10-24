@@ -30,7 +30,7 @@ fn plain() -> Map<String, Value> {
 }
 
 /// Every field of `kind`, set to what changes nothing: no move, no turn, full size and opacity, showing always.
-pub(super) fn neutral(kind: &str) -> Map<String, Value> {
+pub(crate) fn neutral(kind: &str) -> Map<String, Value> {
     let mut m = Map::new();
     for (name, k) in fields::of(kind).expect("a known type").1 {
         let v = match (name, k) {
@@ -77,9 +77,9 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     let all: &[fonts::Font] = match held {
         Some(f) => f,
         None => {
-            listed = fonts::list(&Value::Null)?;
+            listed = std::sync::Arc::new(fonts::list(&Value::Null)?);
             type_font::register(&listed);
-            &listed
+            listed.as_slice()
         }
     };
     let mut ids = vec![];

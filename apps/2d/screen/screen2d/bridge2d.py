@@ -11,6 +11,7 @@ from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
+from rostrum2d.scene_keep import Keeper
 
 from . import bounds, colour_feed, outline, picture_change, route, screen_seen
 from .drags import DragSlots
@@ -82,6 +83,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self._told = (None, None)
         self.frames = FrameRenderer(self)
         self._scene = None                                  # the engine's scene, described once per change (_render)
+        self._keeper = Keeper()                             # ... again only where the change touched (scene_keep.py)
         self._waiting = None                                # the document state whose paint pictures are being made
         self._pictures = PaintPictures(self)                # ... off this thread (paint_pictures.py)
         self._pictures.done.connect(self._pictures_made)
@@ -109,10 +111,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         placement.use(self._host)                           # comp-px strokes and spatial staggers ask the canvas's engine
         self._where = route.use(self.placed_item, self.offset, lambda: self.comp()["fps"])   # marker keys at the playhead (route.py)
         self.model.update(self._rows())
-        self.marks.changed.connect(self._render)            # expressions may read marker("…")
+        self.marks.changed.connect(self._render_all)        # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
         self.r3d = Render3DWatch(self, self)                # a 3D render layer follows its item's newest render
-        self.r3d.changed.connect(self._render)
+        self.r3d.changed.connect(self._render_all)          # a render the document can't see: described afresh
         self.r3d.changed.connect(self._problems.touch)
         self._soundtrack = Soundtrack(self)                 # the project's sound, played by Sound's engine (soundtrack.py)
         self._cuepick = CuePick(self, self)                 # Add a sound here… (sound_cue_pick.py)
@@ -343,17 +345,21 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         if self.held_view is None:
             self._show()
 
+    def _render_all(self):
+        """Something outside the document changed (the markers, a 3D render): every node is described again."""
+        self._keeper.forget()
+        self._render()
+
     def _show(self):
         """The frame at the playhead. The scene doesn't depend on the playhead (the engine evaluates every time), so it
         is described once per change, never per frame: playing and scrubbing only send `t`."""
-        from rostrum2d.scene import describe
         self._previewing = False                            # the document's own picture is drawn again (action_preview.py)
         if self._scene is None:
             later = []
             try:        # a 3D render layer's render missing, a video file gone …: said on screen, no frame drawn
                 with STATS.stage("describe"):
-                    self._scene = describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder,
-                                           (0.0, self.comp()["duration"]), later)
+                    self._scene = self._keeper.describe(self.doc.data, self.comp_id, self.marks.times, self.doc.folder,
+                                                        (0.0, self.comp()["duration"]), later)
             except Exception as e:  # noqa: BLE001
                 self._scene = False                         # tried; the next change tries again
                 self._fail(str(e))
