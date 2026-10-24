@@ -74,7 +74,7 @@ class Playback(QObject):
             self.b.setTime(self.b.time)        # the rest of the screen catches up; the full frame is drawn
         else:
             self._clock = (time.perf_counter(), self.b.time)
-            self._timer.start(max(1, round(1000 / self.b.comp()["fps"])))
+            self._timer.start(self._tick_ms())
             self.b.soundtrack.play(self.b.time)     # the project's sound, through Sound's engine (soundtrack.py)
             self.changed.emit()
 
@@ -84,7 +84,7 @@ class Playback(QObject):
         self._once = (t1, back)
         self.b.setTime(t0)
         self._clock = (time.perf_counter(), self.b.time)
-        self._timer.start(max(1, round(1000 / self.b.comp()["fps"])))
+        self._timer.start(self._tick_ms())
         self.changed.emit()
 
     def stop(self):
@@ -103,6 +103,11 @@ class Playback(QObject):
         if not self._timer.isActive() or not size_offered(self.b.comp()):
             return 1.0
         return SIZES[self._size]
+
+    def _tick_ms(self) -> int:
+        """Ticks at twice the frame rate: each new frame is caught within half a frame (ticks at the frame rate drift
+        against the frames, skipping one now and then); a tick on the frame shown does nothing."""
+        return max(1, round(500 / self.b.comp()["fps"]))
 
     def ahead(self, t: float) -> float | None:
         """While playing, the frame after `t` (bridge.setTime's own rounding, so the next tick asks for exactly it): asked
