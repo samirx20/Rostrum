@@ -5,7 +5,8 @@
     paintpick <paint id>             click a paint layer's name: strokes and fills go on it
     paintset <paint id> visible|opacity|mode|name|locked <json value>    its eye, Opacity, Blend, rename, Lock
     paintmove <paint id> <row>       drag it to that row of the list (0 = top) | paintremove <paint id> (right-click › Delete)
-    painttoggle <field> on|off       Inside the outline (paintInside), Draw each frame (eachFrame)
+    painttoggle <field> on|off       Inside the outline (paintInside), Draw each frame (eachFrame); a painted fill
+                                     painted in place: its painting's Seamless (seamless)
     preset <id> | painttool brush|eraser|fill|pick|select | brushedit on|off    a brush in the brush panel | its top
                                      row | Edit brush › / ‹ Back
     savebrush <name with _ for spaces>   + Save this brush, the name typed, Enter (My brushes)

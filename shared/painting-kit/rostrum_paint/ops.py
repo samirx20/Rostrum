@@ -84,11 +84,16 @@ def _alone(ctx, canvas_id):
     return [canvas_id]
 
 
-def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=()):
+def _never(ctx, canvas):
+    return False
+
+
+def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=(), seamless=_never):
     """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases;
     `peers(ctx, canvas_id)`: the canvases sharing paint layers with it (linked.py), itself included;
     `layer_fields`: the host's own paint layer fields (Params), on paint.add and paint.set (3D: which surface
-    channel a layer paints)."""
+    channel a layer paints); `seamless(ctx, canvas)`: whether a canvas's opposite edges are joined (2D: a seamless
+    painting's; 3D: a texture that repeats), so a stroke made on it gets `wrap` (wrap.py) unless it says."""
     canvas_types, extra = tuple(canvas_types), tuple(layer_fields)
 
     def every(ctx, targets):
@@ -157,11 +162,14 @@ def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=()):
             ctx.set(t, "locked", False)
 
     @registry.operation("stroke.add", "Paint one stroke into a paint layer: a path of points and a brush. Several "
-                        "stroke.add calls in one call list are one undo step.", target="paint", label="Paint",
+                        "stroke.add calls in one call list are one undo step. On a seamless canvas the stroke wraps: paint "
+                        "that crosses an edge comes back on the opposite side.", target="paint", label="Paint",
                         params=[ID, *(_required(p) if p.name == "points" else p for p in F.FIELDS["stroke"])])
     def stroke_add(ctx, targets, args):
         for t in targets:
             item = _new(ctx, "stroke", args if len(targets) == 1 else {**args, "id": None})
+            if "wrap" not in args and seamless(ctx, canvas_of(ctx.doc, ctx.kind.lists, t)):
+                item["wrap"] = True
             _check_mask(ctx, t, item["mask"], item["id"])
             ctx.insert(t, "strokes", item)
 

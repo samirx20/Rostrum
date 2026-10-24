@@ -15,7 +15,8 @@ FIELDS = [
                  help="The painting's size in px; strokes keep their px, from the top-left"),
     Param.number("h", label="Height", group=G, min=1, max=8192, step=1, unit="px", integer=True, default=512, importance="primary"),
     Param.toggle("seamless", label="Seamless", group=G, default=False, importance="primary",
-                 help="On: paint that crosses an edge comes back on the opposite side, so tiles always meet"),
+                 help="On: paint that crosses an edge comes back on the opposite side, so tiles always meet (strokes "
+                      "already painted stay as they are)"),
     Param.toggle("eachFrame", label="Draw each frame", group=G, default=False, importance="secondary", help=EACH_FRAME_HELP),
     _new_hold(G, {"is": ["eachFrame", True]}),
     Param.choice("loop", ["loop", "pingpong"], label="Loop", group=G, default="loop", importance="secondary",

@@ -5,7 +5,8 @@ The edges are found in **all** the element's visible paint layers at that frame 
 lines on the line layer), or only in the paint layer filled (`edges: "layer"`); a locked paint layer refuses a fill; `gap` (Close gaps: small, medium, large) closes lines that don't quite meet. The result is
 a painting-kit **fill** item, kept as its outline (rostrum_paint.fill): it stays sharp and replays like a stroke, on
 the same render path (the kit's canvas PNG the engine draws), so the preview and the export are the same.
-A click on a line, or in an area that is not closed, is refused with what to do instead; nothing is filled.
+A click on a line, or in an area that is not closed, is refused with what to do instead; nothing is filled. On a
+seamless painting the edges are joined: an area closed only across them is closed (rostrum_paint.fill, `wrap`).
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from rostrum_paint.fill import GAPS, NotClosed, region
 from rostrum_paint.fields import FIELDS
 from rostrum_paint.ops import build
 
-from . import drawing as D, placement
+from . import drawing as D, paintings, placement
 from .evaluate import resolve
 from .kind import REGISTRY as R
 from .ops_paint import PAINTABLE, _fps, _paint, _place
@@ -61,7 +62,7 @@ def paint_fill(ctx, targets, args):
         paint = _paint(ctx, frame, args.get("layer", ""))
         only = paint["id"] if args.get("edges") == "layer" else None
         try:
-            outline = region(_edges(frame, w, h, only), (x, y), args.get("gap", "small"))
+            outline = region(_edges(frame, w, h, only), (x, y), args.get("gap", "small"), paintings.seamless(item))
         except NotClosed as e:
             ctx.fail(codes.BAD_ARGUMENT, f'at {args["at"][0]}', f"has nothing to fill: {e}",
                      hint="Click inside an area closed by lines, or try a larger gap.",

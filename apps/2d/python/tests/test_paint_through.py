@@ -58,3 +58,13 @@ def test_a_stroke_outside_the_painting_is_refused():
     with pytest.raises(RostrumError, match="outside the painting"):
         d.apply({"op": "paint.stroke", "target": pid, "args": {**BRUSH, "points": [[5, 100], [20, 120]], "space": "layer",
                                                                 "through": "c2"}}, SAM)
+
+
+def test_a_seamless_painting_takes_one_wrapping_stroke_not_one_per_tile():
+    """The painting kit wraps a seamless painting's strokes (wrap.py): split into tiles as well, the ink would double."""
+    d, pid = scene()
+    d.apply({"op": "painting.set", "target": pid, "args": {"seamless": True}}, SAM)
+    d.apply({"op": "paint.stroke", "target": pid, "args": {**BRUSH, "points": [[140, 100], [180, 100]], "space": "layer",
+                                                            "through": "c2"}}, SAM)
+    (s,) = strokes(d)
+    assert s["wrap"] and s["points"][0][0] == pytest.approx(89.5)

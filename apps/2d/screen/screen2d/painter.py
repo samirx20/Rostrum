@@ -14,9 +14,9 @@ from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from rostrum2d import painted_fill
+from rostrum2d import painted_fill, paintings
 
-from . import adding, brush_presets, fill_aim, framing, onion
+from . import adding, brush_presets, fill_aim, framing, onion, wet_wrap
 from .wet import WetView, reveal_rect, smear_ink, without_paint
 from .pen_tilt import PenTilt
 from .brush import Brush
@@ -226,7 +226,8 @@ class Painter(BrushPanel):
                 self._wet.add(*s.points[-1][:3])
             else:
                 ink = self._wet.ink(args, s.sid, s.scale(x, y))         # world px: anywhere on the canvas
-                self._wet.start(ink)
+                wraps = fill is not None and not ink.erasing and paintings.seamless(fill)
+                self._wet.start(ink, (lambda: wet_wrap.copies(s, fill, args.get("size", 10))) if wraps else None)
                 self._wet.add(x, y, pressure)
                 if ink.erasing:
                     self._ask_reveal(ink, d["id"], x, y, fill is not None)

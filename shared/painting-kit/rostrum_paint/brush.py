@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from . import shape as shaping
-from . import pictures
+from . import pictures, wrap
 from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, UNDER, Coverage, Paper, _noise1, _ss, _up, apply_paint
 
 
@@ -99,6 +99,20 @@ def plan(shape, points, color, size, tip, paper, params):
                        np.clip(v0 * (1 + cj * vn), 0, 1)).astype(np.float32)
     G, F = (paper or Paper(H, W)).fields() if p["grain"] > 0 or tip == "chalk" else (None, None)
     soft = max(1 - p["hardness"], 0.03)
+    # wet carry: how much each dab lays of the reservoir and takes up (from the path as drawn, before any wrap)
+    wetk = [(0.0, 0.0)] * n
+    if wet > 0:
+        wetk = []
+        for i in range(n):
+            lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * R[i] * ALONG[tip]) if i else 0
+            wetk.append((1 - (1 - 0.97 * wet) ** max(lt, 0.05), 1 - (0.6 * wet) ** max(lt, 0.05)))
+    again = None
+    if p["wrap"]:       # seamless (wrap.py): each dab as its parts, the canvas's opposite edges joined
+        i, X, Y, again, last = wrap.parts(H, W, X, Y, R)
+        R, A, t, S, th, cols = R[i], A[i], t[i], S[i], th[i], cols[i]
+        wv = None if wv is None else wv[i]
+        wetk = [(wetk[k][0], wetk[k][1] if e else 0.0) for k, e in zip(i.tolist(), last.tolist())]
+        n = len(i)
     bx0 = int(max(0, np.floor((X - R).min()) - 1)); bx1 = int(min(W, np.ceil((X + R).max()) + 2))
     by0 = int(max(0, np.floor((Y - R).min()) - 1)); by1 = int(min(H, np.ceil((Y + R).max()) + 2))
     if bx1 <= bx0 or by1 <= by0:
@@ -108,17 +122,14 @@ def plan(shape, points, color, size, tip, paper, params):
     box = np.stack([np.maximum(bx0, np.trunc(X - R).astype(int) - 1), np.minimum(bx1, np.trunc(X + R).astype(int) + 2),
                     np.maximum(by0, np.trunc(Y - R).astype(int) - 1), np.minimum(by1, np.trunc(Y + R).astype(int) + 2)], 1)
     cs = [(math.cos(v), math.sin(v)) for v in th.tolist()]
-    wetk, at = [(0.0, 0.0)] * n, np.zeros((n, 2), int)
+    at = np.zeros((n, 2), int)
     if wet > 0:
-        wetk = []
-        for i in range(n):
-            lt = math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) / (2 * R[i] * ALONG[tip]) if i else 0
-            wetk.append((1 - (1 - 0.97 * wet) ** max(lt, 0.05), 1 - (0.6 * wet) ** max(lt, 0.05)))
         at = np.stack([np.round(Y).astype(int) - D // 2, np.round(X).astype(int) - D // 2], 1)
     return SimpleNamespace(tip=tip, mode=p["mode"], tex=pictures.tip(p["texture"]), wet=wet, cj=cj, sample_all=bool(p["sample_all"]),
                            grain=p["grain"], soft=soft, n=n, X=X, Y=Y, R=R, A=A, t=t, S=S, L=L, Kr=Kr, prof=prof,
                            start=start, end=end, streak=streak, wv=wv, cols=cols, G=G, F=F,
-                           bbox=(bx0, by0, bx1, by1), D=D, box=box, cs=cs, wetk=wetk, at=at)
+                           bbox=(bx0, by0, bx1, by1), D=D, box=box, cs=cs, wetk=wetk, at=at, wrap=bool(p["wrap"]),
+                           again=again)
 
 
 def _hsv_to_rgb(h, s, v):
@@ -196,14 +207,17 @@ def dabs(layer, P, mask=None, under=None):
         if wet > 0:  # smudge: the brush carries a reservoir of the paint it passed over
             oy, ox = P.at[i].tolist()
             win = (slice(y0 - oy, y1 - oy), slice(x0 - ox, x1 - ox))
-            if 0 <= oy and oy + D <= H and 0 <= ox and ox + D <= W:
-                ix = (slice(oy, oy + D), slice(ox, ox + D))
-            else:  # near the edge: clamp, the canvas edge repeats
-                ix = np.ix_(np.clip(np.arange(oy, oy + D), 0, H - 1), np.clip(np.arange(ox, ox + D), 0, W - 1))
-            pick = layer[ix].copy()
-            if P.sample_all:  # what the eye sees: this layer over the composite below
-                pick[..., :3] += (1 - pick[..., 3:]) * under[ix]
-                pick[..., 3] = 1
+            if P.again is None or not P.again[i]:   # another part of the same dab reuses its pick-up (wrap.py)
+                if 0 <= oy and oy + D <= H and 0 <= ox and ox + D <= W:
+                    ix = (slice(oy, oy + D), slice(ox, ox + D))
+                elif P.wrap:  # near a joined edge: the paint across it
+                    ix = np.ix_(wrap.ring(oy, D, H), wrap.ring(ox, D, W))
+                else:  # near the edge: clamp, the canvas edge repeats
+                    ix = np.ix_(np.clip(np.arange(oy, oy + D), 0, H - 1), np.clip(np.arange(ox, ox + D), 0, W - 1))
+                pick = layer[ix].copy()
+                if P.sample_all:  # what the eye sees: this layer over the composite below
+                    pick[..., :3] += (1 - pick[..., 3:]) * under[ix]
+                    pick[..., 3] = 1
             if res is None:
                 res = pick
             lay, take = P.wetk[i]

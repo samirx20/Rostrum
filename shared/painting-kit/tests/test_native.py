@@ -20,7 +20,7 @@ def test_out_of_date_stamper_refused():
         rostrum2d_stamp_layout = staticmethod(lambda: 7.0)
 
     for lib, built in ((Old(), "2 or older"), (Other(), "7.0")):
-        with pytest.raises(native.OutOfDate, match=f"built for layout {built}, this code needs 3.0.*cargo build --profile agent -p "
+        with pytest.raises(native.OutOfDate, match=f"built for layout {built}, this code needs 4.0.*cargo build --profile agent -p "
                                                      f"rostrum2d-stamp"):
             native.check_layout(lib, "x.dll")
 
@@ -49,3 +49,21 @@ def test_native_dabs_equal_numpy():
                    ((ours, native.lay), (theirs, B.dabs))]
             assert got[0].bbox == got[1].bbox and got[0].a.tobytes() == got[1].a.tobytes(), f"{tip} {mode}: coverage"
             assert ours.tobytes() == theirs.tobytes(), f"{tip} {mode}: pixels"
+
+
+@needs_native
+def test_native_equals_numpy_on_a_seamless_canvas():
+    """Wrapping strokes (wrap.py): the parts of every dab, the wet reservoir picking up across the joined edges."""
+    rng = np.random.default_rng(1)
+    base = (rng.random((H, W, 4)) * 0.6).astype(np.float32)
+    base[..., :3] = np.minimum(base[..., :3], base[..., 3:])
+    under = np.ascontiguousarray(rng.random((H, W, 4)), np.float32)[..., :3]
+    ours, theirs = base.copy(), base.copy()
+    paper = marks.Paper(H, W, wrap=True)
+    for k, tip in enumerate(marks.TIPS):
+        s = dict(seed=k, wrap=True, grain=0.3 * (k % 2), wet=0.6 * (k % 2), sample_all=k == 3, mode=marks.MODES[k])
+        pts = [[W - 20 + 3 * k, 10 + 15 * k, 0.5], [W + 40, H - 5 + 4 * k, 1.0], [W + 90, H + 30, 0.8]]
+        got = [B.stamp_stroke(layer, pts, (0.7, 0.3, 0.2), 10 + 6 * k, tip, paper=paper, lay=lay, under=under, **s)
+               for layer, lay in ((ours, native.lay), (theirs, B.dabs))]
+        assert got[0].bbox == got[1].bbox and got[0].a.tobytes() == got[1].a.tobytes(), f"{tip}: coverage"
+        assert ours.tobytes() == theirs.tobytes(), f"{tip}: pixels"

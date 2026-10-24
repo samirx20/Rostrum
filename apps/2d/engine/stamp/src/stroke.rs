@@ -30,16 +30,24 @@ pub fn lay(st: &Stroke, dabs: &[Dab], (h, w): (usize, usize), bbox: [usize; 4], 
             if y0 < oy || y1 > oy + d as i64 || x0 < ox || x1 > ox + d as i64 {
                 return Err(format!("a dab ({x0}..{x1}, {y0}..{y1}) outside its reservoir ({ox}, {oy}, {d})"));
             }
-            // The canvas edge repeats (numpy's clamped indices; inside, the same pixels, a row at a time).
+            if res.is_none() && dab.again {
+                return Err("a dab's other part came before the dab".into());
+            }
+        }
+        if st.wet > 0.0 && !dab.again {
+            // The canvas edge repeats (numpy's clamped indices), or on a seamless canvas the paint across it shows
+            // (numpy's indices round the edge); inside, the same pixels, a row at a time.
             let inside = ox >= 0 && ox + d as i64 <= w as i64;
+            let at_y = |v: i64| if st.wrap { v.rem_euclid(h as i64) } else { v.clamp(0, h as i64 - 1) } as usize;
+            let at_x = |v: i64| if st.wrap { v.rem_euclid(w as i64) } else { v.clamp(0, w as i64 - 1) } as usize;
             for j in 0..d {
-                let sy = (oy + j as i64).clamp(0, h as i64 - 1) as usize;
+                let sy = at_y(oy + j as i64);
                 if inside {
                     let at = (sy * w + ox as usize) * 4;
                     pick[j * d * 4..(j + 1) * d * 4].copy_from_slice(&layer[at..at + d * 4]);
                 }
                 for i in 0..d {
-                    let sx = (ox + i as i64).clamp(0, w as i64 - 1) as usize;
+                    let sx = at_x(ox + i as i64);
                     let p = &mut pick[(j * d + i) * 4..][..4];
                     if !inside {
                         p.copy_from_slice(&layer[(sy * w + sx) * 4..][..4]);

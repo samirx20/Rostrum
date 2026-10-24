@@ -76,7 +76,10 @@ def _copy_drawings(ctx, source: dict, painting_id: str):
                      Param.number("w", label="Width", min=1, max=8192, integer=True, unit="px",
                                   help="Default: the first `onto` layer's width (long side at most 2048), else 512"),
                      Param.number("h", label="Height", min=1, max=8192, integer=True, unit="px"),
-                     Param.toggle("seamless", label="Seamless", default=False, importance="secondary"),
+                     Param.toggle("seamless", label="Seamless", importance="secondary",
+                                  help="Paint that crosses an edge comes back on the opposite side, so tiles always meet. "
+                                       "Default: on for a blank painting on its own (a texture, the Library's New painting), "
+                                       "off when made `from` or `onto` layers (that layer's look)"),
                      Param.id("from", label="From", importance="secondary",
                               help="A shape / path with paint of its own (its paint moves in), or a drawing layer (copied); size comes from it"),
                      Param.list("onto", "id", label="Use on", importance="secondary", help="Layers (shapes, paths) whose fill becomes it"),
@@ -107,7 +110,7 @@ def painting_add(ctx, targets, args):
     else:
         base = f"{display_name(ctx.item(onto[0]))} paint" if onto else "Painting"
     painting = {"id": pid, "type": "painting", **F.defaults("painting"), "name": unique_name(_names(ctx), base), "w": w, "h": h,
-                "seamless": bool(args.get("seamless")), "frames": []}
+                "seamless": bool(args.get("seamless", src is None and not onto)), "frames": []}
     if src is not None:
         painting.update({k: src[k] for k in ("eachFrame", "newHold") if k in src})
         if src.get("loop") in ("loop", "pingpong"):

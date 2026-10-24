@@ -117,6 +117,24 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
   the layer behind was never painted: paint the far layer on under where the nearer ones will be, because the frame
   slides them apart as it moves. `inspect_background` says if a layer stops short.
 
+## A repeating painted ground
+
+For a ground that goes on and on (paper grain, a field of grass, rain, a patterned wall), paint one small piece and let
+it repeat, rather than painting a huge canvas:
+
+- Make a **seamless painting** (`painting.add {w: 256, h: 256}`: blank on its own, it starts seamless) and use it on a
+  shape with `fit: "tile"` (`layer.fill {type: "painted", painting, fit: "tile", scale}`). Every tile is the same
+  painting, so a stroke shows in all of them.
+- **Paint across the edges.** A stroke that leaves the painting comes back on the opposite side, so the seam is painted
+  over like any other place. Strokes that stop short of an edge leave the edge bare in every tile: an even band where
+  the tiles meet is how a repeat gives itself away.
+- **Break the grid.** Big shapes the size of the painting repeat visibly; keep marks well under its size, vary their
+  angle, size and spacing, and spread them across the corners as well as the middle.
+- **Judge the repeat**, not the piece: `look_painting {painting, repeats: 1}` shows it 3 × 3; `inspect_painting` says
+  whether the edges meet. Then `look_frame` at the size it will be seen.
+- **Let it move.** `driftX` / `driftY` (px per second) slide the tiles for ever (rain, clouds, a scrolling grain);
+  `rotation` turns the whole tiling.
+
 ## Not yet
 
 - The painting kit renders a whole canvas to look at a tile; tiles are crops of it. Very large canvases (above

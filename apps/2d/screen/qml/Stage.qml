@@ -115,6 +115,38 @@ Rectangle {
                 source: w.serial > 0 ? "image://wet/tip-" + w.serial : ""
                 cache: false; smooth: true; asynchronous: false
             }
+            Item {  // wet ink on a seamless painting: where the stroke crosses its edge it shows on the other side too (wet_wrap.py), inside the element
+                id: wetCopies
+                readonly property var w: painter.wet
+                readonly property var b: backend.selBox
+                visible: w.copies.length > 0 && b.w !== undefined
+                clip: true
+                x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
+                width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
+                Repeater {
+                    model: wetCopies.w.copies
+                    delegate: Item {
+                        required property var modelData
+                        readonly property var w: wetCopies.w
+                        Image {
+                            visible: parent.w.drySerial > 0
+                            x: ((parent.w.dryBox.x || 0) + parent.modelData.x - (wetCopies.b.x || 0)) * view.zoom
+                            y: ((parent.w.dryBox.y || 0) + parent.modelData.y - (wetCopies.b.y || 0)) * view.zoom
+                            width: (parent.w.dryBox.w || 0) * view.zoom; height: (parent.w.dryBox.h || 0) * view.zoom
+                            source: parent.w.drySerial > 0 ? "image://wet/dry-" + parent.w.drySerial : ""
+                            cache: false; smooth: true; asynchronous: false
+                        }
+                        Image {
+                            visible: parent.w.serial > 0
+                            x: ((parent.w.box.x || 0) + parent.modelData.x - (wetCopies.b.x || 0)) * view.zoom
+                            y: ((parent.w.box.y || 0) + parent.modelData.y - (wetCopies.b.y || 0)) * view.zoom
+                            width: (parent.w.box.w || 0) * view.zoom; height: (parent.w.box.h || 0) * view.zoom
+                            source: parent.w.serial > 0 ? "image://wet/tip-" + parent.w.serial : ""
+                            cache: false; smooth: true; asynchronous: false
+                        }
+                    }
+                }
+            }
         }
         Image {  // playing (spec 4.8): the export fitted in the well, as looking through fits the view (LookThrough.qml)
             readonly property var p: backend.world.picture

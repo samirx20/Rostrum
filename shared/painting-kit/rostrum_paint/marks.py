@@ -14,7 +14,7 @@ ALONG = {"round": 1.0, "chalk": 1.0, "line": 1.0, "bristle": 0.4, "flat": 0.3, "
 PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=None, wet=0.0,
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
               size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
-              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none")
+              taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none", wrap=False)
 EVEN = 0.13   # even soft edge: a dab every EVEN * sqrt(radius * edge width) px at most (ridges under ~1.5/255)
 
 
@@ -47,14 +47,19 @@ def _cubic(u):
     return i, ((-t3 + 2 * t2 - t) / 2, (3 * t3 - 5 * t2 + 2) / 2, (-3 * t3 + 4 * t2 + t) / 2, (t3 - t2) / 2)
 
 
-def _noise(h, w, cell, seed, salt, origin=(0, 0)):
+def _noise(h, w, cell, seed, salt, origin=(0, 0), wrap=False):
     """Smooth value noise 0..1 with features about `cell` px wide, over canvas px (0..w, 0..h) whose paper starts at
-    `origin` (canvas px): the plane's (x - ox, y - oy). Fixed to the paper, not to the canvas's size."""
-    ix, wx = _cubic((np.arange(w) - origin[0]) / cell)
-    iy, wy = _cubic((np.arange(h) - origin[1]) / cell)
+    `origin` (canvas px): the plane's (x - ox, y - oy). Fixed to the paper, not to the canvas's size. `wrap`: it
+    repeats every w and h px (a seamless canvas, wrap.py): a whole number of features across, the knots round again."""
+    nkx, nky = (max(1, round(w / cell)), max(1, round(h / cell))) if wrap else (0, 0)
+    ix, wx = _cubic((np.arange(w) - origin[0]) / (w / nkx if wrap else cell))
+    iy, wy = _cubic((np.arange(h) - origin[1]) / (h / nky if wrap else cell))
     kx0, ky0 = int(ix.min()) - 1, int(iy.min()) - 1
     nx, ny = int(ix.max()) - kx0 + 3, int(iy.max()) - ky0 + 3
-    g = _knots(seed, salt, np.arange(ky0, ky0 + ny, dtype=np.int64)[:, None], np.arange(kx0, kx0 + nx, dtype=np.int64)[None, :])
+    ky, kx = np.arange(ky0, ky0 + ny, dtype=np.int64), np.arange(kx0, kx0 + nx, dtype=np.int64)
+    if wrap:
+        ky, kx = ky % nky, kx % nkx
+    g = _knots(seed, salt, ky[:, None], kx[None, :])
     rows = sum(g[:, ix - kx0 - 1 + j] * wx[j] for j in range(4))
     return sum(rows[iy - ky0 - 1 + j] * wy[j][:, None] for j in range(4)).clip(0, 1)
 
@@ -74,19 +79,21 @@ class Paper:
     tooth, or `picture` (a pictures.PAPERS name) tiled at `scale`. Either is fixed to the paper, which starts at canvas
     px `origin`: a drawing that grows (its strokes moved by the growth, the origin with them) keeps every grain where it
     was, and a canvas made bigger keeps the grain it had."""
-    def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0, origin=(0, 0)):
+    def __init__(self, h, w, seed=0, size=3.0, picture="tooth", scale=1.0, origin=(0, 0), wrap=False):
         self.h, self.w, self.seed, self.size, self._g = h, w, seed, size, None
-        self.picture, self.scale, self.origin = picture, scale, tuple(origin)
+        self.picture, self.scale, self.origin, self.wrap = picture, scale, tuple(origin), wrap
 
     def fields(self):
+        """(grain, chalk fibre) HxW. On a seamless canvas (`wrap`) both repeat every w and h px, so the tooth meets
+        itself across the joined edges, a hair bigger or smaller to fit a whole number of times."""
         if self._g is None and self.picture != "tooth":
             from .pictures import paper_tile, tiled
-            g = tiled(paper_tile(self.picture), self.h, self.w, self.scale, self.origin)
+            g = tiled(paper_tile(self.picture), self.h, self.w, self.scale, self.origin, self.wrap)
             self._g = (g, g)
         if self._g is None:
-            s, o, h, w = self.size, self.origin, self.h, self.w
-            g = 0.6 * _noise(h, w, s, self.seed, 0, o) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o)
-            self._g = (g, _noise(h, w, 1.5, self.seed, 2, o))
+            s, o, h, w, r = self.size, self.origin, self.h, self.w, self.wrap
+            g = 0.6 * _noise(h, w, s, self.seed, 0, o, r) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o, r)
+            self._g = (g, _noise(h, w, 1.5, self.seed, 2, o, r))
         return self._g
 
 

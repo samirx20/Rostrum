@@ -20,6 +20,10 @@ see the canvas and know where each stroke landed (`docs/PLAN.md` › Tools for a
   The brush panel, the stroke inspector, the MCP schema and `stroke.add`'s checks all read it; a setting that doesn't
   apply right now is absent (wetness only with smudge, tip angle only when the tip doesn't turn with the stroke).
 - **Pixels are a cache of the strokes**, never the truth: an agent or a person never waits for a full replay to look.
+- **Seamless canvases** (`wrap.py`): a stroke with `wrap` lays every dab that crosses an edge again on the opposite side,
+  the smudge reservoir reads across the joined edges, the paper's tooth repeats with the canvas, and `fill.region(...,
+  wrap=True)` treats the edges as joined. A host says which canvases are seamless (`register(..., seamless=fn)`: 2D a
+  seamless painting, 3D a texture that repeats); strokes made on one get `wrap` and keep it.
 
 ```python
 import rostrum_paint

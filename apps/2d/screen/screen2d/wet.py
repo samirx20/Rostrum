@@ -51,6 +51,7 @@ class WetView(QObject):
         super().__init__(parent)
         self.provider, self._ink, self._serial, self._box, self._lifted = WetProvider(), None, 0, {}, False
         self._dry_serial, self._dry_box, self._settled = 0, {}, lambda: True
+        self._copies, self._copies_of = [], None        # a seamless painting's wrapped copies (wet_wrap.py)
         frame_changed.connect(self._frame)
         self._dried.connect(self.show)
 
@@ -63,9 +64,11 @@ class WetView(QObject):
     box = Property("QVariantMap", lambda self: self._box, notify=changed)            # the tip's
     drySerial = Property(int, lambda self: self._dry_serial, notify=changed)
     dryBox = Property("QVariantMap", lambda self: self._dry_box, notify=changed)
+    copies = Property("QVariantList", lambda self: self._copies, notify=changed)    # [{x, y}] moves of both pictures
 
-    def start(self, ink: WetInk):
-        self._ink, self._lifted = ink, False
+    def start(self, ink: WetInk, copies_of=None):
+        """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else."""
+        self._ink, self._lifted, self._copies_of = ink, False, copies_of
 
     @property
     def smearing(self) -> bool:
@@ -94,6 +97,8 @@ class WetView(QObject):
         if got is not None:
             self.provider.put("tip", got[0])
             self._serial, self._box = self._serial + 1, got[1]
+        if self._copies_of is not None:
+            self._copies = self._copies_of()
         self.changed.emit()
 
     def lift(self, saved: bool):
@@ -118,8 +123,9 @@ class WetView(QObject):
 
     def _clear(self):
         self._lifted = False
-        if self._serial or self._dry_serial:
-            self._serial, self._box, self._dry_serial, self._dry_box = 0, {}, 0, {}
+        self._copies_of = None
+        if self._serial or self._dry_serial or self._copies:
+            self._serial, self._box, self._dry_serial, self._dry_box, self._copies = 0, {}, 0, {}, []
             self.changed.emit()
 
 

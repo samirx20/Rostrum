@@ -18,7 +18,7 @@ says which (`take_weak`).
 | File | Job |
 |---|---|
 | `src/lib.rs` | the C entry `rostrum2d_stamp_dabs`, the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
-| `src/stroke.rs` | a stroke's dabs in order, the wet reservoir |
+| `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`) |
 | `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask |
 | `src/paint.rs` | paint meets the layer (normal, multiply, erase, screen, add) |
 
