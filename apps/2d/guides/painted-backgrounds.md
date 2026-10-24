@@ -123,7 +123,7 @@ For a ground that goes on and on (paper grain, a field of grass, rain, a pattern
 it repeat, rather than painting a huge canvas:
 
 - Make a **seamless painting** (`painting.add {w: 256, h: 256}`: blank on its own, it starts seamless) and use it on a
-  shape with `fit: "tile"` (`layer.fill {type: "painted", painting, fit: "tile", scale}`). Every tile is the same
+  shape with `fit: "tile"` (`layer.fill {type: "painted", painting, fit: "tile", scale}`); on the screen: click the **Fill** swatch and pick the brush, the last of the seven kind icons, whose name **Painted** shows under the row, then **Tile** under Fit). Every tile is the same
   painting, so a stroke shows in all of them.
 - **Paint across the edges.** A stroke that leaves the painting comes back on the opposite side, so the seam is painted
   over like any other place. Strokes that stop short of an edge leave the edge bare in every tile: an even band where
@@ -133,7 +133,7 @@ it repeat, rather than painting a huge canvas:
 - **Judge the repeat**, not the piece: `look_painting {painting, repeats: 1}` shows it 3 × 3; `inspect_painting` says
   whether the edges meet. Then `look_frame` at the size it will be seen.
 - **Let it move.** `driftX` / `driftY` (px per second) slide the tiles for ever (rain, clouds, a scrolling grain);
-  `rotation` turns the whole tiling.
+  `rotation` turns the whole tiling. These belong to the layer's painted fill, so set them with `layer.fill` (`layer.fill {driftX: 30}` on the shape), never `painting.set`, which refuses them; on the screen they are **Drift** and **Rotation** under the fill's Tile fit.
 
 ## Not yet
 

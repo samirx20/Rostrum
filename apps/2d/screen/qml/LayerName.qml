@@ -14,8 +14,9 @@ Rectangle {
     enabled: !rows.compact           // compact: the one name row is the list of every layer (LayerTimeline.qml)
     readonly property bool isLayer: rowData.row === "layer"
     readonly property bool isFrame: rowData.frame === true     // the frame: pinned on top, a lock but no eye, never renamed or moved
-    readonly property bool selected: rowData.id === backend.selected || isLayer && backend.multi.ids.indexOf(rowData.id) >= 0 && backend.multi.count > 1
-    readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
+    readonly property string lit: rows.lit[rowData.id] || ""     // the list's one lookup (multi.py `lit`)
+    readonly property bool selected: lit === "sel"
+    readonly property bool inSelected: isLayer && lit === "in"   // a key, effect or mask of it is selected
     readonly property int indent: Theme.gap + rowData.depth * 16
     radius: Theme.radiusCtl
     color: hover.containsMouse || inSelected ? Theme.hover : "transparent"
@@ -107,7 +108,9 @@ Rectangle {
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (pin.visible ? pin.width + 4 : 0)
         anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
-        HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
+        HoverTip { hovered: hover.containsMouse      // the whole name; the frame also says when Cut here is there
+                   text: name.isFrame ? "Frame" : labelText.truncated ? name.rowData.label : ""
+                   help: name.isFrame ? "What the export shows. Cut here (a jump to the next shot) is there once the playhead is past 0 s." : "" }
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.selected ? Theme.accentHover : name.isLayer ? Theme.fg : Theme.fg2
     }

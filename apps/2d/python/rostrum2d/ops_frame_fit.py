@@ -118,7 +118,11 @@ def frame_fit(ctx, targets, args):
         timed = _scene(ctx, fid)[1]
         at = args.get("at", 0.0)
         t = _seconds(ctx, at)
-        for f, v in _goal(ctx, frame, timed, t, args, _now(timed, t)["rotation"]).items():
+        goal, now = _goal(ctx, frame, timed, t, args, _now(timed, t)["rotation"]), _now(timed, t)
+        if all(abs(now[f] - v) < (1e-4 if f == "zoom" else 0.01) for f, v in goal.items()):     # keys that change nothing: none written
+            ctx.fail(codes.CONFLICT, f'target "{fid}"', f"is already framed there at {marked.label(at)}",
+                     hint="Nothing was keyed: the frame already shows this.")
+        for f, v in goal.items():
             if keys_of(frame, f) or isinstance(at, str) or t > 0:
                 if not keys_of(frame, f) and t > 0:
                     _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)))

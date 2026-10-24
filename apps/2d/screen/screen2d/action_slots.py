@@ -62,6 +62,9 @@ class ActionSlots(SlotMixin):
         after = [k["id"] for c in calls if c["op"] == "group.release" for g in c["target"]
                  for k in self.doc.item(g).get("layers", [])]
         after += [c["args"]["id"] for c in calls if c["op"] in MAKES and c["args"].get("id")]
+        if frame_actions.already(calls, self._facts()):          # Frame the view on what the frame shows: keys that change nothing
+            self._set_status("Already framed")
+            return
         framed = frame_actions.told(calls, self._facts()) if any(c["op"] in frame_actions.OPS for c in calls) else ""   # said before
         if not self._guard(lambda: self._apply(calls, label)):
             return

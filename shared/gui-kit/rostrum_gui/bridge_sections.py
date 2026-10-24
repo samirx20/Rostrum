@@ -12,16 +12,25 @@ from PySide6.QtCore import Slot
 from . import rows, sections
 from .parts import SlotMixin
 
+_LAID: dict[tuple, tuple] = {}              # (id(op), kind, layout function) -> (op, its static rows)
+
 
 class SectionSlots(SlotMixin):
     sections = False                        # True: essentials + folded groups + search (else the More row)
 
     def _layout(self) -> list[dict]:
-        """The static rows for the selected item's kind, as this bridge lays them out right now."""
+        """The static rows for the selected item's kind, as this bridge lays them out right now. Static per field
+        operation, kind and mode, so worked out once each (every pick of a layer laid its kind out again: ~3 ms);
+        callers read the rows and copy what they change (rows.evaluate)."""
         op, kind = self._kit.op_kind
-        if not self.sections:
-            return rows.layout(op, kind)
-        return (sections.search_layout if self._kit.search.strip() else sections.layout)(op, kind)
+        how = rows.layout if not self.sections else sections.search_layout if self._kit.search.strip() else sections.layout
+        key = (id(op), kind, how)
+        got = _LAID.get(key)
+        if got is None or got[0] is not op:
+            if len(_LAID) > 64:                     # (several kinds picked together make a shared op each time)
+                _LAID.clear()
+            got = _LAID[key] = (op, how(op, kind))
+        return got[1]
 
     @Slot(str)
     def toggleGroup(self, group):

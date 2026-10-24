@@ -53,7 +53,8 @@ def register(tools: Tools):
         if ctx.app.run_source is None:
             raise RostrumError(codes.BAD_ARGUMENT, "", "this app", "has no script layer wired to the server")
         doc, name = ctx.document(args.get("item")), args.get("name", "agent_script.py")
-        tree = ctx.app.run_source(args["source"], name)
+        run = ctx.app.run_source
+        tree = run(args["source"], name, doc) if getattr(run, "wants_doc", False) else run(args["source"], name)
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None

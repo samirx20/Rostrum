@@ -51,6 +51,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - Two heights (Main.qml `timelineByTool`): full (every row) or compact (header, ruler, the selected layer's row; the name is a
   menu of all layers); Move and Pen remember the full one, Draw the compact one.
 
+- **Settings rows the screen changes after the field data** (`hooks.py`, `corner_rows.py`): Each corner is a split icon on the Corner radius row (and the way back on the first corner's row; the kit's row `button` with an `icon` and a `set`), not a row; an open path's Outline switch is not shown while it is on (`hooks._open_line`) and its line under the name says "Open path" / "Closed path"; a picture's, clip's or render's Fit (Cover / Contain / Stretch) is the folded "+ Fit in box" (the row's "Fit to frame" is the visible one); the Frame row's tip says when Cut here appears; Frame the view on a view the frame already shows says "Already framed" and changes nothing (`frame_actions.already`; `frame.fit` refuses it for agents).
+
 ## Creation tools, the view, snapping, painting on any element (H29)
 
 - **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas beside the tool rail):
@@ -58,7 +60,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
   key), Esc / Ctrl+Enter ends; double-click a text to type in it again. No bar of options pops up while typing (no Done
   either: Esc, Ctrl+Enter or a click outside ends); from the first letter
-  the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "More type" / "Fill style" for a text (kit `sections.WORDS`; the group keys stay Font / Fill). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+  the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "Width and slant" / "Gradient and opacity" / "Ligatures and numbers" for a text (kit `sections.WORDS`; the group keys stay Font / Fill / Type). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
   at the pointer, Space+drag or middle-drag, Ctrl+0 (fit the frame), Shift+1 (fit everything), Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The

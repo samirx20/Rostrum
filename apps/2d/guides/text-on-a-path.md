@@ -16,6 +16,8 @@ Make words run along a line or a curve. The words stay real text: you can still 
 
 The list shows only path layers that sit beside the text: in the same scene, or in the same group. If your path is somewhere else, put the two in the same group first (select both, then **Group**).
 
+**From a script or an agent:** put the text on a path layer with `text.follow` (`path:"<path layer id>"`), or write `text("title", body="Words", pathLayer="trend")` in a script. The text's own `path` field is different: it holds raw path data (`M 0 0 C ...`), never a layer's id, and a layer id written there is refused with this line to write instead.
+
 ## 3. Slide it, align it
 
 With the text selected, these show in **On a path** once it follows a path:

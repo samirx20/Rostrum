@@ -11,10 +11,11 @@ from __future__ import annotations
 import math
 
 from .boxes import matrix
-from .evaluate import animated, resolve
+from .evaluate import _track, animated, keys_of, resolve
 from .frame import view
 from .sizes import own_size
 
+BOX = frozenset(("x", "y", "scale", "scaleX", "scaleY", "rotation", "anchorX", "anchorY", "depth", "w", "h"))  # what places a box (a text's size: all)
 BLEED = 24          # px past the furthest edge the frame shows: a soft edge never reaches the frame
 EDGES = ("left", "top", "right", "bottom")
 
@@ -67,23 +68,34 @@ def edges(comp: dict, layer: dict, shots: list, fps: float) -> list[dict]:
 def report(comp: dict, layer: dict, shots: list, fps: float) -> tuple[list[dict], bool]:
     """(edges, whether it covers the whole frame at some moment: a backdrop, not a title the frame always sees round)."""
     worst: dict[str, list] = {}
-    once, still, m = False, not animated(layer), None
+    once, m, short, last = False, None, [], None
+    p = resolve(layer, 0.0)
+    moving = sorted(animated(layer) if layer["type"] == "text" else animated(layer) & BOX)    # what moves its box
+    tracks = [keys_of(layer, k) for k in moving]
     for n, shot in enumerate(shots):
-        if not still or n == 0:                 # a still layer (most backgrounds): its box once
-            p = resolve(layer, n / fps)
-            w, h = own_size(layer["type"], p)
-            sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
-            m = matrix(p, w, h) if w * sx > 0 and h * sy > 0 else None
-        if m is None:
+        now = tuple(_track(k, keys, n / fps) for k, keys in zip(moving, tracks))
+        if last is None or (now, shot) != last:     # else the box and the frame are as at the frame before: same answer
+            if last is None or now != last[0]:
+                p.update(zip(moving, now))
+                w, h = own_size(layer["type"], p)
+                sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
+                m = matrix(p, w, h) if w * sx > 0 and h * sy > 0 else None
+            last = (now, shot)
+            short = None if m is None else _short(m, seen(comp, shot, p["depth"]), w, h, sx, sy)
+        if short is None:
             continue
-        own = [view.undo(m, x, y) for x, y in seen(comp, shot, p["depth"])]
-        us, vs = [u for u, _ in own], [v for _, v in own]
-        short = [(e, d) for e, d in zip(EDGES, (-min(us) * sx, -min(vs) * sy, (max(us) - w) * sx, (max(vs) - h) * sy)) if d > 0.5]
         once = once or not short
         for edge, d in short:
             got = worst.setdefault(edge, [d, n / fps])
             got[0] = max(got[0], d)
     return [{"edge": e, "short": round(worst[e][0]), "from": round(worst[e][1], 2)} for e in EDGES if e in worst], once
+
+
+def _short(m, corners, w: float, h: float, sx: float, sy: float) -> list[tuple[str, float]]:
+    """[(edge, px)]: how far past each of the box's edges the frame's corners reach (more than half a px)."""
+    own = [view.undo(m, x, y) for x, y in corners]
+    us, vs = [u for u, _ in own], [v for _, v in own]
+    return [(e, d) for e, d in zip(EDGES, (-min(us) * sx, -min(vs) * sy, (max(us) - w) * sx, (max(vs) - h) * sy)) if d > 0.5]
 
 
 def words(edge: dict) -> str:

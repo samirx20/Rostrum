@@ -66,7 +66,9 @@ Item {
                                  implicitWidth: Theme.field; implicitHeight: Theme.field; kind: "ghost"; glyph: "×"
                                  tip: "Remove"; help: "Remove this effect from the layer."; onClicked: grp.g.remove() }
                 }
-                Item {  // its settings, open or folded (height eases)
+                Item {  // its settings, open or folded (height eases); a folded group makes no rows (each pick of a
+                        // layer made every folded effect's settings: ~10 ms a click on a layer with effects)
+                    id: body
                     width: parent.width; clip: true
                     height: grp.g.open ? inner.height : 0
                     visible: height > 0
@@ -74,7 +76,7 @@ Item {
                     Column {
                         id: inner
                         width: parent.width
-                        Repeater { model: grp.g.rows; delegate: InspectorRow { bridge: grp.g } }
+                        Repeater { model: grp.g.open || body.height > 0 ? grp.g.rows : null; delegate: InspectorRow { bridge: grp.g } }
                     }
                 }
             }

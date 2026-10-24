@@ -103,9 +103,9 @@ QQC.Popup {
         Keys.onEnterPressed: menu.pick(menu.highlighted)
         Keys.onRightPressed: if (menu.hasSub(menu.highlighted)) menu.openSub(menu.highlighted)
         Keys.onLeftPressed: if (menu.owner) menu.close()
-        Repeater {
+        Repeater {      // rows only while open: a closed menu (every button's ▾, every ⋯) costs nothing when its entries change
             id: rep
-            model: menu.entries
+            model: menu.visible ? menu.entries : []
             delegate: Item {
                 id: row
                 required property int index

@@ -12,7 +12,7 @@ less the room Fit the frame keeps round the frame: after Frame the view, the fra
 """
 from __future__ import annotations
 
-from rostrum2d.frame import view as frame_view
+from rostrum2d.frame import fit as frame_fit, view as frame_view
 from rostrum2d.ops_frame_fit import words
 
 GROUP = "frame"                     # its own block on right-click (action_slots.actionMenu), first
@@ -36,8 +36,18 @@ def state(b) -> dict:
     shot = frame_view.shot(b.placed(), b._t)         # keys on a marker placed (the frame's own time is the scene's)
     home = shot is None or (abs(shot.x - shot.hx) < 0.01 and abs(shot.y - shot.hy) < 0.01
                             and abs(shot.zoom - 1.0) < 1e-4 and abs(shot.roll) < 1e-3)
-    return {"id": fr["id"], "t": round(t, 4), "marker": marker, "view": _inside(b._world.visible(), b.view_zoom()),
-            "held": bool(fr.get("locked") or fr.get("ridePath")), "home": home}
+    view = _inside(b._world.visible(), b.view_zoom())
+    return {"id": fr["id"], "t": round(t, 4), "marker": marker, "view": view,
+            "held": bool(fr.get("locked") or fr.get("ridePath")), "home": home, "framed": _framed(shot, view, comp)}
+
+
+def _framed(shot, view: dict | None, comp: dict) -> bool:
+    """The frame already shows exactly the view: Frame the view would key what is there (the operation refuses it too)."""
+    if shot is None or not view or view["w"] <= 0 or view["h"] <= 0:
+        return False
+    x, y, z = frame_fit.rect((view["x"], view["y"], view["w"], view["h"]), (float(comp.get("width", 1920)), float(comp.get("height", 1080))),
+                             shot.roll, 0.0)
+    return abs(x - shot.x) < 0.01 and abs(y - shot.y) < 0.01 and abs(z - shot.zoom) < 1e-4
 
 
 def _inside(v: dict | None, zoom: float) -> dict | None:
@@ -102,6 +112,12 @@ def menu_rows(entries: list[dict]) -> list[dict]:
     """Right-click's frame block (spec § 3.4: on the Frame row and the canvas): the frame actions the panel shows."""
     return [{"value": e["id"], "label": e["label"], "keys": e["keys"], "group": GROUP, "sub": []}
             for e in entries if e["group"] == GROUP and e.get("panel", True)]
+
+
+def already(calls: list[dict], f) -> bool:
+    """The calls are Frame the view on a view the frame already shows: nothing to key (the status says so, no change is made)."""
+    s = f.state.get("frame") or {}
+    return bool(s.get("framed")) and any(c["op"] == "frame.fit" and c["args"].get("to") == "view" and not c["args"].get("cut") for c in calls)
 
 
 def told(calls: list[dict], f) -> str:

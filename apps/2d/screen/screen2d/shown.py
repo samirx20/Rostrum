@@ -8,8 +8,9 @@ Hit-testing a press still reads the live document (the person acts on the newest
 
 Paused, the canvas shows the world picture (world_view.py: the world rectangle the view shows, at the size shown,
 half that while a drag is under way so the picture keeps up; the drag's last frame, after release, is full size
-again). Playing, it looks through the frame: the export at the playing size, never bigger than the well shows it
-(VIEW_SCALES: the engine takes 1, 1/2 or 1/4). The same engine and scene either way (preview = export); the view
+again). Playing, it looks through the frame: the export at the playing size, the first step of VIEW_SCALES at least as big as
+the well shows it (eighths: a 1080p piece in an 1150 px well draws 1200 px wide, not 1920; a motion-blurred frame is
+drawn once per blur step, so its cost follows the pixels). The same engine and scene either way (preview = export); the view
 itself is screen state. The engine's queue is newest-wins (rostrum_gui.frames.PictureWorker.post_latest): no backlog.
 `drag→shown` (STATS, playstats.py): from a drag's change to the frame that shows it on screen.
 
@@ -26,7 +27,8 @@ from rostrum2d import retime
 from . import bounds, painting_open
 from .playstats import STATS
 
-VIEW_SCALES = (0.25, 0.5, 1.0)   # the engine's sizes, smallest first: the first one at least as big as the view shows
+VIEW_SCALES = tuple(k / 8 for k in range(1, 9))   # the playing sizes, smallest first: the first one at least as big as
+                                                  # the view shows (a few sizes, so resizing the window rarely makes new ones)
 
 
 def view_scale(shown: float) -> float:

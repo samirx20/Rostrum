@@ -63,3 +63,11 @@ def test_a_cut_holds_one_frame_before_and_follows_its_marker(monkeypatch):
     assert x_at(2.35) == 960 and x_at(2.4) == 4160
     marks["logo lands"] = 4.0                                                      # the marker moves: the cut moves
     assert x_at(2.4) == 960 and x_at(3.9) == 960 and x_at(4.0) == 4160
+
+
+def test_framing_a_view_the_frame_already_shows_keys_nothing():
+    d = scene()
+    call = {"op": "frame.fit", "target": "frame", "args": {"to": "view", "rect": [0, 0, 1920, 1080], "at": 2}}
+    with pytest.raises(Exception, match="already framed"):
+        d.apply(call, SAM)
+    assert not d.item("frame").get("keys")

@@ -1,11 +1,11 @@
 """Rostrum2D's hooks into the kit's DocBridge: the 2D animation model (route.py, exprs.py). A mix-in for Bridge2D."""
 from __future__ import annotations
 
-from rostrum2d import fields as F
+from rostrum2d import fields as F, stepped
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
-from . import beat_words, exprs, outline, fill_rows, font_rows, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, corner_rows, exprs, outline, fill_rows, font_rows, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
@@ -23,9 +23,10 @@ for _t in F.LAYERS:                      # Locked and Hidden: the lock and eye o
 ON_PAGE[FRAME] |= {"homeX", "homeY", "timing"}
 
 
-# A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill": they read as what they hold.
+# A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill", or say nothing ("+ Type"): they
+# read as what they hold.
 # Only the words on screen change; the groups' keys stay "Font" / "Fill" (kit sections.WORDS).
-sections.WORDS.update({("text", "Font"): "More type", ("text", "Fill"): "Fill style", (FRAME, "Ride"): "Ride a path"})
+sections.WORDS.update({("text", "Font"): "Width and slant", ("text", "Fill"): "Gradient and opacity", ("text", "Type"): "Ligatures and numbers", (FRAME, "Ride"): "Ride a path"})
 
 
 def _home_reset(rows: list[dict], item: dict | None) -> list[dict]:
@@ -34,6 +35,11 @@ def _home_reset(rows: list[dict], item: dict | None) -> list[dict]:
         return rows
     home = {"x": item.get("homeX"), "y": item.get("homeY")}
     return [{**r, "default": home[r["id"]]} if r.get("row") == "param" and r.get("id") in home else r for r in rows]
+
+
+def _open_line(item: dict) -> set:
+    """An open path with its outline on is only its line: the Outline switch could only hide it, so it is not shown."""
+    return {"stroke"} if item.get("type") == "path" and "z" not in str(item.get("d", "")).lower() and item.get("stroke") else set()
 
 
 class Hooks2D:
@@ -45,6 +51,8 @@ class Hooks2D:
         return F.LABELS.get(item.get("type", ""), super().kind_label(item))
 
     def subtitle(self, item):            # the frame is named "Frame": its line says what it is and the export's size
+        if item.get("type") == "path":   # a path is named "Path": its line says which kind (so the name doesn't hide it)
+            return "Open path" if "z" not in str(item.get("d", "")).lower() else "Closed path"
         if item.get("type") != FRAME:
             return super().subtitle(item)
         comp, d = self.comp(), F.defaults("comp")
@@ -56,7 +64,7 @@ class Hooks2D:
         return super().selection_label(ids)
 
     def on_page(self, item):             # fields the screen shows elsewhere (agents still set them through the operation)
-        return ON_PAGE.get(item.get("type"), set()) | super().on_page(item)
+        return ON_PAGE.get(item.get("type"), set()) | _open_line(item) | super().on_page(item)
 
     def starts(self, item):              # the Text tool's top-left start isn't a change (a group opens only for one)
         return F.STARTS.get(item.get("type"), {})
@@ -84,7 +92,8 @@ class Hooks2D:
         rows = fill_rows.rows(font_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
                                              item),
                               item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search, self.doc.data)   # placed: keys on a marker read
-        return _home_reset(project_picks.with_file_names(rows, item, self.doc.folder), item)   # File: "pic.png", not the store's copy
+        rows = _home_reset(project_picks.with_file_names(corner_rows.rows(rows, item), item, self.doc.folder), item)
+        return stepped.option_words(rows, not item or self.doc.item(self.doc.parent_of(item["id"])[0]).get("type") == "group")   # File: "pic.png", not the store's copy
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

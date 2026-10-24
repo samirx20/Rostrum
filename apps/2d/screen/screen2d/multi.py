@@ -19,6 +19,7 @@ class Multi(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
+        self._known = None                                  # (selection, document data, its layers)
         told = news.relay(self)                             # only news: the overlays redo their handles on it
         for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
             s.connect(told)
@@ -56,13 +57,30 @@ class Multi(QObject):
         """The selected layers (an effect, mask or key selected counts as its layer): the rows the list lights."""
         return self.layers()
 
-    def layers(self) -> list[str]:
-        out = []
-        for i in self.b.selection:
-            layer = bounds.layer_of(self.b.doc, i) if self.b.doc.has(i) else ""
-            if layer and layer not in out:
-                out.append(layer)
+    @Property("QVariantMap", notify=changed)
+    def lit(self):
+        """{row id: "sel" | "in"}: how each layers-list row is lit, read once per change by the list (LayerRows.qml), so
+        a row looks itself up instead of each row reading the selection again (~5 ms a pick over 20 rows): the selected
+        item's row and, with several picked, every picked layer "sel"; one picked layer whose key, effect or mask is
+        what is selected "in"."""
+        ids = self.layers()
+        out = dict.fromkeys(ids, "sel" if len(ids) > 1 else "in")
+        if self.b.selected:
+            out[self.b.selected] = "sel"
         return out
+
+    def layers(self) -> list[str]:
+        """Worked out once per selection and document state (the document is a new object on every change): the
+        overlays and the list read it ~80 times a pick."""
+        sel, data = tuple(self.b.selection), self.b.doc.data
+        if self._known is None or self._known[0] != sel or self._known[1] is not data:
+            out = []
+            for i in sel:
+                layer = bounds.layer_of(self.b.doc, i) if self.b.doc.has(i) else ""
+                if layer and layer not in out:
+                    out.append(layer)
+            self._known = (sel, data, out)
+        return list(self._known[2])
 
     def extras(self) -> list[str]:
         return self.layers()[1:]

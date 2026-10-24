@@ -38,7 +38,7 @@ import "ValueKinds.js" as VK
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
-    objectName: model.row === "param" ? "row:" + model.id : ""      // scripted steps (the layout check) find a row by it
+    objectName: model.row === "param" && model.valid ? "row:" + model.id : ""      // scripted steps (the layout check) find a row by it
     property var bridge
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
@@ -79,10 +79,14 @@ Item {
     // Everything the row draws is made only while it is on screen (valid, or still easing out). A kind's layout holds
     // every param and most rows are absent at any time; building all their parts (chevrons, hover tips, widgets) made
     // each new selection slow (S59: ~0.35 s for a Sound track). An absent row is just its id and its `reveal`.
+    // Once made, a body stays while the row lives: a row parked between selections (RowsModel: absent, after the shown
+    // rows) keeps its control for the next selection's row of the same kind of control, instead of making one.
+    property bool made: false
     Loader {
         id: body
         anchors.fill: parent
-        active: row.live
+        active: row.live || row.made
+        onLoaded: row.made = true
         sourceComponent: row.model.row === "param" ? paramBody : row.model.row === "fold" ? foldBody
                        : row.model.row === "folds" ? foldsBody : row.model.row === "group" ? groupBody : moreBody
     }
@@ -140,12 +144,12 @@ Item {
                           rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
                 spacing: Theme.pad
                 readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
-                Repeater {
-                    model: names.entries
+                Repeater {      // by count: another kind's names take the same items (a new list remade each name, ~3 ms a pick)
+                    model: names.entries.length
                     delegate: Row {
                         id: nameItem
-                        required property var modelData
                         required property int index
+                        readonly property var modelData: names.entries[index] || ({})
                         height: Theme.rowDense
                         Text {
                             objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
@@ -225,7 +229,10 @@ Item {
                     height: row.tall && item ? item.implicitHeight : Theme.field
                     // made only while the row is on screen (valid, or still easing out): a kind's layout holds every param and
                     // most are absent, so building all their widgets made each selection change slow (S59)
-                    active: row.model.row === "param" && !row.driven && (row.model.valid || row.reveal > 0)
+                    // (and kept once made, while the row waits parked for the next selection's row: RowsModel)
+                    property bool made: false
+                    onLoaded: made = true
+                    active: row.model.row === "param" && !row.driven && (row.model.valid || row.reveal > 0 || made)
                     sourceComponent: row.model.button && row.model.type !== "toggle" ? buttoned : plain
                 }
                 Text {  // the note: one short line under the field (a hint, or a warning in the warning colour)
@@ -302,11 +309,18 @@ Item {
                 readonly property var input: inner.item ? inner.item.input : null      // focusWidget types here
                 readonly property bool editable: inner.item ? !!inner.item.editable : false
                 implicitHeight: inner.item ? inner.item.implicitHeight : Theme.field
-                Loader { id: inner; anchors.left: parent.left; anchors.right: rowButton.left; anchors.rightMargin: Theme.grid
+                Loader { id: inner; anchors.left: parent.left; anchors.right: iconButton.visible ? iconButton.left : rowButton.left; anchors.rightMargin: Theme.grid
                          height: parent.height; sourceComponent: plain }
                 RowButton { id: rowButton; objectName: "rowbutton:" + row.model.id; anchors.right: parent.right; height: parent.height
+                            visible: !iconButton.visible
                             text: row.model.button ? row.model.button.label : ""; menu: row.model.button ? row.model.button.menu : []
                             onChosen: (v) => row.bridge.rowAction(v || row.model.button.id) }
+                IconButton {   // a button with an `icon` and a `set` [param, value]: a small square that sets another setting (Each corner)
+                    id: iconButton; objectName: "rowicon:" + row.model.id; anchors.right: parent.right; height: parent.height; width: height
+                    visible: !!row.model.button && !!row.model.button.icon
+                    icon: visible ? row.model.button.icon : ""; tip: visible ? row.model.button.label : ""
+                    onClicked: row.bridge.setValue(row.model.button.set[0], row.model.button.set[1])
+                }
             } }
             Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
             Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)

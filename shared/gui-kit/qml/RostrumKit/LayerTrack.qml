@@ -21,7 +21,8 @@ Rectangle {
     property var rowData
     property Item ruler
     readonly property bool isLayer: rowData.row === "layer"
-    readonly property bool lit: rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0   // every selected layer's bar
+    readonly property bool lit: rows && rows.lit !== undefined ? rows.lit[rowData.owner] !== undefined     // every selected layer's bar: the list's one
+                                : rowData.owner === backend.selected || backend.multi.ids.indexOf(rowData.owner) >= 0  // lookup (2D LayerRows.qml), else read here
     function xOf(t) { return 8 + Math.round(ruler.xOf(t)) }
     function onBar(k) { return k.t >= (rowData.start || 0) - 1e-6 && k.t <= (rowData.end || 0) + 1e-6 }   // a key in the layer's time
     function tAt(item, x) { return ruler.tOf(item.mapToItem(track, x, 0).x - 8) }
@@ -111,14 +112,24 @@ Rectangle {
             model: track.hasBar ? track.rowData.stretches || [] : []
             delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
         }
-        Repeater {   // the two ends: 16 px each, centred on the edge, drag = trim the layer (start / end); under the keys (a key at the edge wins)
+        Repeater {   // the two ends: 16 px each, centred on the edge, drag = trim the layer (start / end); beside the keys (a key at the edge keeps its diamond, the handle moves just outside it)
             model: track.trims ? ["start", "end"] : []
             delegate: MouseArea {
                 id: grab
                 objectName: "barEnd:" + track.rowData.id + ":" + modelData
                 required property string modelData
                 property string held: ""
-                x: (modelData === "start" ? 0 : bar.width) - width / 2; width: 16; height: bar.height
+                // A key whose diamond (16 px) lies over the handle: the key keeps its place, and the handle moves to just outside
+                // the diamond (16 px), where nothing else is; with no room there (a key at 0 s: the names column is beside it)
+                // the end has no handle and the bar's middle drags the layer. `near`: the keys' distances from this edge, inward.
+                readonly property bool atStart: modelData === "start"
+                readonly property var near: bar.visible ? track.barDots.map(d => (track.xOf(d.t) - bar.x - (atStart ? 0 : bar.width)) * (atStart ? 1 : -1))
+                                                                .filter(v => v > -16 && v < 16) : []
+                readonly property real outside: near.length ? (atStart ? Math.min(...near) - 8 - 16 : bar.width - Math.min(...near) + 8) : 0
+                readonly property bool room: !near.length || (atStart ? bar.x + outside >= 0 : bar.x + outside + 16 <= track.width)
+                enabled: room; visible: room
+                x: near.length ? outside : (atStart ? 0 : bar.width) - width / 2
+                width: 16; height: bar.height
                 hoverEnabled: true; preventStealing: true; cursorShape: Qt.SizeHorCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onPressed: (m) => {

@@ -24,6 +24,14 @@ LAYER = [Param.choice(FIELD, ["group", *ON], label="Animate on", group="Timing",
                       help="Hold each pose for this many frames; “Same as its group” takes the group's or the scene's setting")]
 
 
+def option_words(rows: list[dict], in_group: bool) -> list[dict]:
+    """A layer straight in a scene takes the scene's setting: its "Same as its group" reads "Same as the scene" there."""
+    if in_group:
+        return rows
+    same = [{**o, "label": "Same as the scene"} if o["value"] == "group" else o for o in next((r["options"] for r in rows if r.get("id") == FIELD), [])]
+    return [{**r, "options": same} if r.get("id") == FIELD and r.get("row") == "param" else r for r in rows]
+
+
 def step_of(item: dict, n: int | None) -> int:
     """Every how many frames `item` holds a pose: its own setting, or `n` (its group's) for "As its group"; at the
     composition (`n` None) its own, every frame by default. Effects, masks, bones and nodes made in the scene (no

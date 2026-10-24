@@ -9,7 +9,8 @@ whatever you build stays editable by hand, and whatever they move stays moved.
 document
   comps
     comp
-      layers: shape | text | image | group (a group holds layers)
+      layers: shape | text | image | video | path | drawing | rig | group (a group holds layers),
+              and each scene's own frame (what the export shows; made with the scene)
         each layer has:
           effects  (blur, glow, gradient, shadow)
           masks    (the part that shows)
@@ -84,6 +85,7 @@ again after editing it and:
 - ids are what match old to new. Give your layers **explicit ids** (`text("title", ...)`) so a re-run finds the same layer.
   Left out, ids are counted per type (`text_1`, `text_2`) and skip any word quoted in the script.
 - Keys have ids made from layer, field and time, so a key at the same time is the same key on re-run.
+- A script starts with `comp("id", ...)`: a layer line before it is refused ("make a composition first"). The scene arrives with its own frame; when the project already has a frame called `frame`, the new scene's is called `<scene id>-frame`. Ids the project already holds (a person's, another scene's) are never taken by a counted id.
 
 ```python
 comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
@@ -137,7 +139,7 @@ Things that surprise people the first time:
 - **Ids are one in the whole document**, effects' and masks' too: in a loop write `f"shadow{i}"`, or leave the id out.
 - **A track matte** (`matte="logo_shape"`) must be a layer beside it (same group or comp); the matte layer itself is then
   only used as the matte.
-- **Stepped timing** ("on twos / threes"): `timing="2"` (or `steps=2`) on the comp, a group or a layer.
+- **Stepped timing** ("on twos / threes"): `timing="2"` (or `steps=2`) on the comp, a group or a layer (in the settings panel, **Animate on**; its first choice reads **Same as its group** inside a group and **Same as the scene** for a layer straight in a scene).
 
 ## Seeing your work (do it every time)
 

@@ -34,4 +34,6 @@ You don't need the curve editor for a named ease. Select keys (in **Keys**, or b
 - The ease's curve, always whole inside its box: a spring's or a back ease's overshoot is fitted in, with faint lines at the start and end values. Drag its two round handles (a custom curve); **Time** and **Value** for a single key.
 - The **⋯** menu: **After the last key** (Stay, Repeat, Back and forth, Carry on), and whether the canvas plays an ease once when you pick it.
 
+Clicking the **bar between two keys** in the timeline (not a diamond) shows a different view of the same thing: a **Move** view over the whole settings panel, with the ease buttons **Linear**, **Smooth**, **In**, **Out**, **Spring**, **Bounce** and **Hold**, the move's **Start** and **Length**, **Reverse** and **Delete**. **‹** or **Esc** goes back to the layer's settings. See [first-animation.md](first-animation.md), section 6.
+
 Keys: **F9** Smooth, **Shift+F9** Ease in, **Ctrl+Shift+F9** Ease out, **Ctrl+Alt+J** Jump.

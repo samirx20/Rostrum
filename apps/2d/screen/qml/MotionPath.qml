@@ -62,17 +62,26 @@ Item {
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters count marks (an int
     // model), so a drag's changes update the marks in place and the pressed one keeps its drag.
     readonly property var squares: {
-        const out = []
+        const fit = mp.fit, hit = mp.hit      // read here, so the squares follow a zoom (a read inside a callback is not tracked)
+        const all = []
         for (const row of mp.paths)
             if (!row.faint || mp.interactive)
-                for (const k of row.keys) out.push({ id: row.id, t: k.t, side: "", p: k.pos, picked: k.picked, faint: row.faint })
+                for (const k of row.keys) all.push({ id: row.id, t: k.t, side: "", p: k.pos, picked: k.picked, faint: row.faint })
+        // Keys whose targets would touch (a cut's two keys one frame apart in one place; two layers' keys on one spot) stand as
+        // one square: the picked one first, else the first; so no two squares are closer than a target.
+        const out = []
+        for (const sq of all.filter(q => q.picked).concat(all.filter(q => !q.picked)))
+            if (!out.some(o => Math.max(Math.abs(o.p[0] - sq.p[0]), Math.abs(o.p[1] - sq.p[1])) * fit < hit)) out.push(sq)
         return out
     }
-    readonly property var knobs: {
-        const out = []
+    readonly property var knobs: {       // a handle end whose target would touch a square's (or another end's) is left out until zoomed in
+        const out = [], fit = mp.fit, hit = mp.hit
+        const near = (a, b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])) * fit < hit
         for (const row of mp.paths)
             for (const k of row.keys)
-                if (k.handles) for (const s of ["out", "in"]) if (k[s]) out.push({ id: row.id, t: k.t, side: s, p: k[s] })
+                if (k.handles) for (const s of ["out", "in"])
+                    if (k[s] && !mp.squares.some(q => near(q.p, k[s])) && !out.some(o => near(o.p, k[s])))
+                        out.push({ id: row.id, t: k.t, side: s, p: k[s] })
         return out
     }
     Repeater { model: mp.squares.length; delegate: Mark { info: mp.squares[index] || ({}) } }

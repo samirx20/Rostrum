@@ -104,8 +104,8 @@ class FrameRenderer(PictureWorker):
 
     def request(self, scene: dict, t: float, samples: int | None = None, scale: float = 1.0, tag=None, world=None, place=None,
                 ahead: float | None = None):
-        """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: 1, 0.5 or 0.25 of
-        its size (the export while playing). The same scene and engine either way (preview ≡ export). `tag` comes back
+        """Draw `scene` at `t`. `samples`: motion-blur steps instead of the composition's; `scale`: its size × a step of
+        shown.VIEW_SCALES (the export while playing). The same scene and engine either way (preview ≡ export). `tag` comes back
         with the frame (`ready`): the state it was rendered from (shown.py). `world` {x, y, w, h, scale}: the world
         picture of that rectangle instead (`pictured` says which); `place`: layer ids whose places come with the frame
         (`placed`, world px with a world picture). `ahead`: the time asked for next (playing): the engine draws it while

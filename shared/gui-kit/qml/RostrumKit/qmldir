@@ -10,6 +10,7 @@ Button 1.0 Button.qml
 RowButton 1.0 RowButton.qml
 IconButton 1.0 IconButton.qml
 HoverTip 1.0 HoverTip.qml
+HoverTipLine 1.0 HoverTipLine.qml
 LevelMeter 1.0 LevelMeter.qml
 VScrollBar 1.0 VScrollBar.qml
 Toggle 1.0 Toggle.qml

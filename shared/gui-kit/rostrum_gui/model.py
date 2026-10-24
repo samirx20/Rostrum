@@ -1,17 +1,21 @@
 """A list model of plain dict rows for QML. `reset` swaps the whole list (a new layout: no animation);
 `update` changes rows in place with dataChanged, so delegates live on and animate their own reveal.
 `update(rows, instant=True)` (a new selection) changes them in place too, with `instant` true for that one update,
-so each row takes its new state at once (InspectorRow's reveal reads it) and nothing eases. Rows whose id stays keep
-their delegate; only the rows another kind adds or drops are made or freed (a kind switch rebuilt them all).
+so each row takes its new state at once (InspectorRow's reveal reads it) and nothing eases.
 `rows` is every row of the layout (the bridge reads it); what the view (QML) sees is `_shown`: only the rows that apply
 now (valid), plus, between selections, a row that stopped applying (it stays to ease out and come back). A kind's layout
 holds every param and ~90 of ~100 rows are absent, so a selection switch made ~90 delegates to show nothing (~50 ms).
-A row that starts to apply is inserted as absent and then set valid, so it eases in like a row that was always there."""
+A row that starts to apply is inserted as absent and then set valid, so it eases in like a row that was always there.
+A new selection of settings rows (rows with `valid`) never frees a delegate (model_pick.py): each row takes the delegate that last showed the same setting
+(shown or parked; only its value changes), else a new one; delegates left over are parked after the shown rows,
+absent, for a later selection."""
 from __future__ import annotations
 
 from difflib import SequenceMatcher
 
 from PySide6.QtCore import Property, QAbstractListModel, QByteArray, QModelIndex, Qt, Signal
+
+from .model_pick import repick
 
 
 class RowsModel(QAbstractListModel):
@@ -24,6 +28,7 @@ class RowsModel(QAbstractListModel):
         self._ids = {n: Qt.UserRole + 1 + i for i, n in enumerate(roles)}
         self.rows: list[dict] = []          # every row of the layout
         self._shown: list[dict] = []        # the rows the view has (see the module note)
+        self._parked: list[dict] = []       # after them: rows kept for the next selection's use (absent, not shown)
         self._instant = False
 
     @Property(bool, notify=instantChanged)
@@ -35,17 +40,19 @@ class RowsModel(QAbstractListModel):
         return self._roles
 
     def rowCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self._shown)
+        return 0 if parent.isValid() else len(self._shown) + len(self._parked)
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or role not in self._roles:
             return None
-        return self._shown[index.row()].get(self._names[role - Qt.UserRole - 1])
+        i = index.row()
+        row = self._shown[i] if i < len(self._shown) else self._parked[i - len(self._shown)]
+        return row.get(self._names[role - Qt.UserRole - 1])
 
     def reset(self, rows: list[dict]):
         self.beginResetModel()
         self.rows = list(rows)
-        self._shown = [r for r in rows if r.get("valid", True)]
+        self._shown, self._parked = [r for r in rows if r.get("valid", True)], []
         self.endResetModel()
 
     def update(self, rows: list[dict], instant: bool = False):
@@ -80,18 +87,20 @@ class RowsModel(QAbstractListModel):
 
     @staticmethod
     def _look(row: dict):
-        """What a row's delegate is made of (its kind of control). A new selection matches rows by this, in order, not
-        by id: a delegate whose row is replaced by another of the same kind of control just takes its values, which is
-        much cheaper than making a control (a Loader and a field per row) for every row another kind brings."""
+        """What a row's delegate is made of (its kind of control): a settings row takes the delegate that showed the same
+        setting only when it is made of the same control (model_pick.py); other rows are matched by it, in order."""
         return row.get("row"), row.get("type"), row.get("control"), row.get("half")
 
     def _patch(self, rows: list[dict], instant: bool):
         """The shown rows both lists share keep their delegates; the rest are removed and inserted (from the end, so
         the indices before each step still hold). Between selections an inserted row is made absent first and then
-        set to its state, so it eases in."""
-        key = self._look if instant else (lambda r: r.get("id"))
+        set to its state, so it eases in. A new selection of rows that say whether they apply (`valid`: the settings
+        rows) keeps every delegate (model_pick.py); other rows (a list of lanes) are matched by their look in order."""
         if [r.get("id") for r in rows] == [r.get("id") for r in self._shown]:
             return self._send(rows)
+        if instant and "valid" in self._ids:
+            return repick(self, rows)
+        key = self._look if instant else (lambda r: r.get("id"))
         ops = SequenceMatcher(None, [key(r) for r in self._shown], [key(r) for r in rows], autojunk=False)
         for tag, i1, i2, j1, j2 in reversed(ops.get_opcodes()):
             if tag == "equal":

@@ -16,13 +16,21 @@ from rostrum2d.ops_align import SIZED
 class CoverBand(QObject):
     changed = Signal()
 
+    KEEP = 8            # the last layers' answers: picking back and forth between layers works nothing out again
+
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b, self._key, self._rows, self._shots = bridge, None, [], (None, None, None, [])
+        self._kept: list[tuple] = []                              # [(key, rows)], newest last
         for s in (bridge.selectedItemsChanged, bridge.docChanged, bridge.markersChanged):
             s.connect(self._update)
 
     edges = Property("QVariantList", lambda self: self._rows, notify=changed)    # [{edge, words}] of the picked layer
+
+    @staticmethod
+    def _same(a, b) -> bool:
+        """The same state: the same items by identity (the document replaces what it changes), the sizes by value."""
+        return all(x is y or (i == 2 and x == y) for i, (x, y) in enumerate(zip(a, b)))
 
     def _update(self):
         """Worked out again only when what the band reads changed: the picked layer, the frame, the scene's size and
@@ -33,11 +41,13 @@ class CoverBand(QObject):
         layer = next((l for l in comp.get("layers", []) if l["id"] == ids[0]), None) if len(ids) == 1 else None
         key = (layer, view.of(b.comp()), tuple(comp.get(k) for k in ("fps", "duration", "width", "height")),
                b.marks.times if b.marks else None)
-        same = self._key is not None and all(x is y or (i == 2 and x == y) for i, (x, y) in enumerate(zip(self._key, key)))
-        if same:
+        if self._key is not None and self._same(self._key, key):
             return
         self._key = key
-        rows = self._rows_for(layer) if layer is not None else []
+        rows = next((r for k, r in self._kept if self._same(k, key)), None)
+        if rows is None:
+            rows = self._rows_for(layer) if layer is not None else []
+            self._kept = self._kept[-(self.KEEP - 1):] + [(key, rows)]
         if rows != self._rows:
             self._rows = rows
             self.changed.emit()

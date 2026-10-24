@@ -10,5 +10,5 @@ from __future__ import annotations
 def of(rows: list[dict]) -> dict:
     """{count: how many rows, animated: some row has keys, layerIds: the ids of the rows that are layers, cuts: the first row's frame cuts}."""
     return {"count": len(rows), "animated": any(r.get("keys") for r in rows),
-            "layerIds": [r["id"] for r in rows if r["row"] == "layer"],
+            "layerIds": [r["id"] for r in rows if r["row"] == "layer" and not r.get("frame")],     # the frame's own row is not a layer to show alone
             "cuts": (rows[0].get("cuts") or []) if rows else []}

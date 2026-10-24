@@ -11,6 +11,7 @@ ListView {
     objectName: "layersList"            // (the scripted steps show a drop in progress through it)
     property Item ruler
     property int labelWidth: 240
+    readonly property var lit: backend.multi.lit     // how each row is lit: read once here per pick, not by every row
     property bool compact: false        // only the selected layer's row (or the first layer's, when none is selected)
     model: compact ? backend.rowsCompact : backend.rowsModel     // list models that change row by row (timeline_rows.py): a row and the key under the pointer live as long as their item
     interactive: !compact

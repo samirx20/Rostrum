@@ -249,14 +249,18 @@ class Engine:
         `screen`: in the screen's form instead (BGRA, premultiplied: `self.format` "bgra8-premul", Qt's
         ARGB32_Premultiplied). `ahead`: the time asked for next (playing): the engine draws it while this one is shown.
         `samples`: motion-blur steps for this frame instead of the composition's (1 = no blur: fast playback).
-        `scale`: 1, 0.5 or 0.25 × the composition's size, the same picture drawn smaller (playing); width and
-        height are then the smaller size. `view` {x, y, w, h, scale}: only that part of the composition (comp px),
+        `scale`: above 0 and at most 1 × the composition's size, the same picture drawn smaller (playing: the size the
+        canvas shows it at); width and height are then the smaller size (the whole composition as a `view`). `view` {x, y, w, h, scale}: only that part of the composition (comp px),
         drawn at any scale (the zoomed-in canvas, sharp). `place`: layer ids whose `place` (see place) comes with this
         frame, kept in `self.placed` ({} without). `world` {x, y, w, h, scale}: the world picture instead (camera spec
         § 8.4: any world px rectangle, the frame's quad holding the export; `place` then in world px); `self.quad` is
         the frame's corners in world px at t (None for other frames)."""
-        self._props()
-        req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}), **({"scale": scale} if scale != 1 else {}),
+        p = self._props()
+        if scale != 1:                               # any size: the whole composition as a view at that scale
+            if view or world or not 0 < scale < 1:
+                raise EngineError(f"pixels: scale {scale} is above 0 and below 1, and never with a view or the world")
+            view = {"x": 0, "y": 0, "w": p["width"], "h": p["height"], "scale": scale}
+        req = {"t": t, "pixels": True, **({"shutterSamples": samples} if samples else {}),
                **({"view": view} if view else {}), **({"place": place} if place else {}), **({"world": world} if world else {}),
                **({"screen": True} if screen else {}), **({"ahead": ahead} if ahead is not None else {})}
         out = self._request({"frame": req})

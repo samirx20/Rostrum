@@ -19,7 +19,9 @@ Rectangle {
     property bool dragging: false
     property Component toolOptions: null
     property bool showName: true
-    readonly property var info: hub && hub.bar ? hub.bar : ({what: "", items: [], more: []})
+    // hidden (`dragging`) it reads nothing: a host that keeps it hidden most of the time (2D: only picked strokes show
+    // it) had it re-measure and refill its buttons on every pick
+    readonly property var info: hub && hub.bar && !dragging ? hub.bar : ({what: "", items: [], more: []})
     readonly property bool tool: toolOptions !== null
     readonly property int maxActions: 5
     readonly property int shownCount: { labelWidths; return fitCount() }
@@ -33,27 +35,14 @@ Rectangle {
     radius: Theme.radiusPanel; color: Theme.raised; border.color: Theme.popupEdge
     clip: true
 
-    // widths of every ranked label (measured by hidden texts, so they follow the font), for folding
-    property var labelWidths: []
-    function remeasure() {
-        const n = (info.items || []).length, w = []
-        for (let i = 0; i < n; i++) { const t = measure.itemAt(i); w.push(t ? t.implicitWidth : 0) }
-        labelWidths = w
-    }
+    // widths of every ranked label (measured with the font, so they follow it), for folding; a binding, not hidden
+    // texts: a new selection made and measured a Text per label, each re-folding the bar (tens of ms per click)
+    FontMetrics { id: labelFont; font.pixelSize: Theme.body; font.family: uiFont }
+    readonly property var labelWidths: (info.items || []).map(it => labelFont.advanceWidth(it.label))
     function buttonW(i) {
         const it = info.items[i]
+        if (!it) return 0
         return Math.ceil(labelWidths[i] || 0) + 2 * Theme.gap + (it.menu && it.menu.length ? 16 : 0)
-    }
-    Repeater {
-        id: measure
-        model: bar.info.items || []
-        onItemAdded: bar.remeasure()
-        onItemRemoved: bar.remeasure()
-        Text {
-            required property var modelData
-            visible: false; text: modelData.label; font.pixelSize: Theme.body; font.family: uiFont
-            onImplicitWidthChanged: bar.remeasure()
-        }
     }
     Text { id: chipMeasure; visible: false; text: bar.info.what || ""; font.pixelSize: Theme.body; font.family: uiFont; font.weight: Font.DemiBold }
     // how many of the ranked buttons fit beside the count chip and ⋯ within maxWidth
@@ -89,22 +78,25 @@ Rectangle {
             rightPadding: Theme.pad - Theme.grid
             text: bar.info.what; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont; font.weight: Font.DemiBold
         }
-        Repeater {
-            model: bar.tool ? 0 : bar.shownCount
+        Repeater {      // always maxActions buttons, those past shownCount hidden: a count as the model remade every
+                        // button (and its tip) whenever a new selection had another number of actions
+            model: bar.maxActions
             delegate: Rectangle {
                 id: btn
                 required property int index
-                readonly property var modelData: bar.info.items[index]
+                visible: !bar.tool && index < bar.shownCount
+                readonly property var modelData: bar.info.items[index] || ({ id: "", label: "", keys: "", menu: [] })
                 readonly property bool hasMenu: !!(modelData.menu && modelData.menu.length)
                 width: { bar.labelWidths; return bar.buttonW(index) } height: Theme.button; radius: Theme.radiusCtl
-                color: ma.pressed || choices.visible ? Theme.active : ma.containsMouse ? Theme.hover : "transparent"
+                readonly property bool menuOpen: bar.menuFor === index && choices.visible
+                color: ma.pressed || menuOpen ? Theme.active : ma.containsMouse ? Theme.hover : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.fast } }
                 Text {
                     x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                     text: btn.modelData.label; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
                 }
                 Chevron {
-                    visible: btn.hasMenu; open: choices.visible; anchors.verticalCenter: parent.verticalCenter
+                    visible: btn.hasMenu; open: btn.menuOpen; anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right; anchors.rightMargin: Theme.grid
                 }
                 MouseArea {
@@ -113,14 +105,14 @@ Rectangle {
                     onClicked: {
                         if (!btn.hasMenu) { bar.hub.run(btn.modelData.id); return }
                         const p = btn.mapToItem(choices.parent, 0, btn.height + 2)
+                        bar.menuFor = index; choices.entries = btn.modelData.menu
                         choices.openAt(p.x, p.y)
                     }
                 }
                 HoverTip {
                     text: btn.modelData.label + (btn.modelData.keys ? "  " + btn.modelData.keys : "")
-                    hovered: ma.containsMouse && !choices.visible; pressed: ma.pressed
+                    hovered: ma.containsMouse && !btn.menuOpen; pressed: ma.pressed
                 }
-                ActionMenu { id: choices; entries: btn.modelData.menu || []; onPicked: v => bar.hub.run(v) }
             }
         }
         Rectangle {
@@ -141,4 +133,6 @@ Rectangle {
             ActionMenu { id: moreMenu; entries: bar.overflow; onPicked: v => bar.hub.run(v) }
         }
     }
+    property int menuFor: -1                 // the button whose ▾ is open: one menu for every button, filled as it opens
+    ActionMenu { id: choices; onPicked: v => bar.hub.run(v); onClosed: bar.menuFor = -1 }
 }
