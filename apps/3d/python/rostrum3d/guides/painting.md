@@ -16,11 +16,12 @@ nothing is lost when you save and open the scene again.
    - **Paints**: what the active layer paints. **Colour**; **Roughness** (white = rough and dull, black = mirror);
      **Height** (white = raised, as fine relief); **Metal** (white = metal); **Glow** (its colours give off light).
    - **Paint layers**, top first. **+** adds a layer painting the same as the active one. Click a layer's name to
-     paint on it; its dot shows or hides it. With no layer yet, your first stroke makes a Colour layer.
+     paint on it; its dot shows or hides it. With no layer yet, your first stroke makes a Colour layer. A layer is
+     named after what it paints ("Roughness 1") and its name follows when you change Paints, until you rename it.
 4. Drag on the mesh in the viewport. A thin line follows the pointer while you drag; when you let go the paint lands.
    **Each stroke is one undo step** (Ctrl+Z takes back exactly that stroke). The disc at the pointer is the brush's
    size as it lands on the surface. Middle-drag turns the view, Shift-drag pans, so you can turn the model between
-   strokes.
+   strokes. The move handles are hidden while you paint.
 5. **B** or **Esc** leaves Paint. Selecting something else leaves it too.
 
 Paint sits over the material's own value: where you haven't painted, the surface is exactly its material (its colour,

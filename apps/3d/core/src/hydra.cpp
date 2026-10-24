@@ -5,7 +5,6 @@
 #include <pxr/imaging/cameraUtil/conformWindow.h>
 #include <pxr/imaging/cameraUtil/framing.h>
 #include <pxr/imaging/glf/simpleMaterial.h>
-#include <pxr/imaging/hd/renderIndex.h>
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/imaging/hdx/taskController.h>
 #include <pxr/imaging/hdx/taskControllerSceneIndex.h>
@@ -123,8 +122,13 @@ class Hydra::Engine : public UsdImagingGLEngine {
     if (!SetRendererAovs(want)) throw Error("render.passes: the renderer could not make the outputs they need");
     aovs_ = extra;
   }
-  // the prim a Hydra prim id (the primId output) stands for
-  SdfPath rprim(int id) const { return _GetRenderIndex()->GetRprimPathFromPrimId(id); }
+  // the scene prim a Hydra prim id (the primId output) stands for; empty when it names none. Through the engine's
+  // public decoding, which works with Hydra 2.0 too: there the engine has no render index of its own (null), and
+  // asking for one crashed the engine on the first render with masks (brief 15).
+  SdfPath rprim(int id) {
+    SdfPath path;
+    return DecodeIntersection(id, 0, &path) ? path : SdfPath();
+  }
 
  private:
   // Storm's shadow pass runs only when the task controller says so (hdx simpleLightTask: enableShadows)

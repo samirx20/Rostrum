@@ -122,9 +122,11 @@ class PaintMode(PaintStroke, QObject):
 
     @Slot(str)
     def setChannel(self, channel):
-        if self._layer() is not None:
-            self.b._guard(lambda: self.b._apply([{"op": "paint.set", "target": [self._active],
-                                                   "args": {"channel": channel}}], "Paints: " + channel))
+        layer = self._layer()
+        if layer is not None and layer.get("channel", "colour") != channel:
+            args = P.channel_args(self._item(), layer, channel)
+            self.b._guard(lambda: self.b._apply([{"op": "paint.set", "target": [self._active], "args": args}],
+                                                f"Paints: {P.CHANNELS[channel][0]}"))
 
     @Slot(str)
     def toggleVisible(self, layer_id):

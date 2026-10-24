@@ -73,7 +73,7 @@ Item {
                     id: faceMaterial
                     objectName: "meshFaceMaterial"
                     width: 150; atRest: "Choose…"; engaged: facePicker.visible
-                    trailing: Chevron { anchors.centerIn: parent; color: Theme.fg2 }
+                    trailing: Chevron { color: Theme.fg2 }   // the field's trailing Row places it (no anchors inside a Row)
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: facePicker.openFrom(faceMaterial) }
                 }
             }

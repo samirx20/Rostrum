@@ -34,7 +34,7 @@ from screen3d.bridge3d import Bridge3D  # noqa: E402
 from screen3d.files_3d import FILES_3D  # noqa: E402
 from screen3d.sample import SOURCE  # noqa: E402
 from screen3d.scratch_doc import isolated  # noqa: E402
-from screen3d.steps import do_step  # noqa: E402
+from screen3d.steps import do_step, step_waits_ms  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      # Help's guides (also the agents' guides)
@@ -218,8 +218,8 @@ def main():
         app.quit()
 
     QTimer.singleShot(400, lambda: guarded(run_steps))
-    if args.shot or args.check_layout:
-        QTimer.singleShot(30000 + (600000 if any(s.startswith("render") for s in args.step) else 0),
+    if args.shot or args.check_layout:      # 30 s for the run's own work, plus every wait the steps ask for
+        QTimer.singleShot(30000 + step_waits_ms(args.step),
                           lambda: (print("FAIL: timeout", file=sys.stderr), app.exit(4)))
     app.exec()
     screen.close()

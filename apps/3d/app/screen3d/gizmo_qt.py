@@ -31,6 +31,7 @@ class Gizmo(QObject):
         viewport.serialChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._refresh)
         viewport.mesh_edit.changed.connect(self._refresh)      # Edit mesh: the gizmo stands on the selection
+        viewport.paint.changed.connect(self._refresh)          # Paint: no gizmo (a drag paints; it would hide the strokes)
         self._hold = HoldD(self) if isinstance(QGuiApplication.instance(), QGuiApplication) else None
 
     show = Property(str, lambda s: s._show, notify=changed)
@@ -60,7 +61,7 @@ class Gizmo(QObject):
 
     def _setup(self):
         it, vp = self._item(), self.vp
-        if it is None or vp._size is None:
+        if it is None or vp._size is None or vp.paint.on:
             return None
         scene, cam = vp.sent()
         w, h = vp._size

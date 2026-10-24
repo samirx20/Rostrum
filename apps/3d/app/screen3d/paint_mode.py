@@ -6,6 +6,8 @@ on the far side, still in the same call list.
 """
 from __future__ import annotations
 
+import re
+
 from rostrum3d.paint_fields import CHANNELS, LAYER
 from rostrum_paint.fields import BAR, BRUSH, brush_defaults
 
@@ -52,9 +54,21 @@ def layer_rows(item: dict, active: str) -> list[dict]:
              "active": p["id"] == active} for p in reversed(item.get("paints", []))]
 
 
-def new_layer_args(item: dict, channel: str) -> dict:
-    n = sum(1 for p in item.get("paints", []) if p.get("channel", "colour") == channel) + 1
+def new_layer_args(item: dict, channel: str, skip: str = "") -> dict:
+    """A layer named after what it paints and how many of those there are: "Roughness 2"."""
+    n = sum(1 for p in item.get("paints", []) if p.get("channel", "colour") == channel and p["id"] != skip) + 1
     return {"name": f"{CHANNELS[channel][0]} {n}", "channel": channel}
+
+
+AUTO_NAME = re.compile(r"^(" + "|".join(v[0] for v in CHANNELS.values()) + r") \d+$")
+
+
+def channel_args(item: dict, layer: dict, channel: str) -> dict:
+    """Paints → `channel`; a layer still named as made ("Colour 1") is named after its new channel too, a name the
+    person gave stays."""
+    if AUTO_NAME.match(layer.get("name", "")):
+        return new_layer_args(item, channel, skip=layer["id"])
+    return {"channel": channel}
 
 
 def channels() -> list[dict]:

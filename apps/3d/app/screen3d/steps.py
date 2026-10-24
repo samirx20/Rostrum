@@ -36,6 +36,18 @@ from PySide6.QtTest import QTest
 from rostrum_gui.settle import save_snap
 
 RENDER_WAIT_S = 600
+PAINT_DRAG_S = 20                                     # a paint-drag waits for one engine pick per point
+
+
+def step_waits_ms(steps) -> int:
+    """The time a scripted run's steps may take on purpose (their `wait`s, a render, a paint drag's picks): the run's
+    timeout adds it to its own 30 s, so a long walk is never cut short while a hung one still fails."""
+    words = [s.split() for s in steps if s.strip()]
+    return (sum(int(w[1]) for w in words if w[0] == "wait" and len(w) > 1)
+            + (RENDER_WAIT_S * 1000 if any(w[0].startswith("render") or w[0] == "sheet-render" for w in words) else 0)
+            + PAINT_DRAG_S * 1000 * sum(w[0] == "paint-drag" for w in words))
+
+
 VIEW = {"orbit": lambda v, a: v.orbit(float(a[0]), float(a[1])), "pan": lambda v, a: v.pan(float(a[0]), float(a[1])),
         "zoom": lambda v, a: v.zoom(float(a[0])), "mode": lambda v, a: v.setMode(a[0]),
         "exposure": lambda v, a: v.setExposure(float(a[0])), "studio": lambda v, a: v.setStudio(float(a[0])),
