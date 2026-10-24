@@ -57,7 +57,7 @@ class ActionPreview3D:
 
     def _preview_calls(self, calls) -> None:
         """Draw `calls` as they would leave the document, without applying them."""
-        if self.playing or self._drag is not None or not calls or not {c["op"] for c in calls} <= PREVIEWABLE:
+        if self.playing or self._mover.active or not calls or not {c["op"] for c in calls} <= PREVIEWABLE:
             return
         try:
             work = run.plan(self.doc.kind, self.doc.data, calls, self.doc.locked_by, self.who)[0]

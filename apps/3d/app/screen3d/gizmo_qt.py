@@ -6,17 +6,17 @@ what the gizmo moved on the item at the playhead. Agents do the same with the sa
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QEvent, QObject, Qt, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum_gui.edits import Drag
-from rostrum_gui.gui_filter import GuiFilter
 from rostrum_gui.snap import Target
 from rostrum3d import aim, fields as F
 
 from . import gizmo as G, route
+from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
+from .gizmo_hold import HoldD
 from .viewport import scene_ids
 
-MOVE, TURN, SCALE, PIVOT = ("x", "y", "z"), ("rx", "ry", "rz"), ("sx", "sy", "sz"), ("px", "py", "pz")
 SHOWN = ("all", "move", "turn", "scale")
 
 
@@ -144,31 +144,7 @@ class Gizmo(QObject):
         c, v = g["ctx"], g["ctx"]["v"]
         if c["mesh"]:
             return self._mesh_drag(g, c, now, free)
-        units = c["view"].units(c["view"].project(c["origin"])[2]) * c["px"]     # world units per screen px
-        if g["kind"] in ("move", "pivot"):
-            d = aim._apply(aim._inverse(c["pw"][0]), G.moved_by(c["view"], g["handle"], c["origin"], c["axes"], g["start"], now))
-            out = {k: v[k] + d[i] for i, k in enumerate(MOVE)}
-            if g["handle"] != "plane":
-                k = MOVE[int(g["handle"][-1])]
-                out[k], caught = G.snapped(out[k], self._targets(c, k), 1 / units, free)
-                self._label = f"{k.upper()} {out[k]:.3f} m" + (f" · {caught}" if caught else "")
-            if g["kind"] == "pivot":
-                lin = aim._inverse(aim.local({**v, "x": 0.0, "y": 0.0, "z": 0.0})[0])
-                dp = aim._apply(lin, [out[k] - v[k] for k in MOVE])
-                out.update({k: v[k] + dp[i] for i, k in enumerate(PIVOT)})
-        elif g["kind"] == "turn":
-            deg = G.turned_by(c["view"], g["handle"], c["origin"], c["axes"], g["start"], now)
-            deg, caught = G.snapped(deg, G.angle_targets(deg), G.ARM * 0.8 * 3.14159 / 180, free)
-            m = aim._mul(G.turn_matrix(G.AXES[int(g["handle"][-1])], deg), c["turn"])   # around the parent's axis
-            out = dict(zip(TURN, aim._euler(m)))
-            self._label = f"Turn {deg:.1f}°"
-        else:
-            f = G.scaled_by(g["line"], g["start"], now)
-            f, caught = G.snapped(f, [Target("measure", "×1", 1.0), Target("measure", "×2", 2.0),
-                                      Target("measure", "×½", 0.5)], self._arm_px(g), free)
-            k = SCALE[int(g["handle"][-1])]
-            out = {k: max(0.0, v[k] * f)}
-            self._label = f"Scale ×{f:.2f}"
+        out, self._label = item_drag(g, c, now, free, self._targets)
         has = {p.name for p in F.FIELDS[c["it"]["type"]]}
         out = {k: x for k, x in out.items() if k in has}
         calls = [self.bridge.edit_call(c["it"]["id"], k, x) for k, x in out.items() if abs(x - v[k]) > 1e-9]
@@ -177,14 +153,10 @@ class Gizmo(QObject):
         self.changed.emit()
 
     def _mesh_drag(self, g, c, now, free):
-        """Edit mesh: each move one `mesh.transform` step on top of the drag so far (mesh_actions.py works it out)."""
+        """Edit mesh: each move one `mesh.transform` step on top of the drag so far (mesh_gizmo.py works it out)."""
         call, self._label = self.vp.mesh_edit.gizmo_step(g, c, now, free)
         self.bridge._guard(lambda: self._drag.preview([call]))
         self.changed.emit()
-
-    def _arm_px(self, g):
-        (ax, ay), (bx, by) = g["line"]
-        return max(1.0, ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5 / g["ctx"]["px"])
 
     def _targets(self, c, k):
         """Where a move along one axis catches: the ground's 0 and the other items' places on that axis."""
@@ -215,22 +187,3 @@ class Gizmo(QObject):
                 calls.append(route.value_call(it, p, route.value_at(it, p, t), t))
         self.bridge._guard(lambda: self.bridge._apply(calls, f"Key {', '.join(props)} of {self.bridge.label_of(it)}"))
         self._moved.pop(it["id"], None)
-
-
-class HoldD(GuiFilter):
-    """D held moves the pivot (SPEC §14): Qt's shortcuts see only the key going down, so this watches for D going down
-    and up (never while typing in a field, never auto-repeats). On the app: the gizmo has no window of its own; the kit's
-    GuiFilter keeps it off Qt's own threads."""
-
-    def __init__(self, gizmo):
-        super().__init__(gizmo)
-        self.gizmo = gizmo
-        self.watch(QGuiApplication.instance())
-
-    def on_event(self, obj, ev):
-        if ev.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) and ev.key() == Qt.Key.Key_D                 and not ev.isAutoRepeat() and not ev.modifiers() & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier):
-            focus = QGuiApplication.focusObject()
-            typing = focus is not None and "Text" in focus.metaObject().className()
-            if not (typing and ev.type() == QEvent.Type.KeyPress):
-                self.gizmo.setPivot(ev.type() == QEvent.Type.KeyPress)
-        return False

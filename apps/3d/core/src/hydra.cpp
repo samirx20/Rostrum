@@ -51,7 +51,10 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
 // around full-size bulbs (a small bulb hundreds of times too bright, the same at any radius) and made normalize
 // 10 000x too bright (H23); brief 10b.
 // Motion blur is on when the camera looked through has an open shutter (the shot's, lights_cameras.cpp); a free
-// camera has none. Cycles then samples the camera's moves within the shutter.
+// camera has none. Cycles then samples the camera's moves within the shutter, and every object's moves within the
+// shutter it was told (rostrum:shutterOpen / Close, our patch: libs/cycles-rostrum.patch). That one is only set from
+// an open shutter and kept while a free camera looks: objects sample their moves when they change, not when the
+// camera does, so the samples are still right when the shot camera looks again (a new shutter rewrites them anyway).
 // `progressive`: the viewport's Final look, which shows the noise cleaned up as it refines. A render cleans up once,
 // at its last sample: the plug-in's session is interactive, so it otherwise also cleans up the picture every time it
 // updates the display, on a timer, which made a full HD frame at 128 samples cost 2x and vary from run to run (13d).
@@ -71,6 +74,10 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
       cam.GetShutterCloseAttr().Get(&close);
     }
   set("cycles:integrator:motion_blur", VtValue(close > open));
+  if (close > open) {
+    set("rostrum:shutterOpen", VtValue(open));
+    set("rostrum:shutterClose", VtValue(close));
+  }
 }
 
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
@@ -126,6 +133,7 @@ Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
   fb_.reset();
   mask_fb_.reset();
+  ghost_fbs_.clear();
 }
 
 TfToken Hydra::plugin_for(const std::string& name) {
@@ -264,6 +272,27 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
+  }
+  // Onion skin: each ghost's items alone at the ghost's frame, lit like this picture, in a framebuffer of its own
+  // (view_post.h tints them and lays them over the picture). The ghost's frame is a time change for the engine; the
+  // next picture's own frame changes it back.
+  if (!look.ghosts.empty()) {
+    e.show_sky(false);
+    if (ghost_fbs_.size() < look.ghosts.size()) ghost_fbs_.resize(look.ghosts.size());
+    for (size_t i = 0; i < look.ghosts.size(); ++i) {
+      const Ghost& g = look.ghosts[i];
+      auto& gf = ghost_fbs_[i];
+      if (!gf || gf->width() != w || gf->height() != h) {
+        gf.reset();
+        gf = std::make_unique<Framebuffer>(w, h);
+      }
+      UsdImagingGLRenderParams at = params;
+      at.frame = UsdTimeCode(g.frame);
+      gf->bind_and_clear();
+      for (const auto& path : g.items) e.Render(stage_->GetPrimAtPath(path), at);
+      throw_usd_errors(mark, "view (onion-skin ghost at frame " + std::to_string(g.frame) + ")");
+      out.ghosts.push_back(gf->color_texture());
+    }
   }
   return out;
 }

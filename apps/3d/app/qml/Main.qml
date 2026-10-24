@@ -5,8 +5,9 @@ import RostrumKit
 // shot crumb, Saved · N changes, the Build | Animate | Render pages, ↶ ↷, Search, View (shot / free camera), Look
 // (Quick | Final, when the viewport offers it), Materials, Render (F12), ?. Left edge: the tool rail (Rail3D). Centre:
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
-// own group open, changed groups open, the rest a row of names). Bottom, full width: the scene list with its keys on
-// the same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
+// own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
+// animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
+// same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
 // nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
 AppShell {
     id: shell
@@ -25,6 +26,7 @@ AppShell {
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
+    function openRailPanel(id) { rail.openPanel(id) }             // (the scripted `panel <id>` step)
     function openDrawings() { rail.openDrawings() }                // (the scripted `drawings` step)
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsList.openFrom(materialsChip) }
@@ -48,15 +50,22 @@ AppShell {
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
+    readonly property bool renderIdle: backend.renderJob.state === "idle" || backend.renderJob.state === ""
+    Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
+    Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && shell.renderIdle; onActivated: backend.keys.clear() }
     Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: backend.selected !== "" && !meshEdit.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
+               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
                onActivated: backend.select("") }
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
     // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
     Shortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
                onActivated: meshEdit.toggle() }
-    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.leave() }
+    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
+    Shortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
+    Shortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
+    Shortcut { sequence: "Return"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
+    Shortcut { sequence: "Enter"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
     Shortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
     Shortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
     Shortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
@@ -71,12 +80,14 @@ AppShell {
     Shortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
     Shortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
     Shortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
+    Shortcut { sequence: "P"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: rail.openPanel("poses") }
+    Shortcut { sequence: "O"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: viewport.onionSkin.toggle() }
     // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot
     Shortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
     Shortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
     Shortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
     Shortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
-    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== ""; onActivated: gizmo.keyMoved() }
+    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== "" && !meshEdit.on; onActivated: gizmo.keyMoved() }
 
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu
@@ -151,7 +162,7 @@ AppShell {
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
-            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !backend.stretch.shown
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 MaterialRow { id: materialRow; width: parent.width }
@@ -163,6 +174,7 @@ AppShell {
         }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
         MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
+        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: SceneList { anchors.fill: parent }
 }

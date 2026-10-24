@@ -19,7 +19,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife",
          "render-sheet-shot", "bevel-too-big", "lens-menu")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -39,6 +39,14 @@ def two_shots() -> list[str]:
     script.write_text(SOURCE.replace('shot("hero", ', 'shot("hero", name="Hero 01", ') +
                       'close = camera("close_cam", focalLength=105, x=0.5, y=0.45, z=1.6).aim((0, 0.3, 0))\n'
                       'shot("close", name="Close 02", camera=close, fps=24, start=0, end=2)\n', encoding="utf-8")
+    return ["--script", str(script)]
+
+
+def lid_turn() -> list[str]:
+    """Start args for the sample with a lid on the block that opens: Turn X 0 → −105° from 0.8 s to 1.6 s (mockup 07)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "lid_turn.py"
+    script.write_text(SOURCE + 'mesh("lid", shape="box", width=0.5, height=0.04, depth=0.5, y=0.32, material=clay)'
+                      '.key("rx", {0.8: 0, 1.6: -105})\n', encoding="utf-8")
     return ["--script", str(script)]
 
 
@@ -94,6 +102,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("context-empty", s, ["context -"]),
         ("view-menu", s, ["select key", "view"]),
         ("page-animate", s, ["select cam", "page animate"]),
+        ("animate-stretch", lid_turn(), ["page animate", "stretch lid.rx.k800"]),       # the lid's Turn: the animation panel
+        ("animate-stretch-out", lid_turn(), ["page animate", "stretch lid.rx.k800", "ease out"]),
+        ("animate-poses", lid_turn(), ["page animate", "select lid", "pose Lid half open, before the buds come out of the case",
+                                       "panel poses"]),
+        ("animate-onion", lid_turn(), ["page animate", "select lid", "frame 30", "onion on", "panel onion"]),
         ("page-render", s, ["page render"]),
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
@@ -111,6 +124,15 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("mesh-edit-faces", s, ["select block", "mesh-tab", "mesh-edit", "mesh-pick top", "mesh-action extrude", "wait 600"]),
         ("mesh-edit-inset", s, ["select block", "mesh-tab", "mesh-edit", "mesh-pick top", "mesh-action inset", "wait 600"]),
         ("mesh-edit-points", s, ["select block", "mesh-tab", "mesh-edit", "mesh-kind points", "mesh-box 0.3 0.3 0.7 0.7", "wait 600"]),
+        ("mesh-edit-bevel", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-kind edges", "mesh-box 0.2 0.2 0.8 0.8",
+                                "mesh-action bevel", "wait 600"]),
+        ("mesh-edit-loopcut", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-kind edges", "mesh-box 0.3 0.3 0.7 0.7",
+                                  "mesh-action loopcut", "wait 600"]),
+        ("mesh-edit-material", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-pick top", "wait 300"]),
+        ("mesh-edit-knife", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-knife", "mesh-knife-at 0.42 0.45",
+                                "mesh-knife-at 0.6 0.5", "wait 400"]),
+        ("mesh-edit-xray", s, ["add mesh:box", "mesh-tab", "mesh-edit", "mesh-xray", "mesh-kind points",
+                               "mesh-box 0.3 0.3 0.7 0.7", "wait 600"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),
         ("long-status", s, [f"say {LONG_STATUS}"]),

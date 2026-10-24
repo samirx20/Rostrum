@@ -2,7 +2,7 @@
 // dome's camera visibility. The stage holds the truth in UsdLux terms (ShapingAPI cone angle = spread / 2, the light's
 // lightLink collection) plus three attributes of ours (rostrum:card, rostrum:lightsOnly, rostrum:seenByCamera);
 // LightExtras is what the renderer side derives from it, once per scene, for the Hydra filters:
-//  - Cycles (cycles_lights.cpp + our patch on its Hydra plug-in, apps/3d/libs/cycles-rostrum-lights.patch): the card is
+//  - Cycles (cycles_lights.cpp + our patch on its Hydra plug-in, apps/3d/libs/cycles-rostrum.patch): the card is
 //    the light's own camera visibility (visibleInPrimaryRay; Cycles shows area lights in reflections anyway), the cone
 //    angle becomes the area light's spread, links become Cycles light sets (a receiver set per distinct combination of
 //    lights linking an item, at most 63; each linked light's membership is the sets it lights), a dome's camera

@@ -12,12 +12,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum_core.keys import keys_of
 from rostrum3d.compile import describe, shot_info
 from rostrum_gui import DocBridge, sections
-from rostrum_gui.edits import Drag
 from rostrum_gui.selection_rules import click
 from rostrum_gui.markers import MarkerWatch
+from rostrum_gui.time_snap import TimeSnap
 
 from rostrum3d import fields as F
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
@@ -28,9 +27,13 @@ from .action_preview3d import ActionPreview3D
 from .actions3d import fit_note
 from .adding import Adder
 from .context_qt import Context
+from .poses_qt import Poses
 from .material_balls import BallRenderer, MaterialBalls
 from .materials import USERS, Materials3D
+from .key_pick3d import KeyBar3D, KeyPick3D, Multi3D
 from .render_job import RenderJob
+from .stretch3d import Stretch3D
+from .timeline3d import Mover
 
 
 # The group each kind IS (SPEC §3.2, the lead's ruling): always open; every other group opens only when changed.
@@ -47,7 +50,7 @@ DATA_GROUPS = {"Mesh data"}             # groups that are data an operation writ
 
 def _is_data(type_, r) -> bool:
     p = F.param(type_, r["id"]) if r.get("row") == "param" else None
-    return (p is not None and p.group in DATA_GROUPS) or r.get("group") in DATA_GROUPS or r.get("in") in DATA_GROUPS
+    return (p is not None and p.group in DATA_GROUPS) or any(r.get(k) in DATA_GROUPS for k in ("group", "in", "fold"))
 
 
 def _without_data(r):
@@ -75,7 +78,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
             raise ValueError("the document has no shot yet (shot(...) in a script, or shot.add)")
         self.shot_id, self.autosave = shot_id or shots[0]["id"], autosave
         self._info = shot_info(doc.data, self.shot_id)          # fails loudly at start: a shot needs a camera
-        self._frame, self._folded, self._drag, self._grab = self._info["start"], set(), None, None
+        self._frame, self._folded = self._info["start"], set()
         self._page = "build"
         super().__init__(doc, parent=parent)
         self._timer = QTimer(self)
@@ -86,6 +89,10 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self.render = RenderJob(self, render_engine)
         self.add = Adder(self)
         self.ctx = Context(self)
+        self._poses = Poses(self)
+        self._mover, self._time_snap = Mover(self), TimeSnap(self)        # the timeline (timeline3d.py, key_pick3d.py)
+        self._keys, self._key_bar, self._multi = KeyPick3D(self, self), KeyBar3D(self, self), Multi3D(self, self)
+        self._stretch = Stretch3D(self, self)
         self.selectedItemsChanged.connect(self.outlineChanged)     # the scene list lights every selected row
         self._make_actions()                                # the settings panel's actions (Combine) and their hover preview
         self.viewport = viewport(self) if viewport else None
@@ -136,7 +143,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
     @Property("QVariantList", notify=outlineChanged)
     def sceneRows(self):
         """The scene list, its keys on the same rows (outline.scene_rows)."""
-        return outline.scene_rows(self.doc.data, self._folded, self.selectedOwner)
+        return outline.scene_rows(self.doc.data, self._folded, self.selectedOwner, self._info["fps"])
 
     @Property("QVariantList", notify=outlineChanged)
     def materials(self):
@@ -235,6 +242,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
         """The Add menu, Delete and Duplicate (adding.py)."""
         return self.add
 
+    poses = Property(QObject, lambda self: self._poses, constant=True)  # QML: backend.poses (poses_qt.py)
     mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
 
     def on_page(self, item):
@@ -329,36 +337,58 @@ class Bridge3D(ActionPreview3D, DocBridge):
     def renderStill(self):
         self.render.start()
 
-    # ---- the key drag: one doc.gesture = one change ------------------------------------------------------------
+    # ---- the kit timeline (LayerTimeline.qml; TIMELINE.md › The key timeline): keys in time, one drag = one change
+    @Property("QVariantMap", notify=outlineChanged)
+    def frameInfo(self):
+        """The ruler's length and rate: {fps, duration} (seconds, the shot's last frame included)."""
+        return {"fps": self._info["fps"], "duration": (self._info["end"] + 1) / self._info["fps"]}
+
+    @Property("QVariantList", notify=outlineChanged)
+    def layers(self):
+        """The timeline's rows (the kit reads `layers`): the scene list with its keys (outline.scene_rows)."""
+        return self.sceneRows
+
+    @Slot(float)
+    def setTime(self, t):
+        self.setFrame(round(t * self._info["fps"]))
+
+    keys = Property(QObject, lambda self: self._keys, constant=True)            # key_pick3d.py
+    keyBar = Property(QObject, lambda self: self._key_bar, constant=True)
+    multi = Property(QObject, lambda self: self._multi, constant=True)
+    stretch = Property(QObject, lambda self: self._stretch, constant=True)      # stretch3d.py (the kit's StretchSelect)
+    timeSnap = Property(QObject, lambda self: self._time_snap, constant=True)   # rostrum_gui/time_snap.py
+
+    def beginMove(self, ids, grab, label, t0=None) -> bool:
+        return self._mover.begin(ids, grab, label, t0)
+
     @Slot(str, result=bool)
     def beginKeyDrag(self, key_id):
-        self.endDrag()
+        """One key's drag (the picked keys' is keys.beginDrag): it becomes the selection, so the panel shows it."""
         self.select(key_id)
+        return self.beginMove([key_id], key_id, "Move key")
 
-        def go():
-            self._drag, self._grab = Drag(self.doc, self.who, "Move key"), key_id
-        return self._guard(go)
+    @Slot(str, str, float, result=bool)
+    def beginBarDrag(self, item_id, how, t):
+        """An item's bar dragged: every key of it moves together (`how` is the kit's: only "move" here)."""
+        keys = self.doc.item(item_id).get("keys", []) if self.doc.has(item_id) else []
+        if how != "move" or not keys:
+            return False
+        grab = min(keys, key=lambda k: abs(k["t"] - t))["id"]
+        return self.beginMove([k["id"] for k in keys], grab, f"Move {self.label_of(self.doc.item(item_id))} in time", t)
 
     @Slot(float, float)
-    def keyDragTo(self, frame, snap=0.0):
-        """Move the dragged key to a frame of the shot, or to its end (whole frames; a frame another key of its field
-        holds is skipped). `snap`: frames within which the key lands on a shared marker's frame instead."""
-        if self._drag is None:
-            return
-        fps, key = self._info["fps"], self.doc.item(self._grab)
-        on = self.marks.snap(frame / fps, snap / fps)
-        frame = round(on * fps) if on != frame / fps else round(frame)
-        t = min(max(frame, self._info["start"]), self._info["end"] + 1) / fps   # up to where the shot ends
-        owner = self.doc.item(self.doc.parent_of(key["id"])[0])
-        if any(k["id"] != key["id"] and abs(k["t"] - t) < 1e-6 for k in keys_of(owner, key["prop"])):
-            return
-        self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": t}}]))
+    def barDragTo(self, t, snap=0.0):
+        self._mover.to(t, snap)
+
+    @Slot(float, float)
+    def keyDragTo(self, t, snap=0.0):
+        """The grabbed key to `t` seconds (whole frames; within `snap` seconds it lands on a marker, the playhead or
+        another key: timeline3d.py), the others it carries by as much."""
+        self._mover.to(t, snap)
 
     @Slot()
     def endDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
-        if d is not None:
-            self._guard(lambda: self._done(d.end(), ""))
+        self._mover.end()
 
     # ---- for the render job -----------------------------------------------------------------------------------
     def say(self, text):
@@ -380,7 +410,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
             self._fail(f"Error: shot: {e}")
         clamped = min(max(self._frame, self._info["start"]), self._info["end"])
         super()._on_doc(event)
-        if self._drag is None or event.kind != "preview":     # mid-drag the timeline keeps its rows (and the mouse);
+        if not self._mover.active or event.kind != "preview":     # mid-drag the timeline keeps its rows (and the mouse);
             self.outlineChanged.emit()                         # the dragged key follows the pointer until release
         if clamped != self._frame:
             self.setFrame(clamped)

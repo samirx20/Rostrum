@@ -27,10 +27,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-VERSION = "5.2.2-cycles-a456b76-r1"   # r1 (H22): Cycles' Hydra plug-in with cycles-rostrum-lights.patch
+VERSION = "5.2.2-cycles-a456b76-r2"   # r2 (3D-11b): Cycles' Hydra plug-in with cycles-rostrum.patch (lights + object motion blur)
 BUNDLE_TAG, BUNDLE_COMMIT, CYCLES_COMMIT = "v5.2.2", "60d6e96", "a456b76"
-CYCLES_INSTALL = "install-r1"         # made by build_cycles.bat (the proof's unpatched build is install\)
-CYCLES_PATCH = "cycles-rostrum-lights.patch"
+CYCLES_INSTALL = "install-r2"         # made by build_cycles.bat (the proof's unpatched build is install\)
+CYCLES_PATCH = "cycles-rostrum.patch"
 REPO = Path(__file__).resolve().parents[3]
 DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION
 DEFAULT_BUNDLE = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
@@ -77,6 +77,9 @@ class Missing(Exception):
 def need(path: Path) -> Path:
     if not path.exists():
         raise Missing(f"missing: {path}")
+    # A bundle checked out without Git LFS has 132-byte text pointers in place of DLLs (3D-11b: aom.dll).
+    if path.suffix.lower() == ".dll" and path.stat().st_size < 1024 and path.read_bytes().startswith(b"version https://git-lfs"):
+        raise Missing(f"only a Git LFS pointer, not the file (git lfs pull in the bundle): {path}")
     return path
 
 

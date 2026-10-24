@@ -2,7 +2,7 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    keydrag <key id> <frame> | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
@@ -23,13 +23,12 @@
     look quick|final (Final: progressive Cycles in place; `wait` lets it refine)
   Gizmo (real mouse input on the window): gizmo-drag <handle: move0..2 | plane | turn0..2 | scale0..2> <dx> <dy> [ctrl]
     (press on that handle, move by dx dy screen px in 8 steps, release) | gizmo-show all|move|turn|scale | key-moved
-  Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow (mesh_steps.py)
+  Edit mesh: mesh-tab | mesh-edit | mesh-kind | mesh-pick | mesh-box | mesh-action | mesh-number | mesh-arrow | mesh-material | mesh-xray | mesh-knife* | mesh-esc (mesh_steps.py)
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
 
-import json
-import time
+import functools, json, operator, time  # noqa: E401
 
 from PySide6.QtCore import Q_ARG, QCoreApplication, QMetaObject, QObject, QPoint, QPointF, Qt
 from PySide6.QtTest import QTest
@@ -94,10 +93,14 @@ def do_step(bridge, win, step):
     elif word == "keydrag":
         if not bridge.beginKeyDrag(rest[0]):
             raise RuntimeError(f"step {step!r}: {bridge.status}")
-        bridge.keyDragTo(float(rest[1]))
+        bridge.keyDragTo(float(rest[1]) / bridge.shot_info()["fps"])
         bridge.endDrag()
     elif word == "fold":
         bridge.toggleFold(rest[0])
+    elif word == "press":                      # a real key on the window: press Tab | K | Return | Escape | 2 | Alt+Z
+        *mods, key = rest[0].split("+")
+        m = functools.reduce(operator.or_, (getattr(Qt.KeyboardModifier, n.capitalize() + "Modifier") for n in mods), Qt.KeyboardModifier.NoModifier)
+        QTest.keyClick(win, getattr(Qt.Key, "Key_" + key), m)
     elif word in ("undo", "redo"):
         getattr(bridge, word)()
     elif word == "more":
@@ -141,8 +144,20 @@ def do_step(bridge, win, step):
         QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
+    elif word == "panel":          # panel poses | onion: the Animate rail's own small panels (Rail3D.qml)
+        QMetaObject.invokeMethod(win, "openRailPanel", Q_ARG("QVariant", rest[0]))
+    elif word == "pose":           # pose <name…>: Save pose from the selection at the playhead (poses_qt.py)
+        bridge.poses.save(" ".join(rest))
+    elif word == "onion":          # onion on | off | keys | frames (onion_qt.py)
+        o = bridge.viewport.onion
+        o.setOn(rest[0] != "off") if rest[0] in ("on", "off") else o.setMode(rest[0])
     elif word == "page":
         bridge.setPage(rest[0])
+    elif word == "stretch":        # stretch <key id>: the click on the stretch that key starts (its item's, StretchBand.qml)
+        bridge.stretch.pick(bridge.doc.parent_of(rest[0])[0], [rest[0]])
+    elif word == "ease":           # ease <linear | smooth | in | out | spring | bounce | hold>: a preset in the animation panel
+        if not bridge.stretch.setEase(rest[0]):
+            raise RuntimeError(f"step {step!r}: no stretch picked, or {bridge.status}")
     elif word == "startfrom":
         bridge.mats.startFrom(" ".join(rest))
     elif word == "assign":

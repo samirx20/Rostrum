@@ -3,6 +3,7 @@
 // shading come from separate vertices. `st` is face-varying, one UV per face corner, 0..1 per face group
 // (side band, top, bottom), and seen from outside a texture is never mirrored.
 #pragma once
+#include <vector>
 #include <pxr/base/vt/array.h>
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/base/gf/vec3f.h>
@@ -13,6 +14,7 @@ struct MeshData {
   PXR_NS::VtArray<PXR_NS::GfVec3f> points, normals;
   PXR_NS::VtArray<PXR_NS::GfVec2f> st;  // face-varying: st[k] belongs to indices[k]
   PXR_NS::VtArray<int> counts, indices;
+  std::vector<int> base_face;  // editable mesh only: the original face each drawn face came from (smoothing)
 };
 
 // width X, height Y, depth Z; bevel = radius of every edge and corner, segments = steps per 90° of it.

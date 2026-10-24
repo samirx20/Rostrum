@@ -93,10 +93,30 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   facing away: fix with `rx` / `ry` by 180°, never by a negative scale).
 - **Cut, join, keep the overlap.** A port, a slot or a recess is a live boolean: `combine.make` on the base and the cutters
   (`op: subtract`), or `with combine("case", op="subtract"):` in a script. The cutters stay items; move one and look again.
-- **Push and pull faces.** `mesh.edit` makes a shape or combine an editable mesh; then `faces.extrude`, `faces.inset` and
-  `mesh.transform` with a selector (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers. Modelling guide,
-  "Editable mesh".
+- **Push and pull faces.** `mesh.edit` makes a shape or combine an editable mesh; then `faces.extrude`, `faces.inset`,
+  `edges.bevel`, `edges.loopcut`, `mesh.knife`, `faces.material`, `edges.sharp` and `mesh.transform` with a selector
+  (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
+  guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
+- **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
+  lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
+  one "Turn"; Scale (sx, sy, sz) one "Scale"; any other field its own. Each has its stretches (the time between two
+  neighbouring keys: `ids`, `start`, `length`, `ease`, `preset`, `from` / `to`). Ease a whole stretch with `anim.ease`
+  (targets: the stretch's `ids`; `preset` linear, smooth, in, out, spring, bounce or hold, or a curve `x1 y1 x2 y2`);
+  `key.scale` stretches or squeezes keys in time around a moment; `key.paste` copies keys onto the same fields of other
+  items; `key.stagger` starts several items' keys one after another. Each is one change, one undo step, the same a
+  person makes by clicking a stretch on the Animate page and picking "Out". Check the result with `look_sheet`.
+- **Stepped timing.** `timing` on an animated item or group: `smooth` (default), `on2`, `on3` (`mesh.set timing=on2`,
+  or `mesh("bud", timing="on2")` in a script): every value then holds for 2 or 3 frames, counted from the shot's
+  start, in the viewport and the render alike. A group's timing steps everything inside it; a child's own `on2` /
+  `on3` wins. Leave the camera `smooth` and the character steps while the camera glides. The field only shows (and
+  `<type>.set` only takes it) once the item or something inside it has keys.
+- **Poses.** `pose.save` (targets: the items; `at` seconds; optional `name`, `id`) keeps their x y z, rx ry rz (not
+  when aimed), sx sy sz as they are at `at`, in the document's `poses`. `pose.apply` (target: the pose; `at`) keys all
+  of them at `at`; with `share` 0..1 it is a breakdown instead: each field keyed that share of the way from its key
+  before `at` to its key after (fields without both are skipped and named in the reply, as are items no longer in
+  the scene). `pose.rename`, `pose.remove`. Each is one undo step. Onion skin (the person's ghosts in the viewport)
+  has no look tool yet: check an arc with `look_sheet` over the move.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 
