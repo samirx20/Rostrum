@@ -60,10 +60,10 @@ def problems(folder) -> list[str]:
 
 def listing(folder, doc=None) -> list[dict]:
     """Every live link: {link, from, use, into, marker} in CONTRACT § 3's shape ("scene1#logo" → "markers#mk_…")."""
-    from .markers import open_markers, _exists
-    if doc is None and not _exists(folder):
+    from .markers import current
+    doc = doc or current(folder)
+    if doc is None:
         return []
-    doc = doc or open_markers(folder)
     return [{"link": f'lnk_{m["id"]}', "from": f'{m["follows"]["item"]}#{m["follows"]["part"]}',
              "use": m["follows"].get("use", "start"), "into": f'markers#{m["id"]}', "marker": m["name"]}
             for m in doc.data["markers"] if m.get("follows")]
@@ -111,8 +111,8 @@ def refresh(folder, who, docs: dict | None = None, mdoc=None, only=None) -> list
     open step. Returns the names moved. A loop (followers that never settle) is refused loudly."""
     if folder is None or joint.replaying():
         return []
-    from .markers import _exists, open_to_change
-    if mdoc is None and not _exists(folder):
+    from .markers import current, open_to_change
+    if mdoc is None and current(folder) is None:
         return []
     mdoc = mdoc or open_to_change(folder)
     moved, bad = [], []

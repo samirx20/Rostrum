@@ -112,9 +112,13 @@ def locked(path, where="settings", who="another Rostrum window"):
     Not re-entrant: take it once, around the whole read-modify-write."""
     path = Path(path)
     lock = path.with_name(path.name + ".lock")
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+b") as fh:
-        if lock.stat().st_size == 0:
+    try:
+        fh = open(lock, "a+b")
+    except FileNotFoundError:                     # (its folder made only when missing: a mkdir per change cost ~1 ms)
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        fh = open(lock, "a+b")
+    with fh:
+        if os.fstat(fh.fileno()).st_size == 0:
             fh.write(b"\0")
             fh.flush()
         deadline = time.monotonic() + WAIT_S

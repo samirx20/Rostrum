@@ -8,6 +8,8 @@ Times and values from QML are seconds and field values; the view's value range i
 """
 from __future__ import annotations
 
+from rostrum_gui import news
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
 from rostrum_core.keys import keys_of, marked
@@ -42,7 +44,7 @@ class Curves(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._on, self._hidden, self._drag, self._grab, self._frozen = bridge, False, set(), None, None, {}
-        bridge.outlineChanged.connect(self.changed)
+        bridge.outlineChanged.connect(news.relay(self))     # only news (the editor redid its curves on every edit)
 
     @Property(bool, notify=changed)
     def on(self):

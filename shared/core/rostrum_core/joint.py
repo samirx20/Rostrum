@@ -24,6 +24,8 @@ import uuid
 from contextvars import ContextVar
 from pathlib import Path
 
+from . import filestamps
+
 _current: ContextVar[str | None] = ContextVar("rostrum_step", default=None)
 _replay: ContextVar[bool] = ContextVar("rostrum_replay", default=False)
 _reached: dict[str, list[str]] = {}          # step id -> documents (item ids) it changed, this process
@@ -95,7 +97,7 @@ def note(doc, step_id: str):
 def items(folder, step_id: str) -> list[str]:
     """Every document (item id) a step changed, as far as the journal knows (empty: one document only)."""
     j = _journal(folder) if folder is not None else None
-    if j is None or not j.is_file():
+    if j is None or filestamps.stamp(j) is None:
         return list(_reached.get(step_id, []))
     out = []
     for line in j.read_text(encoding="utf-8").splitlines():

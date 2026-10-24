@@ -300,10 +300,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                     '"color":"#ff7a59","opacity":1},{"at":1,"color":"#101820","opacity":1}]}',
                                                     "clickobj swatch"]),
         ("camera-ride", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "select path_1",
-                                       'select frame', 'set ridePath "path_1"']),
+                                       "select frame", 'set ridePath "path_1"', "group Ride"]),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
-                                           "brand colors Night #101820",
+                                           "brand colors Night #101820", f"brand logos Summer_launch_film_logo_for_the_headphones {PICTURE}",
                                            f"brand textStyles {LONG_LAYER.replace(' ', '_')} textstyle_1", "library open"]),
             # H56: My brushes (a saved brush with a long name, chosen), Save this brush's name field on Edit brush ›
         ("brush-panel-mine", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "preset oil",

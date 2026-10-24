@@ -39,9 +39,16 @@ class CameraTool(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
-        self.b = bridge
+        self.b, self._shown = bridge, None
         for sig in (bridge.docChanged, bridge.outlineChanged):
-            sig.connect(self.changed)
+            sig.connect(self._check)
+
+    def _check(self):
+        """Announced only when `available` flips: the rail rebuilds its tools on it (~3 ms, twice per edit before)."""
+        on = self.available
+        if on != self._shown:
+            self._shown = on
+            self.changed.emit()
 
     @Property(bool, notify=changed)
     def available(self) -> bool:

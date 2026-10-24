@@ -5,6 +5,8 @@ field edit or whole drag is ONE change (key.set, key.handles: the operations an 
 """
 from __future__ import annotations
 
+from rostrum_gui import news
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core.keys import after as last_key, ease as ease_at, keys_of, springs
 from rostrum_gui.edits import Drag
@@ -21,9 +23,10 @@ class KeyBar(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._drag, self._grab = bridge, None, None
-        bridge._keys.changed.connect(self.changed)
-        bridge.selectedItemsChanged.connect(self.changed)
-        bridge.outlineChanged.connect(self.changed)
+        told = news.relay(self)                             # only news (the bar redid itself on every edit)
+        bridge._keys.changed.connect(told)
+        bridge.selectedItemsChanged.connect(told)
+        bridge.outlineChanged.connect(told)
 
     def picked(self) -> list[str]:
         """The keys it acts on: those picked in the timeline or the curve editor (key_select.py)."""

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rostrum_core import project
+from rostrum_core import filestamps, project
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.storage import write_atomic
 
@@ -32,14 +32,21 @@ def _fail(subject: str, problem: str, accepted=()):
     raise RostrumError(codes.BAD_ARGUMENT, "brand kit", subject, problem, list(accepted))
 
 
+_READ: dict = {}        # path -> (its stamp, the kit): the screen reads it on every change
+
+
 def read(folder) -> dict:
     """The kit, every section present (empty lists when the project has none yet)."""
     path = Path(folder) / FILE
-    try:
-        data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
-    except (OSError, ValueError) as e:
-        raise RostrumError(codes.CHECK_FAILED, "brand kit", str(path), f"can't be read: {e}") from e
-    return {s: list(data.get(s, [])) for s in SECTIONS}
+    stamp = filestamps.stamp(path)
+    got = _READ.get(path)
+    if got is None or got[0] != stamp:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8")) if stamp else {}
+        except (OSError, ValueError) as e:
+            raise RostrumError(codes.CHECK_FAILED, "brand kit", str(path), f"can't be read: {e}") from e
+        got = _READ[path] = (stamp, {s: list(data.get(s, [])) for s in SECTIONS})
+    return {s: [dict(e) for e in got[1][s]] for s in SECTIONS}
 
 
 def _check(folder, section: str, entry: dict) -> dict:
@@ -69,6 +76,7 @@ def add(folder, section: str, entry: dict) -> dict:
     kit, row = read(folder), _check(folder, section, entry)
     kit[section] = [e for e in kit[section] if e["name"] != row["name"]] + [row]
     write_atomic(Path(folder) / FILE, json.dumps(kit, indent=1, ensure_ascii=False))
+    filestamps.forget(Path(folder) / FILE)
     return kit
 
 
@@ -78,6 +86,7 @@ def remove(folder, section: str, name: str) -> dict:
         _fail(f'"{name}"', f"is not in the brand kit's {section}", [e["name"] for e in kit.get(section, [])])
     kit[section] = [e for e in kit[section] if e["name"] != name]
     write_atomic(Path(folder) / FILE, json.dumps(kit, indent=1, ensure_ascii=False))
+    filestamps.forget(Path(folder) / FILE)
     return kit
 
 

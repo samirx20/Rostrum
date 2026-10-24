@@ -23,6 +23,7 @@ from pathlib import Path
 
 from . import links
 from .document import Document
+from . import filestamps
 from .errors import RostrumError, codes
 from .kind import DocKind
 from .params import Param
@@ -133,7 +134,9 @@ KIND = DocKind(ITEM, EXT, REGISTRY, lists={"doc": ["markers"]}, check=_check,
 
 
 def _exists(folder) -> bool:
-    return (Path(folder) / "docs" / f"{ITEM}{KIND.ext}").is_file()
+    """The project has a marker file (kept between a screen's ticks, filestamps.py; this process's own save forgets it,
+    so the first marker shows at once; a project without markers asked the disk on every change)."""
+    return filestamps.stamp(Path(folder) / "docs" / f"{ITEM}{KIND.ext}") is not None
 
 
 def open_markers(folder) -> Document:
@@ -148,9 +151,60 @@ def open_markers(folder) -> Document:
 def open_to_change(folder) -> Document:
     """The marker document, live (live.keep): a change locks the file, takes in what other programs saved, and saves."""
     from .live import keep
-    doc = open_markers(folder)
+    doc = current(folder) or open_markers(folder)
     keep(doc)
     return doc
+
+
+# ---- one copy of the marker document per project, so reading it costs no file work ---------------------------------
+_DOCS: dict = {}        # str(folder) -> (the file stamp it was read at, the document)
+_WATCHED: dict = {}     # str(folder) -> screens that poll it: while watched, `current` looks at no file
+_LISTED: dict = {}      # str(folder) -> (document, its data, listing rows)
+
+
+def watch(folder):
+    """A screen (the kit's MarkerWatch) takes over the looking: `current` answers from its copy and the screen calls
+    `refresh(folder)` on its own poll and after its own edits. Returns the undo."""
+    key = str(folder)
+    _WATCHED[key] = _WATCHED.get(key, 0) + 1
+
+    def stop():
+        _WATCHED[key] = _WATCHED.get(key, 1) - 1
+        if _WATCHED[key] <= 0:
+            _WATCHED.pop(key, None)
+    return stop
+
+
+def current(folder) -> Document | None:
+    """The project's marker document as this process holds it (None: no markers yet). Unwatched, the file's stamp is
+    looked at on each call (one stat); watched, never: `refresh` does it on the screen's poll."""
+    if folder is None:
+        return None
+    key = str(folder)
+    got = _DOCS.get(key)
+    if got is not None and (key in _WATCHED or got[0] == version(folder)):
+        return got[1]
+    if not _exists(folder):
+        _DOCS.pop(key, None)
+        return None
+    doc = open_markers(folder)
+    _DOCS[key] = (version(folder), doc)
+    return doc
+
+
+def refresh(folder) -> None:
+    """The marker file may have changed (a screen's poll, its own edit): catch the copy up (a live one takes in the
+    new lines), or drop it so the next `current` reads again."""
+    key = str(folder)
+    got = _DOCS.get(key)
+    stamp = version(folder)
+    if got is None or got[0] == stamp:
+        return
+    if got[1].live is not None:
+        got[1].live.catch_up()
+        _DOCS[key] = (stamp, got[1])
+    else:
+        del _DOCS[key]
 
 
 def edit(folder, calls, who, label=None):
@@ -168,16 +222,23 @@ def _made_by(doc, id_):
 
 def listing(folder, doc: Document | None = None) -> list[dict]:
     """Every marker, by time: {id, name, at, by, changed_by}. No marker document yet = []."""
-    if doc is None and (folder is None or not _exists(folder)):
+    cached = doc is None
+    doc = doc or current(folder)
+    if doc is None:
         return []
-    doc = doc or open_markers(folder)
+    got = _LISTED.get(str(folder)) if cached else None
+    if got is not None and got[0] is doc and got[1] is doc.data:
+        return [dict(r) for r in got[2]]
     out = []
     for m in doc.data["markers"]:
         last = doc.who_changed(m["id"])
         out.append({"id": m["id"], "name": m["name"], "at": m["at"], "owner": m.get("owner", ""),
                     "colour": m.get("colour", ""), "follows": m.get("follows"), "by": _made_by(doc, m["id"]),
                     "changed_by": str(last.who) if last else "outside"})
-    return sorted(out, key=lambda m: (m["at"], m["name"].lower()))
+    out = sorted(out, key=lambda m: (m["at"], m["name"].lower()))
+    if cached:
+        _LISTED[str(folder)] = (doc, doc.data, out)
+    return [dict(r) for r in out]
 
 
 def find(markers: list[dict], name_or_id: str) -> dict:

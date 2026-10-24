@@ -19,14 +19,43 @@ def main_mix(folder) -> dict | None:
 _FOUND: dict = {}       # (folder, chosen) -> (the sound files' stamp, the song): asked on every change, even a pen move
 
 
+_WATCHED: dict = {}     # folder -> how many screens watch it: they refresh the answer on their own timer
+
+
+def watch(folder):
+    """A screen takes over the looking: while watched, `song` answers from what it found last and looks at no file
+    (a document change must cost no disk). The screen calls `refresh(folder)` on its own poll. Returns the undo."""
+    key = str(folder)
+    _WATCHED[key] = _WATCHED.get(key, 0) + 1
+
+    def stop():
+        _WATCHED[key] = _WATCHED.get(key, 1) - 1
+        if _WATCHED[key] <= 0:
+            _WATCHED.pop(key, None)
+    return stop
+
+
+def refresh(folder):
+    """A screen's poll (or its own write to a sound file): looks at the files once; an answer whose files changed is
+    dropped, so the next `song` finds it again. Unchanged answers stay (no work)."""
+    stamp = None
+    for k in [k for k in _FOUND if k[0] == str(folder)]:
+        stamp = _stamp(folder) if stamp is None else stamp
+        if _FOUND[k][0] != stamp:
+            del _FOUND[k]
+
+
 def song(folder, chosen: str = "") -> dict | None:
     """The Sound item that plays: `chosen` (a scene's `soundtrack`) when set, else the main mix; None: no sound.
     Finding it reads every document of the project (their names), so the answer is kept until a Sound file,
     project.json or a Sound item's renders change on disk (`_stamp`)."""
     if not folder:
         return None
-    key, stamp = (str(folder), chosen), _stamp(folder)
+    key = (str(folder), chosen)
     got = _FOUND.get(key)
+    if got is not None and key[0] in _WATCHED:
+        return got[1]
+    stamp = _stamp(folder)
     if got is not None and got[0] == stamp:
         return got[1]
     from rostrum_sound import soundtrack

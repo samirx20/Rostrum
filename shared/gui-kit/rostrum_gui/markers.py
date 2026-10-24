@@ -16,7 +16,8 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum_core import RostrumError, Who
-from rostrum_core.markers import _exists as exists, edit, listing, open_markers, open_to_change, times, version
+from rostrum_core import live
+from rostrum_core.markers import current, edit, listing, open_markers, refresh, times, version, watch
 
 from . import marker_menu
 
@@ -30,7 +31,8 @@ class MarkerWatch(QObject):
         super().__init__(parent)
         self.folder, self.who, self.owner = folder, who or Who.person("sam"), owner
         self._fail = fail or (lambda line: print(line, file=sys.stderr))
-        self._stamp, self.times, self._rows, self._last = None, {}, [], None
+        self._stamp, self.times, self._rows, self._last, self._empty = None, {}, [], None, None
+        self._unwatch = watch(folder) if folder is not None else (lambda: None)     # the marker document: read on our poll
         self._read()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
@@ -52,14 +54,21 @@ class MarkerWatch(QObject):
 
     def close(self):
         self._timer.stop()
+        self._unwatch()
 
     # ---- one history with the screen's document (DocBridge.join_history) ------------------------------------
     def history_doc(self):
         """The marker document as it is on disk now (None outside a project); live once it exists, so an undo in it
-        goes through the one door (rostrum_core.live) like every other save."""
+        goes through the one door (rostrum_core.live) like every other save. The document is the one read when the file
+        last changed (`_read`): asked on every change of the screen, it looks at no file."""
         if self.folder is None:
             return None
-        return open_to_change(self.folder) if exists(self.folder) else open_markers(self.folder)
+        doc = current(self.folder)                      # one copy per project (rostrum_core.markers): no file work
+        if doc is None:
+            self._empty = self._empty or open_markers(self.folder)    # no markers yet: one empty document, not saved
+            return self._empty
+        live.keep(doc)                                  # (idempotent: a live document stays as it is)
+        return doc
 
     def stepped(self, doc):
         """An undo or redo landed in `doc` (from history_doc, saved by its door): show it."""
@@ -128,9 +137,11 @@ class MarkerWatch(QObject):
         stamp = version(self.folder) if self.folder is not None else 0
         if stamp == self._stamp:
             return False
-        self._stamp, self.times = stamp, times(self.folder)
-        doc = open_markers(self.folder) if stamp else None
-        self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder, doc)] if doc else []
+        if self.folder is not None:
+            refresh(self.folder)                        # the shared copy takes in the new lines (or is read again)
+        self._stamp, self.times, self._empty = stamp, times(self.folder), None
+        doc = current(self.folder) if stamp else None
+        self._rows = [{k: m[k] for k in ("id", "name", "at", "colour")} for m in listing(self.folder)] if doc else []
         changes = doc.history.changes if doc else []
         self._last = changes[-1] if changes else None
         return True

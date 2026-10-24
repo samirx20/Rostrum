@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from rostrum_core import project
+from rostrum_core import filestamps, project
 from rostrum_core.cache import CACHE, cache_key
 from rostrum_core.errors import RostrumError, codes
 
@@ -37,7 +37,7 @@ def use_project(folder) -> None:
     """The open project's own pictures become choices (the last project used wins; None = no project). Cheap to
     call before every render: project.json is read again only when it changed."""
     meta = Path(folder) / "project.json" if folder else None
-    stamp = (str(folder), meta.stat().st_mtime_ns if meta and meta.is_file() else 0)
+    stamp = (str(folder), (filestamps.stamp(meta) or 0) if meta else 0)
     if stamp == _seen[0]:
         return
     global generation

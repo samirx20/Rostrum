@@ -42,6 +42,7 @@ class Painter(BrushPanel):
         self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
+        self._told = None                               # what QML last heard (_refresh)
         self.model = RowsModel(rows.ROLES, self)
         self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
         self.refreshBrushes()
@@ -352,9 +353,16 @@ class Painter(BrushPanel):
         self._rev += 1
 
     def _refresh(self):
+        """The outline or the playhead moved: announced only when what QML reads of the painter changed (sent on every
+        edit and every frame of a scrub, it re-ran the paint panel, the brush header and the frame marks: ~5 ms)."""
         if self._stroke is None:                    # not while a stroke is being drawn: the neighbours don't change
             self._rebuild_onion()
-        self.changed.emit()
+        told = (self.drawingId, self.now, self.frameMarks, self.onionOn, self.onionReach, self.newHold,
+                self.onionSerial, self.targetName, self.targetValue, self.targetChoices, self.canErase,
+                self.canNewLayer, self.newLayerNext)
+        if told != self._told:
+            self._told = told
+            self.changed.emit()
 
     def _rebuild_onion(self):
         d = self.drawing()

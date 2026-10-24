@@ -4,6 +4,8 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 (picking.py). A QObject part, read in QML as `backend.multi`."""
 from __future__ import annotations
 
+from rostrum_gui import news
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.selection_rules import box, click
 
@@ -17,8 +19,9 @@ class Multi(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
+        told = news.relay(self)                             # only news: the overlays redo their handles on it
         for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
-            s.connect(self.changed)
+            s.connect(told)
 
     @Property("QVariantList", notify=changed)
     def boxes(self):

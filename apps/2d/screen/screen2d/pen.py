@@ -10,6 +10,8 @@ here). A path inside a group is not offset by the group yet (as drawing and the 
 """
 from __future__ import annotations
 
+from rostrum_gui import news
+
 import math
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -53,10 +55,11 @@ class Pen(QObject):
         super().__init__(parent)
         self.b, self._draft, self._press, self._drag, self._grab = bridge, [], None, None, None
         self._pick = ("", -1)         # (path layer, its selected point): only that point shows its handles
-        bridge.outlineChanged.connect(self.changed)
-        bridge.timeChanged.connect(self.changed)
+        told = news.relay(self)                             # only news: its points redo on it
+        bridge.outlineChanged.connect(told)
+        bridge.timeChanged.connect(told)
         bridge.toolChanged.connect(self._tool_changed)
-        bridge.shownChanged.connect(self.changed)           # the points follow the picture on screen (shown.py)            # on = the bridge's tool is "pen" (one source of truth)
+        bridge.shownChanged.connect(told)           # the points follow the picture on screen (shown.py)            # on = the bridge's tool is "pen" (one source of truth)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(bool, notify=changed)

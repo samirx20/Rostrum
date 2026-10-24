@@ -19,6 +19,7 @@ class EffectGroup(QObject):
         self._scrub = None
         self.model = RowsModel(rows.ROLES, self)
         self._static = []
+        self._told = None                       # (label, open, more) as QML last heard them
 
     # ---- what QML reads ---------------------------------------------------------------------------------------
     @Property(str, constant=True)
@@ -94,4 +95,7 @@ class EffectGroup(QObject):
         if not self._static:
             self._static = rows.layout(op, item["type"])
         self.model.update(rows.evaluate(self._static, b.shown_values(item), b.doc.kind.facts(item, b.doc), self._more))
-        self.changed.emit()
+        told = (self.label, self.open, self._more)      # the rows changed in place above; the header only on news
+        if told != self._told:
+            self._told = told
+            self.changed.emit()

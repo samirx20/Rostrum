@@ -1487,7 +1487,7 @@ operation is one (`mask.make`).
   **Symbols**, **Styles**, **Brushes**, **Motions**, **Brand kit** (your saved colours, fonts, logos, shared across
   projects), **Connectors** (Poly Haven, Freesound … only if switched on). Drag anything onto the canvas. **Filling the
   brand kit:** right-click a colour or text style, a font, or a logo layer › **Add to brand kit**, or drop files on the
-  Brand kit section.
+  Brand kit section. A logo row shows a small picture of its file (a **?** and "File missing" when it can't be read), never its path.
 - **Where and when:** closed by default; remembers open / closed per project.
 - **Agent:** the library is project data (`inspect_library`, `library.add` *(new)*).
 - **Width:** 280 px. Drawers: Library 280, Guides 360, History 320. Below 1600 px wide only one drawer is open at a

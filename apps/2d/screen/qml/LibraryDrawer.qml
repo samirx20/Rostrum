@@ -53,16 +53,26 @@ Rectangle {
         property string title: ""
         property string sub: ""
         property color swatch: "transparent"
+        property bool hasPicture: false      // a logo: a small picture of its file (url "" or unreadable: the "missing" mark)
+        property url picture: ""
         signal picked()
         signal removed()
         property bool removable: true
-        width: col.width; height: Math.max(Theme.row, words.implicitHeight + 2 * Theme.grid); radius: Theme.radiusCtl
+        width: col.width; height: Math.max(entry.hasPicture ? 32 + 2 * Theme.grid : Theme.row, words.implicitHeight + 2 * Theme.grid); radius: Theme.radiusCtl
         color: area.containsMouse ? Theme.hover : "transparent"
         Rectangle { id: chip; visible: entry.swatch.a > 0; width: 18; height: 18; radius: 4; color: entry.swatch
                     border.color: Theme.line; anchors { left: parent.left; leftMargin: Theme.grid; verticalCenter: parent.verticalCenter } }
+        Rectangle { id: pic; visible: entry.hasPicture; width: 32; height: 32; radius: 4; color: "transparent"; clip: true
+                    border.color: Theme.line; anchors { left: parent.left; leftMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+                    readonly property bool ok: img.status === Image.Ready
+                    Checker { anchors.fill: parent; anchors.margins: 1; radius: 3; cell: 4; light: "#7a7a7a"; dark: "#5a5a5a"; visible: pic.ok }
+                    Image { id: img; anchors.fill: parent; anchors.margins: 2; source: entry.picture; fillMode: Image.PreserveAspectFit
+                            smooth: true; cache: false; asynchronous: true; sourceSize.width: 64; sourceSize.height: 64 }
+                    Text { visible: !pic.ok && img.status !== Image.Loading; anchors.centerIn: parent; text: "?"; color: Theme.danger
+                           font.family: uiFont; font.pixelSize: Theme.heading; font.weight: Font.DemiBold } }
         Column {     // one line each; a long name ends in … and hover shows it whole
             id: words
-            anchors { left: chip.visible ? chip.right : parent.left; leftMargin: Theme.gap; right: parent.right
+            anchors { left: pic.visible ? pic.right : chip.visible ? chip.right : parent.left; leftMargin: Theme.gap; right: parent.right
                       rightMargin: 28; verticalCenter: parent.verticalCenter }
             Text { id: titleText; width: parent.width; text: entry.title; elide: Text.ElideRight; color: Theme.fg
                    font.family: uiFont; font.pixelSize: Theme.body }
@@ -109,7 +119,8 @@ Rectangle {
                         text: "This text's style"; help: "Keep the selected text's style in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Logos" }
             Repeater { model: drawer.lib.logos
-                       delegate: Row2 { required property var modelData; title: modelData.name; sub: modelData.file
+                       delegate: Row2 { required property var modelData; title: modelData.name; hasPicture: true; picture: modelData.thumb
+                                        sub: modelData.found ? "" : "File missing"
                                         onPicked: drawer.lib.placeLogo(modelData.name)
                                         onRemoved: drawer.lib.remove("logos", modelData.name) } }
             AddRow { visible: drawer.lib.hasProject; text: "Logo…"

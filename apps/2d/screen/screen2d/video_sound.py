@@ -14,7 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum2d import project_sound, sync_sound, video_audio
+from rostrum2d import project_sound, sound_cues, sync_sound, video_audio
 from rostrum_gui.frames import PictureWorker
 
 from . import waveform
@@ -46,10 +46,16 @@ class VideoSound(QObject):
         self._reader.read.connect(self._take)
         self._reader.failed.connect(self.b._fail)
         self._reader.start()
-        self._unsub = bridge.doc.subscribe(lambda ev: ev.kind != "preview" and self.refresh())   # a drag: the bar leads
+        self._unsub = bridge.doc.subscribe(self._on_doc)
         self.refresh()
 
     rows = Property("QVariantMap", lambda self: self._rows, notify=changed)
+
+    def _on_doc(self, ev):
+        """A drag's step: the bar leads (nothing here). A change that can't move a video's sound (a look edit, a key,
+        a stroke: sound_cues.moves_sound) leaves the rows as they are."""
+        if ev.kind == "reset" or ev.kind == "change" and sound_cues.moves_sound(ev.change):
+            self.refresh()
 
     def refresh(self):
         """The rows from the document's video layers and the song's clips (each layer's sound: muted or not)."""
