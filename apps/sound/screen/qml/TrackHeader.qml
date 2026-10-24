@@ -1,13 +1,12 @@
 import QtQuick
 import RostrumKit
-import "MixFormat.js" as F
 
 // A track's header in the arrangement, laid out like a desk channel's head (Logic, Ableton, Bitwig):
 // line 1 its colour, a small picture of what it holds (TrackIcon), its name (click selects the track; Ctrl / Shift
 // add; right-click its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the
-// Editor) and its volume in dB (set in the Mixer); line 2 its buttons, always there (TrackButtons: R M S A and the
-// lock); line 3 a thin level bar, live while the song plays (TrackMeter). A short row folds to one line: the name and the
-// buttons (when narrow too: R, A and the lock only when on or on hover), the volume and the bar left out.
+// Editor) and a small padlock when the track is locked; line 2 its buttons in fixed places whatever the selection
+// (TrackButtons: R M S A); line 3 a thin level bar, live while the song plays (TrackMeter). A short row folds to one
+// line: the name and the buttons, the bar left out. Selection only tints the row; nothing moves.
 Rectangle {
     id: h
     property var track
@@ -19,7 +18,7 @@ Rectangle {
     property bool dragging: false           // set by the host while its drop marks show; the header dims
     readonly property bool tall: height >= 45                 // room for the buttons on a line of their own
     readonly property bool metered: height >= 51              // and for the level bar under them
-    // too narrow for all the buttons (beside a name of 80 px on one line): R, A and the lock only when on or on hover
+    // too narrow for the buttons beside a name of 80 px on one line: the picture goes, the name keeps its room
     readonly property bool cramped: width - Theme.gap - 11 - Theme.grid < buttons.fullWidth + (tall ? 0 : 100)
     readonly property real lineTop: tall ? Math.round((height - (metered ? 47 : 39)) / 2) : 0
     radius: Theme.radiusCtl
@@ -52,11 +51,10 @@ Rectangle {
         }
         onDoubleClicked: (m) => {
             var nx = nameText.mapToItem(h, 0, 0).x
-            if (m.x >= nx && m.x <= nx + nameText.implicitWidth && m.y >= line1.y && m.y <= line1.y + line1.height) backend.startRename(h.track.id)
+            if (m.x >= nx && m.x <= nx + nameText.width && m.y >= line1.y && m.y <= line1.y + line1.height) backend.startRename(h.track.id)
             else { backend.select(h.track.id); workspace.setDock("editor") }
         }
     }
-    HoverHandler { id: hover }
     Rectangle { x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 3; radius: 1.5
                 height: h.tall ? parent.height - 10 : Math.min(parent.height - 8, 18); color: h.track.hue }
     Item {   // line 1: picture, name, volume (one line high; centred in a short row)
@@ -68,18 +66,19 @@ Rectangle {
                     ink: h.track.mute ? Theme.fg4 : Theme.fg2 }
         NameLabel {
             id: nameText
-            x: icon.visible ? icon.width + 6 : 0; width: (volume.visible ? volume.x - Theme.gap : parent.width) - x
+            x: icon.visible ? icon.width + 6 : 0; width: (padlock.visible ? padlock.x - Theme.gap : parent.width) - x
             anchors.verticalCenter: parent.verticalCenter
             text: h.track.name
             color: h.track.mute ? Theme.fg3 : Theme.fg
             visible: !rename.visible
         }
-        Text {   // the track's volume (its fader, in the Mixer)
-            id: volume
-            visible: h.tall
+        Item {   // a locked track shows a small padlock (lock / unlock: right-click menu, Ctrl+Shift+L)
+            id: padlock
+            visible: !!h.track.locked
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            text: F.faderText(h.track.volume === undefined ? 1 : h.track.volume)
-            font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 }; color: Theme.fg3
+            width: 10; height: 12
+            Rectangle { x: 2; y: 0; width: 6; height: 7; radius: 3; color: "transparent"; border.width: 1.2; border.color: Theme.warn }
+            Rectangle { x: 0; y: 5; width: 10; height: 7; radius: 1.5; color: Theme.warn }
         }
         TextInput {   // F2 / double-click the name: rename in place (Enter keeps it, Esc or clicking away cancels)
             id: rename
@@ -96,9 +95,9 @@ Rectangle {
     }
     TrackButtons {   // line 2 (a short row: at the right of line 1)
         id: buttons
-        x: h.tall ? line1.x : h.width - width - Theme.grid
+        x: h.tall ? line1.x : h.width - buttons.fullWidth - Theme.grid
         y: h.tall ? line1.y + line1.height + 3 : (h.height - height) / 2
-        track: h.track; showAuto: h.showAuto; compact: h.cramped; hovered: hover.hovered
+        track: h.track; showAuto: h.showAuto
     }
     TrackMeter { visible: h.metered; x: line1.x; y: buttons.y + buttons.height + 5; width: h.width - Theme.grid - x
                  trackId: h.track.id }

@@ -6,7 +6,7 @@ copied out of the folder; the index keeps file paths and measurements only, in t
 in your settings (`~/.rostrum/settings/sound-library.json`), not in a project.
 
 **On the screen:** open the **Library** (Ctrl+L) and click **My sounds**, or **Add a folder of my sounds…** at its
-bottom. Search with the Library's search box, narrow by kind, length and brightness, hear a sound with ▶, and
+bottom. Search with the Library's search box, narrow by kind, length and brightness, hear a sound with ▶ (voices have none: they are made from a line you type, see [voice.md](voice.md)), and
 double-click it (or **Place**) to put it at the playhead: on the selected recordings track, else on a "Sound effects"
 track (one undo step).
 

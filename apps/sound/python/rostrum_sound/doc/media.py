@@ -14,6 +14,7 @@ the same size). Files that genuinely live elsewhere are left alone.
 from __future__ import annotations
 
 import copy
+import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -40,6 +41,25 @@ def of(doc):
     else:
         with markers.project(folder):
             yield
+
+
+def keep(folder, source) -> str:
+    """What a clip stores for a file brought INTO the song: the file is copied to the project's `media/` folder (a
+    same-named different file gets "-2", "-3" …; the same file twice is one copy) and the stored path is relative,
+    so the song travels with it. No project folder: the path as given."""
+    from rostrum_core.cache import file_hash
+    source = Path(source)
+    if folder is None or P.media_ref(folder, source) != str(source):
+        return P.media_ref(folder, source) if folder else str(source)           # already inside the project
+    media = Path(folder) / "media"
+    media.mkdir(parents=True, exist_ok=True)
+    dest, n = media / source.name, 1
+    while dest.exists() and file_hash(dest) != file_hash(source):
+        n += 1
+        dest = media / f"{source.stem}-{n}{source.suffix}"
+    if not dest.exists():
+        shutil.copyfile(source, dest)
+    return P.media_ref(folder, dest)
 
 
 def exists(path) -> bool:

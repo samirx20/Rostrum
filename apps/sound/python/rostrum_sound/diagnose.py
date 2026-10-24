@@ -14,8 +14,10 @@ KINDS = ("missing-file", "outside-project", "pending-take", "no-longer-made")
 
 def problems(doc) -> list[dict]:
     clips = [(t, c) for t in doc.data.get("tracks", []) for c in t.get("clips", [])]
-    refs = [(c["id"], f'the clip on track {t["id"]}', c["media"]) for t, c in clips if isinstance(c.get("media"), str)]
+    refs = [(c["id"], f'the clip on track "{t.get("name") or t["id"]}"', c["media"]) for t, c in clips if isinstance(c.get("media"), str)]
     out = P.media_problems(getattr(doc, "folder", None), refs)
+    for p in out:                                    # the row's `item` names the clip for an agent; the words never show the id
+        p["message"] = p["message"].replace(f" ({p['item']})", "", 1)
     gone = {p["item"] for p in out if p["kind"] == "missing-file"}     # a missing file's take can't be looked up
     with media.of(doc):
         waiting = [c["id"] for _, c in clean_clips.clips(doc) if c["id"] not in gone

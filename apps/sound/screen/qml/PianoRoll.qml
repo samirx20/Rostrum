@@ -36,7 +36,19 @@ Panel {
                 onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
             }
             Component.onCompleted: centre()
+            // The keys shown follow the notes (the top key = the highest note + 4), so an edit that moves that edge
+            // would slide every row under the pointer. Only the person moves the view: the top key's shift is
+            // taken out of the scroll, so every row stays where it was.
+            property int seenHi: p.roll.hi
+            property string seenShown: ""
+            readonly property int topKey: p.roll.hi
+            onTopKeyChanged: {
+                if (shown === seenShown && grid.notes && topKey !== seenHi)
+                    contentY = Math.max(0, Math.min((p.roll.hi - p.roll.lo + 1) * grid.rowH - height, contentY + (topKey - seenHi) * grid.rowH))
+                seenHi = topKey
+            }
             function centre() {   // framed on the notes: the rows fit them all (grid.frame), the view centred on them
+                seenHi = p.roll.hi; seenShown = shown
                 var ks = [], b = p.roll.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
                 if (!ks.length || p.kind !== "notes") { grid.frame(0); contentY = 0; return }

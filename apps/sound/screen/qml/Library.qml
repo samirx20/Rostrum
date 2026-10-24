@@ -16,15 +16,17 @@ Panel {
     signal used()
     property string chip: ""
     property int current: 0
+    property string noHear: ""                           // why the picked entry has no preview (a voice), said where "Hearing …" shows
     readonly property string query: search.input.activeFocus ? search.input.text : search.text
     readonly property var found: chip === "mine" ? [] : adder.find(query, chip)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: 28; height: 28
                               onClicked: workspace.setLibrary(false) }
-    onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0 }
+    onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0; noHear = "" }
     Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "" || soundLibrary.trying.key !== undefined) soundLibrary.revert(); else e.accepted = false }
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound"
-    onFoundChanged: current = 0
+    onFoundChanged: { current = 0; noHear = "" }
+    onChipChanged: noHear = ""
     // the row of the sound being tried, however the try started (a click, an agent, a step); -1 when none
     readonly property int triedAt: soundLibrary.trying.key === undefined ? -1 : found.findIndex(e => e.key === soundLibrary.trying.key)
     readonly property int shownAt: triedAt >= 0 ? triedAt : current
@@ -32,7 +34,9 @@ Panel {
     function pick(i) {                                   // click or arrow: select it and hear it
         current = i
         const e = found[i]
-        if (e && e.kind !== "record") soundLibrary.auditionEntry(e.key)
+        noHear = e ? e.noHear : ""
+        if (e && e.hearable) soundLibrary.auditionEntry(e.key)
+        else if (e) soundLibrary.stopAudition()
     }
 
     function use(i) {
@@ -93,7 +97,7 @@ Panel {
             readonly property bool heard: p.shownAt === index && (soundLibrary.auditioning !== "" || p.triedAt >= 0)
             Row {   // ▶ on the row under the pointer and on the one being heard; Loop beside it, only while it plays
                 id: hear
-                visible: (hover.hovered || row.heard) && row.modelData.kind !== "record"
+                visible: (hover.hovered || row.heard) && row.modelData.hearable
                 anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
                 spacing: 2
                 IconButton { mark: "loop"; kind: "ghost"; tip: "Repeat what you hear"; visible: row.heard; down: soundLibrary.loop
@@ -135,18 +139,18 @@ Panel {
     Item {      // only while something plays or is tried: what it is, and Keep / Revert (or the way to stop it)
         id: heard
         readonly property bool trying: soundLibrary.trying.key !== undefined
-        visible: soundLibrary.auditioning !== "" || trying
+        visible: soundLibrary.auditioning !== "" || trying || p.noHear !== ""
         height: visible ? heardCol.height : 0
         anchors { left: parent.left; right: parent.right; bottom: foot.top }
         Column {
             id: heardCol
             x: Theme.gap; width: parent.width - 2 * Theme.gap; spacing: Theme.grid
-            Text { width: parent.width; wrapMode: Text.WrapAnywhere
-                   text: heard.trying ? "Trying " + soundLibrary.trying.label + " on " + soundLibrary.trying.trackName
+            Text { width: parent.width; wrapMode: Text.Wrap
+                   text: p.noHear !== "" ? p.noHear : heard.trying ? "Trying " + soundLibrary.trying.label + " on " + soundLibrary.trying.trackName
                                       : "Hearing " + soundLibrary.auditioning
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
-                  Button { visible: !heard.trying; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
+                  Button { visible: !heard.trying && p.noHear === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() }
                   Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.used() } }
                   Button { visible: heard.trying; text: "Revert"; kind: "normal"; onClicked: soundLibrary.revert() } }
         }

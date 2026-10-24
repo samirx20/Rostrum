@@ -32,7 +32,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
   is). Double-click to add, or the **Draw** tool where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
-  is one undo step. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
+  is one undo step (a note drawn with the Draw tool, dragged long, too: "Draw note"); the new note is selected. Clicks in the roll never move the playhead and the view never scrolls by itself. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **Velocity strip** (under the notes): one bar per note, as high as it plays loud. Drag a bar, or draw a line
   across several. The value of the bar under the pointer (or of the selected notes) is written beside it ("70 %").

@@ -37,6 +37,11 @@ you close the window and every 20 changes; the change log beside it always has t
 3. **Double-click** a sound, or select it and press **Enter**. A new track with that sound appears, selected, and the
    **Editor** opens under the arrangement.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
+   - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
+     type a line, then press Play. Voices have no ▶.
+   - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
+     or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
+     move the folder, and nothing is raised under **Problems**.
    - With a track of the same kind already selected, the Library asks "Change Piano to Strings? The notes stay."
      Pick **Change** to swap that track's sound, or **New track** for a new one.
 4. On a narrow window the Library floats over the arrangement and closes after each use. On a wide one it stays open
@@ -56,7 +61,10 @@ The **Colour** row shows the colour the track is drawn in.
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. **Note ▾** sets how long a new
-   note is (a quarter at first; 1/8, 1/16, a bar … or one grid step).
+   note is (a quarter at first; 1/8, 1/16, a bar … or one grid step). With **Draw**, drag on after the click to make a
+   longer note: the click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
+   so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
+   scrolls by itself after an edit: only you move the view.
    Drag a note to move it in time and pitch.
    - It snaps to the grid. **Grid ▾** in the arrangement's header strip sets the step (Auto follows the zoom; Bar,
      1/2, 1/4, 1/8, 1/16, 1/32, triplets; the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
@@ -98,10 +106,13 @@ The **Colour** row shows the colour the track is drawn in.
   ends the loop).
 - Click the ruler to move the playhead there.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
-  microphone: voice), its name and its volume, then its buttons: **R** gets it ready to record, **M** mutes it, **S**
-  plays it alone, **A** opens its automation lane, the padlock locks it. Under them a thin bar shows how loud the
-  track was in the last render (green, amber near 0 dB, red over). When rows are short the header is one line;
-  if it is narrow too, A and the padlock show only when on or under the mouse (R, M and S always stay).
+  microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
+  buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
+  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane.
+  Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,
+  amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
+  agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by
+  its name. A track's volume is set in its settings panel or the Mixer, not on the header.
 - After an edit the sound is prepared again in a moment, so playback follows what you changed.
 
 ## 6. Tempo, beats and key

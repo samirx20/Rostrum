@@ -50,6 +50,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._t, self._track = 0.0, ""
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
+        self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
         self._lanes = RowsModel(("track",), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
         self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
@@ -195,6 +196,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def _show_roll(self):
         """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
         row on a click cost ~250 ms on a 16-track song, S59)."""
+        self._span = ("", 0, 0)                       # another track: its keys are framed afresh
         self._view["roll"] = self._roll(self._view["rows"])
         self.rollChanged.emit()
 
@@ -242,7 +244,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         root = self.doc.data
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
-        roll = timeline.roll(track, root, hue, self._play_lane)
+        span = self._span
+        roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None)
+        if roll["kind"] == "notes":
+            self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
         self._marks_on([roll])
         return roll
 

@@ -70,7 +70,7 @@ class EditSlots:
         grid = self._grid_now
         call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
                                    grid=grid)
-        return self._add_one("notes", call, "Draw note")
+        return self._draw_note(call)
 
     @Slot(int)
     def playKey(self, key):
@@ -160,7 +160,7 @@ class EditSlots:
     def endDrag(self):
         d, g, self._drag, self._grab, self._to_track = self._drag, self._grab, None, None, ""
         self._set_snap({})
-        if d is not None and g and "handle" in g:      # the step says what it did ("Fade in 0.40 s")
+        if d is not None and g and "handle" in g and not g.get("drawn"):      # the step says what it did ("Fade in 0.40 s")
             d._ctx.label = handles.label(self.doc, g["grabs"], g["handle"])
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))

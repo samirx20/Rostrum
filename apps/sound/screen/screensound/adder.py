@@ -27,6 +27,10 @@ SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings":
         "glassMarimba": "Glassy, bright"}
 
 
+NO_HEAR = {"voice": "A voice is made from a line you type, so there is nothing to hear here. Add it, type a line, then press Play.",
+           "record": ""}        # kinds with no preview (a microphone or a file has nothing to play before it is used)
+
+
 def _said(name: str) -> str:
     """"grandPiano" -> "Grand piano"."""
     return spaced(name).capitalize()
@@ -89,7 +93,8 @@ def _note(e: dict) -> str:
 def find(text: str, kind: str) -> list[dict]:
     """The entries whose words hold every word typed, of that kind ("" = all)."""
     words = text.lower().split()
-    return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e)} for e in ENTRIES
+    return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e), "hearable": e["kind"] not in NO_HEAR,
+             "noHear": NO_HEAR.get(e["kind"], "")} for e in ENTRIES
             if (not kind or e["kind"] == kind) and all(w in f"{e['label']} {e['what']} {e['kind']}".lower() for w in words)]
 
 

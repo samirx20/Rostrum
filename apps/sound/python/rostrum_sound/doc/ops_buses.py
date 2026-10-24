@@ -26,15 +26,24 @@ def buses(ctx) -> list[str]:
     return [b["id"] for b in ctx.doc.get("buses", [])]
 
 
+def group_name(ctx) -> str:
+    """The next free "Group 1", "Group 2" …: what a person sees; the id (bus_1) stays internal."""
+    used = {b.get("name") for b in ctx.doc.get("buses", [])}
+    n = 1
+    while f"Group {n}" in used:
+        n += 1
+    return f"Group {n}"
+
+
 def need_bus(ctx, bus, what):
     if bus not in buses(ctx):
         ctx.fail(codes.NOT_FOUND, f'{what} bus "{bus}"', "is not a bus in this document", buses(ctx),
                  did_you_mean(bus, buses(ctx)))
 
 
-@REGISTRY.operation("bus.add", "Add a bus: a channel tracks play or send into (give it effects with effect.add on "
+@REGISTRY.operation("bus.add", "Add a bus (shown as a group, named \"Group 1\", \"Group 2\" … unless you give a name): a channel tracks play or send into (give it effects with effect.add on "
                     "the bus; route a track to it with track.set output, or send.add).", label="Add group", params=[
-                        Param.text("id", label="Id", help="Optional; counted when left out (bus_1 …)."),
+                        Param.text("id", label="Id", help="Optional internal id; counted when left out (bus_1 …). The name shown is \"Group 1\", \"Group 2\" … unless you give one."),
                         *FD.params("bus")])
 def bus_add(ctx, targets, args):
     args = dict(args)
@@ -43,7 +52,7 @@ def bus_add(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
     if args.get("output", names.MASTER_OUT) != names.MASTER_OUT:
         need_bus(ctx, args["output"], "output")
-    ctx.insert("root", "buses", {"id": id_, "type": "bus", "name": args.pop("name", id_), **FD.DEFAULTS["bus"],
+    ctx.insert("root", "buses", {"id": id_, "type": "bus", "name": args.pop("name", None) or group_name(ctx), **FD.DEFAULTS["bus"],
                                  **args, "effects": [], "automation": []})
 
 
