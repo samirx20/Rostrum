@@ -106,7 +106,7 @@ class KeySlots:
         else:
             if not self._picks.range:
                 a, b = self._default_loop()
-                self.setRange(a, b, True)
+                self._set_range(a, b, True, False)
                 if not self._picks.range:
                     return self.say("Loop needs a time range: drag on the ruler's top band")
             self._loop = True

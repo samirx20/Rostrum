@@ -89,10 +89,10 @@ ACTIONS = [
           keys, "primary", "pitch", "Transpose") for k, n, label, keys in _STEPS],
     act("humanize", "Humanise", NOTES, lambda f: [C.call(f"{f.one}.humanize", f.ids)], importance="primary", group="time"),
     # markers (the song's own, placed in seconds)
-    act("place_sound", "Place a sound", lambda f: f.one == "marker" and f.count == 1, importance="primary",
+    act("place_sound", "Put a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),
-    act("fit_bar", "Land a bar…", MARKER, importance="primary", group="marker", do="fit",
-        needs="Land a bar needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
+    act("fit_bar", "Start a bar here…", MARKER, importance="primary", group="marker", do="fit",
+        needs="Start a bar here needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
     act("speak_again", "Speak again", lambda f: f.one == "line", shortcut="T", importance="primary", group="line",
         do="speak", needs="Speak again needs voice lines selected"),
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),

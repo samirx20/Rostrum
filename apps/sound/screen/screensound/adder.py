@@ -24,7 +24,9 @@ KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("recor
 # What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
 SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
         "spiccatoStrings": "Short, bouncy", "choirPad": "Held notes", "cinematicBrass": "Big, filmic",
-        "glassMarimba": "Glassy, bright"}
+        "glassMarimba": "Glassy, bright", "grandPiano": "Full, clear and even", "subBass": "Deep, one low line",
+        "marimba": "Wooden bars, round and warm", "vibraphone": "Metal bars, soft shimmer",
+        "glockenspiel": "Small metal bars, bright and high", "tubularBell": "Long, ringing bell tones"}
 
 
 NO_HEAR = {"voice": "A voice is made from a line you type: add it, type a line, then press Play.",
@@ -60,7 +62,7 @@ def _entries() -> list[dict]:
                   {"name": _said(b), "instrument": "builtIn", "builtIn": b}) for b in names.BUILT_INS]
     out.append(_entry("synth", "Synth", "A simple synth: saw, square, sine", "instrument",
                       {"name": "Synth", "instrument": "synth"}))
-    out += [_entry(f"model:{m}", _said(m), FAMILY.get(m, ""), "instrument",
+    out += [_entry(f"model:{m}", _said(m), SAID.get(m, FAMILY.get(m, "")), "instrument",
                    {"name": _said(m), "instrument": "model", "model": m}) for m in names.MODELS]
     out.append(_entry("kit", "Drum kit", "Kick, snare, hats, toms: a row for each drum", "drums",
                       {"name": "Drums", "instrument": "kit"}))

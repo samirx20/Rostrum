@@ -66,6 +66,7 @@ class RenderExport(ExportSheet):
         self._choice = self._target_key()
         self._more = Versions()
         bridge.docChanged.connect(self._sync)
+        bridge.historyChanged.connect(self.changed)      # Undo beside the target's sentence follows the newest step
         bridge.renderChanged.connect(self.changed)       # each extra version's line follows the sound that plays
         bridge.rangeChanged.connect(self.changed)        # What: a time range on the ruler is a choice
 
@@ -295,6 +296,24 @@ class RenderExport(ExportSheet):
             return
         self._format, self._rate, self._trim, self._stems, self._markers = p["format"], p["sampleRate"], p["trim"], p["stems"], p["markers"]
         self.changed.emit()
+
+    @Slot(str, bool)
+    def setPreset(self, name, on):
+        """The preset's switch: on applies it, off puts the choices back to the usual (what a fresh sheet has)."""
+        if on:
+            return self.usePreset(name)
+        if not self.running():
+            self._format, self._rate, self._trim, self._stems, self._markers = deliver.DEFAULT_FORMAT, 0, True, "off", False
+            self.changed.emit()
+
+    @Property(bool, notify=own)
+    def canTakeBack(self):
+        """The newest step is the master change that picking a target made: the sheet offers Undo beside what it said."""
+        return self.loudnessSaid != "" and self.bridge.undoLabel == "Set delivery target"
+
+    @Slot()
+    def takeBack(self):
+        self.bridge.undo()
 
     @Slot(bool)
     def setTrim(self, on):

@@ -13,7 +13,7 @@ from rostrum_gui.edits import field_call
 from rostrum_sound.doc import fields as FD
 from rostrum_sound.doc import effects, musical
 
-from . import output_pick, pitch_merge, timeline, timing
+from . import eq_rows, output_pick, pitch_merge, timeline, timing
 
 
 def _time_kind(item: dict, param: str) -> str:
@@ -60,7 +60,7 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
         elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
             r = {**r, "value": musical.note_name(r["value"])}
         out.append(r)
-    return pitch_merge.merge_rows(item, out)
+    return pitch_merge.merge_rows(item, eq_rows.band_rows(item, out))
 
 
 def edit_call(doc, item_id, param, value) -> dict:
@@ -71,6 +71,9 @@ def edit_call(doc, item_id, param, value) -> dict:
         call = field_call(doc, item_id, first, merged[first])
         call["args"].update({k: merged[k] for k in rest})
         return call
+    bands = eq_rows.edit_args(item, param, value)               # an EQ band's row: the whole bands list is written
+    if bands is not None:
+        return field_call(doc, item_id, "bands", bands["bands"])
     kind = _time_kind(item, param)
     if kind and isinstance(value, str):             # typed words: bars.beats or seconds, as seconds
         start = _start(item, doc.data)

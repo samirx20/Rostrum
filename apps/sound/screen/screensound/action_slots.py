@@ -18,7 +18,7 @@ from rostrum_sound import main_mix
 
 from . import action_calls as C
 from . import voice_actions as V
-from . import clipboard, timing
+from . import block_menu, clipboard, timing
 from .actions import LIST
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
@@ -125,7 +125,7 @@ class ActionSlots:
             self.workspace.setLibrary(True)
             self.libraryWanted.emit("mine")
         elif name == "clean":
-            self.cleanWanted.emit()
+            self.askClean()
         elif name == "speak":                                   # Speak again: a new take of each line, made at once
             if self._act(V.speak_calls(self._facts()), f"Speak again · {words}"):
                 for track in dict.fromkeys(self.doc.parent_of(i)[0] for i in ids):
@@ -155,10 +155,10 @@ class ActionSlots:
 
     @Slot(str, float, result=bool)
     def landBar(self, _key, bar):
-        """The popover's answer for Land a bar: `tempo.fit_bar` with that bar (one step)."""
+        """The popover's answer for Start a bar here: `tempo.fit_bar` with that bar (one step)."""
         f = self._facts()
         if not (f.one == "marker" and f.count == 1):
-            self._refuse("Land a bar needs one marker selected (placed in seconds)")
+            self._refuse("Start a bar here needs one marker selected (placed in seconds)")
             return False
         return self._act(C.fit_bar(f, int(bar)), f"Land bar {int(bar)} on {f.items[0].get('name')}")
 
@@ -180,16 +180,26 @@ class ActionSlots:
     # ---- menus ------------------------------------------------------------------------------------------------
     @Slot(str, result="QVariantList")
     def itemMenu(self, item_id):
-        """Right-click on an item: an unselected one is selected alone first; then the kit's menu for the selection."""
+        """A menu opened without a pointer (a header, the selection's bar): as blockMenu, at the playhead."""
+        return self.blockMenu(item_id, self._t)
+
+    @Slot(str, float, result="QVariantList")
+    def blockMenu(self, item_id, t):
+        """Right-click on an item at time `t`: an unselected one is selected alone first; then the kit's menu for the
+        selection, and for an audio clip its own rows at the pointer (block_menu)."""
         if item_id not in self._picks.ids:
             self._pick([item_id])
         self._hub.refresh()
-        return self._hub.menu()
+        out = self._hub.menu()
+        swap = any(e["id"] == "swap" for e in LIST.available(self._facts()))
+        return out + block_menu.clip_entries(self.doc, item_id, t, swap)
 
     @Slot(str, float, result="QVariantList")
     def atMenu(self, track_id, t):
         """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time."""
         t, out = round(t, 4), []
+        if track_id:
+            out.append({"value": "at:addtrack:0", "label": "Add track…", "keys": "Ctrl+L", "group": "here"})
         if track_id and self._board["items"]:
             out.append({"value": f"at:paste:{track_id}:{t}", "label": "Paste here", "keys": "Ctrl+V", "group": "here"})
         out.append({"value": f"at:marker:{t}", "label": "Add marker here", "keys": "M", "group": "here"})
@@ -208,6 +218,12 @@ class ActionSlots:
         what = parts[1]
         if what == "paste":
             return self._paste(parts[2], float(parts[3]))
+        if what == "addtrack":
+            self.workspace.setLibrary(True)
+            return True
+        if what in ("split", "fadein", "fadeout"):
+            calls, label = block_menu.calls_for(what, parts[2], float(parts[3]))
+            return self._act(calls, label, what == "split")
         if what == "all":
             return self._pick([b["id"] for r in self._view["rows"] if r["id"] == parts[2] for b in r["blocks"]]) or True
         if what == "seconds":

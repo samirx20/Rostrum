@@ -18,9 +18,11 @@ A group is one shared channel that several tracks play into. It gives you one ro
 
 Try another sound in the same place, keeping the timing and the notes.
 
-1. Select one clip and press **S**, or choose **Swap…** at the top of the settings panel. The Library opens.
-2. Each result has a **Swap** button next to **Add**. Click it to put that sound where the old one was.
+1. Select one sound clip (a recording or a sound file) and press **S**, or choose **Swap…** at the top of the settings panel. The Library opens on **My sounds**, which lists the folders you added with **Add a folder…**: add one first if it is empty, or pick another chip or search.
+2. While a clip is selected, each result has a **Swap** button next to **Add**. Click it to put that sound where the old one was, with the same start, length and level. Arrow up and down try each result in the clip's place.
 3. **Ctrl+Z** puts the old one back.
+
+A track of notes has no clips to swap: change its sound with the **Sound ▾** picker in the track's settings panel.
 
 ## 3. Before / After (key H)
 
@@ -48,9 +50,9 @@ You can select several lines and speak them all again at once.
 
 Open **Export** (Ctrl+E). The sheet is explained in [exporting.md](exporting.md); two parts matter here.
 
-- **For the Editor** is one button at the top of the sheet. It sets the choices for handing the song to a video
-  editor in one go: WAV 48 kHz 32-bit float, no loudness change, the whole length, a stem for every group, and the
-  markers written beside the files. Change any choice and the button no longer shows as chosen. Group names are the
+- **For the Editor** is a switch under the target picker, not at the top of the sheet. It sets the choices for handing the song to a video
+  editor in one go: WAV 48 kHz 32-bit float, no loudness change, the whole length, a stem for every track and group, and the
+  markers written beside the files. Change any choice and the switch no longer shows as on. Group names are the
   stem names, so name your groups.
 - **Range** (when the song has more than the whole song) lets you export a **time range** you dragged on the ruler,
   or a **section**, instead of the **Whole song**. See [exporting.md](exporting.md), section 5.

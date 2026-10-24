@@ -16,7 +16,7 @@ BAR = Param.number("bar", required=True, integer=True, min=2, max=999, label="Ba
 
 @REGISTRY.operation("tempo.fit_bar", "Change the tempo so a bar starts exactly on a marker: the tempo in force at "
                     "that bar (the song's, or the tempo change before it) is set; everything written in beats "
-                    "follows.", params=[MARKER, BAR], label="Land a bar on a marker")
+                    "follows.", params=[MARKER, BAR], label="Start a bar on a marker")
 def fit_bar(ctx, targets, args):
     root, name = ctx.doc, str(args["marker"]).lstrip("#")
     marks = markers.by_name(root)

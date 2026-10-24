@@ -5,8 +5,9 @@ import RostrumKit
 // screensound/export.py; picking one sets the master's loudness and the sheet says so): the live check of the sound that plays now against the target (pass / miss), the file type,
 // stems, and trimming the silent end; then "+ Another version" rows (each its own target,
 // file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
-// A delivery preset ("For the Editor", presets.py) is one button that sets file, quality, trimming, stems and markers; it
-// shows as chosen while the choices still equal it. Stems: only the mix / every track and group / one per group (only offered
+// A delivery preset ("For the Editor", presets.py) is a labelled switch that sets file, quality, trimming, stems and markers; it
+// is on while the choices still equal it, and turning it off puts them back to the usual. Picking a target says what it set
+// on the master, with Undo beside it while that is still the newest step. Stems: only the mix / every track and group / one per group (only offered
 // when the song has a group). "Write the markers beside the files" only when the song has a marker or section.
 // What for = MIDI file: a .mid, not a mix, so none of these show (job.isMidi).
 Column {
@@ -47,18 +48,19 @@ Column {
 
     visible: !job.isMidi
     height: visible ? implicitHeight : 0      // a hidden column keeps its height, which was the hole under the list for MIDI
-    Repeater {   // delivery presets: a row like the sheet's list rows, chosen while the sheet matches it
+    Repeater {   // delivery presets: a labelled switch, on while the sheet's choices equal the preset, off puts them back
         model: root.job.presets
-        delegate: Rectangle {
+        delegate: Item {
             id: pr
             required property var modelData
-            readonly property bool chosen: root.job.preset === modelData.value
-            width: root.width; height: Theme.rowDense; radius: Theme.radiusCtl
-            color: chosen ? Theme.accentSoft : prHover.hovered ? Theme.hover : "transparent"
-            Text { anchors { left: parent.left; leftMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-                   text: pr.modelData.label; color: pr.chosen ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-            HoverHandler { id: prHover; cursorShape: Qt.PointingHandCursor }
-            TapHandler { onTapped: root.job.usePreset(pr.modelData.value) }
+            width: root.width; height: sw.height
+            Switch {
+                id: sw
+                checked: root.job.preset === pr.modelData.value
+                text: pr.modelData.label
+                onToggled: (on) => root.job.setPreset(pr.modelData.value, on)
+            }
+            HoverHandler { id: prHover }
             HoverTip { text: pr.modelData.detail; hovered: prHover.hovered }
         }
     }
@@ -69,9 +71,11 @@ Column {
         color: root.job.check && root.job.check.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
     }
-    Text {   // a target is the master's own setting: when picking one set the loudness, it says so (never a quiet change)
-        width: root.width; wrapMode: Text.WordWrap; visible: root.job.loudnessSaid !== ""
-        text: root.job.loudnessSaid; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+    Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click
+        width: root.width; spacing: Theme.gap; visible: root.job.loudnessSaid !== ""
+        Text { width: parent.width - (undo.visible ? undo.width + Theme.gap : 0); wrapMode: Text.WordWrap
+               text: root.job.loudnessSaid; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        Action { id: undo; visible: root.job.canTakeBack; text: "Undo"; font.pixelSize: Theme.label; onClicked: root.job.takeBack() }
     }
     Field {
         label: "File"

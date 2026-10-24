@@ -4,7 +4,7 @@ import RostrumKit
 // The record cluster in the transport strip: one Record / stop button, always the same size, so arming a track moves
 // nothing. The state is in the button: its dot is red while a track is armed and pulses while recording, the word
 // becomes the take's time (or the count-in), and the microphone's live level is a thin bar along its foot. The take
-// panel (count-in, punch, hearing the input, keyboard, "Record keys": RecordSetup.qml) opens on right-click, while armed.
+// panel (count-in, punch, hearing the input, keyboard, "Record keys": RecordSetup.qml) opens from the ▾ beside Record (or right-click on it).
 // Ghost style, Theme.field high.
 Item {
     id: r
@@ -17,7 +17,7 @@ Item {
     readonly property string word: r.counting > 0 ? "Count-in " + r.counting
         : recorder.recording ? "Stop " + recorder.elapsed.toFixed(1) + " s"
         : keysOn ? "Stop " + keys.notes + " notes" : "Record"
-    implicitWidth: btn.width; implicitHeight: Theme.field
+    implicitWidth: btn.width + 18; implicitHeight: Theme.field
     width: implicitWidth; height: implicitHeight
 
     TextMetrics { id: widest; font.family: uiFont; font.pixelSize: Theme.label; text: "Stop 000.0 s" }
@@ -39,7 +39,7 @@ Item {
                 onRunningChanged: if (!running) dot.opacity = 1
             }
         }
-        HoverTip { text: r.taking ? "Stop recording (R)" : r.armed ? "Record on the armed track (R). Right-click: how the take is made"
+        HoverTip { text: r.taking ? "Stop recording (R)" : r.armed ? "Record on the armed track (R). The ▾ beside it: how the take is made"
                        : "Record: arms the selected track (or the first that takes sound) and counts in (R)"
                    hovered: area.containsMouse }
         Text { x: Theme.gap + 12 + 2; anchors.verticalCenter: parent.verticalCenter
@@ -58,10 +58,16 @@ Item {
         MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: (m) => {
-                        if (m.button === Qt.RightButton) { if (r.armed && !r.taking) takeSetup.setOpen(!takeSetup.open) }
+                        if (m.button === Qt.RightButton) { if (!r.taking) takeSetup.setOpen(!takeSetup.open) }
                         else if (r.keysOn) keys.toggleRecord()
                         else recorder.toggleRecord()
                     } }
         RecordSetup { y: btn.height + 6 }
+    }
+    IconButton {   // ▾ beside Record: how the take is made (count-in, punch, input, keyboard); right-click on Record does the same
+        x: btn.width; anchors.verticalCenter: parent.verticalCenter; width: 18; height: Theme.field
+        glyph: "▾"; kind: "ghost"; down: takeSetup.open; visible: !r.taking
+        tip: "How the take is made: count-in, punch, hearing the input, keyboard"
+        onClicked: takeSetup.setOpen(!takeSetup.open)
     }
 }

@@ -132,6 +132,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                          "menu-roll melody.n10200"]),
         ("actions-tracks", ["--sample"], ["select-many pad melody", "menu melody"]),
         ("two-tracks-mixed", ["--sample"], ["select-many pad melody"]),               # S49: "Mixed" in a unit field, no unit over it
+        ("actions-audio-clip-menu", ["--sample"], ["select-clip door", "menu door/clip"]),     # Split here, Fades, Swap…
         ("actions-range", ["--sample"], ["range 2 4"]),
         ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
         # P41: the full transport (loop on, a track armed), times in bars.beats, the Mixer with an effect selected

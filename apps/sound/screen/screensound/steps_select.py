@@ -6,7 +6,7 @@ bridge call a click, a box, a key or a menu makes.
     range <t0> <t1> (a drag on the ruler) | range-clear
     action <id> (an action of the list: quantize, transpose_up, join …, or an at:… empty-space entry)
     actions [arrange|roll] (that area has the focus; fails when the settings panel would show no actions)
-    menu <id> (the right-click menu on that item, open in the arrangement) | menu-roll <id> (in the Editor)
+    menu <id> | <track>/clip (the right-click menu on that item, open in the arrangement) | menu-roll <id> (in the Editor)
     key <sequence> (a key to the window: "Ctrl+D", "Q", "Shift+Up") | copy | cut | paste
     drag-many <dt s> [<d semitones>] [ctrl|shift|alt …] [to=<track>] (the selection, held by its first item, one
       gesture; to=: clips dragged onto that track's row)
@@ -88,7 +88,8 @@ def do_select_step(bridge, win, word, rest):
         host = _find(win.contentItem(), "mixRows" if word == "menu" else "keysWidth")
         if host is None:
             raise RuntimeError(f"{word}: the area is not on screen")
-        QMetaObject.invokeMethod(host, "menuFor", Q_ARG("QVariant", rest[0]))
+        target = bridge.doc.item(rest[0][:-5]).get("clips", [{}])[0].get("id", "") if rest[0].endswith("/clip") else rest[0]
+        QMetaObject.invokeMethod(host, "menuFor", Q_ARG("QVariant", target))
     elif word == "key":
         _key(win, rest[0])
     elif word in ("copy", "cut", "paste"):
@@ -143,7 +144,7 @@ def do_select_step(bridge, win, word, rest):
         bridge.workspace.setLibrary(True)
         bridge.libraryWanted.emit(rest[0])
     elif word == "clean-open":
-        bridge.cleanWanted.emit()
+        bridge.askClean()
     elif word == "clean":
         voice, noise, echo = (r == "1" for r in rest[:3])
         if bridge.cleanSelected(voice, noise, echo):

@@ -11,7 +11,7 @@ to the sample.
 Out: `rolling`, `ended`, `take`, `note`, `level` (input peak dB), `levels` (every strip's [peak dB, RMS dB] at the
 speaker ~30 times a second while it plays, from the render's own levels; {} once when it stops), `problem` (loud lines), `changed` (opened / gone).
 The process runs on the shared output (`--shared`: the device stays usable by other apps) unless the person chose
-"Use speakers alone" in settings; the chosen speakers, microphone and buffer reach it as the engine's
+"Silence other programs" in settings; the chosen speakers, microphone and buffer reach it as the engine's
 environment (settings.engine_env). It is started only when it is first needed. When it cannot open or dies (no output device, no microphone) it says why, loudly, and the
 playhead runs on a clock (`alive` False, `reason`). It is ended by its own handle, never by name. `program` is the
 test seam: what replaces `[engine, "play"]` (screensound/fake_play.py speaks the same lines).
