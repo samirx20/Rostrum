@@ -4,7 +4,7 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum_gui import sections
 
-from . import beat_words, exprs, outline, fill_rows, project_picks, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, exprs, outline, fill_rows, font_rows, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
@@ -61,7 +61,8 @@ class Hooks2D:
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
-        return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
+        return fill_rows.rows(font_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
+                                             item),
                               item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search)   # placed: keys on a marker read
 
     def shown_values(self, item):

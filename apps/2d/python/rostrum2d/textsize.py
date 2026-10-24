@@ -15,7 +15,7 @@ from contextlib import contextmanager
 
 # What decides a text's box: what the engine's measure takes (render/src/scene/measure.rs). Colour, outline and
 # the rest don't change it.
-FIELDS = ("body", "font", "size", "weight", "stretch", "tracking", "lineHeight", "align", "boxWidth",
+FIELDS = ("body", "font", "size", "weight", "italic", "stretch", "tracking", "lineHeight", "align", "boxWidth",
           "ligatures", "figures", "smallCaps", "features", "slant", "grade", "axes",
           "path", "pathOffset", "pathAlign", "pathOverflow", "letterDelay")
 KEEP = 4096                 # sizes kept; past it the table starts again (a slider dragged through many sizes)

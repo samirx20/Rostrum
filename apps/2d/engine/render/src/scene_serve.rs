@@ -54,19 +54,30 @@ impl Held {
 /// Every layer's stage written once (showing or not), so what can't be drawn is refused now.
 pub(crate) fn check(scene: &Scene) -> Result<(), String> {
     scene.comp.walk(&mut |n| match n.kind {
-        "text" => fonts::resolve(&scene.fonts, n.props["font"].as_str().unwrap_or("")).map(|_| ()).map_err(|e| format!("{}: {e}", n.id)),
+        "text" => fonts::pick(&scene.fonts, n.props["font"].as_str().unwrap_or(""), 400.0, n.props["italic"].as_bool() == Some(true))
+            .map(|_| ()).map_err(|e| format!("{}: {e}", n.id)),
         _ => Ok(()),
     })?;
     crate::motion::check(&scene.comp)?;
     stage::stage(&eval::whole(&scene.comp, 0.0)).map(|_| ())
 }
 
-/// The font families the scene can name (the load reply's `fonts`, for agents and the font picker).
-fn fonts_of(scene: &Scene) -> Vec<&str> {
-    let mut names: Vec<&str> = scene.fonts.iter().map(|f| f.family.as_str()).collect();
-    names.sort();
-    names.dedup();
-    names
+/// The font families the scene's texts use (the load reply's `fonts`; every family there is: the `fonts` request).
+fn fonts_of(scene: &Scene) -> Vec<String> {
+    fonts::used(&scene.comp)
+}
+
+/// The page shell of the scene: its size, and the faces of the fonts its texts use (only those are embedded).
+fn shell_of(scene: &Scene, w: u32, h: u32) -> Result<String, String> {
+    stage::shell(w, h, &fonts::faces_of(&scene.fonts, &fonts::used(&scene.comp)))
+}
+
+/// `{"fonts": {}}`: every family a text can name (scene/font_list.rs), the loaded scene's own fonts included.
+pub fn font_list(held: &Held) -> Result<Value, String> {
+    match held.scene.as_ref() {
+        Some(s) => Ok(crate::scene::font_list::list(&s.fonts)),
+        None => Ok(crate::scene::font_list::list(&fonts::list(&Value::Null)?)),
+    }
 }
 
 fn count(n: &crate::scene::Node) -> usize {
@@ -84,10 +95,10 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
     };
     let same = session.as_ref().is_some_and(|s| (s.width, s.height, s.deep) == (w, h, deep));
     if !same {
-        let open = json!({ "width": w, "height": h, "html": stage::shell(w, h, &scene.fonts)?, "cpu": req["cpu"].as_bool() == Some(true), "depth": if deep { 16 } else { 8 } });
+        let open = json!({ "width": w, "height": h, "html": shell_of(&scene, w, h)?, "cpu": req["cpu"].as_bool() == Some(true), "depth": if deep { 16 } else { 8 } });
         serve::reopen(session, &open, warm)?;
     } else if held.shell != Some((w, h)) {
-        serve::page(session.as_mut().unwrap(), &json!({ "html": stage::shell(w, h, &scene.fonts)? }))?;
+        serve::page(session.as_mut().unwrap(), &json!({ "html": shell_of(&scene, w, h)? }))?;
     }
     held.shell = Some((w, h));
     let mut reply = json!({ "ok": true, "items": count(&scene.comp), "width": w, "height": h, "fps": scene.fps(), "duration": scene.duration(), "fonts": fonts_of(&scene) });
@@ -96,10 +107,17 @@ pub fn load(held: &mut Held, session: &mut Option<Session>, warm: &mut Option<Re
     Ok(reply)
 }
 
-pub fn edit(held: &mut Held, edits: &Value) -> Result<Value, String> {
+/// An edit; one that changes which fonts the texts use puts the page shell up again with those fonts' faces.
+pub fn edit(held: &mut Held, session: &mut Option<Session>, edits: &Value) -> Result<Value, String> {
     let mut next = held.scene()?.clone();
     let n = next.edit(edits)?;
     check(&next)?;
+    let before = fonts::used(&held.scene()?.comp);
+    if fonts::used(&next.comp) != before {
+        if let (Some(s), Some((w, h))) = (session.as_mut(), held.shell) {
+            serve::page(s, &json!({ "html": shell_of(&next, w, h)? }))?;
+        }
+    }
     held.scene = Some(next);
     Ok(json!({ "ok": true, "edits": n }))
 }

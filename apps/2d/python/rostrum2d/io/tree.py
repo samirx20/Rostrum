@@ -79,7 +79,8 @@ def _props(node: dict, box: list, parent_box, fonts, report: list) -> dict:
         props.setdefault("w", max(box[2], 1.0 if kind == "path" else 0.0))
         props.setdefault("h", max(box[3], 1.0 if kind == "path" else 0.0))
     if kind == "text" and fonts is not None and props.get("font", DEFAULT_FONT) not in fonts:
-        report.append(f"text '{node['name']}': font '{props.get('font', DEFAULT_FONT)}' is not in the app; drawn with {DEFAULT_FONT}")
+        report.append(f"text '{node['name']}': the font '{props.get('font', DEFAULT_FONT)}' is not in the app or on this computer, "
+                      f"so this text is set in {DEFAULT_FONT}; install the font and pick it in Font to get it back")
         props["font"] = DEFAULT_FONT
     dflt = F.defaults(kind)                                  # a value the layer already has isn't a change (and may not be valid)
     props = {k: v for k, v in props.items() if v != dflt[k]}
@@ -100,6 +101,9 @@ def _build(tree: dict, doc_data: dict, into: str, fonts=None, image_dir=None, ta
     """→ (calls, files, report); files = [(path, PIL image)] for image nodes that carry pixels. `taken` (ids in use) is shared
     when several trees go into one change; a node's `matte` is the name of a node before it in the same list."""
     taken = set(index(doc_data, KIND.lists)) if taken is None else taken
+    if fonts is None:                                        # the engine's one list (the app's and the computer's fonts)
+        from .importing import app_fonts
+        fonts = app_fonts()
     calls, files, report = [], [], list(tree.get("report", []))
 
     def walk(nodes, parent, parent_box):

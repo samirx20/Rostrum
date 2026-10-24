@@ -35,6 +35,8 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphic
 gif = "0.14"
 png = "0.18"
 usvg = "0.48"
+# The computer's installed fonts (scene/fonts_scan.rs): MIT; already in the lock through usvg. Files mapped while read.
+fontdb = { version = "0.24", default-features = false, features = ["std", "fs", "memmap"] }
 jpeg-encoder = { version = "0.7.1", features = ["simd"] }
 
 [target.'cfg(windows)'.dependencies]

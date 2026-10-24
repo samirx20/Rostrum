@@ -28,7 +28,7 @@ from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 
-from . import fields as F, pathdata, script_words as W
+from . import fields as F, fontlist, pathdata, script_words as W
 from .expr import ExprError, parse
 from .group_fit import fit
 from .kind import KIND, LISTS
@@ -181,6 +181,9 @@ class Build:
             node[k] = F.param(node["type"], k).check(v, f'{node["id"]}.{k}')
             if node["type"] == "group" and k in ("w", "h"):
                 self.sized.add(node["id"])
+        if node["type"] in ("text", "textstyle") and {"font", "italic"} & set(node) and (
+                why := fontlist.setting_refusal(node["id"], node["font"], node.get("italic", False))):
+            raise ValueError(why)                       # a font that isn't here is never swapped for another
 
     def add(self, type_, id_, values, into: list) -> Item:
         node = {"id": self.new_id(type_, id_), "type": type_, "name": F.LABELS[type_], **F.defaults(type_)}

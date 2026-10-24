@@ -65,20 +65,10 @@ class _Pen(BasePen):
     _endPath = _closePath
 
 
-@lru_cache(maxsize=1)
 def _catalog() -> dict[str, Path]:
-    """Family name → font file, as the engine lists them (each family, also without a trailing " Variable")."""
-    folder, found = settings.fonts_dir(), {}
-    if folder is None:
-        return found
-    for path in sorted(folder.glob("*.[ot]tf")):
-        names = TTFont(path, lazy=True)["name"]
-        for nid in (16, 1):
-            fam = names.getDebugName(nid)
-            if fam:
-                found.setdefault(fam, path)
-                found.setdefault(re.sub(r" Variable$", "", fam), path)
-    return found
+    """Family name → its upright font file, from the engine's one list (fontlist.py)."""
+    from ..fontlist import families
+    return {f["family"]: Path(f["files"][0]) for f in families()}
 
 
 @lru_cache(maxsize=16)
@@ -102,7 +92,7 @@ def outlines(p: dict, ctx: Ctx) -> tuple[list[dict], float, float] | None:
     """(Lottie contours in the text's own px from its box's top-left, own width, own height); None: font not found."""
     fam = _catalog()
     if p["font"] not in fam:
-        ctx.say(f'text not exported: the font "{p["font"]}" is not in the app (it has: {", ".join(sorted(fam))})')
+        ctx.say(f'text not exported: the font "{p["font"]}" is not in the app or on this computer')
         return None
     font = _font(fam[p["font"]])
     loc = _location(font, p, p["axes"])

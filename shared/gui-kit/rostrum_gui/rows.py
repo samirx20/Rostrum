@@ -32,7 +32,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # else what the app's `choices(name)` gives (e.g. the tracks a duck may dip under), [{value, label}].
 # A "pick" param (control "pick", a text naming one of a list the app knows) shows as a choice: what the app's
 # `choices(name)` gives (e.g. the layers a track matte may use, the fonts there are: an option may carry `face`, the font
-# family its label is drawn in), after "None" when "" is allowed (its default is "": the label is its words for "", e.g.
+# family its label is drawn in, and `section`, a heading over each run of options sharing it), after "None" when "" is allowed (its default is "": the label is its words for "", e.g.
 # "Main mix"). Never a bare text box of ids or names; with nothing to pick (and nothing picked) the row is absent.
 # tag, tagHelp: optional (an app adds them to a param row): a small word after the label and its hover sentence.
 # note: optional (an app adds it to a param row): {"text", "kind": "hint" | "warning"}, a short line under the field. Absent

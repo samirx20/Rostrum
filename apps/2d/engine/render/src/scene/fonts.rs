@@ -1,25 +1,52 @@
-//! The fonts a scene can name (contract § 4 text `font`), resolved by family name: the project's own fonts (the
-//! scene's optional `"fonts": {"Family": "C:\\…\\file.ttf"}`, which win) and the app's fonts folder. A text layer
-//! naming a font found in neither is refused when the scene loads or is edited, naming what there is.
+//! The one font registry (contract § 4 text `font`): every face a text can name, by family name, from three places,
+//! the first that has a family giving all of its faces: the project's own fonts (the scene's optional
+//! `"fonts": {"Family": "C:\\…\\file.ttf"}`), the fonts shipped with the app, then the fonts installed on the computer
+//! (fonts_scan.rs). The engine's page, its text measuring, the font picker and the agents' `inspect_fonts` all read it.
+//! A text naming a family found nowhere is refused when the scene loads or is edited: never drawn in another font.
 //!
-//! The app's folder: `ROSTRUM2D_FONTS` if set, else `fonts\` beside the program, else `engine/fonts` above
-//! `target/<profile>/` (the installed app, which mirrors the repo), else the
-//! source tree's `apps/2d/engine/fonts/` (a build in this checkout). Only permissive fonts go there (SIL OFL;
-//! each with its licence text beside it).
+//! The shipped folder: `ROSTRUM2D_FONTS` if set, else `fonts\` beside the program, else `engine/fonts` above
+//! `target/<profile>/` (the installed app, which mirrors the repo), else the source tree's `apps/2d/engine/fonts/`.
+//! Only open-licence fonts go there (SIL OFL; each with its licence text beside it; ATTRIBUTIONS.md).
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use skrifa::{raw::TableProvider, string::StringId, FontRef, MetadataProvider};
 
-#[derive(Clone, Debug)]
-pub struct Font {
-    /// The family name a scene uses.
-    pub family: String,
-    pub path: PathBuf,
+use super::fonts_scan;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Source {
+    Project,
+    Shipped,
+    Installed,
 }
 
-/// The app's fonts folder (see the module header).
+impl Source {
+    pub fn word(self) -> &'static str {
+        match self {
+            Source::Project => "project",
+            Source::Shipped => "shipped",
+            Source::Installed => "installed",
+        }
+    }
+}
+
+/// One face of a family: its file (and its place in a collection), its weights (one, or a variable font's range),
+/// italic or not. `alias`: the face listed again under a second name (a variable font's "Inter Variable").
+#[derive(Clone, Debug)]
+pub struct Font {
+    pub family: String,
+    pub path: PathBuf,
+    pub index: u32,
+    pub weight: (f32, f32),
+    pub variable: bool,
+    pub italic: bool,
+    pub source: Source,
+    pub alias: bool,
+}
+
+/// The shipped fonts folder (see the module header).
 pub fn app_folder() -> Result<PathBuf, String> {
     if let Ok(dir) = std::env::var("ROSTRUM2D_FONTS") {
         return Ok(PathBuf::from(dir));
@@ -32,54 +59,87 @@ pub fn app_folder() -> Result<PathBuf, String> {
     beside.into_iter().chain(layout).chain([source]).find(|d| d.is_dir()).ok_or_else(|| "no fonts folder: set ROSTRUM2D_FONTS or put fonts\\ beside the program".to_string())
 }
 
-/// The project's fonts (`project`: the scene's `fonts` object, or null), then the app folder's.
+/// Every face there is (`project`: the scene's `fonts` object, or null): the project's, the app's, the computer's.
 pub fn list(project: &Value) -> Result<Vec<Font>, String> {
-    let mut fonts = vec![];
+    let mut out: Vec<Font> = vec![];
+    let mut add = |faces: Vec<Font>| {
+        let before: HashSet<String> = out.iter().map(|f| f.family.clone()).collect();
+        out.extend(faces.into_iter().filter(|f| !before.contains(&f.family)));
+    };
     match project {
         Value::Null => {}
         Value::Object(map) => {
             for (family, path) in map {
                 let path = PathBuf::from(path.as_str().ok_or_else(|| format!("fonts: \"{family}\" must name a file"))?);
-                names(&path)?; // readable and a font, or refused now
-                fonts.push(Font { family: family.clone(), path });
+                add(fonts_scan::file(&path, family)?); // readable and a font, or refused now
             }
         }
         _ => return Err("fonts: must be an object, family name → font file".into()),
     }
-    let dir = app_folder()?;
-    let mut files: Vec<PathBuf> = std::fs::read_dir(&dir).map_err(|e| format!("fonts folder {}: {e}", dir.display()))?
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("ttf") || x.eq_ignore_ascii_case("otf")))
-        .collect();
-    files.sort();
-    for path in files {
-        for family in names(&path)? {
-            fonts.push(Font { family, path: path.clone() });
-        }
-    }
-    Ok(fonts)
-}
-
-/// The family names a font file answers to: its typographic family (else its family), and the same without a
-/// trailing " Variable" (variable fonts often carry it to tell themselves from their static cuts: "Inter Variable").
-fn names(path: &Path) -> Result<Vec<String>, String> {
-    let bytes = std::fs::read(path).map_err(|e| format!("font {}: {e}", path.display()))?;
-    let font = FontRef::new(&bytes).map_err(|e| format!("font {}: not a font file ({e})", path.display()))?;
-    font.name().map_err(|e| format!("font {}: no name table ({e})", path.display()))?;
-    let get = |id| font.localized_strings(id).english_or_first().map(|s| s.to_string());
-    let family = get(StringId::TYPOGRAPHIC_FAMILY_NAME).or_else(|| get(StringId::FAMILY_NAME)).ok_or_else(|| format!("font {}: no family name", path.display()))?;
-    let mut out = vec![family.clone()];
-    if let Some(short) = family.strip_suffix(" Variable") {
-        out.push(short.to_string());
-    }
+    add(fonts_scan::folder(&app_folder()?, Source::Shipped));
+    add(fonts_scan::installed().to_vec());
     Ok(out)
 }
 
-/// The font a scene names, or an error listing what there is.
-pub fn resolve<'a>(fonts: &'a [Font], family: &str) -> Result<&'a Font, String> {
-    fonts.iter().find(|f| f.family == family).ok_or_else(|| {
-        let mut have: Vec<&str> = fonts.iter().map(|f| f.family.as_str()).collect();
-        have.dedup();
-        format!("font \"{family}\" not found; there is: {}", have.join(", "))
-    })
+/// The face of `family` the page draws for this weight and slope: CSS font matching (a face whose weights hold it,
+/// else the nearest the CSS way: up to 500 first between 400 and 500, lighter first below 400, heavier first above
+/// 500). A family that isn't there, or an italic it doesn't have, is refused, naming what there is.
+pub fn pick<'a>(fonts: &'a [Font], family: &str, weight: f64, italic: bool) -> Result<&'a Font, String> {
+    let all: Vec<&Font> = fonts.iter().filter(|f| f.family == family).collect();
+    if all.is_empty() {
+        return Err(missing(fonts, family));
+    }
+    let slope: Vec<&Font> = all.iter().copied().filter(|f| f.italic == italic).collect();
+    if slope.is_empty() {
+        return Err(format!("the font \"{family}\" has no {} faces; turn italic {}", if italic { "italic" } else { "upright" }, if italic { "off" } else { "on" }));
+    }
+    let w = weight as f32;
+    let rank = |f: &&Font| -> (u8, f32) {
+        let (lo, hi) = f.weight;
+        if lo <= w && w <= hi {
+            return (0, 0.0);
+        }
+        let (above, gap) = if lo > w { (true, lo - w) } else { (false, w - hi) };
+        let order = match (w, above) {
+            (w, true) if (400.0..=500.0).contains(&w) && lo <= 500.0 => 1,
+            (w, false) if (400.0..=500.0).contains(&w) => 2,
+            (w, true) if (400.0..=500.0).contains(&w) => 3,
+            (w, false) if w < 400.0 => 1,
+            (w, true) if w < 400.0 => 2,
+            (_, true) => 1,
+            (_, false) => 2,
+        };
+        (order, gap)
+    };
+    Ok(slope.into_iter().min_by(|a, b| rank(a).partial_cmp(&rank(b)).unwrap()).unwrap())
+}
+
+/// "font "Helvetica" is not on this computer…", with the families named most like it.
+fn missing(fonts: &[Font], family: &str) -> String {
+    let want = family.to_lowercase();
+    let word = want.split_whitespace().next().unwrap_or("").to_string();
+    let mut like: Vec<&str> = fonts.iter().filter(|f| !f.alias).map(|f| f.family.as_str())
+        .filter(|n| { let n = n.to_lowercase(); n == want || (!word.is_empty() && n.contains(&word)) }).collect();
+    like.dedup();
+    let near = if like.is_empty() { String::new() } else { format!("; close: {}", like.iter().take(8).cloned().collect::<Vec<_>>().join(", ")) };
+    format!("font \"{family}\" not found: it is not in the project, the app or on this computer{near}")
+}
+
+/// The faces of the families `names` (the page embeds only these: the scene's own text fonts).
+pub fn faces_of<'a>(fonts: &'a [Font], names: &[String]) -> Vec<Font> {
+    fonts.iter().filter(|f| names.contains(&f.family)).cloned().collect()
+}
+
+/// The families the comp's texts name, each once, sorted.
+pub fn used(comp: &super::Node) -> Vec<String> {
+    let mut out = vec![];
+    let _ = comp.walk(&mut |n| {
+        if n.kind == "text" {
+            out.push(n.props["font"].as_str().unwrap_or("").to_string());
+        }
+        Ok(())
+    });
+    out.sort();
+    out.dedup();
+    out
 }

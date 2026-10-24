@@ -229,6 +229,8 @@ FIELDS: dict[str, list[Param]] = {
         X("font", "Font", "Text", "Roboto Flex", control="pick"),       # screens: the fonts there are, each in its own face
         N("size", "Size", "Text", 1, 2000, 1, "px", default=96.0),
         N("weight", "Weight", "Text", 1, 1000, 1, "", default=600.0),
+        T("italic", "Italic", "Text", False, S, when={"fact": "fontItalic"},
+          help="The font's own italic (refused if the family has none)"),
         C("color", "Colour", "Text", "#ffffff"),
         *_fill.OPACITY,
         CH("align", ["left", "center", "right"], "Align", "Paragraph", "center", S),
@@ -429,7 +431,7 @@ LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "
 
 # Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
 # `textStyle` names the style it follows. A style is never keyed (it is the look, not a moment).
-STYLED = ("font", "size", "weight", "color", "tracking", "lineHeight", "stretch", "slant", "grade", "axes", "ligatures",
+STYLED = ("font", "size", "weight", "italic", "color", "tracking", "lineHeight", "stretch", "slant", "grade", "axes", "ligatures",
           "figures", "smallCaps", "features")
 FIELDS["textstyle"] = [p for p in FIELDS["text"] if p.name in STYLED]
 FIELDS["text"].append(X("textStyle", "Text style", "Font", "", S, control="pick",

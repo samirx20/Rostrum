@@ -652,7 +652,12 @@ pub fn run() {
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
         } else if let Some(e) = req.get("edit") {
-            match crate::scene_serve::edit(&mut held, e) {
+            match crate::scene_serve::edit(&mut held, &mut session, e) {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+        } else if req.get("fonts").is_some() {
+            match crate::scene_serve::font_list(&held) {
                 Ok(r) => reply(&mut out, &r),
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }

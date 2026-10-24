@@ -72,7 +72,7 @@ const SHAPE: &[Field] = &[
     ("fillPicture", Text), ("fillFit", Choice(PICTURE_FITS)), ("fillScale", Number),
 ];
 const TEXT: &[Field] = &[
-    ("body", Text), ("font", Text), ("size", Number), ("weight", Number), ("color", Color), ("fillOpacity", Number), ("align", Choice(&["left", "center", "right"])),
+    ("body", Text), ("font", Text), ("size", Number), ("weight", Number), ("italic", Toggle), ("color", Color), ("fillOpacity", Number), ("align", Choice(&["left", "center", "right"])),
     ("tracking", Number), ("lineHeight", Number), ("stretch", Number), ("boxWidth", Number),
     ("stroke", Toggle), ("strokeColor", Color), ("strokeWidth", Number),
     // Type (stage_type.rs): OpenType features, variable axes, text on a path, letter by letter.

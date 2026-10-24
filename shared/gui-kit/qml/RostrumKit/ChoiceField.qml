@@ -5,7 +5,8 @@ import "."
 // A choice: the field frame showing the current option, a drawn arrow at the right (vertically centred,
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
 // A long list (more than 8) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
-// opens with a search line on top: what is typed keeps only the options whose label holds it.
+// opens with a search line on top: what is typed keeps only the options whose label holds it. Options carrying `section`
+// are shown under a small heading per run ("In Rostrum", "On this computer"); past 12 rows the list scrolls.
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
@@ -18,6 +19,7 @@ FieldFrame {
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
     function detailAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.detail || "") }   // an option's longer words: shown in the open list under its name, never in the closed field
     function faceAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.face || "") }
+    function sectionAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.section || "") }   // a heading over each run of options sharing one
     function same(a, b) { return String(a) === String(b) }
     function indexOf(v) { for (let i = 0; i < options.length; i++) if (same(valueAt(i), v)) return i; return -1 }
     readonly property bool searchable: options.length > 8 || options.some(o => typeof o === "object" && !!o.face)
@@ -85,39 +87,61 @@ FieldFrame {
                 height: visible ? Theme.popupRow : 0; leftPadding: Theme.gap - menu.padding; verticalAlignment: Text.AlignVCenter
                 text: "Nothing called \"" + f.query.trim() + "\""; color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont
             }
-            Repeater {
+            ListView {   // the options (only those on screen are built: a font list can hold hundreds, each in its own face)
+                id: optionList
+                objectName: "choiceList"
+                width: menu.availableWidth
+                height: Math.min(contentHeight, Theme.popupRow * 12)
+                clip: true; boundsBehavior: Flickable.StopAtBounds
                 model: f.shown
-                delegate: Rectangle {
-                    id: opt
+                currentIndex: menu.highlighted
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                QQC.ScrollBar.vertical: QQC.ScrollBar { policy: optionList.contentHeight > optionList.height ? QQC.ScrollBar.AsNeeded : QQC.ScrollBar.AlwaysOff }
+                delegate: Item {
+                    id: slot
                     required property int modelData     // the option's own index
                     required property int index         // its place in the list shown
-                    readonly property int option: modelData
-                    readonly property string detail: f.detailAt(option)
-                    width: menu.availableWidth; height: detail ? Theme.popupRow + detailText.implicitHeight + 2 : Theme.popupRow; radius: 4
-                    color: index === menu.highlighted ? Theme.hover : "transparent"
-                    Text {  // same left inset as the field's own text, so the list lines up with it
-                        anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
-                        anchors.right: tick.left; y: opt.detail ? 4 : (parent.height - height) / 2
-                        text: f.labelAt(opt.option); elide: Text.ElideRight
-                        color: Theme.fg; font.pixelSize: Theme.body; font.family: f.faceAt(opt.option) || uiFont
+                    readonly property string section: f.sectionAt(modelData)
+                    readonly property bool starts: section !== "" && (index === 0 || f.sectionAt(f.shown[index - 1]) !== section)
+                    width: optionList.width; height: head.height + opt.height
+                    Text {   // a group's heading ("In Rostrum", "On this computer") above its first option
+                        id: head
+                        visible: slot.starts; height: visible ? Theme.popupRow : 0
+                        leftPadding: Theme.gap - menu.padding; verticalAlignment: Text.AlignBottom; bottomPadding: 4
+                        text: slot.section; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
                     }
-                    Text {
-                        id: detailText
-                        visible: opt.detail !== ""
-                        anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
-                        anchors.right: parent.right; anchors.rightMargin: Theme.gap
-                        y: Theme.popupRow - 4; wrapMode: Text.WordWrap
-                        text: opt.detail; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
+                    Rectangle {
+                        id: opt
+                        y: head.height
+                        readonly property int option: slot.modelData
+                        readonly property int index: slot.index
+                        readonly property string detail: f.detailAt(option)
+                        width: parent.width; height: detail ? Theme.popupRow + detailText.implicitHeight + 2 : Theme.popupRow; radius: 4
+                        color: index === menu.highlighted ? Theme.hover : "transparent"
+                        Text {  // same left inset as the field's own text, so the list lines up with it
+                            anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
+                            anchors.right: tick.left; y: opt.detail ? 4 : (parent.height - height) / 2
+                            text: f.labelAt(opt.option); elide: Text.ElideRight
+                            color: Theme.fg; font.pixelSize: Theme.body; font.family: f.faceAt(opt.option) || uiFont
+                        }
+                        Text {
+                            id: detailText
+                            visible: opt.detail !== ""
+                            anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
+                            anchors.right: parent.right; anchors.rightMargin: Theme.gap
+                            y: Theme.popupRow - 4; wrapMode: Text.WordWrap
+                            text: opt.detail; color: Theme.fg3; font.pixelSize: Theme.label; font.family: uiFont
+                        }
+                        Rectangle {  // the current option: a small accent dot at the right
+                            id: tick
+                            visible: f.same(f.valueAt(opt.option), f.current)
+                            anchors.right: parent.right; anchors.rightMargin: Theme.gap - menu.padding + 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 6; height: 6; radius: 3; color: Theme.accent
+                        }
+                        MouseArea { anchors.fill: parent; hoverEnabled: true
+                                    onEntered: menu.highlighted = opt.index; onClicked: list.pick(opt.option) }
                     }
-                    Rectangle {  // the current option: a small accent dot at the right
-                        id: tick
-                        visible: f.same(f.valueAt(opt.option), f.current)
-                        anchors.right: parent.right; anchors.rightMargin: Theme.gap - menu.padding + 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 6; height: 6; radius: 3; color: Theme.accent
-                    }
-                    MouseArea { anchors.fill: parent; hoverEnabled: true
-                                onEntered: menu.highlighted = opt.index; onClicked: list.pick(opt.option) }
                 }
             }
             Rectangle {  // "Load picture…": after a thin line, in the secondary colour (it adds a choice, it isn't one)

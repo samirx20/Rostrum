@@ -12,8 +12,9 @@ below is a field (`inspect_item id=title` lists them with what is valid right no
 | Field | What it does |
 |---|---|
 | `body`, `size` (px), `color` | The words, how big, what colour. |
-| `font` | A family name. An unknown one is refused when the scene loads, and the reply names the families that exist. |
-| `weight`, `stretch` | The variable font's weight (`wght`) and width (`wdth`, in %). |
+| `font` | A family name: one shipped with Rostrum2D or installed on this computer (`inspect_fonts` lists them). A name that is neither is refused when it is set, never drawn in another font. |
+| `weight`, `stretch` | The weight (a variable font's `wght`, any value in its range; a family of separate weights, such as Arial, is drawn in its nearest weight, so use one `inspect_fonts` lists) and the width (`wdth`, in %). |
+| `italic` | The family's own italic (on / off). Refused if the family has none. |
 | `slant`, `grade` | The font's `slnt` and `GRAD` axes, set only when not 0. |
 | `axes` | Any other axis by tag: `"XTRA 468, CASL 1"`. It wins over the named fields. An axis the font lacks is refused; a value out of range is clamped. |
 | `tracking` (em), `lineHeight`, `align`, `boxWidth` | Spacing between letters, line spacing, left / center / right, wrap width (0 = one line). |
@@ -100,8 +101,24 @@ The fields `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text lay
 
 ## Fonts
 
-A scene can name project fonts (absolute file paths), which win over the app's fonts. Not yet: a tool that lists the
-installed families. The list comes back in the engine's scene reply and in the refusal when a name is wrong.
+Two kinds of font can be named:
+
+- **Shipped with Rostrum2D** (the same on every computer): Inter, Roboto Flex, Recursive, Montserrat, Source Serif 4,
+  Fraunces, JetBrains Mono, Caveat. All are variable fonts (any weight in their range); all but Roboto Flex, Recursive
+  and Caveat have an italic.
+- **Installed on this computer**: Arial, Georgia, Segoe UI and anything the person has installed. Another computer may
+  not have them.
+
+`inspect_fonts` (optional `search="serif"`) lists every family with its source, real weights, range and whether it has an
+italic. A script can read the same list in Python: `from rostrum2d.fontlist import families`. A font installed while
+the app runs shows after a restart.
+
+**A missing font is never swapped.** Setting a font that isn't there is refused at once, naming the closest names. A
+project opened on a computer that lacks one of its fonts shows a **Missing font** problem naming every text that uses it
+(`inspect_diagnose`, and the Problems chip on the screen); the canvas and every export refuse to draw the scene until the
+font is installed or the texts are set in another font, so no file ever goes out with the wrong letters. For a piece
+that has to open anywhere, use a shipped font. A scene can also name project fonts (absolute file paths), which win
+over both.
 
 ## Check loop (every pass)
 

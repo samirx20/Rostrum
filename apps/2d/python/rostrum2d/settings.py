@@ -76,24 +76,6 @@ def ffmpeg(name: str = "ffmpeg") -> str:
     return str(exe)
 
 
-# ---- fonts --------------------------------------------------------------------------------------------------------
-def fonts_dir() -> Path | None:
-    """The app's fonts folder (the families a 2D layer can name): ROSTRUM2D_FONTS, else <root>/apps/2d/engine/fonts;
-    None when it isn't there."""
-    d = _env_path("ROSTRUM2D_FONTS") or APP / "engine" / "fonts"
-    return d if d.is_dir() else None
-
-
-def font_files() -> list[tuple[str, Path]]:
-    """(family, file) for each font in the fonts folder, by family: the name a text layer gives (the engine takes a
-    variable font by its family with or without " Variable": scene/fonts.rs), [] without the folder."""
-    from PIL import ImageFont
-    folder = fonts_dir()
-    found = [(ImageFont.truetype(str(f), 12).getname()[0].removesuffix(" Variable"), f)
-             for f in sorted(folder.glob("*.[to]tf"))] if folder else []
-    return sorted(found)
-
-
 # ---- folders ------------------------------------------------------------------------------------------------------
 def documents_dir() -> Path:
     """The person's Documents folder where Windows keeps it (it may be moved, e.g. into OneDrive); else ~/Documents."""
