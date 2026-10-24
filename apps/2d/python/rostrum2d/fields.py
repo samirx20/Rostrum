@@ -160,7 +160,7 @@ TYPE = [
     X("pathLayer", "Follows path", "On a path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
       "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
     X("path", "Path", "On a path", "", D, when=NOT_FOLLOWING, shown="script",      # SVG text: agents; people pick Follows path
-      help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),
+      help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line. To follow a path LAYER use text.follow"),
     N("pathOffset", "Start along path", "On a path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
     CH("pathAlign", ["start", "center", "end"], "Align on path", "On a path", "start", S, ON_PATH),

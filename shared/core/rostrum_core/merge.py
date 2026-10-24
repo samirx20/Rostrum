@@ -52,7 +52,8 @@ _WANTS = {"(add)": "add it", "(remove)": "remove it", "(move)": "move it"}
 
 def held_words(h: dict) -> str:
     """One held-back thing in words: placeholders like "(add)" / "(kept, edited)" say who got there first instead."""
-    who = f'{h["who"]} ("{h["label"]}")' if h["label"] not in ("?", None) else h["who"]
+    name = h["who"] if h["who"] not in ("?", None) else "someone else (a person or agent; the history doesn't say who, e.g. the change was made inside it or before the file was opened)"
+    who = f'{name} ("{h["label"]}")' if h["label"] not in ("?", None) else name
     if h["script"] in _WANTS:
         return f'{h["key"]}: the script wanted to {_WANTS[h["script"]]}, but it was already changed by {who}'
     if h["kept"] == "(kept, edited)":

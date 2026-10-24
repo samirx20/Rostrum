@@ -12,6 +12,8 @@ import re
 
 import pypdfium2.raw as R
 
+from .. import fontlist
+
 FORCE_BOLD, ITALIC = 1 << 18, 1 << 6        # descriptor Flags bits 19 and 7 (1-based)
 WEIGHTS = [("extrabold", 800), ("ultrabold", 800), ("semibold", 600), ("demibold", 600), ("extralight", 200),
            ("ultralight", 200), ("hairline", 100), ("thin", 100), ("black", 900), ("heavy", 900), ("bold", 700),
@@ -27,6 +29,27 @@ def split_name(base: str) -> tuple[str, str]:
     return re.sub(r"(?<=[a-z])(MT|PS)$", "", family) or name, style.lower()
 
 
+# The 14 standard PDF fonts are never inside a file; a reader draws them with its own. The real family each stands for,
+# the first this computer (or the app) has wins; none = the name is kept and the missing-font list says so.
+STANDARD = {"helvetica": ("Helvetica", "Arial", "Inter"), "arial": ("Arial", "Helvetica", "Inter"),
+            "times": ("Times", "Times New Roman"), "timesnewroman": ("Times New Roman", "Times"),
+            "courier": ("Courier", "Courier New"), "couriernew": ("Courier New", "Courier"),
+            "symbol": ("Symbol",), "zapfdingbats": ("Zapf Dingbats", "Wingdings", "Segoe UI Symbol")}
+
+
+def real_family(family: str) -> str:
+    """A standard PDF font's name ("Helvetica", "Times-Roman", "Courier", "Symbol", "ZapfDingbats") → an installed family."""
+    key = re.sub(r"[^a-z]", "", family.lower())
+    key = "times" if key.startswith("times") and key != "timesnewroman" else key
+    if key not in STANDARD:
+        return family
+    try:
+        have = set(fontlist.names())
+    except Exception:  # noqa: BLE001  no engine built: nothing can be checked, the name stays
+        return family
+    return next((c for c in STANDARD[key] if c in have), family)
+
+
 def style_of(base: str, flags: int, angle: float, stem_weight: float) -> tuple[str, float, float]:
     """(family, weight 1–1000, slant degrees; 0 upright) from a BaseFont name, descriptor Flags, ItalicAngle, pdfium's weight."""
     family, words = split_name(base)
@@ -34,7 +57,7 @@ def style_of(base: str, flags: int, angle: float, stem_weight: float) -> tuple[s
     if weight is None:
         weight = 700.0 if flags & FORCE_BOLD else (float(round(stem_weight / 100) * 100) if 100 <= stem_weight <= 900 else 400.0)
     italic = any(k in words for k in ("italic", "oblique", "slanted", "kursiv")) or bool(flags & ITALIC) or bool(angle)
-    return family, float(weight), (float(angle) or DEFAULT_SLANT) if italic else 0.0
+    return real_family(family), float(weight), (float(angle) or DEFAULT_SLANT) if italic else 0.0
 
 
 def of_text_object(obj) -> tuple[str, float, float]:

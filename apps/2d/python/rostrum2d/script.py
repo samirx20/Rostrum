@@ -335,9 +335,20 @@ def _import(name, *args, **kw):
                       "sorted, sum … are already there")
 
 
-def run_source(source: str, name: str) -> dict:
-    """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged."""
-    b = Build(_reserved(source))
+def _held_ids(doc, name: str) -> set[str]:
+    """The ids the document holds that this script did not make last run (a person's, another script's, another scene's
+    frame): a new scene or layer must not take them, or the merge can't add it (a scene would arrive without its frame)."""
+    from rostrum_core.tree import walk
+    if doc is None:
+        return set()
+    ours = {i["id"] for i in walk(doc.script_bases.get(name) or {"id": "root", "comps": []}, KIND.lists)}
+    return {i["id"] for i in walk(doc.data, KIND.lists)} - ours
+
+
+def run_source(source: str, name: str, doc=None) -> dict:
+    """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged.
+    `doc`: the document it will be merged into (run_script passes it), so the ids it already holds are left alone."""
+    b = Build(_reserved(source) | _held_ids(doc, name))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
@@ -351,6 +362,8 @@ def run_source(source: str, name: str) -> dict:
         raise _failed(e, name, scope) from e
     return b.root
 
+
+run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",

@@ -77,6 +77,8 @@ def rate(f: Format, w: int, h: int, fps: int, quality: str | None = None, bitrat
 
 
 def _mp4(out, w, h, fps, depth, first, rate):
+    if w % 2 or h % 2:                       # H.264 (4:2:0) needs it; said now, before a frame is drawn (the engine says it too)
+        raise ValueError(f"H.264 (4:2:0) needs an even width and height; got {w}x{h}. Make the scene one pixel wider or taller")
     exe = str(find_exe())
     _can_write_mp4(exe)
     q = [] if rate.quality is None else [str(rate.quality)]

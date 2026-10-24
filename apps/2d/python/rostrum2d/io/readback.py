@@ -133,6 +133,8 @@ def check(fmt: str, out: str | Path, frames: int, w: int, h: int, alpha: bool, d
             facts["min_alpha"] = min(_video_frame_alpha(out, i, w, h) for i in _picks(facts["frames"]))
     if fmt == "gif" and seconds is not None and abs(facts["ms"] - 1000 * seconds) > 30:
         raise ExportError(f"the GIF lasts {facts['ms'] / 1000:g} s, the scene {seconds:g} s", facts)
+    if fmt == "gif" and 0 < facts["frames"] < frames:
+        facts["merged"] = frames - facts["frames"]       # identical neighbours are stored once and last longer (the time is checked above)
     if facts["frames"] != frames and not (fmt == "gif" and 0 < facts["frames"] < frames):
         raise ExportError(f"expected {frames} frames, the file has {facts['frames']}", facts)
     if facts["size"] != (w, h):

@@ -12,6 +12,8 @@ operation per item type (`text.set`, `glow.set`, `key.set` …) generated from t
 """
 from __future__ import annotations
 
+import re
+
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
@@ -141,6 +143,14 @@ def _check_owner(item: dict, problems: list, opening: bool = False):
         problems += refusals.problems(item)
     if item.get("type") == "rig":
         problems += rig_model.problems_of(item)
+    if item.get("type") == "text" and item.get("path"):
+        follow = ('to make a text follow a path layer write text.follow with path:"<path layer id>" '
+                  '(in a script: text(..., pathLayer="<id>"))')
+        try:
+            pathdata.commands(item["path"])
+        except ValueError as e:
+            what = f'"{item["path"]}" is not path data' if re.fullmatch(r"[A-Za-z_][\w.-]{2,}", item["path"]) else str(e)
+            problems.append(f'{item["id"]}.path: {what}. `path` is SVG path data (M L C Z); {follow}')
     if item.get("type") == "path":
         try:
             pathdata.commands(item["d"])

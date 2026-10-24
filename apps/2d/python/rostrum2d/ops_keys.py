@@ -55,7 +55,10 @@ def settable(ctx, owner: dict, prop: str):
                  hint="expr.clear it first.")
     p = F.param(owner["type"], prop)
     if p is not None and not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}, ctx.facts(owner)):
-        ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "doesn't apply right now", hint=f"It shows in the inspector only when it applies (fields.py valid_when {p.valid_when}).")
+        from rostrum_core.conditions import describe
+        when = describe(p.valid_when, {q.name: q.label for q in F.FIELDS[owner["type"]]})
+        ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "doesn't apply right now",
+                 hint=f"{p.label or prop} only works when {when}; it is not on the screen until then.")
 
 
 def _still_value(ctx, owner: dict, prop: str, args: dict):
