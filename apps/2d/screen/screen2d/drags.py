@@ -10,7 +10,7 @@ from rostrum2d.retime import END_OF_COMP
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
 
-from . import bounds, exprs, layout_drag, route, time_snap
+from . import bounds, exprs, key_moves, layout_drag, route, time_snap
 from .bar_drag import PARTS, BarGrab
 
 
@@ -83,6 +83,7 @@ class DragSlots(SlotMixin):
         """A single picked key (key_select.py picks it first; keys never enter the layer selection)."""
         self._key_from = self.placed_item(key_id)["t"]
         self._found = time_snap.targets(self, skip_keys=[key_id])        # what it may snap to (time_snap.py)
+        self._ends = key_moves.ends_of(self, {bounds.layer_of(self.doc, key_id)})   # the layer's end follows a key past it
         return self._begin("Move key", key_id)
 
     @Slot(float, float)
@@ -99,7 +100,9 @@ class DragSlots(SlotMixin):
             return                       # another key of this field is there: stay at the last free time
         self.timeSnap.show(t - self._key_from, c["fps"], caught, t, bounds.layer_of(self.doc, key["id"]))
         to = marked.moved(key["ref"], t - key["t"]) if "ref" in key else t - self.offset(owner["id"])   # on a marker: stays on it; else own seconds
-        self._guard(lambda: self._drag.preview([{"op": "key.set", "target": [key["id"]], "args": {"t": to}}]))
+        calls = [{"op": "key.set", "target": [key["id"]], "args": {"t": to}},
+                 *key_moves.end_follows(self._ends, {bounds.layer_of(self.doc, key["id"]): t})]
+        self._guard(lambda: self._drag.preview(calls))
 
     @Slot(str, str, float, result=bool)
     def beginBarDrag(self, layer_id, part, t0):

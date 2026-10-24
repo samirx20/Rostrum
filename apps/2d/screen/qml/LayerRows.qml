@@ -47,7 +47,7 @@ ListView {
         if (i < 0) i = indexAt(labelWidth / 2, y - 3)
         const rows = backend.layers
         const item = i < 0 ? null : itemAtIndex(i)
-        if (i < 0 || !item || rows[i].owned || rows[i].id === dragId) { dropRow = ""; return }
+        if (i < 0 || !item || rows[i].owned || rows[i].frame || rows[i].id === dragId) { dropRow = ""; return }
         const f = (y - item.y) / item.height
         const holds = rows[i].kind === "group" || rows[i].kind === "rig"
         dropRow = rows[i].id

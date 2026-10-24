@@ -1,19 +1,26 @@
-"""Where a moving layer (or the camera) travels, as the canvas shows it: the motion path's maths (motion_path.py draws
+"""Where a moving layer (or the frame) travels, as the canvas shows it: the motion path's maths (motion_path.py draws
 nothing itself; this module has no Qt).
 
 Two halves, so a playhead move costs little: `track` reads the document once per change and selection (the layer's own
-x / y per frame between its first and last position key, in its parent's px; the camera's look point in composition px),
-and `mapping` gives, at the playhead, the matrix from those px to the canvas (through the layer's groups and the frame
-showing then, mcp/geometry.py and camera/view.py: the same maths as the engine). A key's spatial handles are offsets
-from its value (`out`, `in`; key.path_handles); a key without one shows the default third of the way to its neighbour.
-Positions come from rostrum2d.evaluate.value_at, so the path follows the one evaluation rule.
+x / y per frame between its first and last position key, in its parent's px; the frame's centre in world px), and
+`mapping` gives, at the playhead, the matrix from those px to the canvas (world px: through the layer's groups and the
+world view's matrix for its depth, frame/view.py: the same maths as the engine). A stretch after a key with the `hold`
+ease is a jump (a cut): a straight line with no ticks. A key's spatial handles are offsets from its value (`out`, `in`;
+key.path_handles); a key without one shows the default third of the way to its neighbour. Positions come from
+rostrum2d.evaluate.value_at, so the path follows the one evaluation rule.
 """
 from __future__ import annotations
 
-from rostrum2d.frame import view as camera
+from bisect import bisect_right
+from functools import lru_cache
+
 from rostrum2d.evaluate import value_at
+from rostrum2d.frame import TYPE as FRAME, view as fview
 from rostrum2d.mcp.geometry import _invert, _mul, flatten
-from rostrum_core.keys.evaluate import keys_of
+from rostrum_core.keys.after import after_of
+from rostrum_core.keys.easing import ease
+from rostrum_core.keys.evaluate import keys_of, track_value
+from rostrum_core.keys.spatial import between
 
 FRAME_STEPS = 4                 # path points per frame (a fast curve stays smooth); ticks stay one per frame
 MOST_POINTS = 4000              # a very long move is sampled more thinly, never more than this
@@ -48,62 +55,119 @@ def _handle(at: dict, prop: str, side: str, here: float, there: float | None) ->
     return 0.0 if there is None else (there - here) / 3
 
 
+_NOT_EASE = {"id", "type", "prop", "t", "v", "out", "in"}
+
+
+@lru_cache(maxsize=1 << 16)
+def _eased(sig: tuple, u: float) -> float:
+    return ease(dict(sig), u)
+
+
+def _field(owner: dict, prop: str):
+    """t -> the field's value, by the one evaluation rule (rostrum_core.keys: ease, then `between`), with its keys
+    sorted once and each ease's progress remembered: a drag moves values, never eases, so the curve solve is reused."""
+    keys = keys_of(owner, prop)
+    if not keys:
+        v = float(value_at(owner, prop, 0.0))
+        return lambda t: v
+    sigs = [tuple(sorted((f, x) for f, x in k.items() if f not in _NOT_EASE)) for k in keys]
+    try:
+        hash(tuple(sigs))
+        plain = after_of(keys) == "stay" and all(isinstance(k.get(f), (int, float)) for k in keys for f in ("t", "v"))
+    except TypeError:
+        plain = False
+    if not plain:                                       # repeats, marker keys, an unusual ease: the evaluator as it is
+        return lambda t: float(track_value(keys, t))
+    times = [float(k["t"]) for k in keys]
+
+    def at(t: float) -> float:
+        i = bisect_right(times, t)
+        if i == 0 or i == len(keys):
+            return float(keys[0 if i == 0 else -1]["v"])
+        k0, k1 = keys[i - 1], keys[i]
+        return float(between(k0, k1, _eased(sigs[i - 1], (t - times[i - 1]) / (times[i] - times[i - 1]))))
+    return at
+
+
+def _position(owner: dict):
+    fx, fy = _field(owner, "x"), _field(owner, "y")
+    return lambda t: (fx(t), fy(t))
+
+
+def _jump(at: dict) -> bool:
+    """A stretch starting at these keys is a jump (a cut): every position key there holds (the `hold` ease)."""
+    return all(k.get("ease") == "hold" for k in at.values())
+
+
 def track(owner: dict, fps: float) -> dict | None:
-    """The layer's travel in its own parent's px: {points, ticks, keys}; None without two position keys."""
+    """The layer's travel in its own parent's px: {lines, cuts, ticks, keys}; None without two position keys. `lines`
+    are the travelled stretches (one polyline per run between jumps), `cuts` the jumps ([from, to]: nothing travels
+    there, so no ticks), `ticks` a point per frame on the travelled stretches."""
     times = _keys(owner)
     if len(times) < 2:
         return None
     t0, t1 = next(iter(times)), next(reversed(times))
-    n = max(1, round((t1 - t0) * fps))
-    steps = min(n * FRAME_STEPS, MOST_POINTS)
-    pos = lambda t: (float(value_at(owner, "x", t)), float(value_at(owner, "y", t)))   # noqa: E731
-    points = [pos(t0 + (t1 - t0) * i / steps) for i in range(steps + 1)]
-    ticks = [pos(t0 + (t1 - t0) * i / n) for i in range(n + 1)]
+    pos = _position(owner)
     at = list(times.items())
+    lines, cuts, ticks, run = [], [], [], []
+    for (ta, ka), (tb, _) in zip(at, at[1:]):
+        if _jump(ka):
+            if len(run) > 1:
+                lines.append(run)
+            run = []
+            cuts.append([pos(ta), pos(tb)])
+            continue
+        n = max(1, round((tb - ta) * fps))
+        per = max(1, min(FRAME_STEPS, round(MOST_POINTS * (tb - ta) / (t1 - t0) / n)))   # points per frame
+        pts = [pos(ta + (tb - ta) * i / (n * per)) for i in range(n * per + 1)]
+        run += pts[1:] if run else pts
+        ticks += pts[::per][1:] if ticks else pts[::per]                # a tick per frame: every per-th point
+    if len(run) > 1:
+        lines.append(run)
     keys = []
     for i, (t, ks) in enumerate(at):
         x, y = pos(t)
-        prev = pos(at[i - 1][0]) if i else None
-        nxt = pos(at[i + 1][0]) if i + 1 < len(at) else None
+        prev = pos(at[i - 1][0]) if i and not _jump(at[i - 1][1]) else None        # no handles across a jump
+        nxt = pos(at[i + 1][0]) if i + 1 < len(at) and not _jump(ks) else None
         stored = any(isinstance(k.get(s), (int, float)) for k in ks.values() for s in ("out", "in"))
         keys.append({"t": t, "x": x, "y": y, "ids": [k["id"] for k in ks.values()], "stored": stored,
                      "out": None if nxt is None else [_handle(ks, "x", "out", x, nxt[0]), _handle(ks, "y", "out", y, nxt[1])],
                      "in": None if prev is None else [_handle(ks, "x", "in", x, prev[0]), _handle(ks, "y", "in", y, prev[1])]})
-    return {"points": points, "ticks": ticks, "keys": keys}
+    return {"lines": lines, "cuts": cuts, "ticks": ticks, "keys": keys}
 
 
-def camera_keys(cam: dict) -> list[float]:
-    """Every time the camera has a key on where it looks, how close or how turned (its frame is outlined at each)."""
+def frame_keys(cam: dict) -> list[float]:
+    """Every time the frame has a key on where it is, how close or how turned (it is outlined faintly at each)."""
     return sorted({round(float(k["t"]), 6) for p in CAM_PROPS for k in keys_of(cam, p) if isinstance(k.get("t"), (int, float))})
 
 
 def mapping(comp: dict, owner: dict, t: float):
     """The matrix from the owner's travel px to the canvas (world px) at the playhead t: a layer through its groups (or,
     at the top, the world view's matrix for its depth, frame/view.py); the frame's own travel is already in world px."""
-    cam = camera.shot(comp, t)
-    if owner["type"] == "camera":
-        return camera.ID
+    if owner["type"] == FRAME:
+        return fview.ID
+    cam = fview.shot(comp, t)
     every = {e["id"]: e for e in flatten(comp, t)}
     e = every.get(owner["id"])
     if e is None:
-        return camera.ID
+        return fview.ID
     if not e["within"]:
-        return camera.world_matrix(comp, cam, e["props"])
+        return fview.world_matrix(comp, cam, e["props"])
     top = every[e["within"][0]]["props"]            # a group's matrix is the export's: swap the top's export matrix for its world one
-    swap = _mul(camera.world_matrix(comp, cam, top), _invert(camera.layer_matrix(comp, cam, top)) or camera.ID)
+    swap = _mul(fview.world_matrix(comp, cam, top), _invert(fview.layer_matrix(comp, cam, top)) or fview.ID)
     return _mul(swap, every[e["within"][-1]]["matrix"])
 
 
-def frame_at(comp: dict, cam: dict, t: float, now) -> list[list[float]]:
-    """The frame's box at time t (the output rectangle carried back into world px: its quad) as the canvas shows it now
-    (`now`, the mapping of the frame's own travel: the identity in the world view)."""
-    w, h = comp.get("width", 1920), comp.get("height", 1080)
-    m = camera.layer_matrix(comp, camera.shot(comp, t), {"depth": 0.0})
-    return [apply(now, *camera.undo(m, x, y)) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]
+def frame_at(comp: dict, t: float) -> list[list[float]]:
+    """The frame's quad at time t in world px (the output rectangle carried back through the frame then), turned and
+    zoomed: the canvas draws it as it draws the world."""
+    w, h = fview.centre(comp)
+    m = fview.layer_matrix(comp, fview.shot(comp, t), {"depth": 0.0})
+    return [list(fview.undo(m, x, y)) for x, y in ((0, 0), (2 * w, 0), (2 * w, 2 * h), (0, 2 * h))]
 
 
 def on_canvas(tr: dict, m) -> dict:
-    """The travel mapped to the canvas: points, ticks and keys (with handle ends) in composition px as seen."""
+    """The travel mapped to the canvas: lines, cuts, ticks and keys (with handle ends) in world px."""
     keys = []
     for k in tr["keys"]:
         row = {"t": k["t"], "ids": k["ids"], "stored": k["stored"], "own": [k["x"], k["y"]], "pos": apply(m, k["x"], k["y"])}
@@ -112,4 +176,6 @@ def on_canvas(tr: dict, m) -> dict:
             row[side] = None if d is None else apply(m, k["x"] + d[0], k["y"] + d[1])
             row[side + "Own"] = d
         keys.append(row)
-    return {"points": [apply(m, *p) for p in tr["points"]], "ticks": [apply(m, *p) for p in tr["ticks"]], "keys": keys}
+    return {"lines": [[apply(m, *p) for p in line] for line in tr["lines"]],
+            "cuts": [[apply(m, *a), apply(m, *b)] for a, b in tr["cuts"]],
+            "ticks": [apply(m, *p) for p in tr["ticks"]], "keys": keys}

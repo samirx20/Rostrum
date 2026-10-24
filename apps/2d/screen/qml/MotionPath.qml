@@ -4,17 +4,16 @@ import "Mods.js" as Mods
 
 // The motion path over the canvas (screen2d/motion_path.py does the work): where the selected layer travels, a dot per
 // frame (close dots: slow, far apart: fast), a square per key (filled when picked) and the picked or bent keys' handles;
-// for the camera, its frame now and a faint one at each key. Drag a square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path
-// bends, the opposite handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in
-// composition px as the canvas shows them; fit / ox / oy are the Stage's one mapping (canvas px = o + comp px × fit).
+// a jump (for the frame, a cut) is a dashed line with no dots; for the frame, a faint outline of it at each key. Drag a
+// square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path bends, the opposite
+// handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
+// the Stage's one mapping (canvas px = o + world px × fit), so a pan or zoom only repaints.
 Item {
     id: mp
     property real fit: 1
     property real ox: 0
     property real oy: 0
     property bool interactive: true
-    property real compW: 0                      // the picture's size in composition px: the camera's frames are cut at its edge
-    property real compH: 0
     readonly property var paths: backend.motionPath.paths
     readonly property int hit: 18               // the invisible click target round a square or a handle end (≥ the kit's 16)
     function cx(p) { return mp.ox + p[0] * mp.fit }
@@ -28,18 +27,15 @@ Item {
             g.reset()
             const a = Theme.accent
             for (const row of mp.paths) {
-                const alpha = row.faint ? 0.35 : 0.7
-                const ac = Qt.rgba(a.r, a.g, a.b, alpha)
+                const ac = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.35 : 0.7)
                 g.lineWidth = 1
-                g.strokeStyle = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.25 : 0.5)
-                g.save()                                                       // frames stay inside the picture, never run into the margin
-                if (mp.compW > 0) { g.beginPath(); g.rect(mp.ox, mp.oy, mp.compW * mp.fit, mp.compH * mp.fit); g.clip() }
-                for (const f of row.frames) poly(g, f, true)                   // the camera at each key
+                g.strokeStyle = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.18 : 0.4)
+                for (const f of row.frames) poly(g, f, true)                   // the frame at each of its keys
                 g.strokeStyle = ac
-                if (row.now.length) poly(g, row.now, true)                     // the camera's frame now
-                g.restore()
-                g.strokeStyle = ac
-                poly(g, row.points, false)
+                for (const line of row.lines) poly(g, line, false)
+                g.setLineDash([4, 4])                                          // a jump: nothing travels there
+                for (const c of row.cuts) poly(g, c, false)
+                g.setLineDash([])
                 g.fillStyle = ac
                 for (const p of row.ticks) { g.beginPath(); g.arc(mp.cx(p), mp.cy(p), row.faint ? 1.2 : 1.6, 0, 2 * Math.PI); g.fill() }
                 for (const k of row.keys) {
@@ -58,8 +54,7 @@ Item {
         }
         Connections { target: mp; function onPathsChanged() { ink.requestPaint() }
                       function onFitChanged() { ink.requestPaint() } function onOxChanged() { ink.requestPaint() }
-                      function onOyChanged() { ink.requestPaint() }
-                      function onCompWChanged() { ink.requestPaint() } function onCompHChanged() { ink.requestPaint() } }
+                      function onOyChanged() { ink.requestPaint() } }
     }
 
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters count marks (an int

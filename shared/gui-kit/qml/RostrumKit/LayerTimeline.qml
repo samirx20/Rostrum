@@ -18,7 +18,10 @@ Rectangle {
     property bool canCompact: true              // false beside a tall frame (one height there): the switch is absent
     property bool canResize: true               // false where the app sets the height itself (3D's pages): no grab edge
     property bool canCurves: true               // false where the app has no curve view yet (3D): Keys | Curves is absent
-    property string emptyText: "Your layers appear here as bars. Drag a bar to change when it shows."   // with no rows yet (the app words its items)
+    property string emptyText: ""               // an app with no rows yet words its items here (3D); 2D never has none: the Frame row is always there
+    readonly property bool animated: backend.layers.some(r => (r.keys || []).length > 0)   // something is keyed: only then are there curves to see
+    readonly property bool curvesOn: canCurves && animated && backend.curves.on
+    readonly property bool canPickRows: compact || backend.layers.some(r => r.row === "layer" && r.id === backend.selected)   // the height button: a layer is picked (or it is how back out of the one-row view)
     signal compactAsked(bool on)
     property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
     property Item curves                        // the app's curve view, in the same place while Curves is on
@@ -65,11 +68,11 @@ Rectangle {
     Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
         id: keysCurves
         objectName: "keysCurves"
-        visible: tl.canCurves
+        visible: tl.canCurves && tl.animated
         anchors { right: ruler.left; rightMargin: Theme.pad + 8; verticalCenter: ruler.verticalCenter }   // the names column's right edge
         implicitHeight: 26
         options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]
-        current: tl.canCurves && backend.curves.on ? "curves" : "keys"
+        current: tl.curvesOn ? "curves" : "keys"
         onPicked: (v) => backend.curves.setOn(v === "curves")
     }
     TimeRuler {
@@ -77,34 +80,34 @@ Rectangle {
         x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
         width: (compactSwitch.visible ? compactSwitch.x - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
         duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time; frameTicks: tl.frameTicks
+        cuts: backend.layers.length > 0 ? (backend.layers[0].cuts || []) : []   // the frame's cuts (the Frame row is first; 3D has none)
     }
-    IconButton {  // every row, or only the selected layer's
+    Button {  // every row, or only the selected layer's: offered with a layer picked (or to get back from one row)
         id: compactSwitch
         objectName: "timelineHeight"
-        visible: tl.canCompact
+        visible: tl.canCompact && tl.canPickRows
         anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: ruler.verticalCenter }
-        implicitWidth: 26; implicitHeight: 26; kind: "ghost"
-        glyph: tl.compact ? "⌃" : "⌄"
-        tip: tl.compact ? "Show every layer" : "Show only the selected layer"
+        implicitHeight: 26; kind: "ghost"
+        text: tl.compact ? "All layers" : "Only this layer"
         onClicked: tl.compactAsked(!tl.compact)
     }
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
     Item {   // where `curves` lies
         id: curvesBox
-        visible: tl.canCurves && backend.curves.on
+        visible: tl.curvesOn
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
     }
     Item {   // where `rows` lies, with its fade and scroll bar
         id: rowsBox
-        visible: !tl.canCurves || !backend.curves.on
+        visible: !tl.curvesOn
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
                   topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
         EdgeFade { flick: tl.rows; anchors.fill: parent; color: Theme.panel }   // a half-shown row fades, never a sliver
         VScrollBar { flick: tl.rows; visible: !!tl.rows && needed }
     }
     MouseArea {  // compact: the one row's name is a list of every layer
-        visible: tl.compact && !(tl.canCurves && backend.curves.on) && backend.layers.length > 0
+        visible: tl.compact && !tl.curvesOn && backend.layers.length > 0
         x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense; z: 2
         cursorShape: Qt.PointingHandCursor
         onClicked: { picker.entries = backend.layers.filter(r => r.row === "layer")
@@ -112,8 +115,8 @@ Rectangle {
         Chevron { anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter } }
         Menu { id: picker; y: parent.height; width: tl.labelWidth; onPicked: (id) => backend.select(id) }
     }
-    EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): gone with the first layer
-        visible: backend.layers.length === 0
+    EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): gone with the first layer (2D has none: it never has no rows)
+        visible: tl.emptyText !== "" && backend.layers.length === 0
         x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
         text: tl.emptyText
     }
@@ -146,6 +149,7 @@ Rectangle {
     }
     DragLabel {  // "+6 f · drop" beside the dragged edge or key, on its layer's row (time_snap.py); no row shown: under the ruler
         readonly property real mid: tl.rows && rowsBox.visible && backend.timeSnap.text !== "" ? tl.rows.rowMid(backend.timeSnap.row) : -1
+        text: backend.timeSnap.text
         at: Qt.point(ruler.x + ruler.xOf(backend.timeSnap.t), mid >= 0 ? rowsBox.y + mid : ruler.y + ruler.height + 12)
     }
     SnapLine {   // what a time drag caught (a marker, key, bar end, beat, the playhead), only while snapped (time_snap.py)

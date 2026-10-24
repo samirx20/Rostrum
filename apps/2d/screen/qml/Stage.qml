@@ -12,6 +12,8 @@ import "Mods.js" as Mods
 // drag began = no snapping, Shift = straight); dragging on empty canvas draws a rubber band that selects the layers it
 // touches (boxSelect, not locked ones; Shift+box adds, Ctrl+box picks the deepest pieces). One gesture = one undo step (backend.beginMove / moveBy / endDrag; an animated
 // x / y gets a key at the playhead). Layers outside the frame can still be grabbed.
+// The frame (FrameHandles.qml, frame_drag.py): its name tab or C picks it; picked, a drag inside it moves it, its corners
+// zoom it and the zones outside them turn it; its outline never catches a click.
 // With the Draw tool on, a press draws instead: one stroke = one gesture = one undo step (painter.beginStroke / strokeTo /
 // endStroke). A pen reports its pressure; a mouse is 1. The onion skin lies over the drawing's box. The pointer is the
 // brush ring; Alt + right-drag sizes the brush. What the pen paints on shows its edge dashed. With the Pen tool on,
@@ -211,7 +213,7 @@ Rectangle {
         MouseArea {
             id: canvas
             anchors.fill: parent
-            enabled: !well.drawing && backend.tool !== "camera"
+            enabled: !well.drawing
             preventStealing: true
             property bool moving: false
             property bool band: false
@@ -249,20 +251,19 @@ Rectangle {
             }
             onCanceled: stop()
         }
+        FrameHandles { world: worldFrame; stage: panel }   // the frame: its tab picks it; picked, drag inside / corners / turn zones (frame_drag.py)
         PenOverlay {  // the pen tool and the selected path's points (not while playing: they'd lag)
             anchors.fill: parent
-            visible: !backend.playing && !well.drawing && ["text", "camera", "bone"].concat(backend.create.kinds.map(k => k.kind)).indexOf(backend.tool) < 0   // one input layer per tool
+            visible: !backend.playing && !well.drawing && ["text", "bone"].concat(backend.create.kinds.map(k => k.kind)).indexOf(backend.tool) < 0   // one input layer per tool
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
-        CameraOverlay { anchors.fill: parent; stage: panel }   // C: drag pans the camera, Alt+drag pushes in
         BoneTool { anchors.fill: parent; stage: panel }        // J: draw a rig's bones joint by joint (bone_tool.py)
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
-        MotionPath {    // where the selection (or the camera) travels: dots per frame, key squares, handles (motion_path.py)
+        MotionPath {    // where the selection (or the frame) travels: dots per frame, key squares, handles (motion_path.py)
             anchors.fill: parent
             visible: !backend.playing && !well.drawing && !backend.pen.on
-            interactive: backend.tool === "move" || backend.tool === "camera"
+            interactive: backend.tool === "move"
             fit: view.zoom; ox: view.ox; oy: view.oy
-            compW: panel.info.width || 0; compH: panel.info.height || 0
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
             id: marks
@@ -295,7 +296,7 @@ Rectangle {
                 visible: well.drawing && backend.paintEdge.path !== ""
                 scale: view.zoom; transformOrigin: Item.TopLeft
                 ShapePath {     // dashed: the limit, not a selection
-                    strokeWidth: 1.5 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"
+                    strokeWidth: 1 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"
                     strokeStyle: ShapePath.DashLine; dashPattern: [4, 3]
                     PathSvg { path: backend.paintEdge.path }
                 }

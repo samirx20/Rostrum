@@ -13,6 +13,7 @@ Rectangle {
     property ListView rows
     enabled: !rows.compact           // compact: the one name row is the list of every layer (LayerTimeline.qml)
     readonly property bool isLayer: rowData.row === "layer"
+    readonly property bool isFrame: rowData.frame === true     // the frame: pinned on top, a lock but no eye, never renamed or moved
     readonly property bool selected: rowData.id === backend.selected || isLayer && backend.multi.ids.indexOf(rowData.id) >= 0 && backend.multi.count > 1
     readonly property bool inSelected: !selected && isLayer && backend.multi.ids.indexOf(rowData.id) >= 0   // a key, effect or mask of it is selected
     readonly property int indent: Theme.gap + rowData.depth * 16
@@ -25,7 +26,7 @@ Rectangle {
     }
 
     property bool renaming: false
-    function beginRename() { if (isLayer) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
+    function beginRename() { if (isLayer && !isFrame) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
     Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }
 
@@ -38,7 +39,7 @@ Rectangle {
         enabled: !name.rows.compact      // compact: the row's name is the list of every layer (LayerTimeline.qml)
         onPressed: (m) => { pressY = m.y; dropped = false }
         onPositionChanged: (m) => {
-            if (!pressed || !name.isLayer || !(m.buttons & Qt.LeftButton)) return
+            if (!pressed || !name.isLayer || name.isFrame || !(m.buttons & Qt.LeftButton)) return
             if (!dragging && Math.abs(m.y - pressY) > 6) { dragging = true; name.rows.dragId = name.rowData.id }
             if (dragging) name.rows.dropAt(mapToItem(name.rows.contentItem, m.x, m.y).y)
         }
@@ -83,7 +84,8 @@ Rectangle {
         visible: name.isLayer && !name.renaming
         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         Repeater {
-            model: [{ field: "locked", tip: "Locked: it can't be picked or moved" }, { field: "hidden", tip: "Hidden: not drawn, not exported" }]
+            model: name.isFrame ? [{ field: "locked", tip: "Locked: the frame can't be moved" }]
+                                : [{ field: "locked", tip: "Locked: it can't be picked or moved" }, { field: "hidden", tip: "Hidden: not drawn, not exported" }]
             delegate: Item {
                 id: sw
                 required property var modelData

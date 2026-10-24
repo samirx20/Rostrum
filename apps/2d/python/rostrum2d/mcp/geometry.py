@@ -122,8 +122,9 @@ def on_screen(node: dict, width: float, height: float) -> bool:
     return x1 > 0 and y1 > 0 and x0 < width and y0 < height
 
 
-def problems_showing(node: dict, width: float, height: float) -> list[str]:
-    """Why a layer can't be seen at this moment (empty list = it can)."""
+def problems_showing(node: dict, width: float, height: float, frame: bool = True) -> list[str]:
+    """Why a layer can't be seen at this moment (empty list = it can). `frame` False: in the world, wherever it is
+    (a layer beside the frame is designed there, not lost: the Problems check asks this way)."""
     p, why = node["props"], []
     if node.get("broken"):
         why.append(node["broken"])
@@ -137,7 +138,7 @@ def problems_showing(node: dict, width: float, height: float) -> list[str]:
         why.append("opacity 0")
     if p["scale"] * p["scaleX"] * p["scaleY"] == 0 or node["size"][0] * node["size"][1] == 0:
         why.append("zero size")
-    elif not on_screen(node, width, height):
+    elif frame and not on_screen(node, width, height):
         why.append("outside the frame")
     return why
 

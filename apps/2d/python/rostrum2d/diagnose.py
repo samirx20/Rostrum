@@ -23,7 +23,7 @@ from .layoutbake import uses_layout
 from .seen import unseen
 
 KINDS = ("refused", "missing-font", "missing-file", "outside-project", "broken-link", "missing-marker", "expression",
-         "invisible", "off-canvas", "unused-keys", "missing-render", "stale-render")
+         "invisible", "unused-keys", "missing-render", "stale-render")
 
 
 def _p(kind, item, message, fix=""):
@@ -128,9 +128,8 @@ def _unseen(comp: dict) -> list[dict]:
     out = []
     for lay_id, reasons in unseen(comp).items():
         top = max(reasons, key=reasons.get)
-        kind = "off-canvas" if top == "outside the frame" else "invisible"
-        out.append(_p(kind, lay_id, f"{lay_id} is never seen: {top}" + ("" if len(reasons) == 1 else f" (also: {', '.join(r for r in reasons if r != top)})"),
-                      "Move it into the frame" if kind == "off-canvas" else "Check its opacity, size and start / end times"))
+        out.append(_p("invisible", lay_id, f"{lay_id} is never seen: {top}" + ("" if len(reasons) == 1 else f" (also: {', '.join(r for r in reasons if r != top)})"),
+                      "Check its opacity, size and start / end times"))
     return out
 
 

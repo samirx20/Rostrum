@@ -24,14 +24,15 @@ FRAMES = ["tool draw", "draw 300 300 500 320 700 300", "newframe", "draw 320 320
 LONG_PAINT = 'paint_3 name "Line art for the summer launch film, cleaned up"'     # the third paint layer, renamed
 TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]   # 12 changes (x, y in turn: no merging)
 # What the check leaves out on purpose: the canvas' own handles are small drag targets on the picture by design (a motion
-# path's key squares and handle ends lie where the path goes, so close keys put them on each other).
-IGNORE = ("/MotionPath#",)
+# path's key squares and handle ends lie where the path goes, so close keys put them on each other); a bar's trim ends
+# (16 px, centred on its edges) lie under a key at that end on purpose: the key wins, the rest of the end trims.
+IGNORE = ("/MotionPath#", "/barEnd:")
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
-         "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-turned", "frame-ride", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -143,7 +144,6 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                 "set bgStroke true"]),
         # F14: a hugging group's "Keep top-left fixed" row (appears only while a hug is on)
         ("f14-hug-group", ["--sample"], ["selectmany dot rule", "do layer:group", 'set layout "row"', "set hugWidth true"]),
-        ("f11-camera", ["--sample"], ["add camera"]),              # H49: compact actions, slim key-span bars
         ("gradient-handles", ["--sample"], ["select card", "clickname swatch", "clickname fillType:linear"]),
         # H47: the frame drives the layout (SPEC 2d-design-v2 §1.2): tall and square scenes put the timeline beside it
         *[(f"scene-{w}x{h}", ["--sample"], ["select screen_sample", f"set width {w}", f"set height {h}", "select title"])
@@ -226,15 +226,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-select-strokes", ["--sample"], [*PAINTED, "selectstrokes on"]),
         ("paint-strokes-picked", ["--sample"], [*PAINTED, "lasso 500,200 1000,200 1000,400 500,400"]),
         ("paint-alt-pick", ["--sample"], [*PAINTED, "altpick 750 310"]),
-        ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera", "select drawing_1"]),
-        # H32: a named frame size on Scene settings; the Camera tool (only with a camera) over the canvas; the Effects menu
+        ("set-depth", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "select drawing_1"]),
+        # H32: a named frame size on Scene settings; the Effects menu
         ("scene-size", ["--sample"], ["select screen_sample", "set size vertical"]),
-        ("camera-tool", ["--sample"], ["add camera", "tool camera"]),
         ("effects-menu", with_character(), [*RIGGED, "inspectorscroll 900", "clickname addEffect", "wait 300"]),
         ("rename-name", long(), ["name edit"]),                               # S35: the name clicked, the kit's rename field
         ("show-only-kinds", ["--sample"], ["selectmany title card dot"]),     # S35: mixed kinds, the panel's Show only lines
         # H33: Set depth ▾ › Other depth… open (a typed number); picked strokes turned by their knob (handles on the box)
-        ("depth-typed", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move", "add camera",
+        ("depth-typed", ["--sample"], ["tool draw", "draw 300 300 500 320 700 300", "tool move",
                                        "select drawing_1", "depthtyped 2.5 open"]),
         ("paint-strokes-turned", ["--sample"], [*PAINTED, "lasso 500,200 1300,200 1300,400 500,400",
                                                 "strokeshandle turn 1100 120"]),
@@ -299,7 +298,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                     '"span":"points","x1":0.2,"y1":0.5,"x2":0.6,"y2":0.5,"stops":[{"at":0,'
                                                     '"color":"#ff7a59","opacity":1},{"at":1,"color":"#101820","opacity":1}]}',
                                                     "clickobj swatch"]),
-        ("camera-ride", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "select path_1",
+        ("frame-ride", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "select path_1",
                                        'select frame', 'set ridePath "path_1"']),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
@@ -321,8 +320,12 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                "flyout brush", "clickobj mybrush_2 right"]),
         # H67: the motion path of a selected moving shape (dots per frame, key squares); the camera selected with a move
         ("motion-path", ["--sample"], ["select card", "animate x", "time 2", "set x 1300", "set y 300", "time 1"]),
-        ("motion-path-camera", ["--sample"], ["add camera", "animate x", "animate zoom", "time 2.5", "set x 1200",
-                                              "set y 420", "set zoom 1.4", "time 1"]),
+        # F5: the frame picked (C): handles, its path with a dot per frame, a faint outline at each key, a cut (a hold key)
+        # dashed; the Frame row on top of the timeline with its keys and cut tick; the settings panel and actions row
+        ("frame-picked", ["--sample"], ["frame pick", "animate x", "animate zoom", "time 2.5", "set x 3000", "set y 320",
+                                        "set zoom 1.4", "keybox time 2.5 2.5 frame", "easekey jump", "time 2.6",
+                                        "set x 1500", "set y 1900", "time 1", "frame pick", "zoom 20", "pan -330 -60"]),
+        ("frame-turned", ["--sample"], ["frame pick", "set rotation 12", "set zoom 0.8"]),   # the tab and handles turned
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
     ]

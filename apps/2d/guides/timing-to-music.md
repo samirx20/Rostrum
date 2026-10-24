@@ -58,13 +58,13 @@ Markers made in RostrumSound (for example "drop") are shared with the whole proj
 
 ![The title's end tied to the "drop" marker: a small yellow mark at the tied end, and Ends at marker shows drop in the settings panel](pictures/tied-to-marker.png)
 
-1. Drag the start or the end of a layer's bar towards the marker's line.
+1. Drag the start or the end of a layer's bar towards the marker's line (every layer has a bar; the pointer turns into a two-way arrow over an end). A small label by the pointer names what it would snap to.
 2. Let go when it snaps to the marker. A small yellow mark appears on that end: the end is now **tied** to the marker. The **Timing** group of the settings panel says so too: **Ends at marker** (or **Timed from marker**, for the start) shows the marker's name.
 3. When the marker moves (someone changes the song in RostrumSound, or you drag the flag), the tied end moves with it. You don't have to do anything.
 
 You can tie a whole bar the same way: drag its middle so that its start lands on the marker.
 
-A layer with no keys has no bar to drag. Pick it, open **Timing** in the settings panel (click **+ Timing** if it is folded away) and pick the marker in **Timed from marker** (its start) or **Ends at marker** (its end).
+The same can be done without dragging: pick the layer, open **Timing** in the settings panel (click **+ Timing** if it is folded away) and pick the marker in **Timed from marker** (its start) or **Ends at marker** (its end).
 
 ## 8. Jumping from beat to beat
 

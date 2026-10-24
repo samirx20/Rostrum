@@ -55,8 +55,7 @@ AppShell {
     Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
     Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
     Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
-    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: { if (!backend.cameraTool.available) backend.adder.add("camera")   // the first use adds one
-                                                                    backend.setTool("camera") } }
+    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.frameDrag.pick() }      // picks the frame (frame_drag.py)
     Shortcut { sequence: "H"; enabled: !shell.typing; onActivated: backend.setTool("hand") }       // view tools (Stage.qml)
     Shortcut { sequence: "Z"; enabled: !shell.typing; onActivated: backend.setTool("zoom") }
     Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.addFile() }  // the kit's add_file: the file picker

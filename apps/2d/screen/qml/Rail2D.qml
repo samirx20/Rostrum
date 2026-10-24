@@ -3,7 +3,7 @@ import QtQuick.Dialogs
 import RostrumKit
 
 // 2D's tool rail (design v2 §2.1): the kit's ToolRail (RostrumKit/ToolRail.qml) filled with 2D's tools. Groups from the
-// top: Select, Shapes, Pen, Text, Brush | Add (a file), Library, Sound, Camera | Bones. Hand and Zoom are keys (H, Z), Space-drag and the View menu. A tool group's icon is its
+// top: Select, Shapes, Pen, Text, Brush | Add (a file), Library, Sound | Bones. Hand and Zoom are keys (H, Z), Space-drag and the View menu. A tool group's icon is its
 // last-used tool (pick Star once and the Shapes icon is a star), read from backend.tool, so a key (R, O, H, Z) moves it
 // too. The Shapes flyout lists every shape kind (backend.create.kinds = fields.SHAPE_KINDS), each its own icon
 // (ShapeIcon.qml). Only what can be used now is listed (rule of individuality): a 3D render only for a rendered 3D item
@@ -39,16 +39,12 @@ ToolRail {
             .concat(rail.renders3d.map(e => ({ name: e.label, icon: "render3d", act: "render3d:" + e.item }))) },
         { id: "library", items: [{ name: "Library", icon: "library", job: "library", act: "library", help: "Colours, text styles and logos kept in this project." }] },
         { id: "sound", items: rail.canCue ? [{ name: "Add a sound", icon: "sound", act: "cue", help: "Tie a sound to the selected layer's start." }] : [] },
-        { id: "camera", items: [{ name: "Camera", icon: "camera", job: "camera_tool", tool: "camera",
-            help: backend.cameraTool.available ? "Drag to pan the camera; Alt and drag up to push in, down to pull out."
-                                               : "Add a camera to the scene and move it." }] },
         { sep: true, when: backend.boneTool.available },      // the Bone tool is its own group, set off from Hand / Zoom
         { id: "bone", items: backend.boneTool.available ? [{ name: "Bone", icon: "bone", job: "bone_tool", tool: "bone",
             help: "Click joint after joint (or drag from a joint to the tip) to draw the rig's bones. Esc ends the chain." }] : [] }
     ]
 
     onPicked: (e) => {         // a tool goes on; an act happens now
-        if (e.tool === "camera" && !backend.cameraTool.available) backend.adder.add("camera")   // the first use adds one
         if (e.tool) backend.setTool(e.tool)
         else if (e.act === "file") rail.addFile()
         else if (e.act === "library") backend.library.setOpen(!backend.library.open)

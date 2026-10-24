@@ -31,13 +31,14 @@ From an agent: `value.set target=frame prop=x v=1300 at=4` (a key at 4 s once th
 key. `f.key("x", {2.4: (960, "hold"), 2.5: 3200})` holds the first shot until 2.5 s and jumps there. Key times can sit on
 a shared marker (`"#reveal"`, `"#reveal-0.033"`), so moving the marker moves the cut. Motion blur never crosses a cut.
 
-**On the canvas.** The canvas shows the picture through the frame. Pick the frame (its row is pinned at the top of
-the layers) and you see its moves: its path (its centre, one dot per frame), a faint outline at each of its keys (what
+**On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
+(**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
+outside a corner turns it (see [the-screen.md](the-screen.md) part 2). You also see its moves: its path (its centre, one dot per frame), a faint outline at each of its keys (what
 it will show there; a push in draws smaller outlines), and its keys as squares. Drag a square to move the frame at
-that key (one undo step; it snaps to the picture's edges and centre, **Ctrl** or **Alt** frees it); click a square and drag
-its handles to curve the move. So a push along a curve is two or three keys and a few drags, no typed numbers. The
-faint path and outlines also show while something else is picked; switch them off with **Camera frame** in the
-**Fit · %** menu (a view setting, not saved in the project).
+that key (one undo step; it snaps like any dragged thing, **Ctrl** or **Alt** frees it); click a square and drag
+its handles to curve the move. So a push along a curve is two or three keys and a few drags, no typed numbers. A cut
+shows as a dashed line with no dots. The faint path and outlines also show while something else is picked; switch
+them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
 
 The frame can also ride a path layer beside it: `layer.ride target=frame path=road at=along`, then key `rideAlong` 0 → 1.
 Its centre sits on the path, its own `x` / `y` become an offset, and `turn=true` rolls it with the path's direction
