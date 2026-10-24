@@ -22,7 +22,7 @@ N = V.N
 IS = PL.IS
 
 PAN = dict(lo=-1, hi=1, display="pan")
-TONE_WORDS = {"sub-boost": "Bass boost", "voice-clarity": "Clear voice"}      # the rest read as they are
+TONE_WORDS = {"neutral": "Off", "sub-boost": "Bass boost", "voice-clarity": "Clear voice", "radio": "Old radio"}   # the rest read as they are
 FIELDS = {
     "doc": [
         N("tempo", 20, 400, "Time", "bpm"),
@@ -49,8 +49,9 @@ FIELDS = {
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb.", display="percent"),
-        Param.choice("tone", names.TONES, group="Mix", importance="secondary", labels=TONE_WORDS,
-                     help="Colours the whole track with one filter (muffled, warm, bright, radio …); Neutral leaves it as it is."),
+        Param.choice("tone", names.TONES, group="Mix", importance="secondary", labels=TONE_WORDS, label="Tone filter",
+                     help="One filter over the whole track: muffled (as if behind a wall), warm, bass boost, bright, clear voice, "
+                          "old radio; off leaves it as it is."),
         *PL.EXPRESSION,
     ],
     "note": [
@@ -58,12 +59,12 @@ FIELDS = {
         V.time("at", group="Note"), V.length("dur", tied=True, group="Note", label="Length",
                                            help='Seconds, {"beats": n}, or tied: {"to": "#land"} ends it at a time or marker, '
                                                 '"next" holds it until the next note on the track.'),
-        N("vel", 0, 1, "Note", label="Velocity", display="percent"), N("pan", **PAN, group="Note", imp="secondary"),
+        N("vel", 0, 1, "Note", label="Velocity", display="percent"), N("pan", **PAN, group="Note", imp="deep"),
         *PL.NOTE,
     ],
     "hit": [
         V.drum("drum", group="Hit", help="A drum name or a GM key number."), V.time("at", group="Hit"),
-        N("vel", 0, 1, "Hit", label="Velocity", display="percent"), N("pan", **PAN, group="Hit", imp="secondary"),
+        N("vel", 0, 1, "Hit", label="Velocity", display="percent"), N("pan", **PAN, group="Hit", imp="deep"),
         N("tune", 0.25, 4, "Hit", "×", imp="secondary", help="Pitch ratio (synth kit only)."),
         N("decay", 0.1, 4, "Hit", "×", imp="secondary", help="Factor of the hit's length."),
     ],

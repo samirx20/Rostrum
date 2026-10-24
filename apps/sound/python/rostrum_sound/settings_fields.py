@@ -30,7 +30,7 @@ PARAMS = [
                help="Where you hear the song. Empty: whatever Windows uses as its default output."),
     Param.text("input", group=DEVICE, label="Microphone", control="pick", default="",
                help="What records a voice or an instrument. Empty: Windows' default microphone."),
-    Param.toggle("exclusive", group=DEVICE, importance="secondary", label="Use speakers alone (fastest)", default=False,
+    Param.toggle("exclusive", group=DEVICE, importance="secondary", label="Silence other programs (fastest)", default=False,
                  help="On: RostrumSound alone uses the speakers, for the shortest delay between a key and its sound. "
                       "Other programs go quiet while it plays. Off: it shares them with everything else."),
     Param.choice("buffer", BUFFERS, group=DEVICE, importance="secondary", label="Buffer", default=0,

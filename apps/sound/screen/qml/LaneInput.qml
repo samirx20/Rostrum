@@ -71,7 +71,7 @@ MouseArea {
         hit = u.r.mix ? "" : backend.blockAt(u.r.id, u.t, u.lane, snapPx / bars.perSec)
         if (e.button === Qt.RightButton) {
             mode = ""
-            m.menuAt(hit !== "" ? backend.itemMenu(hit) : backend.atMenu(u.r.mix ? "" : u.r.id, u.t), e.x, e.y)
+            m.menuAt(hit !== "" ? backend.blockMenu(hit, u.t) : backend.atMenu(u.r.mix ? "" : u.r.id, u.t), e.x, e.y)
             return
         }
         var h = handleUnder(e)

@@ -25,7 +25,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import inspect, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
@@ -51,6 +51,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     songChanged = Signal()                  # the ruler's song (length, grid): its own signal, a drag's step rarely moves it
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name
+        self._asked = cleanable.Asked()     # clips whose Cleanup rows were asked for (cleanable.py)
         self._t, self._track = 0.0, ""
         self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
         self._drag = self._grab = None
@@ -168,7 +169,14 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         return inspect.edit_call(self.doc, item_id, param, value)
 
     def on_page(self, item):        # the inspector leaves out what the workspace's own controls show (onpage.py)
-        return onpage.fields(self.workspace.dock, item.get("type", ""))
+        return onpage.fields(self.workspace.dock, item.get("type", "")) | self._asked.left_out(item)
+
+    @Slot()
+    def askClean(self):
+        """Clean up…: the selected clips' Cleanup rows appear (screen state) and the panel scrolls to them."""
+        self._asked.ids.update(i for i in self._picks.ids if self.doc.has(i) and self.doc.item(i)["type"] == "clip")
+        self._refresh()
+        self.cleanWanted.emit()
 
     def _first(self):       # nothing selected at first: the settings panel shows the song (DESIGN.md decision 4)
         return ""

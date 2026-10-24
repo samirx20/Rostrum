@@ -86,7 +86,8 @@ AppShell {
             id: dock
             visible: shell.hasTracks
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            room: parent.height - 160 - Theme.gap        // the arrangement keeps the ruler and two tracks
+            // the arrangement keeps every row (the Master last) up to half the window, at least the ruler and two tracks
+            room: parent.height - Math.max(160, Math.min(arrangement.needs, parent.height / 2)) - Theme.gap
             preferred: shell.width >= 1920 ? 460 : shell.width >= 1646 ? 380 : shell.width >= 1366 ? 320 : 300
         },
         Library {   // a narrow window: floats over the arrangement, closes after use

@@ -3,7 +3,7 @@
 One workspace on one Sound document (apps/sound/DESIGN.md §2), built from the shared GUI kit (`shared/gui-kit/`).
 
 ```
-top bar          RostrumSound · File · song · ⏮ ▶ loop · Record (always, one fixed size: red dot when armed, pulsing and "Stop 3.2 s" while recording, the level a thin bar along its foot; right-click: the take panel) · metronome · bars.beats · time ·
+top bar          RostrumSound · File · song · ⏮ ▶ loop · Record (always, one fixed size: red dot when armed, pulsing and "Stop 3.2 s" while recording, the level a thin bar along its foot; the ▾ beside it, or right-click: the take panel) · metronome · bars.beats · time ·
                  ♩ tempo · beats · key (click: the tempo / key popover) · Loudness against the target (once there is
                  sound; click: the Mixer) · history · + Add · Export (once there is sound) · Ctrl+K · Help
 left             the Sounds panel (L, + Track, + Add): instruments, drum kits, microphone, voices, my sounds; pushes the
@@ -105,7 +105,7 @@ in if asked (its own clicks), plays from the playhead and records; Stop and the 
 in `<project>/media/<track name>-take-<n>.wav` at the engine's `start` (its clock, minus the microphone's delay when
 `rostrum-sound play --calibrate` measured it; `rostrum_sound.record.land_take`).
 
-- **Take panel** (right-click Record while armed, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows
+- **Take panel** (the ▾ beside Record or right-click it, `RecordSetup.qml` / `record_setup.py`; screen state, not an edit). Rows
   show only when usable: **Count-in** (Bars only while on), **Punch in** (the range is dragged on the ruler: drag
   across it, or drag either red edge; a quarter beat grid, Shift free; turning punch on starts a two-bar range at the
   playhead; the engine keeps only the range and the take stops by itself past it; a playhead already past the

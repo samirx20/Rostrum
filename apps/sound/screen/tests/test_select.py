@@ -139,3 +139,26 @@ def test_loop_with_no_range_makes_one_and_clearing_it_ends_the_loop(bridge):
     bridge.toggleLoop()
     bridge.toggleLoop()
     assert not bridge.looping and bridge.timeRange        # off, the range stays
+
+
+def test_loop_button_range_does_not_put_range_actions_before_the_selected_track(bridge):
+    bridge.select("lead")
+    bridge.toggleLoop()
+    assert bridge.looping and bridge.timeRange
+    assert not bridge._facts().on_range                   # the loop's own range: the track's actions stay first
+    bridge.setRange(1.0, 3.0, True)
+    assert bridge._facts().on_range                       # a range a person drew after: it is what they mean
+
+
+def test_split_here_from_the_clip_menu_is_one_undo_step(bridge):
+    doc = bridge.doc
+    doc.run_script("song2.py", run_source(SRC + 'lead.clip("a.wav", at=10, length=4)\n', "song2.py"))
+    clip = next(c["id"] for t in doc.data["tracks"] for c in t.get("clips", []))
+    rows = bridge.blockMenu(clip, 12.0)
+    assert any(r["label"] == "Split here" for r in rows) and any(r["label"] == "Duplicate" for r in rows)
+    before = len(doc.history.changes)
+    assert bridge.runAt(next(r["value"] for r in rows if r["label"] == "Split here"))
+    assert len(doc.history.changes) == before + 1
+    assert len([c for t in doc.data["tracks"] for c in t.get("clips", [])]) == 2
+    bridge.undo()
+    assert len([c for t in doc.data["tracks"] for c in t.get("clips", [])]) == 1

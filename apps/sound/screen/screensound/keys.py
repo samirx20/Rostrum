@@ -29,7 +29,7 @@ WORDS = {
     "frame_back_ten": "Playhead back ten grid steps", "frame_on_ten": "Playhead on ten grid steps",
     "prev_event": "Previous start, end or marker", "next_event": "Next start, end or marker",
 }
-KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=("prev_beat", "next_beat"), words=WORDS)   # Sound is the beat grid: no beat keys of its own
+KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=("prev_beat", "next_beat", "go_in", "go_out", "find_item"), words=WORDS)   # Sound is the beat grid: no beat keys of its own; nothing behind Go in / Go out / Find an item
 
 _NUDGE = {"": "grid", "_big": "bar", "_fine": "fine"}
 ROUTES = {

@@ -19,8 +19,8 @@ Panel {
     }
     property real lastSeek: 0
     title: "Picture"
-    height: Theme.header + Math.round((width - 2 * bodyPad) * 9 / 16) + Theme.gap + Theme.button + bodyPad
-            + (startRow.visible ? Theme.gap + Theme.field : 0)
+    readonly property bool hasVideo: backend.picture !== ""      // no video yet: just "Choose video…", no empty box over the tracks
+    height: Theme.header + well.height + below.height + Theme.gap + bodyPad
     headerRight: [
         NameLabel { anchors.verticalCenter: parent.verticalCenter; visible: backend.pictureChoice !== ""
                     text: backend.pictureName; elide: Text.ElideMiddle
@@ -55,43 +55,41 @@ Panel {
     }
     Rectangle {
         id: well
+        visible: pc.hasVideo
         anchors { left: parent.left; right: parent.right; top: parent.top }
-        height: Math.round(width * 9 / 16); radius: Theme.radiusCtl; color: Theme.sunken; clip: true
+        height: visible ? Math.round(width * 9 / 16) : 0; radius: Theme.radiusCtl; color: Theme.sunken; clip: true
         VideoOutput { id: out; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectFit }
-        Column {
-            visible: backend.picture === "" || mp.error !== MediaPlayer.NoError
-            anchors.centerIn: parent; spacing: Theme.grid; width: parent.width - 2 * Theme.pad
-            Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-                   text: mp.error !== MediaPlayer.NoError ? "Can't show this file: " + mp.errorString : "No video yet"
-                   color: mp.error !== MediaPlayer.NoError ? Theme.danger : Theme.fg2
-                   font.family: uiFont; font.pixelSize: Theme.body }
-            Text { visible: backend.picture === "" && backend.pictureProblem !== ""; width: parent.width
-                   horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; color: Theme.fg4; text: backend.pictureProblem
-                   font.family: uiFont; font.pixelSize: Theme.label }
-        }
+        Text { visible: mp.error !== MediaPlayer.NoError; anchors.centerIn: parent; width: parent.width - 2 * Theme.pad
+               horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; text: "Can't show this file: " + mp.errorString
+               color: Theme.danger; font.family: uiFont; font.pixelSize: Theme.body }
     }
-    Row {
-        anchors { left: parent.left; top: well.bottom; topMargin: Theme.gap }
+    Column {
+        id: below
+        anchors { left: parent.left; right: parent.right; top: well.bottom; topMargin: Theme.gap }
         spacing: Theme.gap
-        Button { text: backend.pictureChoice === "" ? "Choose video…" : "Change…"; kind: backend.pictureChoice === "" ? "primary" : "normal"
-                 onClicked: chooser.open() }
-        Button { id: fromProject; visible: backend.pictureItems.length > 0; text: "From the project…"
-                 onClicked: items.open() }
-        Button { visible: backend.pictureChoice !== ""; text: "Remove"; kind: "ghost"; onClicked: backend.setPicture("") }
-    }
-    Row {   // where the picture starts: the song's start, or a shared marker ("logo lands"): follows the marker
-        id: startRow
-        visible: backend.pictureChoice !== ""
-        anchors { left: parent.left; top: well.bottom; topMargin: Theme.gap + Theme.button + Theme.gap }
-        spacing: Theme.gap; height: Theme.field
-        Text { text: "Starts at"; anchors.verticalCenter: parent.verticalCenter; color: Theme.fg2
-               font.family: uiFont; font.pixelSize: Theme.body }
-        ChoiceField {
-            width: 170
-            options: [{ value: "", label: "Start of the song" }].concat(backend.markers.map(m => ({ value: m.name, label: m.name })))
-            current: backend.pictureMarker
-            onPicked: (v) => backend.setPictureStart(v)
+        Row {
+            spacing: Theme.gap
+            Button { text: backend.pictureChoice === "" ? "Choose video…" : "Change…"; kind: backend.pictureChoice === "" ? "primary" : "normal"
+                     onClicked: chooser.open() }
+            Button { id: fromProject; visible: backend.pictureItems.length > 0; text: "From the project…"
+                     onClicked: items.open() }
+            Button { visible: backend.pictureChoice !== ""; text: "Remove"; kind: "ghost"; onClicked: backend.setPicture("") }
         }
+        Row {   // where the picture starts: the song's start, or a shared marker ("logo lands"): follows the marker
+            id: startRow
+            visible: backend.pictureChoice !== ""
+            spacing: Theme.gap; height: Theme.field
+            Text { text: "Starts at"; anchors.verticalCenter: parent.verticalCenter; color: Theme.fg2
+                   font.family: uiFont; font.pixelSize: Theme.body }
+            ChoiceField {
+                width: 170
+                options: [{ value: "", label: "Start of the song" }].concat(backend.markers.map(m => ({ value: m.name, label: m.name })))
+                current: backend.pictureMarker
+                onPicked: (v) => backend.setPictureStart(v)
+            }
+        }
+        Text { visible: !pc.hasVideo && backend.pictureProblem !== ""; width: parent.width; wrapMode: Text.Wrap
+               color: Theme.fg4; text: backend.pictureProblem; font.family: uiFont; font.pixelSize: Theme.label }
     }
     QQC.Popup {     // the project's 2D items: picking one links its newest render
         id: items

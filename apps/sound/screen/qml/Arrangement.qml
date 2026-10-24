@@ -14,6 +14,12 @@ Rectangle {
     readonly property bool tight: a.width < 860        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
     readonly property alias picture: corner
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
+    // the height every row needs at its smallest (header strip, ruler, tracks, + Track, groups, Master): the dock leaves
+    // the arrangement this much (up to half the window), so the Master row is never cut off by an open dock
+    readonly property real needs: strip.height + timeline.rulerBottom + Theme.grid + Theme.gap
+        + (timeline.rows.length - timeline.mixRows - timeline.groupRows) * 24 + timeline.addH + timeline.mixRows * timeline.mixH
+        + timeline.groupRows * timeline.groupH + Math.max(0, timeline.rows.length - 1) * timeline.rowGap
+        + timeline.openLanes * (timeline.laneH + timeline.laneGap)
     signal addTrack()
     function addFromFile() { fileDialog.open() }
     function openGrid() { gridBtn.clicked() }          // (the scripted `grid-open` step)
