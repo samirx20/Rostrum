@@ -16,7 +16,7 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from rostrum_sound import userlib
 from rostrum_sound.userlib.kinds import OFFERED
 
-from .adder import ENTRIES, Adder, placed_at
+from .adder import ENTRIES, placed_at
 from .auditioner import Auditioner
 from .swap_trial import SwapTrial
 
@@ -54,15 +54,19 @@ class LibraryPanel(QObject):
         self._heard = Auditioner(bridge, self)
         self._heard.changed.connect(self.changed)
         self._heard.failed.connect(self._heard_failed)
-        self._adder, self._tried = Adder(bridge, self), {}      # a sound tried on the selected track (Keep / Revert)
-        bridge.selectedItemsChanged.connect(self._selection_moved)
         self._trial = SwapTrial(bridge)
         bridge.picksChanged.connect(self._picked)       # a clip picked: the rows offer Swap; another pick ends a trial
-        bridge.docChanged.connect(self.changed)
+        bridge.docChanged.connect(self._doc)
         bridge.library_panel = self             # the scripted steps reach the panel from the bridge
         self._indexed.connect(self._done)
         if self._folders:
             self._index(self._folders)
+
+    def _doc(self):
+        """Only a change that adds, removes or renames something moves what the panel shows (its rows name tracks)."""
+        t = self.bridge.touched()
+        if t is None or t.structural:
+            self.changed.emit()
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(str, notify=changed)
@@ -176,44 +180,20 @@ class LibraryPanel(QObject):
     @Slot(str)
     def auditionEntry(self, key):
         """Hear a Library entry (adder key): an instrument plays the selected track's notes, else a short phrase.
-        On a track that plays this kind of sound it is a TRY (DESIGN.md §3.2b): nothing is written to the song (so no
-        history entry), `trying` names the track; Keep (`keep`) is one undo step, Revert / Esc (`revert`) leaves the
-        original exactly as it was."""
+        Hearing only: nothing is written to the song and the selected track's sound never changes (that is the track's
+        own Sound picker; Add makes a new track). Esc, ■ Stop, another pick and closing the Library end it."""
         e = next((x for x in ENTRIES if x["key"] == key), None)
         if e is None:
             return self._say(f'Error: audition: no sound "{key}".')
         b = self.bridge
         track = b._track if getattr(b, "_track", "") else None
-        m = self._adder.match(key)
-        self._tried = {"key": key, "label": e["label"], "track": m["track"], "trackName": m["from"]} if m else {}
         self._heard.start({k: v for k, v in e["fields"].items() if k != "name"}, e["label"], track)
-
-    @Property("QVariantMap", notify=changed)
-    def trying(self):
-        """{key, label, track, trackName} while a sound is tried on the selected track ({} otherwise)."""
-        return self._tried
-
-    @Slot(result=bool)
-    def keep(self):
-        """Keep the sound being tried: the track's sound changes, one undo step (`track.set`), the audition stops."""
-        t = self._tried
-        if not t:
-            self._say("Error: keep: no sound is being tried. Pick one in the Library first.")
-            return False
-        self.revert()
-        return self._adder.swap(t["key"], t["track"])
-
-    @Slot()
-    def revert(self):
-        """Put the original back: the audition stops and the try ends. The song was never changed, so it is exactly as
-        it was (Esc, ■ Stop, another track picked and closing the Library do the same)."""
-        self._tried = {}
-        self._heard.stop()
-        self.changed.emit()
 
     @Slot()
     def stopAudition(self):
-        self.revert()
+        """The audition stops (Esc, ■ Stop, another track picked, closing the Library)."""
+        self._heard.stop()
+        self.changed.emit()
 
     @Property(bool, notify=changed)
     def loop(self):
@@ -225,14 +205,7 @@ class LibraryPanel(QObject):
         self._heard.loop = bool(on)
         self.changed.emit()
 
-    def _selection_moved(self):
-        """Another track picked: the try ends and its own sound is back (nothing was written)."""
-        t = self._adder._selected_track()
-        if self._tried and (t is None or t["id"] != self._tried["track"]):
-            self.revert()
-
     def _heard_failed(self, line):
-        self._tried = {}                                # a sound that could not be played is not being tried
         self._say(line)
 
     @Slot(int)

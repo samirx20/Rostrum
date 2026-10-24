@@ -205,7 +205,7 @@ def arrange(root: dict, tracks: list[dict], open_lanes: dict | None, folded) -> 
 
 
 def track_row(t: dict, i: int, root: dict, open_lanes: dict) -> dict:
-    """A track's row: name, hue, mute / solo, kind, header icon, volume (gain), and its blocks with lanes 0..1 (top to
+    """A track's row: name, hue, mute / solo, kind, header icon, and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll."""
     bl = blocks(t, root)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
@@ -219,7 +219,7 @@ def track_row(t: dict, i: int, root: dict, open_lanes: dict) -> dict:
     pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
     return {"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
             "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
-            "icon": icon_of(t), "canRecord": can_record(t), "volume": float(t.get("volume", 1)),
+            "icon": icon_of(t), "canRecord": can_record(t),
             "autoUsed": lanes.used(t),
             "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in open_lanes else None}
 
@@ -265,6 +265,8 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "s
     bl = blocks(track, root)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]] or [60]
     lo, hi = min(ks) - 4, max(ks) + 4
+    if keep:                       # the keys already shown stay: the first note drawn in them adds no key row
+        lo, hi = min(lo, keep[0]), max(hi, keep[1])
     if hi - lo < 24:
         mid = (lo + hi) // 2
         lo, hi = mid - 12, mid + 12

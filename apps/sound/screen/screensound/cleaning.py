@@ -11,7 +11,6 @@ were being cleaned play their originals (`useCleaned` off, one undo step). Once 
 """
 from __future__ import annotations
 
-import copy
 import threading
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -146,8 +145,7 @@ class CleanedTake(QObject):
         self._steps = {i: [0, 1 + len(cleanup.recipe_of(doc.item(i)))] for i in ids}
         self._status = f"Making the cleaned take{'s' if len(ids) > 1 else ''}…"
         self.changed.emit()
-        snapshot = copy.deepcopy(doc.data)                  # the worker reads a copy: edits go on meanwhile
-        self._job = CleanProcess(snapshot, doc.folder, ids, self._progress.emit)
+        self._job = CleanProcess(doc.data, doc.folder, ids, self._progress.emit)   # the document is never changed in place
         self._thread = threading.Thread(target=lambda job=self._job: self._done.emit(job.run()), daemon=True)
         self._thread.start()
         return True

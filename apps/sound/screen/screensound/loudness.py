@@ -70,8 +70,13 @@ class LoudnessMeter(QObject):
         self._upto: tuple = (-1, None)    # (blocks counted, their integrated loudness): counted again only when it grows
         bridge.renderChanged.connect(self._render)
         bridge.timeChanged.connect(self._tick)
-        bridge.docChanged.connect(self.changed)
+        bridge.docChanged.connect(self._doc)
         self._render()
+
+    def _doc(self):
+        """Only a change that reached the master moves its target, goal or verdict (a track's fader never does)."""
+        if self.bridge.reached([strips.MASTER]):
+            self.changed.emit()
 
     # ---- reads -----------------------------------------------------------------------------------------------
     @Property("QVariantList", notify=changed)
