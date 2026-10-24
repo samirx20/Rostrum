@@ -10,9 +10,14 @@ What makes a GIF small at the same look (measured on the sample: the old one-pal
   move does not change between frames, where an error-spreading dither shimmers and fills every frame with new noise;
 - transparency is one palette slot (alpha < 128): the palette gets 255 colours then.
 Frames wait in a temporary file at the output size (a full-HD GIF never holds its frames in memory).
+- the work on a frame (scaling, then colour matching) runs on a few threads at once, a few frames ahead and always written
+  in order: Pillow and numpy let go of the interpreter lock for it. One thread did a full-HD GIF at about 14 pictures a second.
 """
 from __future__ import annotations
 
+import collections
+import concurrent.futures as cf
+import os
 import sys
 import tempfile
 
@@ -24,7 +29,8 @@ DITHER = 5.0                        # ± levels of the ordered pattern: under a 
 BAYER = np.array([[0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26], [12, 44, 4, 36, 14, 46, 6, 38],
                   [60, 28, 52, 20, 62, 30, 54, 22], [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
                   [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]], np.float32)
-BAYER = (BAYER / 63.0 - 0.5) * 2 * DITHER
+BAYER = np.floor((BAYER / 63.0 - 0.5) * 2 * DITHER).astype(np.int16)      # whole levels: a pixel's level + the pattern, rounded down
+WORKERS, AHEAD = max(1, min(6, (os.cpu_count() or 2) - 1)), 8                # threads, and frames in flight at most
 
 
 def kept_at(i: int, fps: float, out_fps: float) -> bool:
@@ -43,9 +49,22 @@ def delays(keep: list[int], n: int, fps: float) -> list[int]:
 
 def scaled(raw: bytes, w: int, h: int, ow: int, oh: int) -> np.ndarray:
     im = Image.frombuffer("RGBA", (w, h), raw, "raw", "RGBA", 0, 1)
-    if (ow, oh) != (w, h):
+    if (ow * 2, oh * 2) == (w, h):
+        im = im.reduce(2)                       # the half-size box filter, in one fast step
+    elif (ow, oh) != (w, h):
         im = im.resize((ow, oh), Image.Resampling.BOX if ow * 2 <= w else Image.Resampling.LANCZOS)
     return np.asarray(im)
+
+
+def in_order(pool, work, jobs):
+    """`work(*job)` for each job on the pool's threads, results in the jobs' order, at most AHEAD in flight."""
+    flying = collections.deque()
+    for job in jobs:
+        flying.append(pool.submit(work, *job))
+        if len(flying) >= AHEAD:
+            yield flying.popleft().result()
+    while flying:
+        yield flying.popleft().result()
 
 
 def palette_of(frames, count: int, see_through: bool) -> Image.Image:
@@ -68,7 +87,7 @@ def palette_of(frames, count: int, see_through: bool) -> Image.Image:
 def paletted(rgba: np.ndarray, pal: Image.Image, see_through: bool) -> Image.Image:
     h, w = rgba.shape[:2]
     pattern = np.tile(BAYER, (-(-h // 8), -(-w // 8)))[:h, :w, None]
-    rgb = np.clip(rgba[..., :3].astype(np.float32) + pattern, 0, 255).astype(np.uint8)
+    rgb = np.clip(rgba[..., :3].astype(np.int16) + pattern, 0, 255).astype(np.uint8)
     im = Image.fromarray(rgb).quantize(palette=pal, dither=Image.Dither.NONE)
     if see_through:
         idx = np.asarray(im).copy()
@@ -83,18 +102,23 @@ def main(argv: list[str]) -> int:
     w, h = int(argv[1]), int(argv[2])
     fps, ow, oh, ofps = float(argv[3]), int(argv[4]), int(argv[5]), float(argv[6])
     size, stock, seen, see_through, order = ow * oh * 4, tempfile.TemporaryFile(), 0, False, []
-    while True:
-        raw = sys.stdin.buffer.read(w * h * 4)
-        if not raw:
-            break
-        if len(raw) != w * h * 4:
-            raise SystemExit(f"gif_encode: frame {seen} ended after {len(raw)} of {w * h * 4} bytes")
-        if kept_at(seen, fps, ofps):
-            order.append(seen)
-            a = scaled(raw, w, h, ow, oh)
-            see_through = see_through or bool((a[..., 3] < 128).any())
-            stock.write(a.tobytes())
-        seen += 1
+    pool = cf.ThreadPoolExecutor(WORKERS)
+
+    def source():                                        # each kept source frame, as it arrives
+        nonlocal seen
+        while True:
+            raw = sys.stdin.buffer.read(w * h * 4)
+            if not raw:
+                return
+            if len(raw) != w * h * 4:
+                raise SystemExit(f"gif_encode: frame {seen} ended after {len(raw)} of {w * h * 4} bytes")
+            if kept_at(seen, fps, ofps):
+                order.append(seen)
+                yield raw, w, h, ow, oh
+            seen += 1
+    for a in in_order(pool, scaled, source()):
+        see_through = see_through or bool((a[..., 3] < 128).any())
+        stock.write(a.tobytes())
     n = seen
     if not n:
         raise SystemExit("gif_encode: no frames arrived")
@@ -105,10 +129,11 @@ def main(argv: list[str]) -> int:
 
     pal = palette_of(frame, len(order), see_through)
     first = paletted(frame(0), pal, see_through)
-    tail = (paletted(frame(i), pal, see_through) for i in range(1, len(order)))
+    tail = in_order(pool, paletted, ((frame(i), pal, see_through) for i in range(1, len(order))))
     opts = {"transparency": 255, "disposal": 2} if see_through else {}
     first.save(out, "GIF", save_all=True, append_images=tail, duration=[10 * d for d in delays(order, n, fps)], loop=0,
                optimize=False, **opts)
+    pool.shutdown()
     stock.close()
     return 0
 

@@ -12,8 +12,7 @@ ListView {
     property Item ruler
     property int labelWidth: 240
     property bool compact: false        // only the selected layer's row (or the first layer's, when none is selected)
-    readonly property string shownLayer: backend.selectedLayer || (backend.layers.length ? backend.layers[0].id : "")
-    model: compact ? backend.layers.filter(r => r.row === "layer" && r.id === shownLayer) : backend.layers
+    model: compact ? backend.rowsCompact : backend.rowsModel     // list models that change row by row (timeline_rows.py): a row and the key under the pointer live as long as their item
     interactive: !compact
     spacing: 2
     clip: true
@@ -32,8 +31,11 @@ ListView {
     }
     ActionMenu { id: menu; onPicked: (key) => backend.run(key) }
     function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
-        const item = itemAtIndex(model.findIndex(r => r.id === id))
-        return item ? item.y - contentY + item.height / 2 : -1
+        for (let i = 0; i < count; i++) {
+            const item = itemAtIndex(i)
+            if (item && item.modelData.id === id) return item.y - contentY + item.height / 2
+        }
+        return -1
     }
 
     // drag-to-reorder: the dragged row, and where it would land (the row, above | below | into a group)
