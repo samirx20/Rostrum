@@ -22,15 +22,6 @@ def items(folder) -> list[dict]:
     return [{"id": it["id"], "label": it["name"]} for it in project.items(folder, "2d") if _video(it["renders"])]
 
 
-def items_note(folder) -> str:
-    """Why the project's items can't be listed, in plain words ("" when there are some)."""
-    if not folder or not Path(folder).is_dir():
-        return "This song is not in a project folder, so there are no 2D items to pick from."
-    if items(folder):
-        return ""
-    return "No 2D item in the project has a render yet." if project.items(folder, "2d") else "The project has no 2D items yet."
-
-
 def _video(renders: list[dict]) -> str:
     """The newest picture render's video file, or ""."""
     r = next((r for r in renders if r["kind"] == "pictures"), None)

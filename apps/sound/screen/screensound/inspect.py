@@ -13,7 +13,7 @@ from rostrum_gui.edits import field_call
 from rostrum_sound.doc import fields as FD
 from rostrum_sound.doc import effects, musical
 
-from . import timeline, timing
+from . import output_pick, pitch_merge, timeline, timing
 
 
 def _time_kind(item: dict, param: str) -> str:
@@ -31,12 +31,14 @@ def shown(item: dict, root: dict) -> dict:
     out = dict(item)
     for k, v in item.items():
         kind = _time_kind(item, k)
-        if kind and not isinstance(v, (int, float)):
+        if kind and v is not None and not isinstance(v, (int, float)):      # (None: left out, e.g. the song's length)
             out[k] = round(timing.sec(v, root, item["id"]) if kind == "time" else
                            timing.length_sec(v, root, _start(item, root), item), 3)
     if item["type"] == "track" and not item.get("colour"):          # the colour it is drawn in (timeline.hue)
         i = next((n for n, t in enumerate(root.get("tracks", [])) if t["id"] == item["id"]), 0)
         out["colour"] = timeline.hue(item, i)
+    if output_pick.nowhere_else(root, item):                       # only the Master to play to: no Output row
+        out.pop(output_pick.FIELD, None)
     if item["type"] == "clip" and item.get("length") is None:      # plays to the file's end: show how long that is
         out["length"] = round(timeline.clip_span(item, root)[1], 3)
     return out
@@ -58,11 +60,17 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
         elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
             r = {**r, "value": musical.note_name(r["value"])}
         out.append(r)
-    return out
+    return pitch_merge.merge_rows(item, out)
 
 
 def edit_call(doc, item_id, param, value) -> dict:
     item = doc.item(item_id)
+    merged = pitch_merge.edit_args(item, param, value)          # Pitch / Keep speed: one or two fields of the clip
+    if merged is not None:
+        first, *rest = merged
+        call = field_call(doc, item_id, first, merged[first])
+        call["args"].update({k: merged[k] for k in rest})
+        return call
     kind = _time_kind(item, param)
     if kind and isinstance(value, str):             # typed words: bars.beats or seconds, as seconds
         start = _start(item, doc.data)
@@ -78,7 +86,7 @@ def edit_call(doc, item_id, param, value) -> dict:
 
 KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",
               "marker": "Marker", "track": "Track", "bus": "Group", "group": "Group", "line": "Line", "doc": "Song",
-              "effect": "Effect", "lane": "Automation", "send": "Send", "duck": "Duck", "note": "Note", "hit": "Hit",
+              "effect": "Effect", "lane": "Automation", "send": "Send", "duck": "Dip", "note": "Note", "hit": "Hit",
               "clip": "Clip", "master": "Master"}
 EFFECT_WORDS = effects.WORDS
 ONLY_ONE = ("master", "doc")                   # one per song: never called by its id

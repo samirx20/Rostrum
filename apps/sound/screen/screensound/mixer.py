@@ -33,6 +33,7 @@ class MixPage(QObject):
         self._master: dict = {}
         self._live: dict = {}
         self._peaks: dict = {}
+        self._seen: dict = {}            # id -> the item each strip was made from (a drag's step makes only changed ones)
         bridge.transport.player.levels.connect(self._levels)
         self._plugins = PluginHub(bridge, playback.open_engine, self)
         self._ducks, self._loudness = ducks.DuckHub(bridge, self), LoudnessMeter(bridge, self)
@@ -42,8 +43,8 @@ class MixPage(QObject):
         bridge.exporter, bridge.problems = self._export, self._problems   # the kit's sheet, chips and steps (EXPORT.md)
         self._refresh()
         self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
-        for sig in (bridge.docChanged, bridge.docStepped):     # the strips follow a fader drag live
-            sig.connect(self._refresh)
+        bridge.docChanged.connect(self._refresh)
+        bridge.docStepped.connect(self._stepped)               # the strips follow a fader drag live
         bridge.renderChanged.connect(self._refresh)
 
     def close(self):
@@ -144,19 +145,37 @@ class MixPage(QObject):
         return self.bridge._guard(lambda: self.bridge._apply([call], label))
 
     def _bus_items(self):
-        return [b for b in self.doc.items() if b["type"] == "bus"]
+        return list(self.doc.data.get("buses", []))
 
-    def _refresh(self):
-        render = dict(self.bridge.lastRender or {})
+    def _refresh(self, only=None):
+        """Make the strips again. `only` (a set of ids): a drag's step, only those strips; the rest keep theirs."""
+        render, root = dict(self.bridge.lastRender or {}), self.doc.data
         label = self.bridge.label_of
-        buses, vendor = self._bus_items(), self._plugins.vendor_of
-        tracks = [t for t in self.doc.items() if t["type"] == "track"]
-        self._tracks.update([strips.strip(t, label(t), strips.meter_of(render, t["id"]),
-                                          {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)}, vendor,
-                                          timeline.hue(t, i))
-                             for i, t in enumerate(tracks)])
-        self._buses.update([strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
-                            for b in buses])
+        buses, vendor, tracks = self._bus_items(), self._plugins.vendor_of, list(root.get("tracks", []))
         m = self.doc.item(strips.MASTER)
-        self._master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
-        self.masterChanged.emit()
+        self._seen = {i["id"]: i for i in [*tracks, *buses, m]}
+        old = {r["id"]: r for r in [*self._tracks.rows, *self._buses.rows]} if only is not None else {}
+
+        def made(i, t):                          # a strip the step did not change: as it is
+            return old.get(t["id"]) if only is not None and t["id"] not in only else None
+        self._tracks.update([made(i, t) or strips.strip(t, label(t), strips.meter_of(render, t["id"]),
+                                                         {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)},
+                                                         vendor, timeline.hue(t, i))
+                             for i, t in enumerate(tracks)])
+        self._buses.update([made(i, b) or strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
+                            for i, b in enumerate(buses)])
+        master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
+        if master != self._master:                # the Master strip reads a map: only news re-runs its bindings
+            self._master = master
+            self.masterChanged.emit()
+
+    def _stepped(self):
+        """A drag's step (a fader, a pan, a knob): only the strips whose item it changed are made again (the document
+        is never changed in place: an untouched item is the same object). Strips that came or went: all again."""
+        root = self.doc.data
+        now = [*root.get("tracks", []), *root.get("buses", []), self.doc.item(strips.MASTER)]
+        if [i["id"] for i in now] != list(self._seen):
+            return self._refresh()
+        changed = {i["id"] for i in now if self._seen[i["id"]] is not i}
+        if changed:
+            self._refresh(changed)

@@ -22,10 +22,12 @@ N = V.N
 IS = PL.IS
 
 PAN = dict(lo=-1, hi=1, display="pan")
+TONE_WORDS = {"sub-boost": "Bass boost", "voice-clarity": "Clear voice"}      # the rest read as they are
 FIELDS = {
     "doc": [
         N("tempo", 20, 400, "Time", "bpm"),
-        V.time("length", group="Time", help="How long the mix is (a time); left out = the last sound + 2 s."),
+        V.time("length", group="Time", nullable=True,
+               help="How long the mix is (a time); left out or null = the last sound + 2 s."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         Param.choice("beatUnit", [2, 4, 8, 16], group="Time", importance="secondary", label="Beat unit",
                      help="What one beat of the time signature is (its bottom number): 4 quarters, 8 eighths (6/8)."),
@@ -47,7 +49,8 @@ FIELDS = {
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb.", display="percent"),
-        Param.choice("tone", names.TONES, group="Mix", importance="secondary"),
+        Param.choice("tone", names.TONES, group="Mix", importance="secondary", labels=TONE_WORDS,
+                     help="Colours the whole track with one filter (muffled, warm, bright, radio …); Neutral leaves it as it is."),
         *PL.EXPRESSION,
     ],
     "note": [
@@ -70,8 +73,8 @@ FIELDS = {
                    filters=["Sound files (*.wav *.flac *.mp3 *.ogg *.aif *.aiff)"]), V.time("at", group="Clip"),
         N("in", 0, None, "Clip", "s", label="Starts from"),
         V.length("length", group="Clip", help="How much of the file plays; left out = to its end."),
-        V.volume("volume", "Clip"), N("pitch", -24, 24, "Clip", "semitones", "secondary", label="Pitch and speed", help="Tape-style: pitch and speed change together."),
-        N("shift", -24, 24, "Clip", "semitones", "secondary", label="Pitch only", help="Pitch shift keeping the length."),
+        V.volume("volume", "Clip"), N("pitch", -24, 24, "Clip", "semitones", "secondary", label="Pitch and speed", help="Tape-style: pitch and speed change together (the screen's Pitch with Keep speed off)."),
+        N("shift", -24, 24, "Clip", "semitones", "secondary", label="Pitch only", help="Pitch shift keeping the length (the screen's Pitch with Keep speed on)."),
         N("stretch", 0.25, 4, "Clip", "×", "secondary", default=1, help="Length factor keeping the pitch (2 = twice as long); the clip lasts length × stretch."),
         Param.text("group", group="Clip", importance="deep", label="Layer name",
                    help="Clips of one track with the same layer name are one layered sound: moving or re-levelling one moves them all (clip.set_one changes just one). Shown once clips are layered together (Ctrl+G); an agent sets it with clip.set.",

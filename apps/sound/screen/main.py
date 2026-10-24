@@ -94,8 +94,10 @@ class Screen:
         self.settings = SettingsPage()
 
     def show(self, doc):
-        """Open `doc` in a new window; the old window goes first, then the old song's bridge and parts are closed and
-        freed (the kit's stop and free: nothing of a closed song stays alive or keeps listening)."""
+        """Show `doc`. The first song makes the window; another (New, Open) keeps it and hands its bindings the new
+        song's bridge and parts (the context properties), then closes and frees the old ones on the next turn of the
+        loop: making the whole window again cost ~0.7 s of a New. The old parts go after the swap, so no binding
+        reads a freed object (the kit's stop / free order), and never under the click that asked (H43)."""
         name = title(doc.folder, doc.item_id) if doc.folder else self.unnamed
         bridge = SoundBridge(doc, name)            # live when the song has a folder
         mixer, recorder, side = MixPage(bridge), Recording(bridge), EditorSide(bridge)
@@ -105,12 +107,17 @@ class Screen:
                    "adder": Adder(bridge), "songPanel": SongPanel(bridge), "editorSide": side, "fileIn": FileIn(bridge),
                    "soundLibrary": library, "guides": GUIDES}
         self.ctx_adder, self.ctx_file_in = context["adder"], context["fileIn"]
-        old = (self.engine, self.win, self.parts)
-        _, self.engine, self.win = start(MAIN_QML, context, self.size)
+        old = self.parts
+        if self.engine is None:
+            _, self.engine, self.win = start(MAIN_QML, context, self.size)
+        else:
+            ctx = self.engine.rootContext()
+            for k, v in context.items():
+                ctx.setContextProperty(k, v)
         self.parts = {"bridge": bridge, "mixer": mixer, "recorder": recorder, "keys": keys, "side": side,
                       "library": library, "context": context}   # every object QML reads lives as long as the window
-        if old[0] is not None:
-            stop(old[0], old[1], then=lambda: self._close(old[2]))
+        if old is not None:
+            QTimer.singleShot(0, lambda: self._close(old))
 
     @staticmethod
     def _close(parts):

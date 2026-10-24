@@ -4,7 +4,7 @@ import RostrumKit
 // The settings panel while nothing is selected: the song, titled "Song" (its name is the top bar's tab). Only the
 // song's CHANGES are listed (SongList.qml: tempo, time signature and key changes, sections, markers; "+" adds one at
 // the playhead); the first tempo, time signature and key are edited in the top bar only. Then the song's own
-// settings: its length (the rest behind More). The Song rows are the kit's InspectorRow on `songPanel`
+// settings: its length, a picker (the rest behind More). The Song rows are the kit's InspectorRow on `songPanel`
 // (song_panel.py: the `doc.set` fields); each change is one undo step.
 Panel {
     id: p
@@ -25,6 +25,14 @@ Panel {
                          onClicked: songPanel.makeMain() }
             }
             SongList { width: parent.width }      // ends on the "Song" heading for the rows below
+            Item {   // the song's length: one picker (Until the last sound, or a number of bars)
+                width: parent.width; height: Theme.row + Theme.gap
+                Text { id: lengthLabel; anchors.verticalCenter: lengthField.verticalCenter; text: "Length"; color: Theme.fg2
+                       font.family: uiFont; font.pixelSize: Theme.body }
+                ChoiceField { id: lengthField; anchors { left: parent.left; leftMargin: Theme.labelColumnFor(parent.width); bottom: parent.bottom }
+                              width: Theme.fieldFor(parent.width); options: songPanel.lengthChoices
+                              current: songPanel.lengthChoice; onPicked: (v) => songPanel.setLength(v) }
+            }
             Repeater { model: songPanel.rows; delegate: InspectorRow { bridge: songPanel } }
         }
     }

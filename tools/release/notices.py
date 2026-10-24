@@ -98,6 +98,27 @@ def distributions(site: Path):
             yield info, email.parser.Parser().parsestr(mf.read_text(encoding="utf-8", errors="replace"), headersonly=True)
 
 
+def closure(site_packages: list[str], roots: dict[str, list[str]]) -> set[str]:
+    """The distributions an app needs, found from the packages it names (`roots`: name -> extras to include) by what
+    each one requires (Requires-Dist, an `extra ==` marker only when that extra is asked for). A development venv holds
+    every app's packages; this is what keeps the list to the one app. A package that is not installed is skipped."""
+    metas = {norm(m["Name"]): m for site in site_packages for _, m in distributions(Path(site))}
+    need, todo = {}, [(norm(n), set(e)) for n, e in roots.items()]
+    while todo:
+        name, extras = todo.pop()
+        if name not in metas or extras <= need.get(name, set()) and name in need:
+            continue
+        need[name] = need.get(name, set()) | extras
+        for req in metas[name].get_all("Requires-Dist") or []:
+            spec, _, marker = req.partition(";")
+            wanted = re.findall(r"extra\s*==\s*['\"]([^'\"]+)['\"]", marker)
+            if wanted and not set(map(norm, wanted)) & {norm(e) for e in need[name]}:
+                continue
+            m = re.match(r"\s*([A-Za-z0-9_.-]+)\s*(?:\[([^\]]*)\])?", spec)
+            todo.append((norm(m.group(1)), {x.strip() for x in (m.group(2) or "").split(",") if x.strip()}))
+    return set(need)
+
+
 def engine_item(md: Path, app: str) -> tuple[dict, list[str]]:
     crates = []
     for line in md.read_text(encoding="utf-8").splitlines():
@@ -117,8 +138,12 @@ def build(a) -> int:
     rows, items, texts, warnings, missing = parse_rows(attr), [], [], [], []
     repo_licence = (attr.parent / "LICENSE").read_text(encoding="utf-8").strip() if (attr.parent / "LICENSE").is_file() else ""
     own, engine_loaded = [], False
+    roots = getattr(a, "roots", None)           # one app out of a venv that holds several: only what it needs
+    keep = closure(a.site_packages, roots) if roots else None
     for info, meta in (d for site in a.site_packages for d in distributions(Path(site))):
         name, version = meta["Name"], meta["Version"] or ""
+        if keep is not None and norm(name) not in keep:
+            continue
         if norm(name) in OWN:
             own.append(name)
             continue
@@ -154,6 +179,7 @@ def build(a) -> int:
                            "source": plain(r["source"]), "missing_row": False}, []))
     bad = []
     for item, _ in items:
+        item.update({k: item[k].replace("`", "") for k in ("name", "version", "licence", "asks")})   # words, never markdown
         if GPL.search(NOT.sub("", item["licence"])):
             bad.append(f'{item["name"]} ({item["licence"]})')
         if re.search(r"\bL?GPL", item["licence"]) and re.search(r"LGPL", item["licence"]):

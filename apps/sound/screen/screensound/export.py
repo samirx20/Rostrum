@@ -54,6 +54,7 @@ def option(c: dict) -> dict:
 
 
 class RenderExport(ExportSheet):
+    CHOICES_PICKER = True                             # What for is one picker (Streaming … MIDI file), the numbers under each name
     own = Signal()                                    # = changed, for this class's own properties
 
     def __init__(self, bridge, loudness=None, open_engine=playback.open_engine, parent=None):
@@ -86,10 +87,18 @@ class RenderExport(ExportSheet):
             self.changed.emit()
 
     # ---- the kit's questions --------------------------------------------------------------------------------
+    def short_where(self, where):
+        """The folder as its last two names ("song / v001"): the whole path shows on hover."""
+        return " / ".join(Path(where).parts[-2:]) if where and Path(where).is_absolute() else where
+
     def choices_list(self):
-        return [*({"value": c["id"], "label": c["label"], "tip": c["detail"].replace("-", "−")} for c in delivery.choices()),
-                {"value": MIDI, "label": "MIDI file", "tip": "Notes, sustain, expression, bend, tempo and markers for "
-                                                             "another music app; no sound"}]
+        """The picker's options. While the master matches no target the first one says so ("As the mix plays now"):
+        it is how the field reads then, and it goes as soon as a target is picked."""
+        asis = [{"value": "", "label": "As the mix plays now", "detail": "No loudness target"}]
+        return [*(asis if self._choice == "" else []),
+                *({"value": c["id"], "label": c["label"], "detail": c["detail"].replace("-", "−")} for c in delivery.choices()),
+                {"value": MIDI, "label": "MIDI file", "detail": "Notes, sustain, expression, bend, tempo and markers for "
+                                                                "another music app; no sound"}]
 
     def chose(self):
         if self._choice == MIDI:
@@ -306,6 +315,13 @@ class RenderExport(ExportSheet):
         if self._choice in ("", MIDI):              # no target chosen: nothing to judge against ("No target chosen" says so)
             return {}
         return delivery.verdict(m, self._measured(), fields) if t.get("shown") else {}
+
+    @Property(str, notify=own)
+    def loudnessSaid(self):
+        """What the chosen target did to the song's loudness, in words ("" for none): a target is the master's own
+        setting (one undo step), so the sheet says so instead of changing the mix quietly."""
+        m = self.bridge.doc.item("master")
+        return delivery.said(m) if self._choice not in ("", MIDI) else ""
 
     @Property("QVariantList", notify=own)
     def more(self):

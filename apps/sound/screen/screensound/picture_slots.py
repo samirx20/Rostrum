@@ -48,11 +48,6 @@ class PictureSlots:
         return picture.items(self.doc.folder)
 
     @Property(str, notify=S.timelineChanged)
-    def pictureItemsNote(self):
-        """Why there are no project items to pick ("" when there are some)."""
-        return picture.items_note(self.doc.folder)
-
-    @Property(str, notify=S.timelineChanged)
     def pictureUrl(self):
         return picture.url(self.picture)
 

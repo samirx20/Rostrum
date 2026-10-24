@@ -87,3 +87,14 @@ def test_plus_effect_adds_one_step_on_a_track_and_the_master(bridge):
         assert len(doc.history.changes) == before + 1
         assert doc.item(owner)["effects"][-1]["effect"] == "delay"
         assert bridge.selected == doc.item(owner)["effects"][-1]["id"]
+
+
+def test_song_length_picker_sets_bars_and_goes_back_to_the_last_sound(bridge):
+    """The Length picker: N bars is written in beats (it follows the tempo), "" puts it back to left out."""
+    from screensound.song_panel import SongPanel
+    panel, doc = SongPanel(bridge), bridge.doc
+    assert panel.lengthChoice == "" and panel.lengthChoices[0]["label"] == "Until the last sound"
+    panel.setLength("8")
+    assert doc.data["length"] == {"beat": 32.0} and panel.lengthChoice == "8"
+    panel.setLength("")
+    assert doc.data["length"] is None and panel.lengthChoice == ""

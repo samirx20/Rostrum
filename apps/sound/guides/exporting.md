@@ -7,15 +7,15 @@ For a person using the RostrumSound app: turn your song into sound files you can
 - **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound.
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
   closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for**, the file type, **More**, and the folder with its file name just above **Export**.
-  The chosen target is marked with a check and a bar. A long folder path is shortened in the middle (the whole path on hover).
+  The chosen target shows in the picker. The folder shows as its last two names ("song / v001"); the whole path is on hover.
 - **Ctrl+Shift+E** exports again with the last settings, without opening the sheet.
 
 ## 1. What for
 
-The file types in the list show their short name; open the list to read what each one means. **For the Editor** is a row like the others and stays marked while the choices still match it. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
+What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a row of its own under it and stays marked while the choices still match it. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
 
 Pick where it is going: **Streaming**, **Apple Music**, **Broadcast** (EBU R128), **US TV** (ATSC A/85) or
-**Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo).
+**Podcast**. Each choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming"): the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
 
 The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum hits, sustain pedal, expression and
 pitch bend, tempo map, time signature, keys, markers and sections as a `.mid` for another music app. The sound
@@ -24,11 +24,11 @@ song is written. It lands in the project's `renders/<song>/midi/` folder (Browse
 and anything MIDI can't hold is listed when it is done. Agents make the same file with `render_midi`.
 
 Under the choices a line checks the sound that plays now against that target. With a range chosen it reads that range alone (its loudness and loudest peak), because that is the file you get:
-- "✓ Pass: loudness −14.2 LUFS, loudest peak −1.3 dBTP" (green), or
-- "Miss: 2.1 LU too quiet …" (amber).
+- "✓ Right for the target: loudness −14.2, loudest peak −1.3 dB" (green), or
+- "Misses the target: 2.1 dB too quiet …" (amber).
 
-When the master's numbers match none of the choices the list says "No target chosen" and the check line is not shown:
-there is no target to pass or miss until you pick one.
+When the master's numbers match none of the choices the picker reads "As the mix plays now" and the check line is not shown:
+there is no target to meet or miss until you pick one.
 
 The top bar's **Loudness** chip shows the same: the song's loudness, the target, and a green dot within 1 of it
 (amber outside). Click the chip to open the Mixer.

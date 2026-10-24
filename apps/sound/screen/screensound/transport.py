@@ -2,6 +2,10 @@
 newest render goes to the engine's live transport (live_transport.py: the first one waits for the first play, later
 ones are loaded while it plays on), and the playhead follows the speaker's position the engine reports.
 
+Nothing renders while a drag is open (`held`): a draw-click followed by a drag on its length, or the next drag
+right after a release, never shares the machine with a render; the drag's change renders once, when it lands. The
+engine itself runs below the screen's priority (playback.py), so a render that is running keeps the screen at 60 fps.
+
 Play waits for a render that is on its way (never plays a stale one silently). A failed render is loud: `failed`
 carries the error, the state line says so, and only then is the last good render played, saying that it is. When the
 engine's player cannot open (no sound output) or dies, that is loud too and the playhead runs on a clock.
@@ -24,9 +28,9 @@ class Transport(QObject):
     failed = Signal(str)
     said = Signal(str)             # a plain one-line notice for the status (not an error)
 
-    def __init__(self, schedule_fn, length_fn, parent=None):
+    def __init__(self, schedule_fn, length_fn, parent=None, held=lambda: False):
         super().__init__(parent)
-        self._schedule, self._length = schedule_fn, length_fn
+        self._schedule, self._length, self._held = schedule_fn, length_fn, held
         self.last: dict = {}
         self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
         self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
@@ -55,6 +59,9 @@ class Transport(QObject):
 
     def render(self):
         self.stale = True
+        if self._held():                       # a drag is open: its release asks again (changed); wait till then
+            self._debounce.start()
+            return
         self._set_state("Rendering…")
         try:
             self.renderer.request(self._schedule())
@@ -120,7 +127,7 @@ class Transport(QObject):
 
     def _ended(self, t):
         self._tick.stop()
-        self.moved.emit(min(t, self.end()))     # the player says the length of the render it was opened with; the newest wins
+        self.moved.emit(min(t, self.end()))     # the player's end line says the newest loaded render's length (play.rs)
         self.playingChanged.emit()
 
     def _advance(self):

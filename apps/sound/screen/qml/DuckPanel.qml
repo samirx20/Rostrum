@@ -19,7 +19,7 @@ Column {
     }
     Text {
         width: parent.width; elide: Text.ElideRight
-        text: "Duck on " + (d.panel.trackName || ""); color: Theme.fg; font.family: uiFont
+        text: "Dips: " + (d.panel.trackName || ""); color: Theme.fg; font.family: uiFont
         font.pixelSize: Theme.title; font.weight: Font.DemiBold
     }
     Text { text: "Dips while these sound"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
@@ -44,5 +44,5 @@ Column {
         width: parent.width
         Repeater { model: mixer.ducks.controls; delegate: InspectorRow { bridge: proxy } }
     }
-    Button { text: "Delete duck"; kind: "ghost"; onClicked: mixer.ducks.remove() }
+    Button { text: "Stop dipping"; kind: "ghost"; onClicked: mixer.ducks.remove() }
 }

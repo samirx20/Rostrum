@@ -110,7 +110,7 @@ The **Colour** row shows the colour the track is drawn in.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
   microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
-  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane.
+  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting).
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,
   amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by
@@ -126,8 +126,8 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   lists. Nothing has to be selected first.
 - With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
-  and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** ("until the
-  last sound" unless you set one: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
+  and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the
+  last sound**, the default, or a number of bars: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
   room to write in) and **More**. Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
   playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
   signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).

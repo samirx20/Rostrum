@@ -1,8 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for list is the delivery targets,
-// screensound/export.py): the live check of the sound that plays now against the target (pass / miss), the file type,
+// Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for picker lists the delivery targets,
+// screensound/export.py; picking one sets the master's loudness and the sheet says so): the live check of the sound that plays now against the target (pass / miss), the file type,
 // stems, and trimming the silent end; then "+ Another version" rows (each its own target,
 // file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
 // A delivery preset ("For the Editor", presets.py) is one button that sets file, quality, trimming, stems and markers; it
@@ -69,10 +69,9 @@ Column {
         color: root.job.check && root.job.check.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
     }
-    Text {   // no target chosen (the master's numbers match none): said, so the list above is not read as unanswered
-        width: root.width; wrapMode: Text.WordWrap; visible: mixer.export.choice === ""
-        text: "No target chosen: the mix is exported as it plays now."
-        color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+    Text {   // a target is the master's own setting: when picking one set the loudness, it says so (never a quiet change)
+        width: root.width; wrapMode: Text.WordWrap; visible: root.job.loudnessSaid !== ""
+        text: root.job.loudnessSaid; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
     }
     Field {
         label: "File"

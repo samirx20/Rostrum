@@ -77,7 +77,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     }
     // Set-up commands, applied before the first block.
     let mut armed = protocol::setup(args, &ctx, calibrate)?;
-    let seconds = mix.seconds(mix_rate);
+    let mut seconds = mix.seconds(mix_rate);     // the render playing now: a load replaces it (the end says the newest)
     // A plugin instrument: its session here on the main thread (plugins/live.rs), activated once the stream is open.
     let mut plugin = spec.as_ref().and_then(|s| s.plugin.as_ref()).map(crate::plugins::live::LivePlugin::open).transpose()?;
     if let (Some(s), Some(p)) = (spec.as_mut(), plugin.as_ref()) {
@@ -140,8 +140,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     println!("{}", serde_json::json!({ "error": "hear: no microphone is open (start play with --mic <takes folder>)" }));
                 }
             }
-            Ok(Msg::Load(c, levels)) => {
+            Ok(Msg::Load(c, levels, s)) => {
                 meters = Meters::new(levels);
+                seconds = s;
                 let _ = ctx.send(c);
             }
             Ok(Msg::Cmd(c)) => {

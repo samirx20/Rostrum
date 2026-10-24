@@ -185,29 +185,43 @@ def can_record(track: dict) -> bool:
 
 
 def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list[dict]:
-    """One row per track for the arrangement: name, hue, mute / solo, kind, header icon, volume (gain), and its blocks with lanes 0..1 (top to
-    bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll.
-    `open_lanes` (track id -> (item id, lane)) adds `auto`: the automation lane drawn under that track's row.
-    The buses and the master follow as compact rows (`mix`: true) that hold only their automation lanes; a bus that
-    tracks play into is a group header above them instead (groups.py), its tracks folded away when `folded` has it."""
-    out = []
-    for i, t in enumerate(root.get("tracks", [])):
-        bl = blocks(t, root)
-        ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
-        lo, hi = (min(ks), max(ks)) if ks else (60, 60)
-        drums = drums_of(t)
-        for b in bl:
-            if b["type"] == "note":
-                b["lanes"] = [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
-            elif b["type"] == "hit":
-                b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
-        pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
-        out.append({"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
-                    "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
-                    "icon": icon_of(t), "canRecord": can_record(t), "volume": float(t.get("volume", 1)),
-                    "autoUsed": lanes.used(t),
-                    "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in (open_lanes or {}) else None})
-    return groups.arrange(root, out, lanes.mix_rows(root, open_lanes or {}), folded)
+    """The arrangement's rows: one per track (`track_row`), then the buses and the master as compact rows (`mix`:
+    true) that hold only their automation lanes; a bus that tracks play into is a group header above them instead
+    (groups.py), its tracks folded away when `folded` has it. `open_lanes` (track id -> (item id, lane)) adds `auto`:
+    the automation lane drawn under that track's row."""
+    return arrange(root, track_rows(root, open_lanes), open_lanes, folded)
+
+
+def track_rows(root: dict, open_lanes: dict | None = None, made: dict | None = None) -> list[dict]:
+    """Every track's row in song order. `made` (track id -> row): rows still current, taken as they are (a drag's
+    step makes again only the tracks it changed, stepped.py)."""
+    made, open_lanes = made or {}, open_lanes or {}
+    return [made.get(t["id"]) or track_row(t, i, root, open_lanes) for i, t in enumerate(root.get("tracks", []))]
+
+
+def arrange(root: dict, tracks: list[dict], open_lanes: dict | None, folded) -> list[dict]:
+    """The track rows in drawing order with the group headers and the compact mix rows (made again: they are few)."""
+    return groups.arrange(root, tracks, lanes.mix_rows(root, open_lanes or {}), folded)
+
+
+def track_row(t: dict, i: int, root: dict, open_lanes: dict) -> dict:
+    """A track's row: name, hue, mute / solo, kind, header icon, volume (gain), and its blocks with lanes 0..1 (top to
+    bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll."""
+    bl = blocks(t, root)
+    ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
+    lo, hi = (min(ks), max(ks)) if ks else (60, 60)
+    drums = drums_of(t)
+    for b in bl:
+        if b["type"] == "note":
+            b["lanes"] = [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
+        elif b["type"] == "hit":
+            b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
+    pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
+    return {"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
+            "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
+            "icon": icon_of(t), "canRecord": can_record(t), "volume": float(t.get("volume", 1)),
+            "autoUsed": lanes.used(t),
+            "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in open_lanes else None}
 
 
 def markers(root: dict) -> list[dict]:
@@ -223,11 +237,14 @@ EMPTY_BARS = 8              # a song always has room for at least this many bars
 SPARE_BARS = 2              # and, once it has sound, this many empty bars after the last sound
 
 
-def song(root: dict) -> dict:
+def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None) -> dict:
     """The grid and length: what the ruler draws. Without a set length: room to write: the last sound rounded up
-    to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s)."""
-    ends = [b["t"] + b["dur"] for t in root.get("tracks", []) for b in blocks(t, root)]
-    ends += [m["t"] for m in markers(root)] + [s["end"] for s in music_map.sections(root)]
+    to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s).
+    `made`: the track rows already made (track_rows: their blocks are these; nothing is made twice); `marks`: the
+    markers already read (`markers`: they read the project's shared markers)."""
+    every = [r["blocks"] for r in made] if made is not None else [blocks(t, root) for t in root.get("tracks", [])]
+    ends = [b["t"] + b["dur"] for bl in every for b in bl]
+    ends += [m["t"] for m in (markers(root) if marks is None else marks)] + [s["end"] for s in music_map.sections(root)]
     bar = meter.start_bar(root) * timing.spb(root)
     if root.get("length") is not None:
         length = timing.sec(root["length"], root)

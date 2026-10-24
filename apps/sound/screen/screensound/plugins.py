@@ -100,8 +100,7 @@ class PluginHub(QObject):
         return self.scanning
 
     def _choices(self, kind):
-        return [{"id": self._key(p), "label": f"{p.get('name') or p['id']}  ·  {p['format'].upper()}"}
-                for p in self.catalog if p.get("kind") == kind]
+        return plugin_rows.one_each(self.catalog, kind, self._key)
 
     @staticmethod
     def _key(p):

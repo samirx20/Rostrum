@@ -75,7 +75,7 @@ Rectangle {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     height: 20; selected: sendsPop.opened
                     text: "…"   // the same on every strip: the output's name keeps the room
-                    tip: sendsPop.opened ? "" : "Reverb send, sends to groups and ducks"
+                    tip: sendsPop.opened ? "" : "Reverb send, sends to groups and dips"
                     onClicked: sendsPop.opened ? sendsPop.close() : sendsPop.open()
                     QQC.Popup {
                         id: sendsPop

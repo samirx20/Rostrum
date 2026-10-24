@@ -56,7 +56,7 @@ MouseArea {
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
             return
         }
-        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.select(hit)
+        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.pressSelect(hit)   // the outline now, the panel after the frame
         mode = hit !== "" ? "press" : "empty"
     }
     onPositionChanged: (e) => {

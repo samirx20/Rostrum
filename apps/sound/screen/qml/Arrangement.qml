@@ -6,8 +6,7 @@ import RostrumKit
 // ghost style, the play button the one accent — + Add, ⏮ ▶ loop (always there), Record (always there; Take, the level
 // and Record keys join it while a track is armed), the metronome, the position and tempo · beats · key (click: the tempo / key popover), then at the right
 // the picture's switch (while the song has one), Grid ▾ and Snap, and the zoom (− + Fit) — then the Timeline (ruler, sections,
-// markers, track headers and lanes, + Track, the Master row last). A new song says what to do first (W1): "Start with
-// a sound." with Add a track and Bring in a picture. The picture floats at the top right while it is open.
+// markers, track headers and lanes, + Track, the Master row last). A new song shows one button, Add a track. The picture floats at the top right while it is open.
 Rectangle {
     id: a
     property alias headerWidth: timeline.headerWidth
@@ -111,22 +110,16 @@ Rectangle {
         anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
         onAddTrack: a.addTrack()
     }
-    Column {   // a new song: what to do first
-        visible: a.empty
+    Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest)
+        visible: a.empty; text: "Add a track"; kind: "primary"
         x: timeline.headerWidth + Theme.gap * 2 + Math.max(0, (a.width - timeline.headerWidth - Theme.gap * 2 - width) / 2)
         y: strip.height + Math.max(60, (a.height - strip.height - height) / 2 - 40)
-        width: Math.min(420, a.width - timeline.headerWidth - 4 * Theme.gap)
-        EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): one line, two buttons, gone with the first track
-            width: parent.width
-            text: "Start with an instrument, or drop a recording here."
-            buttons: [{ value: "track", label: "Add a track" }]
-            onPicked: a.addTrack()
-        }
+        onClicked: a.addTrack()
     }
     PictureCorner {
         id: corner
         visible: backend.pictureOpen
         width: Math.min(340, a.width * 0.4); z: 5
-        anchors { top: strip.bottom; right: parent.right; rightMargin: Theme.gap }
+        anchors { top: parent.top; topMargin: strip.height + timeline.rulerBottom + Theme.grid; right: parent.right; rightMargin: Theme.gap }
     }
 }

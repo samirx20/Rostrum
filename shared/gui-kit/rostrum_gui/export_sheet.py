@@ -49,6 +49,7 @@ def version_name(result: dict, versions) -> str:
 
 
 class ExportSheet(QObject):
+    CHOICES_PICKER = False                        # "What for" as one picker, not rows (see `choicesPicker`)
     VERBS = ("Export", "Exporting", "Exported")   # an app whose sheet makes something else says so ("Render", …)
     changed = Signal()
     asked = Signal(str, bool)                  # (the name already there, whether it can be replaced): QML asks
@@ -121,6 +122,12 @@ class ExportSheet(QObject):
     def choices(self):
         return self.choices_list()
 
+    @Property(bool, constant=True)
+    def choicesPicker(self):
+        """True: "What for" is one picker (a short field with a list) instead of rows. An app with a few plain choices
+        and no file type to show beside each one sets it (Sound); the default is the rows."""
+        return self.CHOICES_PICKER
+
     @Property(str, notify=changed)
     def choice(self):
         return self._choice
@@ -147,6 +154,15 @@ class ExportSheet(QObject):
         if self._state == "done" and self.path:
             return str(Path(self.path).parent)
         return self.default_folder()
+
+    def short_where(self, where: str) -> str:
+        """`where` as the sheet shows it (the whole path shows on hover). The default is all of it; an app with long
+        project paths shortens them to the folder's own name."""
+        return where
+
+    @Property(str, notify=changed)
+    def whereShort(self):
+        return self.short_where(self.where)
 
     @Property(str, notify=changed)
     def fileName(self):

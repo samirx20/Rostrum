@@ -4,14 +4,15 @@ panel), the playhead, the arrangement and piano roll
 (transport.py: rendered by the engine after each change, played from the playhead).
 
 The slots live in small mix-ins (gui-kit README › parts.py): view_slots (playhead, zoom), picture_slots, song_slots
-(music map), lane_slots (automation), edit_slots (edits and drags); the signals in signals.py. Every change is an
+(music map), lane_slots (automation), edit_slots (edits and drags), rows_view (the rows and the roll, made again
+only where a change or a drag's step reached); the signals in signals.py. Every change is an
 operation (moves.py builds the calls). The Mixer reads `lastRender` (the engine's render answer, with stems for
 every track) and listens to `renderChanged`. The project's shared markers are watched (MarkerWatch): one moved or
 renamed in another app re-renders the sound, and a rename is followed as one recorded step (marker.follow).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import DocBridge
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
@@ -22,9 +23,9 @@ from rostrum_sound import clean_clips, compile as compile_doc
 from rostrum_sound.doc import markers as MK
 from rostrum_sound.doc import ops_mix
 
-from . import voice_card, voice_takes
+from . import voice_card
 from .plain_errors import say as say_error
-from . import inspect, lanes, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import inspect, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
@@ -35,6 +36,7 @@ from .velocity_slots import VelocitySlots
 from .key_slots import KeySlots
 from .lane_slots import LaneSlots
 from .picture_slots import PictureSlots
+from .rows_view import RowsView
 from .select_slots import SelectSlots
 from .signals import SoundSignals as S
 from .song_slots import SongSlots
@@ -45,7 +47,8 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, ActionSlots, KeySlots, SelectSlots, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, ActionSlots, KeySlots, SelectSlots, RowsView, S, DocBridge):
+    songChanged = Signal()                  # the ruler's song (length, grid): its own signal, a drag's step rarely moves it
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name
         self._t, self._track = 0.0, ""
@@ -53,6 +56,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._drag = self._grab = None
         self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
+        self._made: dict = {}               # track id -> its row as last made, and the song it was made from (_shown):
+        self._shown = None                  # a drag's step makes again only the tracks it changed (stepped.py)
+        self._stepping = False              # a gesture is open (its steps came, its change not yet): the sound waits
         self._lanes = RowsModel(("track",), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
         self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
         self._zoom = self._tv.view
@@ -80,7 +86,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.selectedItemsChanged.connect(self._drop_point)
         self._follow_selection()
         self._rebuild()
-        self.transport = Transport(self._schedule, self._length, self)
+        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping)
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
@@ -107,7 +113,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def playing(self):
         return self.transport.playing
 
-    @Property("QVariantMap", notify=S.timelineChanged)
+    @Property("QVariantMap", notify=songChanged)
     def song(self):
         return self._view["song"]
 
@@ -194,13 +200,6 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         if self._view and self._track != was:
             self._show_roll()
 
-    def _show_roll(self):
-        """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
-        row on a click cost ~250 ms on a 16-track song, S59)."""
-        self._span = ("", 0, 0)                       # another track: its keys are framed afresh
-        self._view["roll"] = self._roll(self._view["rows"])
-        self.rollChanged.emit()
-
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
@@ -226,43 +225,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
                 self.transport.changed()
         self._guard(go)
 
-    def _rebuild(self):
-        root = self.doc.data
-        self._open = {k: v for k, v in self._open.items() if self.doc.has(k)
-                      and v in lanes.applicable(self.doc.item(k), root)}
-        rows = timeline.rows(root, self._open, self._folded)
-        self._marks_on(rows)
-        self._view = {"rows": rows, "markers": timeline.markers(root), "song": timeline.song(root),
-                      "roll": self._roll(rows)}
-        self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
-        self.timelineChanged.emit()
-        self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)   # after: `tracks` is new for the rows made
-        self.rollChanged.emit()
-        self.viewChanged.emit()
-
-    def _roll(self, rows) -> dict:
-        """The Editor's piano roll of the current track (`_track`), in its row's colour."""
-        root = self.doc.data
-        hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
-        track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
-        span = self._span
-        roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None)
-        if roll["kind"] == "notes":
-            self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
-        self._marks_on([roll])
-        return roll
-
-    def _marks_on(self, rows):
-        side = getattr(self, "side", None)               # lines being spoken say so on their blocks
-        if side:
-            voice_card.mark_speaking(rows, side.voice.making())
-            voice_card.mark_waiting(rows, side.voice.waiting())
-            voice_takes.mark_takes(rows, self.doc.data)
-
     def _on_doc(self, event):
+        self._stepping = event.kind == "preview"
         super()._on_doc(event)
-        self._guard(self._rebuild)
-        if event.kind == "change":             # a drag renders once, when it lands
+        self._guard(lambda: self._drag_step(change=not self._stepping) if event.kind != "reset" else self._rebuild())
+        if event.kind == "change":             # a drag renders once, when it lands (never during one: Transport.held)
             self.transport.changed()
 
     def close(self):

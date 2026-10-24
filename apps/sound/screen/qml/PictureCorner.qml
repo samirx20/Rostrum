@@ -62,14 +62,11 @@ Panel {
             visible: backend.picture === "" || mp.error !== MediaPlayer.NoError
             anchors.centerIn: parent; spacing: Theme.grid; width: parent.width - 2 * Theme.pad
             Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
-                   text: mp.error !== MediaPlayer.NoError ? "Can't show this file: " + mp.errorString : "No picture yet"
+                   text: mp.error !== MediaPlayer.NoError ? "Can't show this file: " + mp.errorString : "No video yet"
                    color: mp.error !== MediaPlayer.NoError ? Theme.danger : Theme.fg2
                    font.family: uiFont; font.pixelSize: Theme.body }
-            Text { visible: backend.picture === ""; width: parent.width; horizontalAlignment: Text.AlignHCenter
-                   wrapMode: Text.Wrap; color: Theme.fg4
-                   text: backend.pictureProblem !== "" ? backend.pictureProblem
-                         : backend.pictureItems.length > 0 ? "Choose a video, or a 2D item of the project: its newest render shows here."
-                         : "Choose a video to make the sound to. " + backend.pictureItemsNote
+            Text { visible: backend.picture === "" && backend.pictureProblem !== ""; width: parent.width
+                   horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap; color: Theme.fg4; text: backend.pictureProblem
                    font.family: uiFont; font.pixelSize: Theme.label }
         }
     }

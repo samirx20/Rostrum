@@ -24,7 +24,7 @@ Column {
     MixPick {
         visible: c.offer && c.targets.length > 0
         width: parent.width; height: 22
-        row: true; flat: true; text: "+ Duck"; tip: "Dip this track whenever another one plays (a voice over music)"; choices: c.targets.map(t => ({ id: t.id, label: "under " + t.name }))
+        row: true; flat: true; text: "+ Dip under…"; tip: "Make this track dip whenever another one plays (a voice under music)"; choices: c.targets.map(t => ({ id: t.id, label: t.name }))
         onPicked: (id) => mixer.ducks.add(c.ownerId, id)
     }
 }

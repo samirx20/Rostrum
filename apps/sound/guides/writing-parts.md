@@ -36,7 +36,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
 - **Velocity strip** (under the notes): one bar per note, as high as it plays loud. Drag a bar, or draw a line
   across several. The value of the bar under the pointer (or of the selected notes) is written beside it ("70 %").
-- **Playing lane** (under the velocity strip, for an instrument that plays notes; folded to one line "› Sustain · Expression · Bend" while the track has none of them: click it to open): pick **Sustain** (the pedal: up
+- **Playing lane** (under the velocity strip, for an instrument that plays notes; folded to one line "› Sustain · Expression · Bend" while the track has none of them: click it to open): the picker at its head (it names the lane, "Sustain ▾") chooses **Sustain** (the pedal: up
   at the bottom, down at the top; a note let go while it is down rings on until it lifts), **Expression** (how loud
   the whole part plays, like a swell on the strings) or **Bend** (the pitch wheel: the middle is no bend, the top
   and bottom are up and down by the track's **Bend range**, 2 semitones unless you change it in the settings panel).
