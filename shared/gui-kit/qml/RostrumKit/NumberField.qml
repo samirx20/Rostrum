@@ -51,13 +51,24 @@ FieldFrame {
         if (display) return parts.text
         let d = decimals
         while (d < decimals + 1 && Math.abs(v * Math.pow(10, d) - Math.round(v * Math.pow(10, d))) > 1e-6) d++
+        // never wider than the field has room for beside its unit: fewer decimals (the full value stays in the document
+        // and shows again when editing, `fullText`)
+        while (d > 0 && !fits(Number(v).toFixed(d).replace("-", "−"))) d--
         return Number(v).toFixed(d).replace("-", "−")      // a real minus, like the rest of the app
+    }
+    function fits(t) { metrics.text = t; return metrics.advanceWidth <= roomForText }
+    TextMetrics { id: metrics; font: f.input.font }
+    readonly property string fullText: {                         // typing starts from every digit the value has
+        if (display || word || !isFinite(value)) return ""
+        const t = String(Number(Number(value).toFixed(9))).replace("-", "−")
+        return t === text ? "" : t
     }
     function reset() { if (hasDefault) { f.edited(Math.max(from, Math.min(to, Number(defaultValue)))); f.input.focus = false } }
 
     editable: true
     engaged: scrub.scrubbing
     text: word || format(value)
+    editText: fullText
     prefix: unitFirst && !word ? unitShown : ""
     suffix: unitFirst || word ? "" : unitShown
     onCommitted: (t) => {

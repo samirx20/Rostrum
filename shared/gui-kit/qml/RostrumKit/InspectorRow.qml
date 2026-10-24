@@ -13,6 +13,9 @@ import "ValueKinds.js" as VK
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection shows at once: a new
 // layout builds fresh rows at their final state (a Behavior does not animate the first value), and the same kind's
 // rows change in place with `instant` true (the list model's, RowsModel.instant), so nothing eases.
+// An optional `note` (rows.py: {text, kind "hint" | "warning"}) is one short line under the field: the row grows by its height only
+// while there is one, so an empty note leaves no gap. An optional `button` (rows.py: {label, id, menu}) is a small RowButton at the
+// right end of the field's own column (the column keeps its width: field and button share it); a click runs bridge.rowAction(id).
 // An optional `tag` (rows.py: a word like "Final") shows as a small quiet tag at the end of the label, its `tagHelp` on hover.
 // With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
 // a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
@@ -43,6 +46,7 @@ Item {
     readonly property bool paired: live && (model.half === "first" || second)
     readonly property int labelColumn: live ? Theme.labelColumnFor(width) : 0
     readonly property bool amount: live && model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
+    readonly property bool noted: live && model.row === "param" && !!(model.note && model.note.text) && !paired && !tall
     readonly property bool driven: live && model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property var parts: body.item      // the drawn row (null while absent)
     readonly property bool tall: live && (model.type === "list" || model.control === "curve")    // a widget taller than a field (top-aligned)
@@ -53,7 +57,7 @@ Item {
                               : driven ? Theme.row + (parts ? parts.exprHeight : 0) + Theme.grid
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && parts && parts.widgetItem ? Math.max(Theme.row, parts.widgetItem.implicitHeight + Theme.row - Theme.field)
-                              : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid)    // a long label wraps
+                              : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid) + (noted && parts ? parts.noteHeight : 0)    // a long label wraps
     readonly property bool canReset: live && model.row === "param" && !driven && model.default !== undefined && model.default !== null
         && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
     property real reveal: model.valid ? 1 : 0
@@ -73,6 +77,7 @@ Item {
         active: row.live
         sourceComponent: Item {
             readonly property real labelHeight: label.implicitHeight     // what `full` reads (the row's own height)
+            readonly property real noteHeight: row.noted ? noteText.implicitHeight + Theme.grid : 0
             readonly property real exprHeight: exprBox.height
             readonly property var widgetItem: widget.item
             readonly property real foldsHeight: names.implicitHeight
@@ -162,8 +167,8 @@ Item {
                 visible: row.model.row === "param"
                 x: row.second ? row.labelColumn + Theme.halfFor(row.width) + Theme.pairGap : 0
                 width: row.second ? Theme.halfFor(row.width) : row.paired ? row.labelColumn + Theme.halfFor(row.width) : row.width
-                anchors.verticalCenter: row.driven || row.tall || row.second ? undefined : parent.verticalCenter
-                anchors.top: row.driven || row.tall ? parent.top : undefined
+                anchors.verticalCenter: row.driven || row.tall || row.second || row.noted ? undefined : parent.verticalCenter
+                anchors.top: row.driven || row.tall || row.noted ? parent.top : undefined
                 y: row.second ? -Theme.row : 0               // the right half draws on the line above (its own row is 0 high)
                 height: Theme.row
                 Text { id: label   // the label sits in its own column, one per row (a pair has one: Position, Size)
@@ -203,10 +208,15 @@ Item {
                     // made only while the row is on screen (valid, or still easing out): a kind's layout holds every param and
                     // most are absent, so building all their widgets made each selection change slow (S59)
                     active: row.model.row === "param" && !row.driven && (row.model.valid || row.reveal > 0)
-                    sourceComponent: row.model.control === "curve" ? curve
-                                   : row.amount ? amountRow
-                                   : row.model.control === "file" || row.model.control === "folder" ? path
-                                   : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
+                    sourceComponent: row.model.button && row.model.type !== "toggle" ? buttoned : plain
+                }
+                Text {  // the note: one short line under the field (a hint, or a warning in the warning colour)
+                    id: noteText
+                    visible: row.noted
+                    x: row.labelColumn; y: Theme.row - 2; width: Theme.fieldFor(row.width)
+                    text: row.noted ? row.model.note.text : ""
+                    color: row.noted && row.model.note.kind === "warning" ? Theme.warn : Theme.fg3
+                    font.pixelSize: Theme.label; font.family: uiFont; wrapMode: Text.WordWrap
                 }
                 // A param driven by an expression or binding (model.expr = {text, note}): in place of the widget a note
                 // and a clear button on the label line, the expression on its own full-width line under it.
@@ -265,6 +275,21 @@ Item {
             }
             // The widgets, one per param type: made with the drawn row only (a kind's layout holds every param and
             // most rows are absent, so per-row Components on every absent row slowed each kind switch).
+            // the widget by its type; with a button the same widget narrows to leave room for it, field and button share the column
+            readonly property Component plain: row.model.control === "curve" ? curve
+                                   : row.amount ? amountRow
+                                   : row.model.control === "file" || row.model.control === "folder" ? path
+                                   : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
+            Component { id: buttoned; Item {
+                readonly property var input: inner.item ? inner.item.input : null      // focusWidget types here
+                readonly property bool editable: inner.item ? !!inner.item.editable : false
+                implicitHeight: inner.item ? inner.item.implicitHeight : Theme.field
+                Loader { id: inner; anchors.left: parent.left; anchors.right: rowButton.left; anchors.rightMargin: Theme.grid
+                         height: parent.height; sourceComponent: plain }
+                RowButton { id: rowButton; objectName: "rowbutton:" + row.model.id; anchors.right: parent.right; height: parent.height
+                            text: row.model.button ? row.model.button.label : ""; menu: row.model.button ? row.model.button.menu : []
+                            onChosen: (v) => row.bridge.rowAction(v || row.model.button.id) }
+            } }
             Component { id: toggle; Toggle { checked: !!row.model.value; onToggled: (v) => row.set(v) } }
             Component { id: amountRow; Item {   // an amount: the slider, then the value in its kind's words (typed there)
                 readonly property var input: amountField.item ? amountField.item.input : null      // focusWidget types here

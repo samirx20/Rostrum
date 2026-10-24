@@ -35,8 +35,8 @@ place (window guide). Agents do the same with `mesh.add shape=text … x y z ry`
 camera (`ry` = atan2(camera x − x, camera z − z) in degrees).
 
 **Largest bevel.** A bevel too big for the outline (a thin stroke, a sharp corner) fails loudly: the engine says
-"… Accepted: at most 0.001602 m for this outline". The settings panel then offers **Bevel too big · use 1.60 mm (the
-largest that fits)**: one click sets it (one undo step, `mesh.set bevel`). A modest bevel is about a hundredth of the
+"… Accepted: at most 0.001602 m for this outline". The Bevel row then says so in a line under it and offers **Use 1.60 mm** (the
+largest that fits) beside it: one click sets it (one undo step, `mesh.set bevel`). A modest bevel is about a hundredth of the
 size; thin fonts and fine logos take less.
 
 ## Combine: union, subtract, intersect
