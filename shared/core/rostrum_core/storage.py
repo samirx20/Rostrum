@@ -32,6 +32,7 @@ from pathlib import Path
 from . import edits as E
 from . import histfile
 from .errors import RostrumError, codes
+from .kind import SHAPE_ERRORS
 from .tree import index
 from .who import Who
 
@@ -179,28 +180,35 @@ def open_doc(cls, folder, item, kind):
     Rostrum wrote it (its hash) held only checked contents: then only the items the steps after it set are checked."""
     p = paths(folder, item, kind.ext)
     doc, items = _read_doc(cls, folder, item, kind, p)
+    if _upgrade(doc, kind, p["doc"]):
+        items = None                                # brought up to date: everything is checked, not just the later steps
     problems = kind.problems(doc.data, items)
     if problems:
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["doc"]), "is damaged: it doesn't hold together "
                            f"({'; '.join(problems[:3])}{' …' if len(problems) > 3 else ''})",
                            hint="Nothing was saved over it.")
-    _upgrade(doc, kind, p["doc"])
     return doc
 
 
-def _upgrade(doc, kind, path):
-    """An older file brought up to date (DocKind.upgrade) as one change by Rostrum; one that wouldn't pass the
-    document check is refused loudly, never opened half-converted."""
-    up = kind.upgrade(doc.data, kind.lists, getattr(doc, "folder", None)) if kind.upgrade else None
-    if up is None:
-        return
-    new, label = up
-    problems = kind.problems(new)
-    if problems:
-        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"can't be brought up to date ({'; '.join(problems[:3])})",
-                           hint="Nothing was saved over it.")
+def _upgrade(doc, kind, path) -> bool:
+    """An older file brought up to date before it is checked (so a rule that grew stricter never turns an old file
+    away): the format's steps (DocKind.migrations) from the file's own number, then the app's upgrade (DocKind.upgrade),
+    recorded as one change by Rostrum so the history before it replays as written and undo takes it back. A file that
+    can't be brought up to date is refused loudly, never opened half-converted. True when something changed."""
+    try:
+        data, labels = kind.migrate(doc.data, doc.file_version)
+        up = kind.upgrade(data, kind.lists, getattr(doc, "folder", None)) if kind.upgrade else None
+    except (*SHAPE_ERRORS, RostrumError) as e:
+        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"can't be brought up to date: {type(e).__name__}: {e}",
+                           hint="Nothing was saved over it.") from e
+    if up is not None:
+        data, label = up
+        labels.append(label)
+    if not labels:
+        return False
     from .diff import diff
-    doc.commit(new, diff(doc.data, new, kind.lists), Who.outside("Rostrum (older file)"), label)
+    doc.commit(data, diff(doc.data, data, kind.lists), Who.outside("Rostrum (older file)"), "; ".join(labels))
+    return True
 
 
 def _as_written(text, file) -> bool:
@@ -222,6 +230,7 @@ def _read_doc(cls, folder, item, kind, p):
     if not p["history"].exists():
         doc = cls(kind, file["doc"], folder, item)
         doc.saved_by = file.get("saved_by")         # None: saved before files recorded it
+        doc.file_version = file.get("version", 1)
         return doc, None
     r, changes, versions = read_history(p["history"], kind)
     written = _as_written(text, file)
@@ -235,6 +244,7 @@ def _read_doc(cls, folder, item, kind, p):
         items = _changed(played, idx, kind.lists)
     doc = cls(kind, data, folder, item, base=r.base)
     doc.saved_by, doc.notes = file.get("saved_by"), [r.torn] if r.torn else []
+    doc.file_version = file.get("version", 1)
     for c in changes:
         doc.history.add(c)
     doc.history.versions = versions

@@ -51,6 +51,7 @@ class Document:
         self._base = copy.deepcopy(self.data) if base is None else base   # history line 0 (opening: read when asked)
         self.history = History(kind.lists)
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
+        self.file_version = kind.version                # the file format it was read as (an older one is migrated on open)
         self.saved_by: str | None = None                # the app version that last saved it (storage.py)
         self._subs, self._gesture = [], None
         self.live = None                                # live.Live when another program shares the file
