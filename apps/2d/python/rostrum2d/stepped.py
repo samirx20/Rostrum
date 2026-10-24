@@ -16,12 +16,12 @@ from rostrum_core import Param
 from rostrum_core.keys import track_value
 
 FIELD = "timing"
-ON = {"1": "Every frame", "2": "On twos", "3": "On threes", "4": "On fours"}
-COMP = [Param.choice(FIELD, list(ON), label="Steps", group="Timing", default="1", importance="secondary", labels=ON,
-                     help="Hold each pose for this many frames, as hand-drawn animation does; the keys don't change")]
-LAYER = [Param.choice(FIELD, ["group", *ON], label="Steps", group="Timing", default="group", importance="secondary",
-                      labels={"group": "As its group", **ON},
-                      help="Hold each pose for this many frames; “As its group” takes the group's or composition's setting")]
+ON = {"1": "Every frame", "2": "Every 2nd frame", "3": "Every 3rd frame", "4": "Every 4th frame"}   # "on twos", "on threes"
+COMP = [Param.choice(FIELD, list(ON), label="Animate on", group="Timing", default="1", importance="secondary", labels=ON,
+                     help="Hold each pose for this many frames, as hand-drawn animation does (on twos, on threes); the keys don't change")]
+LAYER = [Param.choice(FIELD, ["group", *ON], label="Animate on", group="Timing", default="group", importance="secondary",
+                      labels={"group": "Same as its group", **ON},
+                      help="Hold each pose for this many frames; “Same as its group” takes the group's or the scene's setting")]
 
 
 def apply(node: dict, items: dict[str, dict], duration: float, fps: float, n: int | None = None) -> None:

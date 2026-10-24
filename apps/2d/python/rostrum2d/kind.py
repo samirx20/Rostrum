@@ -58,6 +58,9 @@ def facts(item: dict, doc=None) -> dict:
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
         parent = doc.parent(item)
         out["inLayout"] = bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"
+        # a scene's own layer with a camera beside it: Depth and Pinned to screen mean something (fields.UNDER_CAMERA)
+        out["underCamera"] = bool(parent) and parent.get("type") == "comp" \
+            and any(c.get("type") == "camera" for c in parent.get("layers", []))
     return out
 
 

@@ -10,7 +10,7 @@ def test_resize_and_rotate_are_one_undo_step_each_and_key_animated_fields(bridge
     doc = bridge.doc
     bridge.select("box")                                              # 40 x 40 at 200, 90
     bridge.setTime(0.3)
-    bridge.toggleAnimate("w")                                         # w is keyed from here on
+    bridge.toggleAnimate("w")                                         # Size (w and h) is keyed from here on
     n = len(doc.history.changes)
     assert bridge.beginResize(1, 1)                                   # bottom-right corner
     for d in (5, 10, 20):
@@ -19,9 +19,9 @@ def test_resize_and_rotate_are_one_undo_step_each_and_key_animated_fields(bridge
     box = doc.item("box")
     assert len(doc.history.changes) == n + 1
     assert [(k["t"], k["v"]) for k in keys_of(box, "w")] == [(0.3, 60)] and box["w"] == 40     # a key, not the still value
-    assert (box["h"], box["x"], box["y"]) == (60, 210, 100)           # top-left corner stayed put
+    assert [(k["t"], k["v"]) for k in keys_of(box, "h")] == [(0.3, 60)] and (box["x"], box["y"]) == (210, 100)   # top-left stayed
     bridge.undo()
-    assert doc.item("box")["h"] == 40
+    assert [k["v"] for k in keys_of(doc.item("box"), "h")] == [40]
 
     bridge.toggleAnimate("rotation")
     n = len(doc.history.changes)

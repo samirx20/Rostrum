@@ -10,6 +10,7 @@ from . import colours
 from .errors import RostrumError, codes, did_you_mean
 
 IMPORTANCE = ("primary", "secondary", "deep")
+SHOWN = ("", "script", "changed")
 TYPES = ("number", "toggle", "choice", "text", "color", "id", "points", "time", "list")
 TIME_UNITS = ("seconds", "beats", "marker")     # a time value is {"seconds": 1.5}, {"beats": 4} or {"marker": "drop"}
 HEX = colours.HEX6                             # how a colour is stored (colours.read takes the forms people write)
@@ -64,12 +65,20 @@ class Param:
                                      # "file" / "folder" for a text holding a path (the field gets a Browse button that
                                      # opens the system's file or folder dialog)
     filters: list = field(default_factory=list)   # for control "file": what the dialog lists, ["SFZ instruments (*.sfz)"]
+    shown: str = ""                  # where screens show it: "" = its settings row while valid; "script" = never on a
+                                     # screen (raw data agents and scripts write: a path's SVG text, font axis tags; people
+                                     # edit it another way or not at all); "changed" = its row shows only while it is away
+                                     # from its default (set by a canvas drag or an agent: a layer's uneven stretch)
+    on: object = None                # the value a screen's "+ group" sets to turn this param's group on, when it is a number
+                                     # whose `words` call its default "Off" (motion blur's 180°); a toggle's is True
 
     def __post_init__(self):
         if self.type not in TYPES:
             raise ValueError(f"param {self.name}: type {self.type!r} not one of {TYPES}")
         if self.importance not in IMPORTANCE:
             raise ValueError(f"param {self.name}: importance {self.importance!r} not one of {IMPORTANCE}")
+        if self.shown not in SHOWN:
+            raise ValueError(f"param {self.name}: shown {self.shown!r} not one of {SHOWN}")
         if self.type == "choice" and not self.options:
             raise ValueError(f"param {self.name}: a choice needs options")
         if self.type == "list" and (self.item not in TYPES or self.item in ("list", "points")):

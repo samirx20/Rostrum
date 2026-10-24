@@ -4,12 +4,15 @@ import "."
 
 // A file or folder path: the text field (type or paste a path; Enter commits) and a "…" (Browse) button that opens
 // the system's own file or folder dialog, starting where the current path is. A choice sends one edited(path)
-// with a plain local path (C:\Music\x.sfz, /Users/me/x.sfz), never a file:// address.
+// with a plain local path (C:\Music\x.sfz, /Users/me/x.sfz), never a file:// address. At rest the field says the
+// file's name, not its whole path: `atRest` when the app knows a better one (a project's copy: the name it came in
+// with), else the path's last part; a click shows the whole path to edit.
 Item {
     id: f
     property string value: ""
     property bool folder: false           // true: pick a folder; false: pick a file
     property var nameFilters: []          // for a file: ["SFZ instruments (*.sfz)"]; empty = any file
+    property string atRest: ""            // the words at rest ("" = the path's last part)
     signal edited(string value)
     signal typingStarted()                // the typed path's caret went in / left (FieldFrame)
     signal typingEnded()
@@ -33,6 +36,7 @@ Item {
         anchors { left: parent.left; right: browse.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
         value: f.value
         placeholder: "Default"            // empty means the setting's default (its help says which)
+        atRest: f.atRest !== "" ? f.atRest : f.value.split(/[\\/]/).pop()
         elide: Text.ElideMiddle           // the whole path, cut in the middle when too long; hover shows all of it
         onEdited: (v) => f.edited(v)
         onTypingStarted: f.typingStarted()

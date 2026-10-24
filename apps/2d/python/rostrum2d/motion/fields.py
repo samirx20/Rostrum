@@ -6,9 +6,10 @@ from rostrum_core import Param
 
 from ..fields import D, IS, N, P, S, T  # noqa: F401  (the table helpers)
 
-# The composition's shutter. Never keyed (a composition's fields describe it, not a moment).
+# The composition's shutter. Never keyed (a composition's fields describe it, not a moment). It is its group's switch
+# (the kit's sections.switch_of): "+ Motion blur" sets `on`, the film look; its remove control puts it back to Off.
 COMP = [
-    N("shutter", "Motion blur", "Motion blur", 0, 720, 1, "°", S, words={0.0: "Off"},
+    N("shutter", "Amount", "Motion blur", 0, 720, 1, "°", S, words={0.0: "Off"}, on=180.0,
       help="Shutter angle: how long each frame's shutter stays open, in degrees of a frame. 0 = no blur, "
            "180 = half a frame (the film look), 360 = a whole frame"),
     N("shutterSamples", "Blur steps", "Motion blur", 2, 64, 1, "", D, {"not": IS("shutter", 0)}, integer=True, default=8,

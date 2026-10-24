@@ -30,7 +30,7 @@ IGNORE = ("/MotionPath#",)
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-layers", "fill-gradient-handles",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-layers", "fill-gradient-handles",
          "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -182,6 +182,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-ease-menu", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easemenu"]),
         # Sam's list (2026-10-24): "+ Outline" adds it (its heading's −), the font list, a curve that overshoots fitted in its box
         ("outline-added", ["--sample"], ["select card", "group Outline"]),
+        # Inventory batches 3-5: "+ Motion blur" turns it on (its amount stays a row); a picture's every group name in one
+        # wrapping row, Levels added in one click
+        ("motion-blur-added", ["--sample"], ["select screen_sample", "group Motion blur"]),
+        ("picture-levels-added", ["--sample"], [f"drop {picture()} 900 500", "select image_1", "group Levels"]),
         ("font-list", ["--sample"], ["select title", "clickobj row:font"]),
         ("key-curve-overshoot", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "easecurve 0.3 -0.6 0.6 1.7"]),
         ("stagger-popover", ["--sample"], ["selectmany title card", "stagger 3 open"]),
@@ -293,8 +297,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                "flyout brush", "clickobj mybrush_2 right", "clickobj menu:drop:project",
                                                "flyout brush", "clickobj mybrush_2 right"]),
         # H67: the motion path of a selected moving shape (dots per frame, key squares); the camera selected with a move
-        ("motion-path", ["--sample"], ["select card", "animate x", "animate y", "time 2", "set x 1300", "set y 300", "time 1"]),
-        ("motion-path-camera", ["--sample"], ["add camera", "animate x", "animate y", "animate zoom", "time 2.5", "set x 1200",
+        ("motion-path", ["--sample"], ["select card", "animate x", "time 2", "set x 1300", "set y 300", "time 1"]),
+        ("motion-path-camera", ["--sample"], ["add camera", "animate x", "animate zoom", "time 2.5", "set x 1200",
                                               "set y 420", "set zoom 1.4", "time 1"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),

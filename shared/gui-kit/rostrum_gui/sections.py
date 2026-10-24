@@ -10,8 +10,11 @@ and `group` only, never per kind:
   Blend"; a click on a name opens that group just above it. A group with nothing that applies is not named at all.
 - **A group a switch turns on** (`switch_of`: a toggle that every other setting of the group needs on, an outline's
   Outline, a group's Background): its name in the row of names ADDS it, one change (the switch set on), and the group
-  is open exactly while it is on, its heading carrying a remove control (the switch set off). The switch itself is
-  never a row there: "+ Outline" then an on/off row under it was asking twice (Sam, 2026-10-24).
+  is open exactly while it is on, its heading carrying a remove control (the switch set off). A toggle switch is
+  never a row there: "+ Outline" then an on/off row under it was asking twice (Sam, 2026-10-24). A number can be the
+  switch too, when its `words` call its default "Off" and the param says what `on` is (motion blur: "+ Motion blur"
+  sets 180°): its row stays, it is the amount. A group with several switches is several groups (Colour grade's
+  Adjust colour, Levels, Curves), each added in one click.
 - **Search**: a separate layout, every param under its group's heading (`rows.layout`'s heading rules, deep params
   included); `rows.evaluate(query=...)` keeps only valid params that `rows.matches` the search.
 Param rows carry `in`: "" (shown when valid) or the fold's group (shown when valid and that group is open).
@@ -55,23 +58,44 @@ def layout(op, kind: str = "") -> list[dict]:
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
         sw = switch_of(members)
+        lead = next((p for p in members if p.name == sw), None)
         rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members],
-                     "own": OWN.get(kind.lower()) == g, "switch": sw})
-        rows += [{**_param_row(p), "in": g, **({"switches": g} if p.name == sw else {})} for p in members]
+                     "own": OWN.get(kind.lower()) == g, "switch": sw, **(dict(zip(("on", "off"), switch_values(lead))) if lead else {})})
+        rows += [{**_param_row(p), "in": g, **({"switches": g} if p is lead and p.type == "toggle" else {})} for p in members]
     if rest:
         rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})
-    return pair_up(rows)
+    return _unsaid(pair_up(rows))
+
+
+def _unsaid(rows: list[dict]) -> list[dict]:
+    """A row inside an open group that would only repeat the group's heading ("Anchor" over the Anchor X | Y pair, "Tilt"
+    over Tilt) keeps its field and drops its label: the heading right above it already says the word."""
+    heading = {r["fold"]: r["label"] for r in rows if r["row"] == "fold"}
+    return [{**r, "label": ""} if r["row"] == "param" and r.get("in") and r["label"] == heading.get(r["in"]) else r
+            for r in rows]
 
 
 def switch_of(members) -> str:
-    """The toggle that turns this group on ("" = none): every other member applies only while it is on (its
-    valid_when asks for it True, alone or in an "all")."""
-    def needs(cond, name) -> bool:
-        return cond == {"is": [name, True]} or (isinstance(cond, dict) and any(needs(c, name) for c in cond.get("all", [])))
+    """The param that turns this group on ("" = none): a toggle, or a number whose default its words call "Off" and
+    that says what `on` is; every other member applies only while it is on (its valid_when asks for the toggle True,
+    or for the number not at its default, alone or in an "all")."""
+    def needs(cond, want) -> bool:
+        return cond == want or (isinstance(cond, dict) and any(needs(c, want) for c in cond.get("all", [])))
     for s in members:
-        if s.type == "toggle" and len(members) > 1 and all(p is s or needs(p.valid_when, s.name) for p in members):
+        if s.type == "toggle":
+            want = {"is": [s.name, True]}
+        elif s.type == "number" and s.on is not None and str(s.words.get(s.default, "")).lower() == "off":
+            want = {"not": {"is": [s.name, s.default]}}
+        else:
+            continue
+        if len(members) > 1 and all(p is s or needs(p.valid_when, want) for p in members):
             return s.name
     return ""
+
+
+def switch_values(p) -> tuple:
+    """(on, off) of a group's switch: what its "+ name" sets and what its remove control puts back."""
+    return (True, False) if p.type == "toggle" else (p.on, p.default)
 
 
 def search_layout(op, kind: str = "") -> list[dict]:

@@ -6,7 +6,8 @@ import "ValueKinds.js" as VK
 // One generic inspector row: a group header, a param, the More row or a fold row — nothing placed per control.
 // A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
 // (bridge.toggleGroup(model.fold)); only an open group shows its fold row. The "folds" row is every folded group's
-// name in one short wrapping line ("+ Depth  + Timing  + Blend", at most `shortLine` names, then "+ N more"); a click on a
+// name, every one of them in one wrapping line ("+ Depth  + Timing  + Blend"; no "+ N more": a name behind a click was a
+// click to reach a click); a click on a
 // name opens that group (a group a switch turns on, model.switch, is added: "+ Outline" puts the outline on, one change, and
 // its heading has − to remove it; rows.py) (the "+" says it is a control, so a lone name never reads as an empty heading). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
@@ -138,13 +139,9 @@ Item {
                 anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.grid
                           rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
                 spacing: Theme.pad
-                readonly property int shortLine: 4
-                property bool all: false
                 readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
-                readonly property bool cut: !all && entries.length > shortLine + 1      // one extra name is no saving: show it
-                readonly property int count: cut ? shortLine : entries.length
                 Repeater {
-                    model: names.entries.slice(0, names.count)
+                    model: names.entries
                     delegate: Row {
                         id: nameItem
                         required property var modelData
@@ -162,13 +159,6 @@ Item {
                                         cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
                         }
                     }
-                }
-                Text {  // the names left out of the short line
-                    visible: names.cut; height: Theme.rowDense; verticalAlignment: Text.AlignVCenter
-                    text: "+ " + (names.entries.length - names.count) + " more"; font.family: uiFont; font.pixelSize: Theme.body
-                    color: restArea.containsMouse ? Theme.fg : Theme.fg3
-                    MouseArea { id: restArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor; onClicked: names.all = true }
                 }
             }
             Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
@@ -265,8 +255,7 @@ Item {
                           color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
                                : markArea.containsMouse ? Theme.accentHover : Theme.accent }
                 MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: { row.bridge.toggleAnimate(row.model.id)        // a pair (X | Y) animates both halves
-                                         if (row.model.partner) row.bridge.toggleAnimate(row.model.partner) } }
+                            onClicked: row.bridge.toggleAnimate(row.model.id) }      // a pair (X | Y): both halves, one change (bridge)
             }
             Loader {   // made at the first right-click only: a panel has many rows
                 id: resetMenu; active: false
@@ -367,6 +356,7 @@ Item {
                 value: row.model.value || ""; most: row.model.max ? row.model.max : 1; onEdited: (v) => row.set(v) } }
             Component { id: path; PathField {
                 value: row.model.value || ""; folder: row.model.control === "folder"; nameFilters: row.model.filters || []
+                atRest: row.mixed || ((row.model.words || []).find(w => w.value === row.model.value) || { label: "" }).label
                 onEdited: (v) => row.set(v)
                 onTypingStarted: row.hold(true)
                 onTypingEnded: row.hold(false) } }

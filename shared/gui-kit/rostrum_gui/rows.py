@@ -40,9 +40,10 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # button: optional (an app adds it from its actions, action_views.row_buttons): {"label", "id", "menu": [{value, label}]}, a
 # small button (or a menu when `menu` has entries) at the right of the field; a click runs the action through bridge.rowAction(id).
 # own: a fold row of the kind's own group (sections.OWN): always open, never folded.
-# switch: a fold row's toggle that turns its group on ("" = none, sections.switch_of): the group is open exactly while it
-# is on; its name in "folds" adds it (sets it on) and its heading's remove control sets it off. The toggle's own row
-# (marked `switches`) is never shown there.
+# switch: a fold row's param that turns its group on ("" = none, sections.switch_of), with `on` / `off` its values: the
+# group is open exactly while it is not `off`; its name in "folds" adds it (sets `on`) and its heading's remove control
+# sets `off`. A toggle's own row (marked `switches`) is never shown there; a number's is (it is the amount).
+# shown (a param's, Param.shown): "script" = never on a screen; "changed" = only while away from its default.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # names: the "folds" row's folded groups that apply, [{"group", "label", "changed", "switch"}] in panel order (sections.py).
 # mixed: several items selected and their values differ (the widget says "Mixed"; many.py).
@@ -83,7 +84,7 @@ def _param_row(p) -> dict:
             "step": p.step, "unit": p.unit, "display": p.display, "valid_when": p.valid_when, "default": p.default,
             "words": [{"value": v, "label": w} for v, w in p.words.items()],
             "item": p.item or "", "minItems": p.min_items, "maxItems": p.max_items, "control": p.control,
-            "filters": list(p.filters)}
+            "filters": list(p.filters), "shown": p.shown}
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
@@ -97,8 +98,8 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     `elsewhere`: params the screen shows in another place (bridge.on_page); here they count as not applying, so a
     group is never opened or named for them alone."""
     picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
-    ok = {r["id"]: holds(r["valid_when"], item, facts) and (r["id"] not in picks or bool(picks[r["id"]])
-                                                            or bool(item.get(r["id"], r["default"])))
+    ok = {r["id"]: holds(r["valid_when"], item, facts) and _shown(r, item) and (r["id"] not in picks or bool(picks[r["id"]])
+                                                                                or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
     ok.update(dict.fromkeys(set(elsewhere) & ok.keys(), False))
     opened = _open_groups(static, item, ok, opened, starts or {})
@@ -131,6 +132,12 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     return _headers(out)
 
 
+def _shown(r: dict, item: dict) -> bool:
+    """A param's own screen rule (Param.shown): never for script data, only while changed for a "changed" one."""
+    rule = r.get("shown", "")
+    return rule != "script" and (rule != "changed" or item.get(r["id"], r["default"]) != r["default"])
+
+
 class _Opened(set):
     """The open groups (a set), plus `changed`: the groups holding a value away from its default."""
     changed: set
@@ -149,7 +156,7 @@ def _open_groups(static, item, ok, choice, starts) -> _Opened:
                for m in f["members"]):
             out.changed.add(f["fold"])
         sw = f.get("switch")
-        if (bool(item.get(sw, params[sw]["default"])) and ok[sw]) if sw else f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
+        if (item.get(sw, params[sw]["default"]) != f["off"] and ok[sw]) if sw else f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
             out.add(f["fold"])
     return out
 

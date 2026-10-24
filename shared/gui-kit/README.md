@@ -64,7 +64,14 @@ tests/                  test_bridge.py (one scrub = one change; one edit = one c
   a marker: control "pick", rows.py) is that list, never a text box to type a name or id into.
 - **A group you add is added in one click.** A folded group a toggle switches on (`sections.switch_of`: an Outline, a
   Background) is "+ Outline" in the row of names: the click sets the toggle on (one change) and the group shows open; its
-  heading's − sets it off. The toggle itself is never a row there.
+  heading's − sets it off. The toggle itself is never a row there. A number can be the switch too: its `words` call its
+  default "Off" and the param's `on` says what "+ name" sets (motion blur: 180°); its row stays (it is the amount). A
+  group with several switches is several groups. The row of names shows every name, wrapping (never "+ N more").
+- **Where a param shows** (`Param.shown`): "" its row while valid; "script" never on a screen (raw data agents write: SVG
+  path text, font axis tags); "changed" only while away from its default (an uneven stretch a canvas drag made). A row
+  that only repeats its open group's heading ("Anchor" over Anchor X | Y) drops its label.
+- **A pair is one setting.** Position (X | Y), Size (W | H), Anchor, Stretch and Tilt share a line (`pairs.py`) and one key
+  mark: `toggleAnimate` on either half keys or stops both as ONE change ("Animate Position"); the mark shows their joint state.
 - **No side panel:** `AppShell { leftWidth: 0 }` (or `rightWidth: 0`) removes that panel and its gap; the centre
   takes the room.
   Groups with nothing valid vanish. `deep` params sit behind a More row. Order: groups as they first appear,

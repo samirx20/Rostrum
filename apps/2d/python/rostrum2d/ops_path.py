@@ -198,7 +198,7 @@ def shape_to_path(ctx, targets, args):
         ctx.insert(loc.parent, loc.key, path, loc.index)
 
 
-_TRANSFORM = [p.name for p in F.TRANSFORM]
+_TRANSFORM = [p.name for p in F.TRANSFORM + F.GRADED]
 _SHAPE_ONLY = {p.name for p in F.FIELDS["shape"]} - {p.name for p in F.FIELDS["path"]}
 _LOOK = ("filled", "fill", "fillRule", "stroke", "strokeColor", "strokeWidth", "cap", "join", "miter", "dash", "gap")
 from . import ops_boolean  # noqa: E402,F401  (path.boolean registers on REGISTRY)

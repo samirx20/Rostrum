@@ -25,3 +25,29 @@ def test_a_switched_group_is_a_name_until_on_then_open_without_its_switch_row():
     assert "stroke" not in shown and ("Outline", "stroke") in names
     shown, names = _shown({"stroke": True}, opened={"Outline": False})       # on = open, whatever was folded by hand
     assert {"fold:Outline", "strokeColor", "strokeWidth"} <= set(shown) and "stroke" not in shown and not names
+
+
+BLUR = type("Op", (), {"params": [
+    Param.number("w", label="Width", group="Frame", importance="primary", default=1.0),
+    Param.number("shutter", label="Amount", group="Motion blur", importance="secondary", default=0.0, words={0.0: "Off"}, on=180.0),
+    Param.number("samples", label="Steps", group="Motion blur", importance="deep", default=8,
+                 valid_when={"not": {"is": ["shutter", 0]}}),
+    Param.text("raw", label="Raw", group="Frame", importance="secondary", default="", shown="script"),
+    Param.number("sx", label="Stretch", group="Frame", importance="secondary", default=1.0, shown="changed"),
+]})()
+
+
+def test_a_number_whose_default_is_off_is_its_groups_switch_and_stays_as_the_amount():
+    static = sections.layout(BLUR, "scene")
+    fold = next(r for r in static if r.get("fold") == "Motion blur")
+    assert (fold["switch"], fold["on"], fold["off"]) == ("shutter", 180.0, 0.0)
+    out = rows.evaluate(static, {"shutter": 0.0}, {}, False)
+    assert [n["group"] for n in next(r for r in out if r["row"] == "folds")["names"]] == ["Motion blur"]
+    on = {r["id"] for r in rows.evaluate(static, {"shutter": 180.0}, {}, False) if r["valid"]}
+    assert {"fold:Motion blur", "shutter"} <= on          # open while on, the amount still a row
+
+
+def test_script_params_never_show_and_changed_ones_only_when_changed():
+    static = sections.layout(BLUR, "scene")
+    shown = lambda item: {r["id"] for r in rows.evaluate(static, item, {}, False) if r["valid"]}  # noqa: E731
+    assert "raw" not in shown({"raw": "M 0 0"}) and "sx" not in shown({"sx": 1.0}) and "sx" in shown({"sx": 1.5})

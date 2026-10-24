@@ -10,7 +10,7 @@ from __future__ import annotations
 from PySide6.QtCore import Slot
 from rostrum_core import RostrumError, desk
 
-from . import commands
+from . import commands, pairs
 from .edits import Scrub, edit_label
 from .parts import SlotMixin
 
@@ -54,12 +54,22 @@ class EditSlots(SlotMixin):
 
     @Slot(str)
     def toggleAnimate(self, param):
-        """The key mark's toggle on a row: the app's animate_calls, as one change. Several items: start animating
-        the ones that aren't yet; when all are, stop them all."""
+        """The key mark's toggle on a row: the app's animate_calls, as one change. A pair's half (X of Position, W of
+        Size: pairs.py) is the whole pair: both halves are keyed or stopped together, labelled by the pair. Several
+        items or halves: start animating the ones that aren't yet; when all are, stop them all."""
         def go():
-            states = {i: self.anim_state(self.doc.item(i), param) for i in self._kit.selection}
-            todo = [i for i, s in states.items() if s == "still"] or list(self._kit.selection)
-            self._apply_each(lambda i: self.animate_calls(i, param), todo)
+            names = pairs.partner_of(self._kit.static, param)
+            states = {(i, n): self.anim_state(self.doc.item(i), n) for i in self._kit.selection for n in names}
+            todo = [k for k, s in states.items() if s == "still"] or [k for k, s in states.items() if s] or list(states)
+            made = [self.animate_calls(i, n) for i, n in todo]
+            label = made[0][1]
+            if len({n for _, n in todo}) > 1:            # both halves: "Animate Position", never "Animate X"
+                op = self._kit.op_kind[0]
+                own = next(p.label for p in op.params if p.name == names[0])
+                pair = next(r["label"] for r in self._kit.static if r.get("half") == "first" and r["id"] == names[0])
+                label = label.replace(own, pair)
+            ids = list(dict.fromkeys(i for i, _ in todo))
+            self._apply([c for calls, _ in made for c in calls], self._many(label, len(ids)))
         self._guard(go)
 
     @Slot(str)

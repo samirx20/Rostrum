@@ -192,8 +192,9 @@ Every pattern below follows the same layout:
 **How it works.**
 1. **Header:** the name and kind ("title · Text"), or the count ("3 layers"). Under it, **Find a setting** (Ctrl+F).
 2. **Essentials:** the few settings used all the time, always open, at the top. Pairs share a row (X Y, W H).
-3. **Every other group is folded to its name.** Click to open it. The panel remembers open groups by name across
-   selections.
+3. **Every other group is folded to its name**, every name in one wrapping line. Click to open it. The panel remembers
+   open groups by name across selections. A group you turn on (+ Outline, + Motion blur, + Levels) is turned on by that
+   one click; − on its heading turns it off. Pairs (Position, Size) have one key mark for both values.
 4. **Search:** typing shows every matching setting from any group, open and editable. It understands people's words
    ("transparency" finds Opacity). Esc clears.
 5. **Several selected:** their shared settings, with **Mixed** where the values differ. Changing one sets them all, as
