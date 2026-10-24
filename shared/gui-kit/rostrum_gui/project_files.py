@@ -66,12 +66,15 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
     projectsUrl = Property(str, lambda s: QUrl.fromLocalFile(str(F.projects_root(s.kind))).toString(), notify=changed)
     rescue = Property("QVariantMap", lambda s: s.rescue_row(), notify=changed)
     missing = Property(int, lambda s: len(s._missing()), notify=changed)
-    hasSample = Property(bool, lambda s: bool(s.kind.sample), constant=True)
+    hasSample = Property(bool, lambda s: s.sample_wanted(), notify=changed)   # the sample is for a first run: once there is any project of this app, it is not offered
     noun = Property(str, lambda s: s.kind.noun, constant=True)
     keys = Property("QVariantMap", lambda s: dict(s._keys), constant=True)
     copyName = Property(str, lambda s: s._copy[0].name if s._copy else "", notify=changed)
     guides = Property("QVariantList", lambda s: [{"value": QUrl.fromLocalFile(str(p)).toString(), "label": label}
                                                  for p, label in s.kind.guides[:SHOWN_GUIDES]], constant=True)
+
+    def sample_wanted(self) -> bool:
+        return bool(self.kind.sample) and not F.recent(self.kind)
 
     @Slot(result=str)
     def versionName(self):

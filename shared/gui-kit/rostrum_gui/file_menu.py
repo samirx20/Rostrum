@@ -18,7 +18,7 @@ class FileMenuSlots:
             out.append({"value": "recent", "label": "Open recent", "group": "open",
                         "sub": [{"value": f"recent:{i}", "label": r["name"], "keys": r["when"], "group": "recent"}
                                 for i, r in enumerate(rows)]})
-        if self.kind.sample:
+        if self.sample_wanted():
             out.append({"value": "sample", "label": "Open sample", "group": "open"})
         if self.has_project():
             out += [{"value": "duplicate", "label": "Duplicate…", "keys": k["duplicate"], "group": "file"},

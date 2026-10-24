@@ -7,6 +7,8 @@ import "."
 //   entry: { name, icon, job (key map job: the key shown), help, tool (a tool that stays on) or act (happens now),
 //            kind (an icon the app draws: iconKinds) }
 //   A group with one entry is a plain button; with more it opens a flyout beside the rail, its icon the last-used tool.
+//   A group with `pickOnClick: true` (a family of shapes) picks the icon's tool on a click; the flyout opens on press-and-hold
+//   or from the corner mark.
 //   A group with `panel: true` opens the app's own panel instead (2D's brush panel): the rail only emits
 //   panelRequested(group) / panelCloseRequested() and the app says whether it is open (panelOpen).
 // `current` is the active tool's name (the app binds it, so a key moves the icon too). A pick closes the flyout and
@@ -86,11 +88,18 @@ Rectangle {
                 MouseArea {
                     id: area
                     anchors.fill: parent; enabled: !slot.g.sep
-                    onClicked: slot.panel ? (rail.panelOpen ? rail.panelCloseRequested() : rail.panelRequested(slot.g))
+                    onClicked: slot.many && slot.g.pickOnClick && !(flyout.visible && flyout.group === slot.g.id) ? rail.pick(slot.e) :
+                               slot.panel ? (rail.panelOpen ? rail.panelCloseRequested() : rail.panelRequested(slot.g))
                              : slot.many ? (flyout.visible && flyout.group === slot.g.id ? flyout.close() : rail.openGroup(slot.g.id))
                                          : rail.pick(slot.e)
                     pressAndHoldInterval: 350
                     onPressAndHold: if (slot.many) rail.openGroup(slot.g.id)
+                }
+                MouseArea {   // the corner mark opens the flyout of a family whose click picks the shown tool
+                    visible: slot.many && !!slot.g.pickOnClick
+                    anchors { right: parent.right; bottom: parent.bottom }
+                    width: 16; height: 16; cursorShape: Qt.PointingHandCursor
+                    onClicked: flyout.visible && flyout.group === slot.g.id ? flyout.close() : rail.openGroup(slot.g.id)
                 }
                 HoverTip {   // beside the rail: the name and the key
                     x: slot.width + 6; y: (slot.height - height) / 2

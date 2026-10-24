@@ -41,7 +41,7 @@ def _names(ctx) -> set[str]:
     return {display_name(i) for i in items} | {i["name"] for i in items if i.get("name")}     # a star named "Shape" still holds that name
 
 
-@R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add composition",
+@R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add scene",
              params=[ID, NAME, *F.FIELDS["comp"]])
 def comp_add(ctx, targets, args):
     item = new_item(ctx, "comp", args)
@@ -142,7 +142,7 @@ def _descendants(ctx, id_):
 
 @R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow, frosted glass, "
              "grain (film grain on the layer's own look; on a group it covers all its layers), trail, smear.",
-             target=F.LAYERS, label="Add effect",
+             target=tuple(t for t in F.LAYERS if t != "camera"), label="Add effect",     # a camera shows nothing of its own to affect
              params=[Param.choice("type", list(F.EFFECTS), label="Effect", required=True), ID, NAME, INDEX])
 def effect_add(ctx, targets, args):
     for t in targets:

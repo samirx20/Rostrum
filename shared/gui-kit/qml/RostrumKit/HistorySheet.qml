@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // History (INTERACTION.md 1.9, 1.18): a sheet in the right column, in the settings panel's place while open.
-// Versions at the top (Restore; "Save a version" with a name), a filter (Everyone · You · Agents · Scripts), then every
+// Versions at the top (Restore; "Save a version" with a name), a filter (Everyone · You · Agents · Scripts; only once an agent or script has changed something), then every
 // step newest first, "who · what · when". An agent's run is one folded row with Keep and Undo all (Bring back once
 // taken back); unfolded, each step has Undo this. Taken-back rows are faint and say so. Every button is one new
 // change by the person (or, Keep, none); refusals show in the top bar's message in words.
@@ -19,7 +19,10 @@ Panel {
     bodyRight: Theme.fieldEdge                 // its buttons end where the settings column's fields end
     focus: visible
     Keys.onEscapePressed: closed()
+    property bool others: false                // someone else (an agent, a script) changed something: only then is a filter worth showing
     function reload() {
+        others = !!bridge && bridge.historyRows("you").length < bridge.historyRows("everyone").length
+        if (!others && show !== "everyone") show = "everyone"
         const all = bridge ? bridge.historyRows(show) : []
         rows = focusSession ? all.filter(r => r.session === focusSession) : all
     }
@@ -87,7 +90,7 @@ Panel {
 
                     Item { width: 1; height: Theme.grid }
                     Segmented {
-                        visible: sheet.focusSession === ""
+                        visible: sheet.focusSession === "" && sheet.others
                         options: [{ value: "everyone", label: "Everyone" }, { value: "you", label: "You" },
                                   { value: "agents", label: "Agents" }, { value: "scripts", label: "Scripts" }]
                         current: sheet.show

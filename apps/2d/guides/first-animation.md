@@ -12,7 +12,7 @@ This page takes you from an empty project to something that moves, and shows you
 
 ## 2. Add text
 
-1. Making things lives in the **tool rail**, the column of icons at the left of the canvas: **Shapes**, **Pen**, **Text**, **Brush**, **Media** (pictures, video, files), **Camera**.
+1. Making things lives in the **tool rail**, the column of icons at the left of the canvas: **Shapes**, **Pen**, **Text**, **Brush**, **Add from a file…** (pictures, video, files), **Library**, **Camera**.
 
 ![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
 

@@ -66,18 +66,14 @@ A style keeps the look of a text (font, size, weight, colour ...) so other texts
 
 ## Library and Brand kit
 
-Press **Ctrl+L**, or click **Media** in the tool rail then **Library**, to open the **Library** beside the tool rail, over the left edge of the canvas; the rail stays where it is and the canvas keeps its size. Press again to close.
+Press **Ctrl+L**, or click **Library** (the books icon) in the tool rail, to open the **Library** beside the tool rail, over the left edge of the canvas; the rail stays where it is and the canvas keeps its size. Press again to close.
 
 - **Brand kit** keeps the project's **colours**, **text styles** and **logos**. Every scene of the project sees them. It needs the scene to be in a project; if it is not, the drawer says so.
 - Click a colour: the selected shapes, paths and texts take it. Click a text style: the selected texts follow it. Click a logo: it goes onto the canvas.
-- To add: select a text and click **+ This text's style**, or select a layer and click **+ This colour**. Click **+ Logo…** to keep a logo file.
+- To add: select a text and click **+ This text's style**, or select a layer and click **+ This colour**. Click **+ Logo…** to keep a logo file. A section with nothing in it is not shown: select a layer and **+ This colour** (and its **Colours** heading) appear.
 - **This scene · text styles** lists the styles made in this scene.
 
-## The Media group
+## Adding a file
 
-In the tool rail, under the picture icon. It holds what is not a drawing tool:
-
-- **Picture** and **Video** pick a file and put it on the canvas.
-- **Import…** opens the file picker and brings in pictures, videos, SVG, PDFs and Photoshop files at once; a Figma frame comes in by pasting its link (see [importing.md](importing.md)).
-- **Library** (Ctrl+L) opens the Library.
+In the tool rail, the picture icon is **Add from a file…** (Ctrl+I): one door for pictures, videos, SVG, Lottie, PDFs and Photoshop files. It opens the file picker at once and the file comes in straight away (see [importing.md](importing.md)); a Figma frame comes in by pasting its link. The **Library** (Ctrl+L) is the books icon under it.
 - **3D render** adds a Rostrum3D render. It is there only when Rostrum3D is installed.

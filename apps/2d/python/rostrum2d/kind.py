@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, layout_pin, media, migrations, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, layout_pin, media, migrations, names, paint_fields, pathdata, refusals, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -40,6 +40,7 @@ def _set_fields(ctx, targets, args):
     for t in targets:
         for k, v in args.items():
             ctx.set(t, k, v)
+        names.after_set(ctx, t, args)                # a new shape is named for its kind, counted per kind
         text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
 
 

@@ -15,7 +15,7 @@ Click **≡** at the top left.
 - **New** (Ctrl+N): a new project, made at once in your projects folder.
 - **Open…** (Ctrl+O): pick a project folder to open.
 - **Open recent**: the projects you opened last.
-- **Open sample**: your own copy of the sample project. The original never changes.
+- **Open sample** (only until you have a project of your own): your own copy of the sample project. The original never changes.
 - **Duplicate…** (Ctrl+Shift+S): a separate copy of the whole project under a name you choose. Your window stays on the original and says so; click **Open the copy** to go to it.
 - **Save a version** (Ctrl+S): gives the project as it is now a name, in History, so you can come back to it. The time is filled in as the name; type another if you like.
 - **Show folder**: the project's folder on your computer.
@@ -32,7 +32,7 @@ The same actions are in the command box (**Ctrl+K**).
 ## 4. Starting the app
 
 1. The app opens the project you had open last.
-2. With nothing to reopen, the start screen shows: **New**, **Open…**, **Open the sample**, your recent projects (with a picture of each), and three guides.
+2. With nothing to reopen, the start screen shows: **New**, **Open…**, **Open the sample** (the very first time only), your recent projects (with a picture of each), and three guides.
 
 ## 5. If a project can't be opened
 

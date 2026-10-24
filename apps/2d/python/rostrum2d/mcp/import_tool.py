@@ -1,5 +1,5 @@
-"""run_import: a file (SVG, PDF, PSD, image, video) or a Figma frame into a composition, as one undo step. The screen's Media ›
-Import… (a file, in at once with the defaults), a file dropped on the canvas and the Import panel (a Figma frame) run the
+"""run_import: a file (SVG, PDF, PSD, image, video) or a Figma frame into a composition, as one undo step. The screen's Add from a
+file… (a file, in at once with the defaults; a several-page PDF asks which page), a file dropped on the canvas and the Import panel (a Figma frame) run the
 same code (io/importing.py), so a person and an agent get the same layers and the same report."""
 from __future__ import annotations
 

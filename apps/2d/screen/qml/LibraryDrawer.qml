@@ -4,7 +4,7 @@ import RostrumKit
 
 // The Library drawer (UX_SPEC 3.27), beside the tool rail over the canvas's left edge (AppShell.leftOver: the rail
 // stays put and the canvas keeps its size). Ctrl+L or the
-// rail's Media › Library. Brand kit: the project's colours, text styles and logos (every document of the project sees
+// rail's Library button. Brand kit: the project's colours, text styles and logos (every document of the project sees
 // them: screen2d/brand_view.py, rostrum2d/brand_kit.py); then this document's own text styles. Click an entry to put
 // it on the selection (a colour on shapes, paths and texts; a style on texts) or, for a logo, onto the canvas.
 // The + buttons appear only when they can act (a selection to take from; a project to keep the kit in).
@@ -88,22 +88,24 @@ Rectangle {
             width: parent.width; spacing: 2
             EmptyHint { visible: !drawer.lib.hasProject; width: col.width; topPadding: Theme.gap   // one line, no box
                         text: "A project's scenes share colours, text styles and logos here." }
-            Heading { visible: drawer.lib.hasProject; text: "Colours" }
+            readonly property bool colourAdd: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
+            readonly property bool styleAdd: drawer.lib.hasProject && drawer.lib.picked === "texts"
+            Heading { visible: drawer.lib.hasProject && (drawer.lib.colors.length > 0 || col.colourAdd); text: "Colours" }   // an empty section is not shown: select a layer and its "This colour" is here
             Repeater { model: drawer.lib.colors
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.value
                                         sub: modelData.name.toUpperCase() !== modelData.value.toUpperCase() ? modelData.value.toUpperCase() : ""
                                         onPicked: drawer.lib.use("colors", modelData.name)
                                         onRemoved: drawer.lib.remove("colors", modelData.name) } }
-            AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
+            AddPicked { visible: col.colourAdd
                         text: "This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
-            Heading { visible: drawer.lib.hasProject; text: "Text styles" }
+            Heading { visible: drawer.lib.hasProject && (drawer.lib.textStyles.length > 0 || col.styleAdd); text: "Text styles" }
             Repeater { model: drawer.lib.textStyles
                        delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color || "transparent"
                                         sub: (modelData.font || "") + (modelData.size ? " · " + modelData.size + " px" : "")
                                              + (modelData.weight ? " · " + modelData.weight : "")
                                         onPicked: drawer.lib.use("textStyles", modelData.name)
                                         onRemoved: drawer.lib.remove("textStyles", modelData.name) } }
-            AddPicked { visible: drawer.lib.hasProject && drawer.lib.picked === "texts"
+            AddPicked { visible: col.styleAdd
                         text: "This text's style"; help: "Keep the selected text's style in the project's brand kit." }
             Heading { visible: drawer.lib.hasProject; text: "Logos" }
             Repeater { model: drawer.lib.logos

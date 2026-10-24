@@ -6,9 +6,9 @@ Add › Image and Add › Video work the same way: the picture or clip is copied
 
 ## 1. Bring a file in
 
-1. Click **Media** in the tool rail (or press **Ctrl+I**), then **Import…**. The file picker opens at once.
+1. Click **Add from a file…** (the picture icon in the tool rail) or press **Ctrl+I**. The file picker opens at once.
 2. Pick the file: pictures (PNG, JPG, WEBP, BMP, GIF, TIF), videos (MP4, MOV, WEBM, MKV, M4V, AVI), SVG, PDF and PSD. It comes in straight away, centred, as one step (**Ctrl+Z** takes it back). Dropping the file on the canvas does the same, where you let go.
-3. A PDF comes in from its first page, an SVG's words as real text you can edit, and a page (SVG, PDF, PSD) fitted into your picture. (An agent's `run_import` can choose another page, letter outlines or the original size.)
+3. A PDF of one page comes in at once. A PDF of several pages asks which page first: the Import panel opens at the right of the canvas with a **Page** box and an **Import** button. An SVG's words as real text you can edit, and a page (SVG, PDF, PSD) fitted into your picture. (An agent's `run_import` can choose letter outlines or the original size, and page 0 brings every page in as its own scene.)
 
 ## 2. What came across
 
@@ -25,7 +25,7 @@ Add › Image and Add › Video work the same way: the picture or clip is copied
 
 ## 4. A single picture or video
 
-You can also use **Media**, then **Picture** or **Video**, and pick the file there. It is the same result for one picture or clip.
+There is no separate door for them: **Add from a file…** takes a picture or a clip like any other file, and **Ctrl+K** has the one command **Add from a file…**.
 
 A video layer's **Loop** has three choices: **Off** holds the last frame, **Loop** starts again, **Ping-pong** plays forward and then backward, over and over. (Its own sound can't play backwards, so with Ping-pong the sound simply starts again, forward.)
 

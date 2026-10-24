@@ -38,3 +38,18 @@ def unique_name(taken: set[str], base: str) -> str:
     while f"{base} {n}" in taken:
         n += 1
     return f"{base} {n}"
+
+
+_DEFAULT_SHAPE = re.compile(rf"(Shape|{'|'.join(F.SHAPE_WORDS.values())})( \d+)?")
+
+
+def after_set(ctx, target: str, args: dict):
+    """Called by every field operation after it set `args`: a shape that still has its default name takes its kind's
+    ("Ellipse", then "Ellipse 2"): the numbers count per kind from 1, not per layer. A name a person typed is kept."""
+    item = ctx.item(target)
+    if item["type"] != "shape" or args.get("shape") not in F.SHAPE_WORDS or not _DEFAULT_SHAPE.fullmatch(str(item.get("name", ""))):
+        return
+    from rostrum_core.tree import index
+    others = [loc.item for i, loc in index(ctx.doc, ctx.kind.lists).items() if i != target and loc.item.get("type") != "doc"]
+    taken = {display_name(i) for i in others} | {i["name"] for i in others if i.get("name")}
+    ctx.set(target, "name", unique_name(taken, F.SHAPE_WORDS[args["shape"]]))

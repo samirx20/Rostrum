@@ -103,7 +103,7 @@ class ActionSlots(SlotMixin):
     @Slot(str, result="QVariantList")
     def commands(self, query):
         found = [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands(), query)]
-        return found + self._hub.whys(query, found)
+        return found
 
     @Slot(str, result=bool)
     def run(self, key):
@@ -142,7 +142,10 @@ class ActionSlots(SlotMixin):
         first, a selected one keeps the selection; then the menu for the selection."""
         if layer_id and layer_id not in self.selected_layers():
             self.select(layer_id)
-        return self.actionMenu()
+        entries = self.actionMenu()
+        if not self.selected_layers() and any(c["type"] != "camera" for c in self.comp()["layers"]):   # empty canvas: Paste (if any) and Select all
+            entries = entries + [{"value": "layer:selectall", "label": "Select all", "keys": "Ctrl+A", "group": "edit", "sub": []}]
+        return entries
 
     @Slot("QVariantMap", result=str)
     def stepBack(self, state):

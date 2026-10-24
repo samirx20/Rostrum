@@ -1,12 +1,11 @@
 import QtQuick
-import QtQuick.Dialogs
 import RostrumKit
 
-// Import: a file (SVG, PDF page, PSD, image, video) or a Figma frame into the open composition, as one change. Only the
-// settings that apply to what was chosen are here (a page for a PDF, text handling for an SVG, key / frame / token for Figma).
+// Import: opens only when it has a question: which page of a PDF, a pasted Figma link (key / frame / token), or the list of
+// what didn't come across. A file is picked elsewhere (Add from a file…, Ctrl+I) and comes in at once. Only the settings
+// that apply are here (a page for a PDF, text handling for an SVG).
 // Afterwards the settings go: only what came in and the list of what didn't come across stay (and the panel closes by
-// itself when everything came across: the status line says what was imported). Opened by a pasted Figma link (the rail's
-// Media › Import… picks a file and imports it at once, Rail2D.qml).
+// itself when everything came across: the status line says what was imported).
 Rectangle {
     id: panel
     // Always `panel.job`, never bare `job`: inside a kit Button / IconButton a bare `job` is the button's own key-map name
@@ -34,12 +33,6 @@ Rectangle {
     }
     IconButton { anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: (Theme.header - height) / 2 }
                  glyph: "×"; kind: "ghost"; tip: "Close"; onClicked: panel.shown = false }
-    FileDialog {
-        id: dialog
-        title: "Choose a file to import"
-        nameFilters: [panel.job.filters]
-        onAccepted: panel.job.setFile(selectedFile.toString())
-    }
     Column {
         id: col
         anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: Theme.header
@@ -49,32 +42,20 @@ Rectangle {
         Column {   // the settings: gone once an import is done
             id: settings
             visible: !panel.done; width: col.width; spacing: Theme.gap
-        Row {
-            height: Theme.row; spacing: 0
-            Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
-                   text: "From"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-            ChoiceField {
-                anchors.verticalCenter: parent.verticalCenter
-                width: col.width - panel.labelW
-                options: [{ value: "file", label: "A file" }, { value: "figma", label: "Figma" }]; current: panel.job.source
-                onPicked: (v) => panel.job.setSource(v)
-            }
-        }
-        Row {
+        Row {   // the file waiting for its page (a PDF of several pages); a Figma link has its fields below instead
             visible: panel.job.source === "file"; height: visible ? Theme.row : 0; spacing: Theme.gap
             Text { width: panel.labelW - Theme.gap; height: parent.height; verticalAlignment: Text.AlignVCenter
                    text: "File"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-            Button { anchors.verticalCenter: parent.verticalCenter; text: "Choose…"; onClicked: dialog.open() }
-            Text { width: col.width - panel.labelW - 72 - Theme.gap; height: parent.height; verticalAlignment: Text.AlignVCenter
-                   text: panel.job.fileName || "none chosen"; elide: Text.ElideMiddle
-                   color: panel.job.fileName ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+            Text { width: col.width - panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
+                   text: panel.job.fileName; elide: Text.ElideMiddle
+                   color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
         }
         Row {
             visible: panel.job.kind === "pdf"; height: visible ? Theme.row : 0; spacing: 0
             Text { width: panel.labelW; height: parent.height; verticalAlignment: Text.AlignVCenter
                    text: "Page"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
             NumberField { anchors.verticalCenter: parent.verticalCenter; width: col.width - panel.labelW
-                          value: panel.job.page; from: 1; to: 9999; step: 1; onEdited: (v) => panel.job.setPage(v) }
+                          value: panel.job.page; from: 1; to: panel.job.pageCount; step: 1; onEdited: (v) => panel.job.setPage(v) }
         }
         Row {
             visible: panel.job.hasText; height: visible ? Theme.row : 0; spacing: 0
@@ -121,7 +102,7 @@ Rectangle {
         }
         }
         Row {
-            visible: children[0].visible || children[1].visible; spacing: Theme.gap
+            visible: (panel.job.ready && !panel.done) || panel.job.state === "running"; spacing: Theme.gap   // (not read off the children: they are only visible once this is)
             Button { visible: panel.job.ready && !panel.done && panel.job.state !== "running"; text: "Import"; kind: "primary"
                      onClicked: { if (panel.job.source === "figma") { panel.job.runFigma(figma.key, figma.frame, figma.token); figma.token = "" } else panel.job.run() } }
             Button { visible: panel.job.state === "running"; text: "Cancel"; onClicked: panel.job.cancel() }

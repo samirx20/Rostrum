@@ -35,4 +35,4 @@ OWN = [
     {"job": "exclude", "keys": ["Ctrl+Alt+X"], "label": "Combine: exclude"},
 ]
 
-KEYS2D = KeyMap("Rostrum2D", OWN)
+KEYS2D = KeyMap("Rostrum2D", OWN, drop=("preferences",))     # no setting of 2D is a person's to change: Ctrl+, would open an empty window
