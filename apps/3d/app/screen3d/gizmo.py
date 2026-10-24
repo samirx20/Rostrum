@@ -70,11 +70,12 @@ class View:
         return 2 * depth * self.tan_v / self.h
 
 
-def item_frame(scene, parent_id, values, frame):
-    """(parent's world transform, the gizmo's world origin, the item's own turn (3×3)) from its document values."""
-    pw = through.find_item(scene, parent_id, frame)[0] if parent_id else aim.IDENTITY
+def item_frame(carrier, values):
+    """(the transform the item's own x y z live in, the gizmo's world origin, the item's own turn (3×3)). `carrier` is
+    the item's seen placement (resolve.Frames.carrier): its parent's world, or that shifted by a stick and carried by a
+    follow, so the gizmo stands where the item is seen and a drag edits its own offset."""
     turn = aim.local({**values, "sx": 1.0, "sy": 1.0, "sz": 1.0, "x": 0.0, "y": 0.0, "z": 0.0})[0]
-    return pw, aim.point(pw, [values["x"], values["y"], values["z"]]), turn
+    return carrier, aim.point(carrier, [values["x"], values["y"], values["z"]]), turn
 
 
 def handles(view: View, origin, axes, own_axes, show="all", aimed=False, px=1.0) -> list[dict]:
