@@ -425,18 +425,22 @@ impl Painter {
         {
             let canvas = if held { self.held.as_mut().unwrap().canvas() } else { self.surface.canvas() };
             canvas.clear(Color::TRANSPARENT);
-            let clipped = self.clip_out.as_ref().map(|q| {
-                canvas.save();
-                canvas.clip_path(q, skia_safe::ClipOp::Difference, true);
-            });
+            // Every paint starts from the surface's own px and leaves the canvas as it found it: the scene painter's
+            // root view must not stay on the canvas (a world picture at home left its zoom there, so the next one
+            // clipped and laid the frame's export through it: a shrunk export and a stray copy round it).
+            let depth = canvas.save();
+            canvas.reset_matrix();
+            if let Some(q) = self.clip_out.as_ref() {
+                // Hard-edged, as draw_over's: the two sides of the frame's edge then share each pixel exactly (two
+                // soft edges each half-cover an edge pixel, so the well showed through as a light seam).
+                canvas.clip_path(q, skia_safe::ClipOp::Difference, false);
+            }
             // Half-float images were decoded into the working space: anyrender_skia tags them with it.
             anyrender_skia::working_space::set(self.space.clone());
             self.cache.set_root_view(self.view.0, self.view.1, self.view.2);
             draw(&mut SkiaScenePainter::new(canvas, &mut self.cache));
             self.cache.set_root_view(1.0, 0.0, 0.0);
-            if clipped.is_some() {
-                canvas.restore();
-            }
+            canvas.restore_to_count(depth);
         }
         self.cache.held = None;
         self.cache.next_gen();
@@ -519,7 +523,8 @@ impl Painter {
     pub fn draw_over(&mut self, image: &skia_safe::Image, m: &skia_safe::Matrix, clip: &skia_safe::Path) {
         let canvas = self.last_surface().canvas();
         canvas.save();
-        canvas.clip_path(clip, skia_safe::ClipOp::Intersect, true);
+        canvas.reset_matrix();
+        canvas.clip_path(clip, skia_safe::ClipOp::Intersect, false);     // hard-edged: see paint's clip_out
         canvas.concat(m);
         let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
         canvas.draw_image_with_sampling_options(image, (0, 0), sampling, None);
