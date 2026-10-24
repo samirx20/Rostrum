@@ -1,0 +1,111 @@
+{
+ "about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's loudness: equal track volumes sound balanced. Measured, not tuned by ear.",
+ "referenceLufs": -15.36,
+ "presets": {
+  "builtIn:analogStrings": {
+   "role": "chords",
+   "lufs": -15.05,
+   "gain": 0.9651
+  },
+  "builtIn:choirPad": {
+   "role": "chords",
+   "lufs": -13.96,
+   "gain": 0.8511
+  },
+  "builtIn:cinematicBrass": {
+   "role": "chords",
+   "lufs": -12.67,
+   "gain": 0.7339
+  },
+  "builtIn:feltPiano": {
+   "role": "chords",
+   "lufs": -17.19,
+   "gain": 1.2341
+  },
+  "builtIn:glassMarimba": {
+   "role": "line",
+   "lufs": -22.16,
+   "gain": 2.1879
+  },
+  "builtIn:grandPiano": {
+   "role": "chords",
+   "lufs": -17.39,
+   "gain": 1.264
+  },
+  "builtIn:spiccatoStrings": {
+   "role": "chords",
+   "lufs": -23.92,
+   "gain": 2.6802
+  },
+  "builtIn:subBass": {
+   "role": "line",
+   "lufs": -15.05,
+   "gain": 0.9645
+  },
+  "builtIn:warmPad": {
+   "role": "chords",
+   "lufs": -15.36,
+   "gain": 0.9997
+  },
+  "kit:synth": {
+   "role": "groove",
+   "lufs": -16.98,
+   "gain": 1.2045
+  },
+  "model:glockenspiel": {
+   "role": "line",
+   "lufs": -20.29,
+   "gain": 1.7647
+  },
+  "model:guitar": {
+   "role": "chords",
+   "lufs": -20.26,
+   "gain": 1.7571
+  },
+  "model:marimba": {
+   "role": "line",
+   "lufs": -19.0,
+   "gain": 1.5202
+  },
+  "model:nylonGuitar": {
+   "role": "chords",
+   "lufs": -23.03,
+   "gain": 2.4181
+  },
+  "model:tubularBell": {
+   "role": "line",
+   "lufs": -9.99,
+   "gain": 0.5389
+  },
+  "model:vibraphone": {
+   "role": "chords",
+   "lufs": -13.12,
+   "gain": 0.7728
+  },
+  "model:violin": {
+   "role": "line",
+   "lufs": -18.5,
+   "gain": 1.4355
+  },
+  "synth:saw": {
+   "role": "chords",
+   "lufs": -13.94,
+   "gain": 0.8496
+  },
+  "synth:sine": {
+   "role": "line",
+   "lufs": -14.76,
+   "gain": 0.9335
+  },
+  "synth:square": {
+   "role": "chords",
+   "lufs": -8.81,
+   "gain": 0.4704
+  },
+  "synth:triangle": {
+   "role": "chords",
+   "lufs": -13.32,
+   "gain": 0.7907
+  }
+ }
+}
