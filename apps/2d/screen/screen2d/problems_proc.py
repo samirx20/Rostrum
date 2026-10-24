@@ -9,17 +9,33 @@ from __future__ import annotations
 import multiprocessing
 
 
+def _same(old, new):
+    """`new` with every part equal to `old`'s part at the same place (items matched by id) being that very object of
+    `old`: a document comes through the pipe as a fresh copy, and the scene keeper (scene_keep.py) knows unchanged parts
+    by identity, so the engine is sent only the change."""
+    if old is None or new == old:
+        return old if new == old else new
+    if isinstance(new, dict) and isinstance(old, dict):
+        return {k: _same(old.get(k), v) for k, v in new.items()}
+    if isinstance(new, list) and isinstance(old, list):
+        by = {o["id"]: o for o in old if isinstance(o, dict) and "id" in o}
+        return [_same(by.get(v["id"]) if isinstance(v, dict) and "id" in v else (old[i] if i < len(old) else None), v)
+                for i, v in enumerate(new)]
+    return new
+
+
 def _serve(conn):
     from rostrum2d import textsize
     from rostrum2d.diagnose_engine import everything
     from rostrum2d.engine import Engine
     from rostrum2d.scene_keep import Keeper
-    eng, keeper = Engine(), Keeper()       # its engine is sent only what changed (scene_keep.py)
+    eng, keeper, last = Engine(), Keeper(), None     # its engine is sent only what changed (scene_keep.py)
     try:
         while (job := conn.recv()) is not None:
             try:
+                last = _same(last, job[0])
                 with textsize.use(eng):    # texts measured with its own engine
-                    conn.send(("ok", everything(*job, eng, keeper)))
+                    conn.send(("ok", everything(last, *job[1:], eng, keeper)))
             except Exception as e:  # noqa: BLE001  handed back, raised there
                 conn.send(("error", f"{type(e).__name__}: {e}"))
     finally:

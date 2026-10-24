@@ -134,7 +134,7 @@ def edit_time(bridge, kind, n=20):
     if repr(bridge.placed_item("card")) != start:
         raise RuntimeError(f"edittime {kind}: the document did not come back as it started")
     eng = " ".join(f"{k[4:]} {_med(v)}" for k, v in stages.items() if k.startswith("eng."))
-    rest = " ".join(f"{k} {_med(v)}" for k, v in stages.items() if not k.startswith("eng.") and k not in ("describe", "load", "pixels"))
+    rest = " ".join(f"{k.replace(chr(0x2192), '-')} {_med(v)}" for k, v in stages.items() if not k.startswith("eng.") and k not in ("describe", "load", "pixels"))
     print(f"edittime {kind}: n={n}; gui {_spread(gui)} ms; picture {_spread(pic)} ms; describe {_med(stages.get('describe', []))}; "
           f"load {_med(stages.get('load', []))}; pixels {_med(stages.get('pixels', []))}" + (f"; eng {eng}" if eng else "")
           + (f"\n  stages: {rest}" if rest else ""))
