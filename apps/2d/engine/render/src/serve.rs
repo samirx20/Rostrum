@@ -195,7 +195,7 @@ pub(crate) fn twin(like: &Like, html: &str) -> Result<Session, String> {
     };
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let painting = like.painting.clone();
-    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting, over: None, stage_open: false })
+    Ok(Session { doc, stage, assets, painter, width, height, deep, color, sink: None, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, deferred: None, painting, over: None, stage_open: false })
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
