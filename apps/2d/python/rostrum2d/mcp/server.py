@@ -34,6 +34,17 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "The server opens the person's last project; inspect_recent_projects and run_open_project switch.")
 
 
+SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, background=); layers shape / text / image / "
+               "path / group(id, **fields), made inside `with group(...):` to go in it (their x, y are then in the group's "
+               "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
+               "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=). "
+               "Fields: x, y (the anchor, default the centre), w, h, scale, rotation, opacity 0-1; shape: shape=\"rect\" | "
+               "\"ellipse\" …, fill, radius, filled, stroke=\"#fff\", strokeWidth; text: body, size, weight, color; "
+               "path: d (SVG; with no x, y, w, h its points are comp px), fill=\"none\". Colours \"#rrggbb\" or \"#rgb\". "
+               "Before a field's first key it holds that key's value. Every field and the first-time surprises: "
+               "inspect_guide 'start-here'. An error names the line and what to write instead.")
+
+
 def app_tools():
     return (look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
             .merged_with(draw.tools).merged_with(rig.tools).merged_with(lipsync.tools).merged_with(curves.tools).merged_with(export_tool.tools)
@@ -47,7 +58,7 @@ def make_app(project: str | None = None, items: list[str] | None = None, documen
     docs = documents if documents is not None else (open_documents(project, items or []) if project else {})
     instructions = INSTRUCTIONS if docs else f"{INSTRUCTIONS} {project_tool.NO_PROJECT}"
     return App("rostrum-2d", docs, run_source=run_source, instructions=instructions, guides=Guides().load_folder(GUIDES),
-               folder=project)
+               folder=project, script_help=SCRIPT_HELP)
 
 
 def make_runtime(app: App) -> Runtime:

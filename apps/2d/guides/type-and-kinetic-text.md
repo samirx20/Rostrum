@@ -71,7 +71,8 @@ For different timing per word you can also make one text layer per word and driv
 ## Gradient-filled letters
 
 A `gradient` effect on a text layer fills its letters instead of the plain colour: `style` linear / radial / conic, `angle`,
-`cx`, `cy`, `color1`, `color2`, optional `middle` with `color3` at `mid`. Numbers and colours animate.
+`cx`, `cy`, `color1`, `color2`, optional `middle` with `color3` at `mid`. Numbers and colours animate. A linear `angle` is
+the way `color1` runs to `color2`, as in CSS: 0° bottom to top, 90° left to right, 180° (the default) top to bottom.
 
 ```python
 t.effect("gradient", id="fill", style="linear", angle=90, color1="#ffffff", color2="#8899ff")

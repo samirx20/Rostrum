@@ -6,12 +6,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from . import colours
 from .errors import RostrumError, codes, did_you_mean
 
 IMPORTANCE = ("primary", "secondary", "deep")
 TYPES = ("number", "toggle", "choice", "text", "color", "id", "points", "time", "list")
 TIME_UNITS = ("seconds", "beats", "marker")     # a time value is {"seconds": 1.5}, {"beats": 4} or {"marker": "drop"}
-HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+HEX = colours.HEX6                             # how a colour is stored (colours.read takes the forms people write)
+_LOOSE = re.compile(r"[\s_\-]+")
 _WORD_BREAK = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|[_\-]+")
 
 
@@ -124,26 +126,33 @@ class Param:
             if self.markers and isinstance(value, str):
                 from .marker_times import FORMS, REF
                 if not REF.match(value):
-                    bad("is not seconds or a marker reference", ["seconds (1.5)", *FORMS])
+                    bad("is not seconds or a marker reference", ["seconds (1.5)", *FORMS],
+                        f'A marker is written with #: "#{value}"' if REF.match(f"#{value}") else None)
                 return value
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 bad("is not a number")
             if self.integer and value != int(value):
                 bad("must be a whole number")
             if (self.min is not None and value < self.min) or (self.max is not None and value > self.max):
-                bad("is out of range", [f"{self.min} to {self.max}{self.unit}"])
+                pct = self.display == "percent"
+                bad("is out of range", [f"{self.min:g} to {self.max:g}{self.unit}" + (" (1 = 100 %)" if pct else "")],
+                    f"Write {value / 100:g} for {value:g} %" if pct and self.max is not None and value <= self.max * 100 else None)
             return int(value) if self.integer else value
         if t == "toggle":
             if not isinstance(value, bool):
                 bad("must be true or false", ["true", "false"])
         elif t == "choice":
             if value not in self.options:
-                bad("is not one of the choices" + (" (no longer offered)" if value in self.kept else ""),
-                    self.options, did_you_mean(value, self.options))
+                same = self._same_choice(value)
+                if same is None:
+                    bad("is not one of the choices" + (" (no longer offered)" if value in self.kept else ""),
+                        self.options, did_you_mean(value, self.options))
+                value = same
             return self.options[self.options.index(value)]   # the option itself (a screen's 48000.0 is 48000)
         elif t == "color":
-            if not isinstance(value, str) or not HEX.match(value):
-                bad("is not a colour", ["#rrggbb"])
+            if (c := colours.read(value)) is None:
+                bad("is not a colour", colours.FORMS, colours.hint(value))
+            return c
         elif t == "points":
             return self._check_points(value, bad)
         elif t == "time":
@@ -158,6 +167,18 @@ class Param:
             if not isinstance(value, str) or (t == "id" and not value):
                 bad("must be text" if t == "text" else "must be an id")
         return value
+
+    def _same_choice(self, value):
+        """The one option `value` names when written another common way ("ease-out" / "EaseOut" for easeOut, 3 for
+        "3"), else None. Two options that read the same that way are ambiguous: None, so the caller refuses."""
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            same = [o for o in self.options if isinstance(o, str) and o == f"{value:g}"]
+        elif isinstance(value, str):
+            key = _LOOSE.sub("", value).lower()
+            same = [o for o in self.options if isinstance(o, str) and _LOOSE.sub("", o).lower() == key]
+        else:
+            same = []
+        return same[0] if len(same) == 1 else None
 
     def _check_time(self, value, bad):
         """A time: exactly one of seconds / beats (a number, within min and max) or marker (a marker name)."""
@@ -191,7 +212,7 @@ class Param:
     def json_schema(self) -> dict:
         s = {"number": {"type": "integer" if self.integer else "number"}, "toggle": {"type": "boolean"},
              "choice": {"enum": list(self.options)}, "text": {"type": "string"},
-             "color": {"type": "string", "pattern": HEX.pattern}, "id": {"type": "string"},
+             "color": {"type": "string", "pattern": colours.SCHEMA}, "id": {"type": "string"},
              "time": {"type": "object", "minProperties": 1, "maxProperties": 1, "properties": {
                  "seconds": {"type": "number", "minimum": 0}, "beats": {"type": "number", "minimum": 0},
                  "marker": {"type": "string", "minLength": 1}}, "additionalProperties": False},

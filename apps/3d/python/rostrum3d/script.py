@@ -65,7 +65,7 @@ class Item:
                 (value, e), own = (v if isinstance(v, tuple) else (v, ease)), dict(curve)
             if value is None:
                 raise ValueError(f'{where}: a key given as a dict needs its value as "v"')
-            F.param("key", "ease").check(e, where)
+            e = F.param("key", "ease").check(e, where)
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
                  ("c" if p.type == "color" else "v"): p.check(value, where), "ease": e}
             if set(own) - set(CURVE):

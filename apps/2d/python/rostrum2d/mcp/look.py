@@ -45,7 +45,7 @@ def look_frame(ctx, args):
 
 
 @tools.tool("look_sheet", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
-                                           "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the last frame."},
+                                           "end": {"type": "number", "minimum": 0, "description": "Seconds. Default (and the comp's duration): the last frame."},
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
                                            "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
@@ -56,6 +56,7 @@ def look_sheet(ctx, args):
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     last = (round(duration * fps) - 1) / fps
     start, end, count = args.get("start", 0.0), args.get("end", last), args.get("count", 8)
+    end = last if last < end <= duration + 1e-9 else end        # the comp's end time is its last frame
     if not 0 <= start < end <= last + 1e-9:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'range {start}–{end} s', f"must satisfy 0 <= start < end <= {last:.3f} (the last frame)")
     frames = sorted({round((start + (end - start) * i / (count - 1)) * fps) for i in range(count)})

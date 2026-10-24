@@ -339,7 +339,7 @@ FIELDS: dict[str, list[Param]] = {
     "gradient": [
         CH("style", ["linear", "radial", "conic"], "Style", "Gradient", "linear"),
         N("angle", "Angle", "Gradient", -360, 360, 1, "°", when={"any": [IS("style", "linear"), IS("style", "conic")]},
-          default=180.0, help="Linear: the direction. Conic: where the sweep starts (0° = straight up, clockwise)"),
+          default=180.0, help="Linear: the way color1 runs to color2, as in CSS (0° = bottom to top, 90° = left to right, 180° = top to bottom). Conic: where the sweep starts (0° = straight up, clockwise)"),
         N("cx", "Centre X", "Gradient", -5, 6, 0.01, "", S, {"any": [IS("style", "radial"), IS("style", "conic")]},
           default=0.5, help="Fraction of the layer's box: 0 = left edge, 1 = right edge"),
         N("cy", "Centre Y", "Gradient", -5, 6, 0.01, "", S, {"any": [IS("style", "radial"), IS("style", "conic")]},

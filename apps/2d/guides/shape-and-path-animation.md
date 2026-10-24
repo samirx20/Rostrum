@@ -5,10 +5,14 @@ A person uses the Pen tool and writes the same path data the operations below wr
 
 ## Two layers for vectors
 
-- **`shape`**: a rect or ellipse (`w`, `h`, `radius`, `fill`, outline). Simple, and its size and radius animate.
+- **`shape`**: a rect, ellipse, star, polygon, line, arrow … (`w`, `h`, `radius`, `fill`; `stroke`, `strokeColor`,
+  `strokeWidth` for an outline; `filled=False` for an outline only, a ring). Simple, and its size and radius animate.
 - **`path`**: any outline. Its one truth is `d`: SVG path data with **absolute** commands only: `M x y`, `L x y`,
-  `C x1 y1 x2 y2 x y`, `Z`, in the layer's own px from its box's top-left. `w` and `h` are the box (anchor and gradients use
-  it). Bad data is refused, naming what is wrong.
+  `C x1 y1 x2 y2 x y`, `Z`. `w` and `h` are the box (anchor and gradients use it). Bad data is refused, naming what is wrong.
+  Where the points are: in a script with none of `x`, `y`, `w`, `h` given, `d` is read as SVG reads it, in comp px (or
+  the group's box), and the box is fitted around it, so a chart line drawn through each bar's top passes through them.
+  With any of those given (and in operations), `d` is in the layer's own px from its box's top-left and `x`, `y` place
+  the box. A new path is filled light grey: a line wants `fill="none"` (or `filled=False`) and a stroke.
 
 `shape.to_path` turns a shape into a path (same id, place, look, effects, masks, keys; keys on fields a path cannot animate
 must be removed first).
@@ -22,7 +26,8 @@ padding (guide `ui-and-product-animation`, Auto layout).
 In a script:
 
 ```python
-path("mark", d="M 0 0 L 200 0 L 100 160 Z", fill="#ffffff", x=960, y=540)     # box taken from d
+path("mark", d="M 0 0 L 200 0 L 100 160 Z", fill="#ffffff", x=960, y=540)     # box taken from d, centred on x, y
+path("trend", d="M 360 700 L 660 560 L 960 610", fill="none", stroke="#ffd37a", strokeWidth=6)   # points in comp px
 path("burst", d=star(5, 120, 50), x=700, y=500)                                # star(points, outer, inner, rotation)
 path("hex", d=polygon(6, 100), x=1200, y=500)                                  # polygon(sides, radius, rotation)
 ```

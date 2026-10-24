@@ -34,7 +34,8 @@ class RostrumError(Exception):
         super().__init__(self.line())
 
     def line(self) -> str:
-        text = f"Error: {self.where}: {self.subject} {self.problem}."
+        said = " ".join(w for w in (self.subject, self.problem) if w)
+        text = f"Error: {self.where}: {said}" + ("" if said.endswith((".", "?", "!")) else ".")
         if self.accepted:
             shown = ", ".join(self.accepted[:12]) + (", …" if len(self.accepted) > 12 else "")
             text += f" Accepted: {shown}."

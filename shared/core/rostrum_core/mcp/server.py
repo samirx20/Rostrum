@@ -50,6 +50,8 @@ class Runtime:
         shared_screen.register(shared)
         tools_list.register(shared)
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
+        if app.script_help:
+            self.tools.described("run_script", app.script_help)
         self.jobs = jobs or InProcessJobs(log=_log)
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
