@@ -6,7 +6,7 @@ on this object (brush_panel.py), so the panel is built from the brush settings' 
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, QTimer, Signal, Slot
 from rostrum2d.drawing import each_frame, frame_at, frame_number
 from rostrum2d.names import display_name
 from rostrum2d.ops_paint import PAINTABLE
@@ -28,6 +28,7 @@ class Painter(BrushPanel):
         self.b, self._stroke, self._onion = bridge, None, False
         self._fresh, self._new_layer = None, False      # "New drawing" picked for this selection; next stroke: new paint layer
         self._target = None                             # (document state, layer, what the pen paints on): target()
+        self._showing = False                           # a stroke's picture is asked for (strokeTo)
         self.brush = Brush(bridge.comp().get("background", ""))
         self.tilt = PenTilt(self)                       # the pen's lean (Session.show watches the window with it)
         self.brush.tilt_pen = self.tilt.has_tilt
@@ -168,8 +169,16 @@ class Painter(BrushPanel):
 
     @Slot(float, float, float)
     def strokeTo(self, x, y, pressure):
-        if self._stroke is not None:
-            self.b.guard(lambda: self._stroke.move(x, y, pressure, self.tilt.lean()))
+        s = self._stroke
+        if s is not None and self.b.guard(lambda: s.move(x, y, pressure, self.tilt.lean())) and not self._showing:
+            self._showing = True                    # after the moves already queued: one picture for all of them
+            QTimer.singleShot(0, self._show_stroke)
+
+    def _show_stroke(self):
+        self._showing = False
+        s = self._stroke
+        if s is not None:
+            self.b.guard(s.show)
 
     @Slot()
     def endStroke(self):

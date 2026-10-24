@@ -38,7 +38,7 @@ def check_showing(item: dict, own_t: float, playhead: float) -> None:
 class StrokeDrag:
     def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, placer, pressure=1.0,
                  make=None, layer: str = "", lean=None):
-        self.doc, self.sid, self.points = doc, random_id("stroke"), []
+        self.doc, self.sid, self.points, self._waiting = doc, random_id("stroke"), [], False
         self._drag = Drag(doc, who, "Paint")
         try:
             if make:
@@ -75,12 +75,20 @@ class StrokeDrag:
         d = math.hypot(dx, dy) or 1.0
         return [round(amount * dx / d, 2), round(amount * dy / d, 2)]
 
-    def move(self, x, y, pressure=1.0, lean=None):
-        if self._add(x, y, pressure, lean):
+    def move(self, x, y, pressure=1.0, lean=None) -> bool:
+        """Adds the point; True if the picture needs `show()`. Cheap: the screen calls `show()` once for all the
+        moves that piled up while the last picture was made, so the ink never falls behind the pen."""
+        self._waiting |= self._add(x, y, pressure, lean)
+        return self._waiting
+
+    def show(self):
+        if self._waiting:
+            self._waiting = False
             self._drag.preview([{"op": "stroke.set", "target": [self.sid], "args": {"points": self.points}}])
 
     def end(self):
         """The one change, or None if the stroke was refused."""
+        self.show()
         return self._drag.end()
 
     def cancel(self):

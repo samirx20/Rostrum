@@ -23,6 +23,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -33,6 +34,7 @@ from .errors import RostrumError, codes
 GB = 1 << 30
 DEFAULT_CAP = 20 * GB
 KEEP_RECENT_S = 15 * 60
+RESCAN_S = 60                 # a put trims at least this often (seconds), else only when the folder may be full
 ENTRY = "entry.json"
 
 
@@ -122,6 +124,8 @@ class Cache:
         self.root = Path(root) if root else default_root()
         self.cap = cap if cap is not None else int(float(os.environ.get("ROSTRUM_CACHE_CAP_GB", 20)) * GB)
         self.clock = clock
+        self._seen, self._added, self._scanned = None, 0, 0.0   # bytes at the last trim's scan, put since, when
+        self._aside, self._again = None, False          # the trim running aside (_due), and go round again
 
     def path(self, kind: str, key: str) -> Path:
         if not kind or "/" in kind or "\\" in kind or kind.startswith("."):
@@ -164,8 +168,32 @@ class Cache:
         except BaseException:
             shutil.rmtree(tmp, ignore_errors=True)
             raise
-        self.trim()
+        self._added += meta["bytes"]
+        if self._due():
+            if self._aside and self._aside.is_alive():
+                self._again = True                      # the running trim goes round once more
+            else:
+                self._aside = threading.Thread(target=self._trim_aside, name="cache-trim", daemon=True)
+                self._aside.start()
         return folder
+
+    def settle(self):
+        """Wait for a trim running aside (tests; an app closing)."""
+        if self._aside:
+            self._aside.join()
+
+    def _due(self) -> bool:
+        """Whether a put should trim: a trim reads every entry (seconds on a big cache), so it runs aside, never on
+        the caller's thread, and only when this process's count says the folder may be over the cap, or once a minute
+        (other apps add entries too). A pen stroke puts a picture on every move: a scan each time made painting lag
+        by seconds."""
+        return self._seen is None or self._seen + self._added > self.cap or self.clock() - self._scanned > RESCAN_S
+
+    def _trim_aside(self):
+        self._again = True
+        while self._again:
+            self._again = False
+            self.trim()
 
     def entries(self) -> list[tuple[float, int, Path]]:
         """(last used, bytes, folder) of every entry."""
@@ -192,6 +220,7 @@ class Cache:
                 continue
             shutil.rmtree(folder, ignore_errors=True)
             total, freed = total - size, freed + size
+        self._seen, self._added, self._scanned = total, 0, now
         return freed
 
     def stats(self) -> dict:

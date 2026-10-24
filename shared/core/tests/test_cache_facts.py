@@ -26,6 +26,7 @@ def test_failed_job_leaves_nothing_and_cap_trims_oldest(tmp_path):
     for n in range(3):                       # 100 bytes each, an hour apart: the oldest goes past the cap
         now[0] += 3600
         c.put("k", f"e{n}", lambda tmp: (tmp / "f.bin").write_bytes(b"x" * 100))
+    c.settle()                               # the trim runs aside, off the caller's thread
     assert c.get("k", "e0") is None and c.get("k", "e1") and c.get("k", "e2")
 
 
