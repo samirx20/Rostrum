@@ -10,7 +10,7 @@ from rostrum2d.retime import END_OF_COMP
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
 
-from . import bounds, camera_glide, exprs, layout_drag, route, time_snap
+from . import bounds, exprs, layout_drag, route, time_snap
 from .bar_drag import PARTS, BarGrab
 
 
@@ -142,8 +142,6 @@ class DragSlots(SlotMixin):
         self.timeSnap.clear()                           # and the "+6 f" label
         if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
             self._guard(lambda: d.preview(g.tie_calls()))
-        if held is not None and (box := camera_glide.target(self, held)) is not None:
-            self.viewGlide.emit(box)                    # the view slides to the new camera instead of jumping
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))
         if held is not None and self._scene is None:    # drawn once, at the drop

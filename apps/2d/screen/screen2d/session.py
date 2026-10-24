@@ -46,7 +46,7 @@ class Session:
         self.space = self.space or SpaceKey()
         _, engine, win = start(QML, {"backend": bridge, "painter": bridge.painter, "files": self.files,
                                      "guides": GUIDES, "spaceKey": self.space}, self.size,
-                               providers={"frame": bridge.frames.provider, "framecrop": bridge.frames.crops,
+                               providers={"frame": bridge.frames.provider,
                                           "onion": bridge.painter.provider, "wet": bridge.painter.wet.provider, "brushes": bridge.painter.previews,
                                           "paintthumbs": bridge._paint_layers.thumbs})
         bridge.painter.tilt.watch(win)                   # the pen's lean: Qt Quick's handlers don't give it

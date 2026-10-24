@@ -3,7 +3,7 @@ import QtQuick.Shapes
 import RostrumKit
 import "Mods.js" as Mods
 
-// The canvas: the engine's frame at the playhead (image://frame, rendered off the GUI thread) on a neutral backdrop,
+// The canvas: the engine's world picture at the playhead (image://frame, rendered off the GUI thread) on a neutral backdrop,
 // shown through the view (CanvasView.qml: zoom and pan, screen state), with the selected layers' outlines (Handles.qml:
 // a single layer also gets resize + turn handles).
 // A press picks what is painted under it (screen2d/picking.py): the outermost group, or the piece once you are inside
@@ -17,9 +17,10 @@ import "Mods.js" as Mods
 // brush ring; Alt + right-drag sizes the brush. What the pen paints on shows its edge dashed. With the Pen tool on,
 // PenOverlay takes the clicks.
 // View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
-// the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The engine draws the frame at the size shown, up to Full, and past
-// Full the visible part again at the size shown (backend.setView: screen2d/shown.py; backend.sharp: screen2d/sharp.py).
-// No header row (a kit Panel always reserves one): the size and fps are in the frame's hover and Scene settings.
+// the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The canvas is the world (camera spec § 3.1): the engine draws the
+// world rectangle the view shows at the size shown, the frame's quad holding the export (backend.world: world_view.py);
+// outside the frame it is dimmed (WorldFrame.qml). Playing looks through the frame: the export fitted in the well.
+// No header row (a kit Panel always reserves one): the frame's size is on its name tab (WorldFrame.qml); size and fps are in Scene settings.
 Rectangle {
     id: panel
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
@@ -39,7 +40,8 @@ Rectangle {
     function fromComp(x, y) { return Qt.point(compOrigin.x + x * compScale, compOrigin.y + y * compScale) }
     function inWell(x, y) { return Qt.point((x - view.ox) / view.zoom, (y - view.oy) / view.zoom) }   // the same, in the well
     // the view, for the keys, the menu and scripted steps (view_steps.py)
-    function fitAll() { view.fitAll() }
+    function fitAll() { view.fitAll(backend.frameView.fitRect()) }      // the frame where it is at the playhead
+    function fitEverything() { view.fitEverything(backend.frameView.everythingRect()) }
     function zoomPercent(p) { view.show(p / 100) }
     function centreOn(x, y) { view.centreOn(x, y) }
     function panBy(dx, dy) { view.panBy(dx, dy) }
@@ -48,20 +50,18 @@ Rectangle {
     readonly property alias view: view
     function fitSelection() {                       // F: the selection; nothing selected: everything
         const e = backend.selectionExtent()
-        if (e.x0 === undefined) view.fitAll(); else view.fitBox(e.x0, e.y0, e.x1, e.y1)
+        if (e.x0 === undefined) panel.fitAll(); else view.fitBox(e.x0, e.y0, e.x1, e.y1)
     }
     onCompScaleChanged: backend.setView(compScale, Screen.devicePixelRatio)
     readonly property string sceneSize: info.width + "x" + info.height     // a string: a new frameInfo object alone is no change
-    onSceneSizeChanged: Qt.callLater(view.fitAll)   // a new scene size: the old view no longer makes sense
-    Component.onCompleted: { backend.setView(compScale, Screen.devicePixelRatio); settle.restart() }
-    // Past Full the visible part is drawn again at the size shown (backend.sharp: screen2d/sharp.py), once the view settles.
+    onSceneSizeChanged: Qt.callLater(panel.fitAll)  // a new scene size: the old view no longer makes sense
+    Component.onCompleted: { backend.setView(compScale, Screen.devicePixelRatio); panel.fitAll(); tellVisible() }
+    // The world the well shows, told at once on every view change (backend.world: world_view.py asks a new picture
+    // only when the last one no longer covers it, at the size shown).
     readonly property var visibleKey: [view.zoom, view.ox, view.oy, well.width, well.height]
-    onVisibleKeyChanged: settle.restart()
-    Timer {
-        id: settle; interval: 150
-        onTriggered: { const a = panel.inWell(0, 0), b = panel.inWell(well.width, well.height)
-                       backend.sharp.setVisible(a.x, a.y, b.x, b.y, Screen.devicePixelRatio) }
-    }
+    onVisibleKeyChanged: Qt.callLater(tellVisible)
+    function tellVisible() { const a = panel.inWell(0, 0), b = panel.inWell(well.width, well.height)
+                             backend.world.setVisible(a.x, a.y, b.x, b.y, Screen.devicePixelRatio) }
 
     Rectangle {
         id: well
@@ -72,33 +72,21 @@ Rectangle {
         CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
 }
 
-        ViewGlide { id: glide; serial: backend.frame; zoom: view.zoom; width: panel.info.width || 1; height: panel.info.height || 1 }
-        Item {
+        Item {  // world px from here: (0, 0) of the world at view.ox, oy; one world px is view.zoom screen px
             id: frame
             x: view.ox; y: view.oy
             width: panel.info.width * view.zoom; height: panel.info.height * view.zoom
-            HoverHandler { id: frameHover; enabled: backend.tool === "move" }
-            HoverTip {   // the frame's size, when the pointer rests on the frame (Scene settings has it too)
-                hovered: frameHover.hovered && !canvas.pressed
-                text: panel.info.width + " × " + panel.info.height + " · " + panel.info.fps + " fps"
-            }
-            Image {
-                anchors.fill: parent
-                transform: [Scale { xScale: glide.sx; yScale: glide.sy }, Translate { x: glide.tx; y: glide.ty }]   // the camera glide (ViewGlide.qml)
-                source: glide.shown > 0 ? "image://frame/" + glide.shown : ""
-                cache: false; smooth: view.zoom < 2; mipmap: view.zoom < 1   // from 200 %: the export's own pixels, unblurred
-            }
-            Image {  // past Full: the visible part drawn again at the size shown (backend.sharp), over the enlarged frame
-                readonly property var c: backend.sharp.picture
-                visible: c.serial !== undefined && !glide.running && !glide.pending
-                x: (c.x || 0) * view.zoom; y: (c.y || 0) * view.zoom
-                width: (c.w || 0) * view.zoom; height: (c.h || 0) * view.zoom
-                source: c.serial ? "image://framecrop/" + c.serial : ""
+            Image {  // the world picture (backend.world: world_view.py), laid at its world rectangle; panning moves it at once
+                readonly property var p: backend.world.picture
+                visible: p.world === true && !backend.playing
+                x: (p.x || 0) * view.zoom; y: (p.y || 0) * view.zoom
+                width: (p.w || 0) * view.zoom; height: (p.h || 0) * view.zoom
+                source: p.world === true ? "image://frame/" + p.serial : ""
                 cache: false; smooth: true
             }
             Image {  // onion skin: the neighbouring drawings, tinted, over the selected drawing's box
                 readonly property var b: backend.selBox
-                visible: painter.onionSerial > 0 && b.w !== undefined && !glide.running
+                visible: painter.onionSerial > 0 && b.w !== undefined
                 x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
                 width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
                 source: painter.onionSerial > 0 ? "image://onion/" + painter.onionSerial : ""
@@ -121,15 +109,15 @@ Rectangle {
                 cache: false; smooth: true; asynchronous: false
             }
         }
-        Shape {  // the frame's edge, so a dark composition still shows where it ends; dotted once zoomed or panned off Fit
-            x: frame.x - 1; y: frame.y - 1
-            ShapePath {
-                strokeWidth: 1; fillColor: "transparent"
-                strokeColor: view.fitted ? Theme.popupEdge : Theme.fg3
-                strokeStyle: view.fitted ? ShapePath.SolidLine : ShapePath.DashLine; dashPattern: [2, 3]
-                PathRectangle { width: frame.width + 2; height: frame.height + 2 }
-            }
+        Image {  // playing looks through the frame (spec 4.8): the export fitted in the well; stop brings the world view back
+            readonly property var p: backend.world.picture
+            visible: backend.playing && p.world === false
+            anchors.fill: parent; anchors.margins: view.frameMargin
+            fillMode: Image.PreserveAspectFit
+            source: p.world === false ? "image://frame/" + p.serial : ""
+            cache: false; smooth: true; mipmap: true
         }
+        WorldFrame { id: worldFrame; view: view }   // the dimmed outside, the frame's outline and name tab (frameView); the chip: below
         Item {  // the pen
             anchors.fill: parent
             visible: well.drawing
@@ -355,6 +343,7 @@ Rectangle {
             onTapped: (ev) => panel.openMenu(ev.position.x, ev.position.y)
         }
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
+        FrameChip { world: worldFrame; onClicked: panel.fitAll() }   // "‹ Frame": the frame is out of view; a click fits it
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // only while strokes are picked: what applies to them (StrokeBar.qml)
             id: bar

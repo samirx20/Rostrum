@@ -27,7 +27,8 @@ from .layer_order import LayerOrder
 from .painter import Painter
 from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
-from .sharp import Sharp
+from .frame_view import FrameView
+from .world_view import WorldView
 from .playback import Playback, size_offered
 from .playstats import STATS
 from .clipboard import ClipboardSlots
@@ -50,7 +51,6 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
-    viewGlide = Signal("QVariantList")                     # a camera key was dropped: the box the new view starts from (camera_glide.py)
     shownChanged = Signal()                                 # a new frame is on screen: the overlays follow it (shown.py)
     outlineChanged = Signal()
     layersChanged = Signal()                                # the timeline's rows really changed (timeline_rows.py)
@@ -85,7 +85,9 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.frames.failed.connect(self._fail)
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self.painter = Painter(self)
-        self._paint_edge, self._sharp = PaintEdge(self), Sharp(self, self.frames)   # paint_edge.py, sharp.py
+        self._paint_edge, self._world = PaintEdge(self), WorldView(self)   # paint_edge.py, world_view.py
+        self.frames.pictured.connect(self._world.shown)
+        self._frame_view = FrameView(self)                  # frame_view.py
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
@@ -123,7 +125,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     isLive = Property(bool, lambda self: self.link is not None, constant=True)   # saved after every change: the top bar says "Saved"
 
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
-    sharp = Property(QObject, lambda self: self._sharp, constant=True)           # past Full, drawn sharp (sharp.py)
+    world = Property(QObject, lambda self: self._world, constant=True)           # the world picture on the canvas (world_view.py)
+    frameView = Property(QObject, lambda self: self._frame_view, constant=True)   # the frame's box on the canvas (frame_view.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
     cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)

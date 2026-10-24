@@ -61,11 +61,13 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "More type" / "Fill style" for a text (kit `sections.WORDS`; the group keys stay Font / Fill). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
-  at the pointer, Space+drag or middle-drag, Ctrl+0, Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
-  engine is asked for the frame at the size shown, up to Full (`shown.setView`); past Full, once the view settles, the
-  visible part is drawn again at the size shown (`screen2d/sharp.py`, the engine's `frame.view`: the export's own
-  paint) and lies over the enlarged frame (none while playing or dragging). Screen state only. Steps: `zoom`,
-  `pan`, `fitsel`, `viewmenu`.
+  at the pointer, Space+drag or middle-drag, Ctrl+0 (fit the frame), Shift+1 (fit everything), Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
+  canvas is the world (camera spec § 3.1): the engine draws the world rectangle the view shows, with a margin, at the
+  size shown, the frame's quad holding the export (`screen2d/world_view.py`, `frames.py` keeps the last pictures; the
+  engine's `frame.world`); a new picture only when the view leaves it or the size shown changes. Outside the frame
+  it is dimmed (`qml/WorldFrame.qml`, `FrameChip.qml`, `screen2d/frame_view.py`). Playing looks through the frame: the
+  export fitted in the well. Screen state only. Steps: `zoom`,
+  `pan`, `fitsel`, `viewmenu`, `viewtime` (pan / zoom / drag timings).
 - **Snapping** (`screen2d/snap.py` pure, `snapper.py` as `backend.snap`): moves and resize edges snap within 6 screen
   px to the frame's edges and centre, then other layers'; magenta lines; Ctrl during the drag = free, Shift = straight.
 - **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.

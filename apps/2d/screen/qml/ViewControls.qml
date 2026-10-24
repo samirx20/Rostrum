@@ -13,8 +13,11 @@ Item {
     width: button.width; height: button.height
     readonly property string percent: Math.round(view.zoom * 100) + " %"
 
+    function fitFrame() { view.fitAll(backend.frameView.fitRect()) }
+    function fitEverything() { view.fitEverything(backend.frameView.everythingRect()) }
     function act(key) {
-        if (key === "fit") view.fitAll()
+        if (key === "fit") vc.fitFrame()
+        else if (key === "everything") vc.fitEverything()
         else if (key === "sel") vc.fitSelection()
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
         else if (key === "camframe") backend.motionPath.setCameraFrame(!backend.motionPath.cameraFrame)
@@ -23,7 +26,8 @@ Item {
         else view.show(Number(key) / 100)
     }
     function entries() {
-        const out = [{ value: "fit", label: "Fit", keys: "Ctrl 0", group: "a" }]
+        const out = [{ value: "fit", label: "Fit the frame", keys: "Ctrl 0", group: "a" },
+                     { value: "everything", label: "Fit everything", keys: "Shift 1", group: "a" }]
         for (const p of [25, 50, 100, 200, 400])
             out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
         if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
@@ -52,7 +56,8 @@ Item {
     }
     ActionMenu { id: menu; onPicked: (key) => vc.act(key) }
 
-    Shortcut { sequence: "Ctrl+0"; onActivated: vc.view.fitAll() }
+    Shortcut { sequence: "Ctrl+0"; onActivated: vc.fitFrame() }
+    Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing; onActivated: vc.fitEverything() }
     Shortcut { sequence: "Ctrl+1"; onActivated: vc.view.show(1) }
     Shortcut { sequences: ["F", "Shift+2", "@"]; enabled: !vc.typing; onActivated: vc.fitSelection() }
     Shortcut { sequences: ["Ctrl+=", "Ctrl++", StandardKey.ZoomIn]; onActivated: vc.view.step(1) }

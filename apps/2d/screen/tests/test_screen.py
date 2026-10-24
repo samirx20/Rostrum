@@ -38,11 +38,11 @@ class FakeEngine:
     placed = {}
     timing = {}                # the last pixels frame's own split (engine.py), read by the screen's stats
 
-    def pixels(self, t, samples=None, scale=1.0, view=None, place=None):
+    def pixels(self, t, samples=None, scale=1.0, view=None, place=None, world=None):
         self.placed = {i: self.place(t, [i])[i] for i in place or []}
         return memoryview(bytearray(4 * 4 * 4)), 4, 4, 16
 
-    def place(self, t, ids):           # every layer at the comp's origin, unturned (the real one: engine `place`)
+    def place(self, t, ids, world=False):   # every layer at the comp's origin, unturned (the real one: engine `place`)
         return {i: {"m": [1, 0, 0, 0, 1, 0, 0, 0, 1], "w": 320.0, "h": 180.0, "edge": ""} for i in ids}
 
     def measure(self, items):

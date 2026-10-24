@@ -6,12 +6,11 @@ from the engine a little later than a change, and an overlay drawn from the live
 (the box moves first, the content catches up). With one source, box and picture always move as one.
 Hit-testing a press still reads the live document (the person acts on the newest truth).
 
-While a drag is under way (a layer, a handle, a point, a key or a bar), frames are drawn at half size so the picture
-keeps up; the drag's last frame, after release, is full size again. The canvas's zoom (Stage.qml's one mapping, sent with
-setView) caps the size too: the engine draws the frame at the size it is shown, up to Full (VIEW_SCALES: the engine
-takes 1, 1/2 or 1/4), so the fit view doesn't draw more than it shows; past Full the visible part is drawn again at the
-size shown (sharp.py), so 400 % is sharp, never Full enlarged. The same engine and scene either way (preview = export); the view itself is screen state. The engine's queue is newest-wins
-(rostrum_gui.frames.PictureWorker.post_latest): no backlog.
+Paused, the canvas shows the world picture (world_view.py: the world rectangle the view shows, at the size shown,
+half that while a drag is under way so the picture keeps up; the drag's last frame, after release, is full size
+again). Playing, it looks through the frame: the export at the playing size, never bigger than the well shows it
+(VIEW_SCALES: the engine takes 1, 1/2 or 1/4). The same engine and scene either way (preview = export); the view
+itself is screen state. The engine's queue is newest-wins (rostrum_gui.frames.PictureWorker.post_latest): no backlog.
 `drag→shown` (STATS, playstats.py): from a drag's change to the frame that shows it on screen.
 
 A slot mix-in for Bridge2D (it declares `shownChanged`).
@@ -27,7 +26,6 @@ from rostrum2d import retime
 from . import bounds
 from .playstats import STATS
 
-DRAG_SCALE = 0.5           # the engine's `scale` while dragging
 VIEW_SCALES = (0.25, 0.5, 1.0)   # the engine's sizes, smallest first: the first one at least as big as the view shows
 
 
@@ -42,17 +40,14 @@ class ShownState:
         self._shown_placed = None   # (key, the comp placed): worked out once per shown state
         self._shown_boxes = None    # (placed, t, bounds.boxes): the same, for the overlays' boxes
         self._asked = {}            # id(doc.data) → when a drag made it (for drag→shown)
-        self._zoom, self._view = 1.0, 1.0   # the canvas's zoom (screen px per composition px) and its engine scale
+        self._zoom, self._view = 1.0, 1.0   # the canvas's zoom (screen px per world px) and device px per screen px
 
     @Slot(float, float)
     def setView(self, zoom, device_ratio):
-        """The canvas's zoom changed (Stage.qml): snapping's distance follows it; the next frame is drawn at the size
-        shown (redrawn now only when that size changes)."""
+        """The canvas's zoom changed (Stage.qml): snapping's distance follows it; the world picture is asked again by
+        world_view.py when the view needs it."""
         self._zoom = max(float(zoom), 1e-6)
-        scale = view_scale(self._zoom * max(float(device_ratio), 1.0))
-        if scale != self._view:
-            self._view = scale
-            self._show()
+        self._view = max(float(device_ratio), 1.0)
 
     def view_zoom(self) -> float:
         return self._zoom
@@ -65,24 +60,28 @@ class ShownState:
         return self._drag is not None or self._pen._drag is not None
 
     def frame_scale(self) -> float:
-        """The engine's scale for the next frame: Preview size while playing, half while dragging, else full; never
-        more than the canvas shows."""
-        return min(self._view, DRAG_SCALE if self.dragging() and not self.play.playing else self.play.scale())
+        """The engine's scale for the export while playing (looking through the frame, fitted in the well): the
+        Preview size, never more than the well shows. Paused frames are world pictures (their own scale)."""
+        if not self.play.playing:
+            return 1.0
+        comp, v = self.comp(), self._world.visible()
+        fit = 1.0 if v is None else min(v["w"] / comp["width"], v["h"] / comp["height"]) * self._zoom * self._view
+        return min(view_scale(fit), self.play.scale())
 
     def frame_extras(self) -> dict:
-        """What a frame job asks for beside the frame: the sharp crop (sharp.py) and the paint target's place
-        (paint_edge.py)."""
-        crop, place = self._sharp.crop(), self._paint_edge.ids()
-        self._sharp.asked(crop)
+        """What a frame job asks for beside the frame: the world rectangle (world_view.py; None while playing) and the
+        paint target's place (paint_edge.py)."""
+        world, place = self._world.rect(), self._paint_edge.ids()
+        self._world.asked(world)
         self._paint_edge.asked(place)
-        return {"crop": crop, "place": place}
+        return {"world": world, "place": place}
 
     def place_of(self, layer_id: str) -> dict:
         """The layer's place at the playhead now, from the canvas's engine and the scene as the document is
         (rostrum2d/placement.py: painting's one mapping)."""
         if not self._scene:
             raise RuntimeError("the canvas can't be drawn right now, so there is nowhere to paint (see the status line)")
-        return self.frames.place(self._scene, self._t, [layer_id])[layer_id]
+        return self.frames.place(self._scene, self._t, [layer_id], world=not self.play.playing)[layer_id]
 
     def _note_change(self):
         """A document change: remember when, while dragging (for drag→shown)."""
