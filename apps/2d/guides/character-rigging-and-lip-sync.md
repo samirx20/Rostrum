@@ -140,8 +140,8 @@ Apply it in a script (the mouth layers must be made earlier in the same script; 
 
 ```python
 with rig("puppet", w=1920, h=1080):
-    rest = path("mouth_X", d="M 0 0 L 40 0")
-    wide = path("mouth_D", d=polygon(6, 24))
+    rest = path("mouth_X", d="M 0 0 L 40 0", x=960, y=540)
+    wide = path("mouth_D", d=polygon(6, 24), x=960, y=540)
     said = lipsync("take.wav", at=0.5, text="Every city keeps one hour.", shapes={"X": rest, "D": wide}, lead_frames=1)
 ```
 

@@ -24,7 +24,7 @@ document
 - A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`. A layer's `x`, `y` is where its **anchor** sits
   in the comp, in pixels (0,0 is top-left). The anchor is `anchorX`/`anchorY`, 0 to 1 across the box, default 0.5 = centre.
   A group's children are placed inside the group's own box (its top-left is 0,0).
-- Colours are `#rrggbb`. Mixing colours between keys happens in linear light.
+- Colours are `#rrggbb` (or short, `#fff`). Mixing colours between keys happens in linear light.
 
 ## The one animation model: keys + ease
 
@@ -94,7 +94,49 @@ with group("cluster", x=960, y=800):                          # layers made insi
     shape("dot", shape="ellipse", w=24, h=24)
 ```
 
-Unknown fields, bad values, and animating something that cannot be animated fail loudly, naming the line and what is accepted.
+Unknown fields, bad values, and animating something that cannot be animated fail loudly, naming the line and what to
+write instead.
+
+### What to write (the fields agents reach for)
+
+| Layer | Its main fields |
+|---|---|
+| every layer | `x`, `y` (where its anchor sits, px), `scale`, `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
+| `comp` | `width`, `height`, `fps`, `duration` (s), `background` |
+| `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
+| `text` | `body` (the words), `size`, `weight`, `color`, `font`, `align` (`left` `center` `right`), `tracking`, `letterDelay`, `letterOrder` |
+| `path` | `d` (SVG data: M L C Z), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |
+| `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
+
+Effects: `item.effect("shadow", dx=, dy=, radius=, color=, strength=)`, `"glow"`, `"blur"`, `"gradient"` (`color1`,
+`color2`, `angle`), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
+
+The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
+`width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,
+`steps` (= `timing`), `shape="circle"`, `ease="ease-out"`, `stroke="#fff"` (= stroke on in that colour), `fill="none"`
+(= no fill; `filled=False`), `backgroundColor`. A colour never has transparency: use `opacity` or `fillOpacity`.
+
+Things that surprise people the first time:
+
+- **Keys are in the comp's seconds**, whatever the layer's `start` (`start` only hides it before then). Inside a group or
+  layer timed from a marker (`marker="beat"`), times count from that marker. A key time may also name a marker
+  (`"#beat"`, `"#beat-0.3"`).
+- **Before its first key a field holds the first key's value.** A ripple keyed `{5.0: 0.5, 5.6: 0}` is half-visible from
+  frame 0: start it with a key at 0 (`{4.9: 0, 5.0: 0.5, 5.6: 0}`) or give it `start=4.9`.
+- **A spring settles at its last key and wobbles on the way:** with the default bounce it first reaches the target a
+  fifth of the way through the stretch, overshoots most at about 30 %, and has settled by the last key. To land *on* a
+  marker, put that first arrival there: `{"#beat-0.15": 0, "#beat+0.65": 1}` with `ease="spring"` (a 0.8 s stretch),
+  then check with `look_motion` (overshoot) and `look_frame` at the marker.
+- **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0). Give the group `w`, `h` and place the
+  children in it (`w / 2`, `h / 2` is its middle); a group made without a size is fitted to what is inside it when the
+  `with` block ends, and its layers keep their place on screen.
+- **A path's points:** with no `x`, `y`, `w`, `h`, `d` is read as SVG reads it, in comp px (or the group's box): a line
+  through (360, 600) passes through (360, 600). With any of them, `d` is in the path's own box (0, 0 = its top-left).
+  A path is filled light grey by default; a line wants `fill="none"` (or `filled=False`) and a stroke.
+- **Ids are one in the whole document**, effects' and masks' too: in a loop write `f"shadow{i}"`, or leave the id out.
+- **A track matte** (`matte="logo_shape"`) must be a layer beside it (same group or comp); the matte layer itself is then
+  only used as the matte.
+- **Stepped timing** ("on twos / threes"): `timing="2"` (or `steps=2`) on the comp, a group or a layer.
 
 ## Seeing your work (do it every time)
 

@@ -21,13 +21,14 @@ from __future__ import annotations
 
 import ast
 import math
+import re
 
 from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 
-from . import fields as F, pathdata
+from . import fields as F, pathdata, script_words as W
 from .expr import ExprError, parse
 from .group_fit import fit
 from .kind import KIND, LISTS
@@ -46,6 +47,7 @@ class Item:
 
     def __init__(self, build: "Build", node: dict):
         self._b, self.node, self.id = build, node, node["id"]
+        self.d_shift = None         # a path placed from its own points: its d keys move with it (pathdata.for_script)
 
     def set(self, **values) -> "Item":
         self._b.fill(self.node, values)
@@ -53,18 +55,21 @@ class Item:
 
     def key(self, prop: str, keys: dict, ease: str = "smooth") -> "Item":
         allowed = F.animatable(self.node["type"])
+        prop = W.field(prop, [p.name for p in F.FIELDS[self.node["type"]]], self.node["type"])
         if prop not in allowed:
-            raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}; animatable: '
-                             f"{', '.join(allowed)}" + _hint(prop, allowed))
+            raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}{W.not_a_field(prop)}.'
+                             f"{'' if W.not_a_field(prop) else _hint(prop, allowed)} Animatable: {', '.join(allowed)}")
         p = F.param(self.node["type"], prop)
         for t, v in sorted(keys.items(), key=lambda kv: marked.order(kv[0])):   # a time: seconds or "#drop+0.2"
             value, e, *shape = v if isinstance(v, tuple) else (v, ease)
+            if prop == "d" and isinstance(value, str):
+                value = pathdata.shifted(value, self.d_shift)
             if len(shape) > 1 or (shape and not isinstance(shape[0], dict)):
                 raise ValueError(f'{self.id}.{prop}: a key is value, (value, "ease") or (value, "ease", {{"bounce": 0.3, "speed": 0.4}})')
             t = F.param("key", "t").check(t, f"{self.id}.{prop} key time")
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": t if isinstance(t, str) else float(t),
                  F.key_field(self.node["type"], prop): p.check(value, f"{self.id}.{prop} at {t} s"), "ease": e}
-            F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
+            k["ease"] = e = F.param("key", "ease").check(e, f"{self.id}.{prop} at {t} s")
             for name, x in (shape[0] if shape else {}).items():          # a spring's bounce / speed, a custom ease's handles
                 if name not in SHAPE_EASE:
                     raise ValueError(f'{self.id}.{prop} at {t} s: "{name}" is not a curve field; they are {", ".join(SHAPE_EASE)}' + _hint(name, SHAPE_EASE))
@@ -155,18 +160,24 @@ class Build:
         if not ids.is_valid(id_):
             raise ValueError(f'"{id_}" is not a usable id (letters, digits, _ . -; not starting with a digit)')
         if id_ in self.taken:
-            raise ValueError(f'id "{id_}" is used twice in the script')
+            raise ValueError(f'id "{id_}" is used twice in the script: every id (layers, effects, masks) '
+                             f'is one in the whole document. Give each its own (f"{id_}{{i}}" in a loop), or leave the id '
+                             f'out and one is counted for you')
         self.taken.add(id_)
         return id_
 
     def fill(self, node, values):
-        known = [p.name for p in F.FIELDS[node["type"]]]
-        for k, v in values.items():
+        params = F.FIELDS[node["type"]]
+        known = [p.name for p in params]
+        kinds = {p.name: p.type for p in params}
+        for k, v in W.resolve(node["type"], values, known, kinds.get).items():
             if k == "name":
                 node["name"] = str(v)
                 continue
             if k not in known:
-                raise ValueError(f'a {node["type"]} has no field "{k}"; it has: {", ".join(known)}' + _hint(k, known))
+                by = sorted(params, key=lambda p: ("primary", "secondary", "deep").index(p.importance))
+                raise ValueError(f'a {node["type"]} has no field "{k}"{W.not_a_field(k) + "." if W.not_a_field(k) else "." + _hint(k, known)} '
+                                 f'Its fields, most used first: {", ".join(p.name for p in by)}')
             node[k] = F.param(node["type"], k).check(v, f'{node["id"]}.{k}')
             if node["type"] == "group" and k in ("w", "h"):
                 self.sized.add(node["id"])
@@ -201,6 +212,24 @@ def _hint(word, options) -> str:
     return f" {h}" if h else ""
 
 
+def _check_links(root: dict, made: set[str]) -> None:
+    """A track matte, a followed path and a ridden path must be a layer beside the layer (same group or comp). One the
+    script made somewhere else fails here, saying where to make it; one it didn't make may be a person's (diagnose)."""
+    def walk(holder):
+        layers = holder.get("layers", [])
+        beside = {n["id"] for n in layers}
+        for n in layers:
+            for f in ("matte", "pathLayer", "ridePath"):
+                ref = n.get(f)
+                if ref and ref not in beside and ref in made:
+                    raise ValueError(f'{n["id"]}.{f} = "{ref}": that layer must be beside {n["id"]} (in the same group '
+                                     f'or comp), not inside another group. Make "{ref}" next to "{n["id"]}", or move '
+                                     f'"{n["id"]}" into the group that holds "{ref}"')
+            walk(n)
+    for c in root["comps"]:
+        walk(c)
+
+
 def _reserved(source: str) -> set[str]:
     try:
         return {n.value for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
@@ -225,14 +254,35 @@ def run_source(source: str, name: str) -> dict:
              **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
+        _check_links(b.root, b.taken)
     except Exception as e:
-        line = next((f" (line {fr.lineno})" for fr in _frames(e) if fr.filename == name), "")
-        raise RostrumError(codes.BAD_ARGUMENT, "", f'script "{name}"', f"failed{line}: {type(e).__name__}: {e}",
-                           ["comp(id, **fields)", "shape / text / image / group(id, **fields)",
-                            "item.key(field, {time: value}, ease=)", "item.effect(type, id, **fields)",
-                            "item.mask(id, **fields)", "item.set(**fields)", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)", "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)",
-                            "paint.stroke(points, **brush)", "frame.paintmask(points)"]) from e
+        raise _failed(e, name, scope) from e
     return b.root
+
+
+API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "item.key(field, {time: value}, ease=)",
+       "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
+       "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
+       "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",
+       "frame.paintmask(points)"]
+
+
+def _failed(e: Exception, name: str, scope: dict) -> RostrumError:
+    """The script's error as one line to act on: where (the line), what is wrong, and what to write instead. A value
+    check keeps its own Accepted and hint; the list of script names only comes with a wrong name or call."""
+    line = e.lineno if isinstance(e, SyntaxError) else next((fr.lineno for fr in reversed(_frames(e)) if fr.filename == name), None)
+    where = f'script "{name}"' + (f" line {line}" if line else "")
+    if isinstance(e, RostrumError):
+        return RostrumError(e.code, f"{where} › {e.where}" if e.where else where, e.subject, e.problem, e.accepted, e.hint)
+    if isinstance(e, (ValueError, KeyError)):
+        return RostrumError(codes.BAD_ARGUMENT, where, "", str(e.args[0]) if e.args else str(e))
+    hint = None
+    if isinstance(e, NameError) and getattr(e, "name", None):
+        hint = (f"Write {W.NOT_A_NAME[e.name]}" if e.name in W.NOT_A_NAME
+                else did_you_mean(e.name, [k for k in scope if not k.startswith("_")]))
+    elif isinstance(e, TypeError) and (m := re.search(r"unexpected keyword argument '(\w+)'", str(e))):
+        hint = W.NOT_A_FIELD.get(m.group(1))
+    return RostrumError(codes.BAD_ARGUMENT, where, f"{type(e).__name__}:", str(e) + (f". {hint}" if hint else ""), API)
 
 
 def _frames(e):

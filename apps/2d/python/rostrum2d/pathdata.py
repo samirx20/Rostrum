@@ -223,13 +223,32 @@ def _ring(radii, rotation) -> str:
     return write(fit(cmds)[0])
 
 
+def shifted(d: str, shift) -> str:
+    """d moved by -shift (a path placed from its own points, for_script): its keys are read the same way."""
+    return write(transformed(commands(d), lambda x, y: (x - shift[0], y - shift[1]))) if shift else d
+
+
 def for_script(layer) -> dict:
-    """The script layer's names: `path(id, d=…)` (its box from d when w / h are left out) and the primitives
-    `star(points, outer, inner, rotation)` and `polygon(sides, radius, rotation)`, which give d."""
+    """The script layer's names: `path(id, d=…)` and the primitives `star(points, outer, inner, rotation)` and
+    `polygon(sides, radius, rotation)`, which give d.
+
+    Where a path's points are: with none of x, y, w, h given, d is read as SVG reads it, in the coordinates of what
+    holds the path (comp px, or the group's box): the box is fitted around d and placed there, so a line drawn through
+    (360, 600) passes through (360, 600). Keys of `d` are then read the same way. With any of them given, d is in the
+    path's own box (0, 0 = its top-left; w / h from d when left out) and x, y place the box's anchor."""
     def path(id=None, **values):
+        shift = None
         if "d" in values:
-            x0, y0, x1, y1 = bounds(commands(check(values["d"], f"{id or 'path'}.d")))
+            cmds = commands(check(values["d"], f"{id or 'path'}.d"))
+            if not {"x", "y", "w", "h", "ridePath"} & values.keys():
+                cmds, (x0, y0, w, h) = fit(cmds)
+                shift = (x0, y0)
+                values.update(d=write(cmds), w=w, h=h, x=x0 + w * values.get("anchorX", 0.5),
+                              y=y0 + h * values.get("anchorY", 0.5))
+            x0, y0, x1, y1 = bounds(cmds)
             values.setdefault("w", max(x1, 1.0))
             values.setdefault("h", max(y1, 1.0))
-        return layer("path", id, **values)
+        item = layer("path", id, **values)
+        item.d_shift = shift
+        return item
     return {"path": path, "star": star, "polygon": polygon}
