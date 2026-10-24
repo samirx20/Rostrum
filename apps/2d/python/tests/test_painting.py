@@ -49,6 +49,7 @@ def test_deleting_a_painting_in_use_makes_solid_fills_and_undo_brings_it_back():
     d = scene()
     d.apply({"op": "painting.add", "args": {"w": 64, "h": 64, "onto": ["card", "tag"]}}, SAM)
     pid = d.data["paintings"][0]["id"]
+    d.apply({"op": "layer.fill", "target": ["card", "tag"], "args": {"under": ""}}, SAM)    # no colour under: the paint alone
     d.apply({"op": "paint.stroke", "target": pid, "args": STROKE}, SAM)
     before = json.dumps(d.data, sort_keys=True)
     d.apply({"op": "painting.remove", "target": pid}, SAM)
@@ -97,3 +98,18 @@ def test_a_script_rerun_keeps_a_persons_stroke_in_the_painting():
     d.run_script("a.py", run_source(source, "a.py"))
     assert d.item("grain")["frames"][0]["paints"][0]["strokes"]
     assert d.item("card")["fillScale"] == 0.5
+
+
+def test_a_layer_given_a_painting_keeps_its_colour_under_it():
+    """New painted fill (the picker's 2 clicks) and picking an existing painting leave the layer looking as it did: its
+    solid colour becomes the colour under the (blank) painting. One undo step takes the new one back whole."""
+    d = scene()
+    before = json.dumps(d.data, sort_keys=True)
+    d.apply({"op": "painting.add", "args": {"onto": ["card"]}}, SAM)
+    [p] = d.data["paintings"]
+    assert (d.item("card")["fillType"], d.item("card")["fillUnder"]) == ("painted", "#0000ff")
+    d.apply({"op": "shape.set", "target": "tag", "args": {"fill": "#00ff00"}}, SAM)
+    d.apply({"op": "layer.fill", "target": "tag", "args": {"type": "painted", "painting": p["id"]}}, SAM)
+    assert d.item("tag")["fillUnder"] == "#00ff00"
+    d.undo(SAM), d.undo(SAM), d.undo(SAM)
+    assert json.dumps(d.data, sort_keys=True) == before

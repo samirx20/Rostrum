@@ -32,6 +32,9 @@ import "ValueKinds.js" as VK
 // column Theme.fieldFor(width) wide, then the key gutter (always reserved, empty without a key mark), so every field starts
 // and ends alike. Only Position (X | Y) and Size (W | H) share a row (rows.py `half`: "first" / "second"): the second half's
 // row has no height of its own and draws on the first's line, each half Theme.halfFor(width) wide with its small letter inside.
+// A row marked `inside` another (rows.py: a fill's Scale, Offset … inside the Fill row) is drawn only by an InspectorRow whose
+// `inside` names that row (the Fill picker's), never in the panel's own list. A colour that may be none (options.start) reads
+// "no colour  +" while it is none; the "+" sets it to that start, right-click › Reset makes it none again.
 Item {
     id: row
     required property var model           // roles from rostrum_gui.rows.ROLES
@@ -40,11 +43,13 @@ Item {
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
     property bool instant: false          // the list model's `instant`: this change is a new selection, shown at once
+    property string inside: ""            // the host row whose picker draws this list ("" = the panel's own list)
+    readonly property bool here: (model.inside || "") === inside
     readonly property int gutter: Theme.keyGutter
     readonly property bool second: model.half === "second"      // the right half of a pair: it sits on the previous row's line
     // An absent row (not valid, not easing out) reads nothing more than it must: a kind's layout holds every param
     // and most rows are absent, so each binding below waits for `live` (a kind switch made ~80 absent rows, ~2 ms each).
-    readonly property bool live: model.valid || reveal > 0
+    readonly property bool live: here && (model.valid || reveal > 0)
     readonly property bool paired: live && (model.half === "first" || second)
     readonly property int labelColumn: live ? Theme.labelColumnFor(width) : 0
     readonly property bool amount: live && model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
@@ -60,9 +65,10 @@ Item {
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && parts && parts.widgetItem ? Math.max(Theme.row, parts.widgetItem.implicitHeight + Theme.row - Theme.field)
                               : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid) + (noted && parts ? parts.noteHeight : 0)    // a long label wraps
-    readonly property bool canReset: live && model.row === "param" && !driven && model.default !== undefined && model.default !== null
+    readonly property bool noneable: live && model.type === "color" && !!model.options && model.options.start !== undefined
+    readonly property bool canReset: live && model.row === "param" && !driven && model.default !== undefined && (model.default !== null || noneable)
         && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
-    property real reveal: model.valid ? 1 : 0
+    property real reveal: here && model.valid ? 1 : 0
     Behavior on reveal { enabled: !row.instant; NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     width: parent ? parent.width : 0
     height: second ? 0.01 : Math.round(full * reveal)
@@ -277,6 +283,7 @@ Item {
             readonly property Component plain: row.model.control === "curve" ? curve
                                    : row.amount ? amountRow
                                    : row.model.control === "file" || row.model.control === "folder" ? path
+                                   : row.noneable && (row.model.value === null || row.model.value === undefined) && !row.mixed ? noColour
                                    : ({ toggle: toggle, number: number, choice: choice, color: colour, paint: paintC, text: text, list: list })[row.model.type] || text
             Component { id: buttoned; Item {
                 readonly property var input: inner.item ? inner.item.input : null      // focusWidget types here
@@ -329,6 +336,12 @@ Item {
             Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
                                                   more: row.model.more || ""; onMoreChosen: moreDialog.open()
                                                   onPicked: (v) => row.set(v) } }
+            Component { id: noColour; Text {    // a colour that may be none, while it is: its "+" sets one
+                objectName: "noColour"
+                text: "no colour  +"; color: noArea.containsMouse ? Theme.fg : Theme.fg3
+                font.family: uiFont; font.pixelSize: Theme.body; verticalAlignment: Text.AlignVCenter
+                MouseArea { id: noArea; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: row.set(row.model.options.start) } } }
             Component { id: colour; ColorField { hex: row.model.value || "#000000"; atRest: row.mixed; scrubbed: true
                 showHex: row.model.display !== "swatch"      // a param with display "swatch": no code beside it
                 onEdited: (v) => row.set(v)
@@ -343,6 +356,9 @@ Item {
                 types: o.types || ["none", "solid", "linear", "radial", "angular"]
                 maxStops: o.maxStops || 8
                 stopOpacity: o.stopOpacity !== false
+                sources: o.sources || []; add: o.add || ""          // Painted: the paintings, and the app's New painting action
+                rows: row.bridge.rows; rowsBridge: row.bridge; rowsHost: row.model.id     // the rows marked inside this one
+                onAsked: (a) => row.bridge.rowAction(a)
                 onEdited: (v) => row.set(v)
                 onTypingStarted: row.hold(true)
                 onTypingEnded: row.hold(false)

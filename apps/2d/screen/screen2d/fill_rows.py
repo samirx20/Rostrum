@@ -4,10 +4,15 @@ handles set those; a picture's file, fit and scale too: the picker shows them on
 `layer.fill`. The engine draws any number of stops anywhere in 0..1, see-through too (E8).
 The row's key mark (`anim_state`, `animate_calls`): a solid fill is its colour's; a gradient's is its stops' colours (and an
 inner stop's position): keyed when any is, a click keys them all at the playhead or stops them all. The picker shows the
-paint at the playhead and an edit keys what is animated there (layer.fill `at`). No Qt."""
+paint at the playhead and an edit keys what is animated there (layer.fill `at`).
+A picture or painted fill's per-element fields (Scale, Offset, Rotation, Drift, Colour under it, Blend, Opacity, Start at
+drawing) stay the panel's own rows, evaluated like any (valid when, key marks), marked `inside` the Fill row: the picker
+draws them under its Fit, the panel never does (the kit's InspectorRow). Fit goes with the paint. The picker's Painted
+kind shows the scene's paintings as tiles (`options.sources`) and "+ New painting" (`options.add`: the action
+layer:painted_new, one change). No Qt."""
 from __future__ import annotations
 
-from rostrum2d import fill_fields, fill_paint
+from rostrum2d import drawing, fill_fields, fill_paint
 from rostrum2d.evaluate import resolve
 from rostrum_core.keys import keys_of
 from rostrum_gui.rows import matches
@@ -16,10 +21,15 @@ from . import route
 
 ROW = "paint"
 HIDDEN = {"filled", "fillOpacity", *fill_fields.NAMES, *(p.name for p in fill_fields.PICTURE)}
+INSIDE = ("fillScale", "fillOffsetX", "fillOffsetY", "fillRotation", "fillDriftX", "fillDriftY", "fillUnder", "fillBlend",
+          "fillOpacity", "fillPhase")                    # drawn in the picker (in fill_fields' order)
+WORDS = {"fillScale": "Scale", "fillOpacity": "Opacity"}   # the picker's words: no "Picture scale" on a painting
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
+NEW = "layer:painted_new"                               # + New painting (actions.py)
 
 
-def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0, query: str = "") -> list[dict]:
+def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0, query: str = "",
+         doc: dict | None = None) -> list[dict]:
     if not item or item.get("type") not in fill_fields.OWNERS:
         return rows
     colour = fill_paint.colour_field(item)
@@ -28,14 +38,48 @@ def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0,
     # The one row stands for the colour and every fill field it hides, so a search for any of them (gradient, angle, picture)
     # finds it, whether or not that field applies now, and a search for anything else (blur) leaves it out.
     own = bool(query.strip()) and any(r["row"] == "param" and r["id"] in HIDDEN and matches(r, query) for r in rows)
+    raster = "painted" in types
     for r in rows:
         if r["row"] == "param" and r["id"] == colour:
             out.append({**r, "id": ROW, "label": "Fill" if colour == "fill" else "Colour", "type": "paint", "valid": r["valid"] or own,
-                        "value": fill_paint.of(_at(item, t)), "options": {**OPTIONS, "types": types},
-                        "anim": anim_state(item, t, fps), "default": None})
+                        "value": value(item, t, doc), "anim": anim_state(item, t, fps), "default": None,
+                        "options": {**OPTIONS, "types": types, **({"sources": sources(doc), "add": NEW} if raster else {})}})
+        elif raster and r["row"] == "param" and r["id"] in INSIDE:
+            out.append(_inside(r, item))
         elif not (r["row"] == "param" and r["id"] in HIDDEN) and not (r.get("members") and set(r["members"]) <= HIDDEN):
             out.append(r)                                # (a fold of only the fill's own fields goes with them)
     return out
+
+
+def _inside(r: dict, item: dict) -> dict:
+    """A per-element field drawn in the picker: shown while its own valid-when holds (never folded or searched away).
+    A colour under it that is none starts, on its "+", from the layer's solid colour."""
+    extra = {"options": {"start": item.get("fill", "#ffffff")}} if r["id"] == "fillUnder" else {}
+    label = r["label"] if r.get("half") == "first" else WORDS.get(r["id"], r["label"])
+    return {**r, **extra, "label": label, "inside": ROW, "valid": bool(r.get("holds", r["valid"]))}
+
+
+def value(item: dict, t: float, doc: dict | None) -> dict:
+    """The paint at `t`; a painted fill adds its painting's name and picture (the swatch shows them, as a style's name)."""
+    paint = fill_paint.of(_at(item, t))
+    if paint["type"] == "painted":
+        found = next((p for p in (doc or {}).get("paintings", []) if p["id"] == paint["painting"]), None)
+        paint.update(name=found.get("name", "Painted") if found else "Painted", thumb=picture(found) if found else "")
+    elif paint["type"] == "picture":
+        paint["thumb"] = paint["picture"]
+    return paint
+
+
+def picture(painting: dict) -> str:
+    """The painting's first drawing as a picture file. One not made yet is left to the scene, which makes it off the
+    screen's thread (its last one, or a blank one, stands in meanwhile)."""
+    frames = drawing.shown_frames(painting)
+    return str(drawing.picture(painting, frames[0], later=[])) if frames else ""
+
+
+def sources(doc: dict | None) -> list[dict]:
+    """The picker's tiles: each painting of the scene, its name and picture."""
+    return [{"value": p["id"], "label": p.get("name", "Painting"), "picture": picture(p)} for p in (doc or {}).get("paintings", [])]
 
 
 def call(item_id: str, paint: dict, t: float = 0.0) -> dict:
@@ -53,7 +97,9 @@ def call(item_id: str, paint: dict, t: float = 0.0) -> dict:
         if paint["span"] == "points":
             args.update({k: paint[k] for k in ("x1", "y1", "x2", "y2", "rx", "ry") if paint.get(k) is not None})
     if paint["type"] == "picture":
-        args.update(picture=_path(paint.get("picture") or ""), fit=paint.get("fit"), scale=paint.get("scale"))
+        args.update(picture=_path(paint.get("picture") or ""), fit=paint.get("fit"))
+    if paint["type"] == "painted":
+        args.update(painting=paint.get("painting") or None, fit=paint.get("fit"))
     return {"op": "layer.fill", "target": [item_id], "args": {k: v for k, v in args.items() if v is not None}}
 
 

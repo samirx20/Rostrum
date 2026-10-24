@@ -145,9 +145,20 @@ In the timeline the drawing's row shows its drawings as numbered cells; a drawin
 2. **Show before** is tinted red and **Show after** green. Each has its own count: none, 1 drawing, up to 5 drawings.
 3. Turn it off the same way. The faint pictures are for you only; they never appear in an export.
 
-## 9. A painting many layers share (scripts and agents)
+## 9. A painting many layers share
 
-A **painting** is a canvas of its own in the scene, with its own size and strokes like a drawing. Shapes and paths can use it as their **fill**; paint it once and every layer using it changes. (The Fill picker and the Library show it in a later round; the words below work today.)
+A **painting** is a canvas of its own in the scene, with its own size and strokes like a drawing. Shapes and paths can use it as their **fill**, picked like a colour; paint it once and every layer using it changes.
+
+On the screen:
+
+1. **A new painted fill (2 clicks):** pick the shape (or several), click the **Fill** swatch, then **Painted** (the brush, last of the kinds). With no painting in the scene yet, a new one is made at once, the size of the layer, stretched over it, and named after it ("card paint"). The layer keeps its colour as **Colour under it**, so it looks the same until you paint. One step: **Ctrl+Z** takes back the painting and the fill together.
+2. **Use a painting that is already there (3 clicks):** pick the layers, **Fill** swatch, **Painted**: the scene's paintings show as tiles, the one in use outlined. Click one to use it, or **New painting** for a new one.
+3. **How it sits is each layer's own:** under the tiles, **Fill · Fit · Tile · Stretch**, then **Scale**, **Offset**, **Rotation** and **Drift** (a steady slide, for ever; Tile only), **Colour under it** with its **Blend**, and **Opacity**. Only the rows that apply show. A painting that draws each frame adds **Start at drawing**.
+4. **From paint that is already there:** right-click a shape that holds paint of its own (kept inside its outline) › **Make painted fill**: its paint becomes a painting and its fill, looking the same; now other layers can use it. Right-click a drawing layer › **Make painted fill** copies its drawing into a new painting (the drawing stays).
+
+   ![Two layers sharing one painting, the picker on Tile with its rows](pictures/fill-picker-painted.png)
+
+For scripts and agents:
 
 - **Make one:** `painting.add {w, h, seamless, name}`; in a script `grain = painting("paper grain", w=128, h=128, seamless=True)`. It starts with one paint layer, Ink. **Seamless** is kept with the painting; the wrap itself arrives with the next round.
 - **Paint on it:** `paint.stroke {target: <painting>, points: [[x, y, pressure], …], …}` (points are the painting's own pixels), or in a script `grain.stroke([(10, 20, .6), (118, 24, .8)], brush="bristle", color="#c1683a", size=6)`. Look with `look_painting {painting}` (or `look_drawing`); `inspect_stroke_landed` and `inspect_drawing_at` take a painting too.
@@ -155,8 +166,6 @@ A **painting** is a canvas of its own in the scene, with its own size and stroke
 - **Make a painted fill from paint that is already there:** `painting.add {from: <layer>}` moves a layer's own paint into a new painting and makes it that layer's fill, looking the same (its solid fill becomes **Colour under it**); `from` a drawing layer copies the drawing instead (the drawing stays).
 - **See what uses what:** `inspect_painting` lists each painting's size, drawings and every layer using it.
 - **Rename, resize, copy, delete:** `painting.set {target, name, w, h, seamless, eachFrame, newHold, loop}`; `painting.duplicate`; `painting.remove`. Deleting a painting that layers use turns each of them into a solid fill of its average colour (one undo brings everything back).
-
-Until the engine draws painted fills, a layer with one shows no fill in the preview or an export.
 
 ## 10. Play it, and more than one drawing layer
 

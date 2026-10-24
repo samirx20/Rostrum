@@ -23,6 +23,7 @@ ColorPicker 1.0 ColorPicker.qml
 GradientBar 1.0 GradientBar.qml
 PaintPicker 1.0 PaintPicker.qml
 PicturePaint 1.0 PicturePaint.qml
+PaintedPaint 1.0 PaintedPaint.qml
 PaintField 1.0 PaintField.qml
 PaintIcon 1.0 PaintIcon.qml
 Checker 1.0 Checker.qml

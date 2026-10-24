@@ -38,6 +38,14 @@ def kind_of(item: dict) -> str:
     return item.get("fillType", "solid")
 
 
+def colour_kept(item: dict) -> str | None:
+    """The colour a layer keeps under a painting it is given: its solid colour, when it has one and no colour under it
+    yet (a blank painting then leaves it looking as it did). None otherwise."""
+    if item.get("filled", True) and kind_of(item) == "solid" and item.get("fillUnder") is None:
+        return item.get(colour_field(item), "#ffffff")
+    return None
+
+
 def stops_of(item: dict) -> list[dict]:
     return sorted(item.get("stops", []), key=lambda s: s.get("at", 0.0))
 

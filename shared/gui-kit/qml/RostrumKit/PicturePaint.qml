@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Dialogs
 import "."
 
-// The paint picker's Picture part: the picture (its file name; a click chooses another), how it sits in the layer's
-// box (Fill · Fit · Tile · Stretch) and its scale. Every change is `changed(fields)`; the picker makes the new paint.
+// The paint picker's Picture part: the picture (its file name; a click chooses another). How it sits in the layer's box
+// is the picker's (Fit and the app's rows, shared with Painted). A pick is `changed(fields)`; the picker makes the new paint.
 // `choose()` opens the file dialog (the picker calls it when Picture is picked with no picture yet; a cancel leaves
 // the fill as it was). The file goes out as the dialog's file:// url; the app turns it into a path.
 Column {
@@ -40,30 +40,6 @@ Column {
             onClicked: pic.choose(false)
         }
     }
-    Segmented {
-        objectName: "picturePaint:fit"
-        width: parent.width
-        visible: pic.file !== ""
-        options: [{ value: "fill", label: "Fill" }, { value: "fit", label: "Fit" },
-                  { value: "tile", label: "Tile" }, { value: "stretch", label: "Stretch" }]
-        current: pic.paint && pic.paint.fit ? pic.paint.fit : "fill"
-        onPicked: (v) => pic.changed({ fit: v })
-    }
-    Row {
-        visible: pic.file !== ""
-        width: parent.width; spacing: Theme.gap
-        Text { id: scaleName; text: "Scale"; anchors.verticalCenter: parent.verticalCenter
-               color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-        NumberField {
-            objectName: "picturePaint:scale"
-            width: parent.width - scaleName.width - Theme.gap
-            value: pic.paint && pic.paint.scale !== undefined ? pic.paint.scale : 1
-            from: 0.01; to: 100; step: 0.01; display: "percent"; defaultValue: 1
-            onEdited: (v) => pic.changed({ scale: v })
-            onScrubbed: (v) => pic.changed({ scale: v })
-        }
-    }
-
     FileDialog {
         id: dialog
         title: "Choose a picture"

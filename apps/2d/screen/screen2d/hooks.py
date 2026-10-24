@@ -83,7 +83,7 @@ class Hooks2D:
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
         rows = fill_rows.rows(font_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
                                              item),
-                              item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search)   # placed: keys on a marker read
+                              item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search, self.doc.data)   # placed: keys on a marker read
         return _home_reset(project_picks.with_file_names(rows, item, self.doc.folder), item)   # File: "pic.png", not the store's copy
 
     def shown_values(self, item):

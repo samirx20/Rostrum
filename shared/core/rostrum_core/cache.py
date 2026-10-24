@@ -119,6 +119,20 @@ def put_file(out, make: Callable[[Path], object], where: str = "cache", beside: 
     return out
 
 
+def _publish(tmp: Path, folder: Path, tries: int = 6):
+    """Move a finished entry into place. Windows refuses the move for a moment while something still holds a file just
+    written in it (a virus scanner reading the new picture: "Access is denied"); it is tried again a few times, 20 to
+    160 ms apart, before the refusal goes on (loud). A folder already there (another writer won) is not retried."""
+    for n in range(tries):
+        try:
+            tmp.rename(folder)
+            return
+        except PermissionError:
+            if n == tries - 1 or folder.exists():
+                raise
+            time.sleep(0.02 * min(8, 2 ** n))
+
+
 class Cache:
     def __init__(self, root=None, cap: int | None = None, clock=time.time):
         self.root = Path(root) if root else default_root()
@@ -160,7 +174,7 @@ class Cache:
             (tmp / ENTRY).write_text(json.dumps(meta, indent=1), encoding="utf-8")
             os.utime(tmp / ENTRY, (self.clock(), self.clock()))     # entry.json's time = when last used
             try:
-                tmp.rename(folder)
+                _publish(tmp, folder)
             except OSError:
                 if not (folder / ENTRY).is_file():
                     raise

@@ -1,5 +1,5 @@
 """The settings grid's pairs (SPEC 8.0): Position (X | Y), Size (W | H) and the other two-axis settings (Anchor, Stretch,
-Tilt), two number rows next to each other that share one line, each half with its small letter inside. Everything
+Tilt, a picture fill's Offset and Drift), two number rows next to each other that share one line, each half with its small letter inside. Everything
 else is one row with its own label. A pair is ONE setting: its key mark keys both halves as one change and shows
 their joint state (`pair_valid`; bridge.toggleAnimate), never X alone.
 The rule is data on the rows: `half` ("first" / "second") and `letter`; the first half's label becomes the pair's name.
@@ -11,7 +11,8 @@ Two rows pair only when they sit one after the other and are the same in every w
 from __future__ import annotations
 
 PAIRS = {("x", "y"): "Position", ("w", "h"): "Size", ("width", "height"): "Size", ("anchorX", "anchorY"): "Anchor",
-         ("scaleX", "scaleY"): "Stretch", ("tiltX", "tiltY"): "Tilt"}
+         ("scaleX", "scaleY"): "Stretch", ("tiltX", "tiltY"): "Tilt",
+         ("fillOffsetX", "fillOffsetY"): "Offset", ("fillDriftX", "fillDriftY"): "Drift"}
 SAME = ("group", "importance", "valid_when", "in", "type", "unit")
 
 

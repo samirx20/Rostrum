@@ -19,7 +19,7 @@ from rostrum2d import fields as F
 from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
 from . import cover_move, frame_actions, pin_depth
-from .action_rules import Facts, calls_of
+from .action_rules import SHAPES, Facts, calls_of
 from .eases import EASES
 from .keys2d import KEYS2D
 
@@ -118,6 +118,12 @@ DATA = [
        max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),
     _a("style_detach", "Detach style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
        when=FACT("styled"), calls=_op("style.detach", "styled")),
+    # a painted fill (rostrum2d/paintings.py): the fill picker's + New painting; Make painted fill from paint already there
+    _a("painted_new", "New painted fill", rank=82, group="look", kinds=SHAPES, panel=False,
+       calls=_op("painting.add", None, onto="$ids", id="$new:painting")),
+    _a("make_painted_fill", "Make painted fill", rank=82, group="look", job="make_painted_fill", max_targets=1,
+       kinds=(*SHAPES, "drawing"), when=FACT("paint_makeable"), panel=False,
+       calls=_op("painting.add", None, id="$new:painting", **{"from": "$first"})),
     _a("copy_style", "Copy style", rank=80, group="look", job="copy_style", max_targets=1, do="copy_style"),
     _a("paste_style", "Paste style", rank=80, group="look", job="paste_style", when=FACT("style_copied"),
        calls=_op("style.apply", "not_copied", **{"from": "$copied"})),
@@ -196,5 +202,7 @@ def _style_uses(f) -> list[dict]:
 
 ACTIONS = [_action(d) for d in DATA]
 # the right-click's Order block is all four moves (only those that would move something are there), never one alone
-SHORT = tuple((n, ("front", "forward", "backward", "back") if n == "order" else jobs) for n, jobs in SHORT_MENU)
+# and its Make block offers Make painted fill (only on a layer it can be made from)
+SHORT = tuple((n, ("front", "forward", "backward", "back") if n == "order" else (*jobs, "make_painted_fill") if n == "make" else jobs)
+              for n, jobs in SHORT_MENU)
 LIST = _List(ACTIONS, KEYS2D, noun="layer", short_menu=SHORT)

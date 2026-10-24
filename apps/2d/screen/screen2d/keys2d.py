@@ -34,6 +34,7 @@ OWN = [
     {"job": "subtract", "keys": ["Ctrl+Alt+S"], "label": "Combine: subtract"},
     {"job": "intersect", "keys": ["Ctrl+Alt+I"], "label": "Combine: intersect"},
     {"job": "exclude", "keys": ["Ctrl+Alt+X"], "label": "Combine: exclude"},
+    {"job": "make_painted_fill", "keys": [], "label": "Make painted fill"},          # no key: the right-click's Make block
 ]
 
 KEYS2D = KeyMap("Rostrum2D", OWN, drop=("preferences",))     # no setting of 2D is a person's to change: Ctrl+, would open an empty window
