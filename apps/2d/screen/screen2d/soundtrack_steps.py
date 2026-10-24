@@ -19,6 +19,8 @@ from __future__ import annotations
 import shutil
 import time
 
+from rostrum_gui.settle import save_snap
+
 from PySide6.QtCore import QCoreApplication, QMetaObject, QObject
 
 WORDS = ("sound",)
@@ -144,8 +146,7 @@ def do_sound_step(bridge, win, word, rest, step):
         if not st.problem:
             raise RuntimeError(f"step {step!r}: expected the soundtrack to say what failed; it rendered")
         _pump(0.8)
-        if not win.grabWindow().save(rest[1]):
-            raise RuntimeError(f"could not save {rest[1]}")
+        save_snap(win, rest[1])
         print("said:", st.problem)
         bridge._set_status("")
     else:

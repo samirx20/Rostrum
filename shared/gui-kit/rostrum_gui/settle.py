@@ -42,6 +42,39 @@ def settle(win, then, fail, still: int = STILL, limit: float = LIMIT, ready=None
     frame()
 
 
+def grab_settled(win, ready=None, still: int = 3, limit: float = 10.0, may_move: bool = False):
+    """The one mid-run `snap`: the window's picture once what the last step changed has been drawn. A bare
+    `win.grabWindow()` draws one frame of the state it finds: queued signals not yet delivered, a picture still
+    on its way from a worker, a reveal or Behavior at its first frame all show the screen one change late, even
+    after a `wait`. This blocks (events run in between) until `ready()` (the app's "newest picture has landed") is
+    true and the picture has held for `still` frames, nothing loading or animating. Fails loudly when it never
+    does; `may_move` (a progressive render refining forever) returns the last frame instead."""
+    import time as _t
+    from PySide6.QtCore import QCoreApplication
+    end, last, same = _t.monotonic() + limit, None, 0
+    while True:
+        QCoreApplication.processEvents()
+        img = win.grabWindow()                 # draws one frame: animations step, finished loads show
+        if img.isNull():
+            raise RuntimeError("snap: the window gave no picture")
+        same = same + 1 if last is not None and img == last else 0
+        last = img
+        if same >= still and (ready is None or ready()) and not loading(win.contentItem()) and not animating(win.contentItem()):
+            return img
+        if _t.monotonic() > end:
+            if may_move:
+                return img
+            raise RuntimeError(f"snap: the screen was still changing after {limit:g} s (an endless animation, or something "
+                               "that keeps loading); no picture taken")
+        _t.sleep(0.01)
+
+
+def save_snap(win, path, **kw) -> None:
+    """grab_settled, saved to `path`; a picture that can't be written fails the step."""
+    if not grab_settled(win, **kw).save(str(path)):
+        raise RuntimeError(f"snap: could not save {path}")
+
+
 def loading(item) -> bool:
     """Something under `item` is still loading: a picture or an asynchronous Loader with a source and its `progress`
     short of 1, not an inactive one (PySide can't read their `status` enum)."""

@@ -29,6 +29,7 @@ from __future__ import annotations
 from PySide6.QtCore import Q_ARG, QObject, QCoreApplication, QMetaObject, QPoint, QPointF, Qt
 from PySide6.QtGui import QKeySequence
 from PySide6.QtTest import QTest
+from rostrum_gui.settle import save_snap
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokeshandle", "grabhandle", "strokesdelete", "strokescopy",
          "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clickname", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
@@ -126,8 +127,7 @@ def do_stroke_step(bridge, win, word, rest, step):
         QTest.qWait(700)
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
-        if not win.grabWindow().save(rest[0]):
-            raise RuntimeError(f"could not save {rest[0]}")
+        save_snap(win, rest[0], ready=bridge.frames.idle)
         print("saved", rest[0], "| status:", bridge.status)
     elif word == "key":
         keys = QKeySequence(rest[0])[0]
