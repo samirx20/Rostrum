@@ -5,14 +5,14 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge, effects
+from rostrum_gui import DocBridge, effects, news
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
 from rostrum_core.tree import index
 from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 
-from . import bounds, colour_feed, outline, screen_seen
+from . import bounds, colour_feed, outline, picture_change, route, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
@@ -59,6 +59,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     playingChanged = Signal()
     _sel_layer = None                                       # (document state, selection, its layer): selectedLayer
     _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
+    _asked_from = None                                      # (placed, index) the last picture was asked for
     markersChanged = Signal()
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
@@ -75,6 +76,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.marks = None                                   # made below (it needs this QObject); the first rows have none
         self._shown_init()
         super().__init__(doc, parent=parent)
+        self._outline_paced = news.OnceAFrame(self.outlineChanged.emit, self)   # a drag's steps (_on_doc)
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
         self.outlineChanged.connect(self._outline_check)    # then selectedLayer / frameInfo, each sent only on news
         self._told = (None, None)
@@ -105,6 +107,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self._host = placement.Host(self.frames.place, lambda: self.marks.times, lambda: doc.folder)
         placement.use(self._host)                           # comp-px strokes and spatial staggers ask the canvas's engine
+        self._where = route.use(self.placed_item, self.offset, lambda: self.comp()["fps"])   # marker keys at the playhead (route.py)
         self.model.update(self._rows())
         self.marks.changed.connect(self._render)            # expressions may read marker("…")
         self.marks.changed.connect(self._problems.touch)
@@ -165,11 +168,15 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     def placed_item(self, id_: str) -> dict:
         """One item of `placed()` (a layer, effect, mask or key owner), its times in composition seconds."""
+        found = self.placed_index()[1].get(id_)
+        return found.item if found else self.doc.item(id_)
+
+    def placed_index(self) -> tuple:
+        """(placed(), its index by id), worked out once per document and markers."""
         placed = self.placed()
         if self._placed_idx is None or self._placed_idx[0] is not placed:
             self._placed_idx = (placed, index(placed, self.doc.kind.lists))
-        found = self._placed_idx[1].get(id_)
-        return found.item if found else self.doc.item(id_)
+        return self._placed_idx
 
     def offset(self, id_: str) -> float:
         """Where the item's own time 0 sits in composition seconds (0 unless it or a parent is timed from a marker)."""
@@ -354,6 +361,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
             if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile
                 self._pictures.make(later, self._waiting)
         if self._scene and self._waiting is None:
+            self._asked_from = self.placed_index()          # what the picture asked for shows (picture_change.py)
             self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag(),
                                 **self.frame_extras())
         elif self._shown is not None:                       # no picture for this state: the overlays go live
@@ -368,6 +376,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
                 self._show()
 
     def _on_frame(self, serial, tag):
+        with STATS.stage("picture.arrives"):
+            self._picture_arrives(serial, tag)
+
+    def _picture_arrives(self, serial, tag):
         self._frame = serial
         self.frameChanged.emit()                            # the picture and the overlays change together
         if tag == PREVIEW_TAG:                              # an action's hover preview: not the document, the overlays stay
@@ -377,14 +389,33 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     def _on_doc(self, event):
         self._note_change()
-        super()._on_doc(event)
-        if self.reached(self.selection or [self.comp_id]):     # the selection's overlays, bars and panels
-            self.outlineChanged.emit()
-        else:                                               # a change elsewhere (an agent's, an undo): only the
-            self._layers_check()                            # timeline's rows (outline's first listener); the canvas
+        with STATS.stage("doc.kit"):
+            super()._on_doc(event)
+        with STATS.stage("doc.outline"):
+            reached = self.reached(self.selection or [self.comp_id])     # the selection's overlays, bars and panels
+            if event.kind == "preview":                     # a drag's step: the timeline's rows (the bar or key
+                self._layers_check()                        # dragged) at once, the parts that follow the outline
+                if reached:                                 # (panels, overlays) once per screen refresh
+                    self._outline_paced.ask()
+            elif reached:
+                self._outline_paced.cancel()
+                self.outlineChanged.emit()
+            else:                                           # a change elsewhere (an agent's, an undo): only the
+                self._layers_check()                        # timeline's rows (outline's first listener); the canvas
                                                             # overlays follow the new picture (shownChanged)
-        self._render()
+        with STATS.stage("doc.render"):
+            if event.kind == "preview" and not self._picture_changes():
+                self._scene = None                          # the picture stays: it shows the same (picture_change.py)
+            else:
+                self._render()
         self._problems.touch()
+
+    def _picture_changes(self) -> bool:
+        """A drag's step changes the picture at the playhead (else the engine is not asked again)."""
+        c = self.comp()
+        blur = c.get("shutter", 0) > 0 and c.get("shutterSamples", 1) > 1
+        return self.held_view is not None or picture_change.changes(
+            self._asked_from, self.placed_index(), self.touched(), self._t, self.doc.kind.lists, blur)
 
     def close(self):
         if self.link:
@@ -392,7 +423,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self.play.stop()
         self.marks.close()
         self.endDrag()
+        self._outline_paced.cancel()                       # a drag's step still waiting: nothing left to tell
+        self._kit.paced.cancel()
         placement.drop(self._host)
+        route.drop(self._where)
         self.frames.close()
         self._pictures.close()
         self._problems.close()

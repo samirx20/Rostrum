@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_gui import news
 from rostrum2d import fields as F
 from rostrum2d.frame import view as frame_view
 
@@ -61,8 +62,9 @@ class FrameView(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self._bridge, self._at = bridge, None
-        bridge.shownChanged.connect(self.changed)
-        bridge.outlineChanged.connect(self.changed)
+        told = news.relay(self)                             # only news: the frame's handles redo on it
+        bridge.shownChanged.connect(told)
+        bridge.outlineChanged.connect(told)
 
     def _now(self) -> tuple[dict, dict]:
         """(the box, the composition) of the picture on screen; worked out once per picture."""

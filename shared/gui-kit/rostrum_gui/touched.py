@@ -3,9 +3,10 @@ thread stays under one frame on a busy scene).
 
 Every change carries its edits; their keys say which items and fields it touched (rostrum_core.edits.keys). The
 bridge keeps the last change's `Touched` (`bridge.touched()`); a part asks `reaches(ids)` before it rebuilds, and
-does nothing for a change elsewhere. When the kit can't tell (a drag's step, a reset, another program's steps taken
-in), `touched()` is None: everything counts as touched. A change that adds, removes or moves items, or renames one,
-reaches every part: lists of names and pick lists name other items.
+does nothing for a change elsewhere. A drag's step is told the same way, from the edits of that step alone (on top of
+the step before). When the kit can't tell (a reset, another program's steps taken in), `touched()` is None:
+everything counts as touched. A change that adds, removes or moves items, or renames one, reaches every part: lists
+of names and pick lists name other items.
 """
 from __future__ import annotations
 
@@ -47,11 +48,16 @@ def _inside(idx, item_id, ids: set) -> bool:
 
 
 def of(doc, event) -> Touched | None:
-    """The change's Touched, or None when it can't be told (a drag's step, a reset, a change with no edits listed)."""
+    """What the change or the drag's step touched, or None when it can't be told (a reset, a change with no edits
+    listed). A drag's step carries its own edits (on top of the step before): the one "what did this preview change"
+    every part reads."""
     c = getattr(event, "change", None)
-    if event.kind != "change" or c is None or not c.edits:
+    edits = c.edits if event.kind == "change" and c is not None else getattr(event, "edits", None) if event.kind == "preview" else None
+    if event.kind == "preview" and edits == []:
+        return Touched(set(), False)                # a step that changed nothing reaches nothing
+    if not edits:
         return None
     lists = doc.kind.lists
-    keys = set().union(*(E.keys(e, lists) for e in c.edits))
-    structural = any(not isinstance(e, E.Set) for e in c.edits) or any(len(k) > 1 and k[1] in NAMES for k in keys)
+    keys = set().union(*(E.keys(e, lists) for e in edits))
+    structural = any(not isinstance(e, E.Set) for e in edits) or any(len(k) > 1 and k[1] in NAMES for k in keys)
     return Touched(keys, structural)

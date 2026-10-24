@@ -65,3 +65,16 @@ def test_a_cut_on_a_marker_stays_tied_when_the_next_shot_is_dragged(bridge):
     fd.moveBy(500, 0)
     fd.end()
     assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item(fd.id), "x")} == {"#reveal-0.1": x0, "#reveal": x0 + 500}
+
+
+def test_an_edit_on_a_marker_key_changes_that_key(bridge):
+    """A key on a marker under the playhead is THE key there: moving the layer changes it and it stays on the marker
+    (route.value_call), never a second key at the playhead's seconds beside it."""
+    bridge.doc.apply([{"op": "key.add", "target": "dot", "args": {"prop": "x", "t": "#reveal", "v": 100}},
+                      {"op": "key.add", "target": "dot", "args": {"prop": "x", "t": 3.0, "v": 200}}], Who.person("sam"))
+    bridge.select("dot")
+    bridge.setTime(11.6)
+    assert bridge.beginMove()
+    bridge.moveBy(50, 0)
+    bridge.endDrag()
+    assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item("dot"), "x")} == {"#reveal": 150, 3.0: 200}

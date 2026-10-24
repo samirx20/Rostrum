@@ -28,11 +28,11 @@ class Gesture:
 
     def preview(self, calls):
         """Run the calls on top of the drag so far. A bad step raises and leaves the last good state showing."""
-        work, _, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
+        work, edits, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = calls          # the last step says where the drag ended
-        self.doc._emit(Event("preview"))
+        self.doc._emit(Event("preview", edits=edits))     # what this step changed: listeners redo only that
 
     def cancel(self):
         self.cancelled = True

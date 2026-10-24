@@ -43,6 +43,7 @@
     wav <path> | pick <item|-> | menu | open [dry] | problem <png>
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
+  Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame [n] [profile]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
@@ -64,6 +65,7 @@ from .view_steps import WORDS as VIEW_WORDS, do_view_step
 from .frame_steps import WORDS as FRAME_WORDS, do_frame_step
 from .soundtrack_steps import WORDS as SOUND_WORDS, do_sound_step
 from .rig_steps import WORDS as RIG_WORDS, do_rig_step
+from .drag_steps import WORDS as DRAG_WORDS, do_drag_step
 
 
 def value(text):
@@ -445,6 +447,8 @@ def do_step(bridge, win, step):
         do_sound_step(bridge, win, word, rest, step)
     elif word in STROKE_WORDS:                   # Alt picks a colour, the lasso, the focused area (stroke_steps.py)
         do_stroke_step(bridge, win, word, rest, step)
+    elif word in DRAG_WORDS:                     # dragtime bar|trim|key|layer|frame [n] [profile] (drag_steps.py)
+        do_drag_step(bridge, word, rest, step)
     elif word in RIG_WORDS:                      # bones, posing, poses, Lip sync…, Add blinks… (rig_steps.py)
         do_rig_step(bridge, word, rest, step)
     elif word == "canvasreport":                 # canvasreport: print the canvas picture's fingerprint and the history length (hover-preview walks)

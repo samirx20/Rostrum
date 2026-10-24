@@ -117,12 +117,27 @@ class SelectSlots(SlotMixin):
         self.model.update(self._rows())
         self.rowsChanged.emit()
 
-    def _follow_doc(self):
-        """After a document change: a selected item that went away (e.g. undo of an add) leaves the selection."""
+    HELD = ("valid", "holds", "open", "names")         # what a drag's step leaves as it was (_step_rows)
+
+    def _step_rows(self):
+        """A drag's step: the shown rows' values follow it; which rows show and which groups are open stay as at the
+        press until the drop (a row appearing mid-drag makes its control then: tens of ms in one pointer move)."""
+        new, old = self._rows(), self.model.rows
+        if [r["id"] for r in new] == [r["id"] for r in old]:
+            self.model.update([{**n, **{k: o[k] for k in self.HELD if k in o}} for n, o in zip(new, old)])
+
+    def _follow_doc(self, step=False):
+        """After a document change: a selected item that went away (e.g. undo of an add) leaves the selection. `step`:
+        a drag's step: the rows follow at most once per screen refresh (news.OnceAFrame), the drag's end in full."""
         sel = self._kit.selection
         if any(not self.doc.has(i) for i in sel):
             kept = [i for i in sel if self.doc.has(i)]
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
-        elif self.reached(sel):                            # a change elsewhere leaves these rows as they are
+        elif not self.reached(sel):                        # a change elsewhere leaves these rows as they are
+            return
+        elif step:
+            self._kit.paced.ask()
+        else:
+            self._kit.paced.cancel()
             self._refresh()
             self._announce()                               # only if its name or kind changed (an agent's rename)
