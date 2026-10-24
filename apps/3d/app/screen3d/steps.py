@@ -2,8 +2,8 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
-    context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
+    keydrag <key id> <frame> | keys-stretch <grabbed key> <frame> <picked key> … | keys-menu <key id> (key_steps.py) | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    context <item id | -> (the right-click menu) | lipsync <mouth group id> (its Lip sync… sheet) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
     svgFile=<path> or doc2d=<id> layer=<id>; the next viewport click (`mouseclick`, `viewclick`) places it on the surface there)
@@ -17,6 +17,8 @@
     render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
     estimate-wait (until its time is measured) | budget <time, e.g. 10 min> | sheet-format png|exr|both (its Save as: a shot edit)
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
+    queue add <shot> [first] | move <row> <index> | cancel <row> | show <row> | wait-frames <n> | wait-idle | report | demo
+    (the Render page's queue: queue_steps.py)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, places the armed shape,
     or, while placing or linking a light, that; named apart from the kit's `click <text>`, which runs first)
@@ -106,7 +108,7 @@ def do_step(bridge, win, step):
     elif word == "keydrag":
         if not bridge.beginKeyDrag(rest[0]):
             raise RuntimeError(f"step {step!r}: {bridge.status}")
-        bridge.keyDragTo(float(rest[1]))
+        bridge.keyDragTo(float(rest[1]) / bridge.shot_info()["fps"])
         bridge.endDrag()
     elif word == "fold":
         bridge.toggleFold(rest[0])
@@ -155,10 +157,24 @@ def do_step(bridge, win, step):
         bridge.adder.duplicate() if word == "duplicate" else bridge.adder.remove()
     elif word == "context":        # context <item id | -> : the right-click menu for that item (- = empty space)
         QMetaObject.invokeMethod(win, "openContext", Q_ARG("QVariant", "" if rest[0] == "-" else rest[0]))
+    elif word == "lipsync":        # lipsync <mouth group id>: the right-click menu's Lip sync… (lipsync3d.py)
+        bridge.open_lipsync(rest[0])
     elif word == "rail":
         QMetaObject.invokeMethod(win, "openRailGroup", Q_ARG("QVariant", rest[0]))
+    elif word == "panel":          # panel poses | onion: the Animate rail's own small panels (Rail3D.qml)
+        QMetaObject.invokeMethod(win, "openRailPanel", Q_ARG("QVariant", rest[0]))
+    elif word == "pose":           # pose <name…>: Save pose from the selection at the playhead (poses_qt.py)
+        bridge.poses.save(" ".join(rest))
+    elif word == "onion":          # onion on | off | keys | frames (onion_qt.py)
+        o = bridge.viewport.onion
+        o.setOn(rest[0] != "off") if rest[0] in ("on", "off") else o.setMode(rest[0])
     elif word == "page":
         bridge.setPage(rest[0])
+    elif word == "stretch":        # stretch <key id>: the click on the stretch that key starts (its item's, StretchBand.qml)
+        bridge.stretch.pick(bridge.doc.parent_of(rest[0])[0], [rest[0]])
+    elif word == "ease":           # ease <linear | smooth | in | out | spring | bounce | hold>: a preset in the animation panel
+        if not bridge.stretch.setEase(rest[0]):
+            raise RuntimeError(f"step {step!r}: no stretch picked, or {bridge.status}")
     elif word == "startfrom":
         bridge.mats.startFrom(" ".join(rest))
     elif word == "assign":
@@ -195,6 +211,12 @@ def do_step(bridge, win, step):
         bridge.viewport.gizmo.setShow(rest[0])
     elif word == "key-moved":
         bridge.viewport.gizmo.keyMoved()
+    elif word == "queue":                         # the Render page's queue (queue_steps.py)
+        from . import queue_steps
+        queue_steps.do(bridge, rest)
+    elif word.startswith("keys-"):                # picked keys: Alt+drag stretch, the right-click Ease list (key_steps.py)
+        from . import key_steps
+        key_steps.do(bridge, win, word, rest)
     elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
         from . import mesh_steps
         mesh_steps.do(bridge, word, rest)

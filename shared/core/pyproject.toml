@@ -8,6 +8,9 @@ dependencies = []
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0", "pillow>=10.1"]   # pillow (MIT-CMU): the look tools' scaled frames and contact sheets
+lipsync = ["numpy", "scipy", "soundfile",                                   # lip sync (rostrum_core.lipsync; all BSD-3)
+           "onnxruntime-directml>=1.24; sys_platform == 'win32'",           # MIT
+           "onnxruntime>=1.24; sys_platform != 'win32'"]                    # MIT
 test = ["pytest>=8"]
 
 [build-system]

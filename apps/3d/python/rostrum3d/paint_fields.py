@@ -1,5 +1,5 @@
 """Painting on a mesh (SPEC §5): the 3D fields the shared painting kit (rostrum_paint) doesn't have. Part of the one
-table (fields.FIELDS["mesh"] takes MESH; kind.py registers the kit with LAYER as its paint layers' own fields).
+table (mesh_fields.MESH takes MESH; kind.py registers the kit with LAYER as its paint layers' own fields).
 
 A mesh is a kit canvas: it holds `paints` (paint layers, bottom first) and `paintmasks`, in canvas pixels of a square
 `paintSize` picture laid on its `uvs` (mesh.unfold). Each paint layer paints one surface channel (`channel`, shown as
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from rostrum_core import Param
 
-from .fields import D, S
+from .field_kit import D, S
 
 PAINTED = {"fact": "painted"}          # the mesh holds paint layers (kind.facts)
 

@@ -38,7 +38,7 @@ colours `"#rrggbb"`.
 A field that doesn't apply as the item is made is refused, never stored: `width` on a sphere, `fStop` without `dof=True`, a
 `strip`'s `length` on a `rect`. Set what it depends on in the same call (`shape=`, `kind=`, `dof=True`, `rig=`).
 
-The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visible`; a rig takes only `x y z rx ry rz visible`). `px py pz` is the pivot, in the item's own space: the point it turns and scales around; with a pivot, `x y z` is where the pivot stands:
+The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visible`; a rig takes only `x y z rx ry rz visible`). `px py pz` is the pivot, in the item's own space: the point it turns and scales around; with a pivot, `x y z` is where the pivot stands. Items also take `follow` (an item to ride on, `followAmount` 0..1 keyed to pick up and let go) and `stick` (a mesh to stand on; `y` is then the height above it):
 
 - **mesh** `shape width height depth radius tube bevel segments smooth material`; text: `text font size weight tracking lineHeight align`;
   svg: `svgFile` or `pathData`, `svgWidth`; path2d: `doc2d layer svgWidth`; outline faces: `frontMaterial bevelMaterial sideMaterial backMaterial`

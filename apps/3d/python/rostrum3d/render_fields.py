@@ -1,4 +1,4 @@
-"""A shot's render settings, part of the one table (fields.FIELDS["shot"]; imported by fields.py once its helpers exist),
+"""A shot's render settings, part of the one table (item_fields.FIELDS["shot"]),
 and `settings()`, the one reading of them: the Render button, render_still / render_video and render_estimate all
 ask it, so what the estimate measures is what the render draws (preview ≡ export, SPEC §11.2–11.3).
 
@@ -9,7 +9,7 @@ each a switch that exists only while the shot saves an EXR (absent for PNG, neve
 """
 from __future__ import annotations
 
-from .fields import ANY, CH, D, IS, N, S, T
+from .field_kit import ANY, CH, D, IS, N, S, T
 
 QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128, "denoise": True},
              "final": {"samples": 512, "denoise": True}}

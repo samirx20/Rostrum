@@ -81,9 +81,42 @@ minutes). Press Enter. When the render would take longer, the box turns red and 
 each with its time: **Draft · about 2 min**, **Size ½ · about 3 min**. Click one to make that change on the shot.
 Nothing fits by one setting alone? Shorten the frames on the shot.
 
+## The Render page and its queue
+
+Click **Render** among the pages (Ctrl+3). The top bar's Render button is not there on this page: the settings panel
+has its own.
+
+- **Settings panel** (nothing selected): the shown shot's render settings, the same rows as the sheet (Quality, Size,
+  Save as), its measured time, then **Render** (F12: this shot next) and **Add to queue** (after the others). Select
+  an item and its own settings show instead, as on the other pages.
+- **Bottom left, the shots**: each shot with its length and when it was last rendered. Click one to show it. Tick
+  shots and click **Queue ticked (2)** to add them all. Right-click a shot: **Send to 2D** (one entry per 2D scene
+  when the project has several) and **Open its folder** (only when it has a render).
+- **Bottom right, the queue**: one render runs at a time; the rest wait in order. A running render shows a bar,
+  "frames 3 of 12" and the time left. A waiting one says **Next** or its place in line; **↑ ↓** move it earlier or
+  later. **✕** cancels a waiting or running render. Finished renders stay below with the time taken and their
+  folder: click one to see its last frame over the viewport (Close or Esc puts it away).
+
+**Cancel** ends that render's own engine at once. The half-made folder stays as `vNNN.partial` and is never listed as a
+render version; the row says **Render cancelled** in red. A render that fails says why in red, and nothing is called
+finished. Each render uses the shot's settings as they were when you added it; changes made while it waits or runs
+are not in it. While a queued render runs, the render sheet waits for it (one render on the graphics card at a time).
+
+## Send a shot to 2D
+
+Select the shot (or right-click it on the Render page) and pick **Send to 2D**. Its render of the scene as it is now
+becomes a **3D render** layer in a 2D scene of the project, with its transparency; an open 2D window shows it arrive.
+If the shot has no render of its current state, it is rendered first (the Render page's queue), then sent. With
+several 2D scenes, pick one from the menu; a later Send of the same shot goes to the same layer and keeps what was
+moved or sized in 2D.
+
+The layer follows that shot's newest render. When you change the 3D scene, 2D's Problems list says
+"3D render out of date" until you send (or render) it again; re-running a script that changes nothing does not.
+Send to Editor comes with the Editor (not built yet).
+
 ## For agents
 
 The sheet is built on the same pieces agents use: `render_estimate` (the same test and the same arithmetic),
-`render_still` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`, and the
-pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
+`render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`,
+and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".

@@ -6,6 +6,7 @@ ListField 1.0 ListField.qml
 Chevron 1.0 Chevron.qml
 KeyHint 1.0 KeyHint.qml
 Button 1.0 Button.qml
+RowButton 1.0 RowButton.qml
 IconButton 1.0 IconButton.qml
 HoverTip 1.0 HoverTip.qml
 LevelMeter 1.0 LevelMeter.qml
@@ -86,6 +87,8 @@ AnimPanel 1.0 AnimPanel.qml
 EaseCurve 1.0 EaseCurve.qml
 LayerTrack 1.0 LayerTrack.qml
 KeyDot 1.0 KeyDot.qml
+KeyBox 1.0 KeyBox.qml
 TimeRuler 1.0 TimeRuler.qml
 TimeReadout 1.0 TimeReadout.qml
 AddMarker 1.0 AddMarker.qml
+LipSyncSheet 1.0 LipSyncSheet.qml

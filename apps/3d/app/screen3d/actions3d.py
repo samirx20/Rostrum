@@ -3,7 +3,8 @@ allows, at the top of the settings panel (SPEC §3.3, "Combine: Union · Subtrac
 offered (rule of individuality). Each action is one change made of operations an agent calls too (`combine.make`).
 Today: Combine, on two or more solids (meshes or combines) in the same list; the first picked is the base, every
 later one a cutter or partner. And "Bevel too big · use 1.84 mm (the largest that fits)": when the engine refused an outline's bevel (text,
-logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.set bevel`). No Qt.
+logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.set bevel`). And Send to 2D on a shot
+(send_qt.py; agents: render_send_shot). No Qt.
 """
 from __future__ import annotations
 
@@ -42,6 +43,17 @@ def bevel_fits(line: str) -> dict:
     return {m.group(1): float(m.group(2))} if m else {}
 
 
+def _fit_word(f) -> str:
+    """The same offer as the bevel row's button (the row's note says why)."""
+    v = f.fits[f.ids[0]]
+    return f"Use {v * 1000:.2f} mm" if v > 0 else "Use none"
+
+
+def fit_note(fits: dict, item_id: str) -> str:
+    """The line under the Bevel row when the engine refused its size ("" = nothing to say)."""
+    return "The bevel is too big for this outline: use the largest that fits." if item_id in fits else ""
+
+
 def _fit_label(f) -> str:
     v = f.fits[f.ids[0]]
     return f"Bevel too big · use {v * 1000:.2f} mm (the largest that fits)" if v > 0 else "Bevel too big · use none"
@@ -63,23 +75,36 @@ ACTIONS = [
 ]
 ACTIONS.append(Action(
     "bevel:fit", _fit_label, kinds=("mesh",), max_targets=1, importance="primary", rank=1, group="shape",
+    row="bevel", row_label=_fit_word,
     valid=lambda f: f.ids[0] in f.fits,
     calls=lambda f: [{"op": "mesh.set", "target": [f.ids[0]], "args": {"bevel": round(f.fits[f.ids[0]], 6)}}],
     why="Offered when the engine refused a text's or logo's bevel as too big for its outline."))
 ACTIONS.append(Action(
     "mesh:edit", "Edit mesh", kinds=F.SOLIDS, max_targets=1, importance="primary", rank=8, group="shape", do="edit-mesh",
     icon="", why="Edit mesh works on one shape or combine (Tab): its points, edges and faces."))
-# A camera (SPEC §8): real lenses one click away under "Lens ▾" (any other focal length is typed in its field); with
+# A camera (SPEC §8): real lenses one click away on the Focal length row ("Lenses ▾") (any other focal length is typed in its field); with
 # depth of field on, focus picked by clicking in the viewport (focus_pick.py: screen state until the click's one edit).
 LENSES = (24, 35, 50, 85, 105, 135)
+# Both sit on their settings rows (Action.row): the lenses on Focal length, Focus on an item on the Focus on row.
 _ONE_CAMERA = dict(kinds=("camera",), max_targets=1, importance="primary", group="camera")
-ACTIONS += [Action(f"lens:{mm}", f"{mm} mm", rank=2 + i, bar="Lens", **_ONE_CAMERA,
+ACTIONS += [Action(f"lens:{mm}", f"{mm} mm", rank=2 + i, bar="Lenses", row="focalLength", **_ONE_CAMERA,
                    calls=lambda f, mm=mm: [{"op": "camera.set", "target": [f.ids[0]], "args": {"focalLength": float(mm)}}],
                    why="A lens is offered with one camera selected (any other focal length: type it).")
             for i, mm in enumerate(LENSES)]
 _DOF = dict(valid=lambda f: bool(f.items[0].get("dof")), **_ONE_CAMERA)
 ACTIONS += [Action("focus:point", "Focus on a point", rank=10, do="focus-point", **_DOF,
                    why="Turn on the camera's Depth of field first; then click where it should be sharp."),
-            Action("focus:item", "Focus on an item", rank=11, do="focus-item", **_DOF,
+            Action("focus:item", "Focus on an item", rank=11, do="focus-item", row="focusItem", row_label="Pick", **_DOF,
                    why="Turn on the camera's Depth of field first; then click the item to keep sharp.")]
+
+
+def _has_2d(f) -> bool:
+    from rostrum_core import project
+    return bool(f.doc.folder) and bool(project.items(f.doc.folder, "2d"))
+
+
+# Send to 2D (SPEC §12, send_qt.py): the shot's current render into a 2D scene as a live-linked 3D render layer. Offered only
+# when the project has a 2D item (the Editor isn't built yet, so there is no Send to Editor).
+ACTIONS.append(Action("shot:send", "Send to 2D", kinds=("shot",), max_targets=1, importance="secondary", rank=20, group="shot",
+                      do="send-2d", valid=_has_2d, why="Send to 2D needs one shot selected and a 2D item in this project."))
 LIST = ActionList(ACTIONS, KeyMap("Rostrum3D"), noun="solid")

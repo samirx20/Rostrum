@@ -11,181 +11,33 @@ import dataclasses
 
 from rostrum_core import Param
 from rostrum_core.conditions import holds
-from rostrum_core.keys import KEY_FIELDS
 
-from .outline_fields import FIELDS as OUTLINE_FIELDS, OUTLINE_SHAPES
-from .rig_fields import RIG
-
-IS = lambda name, value: {"is": [name, value]}  # noqa: E731
-ANY = lambda name, *values: {"any": [IS(name, v) for v in values]}  # noqa: E731
-NOT = lambda name, value: {"not": IS(name, value)}  # noqa: E731
-P, S, D = "primary", "secondary", "deep"
-
-
-def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help=""):
-    return Param.number(name, label=label, group=group, min=lo, max=hi, step=step, unit=unit, importance=imp,
-                        valid_when=when, integer=integer, default=default, help=help)
-
-
-def C(name, label, group, default, imp=P, when=None, help=""):
-    return Param.color(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
-
-
-def CH(name, options, label, group, default, imp=P, when=None, help=""):
-    return Param.choice(name, options, label=label, group=group, importance=imp, valid_when=when, default=default,
-                        help=help)
-
-
-def T(name, label, group, default, imp=P, when=None, help=""):
-    return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
-
-
-def X(name, label, group, default="", imp=P, when=None, help="", refers=None):
-    """A text field. `refers`: the item type its text is the id of ("material", "camera"); screens offer those items."""
-    return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help, kind=refers)
-
-
-NO_AIM = IS("aim", "none")
-TRANSFORM = [
-    N("x", "X", "Position", -1e5, 1e5, 0.001, "m"),
-    N("y", "Y", "Position", -1e5, 1e5, 0.001, "m", help="Up"),
-    N("z", "Z", "Position", -1e5, 1e5, 0.001, "m", help="Towards the default camera"),
-    N("rx", "Turn X", "Rotation", -36000, 36000, 0.1, "°", S, NO_AIM, help="Applied first (tilt)"),
-    N("ry", "Turn Y", "Rotation", -36000, 36000, 0.1, "°", S, NO_AIM, help="Applied second (spin around up)"),
-    N("rz", "Turn Z", "Rotation", -36000, 36000, 0.1, "°", S, NO_AIM, help="Applied last"),
-    N("sx", "Scale X", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
-    N("sy", "Scale Y", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
-    N("sz", "Scale Z", "Scale", 0, 1000, 0.01, "×", D, default=1.0),
-    N("px", "Pivot X", "Pivot", -1e5, 1e5, 0.001, "m", D,
-      help="Where the item turns and scales around, from its own middle (D with the gizmo moves it)"),
-    N("py", "Pivot Y", "Pivot", -1e5, 1e5, 0.001, "m", D),
-    N("pz", "Pivot Z", "Pivot", -1e5, 1e5, 0.001, "m", D),
-    T("visible", "Visible", "Display", True, S),
-    CH("aim", ["none", "point", "item"], "Aim at", "Aim", "none", S,
-       help="Point the item's −Z (where cameras and rect/disk lights face) at a point or another item; "
-            "its rotation is then worked out every frame"),
-    N("aimX", "Aim X", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
-    N("aimY", "Aim Y", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
-    N("aimZ", "Aim Z", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
-    X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)"),
-    N("roll", "Roll", "Aim", -36000, 36000, 0.1, "°", S, NOT("aim", "none"),
-      help="Turns an aimed item around the way it points: 90 stands a strip light on end, tilts a camera's horizon"),
-]
-
-COMBINE_OPS = ["union", "subtract", "intersect"]
-SOLIDS = ("mesh", "combine")                                   # what a combine combines
-SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
-POLY = IS("shape", "poly")       # an editable mesh (ops_mesh.py): made by mesh.edit from any shape or combine, never added
-from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
-from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
-DOF = IS("dof", True)
-from .render_fields import RENDER  # noqa: E402  (needs the helpers above)
-from .paint_fields import MESH as PAINT_MESH  # noqa: E402  (needs the helpers above)
-
-FIELDS: dict[str, list[Param]] = {
-    "group": list(TRANSFORM),
-    "mesh": [
-        dataclasses.replace(CH("shape", [*SHAPES, "poly"], "Shape", "Shape", "box"), labels={"poly": "Editable mesh"}),
-        N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0,
-          help="Along X. A plane lies flat, facing up: width (X) × depth (Z)"),
-        N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder", "cone", "capsule"), default=1.0,
-          help="Cone: base to point. Capsule: end to end (at least twice the radius)"),
-        N("depth", "Depth", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane", *OUTLINE_SHAPES), default=1.0,
-          help="Box: along Z. Plane: its other side, along Z (a plane has no height). Text, svg, path2d: how far "
-               "the flat outline is pushed out (try 0.02)"),
-        N("radius", "Radius", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "sphere", "cylinder", "cone", "capsule", "disc", "torus"),
-          default=0.5, help="Torus: from its centre to the middle of the ring"),
-        N("tube", "Tube radius", "Shape", 0, 1e4, 0.001, "m", when=IS("shape", "torus"), default=0.15),
-        *OUTLINE_FIELDS,
-        N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder", *OUTLINE_SHAPES),
-          help="Rounded edges this wide; real products almost never have razor edges"),
-        N("segments", "Segments", "Shape", 1, 256, 1, "", D, {"all": [NOT("shape", "plane"), NOT("shape", "poly")]}, integer=True, default=24,
-          help="Box: steps around each bevel. Round shapes: steps around"),
-        T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets. An editable mesh keeps "
-          "edges sharper than 30° hard either way"),
-        # An editable mesh's own data (screens never show it as fields; ops_mesh.py changes it). Like USD's mesh.
-        Param.points("points", label="Points", group="Mesh data", importance=D, valid_when=POLY, min=3, max=3, default=None, nullable=True,
-                     help="[x, y, z] per point, in the item's own space"),
-        Param.list("faceCounts", "number", label="Face corners", group="Mesh data", importance=D, valid_when=POLY,
-                   min=3, max=1000, integer=True, default=[], help="Corners of each face"),
-        Param.list("faceIndices", "number", label="Face points", group="Mesh data", importance=D, valid_when=POLY,
-                   min=0, max=10**7, integer=True, default=[], help="Each face's points, in turn, anticlockwise seen from outside"),
-        Param.list("creases", "number", label="Sharp edges", group="Mesh data", importance=D, valid_when=POLY,
-                   min=0, max=10**7, integer=True, default=[],
-                   help="Edges that stay sharp when the surface is smoothed, as point pairs a, b, a, b …"),
-        Param.list("faceMaterials", "text", label="Face materials", group="Mesh data", importance=D, valid_when=POLY,
-                   default=[], help='A material id per face ("" = the item\'s); empty = every face the item\'s'),
-        N("subdivide", "Smooth surface", "Shape", 0, 3, 1, "", S, POLY, integer=True, default=0,
-          help="Rounds the whole mesh (OpenSubdiv Catmull-Clark), 1 to 3 times; sharp edges stay sharp. 0 = off"),
-        *PAINT_MESH,                    # a mesh is a paint canvas (paint_fields.py)
-        X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
-    ] + TRANSFORM,
-    # A live boolean (Manifold, ops_combine.py): its children are the solids (meshes or combines), the first the base;
-    # moving a child re-makes the result. The core draws only the result, never the children.
-    "combine": [
-        CH("op", COMBINE_OPS, "Operation", "Combine", "subtract",
-           help="Union joins the solids; Subtract cuts every later one out of the first; Intersect keeps only where "
-                "all of them overlap"),
-        X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
-    ] + TRANSFORM,
-    "import": [
-        X("file", "File", "File", "", help="Absolute path of a .usd / .usda / .usdc / .usdz; the file is never rewritten"),
-        X("prim", "Prim", "File", "", D, help='Path inside the file; "" = its default prim'),
-        X("material", "Material", "Material", "", S, help='One material over the whole import, or "" to keep the file\'s', refers="material"),
-    ] + TRANSFORM,
-    # A part of an import: an override on a prim inside the file (path relative to the import's prim).
-    "part": [
-        X("path", "Path", "Part", "", D, help="Prim path relative to the import's prim, e.g. Body/Screen"),
-        X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s', refers="material"),
-        T("visible", "Visible", "Part", True),
-    ],
-    "light": LIGHT,                     # light_fields.py
-    "camera": [
-        N("focalLength", "Focal length", "Lens", 1, 2000, 0.1, "mm", default=50.0,
-          help="Longer = narrower view and flatter perspective (product shots often 85–150)"),
-        N("sensorWidth", "Sensor width", "Lens", 1, 100, 0.1, "mm", D, default=36.0),
-        T("dof", "Depth of field", "Focus", False),
-        N("fStop", "f-stop", "Focus", 0.5, 64, 0.1, "", when=DOF, default=2.8, help="Smaller = blurrier background"),
-        N("focusDistance", "Focus distance", "Focus", 0.001, 1e5, 0.001, "m", default=5.0,
-          when={"all": [DOF, ANY("focusItem", "", None)]}, help="How far in front of the camera things are sharp"),
-        X("focusItem", "Focus on", "Focus", "", when=DOF, refers="item",
-          help="Keep this item sharp: the focus distance follows it as it moves (its middle)"),
-        N("near", "Near clip", "Clipping", 0.0001, 1e4, 0.001, "m", D, default=0.01),
-        N("far", "Far clip", "Clipping", 0.01, 1e7, 1, "m", D, default=1000.0),
-    ] + TRANSFORM,
-    "material": MATERIAL,               # material_fields.py
-    # A shot: a camera, a frame size and a stretch of time. Times are seconds; frames = round(seconds × fps),
-    # from round(start × fps) to round(end × fps) − 1 (end is where the shot is over).
-    "shot": [
-        X("camera", "Camera", "Shot", "", help="The id of the camera this shot looks through", refers="camera"),
-        N("fps", "Frame rate", "Shot", 1, 120, 1, "fps", integer=True, default=24),
-        N("start", "Starts at", "Shot", 0, 36000, 0.001, "s"),
-        N("end", "Ends at", "Shot", 0.001, 36000, 0.001, "s", default=2.0),
-        N("width", "Width", "Frame", 16, 16384, 1, "px", S, integer=True, default=1920),
-        N("height", "Height", "Frame", 16, 16384, 1, "px", S, integer=True, default=1080),
-        C("background", "Background", "Frame", "#000000", S, help="What shows where nothing is (not a light)"),
-
-        *RENDER,
-    ],
-    # A camera rig (rigs.py): holds the camera; its own transform is the base, without aim or scale.
-    "rig": RIG + [dataclasses.replace(p, valid_when=None) for p in TRANSFORM
-                  if p.name in ("x", "y", "z", "rx", "ry", "rz", "visible")],
-    "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
-}
+# The pieces, by job (this module stays the one import everyone uses):
+from .field_kit import (ANIMATED, ANIMATING, ANY, C, CH, D, DOF, FOLLOWS, IS, N, NO_AIM, NOT, P, POLY, S, STEPS,  # noqa: F401
+                        T, TIMING, TRANSFORM, X)
+from .item_fields import COMBINE_OPS, FIELDS, SOLIDS  # noqa: F401
+from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, STILL as LIGHT_STILL  # noqa: F401
+from .mesh_fields import SHAPES  # noqa: F401
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
+KEYED = (*ITEMS, "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine")
-LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
-         "import": ["children", "parts", "keys"], "mesh": ["keys", "paints", "paintmasks"], "light": ["keys"], "camera": ["keys"],
+LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
+         "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
+         "camera": ["keys"],
          "combine": ["children", "keys"],
-         "rig": ["children", "keys"]}
+         "rig": ["children", "keys"],
+         "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
+DATA_GROUPS = {"Mesh data", "Bone data"}       # data an operation writes (a mesh's points, a bone's head), never rows
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
+         "bone": {"x", "y", "z", "length"},       # a bone moves only by its Turn
          "*": {"aim"}}
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
-          "material": "Material", "shot": "Shot", "key": "Key"}
+          "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
+          "bone": "Bone"}
 
 
 def param(kind: str, name: str) -> Param | None:
@@ -200,7 +52,7 @@ def defaults(kind: str, values: dict | None = None) -> dict:
 
 
 def animatable(kind: str) -> list[str]:
-    if kind not in ITEMS:
+    if kind not in KEYED:
         return []
     still = STILL.get(kind, set()) | STILL["*"]
     return [p.name for p in FIELDS[kind] if p.type in ("number", "color") and p.name not in still]
@@ -211,6 +63,18 @@ def unconditional(kind: str) -> list[Param]:
     return [dataclasses.replace(p, valid_when=None) for p in FIELDS[kind]]
 
 
+def animated_fact(item: dict) -> bool:
+    """The item or anything inside it has keys: its Timing then shows (the `animated` fact, kind.py)."""
+    stack = [item]
+    while stack:
+        it = stack.pop()
+        if it.get("keys"):
+            return True
+        stack += it.get("children", []) + it.get("bones", [])
+    return False
+
+
 def not_valid(kind: str, item: dict, given) -> list[str]:
-    """The given field names that don't apply to `item` as it is (e.g. width on a sphere)."""
-    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item)]
+    """The given field names that don't apply to `item` as it is (e.g. width on a sphere). Timing may be given before
+    the keys are (a script's mesh(…, timing="on2") then .key(…)): `animated` only decides whether screens show it."""
+    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True, "animating": True})]

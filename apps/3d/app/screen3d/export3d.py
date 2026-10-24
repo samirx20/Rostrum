@@ -23,9 +23,9 @@ from rostrum_gui.edits import edit_label, field_call
 from rostrum_gui.export_sheet import ExportSheet, free_path
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
-from rostrum3d.mcp import draw
 from rostrum3d.mcp.estimate import scale
-from rostrum3d.mcp.render import FIRST, DocView, _finish, _folder, _manifest, _renumber, still
+from rostrum3d.mcp.render import DocView, still
+from rostrum3d.mcp.sequence import sequence
 from rostrum3d.render_fields import FORMATS, PASS_HELP, PASSES, QUALITIES, SIZES, settings
 
 from .estimate_sheet import Estimate
@@ -47,6 +47,7 @@ class Export3D(ExportSheet):
         self._choice = FRAME
         self.estimate = Estimate(self, make_engine)
         bridge.frameChanged.connect(self.changed)       # the file's name follows the playhead
+        bridge.pageChanged.connect(self._on_page)
         for signal in (self.changed, bridge.docChanged):   # any change: the number follows at once (or is measured again)
             signal.connect(self.estimate.refresh)
 
@@ -66,6 +67,17 @@ class Export3D(ExportSheet):
             self.stale()
         self.setOpen(True)
         self.estimate.check_card()
+        self.changed.emit()
+
+    def wants_time(self) -> bool:
+        """The time is shown: in the open sheet, or in the Render page's settings panel (the shot's settings, SPEC §11.3)."""
+        return self.open or self.bridge.page == "render"
+
+    def _on_page(self):
+        """On the Render page the settings panel is the shown shot's render settings: what it renders is the shot."""
+        if self.bridge.page == "render" and not self.running():
+            self._choice = SHOT
+            self.stale()
         self.changed.emit()
 
     # ---- the kit's questions ----------------------------------------------------------------------------
@@ -118,7 +130,7 @@ class Export3D(ExportSheet):
 
     def gpu_ours(self) -> bool:
         """One of this window's renders is on the graphics card (the estimate waits, so it measures a free card)."""
-        return self.running() or self.bridge.render.running()
+        return self.running() or self.bridge.render.running() or self.bridge.queue.running()
 
     def fitting(self, m: dict, budget_s: float) -> list[dict]:
         """Over a budget: each lower quality preset, then half size, that alone fits (scaled from the same measurement)."""
@@ -205,7 +217,7 @@ class Export3D(ExportSheet):
     # ---- the job ----------------------------------------------------------------------------------------------
     def begin(self, out, overwrite):
         b = self.bridge
-        if b.render.running():
+        if b.render.running() or b.queue.running():
             raise RuntimeError("a render is already running; wait for it or cancel it first")
         scene, info, s, _ = self.plan_now()             # the shot's render settings: what the estimate measured
         info = {**info, "start": s["start"], "end": s["end"]}
@@ -238,24 +250,8 @@ class Export3D(ExportSheet):
 
     @staticmethod
     def _sequence(plan, engine, progress):
-        info, doc, name = plan["info"], plan["doc"], plan["stem"]
-        f0, f1, (w, h) = info["start"], info["end"], plan["size"]
-        partial, is_version = _folder(plan["folder"], doc, info)
-        req = {e: str(partial / f"{name}.{{frame}}.{e}") for e in plan["formats"]}
-        out = draw.render("export", f"frames {f0}-{f1} of {info['id']}", engine, plan["scene"], camera=info["camera"],
-                          renderer="cycles", frames=[f0, f1], width=w, height=h, exposure=0, timeoutS=3600, **plan["cycles"],
-                          progress=lambda i, n, _=None: progress(i / max(n, 1)), **req,
-                          **({"passes": plan["passes"]} if plan["passes"] else {}))
-        for e in plan["formats"]:
-            _renumber(partial, name, e, f0, FIRST)
-        want = (f1 - f0 + 1) * len(plan["formats"])
-        made = sorted(p for e in plan["formats"] for p in partial.glob(f"{name}.*.{e}"))
-        if len(made) != want or any(p.stat().st_size == 0 for p in made):      # fail loudly: the .partial stays
-            raise RuntimeError(f"the shot's frames came out as {len(made)} files, expected {want}; they are left in {partial}")
-        done = _finish(partial, is_version, _manifest(doc.item_id, doc, info, partial, "cycles", (w, h),
-                                                      list(range(f0, f1 + 1)), [p.name for p in made], FIRST,
-                                                      out.get("channels")))
-        return done, [done / p.name for p in made]
+        return sequence("export", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
+                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"])
 
     @staticmethod
     def _copy(plan, files):

@@ -181,6 +181,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     def shown_values(self, item: dict) -> dict:
         return item
 
+    def facts_of(self, item: dict) -> dict:
+        """The facts the item's rows are evaluated with (valid_when): the kind's, and an app adds what only its screen
+        knows (3D: `animating`, on the Animate page)."""
+        return self.doc.kind.facts(item, self.doc)
+
     def on_page(self, item: dict) -> set[str]:
         """Names of this item's fields that the page's own controls already show (a control appears once per
         screen); the inspector leaves them out, and a group whose members all went goes too."""

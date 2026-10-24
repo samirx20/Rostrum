@@ -38,6 +38,7 @@ class ActionPreview3D:
         if fits != self._fits:
             self._fits = fits
             self._hub.refresh()
+            self._refresh()                  # the Bevel row's note and button follow
 
     def _act_apply(self, calls, label):
         """An action's calls as one change; what it made is selected after."""
@@ -52,11 +53,13 @@ class ActionPreview3D:
             return self.viewport.mesh_edit.enter()          # Edit mesh is screen state (mesh_edit_qt.py)
         if name in ("focus-point", "focus-item") and getattr(self, "viewport", None) is not None:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
+        if name == "send-2d":
+            return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:
         """Draw `calls` as they would leave the document, without applying them."""
-        if self.playing or self._drag is not None or not calls or not {c["op"] for c in calls} <= PREVIEWABLE:
+        if self.playing or self._mover.active or not calls or not {c["op"] for c in calls} <= PREVIEWABLE:
             return
         try:
             work = run.plan(self.doc.kind, self.doc.data, calls, self.doc.locked_by, self.who)[0]

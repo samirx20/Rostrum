@@ -93,3 +93,18 @@ Plug in, after merging main once S31 is in:
 7. **Spec points:** Duplicate is in the edit block, so it never sits on the bar (1.2 point 4), though DESIGN.md 3.0 put
    it there for notes, hits and a time range. "Layer as one sound" is secondary (⋯ and menus only); make it primary
    if it belongs on the bar for two clips. Crossfade and Even out level have no keys.
+
+## Settings row pieces: a note and a button (rows.py, InspectorRow.qml, RowButton.qml)
+
+- **Note under a field.** An app adds `note = {"text", "kind": "hint" | "warning"}` to a param row (None = nothing to say).
+  The kit row draws one short line under the field (warning colour for "warning") and grows by its height only while the
+  note exists, so there is never an empty gap. Work it out live from the document when the rows are built (3D: the Bevel
+  row, `actions3d.fit_note`). Not drawn on a paired row or a list / curve row.
+- **Button on a row.** Give an `Action` `row="<param id>"` (and optionally `row_label`, text or a function of the facts,
+  for its word on the button). It then shows as a small button at the right of that field (the field narrows inside its
+  own column, so the grid holds) and no longer on the context bar, the panel's action list or the right-click menu; Ctrl+K and
+  agents still reach it as the same action. Several actions on one row with the same `bar` name are one button with a menu.
+  The app adds `row_buttons()` (`ActionHub.row_buttons`) to its rows as `button` and gives its bridge a `rowAction(id)` slot.
+  3D: Lenses on Focal length, Pick on Focus on, Use N mm on Bevel.
+- **A unit never cuts its number.** A number field keeps the unit's room out of the number's, rounds to fewer decimals when
+  the field is narrow, and shows every digit again while you type.

@@ -59,10 +59,16 @@ def register(tools: Tools):
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
         return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings(), changed=changed)
 
-    @tools.tool("inspect_job", {"required": ["job_id"], "properties": {
-        "job_id": {"type": "string"}, "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})
+    @tools.tool("inspect_job", {"properties": {
+        "job_id": {"type": "string", "description": "The job. Without it: every job in the queue's order (running, waiting, then ended)."},
+        "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})
     def inspect_job(ctx, args):
-        """A job's status and progress, and its result when done. wait_s (up to 25) waits for it to finish."""
+        """A job's status and progress, and its result when done. wait_s (up to 25) waits for it to finish. Without job_id:
+        the jobs queue in order (one heavy job runs at a time; the rest wait their turn)."""
+        if "job_id" not in args:
+            jobs = [j.state() for j in ctx.jobs.listing()] if hasattr(ctx.jobs, "listing") else []
+            return Reply(f"{len(jobs)} job{'s' * (len(jobs) != 1)}: " + ("; ".join(f"{j['job_id']} {j['label']} {j['status']}" for j in jobs) or "none"),
+                         {"jobs": jobs})
         return outcome(ctx.jobs.wait(args["job_id"], args.get("wait_s", 0)), ctx.tool)
 
     @tools.tool("run_stop", {"required": ["job_id"], "properties": {"job_id": {"type": "string"}}})

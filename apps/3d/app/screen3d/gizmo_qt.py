@@ -10,7 +10,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum_gui.edits import Drag
 from rostrum_gui.snap import Target
-from rostrum3d import aim, fields as F
+from rostrum3d import aim, fields as F, resolve
 
 from . import gizmo as G, route
 from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
@@ -69,7 +69,9 @@ class Gizmo(QObject):
         v = self._values(it)
         parent = self.bridge.doc.parent_of(it["id"])[0]
         parent = parent if parent in scene_ids(scene) else None        # a top-level item's parent is the document
-        pw, origin, turn = G.item_frame(scene, parent, v, self.bridge.frame)
+        shot = self.bridge.shot_info()
+        carrier = resolve.seen(self.bridge.doc.data, it["id"], self.bridge.frame, shot["fps"], shot.get("start", 0))
+        pw, origin, turn = G.item_frame(carrier, v)
         axes, own = G.columns(pw[0]), G.columns(aim._mul(pw[0], turn))
         me = self.vp.mesh_edit
         if me.on:                       # Edit mesh: on the picked points / edges / faces, along the item's own axes

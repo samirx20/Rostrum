@@ -4,12 +4,13 @@ import "."
 // The one field box. Number, text, choice and colour fields are all this frame, so the box, the underline,
 // the hover and focus look, the padding and the text (font, size, left-aligned, vertically centred) are drawn
 // here only and cannot drift between fields. A field adds an optional `leading` item (colour swatch) and
-// `trailing` item (dropdown arrow), and says whether typing is allowed.
+// `trailing` item (dropdown arrow; it sits in a Row, so give it no anchors), and says whether typing is allowed.
 FocusScope {
     id: f
     property string text: ""
     property string prefix: ""          // dim, before the value ("f/")
     property string suffix: ""          // dim, after the value ("mm", "°")
+    property string editText: ""        // what typing starts from, when it differs from the shown text (a rounded number's full precision)
     property string placeholder: ""
     property string atRest: ""          // shown at rest in place of the text (a path field: the file's own name)
     property int elide: Text.ElideRight   // how the text at rest is cut
@@ -27,10 +28,15 @@ FocusScope {
     signal entered()                    // Enter, whether or not the text changed
     signal arrow(int direction, bool big)  // Up / Down while typing (Shift = big)
     signal escaped()                    // Esc while typing (the typing is dropped first)
+    // the unit's own room at the right of the text, so the number is never drawn under it; `roomForText` is what the
+    // text itself may take (a number field rounds to fit it)
+    readonly property bool hasUnit: suffix !== "" && atRest === ""     // words at rest ("Mixed") stand alone: no unit after them
+    readonly property real unitRoom: hasUnit ? unitText.implicitWidth + (/^[a-z]/i.test(f.suffix) ? 4 : 1) : 0
+    readonly property real roomForText: width - input.x - Theme.gap - unitRoom - trailingSlot.width - trailingSlot.anchors.rightMargin
     implicitWidth: 140
     implicitHeight: Theme.field
     // the least width its words at rest need uncut ("Mixed", a word value): a narrow box (an amount's) grows to it
-    readonly property real restNeeds: Math.ceil(input.x + rest.implicitWidth + Theme.gap + trailingSlot.width + trailingSlot.anchors.rightMargin)
+    readonly property real restNeeds: Math.ceil(input.x + rest.implicitWidth + unitRoom + Theme.gap + trailingSlot.width + trailingSlot.anchors.rightMargin)
 
     HoverHandler { id: hoverHandler }
 
@@ -66,7 +72,7 @@ FocusScope {
         id: input
         anchors.left: prefixText.visible ? prefixText.right : leadingSlot.right
         anchors.leftMargin: prefixText.visible ? 1 : Theme.gap
-        anchors.right: trailingSlot.left; anchors.rightMargin: Theme.gap
+        anchors.right: trailingSlot.left; anchors.rightMargin: Theme.gap + f.unitRoom
         anchors.verticalCenter: parent.verticalCenter
         horizontalAlignment: TextInput.AlignLeft
         color: activeFocus ? Theme.fg : "transparent"     // at rest the elided copy below shows it, from the start
@@ -83,12 +89,12 @@ FocusScope {
         property string sent: ""        // what was last committed, so Enter + focus loss commit once
         // typing not yet entered; a selection change first makes any field let go, so typing lands on the item it was
         // typed for (rostrum_gui/pending.py: this property marks a kit field)
-        readonly property bool pending: activeFocus && text !== f.text && text !== sent
+        readonly property bool pending: activeFocus && text !== f.text && text !== f.editText && text !== sent
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
-        function commit() { if (text !== f.text && text !== sent) { sent = text; f.committed(text); sent = text } }
+        function commit() { if (text !== f.text && text !== f.editText && text !== sent) { sent = text; f.committed(text); sent = text } }
         onAccepted: { commit(); f.entered(); focus = false }
-        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; f.typingStarted() } else { commit(); f.typingEnded() }
+        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; if (f.editText !== "") text = f.editText; f.typingStarted() } else { commit(); f.typingEnded() }
         Keys.onEscapePressed: { text = f.text; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)
@@ -108,7 +114,8 @@ FocusScope {
         Timer { running: f.problem !== ""; interval: 4000; onTriggered: f.problem = "" }
     }
     Text {  // the unit sits right after the value, dim
-        visible: f.suffix !== "" && input.text !== "" && f.atRest === ""   // words at rest ("Mixed") stand alone: no unit after them
+        id: unitText
+        visible: f.hasUnit && input.text !== ""
         x: input.x + Math.min(input.contentWidth, input.width) + (/^[a-z]/i.test(f.suffix) ? 4 : 1)
         anchors.verticalCenter: parent.verticalCenter
         text: f.suffix; color: Theme.fg3; font: input.font

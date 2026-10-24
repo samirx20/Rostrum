@@ -11,7 +11,7 @@ scene from the document each time you look. Imported USD files stay untouched; y
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
-     `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look.
+     `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
      Final applies ("Applied in Final: spread on rim, linking on rim").
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
@@ -26,6 +26,16 @@ scene from the document each time you look. Imported USD files stay untouched; y
    `inspect_job` with `wait_s` shows `frames n of m`. Draft a video with `quality: "fast"` first.
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
+   Jobs run one heavy job at a time, the rest waiting in order: `inspect_job` without `job_id` lists them (running, waiting,
+   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled render leaves only `vNNN.partial`.
+   The person's Render page queue (render.queue.add / move / cancel) is the same kind of queue.
+
+6. **Hand it on.** `render_send_shot shot=<id> scene=<2D item>/<scene id>` puts the shot into a 2D scene as a 3D render layer
+   (2D's `render3d`, with `shot` set), one step in that 2D document's history. It uses the shot's newest render if its
+   manifest's `scene_hash` matches the document now; else it renders first (`render_video` with EXR frames, the shot's
+   own render settings) and is a job. Sending again updates the same layer. 2D says "out of date" when this document's
+   content changes after the render (an identical script re-run is not a change). `target: "editor"` fails: the Editor
+   isn't built yet.
 
 ## Render settings and the time estimate
 
@@ -54,9 +64,11 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 
 `render_estimate` says how long a render will take, measured on this machine, without rendering it. It is a job: ask with `inspect_job`.
 
-- The first call for a scene draws the middle frame a few times and keeps the timing: tiny (the warm-up), at a quarter of the
-  pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size with 8 samples,
-  because a full-size frame costs far more than four quarter-size ones. About 10-15 s at full HD; past a minute and a half it
+- The first call for a scene draws the middle frame a few times and keeps the timing: two warm-up frames (not timed), at a
+  quarter of the pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size
+  with the job's samples, because a full-size frame does not cost exactly four quarter-size ones. A very heavy job (that frame
+  expected over 9 s) draws the real size with 8 samples instead and adds the quarter's extra time for the samples.
+  About 12 s at full HD, Good; on a free card within 10 % of the real render. Past a minute and a half it
   stops (its engine ended), the job fails and says the job is at least that slow or the engine stopped answering.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
@@ -110,6 +122,59 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **Paint on a model.** `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height, metal, glow) and
   `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the `uv` under a pixel.
   Guide `painting`.
+- **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
+  lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
+  one "Turn"; Scale (sx, sy, sz) one "Scale"; any other field its own. Each has its stretches (the time between two
+  neighbouring keys: `ids`, `start`, `length`, `ease`, `preset`, `from` / `to`). Ease a whole stretch with `anim.ease`
+  (targets: the stretch's `ids`; `preset` linear, smooth, in, out, spring, bounce or hold, or a curve `x1 y1 x2 y2`);
+  `key.scale` stretches or squeezes keys in time around a moment; `key.paste` copies keys onto the same fields of other
+  items; `key.stagger` starts several items' keys one after another. Each is one change, one undo step, the same a
+  person makes by clicking a stretch on the Animate page and picking "Out". Check the result with `look_sheet`.
+- **Stepped timing.** `timing` on an animated item or group: `smooth` (default), `on2`, `on3` (`mesh.set timing=on2`,
+  or `mesh("bud", timing="on2")` in a script): every value then holds for 2 or 3 frames, counted from the shot's
+  start, in the viewport and the render alike. A group's timing steps everything inside it; a child's own `on2` /
+  `on3` wins. Leave the camera `smooth` and the character steps while the camera glides. The field only shows (and
+  `<type>.set` only takes it) once the item or something inside it has keys.
+- **Poses.** `pose.save` (targets: the items; `at` seconds; optional `name`, `id`) keeps their x y z, rx ry rz (not
+  when aimed), sx sy sz as they are at `at`, in the document's `poses`. `pose.apply` (target: the pose; `at`) keys all
+  of them at `at`; with `share` 0..1 it is a breakdown instead: each field keyed that share of the way from its key
+  before `at` to its key after (fields without both are skipped and named in the reply, as are items no longer in
+  the scene). `pose.rename`, `pose.remove`. Each is one undo step. Onion skin (the person's ghosts in the viewport):
+  `look_frame` with `onion: {item, mode}` draws the same ghosts (mode `keys` = the item at its previous and next keys, `frames` =
+  2 and 4 frames before and after; red before, green after). Quick looks only, not `final`. Use it to check an arc or spacing at
+  one frame; `look_sheet` shows the whole move.
+- **Follow and stick.** `follow.add` (targets: the riders; `item`: what they ride on; optional `from`, `until` seconds)
+  makes them move and turn with that item from where they stand, picked up at `from` and let go at `until`
+  (`followAmount` keyed 1 and 0, held). Let go, they stay where they are then: no jump. `follow.release` (`at`) lets go
+  later. Part-way amounts ride that share of each frame's move. `stick.add` (`item`: a plane, disc, box, sphere,
+  cylinder, cone, capsule or editable mesh; optional `height`) stands them on its surface straight below; their `y` is
+  then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
+  A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
+  `look_sheet` shows whether the rider stays put after it is let go.
+- **Bones.** `bone.chain` (target: one mesh; `points`: two or more `[x, y, z]`, root first, world positions at time 0,
+  or the mesh's own space with `space: "mesh"`) lays len(points) − 1 bones, each from one point to the next, nested
+  (mesh › `<mesh>_bone1` › `_bone2` …), and binds the mesh (`skinned`), in one undo step; a chain the mesh had is
+  replaced. A bone's own +Y runs along it from its head; its fields are `rx ry rz` (Turn, keyable) and `length`; its
+  head `x y z` is data the chain wrote. Bend it by keying Turn: `key.add` (target the bone, `prop` rx / ry / rz, `v` =
+  its rest turn plus the bend, in degrees); poses and `anim.ease` work on bones too. The core weights the mesh to the
+  bones itself. `bone.bind` (`off: true`) stops the bending and keeps the bones; `mesh.set skinned` is the same. The mesh
+  bends only where it has points along its length: the ready shapes have none along their straight part (`segments`
+  go around), so use an editable mesh (`mesh.add shape="poly"` with your own `points` / `faceCounts` / `faceIndices`,
+  or `mesh.edit` then `mesh.knife` across it). Check the bend with `look_sheet`.
+- **Lip sync.** A mouth is a group whose children are the mouth shapes: one mesh (or group) per shape of the nine
+  (X rest, A closed M B P, B slightly open, C open, D wide open, E rounded, F puckered OO W, G teeth on lip F V, H tongue
+  up L). Name the children so they say the shape (`mouth_rest`, `mouth_closed`, `mouth_wide`, `mouth_puckered` …; as
+  in 2D a lone letter is the sound it makes, so "mouth A" is the wide AH), or give `shapeX` … `shapeH` yourself; any
+  subset works, a missing shape shows the nearest one given. `inspect_voice_lines` lists the project's voice lines
+  from RostrumSound (`<song>/<line id>`, the words, where each starts, whether its voice is made) and the mouths it
+  finds in the scene. `lipsync.make` (target: the mouth group; `line`; or `file` + `text` + `at` for a WAV that is not
+  a project line) hears the line once (the phone model; a few seconds to a minute, then cached), turns it into mouth
+  shapes in time (the same timing as 2D) and keys every child's Scale X Y Z, held: its own Scale while its shape
+  shows, almost nothing (0.0001) while another does, so one shape shows at a time. One undo step; the keys are
+  ordinary keys, move or delete them on the timeline like any other. A second run adds keys only where there is
+  none at that time. Keep a shape's own Scale for its size and let the group carry the placement. The person does
+  the same: right-click the mouth group › **Lip sync…**, click a voice line, check the shape for each row, Apply.
+  Check with `look_sheet` over the line's seconds.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a
   render fails with a memory message, lower `width` or the number of lights before anything else.
 

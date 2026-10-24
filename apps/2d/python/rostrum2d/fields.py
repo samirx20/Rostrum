@@ -266,6 +266,7 @@ FIELDS: dict[str, list[Param]] = {
     # as a video layer. Version 0 follows the newest render; Timed from marker puts its first frame on a marker (retime.py).
     "render3d": [
         X("item", "3D item", "3D render", "", help="Id of a Rostrum3D item of this project"),
+        X("shot", "3D shot", "3D render", "", S, help="Id of the item's shot to show (empty = the newest render of any shot)"),
         N("version", "Version", "3D render", 0, 100000, 1, "", S, integer=True, words={0: "Newest"},
           help="0 = always the newest render (follows new renders); a number keeps that version"),
         N("w", "Width", "3D render", 2, 8192, 1, "px", integer=True, default=1920),

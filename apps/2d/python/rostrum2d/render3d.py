@@ -5,15 +5,17 @@ when the 3D changes". AGENTS.md rule 8 keeps it a placed picture: 2D never combi
 shows the item's finished hand-off (its `rgba` EXR, shared/HANDOFFS.md § 2) as one picture, like a video layer. Mixing
 passes and frames from several apps stays the Editor's job.
 
-- The render is `rostrum_core.project.latest_render(folder, item, "pictures")` (or the version the layer pins).
+- The render is the item's newest finished one (`project.renders`, kind "pictures"), or the version the layer pins;
+  with a `shot` (what Rostrum3D's Send to 2D sets), only that shot's renders (manifest `source.shot`), so a later
+  render of another shot never replaces it.
 - Needs the `render3d` extra (OpenEXR, OpenColorIO 2.5 = the 3D core's, numpy, Pillow), loaded on first use.
 - Its EXR frames (scene-linear, premultiplied alpha) are turned once into straight-alpha sRGB PNGs through
   OpenColorIO with the 3D app's own rule (the config named by $OCIO, else the built-in CG config; the sRGB display's
   default view: core/src/image_out.cpp), so the picture matches the 3D app's PNG, with its alpha kept. Each frame is
   made at the layer's w × h and fit, in a content-keyed cache. The engine draws them as a `video` layer.
 - A new 3D render is picked up by the next scene description (the screen's watch asks for one: render3d_watch.py).
-- Out of date is told by content: the render's manifest `source.doc_hash` against the 3D document's hash now (older
-  renders without one: by history step).
+- Out of date is told by content: the render's manifest `source.scene_hash` (older renders: `doc_hash`, the same
+  value) against the 3D document's hash now, as its history last says (older renders without one: by history step).
 - Loud: no project folder, no such item, not a 3D item, not rendered yet, a pinned version that isn't there, a
   render with no EXR frames, a marker that isn't in the project. Out of date (the 3D document changed after the
   render) is not an error: `status` says so, and inspect_diagnose / the Problems list show it.
@@ -27,7 +29,7 @@ import os
 import re
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes, project, storage
+from rostrum_core import Document, RostrumError, codes, project, storage
 from rostrum_core.cache import put_file
 
 from . import settings
@@ -35,6 +37,7 @@ from . import settings
 CACHE_DIR = settings.cache_dir("2d-render3d")
 CACHE_BYTES = 4 << 30
 CONVERTER = "1"              # bump when the conversion changes (it is in every cache key)
+OWN = ("item", "version", "shot")   # the layer's own fields: which render it shows, never sent to the engine's video layer
 _FRAME_NO = re.compile(r"\.(\d+)\.exr$", re.I)
 
 
@@ -59,12 +62,13 @@ def find(item: dict, folder) -> dict:
     if it["kind"] != "3d":
         raise RostrumError(codes.BAD_ARGUMENT, _where(item), f'item "{ref}"', f'is a {it["kind"]} item, not a 3D one')
     pin = int(item.get("version", 0) or 0)
-    pictures = [r for r in it["renders"] if r["kind"] == "pictures"]
+    shot = item.get("shot", "")
+    pictures = [r for r in it["renders"] if r["kind"] == "pictures" and (not shot or r["manifest"].get("source", {}).get("shot") == shot)]
     r = next((r for r in pictures if not pin or r["version"] == pin), None)
     if r is None:
         have = ", ".join(f'v{p["version"]:03d}' for p in pictures) or "none"
         what = f"has no render v{pin:03d}" if pin else "is not rendered yet"
-        raise NotRendered(codes.NOT_FOUND, _where(item), f'{it["name"]} ({ref})', f"{what} (renders: {have})",
+        raise NotRendered(codes.NOT_FOUND, _where(item), f'{it["name"]} ({ref})' + (f' shot "{shot}"' if shot else ""), f"{what} (renders: {have})",
                            hint="Render it in Rostrum3D (render_still or render_video with EXR frames), or set Version to 0 for the newest.")
     exrs = sorted((f for f in r["files"] if f.lower().endswith(".exr")),
                   key=lambda f: int(m.group(1)) if (m := _FRAME_NO.search(f)) else 0)
@@ -75,7 +79,7 @@ def find(item: dict, folder) -> dict:
     return {"item": ref, "name": it["name"], "version": r["version"], "path": r["path"], "exrs": exrs,
             "fps": float(num) / float(den or 1), "made_at": r["manifest"].get("made_at", ""),
             "source_seq": r["manifest"].get("source", {}).get("history_entry"),
-            "source_hash": r["manifest"].get("source", {}).get("doc_hash")}
+            "source_hash": (src := r["manifest"].get("source", {})).get("scene_hash") or src.get("doc_hash")}
 
 
 def document_seq(folder, ref: str) -> int | None:
@@ -88,7 +92,19 @@ def document_seq(folder, ref: str) -> int | None:
 
 
 def document_hash(folder, ref: str) -> str | None:
-    """The 3D document's content hash (as in a render's manifest `source.doc_hash`), or None when it can't be read."""
+    """The 3D document's content hash now (as in a render's manifest `source.scene_hash`), or None when it can't be read.
+    A live 3D document writes its document file only every few steps (rostrum_core.live), so with Rostrum3D here it is
+    read through its own kind, history included (read only: nothing is written); else from the document file."""
+    if storage.paths(folder, ref, ".trd")["history"].exists():
+        try:
+            from rostrum3d import KIND
+        except ImportError:
+            KIND = None
+        if KIND is not None:
+            try:
+                return storage.doc_hash(Document.open(folder, ref, KIND).data)
+            except (RostrumError, OSError, ValueError, KeyError):
+                return None
     try:
         text = storage.paths(folder, ref, ".trd")["doc"].read_text(encoding="utf-8")
         return storage.doc_hash(json.loads(text)["doc"])
@@ -193,7 +209,7 @@ def node(node: dict, item: dict, fps: float, folder) -> dict:
     w, h, fit = int(props["w"]), int(props["h"]), props.get("fit", "cover")
     if w < 2 or h < 2:
         raise RostrumError(codes.BAD_ARGUMENT, f'{item["id"]}.w', f"{w}×{h}", "must be at least 2 px each way")
-    for k in ("item", "version"):
+    for k in OWN:
         props.pop(k, None)
     pngs = [picture(Path(r["path"]) / f, w, h, fit) for f in r["exrs"]]
     count = max(1, math.floor(len(pngs) * fps / r["fps"] + 1e-6))

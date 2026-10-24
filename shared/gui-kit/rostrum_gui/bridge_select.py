@@ -106,7 +106,7 @@ class SelectSlots(SlotMixin):
     def _item_rows(self, it):
         k = self._kit
         static = k.static if k.op_kind[1] else many.own_rules(k.static, self.doc.kind.registry.field_op(it["type"]))
-        evaluated = rows.evaluate(static, self.shown_values(it), self.doc.kind.facts(it, self.doc), k.more,
+        evaluated = rows.evaluate(static, self.shown_values(it), self.facts_of(it), k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
                                   lambda name: self.list_choices(it, name), k.open_groups, k.search, self.on_page(it),
                                   self.starts(it))

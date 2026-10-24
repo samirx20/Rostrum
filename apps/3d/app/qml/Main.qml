@@ -5,9 +5,12 @@ import RostrumKit
 // shot crumb, Saved · N changes, the Build | Animate | Render pages, ↶ ↷, Search, View (shot / free camera), Look
 // (Quick | Final, when the viewport offers it), Materials, Render (F12), ?. Left edge: the tool rail (Rail3D). Centre:
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
-// own group open, changed groups open, the rest a row of names). Bottom, full width: the scene list with its keys on
-// the same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
+// own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
+// animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
+// same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
 // nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
+// The Render page (Ctrl+3): the shots and the render queue at the bottom (RenderPage), the shot's render settings on
+// the right (RenderSettings), no header Render (a control never shows twice).
 AppShell {
     id: shell
     bridge: backend
@@ -17,7 +20,7 @@ AppShell {
     saveWord: typeof files !== "undefined" && files.hasProject ? "Saved" : ""   // a scene in a project folder saves after every change
     leftWidth: 0
     rightWidth: width >= 1920 ? 340 : width >= 1646 ? 300 : 280
-    bottomHeight: backend.page === "animate" ? 284 : 204
+    bottomHeight: backend.page === "build" ? 204 : 284   // Animate: more key rows; Render: the shots and the queue
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     exporter: backend.exporter
     exportSettings: ExportSettings3D { }
@@ -25,6 +28,7 @@ AppShell {
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
+    function openRailPanel(id) { rail.openPanel(id) }             // (the scripted `panel <id>` step)
     function openDrawings() { rail.openDrawings() }                // (the scripted `drawings` step)
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsList.openFrom(materialsChip) }
@@ -43,13 +47,18 @@ AppShell {
     Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
     Shortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
     Shortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
-    Shortcut { sequence: "F12"; onActivated: backend.exporter.openFor() }   // the render sheet
+    Shortcut { sequence: "F12"   // the render sheet; on the Render page, the shown shot's Render (next in the queue)
+               onActivated: backend.page === "render" ? backend.renderQueue.renderNext(backend.shotInfo.id) : backend.exporter.openFor() }
     Shortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
+    Shortcut { sequence: "Escape"; enabled: backend.renderQueue.shown.state === "done"; onActivated: backend.renderQueue.shown.dismiss() }
+    readonly property bool renderIdle: (backend.renderJob.state === "idle" || backend.renderJob.state === "") && backend.renderQueue.shown.state === ""
+    Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
+    Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.keys.clear() }
     Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: backend.selected !== "" && !meshEdit.on && !paintMode.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
+               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.bones.on && !startScreen.visible && shell.renderIdle
                onActivated: backend.select("") }
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
@@ -78,6 +87,8 @@ AppShell {
     Shortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
     Shortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
     Shortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
+    Shortcut { sequence: "P"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: rail.openPanel("poses") }
+    Shortcut { sequence: "O"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: viewport.onionSkin.toggle() }
     // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot
     Shortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
     Shortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
@@ -149,16 +160,17 @@ AppShell {
             onClicked: shell.openMaterials()
             MaterialsList { id: materialsList }    // ball, name, how many use it; click edits, drag gives
         },
-        RenderButton { anchors.verticalCenter: parent.verticalCenter }
+        RenderButton { anchors.verticalCenter: parent.verticalCenter; visible: backend.page !== "render" }   // the Render page has its own
     ]
     rail: Rail3D { id: rail; height: parent ? parent.height : 0 }
     centre: [
         Viewport { id: vp3d; anchors.fill: parent },
-        RenderView { anchors.fill: parent }
+        RenderView { anchors.fill: parent },
+        RenderView { anchors.fill: parent; job: backend.renderQueue.shown }   // a finished render picked in the queue
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
-            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !backend.stretch.shown
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 MaterialRow { id: materialRow; width: parent.width }
@@ -168,9 +180,15 @@ AppShell {
                 }
             }
         }
-        ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
+        ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" }
+        RenderSettings { anchors.fill: parent; visible: backend.selected === "" && backend.page === "render" }   // the shot's render settings
         MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
         PaintPanel { anchors.fill: parent; visible: paintMode.on }     // Paint: Brush, then Paint layers (mockup 06)
+        FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
+        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
-    bottom: SceneList { anchors.fill: parent }
+    bottom: [
+        SceneList { anchors.fill: parent; visible: backend.page !== "render" },
+        RenderPage { anchors.fill: parent; visible: backend.page === "render" }   // the shots and the render queue
+    ]
 }

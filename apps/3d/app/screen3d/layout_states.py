@@ -19,8 +19,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers",
-         "render-sheet-shot", "render-sheet-exr")
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers",
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -42,6 +42,23 @@ def two_shots() -> list[str]:
     return ["--script", str(script)]
 
 
+def lid_turn() -> list[str]:
+    """Start args for the sample with a lid on the block that opens: Turn X 0 → −105° from 0.8 s to 1.6 s (mockup 07)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "lid_turn.py"
+    script.write_text(SOURCE + 'mesh("lid", shape="box", width=0.5, height=0.04, depth=0.5, y=0.32, material=clay)'
+                      '.key("rx", {0.8: 0, 1.6: -105})\n', encoding="utf-8")
+    return ["--script", str(script)]
+
+
+def mouth_group() -> list[str]:
+    """Start args for the sample with a mouth: a group of three flat shapes named as mouth shapes (Lip sync…)."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "mouth_group.py"
+    lines = ["with group('mouth', y=0.5):", "    mesh('mouth_rest', shape='disc', radius=0.05)",
+             "    mesh('mouth_closed', shape='disc', radius=0.04)", "    mesh('mouth_wide', shape='disc', radius=0.07)"]
+    script.write_text(SOURCE + "\n".join(lines) + "\n", encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -57,6 +74,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("combine-folded", s, ["selectmany block vase", "action combine:union", "fold combine_1"]),
         ("light-selected", s, ["select key"]),
         ("light-final-only", s, ["select key", "set spread 60", "set lightsOnly block"]),   # the Final badges
+        ("lipsync-sheet", mouth_group(), ["lipsync mouth"]),                            # Lip sync… on a mouth group (the kit's sheet)
         ("context-light", s, ["context key"]),                                          # Pick what it lights
         ("dome-selected", s, ["select sky"]),
         ("camera-selected", s, ["select cam"]),
@@ -89,12 +107,22 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
         ("focus-picking", s, ["select cam", "set dof true", "action focus:point"]),
         ("focus-on-item", s, ["select cam", "set dof true", "set focusItem \"vase\""]),
-        ("lens-menu", s, ["select cam", "click Lens"]),
+        ("lens-menu", s, ["select cam", "click Lenses"]),
         ("context-item", s, ["context block"]),
         ("context-empty", s, ["context -"]),
         ("view-menu", s, ["select key", "view"]),
         ("page-animate", s, ["select cam", "page animate"]),
-        ("page-render", s, ["page render"]),
+        ("animate-stretch", lid_turn(), ["page animate", "stretch lid.rx.k800"]),       # the lid's Turn: the animation panel
+        ("animate-stretch-out", lid_turn(), ["page animate", "stretch lid.rx.k800", "ease out"]),
+        ("animate-poses", lid_turn(), ["page animate", "select lid", "pose Lid half open, before the buds come out of the case",
+                                       "panel poses"]),
+        ("animate-poses-onion", lid_turn(), ["page animate", "select lid", "frame 30", "pose Lid open", "onion on",
+                                             "panel poses", "panel onion"]),                  # both panels open side by side
+        ("animate-key-ease", lid_turn(), ["page animate", "select lid", "keys-menu lid.rx.k1600"]),   # a key's right-click Ease list
+        ("animate-onion", lid_turn(), ["page animate", "select lid", "frame 30", "onion on", "panel onion"]),
+        ("page-render", s, ["deselect", "estimate-recorded", "page render"]),          # the Render page, its queue empty
+        ("render-queue-two", two_shots(), ["deselect", "estimate-recorded", "page render", "queue demo"]),   # running, waiting, ended rows
+        ("render-queue-finished", two_shots(), ["deselect", "estimate-recorded", "page render", "queue demo", "queue show 3"]),
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
         ("export-sheet", s, ["export-open"]),

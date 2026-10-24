@@ -55,14 +55,18 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
 // shutter it was told (rostrum:shutterOpen / Close, our patch: libs/cycles-rostrum.patch). That one is only set from
 // an open shutter and kept while a free camera looks: objects sample their moves when they change, not when the
 // camera does, so the samples are still right when the shot camera looks again (a new shutter rewrites them anyway).
+// `progressive`: the viewport's Final look, which shows the noise cleaned up as it refines. A render cleans up once,
+// at its last sample: the plug-in's session is interactive, so it otherwise also cleans up the picture every time it
+// updates the display, on a timer, which made a full HD frame at 128 samples cost 2x and vary from run to run (13d).
 void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStageRefPtr& stage,
-                     const SdfPath& camera) {
+                     const SdfPath& camera, bool progressive) {
   const auto set = [&](const char* key, const VtValue& v) {
     if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
   };
   if (stage) set("stageMetersPerUnit", VtValue(UsdGeomGetStageMetersPerUnit(stage)));
   set("cycles:samples", VtValue(s.samples));
   set("cycles:integrator:use_denoise", VtValue(s.denoise));
+  set("cycles:integrator:denoise_start_sample", VtValue(progressive ? 0 : s.samples));
   // our patch (-r3); off only for the Shadow pass (passes.h). A plug-in without it reports nothing: left alone then,
   // as setting an unknown key would start the Final look over on every step.
   if (!s.castShadows || !e.GetRendererSetting(TfToken("rostrum:castShadows")).IsEmpty())
@@ -150,6 +154,7 @@ Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
   fb_.reset();
   mask_fb_.reset();
+  ghost_fbs_.clear();
 }
 
 TfToken Hydra::plugin_for(const std::string& name) {
@@ -216,7 +221,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   if (!s.aovs.empty() && renderer != "cycles")
     throw Error("render.passes: only the cycles renderer makes passes, not " + renderer);
   if (renderer == "cycles") {
-    cycles_settings(e, s, stage_, camera);
+    cycles_settings(e, s, stage_, camera, false);
     e.use_aovs(s.aovs);
   }
   if (renderer != "cycles")  // a render never sees the studio
@@ -303,6 +308,27 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
   }
+  // Onion skin: each ghost's items alone at the ghost's frame, lit like this picture, in a framebuffer of its own
+  // (view_post.h tints them and lays them over the picture). The ghost's frame is a time change for the engine; the
+  // next picture's own frame changes it back.
+  if (!look.ghosts.empty()) {
+    e.show_sky(false);
+    if (ghost_fbs_.size() < look.ghosts.size()) ghost_fbs_.resize(look.ghosts.size());
+    for (size_t i = 0; i < look.ghosts.size(); ++i) {
+      const Ghost& g = look.ghosts[i];
+      auto& gf = ghost_fbs_[i];
+      if (!gf || gf->width() != w || gf->height() != h) {
+        gf.reset();
+        gf = std::make_unique<Framebuffer>(w, h);
+      }
+      UsdImagingGLRenderParams at = params;
+      at.frame = UsdTimeCode(g.frame);
+      gf->bind_and_clear();
+      for (const auto& path : g.items) e.Render(stage_->GetPrimAtPath(path), at);
+      throw_usd_errors(mark, "view (onion-skin ghost at frame " + std::to_string(g.frame) + ")");
+      out.ghosts.push_back(gf->color_texture());
+    }
+  }
   return out;
 }
 
@@ -310,7 +336,7 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
                             const DrawSettings& s, GpuMemWatch& mem) {
   TfErrorMark mark;
   auto& e = engine("cycles", true);
-  cycles_settings(e, s, stage_, camera);
+  cycles_settings(e, s, stage_, camera, true);
   if (camera.IsEmpty()) {
     e.SetCameraPath(SdfPath());
     e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());

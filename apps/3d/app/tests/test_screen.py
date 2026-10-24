@@ -57,7 +57,7 @@ def test_a_scrub_and_a_key_drag_are_one_undo_step_each(bridge):
 
     assert bridge.beginKeyDrag("cam.x.k1000")
     for f in (11, 13, 15):
-        bridge.keyDragTo(f)
+        bridge.keyDragTo(f / 10)                 # seconds (fps 10)
     bridge.endDrag()
     assert len(bridge.doc.history.changes) == n + 2
     assert [k["t"] for k in keys_of(bridge.doc.item("cam"), "x")] == [0.0, 1.5]
@@ -166,3 +166,14 @@ def test_context_menu_never_holds_more_than_six_and_only_what_applies(bridge):
         assert len(bridge.contextEntries(item)) <= 6
     assert [e["value"] for e in bridge.contextEntries("")] == ["home", "shot"]
     assert [e["value"] for e in bridge.contextEntries("cam")] == ["duplicate", "delete"]
+
+
+def test_timing_shows_only_on_the_animate_page(bridge):
+    """A setting valid only while animating (Timing) is absent on Build and comes with the Animate page (rows re-evaluate)."""
+    bridge.select("cam")
+    names = lambda: [r["id"] for r in bridge._rows() if r.get("holds")]  # noqa: E731
+    assert "timing" not in names()
+    bridge.setPage("animate")
+    assert "timing" in names()
+    bridge.setPage("build")
+    assert "timing" not in names()

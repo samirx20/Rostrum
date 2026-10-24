@@ -57,6 +57,7 @@ class Engine:
         self._hash, self._lock, self._notices = None, threading.RLock(), []
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
+        self.stopped = False                            # kill(for_good=True): a cancelled job's engine never starts again
         _MINE.add(self)
 
     # --- the process
@@ -78,6 +79,8 @@ class Engine:
         lines.put(None)                                 # the process ended
 
     def _ensure_running(self):
+        if self.stopped:
+            raise EngineError(f"3D engine (pid {self.pid}) was stopped: its job was cancelled")
         if self.proc is None:
             self._start()
         elif self.proc.poll() is not None:
@@ -199,9 +202,11 @@ class Engine:
         with self._lock:
             self.proc, self._hash = None, None
 
-    def kill(self):
+    def kill(self, for_good: bool = False):
         """End our own engine process now, by its handle (its PID), without waiting for the lock: safe from any thread,
-        even while another thread is blocked on a reply (that request then fails loudly: the process ended)."""
+        even while another thread is blocked on a reply (that request then fails loudly: the process ended).
+        `for_good`: a cancelled job's engine: a later request fails instead of starting a new process."""
+        self.stopped = self.stopped or for_good
         proc = self.proc
         if proc is not None and proc.poll() is None:
             proc.kill()

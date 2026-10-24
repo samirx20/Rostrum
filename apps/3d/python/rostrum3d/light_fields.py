@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 
-from .fields import ANY, C, CH, D, IS, N, NOT, S, T, TRANSFORM, X
+from .field_kit import ANY, C, CH, D, IS, N, NOT, S, T, TRANSFORM, X
 
 KINDS = ["rect", "disk", "strip", "sphere", "spot", "distant", "dome"]
 SPOT = IS("kind", "spot")

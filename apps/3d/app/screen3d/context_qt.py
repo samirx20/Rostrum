@@ -23,6 +23,8 @@ class Context:
             b.adder.duplicate()
         elif value == "delete":
             b.adder.remove()
+        elif value == "lipsync":
+            b.open_lipsync(item_id)
         elif value == "link":
             b.viewport.place.start("link", item_id)
         elif value == "look":

@@ -1,22 +1,24 @@
 """The render time estimate, measured, never guessed (SPEC §11.2): a probe through the same engine path as the real job.
 
 `measure()` starts its own engine (as the Render button does), loads the shot's scene and renders the shot's middle frame
-four times, each request a different size (the engine answers a repeat, or the same size with fewer samples, from the
-picture it already has, so that would measure nothing; 2 px less costs nothing): tiny (it pays the kernel compile and
-first sync, the warm-up); at a quarter of the pixels with FEW samples and with the job's samples (kept as the probe
-picture); and once at the job's REAL size with FEW samples (noise clean-up as the
-job), about 5 s at full HD.
+several times, each request a different size (the engine answers a repeat, or the same size with fewer samples, from the
+picture it already has, so that would measure nothing; 2 px less costs nothing): tiny, then a quarter of the pixels with
+FEW samples, both thrown away (the warm-up: kernel compile, first sync, and the card's clock rising from idle, which
+made the first timed frame vary by a third); at a quarter of the pixels with FEW samples and with the job's samples
+(kept as the probe picture); and once at the job's REAL size. That one is drawn with the job's own samples whenever it
+is expected to fit FULL_CAP_S (the quarter's time × 4.5): the truth itself, about 8 s at full HD, Good. Heavier jobs
+draw it with FEW samples and add the quarter's extra time for the samples, per pixel (the quarter's FEW frame then the
+median of three, since its error counts four times).
 
-What the reference laptop showed (2026-10-24, full HD, 8 / 32 / 128 samples: 5.0 / 12.5 / 19.8 s; at a quarter
-0.7 / 1.85 / 3.3-4.2 s): a full-size frame costs 5-7× a quarter-size one, so it must be measured, not scaled up; time
-grows with samples far less than in step (adaptive sampling) and close to a straight line in log(samples), at full
-size more gently than at a quarter; and taking the real-size frame to the job's samples by
-the quarter's ratio overshoots about as much as adding the quarter's extra time per pixel undershoots, so the frame at
-the job's samples is their geometric mean. The line through the quarter-size point and that real-size point gives a
-frame's fixed part (it may be below 0: the line holds between the two sizes; scale() never goes under the quarter's
-cost per pixel) and its part per pixel. The sample curve is the real-size frame's own: "curve": [[FEW, its time at FEW
-over its time at the job's samples], [samples, 1.0]], straight in log(samples). `mcp/estimate.scale()` turns that into the job's time for any size,
-samples and frame count without a new probe.
+Why (13d, reference laptop, full HD): before the engine cleaned the noise once at a render's end, Cycles also cleaned it
+on a timer while it drew, so a frame's cost hung on timing (19.5 s at 128 samples, the probe's guesses 21-26 s). Now:
+8 / 32 / 128 / 512 samples take 2.5 / 4.3 / 7.6 / 10.5 s at full size, 0.55 / 0.93 / 1.9 / 3.05 s at a quarter, so a
+full frame costs 3.4-4.6 quarter ones depending on samples: scaling up is the fallback, measuring the real size the rule.
+The line through the quarter-size point and the real-size point gives a frame's fixed part (it may be below 0: the
+line holds between the two sizes; scale() never goes under the quarter's cost per pixel) and its part per pixel. The
+sample curve: "curve": [[FEW, a frame's time at FEW over its time at the job's samples], [samples, 1.0]], straight in
+log(samples), from the real-size frames when both were drawn, else the quarter's. `mcp/estimate.scale()` turns that
+into the job's time for any size, samples and frame count without a new probe.
 
 The measurement is cached (rostrum_core.cache) by the scene, the engine build and what changes the picture's cost other
 than size, samples and frames (renderer, noise clean-up, the shot's shape), so changing the scene re-measures and
@@ -44,9 +46,10 @@ from . import gpu_busy
 from .engine import Engine
 from .runtime import VERSION as LIBS
 
-KIND, VERSION = "3d-estimate", "probe@4"
+KIND, VERSION = "3d-estimate", "probe@5"
 BUDGET_S = 90.0
-FEW = 8                                                  # samples of the real-size frame
+FEW = 8                                                  # samples of the cheap frames (the sample curve)
+FULL_CAP_S = 9.0                                         # the real-size frame at the job's samples, when expected under this
 
 
 def probe_key(scene: dict, s: dict, exe, salt: str = "") -> str:
@@ -126,8 +129,8 @@ def _measure(scene, info, s, where, make_engine, card, own_pids) -> dict:
 
 def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
     frame, S = (s["start"] + s["end"]) // 2, s.get("samples", 0)
-    q, full = _size(s, 2), (s["width"], s["height"])     # a quarter of the pixels; the real size
-    q_lo = (q[0] - 2, q[1] - 2)                          # 2 px smaller: a new size makes the engine start afresh
+    (qw, qh), full = _size(s, 2), (s["width"], s["height"])   # a quarter of the pixels; the real size
+    smaller = lambda d: (qw - d, qh - d)                 # noqa: E731  a new size makes the engine start afresh
     cycles = s["renderer"] == "cycles"
     few = min(S, FEW) if cycles and S > FEW else 0       # 0: no sample curve (Storm, or the job's samples are few already)
     t0 = time.perf_counter()
@@ -135,22 +138,29 @@ def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
     load_ms = (time.perf_counter() - t0) * 1000
     one = lambda wh, png, n=S: _frame_ms(engine, info, {**s, "samples": n}, frame, wh, png)  # noqa: E731
     with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
-        first = one(_size(s, 16), Path(tmp) / "a.png")                 # warm-up: a tiny frame (kernels, first sync)
-        q_few = one(q_lo, Path(tmp) / "c.png", few) if few else None
-        warm_q = one(q, out / "probe.png")
-        full_few = one(full, Path(tmp) / "f.png", few or S)
-    pq, pf = q[0] * q[1], full[0] * full[1]
-    full_s = full_few
-    curve = []
-    if few and warm_q > 0:                               # see the docstring: the geometric mean of two bounds
-        full_s = ((full_few * warm_q / max(q_few, 1e-3)) * (full_few + (warm_q - q_few) * pf / pq)) ** 0.5
-        curve = [[few, round(min(1.0, full_few / full_s), 4)], [S, 1.0]]
+        tmp = Path(tmp)
+        first = one(_size(s, 16), tmp / "a.png")                          # warm-up: kernels, first sync
+        one(smaller(10), tmp / "b.png", few or S)                         # warm-up: the card's clock rises
+        q_few = [one(smaller(2), tmp / "c.png", few)] if few else []
+        warm_q = one((qw, qh), out / "probe.png")
+        direct = not few or warm_q * 4.5 / 1000 <= FULL_CAP_S
+        if few and not direct:                                            # its error counts four times: a median
+            q_few += [one(smaller(4), tmp / "d.png", few), one(smaller(6), tmp / "e.png", few)]
+        full_ms = one(full, tmp / "f.png", S if direct else few)
+    q_few = sorted(q_few)[len(q_few) // 2] if q_few else None
+    pq, pf = qw * qh, full[0] * full[1]
+    full_s, curve = full_ms, []
+    if few and not direct:                               # the real size at FEW, plus the quarter's extra time per pixel
+        full_s = full_ms + (warm_q - q_few) * pf / pq
+        curve = [[few, round(min(1.0, full_ms / full_s), 4)], [S, 1.0]]
+    elif few:
+        curve = [[few, round(min(1.0, q_few / warm_q), 4)], [S, 1.0]]
     per_px = max(0.0, (full_s - warm_q) / (pf - pq)) if pf > pq else 0.0       # ms a pixel at the job's samples
     fixed = warm_q - per_px * pq                         # ms a frame whatever its size (may be < 0, see the docstring)
     return {"frame": frame, "samples": S, "curve": curve, "load_ms": round(load_ms, 1),
             "warmup_ms": round(first, 1), "fixed_ms": round(fixed, 2), "per_px_ms": per_px,
-            "probe": {"size": list(q), "ms": [round(first, 1), round(warm_q, 1)], "few_ms": round(q_few or 0, 1)},
-            "full": {"size": list(full), "samples": few or S, "ms": round(full_few, 1), "at_job_samples_ms": round(full_s, 1)},
+            "probe": {"size": [qw, qh], "ms": [round(first, 1), round(warm_q, 1)], "few_ms": round(q_few or 0, 1)},
+            "full": {"size": list(full), "samples": S if direct else few, "ms": round(full_ms, 1), "at_job_samples_ms": round(full_s, 1)},
             "probe_s": round(time.perf_counter() - t0, 1), "measured_at": time.strftime("%Y-%m-%dT%H:%M:%S")}
 
 

@@ -1,10 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// Lip sync… (UX_SPEC 3.23): opened by the context bar's action on a mouth swap set, a sheet in the settings panel's place
+// Lip sync… (UX_SPEC 3.23): opened by the context bar (2D) or right-click (3D) action on a mouth, a sheet in the settings panel's place
 // (Inspector `sheets`), so the face on the canvas stays in view. The project's voice lines (RostrumSound's own: click
 // one), a row per mouth shape with its drawing (guessed from the names; pick another to fix it), Apply = one change.
-// Esc or × closes it with nothing changed (backend.lipsync: rig_lipsync.py).
+// Esc or × closes it with nothing changed (backend.lipsync: rostrum_gui/lipsync_sheet.py; 2D and 3D).
 Panel {
     id: pop
     anchors.fill: parent

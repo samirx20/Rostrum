@@ -46,6 +46,8 @@ class Action:
     group: str = ""                           # menu divider group
     bar: str = ""                             # the bar button it sits under ("Align"); the settings panel's row title
     panel: bool = True                        # listed in the settings panel's actions (False: keys / Ctrl+K only)
+    row: str = ""                             # a settings row's param id: it shows as a button on that row, not on the bar or panel
+    row_label: str | Callable = ""            # its word on that button ("Pick"), else its label
     icon: str = ""                            # a ToolIcon name: in the settings panel an icon button (name on hover)
     calls: Callable | None = None             # calls(facts) -> [operation calls]
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
@@ -137,6 +139,7 @@ class ActionList:
                     "importance": "primary" if first == 0 else a.importance,    # promoted: a button while it holds
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
                     "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon,
+                    "row": a.row, "row_label": a.row_label(facts) if callable(a.row_label) else a.row_label,
                     "min_targets": a.min_targets}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 

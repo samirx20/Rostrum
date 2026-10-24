@@ -65,7 +65,7 @@ class RenderJob(QObject):
 
     @Slot()
     def start(self):
-        if self.running():
+        if self.running() or self._bridge.queue.running():
             return self._bridge.fail_line("Error: render: one is already running; wait for it.")
         b = self._bridge
         try:

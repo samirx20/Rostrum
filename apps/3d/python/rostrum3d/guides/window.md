@@ -11,13 +11,13 @@ sits on top of it.
 | **Rostrum3D**, then the project's name | Click the name to rename the project |
 | **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
 | **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
-| **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows |
+| **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
 | **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
 | **Search or run a command** | Ctrl+K: every action and setting by name |
 | **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
 | **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
 | **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
-| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. See [Rendering](rendering.md) |
+| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 
 ## The viewport (middle)
@@ -27,7 +27,9 @@ sits on top of it.
   the dimming off.)
 - Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. A click selects what is there; a click
   on empty space selects nothing. Double-click goes back to the shot's view.
-- **Right-click** an item (here or in the scene list): Duplicate, Delete, Look through (lights), Copy material /
+- **Right-click** an item (here or in the scene list): Duplicate, Delete, Lip sync… (a mouth group: a group whose children
+  are mouth shapes named like `mouth_rest`, `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a
+  voice line from RostrumSound, check the mesh each shape shows, Apply: one undo step, keys on the timeline), Look through (lights), Copy material /
   Paste material (shapes). Right-click empty space: Frame all, New shot.
 
 ### The gizmo
@@ -77,6 +79,28 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   settings panel becomes Brush and Paint layers; a drag on the mesh paints, one undo step per stroke; B or Esc leaves.
   The guide `painting` has it all.
 
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (while a mesh is selected), Lights and Camera:
+
+- **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
+  and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
+  **Shift+click** a pose for a breakdown: each of its settings keyed halfway between its key before and its key after.
+  Each saved pose shows a small picture: what the viewport showed when you saved it (a pose an agent saved has none).
+  Hover a pose for what it holds; its × deletes it (the keys it wrote stay).
+- **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
+  time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
+  each way. The quick look only: Final shows no ghosts. It never changes the scene.
+- **Bones** (shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
+  points along the mesh, root first: dots and a line show them; **Backspace** takes the last one back. **Enter** makes the
+  chain (one undo step), **Esc** cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
+  Select a bone and key its **Turn X / Y / Z** (the Turn it has plus the bend you want): the mesh bends with it and the
+  bones after it, in the viewport and the render alike. On this page the selected mesh's bones are drawn over the picture
+  as thin diamonds, posed at the playhead (the selected bone in blue). The mesh's **Bend with bones** turns the bending off
+  and on. A mesh bends only where it has points along its length: the ready shapes have none along their straight part (a
+  capsule's or cylinder's Segments go around it), so make it an editable mesh (Tab) and cut across it with the Knife
+  (K) every few centimetres first.
+- The Poses and Onion skin panels open and close on their own: click a rail button to open its panel, again to close it, Esc
+  closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
+
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
 selected item. The rail only shows tools that work today. Others (simulation, import) appear as they are built.
 
@@ -101,10 +125,14 @@ An item's rows come from its own settings:
 
 The diamond at a row's right end keys that setting at the playhead.
 
-**A camera** offers at the top of its panel **Lens ▾**: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
-one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on, two more:
-**Focus on a point**, then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
-camera that spot is. **Focus on an item**, then click the item (or Alt+click while focusing on a point): the camera keeps
+**Timing** (on the Animate page only, in the row of names, once an item or something inside it has keys): **Smooth**, **On 2s** or **On 3s**.
+On 2s holds every value for two frames, the stepped look of hand-drawn animation; the camera, left Smooth, still
+glides. A group's Timing steps everything inside it.
+
+**A camera** has a **Lenses ▾** button beside its Focal length: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
+one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on:
+**Focus on a point** (top of the panel), then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
+camera that spot is. **Pick** (beside Focus on), then click the item (or Alt+click while focusing on a point): the camera keeps
 it sharp as it moves; **Focus on** names it and Focus distance goes (it is worked out every frame). Set Focus on back to
 None to type a distance again. Each click is one undo step.
 
@@ -119,18 +147,41 @@ Intersect**; the first one you picked is the base. Rest the pointer on one for a
 result; move off and it goes back. Click to make it (one undo step); see the guide *modelling*. Only what applies is
 shown, so with one thing selected there is no Combine.
 
-## The bottom panel: the scene list and its keys
+### Follow and stick (an item's settings)
 
+- **Follow** (a bud riding on an opening lid): in the item's **Follow** group, pick the item to ride on with the
+  target (click it, then the lid in the viewport or the scene list). From then on it moves and turns with the lid,
+  from wherever it stands. **Amount** is 1 while it rides; key it **0** at the moment it should be let go and it stays
+  exactly where it is then, never jumping back. Key 0 first and 1 later to pick it up at a time.
+- **Stick to**: pick a mesh (a floor, a table, a ball) and the item stands on its surface straight below as it moves;
+  its **Y** is then its height above that surface. Off the surface's edge it keeps its own Y.
+- **A hinge**: hold **D** and drag the gizmo to the lid's back edge (its pivot), then key **Turn X**: the lid opens
+  around that edge. A bud following the lid rides the same hinge.
+
+## The bottom panel: the timeline
+
+The same timeline as Rostrum2D's. It is taller on the Animate page.
+
+- **Top row:** ▶ plays (Space), the playhead's time, **⚑ Add marker** (in a project folder: a shared marker at the playhead that
+  other apps see too: 2D, Sound, the Editor), then the ruler in seconds with the project's markers as flags. Click or drag the
+  ruler to move the playhead; ← → step one frame. Drag a flag to move it, double-click to rename it.
 - **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. A **combine** is a row with its own icon and its
   inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
   material's name, dimmed; click that name to edit the material. Click a row to select the item. Drop a material ball on a row to give
-  that item the material.
-- **Right, on the same rows:** the item's keys as diamonds.
-  - The selected item opens a row for each animated setting.
-  - Click a diamond to select its key; drag it to move it (whole frames, one undo step).
-  - Click or drag the ruler to move the playhead.
-  - Space plays, and ← → step one frame.
-- **Add marker** puts a shared marker at the playhead. Other apps see it too (2D, Sound, the Editor).
+  that item the material. Right-click a row for its menu.
+- **Right, on the same rows:** an animated item's keys as diamonds on a slim bar from its first key to its last.
+  - The selected item opens a row for each animated setting, and a second line where two of its animations overlap in time.
+  - Click a diamond to pick its key (the settings panel shows the key); Ctrl+click adds one, Shift+click picks the run between,
+    and a box dragged on an empty part of a row picks every key it touches. Drag a key to move it, or all picked keys together;
+    drag the bar to move all of the item's keys in time. One drag is one undo step. Keys land on whole frames, and on a marker,
+    the playhead or another key when they come close (hold Ctrl to move freely); a label shows how far ("+6 f · logo lands").
+  - **Stretch keys in time:** pick two or more keys, then **Alt+drag the first or last** of them: the others stretch or squeeze
+    around the far end (one undo step; the moved end stays inside the shot). Agents: `key.scale`.
+  - **Right-click a key** for the Ease list (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom): every picked key gets that ease.
+  - **Click the stretch between two keys** (the lid's Turn): the settings panel becomes that animation. Its header says what moves
+    ("Turn · lid · Turn X"); then From and To, Start, Length, the easing presets **Linear, Smooth, In, Out, Spring, Bounce, Hold**,
+    the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc
+    goes back to the item.
 
 ## Files
 

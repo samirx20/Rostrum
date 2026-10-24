@@ -8,11 +8,13 @@
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/camera.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 
 #include "args.h"
 #include "error.h"
+#include "ghosts.h"
 #include "inspect.h"
 #include "cycles_lights.h"
 #include "light_extras.h"
@@ -189,7 +191,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
 
 JsObject Core::view(const JsObject& o) {
   Args a(o, "view", {"camera", "eye", "target", "fov", "frame", "width", "height", "renderer", "exposure", "studio",
-                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof", "samples", "denoise"});
+                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof", "samples", "denoise", "ghosts"});
   need_scene("view");
   const std::string renderer = a.str("renderer", "storm");
   const bool final_look = renderer == "cycles";  // the Final look: progressive Cycles with the render's settings
@@ -217,6 +219,12 @@ JsObject Core::view(const JsObject& o) {
       look.selected.push_back(p);
     }
   }
+  if (a.has("ghosts")) {
+    if (final_look) throw Error("view.ghosts: onion skin is drawn in the quick look only (storm or stylized), not "
+                                "the Final look (cycles)");
+    look.ghosts = read_ghosts(a.need("ghosts"), stage_,
+                              [&](int g, const std::string& where) { check_frame(g, where.c_str()); });
+  }
   ViewPostIn post;
   post.width = w;
   post.height = h;
@@ -241,6 +249,13 @@ JsObject Core::view(const JsObject& o) {
   post.color = pic.color;
   post.depth = pic.depth;
   post.mask = pic.mask;
+  for (size_t i = 0; i < pic.ghosts.size(); ++i) {
+    GhostIn g;
+    g.tex = pic.ghosts[i];
+    std::copy(look.ghosts[i].tint, look.ghosts[i].tint + 3, g.tint);
+    g.opacity = look.ghosts[i].opacity;
+    post.ghosts.push_back(g);
+  }
   const double draw_ms = ms_since(t0);
   const size_t bytes = size_t(w) * h * 4;
   if (!shm_ || shm_->slot_bytes() != bytes) {

@@ -128,7 +128,7 @@ class Materials3D(QObject):
         else:
             op = self.b.doc.kind.registry.field_op("material")
             static = sections.layout(op, "material")
-            out = rows.evaluate(static, route.shown_values(mat, self.b.time), self.b.doc.kind.facts(mat, self.b.doc),
+            out = rows.evaluate(static, route.shown_values(mat, self.b.time), self.b.facts_of(mat),
                                 False, opened=self._open)
             self.model.reset(out) if new else self.model.update(out)
         self.rowsChanged.emit()

@@ -10,11 +10,19 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "ocio_gpu.h"
 #include "view_camera.h"
 
 namespace r3d {
+
+// one onion-skin ghost's picture (Hydra::view) and how it is laid over the scene
+struct GhostIn {
+  unsigned tex = 0;            // its items alone, lit, scene-linear RGBA
+  float tint[3] = {1, 1, 1};   // linear RGB
+  float opacity = 0.35f;       // 0..1
+};
 
 struct ViewPostIn {
   int width = 0, height = 0;
@@ -24,6 +32,7 @@ struct ViewPostIn {
   double exposure = 0;                      // stops
   double ao = 0, aoRadius = 0.3;            // contact shading strength (0 = off) and reach in scene units
   std::optional<Lens> lens;                 // depth of field when set
+  std::vector<GhostIn> ghosts;              // onion skin, laid over the scene in turn (before the lens blur)
   std::string config, display, view;        // OpenColorIO, as ColorOut uses for PNGs
 };
 
@@ -38,6 +47,7 @@ class ViewPost {
 
  private:
   struct Targets;
+  unsigned ghosts(const ViewPostIn& in, unsigned lit, const std::string& head);
   unsigned program(const std::string& key, const std::string& fragment);
   std::unique_ptr<Targets> t_;
   std::map<std::string, unsigned> programs_;

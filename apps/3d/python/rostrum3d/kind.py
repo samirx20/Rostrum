@@ -4,7 +4,8 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
     doc ─ items     ─ group  ─ children (items …) ─ keys
                     ─ import ─ children, parts ─ keys
                     ─ combine ─ children (2+ meshes / combines) ─ keys
-                    ─ mesh | light | camera ─ keys
+                    ─ mesh ─ bones (a chain: bone ─ bones …, keys) ─ keys
+                    ─ light | camera ─ keys
         ─ materials ─ material
         ─ shots     ─ shot
 """
@@ -20,7 +21,7 @@ from . import fields as F, paint_fields
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
-         "parts": ("part",), "keys": ("key",), **rostrum_paint.HOLDS}
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -41,8 +42,10 @@ for _type, _params in F.FIELDS.items():
 def facts(item: dict) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item}
-    if item.get("type") == "mesh":
-        return {"painted": bool(item.get("paints"))}
+    if item.get("type") in F.KEYED:
+        return {"animated": F.animated_fact(item), "animating": True,    # a screen overrides animating with its page
+                "boned": bool(item.get("bones")),                         # a mesh with a chain: Bend with bones shows
+                "painted": bool(item.get("paints"))}                      # a mesh with paint layers: Paint size shows
     return {}
 
 
@@ -103,9 +106,9 @@ def check(data: dict) -> list[str]:
         if stray:                                        # e.g. a re-run that gave an id another kind (light → mesh)
             problems.append(f'{t} {item["id"]}: has {", ".join(stray)}, which a {t} does not have (did a script give '
                             f'the id "{item["id"]}" to a different kind of thing? Use a new id for the new kind)')
-        if t in (*F.ITEMS, "material") and not PRIM_ID.match(item["id"]):
+        if t in (*F.KEYED, "material") and not PRIM_ID.match(item["id"]):
             problems.append(f'id "{item["id"]}": a {t} id is letters, digits and _ only, not starting with a digit')
-        if t in F.ITEMS:
+        if t in F.KEYED:
             _check_keys(item, problems)
             if item.get("aim") == "item":
                 if not item.get("aimItem"):
@@ -113,6 +116,10 @@ def check(data: dict) -> list[str]:
                 elif item["aimItem"] == item["id"]:
                     problems.append(f'{item["id"]}: can\'t aim at itself')
                 _ref(problems, item, "aimItem", item.get("aimItem"), items, "item")
+            for ref, word in (("follow", "follow"), ("stick", "stick to")):         # follow.py's constraints
+                if item.get(ref) == item["id"]:
+                    problems.append(f"{item['id']}: can't {word} itself")
+                _ref(problems, item, ref, item.get(ref), items, "item")
         if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item, not itself
             for linked in item.get("lightsOnly", "").split():
                 _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
@@ -131,9 +138,10 @@ def check(data: dict) -> list[str]:
 
 
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
-               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": []})
+               new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
 # painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel
 rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=paint_fields.LAYER)
 
-from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_rigs, ops_scene, unfold  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_bones, ops_combine, ops_follow, ops_items, ops_keys, ops_lipsync, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene, unfold  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations)

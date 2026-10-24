@@ -11,13 +11,12 @@ ids whose default was turned round).
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum2d.anims import PRESET_LABELS, animations
+from rostrum2d.anims import animations
 from rostrum2d.drawing import each_frame
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
 from rostrum_core.keys import animated, keys_of, marked
-
-from . import eases
+from rostrum_gui import anim_rows
 
 from . import framing, key_ghosts
 
@@ -55,18 +54,8 @@ def _keys(owner: dict, prop: str) -> list[dict]:
 
 
 def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
-    """The clickable stretches of these animations (anims.py), as the track draws them: from key to key, with the
-    tooltip words ("Position · 1.00 → 2.00 s · Out"). A Hold moves nothing: drawn and picked as nothing."""
-    out = []
-    for a in anims:
-        for s in a["stretches"]:
-            if s["ease"] == "hold":
-                continue
-            end = s["start"] + s["length"]
-            words = PRESET_LABELS.get(s["preset"], eases.label_of(s["ease"]))
-            out.append({"owner": owner["id"], "ids": s["ids"], "endIds": s["endIds"], "t0": s["start"], "t1": end,
-                        "tip": f'{a["label"]} · {s["start"]:.2f} → {end:.2f} s · {words}'})
-    return out
+    """The clickable stretches of these animations (the kit's anim_rows.py, shared with 3D)."""
+    return anim_rows.stretches(owner["id"], anims)
 
 
 def _lines(lay: dict, depth: int, is_open: bool) -> tuple[dict, list[dict]]:

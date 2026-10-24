@@ -13,8 +13,8 @@ the job's answer: phones, words and cues in comp seconds.
 """
 from __future__ import annotations
 
-from .keys import check_shapes, slot_keys
-from .track import track
+from rostrum_core.lipsync.keys import check_shapes, slot_keys
+from rostrum_core.lipsync.track import track
 
 
 def _node(build, id_):

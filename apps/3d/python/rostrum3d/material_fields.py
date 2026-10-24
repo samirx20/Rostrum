@@ -7,7 +7,7 @@ a tinted clear coat over paint (`coatTint`, `coatIor`) and a screen showing a pi
 """
 from __future__ import annotations
 
-from .fields import CH, C, D, IS, N, NOT, S, X
+from .field_kit import CH, C, D, IS, N, NOT, S, X
 
 GLOWS = NOT("emissionStrength", 0)
 BRUSH = ["uv", "around x", "around y", "around z"]

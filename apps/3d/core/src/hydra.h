@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "aovs.h"
+#include "ghosts.h"
 #include "gl_context.h"
 #include "gpu_mem.h"
 #include "image_out.h"
@@ -23,6 +24,7 @@ struct ViewLook {
   double studio = 1.0;      // studio environment strength, 0 = off
   bool sceneLights = true;  // the scene's own lights
   PXR_NS::SdfPathVector selected;  // drawn with an outline
+  std::vector<Ghost> ghosts;       // onion skin: items at other frames, tinted and see-through (ghosts.h)
 };
 
 // the sun Storm took out of the scene's dome and drew as a light with a shadow (dome_sun.h)
@@ -45,6 +47,7 @@ struct FinalPass {
 struct ViewDrawn {
   unsigned color = 0, depth = 0;  // scene-linear RGBA32F and Storm's depth, GL rows bottom up
   unsigned mask = 0;              // the selected items alone (alpha > 0.5 where they are); 0 = nothing selected
+  std::vector<unsigned> ghosts;   // one picture per ViewLook ghost: its items alone, lit, at its frame
   bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
   std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
   std::optional<FinalPass> final; // the Final look's progress (Cycles only)
@@ -95,6 +98,7 @@ class Hydra {
   GlContext gl_;  // before the engines: made first, destroyed last
   std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
   std::unique_ptr<Framebuffer> fb_, mask_fb_;
+  std::vector<std::unique_ptr<Framebuffer>> ghost_fbs_;  // one per onion-skin ghost
 };
 
 }  // namespace r3d

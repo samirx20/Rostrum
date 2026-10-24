@@ -80,10 +80,30 @@ void draw_into(unsigned fbo, int w, int h) {
 struct ViewPost::Targets {
   int w, h;
   Target ao, lit, out;
+  std::unique_ptr<Target> spare;  // a second scene-linear target, made when onion-skin ghosts need to ping-pong
   Targets(int w_, int h_)
       : w(w_), h(h_), ao(w_, h_, GL_R16F, GL_RED, GL_FLOAT), lit(w_, h_, GL_RGBA32F, GL_RGBA, GL_FLOAT),
         out(w_, h_, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE) {}
 };
+
+// Onion skin: each ghost laid over the scene-linear picture in turn, tinted and see-through; returns the result
+unsigned ViewPost::ghosts(const ViewPostIn& in, unsigned lit, const std::string& head) {
+  const unsigned pg = program("ghost", head + glsl::kGhost);
+  for (const GhostIn& g : in.ghosts) {
+    Target* to = &t_->lit;
+    if (lit == t_->lit.tex) {
+      if (!t_->spare) t_->spare = std::make_unique<Target>(in.width, in.height, GL_RGBA32F, GL_RGBA, GL_FLOAT);
+      to = t_->spare.get();
+    }
+    glUseProgram(pg);
+    use_textures(pg, {{"litTex", lit}, {"ghostTex", g.tex}});
+    glUniform3fv(glGetUniformLocation(pg, "tint"), 1, g.tint);
+    glUniform1f(glGetUniformLocation(pg, "opacity"), g.opacity);
+    draw_into(to->fbo, in.width, in.height);
+    lit = to->tex;
+  }
+  return lit;
+}
 
 ViewPost::ViewPost() { glGenVertexArrays(1, &vao_); }
 
@@ -148,6 +168,7 @@ void ViewPost::run(const ViewPostIn& in, unsigned char* dst) {
     draw_into(t_->lit.fbo, w, h);
     lit = t_->lit.tex;
   }
+  if (!in.ghosts.empty()) lit = ghosts(in, lit, head);
 
   const unsigned pf = program("final:" + in.view, head + glsl::kViewPos + glsl::kFinalHead + oc->glsl() + glsl::kFinalBody);
   glUseProgram(pf);

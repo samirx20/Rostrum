@@ -7,7 +7,7 @@ can only go home to the shot camera), look through a camera (only lights), Paste
 """
 from __future__ import annotations
 
-from rostrum3d import fields as F
+from rostrum3d import fields as F, mouths
 
 MAX = 6
 
@@ -29,6 +29,8 @@ def entries(doc, item_id: str, state: dict) -> list[dict]:
             out.append(_e("duplicate", "Duplicate", "Ctrl D"))
         if kind in F.ITEMS or kind == "part":
             out.append(_e("delete", "Delete", "Del"))
+        if mouths.is_mouth(item):
+            out.append(_e("lipsync", "Lip sync…"))
         if kind == "light":
             out.append(_e("look", "Look through"))
             if item.get("kind", "rect") != "dome":
