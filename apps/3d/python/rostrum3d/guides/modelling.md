@@ -83,6 +83,47 @@ change the base's bevel and the cut edge follows. Nothing is baked.
   touches the surface (shares a face with it) leaves a paper-thin skin or nothing: make cutters a little longer than the
   wall they go through.
 
+## Editable mesh: extrude, inset, move points
+
+Any shape (box, sphere, text …) or combine can become an **editable mesh**: its points and faces exactly as they were
+drawn, joined where they meet. Then you push faces out (**Extrude**), make a smaller face inside a face (**Inset**), or
+move, turn and scale points, edges and faces. Each action is one undo step, and the mesh is saved with the project.
+Making a combine editable is its **Bake**: the result becomes one plain mesh and the inputs are gone (undo brings them
+back).
+
+### On the screen
+
+1. Select the item and press **Tab** (or **Edit mesh** in the settings panel). The first time, the panel says "Turns the
+   box into an editable mesh · Edit": click **Edit**. The box's Width / Height fields go; the mesh is now points and
+   faces.
+2. Pick what to select at the top of the settings panel, or press **1** points, **2** edges, **3** faces.
+3. Click a face (or point, or edge) in the viewport; **Shift+click** adds or removes; drag on empty space to box-select.
+   The selection is drawn in blue, faces tinted.
+4. With faces selected, the panel shows "1 face" and **Extrude** and **Inset**. Press one: it runs at once with its last
+   numbers (Extrude: Distance; Inset: Width, Depth), and those numbers then show below it until your next action: type
+   2 mm and that action is redone at 2 mm, still one undo step. After Extrude, an arrow stands on the faces: drag it and
+   the distance follows the pointer in 0.5 mm steps (hold Ctrl for free), one step when you let go. While the arrow
+   shows, the gizmo steps aside.
+5. Otherwise the gizmo sits on the selection: drag it to move, turn (E) or scale (S) the selected points, edges or faces;
+   each drag is one undo step.
+6. Middle-drag turns the view while you edit. **Tab** or **Esc** leaves editing, and so does picking another item.
+
+### For agents
+
+- `mesh.edit` with `target: [id]` (a mesh or a combine): makes it editable, in one step. It reads the shape from the
+  engine, so it runs in the app and the 3D MCP server.
+- Name what to change with a **selector**, never by guessing numbers: `"top"`, `"bottom"`, `"front"` (towards the default
+  camera, +z), `"back"`, `"left"`, `"right"` (the outermost faces facing that way), `"faces facing +y"` (every face within
+  30° of up; `"faces facing -x within 10"`), `"all"`, or by number: `"faces 3 4"`, `"points 0 1"`, `"edges 0-1 1-5"` (an
+  edge by its two points).
+- `faces.extrude` `{faces, distance}` (metres; negative pushes in). `faces.inset` `{faces, width, depth}`. Both answer
+  with the faces that are now selected (`{"faces": "faces 3"}`), so the next action can use them.
+- `mesh.transform` `{select, move: [x, y, z], turn: [x, y, z] degrees, scale: [x, y, z]}`, in the item's own space,
+  around the selection's middle. Push the lid's top up 2 mm: `{"op": "mesh.transform", "target": ["lid"], "args":
+  {"select": "top", "move": [0, 0.002, 0]}}`.
+- Look after each edit (`look_frame`). An edited mesh's `points`, `faceCounts`, `faceIndices` are in the document like
+  USD's mesh, but change them through these operations, not by hand.
+
 ## Errors (loud, never a silent wrong shape)
 
 - **"is not a closed solid"**: a plane, a disc or an imported part with holes can't be combined, because it has no inside.
@@ -92,6 +133,8 @@ change the base's bevel and the cut edge follows. Nothing is baked.
 - **"can't be animated yet"**: an input of a combine can't have keys (the cut is made once per shot). Key the combine
   itself to move the whole result.
 - **"needs two or more"**: a combine holds at least two solids.
+- **"picks nothing on this mesh"**: the selector matched no face (a sphere has no flat "top"; use `"faces facing +y"`).
+- **"is too wide for face n"**: an inset wider than the face has room for; the message gives the most that fits.
 
 ## Technique
 
@@ -100,4 +143,6 @@ change the base's bevel and the cut edge follows. Nothing is baked.
 - **Cutters longer than the wall.** A port cutter 2–3 mm longer than the wall on each side cuts cleanly at any angle.
 - **Several cutters, one combine.** Twelve grille holes are twelve cutters in one Subtract (made with a loop in a script),
   not twelve combines inside each other.
+- **Inset, then extrude** for a raised or sunken panel: a button's rim is an inset of 1 mm and an extrude of −0.5 mm.
+- **Make it editable late.** A box keeps its typed sizes and bevel until you edit it; do the sizes first.
 - **Nesting.** A combine can be an input of another: a union of a body and a handle, then a subtract of a slot from it.

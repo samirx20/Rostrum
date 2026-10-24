@@ -74,7 +74,8 @@ TRANSFORM = [
 
 COMBINE_OPS = ["union", "subtract", "intersect"]
 SOLIDS = ("mesh", "combine")                                   # what a combine combines
-SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]
+SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
+POLY = IS("shape", "poly")       # an editable mesh (ops_mesh.py): made by mesh.edit from any shape or combine, never added
 from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
@@ -83,7 +84,7 @@ from .render_fields import RENDER  # noqa: E402  (needs the helpers above)
 FIELDS: dict[str, list[Param]] = {
     "group": list(TRANSFORM),
     "mesh": [
-        CH("shape", SHAPES, "Shape", "Shape", "box"),
+        dataclasses.replace(CH("shape", [*SHAPES, "poly"], "Shape", "Shape", "box"), labels={"poly": "Editable mesh"}),
         N("width", "Width", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "plane"), default=1.0,
           help="Along X. A plane lies flat, facing up: width (X) × depth (Z)"),
         N("height", "Height", "Shape", 0, 1e4, 0.001, "m", when=ANY("shape", "box", "cylinder", "cone", "capsule"), default=1.0,
@@ -97,9 +98,17 @@ FIELDS: dict[str, list[Param]] = {
         *OUTLINE_FIELDS,
         N("bevel", "Bevel", "Shape", 0, 1e3, 0.0005, "m", S, ANY("shape", "box", "cylinder", *OUTLINE_SHAPES),
           help="Rounded edges this wide; real products almost never have razor edges"),
-        N("segments", "Segments", "Shape", 1, 256, 1, "", D, NOT("shape", "plane"), integer=True, default=24,
+        N("segments", "Segments", "Shape", 1, 256, 1, "", D, {"all": [NOT("shape", "plane"), NOT("shape", "poly")]}, integer=True, default=24,
           help="Box: steps around each bevel. Round shapes: steps around"),
-        T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets"),
+        T("smooth", "Smooth shading", "Shape", True, S, help="Smooth normals; off = flat facets. An editable mesh keeps "
+          "edges sharper than 30° hard either way"),
+        # An editable mesh's own data (screens never show it as fields; ops_mesh.py changes it). Like USD's mesh.
+        Param.points("points", label="Points", group="Mesh data", importance=D, valid_when=POLY, min=3, max=3, default=None, nullable=True,
+                     help="[x, y, z] per point, in the item's own space"),
+        Param.list("faceCounts", "number", label="Face corners", group="Mesh data", importance=D, valid_when=POLY,
+                   min=3, max=1000, integer=True, default=[], help="Corners of each face"),
+        Param.list("faceIndices", "number", label="Face points", group="Mesh data", importance=D, valid_when=POLY,
+                   min=0, max=10**7, integer=True, default=[], help="Each face's points, in turn, anticlockwise seen from outside"),
         X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     ] + TRANSFORM,
     # A live boolean (Manifold, ops_combine.py): its children are the solids (meshes or combines), the first the base;

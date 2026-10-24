@@ -17,6 +17,7 @@ import os
 import queue
 import subprocess
 import threading
+import weakref
 import time
 from pathlib import Path
 
@@ -29,6 +30,15 @@ class EngineError(RuntimeError):
     pass
 
 
+_MINE: "weakref.WeakSet[Engine]" = weakref.WeakSet()    # every engine this program made
+
+
+def own_pids() -> list[int]:
+    """The engine processes this program started and still runs (the viewport's among them): on the graphics card they
+    are ours, not "another job" (gpu_busy.busy's own_pids)."""
+    return [e.proc.pid for e in list(_MINE) if e.proc is not None and e.proc.poll() is None]
+
+
 class Engine:
     def __init__(self, exe: Path | None = None, env: dict | None = None, args: tuple = ("serve",)):
         self.exe, self.args = (Path(exe) if exe else find_exe()), tuple(args)
@@ -38,6 +48,7 @@ class Engine:
         self._hash, self._lock, self._notices = None, threading.RLock(), []
         self._shm = None                                # (name, mmap) of the engine's viewport memory (view)
         self.restarts = 0
+        _MINE.add(self)
 
     # --- the process
     def _start(self):
@@ -133,6 +144,10 @@ class Engine:
     def pick(self, **req) -> dict:
         """`camera`, or a free camera `eye` + `target` + `fov` (§ 4)."""
         return self._request({"pick": req})
+
+    def geometry(self, item: str) -> dict:
+        """The built mesh of a `mesh` or `combine` item in its own space: points, faceCounts, faceIndices."""
+        return self._request({"geometry": {"item": item}})
 
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):

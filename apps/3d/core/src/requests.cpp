@@ -80,6 +80,7 @@ void Core::check_frame(int f, const char* where) const {
 JsObject Core::scene(const JsObject& a) {
   const auto t0 = Clock::now();
   built_ = build_stage(a, stage_);  // throws with the held stage untouched
+  scene_ = a;
   announce_light_extras();
   loaded_ = true;
   return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},

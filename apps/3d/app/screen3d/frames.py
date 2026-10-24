@@ -9,6 +9,7 @@ Picks go through the same thread and engine, in the order asked, before the next
 from __future__ import annotations
 
 import sys
+import threading
 
 from PySide6.QtCore import Signal
 from rostrum_gui.frames import ImageProvider, PictureWorker, image_from_pixels
@@ -48,6 +49,24 @@ class ViewRenderer(PictureWorker):
         reports its own failures; the next view sends the viewport's scene again (ensure_scene)."""
         self.post_ordered(("call", fn, {}))
 
+    def wait_for(self, fn, timeout=60.0):
+        """`fn(engine)` on this thread, waited for (an operation that needs the engine: mesh.edit's geometry)."""
+        box, done = {}, threading.Event()
+
+        def go(eng):
+            try:
+                box["v"] = fn(eng)
+            except Exception as e:  # noqa: BLE001  handed back to the caller, who raises it
+                box["e"] = e
+            finally:
+                done.set()
+        self.call(go)
+        if not done.wait(timeout):
+            raise RuntimeError(f"the engine did not answer in {timeout:.0f} s")
+        if "e" in box:
+            raise box["e"]
+        return box["v"]
+
     def open_engine(self):
         return open_engine()
 
@@ -79,3 +98,16 @@ class ViewRenderer(PictureWorker):
 
     def describe(self, job, error):
         return f"Error: viewport {job[0]} at frame {job[2].get('frame')}: {error}"
+
+
+class EngineVia:
+    """The viewport's engine as mesh.edit asks for it (ops_mesh.use_engine): each call waited for on its thread."""
+
+    def __init__(self, worker):
+        self.worker = worker
+
+    def ensure_scene(self, scene):
+        return self.worker.wait_for(lambda e: e.ensure_scene(scene))
+
+    def geometry(self, item):
+        return self.worker.wait_for(lambda e: e.geometry(item))

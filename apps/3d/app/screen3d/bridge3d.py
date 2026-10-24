@@ -40,6 +40,19 @@ FINAL_TIP = "Shows in Final, not in the Quick view"
 PAGES = ("build", "animate", "render")
 
 
+DATA_GROUPS = {"Mesh data"}             # groups that are data an operation writes (an editable mesh's points), never rows
+
+
+def _is_data(type_, r) -> bool:
+    p = F.param(type_, r["id"]) if r.get("row") == "param" else None
+    return (p is not None and p.group in DATA_GROUPS) or r.get("group") in DATA_GROUPS or r.get("in") in DATA_GROUPS
+
+
+def _without_data(r):
+    names = r.get("names")
+    return {**r, "names": [n for n in names if n.get("group") not in DATA_GROUPS]} if isinstance(names, list) else r
+
+
 def _viewport(bridge):
     from .viewport import Viewport      # written alongside; imported late so a bridge without a window needs no engine
     return Viewport(bridge)
@@ -222,6 +235,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
         if not self._sel:
             return rows
         type_, doc_items = self.doc.item(self._sel)["type"], None
+        rows = [_without_data(r) for r in rows if not _is_data(type_, r)]     # an editable mesh's points: data, not controls
         for r in rows:
             if r["row"] == "param" and r["id"] in FINAL_ONLY.get(type_, ()):
                 r["tag"], r["tagHelp"] = "Final", FINAL_TIP

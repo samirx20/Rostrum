@@ -19,7 +19,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item")
+         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces",
+         "render-sheet-shot")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -80,12 +81,19 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
         ("export-sheet", s, ["export-open"]),
+        ("render-sheet", s, ["render-sheet"]),
+        ("render-sheet-shot", s, ["page animate", "render-sheet", "estimate-wait"]),
+        ("render-sheet-budget", s, ["page animate", "render-sheet", "estimate-wait", "budget 1 s"]),
         ("commands", s, ["commands"]),
         ("commands-search", s, ["commands light"]),
         ("guides-list", s, ["guides open"]),
         ("guide", s, ["guides open agents.md"]),
         ("key-list", s, ["keylist open"]),
         ("panels-folded", s, ["panels fold"]),
+        ("mesh-edit-offer", s, ["select block", "mesh-tab", "wait 300"]),
+        ("mesh-edit-faces", s, ["select block", "mesh-tab", "mesh-edit", "mesh-pick top", "mesh-action extrude", "wait 600"]),
+        ("mesh-edit-inset", s, ["select block", "mesh-tab", "mesh-edit", "mesh-pick top", "mesh-action inset", "wait 600"]),
+        ("mesh-edit-points", s, ["select block", "mesh-tab", "mesh-edit", "mesh-kind points", "mesh-box 0.3 0.3 0.7 0.7", "wait 600"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),
         ("long-status", s, [f"say {LONG_STATUS}"]),

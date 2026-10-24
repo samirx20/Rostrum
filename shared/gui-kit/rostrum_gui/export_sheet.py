@@ -49,6 +49,7 @@ def version_name(result: dict, versions) -> str:
 
 
 class ExportSheet(QObject):
+    VERBS = ("Export", "Exporting", "Exported")   # an app whose sheet makes something else says so ("Render", …)
     changed = Signal()
     asked = Signal(str, bool)                  # (the name already there, whether it can be replaced): QML asks
     _landed = Signal("QVariantMap", str)       # (the result, the error line): from the worker thread
@@ -106,6 +107,10 @@ class ExportSheet(QObject):
 
     def can_cancel(self) -> bool:
         return type(self).stop is not ExportSheet.stop
+
+    def action_text(self) -> str:
+        """The sheet's button: "Export", or the app's own words for what it will make ("Render 120 frames")."""
+        return self.VERBS[0]
 
     # ---- what QML shows ---------------------------------------------------------------------------------------
     @Property(bool, notify=changed)
@@ -171,6 +176,14 @@ class ExportSheet(QObject):
         """The message line's words when it finished ("Exported Main.mp4"): Play · Show in folder show beside it
         while the message still says this."""
         return self._done_message
+
+    @Property(str, notify=changed)
+    def actionText(self):
+        return self.action_text()
+
+    @Property(str, constant=True)
+    def doneWord(self):
+        return self.VERBS[2]
 
     @Property(bool, notify=changed)
     def cancellable(self):
@@ -298,7 +311,7 @@ class ExportSheet(QObject):
         except Exception as e:  # noqa: BLE001  refused before it started: say why, nothing written
             return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")
         self._result, self._progress, self._stopping = {}, 0.0, False
-        self._state, self._note = "running", f"Exporting {out.name if out else self.file_name()}"
+        self._state, self._note = "running", f"{self.VERBS[1]} {out.name if out else self.file_name()}"
         self.changed.emit()
         self.bridge._set_status(self._note + "…")
 
@@ -333,7 +346,7 @@ class ExportSheet(QObject):
         b = self.bridge
         if self._stopping and not error and not result.get("files"):
             self._state, self._note, self._result, self._done_message = "cancelled", "Cancelled", {}, ""
-            b._set_status("Export cancelled")
+            b._set_status(f"{self.VERBS[0]} cancelled")
         elif error or not result.get("files"):
             self._state, self._result, self._done_message = "failed", {}, ""
             self._note = error or "Error: export: nothing was written. The old file, if any, is kept."
@@ -343,7 +356,7 @@ class ExportSheet(QObject):
             mark = getattr(b.doc, "mark_version", None)
             if mark is not None:
                 mark(version_name(result, b.doc.versions() if hasattr(b.doc, "versions") else {}))
-            self._done_message = f"Exported {self._shown_name()}"
+            self._done_message = f"{self.VERBS[2]} {self._shown_name()}"
             self._note = result.get("summary") or self._done_message
             b._set_status(self._done_message)
         self._stopping = False
