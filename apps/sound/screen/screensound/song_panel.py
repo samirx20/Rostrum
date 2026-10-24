@@ -1,8 +1,8 @@
 """The song's own settings, exposed to QML as `songPanel`. The settings panel, shown while nothing is selected
-(SongSettings.qml), lists the song's timeline (SongList.qml, song_list.py): Bar 1's tempo and time signature (the
-song's own fields, edited in place here), every tempo, time signature and key change and the sections (a click
-selects one), then the song's other fields as the kit's InspectorRow calling this object as its "bridge": length,
-and behind More the rest. The arrangement header (SongReadout.qml) is the quick way to the tempo, time signature
+(SongSettings.qml), lists the song's timeline (SongList.qml, song_list.py): every tempo, time signature and key
+CHANGE, the sections and markers (a click selects one); the first tempo, time signature and key are edited in the
+top bar only (SongReadout.qml), never twice. Then the song's other fields as the kit's InspectorRow calling this
+object as its "bridge": length, and behind More the rest. The arrangement header (SongReadout.qml) is the quick way to the tempo, time signature
 and key playing at the playhead, through the slots below. The picture to work to lives in the Picture corner (+ Add).
 
 The rows come from the `doc.set` field operation (rule of individuality as data: a new song field shows up here by

@@ -57,3 +57,15 @@ def test_clip_draws_the_sound_it_plays(tmp_path, monkeypatch):
     clip = {"id": "c1", "media": str(orig), "at": 0, "denoise": 0.6}
     assert max(timeline.clip_span(clip, {"tempo": 120})[2]) == 0
     assert max(timeline.clip_span({**clip, "useCleaned": False}, {"tempo": 120})[2]) > 0.9
+
+
+def test_song_ends_where_the_render_ends_not_where_the_view_ends(bridge):
+    """The end of the song is the render's own length (last sound + 2 s), never the ruler's 8 bars of room to write in:
+    a player opened on an older, longer render reports that older end, and the playhead must not jump there."""
+    t = bridge.transport
+    t.last = {"seconds": 5.9}
+    assert bridge._length() > 5.9 and t.end() == 5.9
+    heard = []
+    t.moved.connect(heard.append)
+    t._ended(16.0)
+    assert heard == [5.9]

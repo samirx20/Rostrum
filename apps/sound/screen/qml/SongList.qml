@@ -3,8 +3,8 @@ import RostrumKit
 
 // The song's timeline as lists, in the settings panel while nothing is selected (SongSettings.qml): Tempo, Time
 // signature, Key, Sections, Markers (a project marker shared with the other apps: the click only moves the
-// playhead), then the heading of the song's own rows. Bar 1's tempo and time signature are the song's own fields, edited in place (songPanel);
-// every change after them is a row ("Bar 5 · drop", its value at the right, on the settings grid's field column):
+// playhead). The first tempo, time signature and key are edited in the top bar only, never twice: this panel lists only
+// the changes after them. Each change is a row ("Bar 5 · drop", its value at the right, on the settings grid's field column):
 // click it and the playhead jumps there and it is selected (its settings take the panel; Delete removes it). Under
 // each list, its "+" adds one at the playhead, starting at what plays there, and selects it — present only where it
 // is valid (song_list.can: not at the start, not where one already is). The rows come from song_list.py.
@@ -36,37 +36,13 @@ Column {
         MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: { backend.setTime(parent.modelData.t); if (parent.modelData.pick) backend.select(parent.modelData.id) } }
     }
-    component Start: Item {           // Bar 1: the song's own value, edited in place
-        default property alias field: slot.data
-        width: sl.width; height: Theme.row
-        Place { x: Theme.grid; text: "Bar 1" }
-        Item { id: slot; x: sl.fieldX; width: sl.fieldW; height: parent.height }
-    }
     component Add: Button { kind: "ghost"; flushLeft: true; width: sl.width; height: Theme.rowDense }
 
-    Head { text: "Tempo" }
-    Start {
-        NumberField {
-            anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
-            value: Math.round(sl.st.startBpm); from: 20; to: 400; step: 1; unit: "bpm"
-            onEdited: (v) => songPanel.setValue("tempo", v)
-            onScrubStarted: songPanel.beginScrub("tempo")
-            onScrubbed: (v) => songPanel.scrub("tempo", v)
-            onScrubEnded: songPanel.endScrub()
-        }
-    }
+    Head { text: "Tempo"; visible: sl.lists.tempo.length > 0 || sl.st.canTempo }
     Repeater { model: sl.lists.tempo; delegate: Entry { } }
     Add { visible: sl.st.canTempo; text: "+ Tempo change"; onClicked: backend.songDo("add_tempo", "") }
 
-    Head { text: "Time signature" }
-    Start {
-        ChoiceField {
-            anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
-            current: backend.song.beatsPerBar + "/" + backend.song.beatUnit
-            options: songPanel.meters.map(m => ({ value: m, label: m }))
-            onPicked: (v) => songPanel.setMeter(v)
-        }
-    }
+    Head { text: "Time signature"; visible: sl.lists.meter.length > 0 || sl.st.canMeter }
     Repeater {      // a change's value is its picker: 3/4 -> 6/8 in one step, the way the header sets it
         model: sl.lists.meter
         delegate: Entry {
@@ -82,15 +58,7 @@ Column {
     }
     Add { visible: sl.st.canMeter; text: "+ Time signature change"; onClicked: backend.songDo("add_meter", "") }
 
-    Head { text: "Key" }
-    Start {       // no key yet: the first one is chosen here (never assumed)
-        visible: sl.lists.key.length === 0
-        ChoiceField {
-            anchors.fill: parent; anchors.topMargin: 2; anchors.bottomMargin: 2
-            current: ""; options: [{ value: "", label: songPanel.noKey }].concat(songPanel.tonics)
-            onPicked: (v) => { if (v !== "") songPanel.setKey(v, "major") }
-        }
-    }
+    Head { text: "Key"; visible: sl.lists.key.length > 0 || (sl.st.hasKey && !sl.st.keyAtPlayhead) }
     Repeater { model: sl.lists.key; delegate: Entry { } }
     Add { visible: sl.st.hasKey && !sl.st.keyAtPlayhead; text: "+ Key change"
           onClicked: backend.songDo("add_key", sl.st.tonic + " " + sl.st.mode) }
@@ -103,5 +71,4 @@ Column {
     Repeater { model: sl.lists.markers; delegate: Entry { } }
     Add { visible: sl.st.canMarker; text: "+ Marker"; onClicked: backend.markerHere() }
 
-    Head { text: "Song" }      // the song's own settings follow (SongSettings.qml: length, More)
 }

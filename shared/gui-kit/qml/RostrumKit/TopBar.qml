@@ -8,7 +8,7 @@ import "."
 // Never shrunk or hidden: "Saved" (the door to History), the tools, ↶ ↷, the actions and ?, and the document tab's
 // first 160 px. Nothing is ever cut with "…": when room runs out things give way by priority, never sliding under each
 // other. The room is handed out in this order: 1. the chips at full width (else dot and count: `chipsNarrow`, which an
-// app chip may read too), 2. the message whole (or none of it), 3. the command box (280 px, then 150, then its search
+// app chip may read too), 2. the message whole (or none of it) in its fixed slot, which never moves anything, 3. the command box (280 px, then 150, then its search
 // icon), 4. the document tab beyond 160 px. A message that is not whole with the full count first drops the count to
 // "Saved" (the count moves into Saved's hover); still too long, it steps aside: Saved's hover says it, History keeps it.
 // While the agent chip shows, the message is not shown: the agent's words are in the chip's dropdown.
@@ -93,13 +93,16 @@ Item {
     // handed out by priority: the chips first, then the whole message, then the command box, then the tab
     readonly property bool chipsNarrow: room < chipsExtra
     readonly property real afterChips: room - (chipsNarrow ? 0 : chipsExtra)
-    // the message with what follows it (Play · Show in folder after an export), whole or not at all
+    // the message with what follows it (Play · Show in folder after an export), whole or not at all. It has a FIXED slot
+    // (`messageSlot`, there whether or not a message shows), so a message coming or going never moves the command
+    // box, the chips or Export: the slot is what is left after the command box's own minimum (150), at most 320 px.
     readonly property real messageNeed: bridge && bridge.status && !agentShown
-                                        ? sp + message.implicitWidth + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
+                                        ? message.implicitWidth + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
+    readonly property real messageSlot: Math.max(0, Math.min(320, afterChips - (150 - Theme.button) - sp))
     readonly property real countSaving: countShort.text !== "" ? countFull.advanceWidth - countShort.advanceWidth : 0
-    readonly property bool messageShown: messageNeed > 0 && messageNeed <= afterChips + countSaving
-    readonly property bool countShortened: messageShown && messageNeed > afterChips     // "Saved" alone, for the message
-    readonly property real afterMessage: afterChips - (messageShown ? messageNeed - (countShortened ? countSaving : 0) : 0)
+    readonly property bool messageShown: messageNeed > 0 && messageSlot > 0 && messageNeed <= messageSlot + countSaving
+    readonly property bool countShortened: messageShown && messageNeed > messageSlot     // "Saved" alone, for the message
+    readonly property real afterMessage: afterChips - (messageSlot > 0 ? sp + messageSlot : 0)
     readonly property real commandWidth: afterMessage >= 150 - Theme.button ? Math.min(280, Theme.button + afterMessage) : Theme.button
     readonly property real afterCommand: afterMessage - (commandWidth - Theme.button)
     readonly property real tabFloor: documentName !== "" ? Math.min(tab.implicitWidth, 160) : 0      // the name's own room
@@ -161,26 +164,32 @@ Item {
         id: rightGroup
         anchors.right: parent.right; anchors.rightMargin: bar.edgeRight; anchors.verticalCenter: parent.verticalCenter
         spacing: bar.sp
-        Row {   // the message: its own piece, apart from the save state (they never read as one line)
+        Item {   // the message's fixed slot (see messageSlot): the message sits at its right edge, next to "Saved"
+            id: messageSlotItem
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.gap
-            visible: bar.messageShown     // (not message.visible: a child's reads its parent's)
-            Text {  // the last thing that happened (or what failed): whole or not at all, never "…"
-                id: message
-                visible: bar.messageShown
-                anchors.verticalCenter: parent.verticalCenter
-                text: bar.bridge.status || ""
-                color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
-                font.family: uiFont; font.pixelSize: Theme.label
-            }
-            Row {   // after an export: "Exported Main.mp4 · Play · Show in folder ·" (until the next message)
-                id: links
-                visible: bar.doneLinks && message.visible
-                anchors.verticalCenter: parent.verticalCenter
+            visible: bar.messageSlot > 0
+            width: bar.messageSlot + (bar.countShortened ? bar.countSaving : 0); height: Theme.button
+            Row {
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.gap
-                BarLink { text: "Play"; onClicked: bar.job.play() }
-                Dot { }
-                BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
+                visible: bar.messageShown     // (not message.visible: a child's reads its parent's)
+                Text {  // the last thing that happened (or what failed): whole or not at all, never "…"
+                    id: message
+                    visible: bar.messageShown
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: bar.bridge.status || ""
+                    color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
+                    font.family: uiFont; font.pixelSize: Theme.label
+                }
+                Row {   // after an export: "Exported Main.mp4 · Play · Show in folder ·" (until the next message)
+                    id: links
+                    visible: bar.doneLinks && message.visible
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.gap
+                    BarLink { text: "Play"; onClicked: bar.job.play() }
+                    Dot { }
+                    BarLink { text: "Show in folder"; onClicked: bar.job.showInFolder() }
+                }
             }
         }
         Text {  // "Saved · 14 changes" ("Saved" with none, or while a message needs the room): its own piece, the door
