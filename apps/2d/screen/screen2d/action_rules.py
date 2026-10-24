@@ -12,7 +12,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied · styled (texts following a style). Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
-screen can select what was made) · $at (the playhead in the first layer's own seconds) · $top (the top of the stack) ·
+screen can select what was made) · $at (the playhead in the first layer's own seconds) · $ids (the picked layers) · $top (the top of the stack) ·
 $first (the first picked) · $copied (the layer whose style was copied). Anything else is passed as it is.
 """
 from __future__ import annotations
@@ -21,6 +21,7 @@ from rostrum2d import fields as F
 from rostrum2d.frame import TYPE as FRAME
 from rostrum2d.names import display_name
 from rostrum2d.ops_group import HOLDERS, _why_not
+from rostrum2d.ops_painting import why_not_from
 from rostrum2d.rig.bodynames import bodylike
 from rostrum2d.rig.guess import guessable
 from rostrum2d.rig.mirror import pairs as mirror_pairs
@@ -87,6 +88,7 @@ class Facts:
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
+            "paint_makeable": self.count == 1 and why_not_from(self.items[0]) is None,     # Make painted fill (ops_painting.py)
             **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
             **pin_depth.facts(self)}                        # Pin to frame / Unpin from frame (pin_depth.py)
 
@@ -125,6 +127,8 @@ def _arg(v, f: Facts, at):
         return counted(index(f.doc.data, f.doc.kind.lists), rest)
     if name == "at":
         return at(f.ids[0])
+    if name == "ids":
+        return list(f.ids)
     if name in ("top", "first", "copied"):
         return {"top": f.stack[-1], "first": f.ids[0], "copied": f.copied}[name]
     raise ValueError(f"unknown argument rule {v!r} in the action list")

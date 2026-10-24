@@ -63,6 +63,8 @@ def facts(item: dict, doc=None) -> dict:
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item,      # rawSpring: keys.spring
                 "rawSpring": not {"bounce", "speed"} & set(item)}
     out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
+    if item.get("fillType") == "painted" and doc is not None:     # Start at drawing: its painting draws each frame
+        out["paintingBoils"] = _boils(doc, item.get("fillPainting", ""))
     if item.get("type") == "camera":                       # frame.home is offered only while the frame is away
         from .ops_frame_fit import away
         out["frameAway"] = away(item)
@@ -75,6 +77,11 @@ def facts(item: dict, doc=None) -> dict:
         out["underCamera"] = bool(parent) and parent.get("type") == "comp" \
             and any(c.get("type") == "camera" for c in parent.get("layers", []))
     return out
+
+
+def _boils(doc, painting_id: str) -> bool:
+    painting = doc.item(painting_id) if painting_id else None
+    return bool(painting) and bool(painting.get("eachFrame")) and len(painting.get("frames", [])) > 1
 
 
 def _has_italic(family: str) -> bool:

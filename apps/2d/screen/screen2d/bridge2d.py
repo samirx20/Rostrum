@@ -369,11 +369,14 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
             self.shownChanged.emit()
 
     def _pictures_made(self, token):
-        """The paint pictures of the state described last are made: described again (now with them) and drawn."""
+        """The paint pictures of the state described last are made: described again (now with them) and drawn. A scene with
+        paintings has its rows read again too: the Fill row and its picker show a painting's picture (fill_rows.picture)."""
         if token is self._waiting and token is self.doc.data:
             self._waiting, self._scene = None, None
             if self.held_view is None:
                 self._show()
+            if self.doc.data.get("paintings"):
+                self._refresh()
 
     def _on_frame(self, serial, tag):
         with STATS.stage("picture.arrives"):

@@ -31,7 +31,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -270,7 +270,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shape-star", ["--sample"], ["shape star 700 300 1000 600"]),
         ("shape-arrow", ["--sample"], ["shape arrow 600 700 1100 500"]),
         ("fill-picture-picker", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:picture",
-                                               f"picturefile {PICTURE}", "clickobj picturePaint:fit 0.62 0.5"]),
+                                               f"picturefile {PICTURE}", "clickobj paintFit 0.55 0.5"]),
+        # painted fill P3: the picker's Painted (a new painting in two clicks; the paintings to choose from; Tile with every
+        # row: Scale, Offset, Rotation, Drift, Colour under it, Blend, Opacity); right-click › Make painted fill
+        ("fill-painted-new", ["--sample"], ["select card", "clickobj swatch", "clickobj fillType:painted"]),
+        ("fill-painted-choose", ["--sample"], ["select card", "run layer:painted_new", "shape rect 300 700 600 850",
+                                               "clickobj swatch", "clickobj fillType:painted"]),
+        ("fill-painted-tile-rows", ["--sample"], ["select card", "run layer:painted_new", "clickobj swatch", "clickobj paintFit 0.55 0.5"]),
+        ("make-painted-fill-menu", ["--sample"], [*PAINTED, "tool move", "canvasmenu"]),
         ("fill-solid-opacity", ["--sample"], ["select card", "clickobj swatch", "clickobj alphaStrip 0.4 0.5"]),   # P50: a solid colour's opacity strip
         ("fill-gradient-handles", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:linear"]),
         ("paint-long-target", long(), [*busy, "select card", "tool draw"]),

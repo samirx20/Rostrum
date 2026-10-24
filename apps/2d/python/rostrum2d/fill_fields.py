@@ -113,7 +113,8 @@ PICTURE = [
                  valid_when={"all": [_RASTER, {"not": {"is": ["fillUnder", None]}}]},
                  labels={b: b.capitalize() for b in BLENDS}, help="How the picture or painting meets the colour under it"),
     Param.number("fillPhase", label="Start at drawing", group=G, min=0, max=10000, step=1, integer=True, default=0,
-                 importance="secondary", valid_when=_PAINTED, help="Which drawing of a painting that draws each frame this layer starts on"),
+                 importance="secondary", valid_when={"all": [_PAINTED, {"fact": "paintingBoils"}]},
+                 help="Which drawing of a painting that draws each frame this layer starts on"),
 ]
 RASTER_ONLY = {"fillPainting", "fillPhase"}
 PICTURE_NAMES = {p.name for p in PICTURE}

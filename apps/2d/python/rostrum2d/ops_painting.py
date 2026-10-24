@@ -45,6 +45,11 @@ def _fillable(ctx, t: str):
 
 
 def _use(ctx, t: str, painting_id: str, fit: str):
+    """Lay the painting on a layer. Its solid colour, if it had one, stays as the colour under it: a new, blank painting
+    leaves the layer looking as it did until it is painted on."""
+    kept = fill_paint.colour_kept(ctx.item(t))
+    if kept:
+        ctx.set(t, "fillUnder", kept)
     ctx.set(t, "filled", True)
     ctx.set(t, "fillType", "painted")
     ctx.set(t, "fillPainting", painting_id)
@@ -60,20 +65,12 @@ def _copy_drawings(ctx, source: dict, painting_id: str):
         ctx.insert(painting_id, "frames", frame)
 
 
-def _copy_drawings(ctx, source: dict, painting_id: str):
-    """The source's drawings copied into the painting, one at a time (each insert gives the next its own ids)."""
-    for f in source.get("frames", []):
-        frame = copy.deepcopy(f)
-        frame["id"] = ctx.new_id("frame")
-        _copy_ids(ctx, frame)
-        ctx.insert(painting_id, "frames", frame)
-
-
 @R.operation("painting.add", "Make a painting of this scene: a canvas (w × h px, up to 8192) that shapes and paths can use as "
              "their fill, edited once for every layer using it. Blank (one paint layer, Ink); or `from` a layer's own paint "
              "(Make painted fill: its paint MOVES into the painting and the layer's fill becomes it, looking the same; the "
              "layer's solid fill, if it has one, becomes its Colour under it) or from a drawing layer (its drawings are COPIED; "
-             "the drawing stays). `onto` lays it as the fill of those layers (fit: stretch, fill, fit or tile).",
+             "the drawing stays). `onto` lays it as the fill of those layers (fit: stretch, fill, fit or tile); a layer's solid "
+             "colour stays as its Colour under it, so a blank painting leaves it looking as it did.",
              label="New painting",
              params=[ID, NAME,
                      Param.number("w", label="Width", min=1, max=8192, integer=True, unit="px",
@@ -120,35 +117,37 @@ def painting_add(ctx, targets, args):
         ctx.insert(pid, "frames", shared_paints.blank_frame(ctx, {}, 0))
     elif src["type"] == "drawing":
         _copy_drawings(ctx, src, pid)
-    else:                                # its own paint moves in; its solid fill stays visible as the colour under it
-        under = src.get("fill") if src.get("filled", True) and fill_paint.kind_of(src) == "solid" else None
+    else:                                # its own paint moves in (its solid fill stays visible as the colour under it: _use)
         for f in list(src.get("frames", [])):
             ctx.move(f["id"], pid, "frames")
         for field, value in (("paintW", 0), ("paintH", 0), ("eachFrame", False)):
             ctx.set(src["id"], field, value)
-        if under:
-            ctx.set(src["id"], "fillUnder", under)
     for t in onto:
         _use(ctx, t, pid, "stretch" if src is not None and t == src["id"] else args.get("fit", "stretch"))
+
+
+def why_not_from(src: dict) -> tuple[str, str] | None:
+    """(why, hint) a painted fill can't be made from this layer, or None when it can (Make painted fill is offered then)."""
+    if src["type"] == "drawing":
+        return None
+    if src["type"] not in FILLABLE:
+        return f"is a {src['type']}: Make painted fill takes a shape or path with its own paint, or a drawing layer", ""
+    if not src.get("frames") or not src.get("paintW"):
+        return "has no paint of its own to make a painted fill from", ""
+    if not src.get("paintInside", True):
+        return "has paint that shows outside its outline; a fill is always inside it", "Turn on Inside the outline (paintInside) first."
+    if fill_paint.kind_of(src) not in ("none", "solid"):
+        return f"has a {fill_paint.kind_of(src)} fill under its paint, which a painted fill would replace", "Make its fill solid or none first."
+    return None
 
 
 def _source_size(ctx, src: dict, args: dict) -> tuple[int, int]:
     """The painting's size from what it is made from, refusing (in words) what a painted fill can't be made from."""
     if {"w", "h"} & set(args):
         ctx.fail(codes.BAD_ARGUMENT, "w / h", "come from `from`, not from the call", hint="Leave them out, then painting.set the size.")
-    if src["type"] == "drawing":
-        return D.canvas_size(src)
-    if src["type"] not in FILLABLE:
-        ctx.fail(codes.BAD_ARGUMENT, f'from "{src["id"]}"', f"is a {src['type']}: Make painted fill takes a shape or path with its own "
-                 "paint, or a drawing layer")
-    if not src.get("frames") or not src.get("paintW"):
-        ctx.fail(codes.BAD_ARGUMENT, f'from "{src["id"]}"', "has no paint of its own to make a painted fill from")
-    if not src.get("paintInside", True):
-        ctx.fail(codes.BAD_ARGUMENT, f'from "{src["id"]}"', "has paint that shows outside its outline; a fill is always inside it",
-                 hint="Turn on Inside the outline (paintInside) first.")
-    if fill_paint.kind_of(src) not in ("none", "solid"):
-        ctx.fail(codes.BAD_ARGUMENT, f'from "{src["id"]}"', f'has a {fill_paint.kind_of(src)} fill under its paint, which a painted '
-                 "fill would replace", hint="Make its fill solid or none first.")
+    why = why_not_from(src)
+    if why:
+        ctx.fail(codes.BAD_ARGUMENT, f'from "{src["id"]}"', why[0], hint=why[1] or None)
     return D.canvas_size(src)
 
 

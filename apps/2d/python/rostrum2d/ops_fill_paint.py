@@ -41,7 +41,8 @@ def parse_stop(ctx, text: str) -> dict:
              "(file, fit fill / fit / tile / stretch, scale) clipped to a shape or path; or type \"painted\": a painting of the "
              "scene (painting.add; `painting` its id) with the same fit and scale. A picture or painted fill also takes "
              "offsetX / offsetY (px), rotation and driftX / driftY (px per second; tile only), `under` (a colour drawn under it, "
-             "\"\" = none) with its blend, and `opacity`; a painted fill's `phase` is the drawing it starts on. "
+             "\"\" = none; a solid layer given a painting keeps its colour there) with its blend, and `opacity`; a painted fill's "
+             "`phase` is the drawing it starts on. "
              "Each stop's colour and position animate with key.add on the stop; an animated one changes at `at` (a key there).",
              target=FF.OWNERS, label="Fill",
              params=[Param.choice("type", ["none", *FF.TYPES], label="Fill type"),
@@ -70,6 +71,7 @@ def fill_set(ctx, targets, args):
     for t in targets:
         item = ctx.item(t)
         kind = args.get("type") or fill_paint.kind_of(item)
+        kept = fill_paint.colour_kept(item) if kind == "painted" and "under" not in args else None    # as painting.add does
         if kind == "none":
             if item["type"] == "text":
                 ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', "can't have no fill (its letters would vanish); hide it or set its opacity")
@@ -87,6 +89,8 @@ def fill_set(ctx, targets, args):
         if kind in ("picture", "painted") and item["type"] == "text":
             ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', f"takes no {kind} fill yet; use a colour or a gradient")
         _raster(ctx, item, kind, args)
+        if kept and not keys_of(item, "fillUnder"):
+            ctx.set(t, "fillUnder", kept)
         for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy"), ("fillPicture", "picture"),
                             *((f, s) for f, s in fill_paint.GEOMETRY.items())):
             if name in args:

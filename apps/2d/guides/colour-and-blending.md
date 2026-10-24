@@ -53,6 +53,19 @@ card.key("fillOpacity", {0.0: 0.0, 1.0: 0.4})
 - Preview and export draw it the same way, with the same engine.
 - A picture fill and a painted fill (a painting of the scene, [drawing.md](drawing.md) part 9) are not solid: their `fillOpacity` is the fill's own, and `layer.fill {opacity}` takes it for a picture or painted fill too.
 
+## A colour under a picture or painting
+
+A picture or painted fill can have a **Colour under it**: drawn inside the outline, under the picture, so the paper
+shows where nothing is painted. Its **Blend** says how the picture meets that colour: **Normal**, **Multiply**
+(darkens: ink on paper), **Screen** (lightens) or **Overlay**.
+
+- On the screen: in the Fill picker, under Fit, **Colour under it** reads "no colour +" until you set one; the "+"
+  starts it from the layer's own colour. **Blend** shows once there is a colour. Right-click › Reset takes the colour
+  away. Both colour and opacity key like any setting (their diamonds).
+- A solid layer given a painting keeps its colour there, so a new, blank painting changes nothing you see until you
+  paint on it.
+- Agents: `layer.fill {target, under: "#f2e6d0", blend: "multiply"}` (`under: ""` = none); an animated colour needs `at`.
+
 ## Colour effects
 
 Pictures, videos, 3D renders, drawings, groups and rigs have four colour effects (a shape or path too while it is filled

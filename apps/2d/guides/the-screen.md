@@ -74,9 +74,9 @@ The whole list: Group, Ungroup, Crop to a box, Auto layout, Make swap set, Make 
 3. **Find a setting** (**Ctrl+F**) finds any setting by its name or a word of what it does ("opacity", "angle", "gradient"): pick one from the list and its group opens and it is shown. A word that names an effect you have not added yet, such as "blur", shows a line **Add Blur**.
 4. It shows only the settings that apply. Turn something on and the settings that go with it appear; turn it off and they go away. Nothing sits there greyed out.
 5. A diamond at the right of a setting is its key mark (see [first-animation.md](first-animation.md)). **Position** and **Size** have one diamond for both values: it keys X and Y (W and H) together, as one step.
-6. **Colour fields** are a swatch plus a hex box: type `#rrggbb`, or click the swatch for the picker. A fill's picker has six kinds: no fill, solid, linear, radial and angular gradient, and **Picture** (pick a file, then **Fill**, **Fit**, **Tile** or **Stretch**, and a scale). A shape, text or path can all be filled with a picture.
+6. **Colour fields** are a swatch plus a hex box: type `#rrggbb`, or click the swatch for the picker. A fill's picker has seven kinds: no fill, solid, linear, radial and angular gradient, **Picture** (pick a file) and, on a shape or path, **Painted** (a painting of the scene that many layers can share: [drawing.md](drawing.md) part 9). Under a picture or painting: **Fill**, **Fit**, **Tile** or **Stretch**, then only the rows that apply: **Scale** and **Offset** (not with Stretch), **Rotation** and **Drift** (Tile only), **Colour under it** ("no colour +" until you set one; right-click › Reset takes it away), **Blend** (once there is a colour under it) and **Opacity**. Their diamonds key them like any setting. The Fill row then shows the picture, or the painting's picture and name.
 
-   ![A star's settings, with the fill picker open](pictures/fill-picker.png)
+   ![A star's settings, with the fill picker open on a picture](pictures/fill-picker.png)
 
 7. With the Brush on, the same panel is headed "Painting" and shows the brush instead (see [drawing.md](drawing.md)).
 

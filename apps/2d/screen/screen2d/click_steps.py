@@ -1,6 +1,6 @@
 """Scripted steps that click any control the way a hand would (QTest, the real mouse path), found by its objectName:
     clickobj <objectName> [fx fy] [right]   the control's point at fractions fx, fy of its box (default its centre);
-                                       `right`: a right-click
+                                       `right`: a right-click; prints how long the click's work took
     hoverobj <objectName> [ms]         the pointer rests on the control (default 700 ms: past the hover-preview delay, then the preview is drawn)
     typekeys <text>                    type it on the keyboard into what has focus (_ for a space)
     dragobj <objectName> fx0 fy0 fx1 fy1   press at one point of the control's box, move, release at the other
@@ -51,9 +51,15 @@ def do_click_step(win, word, rest, step):
         return
     if word == "clickobj":
         right = rest[-1] == "right"
-        p = at(*([w for w in rest[1:3] if w != "right"] or (0.5, 0.5)))
+        win.grabWindow()                      # a window kept behind the person's work may not have drawn (laid out) since
+        p = at(*([w for w in rest[1:3] if w != "right"] or (0.5, 0.5)))      # the last change: a hand sees it drawn
         QTest.mouseMove(win, p)
+        import time
+        from PySide6.QtCore import QCoreApplication
+        t0 = time.perf_counter()
         QTest.mouseClick(win, Qt.RightButton if right else Qt.LeftButton, Qt.NoModifier, p)
+        QCoreApplication.processEvents()          # what the click set off (the change, the rows) is handled
+        print(f"clickobj {rest[0]}: {(time.perf_counter() - t0) * 1000:.1f} ms", flush=True)
     else:
         a, b = at(*rest[1:3]), at(*rest[3:5])
         QTest.mouseMove(win, a)

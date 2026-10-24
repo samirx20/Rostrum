@@ -127,6 +127,11 @@ class ActionSlots(SlotMixin):
         self._hub.run(key)                          # not valid now: the hub says why in the status
         return entry is not None
 
+    @Slot(str)
+    def rowAction(self, key):
+        """A settings row's own action (the Fill picker's + New painting: layer:painted_new), as from Ctrl+K."""
+        self.run(key)
+
     @Slot(str, result=bool)
     def layerCommand(self, how):
         """A key's or a script's action by job (front, delete, group …): runs if valid now, else says why. Keys picked
