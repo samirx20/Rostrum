@@ -10,7 +10,7 @@ import math
 from . import aim, fields as F
 
 FOV = 60.0                                            # vertical, degrees
-AIMABLE = ("rect", "disk", "strip", "sphere", "distant")
+AIMABLE = ("rect", "disk", "strip", "sphere", "spot", "distant")
 CAMERA_ID = "rostrum_through_light"
 _SENT = [p for p in F.FIELDS["camera"] if p.name not in ("aim", "aimX", "aimY", "aimZ", "aimItem")]
 
@@ -51,7 +51,8 @@ def light_view(scene: dict, light: str, frame: int) -> dict:
     forward = [x / n for x in ahead]
     along = -sum(e * f for e, f in zip(eye, forward))                       # nearest the world origin on the line
     dist = along if along > 1e-3 else 1.0
-    return {"eye": eye, "target": [e + dist * f for e, f in zip(eye, forward)], "fov": FOV}
+    fov = min(max(v["cone"] * 1.25, 10.0), 150.0) if v["kind"] == "spot" else FOV    # a spot: its whole pool in view
+    return {"eye": eye, "target": [e + dist * f for e, f in zip(eye, forward)], "fov": fov}
 
 
 def as_camera(scene: dict, light: str, frame: int, aspect: float) -> dict:
@@ -59,7 +60,7 @@ def as_camera(scene: dict, light: str, frame: int, aspect: float) -> dict:
     view = light_view(scene, light, frame)
     rx, ry, rz = aim.aim_rotation(aim.IDENTITY, view["eye"], view["target"])
     sensor = 36.0
-    focal = sensor / max(aspect, 1e-6) / (2 * math.tan(math.radians(FOV / 2)))
+    focal = sensor / max(aspect, 1e-6) / (2 * math.tan(math.radians(view["fov"] / 2)))
     props = {p.name: p.default for p in _SENT}
     props.update(dict(zip(("x", "y", "z"), view["eye"])), rx=rx, ry=ry, rz=rz, sensorWidth=sensor, focalLength=focal)
     return {"id": CAMERA_ID, "type": "camera", "props": {k: round(x, 6) if isinstance(x, float) else x

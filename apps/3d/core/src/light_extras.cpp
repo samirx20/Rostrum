@@ -9,6 +9,7 @@
 #include <pxr/usd/usdLux/domeLight_1.h>
 #include <pxr/usd/usdLux/lightAPI.h>
 #include <pxr/usd/usdLux/shapingAPI.h>
+#include <pxr/usd/usdLux/sphereLight.h>
 
 #include <sstream>
 
@@ -106,8 +107,9 @@ void publish_light_extras(const UsdStageRefPtr& stage) {
     const SdfPath path = p.GetPath();
     bool on = false;
     if (read(p, kCard, &on) && on) t.cards.insert(path);
-    float cone = 180;
-    if (p.HasAPI<UsdLuxShapingAPI>() && UsdLuxShapingAPI(p).GetShapingConeAngleAttr().Get(&cone) && cone < 90) {
+    float cone = 180;  // a panel's spread; a spot's own cone is read by both renderers as it is (lights_cameras.cpp)
+    if (!p.IsA<UsdLuxSphereLight>() && p.HasAPI<UsdLuxShapingAPI>() &&
+        UsdLuxShapingAPI(p).GetShapingConeAngleAttr().Get(&cone) && cone < 90) {
       t.coneDeg[path] = cone;
       t.stormNotes.push_back(id_of(path) + ": spread (the quick view throws the light all around; Cycles narrows it)");
     }
