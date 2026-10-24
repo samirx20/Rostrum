@@ -30,10 +30,17 @@ Popover {
                 id: row
                 required property var modelData
                 objectName: "pose_" + modelData.id
-                width: parent.width; height: Theme.rowDense; radius: Theme.radiusCtl
+                width: parent.width; height: modelData.thumb !== "" ? 52 : Theme.rowDense; radius: Theme.radiusCtl
                 color: hover.hovered ? Theme.hover : "transparent"
                 HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-                Text { anchors { left: parent.left; leftMargin: Theme.gap; right: del.left; verticalCenter: parent.verticalCenter }
+                Image {   // the picture on screen when it was saved (pose_thumbs.py); none for a pose an agent saved
+                    id: pic
+                    visible: row.modelData.thumb !== ""
+                    anchors { left: parent.left; leftMargin: 4; verticalCenter: parent.verticalCenter }
+                    width: 72; height: 40; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: false
+                    source: row.modelData.thumb
+                }
+                Text { anchors { left: pic.visible ? pic.right : parent.left; leftMargin: Theme.gap; right: del.left; verticalCenter: parent.verticalCenter }
                        text: row.modelData.name; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
                 MouseArea {
                     anchors.fill: parent

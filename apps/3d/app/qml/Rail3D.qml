@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC
 import QtQuick.Dialogs
 import RostrumKit
 
@@ -35,19 +36,26 @@ ToolRail {
         { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
     ]
-    // Poses and Onion skin open their own small panels beside their buttons (PosesPanel.qml, OnionPanel.qml)
-    panelOpen: posesPanel.visible || onionPanel.visible
+    // Poses and Onion skin each open and close on their own (PosesPanel.qml, OnionPanel.qml): their button toggles its panel,
+    // Esc closes the one with the keys, and clicking elsewhere leaves them open (you work in the viewport with the ghosts on).
+    // `panelOpen` stays false so the kit's rail never closes one for the other's button.
+    function panelOf(id) { return id === "poses" ? posesPanel : id === "onion" ? onionPanel : null }
     onPanelRequested: (g) => rail.openPanel(g.id)
-    onPanelCloseRequested: { posesPanel.close(); onionPanel.close() }
-    function openPanel(id) {
-        const pop = id === "poses" ? posesPanel : id === "onion" ? onionPanel : null
+    function openPanel(id) {        // the scripted `panel <id>` step, P, and the buttons: open it, or close it when it is open
+        const pop = panelOf(id)
         if (!pop) return
-        (pop === posesPanel ? onionPanel : posesPanel).close()
+        if (pop.visible) return pop.close()
         const b = rail.buttonOf(id)       // beside the rail, top edges with the button (never over the rail)
-        pop.openAtPoint(rail.mapToItem(null, rail.width + Theme.gap, 0).x, b ? b.mapToItem(null, 0, 0).y : rail.mapToItem(null, 0, 0).y)
+        const x = rail.mapToItem(null, rail.width + Theme.gap, 0).x
+        const beside = pop === onionPanel && posesPanel.visible ? posesPanel.width + Theme.gap : 0     // both open: side by side
+        pop.openAtPoint(x + beside, b ? b.mapToItem(null, 0, 0).y : rail.mapToItem(null, 0, 0).y)
     }
-    PosesPanel { id: posesPanel }
-    OnionPanel { id: onionPanel }
+    PosesPanel { id: posesPanel; closePolicy: QQC.Popup.NoAutoClose }
+    OnionPanel { id: onionPanel; closePolicy: QQC.Popup.NoAutoClose }
+    Connections {       // they belong to the Animate page: leaving it closes them
+        target: backend
+        function onPageChanged() { if (backend.page !== "animate") { posesPanel.close(); onionPanel.close() } }
+    }
     // a shape waits for a click in the viewport (it lands on the surface there); lights and cameras are added at once
     onPicked: (e) => {
         if (e.act === "mesh:svg") svgDialog.open()

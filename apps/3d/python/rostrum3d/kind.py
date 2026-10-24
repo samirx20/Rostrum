@@ -41,7 +41,7 @@ def facts(item: dict) -> dict:
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item}
     if item.get("type") in F.ITEMS:
-        return {"animated": F.animated_fact(item)}
+        return {"animated": F.animated_fact(item), "animating": True}    # a screen overrides animating with its page
     return {}
 
 
@@ -112,6 +112,10 @@ def check(data: dict) -> list[str]:
                 elif item["aimItem"] == item["id"]:
                     problems.append(f'{item["id"]}: can\'t aim at itself')
                 _ref(problems, item, "aimItem", item.get("aimItem"), items, "item")
+            for ref, word in (("follow", "follow"), ("stick", "stick to")):         # follow.py's constraints
+                if item.get(ref) == item["id"]:
+                    problems.append(f"{item['id']}: can't {word} itself")
+                _ref(problems, item, ref, item.get(ref), items, "item")
         if t == "light" and item.get("kind") != "dome":     # light linking: every named id a real item, not itself
             for linked in item.get("lightsOnly", "").split():
                 _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
@@ -132,5 +136,5 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
-from . import ops_combine, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_combine, ops_follow, ops_items, ops_keys, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene  # noqa: E402,F401  (they register on REGISTRY)
 from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations)

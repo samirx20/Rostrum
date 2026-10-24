@@ -9,6 +9,8 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from rostrum3d import fields as F
 
+from . import pose_thumbs
+
 BREAKDOWN = 0.5          # Shift+click: halfway between the neighbouring keys
 
 
@@ -26,11 +28,12 @@ class Poses(QObject):
 
     @Property("QVariantList", notify=changed)
     def saved(self):
-        """[{id, name, holds}] of the saved poses; `holds` says what it keys ("lid, bud_1 · 6 settings")."""
+        """[{id, name, holds, thumb}] of the saved poses; `holds` says what it keys ("lid, bud_1 · 6 settings"), `thumb`
+        is its small picture's file URL ("" for none: pose_thumbs.py)."""
         out = []
         for p in self.b.doc.data.get("poses", []):
             items = list(dict.fromkeys(f.rpartition(".")[0] for f in p["fields"]))
-            out.append({"id": p["id"], "name": p.get("name") or p["id"],
+            out.append({"id": p["id"], "name": p.get("name") or p["id"], "thumb": pose_thumbs.url(self.b.doc, p["id"]),
                         "holds": f"{', '.join(items[:3])}{' …' if len(items) > 3 else ''} · {len(p['fields'])} settings"})
         return out
 
@@ -48,7 +51,12 @@ class Poses(QObject):
         if not targets:
             return self.b.fail_line("Error: save pose: select the items the pose should hold first.")
         args = {"at": self.b.time, **({"name": name.strip()} if name.strip() else {})}
+        before = {p["id"] for p in self.b.doc.data.get("poses", [])}
         self._run({"op": "pose.save", "target": targets, "args": args}, "Save pose")
+        new = [p["id"] for p in self.b.doc.data.get("poses", []) if p["id"] not in before]
+        if new and self.b.viewport is not None:       # the picture on screen now is the pose's thumbnail
+            pose_thumbs.save(self.b.doc, new[0], self.b.viewport.provider.requestImage("", None, None))
+            self.changed.emit()
 
     @Slot(str, bool)
     def apply(self, pose_id, breakdown=False):

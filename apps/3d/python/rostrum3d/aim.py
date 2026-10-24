@@ -45,14 +45,25 @@ def point(m, p) -> list[float]:
     return [a + b for a, b in zip(_apply(m[0], p), m[1])]
 
 
+def det(m) -> float:
+    (a, b, c), (d, e, f), (g, h, i) = m
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+
+def invert(m):
+    """The inverse of a transform (L, t)."""
+    li = _inverse(m[0])
+    return li, [-x for x in _apply(li, m[1])]
+
+
 def _inverse(m):
     (a, b, c), (d, e, f), (g, h, i) = m
-    det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
-    if abs(det) < 1e-12:
-        raise ValueError("a parent is scaled to zero, so nothing inside it can aim")
-    return [[(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
-            [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
-            [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det]]
+    det_ = det(m)
+    if abs(det_) < 1e-12:
+        raise ValueError("a parent is scaled to zero, so nothing inside it can aim, follow or stick")
+    return [[(e * i - f * h) / det_, (c * h - b * i) / det_, (b * f - c * e) / det_],
+            [(f * g - d * i) / det_, (a * i - c * g) / det_, (c * d - a * f) / det_],
+            [(d * h - e * g) / det_, (b * g - a * h) / det_, (a * e - b * d) / det_]]
 
 
 def aim_rotation(parent, own_pos: list[float], target_world: list[float], roll: float = 0.0) -> tuple[float, float, float]:
@@ -65,10 +76,10 @@ def aim_rotation(parent, own_pos: list[float], target_world: list[float], roll: 
         raise ValueError("it is at the very point it aims at")
     rx = math.degrees(math.atan2(dy, math.hypot(dx, dz)))
     ry = math.degrees(math.atan2(-dx, -dz)) if math.hypot(dx, dz) > 1e-12 else 0.0
-    return (rx, ry, 0.0) if not roll else _euler(_mul(_rot(1, ry), _mul(_rot(0, rx), _rot(2, roll))))
+    return (rx, ry, 0.0) if not roll else euler(_mul(_rot(1, ry), _mul(_rot(0, rx), _rot(2, roll))))
 
 
-def _euler(m) -> tuple[float, float, float]:
+def euler(m) -> tuple[float, float, float]:
     """A rotation matrix as rx ry rz in the transform's order (X first, then Y, then Z)."""
     ry = math.asin(max(-1.0, min(1.0, -m[2][0])))
     if abs(m[2][0]) < 1 - 1e-9:

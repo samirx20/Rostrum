@@ -4,7 +4,7 @@ import "."
 // The one field box. Number, text, choice and colour fields are all this frame, so the box, the underline,
 // the hover and focus look, the padding and the text (font, size, left-aligned, vertically centred) are drawn
 // here only and cannot drift between fields. A field adds an optional `leading` item (colour swatch) and
-// `trailing` item (dropdown arrow), and says whether typing is allowed.
+// `trailing` item (dropdown arrow; it sits in a Row, so give it no anchors), and says whether typing is allowed.
 FocusScope {
     id: f
     property string text: ""

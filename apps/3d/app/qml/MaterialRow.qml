@@ -29,7 +29,7 @@ Item {
         atRest: root.has ? root.cur.label : "None"
         leading: Ball { size: Theme.field - 2 * Theme.grid; source: root.has ? root.cur.ball : ""
                         colour: root.has ? root.cur.colour : Theme.raised }
-        trailing: Chevron { anchors.centerIn: parent; color: Theme.fg2 }
+        trailing: Chevron { color: Theme.fg2 }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openPicker() }
     }
     Column {    // under the field, on its column
