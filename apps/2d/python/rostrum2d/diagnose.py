@@ -101,7 +101,7 @@ def _renders(items: dict, folder) -> list[dict]:
             if not st["ok"]:
                 out.append(_p("missing-render", item["id"], st["message"], "Render the 3D item (with EXR frames), or fix 3D item / Version"))
             elif st["stale"]:
-                out.append(_p("stale-render", item["id"], f'{item["id"]}: {st["message"]}', "Render it again in Rostrum3D; this layer follows the newest render"))
+                out.append(_p("stale-render", item["id"], f'{item["id"]}: {st["message"]}', "Render or Send to 2D again in Rostrum3D; this layer follows the newest render"))
     return out
 
 
