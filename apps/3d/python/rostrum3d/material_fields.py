@@ -58,3 +58,4 @@ MATERIAL = [
            "at each moment of the shot (held at the ends). Read-only: change it in Rostrum2D and render again"),
     N("thinFilm", "Thin film", "Coat", 0, 2000, 1, "nm", D, help="Rainbow coating thickness (anodizing, soap); 0 = off (Cycles)"),
 ]
+FINAL_ONLY = {"coatTint", "coatIor", "sheen", "anisotropy", "thinFilm"}   # Cycles only (see each help); the panel tags their rows "Final"

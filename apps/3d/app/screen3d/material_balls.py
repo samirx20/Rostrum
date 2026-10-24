@@ -1,7 +1,7 @@
 """Material balls (SPEC §6.1): a small rendered sphere per material setting, for the picker and the Materials list.
 
 Each ball is a real Storm picture through the balls' own engine and thread (BallRenderer: never the viewport's, so a
-ball can never upset the viewport's scene or its selection outline), lit by one fixed neutral set-up (two distant lights and the viewport's studio light, on a mid-grey
+ball can never upset the viewport's scene or its selection outline), lit by one fixed set-up (ball_studio.py: a key softbox up left, a soft fill, a rim behind, on a mid-grey
 background). A ball is made once per set of field values and engine build, then kept in memory and on disk
 (<cache>/3d/balls/<hash>.png, the oldest beyond CAP removed), and served to QML as image://ball/<hash>.
 
@@ -21,17 +21,17 @@ from PySide6.QtQuick import QQuickImageProvider
 from rostrum_core.cache import default_root, put_file
 from rostrum_gui.frames import PictureWorker, image_from_pixels
 
+from screen3d.ball_studio import LOOK as STUDIO_LOOK, studio_picture
 from rostrum3d import build, fields as F, run_source
 from rostrum3d.compile import describe
 from rostrum3d.runtime import find_exe
 
 SIZE, SPACING, CAP = 96, 6.0, 600            # pixels; metres between balls in one scene; files kept on disk
-SETUP_VERSION = 1                            # raise when the lighting or framing below changes: every ball redraws
+SETUP_VERSION = 2                            # raise when the lighting or framing below changes: every ball redraws
 STAGE = '''
-light("key", kind="distant", intensity=2.5, rx=-35, ry=-40)
-light("rim", kind="distant", intensity=1.2, rx=-15, ry=150)
+light("studio", kind="dome", texture="{picture}", seenByCamera=False)
 camera("cam", z=4)
-shot("s", camera="cam", fps=24, start=0, end=1, background="#3c3c3c")
+shot("s", camera="cam", fps=24, start=0, end=1, background="#808080")
 '''
 
 
@@ -56,13 +56,13 @@ def ball_values(values: dict) -> dict:
 
 
 def ball_key(values: dict, stamp: str) -> str:
-    recipe = {"v": SETUP_VERSION, "engine": stamp, "size": SIZE, "values": values}
+    recipe = {"v": SETUP_VERSION, "studio": STUDIO_LOOK, "engine": stamp, "size": SIZE, "values": values}
     return hashlib.sha256(json.dumps(recipe, sort_keys=True, default=str).encode()).hexdigest()[:24]
 
 
 def scene_of(batch: dict[str, dict]) -> dict:
     """One scene holding a ball per material (in a row along x), for `render_balls`."""
-    doc = run_source(STAGE, "balls.py")
+    doc = run_source(STAGE.format(picture=studio_picture(folder()).replace("\\", "/")), "balls.py")
     for i, (key, values) in enumerate(batch.items()):
         doc["materials"].append(build.make("material", f"m{i}", {**values, "name": key}, "material ball"))
         doc["items"].append(build.make("mesh", f"ball{i}", {"shape": "sphere", "radius": 0.5, "segments": 48,

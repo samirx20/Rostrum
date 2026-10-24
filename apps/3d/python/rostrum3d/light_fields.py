@@ -10,7 +10,9 @@ import dataclasses
 
 from .fields import ANY, C, CH, D, IS, N, NOT, S, T, TRANSFORM, X
 
-KINDS = ["rect", "disk", "strip", "sphere", "distant", "dome"]
+KINDS = ["rect", "disk", "strip", "sphere", "spot", "distant", "dome"]
+SPOT = IS("kind", "spot")
+KIND_DEFAULTS = {"spot": {"radius": 0.05}}  # a kind's own starting values where they differ (build.make): a small bulb
 PANELS = ANY("kind", "rect", "disk", "strip")
 DOME = IS("kind", "dome")
 NOT_DOME = NOT("kind", "dome")
@@ -28,13 +30,18 @@ def _away_on_domes(p):
 LIGHT = [
     CH("kind", KINDS, "Kind", "Light", "rect",
        help="rect / disk: soft panels shining along their −Z; strip: a long thin panel (strip softbox); sphere: a "
-            "bulb; distant: the sun; dome: the sky or an HDR around everything"),
+            "bulb; spot: a bulb in a cone, for a pool of light; distant: the sun; dome: the sky or an HDR around everything"),
     N("length", "Length", "Shape", 0, 1e3, 0.01, "m", when=IS("kind", "strip"), default=1.2,
       help="Along the light's X"),
     N("width", "Width", "Shape", 0, 1e3, 0.01, "m", when=ANY("kind", "rect", "strip"), default=1.0,
       help="Rect: along its X. Strip: across it (along its Y), e.g. 0.15"),
     N("height", "Height", "Shape", 0, 1e3, 0.01, "m", when=IS("kind", "rect"), default=1.0),
-    N("radius", "Radius", "Shape", 0, 1e3, 0.001, "m", when=ANY("kind", "disk", "sphere"), default=0.5),
+    N("radius", "Radius", "Shape", 0, 1e3, 0.001, "m", when=ANY("kind", "disk", "sphere", "spot"), default=0.5,
+      help="Disk: the panel's size. Sphere / spot: the bulb's size; smaller = crisper shadows (a new spot starts at 0.05)"),
+    N("cone", "Cone", "Shape", 1, 179, 0.1, "°", when=SPOT, default=40.0,
+      help="How wide the spot opens, edge to edge: smaller = a tighter pool of light"),
+    N("softness", "Softness", "Shape", 0, 1, 0.01, when=SPOT, default=0.25,
+      help="How gradually the edge of the pool fades: 0 = a hard edge, 1 = fading all the way from the middle"),
     N("angle", "Angle", "Shape", 0, 180, 0.01, "°", when=IS("kind", "distant"), default=0.53,
       help="How wide the sun looks; bigger = softer shadows (the real sun is 0.53°)"),
     X("texture", "HDR image", "Shape", "", when=DOME, help='Absolute .hdr / .exr path, or "" for a flat colour'),
@@ -61,3 +68,4 @@ LIGHT = [
     T("shadows", "Casts shadows", "Light", True, D),
 ] + [_away_on_domes(p) for p in TRANSFORM]
 STILL = {"spread"}                  # set once per light, like a mesh's shape
+FINAL_ONLY = {"spread", "lightsOnly"}   # Cycles only: the quick view can't show them (`notInQuickView`); the panel tags their rows "Final"

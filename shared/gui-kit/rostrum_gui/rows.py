@@ -22,7 +22,7 @@ from .pairs import pair_up, pair_valid
 
 RANK = {"primary": 0, "secondary": 1, "deep": 2}
 ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options", "min", "max", "step", "unit", "display",
-         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own")
+         "valid", "value", "anim", "words", "expr", "item", "minItems", "maxItems", "control", "filters", "fold", "open", "mixed", "default", "half", "letter", "more", "names", "own", "tag", "tagHelp")
 # more: "" for most rows; a choice whose list can grow names the last entry that adds one ("Load picture…"):
 # picking it opens a file dialog (filters) and calls bridge.loadChoice(id, path).
 # anim: "" (can't be animated), "still" (could be), "keyed" (has keys), "onkey" (has a key at the playhead).
@@ -33,6 +33,7 @@ ROLES = ("row", "id", "label", "type", "group", "importance", "help", "options",
 # A "pick" param (control "pick", a text naming one other item, "" = none) shows as a choice: "None" first, then what
 # the app's `choices(name)` gives (e.g. the layers a track matte may use). Never a bare text box of ids; with nothing
 # to pick (and nothing picked) the row is absent.
+# tag, tagHelp: optional (an app adds them to a param row): a small word after the label and its hover sentence.
 # own: a fold row of the kind's own group (sections.OWN): always open, never folded.
 # fold: the group a fold row opens; open: that group is open now (None when nothing inside applies: the row is absent).
 # names: the "folds" row's folded groups that apply, [{"group", "changed"}] in panel order (sections.py).

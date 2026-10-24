@@ -10,7 +10,7 @@ from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
 
-from . import draw
+from . import draw, picture_facts
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()
@@ -41,7 +41,8 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
 def look_frame(ctx, args):
     """One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you
     can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). through = a light's
-    id: see from the light instead (what it shines on is the middle of the picture)."""
+    id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped
+    (blown out) and which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known."""
     doc, info = doc_and_shot(ctx, args)
     frame, renderer = frame_of(ctx, info, args), renderer_of(args)
     w, h = size_of(info, args)
@@ -55,9 +56,10 @@ def look_frame(ctx, args):
         out = draw.render(ctx.tool, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
                           width=w, height=h, png=str(dest), **_settings(renderer))
         t = seconds(info, frame)
-        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.',
+        said, facts = picture_facts.line(dest, scene, renderer)
+        return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}',
                      {"time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
-                      "timing": out.get("timing", {}), "vram": out.get("vram", {})}, [dest], [dest], engine.take_notices())
+                      "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts}, [dest], [dest], engine.take_notices())
 
     return ctx.long(f'look_frame {info["id"]} f{frame}', job_fn)
 

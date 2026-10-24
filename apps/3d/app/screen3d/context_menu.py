@@ -31,6 +31,8 @@ def entries(doc, item_id: str, state: dict) -> list[dict]:
             out.append(_e("delete", "Delete", "Del"))
         if kind == "light":
             out.append(_e("look", "Look through"))
+            if item.get("kind", "rect") != "dome":
+                out.append(_e("link", "Pick what it lights"))
         if kind == "mesh":
             copied = state.get("copied", "")
             if copied and doc.has(copied) and item.get("material") != copied:

@@ -10,6 +10,7 @@
 #include <pxr/usd/usdLux/lightAPI.h>
 #include <pxr/usd/usdLux/rectLight.h>
 #include <pxr/usd/usdLux/shadowAPI.h>
+#include <pxr/usd/usdLux/shapingAPI.h>
 #include <pxr/usd/usdLux/sphereLight.h>
 
 #include "item_track.h"
@@ -51,6 +52,14 @@ UsdPrim define_light(Item& it, const SdfPath& path, const std::string& kind) {
     write_float(it, l.CreateRadiusAttr(), "radius");
     return l.GetPrim();
   }
+  if (kind == "spot") {  // a bulb in a cone (UsdLux: the shaping cone's half angle; Cycles: a spot light)
+    UsdLuxSphereLight l = UsdLuxSphereLight::Define(stage, path);
+    write_float(it, l.CreateRadiusAttr(), "radius");
+    UsdLuxShapingAPI shaping = UsdLuxShapingAPI::Apply(l.GetPrim());
+    write_float(it, shaping.CreateShapingConeAngleAttr(), "cone", 0.5);
+    write_float(it, shaping.CreateShapingConeSoftnessAttr(), "softness");
+    return l.GetPrim();
+  }
   if (kind == "distant") {
     UsdLuxDistantLight l = UsdLuxDistantLight::Define(stage, path);
     write_float(it, l.CreateAngleAttr(), "angle");
@@ -66,7 +75,7 @@ UsdPrim define_light(Item& it, const SdfPath& path, const std::string& kind) {
 }  // namespace
 
 void build_light(Item& it, const SdfPath& path) {
-  const std::string kind = it.props.one_of("kind", {"rect", "disk", "strip", "sphere", "distant", "dome"});
+  const std::string kind = it.props.one_of("kind", {"rect", "disk", "strip", "sphere", "spot", "distant", "dome"});
   const UsdPrim prim = define_light(it, path, kind);
   author_transform(it, prim);
   UsdLuxLightAPI light(prim);

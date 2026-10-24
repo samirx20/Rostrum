@@ -90,7 +90,11 @@ Rectangle {
             if (panning) viewport.pan(dx * vp.dpr, dy * vp.dpr)
             else viewport.orbit(dx, dy)
         }
-        onReleased: (m) => { if (!dragged && m.button === Qt.LeftButton) viewport.click(m.x * vp.dpr, m.y * vp.dpr) }
+        onReleased: (m) => {
+            if (dragged || m.button !== Qt.LeftButton) return
+            if (m.modifiers & Qt.AltModifier) viewport.altClick(m.x * vp.dpr, m.y * vp.dpr)   // place the light's highlight
+            else viewport.click(m.x * vp.dpr, m.y * vp.dpr)
+        }
         onDoubleClicked: (m) => { if (m.button === Qt.LeftButton && viewport.hasShot) viewport.home() }
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }

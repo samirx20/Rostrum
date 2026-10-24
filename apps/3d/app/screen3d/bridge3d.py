@@ -20,6 +20,8 @@ from rostrum_gui.selection_rules import click
 from rostrum_gui.markers import MarkerWatch
 
 from rostrum3d import fields as F
+from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
+from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
 
 from . import outline, route, scene_state
 from .action_preview3d import ActionPreview3D
@@ -33,6 +35,8 @@ from .render_job import RenderJob
 # The group each kind IS (SPEC §3.2, the lead's ruling): always open; every other group opens only when changed.
 sections.OWN.update({"mesh": "Shape", "import": "File", "part": "Part", "light": "Light", "camera": "Lens", "rig": "Rig",
                      "material": "Surface", "shot": "Shot", "key": "Key"})
+FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: their rows get a "Final" tag
+FINAL_TIP = "Shows in Final, not in the Quick view"
 PAGES = ("build", "animate", "render")
 
 
@@ -233,6 +237,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         type_, doc_items = self.doc.item(self._sel)["type"], None
         rows = [_without_data(r) for r in rows if not _is_data(type_, r)]     # an editable mesh's points: data, not controls
         for r in rows:
+            if r["row"] == "param" and r["id"] in FINAL_ONLY.get(type_, ()):
+                r["tag"], r["tagHelp"] = "Final", FINAL_TIP
             p = F.param(type_, r["id"]) if r["row"] == "param" else None
             if p is not None and p.type == "text" and p.kind:
                 doc_items = doc_items or list(self.doc.items())

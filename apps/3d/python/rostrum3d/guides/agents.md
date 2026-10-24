@@ -12,7 +12,11 @@ scene from the document each time you look. Imported USD files stay untouched; y
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
      `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look.
+     Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
+     Final applies ("Applied in Final: spread on rim, linking on rim").
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
+   - `edit_place_highlight` — put a light's highlight on what is at a pixel of that picture (`fresh=true` for a light just
+     added: distance and a starting brightness too). The lighting guide explains it.
    - `look_at` — "what is at this pixel?" Give x, y of the picture you were just shown (same width). It answers with the item id,
      the part, its material, the point in the world and the distance. Use it to find the id behind something that looks wrong,
      and to check a thing is where you meant (several points at once with `points`).

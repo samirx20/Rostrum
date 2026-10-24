@@ -46,6 +46,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("combine-selected", s, ["selectmany block vase", "action combine:subtract"]),
         ("combine-folded", s, ["selectmany block vase", "action combine:union", "fold combine_1"]),
         ("light-selected", s, ["select key"]),
+        ("light-final-only", s, ["select key", "set spread 60", "set lightsOnly block"]),   # the Final badges
+        ("context-light", s, ["context key"]),                                          # Pick what it lights
         ("dome-selected", s, ["select sky"]),
         ("camera-selected", s, ["select cam"]),
         ("camera-dof", s, ["select cam", "set dof true"]),

@@ -76,7 +76,7 @@ COMBINE_OPS = ["union", "subtract", "intersect"]
 SOLIDS = ("mesh", "combine")                                   # what a combine combines
 SHAPES = ["box", "sphere", "cylinder", "cone", "capsule", "plane", "disc", "torus", *OUTLINE_SHAPES]   # what can be added
 POLY = IS("shape", "poly")       # an editable mesh (ops_mesh.py): made by mesh.edit from any shape or combine, never added
-from .light_fields import KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
+from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, LIGHT, STILL as LIGHT_STILL  # noqa: E402  (needs the helpers above)
 from .material_fields import MATERIAL  # noqa: E402  (needs the helpers above)
 DOF = IS("dof", True)
 from .render_fields import RENDER  # noqa: E402  (needs the helpers above)
@@ -161,6 +161,7 @@ FIELDS: dict[str, list[Param]] = {
     "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
 }
 
+KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
 HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
@@ -179,8 +180,11 @@ def param(kind: str, name: str) -> Param | None:
     return next((p for p in FIELDS.get(kind, ()) if p.name == name), None)
 
 
-def defaults(kind: str) -> dict:
-    return {p.name: p.default for p in FIELDS[kind]}
+def defaults(kind: str, values: dict | None = None) -> dict:
+    """A new item's starting values; `values` (what it is made with) picks a kind's own ones (a spot's small bulb)."""
+    out = {p.name: p.default for p in FIELDS[kind]}
+    choice, table = KIND_DEFAULTS.get(kind, ("", {}))
+    return {**out, **table.get((values or {}).get(choice, out.get(choice)), {})}
 
 
 def animatable(kind: str) -> list[str]:
