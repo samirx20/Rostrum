@@ -295,7 +295,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                     '"color":"#ff7a59","opacity":1},{"at":1,"color":"#101820","opacity":1}]}',
                                                     "clickobj swatch"]),
         ("camera-ride", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "select path_1",
-                                       "add camera", 'set ridePath "path_1"', "group Ride"]),
+                                       'select frame', 'set ridePath "path_1"']),
         ("library-brand", long_project(), ["select title_card_for_the_summer_launch_film", "do layer:style_save",
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820",

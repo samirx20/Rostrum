@@ -107,10 +107,16 @@ class KeyMap:
     shared job adds another key for it (2D's Shift+2 for Fit). A hold key is a single key without Ctrl / Alt, so
     letting it go is never mistaken for letting go of a modifier."""
 
-    def __init__(self, app: str, app_keys=(), drop=()):
-        """`drop`: shared jobs this app has nothing behind (2D has no Preferences): no key, not in the key list."""
+    def __init__(self, app: str, app_keys=(), drop=(), words=None):
+        """`drop`: shared jobs this app has nothing behind (2D has no Preferences): no key, not in the key list.
+        `words`: {job: label}, what a shared key is called in this app's own words (Sound's "one frame" is a grid step)."""
         self.app = app
-        self._rows = [{**r, "keys": [normal(k) for k in r["keys"]], "where": "shared", "hold": False}
+        words = words or {}
+        unknown = [j for j in (*drop, *words) if j not in {r["job"] for r in SHARED}]
+        if unknown:
+            raise ValueError(f"{app}'s key map names shared jobs that do not exist: {', '.join(unknown)}")
+        self._rows = [{**r, "keys": [normal(k) for k in r["keys"]], "where": "shared", "hold": False,
+                       "label": words.get(r["job"], r["label"])}
                       for r in SHARED if r["job"] not in drop]
         jobs = {r["job"]: r for r in self._rows}
         self._by_key = _index(self._rows, "the shared key map")

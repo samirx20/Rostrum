@@ -23,7 +23,13 @@ SOUND_KEYS = [
     {"job": "editor_dock", "keys": ["E"], "label": "Editor dock", "area": "Panels"},
     {"job": "mixer_dock", "keys": ["X"], "label": "Mixer dock", "area": "Panels"},
 ]
-KEYMAP = KeyMap("RostrumSound", SOUND_KEYS)
+# the shared keys in a music app's words: the playhead moves by the grid (Grid 1/16), "previous thing" is a start, an end or a marker
+WORDS = {
+    "frame_back": "Playhead back one grid step", "frame_on": "Playhead on one grid step",
+    "frame_back_ten": "Playhead back ten grid steps", "frame_on_ten": "Playhead on ten grid steps",
+    "prev_event": "Previous start, end or marker", "next_event": "Next start, end or marker",
+}
+KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=("prev_beat", "next_beat"), words=WORDS)   # Sound is the beat grid: no beat keys of its own
 
 _NUDGE = {"": "grid", "_big": "bar", "_fine": "fine"}
 ROUTES = {

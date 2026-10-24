@@ -36,6 +36,7 @@ QQC.Popup {
             editable: true
             placeholder: "Type a command"
             onEntered: bar.runCurrent()
+            onEscaped: bar.close()                       // the field takes Esc for itself first: the list has to close with it
             onArrow: (d) => list.currentIndex = Math.max(0, Math.min(list.count - 1, list.currentIndex - d))
             Connections { target: search.input; function onTextEdited() { bar.refilter() } }
         }

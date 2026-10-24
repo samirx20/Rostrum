@@ -247,7 +247,8 @@ class ActionSlots:
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
-        rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""))
+        rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
+                              where=self._what(f))
         return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
                        and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
 

@@ -43,7 +43,8 @@ class Param:
     step: float | None = None
     unit: str = ""
     display: str = ""                # for type "number": how screens show it, one way per kind (the kit's ValueKinds.js):
-                                     # "percent" (1 = 100 %), "db" (a linear gain as dB), "pan" (−1..1 as L / C / R); "" = plain
+                                     # "percent" (1 = 100 %), "db" (a linear gain as dB), "pan" (−1..1 as L / C / R); "" = plain.
+                                     # For type "color": "swatch" = the swatch alone, no hex code beside it
     integer: bool = False
     options: list = field(default_factory=list)
     labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)
