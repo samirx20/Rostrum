@@ -14,7 +14,7 @@ from . import values as V
 
 N = V.N
 NO_STEM = "none"
-STEM_CHOSEN = {"any": [{"is": ["stem", s]} for s in STEMS]}
+STEM_CHOSEN = {"any": [{"is": ["stem", s]} for s in STEMS], "say": ["a stem is chosen", "no stem is chosen (Play one stem is Whole clip)"]}
 
 
 def _amount_on(name):

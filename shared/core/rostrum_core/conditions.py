@@ -3,6 +3,8 @@
     {"is": [name, value]}   the field `name` of the target equals value
     {"not": c}  {"all": [c, ...]}  {"any": [c, ...]}
     {"fact": name}          a fact the document kind reports about the item (e.g. a clip has audio)
+    "say": [yes, no]        on any of these: its plain words when it holds / when it does not (refusals use them
+                            instead of spelling the parts out)
     None                    always valid
 """
 from __future__ import annotations
@@ -102,6 +104,8 @@ def describe(cond, labels: dict | None = None, holding: bool = True) -> str:
     labels = labels or {}
     if cond is None:
         return "always"
+    if "say" in cond:
+        return cond["say"][0 if holding else 1]
     if "is" in cond:
         name, want = cond["is"]
         label = labels.get(name) or spelled(name).capitalize()

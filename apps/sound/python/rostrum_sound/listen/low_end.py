@@ -2,11 +2,13 @@
 (150–500 Hz, where several parts piling up sound muddy), per track and for the whole mix."""
 
 from .core import LOW_END_HZ, band_share, load, mono, name_of, num
+from .memo import remembered
 
 FLAG_SHARE_PCT = 50.0       # more than this under 150 Hz is a low-heavy track
 LOW_MID_HZ = (LOW_END_HZ, 500.0)
 
 
+@remembered
 def low_end(src, flag_pct=FLAG_SHARE_PCT, mix=None):
     """src: one wav path or {id: wav path}; mix: the mix's wav, measured too (row "mix"). Per track: low-end share
     (% of energy < 150 Hz), sub-bass (< 60 Hz) and low-mid (150–500 Hz) share. Flags the tracks over `flag_pct` under 150 Hz."""

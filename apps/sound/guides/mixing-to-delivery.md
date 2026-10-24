@@ -8,7 +8,7 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
-- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a built-in instrument or the built-in kit start balanced at the same volume, so move a track only for what the music needs: a lead 3 dB up, a pad 6 dB down), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
+- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a built-in instrument or the built-in kit start roughly balanced at the same volume for the part each suits (inspect_engine), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_levels`: a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; every new effect starts valid and playable with its default settings: an EQ starts with one flat band (peak, 1000 Hz, 0 dB, q 1) that changes nothing until you move it, and settings depend on the kind: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).

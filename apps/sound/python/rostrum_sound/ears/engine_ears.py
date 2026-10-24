@@ -23,11 +23,13 @@ from rostrum_core import RostrumError, codes
 from ..doc import keys
 from ..engine import find_engine
 from ..listen.core import load, mono, num
+from ..listen.memo import remembered
 from .theory import key_name
 
 TIMEOUT_S = 300
 
 
+@remembered
 def analyze(wav, notes: bool = False, extra: tuple = ()) -> dict:
     """The engine's answer for a file (its mono mix): tempo, beats, key, chords, timbre, and notes with `notes`.
     `extra`: more engine options (`--pitch-only`, `--range lo hi`, `--beats-per-bar n`)."""

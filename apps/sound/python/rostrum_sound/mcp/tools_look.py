@@ -121,7 +121,7 @@ def register(tools: Tools):
         "marks": {"type": "object", "description": "Labels to draw at times: {\"hit\": 12.5, \"drop\": \"#drop\"}."},
         "start": {"type": "number"}, "end": {"type": "number"}}})
     def look_spectrum(ctx, args):
-        """A spectrogram picture (time and frequency labelled, marks drawn), the steady tones in it (held notes, with their note names) and which of those are hum (flat level, on the mains series or still there when the music stops)."""
+        """A spectrogram picture (time and frequency labelled, marks drawn), the steady tones in it (held notes, with their note names) and which of those are hum (flat level, on two or more multiples of 50 or 60 Hz together: a lone held note is never hum)."""
         doc, wav, stems = _source(ctx, args, "look_spectrum")
         if args.get("track"):
             wav = stems.get(args["track"]) or wav

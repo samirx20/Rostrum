@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..listen.core import load, mono, num
-from ..listen.onsets import detect
+from ..listen.core import num
+from ..listen.onsets import file_onsets
 
 
 def audio_grid(beats):
@@ -35,5 +35,4 @@ def grid_offsets(onsets, to_position, to_time, div: int = 4, limit_ms: float = 4
 
 
 def stem_onsets(wav) -> list[float]:
-    y, sr = load(wav)
-    return detect(mono(y), sr)
+    return file_onsets(wav)

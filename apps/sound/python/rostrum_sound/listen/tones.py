@@ -1,9 +1,10 @@
 """Steady tones in a spectrogram, and which of them are hum. A held note and hum both draw a steady narrow
 line; what makes a line *unwanted* is what a note never does: its level hardly moves over the whole file
 (a note swells, decays, follows the dynamics), it is still there in the quietest moments (a note stops when
-the music does), and mains hum sits on a multiple of 50 or 60 Hz. A line is hum only when its level is flat
-and it is either on the mains series or present in the quiet; every other steady line is reported as a held
-tone with its note name, so an agent can tell a cello's held D from a buzz.
+the music does), and mains hum is a series: lines on several multiples of 50 or 60 Hz together. A line is hum
+only when its level is flat and it belongs to such a series (at least two multiples of the same mains frequency
+among the steady lines); a lone steady line, however flat or long-lived (a held sub-bass note), is a held tone,
+reported with its note name, so an agent can tell a cello's held D from a buzz.
 """
 from __future__ import annotations
 
@@ -18,14 +19,16 @@ PROMINENCE_DB = 12.0     # a line stands this far over the bins around it...
 STEADY = 0.8             # ...in at least this share of the frames
 FLAT_DB = 3.0            # hum: its level spreads less than this (10th to 90th percentile)
 QUIET_SHARE = 0.15       # the quietest frames, where the music has stopped or is softest
-MAINS_TOLERANCE = 0.01   # within 1 % of a multiple of 50 or 60 Hz
+MAINS_TOLERANCE = 0.01   # within 1 % (and at least 3.5 Hz) of a multiple of 50 or 60 Hz
+MAINS_LINES = 2          # a hum series: at least this many different multiples of one mains frequency
 
 
-def _mains(f: float) -> int | None:
+def _mains(f: float) -> tuple[int, int] | None:
+    """(mains Hz, which multiple) when `f` sits on a multiple of 50 or 60 Hz."""
     for base in (50, 60):
         k = round(f / base)
-        if 1 <= k <= 24 and abs(f - k * base) <= MAINS_TOLERANCE * f:
-            return base
+        if 1 <= k <= 24 and abs(f - k * base) <= max(3.5, MAINS_TOLERANCE * f):
+            return base, k
     return None
 
 
@@ -59,15 +62,22 @@ def steady_tones(S, sr, max_lines=8) -> list[dict]:
     cand = [i for i in range(len(ff)) if steady[i] >= STEADY                      # the loudest bin of its line
             and (i == 0 or level[i] >= level[i - 1]) and (i == len(ff) - 1 or level[i] >= level[i + 1])]
     cand.sort(key=lambda i: -strength[i])
+    freqs = {i: _refine(D, present, ff, i) for i in cand}
+    series: dict = {}                                    # mains Hz -> the multiples found among all the steady lines
+    for fr in freqs.values():
+        m = _mains(fr)
+        if m:
+            series.setdefault(m[0], set()).add(m[1])
     out = []
     for i in cand[:max_lines]:
         on = D[i][present[i]]
         spread = float(np.percentile(on, 90) - np.percentile(on, 10)) if on.size else 0.0
         in_quiet = bool(present[i][quiet].mean() >= STEADY) if quiet.any() else False
-        freq = _refine(D, present, ff, i)
-        mains = _mains(freq)
+        freq = freqs[i]
+        m = _mains(freq)
+        mains = m[0] if m and len(series[m[0]]) >= MAINS_LINES else None
         flat = spread < FLAT_DB
-        is_hum = flat and (mains is not None or in_quiet)
+        is_hum = flat and mains is not None
         why = ("flat level" if flat else f"level moves {spread:.0f} dB (played)") + \
               (f", on the {mains} Hz mains series" if mains else "") + \
               (", still there in the quietest moments" if in_quiet else ", gone in the quietest moments")

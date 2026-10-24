@@ -149,14 +149,18 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
     """plan, plus the new document's index (its positions may be stale). `idx`: data's index, when known."""
     calls = kind.registry.resolve(normalize(calls))
     work, idx = E.fork(data, kind.lists, idx)          # one index for the whole call, kept up to date by its edits
-    applied = []
+    applied, late = [], []
     for n, call in enumerate(calls, 1):
-        where = f"op {n} of {len(calls)} ({call['op']})"
+        said = call.pop("said", None)                  # an alias: errors name what the caller wrote
+        where = f"op {n} of {len(calls)} ({said or call['op']})"
         op = kind.registry.get(call["op"], f"op {n} of {len(calls)}")
         view = View(work, kind.lists, idx)
         items = _check_targets(kind, op, call["target"], view, where)
         args = _check_args(op, call["args"], where)
-        _check_valid_when(kind, op, items, args, view, where)
+        try:
+            _check_valid_when(kind, op, items, args, view, where)
+        except RostrumError as err:        # a later op of the same call may switch it on: judged on the whole result
+            late.append((err, op, call["target"], args, where))
         ctx = Context(kind, work, where, idx)
         try:
             op.fn(ctx, call["target"], args)
@@ -167,6 +171,9 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
         locks.check(ctx.edits, idx, kind.lists, where, locked_by, who)
         call["args"] = args
         applied += ctx.edits
+    for err, op, target, args, where in late:
+        view = View(work, kind.lists, idx)
+        _check_valid_when(kind, op, [view.locs()[t].item for t in target if t in view.locs()], args, view, where)
     problems = kind.problems(work, _changed(applied, idx, kind.lists))
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "

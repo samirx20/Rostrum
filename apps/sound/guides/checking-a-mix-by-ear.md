@@ -19,8 +19,10 @@ order to use them in when checking a whole mix; the table of every tool and what
    move a track N dB against the other tracks, set its volume to `volume_db` + N (`track.set` `{"volume": {"db": …}}`); the
    master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is fine in the file (it only clips if someone converts
    it to a 16 or 24-bit file); only a stem marked "clips" is cut flat.
-3. **Fights:** `look_clash`. Which two tracks share a frequency band at the same time, and by how much one stands over the
-   other. Act on clashes between parts that matter (a voice and a pad), not every overlap. Its floor follows the mix
+3. **Fights:** `look_clash`. Where one track buries another: both loud in the same frequency band at the same time, one
+   standing at least 3 dB over the other (`min_over_db`). Spans come back ranked by how far one is buried (`buried_track`,
+   `buried_by_db`). Two parts at the same level in a band are not a problem, so a balanced mix answers "no real problem"
+   with an empty list. Act on the top spans between parts that matter (a voice and a pad). Its floor follows the mix
    (40 dB under the loudest band; the reply's `floor_db`), so the count does not change when the whole mix gets louder.
    On a dense mix, tighten with `within_db` 3 and a `floor_db` 10 dB above the one it used.
 4. **Low end and mud:** `look_low_end`. Each track's and the mix's share under 150 Hz, under 60 Hz and in the low mids

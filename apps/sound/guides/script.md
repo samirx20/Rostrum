@@ -1,10 +1,13 @@
 # The Sound script API (run_script)
 
 A script describes the whole song; `run_script` merges it into the document. Run the same script again after a
-change and only what the script changed moves: anything a person changed by hand is kept and listed as held back.
+change and only what the script changed moves: anything a person changed by hand is kept and listed as held back,
+saying who got there first ("already changed by agent:mcp (\"Run map.py\")"; pass `force` with the ids to take over;
+keep one script name per song). A script error names the script and line; an unknown track method lists what a track
+can do, an unknown name lists the script's names.
 
 ```python
-tempo(96); length(bar(9)); beats_per_bar(4)              # bar(1) is the start of the song
+tempo(96); length(bar(9)); beats_per_bar(4)              # 8 bars: bar(n) is where bar n starts, length is where it ends
 marker("drop", at=bar(5))                                 # name a moment; other times can say "#drop" or "#drop+0.5"
 s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=
 s.note("D4", at=beat(0), dur=beats(4), vel=0.7)
@@ -18,6 +21,11 @@ master(loudness=-16, truePeak=-1)                         # a loudness target tu
 for i in range(8):
     s.note("A4", at=bar(2) + i * beats(0.5), dur=beats(0.5))   # beat arithmetic: a time + a length is a time
 ```
+
+**The song's length is where it ends, a time.** `bar(1)` is the start of the song and `bar(n)` is where bar n starts,
+so `length(bar(9))` is an 8-bar song: for N bars write `length(bar(N+1))`. The reply of every `run_script` ends with
+the length worked out ("Song: 96 bpm, 4/4; 8 bars long (ends where bar 9 starts, 20.0 s)"), as does `inspect_item`
+on the song.
 
 Check what you wrote before rendering: `look_arrangement` draws every track's notes and hits with the bars, sections
 and markers, and says which tracks start on each marker.
@@ -104,7 +112,8 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, voice
   lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
   time keeps its form; a time on a marker that moves with it follows it. Effect envelopes inside effects don't move.
-  In the arrangement: drag the section's bar (Ctrl = off the grid).
+  A time signature change must stay on a bar line, so a section holding one moves by whole bars only (a move that
+  puts it off a bar line is refused and names the nearest bar lines). In the arrangement: drag the section's bar (Ctrl = off the grid).
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on

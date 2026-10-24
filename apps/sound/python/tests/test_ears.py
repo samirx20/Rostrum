@@ -20,9 +20,10 @@ def _spans(tmp_path, a, b):
     return clash.find_clashes(levels, hop_s=hop)[0]
 
 
-def test_clash_same_band_yes_other_band_and_turns_no(tmp_path):
-    same = _spans(tmp_path, dict(f=440), dict(f=450))
-    assert len(same) == 1 and same[0]["band_hz"][0] <= 440 <= same[0]["band_hz"][1] and same[0]["end_s"] - same[0]["start_s"] > 1.5
+def test_clash_one_buries_the_other_yes_same_level_other_band_and_turns_no(tmp_path):
+    assert _spans(tmp_path, dict(f=440), dict(f=430)) == []                    # same level: no real problem
+    same = _spans(tmp_path, dict(f=440), dict(f=430, amp=0.15))               # 6 dB under
+    assert len(same) == 1 and same[0]["buried_track"] == "b" and 5 < same[0]["buried_by_db"] < 7 and same[0]["band_hz"][0] <= 440 <= same[0]["band_hz"][1] and same[0]["end_s"] - same[0]["start_s"] > 1.5
     assert _spans(tmp_path, dict(f=440), dict(f=2000)) == []
     assert _spans(tmp_path, dict(f=440, end=0.9), dict(f=450, start=1.1)) == []
 

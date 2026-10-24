@@ -12,11 +12,33 @@ The script API is in inspect_guide `script`; instruments in `library`.
 - **Volume:** a bare number is gain 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB). The screen shows dB; agents may give dB too:
   `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master. **Every built-in
   instrument, played instrument, synth wave and the built-in kit is level-matched** (measured: a typical comp, bass, lead
-  line, pad or groove for each comes out equally loud), so tracks written like that at the same volume are balanced: a
-  piano comp at 0 dB sits with the bass and drums at 0 dB. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
+  line, pad or groove for each comes out equally loud), so tracks written as the part each suits (the table below) at
+  the same volume are roughly balanced: a piano comp at 0 dB sits with the bass and drums at 0 dB. Roughly, not exactly:
+  the same chord on every sound spreads about 11 dB, so check with `look_levels` after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
   is quieter than a bass note at 0.9. Sampled (SFZ), plug-in and recorded sounds are not matched (their level is the file's).
+- **The song's length** (`length`) is where it ends, a time: `bar(9)` is where bar 9 starts, so `length(bar(9))` is an
+  8-bar song. For N bars write `length(bar(N+1))`. `run_script` and `inspect_item` (the song) end with the length in
+  bars and seconds ("8 bars long (ends where bar 9 starts, 20.0 s)").
 - **The song itself** is the item `"root"`: `{"op": "doc.set", "target": ["root"], "args": {"tempo": 96}}`. (`inspect_operations`
   lists item *types* in its target column; the ids come from `inspect_item`.)
+
+## Which sound for which part
+
+Every built-in sound is made for a part; its level is matched on the first part listed. `inspect_engine` lists the same
+table (`roles`), `inspect_instrument builtIn=… / model=… / synth=…` gives one sound's line. Synthesized sounds play any
+key; "sounds best" is where they sound like themselves.
+
+| Part | Sounds (`builtIn` / `model` / `synth` / `kit`) | Sounds best |
+|---|---|---|
+| comp (chords that keep time) | feltPiano, grandPiano, spiccatoStrings; model guitar, nylonGuitar | C2-C6 (strings G2-E6, guitars E2-E5) |
+| bass (the low line) | subBass (synth sine also works as a sub under it) | E1-G3 |
+| lead (a tune on top) | glassMarimba; model marimba, vibraphone, glockenspiel (keep it quiet), tubularBell (single strikes), violin; synth triangle, sine | C4-C7 (glockenspiel G5-C8, violin G3-E7, bell C4-F5) |
+| pad (held chords under everything) | warmPad, analogStrings, choirPad, cinematicBrass; synth saw, square | C2-C6 (choir C3-C6, brass E2-C5) |
+| groove (drums) | kit synth | kick, snare, clap, hat, openHat, cymbal, tom, rim |
+
+Pianos, guitars, marimba, vibraphone, brass and the saw and square waves also play leads (`inspect_engine` lists every
+part each suits). Sampled (SFZ) instruments carry their own range (`inspect_instrument sfz=<path>`) and are not
+level-matched.
 
 ## Notes are data
 
@@ -60,14 +82,16 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 - `render_midi` writes the document's notes and those lanes as a `.mid` for other tools. On the screen: Export
   (Ctrl+E) › What for › **MIDI file**, the same file.
 - Agents set the lanes with `automation.set` on the track: lane `sustain` (0 up … 1 down), `dynamics` (expression,
-  0 … 2, 1 = as played), `bend` (-1 … 1 × `bendRange` semitones, `track.set {bendRange}`); a step is two points at
+  0 … 2, 1 = as played), `bend` (-1 … 1 × `bendRange` semitones, `track.set {bendRange}`: a track with no bend lane yet takes it only in the
+  same call as the lane, in either order); a step is two points at
   one time. In a script: `t.sustain([...])`, `t.dynamics([...])`, `t.bend([...], range=2)` (see `script`).
 
 ## From a script
 
 `run_script` builds tracks and notes in Python. Re-running a script merges: notes a person moved by hand stay where
 they were put and are listed as held back. Helpers write plain values you can edit afterwards, e.g. seeded
-`humanize(seed, timing, velocity)` for small timing and velocity variation (see `script`).
+`humanize(seed, timing, velocity)` for small timing and velocity variation (see `script`). The operation for
+notes already written is `note.humanize`, with note ids as its targets (not the track).
 
 ## Checking the part
 

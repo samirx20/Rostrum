@@ -19,13 +19,14 @@ A script error is a loud BAD_ARGUMENT naming the script and line; nothing is mer
 """
 from __future__ import annotations
 
+import re
 import sys
 
 from rostrum_core import RostrumError, codes
 from rostrum_core.merge import check_output
 
 from . import expression as EX
-from .builder import Song
+from .builder import Song, Track
 from .doc import KIND, meter
 from . import script_scope
 from .script_time import Beat, Beats, plain, until
@@ -69,6 +70,31 @@ def _line(name) -> str:
     return f'script "{name}"' + (f" line {line}" if line else "")
 
 
+_INTERNAL = {"item", "init_inserts", "insert_items"}
+
+
+def _methods(cls) -> list[str]:
+    """What a track can do, read from its class (so a new method shows up here by itself)."""
+    return [n for n in dir(cls) if not n.startswith("_") and n not in _INTERNAL and callable(getattr(cls, n))]
+
+
+def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:
+    """A script's Python error in plain words: where it happened and, when it helps, what would have worked."""
+    where = _line(name)
+    if isinstance(e, SyntaxError):
+        return RostrumError(codes.BAD_ARGUMENT, f'script "{name}"' + (f" line {e.lineno}" if e.lineno else ""), "the script",
+                            f"is not written correctly (Python could not read it): {e.msg}")
+    if isinstance(e, NameError) and (m := re.match(r"name '(.+)' is not defined", str(e))):
+        return RostrumError(codes.BAD_ARGUMENT, where, f'"{m[1]}"', "is not a name the script knows", names,
+                            "A track you made is the variable you stored it in.")
+    if isinstance(e, AttributeError) and (m := re.match(r"'Track' object has no attribute '(.+)'", str(e))):
+        return RostrumError(codes.BAD_ARGUMENT, where, f'track.{m[1]}', "is not something a track can do", _methods(Track))
+    if isinstance(e, ZeroDivisionError):
+        return RostrumError(codes.BAD_ARGUMENT, where, "the script", "divides by zero")
+    detail = {KeyError: f"looked for {e} and it is not there", IndexError: f"asked for a list position that is not there ({e})"}
+    return RostrumError(codes.BAD_ARGUMENT, where, "the script", "stopped: " + detail.get(type(e), str(e) or "it failed without a reason"))
+
+
 def run_source(source: str, name: str) -> dict:
     """Run a Sound script; the tree it makes (checked like operation arguments, ready for Document.run_script)."""
     song = Song()
@@ -78,8 +104,7 @@ def run_source(source: str, name: str) -> dict:
     except RostrumError as e:
         raise e.within(_line(name)) from e
     except Exception as e:
-        raise RostrumError(codes.BAD_ARGUMENT, _line(name), "the script", f"failed: {type(e).__name__}: {e}",
-                           API) from e
+        raise _failure(e, name, sorted(scope(song))) from e
     check_output(KIND, tree, f"script {name}")
     problems = KIND.check(tree)
     if problems:

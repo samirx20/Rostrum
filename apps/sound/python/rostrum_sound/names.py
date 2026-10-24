@@ -54,5 +54,7 @@ MASTER_LANES = ["volume"]
 BUS_LANES = ["volume", "pan"]
 SEND_LANES = ["level"]
 ALL_LANES = [*TRACK_LANES, *SEND_LANES]
+LANE_WORDS = {"volume": "Volume", "pan": "Pan", "dynamics": "Expression", "vibrato": "Vibrato", "sustain": "Sustain",
+              "bend": "Pitch bend", "level": "Level"}     # what a lane is called on screen (agents' errors say these too)
 # A track's or bus's `output` when it feeds the master bus (the default); otherwise a bus id.
 MASTER_OUT = "master"

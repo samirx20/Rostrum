@@ -22,7 +22,7 @@ def register(tools: Tools):
             near = A.near_markers(doc.data, arr)
         png = str(ctx.app.state.look_dir(doc.item_id) / "arrangement.png")
         arrangement_picture(png, arr, args.get("start", 0.0), args.get("end"), f"{doc.item_id}: arrangement")
-        data = {"end_s": round(arr["end"], 3), "bars": len(arr["bars"]), "png": png, "markers": near,
+        data = {"end_s": round(arr["end"], 3), "bars": len(arr["bars"]), "png": png, "markers": near, "broken_notes": arr["broken"],
                 "sections": [{"name": n, "start_s": round(s, 3), "end_s": round(e, 3)} for n, s, e in arr["sections"]],
                 "tracks": [{"id": t["id"], "notes": len(t["notes"]), "hits": len(t["hits"]), "clips": len(t["clips"]),
                             "first_s": A.starts(t)[0] if A.starts(t) else None} for t in arr["tracks"]]}

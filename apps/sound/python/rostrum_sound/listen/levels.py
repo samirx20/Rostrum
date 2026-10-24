@@ -4,6 +4,7 @@ import numpy as np
 from .bs1770 import integrated
 from .core import db, duration, is_float_file, load, num, peak_db, sections
 from .loudness import CLIP_LEVEL
+from .memo import remembered
 
 ACTIVE_DB = -70.0     # a section quieter than this counts as "stem not playing"
 
@@ -17,6 +18,7 @@ def _lufs(y, sr):
     return integrated(y, sr)
 
 
+@remembered
 def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
     """stems: {id: wav path}; mix: its rendered wav (default: the stems summed).
     Per stem: LUFS, peak, RMS, dB under the loudest stem and dB against the mix.

@@ -7,9 +7,17 @@ from __future__ import annotations
 from rostrum_core import project as P
 
 from . import clean_clips, cleanup
-from .doc import media
+from .doc import media, past_end
 
-KINDS = ("missing-file", "outside-project", "pending-take", "no-longer-made")
+KINDS = ("missing-file", "outside-project", "pending-take", "broken-tie", "after-the-end", "no-longer-made")
+
+
+def said(found: list[dict]) -> str:
+    """The list as one line for an agent: the same problem on several things is one entry naming each (with its id)."""
+    groups: dict = {}
+    for p in found:
+        groups.setdefault((p["kind"], p["message"]), []).append(p["item"])
+    return "; ".join(f'{k}: {m}' + (f' ({", ".join(i for i in items if i)})' if any(i and i not in m for i in items) else "") for (k, m), items in groups.items())
 
 
 def _called(root: dict, track: dict) -> str:
@@ -32,6 +40,10 @@ def problems(doc) -> list[dict]:
     out += [{"kind": "pending-take", "item": i, "message": f"The clip on {_called(doc.data, t)} needs a cleaned take that is not made yet; until it is, "
              "the original plays", "fix": clean_clips.HINT}
             for i, t in waiting]
-    out += [{"kind": "no-longer-made", "item": w.split(":", 1)[0] if ":" in w else "", "message": w,
-             "fix": "Remove it or replace it with an instrument"} for w in doc.kind.warnings(doc.data)]
+    ties, late = past_end.ties(doc.data), past_end.late(doc.data)
+    for w in doc.kind.warnings(doc.data):
+        kind = "broken-tie" if w in ties else "after-the-end" if w in late else "no-longer-made"
+        fix = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "Move them earlier or make the song longer",
+               "no-longer-made": "Remove it or replace it with an instrument"}[kind]
+        out.append({"kind": kind, "item": w.split(":", 1)[0] if ":" in w and kind != "after-the-end" else "", "message": w, "fix": fix})
     return out

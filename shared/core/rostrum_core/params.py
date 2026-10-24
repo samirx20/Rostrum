@@ -140,7 +140,7 @@ class Param:
                         f'A marker is written with #: "#{value}"' if REF.match(f"#{value}") else None)
                 return value
             if isinstance(value, bool) or not isinstance(value, (int, float)):
-                bad("is not a number")
+                bad("is not a number", hint="Seconds only, written as a plain number (2.5)." if self.unit == "s" else None)
             if self.integer and value != int(value):
                 bad("must be a whole number")
             if (self.min is not None and value < self.min) or (self.max is not None and value > self.max):

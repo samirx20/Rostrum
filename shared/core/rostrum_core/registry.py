@@ -104,7 +104,7 @@ class Registry:
         out = []
         for c in calls:
             a = self._aliases.get(c["op"]) if c["op"] not in self._ops else None
-            out += a.expand(c) if a else [c]
+            out += [{**x, "said": c["op"]} for x in a.expand(c)] if a else [c]   # "said": the name the caller wrote
         return out
 
     def alias_notes(self, calls) -> list[str]:

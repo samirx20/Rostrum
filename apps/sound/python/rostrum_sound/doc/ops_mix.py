@@ -18,7 +18,7 @@ REGISTRY.operation("master.set", "Change the master bus: level, loudness target,
                    target="master", params=FD.params("master"), label="Edit master", fields=True)(set_fields)
 REGISTRY.operation("effect.set", "Change an effect's settings.", target="effect", params=FD.params("effect"),
                    label="Edit effect", fields=True)(set_fields)
-REGISTRY.operation("marker.set", "Rename or move a marker.", target="marker", params=FD.params("marker"),
+REGISTRY.operation("marker.set", "Rename or move a marker (also written marker.move / marker.rename).", target="marker", params=FD.params("marker"),
                    label="Edit marker", fields=True)(set_fields)
 for _name in ("marker.move", "marker.rename"):      # the project's markers' names (shared/core markers.py)
     REGISTRY.alias(_name, "marker.set")

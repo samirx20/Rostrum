@@ -3,6 +3,7 @@ import numpy as np
 
 from .core import duration, load, mono, name_of, num
 from .dsp import fft_frequencies, frames_to_time, power_to_db, stft
+from .memo import remembered
 from .plot import pyplot
 from .tones import N_FFT, steady_tones
 
@@ -29,11 +30,12 @@ def over_time(y, sr, range=None):
     return t, f, power_to_db(S, ref=None, top_db=80), S, (a, b)
 
 
+@remembered
 def spectrogram(wav, out_png, marks=None, range=None):
     """Writes a log-frequency spectrogram PNG (axes: seconds, Hz; colour: dB under the loudest point).
     `marks` {label: time_s} draws labelled cyan lines; `range` (a, b) shows only that time span.
     Facts: the png path, `tones` (every steady narrow line, with its note name and why it is or isn't hum)
-    and `hum_lines` (the tones that are hum: flat level, and on the mains series or still there in the quiet)."""
+    and `hum_lines` (the tones that are hum: flat level, and part of a mains series: two or more multiples of 50 or 60 Hz together)."""
     y, sr = load(wav)
     t, f, D, S, (a, b) = over_time(y, sr, range)
     keep = f >= FMIN
@@ -62,5 +64,5 @@ def spectrogram(wav, out_png, marks=None, range=None):
     return {"png": str(out_png), "range_s": [num(a, 3), num(b, 3)],
             "marks_s": {k: v for k, v in (marks or {}).items()}, "tones": tones, "hum_lines": [t for t in tones if t["is_hum"]],
             "note": "tones: narrow lines standing 12 dB over their neighbours in 80% of frames (held notes and hum); "
-                    "hum_lines: those whose level is flat (under 3 dB spread) and that sit on 50 / 60 Hz multiples or stay "
-                    "in the quietest moments; a held note's level moves and it stops with the music"}
+                    "hum_lines: those whose level is flat (under 3 dB spread) and that sit on two or more multiples of 50 or "
+                    "60 Hz together; a lone steady line, such as a held bass note, is a tone, not hum"}

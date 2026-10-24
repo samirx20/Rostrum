@@ -17,15 +17,15 @@ These are ordinary parts on ordinary tracks: notes, chords and drum hits (`track
 Write them with `inspect_guide 'writing-parts'`.
 
 Sync with **named markers** ("logo lands", "drop"), never copied times. Put a note's start on the marker
-(`at="#logo-lands"`), and a rise's end on it (`dur={"to": "#logo-lands"}`), so the sound stays on its moment when 2D
+(`at="#logo lands"`), and a rise's end on it (`dur={"to": "#logo lands"}`), so the sound stays on its moment when 2D
 re-times. Check the timing with `look_events` and listen with the picture (`look_video`).
 
 ```python
 bell = track("bell", model="tubularBell")
-bell.note("G5", at="#logo-lands", dur=2.0, vel=0.7)
+bell.note("G5", at="#logo lands", dur=2.0, vel=0.7)
 hits = track("hits", kit="synth")
-hits.hit("kick", at="#logo-lands", vel=0.8)
-hits.hit("cymbal", at="#logo-lands", vel=0.8)
+hits.hit("kick", at="#logo lands", vel=0.8)
+hits.hit("cymbal", at="#logo lands", vel=0.8)
 ```
 
 ## Sounds from the picture's motion
