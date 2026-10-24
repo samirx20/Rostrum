@@ -578,9 +578,19 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                     clip.y0 += expansion.y0;
                     clip.x1 += expansion.x1;
                     clip.y1 += expansion.y1;
-                    // A layer only for blending must not cut what overflows the box (opacity / filter layers still do: upstream TODO below).
+                    // A layer only for blending must not cut what overflows the box (opacity / filter layers still do: upstream TODO below):
+                    // it covers where its subtree paints when that is known (export speed: Night Bloom's ~100 blended
+                    // groups a sample were each a frame-sized layer), else everything.
                     if group && !effect {
-                        return Rect::new(-1e7, -1e7, 1e7, 1e7);
+                        let ink = (!should_clip && has_element_children).then(|| crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale, true)).flatten();
+                        return match ink {
+                            Some(ink) => {
+                                let grow = crate::ink::device_px(cx.transform, 2.0);
+                                let ink = Rect::new(ink.x0 + expansion.x0, ink.y0 + expansion.y0, ink.x1 + expansion.x1, ink.y1 + expansion.y1);
+                                clip.union(ink).inflate(grow, grow)
+                            }
+                            None => Rect::new(-1e7, -1e7, 1e7, 1e7),
+                        };
                     }
                     // Rostrum patch: an opacity / filter layer on an element that lets its children overflow
                     // (overflow: visible) covers what they paint outside its box (their shadows, blurs, moved
@@ -589,7 +599,7 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                     // Rostrum patch (H27): the layer covers where the subtree paints (ink.rs), not the whole frame,
                     // when that can be known; a few device pixels wider, so its clip's edge never meets an edge it holds.
                     if effect && !should_clip && has_element_children {
-                        return match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale) {
+                        return match crate::ink::subtree_ink(self.dom.as_ref(), node, self.scale, expansion == Rect::ZERO && filter.is_none()) {
                             Some(ink) => {
                                 let grow = crate::ink::device_px(cx.transform, 2.0);
                                 let ink = Rect::new(ink.x0 + expansion.x0, ink.y0 + expansion.y0, ink.x1 + expansion.x1, ink.y1 + expansion.y1);
