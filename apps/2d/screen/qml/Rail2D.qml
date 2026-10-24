@@ -17,7 +17,7 @@ ToolRail {
     current: backend.tool
     last: ({ shapes: "rect" })
     panelOpen: !!brushes.item && brushes.item.visible
-    readonly property bool canCue: { backend.actions.bar; backend.selected; return JSON.stringify(backend.actions.menu()).indexOf('"sound_here"') >= 0 }   // folded menus nest it
+    readonly property bool canCue: backend.actions.offered.indexOf("sound_here") >= 0   // allowed now (folded in menus or not)
     readonly property var renders3d: backend.adder.entries.filter(e => e.type === "render3d")
 
     iconKinds: ({ shape: shapeIcon, paint: paintIcon })

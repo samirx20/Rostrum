@@ -335,10 +335,11 @@ Rectangle {
                 box: backend.selBox; fit: view.zoom
                 visible: edges.length > 0 && box.w !== undefined && !look.on && backend.multi.count === 1 && !well.drawing
             }
-            Repeater {
-                model: backend.multi.boxes
+            Repeater {      // by count: picking another layer moves the same outline and knobs, never remakes them
+                model: backend.multi.boxes.length
                 delegate: Handles {
-                    required property var modelData
+                    required property int index
+                    readonly property var modelData: backend.multi.boxes[index] || ({})
                     box: modelData; fit: view.zoom; space: marks
                     visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead

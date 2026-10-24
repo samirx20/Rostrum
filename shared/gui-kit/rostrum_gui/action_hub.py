@@ -4,7 +4,7 @@ document: what the selection is (`facts_fn`), how to say it ("3 layers": `what_f
 step (`apply_fn`), how to run an app's own non-operation action (`do_fn`: copy, rename) and where a plain message
 goes (`message_fn`: the status line).
 
-QML reads `bar` (the context bar), `panel` (the settings panel's actions at its top), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
+QML reads `bar` (the context bar), `panel` (the settings panel's actions at its top), `offered` (the ids allowed now), calls `menu()` on right-click, `commands(query)` for Ctrl+K's "Do" group,
 `run(id)` for a click, `previewStart(id)` / `previewEnd()` for a hover preview (an app that has one), and `key(job)` from the key map's shortcuts (`keys`); a hold key's release comes as
 `keyUp(job)` (keyhold.py), and runs the release of the action its press ran: nothing if the press ran nothing. Every door re-reads the list at the
 moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead.
@@ -23,6 +23,7 @@ from .match import starts
 class ActionHub(QObject):
     barChanged = Signal()
     panelChanged = Signal()
+    offeredChanged = Signal()
 
     def __init__(self, action_list: ActionList, facts_fn, what_fn, apply_fn, do_fn, message_fn, parent=None,
                  preview_fn=None, unpreview_fn=None):
@@ -33,6 +34,7 @@ class ActionHub(QObject):
         self._preview, self._unpreview = preview_fn, unpreview_fn      # an app's hover preview (previewStart / previewEnd)
         self._bar: dict = {"what": "", "items": [], "more": []}
         self._panel: dict = {"rows": [], "more": []}
+        self._offered: list = []
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
         self._hold = KeyHold(self, action_list.keymap)     # watches releases only when the map has hold keys
 
@@ -48,6 +50,12 @@ class ActionHub(QObject):
     def panel(self):
         """The settings panel's actions for this selection (action_views.panel), at its top."""
         return self._panel
+
+    @Property("QVariantList", notify=offeredChanged)
+    def offered(self):
+        """The ids of every action this selection allows now (as of the last refresh): "is X offered?" without building
+        a menu (a binding that built the whole right-click menu on every pick to look for one id cost ms per click)."""
+        return self._offered
 
     @Property("QVariantList", constant=True)
     def keys(self):
@@ -78,6 +86,10 @@ class ActionHub(QObject):
         if panel != self._panel:
             self._panel = panel
             self.panelChanged.emit()
+        offered = [e["id"] for e in entries]
+        if offered != self._offered:
+            self._offered = offered
+            self.offeredChanged.emit()
 
     @Slot(result="QVariantList")
     def menu(self):

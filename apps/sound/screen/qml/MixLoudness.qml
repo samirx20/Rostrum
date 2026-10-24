@@ -64,7 +64,7 @@ Rectangle {
                     readonly property var ok: modelData.v == null ? null : modelData.ok(modelData.v)
                     width: numCol.width; height: numCol.height
                     HoverHandler { id: numHover }
-                    HoverTip { y: num.height + 2; text: num.modelData.tip; hovered: numHover.hovered }
+                    HoverTip { atY: num.height + 2; text: num.modelData.tip; hovered: numHover.hovered }
                     Column {
                         id: numCol
                         spacing: 2

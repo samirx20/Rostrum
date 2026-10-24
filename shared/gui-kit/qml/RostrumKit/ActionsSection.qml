@@ -38,19 +38,21 @@ Item {
         id: runs
         width: section.width
         spacing: 3 * Theme.grid
-        Repeater {
-            model: section.units
+        Repeater {      // by count, here and in each run: another selection with as many actions moves the same
+                        // buttons to its actions instead of remaking them (and their tips) on every pick
+            model: section.units.length
             delegate: Row {
                 id: run
-                required property var modelData
                 required property int index
+                readonly property var modelData: section.units[index] || ({ items: [], icons: false, title: "" })
                 readonly property bool icons: modelData.icons
                 readonly property bool folded: modelData.title !== ""
                 spacing: icons ? 2 : Theme.grid
                 Repeater {      // an icon run
-                    model: run.icons ? run.modelData.items : []
+                    model: run.icons ? run.modelData.items.length : 0
                     delegate: IconButton {
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: run.modelData.items[index] || ({})
                         objectName: "action:" + modelData.id
                         width: section.size; height: section.size
                         icon: modelData.icon; kind: "ghost"; tip: modelData.full || modelData.label
@@ -60,9 +62,10 @@ Item {
                     }
                 }
                 Repeater {      // the untitled actions: small buttons
-                    model: run.icons || run.folded ? [] : run.modelData.items
+                    model: run.icons || run.folded ? 0 : run.modelData.items.length
                     delegate: Button {
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: run.modelData.items[index] || ({})
                         objectName: "action:" + modelData.id
                         implicitHeight: section.size; text: modelData.label; tip: modelData.label
                         help: modelData.keys ? modelData.label + " (" + modelData.keys + ")" : ""

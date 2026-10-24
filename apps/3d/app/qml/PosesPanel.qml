@@ -46,7 +46,7 @@ Popover {
                     anchors.fill: parent
                     onClicked: (m) => backend.poses.apply(row.modelData.id, (m.modifiers & Qt.ShiftModifier) !== 0)
                 }
-                HoverTip { x: row.width + 6; y: 0; text: row.modelData.name; help: row.modelData.holds + "  ·  Shift+click: breakdown"
+                HoverTip { atX: row.width + 6; atY: 0; text: row.modelData.name; help: row.modelData.holds + "  ·  Shift+click: breakdown"
                            hovered: hover.hovered }
                 IconButton { id: del; anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                              width: Theme.rowDense; height: Theme.rowDense; kind: "ghost"; glyph: "×"; tip: "Delete pose"
