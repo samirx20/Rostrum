@@ -39,16 +39,20 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 
 `render_estimate` says how long a render will take, measured on this machine, without rendering it. It is a job: ask with `inspect_job`.
 
-- The first call for a scene draws a small probe picture (the middle frame at a quarter of the pixels) and keeps the timing.
-  It can take up to a minute and a half; past that it stops and tells you the job is at least that slow.
+- The first call for a scene draws the middle frame a few times and keeps the timing: tiny (the warm-up), at a quarter of the
+  pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size with 8 samples,
+  because a full-size frame costs far more than four quarter-size ones. About 10-15 s at full HD; past a minute and a half it
+  stops and tells you the job is at least that slow.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
 - `quality`, `samples`, `size`, `start` / `end` try other settings without touching the shot. `frame` estimates a still.
   `all_shots: true` gives each shot with its own settings, and a total.
 - `budget_min` is the minutes you can spend. Over it, the reply names one-setting changes that should fit (fewer samples, a smaller size).
 - Look at the probe picture it returns: it is what is about to be drawn.
-- It is a close guide, not a promise: start-up and encoding do not shrink with the settings. Another render on the graphics card
-  at the same time slows the probe and the real job.
+- It is a close guide, not a promise: start-up and encoding do not shrink with the settings, and time grows with samples much
+  less than in step (a straight line in the log of the samples, as measured).
+- When another job is using the graphics card, the reply says so (`gpu_busy`, also in the text): renders are slower while it runs,
+  about twice. A probe taken then is not kept; ask again once the card is free for a clean figure.
 
 ## Techniques
 
