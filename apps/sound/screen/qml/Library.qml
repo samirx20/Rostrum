@@ -4,8 +4,8 @@ import RostrumKit
 // The Library (DESIGN.md §2.2, decision 3; INTERACTION.md "Library", Ctrl+L): adding a track is choosing its sound. A search box (focused on open),
 // kind chips (All · Instruments · Drums · Mic and files · Voice · My sounds; the picked one is lit) and the list (adder.find). Click picks an entry and plays it;
 // the Add button on its row (or Enter) uses it: a new track with that sound (one operation, one undo step), selected, the Editor
-// open on it — the microphone's track comes armed, ready to record. With a track of the same kind selected it asks
-// "Change Piano to Strings? The notes stay." and changes that track's sound instead (adder.swap, one undo step). "My sounds" is the person's own library
+// open on it — the microphone's track comes armed, ready to record. Add always adds: changing a track's sound is the track's own
+// Sound ▾ picker, never a question here. "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it. On a track that plays that kind of sound the pick is a try (nothing is written: "Trying Pad
 // on Strings"): Enter / Add / Keep makes it the track's sound (one undo step), Esc / Revert / another track puts the
@@ -44,10 +44,6 @@ Panel {
     function use(i) {
         const e = found[i]
         if (!e) return
-        const m = adder.match(e.key)
-        if (m.track && soundLibrary.trying.key === e.key) { if (soundLibrary.keep()) finish(); return }   // a tried sound: Enter keeps it
-        if (m.track) { swap.entry = e.key; swap.track = m.track
-                       swap.heading = "Change " + m.from + " to " + m.to + "?"; swap.open(); return }
         if (!adder.add(e.key)) return
         if (e.arm) recorder.arm(backend.selected)
         workspace.setDock("editor")
@@ -157,14 +153,5 @@ Panel {
                   Button { visible: heard.trying; text: "Keep"; kind: "primary"; onClicked: { if (soundLibrary.keep()) p.finish() } }
                   Button { visible: heard.trying; text: "Revert"; kind: "normal"; onClicked: soundLibrary.revert() } }
         }
-    }
-    Prompt {    // a track of the same kind is selected: change its sound (the notes stay), or make a new track
-        id: swap
-        property string entry: ""
-        property string track: ""
-        message: "The notes stay. Or add the sound as a new track."
-        Button { text: "New track"; kind: "ghost"; onClicked: { swap.close(); if (adder.add(swap.entry)) { workspace.setDock("editor"); p.finish() } } }
-        Button { text: "Cancel"; kind: "ghost"; onClicked: swap.close() }
-        Button { text: "Change"; kind: "primary"; onClicked: { swap.close(); if (adder.swap(swap.entry, swap.track)) p.finish() } }
     }
 }
