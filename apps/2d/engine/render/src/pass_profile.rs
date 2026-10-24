@@ -34,6 +34,8 @@ struct Pass {
 struct State {
     pool: Vec<u32>,
     passes: Vec<Pass>,
+    /// Textures and buffers made during the paint: (call, w, h, format or samples) → count.
+    allocs: BTreeMap<(&'static str, usize, usize, usize), u64>,
     /// The viewport now set (Skia sets it only when it changes, so a bind without one keeps it).
     viewport: (usize, usize),
 }
@@ -63,7 +65,7 @@ fn query(s: &mut State) -> Option<u32> {
 }
 
 /// A wrapped GL call is about to run (profile.rs's trampolines): `name` and its first four arguments.
-pub fn before(name: &str, a: usize, b: usize, c: usize, d: usize) {
+pub fn before(name: &'static str, a: usize, b: usize, c: usize, d: usize, e: usize) {
     S.with(|s| {
         let mut s = s.borrow_mut();
         match name {
@@ -73,6 +75,9 @@ pub fn before(name: &str, a: usize, b: usize, c: usize, d: usize) {
                     s.passes.push(Pass { q, fbo: b, size, draws: 0, blits: 0 });
                 }
             }
+            "glTexStorage2D" => *s.allocs.entry(("texStorage", d, e, c)).or_default() += 1,
+            "glTexImage2D" => *s.allocs.entry(("texImage", d, e, c)).or_default() += 1,
+            "glRenderbufferStorageMultisample" => *s.allocs.entry(("msaaBuffer", d, e, b)).or_default() += 1,
             "glViewport" => {
                 s.viewport = (c, d);
                 if let Some(p) = s.passes.last_mut() {
@@ -91,7 +96,6 @@ pub fn before(name: &str, a: usize, b: usize, c: usize, d: usize) {
             }
             _ => {}
         }
-        let _ = (a, b);
     });
 }
 
@@ -131,6 +135,17 @@ pub fn row(label: &str) {
     }
     for ((w, h), (n, fbos, draws, blits, ms)) in by {
         let _ = writeln!(f, "{label},{w},{h},{n},{},{draws},{blits},{ms:.3}", fbos.len());
+    }
+    let allocs = S.with(|s| std::mem::take(&mut s.borrow_mut().allocs));
+    let file = format!("{path}.allocs.csv");
+    let new = !std::path::Path::new(&file).exists();
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&file) {
+        if new {
+            let _ = writeln!(f, "label,call,w,h,format,count");
+        }
+        for ((call, w, h, fmt), n) in allocs {
+            let _ = writeln!(f, "{label},{call},{w},{h},{fmt:#x},{n}");
+        }
     }
     // Which code opened the paint's layers and surfaces, and how big (anyrender_skia's census).
     let file = format!("{path}.layers.csv");

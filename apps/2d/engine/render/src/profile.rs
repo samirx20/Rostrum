@@ -32,7 +32,7 @@ type Word = usize;
 type Fn10 = extern "system" fn(Word, Word, Word, Word, Word, Word, Word, Word, Word, Word) -> Word;
 
 /// The GL calls counted: name, kind (index into `KINDS`).
-const WRAPPED: [(&str, usize); 35] = [
+const WRAPPED: [(&'static str, usize); 35] = [
     ("glCompileShader", 0),
     ("glLinkProgram", 1),
     ("glTexImage2D", 2),
@@ -81,7 +81,7 @@ macro_rules! tramp {
             extern "system" fn t(a: Word, b: Word, c: Word, d: Word, e: Word, f: Word, g: Word, h: Word, i: Word, j: Word) -> Word {
                 let orig: Fn10 = unsafe { std::mem::transmute(ORIG[$i].load(Relaxed)) };
                 let k = WRAPPED[$i].1;
-                crate::pass_profile::before(WRAPPED[$i].0, a, b, c, d);
+                crate::pass_profile::before(WRAPPED[$i].0, a, b, c, d, e);
                 let t0 = std::time::Instant::now();
                 let r = orig(a, b, c, d, e, f, g, h, i, j);
                 NANOS[k].fetch_add(t0.elapsed().as_nanos() as u64, Relaxed);
