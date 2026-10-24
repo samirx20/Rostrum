@@ -7,7 +7,7 @@ sits on top of it.
 
 | Piece | What it does |
 |---|---|
-| **≡** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E) |
+| **≡** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E: the render sheet) |
 | **Rostrum3D**, then the project's name | Click the name to rename the project |
 | **› Hero 01 ▾** | The shot this window shows. Click for the list of shots: pick one to see its settings (camera, length, size), or **New shot** |
 | **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
@@ -17,7 +17,7 @@ sits on top of it.
 | **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
 | **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
 | **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
-| **Render** | One final picture of the playhead's frame through the shot camera (F12). Esc cancels it |
+| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 
 ## The viewport (middle)
@@ -123,6 +123,5 @@ shown, so with one thing selected there is no Combine.
 - The ≡ menu and the start screen work the same in every Rostrum app.
 - A new scene is "Untitled scene" in your projects folder. It saves after every change, so there is no Save and no
   question when you close.
-- **Export** (≡ › Export…, or Ctrl+E) opens in the settings panel's place. Pick this frame or the whole shot, as PNG,
-  EXR or both. It renders through the same path as the Render button and agents' renders, so the file matches what you
-  see in Final.
+- **Export** (≡ › Export…, or Ctrl+E) opens the render sheet, the same as Render and F12 (see [Rendering](rendering.md)).
+  It renders through the same path as agents' renders, so the file matches what you see in Final.

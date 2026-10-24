@@ -19,7 +19,8 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces")
+         "lights-flyout", "page-animate", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces",
+         "render-sheet-shot")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -80,6 +81,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
         ("export-sheet", s, ["export-open"]),
+        ("render-sheet", s, ["render-sheet"]),
+        ("render-sheet-shot", s, ["page animate", "render-sheet", "estimate-wait"]),
+        ("render-sheet-budget", s, ["page animate", "render-sheet", "estimate-wait", "budget 1 s"]),
         ("commands", s, ["commands"]),
         ("commands-search", s, ["commands light"]),
         ("guides-list", s, ["guides open"]),

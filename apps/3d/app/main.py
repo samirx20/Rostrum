@@ -38,7 +38,7 @@ from screen3d.steps import do_step  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      # Help's guides (also the agents' guides)
-    ("window.md", "The Rostrum3D window"),
+    ("window.md", "The Rostrum3D window"), ("rendering.md", "Rendering"),
     ("agents.md", "Working with an AI agent"), ("script.md", "Building a scene with a script"), ("materials.md", "Materials"),
     ("lighting.md", "Lighting"), ("camera-rigs.md", "Camera rigs")])
 

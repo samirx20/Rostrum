@@ -1,7 +1,10 @@
-"""Rostrum3D's fill of the kit's Export sheet (rostrum_gui/export_sheet.py, EXPORT.md; settings: qml/ExportSettings3D.qml).
+"""The render sheet (SPEC §11.2, mockup 08): Rostrum3D's fill of the kit's Export sheet (rostrum_gui/export_sheet.py;
+rows: qml/ExportSettings3D.qml; the estimate: qml/RenderEstimate.qml and estimate_sheet.py). F12, the header's Render
+and Ctrl+E open it.
 
-What: "This frame" (the playhead frame as a picture) or "The whole shot" (every frame as a numbered picture). File: png,
-exr, or both. Both go through the SAME code the agents' tools use (rostrum3d.mcp.render: `still` for a frame; the same
+What: "This frame" (the playhead frame as a picture) or the shot (its frames: the whole shot or the stretch set on it).
+Quality and Size are the shot's own render settings (render_fields): changing them here is a shot edit, one undo step,
+saved on the shot, the same fields agents set and read. Save as: png, exr, or both. Both go through the SAME code the agents' tools use (rostrum3d.mcp.render: `still` for a frame; the same
 folder, files, numbering and manifest for a sequence): a project render version `renders/<item>/vNNN/`, in the
 background on its own engine process, so the picture exported is the one the Render button and render_still make.
 Browse: the files are also copied into that folder (a sequence into a new folder there). A failure is words and the
@@ -13,23 +16,28 @@ import shutil
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import Property, Signal, Slot
+from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import project
+from rostrum_gui.edits import edit_label, field_call
 from rostrum_gui.export_sheet import ExportSheet, free_path
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp import draw
+from rostrum3d.mcp.estimate import scale
 from rostrum3d.mcp.render import FIRST, DocView, _finish, _folder, _manifest, _renumber, still
+from rostrum3d.render_fields import QUALITIES, SIZES, settings
 
-from .render_job import cycles_of
+from .estimate_sheet import Estimate
 
 FRAME, SHOT = "frame", "shot"
 FORMATS = {"png": ["png"], "exr": ["exr"], "both": ["png", "exr"]}
 FORMAT_ROWS = [{"value": "png", "label": "PNG picture"}, {"value": "exr", "label": "EXR (for the Editor)"},
                {"value": "both", "label": "PNG and EXR"}]
+QUALITY_ROWS = [{"value": q, "label": q.capitalize()} for q in QUALITIES]
 
 
 class Export3D(ExportSheet):
+    VERBS = ("Render", "Rendering", "Rendered")
     own = Signal()
 
     def __init__(self, bridge, make_engine=Engine, parent=None):
@@ -37,12 +45,42 @@ class Export3D(ExportSheet):
         self.changed.connect(self.own)
         self._make_engine, self._engine, self._halt = make_engine, None, threading.Event()
         self._choice, self._format = FRAME, "png"
+        self.estimate = Estimate(self, make_engine)
         bridge.frameChanged.connect(self.changed)       # the file's name follows the playhead
+        for signal in (self.changed, bridge.docChanged):   # any change: the number follows at once (or is measured again)
+            signal.connect(self.estimate.refresh)
+
+    @Property(str, constant=True)
+    def sheetTitle(self):
+        return "Render"
+
+    @Property(QObject, constant=True)
+    def timeEstimate(self):
+        return self.estimate
+
+    @Slot()
+    def openFor(self):
+        """F12 / the header's Render: open on this frame on the Build page, on the shot on Animate and Render."""
+        if not self.running():
+            self._choice = FRAME if self.bridge.page == "build" else SHOT
+            self.stale()
+        self.setOpen(True)
+        self.estimate.check_card()
+        self.changed.emit()
 
     # ---- the kit's questions ----------------------------------------------------------------------------
     def choices_list(self):
+        n = self._frames()
         return [{"value": FRAME, "label": "This frame", "tip": "The picture at the playhead"},
-                {"value": SHOT, "label": "The whole shot", "tip": "Every frame, as numbered pictures"}]
+                {"value": SHOT, "label": f'{self.bridge.shotInfo["label"]} · {n} frame{"s" * (n != 1)}',
+                 "tip": "The shot's frames, as numbered pictures"}]
+
+    def action_text(self):
+        return "Render this frame" if self._choice == FRAME else f"Render {self._frames()} frames"
+
+    def _frames(self) -> int:
+        s = self._settings()
+        return s["end"] - s["start"] + 1
 
     def replaceable(self):
         return self._choice == FRAME
@@ -62,6 +100,75 @@ class Export3D(ExportSheet):
         if not self._folder:
             return None
         return Path(self._folder) / (self.file_name() if self._choice == FRAME else self._stem())   # a sequence: its own folder
+
+    # ---- the shot's render settings (render_fields), read and set as agents do ---------------------------------
+    def _shot(self) -> dict:
+        return next(x for x in self.bridge.doc.data["shots"] if x["id"] == self.bridge.shot_id)
+
+    def _settings(self, over: dict | None = None) -> dict:
+        return settings({**self._shot(), **(over or {})}, shot_info(self.bridge.doc.data, self.bridge.shot_id))
+
+    def plan_now(self, over: dict | None = None):
+        """(scene, info, settings, frames) of what Render would make now: what the estimate measures and scales."""
+        b = self.bridge
+        info, s = shot_info(b.doc.data, b.shot_id), self._settings(over)
+        if self._choice == FRAME:
+            s["start"] = s["end"] = b.frame
+        return describe(b.doc.data, b.shot_id, b.doc.folder), info, s, s["end"] - s["start"] + 1
+
+    def gpu_ours(self) -> bool:
+        """One of this window's renders is on the graphics card (the estimate waits, so it measures a free card)."""
+        return self.running() or self.bridge.render.running()
+
+    def fitting(self, m: dict, budget_s: float) -> list[dict]:
+        """Over a budget: each lower quality preset, then half size, that alone fits (scaled from the same measurement)."""
+        out, now = [], self._settings()
+        tries = [("renderQuality", q, q.capitalize()) for q, v in QUALITIES.items() if v["samples"] < now["samples"]]
+        if SIZES[self._shot().get("renderSize", "full")] > SIZES["half"]:
+            tries.append(("renderSize", "half", "Size ½"))
+        for field, value, word in tries:
+            _, _, s, frames = self.plan_now({field: value})
+            e = scale(m, s, frames, mp4=False)
+            if e["seconds"] <= budget_s:
+                out.append({"field": field, "value": value, "text": f'{word} · {e["text"].split(" · ")[0].lower()}'})
+        return out
+
+    @Property("QVariantList", constant=True)
+    def qualities(self):
+        return QUALITY_ROWS
+
+    @Property(str, notify=own)
+    def quality(self):
+        return self._settings()["quality"]
+
+    @Property(str, notify=own)
+    def qualityText(self):
+        s = self._settings()
+        return f'{s["samples"]} samples' + (" · noise cleaned" if s["denoise"] else "")
+
+    @Property("QVariantList", notify=own)
+    def sizes(self):
+        w, h = self.bridge.shotInfo["width"], self.bridge.shotInfo["height"]
+        return [{"value": "full", "label": f"{w} × {h}"}, {"value": "half", "label": "½"}, {"value": "double", "label": "× 2"}]
+
+    @Property(str, notify=own)
+    def size(self):
+        return self._shot().get("renderSize", "full")
+
+    @Property(str, notify=own)
+    def sizeText(self):
+        s = self._settings()
+        return f'{s["width"]} × {s["height"]}'
+
+    @Slot(str, str)
+    def setShot(self, field, value):
+        """Quality or Size from the sheet: a change to the shot's render settings (one undo step, saved on the shot)."""
+        b, sid = self.bridge, self.bridge.shot_id
+        if self.running() or self._shot().get(field) == value:
+            return
+        b._guard(lambda: b._apply([field_call(b.doc, sid, field, value)], edit_label(b.doc, sid, field, value)))
+        self.stale()
+        self.changed.emit()
 
     # ---- its own settings ---------------------------------------------------------------------------------
     @Property("QVariantList", constant=True)
@@ -84,9 +191,10 @@ class Export3D(ExportSheet):
         b = self.bridge
         if b.render.running():
             raise RuntimeError("a render is already running; wait for it or cancel it first")
-        info = dict(shot_info(b.doc.data, b.shot_id))
-        return {"info": info, "cycles": cycles_of(b.doc.data, b.shot_id, info), "scene": describe(b.doc.data, b.shot_id, b.doc.folder), "doc": DocView.of(b.doc),
-                "frame": b.frame, "folder": b.doc.folder, "out": out, "size": (info["width"], info["height"]),
+        scene, info, s, _ = self.plan_now()             # the shot's render settings: what the estimate measured
+        info = {**info, "start": s["start"], "end": s["end"]}
+        return {"info": info, "cycles": {"samples": s["samples"], "denoise": s["denoise"]}, "scene": scene, "doc": DocView.of(b.doc),
+                "frame": b.frame, "folder": b.doc.folder, "out": out, "size": (s["width"], s["height"]),
                 "shot": self._choice == SHOT, "formats": FORMATS[self._format], "stem": self._stem(),
                 "main": FORMATS[self._format][0]}
 
@@ -156,4 +264,5 @@ class Export3D(ExportSheet):
             engine.proc.kill()                          # our own child, by its handle
 
     def close(self):
+        self.estimate.close()
         self.stop()
