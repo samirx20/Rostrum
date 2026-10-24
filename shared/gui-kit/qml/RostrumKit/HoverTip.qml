@@ -20,6 +20,8 @@ QQC.Popup {
     readonly property int oneLine: 420        // a tip longer than this wraps and stands beside its control
     readonly property int wrapW: 300
     readonly property bool wraps: whole.advanceWidth > oneLine
+    TextMetrics { id: nameBold; font.family: uiFont; font.pixelSize: Theme.label; font.bold: true; text: tip.text }
+    readonly property real lineW: nameBold.advanceWidth + (help ? whole.advanceWidth - nameBold.advanceWidth + 4 : 0)   // one line's width, measured: the Text's own implicitWidth would make its width depend on itself
     TextMetrics { id: whole; font.family: uiFont; font.pixelSize: Theme.label; text: tip.help ? tip.text + "  " + tip.help : tip.text }
     readonly property int side: {      // -1 left of the control, 1 right of it, 0 under it
         if (!wraps || !parent || !win || !visible) return 0
@@ -49,7 +51,7 @@ QQC.Popup {
         leftPadding: Theme.grid + 2; rightPadding: Theme.grid + 2; topPadding: 3; bottomPadding: 3
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            width: tip.wraps ? tip.wrapW : Math.min(implicitWidth, tip.most - (keyHint.visible ? keyHint.width + Theme.grid : 0) - 2 * Theme.grid - 4)
+            width: tip.wraps ? tip.wrapW : Math.min(Math.ceil(tip.lineW) + 2, tip.most - (keyHint.visible ? keyHint.width + Theme.grid : 0) - 2 * Theme.grid - 4)
             wrapMode: tip.wraps ? Text.WordWrap : Text.NoWrap
             elide: tip.wraps ? Text.ElideNone : Text.ElideRight; textFormat: Text.StyledText
             text: tip.help ? "<b>" + tip.esc(tip.text) + "</b>  " + tip.esc(tip.help) : tip.esc(tip.text)
@@ -64,7 +66,7 @@ QQC.Popup {
     property bool clicked: false         // this control was pressed: no tip until the pointer has left and come back
     function pressedNow(at) { TipGate.pressAt = at; clicked = true; rest.stop(); tip.close() }
     function waited() {
-        if (text === "") return
+        if (text === "" || !parent || !parent.visible) return
         if (spot && TipGate.near(spot.point.scenePosition)) { held = true; return }   // the screen moved under a still pointer
         held = false; open()
     }
@@ -82,6 +84,13 @@ QQC.Popup {
         if (hovered && !pressed && !clicked) rest.restart()
         else { rest.stop(); tip.close(); if (!hovered) { clicked = false; held = false } }
     }
+    // a panel that closes or goes away under a tip takes the tip with it (the tip lives in the window's overlay)
+    Connections {
+        target: tip.parent
+        ignoreUnknownSignals: true
+        function onVisibleChanged() { if (tip.parent && !tip.parent.visible) { rest.stop(); tip.close(); tip.clicked = false; tip.held = false } }
+    }
+    Component.onDestruction: tip.close()
     onPressedChanged: if (pressed) { rest.stop(); tip.close() }
     Component.onCompleted: {
         if (parent) spot = layer.createObject(parent)      // a press anywhere on the control ends the tip, whoever wired `pressed`

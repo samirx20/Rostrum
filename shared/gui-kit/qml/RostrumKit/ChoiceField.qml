@@ -4,7 +4,7 @@ import "."
 
 // A choice: the field frame showing the current option, a drawn arrow at the right (vertically centred,
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
-// A long list (more than 8) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
+// A long list (more than 15) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
 // opens with a search line on top: what is typed keeps only the options whose label holds it. Options carrying `section`
 // are shown under a small heading per run ("In Rostrum", "On this computer"); past 12 rows the list scrolls.
 FieldFrame {
@@ -22,7 +22,7 @@ FieldFrame {
     function sectionAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.section || "") }   // a heading over each run of options sharing one
     function same(a, b) { return String(a) === String(b) }
     function indexOf(v) { for (let i = 0; i < options.length; i++) if (same(valueAt(i), v)) return i; return -1 }
-    readonly property bool searchable: options.length > 8 || options.some(o => typeof o === "object" && !!o.face)
+    readonly property bool searchable: options.length > 15 || options.some(o => typeof o === "object" && !!o.face)
     property string query: ""
     readonly property var shown: {      // the options' indices the search keeps (all without one)
         const q = query.trim().toLowerCase(), out = []
