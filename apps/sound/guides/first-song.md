@@ -27,7 +27,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 Open **≡**, then **New** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
 
 Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose. Ctrl+S
-just tells you so; named versions come later with the History sheet. (The song's own file is brought fully up to date when
+(**≡ › Save a version**) saves a named version you can go back to from History. (The song's own file is brought fully up to date when
 you close the window and every 20 changes; the change log beside it always has the latest, and opening the song plays it.)
 
 ## 2. Add a track
@@ -44,8 +44,7 @@ you close the window and every 20 changes; the change log beside it always has t
    - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
      or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
      move the folder, and nothing is raised under **Problems**.
-   - With a track of the same kind already selected, the Library asks "Change Piano to Strings? The notes stay."
-     Pick **Change** to swap that track's sound, or **New track** for a new one.
+   - **Add** always makes a new track. To give an existing track another sound, use the **Sound ▾** picker in its settings panel (the notes stay).
 4. The Library closes after each use. Close it any time with × or Ctrl+L.
 
 ## 3. Shape the sound
@@ -75,11 +74,10 @@ The **Colour** row shows the colour the track is drawn in.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
-   as **Quantise** and **Transpose**, each always in the same place; **⋯** at the end of that row holds the less used
-   ones (when only those fit, there is no row: use right-click or **Ctrl+K**). The bottom line, **Last changed by …**,
-   sits on its own under a thin line; click it to open History. There is no bar floating over the arrangement: the
+   as **Quantise** and **Transpose**, each always in the same place. The less used ones sit behind **› More** under the
+   fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
-   Move up / down, Lock and Rename. On empty lane space it offers Paste here, Add marker here and Select all on this
+   Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
    track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by
    name.
 5. **Keys on the selection:**
@@ -131,7 +129,7 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   room to write in) and **More**. Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
   playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
   signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
-- Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change**, **+ Section** and **+ Marker**
+- Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**
   add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
   (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's
   own tempo and time signature) and not where one already sits.

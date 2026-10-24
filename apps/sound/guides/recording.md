@@ -29,10 +29,10 @@ The thin bar along the bottom of the **Record** button shows how loud the microp
 
 ## 5. Choose how the take is made (optional)
 
-Right-click **Record** (a track must be armed). The panel shows only what can be used now:
+Click the **▾** beside **Record** (or right-click **Record**); a track need not be armed. The panel shows only what can be used now:
 
 - **Count-in**: clicks before you start. Turn it on and **Bars** appears (1 to 8).
-- **Punch in**: record only over a range. Turn it on and the range appears as red edges on the ruler, starting two bars from the playhead. Drag across the ruler to draw it, or drag either red edge. The take stops by itself after the range. If the playhead is already past the start, playback starts one bar before it.
+- **Punch in**: record only over a range. Turn it on and the range appears as red edges on the ruler: it starts at the playhead and runs two bars. Drag across the ruler to draw it, or drag either red edge. The take stops by itself after the range. If the playhead is already past the start, playback starts one bar before it.
 - **Hear input** (only when the microphone is open): you hear yourself in the output. **Volume** sets how much. Off by default.
 - A line says whether the microphone's delay was measured.
 
@@ -53,11 +53,12 @@ Right-click **Record** (a track must be armed). The panel shows only what can be
 
 If a take has hiss, hum or room echo:
 
-1. Click the clip. The panel's **Cleanup** group is the one place for the controls (**Clean up…** in Ctrl K jumps to it). Set the steps, then click **Make cleaned take** under the panel (it runs for every picked clip). The group has: **Less noise** and **Less echo** (0 to 1; start low, too much sounds watery), **Dialogue only**, **Play one stem**.
-2. Once cleanup is set, a box appears under the settings panel: "This clip has cleanup set, but its cleaned take is not made yet." Meanwhile the song keeps playing and the clip plays its original.
-3. Click **Make cleaned take**. The first time, a model may be missing. The box then asks first, giving its size and licence. Click **Download** to continue or **Not now**. You see progress, with **Cancel**; it is checked when done ("Downloaded and checked."). If it fails, use **Try again** or **Close**.
-4. When it is made, the song plays again and the clip uses the cleaned take (the **Use cleaned take** switch turns it on and off).
-5. The model is downloaded only once. Where it is kept is under **AI models folder** in Preferences.
+1. Click the clip. For a take recorded here, the panel's **Cleanup** group is the one place for the controls; for any other clip it appears after **Clean up…** in Ctrl K (which jumps to it). It has **Play one stem**, **Dialogue only**, **Less noise** and **Less echo**. The two sliders run from 0 % to 100 %; start low, because too much sounds watery.
+2. The cleaned take is made as soon as you let go of a slider or switch a step on. The clip shows its progress, and the song keeps playing the original until the take is ready. Click **Cancel** under the panel to stop it; nothing half-made is kept.
+3. When it is made, the **Use cleaned take** switch is on (turn it off to hear the original again), and a line under the panel says what the clean-up did, for example "Background noise −6 dB · voice level −6 dB". If it is amber and says "The voice got quieter too: try less.", lower the slider.
+4. **Dialogue only** and some other steps need a model. The first time, a box under the panel says so, with its size and licence. Click **Download** to continue or **Not now**; you see progress, with **Cancel**, and it is checked when done ("Downloaded and checked."). The take is made right after. If the download fails, use **Try again** or **Close**.
+5. **Make cleaned take** is a button that appears under the panel only when a clip has cleanup set but no take yet, for example after a download was cancelled or a take failed. Click it to make the take.
+6. The model is downloaded only once. Where it is kept is under **More** › **AI models folder** in Preferences.
 
 ## If something is wrong
 
