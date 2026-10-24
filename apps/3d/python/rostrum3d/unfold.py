@@ -63,5 +63,5 @@ def mesh_unfold(ctx, targets, args):
         except Exception as e:  # noqa: BLE001  any engine failure is this operation's, named
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f"could not be unfolded: {e}")
         ctx.set(t, "uvs", reply["uvs"])
-        out[t] = {"pieces": reply.get("charts"), "covered": reply.get("used")}
+        out[t] = {"pieces": reply.get("charts"), "covered": reply.get("used"), "split faces": reply.get("split")}
     return {"unfolded": out}

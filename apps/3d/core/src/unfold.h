@@ -15,6 +15,7 @@ struct Unfolded {
   std::vector<PXR_NS::GfVec2f> st;  // one per face corner; 0..1, t up (USD's st: t = 0 is the picture's bottom row)
   int charts = 0;                   // how many flat pieces the surface was cut into
   float used = 0;                   // share of the picture the pieces cover, 0..1
+  int split = 0;                    // faces cut between two pieces (their corners don't all share one piece)
 };
 
 // `size`: the picture's side in pixels (the paint canvas, e.g. 2048); pieces keep a few pixels apart so painting

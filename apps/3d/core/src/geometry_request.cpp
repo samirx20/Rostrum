@@ -105,7 +105,7 @@ JsObject Core::unfold(const JsObject& o) {
     for (int i = 0; i < 2; ++i) st.push_back(JsValue(std::round(double(c[i]) * 1e6) / 1e6));
   const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   return JsObject{{"ok", JsValue(true)}, {"item", JsValue(id)}, {"uvs", JsValue(st)},
-                  {"corners", JsValue(int(u.st.size()))}, {"charts", JsValue(u.charts)},
+                  {"corners", JsValue(int(u.st.size()))}, {"charts", JsValue(u.charts)}, {"split", JsValue(u.split)},
                   {"used", JsValue(std::round(double(u.used) * 1000) / 1000)}, {"ms", JsValue(std::round(ms))}};
 }
 
