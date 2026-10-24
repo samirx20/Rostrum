@@ -278,3 +278,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-dom | `util::PHASE_NANOS`: `resolve` adds the ns of each phase (style, damage, construct, pconstruct, layout, transform, paint_tree, clear damage) to a process-wide sum; the engine's staging profile (`ROSTRUM2D_PROFILE_STAGE`, render `stage_profile.rs`) reads and clears it | measurement only: split the per-sample "layout" time into restyle and layout. Two clock reads per phase; nothing else changes |
+
+## Fonts (2026-10-24)
+
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender_skia | `get_or_cache_normalized_typeface`: each normalized coordinate goes to the Skia axis with its `fvar` tag (`avar::fvar_tags`), not the axis at the same place in Skia's list | DirectWrite lists a font's axes in its own order: Source Serif 4 (`fvar`: wght, opsz) was drawn with weight and optical size swapped (weight 200 drew heaviest). Inter and Roboto Flex happened to match |

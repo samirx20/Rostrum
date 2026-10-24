@@ -7,7 +7,9 @@ pub mod ease;
 pub mod eval;
 pub mod fields;
 pub mod follow;
+pub mod font_list;
 pub mod fonts;
+pub mod fonts_scan;
 pub mod grade;
 pub mod grain;
 pub mod grade_curve;
@@ -88,7 +90,7 @@ pub struct Node {
 #[derive(Clone, Debug)]
 pub struct Scene {
     pub comp: Node,
-    /// The fonts its text can name (fonts.rs): the scene's own `fonts`, then the app's.
+    /// The fonts its text can name (fonts.rs): the scene's own `fonts`, then the app's, then the computer's.
     pub fonts: Vec<fonts::Font>,
 }
 

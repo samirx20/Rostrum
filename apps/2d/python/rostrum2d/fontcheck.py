@@ -1,6 +1,7 @@
 """A text's type settings the font can't do (a feature or axis it lacks, a bad tag), refused when the document would take
 them: part of the whole-document check (kind.check), so run_script, edit_document and the screen all refuse it up
-front, naming the layer by its id, not when the first picture is drawn.
+front, naming the layer by its id, not when the first picture is drawn. A font that is neither in the app nor on this
+computer is refused where it is set (fontlist.setting_refusal), and is a Missing font problem in an opened file.
 
 The refusal is the engine's own (render/src/scene/type_font.rs), asked once per distinct set of settings and kept; a
 text that asks nothing of its font is never measured. A font the engine can't find is diagnose's business, and no engine
@@ -29,7 +30,7 @@ def _refusal(p: dict) -> str:
             _kept[k] = ""
         except EngineError as e:
             text = str(e)
-            refused = text.startswith(_REFUSED) and "not found among" not in text
+            refused = text.startswith(_REFUSED) and "not found" not in text
             _kept[k] = text[len(_REFUSED):].split(".", 1)[-1] if refused else ""
         if len(_kept) > textsize.KEEP:
             _kept.clear()

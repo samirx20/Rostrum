@@ -11,7 +11,7 @@ use anyrender::{PaintScene, RenderContext};
 use peniko::color::AlphaColor;
 use skia_safe::{
     BlendMode as SkBlendMode, BlurStyle, Canvas, Color, ColorSpace, Font, FontArguments,
-    FontHinting, FontMgr, GlyphId, ImageFilter, MaskFilter, Paint, PaintCap, PaintJoin, PaintStyle,
+    FontHinting, FontMgr, FourByteTag, GlyphId, ImageFilter, MaskFilter, Paint, PaintCap, PaintJoin, PaintStyle,
     PathEffect, Point, Point3, RRect, Rect, Typeface,
     canvas::{GlyphPositions, SaveLayerRec},
     font::Edging,
@@ -734,11 +734,23 @@ impl SkiaScenePainter<'_> {
             .copy_table_data(u32::from_be_bytes(*b"avar"))
             .map(|data| crate::avar::segment_maps(&data))
             .unwrap_or_default();
-        let coordinates: Vec<Coordinate> = axes
+        // Rostrum patch (fonts): each coordinate to the axis of its `fvar` tag, not the one at its place in Skia's
+        // list (crate::avar::fvar_tags; the lists' orders can differ).
+        let tags = typeface
+            .copy_table_data(u32::from_be_bytes(*b"fvar"))
+            .map(|data| crate::avar::fvar_tags(&data))
+            .unwrap_or_default();
+        let coordinates: Vec<Coordinate> = normalized_coords
             .iter()
-            .zip(normalized_coords.iter().map(|c| f2dot14_to_f32(*c)))
+            .map(|c| f2dot14_to_f32(*c))
             .enumerate()
-            .map(|(i, (axis, factor))| (axis, avar.get(i).map_or(factor, |map| crate::avar::unmap(map, factor))))
+            .filter_map(|(i, factor)| {
+                let axis = match tags.get(i) {
+                    Some(tag) => axes.iter().find(|a| a.tag == FourByteTag::new(*tag))?,
+                    None => axes.get(i)?,
+                };
+                Some((axis, avar.get(i).map_or(factor, |map| crate::avar::unmap(map, factor))))
+            })
             .filter(|(_, value)| *value != 0.0)
             .map(|(axis, factor)| {
                 // Rostrum patch (H5): below the default a coordinate runs from the default towards the minimum

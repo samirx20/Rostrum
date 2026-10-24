@@ -7,23 +7,34 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rostrum2d import render3d, settings
+from rostrum2d import fontlist, render3d, settings
 from rostrum_core import project
 
 _faces: list[dict] | None = None
+SECTIONS = {"shipped": "In Rostrum", "installed": "On this computer"}
+
+
+def _qt_face(family: str, files: list[str], known: set[str]) -> str:
+    """The family Qt draws this one's name with: its own name when Qt knows it (an installed font), else its first
+    (upright) file added to Qt (the app's shipped fonts; only that one, so the name shows upright); "" if Qt can't read it."""
+    from PySide6.QtGui import QFontDatabase
+    if family in known:
+        return family
+    fid = QFontDatabase.addApplicationFont(files[0]) if files else -1
+    names = QFontDatabase.applicationFontFamilies(fid) if fid >= 0 else []
+    return names[0] if names else ""
 
 
 def fonts() -> list[dict]:
-    """[{value, label, face}] by name: each family a text can name (settings.font_files), `face` the family Qt draws
-    it with (the file registered once with Qt, so the list shows each font in its own face; "" if Qt can't read it)."""
+    """[{value, label, face, section}]: each family a text can name (rostrum2d/fontlist.py, the engine's one list), the
+    app's own first, then the computer's; `face` the family Qt draws its name in, so the list shows each in its face."""
     global _faces
     if _faces is None:
         from PySide6.QtGui import QFontDatabase
-        _faces = []
-        for family, path in settings.font_files():
-            fid = QFontDatabase.addApplicationFont(str(path))
-            qt = QFontDatabase.applicationFontFamilies(fid) if fid >= 0 else []
-            _faces.append({"value": family, "label": family, "face": qt[0] if qt else ""})
+        known = set(QFontDatabase.families())
+        _faces = [{"value": f["family"], "label": f["family"], "section": SECTIONS.get(f["source"], ""),
+                   "face": _qt_face(f["family"], f["files"], known)}
+                  for f in fontlist.families()]
     return _faces
 
 

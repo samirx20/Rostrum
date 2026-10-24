@@ -83,14 +83,15 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     };
     let mut ids = vec![];
     let mut layers = vec![];
-    let mut used: Vec<fonts::Font> = vec![];
+    let mut used: Vec<String> = vec![];
     for (i, item) in items.iter().enumerate() {
         let (id, l) = layer(i, item)?;
         let node = super::node(&l, "measure").map_err(|e| e.replace(&page_id(i), &id))?;
         // The load's check (scene_serve.rs `check`), word for word.
-        let font = fonts::resolve(all, node.props["font"].as_str().unwrap_or("")).map_err(|e| format!("{id}: {e}"))?;
-        if !used.iter().any(|f| f.family == font.family) {
-            used.push(font.clone());
+        let font = fonts::pick(all, node.props["font"].as_str().unwrap_or(""), 400.0, node.props["italic"].as_bool() == Some(true))
+            .map_err(|e| format!("{id}: {e}"))?;
+        if !used.contains(&font.family) {
+            used.push(font.family.clone());
         }
         ids.push(id);
         layers.push(node);
@@ -104,7 +105,7 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     let named = |e: String| ids.iter().enumerate().rev().fold(e, |e, (i, id)| e.replace(&page_id(i), id));
     let markup = stage::stage(&eval::whole(&comp, 0.0)).map_err(named)?;
     let empty = "<div id=\"rostrum-stage\"></div>";
-    let shell = stage::shell(ROOM, ROOM, &used)?;
+    let shell = stage::shell(ROOM, ROOM, &fonts::faces_of(all, &used))?;
     if !shell.contains(empty) {
         return Err("measure: the page shell has no empty stage to fill".into());
     }

@@ -26,19 +26,22 @@ pub(super) fn v(it: &Item, f: &str) -> String {
     }
 }
 
-/// The page shell: the scene's fonts (fonts.rs; a file that can't be read is an error) and an empty stage the comp's size.
+/// The page shell: the faces of the scene's text fonts (fonts.rs `faces_of`; a file that can't be read is an error),
+/// each with its weight and slope (a variable font's weight is its own axis), and an empty stage the comp's size.
 /// Every picture on the stage (image, drawing, video, paint) is a block: an inline `<img>` sits on the text baseline, so
 /// one shorter than a line of text (a 5 px mouth from a PSD) was pushed below its own clipped box and never drawn.
 pub fn shell(width: u32, height: u32, fonts: &[super::fonts::Font]) -> R<String> {
     let mut faces = String::new();
-    let mut read: Vec<(&std::path::Path, String)> = vec![];
+    let mut read: Vec<((&std::path::Path, u32), String)> = vec![];
     for f in fonts {
-        if !read.iter().any(|(p, _)| *p == f.path) {
-            let bytes = std::fs::read(&f.path).map_err(|e| format!("font {}: {e}", f.path.display()))?;
-            read.push((&f.path, base64(&bytes)));
+        let key = (f.path.as_path(), f.index);
+        if !read.iter().any(|(k, _)| *k == key) {
+            read.push((key, base64(&super::fonts_scan::face_bytes(&f.path, f.index)?)));
         }
-        let data = &read.iter().find(|(p, _)| *p == f.path).unwrap().1;
-        let _ = writeln!(faces, "@font-face {{ font-family: \"{}\"; src: url(\"data:font/ttf;base64,{data}\"); }}", f.family);
+        let data = &read.iter().find(|(k, _)| *k == key).unwrap().1;
+        let weight = if f.variable { String::new() } else { format!(" font-weight: {};", f.weight.0) };
+        let style = if f.italic { "italic" } else { "normal" };
+        let _ = writeln!(faces, "@font-face {{ font-family: \"{}\";{weight} font-style: {style}; src: url(\"data:font/ttf;base64,{data}\"); }}", f.family);
     }
     Ok(format!("<html><head><style>{faces}html, body {{ margin: 0; background: transparent; }}
 #rostrum-stage {{ position: relative; width: {width}px; height: {height}px; overflow: hidden; }}
@@ -144,8 +147,8 @@ fn content(it: &Item, look: Look) -> R<(String, String)> {
         }
         "text" => {
             let mut s = format!(
-                "font-family:'{}';font-size:{}px;font-weight:{:.0};font-stretch:{}%;letter-spacing:{}em;line-height:{};text-align:{};",
-                it.str("font"), v(it, "size"), it.num("weight"), v(it, "stretch"), v(it, "tracking"), v(it, "lineHeight"), it.str("align")
+                "font-family:'{}';font-size:{}px;font-weight:{:.0};font-style:{};font-stretch:{}%;letter-spacing:{}em;line-height:{};text-align:{};",
+                it.str("font"), v(it, "size"), it.num("weight"), if it.on("italic") { "italic" } else { "normal" }, v(it, "stretch"), v(it, "tracking"), v(it, "lineHeight"), it.str("align")
             );
             s += &stage_type::font_css(it)?;
             s += &if it.num("boxWidth") != 0.0 { format!("width:{}px;white-space:pre-wrap;", v(it, "boxWidth")) } else { "white-space:pre;".into() };

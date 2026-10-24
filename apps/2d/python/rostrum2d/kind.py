@@ -14,7 +14,7 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, layout_pin, media, migrations, names, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, pathdata, refusals, shared_paints, widthprofile
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -38,6 +38,10 @@ REGISTRY = Registry()
 
 def _set_fields(ctx, targets, args):
     for t in targets:
+        item = ctx.item(t) if {"font", "italic"} & set(args) else None
+        if item and item.get("type") in ("text", "textstyle") and (why := fontlist.setting_refusal(
+                t, args.get("font", item.get("font", "")), args.get("italic", item.get("italic", False)))):
+            raise ValueError(why)                       # never drawn in another font: refused when set
         for k, v in args.items():
             ctx.set(t, k, v)
         names.after_set(ctx, t, args)                # a new shape is named for its kind, counted per kind
@@ -55,6 +59,8 @@ def facts(item: dict, doc=None) -> dict:
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item,      # rawSpring: keys.spring
                 "rawSpring": not {"bounce", "speed"} & set(item)}
     out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
+    if item.get("type") in ("text", "textstyle"):         # Italic shows where the family has one (or it is on)
+        out["fontItalic"] = bool(item.get("italic")) or _has_italic(item.get("font", F.defaults("text")["font"]))
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
         parent = doc.parent(item)
         out["inLayout"] = bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"
@@ -62,6 +68,13 @@ def facts(item: dict, doc=None) -> dict:
         out["underCamera"] = bool(parent) and parent.get("type") == "comp" \
             and any(c.get("type") == "camera" for c in parent.get("layers", []))
     return out
+
+
+def _has_italic(family: str) -> bool:
+    try:
+        return bool((fontlist.family(family) or {}).get("italic"))
+    except Exception:  # noqa: BLE001  no engine built: the row stays away (nothing can be drawn then anyway)
+        return False
 
 
 _NEEDS = {"v": "v (a number)", "c": "c (a colour)", "d": "d (text: path data, or a width profile \"pos,mult …\")"}

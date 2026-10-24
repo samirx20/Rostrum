@@ -3,7 +3,8 @@
 //! advance widths of letters placed one by one (letters.rs), at the layer's size, tracking and axes. No kerning.
 //!
 //! The stage writer is handed only the evaluated comp, so the scene's fonts are registered here when a scene
-//! loads (Scene::load): family → file, the file read once and kept.
+//! loads (Scene::load): the registry's faces (fonts.rs), each face's file read once and kept. A text's face is the
+//! one the page draws for its weight and slope (fonts.rs `pick`).
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -18,8 +19,8 @@ type R<T> = Result<T, String>;
 
 #[derive(Default)]
 struct Registry {
-    paths: HashMap<String, PathBuf>,
-    bytes: HashMap<PathBuf, Arc<Vec<u8>>>,
+    faces: Vec<Font>,
+    bytes: HashMap<(PathBuf, u32), Arc<Vec<u8>>>,
 }
 
 fn registry() -> &'static Mutex<Registry> {
@@ -27,24 +28,21 @@ fn registry() -> &'static Mutex<Registry> {
     TABLE.get_or_init(Default::default)
 }
 
-/// The scene's fonts (fonts.rs `list`; the first of a family wins, as `resolve`).
+/// The scene's fonts (fonts.rs `list`).
 pub fn register(fonts: &[Font]) {
-    let mut r = registry().lock().unwrap_or_else(|e| e.into_inner());
-    for f in fonts.iter().rev() {
-        r.paths.insert(f.family.clone(), f.path.clone());
-    }
+    registry().lock().unwrap_or_else(|e| e.into_inner()).faces = fonts.to_vec();
 }
 
-/// The file of the font a text layer names.
+/// The file of the face a text layer is drawn in (its font, weight and slope).
 fn bytes(it: &Item) -> R<Arc<Vec<u8>>> {
-    let family = it.str("font");
     let mut r = registry().lock().unwrap_or_else(|e| e.into_inner());
-    let path = r.paths.get(family).cloned().ok_or_else(|| format!("{}.font: font \"{family}\" not found among the scene's fonts", it.id))?;
-    if let Some(b) = r.bytes.get(&path) {
+    let face = super::fonts::pick(&r.faces, it.str("font"), it.num("weight"), it.on("italic")).map_err(|e| format!("{}.font: {e}", it.id))?;
+    let key = (face.path.clone(), face.index);
+    if let Some(b) = r.bytes.get(&key) {
         return Ok(b.clone());
     }
-    let b = Arc::new(std::fs::read(&path).map_err(|e| format!("{}.font: {}: {e}", it.id, path.display()))?);
-    r.bytes.insert(path, b.clone());
+    let b = Arc::new(super::fonts_scan::face_bytes(&key.0, key.1).map_err(|e| format!("{}.font: {e}", it.id))?);
+    r.bytes.insert(key, b.clone());
     Ok(b)
 }
 

@@ -13,7 +13,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageFont
+from PIL import Image
 
 from rostrum_core import project
 
@@ -29,16 +29,15 @@ FILTERS = "Images, video, SVG, PDF, PSD (*.svg *.pdf *.psd " + " ".join("*" + e 
 
 
 def app_fonts() -> set[str] | None:
-    """The family names the engine can draw (its fonts folder), so an imported text in another font is reported and set in the
-    default one rather than refused by the engine later. None when the folder can't be found (then nothing is checked)."""
-    folder = settings.fonts_dir()
-    if folder is None:
+    """The family names the engine can draw (fontlist.py: the app's fonts and the computer's), so an imported text in
+    another font is reported and set in the default one rather than refused. None when no engine is built (then nothing
+    is checked)."""
+    from ..engine import EngineError
+    from ..fontlist import names
+    try:
+        return names()
+    except EngineError:
         return None
-    names: set[str] = set()
-    for f in folder.glob("*.[to]tf"):
-        family = ImageFont.truetype(str(f), 12).getname()[0]
-        names |= {family, family.removesuffix(" Variable")}
-    return names or None
 
 
 def kind_of(path) -> str:

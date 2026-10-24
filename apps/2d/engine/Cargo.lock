@@ -2128,6 +2128,7 @@ dependencies = [
  "blitz-paint",
  "blitz-traits",
  "exr",
+ "fontdb",
  "gif",
  "glutin",
  "half",

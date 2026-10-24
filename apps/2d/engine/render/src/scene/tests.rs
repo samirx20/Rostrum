@@ -134,8 +134,9 @@ fn a_frame_draws_as_the_python_stopgap_drew_it() {
     let scene = Scene::load(&r["scene"]).unwrap();
     let (w, h) = (scene.width(), scene.height());
     let t = r["stage_t"].as_f64().unwrap();
-    let ours = draw(&stage::stage(&eval::at(&scene.comp, t).unwrap()).unwrap(), w, h, &scene.fonts);
-    let py = draw(r["stage"].as_str().unwrap(), w, h, &scene.fonts);
+    let faces = super::fonts::faces_of(&scene.fonts, &super::fonts::used(&scene.comp));
+    let ours = draw(&stage::stage(&eval::at(&scene.comp, t).unwrap()).unwrap(), w, h, &faces);
+    let py = draw(r["stage"].as_str().unwrap(), w, h, &faces);
     let differing = ours.chunks(4).zip(py.chunks(4)).filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x.abs_diff(*y) > 2)).count();
     assert!(differing == 0, "{differing} pixels differ between the engine's frame and the Python stopgap's at t={t}");
     let lit = ours.chunks(4).filter(|p| p[0] > 60 || p[1] > 60 || p[2] > 60).count();
@@ -160,8 +161,8 @@ fn a_drawing_shows_the_drawing_of_its_frame() {
     assert_eq!(src(0.199).as_deref(), Some(pic));                           // frame 5, held
 }
 
-/// A text layer naming a font that is neither the project's nor the app's is refused when the scene loads (never
-/// drawn in a fallback face), and the message says which fonts there are.
+/// A text layer naming a font that is neither the project's, the app's nor the computer's is refused when the scene
+/// loads (never drawn in a fallback face), and the message names the closest families; an italic the family lacks too.
 #[test]
 fn an_unknown_font_is_refused() {
     let mut s = reference()["scene"].clone();
@@ -170,7 +171,12 @@ fn an_unknown_font_is_refused() {
     text["props"]["font"] = "No Such Sans".into();
     let scene = Scene::load(&s).unwrap();
     let err = crate::scene_serve::check(&scene).unwrap_err();
-    assert!(err.starts_with(&format!("{id}: font \"No Such Sans\" not found")) && err.contains("Roboto Flex") && err.contains("Inter"), "{err}");
+    assert!(err.starts_with(&format!("{id}: font \"No Such Sans\" not found")) && err.contains("on this computer"), "{err}");
+    let text = s["comp"]["layers"].as_array_mut().unwrap().iter_mut().find(|l| l["type"] == "text").unwrap();
+    text["props"]["font"] = "Roboto Flex".into();
+    text["props"]["italic"] = true.into();
+    let err = crate::scene_serve::check(&Scene::load(&s).unwrap()).unwrap_err();
+    assert!(err.contains("has no italic"), "{err}");
 }
 
 /// A straight path layer's fields: `M 0 200 L 900 200` in a 900 × 400 box at (400, 400), anchored at its centre, fully drawn.

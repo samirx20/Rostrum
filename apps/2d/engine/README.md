@@ -13,7 +13,7 @@ found by the Blitz-vs-Chrome proof (`proofs/2d-renderer/README.md`) fixed.
 | `color/` | `rostrum-color`, the one colour library (working spaces, view transforms, LUTs, grades, scopes; archive `native/rostrum-color`) |
 | `stamp/` | `rostrum2d-stamp`, the painting kit's brush dabs laid natively, bit for bit numpy's pixels (H8; `stamp/README.md`) |
 | `vendor/` | **our fork** of blitz-dom, blitz-paint, anyrender, anyrender_skia, parley and usvg (pinned versions, patched; every patch is listed in `vendor/PATCHES.md`) |
-| `fonts/` | the app's fonts (SIL OFL, each with its licence text): Roboto Flex, Recursive, Inter (variable) |
+| `fonts/` | the app's shipped fonts (SIL OFL, each with its licence text; all variable): Inter (+ italic), Roboto Flex, Recursive, Montserrat (+ italic), Source Serif 4 (+ italic), Fraunces (+ italic), JetBrains Mono (+ italic), Caveat |
 | `DEPENDENCIES.md` | every crate the engine builds with, and its licence |
 
 **What moved, what stayed behind.** From the archive (tag `experiment-final`): the renderer's source and our
@@ -204,6 +204,19 @@ also "Inter").
 - Roboto Flex moved here from `render/tests/fonts/`; the tests use this copy.
 - The page shell embeds the listed fonts. A font file that can't be read is an error; before, it was skipped
   silently.
+
+**One font registry, the computer's fonts too (2026-10-24).** `render/src/scene/fonts.rs` is the one list of every
+face a text can name: the project's own fonts, the shipped folder, then the fonts installed on the computer
+(`fonts_scan.rs`, through fontdb: Windows `C:\Windows\Fonts` and the person's own fonts folders; Mac `/Library/Fonts`,
+`/System/Library/Fonts`, `~/Library/Fonts`), read once per run. A family comes whole from the first place that has
+it. Each face carries its weight (a variable font's `wght` range) and slope; `pick` chooses the face a text is drawn
+in the CSS way, and the page shell embeds only the faces of the families the scene's texts use, each with its
+`font-weight` / `font-style` (a face inside a `.ttc` collection is copied out as a font of its own first). An edit
+that changes which families are used puts the shell up again. The text field `italic` draws the family's italic; a
+family without one is refused. `rostrum2d-render fonts` and serve's `{"fonts": {}}` list every family (`font_list.rs`:
+source, real weights, italic, files), which is what Python's `rostrum2d/fontlist.py`, the font picker and the agents'
+`inspect_fonts` read. A family found nowhere is refused when the scene loads, is measured or edited: never drawn in
+another font. `ROSTRUM2D_NO_SYSTEM_FONTS=1` leaves the installed fonts out.
 
 ## The `serve` interface (what Python talks to)
 

@@ -11,7 +11,7 @@ library**, `rostrum2d.io`, used by the screen; they are **not yet MCP tools**. F
 Every importer returns the same **import tree**; `import_into(doc, tree, into, who)` turns it into ordinary layers in
 **one undo step** (`into` = a comp or group id). It returns a report: what could not be carried over, in plain words. Read it.
 Images with pixels are written to `<project folder>/imports/<file stem>/`. Colours with transparency (`#rrggbbaa`) fold into the
-layer's opacity. A font the app lacks is replaced by the default and reported.
+layer's opacity. A font that is neither in the app nor installed on this computer is set in the default font, and the import report says so for each text (install the font and pick it in Font to get it back).
 
 ```python
 from rostrum2d.io import svg_tree, pdf_tree, psd_tree, figma_tree, import_into

@@ -5,6 +5,7 @@
 //!   rostrum2d-render styles                        the computed CSS each class set declares (styles.rs)
 //!   rostrum2d-render encode-gif | encode-png | encode-exr | encode-mp4   the renderer's own encoders for exports (encode_cmd.rs)
 //!   rostrum2d-render svg-tree <in.svg> <dir>     an SVG as plain JSON for the importer (svg_tree.rs)
+//!   rostrum2d-render fonts                       every font family a text can name, as JSON (scene/font_list.rs)
 //!   rostrum2d-render cube | sksl | scope           colour helpers: a .cube as a table, view / grade programs, scopes
 
 mod asset_cache;
@@ -83,11 +84,18 @@ fn main() {
         Some("styles") => styles::run(),
         Some(k @ ("encode-gif" | "encode-png" | "encode-exr" | "encode-mp4")) => encode_cmd::run(k, &args[1..]),
         Some("svg-tree") => svg_tree::run(&args[1..]),
+        Some("fonts") => match scene::fonts::list(&serde_json::Value::Null) {
+            Ok(f) => println!("{}", scene::font_list::list(&f)),
+            Err(e) => {
+                eprintln!("fonts: {e}");
+                std::process::exit(1);
+            }
+        },
         Some("cube") => cube::run(&args[1..]),
         Some("sksl") => sksl::run(&args[1..]),
         Some("scope") => scopes::run_cli(&args[1..]),
         _ => {
-            eprintln!("usage: rostrum2d-render serve | glyphs | styles | encode-gif | encode-png | encode-exr | encode-mp4 | svg-tree | cube <file.cube> <table.f32> | sksl display-in <view> <target> | scope <spec.json>");
+            eprintln!("usage: rostrum2d-render serve | fonts | glyphs | styles | encode-gif | encode-png | encode-exr | encode-mp4 | svg-tree | cube <file.cube> <table.f32> | sksl display-in <view> <target> | scope <spec.json>");
             std::process::exit(2);
         }
     }
