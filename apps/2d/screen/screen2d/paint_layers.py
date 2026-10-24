@@ -32,6 +32,7 @@ class PaintLayers(QObject):
         super().__init__(parent)
         self.b, self._picked, self._drag = bridge, "", None
         self.thumbs = ThumbProvider()                     # image://paintthumbs (session.py)
+        self.thumbs.notes.ready.connect(self.changed)      # a thumbnail drawn off the GUI thread: the list shows it
         for sig in (bridge.docChanged, bridge.outlineChanged, bridge.toolChanged, bridge.frameChanged):
             sig.connect(self.changed)
         bridge.painter.changed.connect(self._painter_changed)
@@ -75,7 +76,7 @@ class PaintLayers(QObject):
         w, h = canvas_size(self._item())
         return [{"id": p["id"], "name": p["name"], "visible": p["visible"], "locked": bool(p.get("locked")),
                  "opacity": p["opacity"], "mode": p["mode"], "note": _note(p), "current": p["id"] == now,
-                 "thumb": "image://paintthumbs/" + self.thumbs.key(f, p, w, h) if w and h else ""}
+                 "thumb": self.thumbs.source(f, p, w, h) if w and h else ""}
                 for p in reversed(f["paints"])]
 
     @Property("QVariantList", constant=True)

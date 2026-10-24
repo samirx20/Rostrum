@@ -93,6 +93,19 @@ class FrameRenderer(PictureWorker):
         GUI thread; `done(answer, error)` is called on the worker thread (emit a signal from it)."""
         self.post_ordered(("ask", scene, fn, done))
 
+    def still(self, scene: dict, t: float, samples: int | None, done) -> None:
+        """The whole frame of `scene` at `t` at full size, as straight RGBA8 (h × w × 4 numpy), drawn off the GUI
+        thread by the canvas's engine (the eraser's view under its layer: wet.py); `done(pixels, error)` on the worker."""
+        import numpy as np
+
+        def grab(eng):
+            image = _frame(eng, t, SCRATCH / "still.png", samples, 1.0).convertToFormat(QImage.Format.Format_RGBA8888)
+            if image.isNull():
+                raise RuntimeError(f"the engine's frame could not be read at {t:.2f} s")
+            rows = np.frombuffer(image.constBits(), np.uint8).reshape(image.height(), image.bytesPerLine())
+            return rows[:, :image.width() * 4].reshape(image.height(), image.width(), 4).copy()
+        self.ask(scene, grab, done)
+
     def open_engine(self):
         return open_engine()
 

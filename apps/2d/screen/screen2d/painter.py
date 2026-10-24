@@ -14,7 +14,7 @@ from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
 from . import adding, brush_presets, framing, onion
-from .wet import WetInk, WetView, shows, smear_ink
+from .wet import WetView, smear_ink, without_paint
 from .pen_tilt import PenTilt
 from .brush import Brush
 from .brush_panel import BrushPanel
@@ -23,6 +23,7 @@ from .strokes import StrokeDrag, check_showing
 
 class Painter(BrushPanel):
     changed = Signal()
+    _revealed = Signal(object, object, object)     # the eraser's ink, the frame without its layer, an error (worker thread)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -38,6 +39,7 @@ class Painter(BrushPanel):
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = onion.OnionProvider()
         self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
+        self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
         self.model = RowsModel(rows.ROLES, self)
@@ -130,6 +132,15 @@ class Painter(BrushPanel):
             self._fresh = self.b.selectedLayer if which == "new" else None
         self.changed.emit()
 
+    def _erasing(self) -> bool:
+        return self.brush.values.get("mode") == "erase"
+
+    @Property(bool, notify=changed)
+    def canErase(self):
+        """The eraser has paint to take away: what the pen paints on holds some (else the pointer says it can't)."""
+        d = self._aim()
+        return bool(d and (d["type"] == "drawing" or d.get("frames")))
+
     @Property(bool, notify=changed)
     def canNewLayer(self):
         d = self._aim()
@@ -148,8 +159,8 @@ class Painter(BrushPanel):
     def beginStroke(self, x, y, pressure):
         """x, y in composition px (like Bridge2D.pickAt); pressure 0..1 (1 for a mouse)."""
         d = self._aim()
-        if d is None and self.b.tool != "draw":
-            return False
+        if d is None and self.b.tool != "draw" or self._erasing() and not self.canErase:
+            return False                    # the eraser never makes a layer: with nothing to erase it does nothing
         self.endStroke()
         c = self.b.comp()
         make = None
@@ -162,17 +173,18 @@ class Painter(BrushPanel):
             if not make:
                 check_showing(self.b.doc.item(d["id"]), self.b.own_t(d["id"]), self.b.time)
             args = self.brush.stroke_args()
-            wet = shows(args)
             self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
-                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), wet)
-            if wet:
-                if args.get("smudge"):                      # a smudge smears the layer's own paint (wet.py)
-                    self._wet.start(smear_ink(args, s, self.b.selBox, self._n()))
-                    self._wet.add(*s.points[-1][:3])
-                else:
-                    self._wet.start(WetInk(args, s.sid, s.scale(x, y), (c["width"], c["height"])))
-                    self._wet.add(x, y, pressure)
-                self._wet.show()
+                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), True)
+            if args.get("smudge") and args.get("mode") != "erase":     # a smudge smears the layer's own paint (wet.py)
+                self._wet.start(smear_ink(self._wet, args, s, self.b.selBox, self._n()))
+                self._wet.add(*s.points[-1][:3])
+            else:
+                ink = self._wet.ink(args, s.sid, s.scale(x, y), (c["width"], c["height"]))
+                self._wet.start(ink)
+                self._wet.add(x, y, pressure)
+                if ink.erasing:
+                    self._ask_reveal(ink, d["id"])
+            self._wet.show()
             if make:
                 self._fresh = None
                 self.b.select(d["id"])
@@ -199,6 +211,20 @@ class Painter(BrushPanel):
             self.b.guard(self._wet.show if s.wet else s.show)
 
     wet = Property(QObject, lambda self: self._wet, constant=True)
+
+    def _ask_reveal(self, ink, layer_id):
+        """The eraser's ink shows the frame without the layer it erases: asked of the canvas's engine now, off this
+        thread (a frame's time); its ink shows once it comes (wet.py)."""
+        scene = without_paint(self.b._scene, layer_id) if self.b._scene else None
+        if scene is None:
+            raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")
+        self.b.frames.still(scene, self.b.time, self.b.play.samples(), lambda px, e: self._revealed.emit(ink, px, e))
+
+    def _reveal(self, ink, px, error):
+        if error is not None:
+            self.b._fail(f"Error: the eraser can't show what is under the layer: {error}")
+        else:
+            self._wet.reveal(ink, px)
 
     def _wet_add(self, s, n, x, y, pressure):
         """The move's point to the wet ink: a smudge's in canvas px, as the stroke took it (if it did)."""

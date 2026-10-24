@@ -135,7 +135,8 @@ Rectangle {
             visible: well.drawing
             // the brush ring: the pointer is the brush's outline at its size on screen (Brush, Eraser); [ ] and
             // Alt + right-drag size it (left-right size, up-down hardness: `sizing`), the ring staying where the drag began
-            readonly property bool ringTool: !backend.colourPick.alt && (backend.paintTool.now === "brush" || backend.paintTool.now === "eraser")
+            readonly property bool noErase: backend.paintTool.now === "eraser" && !painter.canErase   // nothing to erase here: the pointer says so
+            readonly property bool ringTool: !backend.colourPick.alt && !noErase && (backend.paintTool.now === "brush" || backend.paintTool.now === "eraser")
             Item {
                 id: ring
                 visible: parent.ringTool && hover.hovered || sizing.sizingNow
@@ -170,7 +171,8 @@ Rectangle {
             }
             HoverHandler {      // Alt held: the pointer picks a colour (the swatch beside it shows the colour under it)
                 id: hover
-                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : parent.ringTool ? Qt.BlankCursor : Qt.CrossCursor
+                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : parent.noErase ? Qt.ForbiddenCursor
+                           : parent.ringTool ? Qt.BlankCursor : Qt.CrossCursor
                 onPointChanged: { const p = panel.inWell(point.position.x, point.position.y); backend.colourPick.look(p.x, p.y) }
             }
             PointHandler {

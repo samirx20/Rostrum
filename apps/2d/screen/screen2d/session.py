@@ -6,6 +6,7 @@ A document opens with the playhead at 0, like the ruler says.
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from rostrum_gui import guides, start
@@ -26,8 +27,12 @@ GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # 
     ("characters-sound-camera.md", "Characters, sound, camera and styles"), ("README.md", "All guides")])
 
 
+SWITCH_S = 0.001                     # s: Python's hand-over between threads (default 5 ms, a third of a frame)
+
+
 class Session:
     def __init__(self, size=(1600, 960), comp_id=None):
+        sys.setswitchinterval(SWITCH_S)    # pictures are made on worker threads: the screen's thread waits for one at most this long
         self.size, self.bridge, self.engine, self.win, self.comp_id = size, None, None, None, comp_id
         self.files = ProjectFiles(FILES2D, self)
         self.space = None                                # Space: tap plays, hold + drag pans (spacekey.py; one per app)

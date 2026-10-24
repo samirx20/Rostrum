@@ -144,6 +144,16 @@ def test_pen_stroke_is_one_undo_step_and_one_change(bridge):
     assert not strokes() and not any(f["at"] == 5 for f in doc.item("pad")["frames"])   # the frame it added went too
 
 
+def test_eraser_with_nothing_to_erase_does_nothing(bridge):
+    """The eraser never makes a layer: with no painted layer to erase, a press changes nothing (the pointer says so)."""
+    bridge.select("box")
+    bridge.paintTool.use("eraser")
+    n, count = len(bridge.doc.history.changes), len(list(bridge.doc.items()))
+    assert not bridge.painter.canErase and not bridge.painter.beginStroke(20, 20, 1.0)
+    bridge.painter.endStroke()
+    assert len(bridge.doc.history.changes) == n and len(list(bridge.doc.items())) == count
+
+
 def test_group_from_the_selection_is_one_change_and_undo_takes_it_back(bridge):
     """Select first, then act, through the same path as the action bar, the right-click menu and Ctrl+K."""
     bridge.selectMany(["title", "box"])
