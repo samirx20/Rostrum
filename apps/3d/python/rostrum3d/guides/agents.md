@@ -46,7 +46,7 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - The first call for a scene draws the middle frame a few times and keeps the timing: tiny (the warm-up), at a quarter of the
   pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size with 8 samples,
   because a full-size frame costs far more than four quarter-size ones. About 10-15 s at full HD; past a minute and a half it
-  stops and tells you the job is at least that slow.
+  stops (its engine ended), the job fails and says the job is at least that slow or the engine stopped answering.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
 - `quality`, `samples`, `size`, `start` / `end` try other settings without touching the shot. `frame` estimates a still.

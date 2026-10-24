@@ -11,6 +11,7 @@ the next request, the scene is sent again, and the restart is reported in `take_
 """
 from __future__ import annotations
 
+import atexit
 import hashlib
 import json
 import os
@@ -37,6 +38,14 @@ def own_pids() -> list[int]:
     """The engine processes this program started and still runs (the viewport's among them): on the graphics card they
     are ours, not "another job" (gpu_busy.busy's own_pids)."""
     return [e.proc.pid for e in list(_MINE) if e.proc is not None and e.proc.poll() is None]
+
+
+@atexit.register
+def _end_all():
+    """This program is ending (a scripted run, a test, the window): no engine of ours outlives it, whatever thread was
+    still waiting on one."""
+    for e in list(_MINE):
+        e.kill()
 
 
 class Engine:
@@ -185,6 +194,17 @@ class Engine:
         self.close()
         with self._lock:
             self.proc, self._hash = None, None
+
+    def kill(self):
+        """End our own engine process now, by its handle (its PID), without waiting for the lock: safe from any thread,
+        even while another thread is blocked on a reply (that request then fails loudly: the process ended)."""
+        proc = self.proc
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
 
     def close(self):
         with self._lock:

@@ -20,8 +20,8 @@ samples and frame count without a new probe.
 
 The measurement is cached (rostrum_core.cache) by the scene, the engine build and what changes the picture's cost other
 than size, samples and frames (renderer, noise clean-up, the shot's shape), so changing the scene re-measures and
-changing only those three re-scales at once. The probe has a wall-time budget: past it the engine is ended (our own
-child, by its handle) and the error says the job is at least that slow.
+changing only those three re-scales at once. The probe has a wall-time budget, kept by the caller's wait (see measure):
+past it the engine is ended (our own child, by its PID) and the error says the job is at least that slow.
 
 The graphics card: before the probe, `gpu_busy.busy()` checks whether another job is using it. Its sentence ("" when
 free) is in every measurement as "gpu_busy" (read it with `card_note(m)`). A probe taken on a busy card is slower than
@@ -74,57 +74,71 @@ def _read(folder: Path, cached: bool) -> dict:
 def measure(scene: dict, info: dict, s: dict, where: str = "render_estimate", budget_s: float = BUDGET_S, make_engine=Engine,
             card=gpu_busy.busy, own_pids=()) -> dict:
     """The measurement (kept when the card was free). `s`: render_fields.settings(). `own_pids`: the caller's own
-    programs on the card (the window's viewport engine), not counted as another job. Blocking: call it from a job."""
+    programs on the card (the window's viewport engine), not counted as another job. Blocking: call it from a job.
+
+    The budget is kept by the one waiting here, not by the work: the card check, the engine's start, the scene and the
+    test frames all run on a thread of their own, and when `budget_s` is up, whatever that thread is stuck on (a reply
+    that never comes, a driver call), its engine is ended by its PID and a RENDER_FAILED error says so."""
+    box, done, engines = {}, threading.Event(), []
+
+    def made():
+        engines.append(e := make_engine())
+        return e
+
+    def work():
+        try:
+            box["m"] = _measure(scene, info, s, where, made, card, own_pids)
+        except BaseException as e:  # noqa: BLE001  handed to the waiter, which raises it
+            box["e"] = e
+        finally:
+            for e in engines:
+                e.close()
+            done.set()
+    threading.Thread(target=work, name="render-estimate-probe", daemon=True).start()
+    if not done.wait(budget_s):
+        for e in engines:
+            e.kill()                                     # our own engine, by its PID; the thread then fails and ends
+        raise RostrumError(codes.RENDER_FAILED, where, f"the time probe of {info['id']}",
+                           f"ran over its {budget_s:.0f} s budget (a few test frames, a quarter-size and a real-size one), "
+                           f"so one frame of the real job takes well over {budget_s / 60:.1f} min, or the engine stopped answering; "
+                           "its engine was ended", hint="Lower the quality or the size, then ask again.")
+    if "e" in box:
+        e = box["e"]
+        raise e if isinstance(e, RostrumError) else RostrumError(codes.RENDER_FAILED, where, f"the time probe of {info['id']}",
+                                                                 f"failed: {e}") from e
+    return box["m"]
+
+
+def _measure(scene, info, s, where, make_engine, card, own_pids) -> dict:
     note = card(own_pids)                                        # before our own engine touches the card
     engine = make_engine()
-    try:
-        key = probe_key(scene, s, engine.exe)
-        if (folder := CACHE.get(KIND, key)) is not None:
-            return {**_read(folder, cached=True), "gpu_busy": note}
+    key = probe_key(scene, s, engine.exe)
+    if (folder := CACHE.get(KIND, key)) is not None:
+        return {**_read(folder, cached=True), "gpu_busy": note}
 
-        def make(tmp: Path):
-            m = _probe(engine, scene, info, s, where, budget_s, tmp)
-            (tmp / "probe.json").write_text(json.dumps({**m, "gpu_busy": note}), encoding="utf-8")
-        if note:                                         # a busy-card probe: its own entry, never found as the scene's
-            key = probe_key(scene, s, engine.exe, salt=f"{time.time_ns()}")
-        return _read(CACHE.put(KIND, key, make, {"shot": info["id"], "gpu_busy": bool(note)}), cached=False)
-    finally:
-        engine.close()
+    def make(tmp: Path):
+        m = _probe(engine, scene, info, s, tmp)
+        (tmp / "probe.json").write_text(json.dumps({**m, "gpu_busy": note}), encoding="utf-8")
+    if note:                                             # a busy-card probe: its own entry, never found as the scene's
+        key = probe_key(scene, s, engine.exe, salt=f"{time.time_ns()}")
+    return _read(CACHE.put(KIND, key, make, {"shot": info["id"], "gpu_busy": bool(note)}), cached=False)
 
 
-def _probe(engine, scene: dict, info: dict, s: dict, where: str, budget_s: float, out: Path) -> dict:
-    over = threading.Event()
-
-    def stop():                                          # the budget is up: end our own engine process by its handle
-        over.set()
-        if engine.proc is not None and engine.proc.poll() is None:
-            engine.proc.kill()
-    timer = threading.Timer(budget_s, stop)
-    timer.start()
+def _probe(engine, scene: dict, info: dict, s: dict, out: Path) -> dict:
     frame, S = (s["start"] + s["end"]) // 2, s.get("samples", 0)
     q, full = _size(s, 2), (s["width"], s["height"])     # a quarter of the pixels; the real size
     q_lo = (q[0] - 2, q[1] - 2)                          # 2 px smaller: a new size makes the engine start afresh
     cycles = s["renderer"] == "cycles"
     few = min(S, FEW) if cycles and S > FEW else 0       # 0: no sample curve (Storm, or the job's samples are few already)
     t0 = time.perf_counter()
-    try:
-        engine.ensure_scene(scene)
-        load_ms = (time.perf_counter() - t0) * 1000
-        one = lambda wh, png, n=S: _frame_ms(engine, info, {**s, "samples": n}, frame, wh, png)  # noqa: E731
-        with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
-            first = one(_size(s, 16), Path(tmp) / "a.png")                 # warm-up: a tiny frame (kernels, first sync)
-            q_few = one(q_lo, Path(tmp) / "c.png", few) if few else None
-            warm_q = one(q, out / "probe.png")
-            full_few = one(full, Path(tmp) / "f.png", few or S)
-    except Exception as e:
-        if over.is_set():
-            raise RostrumError(codes.RENDER_FAILED, where, f"the time probe of {info['id']}",
-                               f"ran over its {budget_s:.0f} s budget on a quarter-size frame and a few-sample real-size one, "
-                               f"so one frame of the real job takes well over {budget_s / 60:.1f} min",
-                               hint="Lower the quality or the size, then ask again.") from e
-        raise RostrumError(codes.RENDER_FAILED, where, f"the time probe of {info['id']}", f"failed: {e}") from e
-    finally:
-        timer.cancel()
+    engine.ensure_scene(scene)
+    load_ms = (time.perf_counter() - t0) * 1000
+    one = lambda wh, png, n=S: _frame_ms(engine, info, {**s, "samples": n}, frame, wh, png)  # noqa: E731
+    with tempfile.TemporaryDirectory(prefix="rostrum3d_probe_") as tmp:
+        first = one(_size(s, 16), Path(tmp) / "a.png")                 # warm-up: a tiny frame (kernels, first sync)
+        q_few = one(q_lo, Path(tmp) / "c.png", few) if few else None
+        warm_q = one(q, out / "probe.png")
+        full_few = one(full, Path(tmp) / "f.png", few or S)
     pq, pf = q[0] * q[1], full[0] * full[1]
     full_s = full_few
     curve = []
