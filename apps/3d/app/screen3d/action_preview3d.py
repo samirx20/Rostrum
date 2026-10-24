@@ -15,7 +15,7 @@ from rostrum_core import run
 from rostrum_core.errors import RostrumError
 from rostrum_gui.action_hub import ActionHub
 
-from .actions3d import LIST, Facts
+from .actions3d import LIST, Facts, bevel_fits
 
 PREVIEWABLE = {"combine.make"}
 
@@ -24,12 +24,20 @@ class ActionPreview3D:
     _previewed = None                    # the scratch copy's scene while a preview shows (screen state, never saved)
 
     def _make_actions(self):
-        self._hub = ActionHub(LIST, lambda: Facts(self.doc, list(self.selection)), lambda f: self.selection_label(f.ids),
+        self._fits = {}                  # the engine's last bevel refusal: {item: largest bevel that fits} (actions3d.py)
+        self._hub = ActionHub(LIST, lambda: Facts(self.doc, list(self.selection), self._fits), lambda f: self.selection_label(f.ids),
                               self._act_apply, self._act_do, self._set_status, self,
                               preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
         self.selectedItemsChanged.connect(self._hub.refresh)
         self.docChanged.connect(self._hub.refresh)
         self._hub.refresh()
+
+    def engine_said(self, line: str) -> None:
+        """The viewport's last engine answer ("" = a picture came): a bevel refusal offers the largest that fits."""
+        fits = bevel_fits(line)
+        if fits != self._fits:
+            self._fits = fits
+            self._hub.refresh()
 
     def _act_apply(self, calls, label):
         """An action's calls as one change; what it made is selected after."""
@@ -48,7 +56,7 @@ class ActionPreview3D:
             return
         try:
             work = run.plan(self.doc.kind, self.doc.data, calls, self.doc.locked_by, self.who)[0]
-            self._previewed = describe(work, self.shot_id)
+            self._previewed = describe(work, self.shot_id, self.doc.folder)
         except RostrumError:
             return                                              # refused now: nothing to show
         self._redraw_viewport()

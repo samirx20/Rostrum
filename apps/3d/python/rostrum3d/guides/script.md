@@ -22,7 +22,8 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | Helper | Makes |
 |---|---|
 | `group(id, **fields)` | a group; items made inside `with group(...):` go in it |
-| `mesh(id, shape=, **fields)` | `box sphere cylinder plane disc torus`, or the outlines `text svg path2d` |
+| `mesh(id, shape=, **fields)` | `box sphere cylinder cone capsule plane disc torus`, or the outlines `text svg path2d` |
+| `item.place_on(other)` | stand a mesh on top of another (same group, both unturned): base on its top, over its middle |
 | `light(id, kind=, **fields)` | `rect disk strip sphere distant dome` |
 | `camera(id, **fields)` | a camera (looks along its −Z, Y up) |
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |

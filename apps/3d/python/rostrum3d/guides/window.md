@@ -56,11 +56,20 @@ middle moves it across the view, the **rings** turn it, and the small **cubes** 
 Icons only. Hover one to see its name. A small corner mark means it opens a list beside the rail.
 
 - **Select**: click a thing in the viewport or in the scene list.
-- **Shapes** (R): Box, Sphere, Cylinder, Torus, Plane, Disc.
+- **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
+  where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
+  along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
+  in an empty scene. The pointer is a cross while a shape waits; Esc or a right-click lets go of it.
+- **Type & logo** (T): 3D text, SVG logo, 2D drawing. Pick one, then click where it goes: it stands upright (never
+  flat on the floor) with its front turned to the shot camera, its base on the top you clicked, or just in front of the
+  side you clicked; its size is a fifth of what you clicked. **3D text**: a cursor shows where it landed; type the
+  words and they change in the viewport as you type; Enter or Esc ends. The whole typing is one undo step; ending with
+  nothing typed keeps the word "Text". **SVG logo** asks for the .svg file first. **2D drawing** lists the 2D items in
+  this project, then the picked one's path layers; it stays linked, so a change in Rostrum2D shows here.
 - **Lights** (L): Softbox, Round softbox, Strip, Bulb, Sun, Sky.
 - **Camera** (C): Camera, Camera rig.
 
-Each pick adds the thing as one undo step and selects it. It goes into the selected group, or the group that holds the
+Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
 selected item. The rail only shows tools that work today. Others (type and logos, editing faces, painting,
 simulation, import) appear as they are built.
 

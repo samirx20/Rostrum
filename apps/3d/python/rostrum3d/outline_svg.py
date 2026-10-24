@@ -315,3 +315,28 @@ def path2d_outline(item: dict, folder) -> list[dict]:
             raise ValueError(f'{who}: path layer "{layer}" in "{doc2d}" has no points yet')
         return _from_d(node["d"], node.get("fillRule", "nonzero"), width, who)
     return O.cached(("path2d", str(file), O.stamp(str(file)), layer, width), make)
+
+
+def _path_layers(node) -> list[dict]:
+    if isinstance(node, dict):
+        own = [{"id": node["id"], "name": node.get("name") or node["id"]}] if node.get("type") == "path" and node.get("d") else []
+        return own + _path_layers(list(node.values()))
+    if isinstance(node, list):
+        return [x for v in node for x in _path_layers(v)]
+    return []
+
+
+def drawings(folder) -> list[dict]:
+    """The 2D items in a project folder that have drawn path layers, for picking a path2d source:
+    [{"doc2d": id, "name": its name, "layers": [{"id", "name"}]}], sorted by name; [] without a folder."""
+    if folder is None or not (Path(folder) / "docs").is_dir():
+        return []
+    out = []
+    for file in sorted((Path(folder) / "docs").glob("*.mtn")):
+        try:
+            data = json.loads(file.read_text(encoding="utf-8")).get("doc", {})
+        except (OSError, ValueError) as e:
+            raise ValueError(f'2D item "{file.stem}" can\'t be read: {e}') from e
+        if layers := _path_layers(data):
+            out.append({"doc2d": file.stem, "name": data.get("name") or file.stem, "layers": layers})
+    return sorted(out, key=lambda d: d["name"].lower())

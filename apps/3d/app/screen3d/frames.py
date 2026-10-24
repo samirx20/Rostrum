@@ -4,7 +4,7 @@ served to QML as image://view/<serial>. The worker itself is the kit's (rostrum_
 file is what is 3D's: the engine, the scene sent again only when it changed (`ensure_scene`), and picks.
 
 Picks go through the same thread and engine, in the order asked, before the next view; each answer comes back as
-`picked(item id)` ("" = nothing there).
+`picked(item id, reply)` ("" = nothing there).
 """
 from __future__ import annotations
 
@@ -26,7 +26,8 @@ class ViewRenderer(PictureWorker):
     ready = Signal(int, float, bool, bool, object)  # serial of the newest picture, its time in ms, whether the scene's
     #   dome lit it, whether the camera looked through has depth of field, and the Final look's progress and the card's
     #   memory ({"final": … or None, "vram": …}, ENGINE_CONTRACT.md § 4)
-    picked = Signal(str)         # item id under the click, "" for empty space
+    picked = Signal(str, object)  # item id under the click ("" for empty space), and the engine's whole reply (point,
+    #   normal: where the surface was hit and which way it faces)
     notice = Signal(str)         # the engine was started again (never silent)
 
     def __init__(self, parent=None):
@@ -57,7 +58,7 @@ class ViewRenderer(PictureWorker):
         eng.ensure_scene(scene)
         if kind == "pick":
             out = eng.pick(**req)
-            self.picked.emit(out.get("item", "") if out.get("hit") else "")
+            self.picked.emit(out.get("item", "") if out.get("hit") else "", out)
         else:
             *pixels, reply = eng.view(**req)
             image = image_from_pixels(*pixels)

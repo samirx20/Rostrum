@@ -24,6 +24,7 @@ AppShell {
 
     function openFileMenu() { fileMenu.openMenu() }               // (the scripted `file-menu` step)
     function openRailGroup(id) { return rail.openGroup(id) }      // (the scripted `rail <group>` step)
+    function openDrawings() { rail.openDrawings() }                // (the scripted `drawings` step)
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
     function openMaterials() { materialsMenu.openFrom(materialsChip, "right") }
     function openShots() { shotsMenu.openFrom(crumb, "left") }
@@ -53,6 +54,7 @@ AppShell {
     Shortcut { sequence: "Ctrl+2"; onActivated: backend.setPage("animate") }
     Shortcut { sequence: "Ctrl+3"; onActivated: backend.setPage("render") }
     Shortcut { sequence: "R"; enabled: !startScreen.visible; onActivated: rail.openGroup("shapes") }
+    Shortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
     Shortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
     Shortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
     // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot

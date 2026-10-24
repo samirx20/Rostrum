@@ -87,7 +87,7 @@ Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`
 `animate <setting>`, `keydrag <key id> <frame>`, `fold <id>`, `undo`, `redo`, `more`, `commands [text]`,
 `run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
 `snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
-`zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `click x y`.
+`zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `viewclick x y` (selects, or places the shape picked in the Shapes flyout).
 A scripted run (--shot, --step, --check-layout) never writes into a real project: `--doc` opens a scratch copy (`screen3d/scratch_doc.py`).
 Offscreen screenshots: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`. The kit must be importable
 (`uv pip install -e shared/gui-kit`, or `PYTHONPATH=shared/gui-kit`).

@@ -69,7 +69,7 @@ class RenderJob(QObject):
             return self._bridge.fail_line("Error: render: one is already running; wait for it.")
         b = self._bridge
         try:
-            info, scene = shot_info(b.doc.data, b.shot_id), describe(b.doc.data, b.shot_id)
+            info, scene = shot_info(b.doc.data, b.shot_id), describe(b.doc.data, b.shot_id, b.doc.folder)
         except ValueError as e:
             return self._finish("", 0.0, f"Error: render: {e}")
         frame, self._at = b.frame, b.frame

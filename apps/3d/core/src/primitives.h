@@ -21,6 +21,10 @@ MeshData make_box(float width, float height, float depth, float bevel, int segme
 MeshData make_sphere(float radius, int segments, bool smooth);
 // Axis Y. segments around; the bevel takes max(2, segments / 8) steps.
 MeshData make_cylinder(float radius, float height, float bevel, int segments, bool smooth);
+// Axis Y, point up: base radius, height from base to point.
+MeshData make_cone(float radius, float height, int segments, bool smooth);
+// Axis Y: a cylinder with half-sphere ends; height is end to end (at least 2 * radius).
+MeshData make_capsule(float radius, float height, int segments, bool smooth);
 // In XZ, facing +Y.
 MeshData make_plane(float width, float depth);
 MeshData make_disc(float radius, int segments);

@@ -75,9 +75,11 @@ class Hydra {
   // Returns at once with the picture as far as it has got; the same request again continues, any change starts over.
   ViewDrawn view_final(const PXR_NS::SdfPath& camera, const PXR_NS::GfFrustum& frustum, int frame, int width,
                        int height, const DrawSettings& s, GpuMemWatch& mem);
-  // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there
+  // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there.
+  // `point` is where the surface was hit and `normal` its direction there (world space, unit length, turned to face
+  // the camera, so a shape placed along it sits on the side that was clicked)
   PXR_NS::SdfPath pick(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, double x, double y,
-                       PXR_NS::GfVec3d* point);
+                       PXR_NS::GfVec3d* point, PXR_NS::GfVec3d* normal);
 
  private:
   class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene

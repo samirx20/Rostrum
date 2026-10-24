@@ -50,7 +50,10 @@ Rectangle {
         property real px: 0
         property real py: 0
         property bool pending: false
-        onPressed: (m) => { px = m.x; py = m.y; pending = true; viewport.click(m.x * vp.dpr, m.y * vp.dpr) }
+        onPressed: (m) => {
+            if (backend.adder.armed) return backend.adder.disarm()   // a right-click lets go of the shape waiting to be placed
+            px = m.x; py = m.y; pending = true; viewport.click(m.x * vp.dpr, m.y * vp.dpr)
+        }
         Connections {
             target: viewport
             function onPicked(id) {
@@ -88,7 +91,10 @@ Rectangle {
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 
+    Shortcut { sequence: "Esc"; enabled: backend.adder.armed !== ""; onActivated: backend.adder.disarm() }
+    HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
     Gizmo { anchors.fill: parent }   // the selected item's handles; a press off them falls through to the area above
+    TypeInPlace { }                  // a 3D text just placed: its cursor where it landed, typing changes the words
 
     Rectangle {  // the Final look's progress: a thin line along the bottom edge
         visible: vp.final
