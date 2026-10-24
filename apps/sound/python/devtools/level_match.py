@@ -1,14 +1,15 @@
-"""Measures every built-in instrument, played instrument, synth wave and kit on one reference phrase and writes the
-level-match table (`rostrum_sound/library_data/preset_levels.json`, read by doc/preset_level.py).
+"""Measures every built-in instrument, played instrument, synth wave and kit on a typical part of its role and writes
+the level-match table (`rostrum_sound/library_data/preset_levels.json`, read by doc/preset_level.py).
 
     python devtools/level_match.py [--engine <rostrum-sound.exe>] [--check]
 
-Each preset plays the same phrase at the track's own default (volume 1, velocity 0.8) in its home octave, all in one
-render; the engine reports each track's integrated loudness (LUFS). The median preset is the reference;
-every other gets the gain that brings its phrase to the same loudness, so equal track volumes sound balanced.
-`--check` measures again with the table applied and prints the spread instead of writing. The table is part of
-the file format: songs already saved hold volumes offset by it (doc/migrations.py), so changing a number needs a new
-format step there, never just a new table.
+Each preset plays its role's phrase (ROLES: how the six trial sketches of agents wrote a comp, a bass, a lead line, a
+pad and a groove: their notes, lengths and velocities) at the track's volume 1, in a home octave, all in one render;
+the engine reports each track's integrated loudness (LUFS). The median is the reference; every preset gets the gain
+that brings its phrase to it, so equal track volumes sound balanced for parts written like that. `--check` measures
+again with the table applied and prints the spread instead of writing. The table is part of the file format: songs
+already saved hold volumes offset by it (doc/migrations.py), so changing a number needs a new format step there,
+never just a new table.
 """
 from __future__ import annotations
 
@@ -31,32 +32,50 @@ from rostrum_sound.doc import preset_level  # noqa: E402
 from rostrum_sound.engine import Engine  # noqa: E402
 
 TABLE = Path(preset_level.__file__).resolve().parents[1] / "library_data" / "preset_levels.json"
-PHRASE = "C E G E A C E C F A C A G B D B".split()      # a line, a note a beat: 4 bars at 120 bpm, I – vi – IV – V
-CHORDS = [("C", "C E G"), ("A", "A C E"), ("F", "F A C"), ("G", "G B D")]       # the same bars as triads, two a bar
-HOME_OCTAVE = {"subBass": 2, "cinematicBrass": 3, "warmPad": 3, "analogStrings": 3, "guitar": 3, "nylonGuitar": 3,
-               "saw": 3, "square": 3, "triangle": 3, "sine": 3, "glockenspiel": 5, "glassMarimba": 5}
-# How each is played in a song, so what is measured is what it is used for: lines (a bass, a melody, a solo) or
-# chords (comping, pads, strings, brass). Written into the table, so the role behind a number is visible.
-LINES = ("subBass", "glassMarimba", "marimba", "glockenspiel", "tubularBell", "violin", "sine")
+# Four bars at 120 bpm over Dm – Gm – Bb – A (voiced as 4 notes: root, third, fifth, seventh) in the preset's octave.
+BARS = [("D", "F", "A", "C"), ("G", "Bb", "D", "F"), ("Bb", "D", "F", "A"), ("A", "C", "E", "G")]
+ROLE_OF = {"comp": ("feltPiano", "grandPiano", "guitar", "nylonGuitar", "spiccatoStrings"),
+           "pad": ("warmPad", "choirPad", "analogStrings", "cinematicBrass", "saw", "square"),
+           "bass": ("subBass",),
+           "lead": ("glassMarimba", "marimba", "vibraphone", "glockenspiel", "tubularBell", "violin", "triangle", "sine")}
+OCTAVE = {"comp": 3, "pad": 3, "bass": 2, "lead": 4}
+LEAD_OCTAVE = {"glockenspiel": 5, "glassMarimba": 5}
+
+
+def role(name: str) -> str:
+    return next(r for r, names_ in ROLE_OF.items() if name in names_)
+
+
+def part(name: str) -> str:
+    """The notes of the preset's role: `s.note(...)` lines, as an agent writes them (vel is what they wrote)."""
+    r, o = role(name), OCTAVE[role(name)] + (LEAD_OCTAVE.get(name, 4) - 4 if role(name) == "lead" else 0)
+    lines = []
+    for b, voicing in enumerate(BARS):
+        t = f"bar({b + 1})"
+        chord = [f"{n}{o}" for n in voicing]
+        if r == "comp":
+            lines += [f"s.chord({chord}, at={t}, dur=beats(1.5), vel=0.65)", f"s.chord({chord}, at={t} + beats(2.5), dur=beats(1.25), vel=0.55)"]
+        elif r == "pad":
+            lines.append(f"s.chord({chord}, at={t}, dur=beats(4), vel=0.5)")
+        elif r == "bass":
+            lines += [f"s.note('{voicing[0]}{o}', at={t}, dur=beats(1.5), vel=0.85)", f"s.note('{voicing[0]}{o}', at={t} + beats(2.5), dur=beats(1), vel=0.7)"]
+        else:
+            phrase = [(voicing[2], 0, 1.5), (voicing[1], 1.5, 0.5), (voicing[3], 2, 1.5), (voicing[2], 3.5, 0.5)]
+            lines += [f"s.note('{n}{o}', at={t} + beats({a}), dur=beats({d}), vel=0.7)" for n, a, d in phrase]
+    return "\n".join(lines)
 
 
 def pitched(form: str, name: str) -> tuple[str, str]:
-    octave = HOME_OCTAVE.get(name, 4)
-    if name in LINES:
-        notes = ", ".join(f"('{p}{octave}', {i}, 1.5)" for i, p in enumerate(PHRASE))
-        role = "line"
-    else:
-        notes = ", ".join(f"('{n}{octave}', {i * 2}, 2)" for i, (_, c) in enumerate(CHORDS * 2) for n in c.split())
-        role = "chords"
-    return role, (f"s = track('{form}_{name}', {form}='{name}')\n"
-                  f"for p, i, d in [{notes}]:\n    s.note(p, at=beat(i), dur=beats(d))\n")
+    return role(name), f"s = track('{form}_{name}', {form}='{name}')\n{part(name)}\n"
 
 
 def kit(name: str) -> str:
-    lines = [f"d = track('kit_{name}', kit='{name}')\nfor bar_ in range(4):\n    b = bar_ * 4"]
-    lines += [f"    d.hit('kick', at=beat(b + {x}))" for x in (0, 2, 2.5)]
-    lines += [f"    d.hit('snare', at=beat(b + {x}))" for x in (1, 3)]
-    lines += [f"    d.hit('hat', at=beat(b + {x / 2}))" for x in range(8)]
+    lines = [f"d = track('kit_{name}', kit='{name}')"]
+    for b in range(4):
+        t = f"bar({b + 1})"
+        lines += [f"d.hit('kick', at={t}, vel=0.9)", f"d.hit('kick', at={t} + beats(2.5), vel=0.75)",
+                  f"d.hit('snare', at={t} + beats(1), vel=0.8)", f"d.hit('snare', at={t} + beats(3), vel=0.85)"]
+        lines += [f"d.hit('hat', at={t} + beats({x / 2}), vel=0.5)" for x in range(8)]
     return "\n".join(lines) + "\n"
 
 

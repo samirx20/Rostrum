@@ -11,9 +11,9 @@ The script API is in inspect_guide `script`; instruments in `library`.
   `{"beat": n}` (or `bar(n)` in a script).
 - **Volume:** a bare number is gain 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB). The screen shows dB; agents may give dB too:
   `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master. **Every built-in
-  instrument, played instrument, synth wave and the built-in kit is level-matched** (measured: the same reference phrase
-  of each comes out equally loud), so tracks at the same volume are balanced: a piano at 0 dB sits with the bass and
-  drums at 0 dB. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
+  instrument, played instrument, synth wave and the built-in kit is level-matched** (measured: a typical comp, bass, lead
+  line, pad or groove for each comes out equally loud), so tracks written like that at the same volume are balanced: a
+  piano comp at 0 dB sits with the bass and drums at 0 dB. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
   is quieter than a bass note at 0.9. Sampled (SFZ), plug-in and recorded sounds are not matched (their level is the file's).
 - **The song itself** is the item `"root"`: `{"op": "doc.set", "target": ["root"], "args": {"tempo": 96}}`. (`inspect_operations`
   lists item *types* in its target column; the ids come from `inspect_item`.)
