@@ -245,8 +245,16 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
                   std::to_string(int(s.timeoutS)) + " s (timeoutS); no file written");
     if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
-  Picture p{w, h, fb.read_rgba()};
-  if (aovs && !s.aovs.empty()) *aovs = read_aovs(e, s.aovs, w, h, [&](int id) { return e.rprim(id); });
+  if (s.aovs.empty()) return Picture{w, h, fb.read_rgba()};
+  // With more outputs than colour the engine presents nothing into our framebuffer (brief 15: an empty picture), so
+  // the colour is read from its own output like the others (on the CPU: the patch keeps Cycles' GL display off).
+  std::vector<std::string> names = s.aovs;
+  names.push_back(HdAovTokens->color.GetString());
+  Aovs read = read_aovs(e, names, w, h, [&](int id) { return e.rprim(id); });
+  if (read.channels[HdAovTokens->color.GetString()] != 4) throw Error("render: the colour output is not RGBA");
+  Picture p{w, h, std::move(read.planes[HdAovTokens->color.GetString()])};
+  read.planes.erase(HdAovTokens->color.GetString());
+  if (aovs) *aovs = std::move(read);
   return p;
 }
 
