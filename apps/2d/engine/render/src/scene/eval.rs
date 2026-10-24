@@ -91,19 +91,52 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     if node.kind == "rig" {
         crate::rig::pose(&mut item);
     }
-    if !all && node.role == Role::Layer && !(item.num("start") <= t && t < item.num("end")) {
+    // A layer outside start ≤ t < end is left out; the frame (a `camera`) has no start or end: it always shows.
+    if !all && node.role == Role::Layer && node.kind != "camera" && !(item.num("start") <= t && t < item.num("end")) {
         return None;
     }
     Some(item)
 }
 
-/// A node's own field values at time `t` (its still values, keyed fields decided by their keys).
+/// A node's own field values at time `t` (its still values, keyed fields decided by their keys). While a
+/// motion-blurred frame's sub-frames are built (`shutter_at`), each field is read on its own side of a jump.
 pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
     let mut props = node.props.clone();
+    let centre = CENTRE.with(|c| c.get());
     for (field, keys) in &node.anim {
-        props.insert(field.clone(), track_value(keys, t));
+        let at = centre.map_or(t, |c| near_side(keys, c, t));
+        props.insert(field.clone(), track_value(keys, at));
     }
     props
+}
+
+thread_local! {
+    /// The time of the frame whose shutter is open (crate::motion), while its sub-frames are evaluated.
+    static CENTRE: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+}
+
+/// `f` evaluated as a sub-frame of the frame at `centre`: no field's value crosses a jump (a key after a hold key)
+/// between the frame's time and the sub-frame's, so a cut never smears two shots (MOTION.md › Motion blur).
+pub fn shutter_at<T>(centre: f64, f: impl FnOnce() -> T) -> T {
+    CENTRE.with(|c| c.set(Some(centre)));
+    let out = f();
+    CENTRE.with(|c| c.set(None));
+    out
+}
+
+/// The time to read a track at for a sub-frame at `t` of the frame at `centre`: `t`, or the near side of the first
+/// jump between them (just before a jump after the frame; the jump itself before it).
+pub fn near_side(keys: &[Key], centre: f64, t: f64) -> f64 {
+    let jumps = keys.windows(2).filter(|w| matches!(w[0].ease, super::ease::Ease::Hold)).map(|w| w[1].t);
+    let mut at = t;
+    for j in jumps {
+        if centre < j && j <= at {
+            at = j - 1e-9;
+        } else if at < j && j <= centre {
+            at = j;
+        }
+    }
+    at
 }
 
 /// The value of a sorted, non-empty list of keys at time `t`.

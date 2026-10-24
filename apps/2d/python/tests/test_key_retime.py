@@ -109,5 +109,5 @@ def test_spring_bounce_speed_are_key_fields_and_script_tuple_round_trips(doc):
         with pytest.raises(RostrumError):
             doc.apply({"op": "key.add", "target": "a", "args": {"prop": "x", "t": 2.0, "v": 5, **bad}}, SAM)
     tree = run_source('comp("c", duration=2)\nshape("s").key("x", {0: 0, 1: (9, "spring", {"bounce": 0.3, "speed": 0.4})})', "t.py")
-    key = tree["comps"][0]["layers"][0]["keys"][1]
+    key = tree["comps"][0]["layers"][1]["keys"][1]
     assert (key["ease"], key["bounce"], key["speed"]) == ("spring", 0.3, 0.4)

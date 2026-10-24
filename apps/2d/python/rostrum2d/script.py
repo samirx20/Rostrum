@@ -10,6 +10,8 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     subtitle.link("x", of="title", field="x", offset=300)            # bound: value = title.x · scale + offset
     with group("lockup", x=960, y=700):                               # layers made inside go into the group
         shape("dot", shape="ellipse", w=24, h=24)
+    f = frame()                                                       # the scene's frame (its camera), made with comp()
+    f.key("x", {0: 960, 4: 2600}, ease="easeInOut")                   # a push across the world
     flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
     ink = flame.frame(0).paint("ink")                                 # drawing at frame 0, its paint layer
     ink.stroke([(400, 900), (380, 600, 0.6), (420, 300, 0.2)], color="#ffb040", size=40, brush="bristle")
@@ -30,6 +32,7 @@ from rostrum_core.keys.ops import SHAPE_EASE
 
 from . import fields as F, pathdata, script_words as W
 from .expr import ExprError, parse
+from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
 from .kind import KIND, LISTS
 from .ops_expr import expr_id, link_source
@@ -199,7 +202,25 @@ class Build:
     def comp(self, id=None, **values) -> Item:
         item = self.add("comp", id, values, self.root["comps"])
         self.holders = [item.node]
+        node = frame_make.new(item.node, self.taken | self.reserved)
+        self.taken.add(node["id"])
+        item.node["layers"].insert(0, node)
         return item
+
+    def frame(self, **values) -> Item:
+        """The current scene's frame (made with comp()), its fields set from `values`."""
+        if not self.holders:
+            raise ValueError("make a composition first: comp(...) before frame()")
+        return Item(self, frame_view.of(self.holders[0])).set(**values)
+
+    def camera(self, id=None, **values) -> Item:
+        """An older script's camera: the scene's one frame now (FRAME.md). Several cameras are cuts of the frame."""
+        timed = sorted({"start", "end", "marker", "endMarker"} & set(values))
+        if timed:
+            raise ValueError(f"camera({', '.join(f'{k}=' for k in timed)}…): a scene has one frame, which is its camera, "
+                             "so there is no camera to switch to. Make a cut instead: frame().key(\"x\", {2.4: (960, \"hold\"), "
+                             "2.5: 3200}) jumps the frame at 2.5 s (the key before a cut has the hold ease)")
+        return self.frame(**values)
 
     def layer(self, type_, id=None, **values) -> Item:
         if not self.holders:
@@ -249,7 +270,7 @@ def run_source(source: str, name: str) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged."""
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
-             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.LAYERS},
+             **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera,
              **pathdata.for_script(b.layer), **rig_script.for_script(b),
              **lipsync_script.for_script(b)}
     try:
@@ -260,7 +281,7 @@ def run_source(source: str, name: str) -> dict:
     return b.root
 
 
-API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "item.key(field, {time: value}, ease=)",
+API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame", "item.key(field, {time: value}, ease=)",
        "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",

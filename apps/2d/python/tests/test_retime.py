@@ -33,15 +33,17 @@ def test_missing_marker_fails_loudly():
         retime.timed(_comp(), {"reveal": 1.0}, 30)
 
 
-def test_ends_on_a_marker_and_cameras_cut_on_markers():
-    comp = {"id": "main", "type": "comp", "layers": [{"id": "phone", "type": "group", "marker": "ui", "start": -0.2, "endMarker": "reveal"},
-                                                     {"id": "cam", "type": "camera", "marker": "reveal", "endMarker": "end"}]}
+def test_ends_on_a_marker_and_the_frame_cuts_on_markers():
+    cut = [{"id": "frame.x.k_reveal_m33", "prop": "x", "t": "#reveal-0.033", "v": 960, "ease": "hold"},
+           {"id": "frame.x.k_reveal", "prop": "x", "t": "#reveal", "v": 2900}]
+    comp = {"id": "main", "type": "comp", "layers": [{"id": "frame", "type": "camera", "keys": cut},
+                                                     {"id": "phone", "type": "group", "marker": "ui", "start": -0.2, "endMarker": "reveal"}]}
     out = retime.timed(comp, {"ui": 6.4, "reveal": 11.6, "end": 20.0}, 30)
-    phone, cam = out["layers"]
+    frame, phone = out["layers"]
     assert (phone["start"], phone["end"]) == (pytest.approx(6.2), pytest.approx(11.6))   # a lead-in, and gone on reveal
-    assert (cam["start"], cam["end"]) == (11.6, 20.0)
+    assert [k["t"] for k in frame["keys"]] == [pytest.approx(11.567), 11.6] and "start" not in frame
     moved = retime.timed(comp, {"ui": 6.4, "reveal": 11.9, "end": 20.0}, 30)
-    assert moved["layers"][0]["end"] == pytest.approx(11.9) and moved["layers"][1]["start"] == 11.9
+    assert moved["layers"][1]["end"] == pytest.approx(11.9) and moved["layers"][0]["keys"][1]["t"] == 11.9
 
 
 def test_diagnose_lists_every_missing_marker_instead_of_failing():

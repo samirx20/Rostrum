@@ -32,7 +32,7 @@ def test_transparency_defaults_to_the_background():
 
 def test_lottie_lists_a_kind_it_cannot_carry():
     scene = describe(_doc().data)
-    odd = {**scene["comp"]["layers"][0], "id": "odd", "type": "spotlight"}
+    odd = {**scene["comp"]["layers"][-1], "id": "odd", "type": "spotlight"}
     scene["comp"]["layers"].append(odd)
     lottie, report = to_lottie(scene)
     assert any('"odd"' in line and "spotlight" in line for line in report)

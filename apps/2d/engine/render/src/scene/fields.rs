@@ -28,7 +28,7 @@ pub const LOOP_MODES: &[&str] = &["off", "loop", "pingpong"];
 const RIDE_AT: &[&str] = &["end", "start", "along"];
 
 /// Riding a path layer beside it (super::follow): its id ("" = none), where on it, and turning with it. Every layer
-/// and the camera (where it looks rides the path).
+/// and the frame (its centre rides the path).
 pub const RIDE: &[Field] = &[("ridePath", Text), ("rideAt", Choice(RIDE_AT)), ("rideAlong", Number), ("rideTurn", Toggle)];
 
 const TRANSFORM: &[Field] = &[
@@ -38,7 +38,7 @@ const TRANSFORM: &[Field] = &[
 ];
 /// After the blend (its options are the one list, super::blends) and before the layout's own fields.
 const TRANSFORM_AFTER_BLEND: &[Field] = &[
-    // The camera (crate::camera; CAMERA.md): how far behind the camera's plane a top-level layer sits, or locked to the screen.
+    // The frame (crate::frame; FRAME.md): how far behind the frame's plane a top-level layer sits, or pinned to the frame.
     ("depth", Number), ("screenLock", Toggle),
     // A track matte (super::matte): a sibling layer's id ("" = none) and how its drawing is read.
     ("matte", Text), ("matteMode", Choice(super::matte::MODES)),
@@ -137,7 +137,7 @@ pub fn of(kind: &str) -> Option<(Role, Vec<Field>)> {
     let layer = |own: &[Field]| Some((Role::Layer, own.iter().copied().chain(transform()).collect()));
     match kind {
         "comp" => Some((Role::Comp, COMP.iter().chain(crate::motion::COMP).copied().collect())),
-        "camera" => Some((Role::Layer, crate::camera::FIELDS.iter().chain(RIDE).copied().collect())),
+        "camera" => Some((Role::Layer, crate::frame::FIELDS.iter().chain(RIDE).copied().collect())),
         "shape" => layer(SHAPE),
         "text" => layer(TEXT),
         "image" => layer(IMAGE),
@@ -171,4 +171,5 @@ pub fn animatable(kind: &str, field: &Field) -> bool {
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))
         && crate::rig::fields::animatable(kind, field.0)
         && crate::motion::animatable(kind, field.0)
+        && !(kind == "camera" && crate::frame::STILL.contains(&field.0))
 }

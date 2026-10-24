@@ -60,7 +60,7 @@ def X(name, label, group, default, imp=P, help="", when=None, control="", filter
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
 MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
 
-# When a layer shows, on the project's shared markers (retime.py); cameras have these too (a cut on a marker).
+# When a layer shows, on the project's shared markers (retime.py).
 TIMED = {"not": IS("marker", "")}
 MARKER_TIMING = [
     X("marker", "Timed from marker", "Timing", "", S, control="pick",
@@ -82,7 +82,7 @@ RIDE_AT = ["end", "start", "along"]      # the default is "along": a path set al
 RIDE_AT_WORDS = {"end": "End of the drawn part", "start": "Start of the drawn part", "along": "A set place"}
 
 # Riding a path layer beside it (engine: scene/follow.rs; rostrum2d/follow.py layer.ride): the layer's anchor (a
-# camera: where it looks) sits on that path on every frame, its own X, Y an offset from there. Every layer and the camera.
+# frame: its centre) sits on that path on every frame, its own X, Y an offset from there. Every layer and the frame.
 RIDE = [
     X("ridePath", "Rides path", "Ride", "", S, control="pick",       # screens: a choice of the layer's path siblings
       help="Id of a path layer in the same group or comp: this layer's anchor sits on it as it is reshaped, moved or "
@@ -112,10 +112,10 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     *timing("The layer appears at this time", "The layer is gone from this time"),
     Param.choice("blend", BLENDS, label="Blend", group="Blend", default="normal", importance=D, labels=_blends.LABELS,
                  help="How the layer mixes with the layers under it"),
-    # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these.
+    # The frame (frame/, apps/2d/FRAME.md): only a composition's own layers use these.
     N("depth", "Depth", "Depth", -0.99, 1000, 0.01, "", D,
-      help="How far behind the camera's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
-    T("screenLock", "Locked to screen", "Depth", False, D, help="The camera doesn't move it (a title, a frame)"),
+      help="How far behind the frame's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
+    T("screenLock", "Pinned to frame", "Depth", False, D, help="Moves with the frame, not the world: X, Y are in the frame's own px (a title, a logo bug, a border)"),
     # A track matte (engine: scene/matte.rs): the layer is seen through another layer beside it, drawn only as the matte.
     X("matte", "Track matte", "Matte", "", S, control="pick",       # screens: a choice of the layer's siblings
       help="Id of a layer in the same group or comp; this layer shows only where that one is drawn. Empty = none"),
@@ -164,7 +164,7 @@ TYPE = [
 ]
 
 from .rig import fields as _rig  # noqa: E402  (rigs: the table is in rig/fields.py, merged below)
-from .camera import fields as _camera  # noqa: E402  (the camera: camera/fields.py, merged below)
+from .frame import fields as _frame  # noqa: E402  (the frame, the scene's camera: frame/fields.py, merged below)
 from .motion import fields as _motion  # noqa: E402  (shutter, trails, smears: motion/fields.py, merged below)
 
 # A text following a path layer takes these from the path (engine: scene/follow.rs TAKEN; rostrum2d/follow.py).
@@ -394,12 +394,16 @@ FIELDS["group"] += _layout.GROUP           # auto layout (layout.py): Python-sid
 FIELDS["group"] += _swap.GROUP             # swap sets (swap.py): Python-side, shown as the children's opacity
 FIELDS["group"] += _group_bg.FIELDS       # its own background (group_bg.py): drawn as a shape behind its layers
 FIELDS.update(_rig.FIELDS)
-FIELDS.update(_camera.FIELDS)
+FIELDS.update(_frame.FIELDS)
 FIELDS.update(_motion.FIELDS)
 FIELDS["comp"] += _motion.COMP + _stepped.COMP     # stepped timing (stepped.py): Python-side, applied in the scene
 LAYERS = ("shape", "text", "image", "video", "render3d", "group", "drawing", "path", "rig", "camera")
+# The layers a person or agent adds, deletes, copies, renames and stacks: every one but the frame (type "camera",
+# frame/), which every scene holds exactly one of, made with the scene (frame/rules.py).
+PLACED = tuple(t for t in LAYERS if t != "camera")
 # Whether a layer can be picked or changed (locked) and whether it is drawn at all (hidden: not in the preview, not in an
-# export; scene.py leaves it out). Document-only: the engine never sees them (scene.python_only). A camera has neither.
+# export; scene.py leaves it out). Document-only: the engine never sees them (scene.python_only). The frame can be
+# locked (frame/fields.py), never hidden.
 STATE = [T("locked", "Locked", "Layer", False, D, help="Locked: the screen won't pick or drag it and operations refuse it until it is unlocked"),
          T("hidden", "Hidden", "Layer", False, D, help="Not drawn, in the preview and in an export, until shown again")]
 for _t in LAYERS:
@@ -420,10 +424,10 @@ STILL = {"comp": {"width", "height", "fps", "duration", "background", *(p.name f
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
          "text": {"letterDelay", "letterSeed"},
-         **_rig.STILL, **_camera.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
+         **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH"}}
 LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",
-          **_rig.LABELS, **_camera.LABELS, **_motion.LABELS}
+          **_rig.LABELS, **_frame.LABELS, **_motion.LABELS}
 
 # Named text styles (text_styles.py): a style holds the type of a text, the same fields as a text's (one table); a text's
 # `textStyle` names the style it follows. A style is never keyed (it is the look, not a moment).

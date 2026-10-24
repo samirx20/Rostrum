@@ -61,7 +61,7 @@ def make_group(ctx, ids: list[str], type_: str, name: str, args: dict) -> str:
     items = [l.item for l in locs]
     for it in items:
         if it["type"] == "camera":
-            ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', "is a camera; it stays on the composition")
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', "is the frame; it stays on its scene")
         if it.get("matte") and it["matte"] not in ids:
             ctx.fail(codes.BAD_ARGUMENT, f'target "{it["id"]}"', f'is seen through the matte "{it["matte"]}", which is not selected too')
         for link in PATH_LINKS:
@@ -112,7 +112,7 @@ def _rebind(ctx, rig: dict, ids: list[str], group: str) -> None:
              "The group is sized to their combined box and every layer stays exactly where it is, on screen and in time; "
              "the group takes the place of the topmost one in the stack. `as`: group (plain), clip (hides what is outside "
              "its box), layout (arranges its layers in a row) or swap (shows one layer at a time).",
-             target=F.LAYERS, label="Group",
+             target=F.PLACED, label="Group",
              params=[Param.choice("as", list(AS), label="Make", default="group",
                                   labels={"group": "Group", "clip": "Clip", "layout": "Auto layout", "swap": "Swap set"}), ID, AT])
 def group_make(ctx, targets, args):
@@ -125,7 +125,7 @@ def group_make(ctx, targets, args):
 @R.operation("rig.make", "Select layers (the parts of a character), then wrap them in a new rig; add its bones, IK chains and "
              "binds afterwards. The rig is sized to their combined box and every layer stays exactly where it is. One "
              "plain group (a PSD's parts) becomes the rig itself: its layers go straight into the rig, which takes its name.",
-             target=F.LAYERS, label="Make rig", importance="secondary", params=[ID, AT])
+             target=F.PLACED, label="Make rig", importance="secondary", params=[ID, AT])
 def rig_make(ctx, targets, args):
     name = "Rig"
     if len(targets) == 1 and ctx.item(targets[0])["type"] == "group" and not ctx.item(targets[0]).get("swap"):

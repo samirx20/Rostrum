@@ -9,7 +9,8 @@ def _scene(layer_props=None, anim=None):
     if anim:
         layer["anim"] = anim
     comp = {"id": "c", "type": "comp", "props": {**_sent("comp"), "fps": 30, "duration": 2.0}, "layers": [layer]}
-    return {"format": "rostrum-2d-scene", "version": 1, "comp": comp}
+    from rostrum2d.scene import FORMAT, VERSION
+    return {"format": FORMAT, "version": VERSION, "comp": comp}
 
 
 def test_an_eased_key_becomes_its_bezier_handles():
@@ -36,7 +37,8 @@ def _tapered():
     layer = {"id": "p", "type": "path", "props": {**_sent("path"), "d": "M 10 50 L 190 50", "w": 200, "h": 100,
                                                    "stroke": True, "strokeWidth": 20, "taperEnd": 1.0}}
     comp = {"id": "c", "type": "comp", "props": {**_sent("comp"), "fps": 30, "duration": 1.0}, "layers": [layer]}
-    return {"format": "rostrum-2d-scene", "version": 1, "comp": comp}
+    from rostrum2d.scene import FORMAT, VERSION
+    return {"format": FORMAT, "version": VERSION, "comp": comp}
 
 
 def test_a_tapered_stroke_without_the_engine_is_reported_not_dropped(monkeypatch):
@@ -56,12 +58,12 @@ def test_a_tapered_stroke_is_a_filled_outline():              # needs the built 
     assert [i["ty"] for i in items if i["ty"] in ("st", "fl")] == ["fl"] and any(i["ty"] == "sh" for i in items), report
 
 
-def test_a_camera_is_baked_where_the_engine_puts_the_layers():
-    # S27 H3: a camera failed the export. Baked, each layer must land where camera/view.py (the engine's maths) puts it.
+def test_a_frame_move_is_baked_where_the_engine_puts_the_layers():
+    # S27 H3: a camera failed the export. Baked, each layer must land where frame/view.py (the engine's maths) puts it.
     import math
-    from rostrum2d.camera.view import layer_matrix
+    from rostrum2d.frame.view import Shot, layer_matrix
     sc = _scene({"depth": 1.0})
-    cam = {"id": "cam", "type": "camera", "props": {"x": 960, "y": 540, "zoom": 1.0, "rotation": 0.0, "start": 0, "end": 2.0},
+    cam = {"id": "frame", "type": "camera", "props": {**_sent("camera"), "x": 960, "y": 540, "homeX": 960, "homeY": 540},
            "anim": {"x": [{"t": 0, "v": 960}, {"t": 2, "v": 1360}], "zoom": [{"t": 0, "v": 1.0}, {"t": 2, "v": 1.5}],
                     "rotation": [{"t": 0, "v": 0}, {"t": 2, "v": 10}]}}
     sc["comp"]["layers"].insert(0, cam)
@@ -72,14 +74,14 @@ def test_a_camera_is_baked_where_the_engine_puts_the_layers():
     f = 45
     a, s, r = (next(k["s"] for k in null["ks"][n]["k"] if k["t"] == f) for n in ("a", "s", "r"))
     t, (px, py) = f / 30, (100.0, 200.0)
-    cam_now = (960 + 400 * (t / 2) * 0 + 400 * _ease_frac(sc, "x", t), 540, 1 + 0.5 * _ease_frac(sc, "zoom", t), 10 * _ease_frac(sc, "rotation", t))
+    cam_now = Shot(960 + 400 * _ease_frac(sc, "x", t), 540, 1 + 0.5 * _ease_frac(sc, "zoom", t), 10 * _ease_frac(sc, "rotation", t), 960, 540)
     m = layer_matrix(sc["comp"]["props"], cam_now, {"depth": 1.0})
     want = (m[0] * px + m[2] * py + m[4], m[1] * px + m[3] * py + m[5])
     z, rad = s[0] / 100, math.radians(r[0])
     qx, qy = px - a[0], py - a[1]
     got = (960 + z * (math.cos(rad) * qx - math.sin(rad) * qy), 540 + z * (math.sin(rad) * qx + math.cos(rad) * qy))
     assert math.dist(got, want) < 0.01
-    assert not report and any("camera" in line for line in baked)       # carried exactly: not a difference
+    assert not report and any("frame" in line for line in baked)        # carried exactly: not a difference
 
 
 def _ease_frac(sc, name, t):

@@ -110,8 +110,8 @@ fn unknown_names_are_refused() {
     s["comp"]["layers"][0]["props"]["colour"] = "#ffffff".into();
     assert!(Scene::load(&s).unwrap_err().contains("card: a shape has no field \"colour\""));
     s = r["scene"].clone();
-    s["version"] = 2.into();
-    assert_eq!(Scene::load(&s).unwrap_err(), "scene version 2; this engine reads 1");
+    s["version"] = 1.into();                         // cameras with start / end: Python converts them first
+    assert_eq!(Scene::load(&s).unwrap_err(), "scene version 1; this engine reads 2");
 }
 
 /// The frame's display RGBA, the stage markup drawn in the scene shell on the CPU.

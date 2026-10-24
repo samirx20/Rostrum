@@ -54,8 +54,8 @@ pub fn stage(comp: &Item) -> R<String> {
 /// layer): serve.rs stages only the pieces that changed since the last frame (restage.rs).
 pub fn parts(comp: &Item) -> R<Vec<String>> {
     let mut out = vec![format!("<div style=\"position:absolute;left:0;top:0;width:100%;height:100%;background:{};\"></div>", v(comp, "background"))];
-    // The camera (crate::camera): each top-level layer seen through it, by its depth; the camera itself isn't drawn.
-    let view = crate::camera::View::of(comp)?;
+    // The frame (crate::frame): each top-level layer seen through it, by its depth; the frame itself isn't drawn.
+    let view = crate::frame::View::of(comp)?;
     out.extend(each_sibling(comp, |l, markup| view.place(l, markup))?);
     Ok(out)
 }

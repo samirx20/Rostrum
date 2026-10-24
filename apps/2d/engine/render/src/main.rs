@@ -10,7 +10,7 @@
 mod asset_cache;
 mod assets;
 mod boxes;
-mod camera;
+mod frame;
 mod color;
 mod cube;
 mod encode_cmd;

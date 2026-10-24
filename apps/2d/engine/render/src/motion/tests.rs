@@ -86,3 +86,24 @@ fn shutter_samples_are_centred_on_the_frame() {
     let mean = ts.iter().sum::<f64>() / 4.0;
     assert!((mean - 1.0).abs() < 1e-12 && (ts[3] - ts[0] - 0.75 / 60.0).abs() < 1e-12, "{ts:?}");
 }
+
+/// A cut (a hold key, then the next key) never smears two shots: a sub-frame on the far side of the jump reads the
+/// value on the frame's side (FRAME.md › Cuts; spec test 6). The frame here jumps from x 0 to x 900 at 1 s.
+#[test]
+fn shutter_samples_never_cross_a_jump() {
+    let mut f = item("frame", "camera", json!({ "zoom": 1.0, "x": 200.0, "y": 200.0, "homeX": 200.0, "homeY": 200.0 }));
+    f["anim"] = json!({ "x": [{ "t": 0.0, "v": 0.0, "ease": "hold" }, { "t": 1.0, "v": 900.0, "ease": "linear" }, { "t": 2.0, "v": 1000.0, "ease": "linear" }] });
+    let mut comp = item("c", "comp", json!({}));
+    comp["layers"] = json!([f]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let x = |centre: f64, t: f64| eval::shutter_at(centre, || eval::props_at(&scene.comp.layers[0], t))["x"].as_f64().unwrap();
+    for ts in super::sample_times(1.0 - 1.0 / 30.0, 30.0, 360.0, 8) {
+        assert_eq!(x(1.0 - 1.0 / 30.0, ts), 0.0, "the frame before the cut sees the next shot at {ts}");
+    }
+    for ts in super::sample_times(1.0, 30.0, 360.0, 8) {
+        let v = x(1.0, ts);
+        assert!((900.0..902.0).contains(&v), "the frame of the cut sees the shot before at {ts}: x {v}");
+    }
+    assert!(x(1.5, 1.5 + 1.0 / 120.0) > 950.0, "away from the cut the move still blurs");
+    assert_eq!(eval::props_at(&scene.comp.layers[0], 0.99)["x"].as_f64(), Some(0.0), "no shutter: the plain value");
+}

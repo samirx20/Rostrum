@@ -33,7 +33,7 @@ def test_group_then_release_keeps_every_layer_in_place_and_undoes(doc):
     assert [c["id"] for c in g["layers"]] == ["a", "b"] and (g["x"], g["y"], g["w"], g["h"]) == (525, 400, 550, 300)
     assert _where(doc)["a"] != before["a"]                                      # inside the group it is in the group's px
     doc.apply({"op": "group.release", "target": "pair", "args": {}}, SAM)
-    assert not doc.has("pair") and [l["id"] for l in doc.item("film")["layers"]] == ["a", "b", "c"]
+    assert not doc.has("pair") and [l["id"] for l in doc.item("film")["layers"]] == ["frame", "a", "b", "c"]
     assert _where(doc) == before
     doc.undo(SAM)
     doc.undo(SAM)

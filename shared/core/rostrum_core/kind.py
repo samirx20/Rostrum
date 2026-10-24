@@ -30,7 +30,9 @@ class DocKind:
     lists: dict = field(default_factory=lambda: {"doc": ["items"]})   # item type -> keys holding child items
     version: int = 1
     # One small data-only step per format change: migrations[n](data, lists) -> (data, label) takes a document saved as
-    # format n to format n+1 (it may change `data` in place; a file is migrated on a copy). Run oldest first on open,
+    # format n to format n+1 (it may change `data` in place; a file is migrated on a copy). A step that needs the
+    # project around the document (2D: the shared markers its cameras were timed on) takes a third argument, `folder`
+    # (None without a project), as `upgrade` does. Run oldest first on open,
     # before the document is checked, so a file written by any earlier build opens. Every format below `version` must
     # have its step: raising `version` without one is refused here, so a format change can't ship without it.
     migrations: dict[int, Callable[[dict, dict], tuple[dict, str]]] = field(default_factory=dict)
@@ -72,18 +74,22 @@ class DocKind:
                 return app_facts(item)
             return app_facts(item, self.view(doc) if doc is not None else None)
         self.facts = facts
+        self.migrations = {n: (step if len(inspect.signature(step).parameters) >= 3
+                               else (lambda data, lists, folder=None, _s=step: _s(data, lists)))
+                           for n, step in self.migrations.items()}
         app_up = self.upgrade
         if app_up is not None and len(inspect.signature(app_up).parameters) < 3:
             self.upgrade = lambda data, lists, folder=None: app_up(data, lists)
 
-    def migrate(self, data: dict, from_version: int) -> tuple[dict, list[str]]:
+    def migrate(self, data: dict, from_version: int, folder=None) -> tuple[dict, list[str]]:
         """`data` (a document saved as format `from_version`) brought to this format, one step after another, on a
-        copy: (new data, the steps' labels). A file of the current format comes back as it is, with no labels."""
+        copy: (new data, the steps' labels). A file of the current format comes back as it is, with no labels.
+        `folder`: the project folder, for a step that reads the project (None without one)."""
         labels = []
         if from_version < self.version:
             data = copy.deepcopy(data)
             for n in range(from_version, self.version):
-                data, label = self.migrations[n](data, self.lists)
+                data, label = self.migrations[n](data, self.lists, folder)
                 labels.append(label)
         return data, labels
 

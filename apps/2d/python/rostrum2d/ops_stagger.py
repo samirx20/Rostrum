@@ -39,7 +39,7 @@ def _stack(ctx, ids: list[str]) -> list[str]:
              "the layers list first), picked (the order given), left_to_right, top_to_bottom, centre (from the middle "
              "of the group outwards; equal distances start together) or random (the same every time). Each layer "
              "moves in time with everything in it; the earliest start among them stays.",
-             target=F.LAYERS, label="Stagger", importance="secondary", min_targets=2,
+             target=F.PLACED, label="Stagger", importance="secondary", min_targets=2,
              params=[Param.number("by", label="Each starts after", min=0, max=600, step=1 / 30, unit=" s", required=True),
                      order_param(CASCADE)])
 def layer_stagger(ctx, targets, args):

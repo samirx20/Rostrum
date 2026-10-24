@@ -32,7 +32,7 @@ def test_a_boolean_result_sits_where_its_inputs_were():
     u = doc.item("u")
     # a: 200 × 100 turned a quarter about its centre (300, 500) → x 250..350, y 400..600; b: x 600..800, y 450..550
     assert [round(u[k], 3) for k in ("x", "y", "w", "h")] == [525.0, 500.0, 550.0, 200.0]
-    assert [l["id"] for l in doc.data["comps"][0]["layers"]] == ["u"]
+    assert [l["id"] for l in doc.data["comps"][0]["layers"]] == ["frame", "u"]
 
 
 def test_path_width_refuses_a_bad_profile_and_is_one_undo_step():

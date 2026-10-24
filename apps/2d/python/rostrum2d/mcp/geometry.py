@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from rostrum2d import boxes, fields as F, follow
 from rostrum2d.drawing import frame_number
-from rostrum2d.camera import view as camera
+from rostrum2d.frame import view as camera
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size  # the one size rule

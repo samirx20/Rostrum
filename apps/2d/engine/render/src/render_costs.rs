@@ -44,7 +44,7 @@ impl Costs {
             .iter()
             .take(TOP)
             .map(|(id, (ms, n))| {
-                // A layer seen through the camera is drawn in a `cam~<id>` wrapper (crate::camera).
+                // A layer seen through the camera is drawn in a `cam~<id>` wrapper (crate::frame).
                 let node = find(&scene.comp, id.strip_prefix("cam~").unwrap_or(id));
                 json!({
                     "layer": id,

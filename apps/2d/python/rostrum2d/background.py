@@ -1,18 +1,18 @@
-"""Painted backgrounds: the maths. How much of a layer at a depth the camera ever shows (so a background painted at
+"""Painted backgrounds: the maths. How much of a layer at a depth the frame ever shows (so a background painted at
 that depth is big enough), and the mapping between a drawing's canvas px and the composition's px (to move strokes
 between depth layers). The one place these rules live; ops_background.py and mcp/background_tool.py use it.
 
-The camera rule is apps/2d/CAMERA.md › The maths, through camera/view.py (the same as the engine): with
-s = 1 / (1 + depth), the screen shows the layer's comp px C + s·(cam − C) ± (half screen) / zoom**s, turned by the roll.
+The frame rule is apps/2d/FRAME.md › The maths, through frame/view.py (the same as the engine): with
+s = 1 / (1 + depth), the export shows the layer's world px H + s·(F − H) ± (half the output) / zoom**s, turned by the roll.
 """
 from __future__ import annotations
 
 import math
 
 from . import fields as F
-from .camera import view
+from .frame import view
 
-BLEED = 24          # px painted past the furthest edge the camera shows: a soft edge never reaches the frame
+BLEED = 24          # px painted past the furthest edge the frame shows: a soft edge never reaches the frame
 
 
 def comp_size(comp: dict) -> tuple[float, float]:
@@ -21,27 +21,27 @@ def comp_size(comp: dict) -> tuple[float, float]:
 
 
 def shots(comp: dict) -> list[tuple]:
-    """(x, y, zoom, roll) of the camera at every frame of the composition (cameras' keys and eases included);
-    the resting shot (comp centre, zoom 1, no roll) for frames no camera shows."""
+    """The frame (view.Shot) at every frame of the composition (its keys, eases and ride included); at home for a
+    scene made before frames."""
     d = F.defaults("comp")
     fps, dur = float(comp.get("fps", d["fps"])), float(comp.get("duration", d["duration"]))
     w, h = comp_size(comp)
-    rest = (w / 2, h / 2, 1.0, 0.0)
-    return [view.shot(comp, n / fps) or rest for n in range(max(1, int(math.ceil(dur * fps))) + 1)]
+    home = view.Shot(w / 2, h / 2, 1.0, 0.0, w / 2, h / 2)
+    return [view.shot(comp, n / fps) or home for n in range(max(1, int(math.ceil(dur * fps))) + 1)]
 
 
 def seen_box(comp: dict, depth: float, shot_list=None) -> tuple[float, float, float, float]:
-    """(x0, y0, x1, y1) in comp px: everything of a layer at `depth` the camera shows over the whole composition."""
+    """(x0, y0, x1, y1) in world px: everything of a layer at `depth` the frame shows over the whole composition."""
     w, h = comp_size(comp)
     s = 1 / (1 + depth)
     x0 = y0 = math.inf
     x1 = y1 = -math.inf
-    for x, y, zoom, roll in shot_list or shots(comp):
+    for x, y, zoom, roll, hx, hy in shot_list or shots(comp):
         z = zoom ** s
         r = math.radians(roll)
         hw = (w / 2 * abs(math.cos(r)) + h / 2 * abs(math.sin(r))) / z
         hh = (w / 2 * abs(math.sin(r)) + h / 2 * abs(math.cos(r))) / z
-        px, py = w / 2 + s * (x - w / 2), h / 2 + s * (y - h / 2)
+        px, py = hx + s * (x - hx), hy + s * (y - hy)
         x0, y0, x1, y1 = min(x0, px - hw), min(y0, py - hh), max(x1, px + hw), max(y1, py + hh)
     return x0, y0, x1, y1
 
@@ -87,7 +87,7 @@ def size_ratio(src: dict, dst: dict) -> float:
 
 
 def gaps(comp: dict, layer: dict, shot_list=None) -> list[str]:
-    """Plain words for each edge where the camera would see past a drawing's canvas over the shot; [] = it covers."""
+    """Plain words for each edge where the frame would see past a drawing's canvas over the shot; [] = it covers."""
     x0, y0, x1, y1 = seen_box(comp, layer.get("depth", 0.0), shot_list)
     l, t, r, b = canvas_box(layer)
     out = []

@@ -48,14 +48,14 @@ def test_an_edit_reaches_every_drawing_in_one_step():
 def test_drift_between_drawings_is_refused():
     d = drawn()
     data = copy.deepcopy(d.data)
-    data["comps"][0]["layers"][0]["frames"][1]["paints"][0]["opacity"] = 0.5
+    data["comps"][0]["layers"][1]["frames"][1]["paints"][0]["opacity"] = 0.5
     assert any("same paint layers" in p for p in KIND.problems(data))
 
 
 def test_an_older_file_opens_lined_up_to_the_same_pixels():
     d = drawn()
     old = copy.deepcopy(d.data)
-    frames = old["comps"][0]["layers"][0]["frames"]
+    frames = old["comps"][0]["layers"][1]["frames"]
     ink = copy.deepcopy(frames[0]["paints"][0])                         # the old way: each drawing its own layers
     frames[1]["paints"] = [{**ink, "id": "paint_9", "strokes": [{**ink["strokes"][0], "id": "stroke_9"}]},
                            {**ink, "id": "paint_10", "name": "Shade", "strokes": [{**ink["strokes"][0], "id": "stroke_10"}]}]
@@ -63,7 +63,7 @@ def test_an_older_file_opens_lined_up_to_the_same_pixels():
     before = [canvas.rgba8(f, 100, 100).tobytes() for f in frames]
     new, label = upgrade(old, KIND.lists)
     assert not KIND.problems(new) and "shared" in label
-    got = new["comps"][0]["layers"][0]["frames"]
+    got = new["comps"][0]["layers"][1]["frames"]
     assert [p["name"] for p in got[0]["paints"]] == [p["name"] for p in got[1]["paints"]] == ["Ink", "Shade"]
     assert [canvas.rgba8(f, 100, 100).tobytes() for f in got] == before
     assert upgrade(new, KIND.lists) is None

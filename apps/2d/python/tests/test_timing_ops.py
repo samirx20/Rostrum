@@ -40,13 +40,13 @@ def test_shift_to_a_marker_ties_and_lands_on_it(doc):
     doc.apply({"op": "layer.shift", "target": "dot", "args": {"to": "#drop"}}, SAM)
     dot = _dot(doc)
     assert dot["marker"] == "drop" and dot["start"] == 0 and dot["end"] == 2.0 and 0.5 in _fixed(doc)
-    assert retime.timed(doc.data["comps"][0], {"drop": 2.0}, 30)["layers"][0]["start"] == 2.0
+    assert retime.timed(doc.data["comps"][0], {"drop": 2.0}, 30)["layers"][1]["start"] == 2.0
     with pytest.raises(RostrumError, match="nowhere"):
         doc.apply({"op": "layer.shift", "target": "dot", "args": {"to": "#nowhere"}}, SAM)
 
 
 def test_trim_start_on_a_marker_keeps_what_is_seen(doc):
-    seen = lambda: [k["t"] for k in retime.timed(doc.data["comps"][0], {"drop": 2.0}, 30)["layers"][0]["keys"]]
+    seen = lambda: [k["t"] for k in retime.timed(doc.data["comps"][0], {"drop": 2.0}, 30)["layers"][1]["keys"]]
     before = seen()
     doc.apply({"op": "layer.trim", "target": "dot", "args": {"start": "#drop"}}, SAM)
     dot = _dot(doc)

@@ -34,10 +34,10 @@ def test_growing_hug_keeps_left_and_top_and_old_files_keep_their_look():
     left, out = _left(d, 600)
     assert abs(left - left0) < 1e-6 and out["w"] == 600
     data = copy.deepcopy(d.data)                                     # an older file: no hugPin on its group
-    grp = data["comps"][0]["layers"][0]
+    grp = data["comps"][0]["layers"][1]
     del grp["hugPin"]
     new, _ = KIND.upgrade(data, KIND.lists)
-    assert new["comps"][0]["layers"][0]["hugPin"] is False
+    assert new["comps"][0]["layers"][1]["hugPin"] is False
     assert abs(layout.solve(new["comps"][0], 0.0)["g"].get("x", 300) - 300) < 1e-6   # old look: grows round the anchor
     assert KIND.upgrade(new, KIND.lists) is None
 
@@ -47,7 +47,7 @@ def test_auto_layout_hugs_by_default_and_old_files_keep_their_size():
     assert layout.solve(d.item("c"), 0.0)["g"]["w"] == 220                  # no switch touched: the box hugs its layers, 10 px padding
     data = copy.deepcopy(d.data)                                            # an older file: the group has no hug fields
     for k in ("hugWidth", "hugHeight"):
-        data["comps"][0]["layers"][0].pop(k, None)
+        data["comps"][0]["layers"][1].pop(k, None)
     new, _ = KIND.upgrade(data, KIND.lists)
-    grp = new["comps"][0]["layers"][0]
+    grp = new["comps"][0]["layers"][1]
     assert grp["hugWidth"] is False and grp["hugHeight"] is False

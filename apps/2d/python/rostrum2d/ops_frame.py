@@ -21,9 +21,13 @@ from .sizes import own_size
                                   labels={s[0]: frame_sizes.label(s) for s in frame_sizes.SIZES})])
 def comp_size(ctx, targets, args):
     _, _, w, h = frame_sizes.get(args["size"])
+    from .frame import make
     for t in targets:
+        item = ctx.item(t)
+        size = (item.get("width", 0.0), item.get("height", 0.0))
         ctx.set(t, "width", w)
         ctx.set(t, "height", h)
+        make.resized(ctx, t, size)
 
 
 def _scale_for(mode: str, w: float, h: float, r: float, W: float, H: float) -> float:

@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 
 from rostrum2d import boxes as BX, fields as F
-from rostrum2d.camera import view as camera
+from rostrum2d.frame import view as camera
 from rostrum2d.drawing import frame_number
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve

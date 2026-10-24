@@ -23,7 +23,7 @@ def test_svg_round_trip(tmp_path):
     me = Who.agent("test")
     doc.apply([{"op": "comp.add", "args": {"id": "c", "width": 400, "height": 300}}], me)
     import_into(doc, svg_tree(tmp_path / "t.svg"), "c", me)
-    bg, pair = doc.data["comps"][0]["layers"]
+    _frame, bg, pair = doc.data["comps"][0]["layers"]
     assert (bg["id"], pair["id"], pair["opacity"]) == ("bg", "pair", 0.5)
     dot, bar = pair["layers"]
     assert (dot["id"], dot["type"], bar["opacity"]) == ("dot", "path", pytest.approx(0.5, abs=0.01))

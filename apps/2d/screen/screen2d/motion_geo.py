@@ -10,7 +10,7 @@ Positions come from rostrum2d.evaluate.value_at, so the path follows the one eva
 """
 from __future__ import annotations
 
-from rostrum2d.camera import view as camera
+from rostrum2d.frame import view as camera
 from rostrum2d.evaluate import value_at
 from rostrum2d.mcp.geometry import flatten
 from rostrum_core.keys.evaluate import keys_of
@@ -93,8 +93,7 @@ def mapping(comp: dict, owner: dict, t: float):
 def frame_at(comp: dict, cam: dict, t: float, now) -> list[list[float]]:
     """The camera's frame at time t (the composition rectangle it shows then) as the canvas shows it now (`now`)."""
     w, h = comp.get("width", 1920), comp.get("height", 1080)
-    shot = tuple(float(value_at(cam, f, t)) for f in CAM_PROPS)
-    m = camera.layer_matrix(comp, shot, {"depth": 0.0})
+    m = camera.layer_matrix(comp, camera.shot(comp, t), {"depth": 0.0})
     return [apply(now, *camera.undo(m, x, y)) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]
 
 

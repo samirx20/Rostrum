@@ -7,7 +7,7 @@ from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
 
-from rostrum2d.camera.view import undo
+from rostrum2d.frame.view import undo
 from rostrum2d.evaluate import value_at
 
 PIN_ON = 0.5                  # RIG.md: a pin is held while its value is >= 0.5

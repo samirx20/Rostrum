@@ -38,7 +38,7 @@ def test_operations_build_a_rig_and_the_scene_shows_it():
     lower, reach = d.item("lower"), d.item("reach")
     assert (lower["x"], lower["y"], lower["angle"]) == (100, 130, 90)         # starts at the parent's tip
     assert (reach["targetX"], reach["targetY"]) == (100, 190)                 # target starts at the chain's tip
-    rig = describe(d.data)["comp"]["layers"][0]
+    rig = describe(d.data)["comp"]["layers"][1]
     assert [(n["type"], n["id"]) for n in rig["rig"]] == [("bone", "upper"), ("bone", "lower"), ("ik", "reach"),
                                                           ("bind", "bind_1")]
     assert rig["rig"][2]["props"]["mode"] == "ik" and rig["layers"][0]["id"] == "arm"

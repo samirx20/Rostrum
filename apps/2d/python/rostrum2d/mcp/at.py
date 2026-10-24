@@ -8,7 +8,7 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from rostrum2d.camera import view as camera
+from rostrum2d.frame import view as camera
 
 from . import render
 from .geometry import comp_size, covers, drawn_box, flatten, problems_showing
@@ -47,10 +47,10 @@ def look_at(ctx, args):
     where = f"({x:g}, {y:g}) px at {t:.3f} s (frame {frame}){'' if inside else ', which is outside the frame'}"
     summary = f"At {where}: " + (f'{len(rows)} layer{"s" * (len(rows) != 1)}, top first: {"; ".join(lines)}.' if rows else "no layer's box covers it.")
     cam = camera.shot(comp, t)
-    cam_says = f" Camera: x {cam[0]:g}, y {cam[1]:g}, zoom {cam[2]:g}." if cam else " No camera."
+    cam_says = f" Frame: x {cam.x:g}, y {cam.y:g}, zoom {cam.zoom:g}." if cam else ""
     return Reply(summary + " Approximate boxes." + cam_says,
                  {"time": t, "frame": frame, "point": [x, y], "inside_frame": inside, "layers": rows,
-                  "camera": {"x": cam[0], "y": cam[1], "zoom": cam[2]} if cam else None})
+                  "frame": {"x": cam.x, "y": cam.y, "zoom": cam.zoom, "rotation": cam.roll} if cam else None})
 
 
 @tools.tool("inspect_colour_at", {"required": ["x", "y"], "properties": {**ITEM_COMP, **TIME, **POINT}})

@@ -17,7 +17,7 @@ from .layout_fields import py_only
 from rostrum_core.keys import after, animated, keys_of, springs
 from rostrum_paint import library
 
-FORMAT, VERSION = "rostrum-2d-scene", 1
+FORMAT, VERSION = "rostrum-2d-scene", 2      # 2: the scene's frame (FRAME.md) in place of cameras
 
 
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping", "out", "in")   # out / in: spatial handles
@@ -148,6 +148,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"])}
     node = _node(comp, fps, baked, where)
+    node["layers"] = sorted(node.get("layers", []), key=lambda n: n["type"] != "camera")   # the frame first (the contract)
     swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     return {"format": FORMAT, "version": VERSION, "comp": node, **({"warnings": where["warnings"]} if where.get("warnings") else {})}

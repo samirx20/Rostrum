@@ -11,7 +11,7 @@ from . import boxes, fields as F
 from .evaluate import resolve
 from .kind import REGISTRY as R
 
-PLACED = tuple(t for t in F.LAYERS if t != "camera")
+PLACED = F.PLACED
 SIZED = tuple(t for t in PLACED if t != "text")
 AT = Param.number("at", label="At", min=0, max=36000, unit=" s", importance="deep",
                   help="The time (own seconds) to measure at and, for an animated field, to put the key at; 0 when left out")

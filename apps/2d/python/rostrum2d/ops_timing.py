@@ -86,7 +86,7 @@ def _tie(ctx, layer: dict, name: str, delta: float) -> None:
              "effects, masks, layers inside it and drawing frames). Keys on a marker and layers inside with a marker of their own "
              "stay where they are. Give `by` (seconds, + later, - earlier) or `to` (a marker such as \"#logo lands\": the layer "
              "is tied to it and its start lands exactly on it, so it follows when the marker moves).",
-             target=F.LAYERS, label="Move in time",
+             target=F.PLACED, label="Move in time",
              params=[Param.number("by", label="Move by", min=-36000, max=36000, step=0.01, unit=" s",
                                   help="Seconds to move; + is later"),
                      Param.text("to", label="Start on marker", help='A shared marker, "#name": the layer starts there and stays tied to it')])
@@ -114,7 +114,7 @@ def _ends(ctx, layer_id: str) -> tuple[float, float]:
              "`start` / `end` as plain seconds: the layer shows from / until then, its keys stay where they are. "
              "`start: \"#marker\"`: the layer starts on that marker and counts its times from it from now on (tied), "
              "and nothing that is seen moves. `end: \"#marker\"`: the layer ends on that marker, wherever it moves.",
-             target=F.LAYERS, label="Trim",
+             target=F.PLACED, label="Trim",
              params=[Param.number("start", label="Starts at", min=-36000, max=36000, step=0.01, unit=" s", markers=True,
                                   help='Composition seconds, or a marker "#name" (tied)'),
                      Param.number("end", label="Ends at", min=0, max=36000, step=0.01, unit=" s", markers=True,
