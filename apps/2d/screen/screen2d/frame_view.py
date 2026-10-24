@@ -91,12 +91,13 @@ class FrameView(QObject):
 
     @Slot(result="QVariantMap")
     def everythingRect(self):
-        """Every top-level layer's box united with the frame's whole path (Shift+1)."""
-        comp = self._now()[1]
+        """Every top-level layer's box united with the frame's whole path (Shift+1), from the document at the playhead,
+        not from the picture on screen (which may be one picture late)."""
+        comp = self._bridge.placed()
         w, h = _size(comp)
         fps = float(comp.get("props", comp).get("fps", 30)) or 30.0
         dur = float(comp.get("props", comp).get("duration", 5.0))
-        rects = [bounds.extent(b) for b in self._bridge.shown_boxes() if not b["up"]]
+        rects = [bounds.extent(b) for b in bounds.boxes(comp, self._bridge.time) if not b["up"]]
         rects += [quad_rect(box_at(comp, i / fps)) for i in range(int(round(dur * fps)) + 1)]
         if not rects:
             return _rect(0, 0, w, h)

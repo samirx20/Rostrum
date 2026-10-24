@@ -162,7 +162,7 @@ individuality does most of that work). The agent and Sam get the collaboration f
 | **Explainer graphics** | Icons, charts, arrows, diagrams building up | Maya, Priya | Shapes, paths, repeat, motion paths, stagger, styles |
 | **Character animation** | A talking character, a walk, a gesture | Kenji | Import PSD parts, rig from parts, bones and IK, poses, swap sets, lip sync, blinks |
 | **Frame-by-frame** | Hand-drawn effects (smoke, sparks, smears), a drawn loop, a character on twos | Kenji | Paint, draw each frame, exposures, onion skin, flip, stepped timing |
-| **Painted illustration that moves** | A painted scene with depth and a slow camera move, a textured poster that comes alive | Kenji | Paint on elements, painted backgrounds at depths, camera, small motions |
+| **Painted illustration that moves** | A painted scene with depth and a slow move of the frame, a textured poster that comes alive | Kenji | Paint on elements, painted backgrounds at depths, the frame's moves, small motions |
 | **Timing to music** | Anything cut to a track: beats, drops, voice lines | Everyone | Hearing the music, waveform, markers from Sound, beat grid, snapping |
 | **Social post** | 9:16 or 1:1 version of a promo | Priya | Sizes by name, brand kit, export the right size |
 | **Working with an agent** | Any of the above, made by an agent and finished by a person | Sam | Live view, review, per-person undo, notes, selection the agent can read |
@@ -175,7 +175,7 @@ These ten jobs are walked click by click in part 5.
   the Rostrum Editor's (PLAN › Four separate apps). 2D makes shots and graphics that the Editor places.
 - **Not the sound app.** Music, voice and sound design are RostrumSound's (rule 9). 2D plays the project's sound and
   owns only sync sound (a video's own sound; a cue tied to a beat).
-- **Not a 3D app.** 3D renders come in as live layers from Rostrum3D; 2D has 2.5D depth and a camera.
+- **Not a 3D app.** 3D renders come in as live layers from Rostrum3D; 2D has 2.5D depth and a frame that moves.
 
 ---
 
@@ -234,7 +234,7 @@ PLAN's list or the H28 draft.
 | Eraser, colour picking, fill *(fill new)* | E toggles the eraser; Alt picks a colour; a fill bucket for closed lines | Now · Next (fill) | 3.8 |
 | Select and move paint *(new)* | Lasso strokes to move, scale, turn or copy them | Next | 3.8 |
 | Steadiness *(new)* | Smooths shaky strokes as you paint | Next | 3.8 |
-| Painted backgrounds at depths | Far / mid / near drawings sized to the camera move | Next (screen) | 3.8 |
+| Painted backgrounds at depths | Far / mid / near drawings sized to the frame's move | Next (screen) | 3.8 |
 | Draw each frame | The switch that turns a painted element into hand-drawn frames | Now | 3.9 |
 | Exposures, holds, onion skin | Hold a drawing 1–n frames; see neighbours faintly | Now | 3.9 |
 | Light table *(new)* | See other layers' drawings faintly while drawing | Next | 3.9 |
@@ -318,15 +318,15 @@ PLAN's list or the H28 draft.
 | Blinks | On an eye set: Add blinks | Next (H30) | 3.23 |
 | Bend weights *(new on screen)* | Paint how much a part bends with each bone | Later | 3.23 |
 
-### H. Camera and depth
+### H. The frame and depth
 
 | Feature | What it is | When | Card |
 |---|---|---|---|
-| Camera layer and Camera tool | Move, zoom and turn the camera on the canvas | Now (layer) · Next (tool) | 3.24 |
-| Depth per layer, parallax | Each layer's distance; the camera move makes parallax | Now | 3.24 |
+| The frame | The box that is exported: move, zoom and turn it on the canvas; cuts; look through it | Now | 3.24 |
+| Depth per layer, parallax | Each layer's distance; the frame's move makes parallax | Now | 3.24 |
 | Depth of field, focus by clicking | Click a layer to focus on it; key it for a rack focus | Next | 3.24 |
 | Side view *(new)* | See layers' depths from above and drag them | Later | 3.24 |
-| Camera shake, follow a layer | Helpers that write keys you can edit | Next | 3.24 |
+| Frame shake, follow a layer | Helpers that write keys you can edit | Next | 3.24 |
 | Tilt (2.5D) | Turn a layer in depth | Now | 3.24 |
 
 ### I. Look
@@ -797,14 +797,13 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
   selection (blurs on every move).
 
 ### Painted backgrounds at depths · Next
-- **Goal:** a painted scene with far, middle and near parts that move at different speeds as the camera moves.
+- **Goal:** a painted scene with far, middle and near parts that move at different speeds as the frame moves.
 - **Steps:** paint it as one drawing or several; select the drawings → context bar **Set depth ▾** (Far · Middle ·
-  Near · or a number) → each moves back and is resized so it still covers the camera's whole move. To split one
+  Near · or a number) → each moves back and is resized so it still covers the frame's whole move. To split one
   painting: select strokes (above) → **Move to depth ▾**.
-- **Where and when:** Set depth appears for drawings when the scene has a camera; without a camera it says why in Ctrl+K
-  ("needs a camera: + › Camera"). There is no "+ Painted background" item: you paint first, then set depths (select
+- **Where and when:** Set depth appears for drawings that are the scene's own layers. There is no "+ Painted background" item: you paint first, then set depths (select
   first, then act).
-- **Feedback:** the camera's frame shows its whole move as a faint path on the canvas; a layer that would not cover
+- **Feedback:** with the frame picked, its whole move shows as a path on the canvas; a layer that would not cover
   the shot shows a warning stripe at the uncovered edge.
 - **Agent:** `background.add`, `background.fit`, `background.move`; eyes `look_background`, `inspect_background`.
 - **3E:** *Effective:* parallax by depth is how painted films move (PLAN). *Easy:* the maths of resizing for depth is
@@ -848,7 +847,7 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 - **3E:** *Easy:* one button, sensible default, depth one menu away.
 
 ### Stepped timing (on ones, twos, threes) · Now
-- **Goal:** hand-drawn feel for keyed motion; a character on twos while the camera stays smooth.
+- **Goal:** hand-drawn feel for keyed motion; a character on twos while the frame stays smooth.
 - **Steps:** select layers (or nothing, for the scene) → settings **Timing › Animate on: Every frame / Every 2nd frame /
   Every 3rd frame / Every 4th frame / Same as its group**.
 - **Agent:** `value.set {steps}`.
@@ -1327,26 +1326,27 @@ operation is one (`mask.make`).
 ### Bend weights · Later
 - Paint how much each part bends with each bone (a weight brush shown only inside a rig).
 
-## 3.24 Camera and depth
+## 3.24 The frame and depth
 
-### Camera and the Camera tool · Now (layer) · Next (tool)
-- **Goal:** push in, pan, tilt, with parallax.
-- **Steps:** + › **Camera** (one per scene, so the + menu offers it only while there is none; it frames exactly what
-  the scene showed, so nothing jumps). The **Camera
-  tool** (C) appears in the strip once there is a camera: drag on the canvas to move the camera, Alt+drag up / down to
-  move it closer / further, Shift+drag to turn it. Ctrl+wheel still zooms your view, never the camera, so looking
-  closer never adds a key. Keys like any layer.
-- **Where and when:** the camera's row is pinned at the top of the layers list; Camera tool only when a camera exists.
-- **Feedback:** the canvas always shows what the camera sees (that is the export). With the camera selected, its whole
-  move shows as a faint path.
-- **Agent:** `layer.add {type: camera}`, `value.set` on camera fields.
-- **3E:** *Easy:* moving the camera by dragging the picture is how people think of a camera move. *Rejected:* moving
-  the camera only by numbers (today).
+### The frame · Now
+- **Goal:** push in, pan, tilt, cut, with parallax.
+- **Steps:** every scene has one **frame**: the box that is exported, on an endless canvas; outside it is dimmed but
+  still editable. There is no Camera tool and nothing to add. **C**, its name tab or the Frame row picks it; drag inside
+  to move it, drag a corner square to zoom, drag just outside a corner to turn. **Frame the view** / **Cut here** in
+  the actions row, **Shift+C** looks through the frame. Moving your view (wheel, Space-drag, Ctrl+wheel) never moves or
+  keys the frame. Keys like any layer; with no keys a drag moves it for the whole piece.
+- **Where and when:** the Frame row is pinned at the top of the layers list; the box and handles show only while the
+  frame is picked; a **‹ Frame** chip shows when it is out of view.
+- **Feedback:** with the frame picked, its path (a dot per frame, a square per key, a faint outline at each key) and its
+  cuts (dashed) show on the canvas.
+- **Agent:** `frame.fit`, `frame.cut`, `frame.home`, `value.set` on the frame's fields; eyes `look_world`.
+- **3E:** *Easy:* moving the frame by dragging the picture is how people think of a shot. *Rejected:* a second
+  camera layer beside the frame (two ideas).
 
 ### Depth, focus and blur · Now (depth) · Next (focus by clicking)
 - **Goal:** layers at different distances; a rack focus.
-- **Steps:** each layer's **Depth** (in the Depth group, named only when the scene has a camera; 0 = the camera's
-  plane, positive = further) and **Pinned to screen**. With a camera:
+- **Steps:** each layer's **Depth** (in the Depth group; 0 = the frame's plane, positive = further, kept where it
+  shows at the playhead) and **Pinned to frame**. With the frame:
   **Depth of field** on → **Focus on**: click the eyedropper and click a layer on the canvas to focus on it; key it to
   move the focus from one layer to another (a rack focus). **Blur amount**.
 - **Agent:** `value.set {z, focus, aperture}`.
@@ -1354,13 +1354,13 @@ operation is one (`mask.make`).
 ### Side view · Later
 - **Goal:** see and set depths at a glance.
 - **Steps:** view controls ▾ › **Side view**: the canvas shows the layers from above as lines at their depths, with the
-  camera; drag a line to change its depth. Esc returns.
+  frame; drag a line to change its depth. Esc returns.
 
-### Camera shake and keep in frame · Next
+### Frame shake and keep in frame · Next
 - **Goal:** handheld feel; keep a moving thing in frame.
-- **Steps:** select the camera → context bar **Shake…** (amount, speed, fades in and out with the bar) or **Keep in frame…**
-  (pick a layer; how loosely the camera follows it). Both write ordinary keys you can edit; run again to replace.
-- **Agent:** `camera.shake {amount, speed}`, `camera.keep_in_frame {target, lag}` *(new)*.
+- **Steps:** pick the frame → actions row **Shake…** (amount, speed) or **Keep in frame…** (pick a layer; how loosely
+  the frame follows it). Both write ordinary keys you can edit; run again to replace.
+- **Agent:** `frame.shake {amount, speed}`, `frame.keep_in_frame {target, lag}` *(new)*.
 - **3E:** tools that make keys (not a look preset); the result stays editable.
 
 ### Tilt (2.5D) · Now
@@ -1735,7 +1735,7 @@ operation is one (`mask.make`).
 | Region | Where | Always there | What it holds |
 |---|---|---|---|
 | **Top bar** | the top row, 44 px | yes | ≡ menu · project › scene ▾ · the message (what just happened) · **Saved · N changes** (never cut; a click opens History) *(S30)* · agent chip (while an agent works) · Problems chip (while something is wrong) · export progress (while exporting) · ↶ ↷ (when they can act) · Search Ctrl K · **Export** · ? |
-| **Tool strip** | floating on the canvas's left edge: 40 px wide, 8 px in (56 px kept clear) | yes | Library · Move V · Shape R/O ▾ · Pen P ▾ · Text T · Paint B · then tools that appear: Camera C (a camera exists), Bone J (a rig selected), Notes N · and at the bottom **+** (Add from a file… *(S30)*, From Figma…, Camera while there is none, 3D render with Rostrum3D, a Symbol from the library) |
+| **Tool strip** | floating on the canvas's left edge: 40 px wide, 8 px in (56 px kept clear) | yes | Library · Move V · Shape R/O ▾ · Pen P ▾ · Text T · Paint B · then tools that appear: Bone J (a rig selected), Notes N · and at the bottom **+** (Add from a file… *(S30)*, From Figma…, 3D render with Rostrum3D, a Symbol from the library) |
 | **Context bar** | floating, top-centre of the canvas, one row | when there is something to say | With Move and a selection: what is selected ("3 layers") and the actions it allows, most used first, the rest under ⋯. With another tool: that tool's few options. With nothing to say: hidden. Hidden while dragging. |
 | **Canvas** | the middle | yes | The frame at the playhead, exactly as exported; handles, guides, motion paths, onion skin, notes. Bottom-left: the group path when inside a group. Bottom-right: view controls (Fit · zoom % ▾ · preview size · Fast/Final · notes toggle). |
 | **Settings panel** | right, 296 px (drag its edge: 256–420) | yes (folds away with Ctrl+\) | The header (name, kind or "3 layers", Find a setting), the essentials, the folded groups, Effects (n) +. With nothing selected: the scene. With Paint: Brush, then Paint on <element>. While exporting: the export sheet. |
@@ -1747,8 +1747,8 @@ operation is one (`mask.make`).
 | Tier | What | Why |
 |---|---|---|
 | **Always** | Top bar; tool strip (base tools); canvas; settings panel (scene settings when nothing is selected); timeline header and ruler | Every job ends in the picture, plays it, and needs project-wide actions (Export, Undo, Search). |
-| **With a selection** | Handles; the context bar's actions; the settings of the selection; highlighted rows and bars; motion path (animated position); the group path (inside a group); kind-specific tools: Bone (rig), Camera tool (camera), frame tools (frame-by-frame), Replace (picture), Paint on (painted element) | Rule of individuality, driven by the one action list and each setting's "valid when". |
-| **With a tool** | Pen: the "click / drag / close" line and Close, Done · Paint: brush, size, opacity, colour, eraser, painting on · Text: font, size, weight, colour while typing · Shape: the shape list · Notes: marker colour, Resolve · Camera: Reset view to camera | A tool's options belong with the tool. |
+| **With a selection** | Handles; the context bar's actions; the settings of the selection; highlighted rows and bars; motion path (animated position); the group path (inside a group); kind-specific tools: Bone (rig), the frame's box and handles (frame picked), frame-by-frame tools (frame-by-frame), Replace (picture), Paint on (painted element) | Rule of individuality, driven by the one action list and each setting's "valid when". |
+| **With a tool** | Pen: the "click / drag / close" line and Close, Done · Paint: brush, size, opacity, colour, eraser, painting on · Text: font, size, weight, colour while typing · Shape: the shape list · Notes: marker colour, Resolve · the frame: Frame the view, Cut here | A tool's options belong with the tool. |
 | **With keys selected** | The key bar in the timeline header (ease, curve chip, time and value for one key) | Easing is chosen while looking at the keys. |
 | **On hover** | Hover outline on the canvas (what a click picks); eye and lock on rows; diamonds stay visible (not hover-only); gap handles in auto layouts; hover names with shortcuts; history before / after pictures | Previews of what a click would do. |
 | **One click away** | + menu; Library; Ctrl+K; Find a setting; the folded groups; Curves; right-click menus; the History drawer; Guides; the scene list; view controls menus; Export | Used at a moment, not all the time. |
@@ -1767,12 +1767,12 @@ right-click and Ctrl+K always agree. Some selections **promote** the action they
 | one shape or path | Mask ▾ (with Draw a mask) · Repeat · Make symbol · Align to frame ▾ | — | Copy style, Lock, Hide, order *(S30: Duplicate and Delete are keys and right-click only)* |
 | one text | Animate letters (once it has a key) · Make symbol · Mask ▾ · Align to frame ▾ | — | as above |
 | one picture or video | Replace… · Fill the frame · Crop · Mask ▾ · Make symbol | — | as above |
-| one drawing | Set depth ▾ (with a camera) · Mask ▾ · Make symbol | — | as above |
+| one drawing | Set depth ▾ · Mask ▾ · Make symbol | — | as above |
 | 2+ layers | Group · Mask ▾ · Align ▾ · Distribute ▾ (3+) · Stagger… | all shapes → **Combine ▾** first · one is a path → **Put on path** (a text) or **Move along path** first · all drawings or pictures → **Make swap set** first · the last picked is named → **Follow *x*** | Make symbol · Auto layout · Make rig · Clip · Make swap set · Follow *x* · Match size · Paste style · Lock, Hide, order |
 | one group | Ungroup · Make rig · Auto layout · Clip · Make symbol | parts named like a body → **Make rig** first | as above |
 | a rig | Bones from part names (no bones yet) · Poses ▾ · Make symbol | — | as above |
 | a swap set | Lip sync… · Add blinks… | — | as above |
-| a camera | Shake… · Keep in frame… · Focus on ▸ | — | Lock, Hide |
+| the frame | Frame the view · Cut here | Frame home · Lock | — |
 | a mask group | Release mask · Mode ▾ | — | as above |
 
 | Tool | Context bar |
@@ -1803,7 +1803,7 @@ Every group not listed in Essentials is folded to its name; the panel remembers 
 | Drawing | Paint (layers, Draw each frame) · X Y · Scale · Rotation · Opacity | Onion skin (if drawing each frame) · Look · Colour adjust · Effects · Depth · Timing |
 | Group | X Y · Scale · Rotation · Opacity | Layout (if auto layout) · Clip · Look · Effects · Depth · Timing |
 | Symbol copy | Its changeable settings · Start · Speed · Loop · X Y · Scale · Rotation · Opacity | Look · Effects · Depth · Timing |
-| Camera | Zoom · X Y · Rotation · Depth of field (on/off) | Focus (if on) · Motion blur · Timing |
+| Frame | Position · Zoom · Rotation · Ride a path | Frame home · Lock |
 | Rig | Poses · the selected bone's turn | Reach (pins, how limbs reach) · Timing |
 | 3D render | Version · Speed · Loop · W H · X Y · Opacity | Same as picture |
 | Several | The settings they share (Mixed where they differ); of different kinds, also a line per kind ("2 texts ›") that narrows the selection *(S30)* | The groups they share |
@@ -1995,7 +1995,7 @@ the rest of the screen.
 |---|---|---|---|---|
 | Start screen | full window | launch with no project; ≡ | New (named sizes), recent projects as pictures, Open, Guides | opening a project |
 | Scene list | menu | the scene name | scenes with pictures, New / Duplicate / Rename / Delete | a pick, Esc |
-| + Add menu | menu | + in the tool strip | Add from a file… *(S30)* · From Figma… · Camera (while there is none) · 3D render (with Rostrum3D) · Symbol ▸ | a pick, Esc |
+| + Add menu | menu | + in the tool strip | Add from a file… *(S30)* · From Figma… · 3D render (with Rostrum3D) · Symbol ▸ | a pick, Esc |
 | System file window | the operating system's own | Add from a file, Replace, Save to › Choose…, Find it… | files and folders | a pick, Cancel |
 | Effects list | popover | Effects + | the effects that apply to this selection, each with a one-line description | a pick, Esc |
 | Add progress / report | small panel, canvas right edge | placing a file | progress; "Placed …"; Show what didn't come across | itself after 3 s if clean; × |
@@ -2008,7 +2008,6 @@ the rest of the screen.
 | Link to… | pointer mode | right-click a setting | click the source; Esc cancels | a click, Esc |
 | Lip sync | popover | context bar on a mouth set | voice line, mouth-shape map with pictures, Apply | Apply / Esc |
 | Add blinks | popover | context bar on an eye set | how often, closed drawing, Apply | Apply / Esc |
-| Shake / Keep in frame | popover | context bar on a camera | amount, speed / target, how loosely | Apply / Esc |
 | Export sheet | sheet in the settings panel's place | Export, Ctrl+E | what for, its settings, range, size, save to, Export | starting the export, Esc, × |
 | Replace file? | **blocking dialog** | exporting onto an existing file | Replace / Keep both / Cancel | a choice |
 | Library | left drawer | tool strip, Ctrl+L | project items, symbols, styles, brushes, motions, brand kit, connectors | the button again, Esc |
@@ -2038,7 +2037,7 @@ the rest of the screen.
 | Change count in the top bar | **Kept** *(S30, was Dropped)*: "Saved · N changes", never cut, click → History | Proof that every step is recorded and can be taken back, and the door to History (shared spec 1.14). |
 | Settings panel: essentials, folded groups, search, several selected = Mixed | **Kept** | Right. Added: pairs on one row, words of the trade, Effects (n) + always listed. |
 | Draw tool B with brush in the settings panel | **Kept and extended**: Paint on any element; quick controls in the context bar; brush library and the element's paint in the panel | PLAN's painting model; painters' controls near the hand. |
-| Tool strip Move / Pen / Draw | **Extended**: Shape, Text, Library, +, and tools that appear with their thing (Camera, Bone, Notes) | Creation in one place; tools only when usable. |
+| Tool strip Move / Pen / Draw | **Extended**: Shape, Text, Library, +, and tools that appear with their thing (Bone, Notes) | Creation in one place; tools only when usable. |
 | Click picks outer group, double-click in, Ctrl+click deepest | **Kept** | Figma's proven rule. |
 | Arrows nudge | **Kept and generalised**: arrows move the selection in the place you work (canvas: space; timeline: time); Ctrl+arrows step the playhead | One rule covers both. |
 | Drag feel: overlays drawn from the shown picture's state | **Kept** | The right base fix; budgets in 6.1. |
@@ -2161,23 +2160,22 @@ Drawing bones by hand instead of step 4: about 26 clicks (each joint a click). *
 **Today:** Draw page, + Add › Drawing first, no colour layer, no fill bucket, no zoom; the rest of the timing is hidden
 while drawing.
 
-## F6 · A painted scene with depth: far, middle and near hills, a camera push-in, drifting smoke, grain (Kenji)
+## F6 · A painted scene with depth: far, middle and near hills, a push-in of the frame, drifting smoke, grain (Kenji)
 
 | # | Step | Action | Count |
 |---|---|---|---|
 | 1 | New project | New · Create | 2 |
-| 2 | A camera | **+** · **Camera** | 2 |
 | 3 | Paint the far hills | **B** · paint (a new drawing) | 1 + strokes |
 | 4 | Middle and near | Painting on ▸ **New drawing** · paint · Painting on ▸ **New drawing** · paint | 4 + strokes |
 | 5 | Set the depths | **V** · click the far drawing · Set depth ▾ · **Far** · click the middle one · Set depth ▾ · **Middle** · click the near one · Set depth ▾ · **Near** | 10 |
 | 6 | A textured house | **R** · drag · Fill swatch · pick · **B** · paint grain inside it | 5 + strokes |
-| 7 | Push in | Click the camera row · Home · K · End · **C** · Alt+drag up on the canvas (camera closer) · box the two keys · Ease ▾ · **Smooth** | 9 |
+| 7 | Push in | **C** · Home · K · End · drag a corner square of the frame inward · box the two keys · Ease ▾ · **Smooth** | 8 |
 | 8 | Smoke | **B** · Painting on ▸ **New drawing** · paint · **V** · Home · K · End · drag the smoke up and right | 8 + strokes |
 | 9 | Grain on everything | Esc · Effects **+** · **Grain** | 3 |
 | 10 | Watch, export | Space · Export · Export | 3 |
 | | | **Total** | **≈ 47, plus the strokes** |
 
-**Today:** depths only through an agent (`background.add`), painting only on drawing layers, no Camera tool, no grain.
+**Today:** depths only through an agent (`background.add`), painting only on drawing layers, no grain.
 
 ## F7 · Timing to music: a piece cut to Sound's track (anyone)
 
@@ -2483,8 +2481,8 @@ core (the shared operations and history), svc (the project service).
 | Bone tool, attach, IK drag, pins, poses, lip sync, blinks on screen | Agent only (operations done) | As 3.23 (H30) | XL | screen |
 | Bones from part names | None | Context bar on a rig with no bones | M | Py |
 | Bend weights | Two-bone bend only | Later | L | eng |
-| **Camera and depth** | | | | |
-| Camera tool | None (layer and fields) | C: drag, move closer, turn | M | screen |
+| **The frame and depth** | | | | |
+| The frame's box | Done: C, drag inside, corner squares, turn | — | — | done |
 | Focus by clicking a layer, rack focus | Fields | Eyedropper on the canvas | S | screen |
 | Shake, follow | None | Helpers that write keys | M | Py |
 | Side view | None | Later | L | screen, eng |
@@ -2552,7 +2550,7 @@ because later steps lean on earlier ones.
    every job cut to music.*
 5. **H30 characters on screen:** Bone tool, Bones from part names, IK drag, poses, Lip sync, Add blinks. *F4.*
 6. **Reuse:** symbols, styles, the library drawer, Repeat. *F9, F10.*
-7. **Motion paths, Move along a path, Follow, the Camera tool.** *F6, F10.*
+7. **Motion paths, Move along a path, Follow, the frame's box.** *F6, F10.*
 8. **Working with an agent:** the run as a group, dots, notes, `inspect_screen`, the History drawer, versions. *F8.*
 9. **New effects and live booleans:** grain, displace, distort, light wrap, live combine. *The reference look.*
 
@@ -2564,7 +2562,7 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 
 | Job | Keys |
 |---|---|
-| **Tools** | V Move · R Rectangle · O Ellipse · L Line · P Pen · Shift+P Pencil · T Text · B Paint · E Eraser (while painting) · G Fill (while painting) · C Camera (with a camera) · J Bone (with a rig) · N Notes |
+| **Tools** | V Move · R Rectangle · O Ellipse · L Line · P Pen · Shift+P Pencil · T Text · B Paint · E Eraser (while painting) · G Fill (while painting) · C the frame · J Bone (with a rig) · N Notes |
 | **Make and add** | Ctrl+I Add from a file · Ctrl+Shift+N New scene · Ctrl+N New project · Ctrl+O Open · Ctrl+Shift+S Duplicate *(S30)* · Ctrl+Q Quit *(S30)* |
 | **Select** | Click · Shift+click (canvas) · Ctrl+click / Shift+click (rows), also keys and bars in the timeline *(S30)* · Shift+box adds, Ctrl+box deepest (canvas) *(S30)* · Ctrl+A · Esc · Enter / double-click (go in) · Shift+Enter (go out) · Ctrl+click (deepest) · Tab / Shift+Tab (next / previous layer) |
 | **Move and size** | Arrows nudge 1 px / Shift 10 px (canvas) / Alt 0.1 px *(S30)* · Shift while dragging (proportions, straight) · Alt while dragging (from the centre) · Alt+drag (a copy) · Ctrl while dragging (no snapping) · drag the anchor circle |
@@ -2595,7 +2593,7 @@ server. *(new)* = to be added.
 | Expressions | `expr.set` · `expr.clear` · `link.set` |
 | Painting | `paint.stroke` (any element; H30) · `stroke.set` · `stroke.remove` · `paint.set` / `paint.move` / `paint.remove` (H30) · `paint.fill` (H30) · `frame.add` · `frame.hold` · `frame.remove` · `background.add` · `background.fit` · `background.move` |
 | Characters | `bone.add` · `bone.remove` · `bind.add` · `bind.remove` · `ik.add` · `ik.remove` · `pose.save` · `pose.apply` · `pose.remove` · `swap.show` · `lipsync.apply` · `blink.add` · `rig.guess_bones` *(new)* |
-| Camera | `camera.shake` *(new)* · `camera.keep_in_frame` *(new)* |
+| Frame | `frame.fit` · `frame.cut` · `frame.home` · `frame.shake` *(new)* · `frame.keep_in_frame` *(new)* |
 | Reuse | `symbol.place` · `symbol.set` · `symbol.detach` · `style.define` · `style.use` · `motion.save` · `motion.apply` · `library.add` · `repeat.bake` *(all new)* |
 | Sound | `value.set {soundtrack}` *(new field)* · `sound.cue` *(new)* · `text.words_to_markers` *(new)* |
 | Notes | `note.add` · `note.resolve` *(new)* |

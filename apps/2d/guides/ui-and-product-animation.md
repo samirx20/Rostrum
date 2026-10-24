@@ -127,7 +127,7 @@ can be keyed (`card.effect(...).key("radius", {...})`).
 
 `tiltX` and `tiltY` (degrees) turn a layer around its horizontal / vertical axis with perspective (1600 px per layer), then
 `rotation` and scale apply about the anchor. They are animatable. Tilt is for a flat layer that turns; there are **no 3D
-layers** (no real 3D objects, lights or cameras in 2D: that is Rostrum3D). Layers that move in depth because a **camera**
+layers** (no real 3D objects, lights or cameras in 2D: that is Rostrum3D). Layers that move in depth because the **frame**
 moves are in `frame-parallax-motion-blur`.
 
 Boxes the look tools report (`look_at`) leave tilt out, so a tilted layer's box is approximate: judge a tilt with

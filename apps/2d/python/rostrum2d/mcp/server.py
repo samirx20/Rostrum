@@ -38,7 +38,7 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "path / group(id, **fields), made inside `with group(...):` to go in it (their x, y are then in the group's "
                "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
                "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=). "
-               "The scene's frame (what is exported, its camera): f = frame(); f.key(\"x\", {0: 960, 4: 2600}); "
+               "The scene's frame (what is exported): f = frame(); f.key(\"x\", {0: 960, 4: 2600}); "
                "f.fit([\"hills\", \"tree\"], at=4) frames layers as they show then (depth counted), f.fit(rect=(x, y, w, h), at=4), "
                "f.cut(at=6, to=\"rect\", rect=(3200, 0, 1920, 1080)) or f.cut(at=\"#logo lands\") jumps it, f.home(at=8); "
                "the same as the operations frame.fit, frame.cut, frame.home (target \"frame\"). "

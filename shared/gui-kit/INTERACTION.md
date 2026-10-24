@@ -78,7 +78,7 @@ Every pattern below follows the same layout:
 | Region | Where | Holds | When |
 |---|---|---|---|
 | **Top bar** | top row, 44 px, one line, never two | Fixed order, left to right: **≡** menu · **project › scene ▾** (or song name) · **message** (what just happened) · **Saved · N changes** · **chips**, each shown only while it has something to say (agent at work, Problems, a running job, an app's own chip such as Sound's loudness) · **↶ ↷** (only when they can act) · **Search Ctrl K** · **Export** (once there is something to export) · **?** | Always. Project-wide things only: nothing that makes or edits one item lives here. |
-| **Tool strip** | floating on the left edge of the view it acts on, 40 px wide | Tools that make or draw things, then tools that appear with their thing (Camera with a camera, Bone with a rig), then **+ Add** at the bottom | In apps and views with tools: the 2D canvas, the 3D view, the Editor's viewer. Sound's Editor has two tools (Select V, Draw B), so they sit at the left end of the Editor's header instead. |
+| **Tool strip** | floating on the left edge of the view it acts on, 40 px wide | Tools that make or draw things, then tools that appear with their thing (Bone with a rig), then **+ Add** at the bottom | In apps and views with tools: the 2D canvas, the 3D view, the Editor's viewer. Sound's Editor has two tools (Select V, Draw B), so they sit at the left end of the Editor's header instead. |
 | **Context bar** | floating at the **top-centre of the main view** (for Sound, of the area that has focus: the arrangement or the Editor), one row, never wraps | With the Move / Select tool and a selection: what is selected ("3 layers") and its top actions, then **⋯** for the rest. With another tool: that tool's few options. | Only when there is something to say. Hidden while dragging. Never covers the tool strip. |
 | **Main view** | the middle | The work itself: the canvas (2D), the arrangement (Sound), the 3D view, the viewer (Editor). Bottom-right: **view controls** (Fit · zoom % ▾ · preview size · Fast / Final). Bottom-left: where you are (the group path "Logo › mark"). | Always. |
 | **Settings panel** | right, full height down to the timeline; 256 px at 1280, 264 at 1366, 296 at 1646, 320 at 1920; drag its edge between 256 and 420 | The settings of what is selected; the document's (scene's or song's) when nothing is. **Sheets** take its place when needed: Export, History. | Always (Ctrl+\ folds it away). |
@@ -300,7 +300,7 @@ cards.
    - Ctrl+wheel zooms time around the pointer.
    - Shift+wheel scrolls in time; the wheel scrolls the rows.
    - Alt+wheel makes rows taller or shorter.
-   - Ctrl+= / Ctrl+− zoom in steps. **Ctrl+0** fits everything. **F** fits the selection.
+   - Ctrl+= / Ctrl+− zoom in steps. **Ctrl+0** fits the main thing (in 2D, the frame). **Shift+1** fits everything [2D]. **F** fits the selection. **Shift+C** looks through the frame [2D].
    - Space+drag or a middle-drag pans.
 7. **Heights:** drag the timeline's top edge, or press ⊟ (full ↔ compact). Each tool remembers its own height.
    Compact shows the header, ruler, the sound row and the selected row. Under 800 px tall it starts compact.
@@ -465,7 +465,7 @@ else.
 | Wheel / Shift+wheel | Scroll up and down / sideways (in a timeline, sideways is time) |
 | Space+drag · middle-drag | Pan (tapping Space plays; holding it while dragging pans) |
 | Ctrl+= / Ctrl+− | Zoom in / out a step |
-| **Ctrl+0** | Fit everything (the frame, the song, the cut) |
+| **Ctrl+0** | Fit the main thing (the frame, the song, the cut) |
 | **F** | Fit the selection (nothing selected: everything). Shift+2 also works in 2D, for Figma habits. |
 | Ctrl+1 | 100 % (pictures only) |
 
@@ -755,7 +755,7 @@ the agent's `inspect_tools`.
 | | Shift+wheel · wheel | Scroll sideways / up and down | shared |
 | | Alt+wheel | Row height (timelines) | shared |
 | | Space+drag · middle-drag | Pan | shared |
-| | Ctrl+= / Ctrl+− · Ctrl+0 · Ctrl+1 | Zoom step · fit all · 100 % | shared |
+| | Ctrl+= / Ctrl+− · Ctrl+0 · Ctrl+1 | Zoom step · fit the main thing · 100 % | shared |
 | | F (2D also Shift+2) | Fit the selection | shared |
 | | Ctrl+\ | Hide the side panels and fold the timeline / dock; again to bring them back | shared |
 | | F6 | Focus the next area | shared |
@@ -777,7 +777,7 @@ the agent's `inspect_tools`.
 | **Tools** | V | Move / Select (the default tool) | shared |
 | | B | Paint / Draw | shared (2D: Paint; Sound Editor: Draw notes) |
 | | N | Notes on the picture | shared (2D now) |
-| | R O L P T C J · E G (while painting) · [ ] · 1–0 | Rectangle, Ellipse, Line, Pen, Text, Camera, Bone · Eraser, Fill · brush size · opacity | [2D] |
+| | R O L P T C J · E G (while painting) · [ ] · 1–0 | Rectangle, Ellipse, Line, Pen, Text, pick the frame, Bone · Eraser, Fill · brush size · opacity | [2D] |
 | | Q · T · S · H (hold) · Shift+M · Shift+S | Quantise · next take · swap a sound · hear the original · mute · solo | [Sound] |
 | **Frame by frame** | Alt+N · Alt+Shift+N · = / − · Alt+O | New drawing · copy of this drawing · hold longer / shorter · onion skin | [2D] |
 | **Arrange** | Shift+A · Alt+A / D / W / S · Alt+H / V · Ctrl+Alt+M · Ctrl+Alt+U / S / I / X · Ctrl+Alt+K | Auto layout · align · centre · mask · combine · make symbol | [2D] |
@@ -852,7 +852,7 @@ is found by search. Operation names may differ (they are for agents), but their 
 | 8 | **Box with a modifier** | Canvas: Ctrl+drag = fully inside | Ctrl+box adds | Lists: **Ctrl+box adds**. Canvas: **Shift+box adds**, Ctrl+box = deepest | The add key adds in each place; Ctrl means "deep" on a canvas. |
 | 9 | **Clicking a marker** | Drag moves; double-click renames | Click selects and moves the playhead; double-click went to it (3.6e) or renamed (3.0) | **Click = select + playhead; double-click = rename** | Sound contradicted itself; rename by double-click is the rule for every name. |
 | 10 | **Dragging on the ruler** | Drag scrubs; the top band sets the play range | Drag makes a time range | **Top band = range; the scale scrubs** | Every video tool scrubs on the ruler; one layout. |
-| 11 | **Play range / loop range** | "Play range", Shift+I / O | "Loop range", "time range", C toggles loop | **One "time range"**; ⟳ Loop with **Shift+L**; Shift+I / O | One idea; C is 2D's Camera tool. |
+| 11 | **Play range / loop range** | "Play range", Shift+I / O | "Loop range", "time range", C toggles loop | **One "time range"**; ⟳ Loop with **Shift+L**; Shift+I / O | One idea; C picks 2D's frame. |
 | 12 | **Ctrl+← / →** | Playhead one frame, always | Fine nudge | **Playhead, always.** Fine nudge = **Alt+arrows** | A key that sometimes moves the playhead and sometimes the selection breaks trust. |
 | 13 | **Alt+arrows** | Previous / next drawing, hold longer / shorter | Kept unused on purpose | **Fine step everywhere.** 2D's drawing jumps are `,` / `.` (they already were); hold is = / − | Alt = "finer" is already 2D's scrub rule. |
 | 14 | **`,` / `.`** | Previous / next key, marker or drawing | One picture frame back / forward (proposed) | **Previous / next thing that happens.** Frames are Ctrl+← / → | Two keys for the same frame step would be waste. |

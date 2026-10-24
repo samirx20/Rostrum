@@ -24,7 +24,7 @@ GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # 
     ("drawing.md", "Drawing"), ("importing.md", "Importing pictures and files"),                # listed in README.md
     ("exporting.md", "Exporting a video"), ("files.md", "Files and settings"), ("timing-to-music.md", "Timing to music"),
     ("text-on-a-path.md", "Text on a path"), ("curve-editor.md", "The curve editor"),
-    ("characters-sound-camera.md", "Characters, sound, camera and styles"), ("README.md", "All guides")])
+    ("characters-sound-styles.md", "Characters, sound and styles"), ("README.md", "All guides")])
 
 
 SWITCH_S = 0.001                     # s: Python's hand-over between threads (default 5 ms, a third of a frame)
