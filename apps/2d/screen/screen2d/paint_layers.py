@@ -89,7 +89,7 @@ class PaintLayers(QObject):
         (an element: a drawing has no outline) and Draw each frame, from the first moment, before any paint, so an
         animation can start on an empty layer (painting design §2.2, §2.5)."""
         d = self._item()
-        if not d:
+        if not d or d["type"] == "painting":      # painting a fill in place: the painting's own switches are not set here
             return []
         params = paint_fields.DRAWING if d["type"] == "drawing" else paint_fields.ELEMENT
         return [{"id": p.name, "label": p.label, "help": p.help, "value": d.get(p.name, p.default)}

@@ -14,7 +14,9 @@ from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-from . import adding, brush_presets, framing, onion
+from rostrum2d import painted_fill
+
+from . import adding, brush_presets, fill_aim, framing, onion
 from .wet import WetView, reveal_rect, smear_ink, without_paint
 from .pen_tilt import PenTilt
 from .brush import Brush
@@ -31,6 +33,7 @@ class Painter(BrushPanel):
         self.b, self._stroke, self._onion = bridge, None, False
         self._fresh, self._new_layer = None, False      # "New drawing" picked for this selection; next stroke: new paint layer
         self._target = None                             # (document state, layer, what the pen paints on): target()
+        self._on_fill = {}                              # element id -> B paints its painted fill (True) or own paint (fill_aim)
         self._showing = False                           # a stroke's picture is asked for (strokeTo)
         self.brush = Brush(bridge.comp().get("background", ""))
         self.tilt = PenTilt(self)                       # the pen's lean (Session.show watches the window with it)
@@ -63,12 +66,27 @@ class Painter(BrushPanel):
         return got[2]
 
     def drawing(self) -> dict | None:
-        """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint."""
+        """The selected layer that has drawings (frame tools, onion): a drawing, or an element holding paint. None while
+        painting an element's painted fill (its painting's drawings are worked on opened, on its own)."""
         item = self.target()
+        if self.through() is not None:
+            return None
         return item if item and (item["type"] == "drawing" or item.get("frames")) else None
 
     def _n(self) -> int:
-        return frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
+        """The frame the pen paints at, in what it paints on: the selected layer's own frame, or, painting its painted
+        fill, the painting's drawing that layer shows now."""
+        n = frame_number(self.b.own_t(self.b.selectedLayer), self.b.comp()["fps"])
+        through = self.through()
+        if through is None:
+            return n
+        shown = painted_fill.shown(through, self._aim(), n, self.b.comp()["fps"])
+        return shown["at"] if shown else 0
+
+    def through(self) -> dict | None:
+        """The element the pen paints through into its painted fill (painting in place), else None."""
+        t, d = self.target(), self._aim()
+        return t if t is not None and d is not None and d is not t else None
 
     @Property(str, notify=changed)
     def drawingId(self):
@@ -102,8 +120,13 @@ class Painter(BrushPanel):
 
     # ---- what the pen paints on (PaintTarget.qml: "Painting on · Layer ▾") ---------------------------------------
     def _aim(self) -> dict | None:
-        """The target, unless "New drawing" was picked for this selection."""
-        return None if self._fresh == self.b.selectedLayer and self._fresh is not None else self.target()
+        """What the pen paints on: the target, or the painting it is filled with (fill_aim.on_fill); None when "New
+        drawing" was picked for this selection."""
+        if self._fresh == self.b.selectedLayer and self._fresh is not None:
+            return None
+        t = self.target()
+        p = fill_aim.painting_of(self.b.doc, t)
+        return p if p is not None and fill_aim.on_fill(t, self._on_fill) else t
 
     @Property(str, notify=changed)
     def targetName(self):
@@ -112,27 +135,43 @@ class Painter(BrushPanel):
 
     @Property(str, notify=changed)
     def targetValue(self):
-        """Which of targetChoices is on: "selected" or "new"."""
-        return "selected" if self._aim() else "new"
+        """Which of targetChoices is on: "selected" or "new"; on an element with a painted fill "own" or "fill"."""
+        d = self._aim()
+        if d is not None and fill_aim.painting_of(self.b.doc, self.target()) is not None:
+            return fill_aim.FILL if self.through() is not None else fill_aim.OWN
+        return "selected" if d else "new"
 
     @Property("QVariantList", notify=changed)
     def targetChoices(self):
-        """Painting on › Layer ▾: the selected layer, the other painted layers (newest first), New drawing."""
+        """Painting on › Layer ▾: the selected layer (an element with a painted fill: its own paint and the painting),
+        the other painted layers (newest first), New drawing."""
         d = self.target()
-        painted = [it for it in reversed(list(self.b.doc.items())) if it["type"] in PAINTABLE
-                   and (it["type"] == "drawing" or it.get("frames")) and (not d or it["id"] != d["id"])]
-        return ([{"value": "selected", "label": display_name(d)}] if d else []) +             [{"value": it["id"], "label": display_name(it)} for it in painted] + [{"value": "new", "label": "New drawing"}]
+        fill = fill_aim.painting_of(self.b.doc, d)
+        painted = [it for it in reversed(list(self.b.doc.items())) if it["type"] in PAINTABLE and it["type"] != "painting"
+                   and (it["type"] == "drawing" or it.get("frames")) and (not d or it["id"] != d["id"])]     # (a painting is no layer)
+        return (fill_aim.choices(d, fill) if fill else [{"value": "selected", "label": display_name(d)}] if d else []) +             [{"value": it["id"], "label": display_name(it)} for it in painted] + [{"value": "new", "label": "New drawing"}]
 
     @Slot(str)
     def paintOn(self, which):
         """"new": the next stroke makes a new drawing (for this selection); "selected": back to the selected layer;
-        another layer's id: it is selected, so the pen paints on it."""
-        if which not in ("new", "selected"):
+        "own" / "fill": the selected element's own paint or its painted fill; another layer's id: it is selected, so
+        the pen paints on it."""
+        if which in (fill_aim.OWN, fill_aim.FILL):
+            self._fresh = None
+            self._on_fill[self.b.selectedLayer] = which == fill_aim.FILL
+        elif which not in ("new", "selected"):
             self._fresh = None
             self.b.select(which)
         else:
             self._fresh = self.b.selectedLayer if which == "new" else None
         self.changed.emit()
+
+    @Slot()
+    def paintFill(self):
+        """The fill picker's Paint it: the Brush on, painting the selected element's painted fill."""
+        if fill_aim.painting_of(self.b.doc, self.target()) is not None:
+            self.paintOn(fill_aim.FILL)
+            self.b.paintTool.use("brush")
 
     def _erasing(self) -> bool:
         return self.brush.values.get("mode") == "erase"
@@ -171,13 +210,18 @@ class Painter(BrushPanel):
             d = {"id": lid}
         layer = "new" if self._new_layer else self.b._paint_layers.current()     # the highlighted paint layer
 
+        fill, through = (d, self.through()) if self.through() is not None else (None, None)
+        if through is not None:             # painting in place: the stroke goes through the element into its painting
+            d = through
+
         def go():
             if not make:
                 check_showing(self.b.doc.item(d["id"]), self.b.own_t(d["id"]), self.b.time)
             args = self.brush.stroke_args()
             self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
-                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), True)
-            if args.get("smudge") and args.get("mode") != "erase":     # a smudge smears the layer's own paint (wet.py)
+                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), True,
+                                          fill)
+            if args.get("smudge") and args.get("mode") != "erase" and fill is None:     # a smudge smears the layer's own paint (wet.py)
                 self._wet.start(smear_ink(self._wet, args, s, self.b.selBox, self._n()))
                 self._wet.add(*s.points[-1][:3])
             else:
@@ -185,7 +229,7 @@ class Painter(BrushPanel):
                 self._wet.start(ink)
                 self._wet.add(x, y, pressure)
                 if ink.erasing:
-                    self._ask_reveal(ink, d["id"], x, y)
+                    self._ask_reveal(ink, d["id"], x, y, fill is not None)
             self._wet.show()
             if make:
                 self._fresh = None
@@ -214,10 +258,10 @@ class Painter(BrushPanel):
 
     wet = Property(QObject, lambda self: self._wet, constant=True)
 
-    def _ask_reveal(self, ink, layer_id, x, y):
+    def _ask_reveal(self, ink, layer_id, x, y, fill=False):
         """The eraser's ink shows the world the canvas shows without the layer it erases: asked of the canvas's engine
         now, off this thread (a frame's time); its ink shows once it comes (wet.py)."""
-        scene = without_paint(self.b._scene, layer_id) if self.b._scene else None
+        scene = without_paint(self.b._scene, layer_id, fill) if self.b._scene else None
         if scene is None:
             raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")
         rect = reveal_rect(self.b.world.visible(), x, y)

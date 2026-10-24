@@ -74,7 +74,9 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
   shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
   drawing. Each stroke is one `paint.stroke` change (the agent's operation too). Frame keys: `,` `.` step drawings,
-  `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new`.
+  `=` `−` hold. Steps: `draw`, `paintlayer`, `painton selected|new|own|fill`, `painttime` (a stroke's cost, `stroke_time.py`).
+  A shape or path with a painted fill is painted in place (`fill_aim.py`): B paints its painting through it (`strokes.py`
+  with `fill`, `rostrum2d/paint_through.py`), the other users dotted (`paint_edge.py`).
 
 ## The brush panel and the settings panel while painting (H50, painting design phase 1)
 

@@ -8,10 +8,11 @@ from pathlib import Path
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
+from rostrum2d import drawing, painted, painted_fill
 from rostrum2d.frame import view as camera
 
 from . import render, world_facts as wf
-from .geometry import comp_size, covers, drawn_box, flatten, problems_showing
+from .geometry import _apply, _invert, comp_size, covers, drawn_box, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
 tools = Tools()
@@ -27,6 +28,30 @@ SPACE = {"space": {"type": "string", "enum": ["frame", "world"], "default": "fra
                                   "(what look_world's ruler shows); boxes are where the world view draws each layer."}}
 
 
+def _painted(doc, n: dict, x: float, y: float, t: float, frame: int, fps: float) -> dict | None:
+    """Where the point lands in a painted fill's painting (painted.Mapping, the engine's layout): its px, folded into the
+    painting on Tile; `on_painting` false in the bands Fit leaves empty; which drawing shows (1 = the first)."""
+    p = n["props"]
+    painting = next((q for q in doc.data.get("paintings", []) if q["id"] == p.get("fillPainting")), None)
+    inv = _invert(n["matrix"])
+    if p.get("fillType") != "painted" or painting is None or inv is None:
+        return None
+    m = painted.Mapping(p, painting, n["size"], t - p.get("start", 0.0))
+    px, py = m.wrapped(*m.to_painting(*_apply(inv, x, y)))
+    shown = painted_fill.shown(doc.item(n["id"]), painting, frame, fps)
+    drawings = drawing.shown_frames(painting)
+    return {"painting": painting["id"], "name": painting.get("name", ""), "at": [round(px, 1), round(py, 1)],
+            "size": [m.pw, m.ph], "on_painting": 0 <= px + 0.5 <= m.pw and 0 <= py + 0.5 <= m.ph,
+            "drawing": drawings.index(shown) + 1 if shown in drawings else 0}
+
+
+def _said(f: dict | None) -> str:
+    if not f:
+        return ""
+    where = f'at ({f["at"][0]:g}, {f["at"][1]:g}) of {f["size"][0]} × {f["size"][1]}' if f["on_painting"] else "outside it (an empty band)"
+    return f', painted fill {f["name"]} {where}' + (f', drawing {f["drawing"]}' if f["drawing"] > 1 else "")
+
+
 def _covering(comp: dict, t: float, x: float, y: float, world: bool = False) -> list[dict]:
     """The flattened layers whose box covers (x, y) at t, top first."""
     return [n for n in reversed(flatten(comp, t, world)) if covers(n, x, y)]      # the last layer in the list is on top
@@ -37,7 +62,9 @@ def look_at(ctx, args):
     """What is at a point at a time: the layers whose box covers it, top first, with their values at that time and their box.
     `space` "frame" (default): x, y are composition pixels, the picture. "world": x, y are world px, the canvas around the frame
     (read them off look_world's ruler); the reply says whether the point is inside the frame then. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
-    effects like glow and shadow, and masks, are not counted. Layers that are covered but invisible (opacity 0) are marked."""
+    effects like glow and shadow, and masks, are not counted. Layers that are covered but invisible (opacity 0) are marked.
+    A layer with a painted fill says where the point lands in its painting (`painted_fill`: painting px, folded into the
+    painting on Tile, and which drawing): paint.stroke {target: the painting, through: the layer} lands there."""
     doc, comp = doc_and_comp(ctx, args)
     t, frame = time_of(ctx, comp, args)
     x, y, (w, h) = args["x"], args["y"], comp_size(comp)
@@ -48,9 +75,10 @@ def look_at(ctx, args):
         box = [round(v, 1) for v in drawn_box(n)]
         rows.append({"id": n["id"], "type": n["type"], "box": {"left": box[0], "top": box[1], "right": box[2], "bottom": box[3]},
                      "values": {k: n["props"][k] for k in SHOWN if k in n["props"]}, "visible": not why, "why_not_visible": why,
-                     "inside": list(n["within"])})
+                     "inside": list(n["within"]), "painted_fill": _painted(doc, n, x, y, t, frame, comp.get("fps", 30))})
     inside = wf.point_in_frame(comp, t, x, y) if world else 0 <= x < w and 0 <= y < h
-    lines = [f'{r["id"]} ({r["type"]}){"" if r["visible"] else " [not visible: " + ", ".join(r["why_not_visible"]) + "]"}' for r in rows]
+    lines = [f'{r["id"]} ({r["type"]}{_said(r["painted_fill"])}){"" if r["visible"] else " [not visible: " + ", ".join(r["why_not_visible"]) + "]"}'
+             for r in rows]
     where = f"({x:g}, {y:g}) {'world px' if world else 'px'} at {t:.3f} s (frame {frame}){'' if inside else ', which is outside the frame'}"
     summary = f"At {where}: " + (f'{len(rows)} layer{"s" * (len(rows) != 1)}, top first: {"; ".join(lines)}.' if rows else "no layer's box covers it.")
     cam = camera.shot(comp, t)

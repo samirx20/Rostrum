@@ -32,9 +32,7 @@ def of(item: dict, fps: float, where: dict | None) -> list[dict]:
         return pic[frame["id"]]
     if len(drawings) < 2:
         return [{"at": start, "src": src(drawings[0])}]
-    mode = "pingpong" if looping.mode_of(painting.get("loop")) == "pingpong" else "loop"
-    loop = {**painting, "loop": mode}
-    begin = drawings[int(item.get("fillPhase", 0)) % len(drawings)]["at"]
+    loop, begin = _run(item, painting, drawings)
     until = min(item.get("end", retime.END_OF_COMP), where.get("until", 0.0) or 60.0)
     out, last = [], None
     for n in range(start, max(math.ceil(until * fps), start + 1)):
@@ -43,3 +41,20 @@ def of(item: dict, fps: float, where: dict | None) -> list[dict]:
             out.append({"at": n, "src": src(shown)})
             last = shown
     return out
+
+
+def _run(item: dict, painting: dict, drawings: list[dict]) -> tuple[dict, int]:
+    """(the painting as it loops in a fill, the painting's frame this layer starts on)."""
+    mode = "pingpong" if looping.mode_of(painting.get("loop")) == "pingpong" else "loop"
+    return {**painting, "loop": mode}, drawings[int(item.get("fillPhase", 0)) % len(drawings)]["at"]
+
+
+def shown(item: dict, painting: dict, n: int, fps: float) -> dict | None:
+    """The painting's drawing this layer shows at composition frame `n` (the one a stroke painted through it lands in);
+    None when the painting has no drawing."""
+    drawings = sorted(drawing.shown_frames(painting), key=lambda f: f["at"])
+    if len(drawings) < 2:
+        return drawings[0] if drawings else None
+    loop, begin = _run(item, painting, drawings)
+    start = drawing.frame_number(item.get("start", 0.0), fps)
+    return drawing.frame_at(loop, begin + max(n, start) - start)

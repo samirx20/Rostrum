@@ -89,6 +89,7 @@ class Facts:
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
             "paint_makeable": self.count == 1 and why_not_from(self.items[0]) is None,     # Make painted fill (ops_painting.py)
+            "painted_fill": self.count == 1 and self.items[0].get("fillType") == "painted",   # Paint it (the fill picker)
             **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
             **pin_depth.facts(self),                        # Pin to frame / Unpin from frame (pin_depth.py)
             **cover_move.facts(self)}                       # Cover the frame's move (cover_move.py)

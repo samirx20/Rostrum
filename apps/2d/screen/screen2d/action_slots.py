@@ -94,6 +94,8 @@ class ActionSlots(SlotMixin):
             self._cuepick.start()
         elif name in ("lipsync", "blinks"):                              # the character sheets (rig_lipsync.py, rig_blinks.py)
             (self._lipsync if name == "lipsync" else self._blinks).start()
+        elif name == "paint_fill":                                       # the fill picker's Paint it (painter.py)
+            self.painter.paintFill()
         elif name == "copy_style":
             self._copied = self.selected_layers()[0]
             self._set_status(f"Copied the style of {self.label_of(self.doc.item(self._copied))}")

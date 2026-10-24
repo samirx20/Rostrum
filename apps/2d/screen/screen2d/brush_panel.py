@@ -17,13 +17,13 @@ from rostrum2d.names import display_name
 from rostrum_core.errors import RostrumError, codes
 from rostrum_paint import library
 
-from . import brush_presets
+from . import brush_presets, fill_aim
 from .brush import LOADS, TOOL_PARTS
 
 
 class BrushPanel(QObject):
     """Needs `self.b` (the bridge), `self.brush` (brush.Brush), `self.model` (the panel's RowsModel) and `self._aim()`
-    (what the pen paints on)."""
+    (what the pen paints on) and `self.through()` (the element it paints through into its painted fill)."""
     brushChanged = Signal()
     toolChanged = Signal()
 
@@ -106,7 +106,9 @@ class BrushPanel(QObject):
     def selectedItem(self):
         if self.brush.editing:
             return {"id": "brush", "label": self.brush.label(), "kind": "brush", "subtitle": ""}   # its first group says "Brush"
-        d = self._aim()
+        d, through = self._aim(), self.through()
+        if through is not None:             # painting in place: "Paper grain · painted fill of card 2 · used by 3 layers"
+            return {"id": "brush", "label": "Painting", "kind": "brush", "kindLabel": fill_aim.heading(self.b.doc, d, through)}
         name, kind = (display_name(d), self.b.kind_label(d)) if d else ("New drawing", "")
         said = kind == "" or re.fullmatch(rf"{re.escape(kind)}( \d+)?", name)     # the name already says it: "Drawing 2", not "Drawing 2 · Drawing"
         on = name if said else f"{name} · {kind}"
