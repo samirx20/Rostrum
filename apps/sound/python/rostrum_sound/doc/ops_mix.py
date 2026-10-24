@@ -20,6 +20,8 @@ REGISTRY.operation("effect.set", "Change an effect's settings.", target="effect"
                    label="Edit effect", fields=True)(set_fields)
 REGISTRY.operation("marker.set", "Rename or move a marker.", target="marker", params=FD.params("marker"),
                    label="Edit marker", fields=True)(set_fields)
+for _name in ("marker.move", "marker.rename"):      # the project's markers' names (shared/core markers.py)
+    REGISTRY.alias(_name, "marker.set")
 
 
 @REGISTRY.operation("effect.add", "Add an effect to the end of a track's, clip's, bus' or the master's inserts. It starts valid and playable (an EQ with one flat band you then move).",

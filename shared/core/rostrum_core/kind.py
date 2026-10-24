@@ -47,6 +47,9 @@ class DocKind:
     # retired design). Unlike `check`, they never stop a file opening or a call; they are never silent either: the
     # agent's replies carry them (mcp/server.py), inspect lists them, screens show them on the Problems chip.
     warn: Callable[[dict], list[str]] = _no_problems
+    # elsewhere(id) -> a plain hint, or None: what to say when a target id isn't in this document but names something
+    # that lives outside it (Sound: a project marker, changed with edit_markers).
+    elsewhere: Callable[[str], str | None] | None = None
     new: Callable[[], dict] | None = None               # a fresh document's root
     # The app's upgrade: upgrade(data, lists[, folder]) -> (new data, label) for what an older file holds that Rostrum
     # now holds another way (2D: a gradient effect becomes the fill; Sound: absolute takes become project-relative,

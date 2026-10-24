@@ -47,9 +47,19 @@ class Operation:
                 "min_targets": self.min_targets}
 
 
+@dataclass
+class Alias:
+    """A name another app or version writes for what this registry does under other names: `expand(call)` gives the
+    calls to run instead (same target); `note` says, in words, what was run and why (it goes in the reply)."""
+    name: str
+    expand: Callable
+    note: str | None = None
+
+
 class Registry:
     def __init__(self):
         self._ops: dict[str, Operation] = {}
+        self._aliases: dict[str, Alias] = {}
 
     def operation(self, name, summary, target=None, params=(), label="", importance="primary",
                   valid_when=None, fields=False, min_targets=1):
@@ -81,6 +91,26 @@ class Registry:
         if problems:
             raise ValueError(f"operation {op.name}: " + "; ".join(problems))
         self._ops[op.name] = op
+
+    def alias(self, name, to=None, note=None, expand=None):
+        """Read `name` as another operation: `to` (same target and arguments), or whatever `expand(call)` returns (a list
+        of calls). Said in the reply when `note` is given. A real operation of the same name wins (never shadowed)."""
+        if name in self._ops or name in self._aliases or not NAME.match(name):
+            raise ValueError(f"alias {name}: must be area.verb and not already an operation or alias")
+        self._aliases[name] = Alias(name, expand or (lambda call: [{**call, "op": to}]), note)
+
+    def resolve(self, calls) -> list[dict]:
+        """`calls` with every alias written as the operations it stands for (the history records those)."""
+        out = []
+        for c in calls:
+            a = self._aliases.get(c["op"]) if c["op"] not in self._ops else None
+            out += a.expand(c) if a else [c]
+        return out
+
+    def alias_notes(self, calls) -> list[str]:
+        """What to tell the caller about the aliases it used (once each)."""
+        used = dict.fromkeys(c["op"] for c in calls if c["op"] not in self._ops and c["op"] in self._aliases)
+        return [self._aliases[n].note for n in used if self._aliases[n].note]
 
     def ops(self) -> list[Operation]:
         return list(self._ops.values())

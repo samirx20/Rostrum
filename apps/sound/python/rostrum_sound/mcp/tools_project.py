@@ -44,7 +44,9 @@ EDIT_DOCUMENT = (
     "'writing-parts' first; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
     "(the song itself is \"root\"). A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
     "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\"). A volume is gain 0 … 4 as a bare number, or in dB as "
-    "{\"db\": -6}. Several parts at once: run_script is shorter.")
+    "{\"db\": -6}; tracks on built-in instruments are level-matched, so equal volumes sound balanced. A note can end on a "
+    "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
+    "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter.")
 ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'start-here' for how replies work."
 
 

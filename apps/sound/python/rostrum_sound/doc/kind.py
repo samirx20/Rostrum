@@ -13,7 +13,7 @@ from __future__ import annotations
 from rostrum_core import DocKind
 
 from .. import names
-from . import dropped, media, migrations, past_end
+from . import dropped, markers, media, migrations, past_end
 from . import fields as FD
 from . import ops_bus_tracks, ops_buses, ops_cleanup, ops_mix, ops_music, ops_range, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_swap, ops_timed, ops_tracks, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
@@ -44,4 +44,11 @@ def facts(item: dict, doc=None) -> dict:
     return {"vibratoLane": "vibrato" in lanes, "bendLane": "bend" in lanes, **_playing(item)}
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, check=check, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)
+def elsewhere(id_: str) -> str | None:
+    """A target that is not in the song but is one of the project's markers (changed with edit_markers)."""
+    mark = next((r for r in markers.project_rows() if r["id"] == id_), None)
+    return mark and (f'"{mark["name"]}" is a marker the whole project shares, not part of this song: change it with '
+                     f'edit_markers (marker.move / marker.rename), so 2D and the Editor see it too.')
+
+
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)

@@ -99,3 +99,15 @@ def test_saving_a_song_twice_writes_the_markers_file_once(doc, monkeypatch):
         doc.save()
         project.open_to_change(doc.folder)          # as the window's history does after every step
     assert written.count(project.ITEM) == 0         # the markers were written once, by the fixture's marker.add
+
+
+def test_marker_move_is_one_name_for_the_project_and_the_songs_own_markers(doc):
+    mid = _id(doc.folder)
+    project.edit(doc.folder, [{"op": "marker.set", "target": [mid], "args": {"at": 5.0}}], Who.person())   # the other app's name
+    assert project.listing(doc.folder)[0]["at"] == 5.0 and "marker.move" in project.REGISTRY.alias_notes([{"op": "marker.set"}])[0]
+    doc.apply([{"op": "marker.add", "args": {"name": "own", "at": 1.0}}], Who.person())
+    own = doc.data["markers"][0]["id"]
+    doc.apply([{"op": "marker.move", "target": [own], "args": {"at": 2.0}}], Who.person())
+    assert doc.data["markers"][0]["at"] == 2.0
+    with pytest.raises(RostrumError, match="edit_markers"):                  # a project marker is not the song's to edit
+        doc.apply([{"op": "marker.move", "target": [mid], "args": {"at": 3.0}}], Who.person())

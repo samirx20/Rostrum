@@ -13,9 +13,9 @@ from .reply import Reply
 from .tools import Tools
 
 _CALL = {"type": "object", "required": ["op"], "additionalProperties": False, "properties": {
-    "op": {"enum": ["marker.add", "marker.move", "marker.rename", "marker.colour", "marker.remove"]},
+    "op": {"enum": ["marker.add", "marker.move", "marker.rename", "marker.colour", "marker.remove", "marker.set"]},
     "target": {"type": "array", "items": {"type": "string"}, "description": "Marker ids (from inspect_markers)."},
-    "args": {"type": "object", "description": 'marker.add {"name", "at", optional "owner", "colour"}; marker.move {"at"}; marker.rename {"name"}; marker.colour {"colour"}.'}}}
+    "args": {"type": "object", "description": 'marker.add {"name", "at", optional "owner", "colour"}; marker.move {"at"}; marker.rename {"name"}; marker.colour {"colour"}. marker.set {"at"/"name"/"colour"} is read as those.'}}}
 
 
 def _folder(ctx):
@@ -44,7 +44,7 @@ def register(tools: Tools):
     @tools.tool("edit_markers", {"required": ["ops"], "properties": {
         "ops": {"type": "array", "minItems": 1, "items": _CALL}, "label": {"type": "string"}}})
     def edit_markers(ctx, args):
-        """Add, move, rename or delete the project's named markers, all or nothing, as one step in their history."""
+        """Add, move, rename or delete the project's named markers, all or nothing, as one step in their history. marker.move is the one name for moving a marker (it is also what edit_document takes for a marker that is only in one song; marker.set is read as it)."""
         folder = _folder(ctx)
         change = M.edit(folder, args["ops"], ctx.who, args.get("label"))
         names = [c["op"] for c in args["ops"]]
