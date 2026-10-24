@@ -14,7 +14,8 @@
 //!   sum with the sum drawn in place of the children of its `data-shutter-held` element (an <Adjust> whose look
 //!   then runs once, after the shutter; painter.rs). Writes a PNG or JPEG (by extension, 8-bit) to
 //!   `image`, or with `rgba` replies `{"ok": true, "bytes": n, …}` followed by n bytes of straight-alpha RGBA on
-//!   stdout; with `pixels` the same bytes go into shared memory instead and the reply's `shm` says where (shm.rs).
+//!   stdout; with `pixels` the same bytes go into shared memory instead and the reply's `shm` says where (handoff.rs,
+//!   shm.rs; `screen`: the screen's form; `ahead`: the next frame drawn after the reply, serve_ahead.rs).
 //!   `scale` (with `pixels` only: the live canvas while playing): 1, 0.5 or 0.25, the same laid-out page drawn at that
 //!   size (painter.rs `set_view`); the reply's `width` / `height` and `shm` give the smaller size, `boxes` stay in comp px.
 //!   Or `view: {x, y, w, h, scale}` (with `pixels` only: the zoomed-in canvas): the comp px crop x..x+w, y..y+h drawn at
@@ -81,7 +82,7 @@ pub(crate) struct Session {
     /// rgba frames are 16-bit.
     pub(crate) deep: bool,
     /// The working space, view and output (color.rs).
-    color: Spec,
+    pub(crate) color: Spec,
     /// Where `encode` frames go (open.encode).
     pub(crate) sink: Option<Sink>,
     /// Each frame's stage markup is parsed here (no styles, no loads) and walked beside the kept page.
@@ -92,7 +93,9 @@ pub(crate) struct Session {
     /// The next frame's motion-blur sub-frames cut the same way, one list per sub-frame (`samples` in order).
     pub(crate) sample_pieces: Vec<Vec<String>>,
     /// The live canvas's shared-memory frames (`pixels`), made on first use and remade at a new frame size.
-    shm: Option<crate::shm::Shm>,
+    pub(crate) shm: Option<crate::shm::Shm>,
+    /// A frame drawn with `defer` (serve_ahead.rs): its output started, handed over when it is asked for.
+    pub(crate) deferred: Option<crate::handoff::Started>,
     /// What paints (`with_painting`): every open and scene reply says it.
     pub(crate) painting: Value,
 }
@@ -151,7 +154,7 @@ fn open(req: &Value, warm: &mut Option<Result<crate::painter::Gl, String>>) -> R
     let scratch = keep::Scratch::new(|| DocumentConfig { base_url: Some(BASE_URL.into()), ..Default::default() });
     let mut reply = json!({ "ok": true, "depth": if deep { 16 } else { 8 }, "timing": { "pageMs": page_ms, "painterMs": painter_ms } });
     with_painting(&mut reply, &painting);
-    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, painting, over: None, stage_open: false }, reply))
+    Ok((Session { doc, stage, assets, painter, width, height, deep, color, sink, scratch, kept_pieces: Default::default(), next_pieces: None, sample_pieces: vec![], shm: None, deferred: None, painting, over: None, stage_open: false }, reply))
 }
 
 /// Adds what paints (`gpu`, `adapter`, `fallback`: the plain reason it paints on the CPU, null on the GPU) to a reply.
@@ -581,20 +584,21 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
         return Ok((json!({ "ok": true, "scopes": scopes_out, "sample": sample_out }), None));
     }
     if shared && image.is_none() {
-        // Straight into the canvas's shared memory (shm.rs): the same output step as every frame, no pipe; at the
-        // painter's size (smaller with `scale`).
-        let (pw, ph) = s.painter.size();
-        let bytes = (pw * ph) as usize * if s.deep { 8 } else { 4 };
-        if s.shm.as_ref().map(crate::shm::Shm::slot_bytes) != Some(bytes) {
-            s.shm = Some(crate::shm::Shm::new(bytes)?);
-        }
-        let (slot, info) = s.shm.as_mut().unwrap().next(pw, ph, s.deep);
-        convert(&mut s.painter, &s.color, &mut raw, pw, s.deep, false, index, slot)?;
+        // Into the canvas's shared memory (handoff.rs): the same output step as every frame, no pipe; at the painter's
+        // size (smaller with `scale`). Deferred (a frame drawn ahead: serve_ahead.rs), the memory is written when asked.
+        let started = crate::handoff::start(s, raw.take(), req["screen"].as_bool() == Some(true), index)?;
         taps_done(s, &mut tap_write_ms)?;
         paint_ms += t2.elapsed().as_secs_f64() * 1000.0;
-        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "readMs": s.painter.last_read_ms, "convertMs": s.painter.last_convert_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "gpuMs": s.painter.last_gpu_ms, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
+        let (pw, ph) = s.painter.size();
+        let timing = json!({ "diffMs": diff_ms, "layoutMs": layout_ms, "paintMs": paint_ms, "recordMs": record_ms, "edits": edits, "samples": samples.len().max(1), "stillMs": still_ms, "stillPieces": still_pieces, "scale": scale, "flushMs": s.painter.last_flush_ms, "taps": taps, "tapReadMs": tap_read_ms, "gpuCache": s.painter.gpu_cache() });
         let boxes = if boxes_wanted { crate::boxes::boxes(&s.doc, w, h) } else { Value::Null };
-        return Ok((json!({ "ok": true, "width": pw, "height": ph, "shm": info, "timing": timing, "boxes": boxes, "scopes": scopes_out }), None));
+        let mut reply = json!({ "ok": true, "width": pw, "height": ph, "timing": timing, "boxes": boxes, "scopes": scopes_out });
+        if req["defer"].as_bool() == Some(true) {
+            s.deferred = Some(started);
+        } else {
+            crate::handoff::finish(s, started, &mut reply)?;
+        }
+        return Ok((reply, None));
     }
     let deep = s.deep && image.is_none();
     let mut pixels = vec![0u8; (w * h) as usize * if deep { 8 } else { 4 }];
@@ -635,7 +639,7 @@ pub(crate) fn frame(s: &mut Session, req: &Value) -> Result<(Value, Option<Vec<u
 #[allow(clippy::too_many_arguments)]
 fn convert(p: &mut crate::painter::Painter, spec: &crate::color::Spec, raw: &mut Option<Vec<u8>>, w: u32, deep: bool, fast: bool, index: u32, out: &mut [u8]) -> Result<(), String> {
     if raw.is_none() {
-        if let Some(done) = p.output_into(spec, deep, out) {
+        if let Some(done) = p.output_into(spec, deep, false, out) {
             return done;
         }
         *raw = Some(p.read()?);
@@ -678,6 +682,8 @@ pub fn run() {
     let mut warm = Some(crate::painter::gl_context());
     // The scene the engine holds (scene_serve.rs).
     let mut held = crate::scene_serve::Held::default();
+    // A frame drawn ahead while playing (serve_ahead.rs).
+    let mut ahead: Option<crate::serve_ahead::Ahead> = None;
     for line in stdin.lock().lines() {
         let Ok(line) = line else { break };
         if line.trim().is_empty() {
@@ -691,6 +697,17 @@ pub fn run() {
                 continue;
             }
         };
+        if let Some(r) = crate::serve_ahead::answer(&mut ahead, session.as_mut(), &req) {
+            match r {
+                Ok(r) => reply(&mut out, &r),
+                Err(e) => reply(&mut out, &json!({ "error": e })),
+            }
+            out.flush().unwrap();
+            if let (Some(s), Some(f)) = (session.as_mut(), req.get("frame")) {
+                ahead = crate::serve_ahead::prepare(&held, s, f);
+            }
+            continue;
+        }
         if req.get("scene").is_some() || req.get("change").is_some() {
             match crate::scene_serve::load(&mut held, &mut session, &mut warm, &req) {
                 Ok(r) => reply(&mut out, &r),
@@ -758,6 +775,8 @@ pub fn run() {
                         if let Some(px) = pixels {
                             out.write_all(&px).unwrap();
                         }
+                        out.flush().unwrap();
+                        ahead = crate::serve_ahead::prepare(&held, s, f);
                     }
                     Err(e) => reply(&mut out, &json!({ "error": e })),
                 },

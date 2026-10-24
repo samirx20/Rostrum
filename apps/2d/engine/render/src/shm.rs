@@ -16,6 +16,8 @@ use serde_json::{json, Value};
 pub struct Shm {
     map: Mapping,
     name: String,
+    /// This block's number in the process (a new block never matches what an older one held).
+    pub block: u64,
     slot_bytes: usize,
     seq: u64,
 }
@@ -27,19 +29,25 @@ impl Shm {
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let name = format!("Local\\rostrum2d-{}-{n}", std::process::id());
         let map = Mapping::create(&name, frame_bytes * 2)?;
-        Ok(Self { map, name, slot_bytes: frame_bytes, seq: 0 })
+        Ok(Self { map, name, block: n as u64, slot_bytes: frame_bytes, seq: 0 })
     }
 
     pub fn slot_bytes(&self) -> usize {
         self.slot_bytes
     }
 
-    /// The next slot to write, and the reply that describes it once written.
-    pub fn next(&mut self, width: u32, height: u32, deep: bool) -> (&mut [u8], Value) {
+    /// The slot the next frame goes into (0 or 1).
+    pub fn upcoming(&self) -> usize {
+        (self.seq as usize + 1) % 2
+    }
+
+    /// The next slot to write (it still holds the frame before last), and the reply that describes it once written.
+    pub fn next(&mut self, width: u32, height: u32, deep: bool, screen: bool) -> (&mut [u8], Value) {
         self.seq += 1;
         let offset = (self.seq as usize % 2) * self.slot_bytes;
+        let format = if screen { "bgra8-premul" } else if deep { "rgba64le" } else { "rgba8" };
         let info = json!({ "name": self.name, "size": self.slot_bytes * 2, "offset": offset, "bytes": self.slot_bytes,
-                           "stride": width as usize * if deep { 8 } else { 4 }, "format": if deep { "rgba64le" } else { "rgba8" },
+                           "stride": width as usize * if deep { 8 } else { 4 }, "format": format,
                            "seq": self.seq, "width": width, "height": height });
         (&mut self.map.bytes()[offset..offset + self.slot_bytes], info)
     }
