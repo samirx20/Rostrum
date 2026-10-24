@@ -80,6 +80,7 @@ class Screen:
                                          providers={"view": bridge.viewport.provider, "ball": bridge.balls.provider})
         if old[0] is not None:
             stop(old[0], old[1], then=lambda: self._free(old[2]))
+        self.files.setStart(False)                      # a document shown, by the kit or straight here: no start screen over it
 
     @staticmethod
     def _free(bridge):
