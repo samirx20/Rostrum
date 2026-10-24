@@ -27,9 +27,9 @@ from rostrum_core.merge import check_output
 from . import expression as EX
 from .builder import Song
 from .doc import KIND, meter
+from . import script_scope
+from .script_time import Beat, Beats
 
-SAFE_BUILTINS = {f.__name__: f for f in (range, len, min, max, abs, round, enumerate, zip, list, dict, tuple,
-                                          float, int, str, sorted, sum, reversed)}
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)",
        "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
        "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "vel_curve(points, start, end)"]
@@ -40,7 +40,7 @@ def scope(song: Song) -> dict:
         """The start of bar n (bar(1) is the start of the song)."""
         if n < 1:
             raise ValueError("bars count from 1")
-        return {"beat": meter.bar_start(song.root, n)}
+        return Beat(meter.bar_start(song.root, n))
 
     def vel_curve(points, start, end):
         """f(time) -> the velocity a phrase curve gives at that time (for accents on top of a phrase)."""
@@ -55,7 +55,7 @@ def scope(song: Song) -> dict:
         "sample_rate": lambda hz: song.set(sampleRate=hz),
         "track": song.track, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
-        "beat": lambda n: {"beat": n}, "beats": lambda n: {"beats": n}, "bar": bar, "vel_curve": vel_curve,
+        "beat": Beat, "beats": Beats, "bar": bar, "vel_curve": vel_curve,
     }
 
 
@@ -73,7 +73,7 @@ def run_source(source: str, name: str) -> dict:
     """Run a Sound script; the tree it makes (checked like operation arguments, ready for Document.run_script)."""
     song = Song()
     try:
-        exec(compile(source, name, "exec"), {"__builtins__": SAFE_BUILTINS, **scope(song)})
+        exec(compile(source, name, "exec"), {**script_scope.scope(), **scope(song)})
         tree = song.tree()
     except RostrumError as e:
         raise e.within(_line(name)) from e

@@ -11,7 +11,7 @@ from . import effects as FX
 from . import check_mix
 from . import lanes as LN
 from . import playing as PL
-from . import meter, sections
+from . import meter, past_end, sections
 from . import markers, times
 from .registry import LISTS
 
@@ -37,7 +37,9 @@ def _instrument(track) -> list[str]:
             unknown.setdefault(d, []).append(h["id"])
     for d, ids in unknown.items():
         more = f" and {len(ids) - 1} more hit(s)" if len(ids) > 1 else ""
-        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit (accepted: {', '.join(drums)})")
+        near = names.KIT_NEAREST[kind].get(names.drum_key(d)) if isinstance(d, str) else None
+        write = f': write "{near}" (the nearest drum this kit has)' if near else ""
+        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit{write} (accepted: {', '.join(drums)})")
     return out + playing(track)
 
 
@@ -130,6 +132,7 @@ def check(data: dict, items=None) -> list[str]:
     out += [f"two markers are named {n!r}" for n in set(marks) if marks.count(n) > 1]
     out += check_mix.problems(data)
     out += sections.problems(data)
+    out += past_end.problems(data)
     for m in () if items is None else (i for i in items if i.get("type") == "meter" and "at" in i):
         out += [p] if (p := meter.off_bar(data, m)) else []         # an old song still opens; a new change is on a bar
     for track in data.get("tracks", []):

@@ -14,6 +14,7 @@ from typing import Callable
 
 from rostrum_core import Param, RostrumError, codes
 
+from .. import names
 from . import markers, times
 
 NOTE = re.compile(r"^[A-Ga-g](#|b)?-?\d$")
@@ -80,7 +81,7 @@ def _pitch(p, v, where):
 def _drum(p, v, where):
     if isinstance(v, bool) or not (isinstance(v, str) and v or isinstance(v, int) and 0 <= v <= 127):
         _bad(p, v, where, "is not a drum", ["a drum name", "a GM key number"])
-    return v
+    return names.DRUM_ALIASES.get(names.drum_key(v), v) if isinstance(v, str) else v
 
 
 def _number(p, v, where):

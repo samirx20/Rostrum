@@ -16,6 +16,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import lastproject as last
+from .. import script_scope
 from .app import NO_PROJECT, open_project
 
 
@@ -59,6 +60,20 @@ def with_sound_edit_help(runtime) -> None:
             e.hint = e.hint or ERROR_HINT
             raise
     runtime.tools._tools["edit_document"] = dataclasses.replace(old, fn=edit_document, description=EDIT_DOCUMENT)
+
+
+def with_script_print(runtime) -> None:
+    """run_script's reply carries what the script printed (as warnings), so a script can show what it computed."""
+    old = runtime.tools.get("run_script")
+
+    def run_script(ctx, args):
+        script_scope.forget_printed()
+        try:
+            return old.fn(ctx, args)
+        finally:
+            for line in script_scope.printed():
+                ctx.note(f"print: {line}")
+    runtime.tools._tools["run_script"] = dataclasses.replace(old, fn=run_script)
 
 
 def register(tools: Tools):

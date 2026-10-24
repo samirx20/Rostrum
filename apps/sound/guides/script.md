@@ -9,12 +9,17 @@ marker("drop", at=bar(5))                                 # name a moment; other
 s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=
 s.note("D4", at=beat(0), dur=beats(4), vel=0.7)
 s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
-d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
+d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")   # drums: see Notes
 v = track("door"); v.clip(r"C:\...\door.wav", at=3.0, in_=0.42, length=1.2)
 s.effect("reverb", space="hall", mix=0.3)
 s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
-master(loudness=-16); master.effect("limiter", ceiling=-1)
+master(loudness=-16, truePeak=-1)                         # a loudness target turns normalize on; the ceiling is held
+for i in range(8):
+    s.note("A4", at=bar(2) + i * beats(0.5), dur=beats(0.5))   # beat arithmetic: a time + a length is a time
 ```
+
+Check what you wrote before rendering: `look_arrangement` draws every track's notes and hits with the bars, sections
+and markers, and says which tracks start on each marker.
 
 ## Playing: instruments, articulations, expression
 
@@ -29,7 +34,7 @@ vln.note("A4", at=beat(2), dur=beats(0.5), art="spiccato")    # a named articula
 g.note("E3", at=0, dur=1, position=0.4, bend=[(0, -100), (0.08, 0)])   # this note's touch; a scoop up
 vln.dynamics([(bar(13), 0.5), (bar(17), 1.3)])     # CC 11 over the track (0 … 2, multiplies every note)
 vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (1 = depth cents at rate Hz)
-vln.bend([(bar(5), -0.25), (bar(5) + 0.5, 0)], range=2)    # pitch wheel -1 … 1 (× range semitones, 2 unless set)
+vln.bend([(bar(5), -0.25), (bar(5) + beats(1), 0)], range=2)  # pitch wheel -1 … 1 (× range semitones, 2 unless set)
 keys = track("keys", builtIn="feltPiano")
 keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel
@@ -113,8 +118,25 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 
 ## Notes
 
-- Times: seconds (`2.5`), `beat(n)` (from the start, 0-based), `bar(n)` (1-based), or a marker (`"#drop"`).
-  Lengths: seconds or `beats(n)`.
+- Times: seconds (`2.5`), `beat(n)` (from the start, 0-based), `bar(n)` (1-based), or a marker (`"#drop"`; a name
+  with spaces works as written: `"#logo lands"`, `"#logo lands+0.5"`). Lengths: seconds or `beats(n)`.
+- **Beat arithmetic:** a time plus or minus a length is a time (`bar(5) + beats(2)`, `beat(i * 4) - beats(0.5)`), two
+  times give the length between them (`bar(9) - bar(5)`), lengths add and scale (`beats(1) * 3`, `i * beats(0.5)`),
+  and times compare with times (`bar(5) < bar(9)`). A bare number is seconds, so `bar(5) + 0.5` or `bar(5) < 3.0`
+  is refused, naming the forms to write instead (`bar(5) + beats(0.5)`, or `t["beat"]` for the beat number itself).
+  A marker is a moment in seconds: write `"#drop+0.5"` for half a second after it, or put the marker on the grid.
+- **Drums.** The synth kit (`kit="synth"`): `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write
+  it for a crash or a ride), `tom`, `rim`. An SFZ kit on General MIDI keys (`kitSfz=`) also has `pedalHat`, `tomLow`,
+  `tomHigh`, `crash`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, or any GM key number 27 … 87.
+  Common other names are read as these: `hihat` / `hh` / `closedHat` → `hat`, `openHihat` → `openHat`, `bd` →
+  `kick`, `sd` → `snare`, `rimshot` / `sidestick` → `rim`, `handclap` → `clap` (any case, with or without - and _).
+- **Plain Python in a script:** `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `sorted`, `reversed`,
+  `enumerate`, `zip`, `list`, `dict`, `tuple`, `set`, `int`, `float`, `str`, `bool`, `isinstance`, `hasattr`, `any`,
+  `all`, `map`, `filter`, `divmod`, `pow`, and the modules `math` and `random` (`import` them or just use them; no
+  other imports). `random` starts from the same seed every run, so running the script again writes the same notes;
+  `random.seed(n)` gives another draw. `print(...)` lines come back in the reply's warnings, "print: …".
+- **Before the render:** `run_script` refuses a held note that would end before it starts (`dur={"to": …}` past its
+  marker), and warns, naming them, about notes, hits or clips that start at or after the song's `length` (never heard).
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
 - Names (tones, reverb spaces, EQ shapes, built-in instruments, drums, effect types and fields): `inspect_engine`.
 - Instruments installed on this machine: `inspect_library` (`find: "cello"`). What one can play: `inspect_instrument`

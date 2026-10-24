@@ -22,7 +22,7 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 |---|---|
 | `12.5` | 12.5 seconds from the start (a bare number is always seconds) |
 | `{"beat": 32}` | beat 32 on the song's tempo map (a time says `beat`; a length says `{"beats": n}`) |
-| `"#logo"` | the marker named `logo` |
+| `"#logo"` | the marker named `logo` (a name with spaces as written: `"#logo lands"`) |
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
@@ -74,13 +74,15 @@ the render, naming the note; it is never played as a silent note. Typing a lengt
 
 ## 4. Check that it lands
 
-1. `render_mix` (stems on), then `inspect_job` until done.
-2. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
+1. Before rendering, `look_arrangement`: per marker, which tracks start on it (within 10 ms) and how far off the
+   others are, in ms and beats, with a picture of every part against the markers.
+2. `render_mix` (stems on), then `inspect_job` until done.
+3. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
    when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,
    and the mix's own nearest onset.
-3. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
-4. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
+4. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
+5. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 
 Read onset times as measurements: a soft sound reads 10–30 ms late. Whether a sound *fits* the image is decided by a
 person watching and listening; say so in your report.

@@ -5,6 +5,7 @@ You cannot hear the render, so each look tool turns one aspect of it into number
 
 | Question | Tool | What to read |
 |---|---|---|
+| Is every part where I meant it, before rendering? Which tracks start on each marker? | `look_arrangement` | a picture of the written song (a row per track: notes by pitch, drum hits, clips; bars, sections, markers) and, per marker, the tracks that start on it and each track's nearest start in ms and beats. Reads the document, so no render is needed |
 | How loud is it, and does it build where it should? | `look_loudness` | integrated LUFS, true peak, the short-term curve (a sag or dip shows as a valley in the picture), clipped moments, where the limiter worked and which tracks drove it |
 | Is one track buried or too loud? | `look_levels` | each stem's LUFS and dB under the loudest / the mix; flags (a float stem over 0 dBFS is held, not clipped) |
 | Do sounds land on time (a hit on a cut, a footstep on a frame)? | `look_events` with `expect` | each expected time's nearest onset and offset in ms; pass within `tolerance`; with `by_stem`, which stem hits each time |
