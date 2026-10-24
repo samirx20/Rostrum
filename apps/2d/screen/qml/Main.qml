@@ -162,7 +162,7 @@ AppShell {
     DepthPopover { x: (shell.width - width) / 2; y: 104 }     // Set depth ▾ › Other depth… (depth_typed.py): under the bar
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     centre: [
-        Stage { id: stage; anchors.fill: parent; typing: shell.typing },   // typing: F stays a letter (ViewControls.qml)
+        Stage { id: stage; anchors.fill: parent; typing: shell.typing; coverLeft: shell.overLeft },   // typing: F stays a letter (ViewControls.qml)
         ImportPanel {   // opened by the rail's Media › Import…, on the canvas (opening the Export sheet closes it)
             id: importPanel
             Connections { target: backend.importer; function onWantPanel() { shell.setImportOpen(true) } }

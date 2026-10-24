@@ -7,21 +7,21 @@ import RostrumKit
 Rectangle {
     id: chip
     readonly property var info: backend.opened.info
+    property real room: 10000                   // the most width the chip may take: the painting's name gives way
     width: row.width + 2 * Theme.gap; height: Theme.row
     radius: Theme.radiusCtl; color: Theme.raised
     Row {
         id: row
         x: Theme.gap; height: parent.height; spacing: Theme.grid
-        Text { objectName: "pathScene"; height: parent.height; verticalAlignment: Text.AlignVCenter
+        Text { id: scene; objectName: "pathScene"; height: parent.height; verticalAlignment: Text.AlignVCenter
                text: chip.info.scene || ""; color: back.containsMouse ? Theme.fg : Theme.fg2
                font.family: uiFont; font.pixelSize: Theme.body
                MouseArea { id: back; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                            onClicked: backend.opened.close() }
                HoverTip { hovered: back.containsMouse; text: "Back to the scene"; key: "Esc" } }
-        Text { height: parent.height; verticalAlignment: Text.AlignVCenter; text: "›"; color: Theme.fg3
+        Text { id: arrow; height: parent.height; verticalAlignment: Text.AlignVCenter; text: "›"; color: Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.body }
-        Text { height: parent.height; verticalAlignment: Text.AlignVCenter; text: chip.info.name || ""; color: Theme.fg
-               font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight
-               width: Math.min(implicitWidth, 320) }
+        NameLabel { height: parent.height; verticalAlignment: Text.AlignVCenter; text: chip.info.name || ""
+               width: Math.max(0, Math.min(implicitWidth, 320, chip.room - 2 * Theme.gap - scene.width - arrow.width - 2 * row.spacing)) }
     }
 }

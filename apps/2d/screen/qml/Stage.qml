@@ -30,6 +30,7 @@ Rectangle {
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
     objectName: "stage"                 // scripted steps reach the view through it (screen2d/view_steps.py)
     property bool typing: false         // a text field has the focus (Main.qml): single-letter view keys stay off
+    property real coverLeft: 0          // how far a drawer lies over this item's left edge (AppShell.overLeft): fits and the path chip keep clear of it
     // the context bar holds only what applies to picked strokes (StrokeBar.qml); no tool puts options or hints over the canvas
     readonly property bool strokesPicked: backend.tool === "draw" && backend.strokeSelect.count > 0
     readonly property var info: backend.frameInfo
@@ -49,8 +50,8 @@ Rectangle {
     // back to where it was when it closes
     readonly property bool opened: backend.opened.on
     property var viewBefore: null
-    function fitPainting() { const i = backend.opened.info, w = i.w || 1, h = i.h || 1
-                             if (i.seamless) view.fitBox(-w, -h, 2 * w, 2 * h); else view.fitBox(0, 0, w, h) }
+    function fitPainting() { const i = backend.opened.info, w = i.w || 1, h = i.h || 1, room = Theme.row + 4 * Theme.gap   // under the path chip and the size above it
+                             if (i.seamless) view.fitBox(-w, -h, 2 * w, 2 * h, room); else view.fitBox(0, 0, w, h, room) }
     onOpenedChanged: {
         if (opened) { viewBefore = { cx: view.cx, cy: view.cy, asked: view.asked, fitted: view.fitted }; fitPainting() }
         else if (viewBefore) { view.cx = viewBefore.cx; view.cy = viewBefore.cy; view.asked = viewBefore.asked
@@ -87,7 +88,7 @@ Rectangle {
         radius: Theme.radiusCtl; color: Theme.sunken
         clip: true
         readonly property bool drawing: backend.tool === "draw"
-        CanvasView { id: view; wellW: well.width; wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
+        CanvasView { id: view; wellW: well.width; coverLeft: Math.max(0, panel.coverLeft - Theme.pad); wellH: well.height; compW: panel.info.width || 1; compH: panel.info.height || 1
                      dpr: Screen.devicePixelRatio }
 
         Item {  // world px from here: (0, 0) of the world at view.ox, oy; one world px is view.zoom screen px
@@ -423,7 +424,8 @@ Rectangle {
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
         Item { anchors.fill: parent; visible: !panel.opened
                FrameChip { world: worldFrame; onClicked: panel.fitAll() } }
-        PathChip { visible: panel.opened; anchors { left: parent.left; top: parent.top; margins: Theme.gap } }   // "Autumn menu › Paper grain"   // "‹ Frame": the frame is out of view; a click fits it
+        PathChip { visible: panel.opened; x: view.coverLeft + Theme.gap; y: Theme.gap   // "Autumn menu › Paper grain", right of any drawer, its long name ending in …
+                   room: well.width - x - Theme.gap }
         LookThrough { id: look; view: view }                         // "Through the frame ×", bottom-left, while on
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // only while strokes are picked: what applies to them (StrokeBar.qml)
