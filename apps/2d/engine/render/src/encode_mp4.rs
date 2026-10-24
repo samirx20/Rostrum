@@ -8,7 +8,8 @@
 //! and output; frames turn into NV12 here (nv12.rs). The Mac (AVFoundation) is not built yet and says so.
 //! Fails loudly: odd sizes are refused before anything is written; any failed step is named; a frame that only partly
 //! arrived is an error; on any failure the unfinished file is deleted.
-//! Media Foundation's DLLs are delay-loaded (build.rs): nothing loads them until `available` has found each one in
+//! A thread reads the next frame while this one converts and writes the one before (three buffers going round); at the end
+//! stderr says how long each step took. Media Foundation's DLLs are delay-loaded (build.rs): nothing loads them until `available` has found each one in
 //! System32, so a Windows without them still runs the engine and gets a plain reason here instead of a crash.
 
 #[cfg(not(windows))]
@@ -204,14 +205,44 @@ mod mf {
 
             let (wu, hu) = (w as usize, h as usize);
             let size = wu * hu * 3 / 2;
-            let (mut rgba, mut stdin) = (vec![0u8; wu * hu * 4], std::io::stdin().lock());
+            // A thread reads the frames (three buffers going round) while this one converts and encodes the one before,
+            // so the pipe's time and the encoder's overlap.
+            let (full_tx, full) = std::sync::mpsc::sync_channel::<Result<Vec<u8>, String>>(3);
+            let (free, free_rx) = std::sync::mpsc::channel::<Vec<u8>>();
+            for _ in 0..3 {
+                let _ = free.send(vec![0u8; wu * hu * 4]);
+            }
+            std::thread::spawn(move || {
+                let mut stdin = std::io::stdin().lock();
+                let mut i = 0u32;
+                while let Ok(mut buf) = free_rx.recv() {
+                    match frame(&mut stdin, &mut buf, i) {
+                        Ok(true) => drop(full_tx.send(Ok(buf))),
+                        Ok(false) => break,
+                        Err(e) => {
+                            let _ = full_tx.send(Err(e));
+                            break;
+                        }
+                    }
+                    i += 1;
+                }
+            });
             let mut n = 0u32;
-            while frame(&mut stdin, &mut rgba, n)? {
+            let (mut waited, mut converted, mut encoded) = (0f64, 0f64, 0f64); // seconds, for the log
+            let mut lap = std::time::Instant::now();
+            let mut took = |into: &mut f64| {
+                *into += lap.elapsed().as_secs_f64();
+                lap = std::time::Instant::now();
+            };
+            while let Ok(read) = full.recv() {
+                took(&mut waited);
+                let rgba = read?;
                 let buf = step(format!("frame {n}: MFCreateMemoryBuffer"), MFCreateMemoryBuffer(size as u32))?;
                 let mut p = std::ptr::null_mut();
                 step(format!("frame {n}: locking its buffer"), buf.Lock(&mut p, None, None))?;
                 crate::nv12::from_rgba(&rgba, wu, hu, std::slice::from_raw_parts_mut(p, size));
                 step(format!("frame {n}: unlocking its buffer"), buf.Unlock())?;
+                took(&mut converted);
                 step(format!("frame {n}: SetCurrentLength"), buf.SetCurrentLength(size as u32))?;
                 let sample = step(format!("frame {n}: MFCreateSample"), MFCreateSample())?;
                 step(format!("frame {n}: AddBuffer"), sample.AddBuffer(&buf))?;
@@ -220,12 +251,17 @@ mod mf {
                 step(format!("frame {n}: SetSampleTime"), sample.SetSampleTime(at(n)))?;
                 step(format!("frame {n}: SetSampleDuration"), sample.SetSampleDuration(at(n + 1) - at(n)))?;
                 step(format!("frame {n}: encoding (WriteSample)"), writer.WriteSample(stream, &sample))?;
+                took(&mut encoded);
+                let _ = free.send(rgba);
                 n += 1;
             }
             if n == 0 {
                 return Err("no frames arrived".into());
             }
             step("finishing the MP4 (Finalize)", writer.Finalize())?;
+            let mut finished = 0.0;
+            took(&mut finished);
+            eprintln!("encode-mp4: {n} frames; waiting for frames {waited:.2} s, converting {converted:.2} s, encoder {encoded:.2} s, finishing {finished:.2} s");
             Ok(n)
         }
     }
