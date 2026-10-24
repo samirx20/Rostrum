@@ -128,7 +128,10 @@ def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
 def _engine_props(type_: str, given: dict) -> dict:
     """A node's props as the engine takes them: every field the engine knows (default unless given), none of the
     document-only ones (timing from markers, ids …)."""
-    return {p.name: given.get(p.name, p.default) for p in F.FIELDS[type_] if p.name not in python_only(type_)}
+    props = {p.name: given.get(p.name, p.default) for p in F.FIELDS[type_] if p.name not in python_only(type_)}
+    if props.get("fillUnder", "") is None:       # "no colour under it" goes as see-through (fill_paint.NO_COLOUR), as _node sends it
+        props["fillUnder"] = fill_paint.NO_COLOUR
+    return props
 
 
 def _placeholder(node: dict, item: dict, name: str) -> dict:

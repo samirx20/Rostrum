@@ -29,8 +29,8 @@ def test_a_tilted_layer_is_reported():
 
 
 def _sent(kind: str) -> dict:
-    from rostrum2d.scene import python_only
-    return {k: v for k, v in F.defaults(kind).items() if k not in python_only(kind)}
+    from rostrum2d.scene import _engine_props
+    return _engine_props(kind, {})
 
 
 def _tapered():
