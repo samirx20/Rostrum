@@ -177,7 +177,7 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
     build_items(ctx, r.list("children"), path, id + ".children");
   // shape / kind fields the chosen shape or kind doesn't use (the compiler sends every field)
   if (type == "mesh") mesh_known(it.props);
-  if (type == "light") it.props.known({"width", "height", "length", "radius", "angle", "texture"});
+  if (type == "light") it.props.known({"width", "height", "length", "radius", "cone", "softness", "angle", "texture"});
   it.finish();
   r.finish();
 }

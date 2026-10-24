@@ -16,7 +16,7 @@ HINTS = {"rx": _AIMED, "ry": _AIMED, "rz": _AIMED,
 
 
 def make(type_: str, id_: str, values: dict, where: str) -> dict:
-    item = {"id": id_, "type": type_, "name": str(values.get("name") or id_), **F.defaults(type_)}
+    item = {"id": id_, "type": type_, "name": str(values.get("name") or id_), **F.defaults(type_, values)}
     for key in F.LISTS.get(type_, []):
         item[key] = []
     fill(item, {k: v for k, v in values.items() if k != "name"}, where)

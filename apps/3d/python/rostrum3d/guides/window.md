@@ -84,6 +84,8 @@ on empty space) it shows the **Scene**:
 - **Sky:** the scene's sky light (click to edit it), or **Sky +** to add one.
 - **Shot:** size, frame rate, length and camera. Click any of them for the shot's own settings.
 
+A setting with a small **Final** tag after its name (a panel light's Spread and Lights only, a material's coat colour, sheen, brushing and thin film) shows in the Final look only: the Quick view can't draw it. Hover the tag for that.
+
 An item's rows come from its own settings:
 
 - The thing's **own group** is always open: a shape's size, a light's brightness, a camera's lens.

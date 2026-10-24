@@ -8,6 +8,7 @@ Lights are items (`light.add`, `light.set`). This guide explains the kinds of li
 - **`disk`** — a round panel (`radius`), also shining along −Z. Gives round highlights (a beauty dish).
 - **`strip`** — a long thin panel: `length` along its X, `width` across it (along its Y), shining along −Z. The strip softbox of a product studio (a `rect` with its own two sizes, so you think in length and width).
 - **`sphere`** — a ball of light (`radius`) shining every way: a bulb, a candle flame, a practical lamp in the scene.
+- **`spot`** — a small bulb whose light is cut to a cone along its −Z: a pool of light on a floor or a wall. **`cone`** is the cone's full width in degrees; **`softness`** (0–1) how gradually the pool's edge fades (0 = a hard edge). A new spot starts as a 0.05 m bulb (`radius`). **Not drawn yet:** the cone is saved in the scene (UsdLux shaping, which other USD programs read), but neither the quick view nor Cycles cuts the light to it yet, so a spot lights all around like a bulb. `look_frame` says so, and the tool rail doesn't offer it until it is drawn.
 - **`distant`** — parallel light from far away: the sun. Only its rotation matters; **`angle`** is how wide the sun looks (0.53° is the real sun; bigger = softer shadows).
 - **`dome`** — light from all around, an infinitely large sphere. With **`texture`** (an HDR or EXR image) it lights and reflects a real place; without, an even sky in `color`. **`turn`** spins it around the up axis (moves the sun and the horizon's features; a dome has no other rotation or position). **`seenByCamera`** off: the dome still lights the scene and shows in reflections, but behind the object the camera sees the shot's `background` colour (Cycles needs the patched plug-in, see the contract; Storm: yes).
 
@@ -34,6 +35,14 @@ Light falls off with the square of the distance, so a product a few centimetres 
 - **Metal and gloss show the panel itself**, not the light it throws: a strip's reflection reads about intensity ÷ its area (with `normalize` on), so a small strip looks much brighter in a reflection than its light on a matte surface. Judge highlights in `look_frame quality=final`.
 - **Check it:** `inspect_exposure` renders one quick frame and says how much is blown out or crushed and where the brightest and darkest parts are (and what is there). Use `quality=final` for metal, glass and anything a panel reflects in.
 - The quick view (Storm) is within about 10 % of these numbers for rect and disk panels and about 20 % brighter for strips; it ignores `spread`. On the person's screen, the viewport's Final look (Shift+F) is Cycles itself and shows `spread`, reflections of panels and the rest, cleaning up sample by sample.
+
+## Placing a light by its highlight
+
+A product photographer moves a light until its highlight sits where they want it. Do the same:
+
+- **On the screen:** pick **Lights › Softbox** (or any light) in the tool rail, then click the spot on the item where its highlight should land. The light is placed where that spot reflects it towards the camera, 4 × the item's size away, aimed at the spot, with a **starting brightness** worked out from that distance, so the first look is neither black nor blown out. Later, with a light selected, **Alt+click** any surface to move its highlight there (its distance and brightness stay). A sun is turned so it shines straight onto the spot (its lit side). A strip stands on end. When the exact spot would need a light under the floor (a side seen from a little above bounces the view downwards), the light takes the same angle from above the ground instead: it lights the spot as much, and its highlight shows a little lower.
+- **Agents:** `edit_place_highlight` with the light's id and the pixel (`x`, `y`) of the last `look_frame` picture (its `width`); `fresh=true` for a light just added (distance and starting brightness too). In operations: `light.place_highlight` with the world `point`, the surface's `normal`, the camera's `eye` (and `distance`, `brightness`).
+- **Starting brightness:** `light.add` without an `intensity` works it out from the distance to what the light aims at (else the scene's middle) and the light's size and `exposure`: about 3 units of light on the spot, so a pale surface facing it reads light grey. Then trim with `exposure`.
 
 ## Aiming
 
@@ -67,7 +76,13 @@ A strip reflected in a curved, polished edge becomes a thin line of light that f
 
 ## Light linking: lighting only some items
 
+On the screen: right-click a light › **Pick what it lights**, then click items in the viewport: each click adds an item, a second click takes it out; the line at the bottom names them. Esc (or selecting something else) finishes.
+
 **`lightsOnly`**: item ids separated by spaces (`"bottle label"`); the light then lights only those items and what is inside them (a group's or an import's children). `""` lights everything. Use it to put a highlight on the product without lighting the floor, or to give one part its own rim. Every id must be a real item; a wrong id is an error, never a light quietly lighting everything. **Cycles only** (with the patched plug-in): the quick view lights every item with every light, and its reply names the linked lights (`notInQuickView`). The saved `.usda` carries it as UsdLux light linking, which other USD programs read.
+
+## What shows only in Final
+
+`spread` and `lightsOnly` are applied by Cycles only. In the settings panel their rows carry a small **Final** badge: you see their effect in the Final look (Shift+F) or a render, not in the Quick view. Agents: `look_frame`'s reply ends with **"Applied in Final: spread on rim, linking on rim"** when a quick look leaves such settings out, and always with **"Clipped: N % of pixels"**, the share of the picture blown to white (2 % or more says so: lower `exposure`).
 
 ## Aiming through the light
 
