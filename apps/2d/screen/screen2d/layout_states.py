@@ -31,7 +31,7 @@ IGNORE = ("/MotionPath#",)
 QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-layers", "fill-gradient-handles",
-         "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line")
+         "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -78,6 +78,19 @@ def picture() -> str:
     img = QImage(400, 300, QImage.Format_RGB32)
     img.fill(QColor("#d08040"))
     img.save(str(path))
+    return path.as_posix()
+
+
+def psd_with_masks() -> str:
+    """A small PSD in the temp folder: one layer with a painted mask, one hidden layer (the Import panel's notes and its list)."""
+    from PIL import Image
+    from psd_tools import PSDImage
+    from psd_tools.api.layers import PixelLayer
+    path = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "scene.psd"
+    psd = PSDImage.new("RGBA", (200, 100), color=(0, 0, 0, 255))
+    sky = PixelLayer.frompil(Image.new("RGBA", (200, 60), (120, 180, 230, 255)), psd, name="sky")
+    PixelLayer.frompil(Image.new("RGBA", (40, 40), (255, 0, 0, 255)), psd, name="note", top=50, left=20).visible = False
+    psd.save(path)
     return path.as_posix()
 
 
@@ -145,7 +158,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
         ("file-menu-sample", ["--sample"], ["filemenu open"]),                 # File > Open sample
-        ("long-status-line", ["--sample"], [f"say {LONG_ERROR}"]),               # elided with the whole text on hover
+        ("long-status-line", ["--sample"], [f"say {LONG_ERROR}"]),
+        ("import-report", ["--sample"], [f"import {psd_with_masks()}", "importpanel open"]),   # notes (kept hidden) above the list               # elided with the whole text on hover
         ("expression-typed", ["--sample"], ["select title", "set x =sin(time * 2) * 40 + 640", "open title"]),   # `=…` typed
         ("start-screen", long(), [f"duplicateproject {LONG_PROJECT}_{n}" for n in (2, 3)] + ["startscreen open"]),   # long recent names
         ("history-agent-run", ["--sample"], ["select title", "agent-run 6", "history open"]),

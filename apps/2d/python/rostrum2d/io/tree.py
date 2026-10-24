@@ -10,6 +10,7 @@ from pathlib import Path
 from rostrum_core.tree import index
 
 from .. import fields as F
+from .. import media
 from .. import pathdata as PD
 from ..kind import KIND
 
@@ -18,6 +19,43 @@ _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _HEX_A = re.compile(r"^#[0-9a-fA-F]{8}$")
 _COLOUR_ORDER = ("fill", "color", "strokeColor")        # whose alpha wins when they disagree
 DEFAULT_FONT = F.defaults("text")["font"]
+
+
+class Report(list):
+    """An importer's "didn't come across" lines, plus the names of what DID come across in another form: `masked` (a
+    mask picture carried as a matte layer) and `hidden` (kept hidden, as in the file). `notes` says them in words."""
+
+    def __init__(self, *a):
+        super().__init__(*a)
+        self.masked, self.hidden = [], []
+
+    def notes(self) -> list[str]:
+        return [f"{head}: {_names(names)}" for head, names in (("Came across as a mask", self.masked),
+                                                                 ("Kept hidden, as in the file", self.hidden)) if names]
+
+
+def _names(names: list[str], most: int = 4) -> str:
+    return ", ".join(names[:most]) + (f" and {len(names) - most} more" if len(names) > most else "")
+
+
+_ABOUT = re.compile(r"^((?:text |group |layer |\w+ layer )?)'([^']+)': (.+)$")
+
+
+def collapse(report: list[str]) -> list[str]:
+    """Each kind of "didn't come across" once, with how many layers it touched: lines that differ only in the layer they
+    name ("'Path 3': dashes were left out", "'Path 9': dashes were left out") become one line with the count and the first
+    names. A line about one layer stays as it was."""
+    groups: dict[tuple, list[str]] = {}
+    for line in report:
+        m = _ABOUT.match(line)
+        groups.setdefault((m[1], m[3]) if m else (None, line), []).append(m[2] if m else None)
+    out = []
+    for (prefix, rest), names in groups.items():
+        if prefix is None or len(names) == 1:
+            out.append(f"{prefix or ''}'{names[0]}': {rest}" if prefix is not None else rest)
+        else:
+            out.append(f"{rest[0].upper()}{rest[1:]} ({len(names)} layers: {_names(names)})")
+    return out
 
 
 def _boxes(node: dict) -> list[float]:
@@ -135,7 +173,7 @@ def _build(tree: dict, doc_data: dict, into: str, fonts=None, image_dir=None, ta
                 walk(node["layers"], id_, box)
 
     walk(tree["layers"], into, [0.0, 0.0, 0.0, 0.0])
-    return calls, files, report
+    return calls, files, collapse(report)
 
 
 def apply_calls(tree: dict, doc_data: dict, into: str, fonts: set | None = None, image_dir=None) -> list[dict]:
@@ -180,11 +218,10 @@ def _fit_calls(calls: list[dict], box: list[float], size) -> None:
 
 def prepare(doc, tree: dict, into: str, fonts: set | None = None, taken: set | None = None,
             fit: tuple[float, float] | None = None) -> tuple[list[dict], list[str]]:
-    """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first.
+    """The calls that put the tree into `into` and the report; images are written to <doc folder>/imports/<stem>/ first (media.import_dir: a scratch folder when the scene has no folder).
     `fit` = the composition's (width, height): the picture's content box lands centred under one root group, at its own
     size or shrunk to fit with a margin (`_fit_calls`)."""
-    folder = Path(doc.folder) if doc.folder else None
-    image_dir = folder / "imports" / Path(tree["name"]).stem if folder else None
+    image_dir = media.import_dir(doc.folder, Path(tree["name"]).stem)
     box = None
     if fit and tree.get("width") and tree.get("height"):
         tree = _fitted(tree)
