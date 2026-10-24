@@ -60,11 +60,19 @@ def _manifest(item, doc, info, partial: Path, renderer: str, size, frames: list[
     fps = info["fps"]
     return {"item": item, "version": int(m.group(1)) if (m := re.match(r"^v(\d+)\.partial$", partial.name)) else 0, "kind": "pictures",
             "made_by": "agent:rostrum-3d", "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "source": {"document": item, "history_entry": doc.seq, "doc_hash": doc_hash(doc.data), "shot": info["id"], "camera": info["camera"]},
+            "source": {"document": item, "history_entry": doc.seq, **_hashes(doc.data), "shot": info["id"], "camera": info["camera"]},
             "engine": f"rostrum-3d ({renderer})", "frames": {"first": first_file, "last": first_file + len(frames) - 1, "fps": f"{fps:g}/1",
                                                             "shot_frames": [frames[0], frames[-1]]},
             "size": list(size), "colour": {"space": "scene-linear Rec.709 (EXR), sRGB display (PNG, OpenColorIO)"},
             "files": files, "checks": {"frame_count": "ok", "readable": "ok"}}
+
+
+def _hashes(data: dict) -> dict:
+    """The scene as rendered, by content: `scene_hash` is what 2D and the Editor compare with the 3D document's hash now
+    (SPEC §12); the hash of the whole document, so any change to it marks the render out of date. `doc_hash` is the same
+    value under its older name, for readers of renders made before scene_hash."""
+    h = doc_hash(data)
+    return {"scene_hash": h, "doc_hash": h}
 
 
 def _folder(folder, doc, info) -> tuple[Path, bool]:
@@ -139,6 +147,11 @@ def render_video(ctx, args):
     """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (Cycles by default;
     quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
     job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frames n of m'."""
+    return ctx.job(*video_job(ctx, args))
+
+
+def video_job(ctx, args):
+    """render_video's work as (label, job function, key), checked now (the shot, the range, ffmpeg): render_send_shot renders through it."""
     doc, info = doc_and_shot(ctx, args)
     fps, renderer, s = info["fps"], renderer_of(args, "final"), render_settings(doc, info)
     f0 = s["start"] if "start" not in args else info["start"] + round(args["start"] * fps)          # default: the shot's render range
@@ -194,7 +207,7 @@ def render_video(ctx, args):
                       "seconds": round(took, 1), "seconds_per_frame": round(took / count, 3)},
                      [done / n for n in files], warnings=engine.take_notices())
 
-    return ctx.job(f'render_video {info["id"]} f{f0}-{f1}', job_fn, key=f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
+    return (f'render_video {info["id"]} f{f0}-{f1}', job_fn, f"video|{item}|{info['id']}|{f0}|{f1}|{renderer}|{w}|{args}|{doc.seq}")
 
 
 def _probe(where: str, engine, scene: dict, info: dict, frame: int, renderer: str, size: tuple[int, int], args: dict, s: dict) -> tuple[float, str]:

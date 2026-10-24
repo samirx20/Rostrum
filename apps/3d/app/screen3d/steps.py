@@ -17,6 +17,8 @@
     render-sheet (F12: the render sheet) | estimate-recorded (its time from a fixed, recorded measurement: never a probe) |
     estimate-wait (until its time is measured) | budget <time, e.g. 10 min>
     sheet-render (the sheet's Render; waits for the job, up to 10 min)
+    queue add <shot> [first] | move <row> <index> | cancel <row> | show <row> | wait-frames <n> | wait-idle | report | demo
+    (the Render page's queue: queue_steps.py)
   Viewport (screen state, never the document): orbit <dx> <dy> | pan <dx> <dy> | zoom <steps> | mode shot|free
     exposure <stops> | studio <amount> | lights on|off | home | viewclick <x> <y> (viewport pixels: selects what is there, places the armed shape,
     or, while placing or linking a light, that; named apart from the kit's `click <text>`, which runs first)
@@ -194,6 +196,9 @@ def do_step(bridge, win, step):
         bridge.viewport.gizmo.setShow(rest[0])
     elif word == "key-moved":
         bridge.viewport.gizmo.keyMoved()
+    elif word == "queue":                         # the Render page's queue (queue_steps.py)
+        from . import queue_steps
+        queue_steps.do(bridge, rest)
     elif word.startswith("keys-"):                # picked keys: Alt+drag stretch, the right-click Ease list (key_steps.py)
         from . import key_steps
         key_steps.do(bridge, win, word, rest)

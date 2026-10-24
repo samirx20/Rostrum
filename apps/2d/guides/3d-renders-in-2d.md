@@ -10,6 +10,10 @@ and time it like any layer; you change the product itself in Rostrum3D.
   newest finished render. When Rostrum3D finishes a new render, the 2D screen picks it up within two seconds; an
   export or an agent's look always uses the newest one.
 - Set **Version** to a number to keep one render (v002) while the 3D goes on changing.
+- **3D shot** names one shot of the item (`hero`): the layer then shows only that shot's renders, so a later render of
+  another shot doesn't replace it. Empty: the newest render of any shot. Rostrum3D's **Send to 2D** (agents:
+  `render_send_shot`) makes the layer with the shot set; sending the same shot again updates this layer and leaves where you
+  put it, its size and timing alone.
 - It reads the render's **EXR frames**, the hand-off with transparency, so whatever has nothing behind it in 3D is
   see-through in 2D. Colours match the 3D app's own PNG (same colour settings). Render with EXR: `render_still`
   makes PNG + EXR by default; `render_video` needs `exr: true`.
@@ -25,8 +29,9 @@ marker, and moves when someone moves the marker in any app. *Starts at* and *End
 
 - A version that isn't there, a render without EXR frames, a 3D item that doesn't exist, a marker that isn't in the
   project: the picture is not drawn, and the message says what to do. An export stops. No render yet: see below.
-- **Out of date**: the 3D document changed after the render. The layer keeps showing the render it has (it is still
-  a true render) and the Problems list (agents: `inspect_diagnose`) says "3D render out of date" until 3D renders again.
+- **Out of date**: the 3D document changed after the render (its content: the render's `scene_hash` no longer matches).
+  The layer keeps showing the render it has (it is still a true render) and the Problems list (agents:
+  `inspect_diagnose`) says "3D render out of date" until 3D renders or sends the shot again.
 
 ## Techniques
 
