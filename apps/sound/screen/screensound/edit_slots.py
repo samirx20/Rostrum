@@ -105,8 +105,9 @@ class EditSlots:
         if not self._guard(lambda: self._apply([call], label)):
             return ""
         new = [x["id"] for x in self.doc.item(self._track).get(key, []) if x["id"] not in before]
-        if new:
-            self.select(new[0])
+        if new:                             # its outline now; the settings panel once the click is drawn (`_settle`)
+            self._pick(new[:1], later=True)
+            self._settle()
         return new[0] if new else ""
 
     @Slot()

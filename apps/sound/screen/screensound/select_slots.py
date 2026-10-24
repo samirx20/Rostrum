@@ -128,12 +128,17 @@ class SelectSlots:
         self._box(selection.in_box(roll["blocks"], t0, t1, r0, r1, roll.get("drums")), add)
 
     def _box(self, got, add):
+        """A box's move: the outlines follow at once; the settings panel and the Editor's track once it ends (endBox):
+        making the panel's rows for each move cost 20-120 ms a move on a 31-s song (M4)."""
         base = self.__dict__.setdefault("_box_base", list(self._picks.ids) if add else [])
-        self._pick([*base, *got] if add else got)
+        ids = [*base, *got] if add else got
+        if ids != self._picks.ids:
+            self._pick(ids, later=True)
 
     @Slot()
     def endBox(self):
         self.__dict__.pop("_box_base", None)
+        self._settle()
 
     @Slot(str)
     def focusArea(self, area):
@@ -235,8 +240,9 @@ class SelectSlots:
             return
         kinds = ("note", "hit", "clip", "line", "track", "marker", "section")
         back = [i for i in dict.fromkeys(e.id for e in change.edits) if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
-        if back:
-            self._pick(back)
+        if back:                    # the outlines now; the settings panel once the undo is drawn (`_settle`)
+            self._pick(back, later=True)
+            self._settle()
 
     def _on_doc(self, event):
         """A selected item that went away (an undo of an add, a delete) leaves the selection; the rest stay."""

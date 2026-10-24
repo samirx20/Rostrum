@@ -4,6 +4,12 @@ the rows (timeline.py), the markers, the song's length and grid, the roll of the
 A change that touched only tracks, and every step of a drag, makes again only the rows of the tracks it changed
 (stepped.py: the document is never changed in place, so an untouched track is the very same object); anything else
 makes everything again (`_rebuild`). The row model (`trackRows`) then signals only the rows that changed.
+
+What a row or the roll holds is sent in two parts (`shape`): its layout (name, kind, hue, lane, key range …) and its
+blocks. A note or a hit added, moved or undone changes only the blocks: only that row's or the roll's blocks are
+sent and painted again; the arrangement's layout (`tracks`), the headers and the Editor's header are told nothing.
+Each read of a QML map or list property copies all of it, so a song's every block re-read by every layout binding
+on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
 """
 from __future__ import annotations
 
@@ -13,13 +19,26 @@ from . import lanes, stepped, timeline, voice_card, voice_takes
 MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
 
 
+def shape(part: dict) -> dict:
+    """A row or the roll without its blocks: what lays the screen out (`sound`: it has any)."""
+    return {**{k: v for k, v in part.items() if k != "blocks"}, "sound": bool(part.get("blocks"))}
+
+
+def lane_rows(rows) -> list[dict]:
+    """The row model's rows: the layout and the blocks as two roles, so a block change signals only `blocks`."""
+    return [{"id": r["id"], "track": shape(r), "blocks": r.get("blocks", [])} for r in rows]
+
+
 class RowsView:
+    def rows_now(self) -> list[dict]:
+        """The arrangement's rows with their blocks, as made (QML's `tracks` is their layout only)."""
+        return self._view["rows"]
+
     def _show_roll(self):
         """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
         row on a click cost ~250 ms on a 16-track song, S59)."""
         self._span = ("", 0, 0)                       # another track: its keys are framed afresh
-        self._view["roll"] = self._roll(self._view["rows"])
-        self.rollChanged.emit()
+        self._send_roll(self._roll(self._view["rows"]))
 
     def _lanes_now(self) -> dict:
         root = self.doc.data
@@ -33,20 +52,25 @@ class RowsView:
         self._marks_on(rows)
         self._made, self._shown = {t["id"]: t for t in tracks}, root
         marks = timeline.markers(root)
-        self._view = {"rows": rows, "markers": marks, "song": timeline.song(root, tracks, marks), "roll": self._roll(rows)}
+        roll = self._roll(rows)
+        self._view = {"rows": rows, "shape": [shape(r) for r in rows], "markers": marks,
+                      "song": timeline.song(root, tracks, marks), "roll": roll, "rollShape": shape(roll)}
         self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
         self.songChanged.emit()
         self.timelineChanged.emit()
+        self.pictureChanged.emit()
         self.markersChanged.emit()
-        self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)   # after: `tracks` is new for the rows made
+        self._lanes.update(lane_rows(rows), instant=True)   # after: `tracks` is new for the rows made
+        self.rollBlocksChanged.emit()             # the blocks first: the layout's handlers (framing the keys) read them
         self.rollChanged.emit()
         self.viewChanged.emit()
 
     def _drag_step(self, change=False):
         """A drag's step, or a change that touched only tracks (a drag's drop, an edit on a note, undo of one): only
         the rows of the tracks it changed are made again and sent (the row model signals just those), the roll only
-        when its track is one, the song only when its length moved. A step leaves the list `tracks` as it was; a
-        change sends it (timelineChanged). Anything else (a marker, the tempo, tracks added …): everything (_rebuild)."""
+        when its track is one, the song only when its length moved. A step leaves the layout `tracks` as it was; a
+        change sends it when a row's layout moved (timelineChanged). Anything else (a marker, the tempo, tracks
+        added …): everything (_rebuild)."""
         root = self.doc.data
         if self._mix_only(root):
             self._shown = root
@@ -68,11 +92,23 @@ class RowsView:
             self.songChanged.emit()
         if same:
             return
-        if change:
-            self.timelineChanged.emit()
-        self._lanes.update([{"id": r["id"], "track": r} for r in rows], instant=True)
+        if change:                                    # the layout: only when a row's own settings moved
+            laid = [shape(r) for r in rows]
+            if laid != self._view["shape"]:
+                self._view["shape"] = laid
+                self.timelineChanged.emit()
+        self._lanes.update(lane_rows(rows), instant=True)
         if self._track in changed:
-            self._view["roll"] = self._roll(rows)
+            self._send_roll(self._roll(rows))
+
+    def _send_roll(self, roll):
+        """The roll as made: its layout (`roll`) and its blocks (`rollBlocks`) are each sent only when they changed."""
+        before, self._view["roll"] = self._view["roll"], roll
+        laid, moved = shape(roll), roll.get("blocks") != before.get("blocks")
+        relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
+        if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
+            self.rollBlocksChanged.emit()
+        if relaid:
             self.rollChanged.emit()
 
     def _mix_only(self, root) -> bool:

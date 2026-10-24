@@ -65,10 +65,19 @@ class CleanedTake(QObject):
         bridge.selectedItemsChanged.connect(self._check)
         bridge.docChanged.connect(self._on_release)
         bridge.docChanged.connect(self._check)
-        bridge.selectedItemsChanged.connect(self.changed)
-        bridge.docChanged.connect(self.changed)
+        self._told = None
+        bridge.selectedItemsChanged.connect(self._news)
+        bridge.docChanged.connect(self._news)
         self._on_release()
         self._check()
+
+    def _news(self):
+        """After an edit or a new selection: `changed` only when what it shows did change. Every arrangement row
+        repaints on `changed` (its clips' progress): sent on every edit, a drum hit repainted every row (M4)."""
+        now = (self._clip, self.progress, self._busy, self._status, self.audition)
+        if now != self._told:
+            self._told = now
+            self.changed.emit()
 
     def making(self) -> set:
         """The clips whose cleaned take is being made right now (work in progress, not a problem)."""

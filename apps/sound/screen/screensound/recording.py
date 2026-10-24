@@ -141,7 +141,7 @@ class Recording(QObject):
         """The track a bare Record arms: the selected one (or the one holding the selected item) that takes sound,
         else the first audio track."""
         doc = self.bridge.doc
-        rows = {r["id"]: r for r in self.bridge.tracks if not r.get("mix")}
+        rows = {r["id"]: r for r in self.bridge.rows_now() if not r.get("mix")}
         for i in self.bridge._picks.ids:
             t = i if i in rows else (doc.parent_of(i) or [None])[0] if doc.has(i) else None
             if t in rows and rows[t]["kind"] in ("audio", "empty"):

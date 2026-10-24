@@ -35,3 +35,21 @@ def test_a_note_drawn_where_the_last_one_ends_is_kept(bridge):  # noqa: F811
     second = bridge.drawAt(end + 0.01, 62)
     bridge.endDrag()
     assert second and second != first and bridge.doc.has(first) and bridge.doc.has(second)
+
+
+def test_an_edit_on_notes_sends_only_their_blocks(bridge):  # noqa: F811
+    """A note added or undone reaches the row's blocks and the roll's blocks, while the layouts (`tracks`, `roll`)
+    send nothing: a block missed there would be a note missing from the screen (rows_view.shape, critic r4 M4)."""
+    heard = []
+    for s in ("timelineChanged", "rollChanged", "rollBlocksChanged"):
+        getattr(bridge, s).connect(lambda s=s: heard.append(s))
+    m = bridge.trackRows
+    row = next(i for i in range(m.rowCount()) if m.rows[i]["id"] == "lead")
+    blocks = lambda: m.data(m.index(row), m._ids["blocks"])        # noqa: E731  the row model's "blocks" role
+    nid = bridge.drawAt(1.0, 62)
+    bridge.endDrag()
+    assert nid in {b["id"] for b in bridge.rollBlocks} and nid in {b["id"] for b in blocks()}
+    assert "rollBlocksChanged" in heard and "rollChanged" not in heard and "timelineChanged" not in heard
+    assert all("blocks" not in r for r in bridge.tracks) and "blocks" not in bridge.roll
+    bridge.undo()
+    assert nid not in {b["id"] for b in bridge.rollBlocks} and nid not in {b["id"] for b in blocks()}

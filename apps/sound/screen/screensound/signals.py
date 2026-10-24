@@ -8,9 +8,11 @@ from PySide6.QtCore import Signal
 class SoundSignals:
     timeChanged = Signal()
     playingChanged = Signal()
-    timelineChanged = Signal()
+    timelineChanged = Signal()      # the arrangement's layout (`tracks`: rows without their blocks), not a block's edit
     markersChanged = Signal()       # the markers only: a note's edit leaves every marker flag as it is
-    rollChanged = Signal()          # the Editor's piano roll only (a selection on another track): the rows stay
+    rollChanged = Signal()          # the Editor's piano roll's layout (another track, kind, keys): the rows stay
+    rollBlocksChanged = Signal()    # the roll's notes / hits / clips only (an edit on them): its layout stays
+    pictureChanged = Signal()       # the picture corner's choice, start or render (picture_slots.py)
     renderChanged = Signal()
     soundChanged = Signal()
     viewChanged = Signal()

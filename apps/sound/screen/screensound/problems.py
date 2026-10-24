@@ -46,6 +46,6 @@ def make(bridge, cleaning=None) -> ProblemsList:
     if cleaning:                                     # chip is never what the pointer waits for (a drop ran it twice)
         cleaning.changed.connect(later.start)        # a take finished (or began): the chip follows
     bridge.renderChanged.connect(later.start)
-    bridge.timelineChanged.connect(later.start)
+    bridge.docChanged.connect(later.start)       # every change (a clip added is a block: no layout news)
     show()
     return plist

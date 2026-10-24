@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // Where a ducked track is pulled down, over its arrangement row: each dip the engine reported in the last render
-// (lastRender.ducks: [start s, end s, deepest dB], every stretch below −3 dB) as a shaded wedge from the top,
+// (backend.duckSpans: [start s, end s, deepest dB], every stretch below −3 dB) as a shaded wedge from the top,
 // as deep as the dip (−24 dB reaches the bottom), with its depth written when there is room. The engine's own
 // numbers from the render that plays, so what is drawn is what is heard. Drawing only (clicks pass through).
 Item {
@@ -10,12 +10,7 @@ Item {
     property string trackId
     property var ruler
     readonly property real floorDb: -24
-    readonly property var spans: {
-        var all = (backend.lastRender && backend.lastRender.ducks) || []
-        for (var i = 0; i < all.length; i++)
-            if (all[i].track === trackId) return all[i].spans
-        return []
-    }
+    readonly property var spans: backend.duckSpans[trackId] || []
     visible: spans.length > 0
 
     Repeater {

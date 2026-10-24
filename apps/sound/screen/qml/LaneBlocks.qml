@@ -10,7 +10,8 @@ import RostrumKit
 // when the row, the zoom, the scroll or the selection changes.
 Item {
     id: lane
-    property var track
+    property var track          // the row's layout: hue, mute, group
+    property var blocks: []     // its notes / hits / clips (the row model's own role: an edit on them sends only these)
     property var ruler
     readonly property int pad: 3
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
@@ -23,7 +24,7 @@ Item {
     Item { id: tipAt; y: 0; width: 1; height: lane.height
            Loader { id: tipPlace; anchors.fill: parent; active: over.hovered   // made only while hovered: one per lane (H65)
                sourceComponent: HoverTip { parent: tipPlace; hovered: over.hovered; text: {
-               over.point.position; const b = (lane.track.blocks || []).find(b => lane.cut[b.id] && b.label
+               over.point.position; const b = lane.blocks.find(b => lane.cut[b.id] && b.label
                    && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
                return b ? b.label : "" } } } }
 
@@ -35,6 +36,7 @@ Item {
         Connections {
             target: lane
             function onTrackChanged() { c.requestPaint() }
+            function onBlocksChanged() { c.requestPaint() }
             function onPickedChanged() { c.requestPaint() }
             function onCleaningChanged() { c.requestPaint() }
         }
@@ -119,7 +121,7 @@ Item {
 
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
-            var blocks = lane.track.blocks || [], picked = lane.picked, r = lane.ruler
+            var blocks = lane.blocks, picked = lane.picked, r = lane.ruler
             var h = lane.height - 2 * lane.pad, n = blocks.length
             for (var pass = 0; pass < 3; pass++) {            // clips under, then the rest, then what is selected
                 for (var i = 0; i < n; i++) {
@@ -139,12 +141,12 @@ Item {
     }
 
     Repeater {   // a voice line with several takes: ◂ ▸ on the block itself (TakeArrows.qml)
-        model: (lane.track.blocks || []).filter(b => b.canBack || b.canNext)
+        model: lane.blocks.filter(b => b.canBack || b.canNext)
         TakeArrows { required property var modelData; block: modelData; ruler: lane.ruler; inset: lane.pad + 2 }
     }
 
     Repeater {   // what an agent just changed here: the 1-second outline (only the flashed blocks get an item)
-        model: (lane.track.blocks || []).filter(b => backend.agent.flash.indexOf(b.id) >= 0)
+        model: lane.blocks.filter(b => backend.agent.flash.indexOf(b.id) >= 0)
         ChangeOutline {
             required property var modelData
             x: Math.round(lane.ruler.xOf(modelData.t)); y: lane.pad; height: lane.height - 2 * lane.pad
