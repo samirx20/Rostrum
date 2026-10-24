@@ -25,7 +25,7 @@ def targets(bridge, moving: set[str]) -> list[Target]:
 
 class Mover:
     def __init__(self, bridge):
-        self.b, self._drag = bridge, None
+        self.b, self._drag, self._stretch = bridge, None, None
 
     @property
     def active(self) -> bool:
@@ -47,9 +47,36 @@ class Mover:
             self._drag = Drag(doc, self.b.who, label)
         return self.b._guard(go)
 
+    def begin_stretch(self, ids: list[str], grab: str, t0: float) -> bool:
+        """Alt+drag the first or last of the picked keys `ids`: they stretch in time around the other end (key.scale, one
+        change). False for a key in the middle, or keys all at one time (then it is a plain move)."""
+        times = {i: self.b.doc.item(i)["t"] for i in ids if self.b.doc.has(i)}
+        if grab not in times or len({round(t, 6) for t in times.values()}) < 2:
+            return False
+        held, lo, hi = times[grab], min(times.values()), max(times.values())
+        if held not in (lo, hi) or not self.begin(list(times), grab, f"Stretch {len(times)} keys", t0):
+            return False
+        self._stretch, self._scaled = (held, hi if held == lo else lo), 1.0      # previews pile up: scale by what is left
+        return True
+
+    def _stretch_to(self, t: float, reach: float):
+        held, around = self._stretch
+        info = self.b.shot_info()
+        fps = info["fps"]
+        at, caught = snap(held + t - self._t0, self._found, reach, fps)
+        at = min(max(at, info["start"] / fps), (info["end"] + 1) / fps)     # the moved end stays in the shot
+        by = (at - around) / (held - around)
+        if by < 0.01:
+            return
+        step, self._scaled = by / self._scaled, by
+        self.b.timeSnap.show(at - held, fps, caught, at, self._row)
+        self.b._guard(lambda: self._drag.preview([{"op": "key.scale", "target": self._ids, "args": {"around": around, "by": step}}]))
+
     def to(self, t: float, reach: float = 0.0):
         if self._drag is None:
             return
+        if self._stretch:
+            return self._stretch_to(t, reach)
         info, doc = self.b.shot_info(), self.b.doc
         fps = info["fps"]
         lo, hi = info["start"] / fps, (info["end"] + 1) / fps
@@ -67,7 +94,7 @@ class Mover:
         self.b._guard(lambda: self._drag.preview([{"op": "key.set", "target": [i], "args": {"t": new[i]}} for i in order]))
 
     def end(self):
-        d, self._drag = self._drag, None
+        d, self._drag, self._stretch = self._drag, None, None
         self.b.timeSnap.clear()
         if d is not None:
             self.b._guard(lambda: self.b._done(d.end(), ""))

@@ -33,7 +33,7 @@ from .material_starts import STARTS, start_key, start_values
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
                   "str", "sorted", "reversed", "sum", "isinstance", "tuple", "ValueError")}
-REFS = {"material", "camera", "aimItem", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"}       # fields that name another thing: an Item handle may be passed
+REFS = {p.name for ps in F.FIELDS.values() for p in ps if p.type == "text" and p.kind}   # fields naming another thing: an Item handle may be passed
 ID_LISTS = {"lightsOnly"}           # fields holding ids separated by spaces: an Item, or a list of Items / ids, may be passed
 CURVE = ("x1", "y1", "x2", "y2", "stiffness", "damping")      # a key's ease settings (custom curve, spring)
 

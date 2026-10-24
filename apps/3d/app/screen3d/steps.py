@@ -2,7 +2,7 @@
 
     select <id> | selectmany <id> <id> … (the first is the base) | deselect (nothing selected: the Scene) | action <id> (a settings panel action, e.g. combine:subtract)
     preview <id> / unpreview (the hover preview of a panel action: what resting the pointer on it shows; leaving) | frame <n> | set <param> <json value> | scrub <param> <v> <v> … | animate <param> (the key mark)
-    keydrag <key id> <frame> | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
+    keydrag <key id> <frame> | keys-stretch <grabbed key> <frame> <picked key> … | keys-menu <key id> (key_steps.py) | stretch <key id> (a click on the stretch it starts) | ease <preset> (the animation panel's) | press <Tab | K | Return | Alt+Z …> (a real key) | fold <id> | undo | redo | more | commands [query …] | run <command key> | play
     context <item id | -> (the right-click menu) | showshot <shot id> (the crumb's pick) | shot-from-view (its New shot from this view)
     add <menu value, e.g. mesh:sphere | light:distant | camera | material | shot> | duplicate | delete
     arm <mesh:box …> [field=value …] (a shape picked in the Shapes or Type & logo flyout, with its source for a logo:
@@ -194,6 +194,9 @@ def do_step(bridge, win, step):
         bridge.viewport.gizmo.setShow(rest[0])
     elif word == "key-moved":
         bridge.viewport.gizmo.keyMoved()
+    elif word.startswith("keys-"):                # picked keys: Alt+drag stretch, the right-click Ease list (key_steps.py)
+        from . import key_steps
+        key_steps.do(bridge, win, word, rest)
     elif word.startswith("mesh-"):                # Edit mesh (mesh_steps.py)
         from . import mesh_steps
         mesh_steps.do(bridge, word, rest)

@@ -87,7 +87,7 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
 
 Steps (`screen3d/steps.py`): `select <id>`, `frame <n>`, `set <setting> <value>`, `scrub <setting> <v> <v> …`,
 `animate <setting>`, `keydrag <key id> <frame>`, `fold <id>`, `undo`, `redo`, `more`, `commands [text]`,
-`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `stretch <key id>`, `ease <preset>`, `panel poses|onion`, `pose <name>`, `onion on|off|keys|frames`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
+`run <command key>`, `play`, `add <mesh:sphere|light:sun…|camera|material|shot>`, `duplicate`, `delete`, `rail shapes|lights|camera`, `page build|animate|render`, `stretch <key id>`, `ease <preset>`, `keys-stretch <grabbed key> <frame> <picked key> …` (Alt+drag), `keys-menu <key id>` (right-click: Ease list), `panel poses|onion` (each toggles its own panel), `pose <name>`, `onion on|off|keys|frames`, `materials`, `shots`, `view`, `mouse x y`, `wait ms`,
 `snap path`, `renderstart` / `cancelrender` (don't wait), `render` (waits for the job), `closerender`; viewport: `orbit dx dy`, `pan dx dy`,
 `zoom n`, `mode shot|free`, `exposure v`, `studio v`, `lights on|off`, `home`, `viewclick x y` (selects, or places the shape picked in the Shapes flyout).
 A scripted run (--shot, --step, --check-layout) never writes into a real project: `--doc` opens a scratch copy (`screen3d/scratch_doc.py`).
@@ -98,7 +98,10 @@ Offscreen screenshots: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Font
 
 ```
 main.py                 arguments, the document, the window, scripted steps and the screenshot
-screen3d/bridge3d.py    Bridge3D: the kit's DocBridge + shot, playhead, play, page, scene list rows, key drag, own groups
+screen3d/bridge3d.py    Bridge3D: the kit's DocBridge wired up (its mix-ins: bridge_signals, bridge_shots shot + page, bridge_scene
+                        scene list + selection, bridge_time playhead + key drags, bridge_rows settings rows + the screen's facts)
+screen3d/pose_thumbs.py a saved pose's small picture, kept in the shared cache (never in the document)
+screen3d/key_steps.py   the scripted steps for picked keys (keys-stretch, keys-menu)
 screen3d/route.py       the one place a screen edit becomes an operation call (value.set at the playhead, key marks)
 screen3d/outline.py     what the scene list and its keys show (no Qt)
 screen3d/render_job.py  the Render button's job (rostrum3d.mcp.render.still, its own engine process)

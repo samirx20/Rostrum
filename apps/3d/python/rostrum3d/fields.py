@@ -46,10 +46,12 @@ def X(name, label, group, default="", imp=P, when=None, help="", refers=None):
 
 
 NO_AIM = IS("aim", "none")
+FOLLOWS = NOT("follow", "")
 ANIMATED = {"fact": "animated"}      # the item, or something inside it, has keys (animated_fact below)
+ANIMATING = {"fact": "animating"}    # the person is animating: a screen's Animate page; always, for agents (kind.py)
 STEPS = {"smooth": 1, "on2": 2, "on3": 3}   # Timing: how many frames each value holds (compile.py)
 TIMING = dataclasses.replace(
-    CH("timing", list(STEPS), "Timing", "Timing", "smooth", S, ANIMATED,
+    CH("timing", list(STEPS), "Timing", "Timing", "smooth", S, {"all": [ANIMATED, ANIMATING]},
        help="On 2s / On 3s: every value holds for 2 or 3 frames (counted from the shot's start), the stepped look "
             "of hand-drawn animation, while the camera and anything else left Smooth moves every frame. A group's "
             "timing steps everything inside it; an item inside that sets its own On 2s / On 3s keeps its own"),
@@ -75,9 +77,19 @@ TRANSFORM = [
     N("aimX", "Aim X", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
     N("aimY", "Aim Y", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
     N("aimZ", "Aim Z", "Aim", -1e5, 1e5, 0.001, "m", S, IS("aim", "point")),
-    X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)"),
+    X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)",
+      refers="item"),
     N("roll", "Roll", "Aim", -36000, 36000, 0.1, "°", S, NOT("aim", "none"),
       help="Turns an aimed item around the way it points: 90 stands a strip light on end, tilts a camera's horizon"),
+    X("follow", "Follow", "Follow", "", S, refers="item",
+      help="Ride on another item (a bud on a case's lid): it moves and turns with that item from wherever it is. "
+           "Key Amount to 0 to let go: it stays where it was let go (follow.py)"),
+    N("followAmount", "Amount", "Follow", 0, 1, 0.05, "", S, FOLLOWS, default=1.0,
+      help="1 = rides fully, 0 = let go (stays put). Key it: 0 until it is picked up, 1 while carried, 0 to let go"),
+    X("stick", "Stick to", "Stick", "", S, refers="item",
+      help="Stay on the surface of this mesh straight below as the item moves: its Y is then its height above that "
+           "surface (off the surface's edge it keeps its own Y). A plane, disc, box, sphere, cylinder, cone, "
+           "capsule or editable mesh"),
     TIMING,
 ]
 
@@ -239,4 +251,4 @@ def animated_fact(item: dict) -> bool:
 def not_valid(kind: str, item: dict, given) -> list[str]:
     """The given field names that don't apply to `item` as it is (e.g. width on a sphere). Timing may be given before
     the keys are (a script's mesh(…, timing="on2") then .key(…)): `animated` only decides whether screens show it."""
-    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True})]
+    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True, "animating": True})]

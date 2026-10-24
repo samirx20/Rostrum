@@ -166,3 +166,14 @@ def test_context_menu_never_holds_more_than_six_and_only_what_applies(bridge):
         assert len(bridge.contextEntries(item)) <= 6
     assert [e["value"] for e in bridge.contextEntries("")] == ["home", "shot"]
     assert [e["value"] for e in bridge.contextEntries("cam")] == ["duplicate", "delete"]
+
+
+def test_timing_shows_only_on_the_animate_page(bridge):
+    """A setting valid only while animating (Timing) is absent on Build and comes with the Animate page (rows re-evaluate)."""
+    bridge.select("cam")
+    names = lambda: [r["id"] for r in bridge._rows() if r.get("holds")]  # noqa: E731
+    assert "timing" not in names()
+    bridge.setPage("animate")
+    assert "timing" in names()
+    bridge.setPage("build")
+    assert "timing" not in names()

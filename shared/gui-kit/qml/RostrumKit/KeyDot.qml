@@ -43,7 +43,8 @@ Item {
             held = ""
             if (m.button === Qt.RightButton) {                  // the row's short menu (Cut, Copy … act on the picked keys)
                 if (!backend.keys.has(key.ids)) backend.keys.click(key.ids, "", rowIds())
-                key.row.openMenu(keyArea, m.x, m.y)
+                if (backend.keyBar.easeOnKey) { const g = keyArea.mapToItem(null, m.x, m.y); backend.keyBar.askMenu(g.x, g.y) }   // 3D: the Ease list on the key
+                else key.row.openMenu(keyArea, m.x, m.y)
                 return
             }
             if ((m.modifiers & Qt.AltModifier) && backend.keys.has(key.ids)          // Alt+drag an end: stretch them all
