@@ -77,19 +77,20 @@ Item {
         id: body
         anchors.fill: parent
         active: row.live
-        sourceComponent: Item {
-            readonly property real labelHeight: label.implicitHeight     // what `full` reads (the row's own height)
-            readonly property real noteHeight: row.noted ? noteText.implicitHeight + Theme.grid : 0
-            readonly property real exprHeight: exprBox.height
-            readonly property var widgetItem: widget.item
-            readonly property real foldsHeight: names.implicitHeight
-            function flash() { flashAnim.restart() }
+        sourceComponent: row.model.row === "param" ? paramBody : row.model.row === "fold" ? foldBody
+                       : row.model.row === "folds" ? foldsBody : row.model.row === "group" ? groupBody : moreBody
+    }
+    // One body per kind of row, made only for that kind: a param's cell, widgets, key mark and menus are not built for
+    // a group's heading or a fold, and the other way round (a body holding all of them made every row ~8 ms).
+    Component { id: groupBody; Item {
             Text {  // group header
                 visible: row.model.row === "group"
                 anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
                 text: row.model.label; color: Theme.fg3; font.family: uiFont
                 font.pixelSize: Theme.label; font.weight: Font.DemiBold
             }
+    } }
+    Component { id: moreBody; Item {
             Item {  // the More row (deep params live behind it)
                 visible: row.model.row === "more"
                 anchors.fill: parent
@@ -100,18 +101,8 @@ Item {
                 MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: row.bridge.toggleMore() }
             }
-            Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
-                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
-                radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
-            }
-            Rectangle {  // the flash after a jump to this field (revealField)
-                id: flashMark
-                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
-                radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
-                SequentialAnimation on opacity { id: flashAnim; running: false
-                    NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
-                    NumberAnimation { to: 0; duration: 400 } }
-            }
+    } }
+    Component { id: foldBody; Item {
             Item {  // a fold row: chevron + the group's name (a group a switch turns on: its name and a remove control)
                 visible: row.model.row === "fold"
                 anchors.fill: parent
@@ -133,6 +124,9 @@ Item {
                     onClicked: row.bridge.toggleGroup(row.model.fold)
                 }
             }
+    } }
+    Component { id: foldsBody; Item {
+        readonly property real foldsHeight: names.implicitHeight
             Flow {  // the "folds" row: the folded groups' names, a click opens one
                 id: names
                 visible: row.model.row === "folds"
@@ -160,6 +154,25 @@ Item {
                         }
                     }
                 }
+            }
+    } }
+    Component { id: paramBody; Item {
+            readonly property real labelHeight: label.implicitHeight     // what `full` reads (the row's own height)
+            readonly property real noteHeight: row.noted ? noteText.implicitHeight + Theme.grid : 0
+            readonly property real exprHeight: exprBox.height
+            readonly property var widgetItem: widget.item
+            function flash() { flashAnim.restart() }
+            Rectangle {  // highlighted: a steady soft mark (the flash below is the same colour, brief)
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
+                radius: Theme.radiusCtl; color: Theme.accentSoft; visible: row.highlighted
+            }
+            Rectangle {  // the flash after a jump to this field (revealField)
+                id: flashMark
+                anchors.fill: parent; anchors.leftMargin: -Theme.grid; anchors.rightMargin: row.gutter
+                radius: Theme.radiusCtl; color: Theme.accentSoft; opacity: 0
+                SequentialAnimation on opacity { id: flashAnim; running: false
+                    NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
+                    NumberAnimation { to: 0; duration: 400 } }
             }
             Item {  // a param: label column, then the widget (a pair's halves each take only their own part of the line)
                 id: cell
@@ -241,8 +254,8 @@ Item {
                 }
                 HoverHandler { id: rowHover }
                 TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
-                    acceptedButtons: Qt.RightButton; enabled: row.canReset
-                    onTapped: (pt) => { resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
+                    acceptedButtons: Qt.RightButton
+                    onTapped: (pt) => { if (!row.canReset) return; resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }
                 }
             }
 
@@ -364,8 +377,7 @@ Item {
             Component { id: text; TextField { value: row.model.value || ""; atRest: row.mixed; onEdited: (v) => row.set(v)
                                                 onTypingStarted: row.hold(true)
                                                 onTypingEnded: row.hold(false) } }
-        }
-    }
+    } }
 
 
     readonly property string mixed: live && model.mixed ? "Mixed" : ""       // a field's words at rest ("" = its value)
@@ -373,7 +385,7 @@ Item {
     // A typed value lands on the item(s) it was typed for: the bridge holds them from the caret going in to its leaving
     // (a sub-panel's bridge, an effect's, has one item and no hold)
     function hold(on) { if (bridge.holdEdit) on ? bridge.holdEdit(model.id) : bridge.releaseEdit(model.id) }
-    function flash() { if (parts) parts.flash() }
+    function flash() { if (parts && parts.flash) parts.flash() }
     function focusWidget() {
         const w = parts ? parts.widgetItem : null
         if (!w) return
