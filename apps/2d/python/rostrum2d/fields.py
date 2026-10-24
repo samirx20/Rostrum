@@ -137,7 +137,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
 ]
 # Colour effects (grade_fields.py; engine: scene/grade.rs): only where there is a picture to grade.
 GRADED = _grade.colour()
-PICTURE_FILLED = _grade.colour(_fill.PICTURE[0].valid_when)        # a shape or path while it is filled with a picture
+PICTURE_FILLED = _grade.colour(_fill.RASTER_WHEN)        # a shape or path while it is filled with a picture or a painting
 
 STROKE = IS("stroke", True)
 # A path's stroke is varied when it has a taper or a width profile (ops_stroke.py; engine reads these fields).

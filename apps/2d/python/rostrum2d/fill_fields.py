@@ -2,7 +2,7 @@
 path or a text's letters), a picture or a painting of the document (shapes and paths: PICTURE, shared raster fields). The paint is fields on the layer (its type and the gradient's geometry, animatable) plus its
 stops: child items `stop` (at, color, opacity), each with its own keys, so a stop's colour and position animate like
 any other field. "None" is the layer's `filled` off (a text has no None). fill_paint.py reads and writes it as one
-paint; scene.py hands it to the engine (fill_paint.lower). Document-side only: the engine never sees these fields.
+paint; scene.py hands it to the engine (fill_paint.lower). The engine sees a gradient as its effect and a picture or painting as raster fields (not fillPainting / fillPhase).
 
 Geometry (the renderer's, CSS's): linear `gradAngle` 0° = bottom to top, 90° = left to right, across the box through
 its centre; radial = the ellipse touching the box's nearest sides around (gradX, gradY), fractions of the box;
@@ -79,11 +79,11 @@ GEOMETRY = [
 # A picture fill and a painted fill are one thing with two sources: a raster covering the box. Fit and Scale are shared;
 # the per-use fields below (where it sits in this element) are shared too, painted adds which painting and which drawing it
 # starts on. scene.py sends fillPicture "" unless the fill type is picture, so a picture chosen once and then left for a
-# colour is kept but not drawn. The engine reads fillPicture / fillFit / fillScale; the rest are Python-side until the
-# engine draws them (RASTER_ONLY: brief P2 hands them over).
+# colour is kept but not drawn. The engine reads all of them but fillPainting and fillPhase (RASTER_ONLY: which painting and which drawing it starts
+# on are worked out here; a painted fill goes as fillFrames, painted_fill.py).
 _PIC = {"is": ["fillType", "picture"]}
 _PAINTED = {"is": ["fillType", "painted"]}
-_RASTER = {"any": [_PIC, _PAINTED]}
+_RASTER = RASTER_WHEN = {"any": [_PIC, _PAINTED]}
 _TILED = {"all": [_RASTER, {"is": ["fillFit", "tile"]}]}
 _FREE = {"all": [_RASTER, {"any": [{"is": ["fillFit", f]} for f in ("fill", "fit", "tile")]}]}     # not Stretch
 BLENDS = ["normal", "multiply", "screen", "overlay"]
@@ -115,5 +115,6 @@ PICTURE = [
     Param.number("fillPhase", label="Start at drawing", group=G, min=0, max=10000, step=1, integer=True, default=0,
                  importance="secondary", valid_when=_PAINTED, help="Which drawing of a painting that draws each frame this layer starts on"),
 ]
-RASTER_ONLY = {p.name for p in PICTURE if p.name not in ("fillPicture", "fillFit", "fillScale")}
-NAMES |= RASTER_ONLY                      # python-only until the engine draws them (scene.python_only)
+RASTER_ONLY = {"fillPainting", "fillPhase"}
+PICTURE_NAMES = {p.name for p in PICTURE}
+NAMES |= RASTER_ONLY                      # python-only (scene.python_only)

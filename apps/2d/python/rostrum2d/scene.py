@@ -13,14 +13,14 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from . import drawing, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core import RostrumError
 from rostrum_core.errors import codes
 from rostrum_core.keys import after, animated, keys_of, springs
 from rostrum_paint import library
 
-FORMAT, VERSION = "rostrum-2d-scene", 2      # 2: the scene's frame (FRAME.md) in place of cameras
+FORMAT, VERSION = "rostrum-2d-scene", 3      # 2: the scene's frame (FRAME.md) in place of cameras; 3: picture / painted fill per use
 
 
 KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "damping", "out", "in")   # out / in: spatial handles
@@ -61,10 +61,12 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if "loop" in node["props"]:         # an older document's on/off switch reaches the engine as a mode
         node["props"]["loop"] = looping.mode_of(node["props"]["loop"])
     anim = {**_anim(item, (where or {}).get("until", 0.0)), **(baked or {}).get(item["id"], {})}
-    anim = {k: v for k, v in anim.items() if k not in fill_fields.NAMES}      # a gradient fill goes as its effect (below)
+    anim = fill_paint.engine_anim(item, anim)      # a gradient fill goes as its effect (below)
     if anim:
         node["anim"] = anim
     fill_paint.engine_props(item, node["props"])
+    if item["type"] in fill_fields.OWNERS and fill_paint.kind_of(item) == "painted":    # a painting: its drawings as the fill picture
+        node["fillFrames"] = painted_fill.of(item, fps, where)
     if item["type"] in media.TYPES and (where or {}).get("folder") is not None and item.get("src"):
         node["props"]["src"] = str(media.file(where["folder"], item))   # stored relative to the project: the file to open
     for key in ("effects", "masks", "layers") + (("stops",) if item["type"] == "gradient" else ()):   # a layer's own stops go as its fill (below)
@@ -166,7 +168,7 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
-             "later": later}
+             "later": later, "paintings": {p["id"]: p for p in doc_data.get("paintings", [])}}
     node = _node(comp, fps, baked, where)
     if where.get("missing_fonts"):       # a whole-film export never writes a file with a stand-in in it
         raise RostrumError(codes.RENDER_FAILED, "export", "the texts " + ", ".join(where["missing_fonts"]),
