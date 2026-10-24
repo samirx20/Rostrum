@@ -2,10 +2,10 @@
 ordinary group with `swap` on; `show` says which child, counting from 0 in the list, and is a stepped choice: its keys
 always read as jumps (the value holds until the next key, whatever ease the key says).
 
-Into the scene (scene.py): both fields stay on the Python side (PY_ONLY). `apply` samples `show` on every frame and
-sends each child's opacity multiplied by 1 (shown) or 0 (hidden): a child with no opacity keys gets one hold key where
-it turns on or off; a child with its own opacity keys gets one hold key per frame of own(t) x shown(t). The
-document's keys are not changed.
+Into the scene (scene.py): both fields stay on the Python side (PY_ONLY). `gates` samples `show` on every frame and
+gives each child its shown-or-not per frame; the child's node, as it is built, sends its opacity multiplied by 1
+(shown) or 0 (hidden) (`gate`): a child with no opacity keys gets one hold key where it turns on or off; a child with
+its own opacity keys gets one hold key per frame of own(t) x shown(t). The document's keys are not changed.
 """
 from __future__ import annotations
 
@@ -32,21 +32,18 @@ def index_at(item: dict, t: float, count: int) -> int:
     return max(0, min(count - 1, math.floor(value + 0.5))) if count else 0
 
 
-def apply(node: dict, items: dict[str, dict], duration: float, fps: float) -> None:
-    """Make the scene node tree's swap sets show one child at a time, in place."""
-    item = items.get(node["id"], {})
-    kids = node.get("layers", [])
-    if node["type"] == "group" and item.get("swap") and kids:
-        frames = math.ceil(duration * fps - 1e-9) + 1
-        shown = [index_at(item, f / fps, len(kids)) for f in range(frames)]
-        for i, kid in enumerate(kids):
-            _gate(kid, [1.0 if s == i else 0.0 for s in shown], fps)
-    for kid in kids:
-        apply(kid, items, duration, fps)
+def gates(item: dict, count: int, duration: float, fps: float) -> list[tuple[float, ...]] | None:
+    """A swap set's `count` children (its engine node's layers, its background first) each as 1 or 0 per frame
+    (shown or not); None for anything else (not a swap set, no children)."""
+    if item.get("type") != "group" or not item.get("swap") or not count:
+        return None
+    frames = math.ceil(duration * fps - 1e-9) + 1
+    shown = [index_at(item, f / fps, count) for f in range(frames)]
+    return [tuple(1.0 if s == i else 0.0 for s in shown) for i in range(count)]
 
 
-def _gate(kid: dict, vis: list[float], fps: float) -> None:
-    """Multiply the child's opacity by vis (one 1 or 0 per frame)."""
+def gate(kid: dict, vis: tuple[float, ...], fps: float) -> None:
+    """Multiply a node being built by its swap set's vis (one 1 or 0 per frame)."""
     own = kid.get("anim", {}).get("opacity")
     if own:
         keys = [{"t": f / fps, "v": track_value(own, f / fps) * v, "ease": "hold"} for f, v in enumerate(vis)]

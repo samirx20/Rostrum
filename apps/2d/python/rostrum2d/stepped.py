@@ -2,7 +2,7 @@
 the document's keys. A layer set to "As its group" (the default) takes its group's setting, a group its own group's,
 up to the composition's (default every frame). Effects, masks and a rig's bones follow their layer.
 
-Into the scene (scene.py): every animated field of a stepped item is sent as `hold` keys, one every n frames from 0
+Into the scene (scene.py, as each node is built: `step_of` passed down, `held`): every animated field of a stepped item is sent as `hold` keys, one every n frames from 0
 to the composition's length, each holding the value the field has on that frame (its own keys, or the per-frame keys
 of an expression or an auto layout). The engine draws plain keys and never sees the setting; the person's keys stay
 as they are, so turning it back to every frame gives the smooth motion back. A path's shape and width profile (text
@@ -24,16 +24,17 @@ LAYER = [Param.choice(FIELD, ["group", *ON], label="Animate on", group="Timing",
                       help="Hold each pose for this many frames; “Same as its group” takes the group's or the scene's setting")]
 
 
-def apply(node: dict, items: dict[str, dict], duration: float, fps: float, n: int | None = None) -> None:
-    """Make the scene node tree `node` (the composition's) stepped where its items ask, in place. `items`: every item
-    of the composition by id (the document's values, for their `timing`)."""
-    own = items.get(node["id"], {}).get(FIELD, "group" if n else "1")
-    n = n if own == "group" else int(own)
-    if n > 1 and node.get("anim"):
-        node["anim"] = {prop: keys if "d" in keys[0] else hold(keys, n, duration, fps) for prop, keys in node["anim"].items()}
-    for key in ("effects", "masks", "layers", "rig"):
-        for child in node.get(key, []):
-            apply(child, items, duration, fps, n)
+def step_of(item: dict, n: int | None) -> int:
+    """Every how many frames `item` holds a pose: its own setting, or `n` (its group's) for "As its group"; at the
+    composition (`n` None) its own, every frame by default. Effects, masks, bones and nodes made in the scene (no
+    setting of their own) take their layer's."""
+    own = item.get(FIELD, "group" if n else "1")
+    return n if own == "group" else int(own)
+
+
+def held(anim: dict, n: int, duration: float, fps: float) -> dict:
+    """A node's animated fields held every n frames (a path's shape keys, `d`, as they are)."""
+    return {prop: keys if "d" in keys[0] else hold(keys, n, duration, fps) for prop, keys in anim.items()}
 
 
 def hold(keys: list[dict], n: int, duration: float, fps: float) -> list[dict]:

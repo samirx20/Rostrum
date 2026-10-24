@@ -12,8 +12,8 @@ of the project, whatever its layer counts from, before the layer's start too (a 
 an item's own time 0 sits, and `placed` gives the composition as written with those keys in their owner's seconds
 (the timeline and curve editor read that).
 
-`timed(comp, markers, fps)` returns the composition with every time in composition seconds (a copy, only when some
-layer is timed); the scene description and the motion facts read that, so preview, export and the look tools agree.
+`timed(comp, markers, fps)` returns the composition with every time in composition seconds (copy on write: only
+the items whose times change are copies, the rest stay the document's own objects); the scene description and the motion facts read that, so preview, export and the look tools agree.
 The document keeps the times as written (from the marker). A marker that isn't in the project fails loudly.
 """
 from __future__ import annotations
@@ -50,33 +50,51 @@ def _offset(item: dict, inherited: float, markers: dict | None) -> float:
     return _at(item, FIELD, markers) if item.get(FIELD) else inherited
 
 
-def _shift(item: dict, off: float, fps: float, markers: dict | None) -> None:
-    for key in CHILDREN:
-        for child in item.get(key, []):
-            _shift(child, _offset(child, off, markers), fps, markers)
+def _shifted(item: dict, off: float, fps: float, markers: dict | None) -> dict:
+    """The item with its times in composition seconds: the item itself when none of them changes, else a copy of just
+    what changes (copy on write: what a layer timed from a marker doesn't touch stays the document's own object)."""
+    kids = {key: [_shifted(c, _offset(c, off, markers), fps, markers) for c in item[key]] for key in CHILDREN if item.get(key)}
+    kids = {key: new for key, new in kids.items() if any(a is not b for a, b in zip(new, item[key]))}
+    keys = item.get("keys", [])
+    marks = any(marked.marked(k) for k in keys)
+    if not (kids or off or item.get(END) or marks):
+        return item
+    out = {**item, **kids}
     if item.get(END):                  # ends on a marker: that moment, whatever the layer counts from
-        item["end"] = _at(item, END, markers) - off
-    for k in item.get("keys", []):     # a key on a marker: that moment; the others count from the layer's
-        k["t"] = k["t"] + off if not marked.marked(k) else k["t"]
-    marked.resolve(item, markers)
+        out["end"] = _at(item, END, markers) - off
+    if keys and (off or marks):        # a key on a marker: that moment; the others count from the layer's
+        out["keys"] = [dict(k) if marked.marked(k) else {**k, "t": k["t"] + off} for k in keys]
+        marked.resolve(out, markers)   # (on the copies)
     if not off:
-        return
+        return out
     if F.param(item["type"], "start") is not None:     # layers (effects, masks and bones have no start)
-        item["start"] = item.get("start", 0.0) + off
-    if item.get("end", END_OF_COMP) < END_OF_COMP:
-        item["end"] = item["end"] + off
-    for f in item.get("frames", []):  # a drawing's frames are composition frame numbers
-        f["at"] = f["at"] + round(off * fps)
-
-
-def timed(comp: dict, markers: dict | None, fps: float) -> dict:
-    """The composition with every layer's times in composition seconds (the input itself when nothing is timed)."""
-    if not _any_timed(comp):
-        return comp
-    out = copy.deepcopy(comp)
-    for layer in out.get("layers", []):
-        _shift(layer, _offset(layer, 0.0, markers), fps, markers)
+        out["start"] = item.get("start", 0.0) + off
+    if out.get("end", END_OF_COMP) < END_OF_COMP:
+        out["end"] = out["end"] + off
+    if item.get("frames"):             # a drawing's frames are composition frame numbers
+        out["frames"] = [{**f, "at": f["at"] + round(off * fps)} for f in item["frames"]]
     return out
+
+
+def timed(comp: dict, markers: dict | None, fps: float, memo: dict | None = None) -> dict:
+    """The composition with every layer's times in composition seconds (the input itself when nothing is timed; else
+    a copy of only what changes). `memo` (scene_keep.py, for one set of markers): {layer id: (layer, fps, timed)}
+    kept between calls, so an unchanged timed layer comes back as the same object."""
+    if not _any_timed(comp):
+        if memo is not None:
+            memo.clear()
+        return comp
+    seen, layers = {}, []
+    for layer in comp.get("layers", []):
+        got = memo.get(layer["id"]) if memo is not None else None
+        if got is None or got[0] is not layer or got[1] != fps:
+            got = (layer, fps, _shifted(layer, _offset(layer, 0.0, markers), fps, markers))
+        seen[layer["id"]] = got
+        layers.append(got[2])
+    if memo is not None:
+        memo.clear()
+        memo.update(seen)
+    return {**comp, "layers": layers} if "layers" in comp else comp
 
 
 def offset_of(doc_data: dict, item_id: str, markers: dict | None) -> float:

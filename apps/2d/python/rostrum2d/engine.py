@@ -29,10 +29,10 @@ import threading
 import time
 from pathlib import Path
 
-from . import settings
+from . import scene_change, settings
 
 LOG_DIR = settings.logs_dir()
-RETRY = {"frame", "bones", "outline", "measure", "shapes", "scene", "place"}     # short requests that are safe to send again
+RETRY = {"frame", "bones", "outline", "measure", "shapes", "scene", "change", "place"}   # short requests that are safe to send again
 QUICK_S = 30.0                                                  # dying again this soon after a restart: give up
 # Short, so the top bar's status line shows them whole; the log line says the rest (exit code, the old log).
 RESTARTED = "The drawing engine restarted. Nothing was lost."
@@ -93,6 +93,7 @@ class Engine:
         if not self.exe.exists():
             raise EngineError(f"2D engine not found: {self.exe} (set ROSTRUM2D_ENGINE)")
         self.scene, self._shm = None, None           # _shm: (name, mmap) of the engine's frame memory (pixels)
+        self.loaded: dict = {}                       # the last load: {"sent": "scene" | "change", "kept", "timing", "ms"}
         self.placed: dict = {}                       # the last pixels frame's `place` reply
         self.timing: dict = {}                       # the last pixels frame's own split (its reply's `timing`)
         # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
@@ -180,10 +181,18 @@ class Engine:
         return out
 
     def load(self, scene: dict):
-        """Load or replace the scene; the engine checks it whole, so a bad scene fails here, loudly. With no working
-        graphics driver the engine draws the same frames on the processor and `fallback` says so."""
-        self.fallback = self._request({"scene": scene}).get("fallback")
+        """Load or replace the scene; the engine checks it whole, so a bad scene fails here, loudly. When it holds a
+        scene and the new one shares nodes with it (the same objects: scene_keep.py), only the change goes
+        (scene_change.py), else the whole scene, with a log line saying why. `self.scene` is always the whole
+        description now held; a restarted engine gets it whole. With no working graphics driver the engine draws
+        the same frames on the processor and `fallback` says so."""
+        req, why = scene_change.request(self.scene, scene)
+        if why:
+            _log_line(f"2D scene sent whole: {why}")
+        out = self._request(req)
+        self.fallback = out.get("fallback")
         self.scene = scene
+        self.loaded = {"sent": next(iter(req)), "kept": out.get("kept", 0), "timing": out.get("timing") or {}, "ms": out["ms"]}
 
     def _props(self) -> dict:
         if self.scene is None:

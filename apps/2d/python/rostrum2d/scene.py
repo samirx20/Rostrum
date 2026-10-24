@@ -54,32 +54,43 @@ def _keys(item: dict, prop: str, until: float) -> list[dict]:
     return [_key(key) for key in after.extend(keys_of(item, prop), until)] if prop in animated(item) else []
 
 
-def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | None = None) -> dict:
+def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | None = None, n: int | None = None,
+          vis: tuple | None = None) -> dict:
+    """The item's engine node, whole and final (never changed after: the screen keeps it, scene_keep.py). `n`: its
+    group's stepped timing (None at the composition); `vis`: its swap set's shown-or-not per frame (swap.gates). The
+    document's own children are made through `where["make"]` (this function; the screen's keeper there)."""
+    where = {} if where is None else where
+    until, make, step = where.get("until", 0.0), where.get("make", _node), stepped.step_of(item, n)
     node = {"id": item["id"], "type": item["type"],
             "props": {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]
                        if p.name not in python_only(item["type"])}}
     if "loop" in node["props"]:         # an older document's on/off switch reaches the engine as a mode
         node["props"]["loop"] = looping.mode_of(node["props"]["loop"])
-    anim = {**_anim(item, (where or {}).get("until", 0.0)), **(baked or {}).get(item["id"], {})}
+    anim = {**_anim(item, until), **(baked or {}).get(item["id"], {})}
     anim = fill_paint.engine_anim(item, anim)      # a gradient fill goes as its effect (below)
     if anim:
         node["anim"] = anim
     fill_paint.engine_props(item, node["props"])
     if item["type"] in fill_fields.OWNERS and fill_paint.kind_of(item) == "painted":    # a painting: its drawings as the fill picture
         node["fillFrames"] = painted_fill.of(item, fps, where)
-    if item["type"] in media.TYPES and (where or {}).get("folder") is not None and item.get("src"):
+    if item["type"] in media.TYPES and where.get("folder") is not None and item.get("src"):
         node["props"]["src"] = str(media.file(where["folder"], item))   # stored relative to the project: the file to open
+    shown = [c for c in item.get("layers", []) if not c.get("hidden")]                 # hidden: not drawn
+    back_on = item["type"] == "group" and bool(item.get("background"))
+    gates = swap.gates(item, len(shown) + back_on, until, fps)     # a swap set: one child at a time (its background first)
     for key in ("effects", "masks", "layers") + (("stops",) if item["type"] == "gradient" else ()):   # a layer's own stops go as its fill (below)
-        if item.get(key):
-            node[key] = [_node(child, fps, baked, where) for child in item[key] if not child.get("hidden")]   # hidden: not drawn
+        if item.get(key):               # stops are never stepped (1); a swap set's layers each get their vis
+            kids = shown if key == "layers" else [c for c in item[key] if not c.get("hidden")]
+            node[key] = [make(c, fps, baked, where, 1 if key == "stops" else step,
+                              gates[i + back_on] if gates and key == "layers" else None) for i, c in enumerate(kids)]
     fill = fill_paint.lower(item) if item["type"] in fill_fields.OWNERS else None
     if fill is not None:                # a gradient fill: the engine's gradient effect, first; it takes the place of any other
-        node["effects"] = [_node(fill, fps, None, where)] + [e for e in node.get("effects", []) if e["type"] != "gradient"]
-    back = group_bg.node(item, node, lambda f: _keys(item, f, (where or {}).get("until", 0.0)), _engine_props) if item["type"] == "group" else None
+        node["effects"] = [_node(fill, fps, None, where, step)] + [e for e in node.get("effects", []) if e["type"] != "gradient"]
+    back = group_bg.node(item, node, lambda f: _keys(item, f, until), _engine_props) if back_on else None
     if back is not None:                # the group's own background: its backmost layer (group_bg.py)
-        node["layers"] = [back] + node.get("layers", [])
+        node["layers"] = [_posed(back, step, gates[0] if gates else None, fps, until)] + node.get("layers", [])
     if item["type"] == "rig":           # bones, iks and binds are nodes of their own (RIG.md § Scene description)
-        node["rig"] = [_node(c, fps, baked, where) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
+        node["rig"] = [make(c, fps, baked, where, step, None) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
         node["frames"] = _pictures(item, fps, where)
     elif item.get("frames"):            # paint on an element: drawn over it, stretched over its box (paint_fields.py)
@@ -87,9 +98,18 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
         node["frames"] = video.frames({**node["props"], "id": item["id"]}, fps)
     if item["type"] == "render3d":      # the 3D item's render, from the project (render3d.py)
-        node = _render3d(node, item, fps, where or {})
+        node = _render3d(node, item, fps, where)
     if item["type"] == "text" and (font := missing_font.trouble(item)):
-        node = _font_stand_in(node, item, font, where or {})
+        node = _font_stand_in(node, item, font, where)
+    return _posed(node, step, vis, fps, until)
+
+
+def _posed(node: dict, step: int, vis: tuple | None, fps: float, until: float) -> dict:
+    """A node being built, shown by its swap set (vis) and then held every `step` frames (stepped.py), in that order."""
+    if vis is not None:
+        swap.gate(node, vis, fps)
+    if step > 1 and node.get("anim"):
+        node["anim"] = stepped.held(node["anim"], step, until, fps)
     return node
 
 
@@ -157,7 +177,15 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     when not the whole composition (looks, a part of a video): a 3D layer not rendered yet is then a placeholder
     (the scene's `warnings` name it); with no span (a whole-film export) it is refused. `later` (the screen): paint
     pictures not made yet are listed there instead of made (drawing.picture), with stand-ins in the scene; the screen
-    makes them off its thread, then describes again and draws: the same pictures export makes at once."""
+    makes them off its thread, then describes again and draws: the same pictures export makes at once. The screen
+    describes through scene_keep.Keeper: the same description, reusing the nodes a change didn't touch."""
+    comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, later)
+    return finish(_node(comp, fps, baked, where), where)
+
+
+def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: dict | None = None) -> tuple:
+    """(the composition in composition seconds, its fps, the baked expression / layout keys, `where`): what every
+    node is made from. `timed_memo`: retime.timed's, kept by scene_keep.Keeper."""
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
@@ -166,19 +194,20 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     if comp is None:
         raise ValueError(f'no composition "{comp_id}"; there are: {", ".join(c["id"] for c in comps)}')
     fps = comp.get("fps", F.defaults("comp")["fps"])
-    comp = retime.timed(comp, markers, fps)          # layers timed from a marker: every time in comp seconds from here
+    comp = retime.timed(comp, markers, fps, timed_memo)   # layers timed from a marker: every time in comp seconds from here
     baked = exprbake.bake(comp, fps, markers, lambda: project_sound.beats(folder, comp.get("soundtrack", ""), comp.get("duration", 5.0)))
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
              "later": later, "paintings": {p["id"]: p for p in doc_data.get("paintings", [])}}
-    node = _node(comp, fps, baked, where)
+    return comp, fps, baked, where
+
+
+def finish(node: dict, where: dict) -> dict:
+    """The description around the composition's node (a new node each call: its layers are put in order here)."""
     if where.get("missing_fonts"):       # a whole-film export never writes a file with a stand-in in it
         raise RostrumError(codes.RENDER_FAILED, "export", "the texts " + ", ".join(where["missing_fonts"]),
                            "use a font this computer lacks: " + missing_font.refusal(where["missing_fonts"]),
                            hint="Pick another font for them (font.replace), or install it.")
     node["layers"] = sorted(node.get("layers", []), key=lambda n: n["type"] != "camera")   # the frame first (the contract)
-    swap.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
-    stepped.apply(node, exprbake.items_of(comp), comp.get("duration", F.defaults("comp")["duration"]), fps)
     return {"format": FORMAT, "version": VERSION, "comp": node, **({"warnings": where["warnings"]} if where.get("warnings") else {})}
-
