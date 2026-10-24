@@ -3,7 +3,8 @@ import QtQuick.Dialogs
 import RostrumKit
 
 // 3D's tool rail (SPEC §2): the kit's ToolRail filled from today's add operations (backend.adder.rail, adding.py).
-// Select, then Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C).
+// Select, then Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C);
+// on the Animate page Select, Poses (P), Onion skin (O), Lights, Camera.
 // Logo from SVG asks for the file first, From a 2D drawing for the 2D item and its path layer (one list, two levels);
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
@@ -15,14 +16,38 @@ ToolRail {
     iconKinds: ({ shape3d: icon3d })
     Component { id: icon3d; Icon3D { } }
     function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value })) }
-    groups: [
-        { id: "select", items: [{ name: "Select", icon: "select", tool: "select", help: "Click a thing in the viewport or the scene list." }] },
+    readonly property var selectGroup: ({ id: "select", items: [{ name: "Select", icon: "select", tool: "select", help: "Click a thing in the viewport or the scene list." }] })
+    // the Animate page (SPEC §2): Select, Poses (P), Onion skin (O), Lights, Camera; Bones and Simulate join when built
+    groups: backend.page === "animate" ? [
+        rail.selectGroup,
+        { id: "poses", name: "Poses", panel: true, items: [{ name: "Poses", icon: "pose", kind: "shape3d",
+          help: "Save the selected items' pose; click a saved one to key it at the playhead." }] },
+        { id: "onion", name: "Onion skin", panel: true, items: [{ name: "Onion skin", icon: "onion", kind: "shape3d",
+          help: "Ghosts of the selected item before (red) and after (green), to time its arc by eye." }] },
+        { sep: true },
+        { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
+        { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
+    ] : [
+        rail.selectGroup,
         { id: "shapes", name: "Shapes", items: rail.entries(backend.adder.rail.shapes) },
         { id: "type", name: "Type & logo", items: rail.entries(backend.adder.rail.type) },
         { sep: true },
         { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
     ]
+    // Poses and Onion skin open their own small panels beside their buttons (PosesPanel.qml, OnionPanel.qml)
+    panelOpen: posesPanel.visible || onionPanel.visible
+    onPanelRequested: (g) => rail.openPanel(g.id)
+    onPanelCloseRequested: { posesPanel.close(); onionPanel.close() }
+    function openPanel(id) {
+        const pop = id === "poses" ? posesPanel : id === "onion" ? onionPanel : null
+        if (!pop) return
+        (pop === posesPanel ? onionPanel : posesPanel).close()
+        const b = rail.buttonOf(id)       // beside the rail, top edges with the button (never over the rail)
+        pop.openAtPoint(rail.mapToItem(null, rail.width + Theme.gap, 0).x, b ? b.mapToItem(null, 0, 0).y : rail.mapToItem(null, 0, 0).y)
+    }
+    PosesPanel { id: posesPanel }
+    OnionPanel { id: onionPanel }
     // a shape waits for a click in the viewport (it lands on the surface there); lights and cameras are added at once
     onPicked: (e) => {
         if (e.act === "mesh:svg") svgDialog.open()

@@ -73,6 +73,16 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   **Handheld** start at once and run the way the camera looks. The new rig is selected: its Distance, Angle, Lift …
   are in the settings panel (guides/camera-rigs.md).
 
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), Lights and Camera:
+
+- **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
+  and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
+  **Shift+click** a pose for a breakdown: each of its settings keyed halfway between its key before and its key after.
+  Hover a pose for what it holds; its × deletes it (the keys it wrote stay).
+- **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
+  time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
+  each way. The quick look only: Final shows no ghosts. It never changes the scene.
+
 Each shape, light or camera is added as one undo step and selected. It goes into the selected group, or the group that holds the
 selected item. The rail only shows tools that work today. Others (type and logos, editing faces, painting,
 simulation, import) appear as they are built.
@@ -98,6 +108,10 @@ An item's rows come from its own settings:
 
 The diamond at a row's right end keys that setting at the playhead.
 
+**Timing** (in the row of names, once an item or something inside it has keys): **Smooth**, **On 2s** or **On 3s**.
+On 2s holds every value for two frames, the stepped look of hand-drawn animation; the camera, left Smooth, still
+glides. A group's Timing steps everything inside it.
+
 **A camera** offers at the top of its panel **Lens ▾**: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
 one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on, two more:
 **Focus on a point**, then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
@@ -116,18 +130,27 @@ Intersect**; the first one you picked is the base. Rest the pointer on one for a
 result; move off and it goes back. Click to make it (one undo step); see the guide *modelling*. Only what applies is
 shown, so with one thing selected there is no Combine.
 
-## The bottom panel: the scene list and its keys
+## The bottom panel: the timeline
 
+The same timeline as Rostrum2D's. It is taller on the Animate page.
+
+- **Top row:** ▶ plays (Space), the playhead's time, **⚑ Add marker** (in a project folder: a shared marker at the playhead that
+  other apps see too: 2D, Sound, the Editor), then the ruler in seconds with the project's markers as flags. Click or drag the
+  ruler to move the playhead; ← → step one frame. Drag a flag to move it, double-click to rename it.
 - **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. A **combine** is a row with its own icon and its
   inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
   material's name, dimmed; click that name to edit the material. Click a row to select the item. Drop a material ball on a row to give
-  that item the material.
-- **Right, on the same rows:** the item's keys as diamonds.
-  - The selected item opens a row for each animated setting.
-  - Click a diamond to select its key; drag it to move it (whole frames, one undo step).
-  - Click or drag the ruler to move the playhead.
-  - Space plays, and ← → step one frame.
-- **Add marker** puts a shared marker at the playhead. Other apps see it too (2D, Sound, the Editor).
+  that item the material. Right-click a row for its menu.
+- **Right, on the same rows:** an animated item's keys as diamonds on a slim bar from its first key to its last.
+  - The selected item opens a row for each animated setting, and a second line where two of its animations overlap in time.
+  - Click a diamond to pick its key (the settings panel shows the key); Ctrl+click adds one, Shift+click picks the run between,
+    and a box dragged on an empty part of a row picks every key it touches. Drag a key to move it, or all picked keys together;
+    drag the bar to move all of the item's keys in time. One drag is one undo step. Keys land on whole frames, and on a marker,
+    the playhead or another key when they come close (hold Ctrl to move freely); a label shows how far ("+6 f · logo lands").
+  - **Click the stretch between two keys** (the lid's Turn): the settings panel becomes that animation. Its header says what moves
+    ("Turn · lid · Turn X"); then From and To, Start, Length, the easing presets **Linear, Smooth, In, Out, Spring, Bounce, Hold**,
+    the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc
+    goes back to the item.
 
 ## Files
 

@@ -129,6 +129,7 @@ Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
   fb_.reset();
   mask_fb_.reset();
+  ghost_fbs_.clear();
 }
 
 TfToken Hydra::plugin_for(const std::string& name) {
@@ -267,6 +268,27 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
+  }
+  // Onion skin: each ghost's items alone at the ghost's frame, lit like this picture, in a framebuffer of its own
+  // (view_post.h tints them and lays them over the picture). The ghost's frame is a time change for the engine; the
+  // next picture's own frame changes it back.
+  if (!look.ghosts.empty()) {
+    e.show_sky(false);
+    if (ghost_fbs_.size() < look.ghosts.size()) ghost_fbs_.resize(look.ghosts.size());
+    for (size_t i = 0; i < look.ghosts.size(); ++i) {
+      const Ghost& g = look.ghosts[i];
+      auto& gf = ghost_fbs_[i];
+      if (!gf || gf->width() != w || gf->height() != h) {
+        gf.reset();
+        gf = std::make_unique<Framebuffer>(w, h);
+      }
+      UsdImagingGLRenderParams at = params;
+      at.frame = UsdTimeCode(g.frame);
+      gf->bind_and_clear();
+      for (const auto& path : g.items) e.Render(stage_->GetPrimAtPath(path), at);
+      throw_usd_errors(mark, "view (onion-skin ghost at frame " + std::to_string(g.frame) + ")");
+      out.ghosts.push_back(gf->color_texture());
+    }
   }
   return out;
 }

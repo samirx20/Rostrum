@@ -57,7 +57,7 @@ def test_a_scrub_and_a_key_drag_are_one_undo_step_each(bridge):
 
     assert bridge.beginKeyDrag("cam.x.k1000")
     for f in (11, 13, 15):
-        bridge.keyDragTo(f)
+        bridge.keyDragTo(f / 10)                 # seconds (fps 10)
     bridge.endDrag()
     assert len(bridge.doc.history.changes) == n + 2
     assert [k["t"] for k in keys_of(bridge.doc.item("cam"), "x")] == [0.0, 1.5]

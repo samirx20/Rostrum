@@ -67,34 +67,11 @@ ListView {
         border.color: Theme.accent; border.width: list.dropWhere === "into" ? 2 : 0
     }
 
-    // box-pick keys (INTERACTION 1.3: a box picks what it touches): drawn from an empty part of a track (LayerTrack.qml);
-    // on release every key whose diamond lies inside it, on every row it crosses, is picked (Ctrl / Shift: added)
-    property rect box: Qt.rect(0, 0, 0, 0)
-    property bool boxing: false
-    property point boxFrom
-    function boxStart(p) { boxFrom = p; box = Qt.rect(p.x, p.y, 0, 0); boxing = true }
-    function boxTo(p) { box = Qt.rect(Math.min(p.x, boxFrom.x), Math.min(p.y, boxFrom.y), Math.abs(p.x - boxFrom.x), Math.abs(p.y - boxFrom.y)) }
-    function boxEnd(how) {
-        boxing = false
-        if (how === "cancel") return
-        const groups = [], rows = backend.layers
-        for (let i = 0; i < rows.length; i++) {
-            const item = itemAtIndex(i)
-            if (!item) continue
-            const y = item.y                        // the box is in the list's content px, as the rows
-            if (y + item.height < box.y || y > box.y + box.height) continue
-            for (const k of rows[i].keys) {
-                const x = ruler.x + ruler.xOf(k.t)
-                if (x >= box.x - 4 && x <= box.x + box.width + 4) groups.push(k.ids || [k.id])
-            }
-        }
-        backend.keys.box(groups, how)
-    }
-    Rectangle {
-        visible: list.boxing; z: 6
-        x: list.box.x; y: list.box.y; width: list.box.width; height: list.box.height
-        color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12); border.color: Theme.accent; border.width: 1
-    }
+    // box-pick keys (the kit's KeyBox.qml): drawn from an empty part of a track (LayerTrack.qml)
+    function boxStart(p) { keyBox.start(p) }
+    function boxTo(p) { keyBox.to(p) }
+    function boxEnd(how) { keyBox.end(how) }
+    KeyBox { id: keyBox; list: list; ruler: list.ruler }
 
     footer: SoundRow {   // the project's sound, the last row (only when there is sound; kept in compact)
         width: ListView.view.width; ruler: list.ruler; labelWidth: list.labelWidth

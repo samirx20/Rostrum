@@ -1,6 +1,7 @@
 """The compiler: one shot of the document → the scene description the C++ core builds its USD stage from
 (ENGINE_CONTRACT.md § 2). Every field is present (defaults filled in), colours are linear, aims are turned into
-rx ry rz, and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps.
+rx ry rz, and every animated field is baked to one value per frame, start..end inclusive, at the shot's fps (an item
+on 2s or 3s, its `timing`, holds each value for 2 or 3 frames, counted from the shot's start).
 Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.keys' (the same keys as 2D).
 """
 from __future__ import annotations
@@ -18,7 +19,8 @@ AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-
 ROTATION = ("rx", "ry", "rz")
 PIVOT = ("px", "py", "pz")                     # document-only: Position is where the pivot is; the core gets the origin
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
-RESOLVED = AIM_FIELDS | set(PIVOT) | {FOCUS_ITEM}   # fields the compiler resolves into others, never sent
+TIMING = "timing"                              # stepped timing: the compiler holds the values (_Frames.values)
+RESOLVED = AIM_FIELDS | set(PIVOT) | {FOCUS_ITEM, TIMING}   # fields the compiler resolves into others, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"}      # words, font, file … never sent
 
 
@@ -53,9 +55,20 @@ class _Frames:
             item, parent = stack.pop()
             self.items[item["id"]], self.parent[item["id"]] = item, parent
             stack += [(c, item["id"]) for c in item.get("children", [])]
-        self._world, self._values, self._busy = {}, {}, set()
+        self._world, self._values, self._busy, self._step = {}, {}, set(), {}
+
+    def step(self, id_: str) -> int:
+        """Frames each value holds (Timing): the item's own On 2s / On 3s, else its nearest group's, else 1."""
+        if id_ not in self._step:
+            own = F.STEPS.get(self.items[id_].get(TIMING, "smooth"), 1)
+            parent = self.parent[id_]
+            self._step[id_] = own if own > 1 or not parent else self.step(parent)
+        return self._step[id_]
 
     def values(self, id_: str, f: int) -> dict:
+        n = self.step(id_)
+        if n > 1 and (f0 := self.frames[0] + (f - self.frames[0]) // n * n) != f:
+            return self._values.setdefault((id_, f), self.values(id_, f0))   # held from its block's first frame
         if (id_, f) not in self._values:
             item, t = self.items[id_], f / self.fps
             v = {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]}

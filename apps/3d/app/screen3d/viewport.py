@@ -82,6 +82,8 @@ class Viewport(QObject):
         self.place = PlaceLight(self)                          # lights placed by highlight, linked by clicking
         from .focus_pick import FocusPick
         self.focus = FocusPick(self)                           # a camera's focus set by clicking (focus_pick.py)
+        from .onion_qt import Onion
+        self.onion = Onion(self)                               # onion skin: ghosts at other frames (onion_qt.py)
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -108,6 +110,7 @@ class Viewport(QObject):
     dim = Property(bool, lambda s: s._dim, notify=settingsChanged)
     # the shot frame in the viewport, as parts of its width and height [x, y, w, h]; shown in the shot camera only
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
+    onionSkin = Property(QObject, lambda s: s.onion, constant=True)     # QML: viewport.onionSkin (onion_qt.py)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
@@ -193,10 +196,12 @@ class Viewport(QObject):
         if self.final.on:
             fw, fh = self.final.size((w, h))
             return {**cam, "width": fw, "height": fh, **self.final.fields(cycles_of(self.bridge.doc.data, self.bridge.shot_id, self.bridge.shot_info()))}
+        drawn = scene_ids(self._scene)
         return {**cam, "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
-                "selected": [sel] if sel in scene_ids(self._scene) else []}    # a material or key has no outline
+                "selected": [sel] if sel in drawn else [],     # a material or key has no outline
+                **self.onion.request(drawn)}                   # onion skin's ghosts, when on (quick look only)
 
     @Slot()
     def redraw(self):

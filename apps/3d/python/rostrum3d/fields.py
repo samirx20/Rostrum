@@ -46,6 +46,14 @@ def X(name, label, group, default="", imp=P, when=None, help="", refers=None):
 
 
 NO_AIM = IS("aim", "none")
+ANIMATED = {"fact": "animated"}      # the item, or something inside it, has keys (animated_fact below)
+STEPS = {"smooth": 1, "on2": 2, "on3": 3}   # Timing: how many frames each value holds (compile.py)
+TIMING = dataclasses.replace(
+    CH("timing", list(STEPS), "Timing", "Timing", "smooth", S, ANIMATED,
+       help="On 2s / On 3s: every value holds for 2 or 3 frames (counted from the shot's start), the stepped look "
+            "of hand-drawn animation, while the camera and anything else left Smooth moves every frame. A group's "
+            "timing steps everything inside it; an item inside that sets its own On 2s / On 3s keeps its own"),
+    labels={"smooth": "Smooth", "on2": "On 2s", "on3": "On 3s"})
 TRANSFORM = [
     N("x", "X", "Position", -1e5, 1e5, 0.001, "m"),
     N("y", "Y", "Position", -1e5, 1e5, 0.001, "m", help="Up"),
@@ -70,6 +78,7 @@ TRANSFORM = [
     X("aimItem", "Aim at item", "Aim", "", S, IS("aim", "item"), help="The id of the item to look at (its origin)"),
     N("roll", "Roll", "Aim", -36000, 36000, 0.1, "°", S, NOT("aim", "none"),
       help="Turns an aimed item around the way it points: 90 stands a strip light on end, tilts a camera's horizon"),
+    TIMING,
 ]
 
 COMBINE_OPS = ["union", "subtract", "intersect"]
@@ -169,12 +178,19 @@ FIELDS: dict[str, list[Param]] = {
     "rig": RIG + [dataclasses.replace(p, valid_when=None) for p in TRANSFORM
                   if p.name in ("x", "y", "z", "rx", "ry", "rz", "visible")],
     "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
+    # A saved pose (ops_poses.py): values of some items' fields, applied as keys at the playhead.
+    "pose": [
+        Param.list("fields", "text", label="Fields", group="Pose data", importance=D, default=[],
+                   help='What the pose holds, as "<item id>.<field>" (lid.rx)'),
+        Param.list("values", "number", label="Values", group="Pose data", importance=D, min=-1e7, max=1e7, default=[],
+                   help="One value per field, in the same order"),
+    ],
 }
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
 HOLDERS = ("group", "import", "rig", "combine")
-LISTS = {"doc": ["items", "materials", "shots"], "group": ["children", "keys"],     # where child items live
+LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["keys"], "light": ["keys"], "camera": ["keys"],
          "combine": ["children", "keys"],
          "rig": ["children", "keys"]}
@@ -183,7 +199,7 @@ STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group == "Shape"},     # a
          "combine": {"op"},
          "*": {"aim"}}
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
-          "material": "Material", "shot": "Shot", "key": "Key"}
+          "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose"}
 
 
 def param(kind: str, name: str) -> Param | None:
@@ -209,6 +225,18 @@ def unconditional(kind: str) -> list[Param]:
     return [dataclasses.replace(p, valid_when=None) for p in FIELDS[kind]]
 
 
+def animated_fact(item: dict) -> bool:
+    """The item or anything inside it has keys: its Timing then shows (the `animated` fact, kind.py)."""
+    stack = [item]
+    while stack:
+        it = stack.pop()
+        if it.get("keys"):
+            return True
+        stack += it.get("children", [])
+    return False
+
+
 def not_valid(kind: str, item: dict, given) -> list[str]:
-    """The given field names that don't apply to `item` as it is (e.g. width on a sphere)."""
-    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item)]
+    """The given field names that don't apply to `item` as it is (e.g. width on a sphere). Timing may be given before
+    the keys are (a script's mesh(…, timing="on2") then .key(…)): `animated` only decides whether screens show it."""
+    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True})]
