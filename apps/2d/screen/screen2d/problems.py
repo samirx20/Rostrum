@@ -5,8 +5,6 @@ in words with what to do, and a click jumps to it (`jump`: selects the item it i
 """
 from __future__ import annotations
 
-import copy
-
 from PySide6.QtCore import Property, QTimer, Signal, Slot
 from rostrum_core import RostrumError
 from rostrum_gui.frames import PictureWorker
@@ -83,10 +81,12 @@ class Problems(PictureWorker):
 
     def _post(self):
         b = self.bridge
-        self.post_latest((copy.deepcopy(b.doc.data), b.comp_id, b.doc.folder, b.marks.times if b.doc.folder else None))
+        self.post_latest((b.doc.data, b.comp_id, b.doc.folder, b.marks.times if b.doc.folder else None))
 
     def open_engine(self):
         from rostrum2d.engine import Engine
+        from rostrum2d.scene_keep import Keeper
+        self._keeper = Keeper()         # this thread's: its engine is sent only what changed (scene_keep.py)
         return Engine()
 
     def handle(self, eng, job):
@@ -94,7 +94,7 @@ class Problems(PictureWorker):
         from rostrum2d.diagnose_engine import everything
         data, comp_id, folder, markers = job
         with textsize.use(eng):         # this thread measures texts with its own engine
-            found = everything(data, comp_id, folder, markers, eng)
+            found = everything(data, comp_id, folder, markers, eng, self._keeper)
         rows = [{**p, "label": WORDS.get(p["kind"], p["kind"]), "danger": p["kind"] == "refused"} for p in found]
         self.found.emit(rows)
 
