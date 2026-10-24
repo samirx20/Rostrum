@@ -68,6 +68,9 @@ QQC.ApplicationWindow {
     property int timelineLeast: Theme.timeline
     property int frameFolded: -1
     signal layoutChanged()
+    // How far a left drawer (`leftOver`: the left panel, or the guides) reaches over the main view's left edge, from that
+    // edge: what a fit must keep clear so the frame is centred in the part you can see.
+    readonly property int overLeft: !leftOver ? 0 : guidesOpen ? guidesDrawer.width : leftSlot.width
     signal pressedIn(string area)                    // every press anywhere, with its area ("left", "right", "bottom"…): an app ends a typing on it
     property int askedRev: 0                       // bumps when a hand size changes (panelSizes is not a binding)
     function asked(kind, panel) { askedRev; return typeof panelSizes !== "undefined" ? panelSizes.get(kind, panel) : -1 }

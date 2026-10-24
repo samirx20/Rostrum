@@ -13,7 +13,8 @@ QtObject {
     property real wellH: 0
     property real compW: 1
     property real compH: 1
-    property real top: 0                       // room kept clear above the frame at Fit (none in 2D: nothing floats there)
+    property real coverLeft: 0                 // a drawer over the well's left edge hides this much: fits use the rest (Stage: AppShell.overLeft)
+    property real top: 0                      // room kept clear above the frame at Fit (none in 2D: nothing floats there)
     readonly property real margin: 16
     readonly property real frameMargin: 24     // the frame fit's room round the frame (SPEC 2d-camera 4.1)
     readonly property real fitMost: 4          // F on a tiny layer stops at 400 % (the frame is drawn at most at Full)
@@ -37,10 +38,12 @@ QtObject {
         if (wellW <= 0 || wellH <= 0) return
         const x0 = r ? r.x0 : 0, y0 = r ? r.y0 : 0, x1 = r ? r.x1 : compW, y1 = r ? r.y1 : compH
         const w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1)
-        asked = clamp(Math.max(0.01, Math.min((wellW - 2 * frameMargin) / w, (wellH - 2 * frameMargin) / h)))
-        cx = (x0 + x1) / 2; cy = (y0 + y1) / 2
+        asked = clamp(Math.max(0.01, Math.min((wellW - coverLeft - 2 * frameMargin) / w, (wellH - 2 * frameMargin) / h)))
+        centreAt((x0 + x1) / 2, (y0 + y1) / 2)
         fitted = true
     }
+    // put composition point (x, y) in the middle of the part of the well no drawer covers
+    function centreAt(x, y, topRoom) { cx = x - coverLeft / 2 / asked; cy = y - (topRoom || 0) / 2 / asked }
     function fitEverything(r) { fitBox(r.x0, r.y0, r.x1, r.y1) }                  // Shift+1: every layer and the frame's path
     // zoom to `z`, keeping the composition point under (px, py) (well px) where it is
     function zoomAt(z, px, py) {
@@ -52,11 +55,11 @@ QtObject {
     function show(z) { zoomAt(z, wellW / 2, wellH / 2) }                       // keeps the centre
     function centreOn(x, y) { hold(); cx = x; cy = y }                           // composition px
     function panBy(dx, dy) { hold(); cx -= dx / zoom; cy -= dy / zoom }          // screen px
-    function fitBox(x0, y0, x1, y1) {                                            // composition px
+    function fitBox(x0, y0, x1, y1, topRoom) {                                   // composition px; topRoom: screen px kept clear above (a chip)
         const w = Math.max(x1 - x0, 1), h = Math.max(y1 - y0, 1)
         hold()
-        asked = clamp(Math.min((wellW - 2 * margin) / w, (wellH - 2 * margin) / h, fitMost))
-        cx = (x0 + x1) / 2; cy = (y0 + y1) / 2
+        asked = clamp(Math.min((wellW - coverLeft - 2 * margin) / w, (wellH - (topRoom || 0) - 2 * margin) / h, fitMost))
+        centreAt((x0 + x1) / 2, (y0 + y1) / 2, topRoom)
     }
     function step(dir) {                                                        // Ctrl+= / Ctrl+−: the next step
         const up = steps.filter(s => s > zoom * 1.001), down = steps.filter(s => s < zoom / 1.001)

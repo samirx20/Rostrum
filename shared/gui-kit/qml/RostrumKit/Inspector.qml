@@ -34,7 +34,8 @@ Panel {
 
     NameLabel { id: name; text: panel.bridge.selectedItem.label; font.pixelSize: Theme.heading; font.weight: Font.DemiBold
                 anchors.left: parent.left; anchors.right: parent.right }   // a long name, whole on hover
-    Text { id: kind; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
+    NameLabel { id: kind; color: Theme.fg3
+           anchors.left: parent.left; anchors.right: parent.right     // a long line ends in … inside the panel, whole on hover
            readonly property bool same: panel.kindText.toLowerCase() === String(name.text || "").trim().toLowerCase()
            text: same ? "" : panel.kindText; visible: !same && panel.kindText !== ""
            height: !visible ? 0 : kindLine.height     // from the font, not implicitHeight: that one reads `height` back (binding loop)
