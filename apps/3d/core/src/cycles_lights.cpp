@@ -9,7 +9,6 @@
 #include <pxr/imaging/hd/sceneIndexPluginRegistry.h>
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/imaging/hd/visibilitySchema.h>
-#include <pxr/imaging/hd/xformSchema.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usdLux/blackbody.h>
 
@@ -73,32 +72,15 @@ double spread_gain(double cone_deg) {
   return h > 0.05 ? t / (t - h) : 3.0 * t / (h * h * h);
 }
 
-// The world area of a panel (its own X × Y sizes, times its world scale); rect or disk (a strip is a rect).
-double panel_area(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light, const TfToken& type) {
-  GfMatrix4d m(1.0);
-  if (auto x = HdXformSchema::GetFromParent(prim).GetMatrix()) m = x->GetTypedValue(0.0f);
-  const double r = value(light, HdLightTokens->radius, 0.5f);
-  const double own = type == HdPrimTypeTokens->rectLight
-                         ? double(value(light, HdLightTokens->width, 1.0f)) * value(light, HdLightTokens->height, 1.0f)
-                         : kPi * r * r;
-  return own * m.GetRow3(0).GetLength() * m.GetRow3(1).GetLength();
-}
-
-// A panel in UsdLux's meaning; nullptr when there is nothing to change:
-//  - normalize on is handed over as normalize off with intensity ÷ its area (the same light at any size). Cycles' own
-//    normalize path came out exactly 10 000× too bright for every size and distance (H23, the results folder's
-//    light-units-before-fix.txt), while normalize off matched the hand-computed value.
-//  - a spread (shapingConeAngle, from light_extras) only narrows the light, like a honeycomb grid: its centre stays as
-//    bright as with no grid, so the intensity is divided by Cycles' spread gain.
-HdContainerDataSourceHandle panel_params(const HdContainerDataSourceHandle& prim, const HdContainerDataSourceHandle& light,
-                                         const TfToken& type, double cone_deg) {
-  const bool normalize = value(light, HdLightTokens->normalize, false);
-  const double gain = spread_gain(cone_deg), area = normalize ? panel_area(prim, light, type) : 1.0;
-  if ((!normalize && gain == 1.0) || !(area > 0)) return nullptr;  // a zero-size panel gives no light either way
-  const TfToken names[] = {HdLightTokens->normalize, HdLightTokens->intensity};
-  const HdDataSourceBaseHandle values[] = {F0::New(false),
-                                           F::New(float(value(light, HdLightTokens->intensity, 1.0f) / area / gain))};
-  return HdRetainedContainerDataSource::New(std::size(names), names, values);
+// A panel's spread (shapingConeAngle, from light_extras) only narrows the light, like a honeycomb grid: its centre
+// stays as bright as with no grid, so the intensity is divided by Cycles' spread gain; nullptr with no spread.
+// Normalize is Cycles' own (÷ the world area, as UsdLux): right once the core gives it the stage's units (hydra.cpp,
+// cycles_settings; H23's 10 000x was centimetres).
+HdContainerDataSourceHandle panel_params(const HdContainerDataSourceHandle& light, double cone_deg) {
+  const double gain = spread_gain(cone_deg);
+  if (gain == 1.0) return nullptr;
+  return HdRetainedContainerDataSource::New(
+      HdLightTokens->intensity, F::New(float(value(light, HdLightTokens->intensity, 1.0f) / gain)));
 }
 
 // product lighting (light_extras.h): what our patch on Cycles' Hydra plug-in reads; none of it for a plain light
@@ -152,7 +134,7 @@ class CyclesLights final : public HdSingleInputFilteringSceneIndexBase {
     const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
     if (prim.primType == HdPrimTypeTokens->rectLight || prim.primType == HdPrimTypeTokens->diskLight) {
       const auto cone = x.coneDeg.find(path);
-      if (const auto panel = panel_params(prim.dataSource, light, prim.primType, cone == x.coneDeg.end() ? 90.0 : cone->second))
+      if (const auto panel = panel_params(light, cone == x.coneDeg.end() ? 90.0 : cone->second))
         prim.dataSource = with_light(prim.dataSource, panel);
       return prim;
     }

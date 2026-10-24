@@ -26,7 +26,6 @@ from . import placing
 from .type_in_place import Typer
 
 LIGHT_NAMES = {"rect": "Softbox", "disk": "Round softbox", "strip": "Strip", "sphere": "Bulb", "spot": "Spot", "distant": "Sun", "dome": "Sky"}
-NOT_DRAWN = {"spot"}      # written to the stage, but no renderer draws its cone yet (Cycles plug-in patch pending): not offered
 RAIL_SHAPES = ("box", "sphere", "cylinder", "cone", "torus", "capsule", "plane", "disc")   # SPEC §2's order
 RAIL_TYPE = (("text", "3D text"), ("svg", "SVG logo"), ("path2d", "2D drawing"))   # Type & logo (T)
 OUTLINE_NAMES = {"text": "Text", "svg": "Logo", "path2d": "Drawing"}          # a new outline's name (and the hint's word)
@@ -37,8 +36,7 @@ COPIES = (*F.ITEMS, "material", "shot")
 
 def _entries(cameras: bool) -> list[dict]:
     out = [{"value": f"mesh:{s}", "label": f"Mesh · {s.capitalize()}"} for s in F.SHAPES]
-    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS
-            if k not in NOT_DRAWN]
+    out += [{"value": f"light:{k}", "label": f"Light · {LIGHT_NAMES.get(k, k.capitalize())}"} for k in F.LIGHT_KINDS]
     out += [{"value": t, "label": F.LABELS[t]} for t in ("camera", "rig", "group", "material")]
     return out + ([{"value": "shot", "label": "Shot"}] if cameras else [])
 
@@ -48,7 +46,7 @@ def _rail() -> dict:
     return {"shapes": [{"value": f"mesh:{s}", "name": s.capitalize(), "icon": s} for s in RAIL_SHAPES if s in F.SHAPES],
             "type": [{"value": f"mesh:{s}", "name": n, "icon": s} for s, n in RAIL_TYPE if s in F.SHAPES],
             "lights": [{"value": f"light:{k}", "name": LIGHT_NAMES.get(k, k.capitalize()), "icon": f"light-{k}"}
-                       for k in F.LIGHT_KINDS if k not in NOT_DRAWN],
+                       for k in F.LIGHT_KINDS],
             "camera": [{"value": "camera", "name": "Camera", "icon": "camera"},
                        {"value": "rig", "name": "Camera rig", "icon": "rig"}]}
 
