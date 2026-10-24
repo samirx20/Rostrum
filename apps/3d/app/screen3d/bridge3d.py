@@ -31,7 +31,9 @@ from .poses_qt import Poses
 from .material_balls import BallRenderer, MaterialBalls
 from .materials import USERS, Materials3D
 from .key_pick3d import KeyBar3D, KeyPick3D, Multi3D
+from .queue import RenderQueue
 from .render_job import RenderJob
+from .send_qt import Sender
 from .stretch3d import Stretch3D
 from .timeline3d import Mover
 
@@ -87,6 +89,8 @@ class Bridge3D(ActionPreview3D, DocBridge):
         self.marks.changed.connect(self.markersChanged)
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self.render = RenderJob(self, render_engine)
+        self.queue = RenderQueue(self, render_engine)     # the Render page's queue (queue.py)
+        self.send_to = Sender(self)                       # Send to 2D (send_qt.py); QML's `sender` (not a QObject attribute: sender() is Qt's)
         self.add = Adder(self)
         self.ctx = Context(self)
         self._poses = Poses(self)
@@ -260,6 +264,12 @@ class Bridge3D(ActionPreview3D, DocBridge):
     def renderJob(self):
         return self.render
 
+    renderQueue = Property(QObject, lambda self: self.queue, constant=True)   # QML: backend.renderQueue (queue.py)
+
+    def extra_commands(self):
+        """Ctrl K: the render queue's operations (queue.commands)."""
+        return self.queue.commands()
+
     # ---- the kit's hooks: the 3D animation model (route.py) ----------------------------------------------------
     def label_of(self, item):
         owner = self.doc.item(self.doc.parent_of(item["id"])[0]) if item.get("type") == "key" else None
@@ -419,6 +429,7 @@ class Bridge3D(ActionPreview3D, DocBridge):
 
     def close(self):
         self._timer.stop()
+        self.queue.close()
         self.marks.close()
         self.endDrag()
         if self.balls._r is not None:

@@ -116,10 +116,10 @@ class Estimate(QObject):
     def refresh(self):
         """Something in the sheet or the scene changed: re-scale the kept measurement at once if it still applies,
         else say "Measuring…" and measure shortly (a run of quick changes measures once)."""
-        if not self._sheet.open and self._state == "measuring":
+        if not self._sheet.wants_time() and self._state == "measuring":
             self._abandon()                               # closed while measuring: the probe ends; reopening measures again
             self._state = ""
-        if not self._sheet.open or self._sheet.running():    # while it renders, the row keeps what it said
+        if not self._sheet.wants_time() or self._sheet.running():    # while it renders, the row keeps what it said
             return self._timer.stop()
         try:
             scene, info, s, frames = self._sheet.plan_now()

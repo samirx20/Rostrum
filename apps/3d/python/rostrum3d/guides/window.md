@@ -11,13 +11,13 @@ sits on top of it.
 | **Rostrum3D**, then the project's name | Click the name to rename the project |
 | **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
 | **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
-| **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows |
+| **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
 | **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
 | **Search or run a command** | Ctrl+K: every action and setting by name |
 | **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
 | **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
 | **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
-| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. See [Rendering](rendering.md) |
+| **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
 
 ## The viewport (middle)

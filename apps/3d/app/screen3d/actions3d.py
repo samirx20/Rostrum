@@ -3,7 +3,8 @@ allows, at the top of the settings panel (SPEC §3.3, "Combine: Union · Subtrac
 offered (rule of individuality). Each action is one change made of operations an agent calls too (`combine.make`).
 Today: Combine, on two or more solids (meshes or combines) in the same list; the first picked is the base, every
 later one a cutter or partner. And "Bevel too big · use 1.84 mm (the largest that fits)": when the engine refused an outline's bevel (text,
-logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.set bevel`). No Qt.
+logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.set bevel`). And Send to 2D on a shot
+(send_qt.py; agents: render_send_shot). No Qt.
 """
 from __future__ import annotations
 
@@ -95,4 +96,15 @@ ACTIONS += [Action("focus:point", "Focus on a point", rank=10, do="focus-point",
                    why="Turn on the camera's Depth of field first; then click where it should be sharp."),
             Action("focus:item", "Focus on an item", rank=11, do="focus-item", row="focusItem", row_label="Pick", **_DOF,
                    why="Turn on the camera's Depth of field first; then click the item to keep sharp.")]
+
+
+def _has_2d(f) -> bool:
+    from rostrum_core import project
+    return bool(f.doc.folder) and bool(project.items(f.doc.folder, "2d"))
+
+
+# Send to 2D (SPEC §12, send_qt.py): the shot's current render into a 2D scene as a live-linked 3D render layer. Offered only
+# when the project has a 2D item (the Editor isn't built yet, so there is no Send to Editor).
+ACTIONS.append(Action("shot:send", "Send to 2D", kinds=("shot",), max_targets=1, importance="secondary", rank=20, group="shot",
+                      do="send-2d", valid=_has_2d, why="Send to 2D needs one shot selected and a 2D item in this project."))
 LIST = ActionList(ACTIONS, KeyMap("Rostrum3D"), noun="solid")

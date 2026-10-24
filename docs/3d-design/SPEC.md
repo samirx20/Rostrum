@@ -842,7 +842,7 @@ markers of its own to the project unless the person makes one shared (M, then th
 **Operations:** `shot.send(target="editor"|"2d", scene)` **(new: a render if needed + a link item in the target
 document through the project service's live links, `rostrum_gui/live_link.py` already exists in the kit)**; the
 render manifest's `scene_hash` **(new)**. **Agent:** `render_still / render_video formats=["exr"]` (exist);
-`send_shot` **(new)**; `inspect_project` (exists) lists links and whether they are current.
+`render_send_shot` **(new; the shared tool names allow only run / inspect / edit / render / look)**; the send reply reports the link and the render used (`inspect_project` is shared and has no per-app hook yet).
 
 ---
 
@@ -876,7 +876,7 @@ render manifest's `scene_hash` **(new)**. **Agent:** `render_still / render_vide
 | `look_shots` | shots | one contact sheet row per shot | Several shots at a glance |
 | `render_estimate` | shot(s) or frame, settings | seconds per frame, total, how measured, what's slowing it, settings that fit a budget | Lull 12 / 20: no false starts |
 | `simulate` | shot, range | a job; on done: frames, bodies at rest, seen count, failures with frame and item | Compute once, on request |
-| `send_shot` | shot, target 2d / editor, scene | the link made, the render used | Hand-offs |
+| `render_send_shot` | shot, target 2d / editor, scene | the link made, the render used | Hand-offs |
 | `look_frame` (extended) | as now | + "clipped: n % of pixels", "applied in Final: …" / "not in Quick: …", text reading direction | Lull 5, 6, 7, 15 |
 
 **Rule for every look tool:** it says what it measured and with which renderer; a tool that can't do what was asked

@@ -20,7 +20,7 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife",
-         "render-sheet-shot", "bevel-too-big", "lens-menu")
+         "render-sheet-shot", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -107,7 +107,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("animate-poses", lid_turn(), ["page animate", "select lid", "pose Lid half open, before the buds come out of the case",
                                        "panel poses"]),
         ("animate-onion", lid_turn(), ["page animate", "select lid", "frame 30", "onion on", "panel onion"]),
-        ("page-render", s, ["page render"]),
+        ("page-render", s, ["deselect", "estimate-recorded", "page render"]),          # the Render page, its queue empty
+        ("render-queue-two", two_shots(), ["deselect", "estimate-recorded", "page render", "queue demo"]),   # running, waiting, ended rows
+        ("render-queue-finished", two_shots(), ["deselect", "estimate-recorded", "page render", "queue demo", "queue show 3"]),
         ("file-menu", s, ["file-menu"]),
         ("start-screen", s, ["startscreen open"]),
         ("export-sheet", s, ["export-open"]),

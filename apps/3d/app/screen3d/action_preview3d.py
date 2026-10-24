@@ -53,6 +53,8 @@ class ActionPreview3D:
             return self.viewport.mesh_edit.enter()          # Edit mesh is screen state (mesh_edit_qt.py)
         if name in ("focus-point", "focus-item") and getattr(self, "viewport", None) is not None:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
+        if name == "send-2d":
+            return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:
