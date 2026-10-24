@@ -4,6 +4,8 @@ import "."
 
 // A choice: the field frame showing the current option, a drawn arrow at the right (vertically centred,
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
+// A long list (more than 8) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
+// opens with a search line on top: what is typed keeps only the options whose label holds it.
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
@@ -15,9 +17,17 @@ FieldFrame {
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
     function detailAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.detail || "") }   // an option's longer words: shown in the open list under its name, never in the closed field
+    function faceAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.face || "") }
     function same(a, b) { return String(a) === String(b) }
     function indexOf(v) { for (let i = 0; i < options.length; i++) if (same(valueAt(i), v)) return i; return -1 }
-    function open() { menu.highlighted = Math.max(0, indexOf(current)); menu.open() }
+    readonly property bool searchable: options.length > 8 || options.some(o => typeof o === "object" && !!o.face)
+    property string query: ""
+    readonly property var shown: {      // the options' indices the search keeps (all without one)
+        const q = query.trim().toLowerCase(), out = []
+        for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
+        return out
+    }
+    function open() { query = ""; menu.highlighted = Math.max(0, shown.indexOf(indexOf(current))); menu.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: menu.opened
@@ -39,26 +49,57 @@ FieldFrame {
         background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
         enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
         exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
+        onOpened: if (f.searchable) search.forceActiveFocus()
         contentItem: Column {
+            id: list
             focus: true
             Keys.onUpPressed: menu.highlighted = Math.max(0, menu.highlighted - 1)
-            Keys.onDownPressed: menu.highlighted = Math.min(f.options.length - 1, menu.highlighted + 1)
-            Keys.onReturnPressed: pick(menu.highlighted)
-            Keys.onEnterPressed: pick(menu.highlighted)
+            Keys.onDownPressed: menu.highlighted = Math.min(f.shown.length - 1, menu.highlighted + 1)
+            Keys.onReturnPressed: pickShown(menu.highlighted)
+            Keys.onEnterPressed: pickShown(menu.highlighted)
             function pick(i) { menu.close(); if (!f.same(f.valueAt(i), f.current)) f.picked(f.valueAt(i)) }
+            function pickShown(k) { if (k >= 0 && k < f.shown.length) pick(f.shown[k]) }
+            Rectangle {   // the search line (a long list or a font list): type to keep only what matches
+                visible: f.searchable
+                width: menu.availableWidth; height: visible ? Theme.field : 0
+                radius: Theme.radiusCtl; color: Theme.sunken; border.color: search.activeFocus ? Theme.accent : Theme.border
+                TextInput {
+                    id: search
+                    objectName: "choiceSearch"
+                    anchors { fill: parent; leftMargin: Theme.gap - menu.padding; rightMargin: Theme.gap }
+                    verticalAlignment: TextInput.AlignVCenter; clip: true
+                    color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                    text: f.query
+                    onTextEdited: { f.query = text; menu.highlighted = 0 }
+                    Keys.onUpPressed: menu.highlighted = Math.max(0, menu.highlighted - 1)
+                    Keys.onDownPressed: menu.highlighted = Math.min(f.shown.length - 1, menu.highlighted + 1)
+                    Keys.onReturnPressed: list.pickShown(menu.highlighted)
+                    Keys.onEnterPressed: list.pickShown(menu.highlighted)
+                    Keys.onEscapePressed: menu.close()
+                    Text { visible: !search.text; anchors.verticalCenter: parent.verticalCenter; text: "Search"
+                           color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont }
+                }
+            }
+            Text {   // the search keeps nothing
+                visible: f.searchable && f.shown.length === 0
+                height: visible ? Theme.popupRow : 0; leftPadding: Theme.gap - menu.padding; verticalAlignment: Text.AlignVCenter
+                text: "Nothing called \"" + f.query.trim() + "\""; color: Theme.fg3; font.pixelSize: Theme.body; font.family: uiFont
+            }
             Repeater {
-                model: f.options
+                model: f.shown
                 delegate: Rectangle {
                     id: opt
-                    required property int index
-                    readonly property string detail: f.detailAt(index)
+                    required property int modelData     // the option's own index
+                    required property int index         // its place in the list shown
+                    readonly property int option: modelData
+                    readonly property string detail: f.detailAt(option)
                     width: menu.availableWidth; height: detail ? Theme.popupRow + detailText.implicitHeight + 2 : Theme.popupRow; radius: 4
                     color: index === menu.highlighted ? Theme.hover : "transparent"
                     Text {  // same left inset as the field's own text, so the list lines up with it
                         anchors.left: parent.left; anchors.leftMargin: Theme.gap - menu.padding
                         anchors.right: tick.left; y: opt.detail ? 4 : (parent.height - height) / 2
-                        text: f.labelAt(opt.index); elide: Text.ElideRight
-                        color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                        text: f.labelAt(opt.option); elide: Text.ElideRight
+                        color: Theme.fg; font.pixelSize: Theme.body; font.family: f.faceAt(opt.option) || uiFont
                     }
                     Text {
                         id: detailText
@@ -70,13 +111,13 @@ FieldFrame {
                     }
                     Rectangle {  // the current option: a small accent dot at the right
                         id: tick
-                        visible: f.same(f.valueAt(opt.index), f.current)
+                        visible: f.same(f.valueAt(opt.option), f.current)
                         anchors.right: parent.right; anchors.rightMargin: Theme.gap - menu.padding + 2
                         anchors.verticalCenter: parent.verticalCenter
                         width: 6; height: 6; radius: 3; color: Theme.accent
                     }
                     MouseArea { anchors.fill: parent; hoverEnabled: true
-                                onEntered: menu.highlighted = opt.index; onClicked: parent.parent.pick(opt.index) }
+                                onEntered: menu.highlighted = opt.index; onClicked: list.pick(opt.option) }
                 }
             }
             Rectangle {  // "Load picture…": after a thin line, in the secondary colour (it adds a choice, it isn't one)

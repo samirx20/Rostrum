@@ -544,12 +544,13 @@ the agent's `inspect_tools`.
 ## 1.16 Empty states
 
 - Every empty place says **what goes here and the one way to start**, in one line, with at most two buttons.
+- **Never on the canvas** (Sam, 2026-10-24): the work area stays clean, words drawn over it are noise; an empty scene is
+  an empty frame, and the tools' hover help says how to start.
 - It disappears as soon as there is something, and never comes back as a pop-up.
 - Examples:
 
 | Where | Says |
 |---|---|
-| A new scene (2D) | "Draw a shape (R), type (T), paint (B), or drop a file here." |
 | A new song (Sound) | "Start with a sound." **Add a track** · **Bring in a picture** · "or drop a file here" |
 | Empty rows | "Your layers appear here as bars. Drag a bar to change when it shows." |
 | History | "Changes you and agents make will be listed here." |

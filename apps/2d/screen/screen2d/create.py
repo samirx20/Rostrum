@@ -54,7 +54,7 @@ class Create(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
-        self.b, self._press, self._box, self._text, self._style = bridge, None, {}, None, {}
+        self.b, self._press, self._box, self._text = bridge, None, {}, None
         self._ink = "#ffffff"                  # the new text's starting colour (text_ink.py), set when typing starts
         bridge.toolChanged.connect(self._tool_changed)
         bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
@@ -77,15 +77,15 @@ class Create(QObject):
 
     @Property("QVariantMap", notify=typingChanged)
     def style(self):
-        """The typing box's look (the context bar's Font, Weight, Size, Colour): the layer's own while editing; the
-        remembered start look (or the defaults) for a new text. {} when not typing."""
+        """The typing box's look (font, weight, size, colour): the layer's own while editing; the defaults (the
+        start size and the contrasting ink) for a new text. {} when not typing. Changed in the settings panel."""
         if self._text is None:
             return {}
         item = self.b.doc.item(self._text.id) if self.b.doc.has(self._text.id) else {}
         d = {k: F.defaults("text")[k] for k in LOOK}
         d["size"] = self._start_size()
         d["color"] = self._ink
-        return {**d, **self._style, **{k: item[k] for k in d if k in item}}
+        return {**d, **{k: item[k] for k in d if k in item}}
 
     @Property(bool, notify=canEditChanged)
     def canEdit(self):
@@ -99,7 +99,7 @@ class Create(QObject):
         return self._text.body if self._text else ""
 
     def _start_size(self) -> float:
-        return self._style.get("size") or max(8, round(self.b.comp()["height"] * 0.08 / 4) * 4)
+        return max(8, round(self.b.comp()["height"] * 0.08 / 4) * 4)
 
     # ---- shapes -------------------------------------------------------------------------------------------------
     @Slot(str, float, float, float)
@@ -168,7 +168,7 @@ class Create(QObject):
         if width > 0:
             place["boxWidth"] = round(width, 2)
         self._ink = ink_for(self.b.colourPick.colour_at(x + 6, y + 6), self.b.comp().get("background", ""))
-        self._text = Session(self.b, None, {"size": self._start_size(), "color": self._ink, **self._style}, place)
+        self._text = Session(self.b, None, {"size": self._start_size(), "color": self._ink}, place)
         self.b.select("")
         self._text_box()
 
@@ -195,14 +195,6 @@ class Create(QObject):
         """Every key: the words so far (the picture shows them as they are typed; no history step yet)."""
         if self._text is not None:
             self.b.guard(lambda: self._text.type(body))
-            self._text_box()
-
-    @Slot(str, "QVariant")
-    def setStyle(self, name, value):
-        """Font / weight / size / colour while typing: in the same change, and the start look of the next text."""
-        if name in LOOK and self._text is not None:
-            self._style[name] = value
-            self.b.guard(lambda: self._text.restyle(name, value))
             self._text_box()
 
     @Slot(str)

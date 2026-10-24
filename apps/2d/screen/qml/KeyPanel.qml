@@ -48,7 +48,7 @@ Column {
             onPicked: (v) => kp.kb.setEase(v)
         }
     }
-    EaseCurve { width: Theme.wideFor(kp.full); height: 96 }
+    EaseCurve { width: Theme.wideFor(kp.full); height: 136 }   // room for a spring's overshoot (fitted inside: EaseCurve.qml)
     Repeater {   // a spring: Bounce and Speed, one change per drag
         model: kp.kb.ease === "spring" && kp.kb.feel.length === 2 ? ["Bounce", "Speed"] : []
         delegate: Line {

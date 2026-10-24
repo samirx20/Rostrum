@@ -549,8 +549,8 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
   back to Move. To edit later: double-click a path (or Enter with it selected) → its points show; drag a point or a
   handle; click on the line to add a point; Delete removes a point; double-click a point to switch smooth / corner;
   Esc or Enter leaves point editing.
-- **Where and when:** the context bar while the Pen is on: "Click: corner · Drag: curve · Click the first point to
-  close" and **Close path**, **Done**. While editing points: **Smooth / Corner**, **Delete point**, **Make it a shape
+- **Where and when:** the Pen's hover help says "Click: a corner. Drag: a curve. Click the first point to close; Enter
+  to finish" (nothing is written over the canvas, Sam 2026-10-24). While editing points: **Smooth / Corner**, **Delete point**, **Make it a shape
   again** (only if it came from a shape).
 - **Feedback:** the next segment previews from the last point to the pointer; handles are drawn while dragging.
 - **Undo and adjust:** every point and drag is one step; Undo while drawing removes the last point and keeps drawing.
@@ -1765,9 +1765,9 @@ right-click and Ctrl+K always agree. Some selections **promote** the action they
 
 | Tool | Context bar |
 |---|---|
-| Pen | Click: corner · Drag: curve · Click the first point to close · **Close path** · **Done** |
+| Pen | nothing (the rule is the Pen's hover help) |
 | Editing points | **Smooth / Corner** · **Delete point** · **Done** |
-| Text, while typing | Font ▾ · Weight ▾ · Size · Colour ■ (Esc, Ctrl+Enter or a click outside ends it; no Done) |
+| Text, while typing | nothing: the new text's settings are in the settings panel from the first letter (Sam, 2026-10-24: no quick-options bar after adding anything) |
 | Paint | brush ▾ · Size · Colour ■ · Opacity · Eraser E · Painting on: *x* ▸ |
 | Paint, strokes selected | *12 strokes* · Move to depth ▾ · Copy · Delete · **Done** |
 | Notes | Marker colour ■ · Write a note… · Resolve |
@@ -1813,8 +1813,8 @@ picker, Steps **On twos**, sizes **16:9 HD**. One spelling: **Colour**, **Centre
 │📚│                                                                      │ Main · Scene                 │
 │V │      ┌──────────────────────────────────────────────────────┐        │ Size   16:9 HD ▾ 1920×1080  │
 │▭ │      │                                                      │        │ Length  10 s                │
-│✒ │      │   Draw a shape (R), type (T), paint (B),             │        │ Frame rate  25 ▾            │
-│T │      │   or drop a file here.                               │        │ Background  ■ none          │
+│✒ │      │                                                      │        │ Frame rate  25 ▾            │
+│T │      │                                                      │        │ Background  ■ none          │
 │🖌 │      │                                                      │        │ ▸ Timing  ▸ Motion blur      │
 │  │      └──────────────────────────────────────────────────────┘        │ ▸ Colour  ▸ Effects (0) +    │
 │+ │                                                  Fit 52 % ▾  Full ▾  │                             │
@@ -2352,7 +2352,7 @@ an internal name, never silent (rule 6).
 
 | Where | Empty state |
 |---|---|
-| A new scene's canvas | "Draw a shape (R), type (T), paint (B), or drop a file here." |
+| A new scene's canvas | nothing: the canvas is never written on (Sam, 2026-10-24); the tools' hover help says how to start |
 | The layers list with no layers | "Your layers appear here as bars. Drag a bar to change when it shows." |
 | A layer with no keys, when its row is opened | "Click a diamond beside a setting to animate it, or press K." |
 | The context bar the first time several things are selected | Its actions are the hint; nothing extra. |

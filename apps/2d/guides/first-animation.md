@@ -17,13 +17,13 @@ This page takes you from an empty project to something that moves, and shows you
 ![The Shapes panel beside the tool rail](pictures/shapes-panel.png)
 
 2. Press **T**, then click on the picture where the words go and type. A row appears in the timeline at the bottom. **Esc**, **Ctrl+Enter** or a click outside the text ends the typing, and the text stays picked, so the panel on the right shows its settings.
-3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list. A new text starts dark on a light spot (a light shape, a picture) and white on a dark one (the empty canvas, a dark shape), judged where you click, so it can be read at once. Pick the colour while typing, or in the panel, and your choice stays for the next text.
+3. In the panel, change **Size**, **Weight** and **Colour** (a swatch plus a hex box) in the short list. A new text starts dark on a light spot (a light shape, a picture) and white on a dark one (the empty canvas, a dark shape), judged where you click, so it can be read at once. Change it in the panel.
 
 ## 3. Pick, move and change things
 
 1. Click a thing in the picture, or its name in the timeline, to pick it. Small squares appear round it.
 2. Drag it to move it. Drag a square on its edge to resize it. The arrow keys nudge the picked layers by 1 pixel, and **Shift** with an arrow by 10. Each press is one change you can undo.
-3. The panel on the right shows a few essential settings first (for text: the words, size, weight, colour, position, opacity). The rest are in named groups below them, such as **Paragraph**, **More type** (width, slant and other font settings) and **Outline**. Click a group's name to open it, and again to fold it.
+3. The panel on the right shows a few essential settings first (for text: the words, size, weight, colour, position, opacity). The rest are in named groups below them, such as **Paragraph**, **More type** (width, slant and other font settings) and **Outline**. Click a group's name to open it, and again to fold it. **+ Outline** adds an outline at once (its colour and width show; **−** removes it). **Font** is a list of the fonts you can use, each shown in its own letters; type to find one.
 4. Not sure where a setting is? Click **Find a setting** at the top of the panel (or press **Ctrl+F**), type a word such as "opacity", and pick the setting from the list. Its group opens and it is shown to you. A word such as "blur" names an effect: it shows a line **Add Blur**, and the effect's settings appear under **Effects** once it is added.
 5. A setting appears only when it can be used. Turn something on and the settings that go with it appear; turn it off and they go. Nothing sits there greyed out.
 6. To rename a layer, double-click its name in the timeline (or press **F2**) and type.

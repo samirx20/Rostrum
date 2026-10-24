@@ -30,7 +30,7 @@ IGNORE = ("/MotionPath#",)
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 QUICK = ("workspace", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
-         "panels-folded", "animation-picked", "key-bar-spring", "brush-panel", "paint-layers", "fill-gradient-handles",
+         "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-layers", "fill-gradient-handles",
          "sound-row", "rig-bones", "camera-ride", "scene-1080x1920", "long-status-line")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -181,6 +181,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-bar-one", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900"]),
         ("key-bar-spring", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "ease spring"]),
         ("key-ease-menu", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easemenu"]),
+        # Sam's list (2026-10-24): "+ Outline" adds it (its heading's −), the font list, a curve that overshoots fitted in its box
+        ("outline-added", ["--sample"], ["select card", "group Outline"]),
+        ("font-list", ["--sample"], ["select title", "clickobj row:font"]),
+        ("key-curve-overshoot", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "easecurve 0.3 -0.6 0.6 1.7"]),
         ("stagger-popover", ["--sample"], ["selectmany title card", "stagger 3 open"]),
         # H31: the key bar's ⋯ (After the last key, Play the ease), the "+6 f · key" label mid-drag, Stagger on keys
         ("key-more-menu", ["--sample"], ["select dot", "keypick dot.x.k2200", "keyafter pingpong", "keymore"]),

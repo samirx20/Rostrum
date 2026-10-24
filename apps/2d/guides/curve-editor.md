@@ -31,7 +31,7 @@ You don't need the curve editor for a named ease. Select keys (in **Keys**, or b
 
 - **Ease** list: **Linear**, **Ease in**, **Ease out**, **Smooth**, **Spring**, **Jump**, **Custom**. Every selected key changes. Right-click a key for the same list.
 - With **Spring** picked, **Bounce** and **Speed** sliders appear.
-- A small curve you can drag, **Time** and **Value** for a single key.
+- The ease's curve, always whole inside its box: a spring's or a back ease's overshoot is fitted in, with faint lines at the start and end values. Drag its two round handles (a custom curve); **Time** and **Value** for a single key.
 - The **⋯** menu: **After the last key** (Stay, Repeat, Back and forth, Carry on), and whether the canvas plays an ease once when you pick it.
 
 Keys: **F9** Smooth, **Shift+F9** Ease in, **Ctrl+Shift+F9** Ease out, **Ctrl+Alt+J** Jump.

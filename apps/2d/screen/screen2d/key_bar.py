@@ -70,9 +70,9 @@ class KeyBar(QObject):
 
     @Property("QVariantList", notify=changed)
     def curve(self):
-        """The first key's ease as 25 points [x, y] (0..1, y may leave it): what the small curve draws."""
+        """The first key's ease as 61 points [x, y] (0..1, y may leave it: a spring's wobbles show): what the small curve draws."""
         k = self._first()
-        return [[i / 24, ease_at(k, i / 24)] for i in range(25)] if k else []
+        return [[i / 60, ease_at(k, i / 60)] for i in range(61)] if k else []
 
     @Property(bool, notify=changed)
     def one(self):

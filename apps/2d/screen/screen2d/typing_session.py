@@ -20,7 +20,7 @@ class Session:
         self.b, self.layer, self.place, self.style = bridge, layer, place, dict(style)
         self.body = bridge.doc.item(layer)["body"] if layer else ""
         self.start = self.body
-        self.drag, self.restyled = None, False
+        self.drag = None
         self.id = layer or ids.counted(index(bridge.doc.data, KIND.lists), "text")
 
     def _open(self):
@@ -44,19 +44,12 @@ class Session:
         if self.layer is None and self.b.selected != self.id and self.b.doc.has(self.id):
             self.b.select(self.id)                     # the first letter: the settings panel shows the new text's
 
-    def restyle(self, name: str, value):
-        self.style[name], self.restyled = value, True
-        if self.layer and self.drag is None:
-            self._open()
-        if self.drag is not None:                      # not yet typing: the style waits for the first letter
-            self.drag.preview(self._calls(**{name: value}))
-
     def end(self):
         """Save the session as one change; nothing typed (or an edit that left it unchanged / empty) saves nothing."""
         if self.drag is None:
             return None
         empty = not self.body.strip()
-        same = self.layer is not None and self.body == self.start and not self.restyled
+        same = self.layer is not None and self.body == self.start
         mine = self.layer is None and self.b.selected == self.id
         change = self.drag.end(cancel=empty or same)
         if mine and empty:

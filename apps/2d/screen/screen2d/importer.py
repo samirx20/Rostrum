@@ -31,7 +31,7 @@ class Importer(QObject):
     changed = Signal()
     _landed = Signal(object, str, bool)           # (plan, error line, cancelled): from the worker thread
     _progressed = Signal(float, str)
-    wantPanel = Signal()                          # a pasted Figma link: the Import panel opens on it (Main.qml)
+    wantPanel = Signal()                          # a pasted Figma link, or something that didn't come across: the Import panel opens (Main.qml)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
@@ -43,6 +43,11 @@ class Importer(QObject):
         self._progressed.connect(self._on_progress)
 
     # ---- what QML shows (only what applies to the chosen source) ---------------------------------------------
+    @Property(str, constant=True)
+    def filters(self):
+        """The file picker's one filter: every file the importer reads (importing.FILTERS)."""
+        return importing.FILTERS
+
     @Property(str, notify=changed)
     def source(self):
         return self._source
@@ -251,6 +256,8 @@ class Importer(QObject):
         if r["layers"]:
             b.select(r["layers"][-1])
         self.changed.emit()
+        if r["report"]:
+            self.wantPanel.emit()                    # what didn't come across is listed there (Import… and drops alike)
         self._next()                                 # the next dropped file, if any
 
     @Slot()

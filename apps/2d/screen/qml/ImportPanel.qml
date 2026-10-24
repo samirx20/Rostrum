@@ -5,7 +5,8 @@ import RostrumKit
 // Import: a file (SVG, PDF page, PSD, image, video) or a Figma frame into the open composition, as one change. Only the
 // settings that apply to what was chosen are here (a page for a PDF, text handling for an SVG, key / frame / token for Figma).
 // Afterwards the settings go: only what came in and the list of what didn't come across stay (and the panel closes by
-// itself when everything came across: the status line says what was imported). Opened from the rail's Media › Import….
+// itself when everything came across: the status line says what was imported). Opened by a pasted Figma link (the rail's
+// Media › Import… picks a file and imports it at once, Rail2D.qml).
 Rectangle {
     id: panel
     // Always `panel.job`, never bare `job`: inside a kit Button / IconButton a bare `job` is the button's own key-map name
@@ -17,7 +18,7 @@ Rectangle {
     width: 320
     height: Theme.header + col.implicitHeight + Theme.pad
     visible: shown
-    onShownChanged: if (shown && done) panel.job.clearResult()      // opened again: the last result goes, the settings return
+    onShownChanged: if (shown && done && panel.job.report.length === 0) panel.job.clearResult()   // opened again: the last result goes (a report it opened for stays)
     Connections {
         target: panel.job
         function onChanged() { if (panel.done && panel.job.report.length === 0) panel.shown = false }
@@ -36,7 +37,7 @@ Rectangle {
     FileDialog {
         id: dialog
         title: "Choose a file to import"
-        nameFilters: ["Images, video, SVG, PDF, PSD (*.svg *.pdf *.psd *.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff *.mp4 *.mov *.webm *.mkv *.m4v *.avi)"]
+        nameFilters: [panel.job.filters]
         onAccepted: panel.job.setFile(selectedFile.toString())
     }
     Column {

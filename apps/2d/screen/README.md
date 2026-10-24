@@ -24,8 +24,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   selection doesn't allow (nothing is greyed). Each action is one change: all its calls in one apply; the operations
   are the ones agents call (`python/rostrum2d/ops_*.py`). A selection holding a locked layer is offered only Unlock.
 - One `ActionHub` (`backend.actions`, `action_slots.py`) feeds four doors: the **context bar** (the kit's ContextBar at
-  the top-centre of the canvas, hidden while playing or dragging; with Pen, Paint or typing on it shows that tool's
-  options instead: `qml/ToolOptions.qml`), the **right-click menus** (a layer's name in the timeline, and the canvas: an
+  the top-centre of the canvas, hidden while playing or dragging; with strokes picked it shows only what applies to
+  them: `qml/StrokeBar.qml`; no tool puts options or hint words over the canvas), the **right-click menus** (a layer's name in the timeline, and the canvas: an
   unselected layer is selected alone first; sets of more than two choices fold into a side menu), **Ctrl+K**'s Do group
   and the **keys** (the kit's KeyMap). Esc steps back one level (the kit's `selection_rules.esc_step`: picked keys,
   then layers); arrows nudge 1 px, Shift 10 px, Alt 0.1 px, one change per press.
@@ -56,8 +56,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **R / O / T** (`screen2d/create.py`, `typing_session.py`, `qml/CreateOverlay.qml` in the canvas beside the tool rail):
   drag a rectangle or ellipse (Shift square / round, Alt from the centre, a click = 200 × 200), one change, selected,
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
-  key), Esc / Ctrl+Enter ends; double-click a text to type in it again. While typing the context bar has Font, Weight,
-  Size, Colour (`qml/ToolOptions.qml`; no Done: Esc, Ctrl+Enter or a click outside ends), and from the first letter
+  key), Esc / Ctrl+Enter ends; double-click a text to type in it again. No bar of options pops up while typing (no Done
+  either: Esc, Ctrl+Enter or a click outside ends); from the first letter
   the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "More type" / "Fill style" for a text (kit `sections.WORDS`; the group keys stay Font / Fill). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
@@ -126,7 +126,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 ## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
 
 - **Key block** (`qml/KeyPanel.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
-  at the top of the settings panel only while keys are picked. Ease ▾, the curve (drag its two handles: `key.handles`), one
+  at the top of the settings panel only while keys are picked. Ease ▾, the curve (fitted whole in its box, overshoot
+  included; drag its two handles: `key.handles`), one
   key's Time and Value, a spring's Bounce and Speed (`key.set {bounce, speed}`; the words become stiffness / damping in one
   place, `rostrum_core/keys/spring.py`, and `scene.py` sends the engine those). Every picked key changes; each pick, edit
   or whole drag is one change. A key's right-click opens the same list; F9 / Shift+F9 / Ctrl+Shift+F9 / Ctrl+Alt+J are
@@ -370,11 +371,15 @@ A step that leaves an error in the status line fails the run.
 
 - **Tool rail** (`qml/Rail2D.qml` fills the kit's `ToolRail.qml` / `ToolFlyout.qml` with 2D's tools; icons: the kit's `ToolIcon.qml`, 2D's `ShapeIcon.qml` and `PaintToolIcon.qml`): icons only, its own column
   left of the canvas. Select V · Shapes (Rectangle R, Ellipse O) · Pen P · Text T · Brush B | Media Ctrl+I (Picture,
-  Video, 3D render only with Rostrum3D, Import…, Library) · Sound (only while the selection can take a cue) · Camera C
+  Video, one entry per rendered 3D item of the project (`render3d.placeable`; none without one), Import…, Library) · Sound (only while the selection can take a cue) · Camera C
   (the first use adds one) | Hand H / Zoom Z · Bone J (only with a rig in hand). A group with more than one entry opens a
   flyout beside the rail; its icon is its last-used tool. Media's entries go through `screen2d/adding.py` (one change,
-  centred, selected, one undo step; picture and video ask for a file first). Step: `flyout <group>|close`.
-- **Import** (top bar, `qml/ImportPanel.qml`, `screen2d/importer.py`): from a file (SVG, PDF with its page, PSD, image,
+  centred, selected, one undo step; picture and video ask for a file first); Ctrl+K's Add commands are the same entries
+  (`file_commands.py`: never a bare `layer.add` that would make an empty layer). Every entry does its job on the click.
+  Step: `flyout <group>|close`.
+- **Import** (Media › Import…: the file picker, then the file comes in at once with the defaults, as a drop does:
+  `importer.dropFiles`). The panel (`qml/ImportPanel.qml`, `screen2d/importer.py`) opens for a pasted Figma link, or by
+  itself when something didn't come across; it can also take a file (SVG, PDF with its page, PSD, image,
   video; what the file is decides which settings show) or a Figma file key + frame + your own token (typed into the panel,
   never stored, printed or sent anywhere but Figma). One change, one undo step; afterwards the layers that came in and the
   list **Didn't come across** (clip paths, filters, shadings, fonts that aren't here, baked PSD effects …). An error shows in

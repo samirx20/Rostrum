@@ -25,10 +25,13 @@ class SectionSlots(SlotMixin):
 
     @Slot(str)
     def toggleGroup(self, group):
-        """Fold or open a group (from its heading or its name in the row of names); the choice outlives the selection."""
+        """Fold or open a group (from its heading or its name in the row of names); the choice outlives the selection.
+        A group a switch turns on (rows.py `switch`) is added or removed instead: its switch set on / off, one change."""
         row = next((r for r in self.model.rows if r.get("fold") == group), None)
         if row and row.get("own"):          # the kind's own group is always open
             return
+        if row and row.get("switch"):
+            return self.setValue(row["switch"], not row["open"])
         self._kit.open_groups[group] = not (row and row["open"])
         self._refresh()
 

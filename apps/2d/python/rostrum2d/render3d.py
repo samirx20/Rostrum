@@ -82,6 +82,15 @@ def find(item: dict, folder) -> dict:
             "source_hash": (src := r["manifest"].get("source", {})).get("scene_hash") or src.get("doc_hash")}
 
 
+def placeable(folder) -> list[dict]:
+    """The project's 3D items a render layer can show now: [{id, name}] of each 3D item with a finished picture render
+    holding EXR frames (what `find` reads), by name. [] without a project folder: then there is nothing to place."""
+    if not folder or not Path(folder).is_dir():
+        return []
+    return [{"id": it["id"], "name": it["name"]} for it in project.items(folder, "3d")
+            if any(r["kind"] == "pictures" and any(f.lower().endswith(".exr") for f in r["files"]) for r in it["renders"])]
+
+
 def document_seq(folder, ref: str) -> int | None:
     """The 3D document's last saved step (its history file), or None when it can't be told."""
     try:

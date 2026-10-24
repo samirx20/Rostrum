@@ -46,7 +46,7 @@ class Param:
     labels: dict = field(default_factory=dict)   # for type "choice": value -> the words screens show (else plain_words)
     kept: list = field(default_factory=list)     # for type "choice": values old files may hold (they still open and read)
                                                  # but nothing offers or newly sets: not in `options`, pickers, schemas
-    words: dict = field(default_factory=dict)    # for type "number": a value that means something, in words
+    words: dict = field(default_factory=dict)    # a value that means something, in words (a number's; a pick's "")
                                                  # ({36000.0: "End of comp"}): screens show the words, not the number
     kind: str | None = None          # for type "id": the item kind it must point at
     item: str | None = None          # for type "list": the type of each element (min/max/integer/options/kind then apply per element)
@@ -212,7 +212,7 @@ class Param:
         if self.markers:
             desc += ' (seconds, or a shared marker: "#drop", "#drop+0.2", "#hush-0.5")'
         if self.words:
-            desc += " (" + ", ".join(f"{v:g} = {w}" for v, w in self.words.items()) + ")"
+            desc += " (" + ", ".join(f"{v:g} = {w}" if isinstance(v, (int, float)) else f'"{v}" = {w}' for v, w in self.words.items()) + ")"
         if self.valid_when:
             from .conditions import describe
             desc += f" (only when {describe(self.valid_when)})"

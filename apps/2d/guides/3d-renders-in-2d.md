@@ -4,6 +4,13 @@ A **3D render** layer shows a Rostrum3D item's finished render inside a 2D compo
 your type, a still of a device under a UI animation. It is a placed picture, read-only. You move, scale, mask, blend
 and time it like any layer; you change the product itself in Rostrum3D.
 
+## Placing one
+
+- In the tool rail, open **Media**: every Rostrum3D item of this project that has a finished render (with EXR frames)
+  is listed by its name. A click places that item's render, centred, as one step. An item not rendered yet is not
+  listed (render it in Rostrum3D first); with none, nothing 3D is offered. Ctrl+K lists the same ("Add 3D render: …").
+- In the settings panel, **3D item** and **3D shot** are lists of what the project has, never ids to type.
+
 ## How it stays live
 
 - The layer names a 3D item of the project (`item`). With **Version** at 0 ("Newest") it always shows that item's

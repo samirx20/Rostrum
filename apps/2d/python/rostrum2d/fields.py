@@ -52,9 +52,9 @@ def T(name, label, group, default, imp=P, when=None, help=""):
     return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-def X(name, label, group, default, imp=P, help="", when=None, control="", filters=()):
+def X(name, label, group, default, imp=P, help="", when=None, control="", filters=(), words=None):
     return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help,
-                      control=control, filters=list(filters))
+                      control=control, filters=list(filters), words=words or {})
 
 
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
@@ -186,7 +186,8 @@ FIELDS: dict[str, list[Param]] = {
         N("fps", "Frame rate", "Frame", 1, 120, 1, "fps", integer=True, default=30),
         N("duration", "Length", "Frame", 0.04, 3600, 0.01, "s", default=5.0),
         C("background", "Background", "Look", "#000000"),
-        X("soundtrack", "Soundtrack", "Sound", "", S, help="The RostrumSound item of this project that plays with this "
+        X("soundtrack", "Soundtrack", "Sound", "", S, control="pick", words={"": "Main mix"},       # screens: the project's Sound items
+          help="The RostrumSound item of this project that plays with this "
           "scene: the project's main mix by default (empty). Rendered by Sound's engine"),
     ],
     "shape": [
@@ -225,7 +226,7 @@ FIELDS: dict[str, list[Param]] = {
     ] + TRANSFORM,
     "text": [
         X("body", "Text", "Text", "Text"),
-        X("font", "Font", "Text", "Roboto Flex"),
+        X("font", "Font", "Text", "Roboto Flex", control="pick"),       # screens: the fonts there are, each in its own face
         N("size", "Size", "Text", 1, 2000, 1, "px", default=96.0),
         N("weight", "Weight", "Text", 1, 1000, 1, "", default=600.0),
         C("color", "Colour", "Text", "#ffffff"),
@@ -265,8 +266,9 @@ FIELDS: dict[str, list[Param]] = {
     # A Rostrum3D item's finished render, placed read-only (render3d.py): its EXR frames with their transparency, shown
     # as a video layer. Version 0 follows the newest render; Timed from marker puts its first frame on a marker (retime.py).
     "render3d": [
-        X("item", "3D item", "3D render", "", help="Id of a Rostrum3D item of this project"),
-        X("shot", "3D shot", "3D render", "", S, help="Id of the item's shot to show (empty = the newest render of any shot)"),
+        X("item", "3D item", "3D render", "", help="Id of a Rostrum3D item of this project", control="pick"),   # screens: the rendered 3D items
+        X("shot", "3D shot", "3D render", "", S, help="Id of the item's shot to show (empty = the newest render of any shot)",
+          control="pick", words={"": "Newest of any shot"}),
         N("version", "Version", "3D render", 0, 100000, 1, "", S, integer=True, words={0: "Newest"},
           help="0 = always the newest render (follows new renders); a number keeps that version"),
         N("w", "Width", "3D render", 2, 8192, 1, "px", integer=True, default=1920),

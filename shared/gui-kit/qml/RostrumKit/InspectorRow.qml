@@ -7,7 +7,8 @@ import "ValueKinds.js" as VK
 // A fold row (rows by importance) is a group's name with a chevron: click opens or closes the group
 // (bridge.toggleGroup(model.fold)); only an open group shows its fold row. The "folds" row is every folded group's
 // name in one short wrapping line ("+ Depth  + Timing  + Blend", at most `shortLine` names, then "+ N more"); a click on a
-// name opens that group (the "+" says it is a control, so a lone name never reads as an empty heading). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
+// name opens that group (a group a switch turns on, model.switch, is added: "+ Outline" puts the outline on, one change, and
+// its heading has − to remove it; rows.py) (the "+" says it is a control, so a lone name never reads as an empty heading). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
 // opacity ease over Theme.reveal (160 ms); the Column below just follows. A new selection shows at once: a new
@@ -110,18 +111,26 @@ Item {
                     NumberAnimation { to: 1; duration: Theme.fast } PauseAnimation { duration: 700 }
                     NumberAnimation { to: 0; duration: 400 } }
             }
-            Item {  // a fold row: chevron + the group's name
+            Item {  // a fold row: chevron + the group's name (a group a switch turns on: its name and a remove control)
                 visible: row.model.row === "fold"
                 anchors.fill: parent
-                Chevron { id: foldChev; visible: !row.model.own; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                readonly property bool plain: !!row.model.own || !!row.model.switch     // no folding: always open while it applies
+                Chevron { id: foldChev; visible: !parent.plain; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                           rotation: row.model.open ? 0 : -90; color: foldArea.containsMouse ? Theme.fg : Theme.fg3
                           Behavior on rotation { NumberAnimation { duration: Theme.fast; easing.type: Theme.revealEasing } } }
-                Text { anchors.left: foldChev.right; anchors.leftMargin: row.model.own ? -foldChev.width : Theme.grid + 2
+                Text { anchors.left: foldChev.right; anchors.leftMargin: parent.plain ? -foldChev.width : Theme.grid + 2
                        anchors.verticalCenter: parent.verticalCenter; text: row.model.label
                        color: foldArea.containsMouse ? Theme.fg : Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        font.weight: Font.DemiBold }
-                MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; enabled: !row.model.own
+                MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; enabled: !parent.plain
                             cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(row.model.fold) }
+                IconButton {   // a switched group: remove it (its switch off, one change); it goes back to the row of names
+                    objectName: "remove:" + row.model.fold
+                    visible: !!row.model.switch
+                    anchors { right: parent.right; rightMargin: row.keyMarks ? row.gutter : 0; verticalCenter: parent.verticalCenter }
+                    glyph: "−"; kind: "ghost"; tip: "Remove " + String(row.model.label).toLowerCase()
+                    onClicked: row.bridge.toggleGroup(row.model.fold)
+                }
             }
             Flow {  // the "folds" row: the folded groups' names, a click opens one
                 id: names
