@@ -1,4 +1,4 @@
-"""look_motion: what moves and how; look_path: the path one layer or camera travels. Both computed from the document's
+"""look_motion: what moves and how; look_path: the path one layer or the frame travels. Both computed from the document's
 keys (nothing is rendered)."""
 from __future__ import annotations
 
@@ -80,8 +80,8 @@ def _all_layers(layers: list[dict]):
 
 
 def _seen_at(comp: dict, layer: dict, times: list[float]) -> list[tuple[float, float]]:
-    """Where the layer's own place (x, y) is seen on screen at each time: through its groups and the camera (the one
-    geometry rule, geometry.flatten); a camera: where the frame's centre point of the scene lands (motion_samples)."""
+    """Where the layer's own place (x, y) is seen on screen at each time: through its groups and the frame (the one
+    geometry rule, geometry.flatten); the frame: where the output's centre point lands (motion_samples)."""
     if layer["type"] == "camera":
         return [_screen(row)[:2] for row in _cameras(comp, times)[f'camera:{layer["id"]}']]
     out = []
@@ -109,18 +109,18 @@ def path_of(comp: dict, layer: dict, rate: float) -> dict:
 
 
 @tools.tool("look_path", {"required": ["layer"], "properties": {**ITEM_COMP,
-    "layer": {"type": "string", "description": "A layer id, or the camera's id."},
+    "layer": {"type": "string", "description": "A layer id, or the frame's id (\"frame\")."},
     "rate": {"type": "number", "exclusiveMinimum": 0, "maximum": 240, "description": "Samples a second. Default: the composition's frame rate."}}})
 def look_path(ctx, args):
-    """The path a layer or the camera travels, from the document's keys (no rendering): per sample t, its own x / y
-    and where that point is seen on screen (through its groups and the camera; for a camera, where the scene's centre
+    """The path a layer or the frame travels, from the document's keys (no rendering): per sample t, its own x / y
+    and where that point is seen on screen (through its groups and the frame; for the frame, where the output's centre
     lands); its position keys with their spatial handles (out / in as [dx, dy] px, null = none: a third of the way to
     the neighbouring key); the path's length on screen in px and its peak speed in px/s. Bend the path with the
     key.path_handles operation."""
     comp = doc_and_comp(ctx, args)[1]
     layers = {x["id"]: x for x in _all_layers(comp.get("layers", []))}
     if args["layer"] not in layers:
-        raise RostrumError.not_found("look_path", "layer", args["layer"], list(layers), "the layers and cameras of this composition")
+        raise RostrumError.not_found("look_path", "layer", args["layer"], list(layers), "the layers and the frame of this composition")
     a = path_of(comp, layers[args["layer"]], float(args.get("rate") or comp.get("fps", 30)))
     return Reply(f'{a["layer"]}: path {a["length_px"]} px on screen, peak {a["peak_speed_px_s"]} px/s, '
                  f'{len(a["keys"])} position key{"s" * (len(a["keys"]) != 1)}.', a)

@@ -156,14 +156,14 @@ layer.ride target=spark path=                     # stop riding (stays where it 
   become an offset from there (layer.ride sets them to 0); key them to bob above the line. On screen the Position row
   then reads **Offset from path** (X, Y).
 - **Rides at:** a path set alone (`set ridePath`, or the Ride picker) rides **along**: Along path starts at 0, the path's start, and
-  keying it 0 → 1 drives the layer or camera along the path. `layer.ride` with no `at` still rides the drawn-on tip. `end` = the tip of the part drawn so far (key `trimEnd` and the layer travels with the drawing), `start`
+  keying it 0 → 1 drives the layer or the frame along the path. `layer.ride` with no `at` still rides the drawn-on tip. `end` = the tip of the part drawn so far (key `trimEnd` and the layer travels with the drawing), `start`
   = Trim start (a line drawn off from behind), `along` = `rideAlong` (0 = the path's start, 1 = its end) whatever the trim.
 - **The path can move:** reshaping (`d` keys), moving, turning or scaling the path carries the rider with it on every
   frame. A path's tilt is not followed.
 - Trails, smears and motion blur see the ride (they sample the same frames).
 - A ridden path can't ride a path itself, and a text following a path layer (`text.follow`) can't also ride one.
-- **The camera can ride a path too.** `layer.ride target=cam path=road at=along` and key `rideAlong` 0 → 1: where the
-  camera looks sits on the path, its own `x` / `y` are an offset, and `turn=true` rolls it with the path's direction.
+- **The frame can ride a path too.** `layer.ride target=frame path=road at=along` and key `rideAlong` 0 → 1: the
+  frame's centre sits on the path, its own `x` / `y` are an offset, and `turn=true` rolls it with the path's direction.
   `look_sheet` over the shot shows where it is at each time.
 - **Ride a path, or draw the move with keys.** A layer riding a path shows that path; it has no motion path of its own.
   For a move you shape by hand without a path layer, key its position and curve the motion path (below).
@@ -180,7 +180,7 @@ y keys. With handles the move follows a Bézier curve, drawn the same by the can
 {"op": "key.path_handles", "target": ["spark"], "args": {"t": 1.0, "out": null, "in": null}}
 ```
 
-`t` is the key's time; the layer (or the camera) needs an x and a y key there, or it is refused. `null` takes a handle
+`t` is the key's time; the layer (or the frame) needs an x and a y key there, or it is refused. `null` takes a handle
 away; a handle left out stays as it is. A missing handle counts as a third of the way to the next key, so one handle
 alone bends just that end. The ease still decides the timing: speed along the curve follows the ease, not the curve's
 length, so a tight bend with a long straight part reads faster on the straight part. Check with the frame dots or

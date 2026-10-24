@@ -1,4 +1,4 @@
-"""look_rig and inspect_rig_motion: the agent's eyes on a rig. Both ask the engine for the posed bones (screen px, through the camera; CAMERA.md)."""
+"""look_rig and inspect_rig_motion: the agent's eyes on a rig. Both ask the engine for the posed bones (screen px, through the frame; FRAME.md)."""
 from __future__ import annotations
 
 import tempfile
@@ -61,7 +61,7 @@ def look_rig(ctx, args):
 @tools.tool("inspect_rig_motion", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                                    "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the last frame."}}})
 def inspect_rig_motion(ctx, args):
-    """Per IK chain over a time range, sampled at every frame: the tip's path (comp px, the camera undone), the largest IK gap (how far the tip misses its
+    """Per IK chain over a time range, sampled at every frame: the tip's path (comp px, the frame undone), the largest IK gap (how far the tip misses its
     target) and when, and for each pinned span how far the tip moved during it (over 0.5 px is a sliding foot). Facts only."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)

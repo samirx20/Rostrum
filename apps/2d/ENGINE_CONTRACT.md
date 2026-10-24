@@ -1,6 +1,6 @@
 # Rostrum2D engine contract — the scene description
 
-*Team Sam, brief S5, 2026-10-21. Version **1**. Between the Python layer (`apps/2d/python/rostrum2d/`) and the Rust engine (`apps/2d/engine/`, Team Hem).*
+*Team Sam, brief S5, 2026-10-21. Version **2** (the frame, camera spec F2, 2026-10-24). Between the Python layer (`apps/2d/python/rostrum2d/`) and the Rust engine (`apps/2d/engine/`, Team Hem).*
 
 The Python layer owns the document (OPERATIONS.md § 1). It sends the engine a **scene description**: one composition, every item's still values, and the keys of its animated fields. The **engine evaluates the scene per frame** (keys, easing, then drawing), so scrubbing is fast and the canvas, the look tools and the export all draw the same way (AGENTS.md rule 5: preview ≡ export).
 
@@ -32,11 +32,13 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 ```json
 {
-  "format": "rostrum-2d-scene", "version": 1,
+  "format": "rostrum-2d-scene", "version": 2,
   "comp": {
     "id": "intro", "type": "comp",
     "props": {"width": 1920, "height": 1080, "fps": 30, "duration": 3.0, "background": "#05050a"},
     "layers": [
+      {"id": "frame", "type": "camera",
+       "props": {"x": 960, "y": 540, "zoom": 1, "rotation": 0, "homeX": 960, "homeY": 540, "ridePath": "", "…": "…"}},
       {"id": "title", "type": "text",
        "props": {"body": "Rostrum", "size": 220, "weight": 780, "x": 960, "y": 540, "opacity": 1.0, "…": "…"},
        "anim": {"y": [{"t": 0.2, "v": 600, "ease": "snappy"}, {"t": 1.0, "v": 540, "ease": "smooth"}]},
@@ -49,6 +51,14 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 ```
 
 - **Every field is present** in `props` (defaults filled in by Python), so the engine needs no defaults table of its own. The fields, their types and ranges are `rostrum2d/fields.py` (the one table).
+- **The frame** (`type: "camera"`, FRAME.md): what the export shows, the scene's camera. At most one, **first** in the
+  comp's own `layers` (Python always sends one); fields `x`, `y` (the world point at its centre), `zoom` (above 0),
+  `rotation`, `homeX`, `homeY` (not keyable) and the ride; no `start`, `end`, `effects`, `masks`, `depth`,
+  `screenLock`. It is never drawn. Each top-level layer is seen through it by its `depth` (`screenLock`: pinned to it),
+  wrapped in one `cam~<id>` div with one matrix, **only when the frame ever leaves home** (a key on its move, a ride, a
+  still value away from home, or home away from the output centre); otherwise the page is byte for byte the page of a
+  scene without it. Refused when the scene loads: two frames, a frame not first or inside a group or rig, effects or
+  masks on it, a zoom of 0 or less in any key.
 - **Layers draw in list order**: the first is at the bottom. A `group` has its own `layers`, drawn inside its box.
 - `effects` and `masks` belong to the layer; effects, masks and layers may each have `anim`.
 - Ids are unique in the scene. Times are **seconds**; lengths are **px** in the composition's frame; angles **degrees**; colours `#rrggbb`, or `#rrggbbaa` (see-through; keys mix the alpha too; a gradient stop multiplies it into its `opacity`).
@@ -90,7 +100,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 
 - A field with an `anim` list is **animated**: its keys alone decide its value; the value in `props` is ignored. Otherwise it is still.
 - Keys are sorted by `t`. Before the first key and after the last, the value holds. Between key *a* and key *b*, progress `p = ease_a((t − a.t) / (b.t − a.t))` and the value is `a + (b − a) · p`. `p` may leave 0..1 (spring, custom curves overshoot).
-- **Spatial handles** (a number key only; in practice `x` and `y`, the path a moving layer or camera travels): a key may
+- **Spatial handles** (a number key only; in practice `x` and `y`, the path a moving layer or the frame travels): a key may
   carry `out` (the handle leaving it) and `in` (the handle arriving at it), offsets from its value in the field's own
   units (px for x / y). For the stretch from *a* to *b*: if *a* has no `out` and *b* no `in`, the value is
   `a + (b − a) · p` exactly as before. Otherwise it is the cubic Bézier through `a`, `a + a.out`, `b + b.in`, `b` at
@@ -177,8 +187,8 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   effects and masks; outside its own times it is empty (the layer hidden; inverted: whole). Any layer type is a matte:
   the painter draws the matte layer's own markup (`data-track-matte`, vendor/blitz-paint/src/track_matte.rs) as the
   mask, so a matte looks exactly as that layer would on its own. Refused when the scene loads or is edited: a matte that
-  is no layer beside it, the layer itself, the camera, or a layer that has a matte of its own.
-- **Riding a path layer** (every layer and the camera, whose `x`, `y` are where it looks; `scene/follow.rs`, the same place a text's `pathLayer` is
+  is no layer beside it, the layer itself, the frame, or a layer that has a matte of its own.
+- **Riding a path layer** (every layer and the frame, whose `x`, `y` are its centre; `scene/follow.rs`, the same place a text's `pathLayer` is
   resolved): `ridePath` = the id of a `path` layer beside it (same group or comp; "" = none). At every time the layer's
   anchor sits on that path as it is then (its `d`, box and transform: anchor, rotation, scale, stretch; tilt and smear
   are left out): `rideAt` `end` = the tip of the drawn-on part (`trimEnd`, never before `trimStart`), `start` =
@@ -191,7 +201,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
   import; the engine compiles it in, `scene/blends.rs`): normal, multiply, screen, add, overlay, soft-light,
   hard-light, darken, lighten, color-dodge, color-burn, difference, exclusion, hue, saturation, color, luminosity.
   Each is written as the CSS `mix-blend-mode` in that file's second column (`add` = `plus-lighter`) and drawn by Skia's
-  blend of the same name. A layer under a camera or a track matte carries its blend on the wrapper (`blends::style`).
+  blend of the same name. A layer seen through a moving frame or a track matte carries its blend on the wrapper (`blends::style`).
 - **Colour effects** (`scene/grade.rs`, every layer): `adjust` on → `exposure` (stops), `temperature` / `tint`
   (the grade's `warmth`), `contrast` (×, about mid grey), `saturation` (×), `hue` (degrees); `levels` on →
   `inBlack`, `inWhite`, `gamma`, `outBlack`, `outWhite` (screen brightness 0..1); `curves` on → `curve` (all channels),
@@ -226,6 +236,7 @@ The page-markup requests (`open`, `frame {stage}`, `page`, `finish`) stay in `se
 - S9 (same version): text `pathOverflow`.
 - S10 (same version): text `pathLayer` (a text follows a path layer, per frame); a text on a path now takes its colour and outline when not played letter by letter.
 - H41 (same version): every layer may ride a path layer (`ridePath`, `rideAt`, `rideAlong`, `rideTurn`), per frame.
+- F2 (**version 2**, 2026-10-24): cameras become the scene's one frame (`type: "camera"` with `homeX`, `homeY`, no `start` / `end`; first in the comp's layers; wrappers only when it leaves home); motion blur's sub-frames never cross a jump (a key after a `hold` key) on any field; the `bones` reply's per-rig matrix is `frame` (was `camera`). Python converts older documents' cameras before sending (FRAME.md › Older files).
 - E9 (same version): the camera rides a path too; colours may be `#rrggbbaa`; the `shapes` request; an arrow is one merged outline.
 - H10 (same version): rig layers, bones, IK, binds; the `bones` request.
 - H16 (same version): the `measure` request (a text's laid-out box, for auto layout and the screen's boxes).

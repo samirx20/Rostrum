@@ -1,4 +1,4 @@
-"""The path a moving layer or camera travels between its position keys: `key.path_handles` bends it with spatial
+"""The path a moving layer or the frame travels between its position keys: `key.path_handles` bends it with spatial
 Bézier handles, written on the x and y keys at one time as their `out` (leaving) and `in` (arriving) offsets
 (rostrum_core.keys.spatial). One operation, one undo step.
 """
@@ -20,7 +20,7 @@ def _key_at(owner: dict, prop: str, t: float) -> dict | None:
     return next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
 
 
-@R.operation("key.path_handles", "Bend the path a layer or the camera travels at its position key at time t: `out` "
+@R.operation("key.path_handles", "Bend the path a layer or the frame travels at its position key at time t: `out` "
              "is the handle leaving the key and `in` the one arriving at it, each [dx, dy] in px from the key's "
              "place (null removes it: a third of the way to the neighbouring key, so a straight line when both "
              "ends have none). The x key gets dx and the y key dy. Give x and y keys the same ease for a true curve; "
