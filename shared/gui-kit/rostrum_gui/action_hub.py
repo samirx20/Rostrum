@@ -61,6 +61,10 @@ class ActionHub(QObject):
             self._jobs = sorted({j for j in (self.list.job_of(a) for a in self.list.actions) if j})
         return self._jobs
 
+    def row_buttons(self) -> dict:
+        """The buttons that sit on settings rows now ({param id: {label, id, menu}}, action_views.row_buttons)."""
+        return views.row_buttons(self._now()[1])
+
     @Slot()
     def refresh(self):
         """Call after the selection or the document changed. Re-sends only what changed: a drag step that leaves the

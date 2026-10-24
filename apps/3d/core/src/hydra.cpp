@@ -55,14 +55,18 @@ void throw_usd_errors(const TfErrorMark& mark, const std::string& where) {
 // shutter it was told (rostrum:shutterOpen / Close, our patch: libs/cycles-rostrum.patch). That one is only set from
 // an open shutter and kept while a free camera looks: objects sample their moves when they change, not when the
 // camera does, so the samples are still right when the shot camera looks again (a new shutter rewrites them anyway).
+// `progressive`: the viewport's Final look, which shows the noise cleaned up as it refines. A render cleans up once,
+// at its last sample: the plug-in's session is interactive, so it otherwise also cleans up the picture every time it
+// updates the display, on a timer, which made a full HD frame at 128 samples cost 2x and vary from run to run (13d).
 void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStageRefPtr& stage,
-                     const SdfPath& camera) {
+                     const SdfPath& camera, bool progressive) {
   const auto set = [&](const char* key, const VtValue& v) {
     if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
   };
   if (stage) set("stageMetersPerUnit", VtValue(UsdGeomGetStageMetersPerUnit(stage)));
   set("cycles:samples", VtValue(s.samples));
   set("cycles:integrator:use_denoise", VtValue(s.denoise));
+  set("cycles:integrator:denoise_start_sample", VtValue(progressive ? 0 : s.samples));
   double open = 0, close = 0;
   if (stage && !camera.IsEmpty())
     if (const UsdGeomCamera cam{stage->GetPrimAtPath(camera)}) {
@@ -193,7 +197,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
   const UsdGeomCamera cam = camera_at(stage_, camera);
   TfErrorMark mark;
   auto& e = engine(renderer);
-  if (renderer == "cycles") cycles_settings(e, s, stage_, camera);
+  if (renderer == "cycles") cycles_settings(e, s, stage_, camera, false);
   if (renderer != "cycles")  // a render never sees the studio
     e.light_raster(stage_, frame, true, {}, cam.GetCamera(UsdTimeCode(frame)).GetFrustum());
   e.SetCameraPath(camera);
@@ -297,7 +301,7 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
                             const DrawSettings& s, GpuMemWatch& mem) {
   TfErrorMark mark;
   auto& e = engine("cycles", true);
-  cycles_settings(e, s, stage_, camera);
+  cycles_settings(e, s, stage_, camera, true);
   if (camera.IsEmpty()) {
     e.SetCameraPath(SdfPath());
     e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());

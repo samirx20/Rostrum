@@ -13,9 +13,31 @@ def _short(e):
     return {"value": e["id"], "label": e["label"], "keys": e["keys"], "group": e["group"]}
 
 
+def off_rows(entries: list[dict]) -> list[dict]:
+    """Without the actions that live on a settings row (Action.row): the bar, panel and right-click never repeat them."""
+    return [e for e in entries if not e.get("row")]
+
+
+def row_buttons(entries: list[dict]) -> dict:
+    """{param id: {label, id, menu}} for the actions that sit on a settings row (Action.row). One action is a plain button
+    (its id); several on one row are one button with a menu, titled by their `bar` name."""
+    by_row: dict[str, list[dict]] = {}
+    for e in entries:
+        if e.get("row"):
+            by_row.setdefault(e["row"], []).append(e)
+    out = {}
+    for row, es in by_row.items():
+        if len(es) == 1 and not es[0]["bar"]:
+            out[row] = {"label": es[0].get("row_label") or es[0]["label"], "id": es[0]["id"], "menu": []}
+        else:
+            out[row] = {"label": es[0]["bar"] or "Choose", "id": "", "menu": [_short(e) for e in es]}
+    return out
+
+
 def bar(entries: list[dict], what: str) -> dict:
     """The context bar: every primary in order (QML folds the lowest into ⋯ by width); actions sharing `bar` are
     one button with a menu. `more`: the secondary ones, for ⋯. The edit block is never here."""
+    entries = off_rows(entries)
     items, by_name = [], {}
     for e in entries:
         if e["edit"] or e["importance"] != "primary":
@@ -54,6 +76,7 @@ def _fold(entries: list[dict]) -> list[dict]:
 def menu(entries: list[dict], short: tuple | None = None) -> list[dict]:
     """Right-click. With `short` (actions.SHORT_MENU): only those jobs, in its order and blocks, everywhere the same.
     Without: the valid actions, primary first, then the edit block as the last group."""
+    entries = off_rows(entries)
     if short:
         order = {job: (b, n) for b, (_, jobs) in enumerate(short) for n, job in enumerate(jobs)}
         block = {job: name for name, jobs in short for job in jobs}
@@ -102,7 +125,7 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
     action at all there is no row (a lone "⋯" is never shown: those actions stay on right-click and in Ctrl+K).
     {rows: [{title, cols, items: [{id, label, keys}]}], more: [...]}"""
     menu_jobs = {j for _, jobs in (short or ()) for j in jobs} - set(KEEP)
-    mine = [e for e in entries if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
+    mine = [e for e in off_rows(entries) if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
     rows, by = [], {}
     for e in (e for e in mine if e["importance"] == "primary"):
         title = e["bar"]

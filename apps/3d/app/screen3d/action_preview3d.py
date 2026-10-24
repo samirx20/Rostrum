@@ -38,6 +38,7 @@ class ActionPreview3D:
         if fits != self._fits:
             self._fits = fits
             self._hub.refresh()
+            self._refresh()                  # the Bevel row's note and button follow
 
     def _act_apply(self, calls, label):
         """An action's calls as one change; what it made is selected after."""

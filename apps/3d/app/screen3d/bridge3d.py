@@ -24,6 +24,7 @@ from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
 
 from . import outline, route, scene_state, shots as shot_list
 from .action_preview3d import ActionPreview3D
+from .actions3d import fit_note
 from .adding import Adder
 from .context_qt import Context
 from .poses_qt import Poses
@@ -208,6 +209,11 @@ class Bridge3D(ActionPreview3D, DocBridge):
             return self.doc.parent_of(self._sel)[0]
         return self._sel if it["type"] in route.F.ITEMS else ""
 
+    @Slot(str)
+    def rowAction(self, action_id):
+        """A row's button (or a choice of its menu) was clicked: the action runs as it would from the bar."""
+        self._hub.run(action_id)
+
     actions = Property(QObject, lambda self: self._hub, constant=True)     # the panel's actions (action_preview3d.py)
 
     @Property("QVariantList", notify=outlineChanged)
@@ -279,7 +285,13 @@ class Bridge3D(ActionPreview3D, DocBridge):
             return rows
         type_, doc_items = self.doc.item(self._sel)["type"], None
         rows = [_without_data(r) for r in rows if not _is_data(type_, r)]     # an editable mesh's points: data, not controls
+        buttons = self._hub.row_buttons() if hasattr(self, "_hub") else {}               # actions that sit on a row (Action.row): Lens, Focus on an item, bevel
         for r in rows:
+            if r["row"] == "param":
+                r["button"] = buttons.get(r["id"])
+            if r["row"] == "param" and r["id"] == "bevel" and type_ == "mesh":
+                line = fit_note(getattr(self, "_fits", {}), self._sel)
+                r["note"] = {"text": line, "kind": "warning"} if line else None
             if r["row"] == "param" and r["id"] in FINAL_ONLY.get(type_, ()):
                 r["tag"], r["tagHelp"] = "Final", FINAL_TIP
             p = F.param(type_, r["id"]) if r["row"] == "param" else None

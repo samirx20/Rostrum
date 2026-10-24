@@ -112,10 +112,10 @@ The diamond at a row's right end keys that setting at the playhead.
 On 2s holds every value for two frames, the stepped look of hand-drawn animation; the camera, left Smooth, still
 glides. A group's Timing steps everything inside it.
 
-**A camera** offers at the top of its panel **Lens ▾**: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
-one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on, two more:
-**Focus on a point**, then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
-camera that spot is. **Focus on an item**, then click the item (or Alt+click while focusing on a point): the camera keeps
+**A camera** has a **Lenses ▾** button beside its Focal length: the real lenses 24, 35, 50, 85, 105 and 135 mm (rest the pointer on
+one to see it through the camera; any other focal length: type it in Focal length). With **Depth of field** on:
+**Focus on a point** (top of the panel), then click in the viewport where it should be sharp: Focus distance becomes how far in front of the
+camera that spot is. **Pick** (beside Focus on), then click the item (or Alt+click while focusing on a point): the camera keeps
 it sharp as it moves; **Focus on** names it and Focus distance goes (it is worked out every frame). Set Focus on back to
 None to type a distance again. Each click is one undo step.
 

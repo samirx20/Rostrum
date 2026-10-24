@@ -20,7 +20,7 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife",
-         "render-sheet-shot")
+         "render-sheet-shot", "bevel-too-big", "lens-menu")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -97,7 +97,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("shot-from-view", s, ["mode free", "orbit 40 10", "shot-from-view"]),
         ("focus-picking", s, ["select cam", "set dof true", "action focus:point"]),
         ("focus-on-item", s, ["select cam", "set dof true", "set focusItem \"vase\""]),
-        ("lens-menu", s, ["select cam", "click Lens"]),
+        ("lens-menu", s, ["select cam", "click Lenses"]),
         ("context-item", s, ["context block"]),
         ("context-empty", s, ["context -"]),
         ("view-menu", s, ["select key", "view"]),

@@ -43,9 +43,11 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 
 `render_estimate` says how long a render will take, measured on this machine, without rendering it. It is a job: ask with `inspect_job`.
 
-- The first call for a scene draws the middle frame a few times and keeps the timing: tiny (the warm-up), at a quarter of the
-  pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size with 8 samples,
-  because a full-size frame costs far more than four quarter-size ones. About 10-15 s at full HD; past a minute and a half it
+- The first call for a scene draws the middle frame a few times and keeps the timing: two warm-up frames (not timed), at a
+  quarter of the pixels with 8 samples and with the job's samples (that one is the probe picture), and once at the real size
+  with the job's samples, because a full-size frame does not cost exactly four quarter-size ones. A very heavy job (that frame
+  expected over 9 s) draws the real size with 8 samples instead and adds the quarter's extra time for the samples.
+  About 12 s at full HD, Good; on a free card within 10 % of the real render. Past a minute and a half it
   stops (its engine ended), the job fails and says the job is at least that slow or the engine stopped answering.
 - Asking again answers at once. Changing only samples, size or the frame range answers at once too: the kept timing is re-scaled.
   Changing the scene (anything you see) measures again.
