@@ -1,7 +1,8 @@
-# The frame (the camera), parallax and motion blur
+# The frame, parallax and motion blur
 
-Tools for a shot that moves over the scene, layers that sit at different distances, and for showing speed: motion
-blur, smears and trails. Read `start-here` first. Exact maths: `apps/2d/FRAME.md` and `apps/2d/MOTION.md`.
+Tools for a shot that moves over the scene (the frame is the camera), for looking through it, for titles pinned to it,
+for layers that sit at different distances, and for showing speed: motion blur, smears and trails. Read `start-here`
+first. Exact maths: `apps/2d/FRAME.md` and `apps/2d/MOTION.md`.
 
 ## The frame
 
@@ -84,6 +85,24 @@ on it, `depth` or `screenLock` on it, and a zoom of 0 or less (even where an eas
 keys; several cameras (or one that doesn't show all the time) become one frame with cuts, each still on its marker.
 Old scripts' `camera("cam", …)` gives the frame; `camera(…, start=…)` is refused with how to write a cut.
 
+## Looking through the frame
+
+The canvas normally shows the world around the frame, with the export inside its outline. To see the export alone:
+
+- **Shift+C**, or **Look through the frame** in the **Fit · 54 % ▾** menu (a check mark shows it is on). The canvas
+  fits the frame and shows exactly what is exported, nothing outside it. A small **Through the frame ×** label sits at
+  the bottom-left of the canvas; its **×**, Shift+C again, or the menu item turns it off, and your own view (where you
+  had scrolled, at the same zoom) comes back.
+- Editing still works: pick, drag, type and paint on what you see. A far layer still moves under the pointer. The
+  frame itself is the edge of the canvas here, so it has no handles; its settings panel still works.
+- Scrubbing while looking through keeps looking through: the canvas follows the frame's move.
+- **Playing always looks through the frame**, whether this is on or not; when it stops you are back in the view you had,
+  never moved for you. Scrubbing with it off keeps the world view, so you can line a move up against the world.
+- It is only your view: never a change, never undone, never saved in the project.
+
+A turned frame is shown turned while looking through (its box fitted, nothing outside it); playing and the export show
+it upright.
+
 ## Depth and parallax
 
 Each **top-level** layer of the scene has:
@@ -99,10 +118,55 @@ text("title", body="…", size=120, x=960, y=200, screenLock=True)         # pin
 ```
 
 A pan by d moves a layer by d / (1 + depth) in the picture the other way; far layers also grow less on a push-in. At
-home every layer shows as placed, whatever its depth: place far things with the frame where it is when it looks at them.
+home every layer shows as placed, whatever its depth.
 Inside a group or rig a layer follows its group: put the **group** at a depth (the layer's own `depth` and `screenLock`
 are ignored there).
 Layers are flat: for a layer that turns in perspective use `tiltX` / `tiltY` (see `ui-and-product-animation`).
+
+**On the screen:** pick a layer of the scene (not one inside a group) and open its **Depth** group in the settings
+panel. **Depth** sets how far it is; the layer **stays where it shows at the playhead** (its position and size change
+with it, as one undo step), so changing depth never makes it jump. For drawings, **Set depth ▾** on the actions row
+offers Far / Middle / Near / Other depth…, which also resizes a painted background to cover the frame's move (see
+`painted-backgrounds`). The canvas draws every layer as the frame sees it at the playhead, so a far layer slides by its
+parallax when you scrub, and you grab it where you see it.
+
+**Place far things with the playhead at the moment the frame looks at them.** A far hill placed at 0 s, with the frame
+at home, is right for 0 s; where it shows when the frame arrives at 4 s is the parallax. **Frame these** works depth
+out correctly.
+
+From an agent: `layer.set_depth target=[hills] depth=3 at=2` keeps the layer where it shows at 2 s (every key carried
+along, so its motion keeps its shape); `keep: "values"` changes only the depth (the layer may jump). In a script:
+`set_depth("hills", 3)`. Setting the `depth` field itself (`value.set`, `shape(..., depth=3)`) changes only the number.
+
+## Pinned to frame
+
+A title, a logo bug or a border that belongs to the shot, not the world, is **pinned to the frame**: it moves, zooms
+and turns with the frame, and its X, Y are in the frame's own pixels (960, 540 is the middle of the shot).
+
+- **On the screen:** pick it › settings › **Depth** › **Pinned to frame** on, or **⋯ › Pin to frame** (**Unpin from
+  frame** when it is pinned). It stays where it shows at the playhead; one undo step. Its row in the layers list gets a
+  small pin.
+- **In the world view** it rides inside the frame's outline: scrub and it travels with the outline; when the frame
+  zooms or turns it is drawn sized and turned with the box. Dragging it moves it within the frame, and it snaps to the
+  frame's edges and centre.
+- Unpinning works the same way round: it stays where it shows at the playhead and becomes a layer of the world again.
+- From an agent: `layer.pin target=[title] on=true at=2` (or `on=false`); `keep: "values"` flips only the switch. In a
+  script: `pin(title)`, `pin(title, False)`. Writing `screenLock` itself changes only the switch.
+- Pinned layers get no motion blur from the frame's move and no parallax, so **Depth** isn't shown while a layer is pinned.
+
+Refused with `keep: "shown"`, naming the layer: a layer riding a path, a position driven by an expression, and (only
+while the frame is turned) X and Y keyed at different times or eases: key them together with **K** first.
+
+## Changing the output size
+
+Scene settings › **Size** (or `comp.size`, `comp.set width / height`): the frame takes the new size **about its
+centre**. It keeps looking at the same point of the world; its zoom, turn and keys stay, and so does home, so depth
+layers keep their parallax. Layers in the world don't move. **Pinned layers keep their distance from the frame's
+centre**, so a centred title stays centred. One change, one undo step; the view refits if it was fitted.
+
+So Wide 16:9 → Vertical 9:16 shows the middle of the old picture, not its left edge; move the frame (or **Frame these**)
+to choose another part. **Fill the frame** and **Align to the frame** use the frame where it is at the playhead.
+
 
 ## Motion blur (shutter)
 
@@ -149,5 +213,5 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 ## Not yet
 
-Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), depth of field, a frame with perspective in depth (depth is parallax
+Looking through a turned frame straight (the canvas turning with it). Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), depth of field, a frame with perspective in depth (depth is parallax
 scaling, not 3D).

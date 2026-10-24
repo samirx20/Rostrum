@@ -16,8 +16,7 @@ STROKE = {"points": [[90, 108], [310, 108]], "size": 16, "color": "#ff0000", "ha
 
 def painted_ellipse(inside: bool) -> Document:
     d = Document.new(KIND)
-    d.apply([{"op": "comp.add", "args": {"id": "film"}},
-             {"op": "comp.set", "target": "film", "args": {"width": 400, "height": 300, "duration": 1}},
+    d.apply([{"op": "comp.add", "args": {"id": "film", "width": 400, "height": 300, "duration": 1}},   # made at its size: its frame at home
              {"op": "layer.add", "target": "film", "args": {"type": "shape", "id": "egg"}},
              {"op": "shape.set", "target": "egg", "args": {"shape": "ellipse", "x": 200, "y": 150, "w": 200, "h": 100,
                                                             "fill": "#0000ff"}}], SAM)

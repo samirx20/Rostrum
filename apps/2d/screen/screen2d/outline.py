@@ -99,7 +99,7 @@ def _row(kind: str, owner: dict, depth: int, label: str, keys: list, prop: str =
     return {"row": kind, "id": owner["id"] if kind != "field" else f"{owner['id']}.{prop}", "owner": owner["id"],
             "prop": prop, "label": label, "kind": owner["type"], "shape": owner.get("shape", "") if kind == "layer" else "",
             "depth": depth, "owned": kind != "layer", "fold": "", "keys": keys, "frames": [], "bar": False,
-            "ghosts": [], "tails": [], "frame": False, "cuts": [], "trim": False}
+            "ghosts": [], "tails": [], "frame": False, "cuts": [], "trim": False, "pinned": False}
 
 
 def _one_per_frame(keys: list[dict], fps: float) -> list[dict]:
@@ -155,7 +155,8 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             if lay["type"] == FRAME:    # the frame's bar is the whole scene, never trimmed or slid (it always exists)
                 row.update(label="Frame", frame=True, bar=True, start=0.0, end=duration, startMarker="", endMarker="",
                            cuts=_cuts(lay))
-            row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")))
+            row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")),
+                       pinned=depth == 0 and bool(lay.get("screenLock")))      # rides the frame: a pin glyph by its name
             row["fold"] = "" if not inside else "open" if is_open else "closed"
             if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)
                 row["frames"] = framing.marks(lay, comp["fps"], duration)

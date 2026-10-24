@@ -34,10 +34,17 @@ def _parent(ctx, targets):
     return parent
 
 
-def _frame(parent: dict, t: float):
-    """The parent's own box: the composition's frame, or a group's w x h."""
+def _frame(parent: dict, t: float, pinned: bool = False):
+    """The parent's own box as x0, y0, x1, y1: for a scene, the frame where it is at t (its centre and its size seen at
+    its zoom, in world px; a pinned layer's own px are the frame's: 0, 0, width, height); a group's w x h."""
     if parent["type"] == "comp":
-        return 0.0, 0.0, float(parent.get("width", 1920)), float(parent.get("height", 1080))
+        w, h = float(parent.get("width", 1920)), float(parent.get("height", 1080))
+        from .frame import view
+        cam = None if pinned else view.shot(parent, t)
+        if cam is None:
+            return 0.0, 0.0, w, h
+        z = cam.zoom or 1.0
+        return cam.x - w / z / 2, cam.y - h / z / 2, cam.x + w / z / 2, cam.y + h / z / 2
     p = resolve(parent, t)
     return 0.0, 0.0, p["w"], p["h"]
 
@@ -62,7 +69,7 @@ def layer_align(ctx, targets, args):
     bx = {i: boxes.box(it, t) for i, it in items.items()}
     axis, how = EDGES[args["edge"]]
     if to == "composition":
-        lo, hi = _span(_frame(parent, t), axis)
+        lo, hi = _span(_frame(parent, t, bool(items[targets[0]].get("screenLock"))), axis)
     else:
         lo, hi = min(_span(b, axis)[0] for b in bx.values()), max(_span(b, axis)[1] for b in bx.values())
     goal = (lo, (lo + hi) / 2, hi)[how]

@@ -52,7 +52,7 @@ a corner square to zoom, and drag just outside a corner to turn it. With no keys
 once it has keys, a drag sets a key at the playhead. One drag is one undo step. With it picked, **Frame the view** fits
 it to what your canvas shows and **Cut here** makes a jump at the playhead (**⋯** has **Frame home**). Its path, a faint
 outline at each key and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
-[camera-parallax-motion-blur.md](camera-parallax-motion-blur.md).
+[frame-parallax-motion-blur.md](frame-parallax-motion-blur.md).
 
 ## Styles
 

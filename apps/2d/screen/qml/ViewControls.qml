@@ -3,11 +3,12 @@ import RostrumKit
 
 // The view controls in the top bar (SPEC 2d-design-v2 §1.1, never on the frame): "Fit · 57 % ▾". The % is a menu with the same steps as the keys
 // (INTERACTION 1.12): Fit the frame (Ctrl+0), Fit everything (Shift+1), 25 – 400 %, 100 % (Ctrl+1), Zoom to selection
-// (F, only with a selection), the Snap switch (INTERACTION 1.11; on by default) and "Show the frame's path" (on at first).
-// The keys live here too: Ctrl+0, Ctrl+1, F / Shift+2 (not while typing), Ctrl+= / Ctrl+−. `view` is the canvas's CanvasView; `fitSelection` comes from Stage (it knows the selection).
+// (F, only with a selection), Look through the frame (Shift+C, a check mark: LookThrough.qml), the Snap switch (INTERACTION 1.11; on by default) and "Show the frame's path" (on at first).
+// The keys live here too: Ctrl+0, Ctrl+1, F / Shift+2 and Shift+C (not while typing), Ctrl+= / Ctrl+−. `view` is the canvas's CanvasView; `fitSelection` comes from Stage (it knows the selection).
 Item {
     id: vc
     required property var view
+    property var look: null              // Stage's LookThrough
     property bool typing: false
     signal fitSelection()
     width: button.width; height: button.height
@@ -19,6 +20,7 @@ Item {
         if (key === "fit") vc.fitFrame()
         else if (key === "everything") vc.fitEverything()
         else if (key === "sel") vc.fitSelection()
+        else if (key === "look") vc.look.toggle()
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
         else if (key === "framepath") backend.motionPath.setFramePath(!backend.motionPath.framePath)
         else if (key === "blur") backend.playback.setBlur(!backend.playback.blur)
@@ -31,6 +33,7 @@ Item {
         for (const p of [25, 50, 100, 200, 400])
             out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
         if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
+        out.push({ value: "look", label: "Look through the frame", keys: "Shift C", checked: vc.look.on, group: "a" })
         out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
         out.push({ value: "framepath", label: "Show the frame's path",            // faint while something else is picked
                    checked: backend.motionPath.framePath, group: "b" })
@@ -59,6 +62,7 @@ Item {
     Shortcut { sequence: "Ctrl+0"; onActivated: vc.fitFrame() }
     Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing; onActivated: vc.fitEverything() }
     Shortcut { sequence: "Ctrl+1"; onActivated: vc.view.show(1) }
+    Shortcut { sequence: "Shift+C"; enabled: !vc.typing; onActivated: vc.look.toggle() }
     Shortcut { sequences: ["F", "Shift+2", "@"]; enabled: !vc.typing; onActivated: vc.fitSelection() }
     Shortcut { sequences: ["Ctrl+=", "Ctrl++", StandardKey.ZoomIn]; onActivated: vc.view.step(1) }
     Shortcut { sequences: ["Ctrl+-", StandardKey.ZoomOut]; onActivated: vc.view.step(-1) }

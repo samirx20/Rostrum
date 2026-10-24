@@ -28,7 +28,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [curve-editor.md](curve-editor.md): the curve editor (also a people page above).
 - [expressions.md](expressions.md): fields that follow something instead of being keyed.
 - [colour-and-blending.md](colour-and-blending.md): blend modes and colour adjustments.
-- [camera-parallax-motion-blur.md](camera-parallax-motion-blur.md): a moving camera, depth layers and motion blur.
+- [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md): the frame (the camera), moving and cutting it, looking through it, pinned layers, depth and motion blur.
 - [drawing-and-frame-by-frame.md](drawing-and-frame-by-frame.md): drawing layers and frame-by-frame work, by tool.
 - [painted-backgrounds.md](painted-backgrounds.md): large painted backgrounds with the painting kit.
 - [character-rigging-and-lip-sync.md](character-rigging-and-lip-sync.md): joints, poses and lip sync.

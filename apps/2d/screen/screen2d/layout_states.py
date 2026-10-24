@@ -32,7 +32,7 @@ IGNORE = ("/MotionPath#", "/barEnd:")
 QUICK = ("workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles",
-         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -330,6 +330,15 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # with Frame the view · Cut here · ⋯); the right-click with the frame's block (Frame the view, Cut here, Frame home)
         ("frame-cut", ["--sample"], ["frame pick", "time 2.4", "framecut", "frame drag 2400 300", "time 3", "zoom 30 2400 700"]),
         ("frame-menu", ["--sample"], ["frame pick", "frame drag 2200 0", "time 2", "zoom 30 2000 540", "canvasmenu"]),
+        # F7 (mock-5): the title pinned, the frame moved across and zoomed at the playhead, the title riding inside its
+        # box; picked, so its row's pin glyph and the settings' Depth group with Pinned to frame on show
+        ("frame-pinned-title", ["--sample"], ["select title", "set screenLock true", "frame pick", "animate x", "animate zoom",
+                                              "time 2.5", "set x 1700", "set zoom 1.17", "select title", "fitall"]),
+        # F7 (mock-4): looking through the frame (Shift+C): a far card and a near title at depths, the frame moved and
+        # zoomed at the playhead; only the export fitted in the well and the "Through the frame ×" label
+        ("frame-look-through", ["--sample"], ["select card", "set depth 3", "select title", "set depth -0.4", "frame pick",
+                                              "animate x", "animate zoom", "time 2", "set x 1300", "set zoom 1.25",
+                                              "time 1.5", "select title", "lookthrough on"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
     ]

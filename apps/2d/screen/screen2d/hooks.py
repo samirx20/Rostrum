@@ -5,7 +5,7 @@ from rostrum2d import fields as F
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
-from . import beat_words, exprs, outline, fill_rows, font_rows, project_picks, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, exprs, outline, fill_rows, font_rows, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
 SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
@@ -72,6 +72,9 @@ class Hooks2D:
             it = self.doc.item(item_id)
             return {"op": "layer.ride", "target": [item_id], "args": {"path": value, "at": it.get("rideAt", "end"),
                     "along": it.get("rideAlong", 0.0), "turn": it.get("rideTurn", False)}}
+        pinned = pin_depth.edit_call(self.doc, item_id, param, value, self._t)
+        if pinned is not None and not isinstance(value, str):     # Pinned to frame, Depth: kept where it shows now
+            return pinned
         if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
             return exprs.typed_call(item_id, param, value)
         return route.edit_call(self.doc, item_id, param, swap_rows.edit_value(self.doc.item(item_id), param, value), self.own_t(item_id))

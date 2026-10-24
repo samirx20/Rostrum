@@ -104,11 +104,17 @@ Rectangle {
         visible: !name.renaming
         opacity: name.rowData.hidden ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
-        width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0)
+        width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (pin.visible ? pin.width + 4 : 0)
         anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
         HoverTip { text: labelText.truncated ? name.rowData.label : ""; hovered: hover.containsMouse }   // the whole name
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.selected ? Theme.accentHover : name.isLayer ? Theme.fg : Theme.fg2
+    }
+    LayerSwitchIcon {  // pinned to the frame: a quiet pin right after the name (it rides the frame, not the world)
+        id: pin
+        visible: name.rowData.pinned === true && !name.renaming
+        kind: "pin"; on: false; hot: name.selected
+        x: labelText.x + labelText.contentWidth + 4; anchors.verticalCenter: parent.verticalCenter
     }
 }

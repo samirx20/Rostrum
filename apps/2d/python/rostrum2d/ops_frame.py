@@ -16,7 +16,10 @@ from .sizes import own_size
 
 
 @R.operation("comp.size", "Give the scene one of the named frame sizes (Wide 16:9, 4K 16:9, Vertical 9:16, Square 1:1, "
-             "Post 4:5). Layers stay where they are; other sizes: comp.set width / height.", target="comp", label="Size",
+             "Post 4:5). The frame takes the new size about its centre (it keeps looking at the same point; its zoom, turn, "
+             "keys and home stay); layers in the world stay where they are; pinned layers keep their distance from the "
+             "frame's centre, so a centred title stays centred. Other sizes: comp.set width / height (the same rule).",
+             target="comp", label="Size",
              params=[Param.choice("size", frame_sizes.IDS, label="Size", required=True,
                                   labels={s[0]: frame_sizes.label(s) for s in frame_sizes.SIZES})])
 def comp_size(ctx, targets, args):
@@ -47,8 +50,9 @@ def _scale_for(mode: str, w: float, h: float, r: float, W: float, H: float) -> f
                                   labels={"cover": "Fill the frame", "inside": "Fit inside"}), AT])
 def layer_fill_frame(ctx, targets, args):
     parent, t = _parent(ctx, targets), args.get("at", 0.0)
-    _, _, W, H = _frame(parent, t)
     for i in targets:
+        x0, y0, x1, y1 = _frame(parent, t, bool(ctx.item(i).get("screenLock")))     # the frame where it is at t
+        W, H = x1 - x0, y1 - y0
         p = resolve(ctx.item(i), t)
         w, h = own_size(ctx.item(i)["type"], p)
         sx, sy = w * p["scaleX"], h * p["scaleY"]
@@ -58,5 +62,5 @@ def layer_fill_frame(ctx, targets, args):
         r = math.radians(p["rotation"])        # the box's centre sits at the frame's centre: move the anchor to match
         dx, dy = (0.5 - p["anchorX"]) * sx * k, (0.5 - p["anchorY"]) * sy * k
         _put(ctx, i, "scale", k, args)
-        _put(ctx, i, "x", W / 2 - (math.cos(r) * dx - math.sin(r) * dy), args)
-        _put(ctx, i, "y", H / 2 - (math.sin(r) * dx + math.cos(r) * dy), args)
+        _put(ctx, i, "x", x0 + W / 2 - (math.cos(r) * dx - math.sin(r) * dy), args)
+        _put(ctx, i, "y", y0 + H / 2 - (math.sin(r) * dx + math.cos(r) * dy), args)

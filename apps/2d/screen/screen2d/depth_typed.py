@@ -1,7 +1,7 @@
 """Set depth ▾ › Other depth… (UX_SPEC.md §3.8, "Painted backgrounds at depths"): a typed camera depth for the selected
-drawings, beside Far / Middle / Near. The small popover under the bar holds one number; the drawings move back (and are
-resized to cover the camera's whole move) live while it changes, the same calls as Far / Middle / Near
-(action_rules `depth`: drawing.set depth + background.fit). Clicking away or Enter keeps it as ONE change, Esc takes
+drawings, beside Far / Middle / Near. The small popover under the bar holds one number; the drawings move back, staying
+where they show at the playhead (and are resized to cover the frame's whole move), live while it changes: the same calls
+as Far / Middle / Near (action_rules `depth`, pin_depth.depth_calls: layer.set_depth keep shown + background.fit). Clicking away or Enter keeps it as ONE change, Esc takes
 it back. Offered to QML as `backend.depthTyped`; screen state only.
 """
 from __future__ import annotations

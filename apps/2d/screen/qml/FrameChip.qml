@@ -9,7 +9,7 @@ Rectangle {
     signal clicked()
     readonly property string edge: world.edge
     readonly property var arrows: ({ left: "‹ Frame", right: "Frame ›", top: "↑ Frame", bottom: "↓ Frame" })
-    visible: !backend.playing && edge !== ""
+    visible: !backend.playing && !world.through && edge !== ""
     width: words.width + 2 * Theme.gap + 4; height: words.height + 8
     radius: height / 2; color: mouse.containsMouse ? Theme.lineHover : Theme.raised
     x: edge === "left" ? Theme.gap : edge === "right" ? parent.width - width - Theme.gap

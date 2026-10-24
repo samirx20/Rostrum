@@ -40,7 +40,7 @@ class ActionSlots(SlotMixin):
         self._hub.refresh()
 
     def _facts(self) -> Facts:
-        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "copied": self._copied, "keys": self._keys.ids,
+        return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "now": self._t, "copied": self._copied, "keys": self._keys.ids,
                                                          "sound": self._soundtrack.present, "picked": list(self._kit.selection),
                                                          "frame": frame_actions.state(self),
                                                          "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})

@@ -10,8 +10,7 @@ SAM = Who.person("sam")
 def painted() -> Document:
     """A 200 × 100 shape at x 100..300, y 100..200 with one stroke along y 150 from x 150 to 250 (composition px)."""
     d = Document.new(KIND)
-    d.apply([{"op": "comp.add", "args": {"id": "film"}},
-             {"op": "comp.set", "target": "film", "args": {"width": 400, "height": 300, "duration": 1}},
+    d.apply([{"op": "comp.add", "args": {"id": "film", "width": 400, "height": 300, "duration": 1}},   # made at its size: its frame at home
              {"op": "layer.add", "target": "film", "args": {"type": "shape", "id": "egg"}},
              {"op": "shape.set", "target": "egg", "args": {"x": 200, "y": 150, "w": 200, "h": 100}}], SAM)
     d.apply({"op": "paint.stroke", "target": "egg", "args": {"points": [[150, 150], [250, 150]], "size": 10, "id": "s1"}}, SAM)

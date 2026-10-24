@@ -18,6 +18,7 @@ OWN = [
     {"job": "ellipse_tool", "keys": ["O"], "label": "Ellipse"},
     {"job": "text_tool", "keys": ["T"], "label": "Text"},
     {"job": "pick_frame", "keys": ["C"], "label": "Pick the frame"},
+    {"job": "look_through", "keys": ["Shift+C"], "label": "Look through the frame"},
     {"job": "bone_tool", "keys": ["J"], "label": "Bone"},
     {"job": "hand_tool", "keys": ["H"], "label": "Hand"},
     {"job": "zoom_tool", "keys": ["Z"], "label": "Zoom"},

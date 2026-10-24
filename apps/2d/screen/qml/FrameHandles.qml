@@ -7,13 +7,14 @@ import "Mods.js" as Mods
 // is picked: a drag anywhere inside it moves it (even over layers; a click without a drag still picks what is under the
 // pointer), a corner square zooms it (outward = bigger box = zoom down; Alt: about the opposite corner) and the zone
 // just outside a corner turns it (Shift: 15° steps). Everything is turned with the frame. One drag = one change.
+// None of it while looking through the frame (the frame is the canvas's edge then; its settings panel still works).
 // `world` is WorldFrame.qml (the box in well px, the tab); `stage` gives world px (Stage.inWell).
 Item {
     id: fh
     required property Item world
     required property Item stage
     anchors.fill: parent
-    readonly property bool on: !backend.playing && backend.tool === "move" && !spaceKey.held && world.halfW > 0
+    readonly property bool on: !backend.playing && !world.through && backend.tool === "move" && !spaceKey.held && world.halfW > 0
     readonly property bool picked: backend.frameDrag.picked
     visible: on
 

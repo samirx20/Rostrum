@@ -13,8 +13,7 @@ SQUARE = [[[40, 40], [160, 40]], [[160, 40], [160, 95]], [[160, 107], [160, 160]
 
 def drawn() -> Document:
     d = Document.new(KIND)
-    d.apply([{"op": "comp.add", "args": {"id": "film"}},
-             {"op": "comp.set", "target": "film", "args": {"width": 200, "height": 200, "duration": 1}},
+    d.apply([{"op": "comp.add", "args": {"id": "film", "width": 200, "height": 200, "duration": 1}},   # made at its size: its frame at home
              {"op": "layer.add", "target": "film", "args": {"type": "drawing", "id": "ink"}},
              {"op": "drawing.set", "target": "ink", "args": {"w": 200, "h": 200, "x": 100, "y": 100}}], SAM)
     d.apply([{"op": "paint.stroke", "target": "ink", "args": {"points": pts, "space": "canvas", "size": 4, "hardness": 1}}

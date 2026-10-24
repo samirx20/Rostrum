@@ -6,8 +6,9 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
 
     {"op": "group.make", "target": "stack", "args": {"id": "$new:group", "as": "group"}}
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
-    {"rule": "depth", "value": 3.0}                      Set depth: drawing.set depth + background.fit
+    {"rule": "depth", "value": 3.0}                      Set depth: layer.set_depth (kept where shown) + background.fit
     {"rule": "attach"} · {"rule": "frame", "how": "view"}  Attach to bone (rig_attach.py) · the frame's (frame_actions.py)
+    {"rule": "pin", "on": True}                          Pin to frame / Unpin from frame: layer.pin (pin_depth.py)
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied · styled (texts following a style). Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
@@ -26,7 +27,7 @@ from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 from rostrum_core.tree import index
 
-from . import frame_actions, rig_attach
+from . import frame_actions, pin_depth, rig_attach
 from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
@@ -86,7 +87,8 @@ class Facts:
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
-            **frame_actions.facts(self)}                    # Frame the view, Cut here … (frame_actions.py)
+            **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
+            **pin_depth.facts(self)}                        # Pin to frame / Unpin from frame (pin_depth.py)
 
 
 def _comp_of(doc, id_: str) -> str:
@@ -186,15 +188,5 @@ def said(calls: list[dict], label: str, doc) -> str:
     return f"Keyed {n} setting{'s' if n != 1 else ''} on {on}"
 
 
-def _depth(f: Facts, value: float) -> list[dict]:
-    """Set depth: each drawing goes to this depth (`drawing.set`) and is resized to cover everything the frame shows of
-    it over the shot (`background.fit`): one change. None when every drawing is already there."""
-    todo = [i for i, it in zip(f.ids, f.items) if it.get("depth", 0.0) != value]
-    if not todo:
-        return []
-    return [{"op": "drawing.set", "target": todo, "args": {"depth": value}},
-            {"op": "background.fit", "target": todo, "args": {}}]
-
-
-RULES = {"order": _order, "pose": _pose, "depth": _depth, "frame": frame_actions.calls,
+RULES = {"order": _order, "pose": _pose, "depth": pin_depth.depth_calls, "pin": pin_depth.calls, "frame": frame_actions.calls,
          "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}
