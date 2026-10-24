@@ -1,7 +1,8 @@
 """The 2D document kind: where items live, what each list may hold, the whole-document check, and one field
 operation per item type (`text.set`, `glow.set`, `key.set` …) generated from the fields table.
 
-    doc ─ comps ─ comp ─ layers ─ camera (the scene's one frame, first: frame/) | shape | text | image | group (group ─ layers …)
+    doc ─ paintings ─ painting ─ frames ─ frame ─ paints … (a painting of the scene: paintings.py)
+        ─ comps ─ comp ─ layers ─ camera (the scene's one frame, first: frame/) | shape | text | image | group (group ─ layers …)
                                   | drawing ─ frames ─ frame ─ paints ─ paint ─ strokes (painting kit)
                                   shape | text | image | video | path may hold frames too (paint on an element)
                                                                    ─ paintmasks
@@ -14,12 +15,12 @@ from __future__ import annotations
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, widthprofile
 from .frame import make as frame_make, rules as frame_rules
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
-LISTS = {"doc": ["comps", "textStyles", "swatches"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
+LISTS = {"doc": ["comps", "paintings", "textStyles", "swatches"], "painting": ["frames"], "comp": ["layers"], "group": ["layers", *OWNED], "drawing": ["frames", *OWNED],
          "frame": rostrum_paint.CANVAS_LISTS, **rostrum_paint.LISTS,
          "rig": ["layers", "bones", "iks", "binds", "poses", *OWNED], "bone": ["keys"], "ik": ["keys"], "camera": ["keys"],
          **{t: OWNED for t in ("shape", "text", "image", "video", "render3d", "path")},
@@ -30,7 +31,7 @@ for _t in fill_fields.OWNERS:          # a gradient fill's stops (fill_fields.py
 for _t, _owned in LISTS.items():       # whatever animates a field may also hold its expression (ops_expr.py)
     if _t in F.ANIMATED_OWNERS and "exprs" not in _owned:
         _owned.append("exprs")
-HOLDS = {"comps": ("comp",), "stops": ("stop",), "swatches": ("swatch",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
+HOLDS = {"comps": ("comp",), "paintings": ("painting",), "stops": ("stop",), "swatches": ("swatch",), "layers": F.LAYERS, "effects": F.EFFECTS, "masks": ("mask",), "keys": ("key",),
          "exprs": ("expr",), "textStyles": ("textstyle",),
          "frames": ("frame",), "bones": ("bone",), "iks": ("ik",), "binds": ("bind",), "poses": ("pose",), **rostrum_paint.HOLDS}
 
@@ -169,7 +170,7 @@ def check(data: dict, items=None) -> list[str]:
         for item in {id(i): i for i in [*owners, *items]}.values():
             _check_owner(item, problems)
     texts = data if items is None else {"layers": [i for i in items if i.get("type") == "text"]}
-    return problems + frame_rules.problems(data, items) + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
+    return problems + paintings.problems(data, items) + frame_rules.problems(data, items) + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
 def upgrade(data: dict, lists: dict, folder=None):
@@ -185,10 +186,10 @@ def upgrade(data: dict, lists: dict, folder=None):
 
 KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=upgrade,
                version=migrations.FORMAT, migrations=migrations.STEPS,
-               new=lambda: {"id": "root", "type": "doc", "comps": []})
+               new=lambda: {"id": "root", "type": "doc", "comps": [], "paintings": []})
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers)
-from . import ops_draw, ops_expr, ops_items, ops_keys  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_draw, ops_expr, ops_items, ops_keys, ops_painting  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)
 from .rig import ops as _rig_ops, poses as _rig_poses, guess as _rig_guess, joints as _rig_joints, draw as _rig_draw, mirror as _rig_mirror  # noqa: E402,F401  (bones, IK chains, binds, poses, Bones from part names, joints and posing, the Bone tool, Mirror pose)

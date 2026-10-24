@@ -82,9 +82,12 @@ def neighbours(drawing: dict, frame_id: str, k: int = 2) -> tuple[list, list]:
     return frames[max(0, i - k):i][::-1], frames[i + 1:i + 1 + k]
 
 
+CANVASES = ("drawing", "painting")      # items that are a canvas of their own (w × h), not paint on an element
+
+
 def canvas_size(item: dict) -> tuple[int, int]:
-    """The paint canvas in px: a drawing's w × h; an element's paintW × paintH (set by its first stroke)."""
-    if item["type"] == "drawing":
+    """The paint canvas in px: a drawing's or a painting's w × h; an element's paintW × paintH (set by its first stroke)."""
+    if item["type"] in CANVASES:
         return int(item.get("w", 1920)), int(item.get("h", 1080))
     if not item.get("paintW") or not item.get("paintH"):
         raise ValueError(f'{item["id"]} has no paint yet (its first stroke sets the paint size)')
@@ -94,7 +97,7 @@ def canvas_size(item: dict) -> tuple[int, int]:
 def paint_size(item: dict, props: dict) -> tuple[int, int]:
     """The canvas size a stroke paints at: canvas_size once there is paint; before the first stroke, the element's box
     at these values (`props`: resolved), in whole px."""
-    if item["type"] == "drawing" or item.get("paintW"):
+    if item["type"] in CANVASES or item.get("paintW"):
         return canvas_size(item)
     w, h = own_size(item["type"], props)
     return max(1, round(w)), max(1, round(h))

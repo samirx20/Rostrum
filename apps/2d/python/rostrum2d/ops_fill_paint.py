@@ -15,7 +15,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import keys_of
 
-from . import fill_fields as FF, fill_paint
+from . import fields as F, fill_fields as FF, fill_paint
 from .evaluate import resolve
 from .kind import REGISTRY as R
 
@@ -38,7 +38,10 @@ def parse_stop(ctx, text: str) -> dict:
              "angular gradient with its stops (\"#ff7a59 0\", \"#7c4dff 100\"; a third number is the stop's opacity %) and "
              "its angle (linear: 90 = left to right; angular: where the sweep starts, 0 = up) or centre (fractions of the box), or "
              "span=\"points\": linear from (x1, y1) to (x2, y2), radial radii rx, ry (fractions of the box); or a picture "
-             "(file, fit fill / fit / tile / stretch, scale) clipped to a shape or path. "
+             "(file, fit fill / fit / tile / stretch, scale) clipped to a shape or path; or type \"painted\": a painting of the "
+             "scene (painting.add; `painting` its id) with the same fit and scale. A picture or painted fill also takes "
+             "offsetX / offsetY (px), rotation and driftX / driftY (px per second; tile only), `under` (a colour drawn under it, "
+             "\"\" = none) with its blend, and `opacity`; a painted fill's `phase` is the drawing it starts on. "
              "Each stop's colour and position animate with key.add on the stop; an animated one changes at `at` (a key there).",
              target=FF.OWNERS, label="Fill",
              params=[Param.choice("type", ["none", *FF.TYPES], label="Fill type"),
@@ -50,6 +53,15 @@ def parse_stop(ctx, text: str) -> dict:
                      Param.choice("span", ["box", "points"], label="Span"),
                      *(Param.number(n, label=n, min=-5, max=6) for n in ("x1", "y1", "x2", "y2", "rx", "ry")),
                      Param.text("picture", label="Picture", help="A picture file (fill type picture)"),
+                     Param.id("painting", kind="painting", label="Painting", help="A painting of this scene (fill type painted)"),
+                     Param.number("offsetX", label="Offset X", min=-100000, max=100000, unit="px", help="Picture or painted fill, not stretch"),
+                     Param.number("offsetY", label="Offset Y", min=-100000, max=100000, unit="px"),
+                     Param.number("rotation", label="Rotation", min=-360, max=360, unit="°", help="Tile only"),
+                     Param.number("driftX", label="Drift X", min=-100000, max=100000, unit="px/s", help="Tile only"),
+                     Param.number("driftY", label="Drift Y", min=-100000, max=100000, unit="px/s", help="Tile only"),
+                     Param.text("under", label="Colour under it", help='"#rrggbb"; "" = none'),
+                     Param.choice("blend", FF.BLENDS, label="Blend", help="How the picture or painting meets the colour under it"),
+                     Param.number("phase", label="Start at drawing", min=0, max=10000, integer=True, help="Painted fill that draws each frame"),
                      Param.choice("fit", ["fill", "fit", "tile", "stretch"], label="Picture fit"),
                      Param.number("scale", label="Picture scale", min=0.01, max=100),
                      Param.number("at", label="At", help="The time an animated colour or stop changes at (a key there)")])
@@ -69,17 +81,52 @@ def fill_set(ctx, targets, args):
         if "color" in args:
             _put(ctx, item, fill_paint.colour_field(item), args["color"], args.get("at"))
         if "opacity" in args:
-            if kind != "solid":
-                ctx.fail(codes.BAD_ARGUMENT, f"{t}.opacity", f"is for a solid fill; a {kind} fill's opacity is each stop's")
+            if kind not in ("solid", "picture", "painted"):
+                ctx.fail(codes.BAD_ARGUMENT, f"{t}.opacity", f"is for a solid fill (or a picture or painted one); a {kind} fill's opacity is each stop's")
             _put(ctx, item, "fillOpacity", args["opacity"], args.get("at"))
-        if kind == "picture" and item["type"] == "text":
-            ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', "takes no picture fill yet; use a colour or a gradient")
+        if kind in ("picture", "painted") and item["type"] == "text":
+            ctx.fail(codes.BAD_ARGUMENT, f'text "{t}"', f"takes no {kind} fill yet; use a colour or a gradient")
+        _raster(ctx, item, kind, args)
         for field, name in (("gradAngle", "angle"), ("gradX", "cx"), ("gradY", "cy"), ("fillPicture", "picture"),
-                            ("fillFit", "fit"), ("fillScale", "scale"), *((f, s) for f, s in fill_paint.GEOMETRY.items())):
+                            *((f, s) for f, s in fill_paint.GEOMETRY.items())):
             if name in args:
                 ctx.set(t, field, args[name])
         if kind in FF.GRADIENTS:
             _set_stops(ctx, t, stops or (None if item.get("stops") else _first_stops(item)), args.get("at"))
+
+
+_KEYABLE = {"scale": "fillScale", "offsetX": "fillOffsetX", "offsetY": "fillOffsetY", "rotation": "fillRotation", "under": "fillUnder"}
+_STILL = {"fit": "fillFit", "driftX": "fillDriftX", "driftY": "fillDriftY", "blend": "fillBlend", "phase": "fillPhase"}
+
+
+def _raster(ctx, item: dict, kind: str, args: dict):
+    """The fields a picture and a painted fill share (fit, scale, where it sits), and which painting: refused in words
+    when they can't mean anything (a painting that isn't there, rotation or drift without Tile, a field of the other kind)."""
+    t = item["id"]
+    if kind == "painted":
+        painting = args.get("painting", item.get("fillPainting", ""))
+        if painting not in {p["id"] for p in ctx.doc.get("paintings", [])}:
+            ctx.fail(codes.NOT_FOUND, f'{t}.painting "{painting}"', "is not a painting of this document",
+                     [p["id"] for p in ctx.doc.get("paintings", [])], "Make one with painting.add (onto: [layer ids] lays it as the fill).")
+        ctx.set(t, "fillPainting", painting)
+    elif "painting" in args or "phase" in args:
+        ctx.fail(codes.BAD_ARGUMENT, f"{t}.painting / phase", f"are for a painted fill, this fill is {kind}")
+    if kind not in ("picture", "painted"):
+        if set(args) & {*_KEYABLE, *_STILL}:
+            ctx.fail(codes.BAD_ARGUMENT, t, f"takes fit, scale, offset, rotation, drift, under and blend with a picture or painted fill, not a {kind} fill")
+        return
+    fit = args.get("fit", item.get("fillFit", "fill"))
+    if fit == "stretch" and {"scale", "offsetX", "offsetY"} & set(args):
+        ctx.fail(codes.BAD_ARGUMENT, t, "can't scale or offset a stretched fill (it is the box); use fit fill, fit or tile")
+    if fit != "tile" and {"rotation", "driftX", "driftY"} & set(args):
+        ctx.fail(codes.BAD_ARGUMENT, f"{t}.rotation / drift", f"are for fit tile; this fill's fit is {fit}", hint='Set fit: "tile".')
+    for name, field in _STILL.items():
+        if name in args:
+            ctx.set(t, field, args[name])
+    for name, field in _KEYABLE.items():
+        if name in args:
+            value = (args[name] or None) if name == "under" else args[name]
+            _put(ctx, item, field, value, args.get("at"))
 
 
 def _first_stops(item: dict) -> list[dict]:
@@ -97,8 +144,10 @@ def _put(ctx, owner: dict, prop: str, value, at):
         if owner.get(prop) == value:                     # a re-run writing what it wrote before: the keys stay
             return
         ctx.fail(codes.BAD_ARGUMENT, '"at"', f'is needed: {owner["id"]}.{prop} is animated', hint="Give the time.")
+    elif value is None:
+        ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "is animated: it can't be cleared (remove its keys first)")
     elif resolve(owner, at)[prop] != value:
-        R.get("value.set").fn(ctx, [owner["id"]], {"prop": prop, "at": at, ("c" if prop == "color" or prop == "fill" else "v"): value})
+        R.get("value.set").fn(ctx, [owner["id"]], {"prop": prop, "at": at, F.key_field(owner["type"], prop): value})
 
 
 def _set_stops(ctx, t: str, stops: list[dict] | None, at=None):

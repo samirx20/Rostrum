@@ -144,7 +144,20 @@ In the timeline the drawing's row shows its drawings as numbered cells; a drawin
 2. **Show before** is tinted red and **Show after** green. Each has its own count: none, 1 drawing, up to 5 drawings.
 3. Turn it off the same way. The faint pictures are for you only; they never appear in an export.
 
-## 9. Play it, and more than one drawing layer
+## 9. A painting many layers share (scripts and agents)
+
+A **painting** is a canvas of its own in the scene, with its own size and strokes like a drawing. Shapes and paths can use it as their **fill**; paint it once and every layer using it changes. (The Fill picker and the Library show it in a later round; the words below work today.)
+
+- **Make one:** `painting.add {w, h, seamless, name}`; in a script `grain = painting("paper grain", w=128, h=128, seamless=True)`. It starts with one paint layer, Ink. **Seamless** is kept with the painting; the wrap itself arrives with the next round.
+- **Paint on it:** `paint.stroke {target: <painting>, points: [[x, y, pressure], …], …}` (points are the painting's own pixels), or in a script `grain.stroke([(10, 20, .6), (118, 24, .8)], brush="bristle", color="#c1683a", size=6)`. Look with `look_painting {painting}` (or `look_drawing`); `inspect_stroke_landed` and `inspect_drawing_at` take a painting too.
+- **Use it:** `layer.fill {target: [layers], type: "painted", painting: <id>, fit: "fill" | "fit" | "tile" | "stretch"}`, or `painting.add {onto: [layers]}` to make and use it in one step; in a script `shape("card", fill=painted(grain, fit="tile", scale=0.78, drift=(12, 0)))`. How it sits is each layer's own: `scale`, `offsetX`, `offsetY` (not Stretch), `rotation`, `driftX`, `driftY` (Tile only; drift is px per second, for ever), `under` (a colour drawn under it; "" = none) with its `blend`, `opacity`, and `phase` (the drawing it starts on). A Picture fill takes the same ones. Keyed ones (`scale`, offsets, `rotation`, `under`, `opacity`) need `at`.
+- **Make a painted fill from paint that is already there:** `painting.add {from: <layer>}` moves a layer's own paint into a new painting and makes it that layer's fill, looking the same (its solid fill becomes **Colour under it**); `from` a drawing layer copies the drawing instead (the drawing stays).
+- **See what uses what:** `inspect_painting` lists each painting's size, drawings and every layer using it.
+- **Rename, resize, copy, delete:** `painting.set {target, name, w, h, seamless, eachFrame, newHold, loop}`; `painting.duplicate`; `painting.remove`. Deleting a painting that layers use turns each of them into a solid fill of its average colour (one undo brings everything back).
+
+Until the engine draws painted fills, a layer with one shows no fill in the preview or an export.
+
+## 10. Play it, and more than one drawing layer
 
 Press **Space**. The drawings play in order at the project's speed. **Preview size** makes playback lighter.
 

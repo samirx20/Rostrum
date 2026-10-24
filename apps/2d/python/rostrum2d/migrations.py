@@ -5,6 +5,8 @@ means adding its step here (the kind refuses to start without it).
     1 → 2   a Loop field written True / False (the first builds) becomes "loop" / "off" (looping.MODES)
     2 → 3   each scene gets its frame (the box that is exported, and its camera); cameras become the frame's keys,
             several cameras its cuts (frame/convert.py, apps/2d/FRAME.md › Older files)
+    3 → 4   the document gets its list of paintings (paintings.py; empty: no older file has any, and the new fill
+            fields' defaults draw exactly as before)
 """
 from __future__ import annotations
 
@@ -22,5 +24,10 @@ def loop_words(data: dict, lists: dict):
     return data, f"Loop written as words on {n} item{'s' * (n != 1)}"
 
 
-STEPS = {1: loop_words, 2: frames}
+def paintings_list(data: dict, lists: dict):
+    data.setdefault("paintings", [])
+    return data, "Paintings list added"
+
+
+STEPS = {1: loop_words, 2: frames, 3: paintings_list}
 FORMAT = len(STEPS) + 1
