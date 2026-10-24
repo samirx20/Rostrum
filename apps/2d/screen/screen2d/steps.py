@@ -44,7 +44,7 @@
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame [n] [profile]
-  View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | draghold <layer> <dx> <dy> [ctrl] [shift]
+  View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations

@@ -1,5 +1,6 @@
 """The script's framing calls (`f = frame()`; `f.fit(["hills", "tree"], at=4)`, `f.fit(rect=(x, y, w, h), at=…)`,
-`f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.cut(at="#logo lands")`, `f.home(at=…)`). They run the same
+`f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.cut(at="#logo lands")`, `f.home(at=…)`) and a layer's
+`pin(title)` / `set_depth(hills, 3)` (ops_depth.py, keeping where it shows). They run the same
 operations as the screen and agents (ops_frame_fit.py) on the tree the script is building, with the same argument
 checks and refusals; the keys they write are ordinary keys with the usual ids, so a re-run finds them again."""
 from __future__ import annotations
@@ -20,12 +21,34 @@ def args_of(items=None, *, at=None, to=None, rect=None, pad=None, cut=None, keep
     return {k: v for k, v in out.items() if v is not None}
 
 
-def run(build, frame: dict, op_name: str, args: dict) -> None:
-    """Run `op_name` on the script's frame now, in place on the tree being built (one script = one change)."""
+def run(build, node: dict, op_name: str, args: dict) -> None:
+    """Run `op_name` on `node` (the script's frame, or a layer for pin / set_depth) now, in place on the tree being
+    built (one script = one change)."""
     from .kind import KIND
     op = KIND.registry.get(op_name)
-    where = f"{frame['id']}.{op_name.split('.')[1]}()"
+    where = f"{node['id']}.{op_name.split('.')[1]}()"
     args = _check_args(op, args, where)
-    if not holds(op.valid_when, frame, KIND.facts(frame)):
-        raise ValueError(f"{where}: the frame can't take {op_name} now: it needs {describe(op.valid_when)}")
-    op.fn(Context(KIND, build.root, where), [frame["id"]], args)
+    ctx = Context(KIND, build.root, where)
+    if not holds(op.valid_when, node, ctx.facts(node)):
+        raise ValueError(f"{where}: {node['id']} can't take {op_name} now: it needs {describe(op.valid_when)}")
+    op.fn(ctx, [node["id"]], args)
+
+
+def pin(build, layer, on=True, at=0, keep="shown") -> None:
+    """`pin(title)`: the layer pinned to the frame where it shows at `at` (layer.pin); `pin(title, False)` unpins."""
+    run(build, _node(build, layer), "layer.pin", {"on": on, "at": at, "keep": keep})
+
+
+def set_depth(build, layer, depth, at=0, keep="shown") -> None:
+    """`set_depth(hills, 3)`: the layer's depth, keeping where it shows at `at` (layer.set_depth)."""
+    run(build, _node(build, layer), "layer.set_depth", {"depth": depth, "at": at, "keep": keep})
+
+
+def _node(build, layer) -> dict:
+    from rostrum_core.tree import index
+    from .kind import LISTS
+    id_ = getattr(layer, "id", layer)
+    idx = index(build.root, LISTS)
+    if id_ not in idx:
+        raise ValueError(f'pin / set_depth: no layer "{id_}" made yet in this script')
+    return idx[id_].item

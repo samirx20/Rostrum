@@ -6,12 +6,14 @@ hands these over). The view is screen state: these only move what the window sho
     viewmenu                   open the "Fit · 50 % ▾" menu
     fitsel                     F: zoom to the selection (nothing selected: everything)
     fitall                     Shift+1: zoom to everything (every layer and the frame's whole path)
+    lookthrough on|off         Shift+C: look through the frame (LookThrough.qml), or back to the saved view
     draghold <layer> <dx> <dy> [ctrl] [shift]   press on a layer and drag it by composition px without letting go
                                (for a picture of the snap lines; ctrl = pressed after the drag began, shift = straight)
-    viewtime pan <n> <dx> <dy> | zoom <n> <factor> | drag <layer> <n> <dx> <dy>   n view steps (or n moves of a layer
-                               drag, then its release), each waited out: prints each step's GUI-thread time, its time
-                               to the window's next frame, the world pictures drawn meanwhile (count, engine ms) and,
-                               dragging, each move's time to the picture that shows it
+    viewtime pan <n> <dx> <dy> | zoom <n> <factor> | look <n> | scrub <n> | drag <layer> <n> <dx> <dy>
+                               n view steps (look: Shift+C; scrub: the playhead a frame on), or n moves of a layer drag
+                               then its release, each waited out: prints each step's GUI-thread time, its time to the
+                               window's next frame, the world pictures drawn meanwhile (count, engine ms) and, dragging
+                               or scrubbing, each one's time to the picture that shows it
 """
 from __future__ import annotations
 
@@ -22,7 +24,7 @@ from PySide6.QtCore import Q_ARG, QCoreApplication, QEventLoop, QMetaObject, QOb
 
 from .playstats import STATS
 
-WORDS = ("zoom", "pan", "fitsel", "fitall", "draghold", "viewmenu", "viewtime")
+WORDS = ("zoom", "pan", "fitsel", "fitall", "draghold", "viewmenu", "viewtime", "lookthrough")
 
 
 def _call(win, fn, *args):
@@ -61,6 +63,10 @@ def do_view_step(bridge, win, word, rest, step):
         _call(win, "fitSelection")
     elif word == "fitall":                       # Shift+1: every layer and the frame's whole path
         _call(win, "fitEverything")
+    elif word == "lookthrough":
+        if rest[:1] not in (["on"], ["off"]):
+            raise ValueError(f"step {step!r}: lookthrough on|off")
+        _call(win, "setLookThrough", rest[0] == "on")
     elif word == "draghold":
         bridge.select(rest[0])
         if not bridge.beginMove():
@@ -97,6 +103,8 @@ def view_time(bridge, win, rest):
     if rest[0] == "drag":
         return drag_time(bridge, win, rest[1], int(rest[2]), float(rest[3]), float(rest[4]))
     n = int(rest[1])
+    if rest[0] == "scrub":
+        return scrub_time(bridge, win, n)
     STATS.reset()
     STATS.on, pictures = True, []
     bridge.world.changed.connect(lambda: pictures.append(time.perf_counter()))
@@ -105,6 +113,8 @@ def view_time(bridge, win, rest):
         t0 = time.perf_counter()
         if rest[0] == "pan":
             _call(win, "panBy", float(rest[2]), float(rest[3]))
+        elif rest[0] == "look":
+            _call(win, "setLookThrough", not win.findChild(QObject, "stage").property("lookThrough"))
         else:
             z = win.findChild(QObject, "stage").property("compScale")
             _call(win, "zoomPercent", z * 100 * float(rest[2]))
@@ -153,4 +163,24 @@ def drag_time(bridge, win, layer, n, dx, dy):
     px = STATS.ms.get("pixels", [])
     print(f"viewtime drag {layer}: {n} moves; GUI thread {_spread(gui)}; move to picture {_spread(shown)}; "
           f"engine {_spread(px)}; release to full picture {full and round(full, 1)} ms")
+    STATS.on = STATS.log
+
+
+def scrub_time(bridge, win, n):
+    """`viewtime scrub`: the playhead n frames on, one at a time (as `.`), each one's GUI-thread time (the slot and what
+    it set off) and its time to the picture that shows it (looking through, the refit to the frame's box included)."""
+    STATS.reset()
+    STATS.on = True
+    fps = float(bridge.comp().get("fps", 30)) or 30.0
+    gui, shown = [], []
+    for _ in range(n):
+        t0 = time.perf_counter()
+        bridge.setTime(bridge._t + 1 / fps)
+        QCoreApplication.processEvents()
+        gui.append((time.perf_counter() - t0) * 1000)
+        if _picture(bridge):
+            shown.append((time.perf_counter() - t0) * 1000)
+    px = STATS.ms.get("pixels", [])
+    print(f"viewtime scrub: {n} frames; GUI thread {_spread(gui)}; to picture {_spread(shown)} ({len(shown)} shown); "
+          f"engine {_spread(px)}")
     STATS.on = STATS.log

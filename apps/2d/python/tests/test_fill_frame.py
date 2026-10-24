@@ -22,8 +22,9 @@ def test_cover_a_turned_stretched_layer_leaves_no_edge_and_inside_fits():
     assert (d.item("film")["width"], d.item("film")["height"]) == (1080, 1920)
     d.apply({"op": "layer.fill_frame", "target": "p", "args": {}}, SAM)
     quad = boxes.corners(d.item("p"))
-    assert all(_inside(c, quad) for c in ((0, 0), (1080, 0), (1080, 1920), (0, 1920)))
+    # the frame took the new size about its centre (960, 540): it sees x 420..1500, y -420..1500
+    assert all(_inside(c, quad) for c in ((420, -420), (1500, -420), (1500, 1500), (420, 1500)))
     d.apply({"op": "layer.fill_frame", "target": "p", "args": {"mode": "inside"}}, SAM)
     x0, y0, x1, y1 = boxes.box(d.item("p"))
-    assert x0 >= -0.1 and y0 >= -0.1 and x1 <= 1080.1 and y1 <= 1920.1 and (abs(x1 - 1080) < 0.1 or abs(y1 - 1920) < 0.1)
-    assert math.isclose((x0 + x1) / 2, 540, abs_tol=0.1)
+    assert x0 >= 419.9 and y0 >= -420.1 and x1 <= 1500.1 and y1 <= 1500.1 and (abs(x1 - 1500) < 0.1 or abs(y1 - 1500) < 0.1)
+    assert math.isclose((x0 + x1) / 2, 960, abs_tol=0.1)

@@ -18,7 +18,7 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
-from . import frame_actions
+from . import frame_actions, pin_depth
 from .action_rules import Facts, calls_of
 from .eases import EASES
 from .keys2d import KEYS2D
@@ -105,6 +105,7 @@ DATA = [
       for k, v in _DEPTHS.items()],
     _a("depth_typed", "Other depth…", rank=76, importance="primary", group="arrange", bar="Set depth", kinds=("drawing",),
        when=FACT("depth_ok"), do="depth", why="Set depth is for drawings of the scene itself, not inside a group."),
+    *pin_depth.data(_a),                                                   # Pin to frame / Unpin from frame (pin_depth.py)
     _a("stagger", "Stagger…", rank=35, importance="primary", group="arrange", min_targets=2, do="stagger"),
     _a("sound_here", "Add a sound here…", rank=40, group="arrange", max_targets=1, when=FACT("has_sound"), do="sound_here",
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),

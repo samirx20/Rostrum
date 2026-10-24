@@ -60,7 +60,7 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
 - **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
   reveal starts, wherever either marker moves.
 - **Cuts:** the frame jumps on a key timed on a marker: `frame().cut(at="#reveal", to="rect", rect=(2240, 0, 1920, 1080))`
-  (or `frame.cut` with `at: "#reveal"`), so the cut moves with the marker (see `camera-parallax-motion-blur`).
+  (or `frame.cut` with `at: "#reveal"`), so the cut moves with the marker (see `frame-parallax-motion-blur`).
 - **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
 - **A key on its own marker:** a key's time may name a marker, as Sound's times do: `t.key("opacity", {0.0: 0,
   "#drop-0.1": 0.2, "#drop+0.2": 1})` (or `key.add` with `"t": "#drop+0.2"`). It lands at that moment of the
@@ -171,7 +171,7 @@ it lists what would have worked. Edits are all or nothing, so nothing changed.
 | `painted-backgrounds` | you paint a big background in depth layers (far / mid / near) for camera moves and parallax |
 | `3d-renders-in-2d` | you place a Rostrum3D item's render (product shot) in a comp, following new renders |
 | `character-rigging-and-lip-sync` | you make a figure move from bones and IK, or make a mouth follow a voice |
-| `camera-parallax-motion-blur` | you want a camera, depth between layers, motion blur, smears, trails |
+| `frame-parallax-motion-blur` | you move the frame (the camera), look through it, pin a title to it, set depth between layers, motion blur, smears, trails |
 | `import-and-export` | you bring in SVG, PDF, PSD, Figma, or hand over MP4, WebM, GIF, ProRes 4444, PNG sequence, Lottie |
 | `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |
 | `text-on-a-path`, `curve-editor`, `expressions` | text follows a curve; you shape the easing by hand; you drive a value from a formula |

@@ -7,14 +7,16 @@ import "Mods.js" as Mods
 // a jump (for the frame, a cut) is a dashed line with no dots; for the frame, a faint outline of it at each key. Drag a
 // square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path bends, the opposite
 // handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
-// the Stage's one mapping (canvas px = o + world px × fit), so a pan or zoom only repaints.
+// the Stage's one mapping (canvas px = o + world px × fit), so a pan or zoom only repaints. `noFrame`: the frame's own
+// path left out (looking through the frame: it is the canvas's edge then).
 Item {
     id: mp
     property real fit: 1
     property real ox: 0
     property real oy: 0
     property bool interactive: true
-    readonly property var paths: backend.motionPath.paths
+    property bool noFrame: false
+    readonly property var paths: noFrame ? backend.motionPath.paths.filter(r => !r.frame) : backend.motionPath.paths
     readonly property int hit: 18               // the invisible click target round a square or a handle end (≥ the kit's 16)
     function cx(p) { return mp.ox + p[0] * mp.fit }
     function cy(p) { return mp.oy + p[1] * mp.fit }

@@ -11,8 +11,8 @@ more and far layers less (parallax). A layer **Pinned to frame** (`screenLock`) 
 title, a border, a logo bug.
 
 Code: Python `apps/2d/python/rostrum2d/frame/` (`fields.py` the fields, `view.py` the maths, `fit.py` framing,
-`rules.py` what is refused, `make.py` a new frame, `convert.py` + `shots.py` + `split.py` older files), the framing
-operations `ops_frame_fit.py` (script side `script_frame.py`); engine
+`rules.py` what is refused, `make.py` a new frame and a new size, `place.py` a layer carried through the frame's maths, `convert.py` + `shots.py` + `split.py` older files), the framing
+operations `ops_frame_fit.py`, pinned and depth `ops_depth.py` (script side `script_frame.py`); engine
 `apps/2d/engine/render/src/frame/mod.rs`.
 
 ## The document
@@ -26,7 +26,7 @@ it by its type (`frame.view.of`), never by its id.
 | `x`, `y` | The world point at the frame's centre. Home = the output's centre (960, 540 in 1920 × 1080). |
 | `zoom` | 1 = as placed, 2 = twice as close. Above 0. |
 | `rotation` | The frame turns clockwise, in degrees, so the picture turns the other way. |
-| `homeX`, `homeY` | Where the frame's centre was when the scene was made (the output's centre then). Never keyed; written with the scene and by the conversion, changed by nothing else (see *Changing the size*). |
+| `homeX`, `homeY` | Where the frame's centre was when the scene was made (the output's centre then). Never keyed; written with the scene and by the conversion, changed by nothing else (not even a new size: *Changing the size*). |
 | `ridePath`, `rideAt`, `rideAlong`, `rideTurn` | The frame rides a path layer as any layer does (`layer.ride`): its centre sits on the path, `x`, `y` an offset from there. |
 | `locked` | Drags and operations refuse to move it. |
 | any top-level layer: `depth` | 0 = on the frame's plane (moves fully). 1 = twice as far (half as much). Below 0 = nearer. Above −1. Keyable. |
@@ -73,11 +73,41 @@ Move the frame to the next shot.", "Frame home".
 
 ### Changing the size
 
-Until the screen brief that resizes about the frame (spec F7, § 4.13): a frame that never left home (no keys, no ride,
-at home, home at the old output centre) moves its centre and home to the new output centre (`frame/make.py` `resized`,
-from `comp.set` and `comp.size`), so the picture stays the scene's top-left width × height, as before frames; a frame
-that was moved or keyed keeps looking where it looked and keeps its home. (`value.set` on a scene's width doesn't
-run this rule; `comp.set` and `comp.size` do.)
+A new size (`comp.size`, or `comp.set` with `width` / `height`; `frame/make.py` `resized`, the one rule both run) is
+taken by the frame **about its centre**: it keeps looking at the same world point, and its zoom, turn, keys and home are
+untouched, so depth layers keep their parallax. Layers in the world don't move. **Pinned layers keep their distance
+from the frame's centre**: each shifts by half the change, ((new width − old width) / 2, (new height − old height) / 2),
+on its still x, y and every key, so a centred title stays centred. One change, one undo step.
+
+Wide 16:9 → Vertical 9:16 on a frame never moved: the picture stays centred on the point it was centred on (960, 540),
+not on the scene's top-left corner; home is now away from the output's centre, so the frame "leaves home" and the
+engine writes its wrappers (The maths). A pinned layer with an expression on x or y, or riding a path, refuses the
+resize, naming it. `value.set` never takes a scene (its fields aren't keyed); a script's own `comp(width=…)` is its
+own number, merged as written. **Fill the frame** (`layer.fill_frame`) and **Align** to the frame (`layer.align to=composition`)
+use the frame where it is at `at` (its centre and its size at its zoom; a pinned layer: the frame's own px), so they
+stay right after a resize or a move (`ops_align._frame`).
+
+## Pinned and depth
+
+Two operations on a scene's own layers (not the frame, not inside a group; a locked one is refused), each one change =
+one undo step. With `keep` `"shown"` (the default) the layer stays **exactly where it shows in the export at `at`**
+(composition seconds or a marker, the playhead): its x, y (the anchor point), scale and rotation are carried through
+the frame's maths at `at`, on the still values **and every key** (spatial handles too), so an animated layer keeps
+the shape of its motion (`frame/place.py`). Stretch and the anchor stay. `keep` `"values"` changes only the setting
+(the layer may jump). A layer already as asked is left alone: no empty step.
+
+| Operation | Args | Does |
+|---|---|---|
+| `layer.pin` | `on` (required), `keep`, `at` (default 0) | On: x, y become the frame's own px (the export matrix at `at` applied), scale × the frame's zoom seen at the layer's depth, rotation − the frame's turn. Off: the inverse. |
+| `layer.set_depth` | `depth` (required, above −1), `keep`, `at` | x, y, scale carried through (old depth's matrix, then the new one's inverse: a scale and a move, same turn). A pinned layer has no parallax: only its depth changes. An animated depth gets a key at `at`. |
+
+Refused with keep "shown", naming the layer and field: a layer riding a path (its place comes from the path; use keep
+"values" or ride it off first), a field driven by an expression, and, when the frame is turned, x and y keyed at
+different times or with different eases (turning them would bend the path; key them together with K). A still x or y
+beside a keyed one gets keys at the other's times, so the pair turns together.
+
+**Scripts:** `pin(title)`, `pin(title, False)`, `set_depth("hills", 3)` (each takes `at=` and `keep=`), run on the
+script's tree (`script_frame.py`).
 
 ## The maths
 

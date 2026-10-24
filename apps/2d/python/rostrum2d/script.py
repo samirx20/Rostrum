@@ -13,6 +13,7 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     f = frame()                                                       # the scene's frame (its camera), made with comp()
     f.key("x", {0: 960, 4: 2600}, ease="easeInOut")                   # a push across the world
     f.fit(["hills", "tree"], at=6); f.cut(at="#logo lands", to="rect", rect=(3200, 0, 1920, 1080))   # frame layers; a cut
+    pin(title); set_depth("hills", 3)                                 # pinned to the frame / far away, each where it shows at 0 s
     flame = drawing("flame", w=800, h=1000)                           # frame-by-frame: one drawing per frame or held
     ink = flame.frame(0).paint("ink")                                 # drawing at frame 0, its paint layer
     ink.stroke([(400, 900), (380, 600, 0.6), (420, 300, 0.2)], color="#ffb040", size=40, brush="bristle")
@@ -339,6 +340,8 @@ def run_source(source: str, name: str) -> dict:
     b = Build(_reserved(source))
     scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
+             "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
+             "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
              **pathdata.for_script(b.layer), **rig_script.for_script(b),
              **lipsync_script.for_script(b)}
     try:
@@ -350,7 +353,7 @@ def run_source(source: str, name: str) -> dict:
 
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
-       "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "item.key(field, {time: value}, ease=)",
+       "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
        "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",

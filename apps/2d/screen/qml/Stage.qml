@@ -21,7 +21,9 @@ import "Mods.js" as Mods
 // View: Ctrl+wheel / pinch zooms around the pointer, wheel / Shift+wheel scroll, Space+drag or middle-drag pans;
 // the keys and the "Fit · 50 % ▾" menu are ViewControls.qml. The canvas is the world (camera spec § 3.1): the engine draws the
 // world rectangle the view shows at the size shown, the frame's quad holding the export (backend.world: world_view.py);
-// outside the frame it is dimmed (WorldFrame.qml). Playing looks through the frame: the export fitted in the well.
+// outside the frame it is dimmed (WorldFrame.qml). Look through the frame (Shift+C, LookThrough.qml): the view fitted to the
+// frame, nothing outside it; what is outside can't be picked then. Playing always shows the export fitted in the well, the
+// same size and place as looking through; the view itself is never touched by play, so stop shows it as it was.
 // No header row (a kit Panel always reserves one): the frame's size is on its name tab (WorldFrame.qml); size and fps are in Scene settings.
 Rectangle {
     id: panel
@@ -47,6 +49,9 @@ Rectangle {
     function zoomPercent(p) { view.show(p / 100) }
     function centreOn(x, y) { view.centreOn(x, y) }
     function panBy(dx, dy) { view.panBy(dx, dy) }
+    readonly property alias look: look              // Look through the frame (the view menu, Shift+C: ViewControls.qml)
+    readonly property bool lookThrough: look.on
+    function setLookThrough(on) { look.set(!!on) }
     property Item viewControls: null                // the "Fit · 57 % ▾" chip, in the top bar (Main.qml)
     function openViewMenu() { viewControls.openMenu() }
     readonly property alias view: view
@@ -111,7 +116,7 @@ Rectangle {
                 cache: false; smooth: true; asynchronous: false
             }
         }
-        Image {  // playing looks through the frame (spec 4.8): the export fitted in the well; stop brings the world view back
+        Image {  // playing (spec 4.8): the export fitted in the well, as looking through fits the view (LookThrough.qml)
             readonly property var p: backend.world.picture
             visible: backend.playing && p.world === false
             anchors.fill: parent; anchors.margins: view.frameMargin
@@ -119,7 +124,7 @@ Rectangle {
             source: p.world === false ? "image://frame/" + p.serial : ""
             cache: false; smooth: true; mipmap: true
         }
-        WorldFrame { id: worldFrame; view: view }   // the dimmed outside, the frame's outline and name tab (frameView); the chip: below
+        WorldFrame { id: worldFrame; view: view; through: look.on }   // the dimmed outside, the frame's outline and name tab (frameView); the chip: below
         Item {  // the pen
             anchors.fill: parent
             visible: well.drawing
@@ -218,23 +223,26 @@ Rectangle {
             property bool moving: false
             property bool band: false
             property bool deep: false       // Ctrl at the press picks the deepest piece; only a later Ctrl stops snapping
+            property bool unseen: false     // looking through, the press was outside the frame: nothing there is shown
             property real sx: 0
             property real sy: 0
             property point b0
             property point b1
             function comp(m) { return panel.inWell(m.x, m.y) }
             function stop() { if (moving) backend.endDrag(); moving = false; band = false }
+            function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
             onPressed: (m) => {
                 var p = comp(m)
                 deep = Mods.ctrl(m)
-                var hit = backend.multi.target(p.x, p.y, deep ? "deep" : "click")
+                unseen = hidden(m)
+                var hit = unseen ? "" : backend.multi.target(p.x, p.y, deep ? "deep" : "click")
                 sx = m.x; sy = m.y; band = false; moving = false
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (Mods.shift(m)) backend.multi.toggle(hit)                   // Shift+click: add / remove
                 else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
                 moving = backend.multi.has(hit) && backend.beginMove()
             }
-            onDoubleClicked: (m) => { var p = comp(m); if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
+            onDoubleClicked: (m) => { var p = comp(m); if (hidden(m)) return; if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
             onPositionChanged: (m) => {
                 if (moving) {
                     backend.snap.keys(Mods.ctrl(m) && !deep, Mods.shift(m))
@@ -243,7 +251,9 @@ Rectangle {
             }
             onReleased: (m) => {
                 if (band) {
-                    if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) backend.pickAt(b0.x, b0.y)   // a click: the composition
+                    if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) {                   // a click: the composition
+                        if (unseen) backend.clearSelection(); else backend.pickAt(b0.x, b0.y)
+                    }
                     else backend.multi.boxSelect(b0.x, b0.y, b1.x, b1.y, (Mods.shift(m) ? "shift " : "")
                                                  + (Mods.ctrl(m) ? "ctrl" : ""))   // Shift adds, Ctrl: the deepest pieces
                 }
@@ -263,6 +273,7 @@ Rectangle {
             anchors.fill: parent
             visible: !backend.playing && !well.drawing && !backend.pen.on
             interactive: backend.tool === "move"
+            noFrame: look.on
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
@@ -345,6 +356,7 @@ Rectangle {
         }
         ViewTools { anchors.fill: parent; view: view }   // H: drag moves the view; Z: click zooms in, Alt+click out
         FrameChip { world: worldFrame; onClicked: panel.fitAll() }   // "‹ Frame": the frame is out of view; a click fits it
+        LookThrough { id: look; view: view }                         // "Through the frame ×", bottom-left, while on
         ContextBar {   // select, then act: the kit's bar at the top-centre (backend.actions);
                        // only while strokes are picked: what applies to them (StrokeBar.qml)
             id: bar

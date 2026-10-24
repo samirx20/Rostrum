@@ -3,7 +3,7 @@
 How to paint a large background in Rostrum2D with the shared painting kit: a canvas bigger than the frame so the camera
 can move, split into depth layers so it moves with parallax. This guide is about the tools and ways of working; what
 you paint is yours. Read `drawing-and-frame-by-frame` first (strokes, brushes, masks, one call list = one undo step)
-and `camera-parallax-motion-blur` (depth).
+and `frame-parallax-motion-blur` (depth).
 
 ## The parts
 

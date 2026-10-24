@@ -49,7 +49,7 @@ def _set_fields(ctx, targets, args):
             ctx.set(t, k, v)
         names.after_set(ctx, t, args)                # a new shape is named for its kind, counted per kind
         text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
-        frame_make.resized(ctx, t, size)             # a scene's new size: its frame, if never moved, follows it
+        frame_make.resized(ctx, t, size)             # a scene's new size: its pinned layers keep their distance from the frame's centre
 
 
 for _type, _params in F.FIELDS.items():
@@ -205,6 +205,7 @@ from . import ops_clip  # noqa: E402,F401  (layer.paste: copy / cut / paste of l
 from . import ops_paint, ops_fill, paint_transform  # noqa: E402,F401  (paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing)
 from . import ops_frame  # noqa: E402,F401  (comp.size, layer.fill_frame)
 from . import ops_frame_fit  # noqa: E402,F401  (frame.fit, frame.cut, frame.home: framing and cuts)
+from . import ops_depth  # noqa: E402,F401  (layer.pin, layer.set_depth: pinned to frame and depth, keeping where it shows)
 from . import ops_stagger  # noqa: E402,F401  (layer.stagger: retiming)
 from . import ops_path_handles  # noqa: E402,F401  (key.path_handles: the path a moving layer travels)
 from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: anim.list)
