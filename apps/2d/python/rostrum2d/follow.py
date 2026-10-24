@@ -173,7 +173,7 @@ def text_follow(ctx, targets, args):
         ctx.set(t, "pathLayer", want)
 
 
-@R.operation("layer.ride", "Make a layer or a camera ride a path layer beside it (same composition or group): on every frame its anchor (a camera: where it looks) "
+@R.operation("layer.ride", "Make a layer or the frame ride a path layer beside it (same composition or group): on every frame its anchor (the frame: its centre) "
              "sits on that path, at the tip of the part drawn on so far (Trim end, the default), at Trim start, or at a set "
              "place along it, as the path is reshaped, moved, turned or drawn on. Its X, Y become an offset from that point "
              "(set to 0 here); turn = it also turns with the path's direction. path empty = stop riding (the layer stays "

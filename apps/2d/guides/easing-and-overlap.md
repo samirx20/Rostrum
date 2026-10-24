@@ -60,7 +60,7 @@ that the file says what you decided.
 ## Bending the path a layer travels
 
 The ease decides how fast a layer goes; spatial handles decide which way. `key.path_handles {t, out: [dx, dy], in: [dx, dy]}`
-on a layer or the camera bends the path at its position key at `t` (it needs an x and a y key there): `out` is the handle
+on a layer or the frame bends the path at its position key at `t` (it needs an x and a y key there): `out` is the handle
 leaving that key, `in` the one arriving at it, in px from the key's place; `null` removes one (a straight line again
 when both ends of a stretch have none). Give the x and y keys the same ease for a true curve. The speed along the
 curve follows the ease, not the distance. `look_path {layer}` reads the path back: per sample its own x / y and where it

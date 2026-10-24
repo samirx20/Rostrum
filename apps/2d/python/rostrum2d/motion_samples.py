@@ -5,10 +5,10 @@ hand-off; format in apps/2d/MOTION.md › Motion samples).
 Read from the composition as it plays (layers timed from markers already in comp seconds, retime.py) through the one
 geometry rule the look tools use (mcp/geometry.py flatten: parents, auto layout). Nothing is rendered.
 
-A camera move is ONE event, not one per layer it carries: layers are sampled in the scene's own place (without the
-camera), and each camera that moves while it shows is its own entry, `camera:<id>`: where the frame's centre point of
-the scene lands on screen through it (it travels the way the picture travels), its zoom as scale. A cut between
-cameras is a switch of entries (each holds still with opacity 0 off its shot), never a move.
+A frame move is ONE event, not one per layer it carries: layers are sampled in the world's own place (without the
+frame), and the frame, when it moves, is its own entry, `camera:<frame id>`: where the output's centre point of the
+world lands in the export through it (it travels the way the picture travels), its zoom as scale. A cut (a hold key
+on the frame) is one step of that entry.
 
 Which layers: the ones that move on their own (their own x / y / scale / opacity change, or an auto layout moves them),
 not the ones only carried by a moving group (the group itself is listed). Pass `only` to choose (camera:<id> too).
@@ -20,7 +20,7 @@ import math
 
 from rostrum_core.errors import RostrumError, codes
 
-from .camera import view as camera
+from .frame import view as camera
 from .evaluate import value_at
 from .mcp.geometry import _apply, aabb, comp_size, flatten
 
@@ -56,13 +56,8 @@ def _hold(values: list, on: list[bool]) -> list:
     return out
 
 
-def _showing(cams: list[dict], t: float) -> str | None:
-    """The id of the camera showing at t (the rule of camera/view.py shot: the later one in the list wins)."""
-    return next((c["id"] for c in reversed(cams) if value_at(c, "start", t) <= t < value_at(c, "end", t)), None)
-
-
 def _cameras(comp: dict, times: list[float]) -> dict[str, list[dict]]:
-    """camera:<id> -> per sample a node-like row (props, matrix, corners, opacity, in_time) for each camera layer."""
+    """camera:<id> -> per sample a node-like row (props, matrix, corners, opacity, in_time) for the scene's frame."""
     cams = [c for c in comp.get("layers", []) if c["type"] == "camera"]
     W, H = comp_size(comp)
     out = {}
@@ -70,9 +65,9 @@ def _cameras(comp: dict, times: list[float]) -> dict[str, list[dict]]:
         rows = []
         for t in times:
             p = {f: float(value_at(c, f, t)) for f in ("x", "y", "zoom", "rotation")}
-            m = camera.layer_matrix(comp, (p["x"], p["y"], p["zoom"], p["rotation"]), {"depth": 0.0})
+            m = camera.layer_matrix(comp, camera.shot(comp, t), {"depth": 0.0})
             centre = _apply(m, W / 2, H / 2)
-            rows.append({"type": "camera", "matrix": m, "in_time": _showing(cams, t) == c["id"], "opacity": 1.0,
+            rows.append({"type": "camera", "matrix": m, "in_time": True, "opacity": 1.0,
                          "corners": [(centre[0] - W / 2, centre[1] - H / 2), (centre[0] + W / 2, centre[1] + H / 2)],
                          "props": {"x": p["x"], "y": p["y"], "scale": p["zoom"], "scaleX": 1.0, "scaleY": 1.0, "rotation": p["rotation"],
                                    "opacity": 1.0}})

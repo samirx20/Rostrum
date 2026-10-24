@@ -8,7 +8,7 @@ from rostrum_core import Param
 from . import fields as F
 from .kind import REGISTRY as R
 
-LAYERS = tuple(t for t in F.LAYERS if t != "camera")
+LAYERS = F.PLACED
 
 
 @R.operation("layer.lock", "Lock layers: they can't be picked or dragged on the screen and operations refuse them until "

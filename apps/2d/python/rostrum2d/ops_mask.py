@@ -17,7 +17,7 @@ from .ops_items import ID
              "a sibling). They all go into one new group and each cut layer shows only where the cutter is drawn "
              "(`mode`: its shape, outside its shape, its brightness or its darkness); the cutter itself is not drawn. "
              "Every layer keeps its place on screen and in time. mask.release undoes the link.",
-             target=F.LAYERS, label="Mask with this layer",
+             target=F.PLACED, label="Mask with this layer",
              params=[Param.id("cutter", kind="layer", label="Cutting layer", required=True),
                      Param.choice("mode", F.MATTE_MODES, label="Cut by", default="alpha",
                                   labels={"alpha": "Its shape", "alphaInverted": "Outside its shape", "luma": "Its brightness",
@@ -38,7 +38,7 @@ def mask_make(ctx, targets, args):
 
 
 @R.operation("mask.release", "Unlink a mask: the selected layers (cut layers, or the cutting layer) stop being cut and "
-             "the cutter is drawn again. The group stays a plain group.", target=F.LAYERS, label="Release mask",
+             "the cutter is drawn again. The group stays a plain group.", target=F.PLACED, label="Release mask",
              importance="secondary")
 def mask_release(ctx, targets, args):
     idx = index(ctx.doc, ctx.kind.lists)

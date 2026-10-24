@@ -24,7 +24,7 @@ def test_run_import_is_one_undo_step_with_report(tmp_path):
     r = importing.run(doc, me, "c", tmp_path / "t.svg")
     assert r["layers"] == ["bg", "dot"] and r["calls"] == 4 and any("clip" in line for line in r["report"])
     doc.undo(me)
-    assert doc.item("c")["layers"] == []
+    assert [l["type"] for l in doc.item("c")["layers"]] == ["camera"]       # only the scene's frame
     with pytest.raises(ValueError, match="no file"):
         importing.run(doc, me, "c", tmp_path / "missing.svg")
-    assert doc.item("c")["layers"] == []
+    assert [l["type"] for l in doc.item("c")["layers"]] == ["camera"]       # only the scene's frame

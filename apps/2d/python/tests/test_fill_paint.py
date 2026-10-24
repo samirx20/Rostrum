@@ -25,7 +25,7 @@ def _old_file(tmp_path):
 def _gradient_node(data):
     """The gradient the engine draws, as (geometry, geometry keys, stops with their keys): an old effect's color1 /
     color3 at mid / color2 and a fill's `stops` children (E8) read the same."""
-    node = scene.describe(data)["comp"]["layers"][0]["effects"][0]
+    node = scene.describe(data)["comp"]["layers"][1]["effects"][0]
     props, anim = node["props"], node.get("anim", {})
     geometry = {k: props[k] for k in ("style", "angle", "cx", "cy")}
     if node.get("stops"):
@@ -83,7 +83,7 @@ def test_any_stops_and_a_left_picture_reach_the_engine_as_set():
              {"op": "layer.fill", "target": "a", "args": {"type": "picture", "picture": "C:/pic.png", "fit": "tile"}},
              {"op": "layer.fill", "target": "a", "args": {"type": "linear", "stops": [
                  "#ff0000 0", "#ffff00 20", "#00ff0080 45", "#00ffff 70", "#0000ff 100"]}}], SAM)
-    node = scene.describe(d.data)["comp"]["layers"][0]
+    node = scene.describe(d.data)["comp"]["layers"][1]
     stops = node["effects"][0]["stops"]
     assert [s["props"]["at"] for s in stops] == [0.0, 0.2, 0.45, 0.7, 1.0]
     assert stops[2]["props"]["color"] == "#00ff00" and abs(stops[2]["props"]["opacity"] - 128 / 255) < 1e-3
@@ -106,7 +106,7 @@ def test_a_gradient_with_fewer_than_two_stops_is_refused(tmp_path):
 def test_solid_fill_opacity_reaches_the_engine_and_a_re_run_keeps_its_keys():
     d = Document.new(KIND)
     d.apply([{"op": "comp.add", "args": {"id": "s"}}, {"op": "layer.add", "target": "s", "args": {"type": "shape", "id": "r"}}], SAM)
-    sent = lambda: scene.describe(d.data)["comp"]["layers"][0]["props"]["fillOpacity"]   # noqa: E731
+    sent = lambda: scene.describe(d.data)["comp"]["layers"][1]["props"]["fillOpacity"]   # noqa: E731
     assert sent() == 1.0                                          # an old file / a fresh layer: fully opaque
     d.apply({"op": "layer.fill", "target": "r", "args": {"type": "solid", "color": "#ff0000", "opacity": 0.4}}, SAM)
     assert sent() == 0.4

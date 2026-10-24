@@ -59,7 +59,8 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
 - A layer inside a timed group with its own `marker` counts from its own marker.
 - **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
   reveal starts, wherever either marker moves.
-- **Cuts:** cameras take both fields (`camera("cam_reveal", marker="reveal", endMarker="end")`), so a cut sits on a marker.
+- **Cuts:** the frame jumps on a key timed on a marker: `frame().key("x", {"#reveal-0.033": (960, "hold"), "#reveal": 3200})`,
+  so the cut moves with the marker (see `camera-parallax-motion-blur`).
 - **Lead-ins:** *Starts at* may be below 0, counted back from the marker (`start=-0.2` appears 0.2 s before it).
 - **A key on its own marker:** a key's time may name a marker, as Sound's times do: `t.key("opacity", {0.0: 0,
   "#drop-0.1": 0.2, "#drop+0.2": 1})` (or `key.add` with `"t": "#drop+0.2"`). It lands at that moment of the

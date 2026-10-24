@@ -5,14 +5,15 @@ from rostrum2d.kind import check
 
 def doc():
     keys = [{"id": f"k{j}", "type": "key", "prop": "opacity", "t": j * 0.1, "v": 0.5} for j in range(3)]
-    layers = [{"id": "a", "type": "text", "text": "hi", "keys": keys}, {"id": "b", "type": "text", "text": "hi", "keys": []}]
+    layers = [{"id": "frame", "type": "camera", "keys": []},
+              {"id": "a", "type": "text", "text": "hi", "keys": keys}, {"id": "b", "type": "text", "text": "hi", "keys": []}]
     return {"id": "root", "type": "doc", "comps": [{"id": "c", "type": "comp", "layers": layers}]}
 
 
 def test_a_changed_key_is_checked_with_its_owner():
     data = doc()
     dup = {"id": "dup", "type": "key", "prop": "opacity", "t": 0.1, "v": 1}
-    data["comps"][0]["layers"][0]["keys"].append(dup)
+    data["comps"][0]["layers"][1]["keys"].append(dup)
     assert check(data, [dup]) == check(data) == ["a: two opacity keys at 0.1 s"]
 
 

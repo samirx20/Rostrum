@@ -36,6 +36,11 @@ and trails equally). Each sub-frame is a full evaluation and stage (keys, rigs, 
 on the GPU (renderer `painter.rs accumulate`). Layers that don't move come out the same in every sub-frame, so they
 stay sharp. A layer that starts or ends inside the open shutter fades in or out across it, as on film.
 
+**No blur across a jump.** A sub-frame never reads a field past a jump (a key after a `hold` key: a cut of the frame,
+a held pose, a step of "on twos"): on the far side of the jump it takes the value on the frame's own side. So a cut
+never smears two shots, and a held step doesn't smear into the next. Per field, so other moving layers on that frame
+still blur (engine `scene/eval.rs` `shutter_at`, `near_side`; FRAME.md).
+
 Exports go through the same `frame` request, so preview ≡ export.
 
 **Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
@@ -96,15 +101,16 @@ groups and auto layouts are where they show.
 ```json
 {"format": "rostrum.motion-samples/1", "comp": "film", "rate": 60, "duration": 20.0, "width": 1920, "height": 1080,
  "layers": {"card0": {"type": "group", "x": [960.0, …], "y": […], "scale": […], "opacity": […], "w": 820.0, "h": 180.0},
-            "camera:cam_ui": {"type": "camera", …}}}
+            "camera:frame": {"type": "camera", …}}}
 ```
 
 - `x`, `y`: the centre of the layer's box in the frame, in pixels; `scale`: its size against its own (parents
   included); `opacity`: with its groups', 0 outside its start / end. One value per sample, sample `i` at `i / rate` s.
   `w`, `h`: the largest box it shows at.
-- Layers are placed in the scene **without the camera**; each camera that moves is its own entry `camera:<id>` (the
-  scene's centre point through that camera, its zoom as `scale`), so a camera whip is one moment, not one per layer.
-- Off its time a layer holds still (its nearest place), so a cut is never a move. Cameras never step.
+- Layers are placed in the scene **without the frame**; the frame, when it moves, is its own entry `camera:<frame id>`
+  (the output's centre point through it, its zoom as `scale`), so a whip of the frame is one moment, not one per layer.
+- Off its time a layer holds still (its nearest place), so a cut is never a move. A cut of the frame (a hold key) is one
+  step of its entry.
 - Default layers: every layer and camera whose own values change while it shows. `layers=[…]` picks them.
 - Read-only for Sound: change the picture, export again, run `edit_sounds_from_motion` again; it moves its sounds and
   keeps what a person changed. The sounds land on seconds, not on markers.

@@ -42,8 +42,8 @@ def layer_paste(ctx, targets, args):
         layers = json.loads(args["layers"])
     except ValueError as e:
         ctx.fail(codes.BAD_ARGUMENT, '"layers"', f"is not JSON ({e})")
-    if not isinstance(layers, list) or not layers or not all(isinstance(x, dict) and x.get("type") in F.LAYERS for x in layers):
-        ctx.fail(codes.BAD_ARGUMENT, '"layers"', "must be a list of layers, as Copy gives them", list(F.LAYERS))
+    if not isinstance(layers, list) or not layers or not all(isinstance(x, dict) and x.get("type") in F.PLACED for x in layers):
+        ctx.fail(codes.BAD_ARGUMENT, '"layers"', "must be a list of layers, as Copy gives them", list(F.PLACED))
     comps = ctx.doc.get("comps", [])
     into = args.get("into") or (comps[0]["id"] if comps else "")
     holder = ctx.item(into)

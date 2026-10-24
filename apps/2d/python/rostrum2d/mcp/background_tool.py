@@ -1,5 +1,5 @@
-"""Painted backgrounds: look_background (a big canvas in tiles, with what the camera sees of it) and inspect_background
-(the depth layers, how far each moves, and whether each covers everything the camera shows of it). The maths is
+"""Painted backgrounds: look_background (a big canvas in tiles, with what the frame sees of it) and inspect_background
+(the depth layers, how far each moves, and whether each covers everything the frame shows of it). The maths is
 background.py; painting is the kit's stroke.add, looking close is look_drawing.
 
 Every coordinate here is a canvas pixel of the drawing layer, never a composition pixel.
@@ -53,12 +53,12 @@ def _frame_boxes(comp, layer):
     **ITEM, **LAYER, **FRAME, **SAMPLING,
     "tiles": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 26}, "minItems": 2, "maxItems": 2,
               "description": "[columns, rows] the canvas is cut into. Default: tiles about one composition frame each."},
-    "tile": {"type": "string", "description": "One tile to look at close (e.g. \"B2\"), with a pixel grid. Default: the whole canvas with the tiles and the camera's frame drawn on it."},
+    "tile": {"type": "string", "description": "One tile to look at close (e.g. \"B2\"), with a pixel grid. Default: the whole canvas with the tiles and the frame drawn on it."},
     "grid": {"type": "integer", "minimum": 0, "description": "With `tile`: grid spacing in canvas px; 0 = none (to judge texture)."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1400, "description": "Picture width in px."}}})
 def look_background(ctx, args):
     """A big drawing (a painted background) section by section. Without `tile`: the whole canvas, cut into labelled tiles,
-    with the camera's frame at the start (solid) and the end (dashed) and everything it shows over the shot (thin), so you
+    with the frame at the start (solid) and the end (dashed) and everything it shows over the shot (thin), so you
     see which parts are on screen and when. With `tile`: that tile alone, close, with a canvas-pixel grid (to place
     strokes) or none (grid 0, to judge texture). Use look_drawing for any other box."""
     doc = ctx.document(args.get("item"))
@@ -83,7 +83,7 @@ def look_background(ctx, args):
     else:
         pic = see.view(img, None, 0, args.get("width", 1400), sampling="smooth")
         _draw_overlay(pic, w, boxes, _frame_boxes(comp, layer) if comp else {})
-        text = f"{layer['id']}: canvas {w}×{h} in {cols}×{rows} tiles ({', '.join(boxes)}); {stroke_count(frame)} strokes. Yellow = the camera's frame (solid: start, dashed: end, thin: all it shows)."
+        text = f"{layer['id']}: canvas {w}×{h} in {cols}×{rows} tiles ({', '.join(boxes)}); {stroke_count(frame)} strokes. Yellow = the frame (solid: start, dashed: end, thin: all it shows)."
     dest = look_path(f'{doc.item_id or "doc"}_{layer["id"]}_bg{args.get("tile", "")}')
     pic.save(dest)
     return Reply(text, {"drawing": layer["id"], "canvas": [w, h], "tiles": {k: list(v) for k, v in boxes.items()}, "picture": [pic.width, pic.height]},
@@ -112,8 +112,8 @@ def _draw_overlay(pic, w, boxes, frames):
 
 @tools.tool("inspect_background", {"properties": {**ITEM_COMP}})
 def inspect_background(ctx, args):
-    """The composition's drawing layers by depth (far first): each one's depth, how much it moves for the camera (s =
-    1 / (1 + depth)), its canvas, and whether it covers everything the camera shows of it over the whole shot, in words
+    """The composition's drawing layers by depth (far first): each one's depth, how much it moves for the frame (s =
+    1 / (1 + depth)), its canvas, and whether it covers everything the frame shows of it over the whole shot, in words
     (\"312 px short on the right\"). Fix a short one with background.fit."""
     _, comp = doc_and_comp(ctx, args)
     shots = B.shots(comp)
@@ -128,4 +128,4 @@ def inspect_background(ctx, args):
     rows.sort(key=lambda r: -r["depth"])
     words = "; ".join(f'{r["layer"]} ({r["name"]}) depth {r["depth"]:g}, moves ×{r["moves"]:g}, ' + ("covers the shot" if r["covers"] else ", ".join(r["short"])) for r in rows)
     return Reply(f"{comp['id']}: " + (words or "no drawing layers") + ".", {"comp": comp["id"], "layers": rows},
-                 warnings=[f'{r["layer"]} is {", ".join(r["short"])}: the camera sees past it (background.fit)' for r in rows if not r["covers"]])
+                 warnings=[f'{r["layer"]} is {", ".join(r["short"])}: the frame sees past it (background.fit)' for r in rows if not r["covers"]])

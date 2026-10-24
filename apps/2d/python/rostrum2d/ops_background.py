@@ -1,5 +1,5 @@
 """Painted backgrounds: operations. `background.add` sets up depth layers (far → near drawing layers, each at a
-camera depth and big enough for everything the camera shows of it over the shot); `background.move` moves paint
+depth and big enough for everything the frame shows of it over the shot); `background.move` moves paint
 layers or strokes into another drawing (a depth layer), keeping where they sit in the composition, so a flat painting
 becomes a parallax background. Each call is one change = one undo step. The maths is background.py.
 """
@@ -19,14 +19,14 @@ MAX_CANVAS = 8192       # the drawing layer's canvas limit (fields.py)
 
 
 @R.operation("background.add", "Set up a painted background in depth layers: one drawing layer per depth, far to near, "
-             "under the other layers. Each is placed at its camera depth and sized to cover all the camera shows of it "
-             "over the composition (pans, push-ins, roll). Key the camera first, or resize later with background.fit.",
+             "under the other layers. Each is placed at its depth and sized to cover all the frame shows of it "
+             "over the composition (pans, push-ins, roll). Key the frame first, or resize later with background.fit.",
              target="comp", label="Add painted background",
              params=[Param.list("depths", "number", label="Depths (far → near)", min=-0.99, max=1000, default=[3.0, 1.0, 0.25],
-                                help="Camera depth of each layer, far first: 0 = on the camera's plane, 1 = moves half as much"),
+                                help="Depth of each layer, far first: 0 = on the frame's plane, 1 = moves half as much"),
                      Param.list("names", "text", label="Names", importance="secondary", help="One per depth; Far / Mid / Near when left out"),
                      Param.number("bleed", label="Bleed", min=0, max=2000, unit="px", default=B.BLEED, importance="deep",
-                                  help="Extra canvas past the furthest edge the camera shows"),
+                                  help="Extra canvas past the furthest edge the frame shows"),
                      Param.number("index", label="Position", min=0, max=100000, integer=True, importance="deep",
                                   help="Where the farthest layer goes in the stack (0 = bottom, the default)")])
 def background_add(ctx, targets, args):
@@ -48,8 +48,8 @@ def background_add(ctx, targets, args):
             ctx.insert(item["id"], "frames", frame)
 
 
-@R.operation("background.fit", "Resize drawing layers so they cover everything the camera shows of them at their depth "
-             "over the composition (after the camera changed). Strokes keep their place in the composition.",
+@R.operation("background.fit", "Resize drawing layers so they cover everything the frame shows of them at their depth "
+             "over the composition (after the frame changed). Strokes keep their place in the composition.",
              target="drawing", label="Fit to camera", importance="secondary",
              params=[Param.number("bleed", label="Bleed", min=0, max=2000, unit="px", default=B.BLEED, importance="deep")])
 def background_fit(ctx, targets, args):
@@ -107,7 +107,7 @@ def background_move(ctx, targets, args):
 def _fits(ctx, box, name):
     if box["w"] > MAX_CANVAS or box["h"] > MAX_CANVAS:
         ctx.fail(codes.BAD_ARGUMENT, f'"{name}"', f"would need a {box['w']}×{box['h']} canvas; a drawing is at most {MAX_CANVAS} px a side",
-                 hint="Use a larger depth for it (it moves less), a shorter camera move, or split it into two drawing layers.")
+                 hint="Use a larger depth for it (it moves less), a shorter frame move, or split it into two drawing layers.")
     return box
 
 
@@ -161,5 +161,5 @@ def _drawing_of(ctx, id_):
 def _comp_of(ctx, id_):
     cur = _parent(ctx, id_)
     if ctx.item(cur).get("type") != "comp":
-        ctx.fail(codes.BAD_ARGUMENT, f'"{id_}"', "is inside a group or rig: only a composition's own layers have a camera depth")
+        ctx.fail(codes.BAD_ARGUMENT, f'"{id_}"', "is inside a group or rig: only a composition's own layers have a depth")
     return ctx.item(cur)

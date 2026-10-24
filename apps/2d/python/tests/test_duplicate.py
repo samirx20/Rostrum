@@ -27,8 +27,8 @@ def test_duplicate_is_one_undo_step_with_new_ids():
     before = [c["id"] for c in d.item("film")["layers"]]
     d.apply({"op": "layer.duplicate", "target": ["shape_1", "group_1"]}, SAM)
     layers = d.item("film")["layers"]
-    assert [c["id"] for c in layers] == ["shape_1", "shape_3", "shape_2", "group_1", "group_2"]
-    assert layers[1]["name"] == "Rectangle copy" and layers[1]["effects"][0]["id"] != "blur_1"
+    assert [c["id"] for c in layers] == ["frame", "shape_1", "shape_3", "shape_2", "group_1", "group_2"]
+    assert layers[2]["name"] == "Rectangle copy" and layers[2]["effects"][0]["id"] != "blur_1"
     assert d.item("group_2")["layers"][0]["id"] == "text_2"
     d.undo(SAM)
     assert [c["id"] for c in d.item("film")["layers"]] == before

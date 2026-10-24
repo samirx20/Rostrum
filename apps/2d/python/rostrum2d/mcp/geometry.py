@@ -3,15 +3,15 @@
 
 A layer's box runs from (0,0) to (w,h) in its own coordinates; its anchor sits at (x,y) in its parent, then it is
 scaled, turned. A group's children live inside the group's own coordinates (top-left of its box is 0,0). The
-composition's camera (camera/view.py, CAMERA.md) then moves each top-level layer by its depth, so corners and boxes
-are where the layer shows on screen. Cameras themselves are not listed (they are not drawn).
+scene's frame (frame/view.py, FRAME.md) then moves each top-level layer by its depth, so corners and boxes
+are where the layer shows on screen. The frame itself is not listed (it is not drawn).
 """
 from __future__ import annotations
 
 
 from rostrum2d import boxes, fields as F, follow
 from rostrum2d.drawing import frame_number
-from rostrum2d.camera import view as camera
+from rostrum2d.frame import view as camera
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size  # the one size rule

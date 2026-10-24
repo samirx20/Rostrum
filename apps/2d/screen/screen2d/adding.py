@@ -16,7 +16,7 @@ from rostrum2d.io import importing
 from rostrum_core import ids
 from rostrum_core.tree import index
 
-ENTRIES = ["shape", "text", "path", "image", "video", "drawing", "camera", "render3d"]      # new content only: groups and rigs are made from a selection (actions.py)
+ENTRIES = ["shape", "text", "path", "image", "video", "drawing", "render3d"]      # new content only: groups and rigs are made from a selection (actions.py)
 ASKS_FILE = ("image", "video")
 
 

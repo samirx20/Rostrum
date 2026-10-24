@@ -2971,12 +2971,12 @@
     null
    ],
    [
-    "start",
+    "homeX",
     "number",
     null
    ],
    [
-    "end",
+    "homeY",
     "number",
     null
    ],
@@ -4515,7 +4515,7 @@
  ],
  "scene": {
   "format": "rostrum-2d-scene",
-  "version": 1,
+  "version": 2,
   "comp": {
    "id": "main",
    "type": "comp",
@@ -5151,7 +5151,7 @@
  "frames": [
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.0,
    "comp": {
     "id": "main",
@@ -5527,7 +5527,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.1,
    "comp": {
     "id": "main",
@@ -5903,7 +5903,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.25,
    "comp": {
     "id": "main",
@@ -6279,7 +6279,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.5,
    "comp": {
     "id": "main",
@@ -6735,7 +6735,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.65,
    "comp": {
     "id": "main",
@@ -7191,7 +7191,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 0.8,
    "comp": {
     "id": "main",
@@ -7647,7 +7647,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 1.0,
    "comp": {
     "id": "main",
@@ -8103,7 +8103,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 1.05,
    "comp": {
     "id": "main",
@@ -8559,7 +8559,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 1.3,
    "comp": {
     "id": "main",
@@ -8935,7 +8935,7 @@
   },
   {
    "format": "rostrum-2d-scene",
-   "version": 1,
+   "version": 2,
    "t": 2.0,
    "comp": {
     "id": "main",

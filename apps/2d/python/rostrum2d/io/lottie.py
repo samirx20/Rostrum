@@ -2,14 +2,15 @@
 
 `to_lottie(scene)` → (lottie dict, report). `write_lottie(scene, path)` writes the file and returns the report.
 The report is what will differ from the preview; what is carried exactly as a keyframe every frame (springs, colour
-fades, the camera) is not a difference and goes to the `baked` list a caller may pass.
+fades, the frame's move) is not a difference and goes to the `baked` list a caller may pass.
 
 - shape, path: Lottie shape layers (lottie_shapes.py). Images: image layers with the file embedded (lottie_image.py).
 - group: a precomp layer (so the group's opacity, blend, masks and keys apply to it as a whole); its children are the
   precomp's layers, in the group's own px. `clip` becomes a rect mask over the box; otherwise the precomp is made
   huge so nothing is cut. Time inside a precomp is the composition's time.
 - The composition's background becomes the bottom solid layer (Lottie has no background colour).
-- camera: baked into null parent layers, a keyframe every frame (lottie_camera.py), so the picture matches.
+- the frame's move: baked into null parent layers, a keyframe every frame (lottie_camera.py), so the picture matches;
+  a frame that never leaves home writes nothing.
 - text: glyph outlines as one shape layer per text (lottie_text.py). Not exported, always reported: drawing, video, tilt, effects, motion blur, conic gradients, soft mask edges.
 """
 from __future__ import annotations
@@ -37,13 +38,13 @@ def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int =
     for node in children:
         ctx.layer = node["id"]
         kind = node["type"]
+        if kind == "camera":                   # the scene's frame: bake_camera carries its move, after the layers
+            continue
         if node["props"]["end"] <= node["props"]["start"]:
             ctx.say("starts after it ends; never drawn, so not exported")
             continue
         if kind in NOT_EXPORTED:
             ctx.say(NOT_EXPORTED[kind])
-            continue
-        if kind == "camera":                   # a composition's own: bake_camera carries it, after the layers
             continue
         ind = start_ind + len(out)
         if kind in ("shape", "path"):

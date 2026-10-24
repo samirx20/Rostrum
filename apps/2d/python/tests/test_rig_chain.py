@@ -34,7 +34,7 @@ def doc():
 def test_the_engine_solves_a_long_chain_and_reports_it():
     from rostrum2d.engine import Engine
     scene = describe(doc().data)
-    tail = next(n for n in scene["comp"]["layers"][0]["rig"] if n["id"] == "tail")
+    tail = next(n for n in scene["comp"]["layers"][1]["rig"] if n["id"] == "tail")
     assert tail["props"]["chain"] == 4
     with Engine() as eng:
         eng.load(scene)

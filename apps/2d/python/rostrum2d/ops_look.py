@@ -55,7 +55,7 @@ def skipped(data: dict, source: str, ids: list[str]) -> dict[str, list[str]]:
 @R.operation("style.apply", "Copy the look of one layer (`from`) onto the selected layers: colour (fill), outline, opacity, "
              "blend, colour adjustments, and its effects (copied, replacing theirs). A field a layer doesn't have, or that is "
              "animated or driven by an expression on it, is left alone; a layer that takes nothing from it is refused.",
-             target=F.LAYERS, label="Paste style", importance="secondary",
+             target=F.PLACED, label="Paste style", importance="secondary",
              params=[Param.id("from", kind="layer", label="Copy the look of", required=True)])
 def style_apply(ctx, targets, args):
     src, lists = ctx.item(args["from"]), ctx.kind.lists

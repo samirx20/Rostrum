@@ -1,5 +1,5 @@
 """Painting's one mapping (placement.py, the engine's `place`): a stroke given in composition px lands under that point
-on a layer inside a moved, turned, scaled group, under a camera that pans, zooms and rolls, and tilted in 3D. Silent
+on a layer inside a moved, turned, scaled group, under a frame that pans, zooms and rolls, and tilted in 3D. Silent
 breakage here puts every stroke beside the pointer."""
 import pytest
 from PIL import Image
@@ -13,15 +13,13 @@ SAM = Who.person("sam")
 
 def scene_doc() -> Document:
     d = Document.new(KIND)
-    d.apply([{"op": "comp.add", "args": {"id": "film"}},
-             {"op": "comp.set", "target": "film", "args": {"width": 400, "height": 300, "duration": 1, "background": "#000000"}},
+    d.apply([{"op": "comp.add", "args": {"id": "film", "width": 400, "height": 300, "duration": 1, "background": "#000000"}},
              {"op": "layer.add", "target": "film", "args": {"type": "group", "id": "g"}},
              {"op": "group.set", "target": "g", "args": {"x": 200, "y": 150, "w": 150, "h": 100, "rotation": 30, "scale": 1.3}},
              {"op": "layer.add", "target": "g", "args": {"type": "shape", "id": "card"}},
              {"op": "shape.set", "target": "card", "args": {"x": 75, "y": 50, "w": 110, "h": 70, "rotation": -10,
                                                            "fill": "#0000ff", "tiltX": 25, "tiltY": -30}},
-             {"op": "layer.add", "target": "film", "args": {"type": "camera", "id": "cam"}},
-             {"op": "camera.set", "target": "cam", "args": {"x": 180, "y": 140, "zoom": 1.4, "rotation": 8}}], SAM)
+             {"op": "camera.set", "target": "frame", "args": {"x": 180, "y": 140, "zoom": 1.4, "rotation": 8}}], SAM)
     return d
 
 

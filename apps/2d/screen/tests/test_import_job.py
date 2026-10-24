@@ -50,10 +50,10 @@ def test_import_applies_once_on_the_gui_thread_and_fits(tmp_path):
     imp.run()
     assert imp.wait(30) and imp.state == "done"
     assert b.applied_on == [threading.main_thread()]
-    (root,) = b.doc.item("c")["layers"]                       # one group = the picture's content box (400x300), own size, centred
+    (_frame, root) = b.doc.item("c")["layers"]                       # one group = the picture's content box (400x300), own size, centred
     assert (root.get("scale", 1.0), root["x"], root["y"]) == (1.0, 760, 390)
     b.doc.undo(b.who)
-    assert b.doc.item("c")["layers"] == []                    # one undo step
+    assert [l["type"] for l in b.doc.item("c")["layers"]] == ["camera"]     # one undo step: only the scene's frame
 
 
 def test_cancel_and_errors_change_nothing(tmp_path):
@@ -63,7 +63,7 @@ def test_cancel_and_errors_change_nothing(tmp_path):
     plan = {"name": "x", "kind": "svg", "calls": [{"op": "layer.add", "target": ["c"], "args": {"type": "shape", "id": "s"}}],
             "report": [], "into": "c", "label": "x"}
     imp._finish(plan, "", False)
-    assert imp.state == "cancelled" and "nothing imported" in imp.note and not b.doc.item("c").get("layers")
+    assert imp.state == "cancelled" and "nothing imported" in imp.note and [l["type"] for l in b.doc.item("c")["layers"]] == ["camera"]
     imp.setFile(str(tmp_path / "missing.svg"))
     imp.run()
-    assert imp.wait(30) and imp.state == "failed" and "no file" in imp.note and not b.doc.item("c").get("layers")
+    assert imp.wait(30) and imp.state == "failed" and "no file" in imp.note and [l["type"] for l in b.doc.item("c")["layers"]] == ["camera"]

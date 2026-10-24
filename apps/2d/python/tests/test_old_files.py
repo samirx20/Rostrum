@@ -25,13 +25,13 @@ def old_file(tmp_path, edit):
 
 
 def test_an_old_file_opens_and_is_brought_up_to_date(tmp_path):
-    old_file(tmp_path, lambda doc: doc["comps"][0]["layers"][0].update(loop=True))
+    old_file(tmp_path, lambda doc: doc["comps"][0]["layers"][1].update(loop=True))
     d = Document.open(tmp_path, "film", KIND)
-    assert d.data["comps"][0]["layers"][0]["loop"] == "loop"
+    assert d.data["comps"][0]["layers"][1]["loop"] == "loop"
     assert "Loop written as words" in d.history.changes[-1].label           # one recorded change, so undo takes it back
 
 
 def test_a_file_that_cannot_be_read_names_the_item_and_field(tmp_path):
-    old_file(tmp_path, lambda doc: doc["comps"][0]["layers"][0].update(opacity="a lot"))
+    old_file(tmp_path, lambda doc: doc["comps"][0]["layers"][1].update(opacity="a lot"))
     with pytest.raises(RostrumError, match=r"damaged.*hi.*opacity"):
         Document.open(tmp_path, "film", KIND)

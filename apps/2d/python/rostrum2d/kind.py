@@ -1,7 +1,7 @@
 """The 2D document kind: where items live, what each list may hold, the whole-document check, and one field
 operation per item type (`text.set`, `glow.set`, `key.set` …) generated from the fields table.
 
-    doc ─ comps ─ comp ─ layers ─ shape | text | image | group (group ─ layers …)
+    doc ─ comps ─ comp ─ layers ─ camera (the scene's one frame, first: frame/) | shape | text | image | group (group ─ layers …)
                                   | drawing ─ frames ─ frame ─ paints ─ paint ─ strokes (painting kit)
                                   shape | text | image | video | path may hold frames too (paint on an element)
                                                                    ─ paintmasks
@@ -15,6 +15,7 @@ import rostrum_paint
 from rostrum_core import DocKind, Registry
 
 from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, pathdata, refusals, shared_paints, widthprofile
+from .frame import make as frame_make, rules as frame_rules
 from .rig import model as rig_model
 
 OWNED = ["effects", "masks", "keys"]
@@ -38,14 +39,16 @@ REGISTRY = Registry()
 
 def _set_fields(ctx, targets, args):
     for t in targets:
-        item = ctx.item(t) if {"font", "italic"} & set(args) else None
-        if item and item.get("type") in ("text", "textstyle") and (why := fontlist.setting_refusal(
+        item = ctx.item(t)
+        size = (item.get("width", 0.0), item.get("height", 0.0))
+        if item.get("type") in ("text", "textstyle") and {"font", "italic"} & set(args) and (why := fontlist.setting_refusal(
                 t, args.get("font", item.get("font", "")), args.get("italic", item.get("italic", False)))):
             raise ValueError(why)                       # never drawn in another font: refused when set
         for k, v in args.items():
             ctx.set(t, k, v)
         names.after_set(ctx, t, args)                # a new shape is named for its kind, counted per kind
         text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
+        frame_make.resized(ctx, t, size)             # a scene's new size: its frame, if never moved, follows it
 
 
 for _type, _params in F.FIELDS.items():
@@ -166,7 +169,7 @@ def check(data: dict, items=None) -> list[str]:
         for item in {id(i): i for i in [*owners, *items]}.values():
             _check_owner(item, problems)
     texts = data if items is None else {"layers": [i for i in items if i.get("type") == "text"]}
-    return problems + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
+    return problems + frame_rules.problems(data, items) + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
 def upgrade(data: dict, lists: dict, folder=None):

@@ -41,12 +41,15 @@ def _names(ctx) -> set[str]:
     return {display_name(i) for i in items} | {i["name"] for i in items if i.get("name")}     # a star named "Shape" still holds that name
 
 
-@R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length).", label="Add scene",
+@R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length). It comes with its frame "
+             "(the box that is exported) at home, still.", label="Add scene",
              params=[ID, NAME, *F.FIELDS["comp"]])
 def comp_add(ctx, targets, args):
+    from .frame import make
     item = new_item(ctx, "comp", args)
     item.update({k: v for k, v in args.items() if k not in ("id", "name")})
     ctx.insert("root", "comps", item)
+    ctx.insert(item["id"], "layers", make.new(item, {*_all_ids(ctx), item["id"]}))
 
 
 @R.operation("comp.remove", "Delete compositions with everything in them. Never the last one.",
@@ -63,7 +66,7 @@ def comp_remove(ctx, targets, args):
 
 @R.operation("layer.add", "Add a shape, text, image, group or drawing to a composition or group (on top unless index is given).",
              target=LAYER_HOLDERS, label="Add layer",
-             params=[Param.choice("type", list(F.LAYERS), label="Type", required=True), ID, NAME, INDEX])
+             params=[Param.choice("type", list(F.PLACED), label="Type", required=True), ID, NAME, INDEX])
 def layer_add(ctx, targets, args):
     from .ops_draw import starter_frame
     for t in targets:
@@ -73,17 +76,21 @@ def layer_add(ctx, targets, args):
             ctx.insert(item["id"], "frames", starter_frame(ctx))
 
 
-@R.operation("layer.remove", "Delete layers (with their effects, masks and keys).", target=F.LAYERS, label="Delete",
-             importance="secondary")
+@R.operation("layer.remove", "Delete layers (with their effects, masks and keys). Never a scene's frame.", target=F.LAYERS,
+             label="Delete", importance="secondary")    # the frame is a target so screens can pick it (layer_order.py)
 def layer_remove(ctx, targets, args):
     from .rig.ops import drop_binds
+    for t in targets:
+        if ctx.item(t)["type"] == "camera":
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', "is the scene's frame (what is exported); it can't be deleted",
+                     hint="Move it home instead (its X, Y at Home X, Home Y), or lock it.")
     drop_binds(ctx, targets)
     for t in targets:
         ctx.remove(t)
 
 
 @R.operation("layer.duplicate", "Copy layers: each copy lands just above its original, named \"<name> copy\", with its keys, "
-             "effects, masks and layers inside it copied under new ids.", target=F.LAYERS, label="Duplicate",
+             "effects, masks and layers inside it copied under new ids.", target=F.PLACED, label="Duplicate",
              importance="secondary")
 def layer_duplicate(ctx, targets, args):
     from rostrum_core import ids
@@ -107,14 +114,14 @@ def layer_duplicate(ctx, targets, args):
 
 
 @R.operation("item.rename", "Rename a composition, layer, effect, mask or a rig's saved pose.",
-             target=("comp", *F.LAYERS, *F.EFFECTS, "mask", "pose"),
+             target=("comp", *F.PLACED, *F.EFFECTS, "mask", "pose"),
              label="Rename", params=[Param.text("name", label="Name", required=True)], importance="secondary")
 def item_rename(ctx, targets, args):
     for t in targets:
         ctx.set(t, "name", args["name"])
 
 
-@R.operation("layer.arrange", "Move a layer in the stack, or into another group or composition.", target=F.LAYERS,
+@R.operation("layer.arrange", "Move a layer in the stack, or into another group or composition.", target=F.PLACED,
              label="Arrange", importance="secondary",
              params=[Param.id("into", label="Into", help="A group or composition; the layer's own when left out"),
                      Param.number("index", label="Position", min=0, max=100000, integer=True, required=True,
@@ -142,7 +149,7 @@ def _descendants(ctx, id_):
 
 @R.operation("effect.add", "Add an effect to layers: blur, glow, gradient (fills a shape, or a text's letters), shadow, frosted glass, "
              "grain (film grain on the layer's own look; on a group it covers all its layers), trail, smear.",
-             target=tuple(t for t in F.LAYERS if t != "camera"), label="Add effect",     # a camera shows nothing of its own to affect
+             target=F.PLACED, label="Add effect",
              params=[Param.choice("type", list(F.EFFECTS), label="Effect", required=True), ID, NAME, INDEX])
 def effect_add(ctx, targets, args):
     for t in targets:
@@ -151,7 +158,7 @@ def effect_add(ctx, targets, args):
 
 
 @R.operation("mask.add", "Add a mask to layers: only the part inside it shows (or outside, inverted).",
-             target=F.LAYERS, label="Add mask", params=[ID, NAME])
+             target=F.PLACED, label="Add mask", params=[ID, NAME])
 def mask_add(ctx, targets, args):
     for t in targets:
         ctx.insert(t, "masks", new_item(ctx, "mask", args if len(targets) == 1 else {**args, "id": None}))

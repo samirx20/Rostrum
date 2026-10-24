@@ -18,7 +18,7 @@ tools = Tools()
     **ITEM_COMP,
     "format": {"type": "string", "enum": [r["name"] for r in exporting.formats()],
                "description": "mp4 | prores4444 (alpha) | webm (alpha) | gif | png (a sequence of pictures in a new folder) | lottie (vector JSON; the reply lists what it couldn't carry) | motion (the moving layers' place, scale and opacity 60 times a second: the samples file RostrumSound's edit_sounds_from_motion reads)."},
-    "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (a camera as camera:<id>). Default: every layer and camera that moves on its own."},
+    "layers": {"type": "array", "items": {"type": "string"}, "description": "motion only: sample these layer ids (the frame as camera:<frame id>). Default: every layer and the frame that moves on its own."},
     "alpha": {"type": "boolean", "description": "Keep transparency. Default: on only for a format that can carry it (not mp4, not lottie) and a transparent composition background."},
     "depth": {"type": "integer", "enum": [8, 16], "description": "Bits per channel; png only (default 8)."},
     **exporting.QUALITY_ARGS,

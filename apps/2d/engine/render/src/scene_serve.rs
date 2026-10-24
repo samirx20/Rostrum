@@ -194,7 +194,7 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
     let (mut samples, mut eval_ms) = (vec![], 0.0);
     if angle > 0.0 && n > 1 {
         for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
-            let (mk, ms) = markup(scene, ts, alpha)?;
+            let (mk, ms) = crate::scene::eval::shutter_at(t, || markup(scene, ts, alpha))?;
             eval_ms += ms;
             samples.push(mk);
         }

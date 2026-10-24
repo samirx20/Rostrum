@@ -67,11 +67,11 @@ placed by the person at rest; its bind makes it follow its bone's motion **from 
 ## Agents' eyes: the engine's `bones` request
 
 `{"bones": {"t": 1.25}}` → `{"ok": true, "rigs": {"<rig id>": {"bones": {"<id>": {"x", "y", "tipX", "tipY", "angle"}},
-"iks": {"<id>": {"targetX", "targetY", "gap"}}, "camera": [a, b, c, d, e, f]}}}`: posed pivots, tips and angles in
-**screen px** (through the rig's and its parents' 2D transforms and the comp's camera, CAMERA.md; tilt ignored; with no
-camera, screen px are comp px), and each IK's (held) target and the distance its tip misses it by. `camera` is the
-matrix the camera added (screen = camera · comp px); `inspect_rig_motion` undoes it, so a pinned foot is measured where
-it stands in the comp, not where a moving camera shows it.
+"iks": {"<id>": {"targetX", "targetY", "gap"}}, "frame": [a, b, c, d, e, f]}}}`: posed pivots, tips and angles in
+**screen px** (through the rig's and its parents' 2D transforms and the scene's frame, FRAME.md; tilt ignored; with the
+frame at home, screen px are comp px), and each IK's (held) target and the distance its tip misses it by. `frame` is the
+matrix the frame added (screen = frame · comp px); `inspect_rig_motion` undoes it, so a pinned foot is measured where
+it stands in the comp, not where a moving frame shows it.
 
 ## Scene description (ENGINE_CONTRACT.md § 2, same version)
 

@@ -28,13 +28,13 @@ def test_scene_shows_one_child_a_frame_and_keeps_own_opacity_keys():
     d.run_script("s.py", run_source(SRC, "s.py"))
     d.apply({"op": "key.add", "target": "b", "args": {"prop": "opacity", "t": 0, "v": 0.5}}, SAM)
     d.apply({"op": "key.add", "target": "b", "args": {"prop": "opacity", "t": 1, "v": 1.0}}, SAM)
-    kids = {n["id"]: n for n in describe(d.data)["comp"]["layers"][0]["layers"]}
+    kids = {n["id"]: n for n in describe(d.data)["comp"]["layers"][1]["layers"]}
     for f in range(10):
         t = f / 10
         shown = [k for k, n in kids.items() if opacity(n, t) > 0]
         assert shown == [["a", "b", "z"][0 if t < 0.3 else 1 if t < 0.6 else 2]], (t, shown)
     assert abs(opacity(kids["b"], 0.4) - track_value(keys_of(d.item("b"), "opacity"), 0.4)) < 1e-9          # its own fade, times being the one shown
-    assert "swap" not in kids and "show" not in describe(d.data)["comp"]["layers"][0]["props"]
+    assert "swap" not in kids and "show" not in describe(d.data)["comp"]["layers"][1]["props"]
 
 
 def test_blinks_add_keys_once_and_a_moved_key_stays():

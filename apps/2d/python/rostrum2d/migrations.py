@@ -3,10 +3,14 @@ document saved as format n to format n+1, run on open before the document is che
 means adding its step here (the kind refuses to start without it).
 
     1 → 2   a Loop field written True / False (the first builds) becomes "loop" / "off" (looping.MODES)
+    2 → 3   each scene gets its frame (the box that is exported, and its camera); cameras become the frame's keys,
+            several cameras its cuts (frame/convert.py, apps/2d/FRAME.md › Older files)
 """
 from __future__ import annotations
 
 from rostrum_core.tree import walk
+
+from .frame.convert import convert as frames
 
 
 def loop_words(data: dict, lists: dict):
@@ -18,5 +22,5 @@ def loop_words(data: dict, lists: dict):
     return data, f"Loop written as words on {n} item{'s' * (n != 1)}"
 
 
-STEPS = {1: loop_words}
+STEPS = {1: loop_words, 2: frames}
 FORMAT = len(STEPS) + 1

@@ -25,7 +25,7 @@ def _doc(tmp_path):
 
 
 def _top(doc):
-    return doc.data["comps"][0]["layers"]
+    return [l for l in doc.data["comps"][0]["layers"] if l["type"] != "camera"]     # the layers, not the scene's frame
 
 
 def _psd(tmp_path):

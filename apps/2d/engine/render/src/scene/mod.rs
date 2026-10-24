@@ -1,4 +1,4 @@
-//! The scene description (ENGINE_CONTRACT.md v1): loaded and checked whole (anything unknown is refused, naming
+//! The scene description (ENGINE_CONTRACT.md v2): loaded and checked whole (anything unknown is refused, naming
 //! the item and field), then evaluated per frame (eval.rs) and written as the stage the renderer draws (stage.rs).
 //! serve's `scene`, `frame {t}`, `export` and `edit` requests are in scene_serve.rs.
 
@@ -39,7 +39,7 @@ use ease::Ease;
 use fields::{Kind, Role};
 
 pub const FORMAT: &str = "rostrum-2d-scene";
-pub const VERSION: u64 = 1;
+pub const VERSION: u64 = 2;      // 2: the scene's frame (FRAME.md) in place of cameras
 
 /// One key: its time, its value (a number, a colour kept as written and in linear light, a path's shape or width profile) and the ease of
 /// the stretch it starts; a number key's optional spatial handles `out` (leaving it) and `in` (arriving at it), offsets
@@ -110,7 +110,7 @@ impl Scene {
         let mut seen = HashSet::new();
         comp.walk(&mut |n| if seen.insert(n.id.clone()) { Ok(()) } else { Err(format!("{}: the id is used twice", n.id)) })?;
         crate::rig::check(&comp)?;
-        crate::camera::check(&comp)?;
+        crate::frame::check(&comp)?;
         follow::check(&comp)?;
         matte::check(&comp)?;
         grade::check(&comp)?;
@@ -159,7 +159,7 @@ impl Scene {
             n.anim.sort_by(|a, b| a.0.cmp(&b.0));
         }
         crate::rig::check(&next)?;
-        crate::camera::check(&next)?;
+        crate::frame::check(&next)?;
         follow::check(&next)?;
         matte::check(&next)?;
         grade::check(&next)?;

@@ -196,7 +196,7 @@ def _upgrade(doc, kind, path) -> bool:
     recorded as one change by Rostrum so the history before it replays as written and undo takes it back. A file that
     can't be brought up to date is refused loudly, never opened half-converted. True when something changed."""
     try:
-        data, labels = kind.migrate(doc.data, doc.file_version)
+        data, labels = kind.migrate(doc.data, doc.file_version, getattr(doc, "folder", None))
         up = kind.upgrade(data, kind.lists, getattr(doc, "folder", None)) if kind.upgrade else None
     except (*SHAPE_ERRORS, RostrumError) as e:
         raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"can't be brought up to date: {type(e).__name__}: {e}",
