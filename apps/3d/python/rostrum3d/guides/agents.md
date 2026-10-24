@@ -118,3 +118,5 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 A failed look or render says what failed (the frame, the camera, the item) and, when the engine had stopped, that it was started
 again. Read the line; it names what is accepted. A scene the engine refuses is refused whole, and the engine keeps the previous
 scene, so a look after a refused change shows the last good state, not the new one.
+A render with passes that "came out empty while its <layer> layer is not" wrote no file: the picture was lost on the way,
+not the scene. Render again; if it repeats, report it with the engine log the message names.
