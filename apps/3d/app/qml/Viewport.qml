@@ -80,7 +80,7 @@ Rectangle {
         property bool panning: false
         onPressed: (m) => {
             lx = sx = m.x; ly = sy = m.y; dragged = false
-            panning = m.button === Qt.MiddleButton || (m.modifiers & Qt.ShiftModifier)
+            panning = (m.button === Qt.MiddleButton && !meshEdit.on) || (m.modifiers & Qt.ShiftModifier)   // Edit mesh: middle orbits
         }
         onPositionChanged: (m) => {
             dragged = dragged || Math.abs(m.x - sx) + Math.abs(m.y - sy) > 3
@@ -97,7 +97,9 @@ Rectangle {
 
     Shortcut { sequence: "Esc"; enabled: backend.adder.armed !== ""; onActivated: backend.adder.disarm() }
     HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
-    Gizmo { anchors.fill: parent }   // the selected item's handles; a press off them falls through to the area above
+    // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
+    MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
+    Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above
     TypeInPlace { }                  // a 3D text just placed: its cursor where it landed, typing changes the words
 
     Rectangle {  // the Final look's progress: a thin line along the bottom edge

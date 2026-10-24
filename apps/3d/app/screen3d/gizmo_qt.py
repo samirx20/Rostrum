@@ -30,6 +30,7 @@ class Gizmo(QObject):
         self._drag, self._moved = None, {}            # the open drag; item id -> fields the gizmo moved (for K)
         viewport.serialChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._refresh)
+        viewport.mesh_edit.changed.connect(self._refresh)      # Edit mesh: the gizmo stands on the selection
         self._hold = HoldD(self) if isinstance(QGuiApplication.instance(), QGuiApplication) else None
 
     show = Property(str, lambda s: s._show, notify=changed)
@@ -69,10 +70,16 @@ class Gizmo(QObject):
         parent = parent if parent in scene_ids(scene) else None        # a top-level item's parent is the document
         pw, origin, turn = G.item_frame(scene, parent, v, self.bridge.frame)
         axes, own = G.columns(pw[0]), G.columns(aim._mul(pw[0], turn))
+        me = self.vp.mesh_edit
+        if me.on:                       # Edit mesh: on the picked points / edges / faces, along the item's own axes
+            spot = me.gizmo_frame()
+            if spot is None:
+                return None
+            origin, axes, own = spot["origin"], spot["own"], spot["own"]
         screen = QGuiApplication.primaryScreen()
         px = vp._scale * (screen.devicePixelRatio() if screen else 1.0)
         return {"it": it, "v": v, "view": view, "pw": pw, "origin": origin, "turn": turn, "axes": axes, "own": own, "px": px,
-                "scene": scene, "parent": parent}
+                "scene": scene, "parent": parent, "mesh": me.on}
 
     def _refresh(self, *_):
         self._ctx = None
@@ -135,6 +142,8 @@ class Gizmo(QObject):
             return
         g, now = self._grab, self._pt(fx, fy)
         c, v = g["ctx"], g["ctx"]["v"]
+        if c["mesh"]:
+            return self._mesh_drag(g, c, now, free)
         units = c["view"].units(c["view"].project(c["origin"])[2]) * c["px"]     # world units per screen px
         if g["kind"] in ("move", "pivot"):
             d = aim._apply(aim._inverse(c["pw"][0]), G.moved_by(c["view"], g["handle"], c["origin"], c["axes"], g["start"], now))
@@ -165,6 +174,12 @@ class Gizmo(QObject):
         calls = [self.bridge.edit_call(c["it"]["id"], k, x) for k, x in out.items() if abs(x - v[k]) > 1e-9]
         self._moved.setdefault(c["it"]["id"], set()).update(k for k in out if abs(out[k] - v[k]) > 1e-9)
         self.bridge._guard(lambda: self._drag.preview(calls))
+        self.changed.emit()
+
+    def _mesh_drag(self, g, c, now, free):
+        """Edit mesh: each move one `mesh.transform` step on top of the drag so far (mesh_actions.py works it out)."""
+        call, self._label = self.vp.mesh_edit.gizmo_step(g, c, now, free)
+        self.bridge._guard(lambda: self._drag.preview([call]))
         self.changed.emit()
 
     def _arm_px(self, g):

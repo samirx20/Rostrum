@@ -45,8 +45,17 @@ AppShell {
                onActivated: backend.renderJob.dismiss() }
     Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
     Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: backend.selected !== "" && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
+               enabled: backend.selected !== "" && !meshEdit.on && !startScreen.visible && (backend.renderJob.state === "idle" || backend.renderJob.state === "")
                onActivated: backend.select("") }
+    readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
+    // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
+    // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
+    Shortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
+               onActivated: meshEdit.toggle() }
+    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.leave() }
+    Shortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
+    Shortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
+    Shortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
     Shortcut { sequence: "`"; enabled: viewport.hasShot && !startScreen.visible   // shot camera <-> free camera
                onActivated: viewport.setMode(viewport.mode === "shot" ? "free" : "shot") }
     Shortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
@@ -139,7 +148,7 @@ AppShell {
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
-            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== ""
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 MaterialRow { id: materialRow; width: parent.width }
@@ -150,6 +159,7 @@ AppShell {
             }
         }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" }
+        MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
     }
     bottom: SceneList { anchors.fill: parent }
 }
