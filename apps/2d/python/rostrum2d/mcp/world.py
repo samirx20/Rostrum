@@ -47,6 +47,10 @@ def look_world(ctx, args):
         say = (f'The world of {comp["id"]} at {t:.3f} s (frame {frame}): world px {shown["x"]:.0f},{shown["y"]:.0f} to '
                f'{shown["x"] + shown["w"]:.0f},{shown["y"] + shown["h"]:.0f}, {w}×{h} picture. The frame is outlined '
                f'({"and its path drawn" if path and moves else "it never leaves home" if not moves else "path off"}); outside it is veiled.')
+        if moves:
+            keys, cuts = ", ".join(f"{k:.2f}" for k in wf.key_times(comp)), ", ".join(f"{c:.2f}" for c in wf.cuts(comp))
+            say += f" Frame keys at {keys} s" + (f"; it jumps (a cut) at {cuts} s" if cuts else "") + "."
+
         return Reply(say, {"time": t, "frame": frame, "world": shown, "frame_corners": [[round(x, 1), round(y, 1)] for x, y in q],
                            "keys": wf.key_times(comp), "width": w, "height": h}, [dest], [dest], scene.get("warnings", []))
 
