@@ -19,9 +19,9 @@ Rectangle {
     property bool canResize: true               // false where the app sets the height itself (3D's pages): no grab edge
     property bool canCurves: true               // false where the app has no curve view yet (3D): Keys | Curves is absent
     property string emptyText: ""               // an app with no rows yet words its items here (3D); 2D never has none: the Frame row is always there
-    readonly property bool animated: backend.layers.some(r => (r.keys || []).length > 0)   // something is keyed: only then are there curves to see
+    readonly property bool animated: backend.rowFacts.animated   // something is keyed: only then are there curves to see
     readonly property bool curvesOn: canCurves && animated && backend.curves.on
-    readonly property bool canPickRows: compact || backend.layers.some(r => r.row === "layer" && r.id === backend.selected)   // the height button: a layer is picked (or it is how back out of the one-row view)
+    readonly property bool canPickRows: compact || backend.rowFacts.layerIds.includes(backend.selected)   // the height button: a layer is picked (or it is how back out of the one-row view)
     signal compactAsked(bool on)
     property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
     property Item curves                        // the app's curve view, in the same place while Curves is on
@@ -80,7 +80,7 @@ Rectangle {
         x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
         width: (compactSwitch.visible ? compactSwitch.x - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
         duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time; frameTicks: tl.frameTicks
-        cuts: backend.layers.length > 0 ? (backend.layers[0].cuts || []) : []   // the frame's cuts (the Frame row is first; 3D has none)
+        cuts: backend.rowFacts.cuts   // the frame's cuts (the Frame row is first; 3D has none)
     }
     Button {  // every row, or only the selected layer's: offered with a layer picked (or to get back from one row)
         id: compactSwitch
@@ -107,7 +107,7 @@ Rectangle {
         VScrollBar { flick: tl.rows; visible: !!tl.rows && needed }
     }
     MouseArea {  // compact: the one row's name is a list of every layer
-        visible: tl.compact && !tl.curvesOn && backend.layers.length > 0
+        visible: tl.compact && !tl.curvesOn && backend.rowFacts.count > 0
         x: 0; y: tl.rowsTop; width: tl.labelWidth; height: Theme.rowDense; z: 2
         cursorShape: Qt.PointingHandCursor
         onClicked: { picker.entries = backend.layers.filter(r => r.row === "layer")
@@ -116,7 +116,7 @@ Rectangle {
         Menu { id: picker; y: parent.height; width: tl.labelWidth; onPicked: (id) => backend.select(id) }
     }
     EmptyHint {     // the kit's empty state (INTERACTION.md 1.16): gone with the first layer (2D has none: it never has no rows)
-        visible: tl.emptyText !== "" && backend.layers.length === 0
+        visible: tl.emptyText !== "" && backend.rowFacts.count === 0
         x: Theme.pad; y: tl.rowsTop + Theme.gap * 2; width: tl.width - 2 * Theme.pad
         text: tl.emptyText
     }

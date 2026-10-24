@@ -7,6 +7,7 @@ A slot mix-in for Bridge2D (it declares `layersChanged`; outlineChanged and mark
 """
 from __future__ import annotations
 
+from rostrum_gui import row_facts
 from rostrum_gui.rows_model import RowsModel
 
 from . import outline
@@ -14,14 +15,18 @@ from . import outline
 
 class TimelineRows:
     _rows_at = None          # (placed, folds, A-opened, rows): the rows of that state
+    _rows_kept = None        # outline.rows' memory: a layer unchanged since the last rows keeps its rows
     _rows_told = None        # the rows QML was last told about
+    _facts_told = None       # the row facts it was last told (row_facts.py)
 
     def layer_rows(self) -> list[dict]:
         """The timeline's rows as the document is now (read by QML's `layers` and by the screen's own code)."""
         placed, flipped, only = self.placed(), frozenset(self._flipped), frozenset(self._anim_only)
         got = self._rows_at
+        if self._rows_kept is None:
+            self._rows_kept = {}
         if got is None or got[0] is not placed or got[1] != flipped or got[2] != only:
-            got = self._rows_at = (placed, flipped, only, outline.rows(placed, self._flipped, self._anim_only))
+            got = self._rows_at = (placed, flipped, only, outline.rows(placed, self._flipped, self._anim_only, self._rows_kept))
         return got[3]
 
     def _layers_check(self):
@@ -29,6 +34,10 @@ class TimelineRows:
         rows, told = self.layer_rows(), self._rows_told
         self._rows_told = rows
         if rows != told:
+            facts = row_facts.of(rows)
+            if facts != self._facts_told:
+                self._facts_told = facts
+                self.rowFactsChanged.emit()
             self.layersChanged.emit()
         if self._row_models:
             self._push_rows(rows)

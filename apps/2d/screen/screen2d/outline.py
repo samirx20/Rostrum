@@ -125,53 +125,74 @@ def _cuts(frame: dict) -> list[float]:
     return sorted(out)
 
 
-def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> list[dict]:
+def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept: dict | None = None) -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
-    only their animated settings (theirs, their effects' and masks'), not their own layers."""
+    only their animated settings (theirs, their effects' and masks'), not their own layers.
+    `kept`: the caller's memory between calls. A layer that is the very same item as last time (a change makes new
+    items only along the path to what it changed) has the same rows, with its own layers' rows inside, so they are
+    taken over, not worked out again: an edit costs the layers it touched. The rows handed out are shared; read only."""
     out: list[dict] = []
-    duration = comp["duration"]
+    duration, fps = comp["duration"], comp["fps"]
+    state = (frozenset(flipped), frozenset(anim_only), fps, duration)
+    if kept is not None and kept.get("state") != state:
+        kept.clear()
+    fresh: dict = {}
 
     def past(pairs) -> dict:
         """The faint marks past the keys (Repeat, Back and forth, a spring's tail) of these (owner, prop) fields."""
-        return key_ghosts.marks([(keys_of(o, p), duration) for o, p in pairs], comp["fps"])
+        return key_ghosts.marks([(keys_of(o, p), duration) for o, p in pairs], fps)
 
-    def walk(layers, depth):
+    def layer_rows(lay, depth) -> list[dict]:
+        out = []
+        fields = _fields(lay)
+        inside = bool(fields or _owned(lay) or lay.get("layers"))
+        only = lay["id"] in anim_only
+        is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
+        first, lines = _lines(lay, depth, is_open)
+        summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
+                                        key=lambda k: k["t"]), fps)
+        row = _row("layer", lay, depth, label_of(lay), summary)
+        row["stretches"] = first["stretches"]
+        row.update(past(fields))
+        if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
+            row.update(bar=True, trim=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
+                       end=min(max(lay.get("end", duration), 0.0), duration),
+                       startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
+        if lay["type"] == FRAME:    # the frame's bar is the whole scene, never trimmed or slid (it always exists)
+            row.update(label="Frame", frame=True, bar=True, start=0.0, end=duration, startMarker="", endMarker="",
+                       cuts=_cuts(lay))
+        row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")),
+                   pinned=depth == 0 and bool(lay.get("screenLock")))      # rides the frame: a pin glyph by its name
+        row["fold"] = "" if not inside else "open" if is_open else "closed"
+        if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)
+            row["frames"] = framing.marks(lay, fps, duration)
+            row["again"] = framing.again(lay, fps, duration)    # a looping drawing's later rounds, faint
+        out.append(row)
+        out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
+        if not is_open:
+            return out
+        out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past))
+        for o in _owned(lay):
+            keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
+            if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
+                out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
+        if not only:
+            out.extend(walk(lay.get("layers", []), depth + 1))
+        return out
+
+    def walk(layers, depth) -> list[dict]:
         # the frame is the first of its scene's layers (the bottom of the stack) but its row is pinned on top, always
+        out = []
         for lay in sorted(reversed(layers), key=lambda l: l["type"] != FRAME) if depth == 0 else reversed(layers):
-            fields = _fields(lay)
-            inside = bool(fields or _owned(lay) or lay.get("layers"))
-            only = lay["id"] in anim_only
-            is_open = bool(fields) if only else inside and (bool(lay.get("layers")) != (lay["id"] in flipped))
-            first, lines = _lines(lay, depth, is_open)
-            summary = _one_per_frame(sorted((k for o, p in fields for k in _keys(o, p) if k["id"] not in first["elsewhere"]),
-                                            key=lambda k: k["t"]), comp["fps"])
-            row = _row("layer", lay, depth, label_of(lay), summary)
-            row["stretches"] = first["stretches"]
-            row.update(past(fields))
-            if F.param(lay["type"], "start") is not None:   # a camera, a shape â€¦: when it shows, as a bar
-                row.update(bar=True, trim=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
-                           end=min(max(lay.get("end", duration), 0.0), duration),
-                           startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
-            if lay["type"] == FRAME:    # the frame's bar is the whole scene, never trimmed or slid (it always exists)
-                row.update(label="Frame", frame=True, bar=True, start=0.0, end=duration, startMarker="", endMarker="",
-                           cuts=_cuts(lay))
-            row.update(locked=bool(lay.get("locked")), hidden=bool(lay.get("hidden")),
-                       pinned=depth == 0 and bool(lay.get("screenLock")))      # rides the frame: a pin glyph by its name
-            row["fold"] = "" if not inside else "open" if is_open else "closed"
-            if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)
-                row["frames"] = framing.marks(lay, comp["fps"], duration)
-                row["again"] = framing.again(lay, comp["fps"], duration)    # a looping drawing's later rounds, faint
-            out.append(row)
-            out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC Â§9.4)
-            if not is_open:
-                continue
-            out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, comp["fps"], past))
-            for o in _owned(lay):
-                keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
-                if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
-                    out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
-            if not only:
-                walk(lay.get("layers", []), depth + 1)
+            got = kept.get(id(lay)) if kept is not None else None
+            if got is None or got[0] is not lay or got[1] != depth:
+                got = (lay, depth, layer_rows(lay, depth))
+            fresh[id(lay)] = got
+            out.extend(got[2])
+        return out
 
-    walk(comp.get("layers", []), 0)
+    out = walk(comp.get("layers", []), 0)
+    if kept is not None:
+        kept.clear()
+        kept.update(fresh, state=state)
     return out

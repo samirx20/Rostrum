@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Slot
 
+from rostrum_gui import row_facts
+
 from .bridge_signals import Signals3D
 
 S = Signals3D
@@ -63,6 +65,11 @@ class TimeMixin:
     def layers(self):
         """The timeline's rows (the kit reads `layers`): the scene list with its keys (outline.scene_rows)."""
         return self.sceneRows
+
+    @Property("QVariantMap", notify=S.outlineChanged)
+    def rowFacts(self):
+        """What the timeline asks of its rows besides drawing them (the kit reads this, not `layers`: row_facts.py)."""
+        return row_facts.of(self.sceneRows)
 
     @Slot(float)
     def setTime(self, t):
