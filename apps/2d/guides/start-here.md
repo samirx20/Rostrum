@@ -109,7 +109,7 @@ write instead.
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
 
 Effects: `item.effect("shadow", dx=, dy=, radius=, color=, strength=)`, `"glow"`, `"blur"`, `"gradient"` (`color1`,
-`color2`, `angle`), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
+`color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
 
 The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
 `width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,
