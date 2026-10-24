@@ -193,14 +193,18 @@ class Cache:
         self._again = True
         while self._again:
             self._again = False
-            self.trim()
+            self.trim(gently=True)
 
-    def entries(self) -> list[tuple[float, int, Path]]:
-        """(last used, bytes, folder) of every entry."""
+    def entries(self, gently: bool = False) -> list[tuple[float, int, Path]]:
+        """(last used, bytes, folder) of every entry. `gently` (a trim running aside while a person works): a short
+        pause every few entries, so the screen's thread gets the interpreter's turn (a scan of hundreds of entries
+        made a drag stutter)."""
         out = []
         if not self.root.is_dir():
             return out
-        for meta in self.root.glob(f"*/*/{ENTRY}"):
+        for n, meta in enumerate(self.root.glob(f"*/*/{ENTRY}")):
+            if gently and n % 8 == 7:
+                time.sleep(0.002)
             try:
                 st, size = meta.stat(), json.loads(meta.read_text(encoding="utf-8")).get("bytes", 0)
             except (OSError, ValueError):
@@ -208,10 +212,10 @@ class Cache:
             out.append((st.st_mtime, int(size), meta.parent))
         return out
 
-    def trim(self, keep: set | None = None) -> int:
+    def trim(self, keep: set | None = None, gently: bool = False) -> int:
         """Remove least recently used entries until under the cap; `keep` = folders a running job uses.
         Returns bytes freed."""
-        entries = sorted(self.entries())
+        entries = sorted(self.entries(gently))
         total, freed, now = sum(e[1] for e in entries), 0, self.clock()
         for used, size, folder in entries:
             if total <= self.cap:

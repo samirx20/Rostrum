@@ -14,7 +14,7 @@ A character is a **rig**: its parts (head, arms, legs ...) tied to bones, so you
 
 ### Posing and Poses
 
-Pose the character on the canvas by moving its bones. With the rig (or its bones) selected, the settings panel has a **Poses** group:
+Pose the character on the canvas by dragging its bones: press on a bone's middle and drag (an arm or leg bends as a chain to reach the pointer; any other bone turns about its joint). One drag is one undo step. With the rig (or its bones) selected, the settings panel has a **Poses** group:
 
 - **Save pose** keeps the pose at the playhead. A rig with no poses yet shows only this button.
 - Click a saved pose to key it at the playhead. Drag its slider to key only part of the way there from the pose the rig has now; the number beside it shows how much.
@@ -26,7 +26,7 @@ Pose the character on the canvas by moving its bones. With the rig (or its bones
 1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**). Name them by mouth shape, or name the set "mouth".
 2. Select the set. **Lip sync…** appears at the top of the settings panel.
 3. In the sheet, click a **Voice line**. Voice lines come from RostrumSound. Check the drawing shown for each mouth shape and change a wrong one in its list.
-4. Click **Apply**. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.
+4. Click **Apply**. The first time a voice line is used, the sheet listens to it: it shows **Step 1 of 3**, **2 of 3**, **3 of 3** with a moving bar, takes a few seconds (longer on a busy computer), and you can keep working meanwhile. A line heard before applies at once. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.
 
 ### Add blinks
 

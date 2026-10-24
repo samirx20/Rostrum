@@ -17,8 +17,10 @@ EACH_FRAME_HELP = "On: each frame can have its own drawing (hand-drawn animation
 ELEMENT = [
     Param.toggle("paintInside", label="Inside the outline", group=G, default=True, importance="secondary",
                  valid_when=HAS_PAINT, help="On: the paint shows only where the element itself is drawn. Off: it covers the whole box"),
+    # Valid before any paint (an animation starts on an empty element: the first stroke makes drawing 1 at the
+    # playhead); the brush panel's "Painting on" is its one place, so the inspector never lists it (shown="script").
     Param.toggle("eachFrame", label="Draw each frame", group=G, default=False, importance="secondary",
-                 valid_when=HAS_PAINT, help=EACH_FRAME_HELP),
+                 shown="script", help=EACH_FRAME_HELP),
     Param.number("paintW", label="Paint width", group=G, min=0, max=8192, step=1, unit="px", integer=True, default=0,
                  importance="deep", valid_when=HAS_PAINT,
                  help="The paint's own size in px, set by the first stroke from the element's box; it is stretched over the box"),
@@ -26,7 +28,7 @@ ELEMENT = [
                  importance="deep", valid_when=HAS_PAINT),
 ]
 DRAWING = [Param.toggle("eachFrame", label="Draw each frame", group="Drawing", default=False, importance="secondary",
-                        help=EACH_FRAME_HELP + " (missing on an older drawing: on when it has several drawings)")]
+                        help=EACH_FRAME_HELP)]
 
 
 def _new_hold(group, when):

@@ -82,7 +82,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   shipped brushes (`brush_presets.py`: only existing brush settings, never a colour) as real strokes painted by the
   kit's engine (`image://brushes/<id>`). No context bar while painting (only the picked strokes' StrokeBar).
 - **The settings panel** (`brush_panel.py`, the kit Inspector on the painter): "Painting · <layer> · <kind>", the
-  brush's row (`BrushHead.qml`: stroke + name ▾ opens the panel), the quick rows (`brush.QUICK`: Size, Opacity, Colour,
+  brush's name (`BrushHead.qml`: a plain label ▾ that opens the panel, the one place a brush is chosen), the quick rows (`brush.QUICK`, per tool in `brush.TOOL_PARTS`: the Eraser has no Colour, Fill is Colour + Close gaps, Pick and Select none; Size, Opacity, Colour,
   Pressure → size / opacity), "Edit brush ›" (every setting, `Brush.editing`), then "Painting on" (`PaintTarget.qml`:
   Layer ▾, Inside the outline, Draw each frame, from the first moment) and the paint layers (`PaintOn.qml`).
 - **On the canvas**: the target's edge dashed; the pointer is the brush ring; `[` `]` size, Shift+`[` `]` hardness,
@@ -208,7 +208,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Beat words** (`screen2d/beat_words.py`, the one place): with a tempo in the project's music, a key's label says
   "… at bar 5" / "bar 5 beat 3" (hooks.label_of), the Key block shows "bar 5 beat 3" beside one key's Time, and the time
   drag's snap label names bars and beats the same way. A time within half a frame of a beat is on it.
-- Steps: `bonedrag`, `boneclick`, `bonehover`, `boneend`, `bonerealclick <bone> [ctrl]` (a real mouse click; Ctrl held).
+- Steps: `bonedrag`, `boneclick`, `bonehover`, `boneend`, `bonerealclick <bone> [ctrl]` (a real mouse click; Ctrl held), `bonerealdrag <bone> <dx> <dy>` (a real press, drag, release); `lipsync start|wait|snap <png>`.
   Layout states: `bone-tool`, `mirror-pose-menu`, `key-faint-copies`, `key-beat-words`.
 
 ## The rules it builds in
@@ -428,7 +428,7 @@ processes on one file (each saves; reopen to see the other's).
 - **Make rig** is the context bar's first button on a group (or layers) whose parts are named like a body, outside a rig
   (fact `body_parts`; `promoted` in `actions.py`: a secondary action promoted now joins the bar on its own).
 - **Bones from part names** on the context bar for a rig with no bones whose parts are named like a body (`rig.guess_bones`).
-- **Attach to bone** (`rig_attach.py`): select a part of the rig, Ctrl+click a bone on the overlay; one change (`bind.set` to
+- **Attach to bone** (`rig_attach.py`): select a part of the rig, Ctrl+click a bone on the overlay (Ctrl read at the press or the release); one change (`bind.set` to
   that bone, rigid, or `bind.add`). Absent when it is already attached there.
 - The rig's bar in the timeline shows its bones' and IK chains' keys (one diamond per time; moved and deleted like any
   keys); opened, a row per keyed bone (`outline._owned`).
@@ -440,7 +440,7 @@ processes on one file (each saves; reopen to see the other's).
   of the way (one change on release), right-click › Delete.
 - **Lip sync…** on a mouth swap set (`qml/LipSyncSheet.qml`, `backend.lipsync`): the project's voice lines from RostrumSound
   (`rostrum_core.lipsync.voice.lines`), a row per mouth shape guessed from the drawings' names, Apply = one `lipsync.apply` (a line not heard
-  before is listened to off the screen's thread first). **Add blinks…** on an eyes swap set (`qml/BlinkSheet.qml`): Every,
+  before is listened to off the screen's thread first, with "Step n of 3", a moving bar and the window free). **Add blinks…** on an eyes swap set (`qml/BlinkSheet.qml`): Every,
   Varies by, open / closed / half, Apply = one `blink.add`.
 - Steps (`rig_steps.py`): `bones`, `jointdrag`, `posedrag`, `bonepick`, `pin`, `posesave`, `poseapply`, `poseblend`,
   `lipsync open|line|shape|apply|close`, `blinks open|every|vary|pick|apply|close`. Test character: `rig_sample.py`.

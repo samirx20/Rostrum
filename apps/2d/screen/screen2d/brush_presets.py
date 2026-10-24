@@ -72,7 +72,7 @@ def groups() -> list[dict]:
 
 
 # ---- previews: a short S-stroke, light -> firm -> light, painted by the kit's engine ----------------------------
-SMEAR_BANDS = [(0.85, 0.45, 0.30), (0.30, 0.45, 0.85)]
+SMEAR_BANDS = [(0.80, 0.77, 0.70), (0.36, 0.38, 0.43)]      # two quiet tones of the ink and the ground: the smear shows, no stripes of colour
 W, H, INK, BG = 232, 56, (0.93, 0.90, 0.84), (0.137, 0.141, 0.157)
 
 
@@ -101,7 +101,7 @@ def preview_of(s: dict) -> QImage:
     if smudge:        # two bands of wet paint meeting at the middle; the stroke crosses the join up and down and drags each into the other
         for i, c in enumerate(SMEAR_BANDS):
             stamp_stroke(layer, [(0, H * (0.25 + 0.5 * i), 1), (W, H * (0.25 + 0.5 * i), 1)], c, H / 2 + 6, "block", hardness=1, spacing=.05, color_jitter=0, lay=lay)
-        ink = SMEAR_BANDS[0]       # the brush carries paint of its own: the first band's colour, so the drag is the picture
+        ink = SMEAR_BANDS[0]       # the brush carries paint of its own: the light band's colour, so the drag is the picture
     if s.get("mode") == "multiply":
         stamp_stroke(layer, [(10, H / 2, 1), (W - 10, H / 2, 1)], (0.85, 0.75, 0.55), 40, "block", hardness=.9, color_jitter=0, lay=lay)
         ink = (0.45, 0.35, 0.65)

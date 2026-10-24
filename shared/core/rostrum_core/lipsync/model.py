@@ -94,8 +94,9 @@ def _normalized(x):
     return ((x - x.mean()) / np.sqrt(x.var() + 1e-7)).astype(np.float32)
 
 
-def emissions(samples, where="lipsync"):
-    """(log probabilities frames × labels, device). Loads the model, runs it, releases it."""
+def emissions(samples, where="lipsync", progress=None):
+    """(log probabilities frames × labels, device). Loads the model, runs it, releases it. `progress(fraction)` is called
+    when the model is open (0) and after each piece (a 20 s piece is the finest the model gives)."""
     import numpy as np
     from .ctc import log_softmax
 
@@ -104,6 +105,8 @@ def emissions(samples, where="lipsync"):
         raise RostrumError(codes.NO_MEMORY, where, "the phone model",
                            f"needs about {MIN_FREE_GB} GB of free memory; {free:.1f} GB is free")
     session, dev = _session(where)
+    if progress:
+        progress(0.0)
     try:
         inp = session.get_inputs()[0]
         dtype = np.float16 if "float16" in inp.type else np.float32
@@ -119,6 +122,8 @@ def emissions(samples, where="lipsync"):
             first, skip = round(a / (RATE * FRAME_S)), (ctx_f if a > 0 else 0)
             n = min(frames - first, round(CHUNK_S / FRAME_S), logits.shape[0] - skip)
             out[first:first + n] = logits[skip:skip + n]
+            if progress:
+                progress(min(1.0, (a + step) / len(samples)))
         return log_softmax(out), dev
     except RostrumError:
         raise

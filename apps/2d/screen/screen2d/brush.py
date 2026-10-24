@@ -18,6 +18,17 @@ from . import brush_presets
 
 QUICK = ("size", "opacity", "color", "steady", "size_pressure", "opacity_pressure")   # the quick rows, in this order
 STEADY_GROUPS = ("Ink",)       # Steadiness is a quick row only on these presets' brushes (clean lines)
+# What each paint tool shows in the settings panel: its quick rows (data, never per-panel hand code: the rule of
+# individuality, an absent row is not greyed), whether the brush's own row and "Edit brush ›" are there, and Close gaps.
+# Eraser has no colour (it takes paint away); Fill is a colour and its gap; Pick (Alt-click or the dropper) and Select
+# (strokes picked: their Copy / Paste / Delete are the context bar's) have no brush at all.
+TOOL_PARTS = {
+    "brush":  {"rows": QUICK, "brush": True, "gaps": False},
+    "eraser": {"rows": tuple(r for r in QUICK if r != "color"), "brush": True, "gaps": False},
+    "fill":   {"rows": ("color",), "brush": False, "gaps": True},
+    "pick":   {"rows": (), "brush": False, "gaps": False},
+    "select": {"rows": (), "brush": False, "gaps": False},
+}
 PRESSURE = {"size_pressure", "opacity_pressure"}     # folded into "Edit brush ›" on a short window (tight)
 TILT = {"tilt_angle", "tilt_size"}     # shown only while a tilting pen is connected (pen_tilt.py)
 LIGHT_INK = "#f2f2f2"          # the starting colour on a dark background (a light one keeps the setting's own default)
@@ -55,11 +66,12 @@ class Brush:
             self._static, self._gen = rows.layout(SimpleNamespace(params=self._params)), library.generation
         return rows.evaluate(self._static, self.values, {}, True)
 
-    def rows(self, can_load: bool = False) -> list[dict]:
+    def rows(self, can_load: bool = False, tool: str = "brush") -> list[dict]:
         """The settings panel's brush rows: the quick ones (no headings: the panel's Brush row heads them), or, while
         editing the brush, every setting but the colour (a quick row) and the seed (set once per stroke). A setting
         whose one value is a tool (mode's "erase": Eraser) keeps its other values here. `can_load`: the document is in a
-        project folder, where a loaded picture is kept (Tip picture and Paper then end with "Load picture…")."""
+        project folder, where a loaded picture is kept (Tip picture and Paper then end with "Load picture…"). `tool`: the
+        paint tool that is on (TOOL_PARTS says which quick rows it has; "Edit brush ›" is the Brush's and Eraser's)."""
         out = [r for r in self._evaluated() if r["row"] != "more"]
         for r in out:
             if can_load and r["row"] == "param" and r["id"] in LOADS:             # Tip picture / Paper end with "Load picture…"
@@ -72,7 +84,8 @@ class Brush:
             out = rows.omit(out, TILT)
         if self.editing:
             return rows.omit(out, {"color", "seed"})
-        quick = [r for r in out if r["row"] == "param" and r["id"] in QUICK
+        mine = TOOL_PARTS[tool]["rows"]
+        quick = [r for r in out if r["row"] == "param" and r["id"] in mine
                  and (r["id"] != "steady" or brush_presets.group(self.preset) in STEADY_GROUPS)
                  and not (self.tight and r["id"] in PRESSURE)]
         return sorted(quick, key=lambda r: QUICK.index(r["id"]))

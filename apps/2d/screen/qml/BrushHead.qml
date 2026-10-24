@@ -2,8 +2,8 @@ import QtQuick
 import RostrumKit
 
 // The top of the settings panel while painting (painting design §2.1, mockup paint-01): the heading "Brush" and the
-// brush's own wide row, its stroke (painted by the engine, image://brushes) and its name ▾; a click opens the brush
-// panel (BrushFlyout.qml). The quick rows follow (the Inspector's, brush.py QUICK). While editing the brush
+// brush's name as a plain label ▾; a click opens the brush panel (BrushFlyout.qml), the one place a brush is chosen. Only
+// while the Brush or Eraser is the tool (painter.toolParts). The quick rows follow (the Inspector's, brush.py TOOL_PARTS). While editing the brush
 // (Edit brush ›) this is "‹ Back" instead, with "+ Save this brush" at its right (SaveBrush.qml: into My brushes),
 // and the rows are every brush setting.
 Column {
@@ -11,35 +11,31 @@ Column {
     width: parent ? parent.width : 0
     readonly property bool editing: painter.editing
     readonly property var brush: painter.brushNow
+    readonly property bool shown: !head.editing && painter.toolParts.brush      // Fill, Pick and Select have no brush of their own
 
     Item {     // the heading, as the panel's group headings
-        visible: !head.editing
+        visible: head.shown
         width: head.width; height: Theme.rowDense
         Text { anchors.left: parent.left; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.grid + 2
                text: "Brush"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
     }
-    Rectangle {    // the brush: its stroke and its name ▾
+    Item {    // the brush: its name as a plain label; a click opens the brush panel, the one place a brush is chosen
         objectName: "brushRow"
-        visible: !head.editing && backend.paintTool.now !== "fill"
-        width: Theme.wideFor(head.width); height: 44; radius: Theme.radiusCtl
-        color: rowArea.containsMouse ? Theme.hover : Theme.raised
-        border.color: Theme.popupEdge
-        Image {
-            x: 4; y: 4; width: parent.width * 0.6; height: parent.height - 8
-            source: head.visible && head.brush.preset ? "image://brushes/" + head.brush.preset : "" // painted once it shows (H65)
-            asynchronous: true; fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true
-        }
+        visible: head.shown
+        width: head.width; height: Theme.row
+        Rectangle { width: Theme.wideFor(head.width); height: parent.height; radius: Theme.radiusCtl; color: Theme.hover; visible: rowArea.containsMouse }
         Text {
-            anchors { right: chev.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
-            width: parent.width * 0.4 - 24 - Theme.grid; horizontalAlignment: Text.AlignRight; elide: Text.ElideRight
-            text: head.brush.name || ""; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+            anchors { left: parent.left; leftMargin: 0; right: chev.left; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
+            elide: Text.ElideRight
+            text: head.brush.name || ""; color: rowArea.containsMouse ? Theme.fg : Theme.fg2
+            font.family: uiFont; font.pixelSize: Theme.body
         }
-        Chevron { id: chev; anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
+        Chevron { id: chev; x: Theme.wideFor(head.width) - width - Theme.grid; anchors.verticalCenter: parent.verticalCenter
                   color: rowArea.containsMouse ? Theme.fg : Theme.fg3 }
-        MouseArea { id: rowArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+        MouseArea { id: rowArea; width: Theme.wideFor(head.width); height: parent.height; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: head.Window.window.openFlyout("brush") }
     }
-    Item { visible: !head.editing; width: 1; height: Theme.grid }
+    Item { visible: head.shown; width: 1; height: Theme.grid }
     Item {     // editing the brush: back to painting
         objectName: "brushBack"
         visible: head.editing

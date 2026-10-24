@@ -8,6 +8,7 @@ next stroke), not the document: nothing here is an undo step. Painter (painter.p
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -17,13 +18,14 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_paint import library
 
 from . import brush_presets
-from .brush import LOADS
+from .brush import LOADS, TOOL_PARTS
 
 
 class BrushPanel(QObject):
     """Needs `self.b` (the bridge), `self.brush` (brush.Brush), `self.model` (the panel's RowsModel) and `self._aim()`
     (what the pen paints on)."""
     brushChanged = Signal()
+    toolChanged = Signal()
 
     @Property(QObject, constant=True)
     def rows(self):
@@ -33,6 +35,24 @@ class BrushPanel(QObject):
     def brushNow(self):
         """The next stroke's values, its preset and its name (the Brush row, [ and ], the brush ring)."""
         return {**self.brush.values, "preset": self.brush.preset, "name": self.brush.label()}
+
+    def _tool(self) -> str:
+        return self.b.paintTool.now
+
+    @Property("QVariantMap", notify=toolChanged)
+    def toolParts(self):
+        """What the paint tool that is on shows (brush.TOOL_PARTS): `brush` (the brush's own row and Edit brush ›) and
+        `gaps` (Close gaps). The quick rows follow the same table (brush.rows)."""
+        return dict(TOOL_PARTS[self._tool()])
+
+    @Slot()
+    def toolSwitched(self):
+        """A paint tool went on or off (paint_tool.py): the quick rows are that tool's, and a tool without a brush
+        leaves Edit brush ›. Not `brushChanged`: the paint tool listens to that one."""
+        if self.brush.editing and not TOOL_PARTS[self._tool()]["brush"]:
+            self.brush.editing = False
+        self.model.update(self.brush.rows(bool(self.b.doc.folder), self._tool()))
+        self.toolChanged.emit()
 
     @Property("QVariantList", constant=True)
     def presets(self):
@@ -88,7 +108,8 @@ class BrushPanel(QObject):
             return {"id": "brush", "label": self.brush.label(), "kind": "brush", "subtitle": ""}   # its first group says "Brush"
         d = self._aim()
         name, kind = (display_name(d), self.b.kind_label(d)) if d else ("New drawing", "")
-        on = name if kind in ("", name) else f"{name} · {kind}"     # "Drawing", not "Drawing · Drawing"
+        said = kind == "" or re.fullmatch(rf"{re.escape(kind)}( \d+)?", name)     # the name already says it: "Drawing 2", not "Drawing 2 · Drawing"
+        on = name if said else f"{name} · {kind}"
         return {"id": "brush", "label": "Painting", "kind": "brush", "kindLabel": on}
 
     editing = Property(bool, lambda self: self.brush.editing, notify=brushChanged)
@@ -131,7 +152,7 @@ class BrushPanel(QObject):
         self._rows_changed()
 
     def _rows_changed(self):
-        self.model.update(self.brush.rows(bool(self.b.doc.folder)))
+        self.model.update(self.brush.rows(bool(self.b.doc.folder), self._tool()))
         self.brushChanged.emit()
 
     @Slot(str)

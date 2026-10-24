@@ -21,6 +21,7 @@ class PaintTool(QObject):
             part.changed.connect(self.changed)
         bridge.painter.brushChanged.connect(self.changed)
         bridge.toolChanged.connect(self.changed)
+        self.changed.connect(bridge.painter.toolSwitched)     # the settings panel shows this tool's rows (brush.TOOL_PARTS)
 
     @Property(str, notify=changed)
     def now(self):

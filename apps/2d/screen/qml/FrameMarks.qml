@@ -66,7 +66,7 @@ Item {
             x: 8 + Math.round(m.timeRuler.xOf(modelData.t0)); width: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
             height: 16; y: Math.round((m.height - height) / 2); radius: 3
             color: modelData.n % 2 ? Theme.raised : Theme.hover; opacity: 0.45
-            Text { visible: parent.width > 16; x: 5; anchors.verticalCenter: parent.verticalCenter; text: modelData.n; color: Theme.fg3
+            Text { visible: parent.width >= implicitWidth + 10; x: 5; anchors.verticalCenter: parent.verticalCenter; text: modelData.n; color: Theme.fg3
                    font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
         }
     }
@@ -84,6 +84,8 @@ Item {
             readonly property real w0: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
             readonly property bool grip: !last && w0 >= 32 && m.free(x0 + w0 - 16, x0 + w0) !== null
             readonly property var span: m.free(x0, x0 + Math.max(16, w0 - (grip ? 16 : 0)))   // its click area, clear of keys
+            readonly property bool shows: numberWidth.advanceWidth + 10 <= w0 + edge.dx
+            TextMetrics { id: numberWidth; font.family: uiFont; font.pixelSize: Theme.label; text: String(f.modelData.n) }
             x: x0 + (area.moving ? area.dx : 0)
             width: w0 + edge.dx
             height: m.height
@@ -96,8 +98,9 @@ Item {
                      : f.modelData.n % 2 ? Theme.raised : Theme.hover
                 border.width: f.current ? 1 : 0; border.color: Theme.accent
                 opacity: area.moving && area.copying ? 0.6 : 1
-                Text {
-                    visible: parent.width > 16
+                Text {      // the number, only where the whole of it fits (else its hover help says it)
+                    id: num
+                    visible: f.shows
                     x: 5; anchors.verticalCenter: parent.verticalCenter
                     text: f.modelData.n; color: f.current ? Theme.fg : Theme.fg2; font.family: uiFont
                     font.pixelSize: Theme.label; font.features: { "tnum": 1 }
@@ -112,8 +115,9 @@ Item {
                 id: area
                 y: cell.y; height: cell.height        // never under 16 px wide: a narrow cell's area reaches under the next one
                 visible: f.span !== null; x: f.span ? f.span[0] - f.x0 : 0; width: f.span ? f.span[1] - f.span[0] : 0
-                acceptedButtons: Qt.LeftButton | Qt.RightButton; preventStealing: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton; preventStealing: true; hoverEnabled: true
                 cursorShape: moving ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                HoverTip { hovered: area.containsMouse && !f.shows && !area.moving; text: "Drawing " + f.modelData.n }
                 property real x0: 0
                 property real dx: 0
                 property bool moving: false

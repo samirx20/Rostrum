@@ -52,12 +52,21 @@ class RigView(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._rig, self._posed, self._place, self._key, self._picked = bridge, "", {}, None, None, ""
-        self.drag = RigDrag(self)
+        self._drag = RigDrag(self)
         self._answer.connect(self._got)
         for s in (bridge.selectedItemsChanged, bridge.docChanged, bridge.timeChanged, bridge.toolChanged, bridge.frameChanged):
             s.connect(self.refresh)
 
     # ---- what QML reads --------------------------------------------------------------------------------------
+    @property
+    def drag(self) -> RigDrag:
+        return self._drag
+
+    @Property(QObject, constant=True)
+    def dragger(self):
+        """The overlay's drags (rig_drag.py): QML calls `rig.dragger.beginPose(…)` (a plain attribute is not seen from QML)."""
+        return self._drag
+
     @Property(str, notify=changed)
     def rig(self):
         """The rig in hand ("" = no overlay)."""
@@ -117,8 +126,11 @@ class RigView(QObject):
         if key != self._key:
             return                                       # an older question: the newest wins
         if error is not None:
-            self._key = None
-            return self.b._fail(f"Error: bones: {error}")
+            self._key = None                                 # asked again at the next frame (frameChanged -> refresh)
+            if "is not drawn at this time" in str(error):    # Make rig asks before the rig's first frame has landed: no error, ask again
+                return
+            name = self.b.doc.item(self._rig).get("name", "") if self.b.doc.has(self._rig) else ""
+            return self.b._fail(f"Error: bones: {str(error).replace(self._rig, name or 'the rig')}")   # never an internal id
         rigs, places = answer
         self._posed = rigs.get(self._rig, {}).get("bones", {})
         self._place = places.get(self._rig)

@@ -34,6 +34,19 @@ Panel {
             }
         }
         Words { visible: text !== ""; width: pop.availableWidth; wrapMode: Text.WordWrap; elide: Text.ElideNone; text: pop.ls.note; color: Theme.fg3 }
+        Item {              // Apply is listening to the line: step n of 3 and a bar that always moves (the window stays free)
+            id: working
+            visible: pop.ls.busy
+            width: pop.availableWidth; height: visible ? Theme.row + 6 : 0
+            property real shown: 0
+            property real aim: pop.ls.progress
+            onAimChanged: { shown = Math.max(shown, aim); creep.restart() }
+            onVisibleChanged: if (!visible) { shown = 0; creep.stop() }
+            NumberAnimation { id: creep; target: working; property: "shown"; to: pop.ls.progressTo; duration: 25000; easing.type: Easing.OutCubic }
+            Words { id: stepWords; width: parent.width; text: pop.ls.progressText; color: Theme.fg }
+            Rectangle { y: stepWords.height + 4; width: parent.width; height: 4; radius: 2; color: Theme.hover
+                        Rectangle { width: parent.width * working.shown; height: parent.height; radius: 2; color: Theme.accent } }
+        }
         Words { text: "Mouth shapes"; color: Theme.fg3; font.pixelSize: Theme.label; visible: pop.ls.lines.length > 0 }
         Repeater {          // a row per shape: the drawing that shows for it
             model: pop.ls.lines.length > 0 ? pop.ls.rows : []

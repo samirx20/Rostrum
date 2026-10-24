@@ -16,7 +16,7 @@ from rostrum_gui import clip
 from rostrum_gui.parts import SlotMixin
 from rostrum_paint.fields import BRUSH
 
-from . import stroke_geom as G
+from . import flat_cue, stroke_geom as G
 
 MIME = "application/x-rostrum2d-strokes"        # beside clipboard.py's layers type: one clipboard, the latest copy wins
 PASTE_STEP = 24.0           # composition px: a paste lands this far down and right of the copy
@@ -64,9 +64,11 @@ class StrokeClip(SlotMixin):
             else:
                 calls.append({"op": "paint.stroke", "target": [d["id"]], "args": {
                     **_brush_of(s), "space": "canvas", "layer": layer, "points": pts, "frame": frame}})
-        before = {x["id"] for x in self._strokes(d)}
+        before, frame0 = {x["id"] for x in self._strokes(d)}, self.b._paint_layers._frame()
         if not self._change("Paste strokes", lambda: calls):
             return False
+        # the exact picture takes about a second: the pasted strokes show flat at once, until it lands (flat_cue.py)
+        self.b.painter._wet.flat(flat_cue.for_layer(self.b, d["id"], flat_cue.new_items(frame0, self.b._paint_layers._frame()), self._place), lambda: self.b._waiting is None)
         self._ids = [x["id"] for x in self._strokes(self.b.doc.item(d["id"])) if x["id"] not in before]      # the paste is what is picked now:
         self._at = self._here()                                                      # Delete, move and turn act on it
         self._load()
