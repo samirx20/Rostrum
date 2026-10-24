@@ -54,9 +54,12 @@ card.key("fillOpacity", {0.0: 0.0, 1.0: 0.4})
 
 ## Colour effects
 
-Every layer has four colour effects. Each is off until you turn it on, and its controls appear only then. They act on
-the layer's whole look (its content, masks and effects), in this order: adjust → levels → curves → LUT. On a group
-they act on everything in it, so a group around the whole picture is a grade for the shot.
+Pictures, videos, 3D renders, drawings, groups and rigs have four colour effects (a shape or path too while it is filled
+with a picture; a flat colour or a text has none: change its colour instead). Each is off until you turn it on, and its
+controls appear only then. They act on the layer's whole look (its content, masks and effects), in this order: adjust →
+levels → curves → LUT. On a group they act on everything in it, so a group around the whole picture is a grade for the shot.
+On the screen each is its own name in the settings panel: **+ Adjust colour**, **+ Levels**, **+ Curves** turn one on in a
+click (− on its heading turns it off), and **+ Look file** takes a .cube file (the LUT).
 
 | Effect | Turn on | Fields |
 |---|---|---|
@@ -74,7 +77,7 @@ with group("shot", x=960, y=540, w=1920, h=1080, adjust=True, contrast=1.1, satu
 shot.key("exposure", {0.0: -3, 1.0: 0})             # a fade up from dark, in light
 ```
 
-- **Numbers can be keyed** (exposure, contrast, levels, `lutMix` …). Curve points and the LUT file can't.
+- **Numbers can be keyed** (exposure, contrast, levels, `lutMix` …). Curve points and the LUT (look) file can't.
 - **Levels and curves work in screen brightness** (0 = black, 1 = white), as in a photo editor. A curve passes smoothly
   through its points and never overshoots them; beyond the first and last point it stays flat. `"0,0 1,1"` changes
   nothing. The red, green and blue curves act on the grade's own colour channels, so a strong channel curve can turn

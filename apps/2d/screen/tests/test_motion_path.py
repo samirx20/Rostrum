@@ -10,8 +10,7 @@ def test_key_square_drag_moves_only_that_key_in_one_step(bridge):  # noqa: F811
     for t, x, y in ((0.0, 200, 90), (0.5, 300, 90), (1.0, 400, 150)):
         bridge.setTime(t)
         if t == 0.0:
-            bridge.toggleAnimate("x")
-            bridge.toggleAnimate("y")
+            bridge.toggleAnimate("x")              # Position's key mark: X and Y together
         bridge.setValue("x", x)
         bridge.setValue("y", y)
     before = {p: [(k["t"], k["v"]) for k in keys_of(doc.item("box"), p)] for p in ("x", "y")}
@@ -35,8 +34,7 @@ def _path_with_three_keys(bridge):  # noqa: F811
     for t, x, y in ((0.0, 200, 40), (0.5, 300, 40), (1.0, 400, 150)):
         bridge.setTime(t)
         if t == 0.0:
-            bridge.toggleAnimate("x")
-            bridge.toggleAnimate("y")
+            bridge.toggleAnimate("x")              # Position's key mark: X and Y together
         bridge.setValue("x", x)
         bridge.setValue("y", y)
     bridge.setTime(0.0)

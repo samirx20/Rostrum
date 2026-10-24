@@ -841,8 +841,8 @@ moves, scales, turns and fades with the element. A **Drawing** is an element tha
 
 ### Stepped timing (on ones, twos, threes) · Now
 - **Goal:** hand-drawn feel for keyed motion; a character on twos while the camera stays smooth.
-- **Steps:** select layers (or nothing, for the scene) → settings **Timing › Steps: Every frame / On twos / On threes /
-  On fours / As its group**.
+- **Steps:** select layers (or nothing, for the scene) → settings **Timing › Animate on: Every frame / Every 2nd frame /
+  Every 3rd frame / Every 4th frame / Same as its group**.
 - **Agent:** `value.set {steps}`.
 - **3E:** *Effective:* mixed rates in one shot (PLAN tool 12). *Easy:* the name says it ("On twos"). *Rejected:*
   baking the steps into keys (the document's keys stay smooth, so a change of mind is one pick).
@@ -1337,7 +1337,8 @@ operation is one (`mask.make`).
 
 ### Depth, focus and blur · Now (depth) · Next (focus by clicking)
 - **Goal:** layers at different distances; a rack focus.
-- **Steps:** each layer's **Depth** (in the Depth group; 0 = the screen plane, positive = further). With a camera:
+- **Steps:** each layer's **Depth** (in the Depth group, named only when the scene has a camera; 0 = the camera's
+  plane, positive = further) and **Pinned to screen**. With a camera:
   **Depth of field** on → **Focus on**: click the eyedropper and click a layer on the canvas to focus on it; key it to
   move the focus from one layer to another (a rack focus). **Blur amount**.
 - **Agent:** `value.set {z, focus, aperture}`.
@@ -1355,7 +1356,7 @@ operation is one (`mask.make`).
 - **3E:** tools that make keys (not a look preset); the result stays editable.
 
 ### Tilt (2.5D) · Now
-- **Steps:** settings **Depth › Tilt across / Tilt up and down** and **Perspective** on groups. Next: on the canvas,
+- **Steps:** settings **+ Tilt** (Tilt X | Y, one pair) and **Perspective** on groups. Next: on the canvas,
   Alt+drag a rotate handle tilts instead of turning.
 - **Agent:** `value.set {tiltX, tiltY, perspective}`.
 
@@ -1395,13 +1396,16 @@ operation is one (`mask.make`).
 
 ### Blend modes and colour adjust · Now
 - **Steps:** settings **Look › Blend** (16 + Add, by name, with a live preview as you move through the list),
-  **Colour** group: Exposure, Contrast, Saturation, Temperature, Tint, Hue, then folded Curves, Levels, Look file (LUT).
+  **+ Adjust colour** (Exposure, Contrast, Saturation, Temperature, Tint, Hue), **+ Levels**, **+ Curves**, each turned
+  on by its name in one click (− on its heading turns it off), and **+ Look file** (a .cube LUT). Only where there is a
+  picture to grade: pictures, videos, 3D renders, drawings, groups, rigs, and a shape or path filled with a picture.
 - **Agent:** `value.set {blend}`, grade fields.
 - **3E:** *Efficient:* preview while browsing blends (no pick-look-undo).
 
 ### Smears, trails and motion blur · Now
-- **Steps:** smear and trail are effects (above). Motion blur: scene settings **Motion blur** (on, shutter in words:
-  "Light / Film / Heavy" with the angle behind), and per layer **Motion blur: As the scene / Off**.
+- **Steps:** smear and trail are effects (above). Motion blur: scene settings **+ Motion blur** turns it on in one
+  click at 180° (the film look); its **Amount** (the shutter angle) and **Blur steps** show; − turns it off. *(Next:
+  the amount in words "Light / Film / Heavy", and per layer **Motion blur: As the scene / Off**.)*
 - **Agent:** `value.set {shutter, shutterSamples}`.
 
 ## 3.26 Expressions and links
@@ -2124,7 +2128,7 @@ The project already has the voice line "hello" made in RostrumSound.
 | 6 | Lip sync | **Lip sync…** · click "hello" in the voice list · (shapes guessed from names, all right) **Apply** | 3 |
 | 7 | Eyes | Click "eyes open" · Shift+click "eyes closed" · **Make swap set** · **Add blinks…** · **Apply** | 5 |
 | 8 | Wave | Shift+Enter (the rig) · click the ruler at 1.0 s · K · ruler 1.4 s · drag the hand up · ruler 1.8 s · drag the hand · ruler 2.2 s · drag the hand | 9 |
-| 9 | On twos | Timing ▸ · Steps ▾ · **On twos** | 3 |
+| 9 | On twos | Timing ▸ · Animate on ▾ · **Every 2nd frame** | 3 |
 | 10 | Watch with the voice | Space | 1 |
 | 11 | Export | Export · Export | 2 |
 | | | **Total** | **35** |
@@ -2442,7 +2446,7 @@ core (the shared operations and history), svc (the project service).
 | Picking by paint, outer group, double-click in, Ctrl+click deep, Shift / Ctrl rules | Done (H28) | Same, plus hover outline, group path at bottom-left, Tab to next layer, Shift+Enter out | S | screen |
 | Handles | Done; resize pointers don't turn with a turned box | Pointers turn | S | screen |
 | X Y / W H pairs, scrubbing labels, maths in fields | One per row; no scrub | Pairs; scrub; `+20`, `*2`, `50%`, `=` | M | kit |
-| Anchor point | Fields "Anchor X 0.50" | Alt+drag on canvas, 9-dot picker | M | screen, kit |
+| Anchor point | Anchor X \| Y in % (one pair, "50 %") | Alt+drag on canvas, 9-dot picker | M | screen, kit |
 | Find a layer, U for animated settings | None | Search box over 12 layers; U | S | screen |
 | Layer rows, reorder, rename, hide, lock | Done (H28) | Plus solo with its banner, smart duplicate | S | screen |
 | Group, ungroup, clip, mask, align, distribute, match size, copy / paste style, from the selection | Done (H28: operations, action bar, right-click, Ctrl+K on all) | Same list, moved to the fixed context bar, plus the new actions below | M (move to context bar) | screen |

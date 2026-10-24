@@ -39,9 +39,9 @@ This page takes you from an empty project to something that moves, and shows you
 A value moves over time when it has **keys**. A key is a small diamond that remembers the value at one moment. You do not need another page for this: you change the value where it is.
 
 1. Pick your text. Put the playhead at 0 seconds.
-2. In the panel, find **X**. At the right edge of its row is a faint diamond. Click it. It fills in, and a key is saved at 0 seconds.
+2. In the panel, find **Position**. At the right edge of its row is a faint diamond. Click it. It fills in, and a key of X and Y together is saved at 0 seconds.
 3. Move the playhead to 1 second.
-4. Change **X**: type a new number and press Enter, or drag the text in the picture. A second key appears at 1 second by itself.
+4. Change **X** or **Y**: type a new number and press Enter, or drag the text in the picture. A second key appears at 1 second by itself. In the timeline, open the layer (the arrow by its name): its row **Position** shows these keys.
 
 ![Two keys on the text's bar](pictures/animate-in-place.png)
 
@@ -57,7 +57,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 6. Change how it feels
 
-1. Click a diamond on the bar. The **Key** block appears at the top of the settings panel: **Ease** (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom), a small curve, and for one key its **Time** and **Value**. The ease is how the value speeds up and slows down on its way to the next key.
+1. Click a diamond on the bar. The **Key** block appears at the top of the settings panel, short so the layer's settings stay in view under it: **Key** with its **Ease** beside it (Linear, Ease in, Ease out, Smooth, Spring, Jump, Custom), a small curve, and for one key its **Time** and **Value** (in the setting's own unit). A Position key is one key: its Time moves X and Y together. The ease is how the value speeds up and slows down on its way to the next key.
 2. Pick an ease. Every picked key changes at once, as one step. You can also right-click a diamond for the same list, or press **F9** (Smooth), **Shift+F9** (Ease in), **Ctrl+Shift+F9** (Ease out) or **Ctrl+Alt+J** (Jump).
 3. Drag the two small dots on the curve to shape it by hand: the ease becomes **Custom**.
 4. **Spring** overshoots and settles. Two sliders appear: **Bounce** (none to a lot) and **Speed** (slow to fast).

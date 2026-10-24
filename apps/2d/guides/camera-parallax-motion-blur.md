@@ -44,7 +44,7 @@ Each **top-level** layer of the composition has:
 | Field | Does |
 |---|---|
 | `depth` | How far behind the camera's plane. 0 = on it (moves with the camera fully); 1 = twice as far (moves half as much); 3 = a quarter; below 0 = nearer (−0.5 moves twice as much). Must be above −1. Animatable. |
-| `screenLock` | The camera doesn't move, zoom or turn it (a title, a frame, a logo bug). |
+| `screenLock` | The camera doesn't move, zoom or turn it (a title, a frame, a logo bug). On the screen: **Pinned to screen**. |
 
 ```python
 shape("hills", shape="rect", w=2400, h=500, x=960, y=900, depth=3)       # far: moves little
@@ -52,12 +52,15 @@ text("title", body="…", size=120, x=960, y=200, screenLock=True)         # sta
 ```
 
 A pan by d moves a layer by d / (1 + depth) on screen the other way; far layers also grow less on a push-in. Inside a group
-or rig a layer follows its group: put the **group** at a depth (the layer's own `depth` and `screenLock` are ignored there).
+or rig a layer follows its group: put the **group** at a depth. `depth` and `screenLock` apply only to a composition's own
+layers in a composition with a camera (anything else refuses them: without a camera they would do nothing); on the
+screen the **Depth** group shows only then.
 Layers are flat: for a layer that turns in perspective use `tiltX` / `tiltY` (see `ui-and-product-animation`).
 
 ## Motion blur (shutter)
 
-Two fields on the **composition** (set with `comp.set`, or `comp("main", shutter=180)`; not animatable):
+Two fields on the **composition** (set with `comp.set`, or `comp("main", shutter=180)`; not animatable). On the screen:
+pick the scene, click **+ Motion blur**: it is on at 180° (**Amount**), with **Blur steps** under it; **−** turns it off.
 
 | Field | Does |
 |---|---|

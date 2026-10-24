@@ -401,7 +401,7 @@ A step that leaves an error in the status line fails the run.
   engine of its own, the same list agents get from `inspect_diagnose` (`rostrum2d.diagnose_engine.everything`). The top bar
   shows "N problems" only while there are any; its list says each in words with how to fix it, and a click selects the item
   (and goes to its moment when it has one: `Problems.jump`). Steps: `problems open|close` (waits for the list).
-- **Steps** (Timing › Steps on a composition, group or layer; `rostrum2d/stepped.py`): on twos / threes / fours is how the
+- **Steps** (Timing › Animate on, on a composition, group or layer; `rostrum2d/stepped.py`): on twos / threes / fours is how the
   scene is evaluated, never baked into the keys.
 - **Colour curves**: the kit's curve control (`RostrumKit/CurveField.qml`) for a param marked `control="curve"`: drag a
   point, press an empty spot to add one, double-click to remove; each drag is one change. A curve param's `max` is the top of its range: the

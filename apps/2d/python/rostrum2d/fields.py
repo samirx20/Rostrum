@@ -23,9 +23,10 @@ D = "deep"
 
 
 def N(name, label, group, lo, hi, step, unit="", imp=P, when=None, integer=False, default=0.0, help="", words=None,
-      display=""):      # display: how screens show it ("percent" = 1 is 100 %; the kit's ValueKinds.js)
+      display="", shown="", on=None):      # display: how screens show it ("percent" = 1 is 100 %; the kit's ValueKinds.js)
     return Param.number(name, label=label, group=group, min=lo, max=hi, step=step, unit=unit, importance=imp,
-                        valid_when=when, integer=integer, default=default, help=help, words=words or {}, display=display)
+                        valid_when=when, integer=integer, default=default, help=help, words=words or {}, display=display,
+                        shown=shown, on=on)
 
 
 def C(name, label, group, default, imp=P, when=None):
@@ -52,13 +53,15 @@ def T(name, label, group, default, imp=P, when=None, help=""):
     return Param.toggle(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help)
 
 
-def X(name, label, group, default, imp=P, help="", when=None, control="", filters=(), words=None):
+def X(name, label, group, default, imp=P, help="", when=None, control="", filters=(), words=None, shown=""):
     return Param.text(name, label=label, group=group, importance=imp, valid_when=when, default=default, help=help,
-                      control=control, filters=list(filters), words=words or {})
+                      control=control, filters=list(filters), words=words or {}, shown=shown)
 
 
 BLENDS = _blends.BLENDS          # the one list (blends.txt), shared with the engine
 MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"]
+
+UNDER_CAMERA = {"fact": "underCamera"}      # a scene's own layer, in a scene with a camera (kind.facts)
 
 # When a layer shows, on the project's shared markers (retime.py); cameras have these too (a cut on a marker).
 TIMED = {"not": IS("marker", "")}
@@ -73,7 +76,7 @@ def timing(start_help: str, end_help: str) -> list:
     """Starts at (before 0 is allowed: a lead-in before the layer's marker), Ends at (absent while it ends at a marker), and the markers."""
     return [N("start", "Starts at", "Timing", -36000, 36000, 0.01, "s", S, help=start_help + "; counted from Timed from marker when set, so -0.2 = just before it"),
             N("end", "Ends at", "Timing", 0, 36000, 0.01, "s", S, IS("endMarker", ""), default=36000.0, help=end_help,
-              words={36000.0: "End of composition"}), *MARKER_TIMING]
+              words={36000.0: "End of scene"}), *MARKER_TIMING]
 
 
 # Riding a path layer (follow.py `layer.ride`); the engine's RIDE_AT (scene/fields.rs) is the same list.
@@ -103,19 +106,26 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("scale", "Scale", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent"),
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0, display="percent"),
-    N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = left edge, 1 = right edge"),
-    N("anchorY", "Anchor Y", "Anchor", -10, 10, 0.01, "", S, default=0.5, help="0 = top edge, 1 = bottom edge"),
-    N("scaleX", "Stretch X", "Stretch", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
-    N("scaleY", "Stretch Y", "Stretch", 0, 100, 0.01, "×", D, default=1.0, display="percent"),
-    N("tiltX", "Tilt X", "Depth", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis (2.5D)"),
-    N("tiltY", "Tilt Y", "Depth", -180, 180, 0.1, "°", D, help="Turn around the vertical axis (2.5D)"),
+    # Stretch: Scale's uneven part (a side handle's drag on the canvas sets it). Its row shows under Scale only while it
+    # is uneven, never as a second scale control to look for.
+    N("scaleX", "Stretch X", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
+      help="Scale across, on top of Scale"),
+    N("scaleY", "Stretch Y", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
+      help="Scale up and down, on top of Scale"),
+    N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, display="percent",
+      help="The point it turns and scales around: 0 % = its left edge, 50 % = its centre, 100 % = its right edge"),
+    N("anchorY", "Anchor Y", "Anchor", -10, 10, 0.01, "", S, default=0.5, display="percent",
+      help="The point it turns and scales around: 0 % = its top edge, 50 % = its middle, 100 % = its bottom edge"),
+    N("tiltX", "Tilt X", "Tilt", -180, 180, 0.1, "°", D, help="Turn around the horizontal axis, in perspective"),
+    N("tiltY", "Tilt Y", "Tilt", -180, 180, 0.1, "°", D, help="Turn around the vertical axis, in perspective"),
     *timing("The layer appears at this time", "The layer is gone from this time"),
     Param.choice("blend", BLENDS, label="Blend", group="Blend", default="normal", importance=D, labels=_blends.LABELS,
                  help="How the layer mixes with the layers under it"),
-    # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these.
-    N("depth", "Depth", "Depth", -0.99, 1000, 0.01, "", D,
+    # The camera (camera/, apps/2d/CAMERA.md): only a composition's own layers use these, and only with a camera there
+    # (kind.facts "underCamera"): without one they would do nothing.
+    N("depth", "Depth", "Depth", -0.99, 1000, 0.01, "", D, UNDER_CAMERA,
       help="How far behind the camera's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
-    T("screenLock", "Locked to screen", "Depth", False, D, help="The camera doesn't move it (a title, a frame)"),
+    T("screenLock", "Pinned to screen", "Depth", False, D, UNDER_CAMERA, help="The camera doesn't move it (a title, a border)"),
     # A track matte (engine: scene/matte.rs): the layer is seen through another layer beside it, drawn only as the matte.
     X("matte", "Track matte", "Matte", "", S, control="pick",       # screens: a choice of the layer's siblings
       help="Id of a layer in the same group or comp; this layer shows only where that one is drawn. Empty = none"),
@@ -125,7 +135,10 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
                          "lumaInverted": "Its darkness"},
                  help="Shape = where the matte layer is drawn; brightness = how light it is; the inverted ones swap"),
     *RIDE,
-] + _grade.COLOUR  # colour effects: adjust, levels, curves, LUT (grade_fields.py; engine: scene/grade.rs)
+]
+# Colour effects (grade_fields.py; engine: scene/grade.rs): only where there is a picture to grade.
+GRADED = _grade.colour()
+PICTURE_FILLED = _grade.colour(_fill.PICTURE[0].valid_when)        # a shape or path while it is filled with a picture
 
 STROKE = IS("stroke", True)
 # A path's stroke is varied when it has a taper or a width profile (ops_stroke.py; engine reads these fields).
@@ -144,10 +157,10 @@ TYPE = [
     X("features", "Font features", "Type", "", D, help='OpenType features by tag, e.g. "ss01 ss03 salt" or "cv05=2"'),
     N("slant", "Slant", "Font", -90, 90, 0.1, "°", D, help="Variable font slant axis (slnt); negative leans right"),
     N("grade", "Grade", "Font", -1000, 1000, 1, "", D, help="Variable font grade axis (GRAD): heavier without getting wider"),
-    X("axes", "Other axes", "Font", "", D, help='Any variable font axis by tag, e.g. "XTRA 468, CASL 1"'),
+    X("axes", "Other axes", "Font", "", D, help='Any variable font axis by tag, e.g. "XTRA 468, CASL 1"', shown="script"),
     X("pathLayer", "Follows path", "On a path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
       "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
-    X("path", "Path", "On a path", "", D, when=NOT_FOLLOWING,
+    X("path", "Path", "On a path", "", D, when=NOT_FOLLOWING, shown="script",      # SVG text: agents; people pick Follows path
       help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line"),
     N("pathOffset", "Start along path", "On a path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
@@ -223,7 +236,7 @@ FIELDS: dict[str, list[Param]] = {
         C("strokeColor", "Outline colour", "Outline", "#ffffff", S, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 500, 0.5, "px", S, STROKE, default=2.0),
         *_fill.PICTURE,
-    ] + TRANSFORM,
+    ] + TRANSFORM + PICTURE_FILLED,
     "text": [
         X("body", "Text", "Text", "Text"),
         X("font", "Font", "Text", "Roboto Flex", control="pick"),       # screens: the fonts there are, each in its own face
@@ -240,7 +253,7 @@ FIELDS: dict[str, list[Param]] = {
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
-    ] + TYPE + [_unless_following(p) for p in TRANSFORM],
+    ] + TYPE + [_unless_following(p) for p in TRANSFORM] + _grade.colour(_fill.PICTURE[0].valid_when),   # letters take no picture: never
     "image": [
         X("src", "File", "Image", "", help="Absolute path, or relative to the project folder", control="file",
           filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
@@ -248,7 +261,7 @@ FIELDS: dict[str, list[Param]] = {
         N("h", "Height", "Image", 0, 20000, 1, "px", default=360.0),
         CH("fit", ["cover", "contain", "stretch"], "Fit", "Image", "cover", S),
         N("radius", "Corner radius", "Image", 0, 10000, 1, "px", S),
-    ] + TRANSFORM,
+    ] + TRANSFORM + GRADED,
     # A video: its frames are decoded once (video.py) at the comp's fps and this size; the engine shows the frame the time asks for.
     # Source frame = floor((frame − start·fps) · speed) + round(offset·fps), looped or held at the last frame. No sound here.
     "video": [
@@ -262,7 +275,7 @@ FIELDS: dict[str, list[Param]] = {
         N("speed", "Speed", "Video", 0, 100, 0.01, "×", S, default=1.0),
         CH("loop", looping.MODES, "Loop", "Video", "off", S, labels=looping.WORDS,
            help="What happens when the clip ends: Loop starts again, Ping-pong plays it back and forth (Off holds the last frame)"),
-    ] + TRANSFORM,
+    ] + TRANSFORM + GRADED,
     # A Rostrum3D item's finished render, placed read-only (render3d.py): its EXR frames with their transparency, shown
     # as a video layer. Version 0 follows the newest render; Timed from marker puts its first frame on a marker (retime.py).
     "render3d": [
@@ -279,12 +292,12 @@ FIELDS: dict[str, list[Param]] = {
         N("speed", "Speed", "3D render", 0, 100, 0.01, "×", D, default=1.0),
         CH("loop", looping.MODES, "Loop", "3D render", "off", D, labels=looping.WORDS,
            help="What happens when the render ends: Loop starts again, Ping-pong plays it back and forth (Off holds the last frame)"),
-    ] + TRANSFORM,
+    ] + TRANSFORM + GRADED,
     "group": [      # a size the auto layout hugs is absent: the layout sets it (layout_fields.py)
         N("w", "Width", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["w"], default=1920.0),
         N("h", "Height", "Box", 0, 20000, 1, "px", D, when=_layout.SIZE_SET["h"], default=1080.0),
         T("clip", "Clip to box", "Box", False, S, help="Hide children outside the group's box"),
-    ] + TRANSFORM,
+    ] + TRANSFORM + GRADED,
     # A drawing: painted strokes (the shared painting kit), one drawing per frame or held for several. Its canvas
     # is w × h px; untransformed it covers that box with the canvas's px = the composition's px.
     "drawing": [
@@ -292,14 +305,15 @@ FIELDS: dict[str, list[Param]] = {
         N("h", "Canvas height", "Drawing", 16, 8192, 1, "px", S, integer=True, default=1080),
         CH("loop", looping.MODES, "Loop", "Timing", "off", S, labels=looping.WORDS,
            help="Repeat the drawings for the layer's length: Loop starts again, Ping-pong goes back and forth (Off holds the last drawing)"),
-    ] + TRANSFORM,
+    ] + TRANSFORM + GRADED,
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
     "path": [
-        X("d", "Path data", "Points", "", D,
+        X("d", "Path data", "Points", "", D, shown="script",       # people edit the points on the canvas
           help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it. A new path has no points"),
-        N("w", "Box width", "Points", 1, 20000, 1, "px", D, default=100.0, help="The box the anchor and gradients use"),
-        N("h", "Box height", "Points", 1, 20000, 1, "px", D, default=100.0),
+        N("w", "Box width", "Box", 1, 20000, 1, "px", D, default=100.0, shown="script",     # the pen sets it from the points
+          help="The box the anchor and gradients use"),
+        N("h", "Box height", "Box", 1, 20000, 1, "px", D, default=100.0, shown="script"),
         FILLED,
         C("fill", "Fill colour", "Fill", NEW_FILL, when=IS("filled", True)),
         *_fill.OPACITY,
@@ -324,7 +338,7 @@ FIELDS: dict[str, list[Param]] = {
         Param.choice("taperAlong", ["line", "drawn"], label="Measured along", group="Width", default="line", importance=D,
                      valid_when=VARIED, labels={"line": "Whole line", "drawn": "Drawn part"},
                      help="Taper and profile follow the whole line, or only the part the trim shows"),
-    ] + TRANSFORM,
+    ] + TRANSFORM + PICTURE_FILLED,
     # One drawing of a drawing layer: shown from frame `at` until the next drawing (held), none before the first.
     # It is a painting-kit canvas: it holds paint layers (`paints`) and paint masks.
     "frame": [

@@ -15,6 +15,8 @@ SIBLING_PICKS = {"matte": lambda s: True,                          # any layer b
 ON_PAGE = {"group": {"w", "h"}, "rig": {"w", "h"}, "text": {"body"}}
 for _t in ("drawing", "shape", "text", "image", "video", "path"):      # the frame-by-frame block under the settings has it
     ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"newHold"}
+for _t in F.LAYERS:                      # Locked and Hidden: the lock and eye on the layer's timeline row (and its right-click)
+    ON_PAGE[_t] = ON_PAGE.get(_t, set()) | {"locked", "hidden"}
 
 
 # A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill": they read as what they hold.
@@ -61,8 +63,9 @@ class Hooks2D:
 
     def _rows(self):          # a swap set's "Shows" is a choice among its children (swap_rows.py); the scene's
         item = self.doc.item(self._sel) if self._sel else None     # Soundtrack among the project's Sound items
-        return fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
+        rows = fill_rows.rows(size_rows.rows(soundtrack_rows.rows(swap_rows.rows(super()._rows(), item, self._t), item, self.doc.folder), item),
                               item and self.placed_item(item["id"]), self._t, self.comp()["fps"], self._kit.search)   # placed: keys on a marker read
+        return project_picks.with_file_names(rows, item, self.doc.folder)     # File: "pic.png", not the store's copy
 
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds

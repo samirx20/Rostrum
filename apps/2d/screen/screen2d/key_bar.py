@@ -9,6 +9,8 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core.keys import after as last_key, ease as ease_at, keys_of, springs
 from rostrum_gui.edits import Drag
 
+from rostrum2d import fields as F
+
 from . import beat_words, eases
 
 
@@ -39,9 +41,15 @@ class KeyBar(QObject):
     def shown(self):
         return bool(self.picked())
 
+    def _moments(self) -> set:
+        """(layer, time) of the picked keys: a Position key is its X and Y keys at one time, ONE key on screen."""
+        return {(self.b.doc.parent_of(k)[0], round(self.b.doc.item(k)["t"], 6)) for k in self.picked()
+                if isinstance(self.b.doc.item(k).get("t"), (int, float))}
+
     @Property(int, notify=changed)
     def count(self):
-        return len(self.picked())
+        """How many keys the panel says ("Key" / "3 keys"): moments of a layer, the halves of a pair counted once."""
+        return len(self._moments()) or len(self.picked())
 
     @Property(str, notify=changed)
     def ease(self):
@@ -76,7 +84,8 @@ class KeyBar(QObject):
 
     @Property(bool, notify=changed)
     def one(self):
-        return len(self.picked()) == 1
+        """One key on screen (one key, or a pair's two at one time): its Time shows."""
+        return len(self.picked()) == 1 or (bool(self.picked()) and len(self._moments()) == 1)
 
     @Property(float, notify=changed)
     def time(self):
@@ -90,7 +99,14 @@ class KeyBar(QObject):
 
     @Property(bool, notify=changed)
     def hasValue(self):
-        return self.one and "v" in self._first()
+        return len(self.picked()) == 1 and "v" in self._first()
+
+    @Property("QVariantMap", notify=changed)
+    def valueField(self):
+        """How the one key's Value shows: its setting's own step, unit and display ("1039 px", not "1039.32")."""
+        ids = self.picked()
+        p = F.param(self.b.doc.item(self.b.doc.parent_of(ids[0])[0])["type"], self.b.doc.item(ids[0])["prop"]) if ids else None
+        return {"step": p.step or 0.01, "unit": p.unit, "display": p.display} if p else {"step": 0.01, "unit": "", "display": ""}
 
     @Property(float, notify=changed)
     def value(self):
@@ -180,10 +196,11 @@ class KeyBar(QObject):
     def setTime(self, t):
         """One key's time (composition seconds), on a whole frame; another key of that setting there refuses."""
         ids = self._typed_for("time")
-        if len(ids) != 1:
+        owners = {self.b.doc.parent_of(k)[0] for k in ids}
+        if len(owners) != 1 or len({self.b.doc.item(k)["t"] for k in ids}) != 1:     # one key, or a pair's two at one time
             return False
-        fps, kid = self.b.comp()["fps"], ids[0]
-        own = self.b.own_t(self.b.doc.parent_of(kid)[0], round(t * fps) / fps)
+        fps = self.b.comp()["fps"]
+        own = self.b.own_t(owners.pop(), round(t * fps) / fps)
         return self._apply([{"op": "key.set", "target": ids, "args": {"t": round(own, 6)}}], "Key time")
 
     @Slot(float, result=bool)

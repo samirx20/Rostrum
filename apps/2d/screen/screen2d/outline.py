@@ -11,7 +11,7 @@ ids whose default was turned round).
 from __future__ import annotations
 
 from rostrum2d import fields as F
-from rostrum2d.anims import animations
+from rostrum2d.anims import NAMES, animations, setting_of
 from rostrum2d.drawing import each_frame
 from rostrum2d.names import display_name
 from rostrum2d.retime import END, FIELD
@@ -51,6 +51,20 @@ def _keys(owner: dict, prop: str) -> list[dict]:
     """A field's keys for the timeline; a key on a shared marker (placed by retime.placed) carries its words."""
     return [{"id": k["id"], "ids": [k["id"]], "t": k["t"],
              **({"marker": marked.label(k["ref"])} if "ref" in k else {})} for k in keys_of(owner, prop)]
+
+
+def _setting_rows(lay: dict, props: list[str], depth: int, fps: float, past) -> list[dict]:
+    """An open layer's row per animated SETTING: X and Y keys are one "Position" row (W and H "Size", anims.PAIRS), a
+    key of both at one frame one diamond standing for both (`ids`), so a click or drag takes the pair together."""
+    by: dict[str, list[str]] = {}
+    for p in props:
+        by.setdefault(setting_of(p), []).append(p)
+    out = []
+    for setting, mine in by.items():
+        label = NAMES.label_of(lay, setting)
+        keys = _one_per_frame(sorted((k for p in mine for k in _keys(lay, p)), key=lambda k: k["t"]), fps)
+        out.append({**_row("field", lay, depth, label, keys, mine[0]), "props": mine, **past([(lay, p) for p in mine])})
+    return out
 
 
 def _stretches(owner: dict, anims: list[dict]) -> list[dict]:
@@ -133,8 +147,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset()) -> li
             out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
             if not is_open:
                 continue
-            out.extend({**_row("field", lay, depth + 1, F.param(lay["type"], p).label, _keys(lay, p), p), **past([(lay, p)])}
-                       for o, p in fields if o is lay)
+            out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, comp["fps"], past))
             for o in _owned(lay):
                 keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
                 if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list

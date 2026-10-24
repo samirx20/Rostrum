@@ -80,6 +80,8 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     bridge.select("box")
     bridge.setTime(0.3)
     assert bridge.toggleAnimate("x") is None and keys_of(bridge.doc.item("box"), "x")   # key mark: first key
+    assert keys_of(bridge.doc.item("box"), "y")            # Position is one setting: its mark keys X and Y as one change
+    assert bridge.doc.history.changes[-1].label == "Animate Position"
     n = len(bridge.doc.history.changes)
     assert bridge.beginMove()
     bridge.snap.keys(True, False)                         # Ctrl held: placed freely, no snapping (snap.py has its own test)
@@ -88,12 +90,13 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     bridge.endDrag()
     box = bridge.doc.item("box")
     assert len(bridge.doc.history.changes) == n + 1
-    assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 220)] and box["y"] == 94
+    assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 220)] and [(k["t"], k["v"]) for k in keys_of(box, "y")] == [(0.3, 94)]
     bridge.undo()
     box = bridge.doc.item("box")
-    assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 200)] and box["y"] == 90
-    bridge.toggleAnimate("x")                                                         # key mark: stop animating
-    assert not keys_of(bridge.doc.item("box"), "x") and bridge.doc.item("box")["x"] == 200
+    assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 200)] and [(k["t"], k["v"]) for k in keys_of(box, "y")] == [(0.3, 90)]
+    bridge.toggleAnimate("y")                                                         # key mark: stop animating (both)
+    box = bridge.doc.item("box")
+    assert not keys_of(box, "x") and not keys_of(box, "y") and (box["x"], box["y"]) == (200, 90)
 
 
 def test_drag_in_an_auto_layout_reorders_in_one_undo_step(bridge):

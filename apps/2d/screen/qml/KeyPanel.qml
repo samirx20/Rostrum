@@ -3,8 +3,10 @@ import RostrumKit
 
 // The picked keys in the settings panel (UX_SPEC 3.18, SPEC §1 / §9.3; it was the timeline header's key bar), above the
 // layer's settings while keys are picked. Laid on the settings rows' own columns (Theme.labelColumnFor / fieldFor /
-// wideFor): "Key" / "3 keys" with ⋯ at the right; Ease; its curve; for a spring Bounce and Speed; for one key Time and
-// Value (a colour key or several keys have no Value). Only what applies shows. Every picked key changes; each pick, field
+// wideFor), kept short so the layer's own settings stay in view under it: "Key" / "3 keys" with ⋯ beside it and the
+// Ease in the same line; its curve, low; for a spring Bounce and Speed; for one key Time and Value (in its setting's
+// own unit: "1039 px"; a colour key or several keys have no Value). A Position key (its X and Y keys at one time) is
+// one key. Only what applies shows. Every picked key changes; each pick, field
 // edit or whole drag is one change (backend.keyBar, screen2d/key_bar.py). ⋯: After the last key (only while a picked key
 // is its setting's last: Stay, Repeat, Back and forth, Carry on; key.set {after}) and whether a picked ease plays once
 // on the canvas (backend.easePlay, screen2d/ease_play.py).
@@ -22,11 +24,11 @@ Column {
     }
     component Line: Item { width: Theme.wideFor(kp.full); height: Theme.row }
 
-    Line {   // "Key" / "3 keys" · ⋯
-        Words { text: kp.kb.count === 1 ? "Key" : kp.kb.count + " keys"; color: Theme.fg; font.weight: Font.DemiBold }
+    Line {   // "Key" / "3 keys" ⋯ · Ease
+        Words { id: keyWord; text: kp.kb.count === 1 ? "Key" : kp.kb.count + " keys"; color: Theme.fg; font.weight: Font.DemiBold }
         IconButton {
             objectName: "keyMore"
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+            anchors { left: keyWord.right; leftMargin: 2; verticalCenter: parent.verticalCenter }
             glyph: "⋯"; tip: "More"
             onClicked: { const g = mapToItem(null, 0, height + 2); more.openAt(g.x, g.y) }
             ActionMenu {    // the kit's menu: one "After the last key" heading over its choices, then the ease option
@@ -38,9 +40,6 @@ Column {
                 onPicked: (v) => v === "play" ? backend.easePlay.setOn(!backend.easePlay.on) : kp.kb.setAfter(v.slice(6))
             }
         }
-    }
-    Line {
-        Words { width: kp.lab; text: "Ease" }
         ChoiceField {
             objectName: "keyEase"
             x: kp.lab; width: Theme.fieldFor(kp.full); anchors.verticalCenter: parent.verticalCenter
@@ -48,7 +47,7 @@ Column {
             onPicked: (v) => kp.kb.setEase(v)
         }
     }
-    EaseCurve { width: Theme.wideFor(kp.full); height: 136 }   // room for a spring's overshoot (fitted inside: EaseCurve.qml)
+    EaseCurve { width: Theme.wideFor(kp.full); height: 88 }    // a spring's overshoot is fitted inside (EaseCurve.qml)
     Repeater {   // a spring: Bounce and Speed, one change per drag
         model: kp.kb.ease === "spring" && kp.kb.feel.length === 2 ? ["Bounce", "Speed"] : []
         delegate: Line {
@@ -86,7 +85,8 @@ Column {
         Words { width: kp.lab; text: "Value" }
         NumberField {
             x: kp.lab; width: Theme.fieldFor(kp.full); anchors.verticalCenter: parent.verticalCenter
-            value: kp.kb.value; step: 0.01
+            value: kp.kb.value; step: kp.kb.valueField.step; unit: kp.kb.valueField.unit || ""
+            display: kp.kb.valueField.display
             onEdited: (v) => kp.kb.setValue(v)
             onTypingStarted: kp.kb.hold("value")
             onTypingEnded: kp.kb.release("value")
