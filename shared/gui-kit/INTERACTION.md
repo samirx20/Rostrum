@@ -722,6 +722,7 @@ the agent's `inspect_tools`.
 | | Ctrl+← / Ctrl+→ | Playhead one frame (Sound without a picture: one grid step); Ctrl+Shift: ten | shared |
 | | `,` / `.` | Previous / next thing that happens (key, marker, drawing, item edge) | shared |
 | | Shift+`,` / Shift+`.` | Previous / next beat | shared |
+| | M | Add a marker at the playhead (name it at once) | shared |
 | | Alt+M / Alt+Shift+M | Next / previous marker | shared |
 | | Shift+L | Loop on / off (loops the time range) | shared |
 | | Shift+I / Shift+O | Time range start / end at the playhead | shared |
@@ -754,7 +755,6 @@ the agent's `inspect_tools`.
 | | K | Key the selection at the playhead | shared |
 | | A | Show / hide the selection's animated rows / automation lanes | shared |
 | | F9 · Shift+F9 · Ctrl+Shift+F9 · Ctrl+Alt+J | Smooth · ease in · ease out · hold | shared (2D now; Sound when curves land) |
-| | M | Add a marker at the playhead (name it at once) | shared |
 | **View** | Ctrl+wheel · pinch | Zoom at the pointer | shared |
 | | Shift+wheel · wheel | Scroll sideways / up and down | shared |
 | | Alt+wheel | Row height (timelines) | shared |

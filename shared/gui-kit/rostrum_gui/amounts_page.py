@@ -52,8 +52,8 @@ class AmountsPage(QObject):
 
     @Property(bool, notify=changed)
     def again(self):
-        """An "Another take" button: one of the amounts is a seed."""
-        return A.AGAIN in self._vals
+        """An "Another take" button: a seed is one of the amounts that apply now (Arpeggio's Up has nothing random)."""
+        return A.AGAIN in A.shown(self._rows)
 
     @Property(bool, notify=changed)
     def live(self):
@@ -71,7 +71,7 @@ class AmountsPage(QObject):
     # ---- the session -------------------------------------------------------------------------------------------
     def open(self, action, facts, title):
         """Start a session for `action` on the selection `facts`: its rows, then the action at once, live."""
-        self.cancel()
+        self._drop()
         mine = self.memory.get(action.id, {})
         self._found, self._static, self._vals = self._made_for(action, facts, mine)
         self._action, self._facts, self._title, self._more = action, facts, title, False
@@ -93,12 +93,19 @@ class AmountsPage(QObject):
 
     @Slot()
     def cancel(self):
-        """Esc: everything back as it was before the popover opened; nothing recorded."""
+        """Esc: everything back as it was before the popover opened; nothing recorded. The message line, which said
+        the live preview ("Quantise · 1583 notes …"), says so (critic r7: it read as if the change had run)."""
+        if self._drop():
+            self._say(f"{self._title} cancelled · nothing changed")
+
+    def _drop(self) -> bool:
+        """The live session taken back, if one is open (True then)."""
         self._later.cancel()
         d, self._drag = self._drag, None
         if d is not None:
             d.end(cancel=True)
             self.changed.emit()
+        return d is not None
 
     @Slot()
     def anotherTake(self):

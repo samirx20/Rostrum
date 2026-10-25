@@ -35,6 +35,7 @@ SHARED = [
         ("frame_on_ten", ["Ctrl+Shift+Right"], "Playhead on ten frames"),
         ("prev_event", [","], "Previous thing that happens"), ("next_event", ["."], "Next thing that happens"),
         ("prev_beat", ["Shift+,"], "Previous beat"), ("next_beat", ["Shift+."], "Next beat"),
+        ("marker", ["M"], "Add a marker at the playhead"),
         ("next_marker", ["Alt+M"], "Next marker"), ("prev_marker", ["Alt+Shift+M"], "Previous marker"),
         ("go_to_time", ["Alt+Shift+J"], "Go to a time"),
         ("loop", ["Shift+L"], "Loop on / off"),
@@ -62,7 +63,7 @@ SHARED = [
     *_area("Animate", [
         ("key_here", ["K"], "Key the selection here"), ("animated_rows", ["A"], "Show / hide animated rows"),
         ("smooth", ["F9"], "Smooth"), ("ease_in", ["Shift+F9"], "Ease in"), ("ease_out", ["Ctrl+Shift+F9"], "Ease out"),
-        ("jump", ["Ctrl+Alt+J"], "Hold"), ("marker", ["M"], "Add a marker at the playhead")]),
+        ("jump", ["Ctrl+Alt+J"], "Hold")]),
     *_area("View", [
         ("zoom_in", ["Ctrl+=", "Ctrl++"], "Zoom in"), ("zoom_out", ["Ctrl+-"], "Zoom out"), ("fit_all", ["Ctrl+0"], "Fit all"),
         ("actual_size", ["Ctrl+1"], "100 %"), ("fit", ["F"], "Fit the selection"),
