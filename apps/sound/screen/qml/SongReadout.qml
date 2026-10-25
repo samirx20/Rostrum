@@ -12,6 +12,9 @@ Row {
     property bool tight: false                        // a squeezed strip (a drawer open on a small window): the key fields step aside
     spacing: Theme.gap
     readonly property var song: backend.song
+    function ask() { place.input.forceActiveFocus(); place.input.selectAll() }       // Alt+Shift+J (the kit's go_to_time)
+    Component.onCompleted: { const w = Window.window; if (w && w.timeBox !== undefined) w.timeBox = ro }
+    Component.onDestruction: { const w = Window.window; if (w && w.timeBox === ro) w.timeBox = null }
     readonly property string meter: { backend.time; song; return songPanel.meterHere() }   // what plays here
     function lastAt(list, t, timeOf) {   // the last entry at or before t (lists are in time order), -1 when none
         var lo = 0, hi = list.length - 1, best = -1
@@ -39,7 +42,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         TextMetrics { id: measure; font: place.input.font; text: ro.compact ? "999.9" : "999.9  0:00.00" }
         onCommitted: (t) => { const why = backend.jumpTo(t); if (why !== "") place.problem = why }
-        HoverTip { text: place.problem === "" ? (ro.compact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump") : ""
+        HoverTip { text: place.problem === "" ? (ro.compact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump; Alt+Shift+J") : ""
                    hovered: place.hovered && !place.active }
     }
     Row {   // tempo, time signature and key: the tempo and key edit what plays at the playhead (song_panel.py)

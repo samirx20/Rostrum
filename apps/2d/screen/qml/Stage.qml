@@ -280,28 +280,35 @@ Rectangle {
             property point b0
             property point b1
             function comp(m) { return panel.inWell(m.x, m.y) }
-            function stop() { if (moving) backend.endDrag(); moving = false; band = false }
+            function stop() { if (moving) backend.endDrag(); moving = false; band = false; held = "" }
             function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
+            property string held: ""        // an Alt press on a layer: a click picks behind, a drag past 4 px makes a copy (decided on the first move)
+            function begin(hit, p, copy) {  // a layer pressed: it is what Ctrl+C, X and V act on, not keys picked before
+                backend.keys.clear()
+                if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
+                moving = backend.multi.has(hit) && (copy ? backend.beginCopyMove() : backend.beginMove())
+            }
             onPressed: (m) => {
                 var p = comp(m)
                 deep = Mods.ctrl(m)
                 unseen = hidden(m)
                 var hit = unseen ? "" : backend.multi.target(p.x, p.y, deep ? "deep" : "click")
-                sx = m.x; sy = m.y; band = false; moving = false
+                sx = m.x; sy = m.y; band = false; moving = false; held = ""
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
-                backend.keys.clear()                                           // a layer pressed: it is what Ctrl+C, X and V act on, not keys picked before
-                if (Mods.shift(m)) backend.multi.toggle(hit)                   // Shift+click: add / remove
-                else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
-                moving = backend.multi.has(hit) && (Mods.alt(m) ? backend.beginCopyMove() : backend.beginMove())   // Alt: drag copies
+                if (Mods.alt(m) && !Mods.shift(m)) { held = hit; return }                       // Alt: click or copy-drag, not yet known
+                if (Mods.shift(m)) { backend.keys.clear(); backend.multi.toggle(hit) }        // Shift+click: add / remove
+                else begin(hit, p, false)
             }
             onDoubleClicked: (m) => { var p = comp(m); if (hidden(m)) return; if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
             onPositionChanged: (m) => {
+                if (held !== "" && Math.abs(m.x - sx) + Math.abs(m.y - sy) >= 4) { const h = held; held = ""; begin(h, comp({ x: sx, y: sy }), true) }
                 if (moving) {
                     backend.snap.keys(Mods.ctrl(m) && !deep, Mods.shift(m))
                     backend.moveBy((m.x - sx) / view.zoom, (m.y - sy) / view.zoom)
                 } else if (band) b1 = comp(m)
             }
             onReleased: (m) => {
+                if (held !== "") { const p = comp({ x: sx, y: sy }); backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click"); held = "" }   // Alt+click: the layer behind
                 if (band) {
                     if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) {                   // a click: the composition
                         if (unseen) backend.clearSelection(); else backend.pickAt(b0.x, b0.y)
@@ -393,6 +400,15 @@ Rectangle {
                     transform: Rotation { origin.x: (change.b.ax || 0) * change.width; origin.y: (change.b.ay || 0) * change.height; angle: change.b.rot || 0 }
                 }
             }
+            Item {  // Select layer ▸: the layer the pointer rests on in the menu, outlined (what a click would pick)
+                id: peek
+                readonly property var b: panel.rowHover !== "" ? backend.rectOf(panel.rowHover) : ({})
+                visible: b.w !== undefined
+                x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
+                width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
+                transform: Rotation { origin.x: (peek.b.ax || 0) * peek.width; origin.y: (peek.b.ay || 0) * peek.height; angle: peek.b.rot || 0 }
+                Rectangle { anchors.fill: parent; color: "transparent"; border.width: 2; border.color: Theme.accent }
+            }
             HaloLine {  // the rubber band
                 visible: canvas.band && (canvas.b0.x !== canvas.b1.x || canvas.b0.y !== canvas.b1.y)
                 x: Math.min(canvas.b0.x, canvas.b1.x) * view.zoom; y: Math.min(canvas.b0.y, canvas.b1.y) * view.zoom
@@ -449,7 +465,15 @@ Rectangle {
         }
         Component { id: strokesComponent; StrokeBar { } }
     }
-    ActionMenu { id: canvasMenu; onPicked: (v) => backend.run(v) }
+    // Select layer ▸ (first row, only where two or more layers overlap: backend.multi.underMenu): a row's layer is outlined while the
+    // pointer rests on it, and a click picks it
+    readonly property string rowPrefix: "selectLayer_"
+    property string rowHover: ""
+    ActionMenu {
+        id: canvasMenu
+        onPicked: (v) => v.startsWith(panel.rowPrefix) ? backend.select(v.slice(panel.rowPrefix.length)) : backend.run(v)
+        onRested: (v) => panel.rowHover = v.startsWith(panel.rowPrefix) ? v.slice(panel.rowPrefix.length) : ""
+    }
     // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).
     function openMenu(x, y) {
         if (x === undefined) {
@@ -459,8 +483,9 @@ Rectangle {
             x = c.x; y = c.y
         }
         const p = panel.inWell(x, y)
-        const entries = backend.layerMenu(backend.multi.target(p.x, p.y, "click"))
-        if (!entries.length) return
+        const picked = backend.layerMenu(backend.multi.target(p.x, p.y, "click"))
+        if (!picked.length) return
+        const entries = backend.multi.underMenu(p.x, p.y).concat(picked)
         const g = well.mapToItem(null, x, y)
         canvasMenu.entries = entries
         canvasMenu.openAt(g.x, g.y)

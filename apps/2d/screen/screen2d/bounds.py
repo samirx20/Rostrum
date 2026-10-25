@@ -153,7 +153,7 @@ def inside(b: dict, x: float, y: float, part=(0.0, 0.0, 1.0, 1.0)) -> bool:
 
 
 def pickable(b: dict) -> bool:
-    return bool(b["paint"]) and not b["locked"] and b["opacity"] > 0.01
+    return BX.can_pick(b["paint"], b["opacity"], b["locked"])
 
 
 def _inked(comp: dict, b: dict, x: float, y: float) -> bool:
@@ -172,15 +172,25 @@ _pickable = [(None, None, [])]   # [(composition, t, its pickable boxes)]: a pre
                                  # click until the next change or playhead move asks the same (a walk of every layer)
 
 
-def pick_chain(comp: dict, t: float, x: float, y: float) -> list[str]:
-    """The topmost layer painted under (x, y) with its groups, outermost first ([] for none): what a click can select
-    (picking.py chooses which of them). The boxes are worked out once per composition state (every change gives a new
-    one) and time."""
+def under_chains(comp: dict, t: float, x: float, y: float) -> list[list[str]]:
+    """Every layer painted under (x, y), top first, each as its groups (outermost first) and the layer last. The boxes
+    are worked out once per composition state (every change gives a new one) and time."""
     got = _pickable[0]
     if got[0] is not comp or got[1] != t:
         got = _pickable[0] = (comp, t, [b for b in boxes(comp, t) if pickable(b)])
-    hits = [b for b in got[2] if inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
-    return [*hits[-1]["up"], hits[-1]["id"]] if hits else []
+    return [[*b["up"], b["id"]] for b in reversed(got[2]) if inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
+
+
+def under(comp: dict, t: float, x: float, y: float) -> list[str]:
+    """The ids of every layer painted under (x, y), top first (the pieces themselves; picking.py's `behind` turns them
+    into what a click picks at the open depth). The one list: a click, Alt+click and Select layer all read it."""
+    return [c[-1] for c in under_chains(comp, t, x, y)]
+
+
+def pick_chain(comp: dict, t: float, x: float, y: float) -> list[str]:
+    """The topmost layer painted under (x, y) with its groups, outermost first ([] for none): what a click can select
+    (picking.py chooses which of them)."""
+    return next(iter(under_chains(comp, t, x, y)), [])
 
 
 def pick(comp: dict, t: float, x: float, y: float) -> str:

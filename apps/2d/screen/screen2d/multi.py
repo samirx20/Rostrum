@@ -12,7 +12,7 @@ from rostrum_gui.edits import Drag
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.selection_rules import box, click
 
-from . import bounds, picking, snap
+from . import bounds, picking, snap, under_menu
 from .handle_kinds import dressed
 from .group_slots import union
 
@@ -181,6 +181,25 @@ class Multi(QObject):
         chain = bounds.pick_chain(self.b.placed(), self.b._t, x, y)
         sel = self.layers()[0] if self.layers() else ""
         return picking.choose(chain, sel, picking.groups_of(self.b.doc, sel) if sel else [], mode)
+
+    def _depth(self):
+        sel = self.layers()[0] if self.layers() else ""
+        return sel, (picking.groups_of(self.b.doc, sel) if sel else [])
+
+    @Slot(float, float, str, result=str)
+    def pickBehind(self, x, y, mode):
+        """Alt+click at (x, y): select the next layer below the pick there (mode "click", or "deep" for Ctrl+Alt: the
+        pieces), wrapping to the top; returns it ("" = nothing painted there: the composition)."""
+        sel, groups = self._depth()
+        hit = picking.behind(picking.levels(bounds.under_chains(self.b.placed(), self.b._t, x, y), sel, groups, mode), sel)
+        self._set([hit] if hit else [])
+        return hit
+
+    @Slot(float, float, result="QVariantList")
+    def underMenu(self, x, y):
+        """The canvas right-click's first row, Select layer ▸ (under_menu.py); [] with fewer than two layers there."""
+        sel, _ = self._depth()
+        return under_menu.entries(self.b, bounds.under_chains(self.b.placed(), self.b._t, x, y), sel)
 
     @Slot(float, float, str, result=str)
     def pick(self, x, y, mode):

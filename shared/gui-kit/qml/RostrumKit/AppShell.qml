@@ -170,6 +170,7 @@ QQC.ApplicationWindow {
         case "agents": win.openConnectAgent(); return true      // the Help menu's entries (job_rows.HELP): Ctrl+K runs them too
         case "report": win.openReport(); return true
         case "about": win.openAbout(); return true
+        case "go_to_time": if (win.timeBox) win.timeBox.ask(); return true     // the time box (TimeReadout, Sound's SongReadout) takes the keyboard
         case "undo": win.bridge.undo(); return true
         case "redo": win.bridge.redo(); return true
         }
@@ -192,6 +193,8 @@ QQC.ApplicationWindow {
     KeyShortcut { sequence: "F6"; enabled: !OpenPopups.covered; onActivated: runJob("next_area") }
     KeyShortcut { sequence: "Ctrl+\\"; enabled: !OpenPopups.covered; onActivated: runJob("fold_panels") }
     KeyShortcut { sequence: "Ctrl+H"; enabled: !OpenPopups.covered; onActivated: runJob("history") }
+    KeyShortcut { sequence: "Alt+Shift+J"; enabled: !OpenPopups.covered && !!win.timeBox; onActivated: runJob("go_to_time") }
+    property var timeBox: null                  // the box that goes to a time, with ask() (it registers itself); none: the key does nothing
     Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
     KeyShortcut { sequence: "Ctrl+E"; enabled: !OpenPopups.covered && (!!win.exporter || win.noExportWhy !== ""); onActivated: runJob("export") }
     KeyShortcut { sequence: "Ctrl+Shift+E"; enabled: !OpenPopups.covered && (!!win.exporter || win.noExportWhy !== ""); onActivated: runJob("export_again") }

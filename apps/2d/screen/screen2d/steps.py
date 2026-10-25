@@ -330,38 +330,17 @@ def do_step(bridge, win, step):
         box = win.findChild(QObject, "layersList")
         for name, v in (("dragId", rest[0]), ("dropWhere", rest[1]), ("dropRow", rest[2])):
             box.setProperty(name, v)
-    elif word == "mousedrag":                    # mousedrag <x0> <y0> <x1> <y1> [right] [alt] [hold]: a real press, pull and release in the window
-        from PySide6.QtCore import QPoint, Qt
-        from PySide6.QtTest import QTest
-        x0, y0, x1, y1 = (int(v) for v in rest[:4])
-        mod = Qt.AltModifier if "alt" in rest[4:] else Qt.NoModifier           # mousedrag … alt: pressed with Alt held (a frame corner zooms about the opposite corner)
-        button = Qt.RightButton if "right" in rest[4:] else Qt.LeftButton      # … right: Alt + right-drag sizes the brush
-        if "altkey" in rest[4:]:                 # … altkey: the Alt key held down first, as a person does
-            QTest.keyPress(win, Qt.Key_Alt)
-            mod = Qt.AltModifier
-        QTest.mousePress(win, button, mod, QPoint(x0, y0))
-        for k in range(1, 9):
-            if k == 5 and "altmid" in rest[4:]:  # mousedrag … altmid: Alt goes down halfway through the drag
-                QTest.keyPress(win, Qt.Key_Alt)
-                mod = Qt.AltModifier
-            QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 8, y0 + (y1 - y0) * k // 8))
-            QCoreApplication.processEvents()
-        if "hold" in rest[4:]:                   # … hold: not let go (a picture mid-drag)
-            return
-        QTest.mouseRelease(win, button, mod, QPoint(x1, y1))
-        if "altmid" in rest[4:] or "altkey" in rest[4:]:
-            QTest.keyRelease(win, Qt.Key_Alt)
+    elif word == "mousedrag":                    # the kit's one real drag (rostrum_gui/shell_steps.drag: right, alt, altkey, hold ...)
+        from rostrum_gui.shell_steps import drag
+        drag(win, rest)
     elif word == "mousemove":                    # mousemove <x> <y>: the pointer moves there in the window (hover)
         from PySide6.QtCore import QPoint
         from PySide6.QtTest import QTest
         QTest.mouseMove(win, QPoint(int(rest[0]), int(rest[1])))
         wait(150)
-    elif word == "mouseclick":                   # mouseclick <x> <y> [right] [ctrl|shift]: a real click in the window
-        from PySide6.QtCore import QPoint, Qt
-        from PySide6.QtTest import QTest
-        button = Qt.RightButton if "right" in rest[2:] else Qt.LeftButton
-        mods = Qt.ControlModifier if "ctrl" in rest[2:] else Qt.ShiftModifier if "shift" in rest[2:] else Qt.NoModifier
-        QTest.mouseClick(win, button, mods, QPoint(int(rest[0]), int(rest[1])))
+    elif word == "mouseclick":                   # the kit's one real click (rostrum_gui/shell_steps.click_at: right, ctrl, shift, alt)
+        from rostrum_gui.shell_steps import click_at
+        click_at(win, rest)
     elif word == "layermenu":                    # layermenu <layer> [open|<command>]: the row's right-click menu
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))
         if rest[1:] and rest[1] != "open":

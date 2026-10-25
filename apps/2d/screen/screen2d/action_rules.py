@@ -27,7 +27,7 @@ from rostrum2d.rig.guess import guessable
 from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 
-from . import cover_move, frame_actions, pin_depth, rig_attach
+from . import cover_move, dup_step, frame_actions, pin_depth, rig_attach
 from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
@@ -178,8 +178,16 @@ def cutter_name(call: dict, doc) -> str:
     return f'"{display_name(doc.item(c))}"' if c and doc.has(c) else "the top layer"
 
 
+def _duplicate(f: Facts) -> list[dict]:
+    """Duplicate: after a duplicate and moves of the copy, the same step again (dup_step.py reads it from the history)."""
+    return [{"op": "layer.duplicate", "target": list(f.ids), "args": dup_step.step(f.doc, f.ids)}]
+
+
 def said(calls: list[dict], label: str, doc) -> str:
     """The words a change is recorded and shown with: K says what it keyed ("Keyed 4 settings on 3 layers")."""
+    dup = next((c for c in calls if c["op"] == "layer.duplicate" and c["args"]), None)
+    if dup:
+        return f"Duplicated · {dup_step.words(dup['args'])}"
     cut = next((c for c in calls if c["op"] == "mask.make"), None)
     note = cover_move.fill_note(calls, label, doc)             # Fill the frame while the frame moves: at that moment only
     if note:
@@ -196,5 +204,5 @@ def said(calls: list[dict], label: str, doc) -> str:
     return f"Keyed {n} setting{'s' if n != 1 else ''} on {on}"
 
 
-RULES = {"order": _order, "pose": _pose, "depth": pin_depth.depth_calls, "pin": pin_depth.calls, "frame": frame_actions.calls,
+RULES = {"order": _order, "duplicate": _duplicate, "pose": _pose, "depth": pin_depth.depth_calls, "pin": pin_depth.calls, "frame": frame_actions.calls,
          "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}

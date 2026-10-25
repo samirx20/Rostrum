@@ -87,6 +87,27 @@ function parse(kind, t) {
     return isNaN(x) ? NaN : stored(kind, thousands ? x * 1000 : x)
 }
 
+// The "time" kind (the playhead's box): `current` is {t, fps, duration, markers: [{name, at}]}; the answer is {value: seconds on
+// a whole frame} or {error}. 1.5 / 1.5 s seconds, 36f frames, 1:12 minutes:seconds, +12f / -0.5 from the playhead (here a
+// leading "-" means back, not a negative time), #name or name a marker. Past either end is refused, never clamped.
+function readTime(t, c) {
+    var m = /^([+\-])?\s*(?:(\d+(?:[.,]\d+)?)\s*f|(\d+):(\d+(?:[.,]\d+)?)|(\d*[.,]?\d+)\s*s?)$/i.exec(t), at
+    if (m) {
+        var amount = m[2] !== undefined ? parseFloat(m[2].replace(",", ".")) / c.fps
+                   : m[3] !== undefined ? parseInt(m[3], 10) * 60 + parseFloat(m[4].replace(",", ".")) : parseFloat(m[5].replace(",", "."))
+        at = m[1] === "+" ? c.t + amount : m[1] === "-" ? c.t - amount : amount
+    } else {
+        var name = t.replace(/^#\s*/, "").toLowerCase(), hit = null
+        for (var i = 0; i < c.markers.length; i++) if (String(c.markers[i].name).toLowerCase() === name) { hit = c.markers[i]; break }
+        if (!hit) return { error: "No marker called “" + t.replace(/^#\s*/, "") + "”; a time is 1.5 (seconds), 36f (frames) or 1:12" }
+        at = hit.at
+    }
+    var frame = Math.round(at * c.fps) / c.fps
+    if (frame > c.duration + 0.5 / c.fps) return { error: "The scene ends at " + c.duration.toFixed(2) + " s" }
+    if (frame < -0.5 / c.fps) return { error: "The scene starts at 0 s" }
+    return { value: Math.max(0, Math.min(c.duration, frame)) }
+}
+
 var BAD = "Type a number or a sum, like 1920/3; start with = for an expression"
 // What a person typed into a box, read once (SPEC base T): {expression: "=…"} (a live expression, the app's own), {value}
 // (a plain number or a sum, stored; with `current` an array - a Mixed box - the same value for every one), {value, by}
@@ -94,6 +115,7 @@ var BAD = "Type a number or a sum, like 1920/3; start with = for an expression"
 // result; `by` stored units, `factor` unitless; "+-45" takes 45 away), or {error}. A leading "-" is a plain negative.
 function read(kind, text, current) {
     var t = String(text).replace(/−/g, "-").trim()
+    if (kind === "time") return readTime(t, current)
     if (t.charAt(0) === "=") return { expression: t }
     var op = t.charAt(0), rel = op === "+" || op === "*" || op === "/"
     if (rel && kind !== "db") {

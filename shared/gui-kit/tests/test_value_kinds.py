@@ -24,6 +24,16 @@ def test_typed_forms():
     assert K.parse("percent", "lots") is None                                # not a value: the field keeps its own
 
 
+def test_read_a_typed_time():
+    c = {"t": 2.0, "fps": 30, "duration": 6.0, "markers": [{"name": "Logo lands", "at": 4.5}]}
+    r = lambda text: K.read("time", text, c)                                 # noqa: E731
+    assert r("36f")["value"] == pytest.approx(1.2) and r("1.5")["value"] == 1.5 and r("1.5 s")["value"] == 1.5
+    assert r("0:05")["value"] == 5 and r("+12f")["value"] == pytest.approx(2.4) and r("-0.5")["value"] == 1.5   # "-" is back here
+    assert r("#logo lands")["value"] == 4.5 and r("logo lands")["value"] == 4.5
+    assert r("7")["error"] == "The scene ends at 6.00 s" and r("-3")["error"].startswith("The scene starts")
+    assert r("nowhere")["error"].startswith("No marker called")
+
+
 def test_read_what_was_typed():
     r = K.read
     assert r("", "3*4")["value"] == 12 and r("", "1,5")["value"] == 1.5 and r("", "-45")["value"] == -45

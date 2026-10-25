@@ -231,12 +231,12 @@ Painted background. Group and Rig are gone from it.
 
 | Expectation | What Rostrum2D does | When |
 |---|---|---|
-| **Select, multi-select** | Click; Shift click adds / removes on the canvas; Ctrl click / Shift click in the layers list; drag a box on empty canvas; Ctrl A all; Esc clears. Click a group selects the group; double-click goes in; Ctrl click picks the piece under the pointer. Ctrl K, the menus and the settings panel act on **every** selected layer | H28 |
+| **Select, multi-select** | Click; Shift click adds / removes on the canvas; Ctrl click / Shift click in the layers list; drag a box on empty canvas; Ctrl A all; Esc clears. Click a group selects the group; double-click goes in; Ctrl click picks the piece under the pointer; Alt click picks the layer behind the pick (again: further back), and right-click › Select layer lists every layer under the pointer. Tab / Shift Tab pick the next / previous layer, Enter goes into a group, Shift Enter out. Ctrl K, the menus and the settings panel act on **every** selected layer | H28 |
 | **Settings of several** | The settings panel shows what the selected layers share; a value that differs says "Mixed"; a change sets it on all, as one change | H28 |
 | **Group / ungroup** | Select → Ctrl G; Ctrl Shift G | H28 |
 | **Align and distribute** | In the action bar, right-click and Ctrl K | H28 |
 | **Snapping and guides** | Layer bars and keys snap to markers and the playhead. On the canvas: a dragged layer snaps to the frame's centre and edges and to other layers' edges and centres, with a thin line showing what it snapped to, and to equal gaps between layers (the matching gaps marked with their size); the gap to a neighbour it lines up with is written on the line; Ctrl while dragging turns snapping off | H28 |
-| **Copy / paste / duplicate** | Ctrl D duplicates (with keys); Ctrl C / Ctrl X / Ctrl V copy, cut and paste layers (in place, also into another project); Alt drag drags a copy | H28 |
+| **Copy / paste / duplicate** | Ctrl D duplicates (with keys); Ctrl D again repeats the last move (move, turn or scale the copy first); Ctrl C / Ctrl X / Ctrl V copy, cut and paste layers (in place, also into another project); Alt drag drags a copy (made when the pointer first moves, so an Alt click is never a copy) | H28 |
 | **Nudge with the arrow keys** | 1 px; Shift 10 px; every selected layer; one change per key press | H28 |
 | **Zoom and pan the canvas** | Ctrl wheel zooms at the pointer, Space drag or middle drag pans, Ctrl 0 fits, Ctrl 1 shows 100 %; the zoom shows in the canvas corner. On Sam's screen a 1080p frame is fitted at about half size, so this is needed for any detail | H28 |
 | **Right-click menus** | On a layer row, on the selection on the canvas, on a key (ease) — all from the one action list | layers and canvas: H28 · keys: H29 |

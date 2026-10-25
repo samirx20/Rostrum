@@ -20,18 +20,27 @@ def steps_for(siblings: list[dict], items: list[dict]) -> int:
     return n
 
 
-def stepped(item: dict, n: int) -> dict:
-    """`item` (a copy the caller owns) moved n steps: a layer's still x, y; a key of x or y its value. A layer's keys
-    are children of it: the caller passes the layer's step down to its keys only (`for_child`)."""
-    if n:
-        if item.get("type") == "key":
-            if item.get("prop") in ("x", "y") and "v" in item:
-                item["v"] = round(float(item["v"]) + n * NUDGE, 4)
-            return item
-        for k in ("x", "y"):
-            if k in item:
-                item[k] = round(float(item[k]) + n * NUDGE, 4)
+def stepped(item: dict, n) -> dict:
+    """`item` (a copy the caller owns) moved by `n`: a number of NUDGE steps right and down, or a (dx, dy, turn, ratio)
+    tuple (layer.duplicate's `by`, a copy's step from the one before): a layer's still x, y, rotation (added) and scale
+    (times ratio); a key of those properties its value. A layer's keys are children of it: the caller passes the layer's
+    step down to its keys only (`for_child`)."""
+    if not n:
+        return item
+    dx, dy, turn, ratio = (n * NUDGE, n * NUDGE, 0, 1) if isinstance(n, (int, float)) else n
+    if item.get("type") == "key":
+        prop = item.get("prop")
+        if prop in ("x", "y", "rotation", "scale") and "v" in item:
+            item["v"] = round(_shift(prop, float(item["v"]), dx, dy, turn, ratio), 4)
+        return item
+    for k in ("x", "y", "rotation", "scale"):
+        if k in item:
+            item[k] = round(_shift(k, float(item[k]), dx, dy, turn, ratio), 4)
     return item
+
+
+def _shift(prop, v, dx, dy, turn, ratio):
+    return {"x": v + dx, "y": v + dy, "rotation": v + turn, "scale": v * ratio}[prop]
 
 
 def for_child(child: dict, n: int) -> int:

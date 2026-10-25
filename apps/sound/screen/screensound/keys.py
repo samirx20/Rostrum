@@ -63,7 +63,7 @@ ROUTES = {
     "editor_dock": ("dock", "editor"), "mixer_dock": ("dock", "mixer"), "library": ("dock", "library"),
 }
 SKIP = ["new", "open", "save_version", "duplicate_file", "add_file", "preferences", "quit", "export", "export_again",
-        "undo", "redo", "command_box", "guides", "record"]
+        "undo", "redo", "command_box", "guides", "record", "go_to_time"]
 SHELL_RUN = ("undo", "redo", "export", "export_again", "history", "guides", "key_list", "fold_panels", "next_area", "preferences", "quit",
-             "add_file", "record", "problems", "loudness", "sample_rate")       # the window runs these (Main.qml › runSoundJob, the kit's AppShell.runJob)
+             "add_file", "record", "problems", "loudness", "sample_rate", "go_to_time")       # the window runs these (Main.qml › runSoundJob, the kit's AppShell.runJob)
 FILE_JOBS = ("new", "open", "save_version", "duplicate_file")   # the ≡ menu's rows are in Ctrl+K from the project files (file:*)

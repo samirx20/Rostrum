@@ -57,6 +57,8 @@ rounded corners (a phone's screen) give the group a mask with a radius instead, 
 `screen.mask("screen_round", x=0, y=0, w=390, h=844, radius=56)` (see Masks below). `layer.arrange` moves a layer in the
 stack or into another group; `inspect_item` with no `id` lists the tree.
 
+`layer.duplicate {ids: ["card"], by_x: 240, times: 7}` makes a row of eight in one change: each copy takes the step (`by_x`, `by_y` px, `by_turn` degrees, `by_scale` as a factor) from the one before, so a ring is `by_turn: 30, times: 11` (put the anchor at the ring's centre first).
+
 ## Boxes, images, video
 
 | Layer | Controls |

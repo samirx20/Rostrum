@@ -34,10 +34,11 @@ def _op(name, target, **args):
 
 
 def _a(id_, label, *, rank=100, importance="secondary", group="", bar="", job="", when=None, calls=None, do="",
-       min_targets=1, max_targets=None, kinds=None, locked_ok=False, frame_ok=False, promoted=False, why="", panel=True, icon=""):
+       min_targets=1, max_targets=None, kinds=None, locked_ok=False, frame_ok=False, promoted=False, why="", panel=True, icon="",
+       importance_one=""):
     return {"frame_ok": frame_ok, "icon": icon, "panel": panel, "id": id_, "label": label, "rank": rank, "importance": importance, "group": group, "bar": bar, "job": job,
             "when": when, "calls": calls, "do": do, "min_targets": min_targets, "max_targets": max_targets,
-            "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why}
+            "kinds": kinds, "locked_ok": locked_ok, "promoted": promoted, "why": why, "importance_one": importance_one}
 
 
 _MATTES = {"luma": "By its brightness", "alphaInverted": "Outside its shape", "lumaInverted": "By its darkness"}
@@ -54,8 +55,8 @@ _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the depths backgrou
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
 
 DATA = [
-    _a("group", "Group", rank=10, importance="primary", group="make", job="group", min_targets=2,
-       when={"all": [FACT("groupable"), NOT("one_group")]}, calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
+    _a("group", "Group", rank=10, importance="primary", importance_one="secondary", group="make", job="group",
+       when=FACT("groupable"), calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
     _a("ungroup", "Ungroup", rank=10, importance="primary", group="make", job="ungroup", when=FACT("releasable"),
        calls=_op("group.release", "ids")),
     _a("clip", "Crop to a box", rank=60, group="make", bar="Make", when=FACT("groupable"),
@@ -141,7 +142,7 @@ DATA = [
        locked_ok=True),
     _a("paste_other", lambda f: "Paste at the original time" if f.state.get("key_clip") else "Paste in place", rank=100,
        group="edit", job="paste_other", do="paste_other", min_targets=0, when=FACT("clipboard"), locked_ok=True, panel=False),
-    _a("duplicate", "Duplicate", rank=100, group="edit", job="duplicate", calls=_op("layer.duplicate", "ids")),
+    _a("duplicate", "Duplicate", rank=100, group="edit", job="duplicate", calls={"rule": "duplicate"}),
     _a("delete", "Delete", rank=100, group="edit", job="delete", calls=_op("layer.remove", "ids")),
     *[_a(k, label, rank=110, group="order", bar="Order", job=k, calls={"rule": "order", "how": k}, panel=False) for k, label in _ORDER.items()],
     _a("rename", "Rename", rank=110, group="order", job="rename", max_targets=1, do="rename"),
@@ -161,7 +162,7 @@ def _action(d: dict) -> Action:
     when = {"all": rules} if len(rules) > 1 else rules[0] if rules else None
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
-                  max_targets=d["max_targets"], importance=d["importance"], rank=d["rank"], job=d["job"],
+                  max_targets=d["max_targets"], importance=d["importance"], importance_one=d["importance_one"], rank=d["rank"], job=d["job"],
                   group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"], panel=d["panel"],
                   promoted=_promoted(d["promoted"]), icon=d["icon"])
 

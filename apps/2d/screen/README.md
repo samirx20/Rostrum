@@ -358,7 +358,7 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 | To do this | Step |
 |---|---|
-| Real mouse and keys in the window | `mouseclick <x> <y> [right] [ctrl\|shift]`, `mousedrag <x0> <y0> <x1> <y1> [right] [alt] [hold]`, `mousemove <x> <y>`, `keytap <key> [shift\|alt\|ctrl]` (`keytap z ctrl`, `keytap escape`, `keytap f2`), `typekeys <text>` (`_` is a space) |
+| Real mouse and keys in the window | `mouseclick <x> <y> [right] [ctrl\|shift] [alt]`, `mousedrag <x0> <y0> <x1> <y1> [right] [alt] [hold]`, `mousemove <x> <y>`, `keytap <key> [shift\|alt\|ctrl]` (`keytap z ctrl`, `keytap escape`, `keytap f2`), `typekeys <text>` (`_` is a space) |
 | Click or drag a named control | `clickobj <objectName> [fx fy] [right]`, `dragobj <objectName> fx0 fy0 fx1 fy1`, `clickarea canvas\|timeline\|settings` |
 | Pick | `select <id>`, `selectmany <id> <id> …`, `pick <x> <y>`, `boxselect <x0> <y0> <x1> <y1>`, `shiftpick <layer>` |
 | Run an action of the list | `act <job>` (an action that has a key: `group`, `delete`, `front`, `align_left` …) · `do <action id>` (any action of the list: `distribute_x`, `match_w` …) · `nudge <dx> <dy>` |
