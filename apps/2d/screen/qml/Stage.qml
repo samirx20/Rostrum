@@ -289,6 +289,7 @@ Rectangle {
                 var hit = unseen ? "" : backend.multi.target(p.x, p.y, deep ? "deep" : "click")
                 sx = m.x; sy = m.y; band = false; moving = false
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
+                backend.keys.clear()                                           // a layer pressed: it is what Ctrl+C, X and V act on, not keys picked before
                 if (Mods.shift(m)) backend.multi.toggle(hit)                   // Shift+click: add / remove
                 else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
                 moving = backend.multi.has(hit) && (Mods.alt(m) ? backend.beginCopyMove() : backend.beginMove())   // Alt: drag copies

@@ -38,6 +38,7 @@ Rectangle {
         property bool dropped: false
         anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
         enabled: !name.rows.compact      // compact: the row's name is the list of every layer (LayerTimeline.qml)
+        preventStealing: name.isLayer && !name.isFrame   // a layer row's drag is a reorder: the list must not take it and flick
         onPressed: (m) => { pressY = m.y; dropped = false }
         onPositionChanged: (m) => {
             if (!pressed || !name.isLayer || name.isFrame || !(m.buttons & Qt.LeftButton)) return
