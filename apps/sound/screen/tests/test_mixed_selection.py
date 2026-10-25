@@ -22,7 +22,7 @@ def _op(op, target, **args):
 def _song():
     d = Document.new(KIND)
     d.apply([_op("track.add", [], id="a", instrument="builtIn", builtIn="feltPiano"),
-             _op("track.add", [], id="k", instrument="kit", kit="synth"),
+             _op("track.add", [], id="k", instrument="kit", kit="classic"),
              _op("note.add", ["a"], id="n", pitch="C4", at={"beat": 0.1}, dur=1),
              _op("note.add", ["a"], id="m", pitch="E4", at={"beat": 2.1}, dur=1),
              _op("hit.add", ["k"], id="h", drum="kick", at={"beat": 1.1}),
