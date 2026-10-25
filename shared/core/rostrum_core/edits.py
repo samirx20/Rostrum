@@ -99,6 +99,7 @@ class Fork(dict):
     def __init__(self, idx: dict):
         super().__init__(idx)
         self.owned: dict[int, dict] = {}
+        self.owned_lists: dict[int, list] = {}       # child lists this version copied (by object, as `owned`)
 
 
 def fork(data: dict, lists: dict, idx: dict | None = None) -> tuple[dict, Fork]:
@@ -109,23 +110,35 @@ def fork(data: dict, lists: dict, idx: dict | None = None) -> tuple[dict, Fork]:
 
 
 def _own(idx: dict, id_: str, lists: dict) -> dict:
-    """The item `id_` as this version's own copy (shallow, child lists copied), its parents first."""
+    """The item `id_` as this version's own copy (shallow), its parents first. Its child lists stay shared until an
+    edit changes one (`_own_list`): an edit on a note copies the song, its track and the track's notes, and the song's
+    other lists (markers, tempos, buses …) stay the very same objects, so a reader can tell by identity what changed."""
     loc = idx[id_]
     owned = getattr(idx, "owned", None)
     if owned is None or id(loc.item) in owned:
         return loc.item
     item = dict(loc.item)
-    for key in child_keys(item, lists):
-        if key in item:
-            item[key] = list(item[key])
     pos = None
     if loc.parent is not None:
-        src = _own(idx, loc.parent, lists)[loc.key]
+        src = _own_list(idx, loc.parent, loc.key, lists)
         pos = _position(src, loc)
         src[pos] = item
     owned[id(item)] = item
     idx[id_] = Loc(item, loc.parent, loc.key, pos)
     return item
+
+
+def _own_list(idx: dict, id_: str, key: str, lists: dict) -> list:
+    """The child list `key` of item `id_` as this version's own (copied once per version; made when missing)."""
+    item = _own(idx, id_, lists)
+    lst = item.get(key)
+    owned = getattr(idx, "owned_lists", None)
+    if owned is None:
+        return item.setdefault(key, [])
+    if lst is None or id(lst) not in owned:
+        lst = item[key] = list(lst or [])
+        owned[id(lst)] = lst
+    return lst
 
 
 def _set(item, lists, e, where):
@@ -162,7 +175,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     if isinstance(e, Insert):
         if any(i in idx for i in subtree_ids(e.item, lists)):
             raise RostrumError(codes.CONFLICT, where, f'"{e.id}"', "is already in this document")
-        lst = _own(idx, e.parent, lists).setdefault(e.key, [])
+        lst = _own_list(idx, e.parent, e.key, lists)
         pos = _place(lst, e.after, e.index)
         lst.insert(pos, copy.deepcopy(e.item))
         _add(idx, lst[pos], e.parent, e.key, pos, lists)
@@ -170,7 +183,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     loc = idx[e.id]
     if loc.parent is None:
         raise RostrumError(codes.BAD_ARGUMENT, where, '"root"', "can't be removed or moved")
-    src = _own(idx, loc.parent, lists)[loc.key]
+    src = _own_list(idx, loc.parent, loc.key, lists)
     at = _position(src, loc)
     prev = _prev(src, at)
     if isinstance(e, Remove):
@@ -185,7 +198,7 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
         if parent in subtree_ids(loc.item, lists):
             raise RostrumError(codes.CHECK_FAILED, where, f'"{e.id}"', f"can't move into its own child {parent!r}")
         item = src.pop(at)
-        dst = _own(idx, parent, lists).setdefault(key, [])
+        dst = _own_list(idx, parent, key, lists)
         pos = _place(dst, e.after, i)
         dst.insert(pos, item)
         idx[e.id] = Loc(item, parent, key, pos)
