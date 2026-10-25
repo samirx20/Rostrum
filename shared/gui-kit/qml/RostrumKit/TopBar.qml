@@ -75,7 +75,8 @@ Item {
     function slot(item) { return item.children.length ? sp + item.implicitWidth : 0 }
     readonly property string undoText: bridge && bridge.undoLabel ? bridge.undoLabel : ""
     readonly property string redoText: bridge && bridge.redoLabel ? bridge.redoLabel : ""
-    readonly property real undoWidth: (undoText ? Theme.button : 0) + (redoText ? Theme.button : 0) + (undoText && redoText ? Theme.grid : 0)
+    // Undo's place is fixed: Redo sits to its left and Undo keeps its room while Redo is there, so a second click on Undo's spot undoes again
+    readonly property real undoWidth: (undoText || redoText ? Theme.button : 0) + (redoText ? Theme.button + Theme.grid : 0)
     readonly property bool appChips: chipsSlot.children.length > 0
     readonly property bool agentShown: agentChip.info.state !== ""
     readonly property int chipCount: (agentShown ? 1 : 0) + (problemsChip.n > 0 ? 1 : 0) + (jobChip.shown ? 1 : 0) + (appChips ? 1 : 0)
@@ -225,14 +226,18 @@ Item {
                       width: implicitWidth; height: implicitHeight }
             Row { id: chipsSlot; anchors.verticalCenter: parent.verticalCenter; spacing: Theme.gap; visible: children.length > 0 }
         }
-        Row {  // ↶ ↷: each only while it can act; the tip names the step
+        Row {  // ↷ ↶: each only while it can act; the tip names the step. Redo is LEFT of Undo, and Undo's room stays while
+               // Redo shows (an empty place, not a greyed button), so Undo never moves under the pointer
             anchors.verticalCenter: parent.verticalCenter
             spacing: Theme.grid
             visible: bar.undoWidth > 0
-            IconButton { visible: bar.undoText !== ""; glyph: "↶"; kind: "ghost"; tip: "Undo: " + bar.undoText + "  Ctrl Z"
-                         onClicked: bar.bridge.undo() }
-            IconButton { visible: bar.redoText !== ""; glyph: "↷"; kind: "ghost"; tip: "Redo: " + bar.redoText + "  Ctrl Shift Z"
+            IconButton { visible: bar.redoText !== ""; objectName: "redoButton"; glyph: "↷"; kind: "ghost"; tip: "Redo: " + bar.redoText + "  Ctrl Shift Z"
                          onClicked: bar.bridge.redo() }
+            Item {
+                width: Theme.button; height: Theme.button
+                IconButton { visible: bar.undoText !== ""; objectName: "undoButton"; glyph: "↶"; kind: "ghost"; tip: "Undo: " + bar.undoText + "  Ctrl Z"
+                             onClicked: bar.bridge.undo() }
+            }
         }
         Rectangle {  // the command box; with little room just its search icon (still the same button)
             id: command

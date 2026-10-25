@@ -100,6 +100,10 @@ FieldFrame {
             f.edited(f.clamp(f.shownFrom() + notch * unit, unit))
         }
     }
+    Connections {   // arriving by Tab: the number is selected, so typing replaces it (a click selects it on release, above)
+        target: f.input
+        function onActiveFocusChanged() { if (f.input.activeFocus && !scrub.pressed) Qt.callLater(() => f.input.selectAll()) }
+    }
     Timer { id: twice; interval: Qt.styleHints.mouseDoubleClickInterval }
     MouseArea {  // scrub or start typing; out of the way while the caret is in
         id: scrub

@@ -78,7 +78,7 @@ Rectangle {
     TimeRuler {
         id: ruler
         x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
-        width: (compactSwitch.visible ? compactSwitch.x - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
+        width: (tl.canCompact ? parent.width - Theme.gap - compactSwitch.room - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
         duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time; frameTicks: tl.frameTicks
         cuts: backend.rowFacts.cuts   // the frame's cuts (the Frame row is first; 3D has none)
     }
@@ -89,7 +89,12 @@ Rectangle {
         anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: ruler.verticalCenter }
         implicitHeight: 26; kind: "ghost"
         text: tl.compact ? "All layers" : "Only this layer"
+        // its room is kept whether it shows or not (and whichever words it has), so the ruler never changes scale when a layer is picked
+        readonly property real room: Math.max(wordsA.implicitWidth, wordsB.implicitWidth)
+        width: room
         onClicked: tl.compactAsked(!tl.compact)
+        Button { id: wordsA; visible: false; implicitHeight: 26; kind: "ghost"; text: "Only this layer" }
+        Button { id: wordsB; visible: false; implicitHeight: 26; kind: "ghost"; text: "All layers" }
     }
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
     Item {   // where `curves` lies
