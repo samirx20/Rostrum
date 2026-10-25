@@ -45,9 +45,9 @@ class SelectSlots(SlotMixin):
         k.static = self._layout()
         if moved:
             self.selectedItemsChanged.emit()
-        if pointer_quiet.busy():            # a pointer's pick: its highlight and outline (selectedItemsChanged) are
-            self._panel_later().ask()       # drawn first, the panel in the frame after (after_frame.py)
-        else:
+        if pointer_quiet.busy():            # a person's pick (pointer or key): its highlight and outline are drawn
+            self._panel_later().ask()       # first, the panel in the frame after (after_frame.py); a reader of the rows
+        else:                               # makes it now. A script's or an agent's: at once
             self._panel_later().due = False
             self._show_panel()
 
@@ -57,7 +57,7 @@ class SelectSlots(SlotMixin):
         waiting (model_pick.py). A kind's first panel made every row's control on the click that showed it (a first
         note drawn: ~20-30 ms; a group's first Ctrl+G or a kind's first pick in 2D: ~30-90 ms). Never in a click; a
         whole page at once held the screen ~30-60 ms, long enough to meet the next click."""
-        steps, job = self._ahead_steps(ids), AfterFrame(None, self)
+        steps, job = self._ahead_steps(ids), AfterFrame(None, self, ahead=True)
 
         def run():
             if not shiboken6.isValid(self.model):     # the window closed meanwhile (a new project, the layout check's
@@ -95,17 +95,24 @@ class SelectSlots(SlotMixin):
             self._kit.panel = AfterFrame(self._show_panel, self)
         return self._kit.panel
 
+    def _rows_due(self) -> AfterFrame:
+        if self._kit.rows_due is None:
+            self._kit.rows_due = AfterFrame(self._refresh, self)
+        return self._kit.rows_due
+
     def _show_panel(self):
         """The selection's panel: its rows in place and at once (no reveal animation, and only the rows another kind
         adds or drops are made or freed), its name, then what follows the panel (panelShown: its actions, effects)."""
+        self._rows_due().cancel()           # (a change's rows still waiting: these are newer)
         self.model.update(self._rows(), instant=True)
         self.rowsChanged.emit()
         self._announce(force=True)
         self.panelShown.emit()
 
     def _panel_now(self):
-        """A reader of the rows (or a change to them) right after a pointer's pick: the pick's panel first."""
+        """A reader of the rows (or a change to them) right after a pick or a change: its panel first."""
         self._panel_later().flush()
+        self._rows_due().flush()
 
     def _announce(self, force=False):
         """selectionChanged, when what the selection shows changed (or `force`): a document edit that leaves the
@@ -179,6 +186,7 @@ class SelectSlots(SlotMixin):
         """The same rows with new values or validity: changed in place, so each row animates its own reveal."""
         if self._panel_later().due:         # a pick's panel not shown yet: shown now, as a pick shows it
             return self._panel_later().flush()
+        self._rows_due().cancel()
         self.model.update(self._rows())
         self.rowsChanged.emit()
 
@@ -205,5 +213,5 @@ class SelectSlots(SlotMixin):
             self._kit.paced.ask()
         else:
             self._kit.paced.cancel()
-            self._refresh()
-            self._announce()                               # only if its name or kind changed (an agent's rename)
+            self._rows_due().ask()          # the rows' new values the frame after: an action that then picks what it
+            self._announce()                # made (Ctrl+G) never builds the old selection's rows (~9 ms)                               # only if its name or kind changed (an agent's rename)

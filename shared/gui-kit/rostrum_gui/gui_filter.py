@@ -27,6 +27,20 @@ class GuiFilter(QObject):
         """Watch `target`'s events (a window, or the app for a part that has no window: say why where it's used)."""
         target.installEventFilter(self)
 
+    def watch_windows(self, app):
+        """Watch every window of the app, those made later too (each is taken in when it gets the keys, or at the
+        next call): the pointer and the keys reach a window first. A filter on the app itself runs Python for every
+        event of every object (timers, queued calls, deletions: ~250 a Ctrl+G, 2-5 ms)."""
+        seen = self.__dict__.setdefault("_windows", set())
+        for w in [*app.topLevelWindows(), app.focusWindow()]:
+            if w is not None and id(w) not in seen:
+                seen.add(id(w))
+                self.watch(w)
+                w.destroyed.connect(lambda _=None, i=id(w): seen.discard(i))
+        if not self.__dict__.get("_following"):
+            self._following = True
+            app.focusWindowChanged.connect(lambda _w: self.watch_windows(app))
+
     def on_event(self, obj, event) -> bool:
         return False
 

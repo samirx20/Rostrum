@@ -23,12 +23,13 @@ ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
-                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "panel")
+                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "panel", "rows_due")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
         self.scrub = None                   # the open scrub (edits.Scrub), if any
-        self.panel = None                   # after_frame.AfterFrame: a pointer's pick's panel, the frame after (bridge_select)
+        self.panel = None                   # after_frame.AfterFrame: a pick's panel, the frame after (bridge_select)
+        self.rows_due = None                # after_frame.AfterFrame: the panel's rows after a document change (the same)
         self.partners = []                  # other documents in this person's one history (join_history)
         self.opened = [opened]              # where each history stood when this window opened (historyCount)
         self.static = []                    # the rows' fixed layout for the selection's kind

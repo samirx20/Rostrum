@@ -10,6 +10,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.selection_rules import box, click
 
 from . import bounds, picking
+from .handle_kinds import dressed
 from .group_slots import union
 
 
@@ -34,13 +35,13 @@ class Multi(QObject):
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
         shows them (shown.py; a layer newer than the picture has none yet)."""
-        return self.b.shown_boxes(self.layers())
+        return [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
         """The one box round all the selected layers (their handles: group_slots.py); {} for fewer than two."""
-        boxes = self.boxes
-        return union(boxes) if len(boxes) > 1 else {}
+        boxes = self.b.shown_boxes(self.layers())
+        return dressed(union(boxes)) if len(boxes) > 1 else {}
 
     @Property("QVariantMap", notify=rideChanged)
     def ride(self):

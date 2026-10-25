@@ -34,6 +34,7 @@ from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
 from .frame_view import FrameView
 from .world_view import WorldView
+from .outline_news import OutlineNews
 from .reveal_ahead import RevealAhead
 from .playback import Playback, size_offered
 from .playstats import STATS
@@ -86,6 +87,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self._shown_init()
         super().__init__(doc, parent=parent)
         self._outline_paced = news.OnceAFrame(self.outlineChanged.emit, self)   # a drag's steps (_on_doc)
+        self._outline_news = OutlineNews(self)              # a change's or a pick's: the frame after (outline_news.py)
         self.outlineChanged.connect(self._layers_check)     # first: every later listener reads the new rows
         self.outlineChanged.connect(self._outline_check)    # then selectedLayer / frameInfo, each sent only on news
         self._told = (None, None)
@@ -128,7 +130,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.r3d.changed.connect(self._problems.touch)
         self._soundtrack = Soundtrack(self)                 # the project's sound, played by Sound's engine (soundtrack.py)
         self._cuepick = CuePick(self, self)                 # Add a sound here… (sound_cue_pick.py)
-        self.selectedItemsChanged.connect(self.outlineChanged)
+        self.selectedItemsChanged.connect(self._outline_news.soon)
         self.selectedItemsChanged.connect(self.shownChanged)
         self.rowsChanged.connect(self.anchorOpenChanged)       # the Anchor group opened or folded (anchor_slots.py)
         self.link = None
@@ -301,13 +303,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         c = self.comp()
         self._t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
         still = not self.play.playing            # while playing, only the playhead and the frame (playback.py)
-        if still:
-            with STATS.stage("rows"):
-                self.model.update(self._rows())
         self.timeChanged.emit()
-        if still:
-            with STATS.stage("outline"):
-                self.outlineChanged.emit()
+        if still:                                # the panel's values and what follows the outline at the new time:
+            self._rows_due().ask()               # the frame after (outline_news.py), the picture asked first
+            self._outline_news.soon()
         self._show()
 
     @Slot(str)
@@ -441,12 +440,9 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
                 self._layers_check()                        # dragged) at once, the parts that follow the outline
                 if reached:                                 # (panels, overlays) once per screen refresh
                     self._outline_paced.ask()
-            elif reached:
-                self._outline_paced.cancel()
-                self.outlineChanged.emit()
-            else:                                           # a change elsewhere (an agent's, an undo): only the
-                self._layers_check()                        # timeline's rows (outline's first listener); the canvas
-                                                            # overlays follow the new picture (shownChanged)
+            else:                                           # the frame after (outline_news.py); a change elsewhere
+                self._outline_paced.cancel()                # (an agent's, an undo): only the timeline's rows; the
+                self._outline_news.soon(bool(reached))      # canvas overlays follow the new picture (shownChanged)
         with STATS.stage("doc.render"):
             if event.kind == "preview" and not self._picture_changes():
                 self._scene = None                          # the picture stays: it shows the same (picture_change.py)
@@ -468,6 +464,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.marks.close()
         self.endDrag()
         self._outline_paced.cancel()                       # a drag's step still waiting: nothing left to tell
+        self._outline_news.cancel()
         self._kit.paced.cancel()
         placement.drop(self._host)
         route.drop(self._where)

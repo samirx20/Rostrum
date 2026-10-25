@@ -30,6 +30,7 @@ class RowPages(QAbstractListModel):
         self._pages: list[tuple[tuple, RowsModel]] = []     # (layout, its rows), in the order QML made them
         self._at = -1                                        # the shown page's index (-1: none yet)
         self._used: list[tuple] = []                         # layouts, the last shown last
+        self.reader = None                                   # called before `rows` is read (the bridge's _panel_now)
 
     # ---- QML ---------------------------------------------------------------------------------------------------
     def roleNames(self):
@@ -64,6 +65,15 @@ class RowPages(QAbstractListModel):
 
     @property
     def rows(self) -> list[dict]:
+        """The rows as of the document and selection now (a panel still waiting for the frame after is made first)."""
+        if self.reader is not None:
+            self.reader()
+        return self.shown_rows
+
+    @property
+    def shown_rows(self) -> list[dict]:
+        """The rows the panel shows now: for a QML binding (told by rowsChanged when the waiting panel lands; making it
+        inside a binding put the whole panel back into the click)."""
         p = self._page()
         return p.rows if p is not None else []
 

@@ -20,7 +20,7 @@ class AnchorSlots:
     @Property(bool, notify=anchorOpenChanged)
     def anchorOpen(self):
         """The Anchor group is open in the settings panel: the canvas shows the anchor to drag."""
-        return any(r.get("fold") == "Anchor" and r.get("open") for r in self.model.rows)
+        return any(r.get("fold") == "Anchor" and r.get("open") for r in self.model.shown_rows)
 
     @Slot(result=bool)
     def beginAnchor(self):

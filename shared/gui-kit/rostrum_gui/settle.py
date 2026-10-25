@@ -5,11 +5,14 @@ on a timer alone showed the state of a few frames in (a tool highlight half-way,
 yet open). `settle` draws frame after frame, letting events (image loads, Loaders) run in between, until the
 picture stays the same for `still` frames in a row; it fails loudly when that never happens within `limit` seconds
 (something keeps moving). Pictures still loading (an Image or a Loader with `asynchronous`) keep it waiting too, and so
-does any animation or transition still running (a list sliding in can match its picture for 4 frames mid-way and look settled).
+does any animation or transition still running (a list sliding in can match its picture for 4 frames mid-way and look settled),
+and any work still waiting for the frame after (after_frame.py: a panel, the timeline's rows after a change).
 """
 from __future__ import annotations
 
 import time
+
+from . import after_frame
 
 STILL = 4          # this many frames in a row with the same picture = settled (a caret blink rarely spans it)
 LIMIT = 10.0       # seconds; then it fails, naming the wait
@@ -29,7 +32,8 @@ def settle(win, then, fail, still: int = STILL, limit: float = LIMIT, ready=None
         state["same"] = state["same"] + 1 if state["last"] is not None and img == state["last"] else 0
         state["last"] = img
         try:
-            done = (state["same"] >= still and not loading(win.contentItem()) and not animating(win.contentItem()) and (ready is None or ready()))
+            done = (state["same"] >= still and not loading(win.contentItem()) and not animating(win.contentItem())
+                    and not after_frame.pending() and (ready is None or ready()))
         except Exception as e:  # noqa: BLE001  a check that breaks must say so, never hang the run
             return fail(f"settle: {e}")
         if done:
@@ -59,7 +63,8 @@ def grab_settled(win, ready=None, still: int = 3, limit: float = 10.0, may_move:
             raise RuntimeError("snap: the window gave no picture")
         same = same + 1 if last is not None and img == last else 0
         last = img
-        if same >= still and (ready is None or ready()) and not loading(win.contentItem()) and not animating(win.contentItem()):
+        if (same >= still and (ready is None or ready()) and not loading(win.contentItem()) and not animating(win.contentItem())
+                and not after_frame.pending()):
             return img
         if _t.monotonic() > end:
             if may_move:
