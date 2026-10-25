@@ -127,7 +127,7 @@ def register(tools: Tools):
 
     @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}}})
     def inspect_guide(ctx, args):
-        """A how-to guide by topic; read 'start-here' first. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
+        """A how-to guide by topic; read 'start-here' first. The one argument is `topic`: {"topic": "start-here"} (there is no `name`); where a guide reads `inspect_guide 'x'`, x is the topic. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
         g = ctx.app.guides
         if "topic" not in args:
             return Reply(f"{len(g.topics())} guides: {', '.join(g.topics())}.", {"topics": [{"topic": t, "title": g.title(t)} for t in g.topics()]})

@@ -23,6 +23,8 @@ from ..ears.written import instrument_spec, written_notes
 from ..listen.core import load
 from .tools_look import ITEM, WAV, _source
 
+TOP_CLASHES = 3      # the clashes the summary names; every one is in the data, ranked
+
 TRACK = {"track": {"type": "string", "description": "Read one track's stem (last render) instead of the mix."}}
 DETAIL = {"detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short trims long lists; full lists everything."}}
 
@@ -58,7 +60,7 @@ def register(tools: Tools):
         "division": {"type": "integer", "default": 4, "description": "Grid to measure onsets against: 4 = sixteenth notes, 2 = eighths, 1 = beats."},
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds an onset may sit off the grid."}}})
     def look_beats(ctx, args):
-        """Tempo, the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture. On a render the tempo is the document's, checked against the audio: the reply says whether the audio's beats fit it (a groove also repeats at half, double, 2/3 and 3/2 of its tempo, so a reading from the sound alone, `heard_bpm`, can name a related tempo). With `wav` (no document) the tempo is the audio's own, and a close call names the other reading."""
+        """Tempo, the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture. On a render the tempo is the document's, checked against the audio: the reply says whether the audio's beats fit it (a groove, and rolls or fast figures, also repeat at half, double, 2/3 and 3/2 of its tempo, so a reading from the sound alone, `heard_bpm`, can name a related tempo: the summary then says so and the grid and offsets use the document's tempo). With `wav` (no document) the tempo is the audio's own, and a close call names the other reading."""
         doc, wav, stems = _source(ctx, args, "look_music (what: beats)")
         src = _pick(stems, args["track"], "look_music (what: beats)") if args.get("track") else wav
         use_doc = not args.get("wav")
@@ -145,7 +147,7 @@ def register(tools: Tools):
         "min_over_db": {"type": "number", "default": 3, "description": "Report only where one stem stands at least this many dB over the other (a part buried by this much). Parts at the same level in a band are not a problem."},
         "min_length": {"type": "number", "default": 0.3, "description": "Shortest clash to report, seconds."}}})
     def look_clash(ctx, args):
-        """Where one stem buries another: both loud in the same frequency band at the same time and one stands at least 3 dB (min_over_db) over the other. Spans (start, end, band in Hz, the two tracks, buried_track, buried_by_db, how many dB each stands over the other) ranked by how far one is buried, and a time × band picture coloured by pair. Parts at the same level are not reported: an empty list means no real problem. Needs the last render's stems."""
+        """Where one stem buries another: both loud in the same frequency band at the same time and one stands at least 3 dB (min_over_db) over the other. Spans (start, end, band in Hz, the two tracks, buried_track, buried_by_db, how many dB each stands over the other, `rank`) ranked by how far one is buried; the summary names the top 3 and the pairs they come from (data.top, the rest in data.clashes, counts per pair in data.by_pair), and a time × band picture coloured by pair. Parts at the same level are not reported: an empty list means no real problem. Needs the last render's stems."""
         doc, _, stems = _source(ctx, args, "look_sound (what: clash)")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_sound (what: clash)", "stems", "were not rendered", hint="render_mix with stems: true.")
@@ -159,13 +161,17 @@ def register(tools: Tools):
         levels, hop = C.stem_levels({t: _pick(stems, t, "look_sound (what: clash)") for t in want})
         floor = args["floor_db"] if "floor_db" in args else C.floor_for(levels)
         spans, maps = C.find_clashes(levels, args.get("within_db", 6), floor, args.get("min_length", 0.3), hop, args.get("min_over_db", C.MIN_OVER_DB))
+        for i, sp in enumerate(spans, 1):
+            sp["rank"] = i
         png = ctx.app.state.look_dir(doc.item_id) / "clash.png"
         clash_picture(png, maps, spans, hop)
-        r = {"clashes": _cap(spans, args, 30), "total": len(spans), "tracks": list(levels), "within_db": args.get("within_db", 6),
+        r = {"top": spans[:TOP_CLASHES], "clashes": _cap(spans[TOP_CLASHES:], args, 30), "total": len(spans), "by_pair": C.by_pair(spans), "tracks": list(levels), "within_db": args.get("within_db", 6),
              "floor_db": round(floor, 1), "min_over_db": args.get("min_over_db", C.MIN_OVER_DB), "left_out_quietest": left_out,
              "verdict": "one part buries another in the spans listed" if spans else "no real problem: no part stands over another in a band where both matter",
              "note": "a clash is both stems loud in one band with one standing at least min_over_db over the other; `<a>_over_<b>_db` > 0 means a stands over b by that much (b is the one buried, `buried_track`)"}
-        said = (f"{len(spans)} clashes among {len(levels)} tracks; worst: {C.line(spans[0])}." if spans
+        said = (f"{len(spans)} clashes among {len(levels)} tracks; top {min(len(spans), TOP_CLASHES)}: "
+                + "; ".join(f"{sp['rank']}. {C.line(sp)}" for sp in spans[:TOP_CLASHES])
+                + (f". Pairs: {C.pairs_words(r['by_pair'])}; the other {len(spans) - TOP_CLASHES} are in data.clashes (ranked, `rank`)." if len(spans) > TOP_CLASHES else ".") if spans
                 else f"No real problem among {len(levels)} tracks: no part stands {r['min_over_db']:g} dB or more over another in a band where both are loud.")
         return Reply(said, r, [str(png)], [str(png)])
 
@@ -175,7 +181,7 @@ def register(tools: Tools):
         "key": {"type": "string", "description": "Check notes against this key (\"D minor\") instead of the document's key map or the estimate."},
         "checks": {"type": "boolean", "default": True, "description": "Voicing checks on the written notes: range, low close intervals, crossings, wide spacing, out of key."}}})
     def inspect_harmony(ctx, args):
-        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart, notes out of key. Reads the written notes when there are any, so it works before any render (check the harmony, then render); only `source: "audio"`, a `wav`, or a song with no notes reads a render (the voicing checks need notes)."""
+        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart inside one track's own chord, notes out of key. With written notes the chord is named from the chord part (the tracks that play chords, and a bass line under them) and the melody over it is listed apart per bar (`melody`), so a tune note never turns a chord into a slash chord. Reads the written notes when there are any, so it works before any render (check the harmony, then render); only `source: "audio"`, a `wav`, or a song with no notes reads a render (the voicing checks need notes)."""
         doc = ctx.document(args.get("item"))
         tid = args.get("track")
         notes = written_notes(doc.data, [tid] if tid else None)

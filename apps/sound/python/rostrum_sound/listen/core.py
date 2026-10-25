@@ -7,8 +7,12 @@ import soundfile as sf
 
 BANDS = [("sub", 0, 60), ("low", 60, 250), ("low_mid", 250, 2000),
          ("high_mid", 2000, 6000), ("air", 6000, None)]
+# The five bands of the render reply (`bands`, each track's `bands`): named and cut in the engine, analysis/balance.rs BANDS.
+# Energy in each over where the sound is above -50 dBFS, in dB. Not the same cuts as BANDS above (the picture's).
+RENDER_BANDS_HZ = {"sub": [20, 60], "bass": [60, 250], "lowMid": [250, 1000], "mid": [1000, 4000], "high": [4000, 16000]}
 BAND_NAMES = [b[0] for b in BANDS]
 LOW_END_HZ = 150.0
+SPEECH_HZ = (1000.0, 4000.0)    # the region a voice is heard in (its consonants and presence)
 
 
 def load(src):
@@ -81,3 +85,11 @@ def band_share(m, sr, bands=BANDS):
     f = np.fft.rfftfreq(m.size, 1 / sr)
     total = max(spec.sum(), 1e-30)
     return {n: float(spec[(f >= lo) & ((f < hi) if hi else True)].sum() / total) for n, lo, hi in bands}
+
+
+def band_power(m, sr, lo, hi):
+    """Mean-square power of a mono signal between `lo` and `hi` Hz (from one FFT: the part of its mean square that lies
+    there, so it adds up to the signal's own mean square across bands)."""
+    spec = np.abs(np.fft.rfft(m.astype(np.float64))) ** 2
+    f = np.fft.rfftfreq(m.size, 1 / sr)
+    return 2 * float(spec[(f >= lo) & (f < hi)].sum()) / max(m.size, 1) ** 2

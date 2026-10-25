@@ -40,7 +40,7 @@ def test_compile_has_the_contract_shape():
     assert pad["id"] == "pad" and pad["instrument"] == {"builtIn": "warmPad"}
     assert all({"pitch", "at", "dur"} <= set(n) for n in pad["notes"])
     assert pad["notes"][1]["at"] == 4.5                           # "#drop+0.5": bar 3 at 120 bpm = 4 s, + 0.5
-    assert drums["instrument"] == {"kit": "drums"} and drums["hits"][0]["drum"] == "kick"
+    assert drums["instrument"] == {"kit": "drums", "even": True} and drums["hits"][0]["drum"] == "kick"   # a new track: an even kit
     assert s["master"]["loudness"] == -16 and s["master"]["truePeak"] == -1
 
 

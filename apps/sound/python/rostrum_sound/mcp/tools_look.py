@@ -8,11 +8,15 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from .. import listen
+from .. import listen, roles
 from ..doc.times import seconds
+from ..ears.written import instrument_spec
 from ..listen.loudness import loudest_line
+from . import start_level
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
+WINDOW = {"start": {"type": ["number", "string", "object"], "description": "Read only from here (seconds, {\"beat\": n} or \"#marker\"); needs end."},
+          "end": {"type": ["number", "string", "object"], "description": "Read only to here (same forms as start)."}}
 WAV = {"wav": {"type": "string", "description": "A WAV to read instead of the last render's mix (absolute path)."}}
 
 
@@ -26,6 +30,18 @@ def _source(ctx, args, where):
         return doc, str(wav), {}
     r = ctx.app.state.last_render(doc.item_id, where)
     return doc, r["file"], r["stems"]
+
+
+def _window(doc, args, where):
+    """(from_s, to_s) of a `start` / `end` asked for, as the document resolves them, else None. One rule for every look that takes them."""
+    if "start" not in args and "end" not in args:
+        return None
+    if "start" not in args or "end" not in args:
+        raise RostrumError(codes.BAD_ARGUMENT, where, "start / end", "need both", hint="Give start and end together, or neither for the whole file.")
+    a, b = _resolve(doc, args["start"], f"{where} › start"), _resolve(doc, args["end"], f"{where} › end")
+    if b <= a:
+        raise RostrumError(codes.BAD_ARGUMENT, where, f"end {b:g} s", f"is not after start {a:g} s")
+    return a, b
 
 
 def _limiter_inputs(ctx, doc):
@@ -43,7 +59,9 @@ def _limiter_inputs(ctx, doc):
     m = r.get("master") or {}
     only = m.get("onMixOnly") or []
     caveat = f"the drivers are the tracks as they reach the master, before its {', '.join(only)}" if only else ""
-    return {"stems": stems, "reduction": reduction, "caveat": caveat, "engine_max_db": m.get("limiterMaxReductionDb")}
+    mm = (doc.data.get("master") or [{}])[0]               # the document's master: Most limiting (maxLimit) applies while Gentle limiting is on
+    return {"stems": stems, "reduction": reduction, "caveat": caveat, "engine_max_db": m.get("limiterMaxReductionDb"),
+            "max_limit_db": mm.get("maxLimit", 2) if mm.get("gentle") else None}
 
 
 def _resolve(doc, t, where):
@@ -52,33 +70,55 @@ def _resolve(doc, t, where):
 
 
 def register(tools: Tools):
-    @tools.tool("look_loudness", {"properties": {**ITEM, **WAV}})
+    @tools.tool("look_loudness", {"properties": {**ITEM, **WAV, **WINDOW}})
     def look_loudness(ctx, args):
-        """Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment."""
+        """With start and end (seconds, beats or #markers) only that stretch is measured (the engine's limiter curve is of the whole file, so it is left out). Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment and which one to turn down by how many dB (data.limiter.advice). Also `ending` (data.ending, in the summary): the level of the last 0.5 s, whether it is still above -50 dBFS (not finished) and whether the file is cut off (the last 50 ms fall faster than the fade before them). Band edges: data.band_edges_hz."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
-        r = listen.loudness(wav, out_png=str(png), limiter=lim)
+        win = _window(doc, args, "look_sound (what: loudness)")
+        r = listen.loudness(wav, out_png=str(png), limiter=lim, range=win)
         clips = r.get("clip_moments", [])
         said = f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments. "
         said += loudest_line(r["loudest"])
+        if r.get("ending"):
+            said += " " + r["ending"]["words"]
         if "limiter" in r:
             w = r["limiter"]["worst"]
             said += (f" Limiter: up to {r['limiter']['max_db']:.1f} dB down for {r['limiter']['seconds_working']:.1f} s"
-                     + (f"; worst at {w[0]['time_s']:.2f} s" + (f", driven by {', '.join(d['track'] for d in w[0]['drivers'][:3])}" if w[0]["drivers"] else "") + "." if w else "."))
+                     + (f"; worst at {w[0]['time_s']:.2f} s" + (f", driven by {', '.join(d['track'] for d in w[0]['drivers'][:3])}" if w[0]["drivers"] else "") + "." if w else ".")
+                     if r["limiter"]["seconds_working"] else " Limiter: not working.")
+            if r["limiter"].get("advice"):
+                said += " " + r["limiter"]["advice"]["words"]
         return Reply(said, r, [r["png"]], [r["png"]])
 
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
-        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB (volume_db); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target and limiter turn every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
+        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB against the instrument's starting level (volume_db, start_level_db when the engine gives it), the stem's energy in the 1–4 kHz speech region against the mix's (speech_1_4k_db_vs_mix), and the render reply's per-track lufs before the master's gain (lufs_before_master: levels' lufs is the stem as written, after the master's gain, so the two differ by that gain); says which track sets the master limiter and by how many dB to lower it (data.limiter_advice); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target and limiter turn every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
         doc, wav, stems = _source(ctx, args, "look_sound (what: levels)")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_sound (what: levels)", "stems", "were not rendered", hint="render_mix with stems: true.")
         r = listen.levels(stems, mix=wav)
+        render = ctx.app.state.last_render(doc.item_id, "look_sound (what: levels)")
+        before = {t["id"]: t.get("lufs") for t in render.get("tracks") or []}
+        described = ctx.app.state.engine.request("describe")
         gains = {t["id"]: t.get("volume", 1) for t in doc.data.get("tracks", [])}
         for k, row in r["stems"].items():
             g = gains.get(k)
             row["volume_db"] = round(20 * math.log10(g), 1) if isinstance(g, (int, float)) and g > 0 else None
+            row["start_level_db"] = start_level.of(described, instrument_spec(doc.data, k))
+            if isinstance(before.get(k), (int, float)) and before[k] > -70:
+                row["lufs_before_master"] = round(before[k], 1)
+        gain = (render.get("master") or {}).get("gainDb")
+        r["note"] += ("; lufs is the integrated, gated (BS.1770) loudness of the stem file as written, which carries the master's gain "
+                      + (f"({gain:+.1f} dB on the mix)" if isinstance(gain, (int, float)) else "") + "; lufs_before_master is the render reply's per-track figure, "
+                      "measured before that gain: the two differ by the master's gain, they are not two windows. volume_db is against the "
+                      "instrument's starting level (0 = as the engine levelled it).")
+        lim = _limiter_inputs(ctx, doc)
+        if lim and not args.get("wav"):
+            from ..listen.limiter import limiter as measure
+            m = measure(lim["stems"], lim["reduction"], lim["caveat"], engine_max_db=lim["engine_max_db"], max_limit_db=lim["max_limit_db"])
+            r["limiter_advice"] = m["advice"]
         return Reply(_levels_line(r), r)
 
     @tools.tool("look_events", {"properties": {**ITEM, **WAV,
@@ -88,7 +128,7 @@ def register(tools: Tools):
         "by_stem": {"type": "boolean", "default": False, "description": "With expect: for each time, which track's stem starts nearest it (and the next two), how far off, and the mix's nearest onset: one call for every marker."},
         "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
-        """Where sounds start (onsets). With expect, each expected time's nearest onset, how early or late, pass or fail. With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset)."""
+        """Where sounds start (onsets). With expect, each expected time's nearest onset (within 250 ms: a sound starting farther off is not quoted as that time's), how early or late, pass or fail; a soft or masked start (a swell, an entry over a held chord) is found as the level rising 6 dB over its quietest just before. With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset); a stem with no start within 250 ms of a time is not listed for it."""
         doc, wav, stems = _source(ctx, args, "look_music (what: events)")
         if args.get("by_stem"):
             if not args.get("expect"):
@@ -121,14 +161,14 @@ def register(tools: Tools):
     @tools.tool("look_spectrum", {"properties": {**ITEM, **WAV,
         "track": {"type": "string", "description": "One track's stem instead of the mix."},
         "marks": {"type": "object", "description": "Labels to draw at times: {\"hit\": 12.5, \"drop\": \"#drop\"}."},
-        "start": {"type": "number"}, "end": {"type": "number"}}})
+        **WINDOW}})
     def look_spectrum(ctx, args):
         """A spectrogram picture (time and frequency labelled, marks drawn), the steady tones in it (held notes, with their note names) and which of those are hum (flat level, on two or more multiples of 50 or 60 Hz together: a lone held note is never hum)."""
         doc, wav, stems = _source(ctx, args, "look_sound (what: spectrum)")
         if args.get("track"):
             wav = stems.get(args["track"]) or wav
         marks = {k: _resolve(doc, v, f"look_sound (what: spectrum) › marks.{k}") for k, v in (args.get("marks") or {}).items()} or None
-        rng = (args["start"], args["end"]) if "start" in args and "end" in args else None
+        rng = _window(doc, args, "look_sound (what: spectrum)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-spectrum.png"
         r = listen.spectrogram(wav, str(png), marks=marks, range=rng)
         hum = r.get("hum_lines", [])
@@ -146,16 +186,24 @@ def register(tools: Tools):
 
     @tools.tool("look_low_end", {"properties": {**ITEM}})
     def look_low_end(ctx, args):
-        """Each track's share of energy under 150 Hz and 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy), from the last render's stems, and the same for the whole mix; flags boomy tracks."""
-        _, wav, stems = _source(ctx, args, "look_sound (what: low_end)")
-        r = listen.low_end(stems or wav, mix=wav if stems else None)
+        """Each track's share of energy under 150 Hz and 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy), from the last render's stems, and the same for the whole mix; flags boomy tracks (over 50 % under 150 Hz; for a bass or drum part 90 %, since the low end is its job)."""
+        doc, wav, stems = _source(ctx, args, "look_sound (what: low_end)")
+        low = {t for t in stems if _is_low_part(doc, t)}
+        r = listen.low_end(stems or wav, mix=wav if stems else None, low_roles=low)
         each = ", ".join(f"{k} {v['low_end_pct']:.0f}% / {v['low_mid_pct']:.0f}%" for k, v in r["tracks"].items())
         flags = "; ".join(f["detail"] + f" ({f['track']})" for f in r["flags"]) or "none"
         return Reply(f"Under 150 Hz / 150–500 Hz: {each}. Flagged: {flags}.", r)
 
 
+def _is_low_part(doc, track_id: str) -> bool:
+    """A bass or a drum kit: a part whose job is the low end (roles.py), so a high share under 150 Hz is its job, not a boom."""
+    spec = instrument_spec(doc.data, track_id)
+    role = roles.ROLES.get(roles.key(spec)) if spec else None
+    return bool(role and {"bass", "groove"} & set(role.parts))
+
+
 def _levels_line(r: dict) -> str:
-    each = ", ".join(f"{k} {v['db_vs_mix']:+.1f} dB (volume {v['volume_db']:+.1f} dB)" if v.get("volume_db") is not None
-                     else f"{k} {v['db_vs_mix']:+.1f} dB" for k, v in r["stems"].items())
+    each = ", ".join(f"{k} {v['db_vs_mix']:+.1f} dB (volume {start_level.words(v['volume_db'], v.get('start_level_db'))}; 1–4 kHz {v['speech_1_4k_db_vs_mix']:+.1f} dB)"
+                     if v.get("volume_db") is not None else f"{k} {v['db_vs_mix']:+.1f} dB" for k, v in r["stems"].items())
     flags = "; ".join(f"{f['stem']} {f['flag']}" for f in r["flags"]) or "none"
-    return f"{len(r['stems'])} stems against a {r['mix_lufs']:.1f} LUFS mix: {each}. Flags: {flags} (details in data.flags)."
+    return f"{len(r['stems'])} stems against a {r['mix_lufs']:.1f} LUFS mix: {each}. Flags: {flags} (details in data.flags)." + (" " + r["limiter_advice"]["words"] if r.get("limiter_advice") else "")

@@ -15,6 +15,9 @@ means adding its step here (the kind refuses to start without it).
     4 → 5   gentle limiting (2026-10-25): a new song's master turns the whole mix down rather than limit its loudest
             moment by more than 2 dB (master `gentle`, `maxLimit`). A saved song's master gets `gentle` off: it
             limits as hard as before, so it sounds exactly as before.
+    5 → 6   endings and kits (2026-10-25): a new song rings out past its length (`ringOut`) and its drum kits are
+            even (track `evenKit`: pieces at measured levels, transients in reach of each hit's loudness). A saved
+            song gets both off: it ends and its drums sound exactly as before.
 """
 from __future__ import annotations
 
@@ -84,5 +87,12 @@ def gentle_limiting(data: dict, lists: dict):
     return data, "The master limits as it did (Gentle limiting off), so the song sounds as before"
 
 
-STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting}
+def endings_and_kits(data: dict, lists: dict):
+    data["ringOut"] = False
+    for t in data.get("tracks", []):
+        t["evenKit"] = False
+    return data, "The song ends at its length and its drum kits play as recorded (Ring out and Even kit off), so it sounds as before"
+
+
+STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits}
 FORMAT = len(STEPS) + 1

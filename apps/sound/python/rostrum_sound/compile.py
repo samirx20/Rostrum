@@ -92,6 +92,8 @@ class _Compiler:
         if kind == "sfz":
             inst.update(legato=bool(track.get("legato")), swell=bool(track.get("swell")),
                         **_nonempty("articulations", track.get("articulations")))
+        if kind == "kit" and track.get("evenKit"):       # transients in reach, pieces at their levels (new tracks)
+            inst["even"] = True
         settings = {"model": PL.TOUCH_KEYS, "synth": PL.SYNTH_KEYS}.get(kind, ())
         inst.update({k: track[k] for k in settings if k in track})
         return {"instrument": inst}
@@ -197,7 +199,9 @@ def compile(doc, solo=None, mute=None, master=True, matched=True, memo: dict | N
     if root.get("length") is not None:
         out["length"] = c.time(root["length"], "length")
     out["master"] = c.master(root["master"][0], master) if root.get("master") else {}
-    if root.get("endFade", True):        # the song's soft end (doc field endFade): notes ringing at its Length stop softly
+    if root.get("length") is not None and root.get("ringOut"):   # what rings at the Length dies away (engine: ending.rs)
+        out["ringOut"] = True
+    elif root.get("endFade", True):      # the song's soft end (doc field endFade): notes ringing at its Length stop softly
         out["master"]["fadeOut"] = max(out["master"].get("fadeOut", 0), END_FADE)
     around = (matched, markers.project_rows() or None, *(v for k, v in root.items() if k != "tracks"))
     out["tracks"] = [_kept(memo, c, t, bool(t.get("mute") or t["id"] in silent or bool(heard) and t["id"] not in heard),
