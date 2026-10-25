@@ -37,18 +37,20 @@ Rectangle {
     property string dropOver: ""            // the row under the pointer
     property string dropWhat: ""            // "join" | "leave" | "" (nothing there)
     property string dropBus: ""
+    property bool dropBelow: false          // the pointer is in the lower half of the row: the track goes under it
     property real dragX: 0
     property real dragY: 0
     function dragTo(id, p) {
         dragId = id; dragY = p.y - list.contentY + list.y
-        var i = slot(p.y).i
+        var s = slot(p.y), i = s.i
         dropOver = i >= 0 ? rows[i].id : ""
-        var t = dropOver === "" ? "" : backend.dropTarget(dropOver)
+        dropBelow = i >= 0 && p.y - s.top > hOf(rows[i]) / 2
+        var t = dropOver === "" ? "" : backend.dropTarget(dropOver, id)
         dropWhat = t.split(":")[0]; dropBus = t.indexOf(":") >= 0 ? t.split(":")[1] : ""
     }
     function dropAt(id, dropped) {
-        if (dropped && dropWhat !== "" && dropOver !== id) backend.dropTracks([id], dropOver)
-        dragId = ""; dropOver = ""; dropWhat = ""; dropBus = ""
+        if (dropped && dropWhat !== "" && dropOver !== id) backend.dropTracks([id], dropOver, dropBelow)
+        dragId = ""; dropOver = ""; dropWhat = ""; dropBus = ""; dropBelow = false
     }
     function autoOf(r) { return slim ? null : r.auto }
     function hOf(r) { return r.group ? groupH : r.mix ? mixH : rowH }
@@ -128,10 +130,15 @@ Rectangle {
                         visible: tl.dropWhat === "leave" && row.modelData.id === tl.dropOver
                         y: row.top0; width: tl.headerWidth; height: row.h; radius: Theme.radiusCtl
                         color: "transparent"; border.width: 1; border.color: Theme.fg3 }
+                    Rectangle {   // between two rows: where the track will sit (a line above the row, or under it)
+                        objectName: "dropLine"
+                        visible: tl.dropWhat !== "" && !row.modelData.group && row.modelData.id === tl.dropOver
+                        x: 0; y: row.top0 + (tl.dropBelow ? row.h + 1 : -2); width: tl.headerWidth; height: 2; radius: 1; color: Theme.accent }
                     Loader {   // group and bottom-mix headers: made only for the rows that are one
                         active: !!row.modelData.group
                         y: row.top0; width: tl.headerWidth; height: row.h
-                        sourceComponent: GroupHeader { track: row.modelData; showAuto: !tl.slim }
+                        sourceComponent: GroupHeader { track: row.modelData; showAuto: !tl.slim
+                                       onMenuWanted: (px, py) => tl.openMenu(backend.itemMenu(row.modelData.id), mapToItem(tl, px, py)) }
                     }
                     Loader {
                         active: tl.bottomMix(row.modelData)

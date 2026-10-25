@@ -16,8 +16,11 @@ from .ops_select_clips import _new_effect_ids
 from .registry import REGISTRY, taken
 from .select_time import at_seconds, clip_length, length_like, moved, need_same_kind, source_length, speed, start_of
 
-STEPS = Param.number("by", required=True, integer=True, min=-100, max=100, label="Move by", group="Order",
+STEPS = Param.number("by", integer=True, min=-100, max=100, label="Move by", group="Order",
                      help="Places in the track list: -1 = up one, 1 = down one.")
+AFTER = Param.text("after", label="After", group="Order",
+                   help='Instead of `by`: the id of the track they go right under, or "top" for the very top (their order among '
+                        'themselves stays).')
 TRACK = Param.text("track", required=True, label="Track", group="Track",
                    help="The id of the track they go to (it must hold that kind: not a voice track for clips).")
 FROM = V.time("at", required=True, group="Cut", label="From", help="Where the stretch to cut out starts.")
@@ -25,11 +28,22 @@ TO = V.time("end", required=True, group="Cut", label="To", help="Where it ends; 
 TIMED = ("notes", "hits", "clips", "lines")
 
 
-@REGISTRY.operation("track.move", "Move tracks up or down in the track list (their order among themselves stays).",
-                    target="track", params=[STEPS], label="Move track")
+@REGISTRY.operation("track.move", "Move tracks in the track list: up or down by a number of places (by), or right under another "
+                    "track (after). Their order among themselves stays.",
+                    target="track", params=[STEPS, AFTER], label="Move track")
 def track_move(ctx, targets, args):
     order = [t["id"] for t in ctx.doc.get("tracks", [])]
-    picked, by = set(targets), int(args["by"])
+    picked = set(targets)
+    if ("by" in args) == ("after" in args):
+        ctx.fail(codes.BAD_ARGUMENT, "move", "needs one of by or after", ["by", "after"])
+    if "after" in args:
+        rest, mine = [t for t in order if t not in picked], [t for t in order if t in picked]
+        anchor = args["after"]
+        if anchor != "top" and anchor not in rest:
+            ctx.fail(codes.BAD_ARGUMENT, f"after={anchor!r}", "is not a track the moved ones are not", ["top", *rest])
+        at = 0 if anchor == "top" else rest.index(anchor) + 1
+        order = rest[:at] + mine + rest[at:]
+    by = int(args.get("by", 0))
     for _ in range(abs(by)):
         step = 1 if by > 0 else -1
         for i in (reversed(range(len(order))) if step > 0 else range(len(order))):

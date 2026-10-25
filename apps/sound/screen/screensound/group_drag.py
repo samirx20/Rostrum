@@ -25,22 +25,42 @@ def drop_target(rows: list[dict], over: str) -> tuple[str, str] | None:
     return ("join", row["bus"]) if row.get("bus") else ("leave", "")
 
 
-def drop_calls(root: dict, rows: list[dict], dragged: list[str], over: str) -> list[dict]:
-    """The calls for dropping `dragged` track ids on row `over` ([] when nothing would change)."""
+def _place(root: dict, mine: list[str], over: str, below: bool) -> list[dict]:
+    """The `track.move` that puts `mine` just above (or, `below`, just under) the track `over` in the track list ([] when
+    they already sit there)."""
+    order = [t["id"] for t in root.get("tracks", [])]
+    rest = [t for t in order if t not in mine]
+    if over not in rest:
+        return []
+    at = rest.index(over) + (1 if below else 0)
+    if order == rest[:at] + [t for t in order if t in mine] + rest[at:]:
+        return []
+    return [{"op": "track.move", "target": mine, "args": {"after": rest[at - 1] if at else "top"}}]
+
+
+def drop_calls(root: dict, rows: list[dict], dragged: list[str], over: str, below: bool = False) -> list[dict]:
+    """The calls for dropping `dragged` track ids on row `over` ([] when nothing would change). On a group's header: they
+    join the group. On a track: they move to sit above it (`below`: under it) and take its group, or leave theirs when it
+    has none: so a drop between two rows is where they go, and joining or leaving a group is the same drop."""
     target, tracks = drop_target(rows, over), _tracks(root)
-    mine = [t for t in dragged if t in tracks]
+    mine = [t for t in dragged if t in tracks and t != over]
     if target is None or not mine:
         return []
     what, bus = target
+    calls: list[dict] = []
     if what == "join":
         moving = [t for t in mine if tracks[t].get("output", names.MASTER_OUT) != bus]
-        return [{"op": "bus.add_track", "target": [bus], "args": {"tracks": moving}}] if moving else []
-    out: dict[str, list[str]] = {}
-    for t in mine:
-        here = tracks[t].get("output", names.MASTER_OUT)
-        if here in {b["id"] for b in root.get("buses", [])}:
-            out.setdefault(here, []).append(t)
-    return [{"op": "bus.remove_track", "target": [b], "args": {"tracks": ts}} for b, ts in out.items()]
+        calls = [{"op": "bus.add_track", "target": [bus], "args": {"tracks": moving}}] if moving else []
+    else:
+        out: dict[str, list[str]] = {}
+        for t in mine:
+            here = tracks[t].get("output", names.MASTER_OUT)
+            if here in {b["id"] for b in root.get("buses", [])}:
+                out.setdefault(here, []).append(t)
+        calls = [{"op": "bus.remove_track", "target": [b], "args": {"tracks": ts}} for b, ts in out.items()]
+    if over in tracks:
+        calls += _place(root, mine, over, below)
+    return calls
 
 
 def members(root: dict, bus: str) -> list[str]:

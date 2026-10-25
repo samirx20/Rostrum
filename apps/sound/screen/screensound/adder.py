@@ -12,7 +12,8 @@ import re
 
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum_sound import names
-from rostrum_sound.voice import VOICES
+from rostrum_sound.doc import sounds
+from rostrum_sound.voice import VOICES, speaker_name
 
 from rostrum_core.marker_times import write as marker_time
 
@@ -43,9 +44,7 @@ def _plain(e: dict) -> str:
     return f"voice {e['label']}" if e["kind"] == "voice" else e["label"][:1].lower() + e["label"][1:]
 
 
-def _person(v: str) -> str:
-    """"uncle_fu" -> "Uncle Fu": a voice is a name, so every word has a capital."""
-    return " ".join(w.capitalize() for w in spaced(v).split())
+_person = speaker_name      # "uncle_fu" -> "Uncle Fu": a voice is a name (voice.py is the one place)
 
 
 # The second line of a row that has nothing of its own to say, so every row has the same two-line shape.
@@ -59,19 +58,19 @@ def _entry(key, label, what, kind, fields, arm=False) -> dict:
 def _entries() -> list[dict]:
     """Every sound a new track can start from: {key, label, what, kind, fields, arm}."""
     out = [_entry(f"builtIn:{b}", _said(b), SAID.get(b, ""), "instrument",
-                  {"name": _said(b), "instrument": "builtIn", "builtIn": b}) for b in names.BUILT_INS]
+                  {"name": _said(b), **sounds.fields(f"builtIn:{b}")}) for b in names.BUILT_INS]
     out.append(_entry("synth", "Synth", "A simple synth: saw, square, sine", "instrument",
-                      {"name": "Synth", "instrument": "synth"}))
+                      {"name": sounds.SYNTH_NAME, **sounds.fields("synth")}))
     out += [_entry(f"model:{m}", _said(m), SAID.get(m, FAMILY.get(m, "")), "instrument",
-                   {"name": _said(m), "instrument": "model", "model": m}) for m in names.MODELS]
+                   {"name": _said(m), **sounds.fields(f"model:{m}")}) for m in names.MODELS]
     out.append(_entry("kit", "Drum kit", "Kick, snare, hats, toms: a row for each drum", "drums",
-                      {"name": "Drums", "instrument": "kit"}))
+                      {"name": sounds.KIT_NAME, **sounds.fields("kit")}))
     out.append(_entry("mic", "Microphone", "Record your voice or an instrument (ready to record)", "record",
                       {"name": "Recording", "instrument": "none"}, arm=True))
     out.append(_entry("files", "Sound files", "Recordings and loops", "record",
                       {"name": "Audio", "instrument": "none"}))
     out += [_entry(f"voice:{v}", _person(v), "", "voice",
-                   {"name": "Voice", "instrument": "voice", "voice": v}) for v in VOICES]
+                   {"name": sounds.VOICE_NAME, **sounds.fields(f"voice:{v}")}) for v in VOICES]
     return out
 
 

@@ -44,8 +44,8 @@ you close the window and every 20 changes; the change log beside it always has t
    - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
      or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
      move the folder, and nothing is raised under **Problems**.
-   - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel (the notes stay).
-4. The Library closes after each use. Close it any time with × or Ctrl+L.
+   - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel: it lists every sound the track's content can use (a notes track: any instrument, the synth or a played instrument; an empty track: any sound, a voice or the kit too; a drum track has only the one kit, so no picker). The notes stay, and the track's name follows the new sound unless you renamed it. An agent does the same with `track.set {sound: "builtIn:warmPad"}` (also `"synth"`, `"model:guitar"`, `"kit"`, `"voice:ryan"`).
+4. The Library closes after each use. Close it any time with ×, Ctrl+L or Esc (while a preview plays, the first Esc stops it).
 
 ## 3. Shape the sound
 
@@ -84,9 +84,12 @@ The **Colour** row shows the colour the track is drawn in.
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
    track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by
-   name.
+   name, and every key on the Keys list (Ctrl+/): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid. The same keys
+   work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
+   selected notes one step along the song's key (the message line says so if the song has no key yet).
 5. **Keys on the selection:**
-   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. Duplicate: **Ctrl+D**. Delete: **Delete**.
+   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
+   - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
    - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
      inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
@@ -120,6 +123,7 @@ The **Colour** row shows the colour the track is drawn in.
   amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by
   its name. A track's volume is set in its settings panel or the Mixer, not on the header.
+  **Drag a header** up or down to move the track: a line shows where it will land, above or below the row under the pointer. Dropped on a group's header, the track joins that group; dropped between tracks it takes the group of the track it lands beside, or leaves its own group when that one has none. The selected tracks go together; one Undo undoes the drop. A **group's header** works like a track's: double-click its name or press **F2** to rename it in place, right-click for its menu (Rename, Ungroup …).
 - After an edit the sound is prepared again in a moment, so playback follows what you changed.
 
 ## 6. Tempo, beats and key

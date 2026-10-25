@@ -22,6 +22,7 @@ from rostrum_gui.touched import Touched
 from rostrum_core import live
 from rostrum_sound import clean_clips, compile as compile_doc
 from rostrum_sound.doc import markers as MK
+from rostrum_sound.doc import sounds
 from rostrum_sound.doc import ops_mix
 
 from . import voice_card
@@ -202,8 +203,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def _first(self):       # nothing selected at first: the settings panel shows the song (DESIGN.md decision 4)
         return ""
 
-    def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed
-        return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
+    def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed; a track's Sound
+        if param == "sound" and item.get("type") == "track":
+            return sounds.choices(item)
+        return output_pick.choices(self.doc, item, self.label_of) if param in (output_pick.FIELD, "bus") else []
 
     def _rows(self):
         """The kit's rows, each item's with times in bars.beats and pitches as names (inspect.musical_rows) before

@@ -10,6 +10,8 @@ CONTRACT = "rostrum-sound-schedule/1"
 TONES = ["neutral", "muffled", "warm", "sub-boost", "bright", "voice-clarity", "radio"]
 FREEVERB_SPACES = ["freeverb.room", "freeverb.hall", "freeverb.cathedral"]
 SPACES = ["dry", "room", "hall", "cathedral", "shimmer", *FREEVERB_SPACES]
+# The words a space shows in (the one place): the Freeverb ones are the same rooms with Decay, Damping and Size to set.
+SPACE_WORDS = {s: f"{s.split('.')[1].capitalize()} (adjustable)" for s in FREEVERB_SPACES}
 EQ_SHAPES = ["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"]
 BUILT_INS = ["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad",
              "cinematicBrass", "subBass", "glassMarimba"]
