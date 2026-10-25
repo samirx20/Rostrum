@@ -90,6 +90,9 @@ LayerTimeline 1.0 LayerTimeline.qml
 StretchBand 1.0 StretchBand.qml
 AnimPanel 1.0 AnimPanel.qml
 EaseCurve 1.0 EaseCurve.qml
+EaseIcon 1.0 EaseIcon.qml
+EaseList 1.0 EaseList.qml
+EasePicker 1.0 EasePicker.qml
 LayerTrack 1.0 LayerTrack.qml
 KeyDot 1.0 KeyDot.qml
 KeyBox 1.0 KeyBox.qml

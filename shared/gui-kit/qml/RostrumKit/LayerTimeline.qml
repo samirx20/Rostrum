@@ -134,17 +134,19 @@ Rectangle {
             width: 1; height: tl.height - y - Theme.gap; color: Theme.warn; opacity: 0.35
         }
     }
-    Menu {   // a key's right-click: the same Ease list as the key panel (backend.keyBar)
+    EaseList {   // a key's right-click: the one ease list, as the Key block's Ease opens it (backend.keyBar)
         id: easeMenu
-        width: 140
-        entries: backend.keyBar.eases
+        objectName: "keyEaseMenu"
+        eases: backend.keyBar.easeList
         onPicked: (v) => backend.keyBar.setEase(v)
+        onHovered: (v) => { if (backend.keyBar.preview) backend.keyBar.preview(v) }     // 2D plays it; 3D has no preview
     }
     Connections {
         target: backend.keyBar
         function onMenuAsked(gx, gy) {
             const p = tl.mapFromItem(null, gx, gy)
-            easeMenu.x = Math.min(p.x, tl.width - easeMenu.width); easeMenu.y = Math.max(0, p.y - easeMenu.height)
+            easeMenu.current = backend.keyBar.ease || ""
+            easeMenu.x = Math.min(p.x, tl.width - easeMenu.width); easeMenu.y = Math.max(0, p.y - easeMenu.implicitHeight)
             easeMenu.open()
         }
     }

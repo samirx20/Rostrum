@@ -1162,7 +1162,7 @@ operation is one (`mask.make`).
   between keys); the canvas plays the stretch once when you pick an ease (turn off in the key bar's ⋯), so you see
   the feel at once.
 - **Undo and adjust:** one step per pick or curve drag.
-- **Keys:** F9 smooth (the After Effects habit); Shift+F9 ease in; Ctrl+Shift+F9 ease out; Ctrl+Alt+J jump.
+- **Keys:** F9 smooth (the After Effects habit); Shift+F9 ease in; Ctrl+Shift+F9 ease out; Ctrl+Alt+J hold.
 - **Agent:** `key.set {ease}`, `key.handles`; eyes `inspect_curve`.
 - **3E:** *Effective:* the curve chip gives exact control without opening the curve editor. *Efficient:* one pick
   eases all selected keys. *Easy:* named eases first, the curve for those who want it. *Rejected:* the settings panel
@@ -2619,7 +2619,7 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 | **Move and size** | Arrows nudge 1 px / Shift 10 px (canvas) / Alt 0.1 px *(S30)* · Shift while dragging (proportions, straight) · Alt while dragging (from the centre) · Alt+drag (a copy) · Ctrl while dragging (no snapping) · drag the anchor circle |
 | **Edit** | Ctrl+Z · Ctrl+Shift+Z / Ctrl+Y · Ctrl+C · Ctrl+X · Ctrl+V (in place) · Ctrl+Shift+V (at the pointer) · Ctrl+D · Delete · F2 rename |
 | **Arrange** | Ctrl+] / Ctrl+[ forward / back · Ctrl+Shift+] / [ front / back · Ctrl+G group · Ctrl+Shift+G ungroup · Shift+A auto layout · Ctrl+Alt+M mask · Ctrl+Alt+U / S / I / X combine (union, subtract, intersect, exclude) · Alt+A / D / W / S align left / right / top / bottom · Alt+H / V centre across / up and down · Shift+H / Shift+V flip across / down · Ctrl+Shift+H hide · Ctrl+Shift+L lock · Alt+click an eye (solo) · Ctrl+Alt+K make symbol · Ctrl+Alt+C / V copy / paste style |
-| **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+J jump (no in-between) · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) · **A** show animated settings *(S30, was U)* |
+| **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+J hold (no in-between) · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) · **A** show animated settings *(S30, was U)* |
 | **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker or drawing · Shift+`,` / Shift+`.` previous / next beat · Shift+I / Shift+O time range start / end · **Shift+L** loop on / off *(S30)* · Shift+Space play from the selection's start *(S30)* · Alt+M / Alt+Shift+M next / previous marker *(S30)* |
 | **Frame-by-frame** | `,` / `.` previous / next drawing *(S30: Alt+arrows are the fine nudge now)* · Alt+N new drawing · Alt+Shift+N copy of this drawing · = / − hold longer / shorter *(S30)* · Alt+O onion skin · hold `,` or `.` to flip through |
 | **Paint** | E eraser · G fill · [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |

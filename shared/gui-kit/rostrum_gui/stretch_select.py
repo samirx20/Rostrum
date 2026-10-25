@@ -7,15 +7,14 @@ keys of one setting, clicked on an item's line. Its item is the selection; the s
 What differs per app is a small subclass (2D: screen2d/stretch_select.py; 3D: screen3d/stretch3d.py):
 `animations(owner_id)` (in the app's names and time), `key(id)` (a key as placed in that time), `own_t(owner_id, t)`
 (a time back in the owner's own seconds), `fps()`, `owner_label(item)`, `param(type, prop)`, `picked_items()` (the
-items selected now) and `let_keys_go()` (picked keys let go when a stretch is picked).
+items selected now), `let_keys_go()` (picked keys let go when a stretch is picked), `key_of(job)` (an ease's key, shown
+in the list where it acts) and `preview_ease(ids, ease)` (a hovered ease plays without changing anything).
 The changes themselves (ease, start, length, values, reverse, delete, curve handles) are in stretch_edits.py.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum_core.keys import ease as ease_at, springs
-from rostrum_core.keys.anims import PRESET_LABELS, PRESETS
-
 from . import eases
 from .stretch_edits import StretchEdits
 
@@ -47,6 +46,13 @@ class StretchSelect(StretchEdits):
 
     def let_keys_go(self):
         pass
+
+    def key_of(self, job: str) -> str:
+        """The key a job has in the app's key map ("F9"), shown beside an ease in the list; "" where none acts here."""
+        return ""
+
+    def preview_ease(self, ids: list[str], ease: str):
+        """Show `ease` on the stretch's start keys `ids` without keeping it ("" = as they were): the app's hover preview."""
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
@@ -88,8 +94,8 @@ class StretchSelect(StretchEdits):
         ease = key.get("ease", "smooth")
         rows = [{"prop": p, "from": s["from"][p], "to": s["to"][p], **_kind(self.param(owner["type"], p), p)} for p in a["props"]]
         return {"owner": self._owner, "ownerLabel": self.owner_label(owner), "word": a["word"], "label": a["label"],
-                "rows": rows, "start": s["start"], "length": s["length"], "preset": s["preset"], "ease": ease,
-                "easeLabel": PRESET_LABELS.get(s["preset"], eases.label_of(ease)),
+                "rows": rows, "start": s["start"], "length": s["length"], "ease": ease,
+                "easeLabel": eases.label_of(ease),
                 "handles": eases.handles(key) if ease in ("linear", "custom", *eases.BEZIERS) else [],
                 "feel": list(springs.feel_of(key)) if ease == "spring" else [],      # [bounce, speed] (H41's key fields)
                 "curve": [[i / 24, ease_at(key, i / 24)] for i in range(25)]}
@@ -103,8 +109,9 @@ class StretchSelect(StretchEdits):
         return self.info.get("handles", [])
 
     @Property("QVariantList", constant=True)
-    def presets(self):
-        return [{"value": v, "label": PRESET_LABELS[v]} for v in PRESETS]
+    def easeList(self):
+        """The one ease list (EASE_LIST) the Move view's Ease picker shows: the same rows as the Key block's."""
+        return eases.rows(self.key_of)
 
     # ---- picking ------------------------------------------------------------------------------------------------
     @Slot(str, "QVariantList")

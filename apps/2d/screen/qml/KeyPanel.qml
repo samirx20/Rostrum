@@ -4,7 +4,7 @@ import RostrumKit
 // The picked keys in the settings panel (UX_SPEC 3.18, SPEC §1 / §9.3; it was the timeline header's key bar), above the
 // layer's settings while keys are picked. Laid on the settings rows' own columns (Theme.labelColumnFor / fieldFor /
 // wideFor), kept short so the layer's own settings stay in view under it: "Key" / "3 keys" with ⋯ beside it and the
-// Ease in the same line; its curve, low; for a spring Bounce and Speed; for one key Time and Value (in its setting's
+// Ease (the kit's one EasePicker) in the same line; its curve, low; for a spring Bounce and Speed; for one key Time and Value (in its setting's
 // own unit: "1039 px"; a colour key or several keys have no Value). A Position key (its X and Y keys at one time) is
 // one key. Only what applies shows. Every picked key changes; each pick, field
 // edit or whole drag is one change (backend.keyBar, screen2d/key_bar.py). ⋯: After the last key (only while a picked key
@@ -40,16 +40,17 @@ Column {
                 onPicked: (v) => v === "play" ? backend.easePlay.setOn(!backend.easePlay.on) : kp.kb.setAfter(v.slice(6))
             }
         }
-        ChoiceField {
-            objectName: "keyEase"
+        EasePicker {   // the one ease control (the kit's EasePicker.qml): the current ease's curve and name; hover plays
+            id: picker
             x: kp.lab; width: Theme.fieldFor(kp.full); anchors.verticalCenter: parent.verticalCenter
-            options: kp.kb.options; current: kp.kb.ease
+            eases: kp.kb.easeList; current: kp.kb.ease
+            onHovered: (v) => kp.kb.preview(v)
             onPicked: (v) => kp.kb.setEase(v)
         }
     }
     EaseCurve { width: Theme.wideFor(kp.full); height: 88 }    // a spring's overshoot is fitted inside (EaseCurve.qml)
     Repeater {   // a spring: Bounce and Speed, one change per drag
-        model: kp.kb.ease === "spring" && kp.kb.feel.length === 2 ? ["Bounce", "Speed"] : []
+        model: picker.shownEase === "spring" && kp.kb.feel.length === 2 ? ["Bounce", "Speed"] : []
         delegate: Line {
             required property string modelData
             required property int index

@@ -32,3 +32,6 @@ class StretchSelect(KitStretchSelect):
 
     def let_keys_go(self):
         self.b._keys.clear()
+
+    def preview_ease(self, ids, ease):
+        self.b._ease_play.preview(ids, ease)         # a hovered ease plays, nothing kept (ease_play.py)

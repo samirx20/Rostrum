@@ -4,7 +4,7 @@ import RostrumKit
 // The settings panel as the picked animation (SPEC §9.3, mockup 04), shown over the layer's settings while a stretch
 // is picked in the timeline (backend.stretch, screen2d/stretch_select.py). On the settings grid (Theme.labelColumnFor /
 // fieldFor / halfFor / wideFor): ‹ back (Esc does the same) · Move · "title · Position"; one row per number (from | to);
-// Start, Length; the easing presets, at most four across, every row as wide as the panel, the chosen one lit; its curve
+// Start, Length; Ease (the kit's one EasePicker: the current ease's curve and name, the same list as the Key block's); its curve
 // (handles to drag where the ease is a cubic) and the four numbers; Reverse | Delete. No headings over the groups: each
 // field says what it is (a gap parts them). Every edit is one operation call (anim.ease, key.set, key.handles).
 Rectangle {
@@ -67,58 +67,19 @@ Rectangle {
             }
         }
         Gap { }
-        Flow {   // the presets: as few rows as four across allows, shared out evenly, each row the panel's width
-            id: presets
-            objectName: "animPresets"
-            width: Theme.wideFor(panel.w); spacing: 4
-            readonly property int n: panel.s.presets.length
-            readonly property int across: Math.ceil(n / Math.ceil(n / 4))       // 7: 4 + 3; 6: 3 + 3; 5: 3 + 2
-            function cellW(i) {                                                 // the last row's cells widen to fill it
-                const inRow = Math.min(across, n - Math.floor(i / across) * across)
-                return (width - (inRow - 1) * spacing) / inRow
-            }
-            Repeater {
-                model: panel.s.presets
-                delegate: Rectangle {
-                    required property var modelData
-                    required property int index
-                    readonly property bool chosen: panel.info.preset === modelData.value
-                    objectName: "preset:" + modelData.value
-                    width: presets.cellW(index); height: 40; radius: Theme.radiusCtl
-                    color: chosen ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18) : presetArea.containsMouse ? Theme.raised : Theme.sunken
-                    border.width: 1; border.color: chosen ? Theme.accent : Theme.border
-                    Canvas {
-                        width: 18; height: 10; anchors.horizontalCenter: parent.horizontalCenter; y: 7
-                        property color ink: parent.chosen ? Theme.fg : Theme.fg2
-                        onInkChanged: requestPaint()
-                        onPaint: {
-                            const c = getContext("2d"), w = width, h = height, v = parent.modelData.value
-                            c.reset(); c.strokeStyle = ink; c.lineWidth = 1.3; c.beginPath(); c.moveTo(0, h)
-                            if (v === "linear") c.lineTo(w, 0)
-                            else if (v === "in") c.bezierCurveTo(w * 0.6, h, w, h * 0.4, w, 0)
-                            else if (v === "out") c.bezierCurveTo(0, h * 0.4, w * 0.4, 0, w, 0)
-                            else if (v === "smooth") c.bezierCurveTo(w * 0.5, h, w * 0.5, 0, w, 0)
-                            else if (v === "spring") { c.bezierCurveTo(w * 0.2, -h * 0.6, w * 0.5, -h * 0.2, w * 0.7, h * 0.15); c.lineTo(w, 0) }
-                            else if (v === "bounce") { c.lineTo(w * 0.4, 0); c.quadraticCurveTo(w * 0.55, h * 0.5, w * 0.7, 0); c.quadraticCurveTo(w * 0.85, h * 0.25, w, 0) }
-                            else { c.lineTo(w * 0.7, h); c.lineTo(w * 0.7, 0); c.lineTo(w, 0) }
-                            c.stroke()
-                        }
-                    }
-                    Words { anchors.horizontalCenter: parent.horizontalCenter; y: 21; height: 14; text: modelData.label
-                            font.pixelSize: Theme.label; color: parent.chosen ? Theme.fg : Theme.fg2
-                            font.weight: parent.chosen ? Font.DemiBold : Font.Normal }
-                    MouseArea { id: presetArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: panel.s.setEase(parent.modelData.value) }
-                }
-            }
-        }
-        Line {   // an ease none of the buttons is (a script's "Snappy"): said in words, so the panel always shows which ease is on
-            visible: !!panel.info.easeName
+        Line {   // the one ease control (EasePicker.qml): the same list and words as the Key block's; hover plays, a click sets
             Words { width: Theme.labelColumnFor(panel.w); height: parent.height; text: "Ease" }
-            Words { x: Theme.labelColumnFor(panel.w); height: parent.height; text: panel.info.easeName || ""; color: Theme.fg }
+            EasePicker {
+                id: picker
+                objectName: "animEase"
+                x: Theme.labelColumnFor(panel.w); width: Theme.fieldFor(panel.w); anchors.verticalCenter: parent.verticalCenter
+                eases: panel.s.easeList; current: panel.info.ease || ""
+                onHovered: (v) => panel.s.preview(v)
+                onPicked: (v) => panel.s.setEase(v)
+            }
         }
         Repeater {   // a spring: Bounce and Speed (the same key fields as the key bar's, H41), one change per drag
-            model: panel.info.ease === "spring" && (panel.info.feel || []).length === 2 ? ["Bounce", "Speed"] : []
+            model: picker.shownEase === "spring" && (panel.info.feel || []).length === 2 ? ["Bounce", "Speed"] : []
             delegate: Line {
                 required property string modelData
                 required property int index

@@ -170,7 +170,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("right-click", ["--sample"], ["selectmany title card", "canvasmenu"]),
         # H48: the selection's actions at the top of the settings panel; right-click is the one short menu
         ("picture-shape", ["--sample"], [f"drop {picture()} 900 500", "selectmany image_1 card"]),     # Mask first
-        ("animation-spring", ["--sample"], ["select title", "clickname stretch:title.opacity.k200", "clickname preset:spring"]),
+        ("animation-spring", ["--sample"], ["select title", "clickname stretch:title.opacity.k200", "clickname animEase", "clickname ease_spring"]),
         ("ctrl-k", ["--sample"], ["selectmany title card", "commands"]),
         ("find-setting", ["--sample"], ["select title", "find marker"]),
         ("draw-tool", ["--sample"], ["select title", "tool draw"]),
@@ -221,6 +221,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("key-bar-one", ["--sample"], ["select title", "showanim", "keypick title.opacity.k900"]),
         ("key-bar-spring", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "ease spring"]),
         ("key-ease-menu", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easemenu"]),
+        # the one ease picker (pro-workflows 3.7): open on an ease under More, so the fold is open (near the panel's bottom at 1280 x 720)
+        ("ease-picker-open-more", ["--sample"], ["select title", "showanim", "keypick title.y.k200", "easeplay off", "ease snappy",
+                                                 "clickname easePicker"]),
         # Sam's list (2026-10-24): "+ Outline" adds it (its heading's −), the font list, a curve that overshoots fitted in its box
         ("outline-added", ["--sample"], ["select card", "group Outline"]),
         # Inventory batches 3-5: "+ Motion blur" turns it on (its amount stays a row); a picture's every group name in one
