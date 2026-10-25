@@ -19,7 +19,7 @@ from .doc import effects as FX
 from .doc import playing as PL
 from .doc import preset_level
 from .doc import plugins
-from .doc import markers, tempo, times
+from .doc import markers, meter, tempo, times
 
 NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
@@ -100,6 +100,8 @@ class _Compiler:
         out = {"id": track["id"], **self.instrument(track), **{k: track[k] for k in TRACK_KEYS if k in track}}
         if muted:
             out["mute"] = True
+        if "perform" in track:                      # the engine plays the family's defaults when the document holds none
+            out["perform"] = track["perform"]
         for key, keys in (("notes", NOTE_KEYS), ("hits", HIT_KEYS)):
             if track.get(key):
                 out[key] = [self.pick(n, keys, f"{w}.{key}[{n['id']}]") for n in track[key]]
@@ -186,6 +188,9 @@ def compile(doc, solo=None, mute=None, master=True, matched=True, memo: dict | N
     silent = _ids(mute, tracks, "mute")
     c = _Compiler(root, matched)
     out = {"contract": names.CONTRACT, "sampleRate": root.get("sampleRate", 48000), "tempo": tempo.contract(root)}
+    bars = [{"at": g.start, "bar": g.bar, "beat": meter.main_beats(g)[1]} for g in meter.segments(root)]
+    if bars != [{"at": 0.0, "bar": 4.0, "beat": 1.0}]:
+        out["meter"] = bars                            # the performance accents each bar's downbeat and main beats
     if root.get("length") is not None:
         out["length"] = c.time(root["length"], "length")
     out["master"] = c.master(root["master"][0], master) if root.get("master") else {}

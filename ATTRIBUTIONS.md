@@ -163,3 +163,36 @@ Every third-party library, model, asset source and tool that ships in or is down
 | flatbuffers | 25.12.19 | Apache-2.0 | Sound: onnxruntime's dependency | Python package | ships | Keep the notice | https://github.com/google/flatbuffers |
 | tomlkit | 0.15.2 | MIT | rostrum_connect (shared/mcp): edits Codex's config.toml keeping the person's comments and layout | Python import | ships | Keep the MIT notice | https://github.com/python-poetry/tomlkit |
 | Built-in tip and paper pictures (sponge, speckle, streaks, ragged, charcoal; canvas, cold press, laid, rough) | 2026-10-23 | MIT (our own: made by code in `shared/painting-kit/rostrum_paint/pictures.py`, no downloaded image) | Painting kit (Rostrum2D brushes) | data (generated at run time) | ships | Nothing beyond our licence | this repo |
+
+## RostrumSound sample packs (installed on demand: `python -m rostrum_sound.packs install <pack>`)
+
+Not part of the app's files: downloaded by the person, each file checked against a pinned fingerprint. Catalogue: `apps/sound/python/rostrum_sound/library_data/packs/`. Size = installed folder.
+
+| Pack | Author | Licence | Page | What we use it for | Size on disk | What it asks of us |
+|---|---|---|---|---|---|---|
+| Kenney Interface Sounds (`kenney-interface`) | Kenney (kenney.nl) | CC0 1.0 | https://kenney.nl/assets/interface-sounds | sound effects library | 1 MB | Keep the notice (courtesy credit) |
+| Kenney UI Audio (`kenney-ui`) | Kenney (kenney.nl) | CC0 1.0 | https://kenney.nl/assets/ui-audio | sound effects library | 0 MB | Keep the notice (courtesy credit) |
+| Kenney Impact Sounds (`kenney-impact`) | Kenney (kenney.nl) | CC0 1.0 | https://kenney.nl/assets/impact-sounds | sound effects library | 1 MB | Keep the notice (courtesy credit) |
+| Kenney Digital Audio (`kenney-digital`) | Kenney (kenney.nl) | CC0 1.0 | https://kenney.nl/assets/digital-audio | sound effects library | 1 MB | Keep the notice (courtesy credit) |
+| Owlish Media Sound Effects Pack (`owlish`) | Owlish Media (OpenGameArt) | CC0 1.0 | https://opengameart.org/content/sound-effects-pack | sound effects library | 211 MB | Keep the notice (courtesy credit) |
+| BigSoundBank picks (`bigsoundbank`) | Joseph Sardin (bigsoundbank.com) | CC0 1.0 | https://bigsoundbank.com | sound effects library | 267 MB | Keep the notice (courtesy credit) |
+| Freesound CC0 picks (`freesound`) | Freesound.org authors (CC0 files only; credits in picks.json) | CC0 1.0 | https://freesound.org | sound effects library | 22 MB | Keep the notice (courtesy credit) |
+| MuseScore General (`musescore-general`) | S. Christian Collins, from FluidR3 by Frank Wen and FluidR3Mono by Michael Cowgill | MIT | https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/ | General MIDI import preview | 216 MB | Keep the notice (courtesy credit) |
+| VSCO 2 Community Edition orchestra: violin, viola and cello sections, contrabass, solo violin, harp (`vsco2-strings`) | Versilian Studios (Samuel Gossner and contributors) | CC0 1.0 | https://github.com/sgossner/VSCO-2-CE | strings, violins, violas, cellos, basses, violin, harp | 755 MB | Keep the notice (courtesy credit) |
+| VSCO 2 Community Edition orchestra: horn, trumpet, trombone, tuba (`vsco2-brass`) | Versilian Studios (Samuel Gossner and contributors) | CC0 1.0 | https://github.com/sgossner/VSCO-2-CE | horn, trumpet, trombone, tuba | 311 MB | Keep the notice (courtesy credit) |
+| VSCO 2 Community Edition orchestra: flute, piccolo, oboe, clarinet, bassoon (`vsco2-woodwinds`) | Versilian Studios (Samuel Gossner and contributors) | CC0 1.0 | https://github.com/sgossner/VSCO-2-CE | flute, piccolo, oboe, clarinet, bassoon | 298 MB | Keep the notice (courtesy credit) |
+| VSCO 2 Community Edition orchestra: timpani (`vsco2-percussion`) | Versilian Studios (Samuel Gossner and contributors) | CC0 1.0 | https://github.com/sgossner/VSCO-2-CE | timpani | 75 MB | Keep the notice (courtesy credit) |
+| FreePats Spanish classical guitar (`freepats-guitar`) | Roberto for the FreePats project (freepats.zenvoid.org) | CC0 1.0 | https://freepats.zenvoid.org/Guitar/acoustic-guitar.html | guitar | 20 MB | Keep the notice (courtesy credit) |
+| Salamander Grand Piano V3 (`salamander-piano`) | Alexander Holm (packaged by FreePats) | CC-BY 3.0 | https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html | piano, grandPiano, feltPiano | 1.20 GB | Credit line: "Salamander Grand Piano by Alexander Holm (CC-BY 3.0)" |
+| Studio drum kit: Karoryfer Big Rusty Drums (`studio-kit`) | Karoryfer Samples (Big Rusty Drums); Versilian Studios (VCSL) | CC0 1.0 | https://github.com/sfzinstruments/karoryfer.big-rusty-drums | kit studio | 107 MB | Keep the notice (courtesy credit) |
+| Shinyguitar: archtop steel-string guitar, acoustic (`shinyguitar`) | Karoryfer Samples | CC0 1.0 | https://github.com/sfzinstruments/karoryfer.shinyguitar | acousticGuitar | 226 MB | Keep the notice (courtesy credit) |
+| Growlybass: Squier Jazz Bass, fingered, direct (`growlybass`) | Karoryfer Samples | CC0 1.0 | https://github.com/sfzinstruments/karoryfer.growlybass | bass | 184 MB | Keep the notice (courtesy credit) |
+| D. Smolken double bass (`dsmolken-bass`) | D. Smolken (sfzinstruments) | CC0 1.0 | https://github.com/sfzinstruments/dsmolken.double-bass | uprightBass | 137 MB | Keep the notice (courtesy credit) |
+| Karoryfer x bigcat solo cello (`bigcat-cello`) | Karoryfer Samples and bigcat | CC0 1.0 | https://github.com/sfzinstruments/karoryfer-bigcat.cello | cello | 112 MB | Keep the notice (courtesy credit) |
+| Wurlitzer EP200 electric piano (`wurlitzer`) | Greg Sullivan (SFZ by kinwie) | CC-BY 3.0 | https://github.com/sfzinstruments/GregSullivan.E-Pianos | electricPiano | 2 MB | Credit line: "Wurlitzer EP200 samples by Greg Sullivan (CC-BY 3.0)" |
+| VCSL mallets: marimba, vibraphone, xylophone, glockenspiel, tubular bells (`vcsl-mallets`) | Versilian Studios (VCSL) | CC0 1.0 | https://github.com/sgossner/VCSL | marimba, vibraphone, xylophone, glockenspiel, tubularBells | 175 MB | Keep the notice (courtesy credit) |
+| VCSL pipe organ (`vcsl-organ`) | Versilian Studios (VCSL), sampled by Simon Dalzell | CC0 1.0 | https://github.com/sgossner/VCSL | pipeOrgan | 70 MB | Keep the notice (courtesy credit) |
+| VCSL tenor saxophone (`vcsl-sax`) | Versilian Studios (VCSL) | CC0 1.0 | https://github.com/sgossner/VCSL | saxophone | 140 MB | Keep the notice (courtesy credit) |
+| FreePats FSBS electric guitar, clean #1 (`fsbs-clean-guitar`) | FreePats project (freepats.zenvoid.org) | CC0 1.0 | https://freepats.zenvoid.org/ElectricGuitar/clean-electric-guitar.html | electricGuitar | 129 MB | Keep the notice (courtesy credit) |
+| FreePats drawbar organ emulation (`drawbar-organ`) | FreePats project (freepats.zenvoid.org) | CC0 1.0 | https://freepats.zenvoid.org/Organ/electric-organ.html | organ | 7 MB | Keep the notice (courtesy credit) |
+| MuldjordKit (`muldjord-kit`) | FreePats project (freepats.zenvoid.org) | CC-BY 4.0 | https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html | kit drums | 168 MB | Credit line: "Drum samples provided by DrumGizmo.org (MuldjordKit by Lars Muldjord, CC-BY 4.0)" |

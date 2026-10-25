@@ -10,7 +10,7 @@ from __future__ import annotations
 from rostrum_core import Param
 
 from .. import names, voice
-from . import plugins, sounds
+from . import perform, plugins, sounds
 from . import values as V
 
 N = V.N
@@ -52,10 +52,10 @@ SYNTH_KEYS = [f[0] for f in SYNTH_FIELDS]
 TOUCH_KEYS = ["position", "damping", "hardness"]
 
 # The picker's words (the inspector's field is narrow: about 20 characters)
-INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Built-in sound", "sfz": "Sampled (SFZ file)",
+INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Instrument", "sfz": "Sampled (SFZ file)",
                     "kit": "Drum kit", "kitSfz": "Sampled drum kit", "model": "Played instrument",
                     "synth": "Synth", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
-KIT_WORDS = {"synth": "Built-in kit"}          # "Synth" is also an instrument: a kit is called what it is
+PLAYED = {"any": [IS("instrument", f) for f in ("builtIn", "sfz", "kit", "kitSfz", "model", "synth", "plugin")]}   # forms that play notes / hits
 INSTRUMENT = [
     # The form of the instrument and the field that names it are never shown: the one Sound picker (below) sets both.
     # An audio track has none (valid_when).
@@ -66,7 +66,10 @@ INSTRUMENT = [
     Param.text("sound", group="Instrument", label="Sound", control="pick", valid_when=sounds.VALID,
                help=f"What plays the track's notes, hits or lines: {', '.join(sounds.KEYS)} (the ones its content suits: notes an "
                     "instrument, hits the drum kit, lines a voice). The content stays; the name follows unless you renamed the track."),
-    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Built-in sound", shown="script", valid_when=IS("instrument", "builtIn")),
+    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Instrument", shown="script", valid_when=IS("instrument", "builtIn"),
+                 help="A plain instrument name (piano, strings, bass, flute, …): it plays a recorded instrument, or an analog synth preset "
+                      "(warmPad, subBass, pluck); classic.<name> is the older synthesized voice. A recorded one needs its sample pack installed."),
+    perform.perform(group="Instrument", importance="secondary", valid_when=PLAYED),
     Param.text("sfz", group="Instrument", label="SFZ file", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "sfz")),
     Param.toggle("legato", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz"),
                  help="Notes that overlap glide into each other (one bowed line)."),
@@ -75,7 +78,7 @@ INSTRUMENT = [
     V.mapping("articulations", "articulations", group="Instrument", importance="secondary",
               valid_when=IS("instrument", "sfz"), help="Other playing styles of this instrument, each its own SFZ "
               'file ({"spiccato": "…spic.sfz"}); a note picks one with art.'),
-    Param.choice("kit", names.KITS, group="Instrument", label="Kit", labels=KIT_WORDS, shown="script", valid_when=IS("instrument", "kit")),
+    Param.choice("kit", names.KITS, group="Instrument", label="Kit", labels=names.KIT_WORDS, shown="script", valid_when=IS("instrument", "kit")),
     Param.text("kitSfz", group="Instrument", label="SFZ drum kit", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "kitSfz")),
     Param.choice("model", names.MODELS, group="Instrument", label="Played instrument", shown="script", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
@@ -119,4 +122,4 @@ NOTE = [
 ]
 NOTE_KEYS = [p.name for p in NOTE]
 # What a new track stores so the instrument cards' conditions read real values.
-SWITCHES = dict(builtIn="grandPiano", kit="synth", model="guitar", synth="saw", voice="ryan", language="auto")  # every kind with a choice has one, so switching kind is one change
+SWITCHES = dict(builtIn=names.DEFAULT_BUILT_IN, kit="drums", model="guitar", synth="saw", voice="ryan", language="auto")  # every kind with a choice has one, so switching kind is one change

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
+from . import names
+
 
 class Role(NamedTuple):
     parts: tuple[str, ...]
@@ -25,15 +27,57 @@ PARTS = {"comp": "chords that keep time", "bass": "the low line", "lead": "a tun
          "pad": "held chords under everything", "groove": "drums"}
 
 ROLES: dict[str, Role] = {
-    "builtIn:feltPiano": Role(("comp", "lead"), "C2", "C6", "a soft, close felt piano"),
-    "builtIn:grandPiano": Role(("comp", "lead"), "A0", "C8", "a bright concert grand"),
-    "builtIn:warmPad": Role(("pad",), "C2", "C6", "a warm synth pad with a slow start"),
-    "builtIn:analogStrings": Role(("pad",), "C2", "C6", "a smooth analog string ensemble"),
-    "builtIn:spiccatoStrings": Role(("comp",), "G2", "E6", "short, bouncy bowed strings"),
-    "builtIn:choirPad": Role(("pad",), "C3", "C6", "held 'aah' voices"),
-    "builtIn:cinematicBrass": Role(("pad", "lead"), "E2", "C5", "big, filmic brass swells"),
-    "builtIn:subBass": Role(("bass",), "E1", "G3", "a round, deep synth bass"),
-    "builtIn:glassMarimba": Role(("lead",), "C4", "C7", "a glassy, bright struck bar"),
+    # Recorded instruments (ranges: where the recording is: the pack's own range; a note outside it is stretched and thins).
+    "builtIn:piano": Role(("comp", "lead"), "A0", "C8", "a recorded concert grand (Salamander, Yamaha C5)"),
+    "builtIn:electricPiano": Role(("comp", "lead"), "A1", "C7", "a recorded Wurlitzer electric piano"),
+    "builtIn:organ": Role(("pad", "comp"), "A1", "D7", "a recorded drawbar organ"),
+    "builtIn:pipeOrgan": Role(("pad",), "C2", "C#7", "a recorded pipe organ, loud registration"),
+    "builtIn:guitar": Role(("comp", "lead"), "F1", "B5", "a recorded classical (nylon) guitar"),
+    "builtIn:acousticGuitar": Role(("comp", "lead"), "A1", "G6", "a recorded steel-string archtop guitar"),
+    "builtIn:electricGuitar": Role(("comp", "lead"), "B1", "D6", "a recorded clean electric guitar"),
+    "builtIn:bass": Role(("bass",), "A1", "G5", "a recorded fingered electric bass"),
+    "builtIn:uprightBass": Role(("bass",), "C1", "C4", "a recorded plucked double bass"),
+    "builtIn:strings": Role(("pad",), "C1", "D6", "a recorded string section (basses to violins, by pitch), sustained"),
+    "builtIn:spiccatoStrings": Role(("comp",), "C1", "D6", "the same string section, short and bouncy"),
+    "builtIn:violins": Role(("pad", "lead"), "G3", "D6", "a recorded violin section"),
+    "builtIn:violas": Role(("pad",), "C3", "D6", "a recorded viola section"),
+    "builtIn:cellos": Role(("pad", "bass"), "C2", "F5", "a recorded cello section"),
+    "builtIn:basses": Role(("bass", "pad"), "C1", "C4", "a recorded contrabass"),
+    "builtIn:violin": Role(("lead",), "G3", "C7", "a recorded solo violin"),
+    "builtIn:cello": Role(("lead", "bass"), "C2", "F5", "a recorded solo cello"),
+    "builtIn:harp": Role(("comp", "lead"), "E1", "F7", "a recorded concert harp"),
+    "builtIn:brass": Role(("pad", "lead"), "F1", "C6", "a recorded brass section (tuba, trombone, horn, trumpet by pitch)"),
+    "builtIn:horn": Role(("pad", "lead"), "A1", "F5", "a recorded French horn"),
+
+    "builtIn:trumpet": Role(("lead",), "E3", "C6", "a recorded trumpet"),
+    "builtIn:trombone": Role(("pad", "lead"), "A#1", "F4", "a recorded tenor trombone"),
+    "builtIn:tuba": Role(("bass",), "F1", "D4", "a recorded tuba"),
+    "builtIn:flute": Role(("lead",), "C4", "C7", "a recorded flute"),
+    "builtIn:piccolo": Role(("lead",), "G4", "G6", "a recorded piccolo"),
+    "builtIn:oboe": Role(("lead",), "A#3", "F6", "a recorded oboe"),
+    "builtIn:clarinet": Role(("lead",), "D3", "F#6", "a recorded clarinet"),
+    "builtIn:bassoon": Role(("lead", "bass"), "A#1", "D#5", "a recorded bassoon"),
+    "builtIn:saxophone": Role(("lead",), "G#2", "F6", "a recorded tenor saxophone"),
+    "builtIn:marimba": Role(("lead", "comp"), "F2", "C#7", "a recorded marimba"),
+    "builtIn:vibraphone": Role(("lead", "comp"), "F3", "F6", "a recorded vibraphone"),
+    "builtIn:xylophone": Role(("lead",), "G3", "C#7", "a recorded xylophone"),
+    "builtIn:glockenspiel": Role(("lead",), "G4", "C#7", "a recorded glockenspiel: bright, keep it quiet"),
+    "builtIn:tubularBells": Role(("lead",), "C4", "G5", "recorded tubular bells for single strikes"),
+    "builtIn:timpani": Role(("bass", "lead"), "C2", "C4", "recorded timpani"),
+    # Analog synth presets and the classic synthesized voices (any key; outside the range they thin out or boom).
+    "builtIn:warmPad": Role(("pad",), "C2", "C6", "a warm analog synth pad with a slow start"),
+    "builtIn:subBass": Role(("bass",), "E1", "G3", "a round, deep analog synth bass"),
+    "builtIn:pluck": Role(("lead", "comp"), "C3", "C6", "a short analog synth pluck"),
+    "builtIn:choirPad": Role(("pad",), "C3", "C6", "held 'aah' voices (synthesized)"),
+    "builtIn:classic.feltPiano": Role(("comp", "lead"), "C2", "C6", "a soft, close synthesized felt piano"),
+    "builtIn:classic.grandPiano": Role(("comp", "lead"), "A0", "C8", "a bright synthesized concert grand"),
+    "builtIn:classic.warmPad": Role(("pad",), "C2", "C6", "a warm synthesized pad with a slow start"),
+    "builtIn:classic.analogStrings": Role(("pad",), "C2", "C6", "a smooth synthesized string ensemble"),
+    "builtIn:classic.spiccatoStrings": Role(("comp",), "G2", "E6", "short, bouncy synthesized strings"),
+    "builtIn:classic.choirPad": Role(("pad",), "C3", "C6", "held synthesized 'aah' voices"),
+    "builtIn:classic.cinematicBrass": Role(("pad", "lead"), "E2", "C5", "big, filmic synthesized brass swells"),
+    "builtIn:classic.subBass": Role(("bass",), "E1", "G3", "a round, deep synthesized bass"),
+    "builtIn:classic.glassMarimba": Role(("lead",), "C4", "C7", "a glassy, bright synthesized struck bar"),
     "model:guitar": Role(("comp", "lead"), "E2", "E5", "a plucked steel-string guitar"),
     "model:nylonGuitar": Role(("comp", "lead"), "E2", "E5", "a soft plucked nylon guitar"),
     "model:marimba": Role(("lead", "comp"), "C3", "C7", "a wooden marimba"),
@@ -45,15 +89,19 @@ ROLES: dict[str, Role] = {
     "synth:square": Role(("pad", "lead"), "C2", "C6", "a hollow, reedy synth wave"),
     "synth:triangle": Role(("lead",), "C3", "C7", "a soft, flute-like synth wave"),
     "synth:sine": Role(("lead", "bass"), "C1", "C7", "a pure tone: a sub under a bass, or a gentle lead"),
-    "kit:synth": Role(("groove",), "", "", "electronic drums: kick, snare, clap, hats, cymbal, tom, rim"),
+    "kit:drums": Role(("groove",), "", "", "a recorded rock kit (kick, snare, hats, toms, crash, ride; rim, clap and shaker from the studio kit)"),
+    "kit:studio": Role(("groove",), "", "", "a recorded studio kit (rusty close-miked drums, claps, shaker)"),
+    "kit:classic": Role(("groove",), "", "", "synthesized drums: kick, snare, clap, hats, cymbal, tom, rim"),
 }
 
 
 def key(instrument: dict) -> str | None:
-    """The table key of an instrument record ({"builtIn": "subBass"} -> "builtIn:subBass"); None for SFZ / plug-ins."""
+    """The table key of an instrument record ({"builtIn": "subBass"} -> "builtIn:subBass"; a name that plays the same sound
+    as a listed one, "feltPiano", gives "builtIn:piano"); None for SFZ / plug-ins."""
     for form in ("builtIn", "model", "synth", "kit"):
         if isinstance(instrument.get(form), str):
-            return f"{form}:{instrument[form]}"
+            name = names.BUILT_IN_ALIASES.get(instrument[form], instrument[form]) if form == "builtIn" else instrument[form]
+            return f"{form}:{name}"
     return None
 
 

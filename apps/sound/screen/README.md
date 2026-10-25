@@ -63,7 +63,7 @@ With nothing to reopen the app starts on the kit's start screen. Settings (`Sett
 `screensound/settings_page.py` = `settingsPage`) is the kit's Inspector on `rostrum_sound.settings_fields.FIELDS`.
 Switching songs rebuilds the bridge and its parts and reloads the window (`main.py` `Screen.show`). Steps: `new [name]`,
 `openproject <path>`, `duplicate <name>`, `version [name]`, `startscreen open|close` (old `file-new`, `file-open`,
-`file-duplicate` still work), `file-menu`, `settings`, `add-track <sound key>` (adder.py: `builtIn:grandPiano`, `kit`,
+`file-duplicate` still work), `file-menu`, `settings`, `add-track <sound key>` (adder.py: `builtIn:piano`, `kit:drums`,
 `mic`, `voice:ryan` …), `press <Ctrl+Shift+S>` (a key chord into the window).
 
 ## Mixer and Export: loudness, delivery, export, ducks, cleaned takes

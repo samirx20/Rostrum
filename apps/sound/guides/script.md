@@ -8,14 +8,16 @@ a second copy beside it (the reply warns). Keep one script name per song, and to
 under its name; a check that fails because two scripts made the same things names the earlier script. A script error names the script and line; an unknown track method lists what a track
 can do, an unknown name lists the script's names.
 
+The writing helpers (voicings, bass lines, arpeggios, fills, sections) that work inside a script are in inspect_guide 'writing-music-tools'.
+
 ```python
 tempo(96); length(bar(9)); beats_per_bar(4)              # 8 bars: bar(n) is where bar n starts, length is where it ends
 marker("drop", at=bar(5))                                 # name a moment; other times can say "#drop" or "#drop+0.5"
-s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=
+s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=; builtIn="piano" is a recorded piano
 s.note("D4", at=beat(0), dur=beats(4), vel=0.7)
 s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
 s.note("A4", at="#drop+5", end="#end")                    # ends ON the marker "end" (a note can end on a time or a marker)
-d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")   # drums: see Notes
+d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")   # drums: see Notes
 v = track("door"); v.clip(r"C:\...\door.wav", at=3.0, in_=0.42, length=1.2)
 s.effect("reverb", space="hall", mix=0.3)
 s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
@@ -46,7 +48,7 @@ g.note("E3", at=0, dur=1, position=0.4, bend=[(0, -100), (0.08, 0)])   # this no
 vln.dynamics([(bar(13), 0.5), (bar(17), 1.3)])     # CC 11 over the track (0 … 2, multiplies every note)
 vln.vibrato([(0, 0), (bar(3), 0.6)], rate=5.5, depth=25)   # mod wheel 0 … 1 (1 = depth cents at rate Hz)
 vln.bend([(bar(5), -0.25), (bar(5) + beats(1), 0)], range=2)  # pitch wheel -1 … 1 (× range semitones, 2 unless set)
-keys = track("keys", builtIn="feltPiano")
+keys = track("keys", builtIn="piano")      # perform=False plays every note exactly as written (guide: writing-parts)
 keys.sustain([(0, 0), (bar(2), 0), (bar(2), 1), (bar(3), 1), (bar(3), 0)])   # pedal CC 64: down bars 2–3 (steps)
 vln.phrase(bar(5), bar(9), vel=[(0, 0.5), (1, 0.9)])  # velocity along the phrase, for notes that wrote no vel
 f = vel_curve([(0, 0.5), (1, 0.9)], bar(5), bar(9)); vln.note("D4", at=bar(6), dur=1, vel=f(bar(6)) + 0.15)
@@ -119,7 +121,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on
-  the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_mix` (`what: "midi"`)
+  the drum kit; other channels a plain recorded instrument picked from the GM program, to change after); `render_mix` (`what: "midi"`)
   writes the document's notes, hits, sustain / expression / mod wheel / bend lanes (CC 64, CC 11, CC 1, the pitch
   wheel, bend range as RPN 0; import reads them back), tempo map, time signature, keys, markers and sections (as
   cue points) to `renders/<item>/midi/<item>.mid` (the screen: Export › What for › MIDI file). What MIDI can't carry comes back as a warning. Clips and
@@ -145,9 +147,11 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   moved marker but ends at a fixed `19.5` breaks when the marker moves past it (the render refuses it, naming the note and
   what to write); put a marker on the cue's end (`marker("end", at=19.5)`) and write `end="#end"`: a later start only
   makes the note shorter.
-- **Drums.** The synth kit (`kit="synth"`): `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write
-  it for a crash or a ride), `tom`, `rim`. An SFZ kit on General MIDI keys (`kitSfz=`) also has `pedalHat`, `tomLow`,
-  `tomHigh`, `crash`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, or any GM key number 27 … 87.
+- **Drums.** The kits (`kit=`): `"drums"` (the default: a recorded rock kit), `"studio"` (a recorded studio kit) and
+  `"classic"` (synthesized). The recorded kits take `kick`, `snare`, `clap`, `hat`, `openHat`, `pedalHat`, `rim`, `tomLow`,
+  `tom`, `tomHigh`, `crash`, `cymbal`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, `shaker`. The classic kit has
+  `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write it for a crash or a ride), `tom`, `rim`. An SFZ
+  kit on General MIDI keys (`kitSfz=`) also takes any GM key number 27 … 87. A song saved with the old kit `"synth"` opens as `"drums"`.
   Common other names are read as these: `hihat` / `hh` / `closedHat` → `hat`, `openHihat` → `openHat`, `bd` →
   `kick`, `sd` → `snare`, `rimshot` / `sidestick` → `rim`, `handclap` → `clap` (any case, with or without - and _).
 - **Plain Python in a script:** `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `sorted`, `reversed`,
@@ -161,8 +165,8 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
   after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
-- Names (tones, reverb spaces, EQ shapes, built-in instruments, drums, effect types and fields): `inspect_engine`.
-- Instruments installed on this machine: `inspect_library` (`find: "cello"`). What one can play: `inspect_engine` (`what: "instrument"`)
+- Names (tones, reverb spaces, EQ shapes, the plain instrument names, drum kits and drums, effect types and fields): `inspect_engine`.
+- Instruments installed on this machine: `inspect_library` (`find: "cello"`); the sample packs behind the plain names, installed or missing: `inspect_library (kind: packs)`, installed with `run_model_install`. What one can play: `inspect_engine` (`what: "instrument"`)
   (a note outside a sampled instrument's range fails the render and names the range).
 - Ids: tracks are named by you; notes get ids from their track and start time (`strings.n1500`), so editing one note
   never renumbers the others.
