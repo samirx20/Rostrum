@@ -49,6 +49,27 @@ function own(list) {
     return out
 }
 
+// A block's fields as a plain object, made once a block (the painters read only these). A block from Python reads each
+// field through the list it came from (~1-2 µs a read): a whole paint of a 1,000-hit drum track read ~10 fields a
+// hit, 10-20 ms of every paint. Made when first painted, kept by id while the block stays the same object (up to 3
+// copies an id: the same note reaches the row, the roll and the velocity strip as different objects). Not a WeakMap:
+// one keyed on the objects that read through Python's lists crashed the app (an access violation in a later click).
+var _facts = {}
+function fact(b) {
+    var held = _facts[b.id] || (_facts[b.id] = [])
+    for (var i = 0; i < held.length; i++) if (held[i][0] === b) return held[i][1]
+    var f = _plain(b)
+    if (held.length >= 3) held.shift()
+    held.push([b, f])
+    return f
+}
+
+function _plain(b) {                     // its lists too (keys, names, peaks …)
+    var o = {}
+    for (var key in b) { var v = b[key]; o[key] = v === null || typeof v !== "object" ? v : typeof v.length === "number" ? Array.prototype.slice.call(v) : _plain(v) }
+    return o
+}
+
 // ---- painting in parts (RollNotes, LaneBlocks, VelocityStrip) -------------------------------------------------------
 // A surface keeps what its picture shows (`kept()`): an entry per block, [block, selected, order, gone], in the order
 // painted, and columns COL px wide (at the zoom and scroll painted) holding the entries over them. After an edit or a
@@ -63,7 +84,7 @@ function own(list) {
 var COL = 64
 var MANY = 32           // more changes than this: one whole paint is as quick
 
-function kept() { return { whole: true, by: {}, count: 0, sel: {}, cols: {}, next: 0, stamp: 0, width: 0 } }
+function kept() { return { whole: true, by: {}, count: 0, sel: {}, cols: {}, entries: null, next: 0, stamp: 0, width: 0 } }
 
 function _place(k, e, rectsOf) {         // the entry into the columns its places reach (on the surface only)
     var rs = rectsOf(e[0])
@@ -74,23 +95,33 @@ function _place(k, e, rectsOf) {         // the entry into the columns its place
     return rs
 }
 
-// Everything kept again, for a whole paint `width` px wide: the entries in the blocks' order
+// Everything kept again, for a whole paint `width` px wide: the entries in the blocks' order. The columns wait until
+// a paint in parts needs them (`index`), or the surface is idle (ViewCanvas): a row or roll painted whole on several
+// frames running (the Editor opening, a new drum's row) never makes them each time.
 function rebuild(k, blocks, picked, rectsOf, width) {
     var out = []
-    k.whole = false; k.by = {}; k.sel = {}; k.cols = {}; k.width = width
+    k.whole = false; k.by = {}; k.sel = {}; k.cols = null; k.width = width; k.rectsOf = rectsOf
     for (var i = 0; i < blocks.length; i++) {
         var b = blocks[i], e = [b, !!picked[b.id], i, false, 0]
         k.by[b.id] = e; out.push(e)
         if (e[1]) k.sel[b.id] = true
-        _place(k, e, rectsOf)
     }
-    k.count = blocks.length; k.next = blocks.length; k.list = blocks
+    k.count = blocks.length; k.next = blocks.length; k.list = blocks; k.entries = out
     return out
+}
+
+// The columns of the picture painted whole last (where each entry was painted then), made once
+function index(k) {
+    if (k.cols !== null) return
+    var es = k.entries
+    k.cols = {}; k.entries = null
+    for (var i = 0; i < es.length; i++) if (!es[i][3]) _place(k, es[i], k.rectsOf)
 }
 
 // The places to paint again for the blocks and the selection now ([]: none); null: so many that one whole paint is as
 // quick (then `rebuild`). Changed blocks keep their place in the order, new ones come last (as `patch`).
 function update(k, blocks, picked, rectsOf) {
+    index(k)
     var dirty = [], seen = {}, changed = 0, i, e, id
     function mark(rs) {
         for (var j = 0; j < rs.length; j++) { var key = rs[j].join(","); if (!seen[key]) { seen[key] = true; dirty.push(rs[j]) } }
@@ -155,6 +186,7 @@ function touches(k, picked) {
 
 // The live entries over the place `d`, in painting order (a column's gone entries are dropped on the way)
 function over(k, d) {
+    index(k)
     var out = [], st = ++k.stamp, c0 = Math.floor(d[0] / COL), c1 = Math.floor((d[0] + d[2]) / COL)
     for (var c = c0; c <= c1; c++) {
         var col = k.cols[c]

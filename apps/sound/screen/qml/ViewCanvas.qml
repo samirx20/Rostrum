@@ -1,4 +1,5 @@
 import QtQuick
+import "Blocks.js" as Blocks
 
 // A painted surface over a time ruler (an arrangement row's blocks and grid, the roll's notes and velocities) that
 // keeps its picture through a change of its width: the Library or a panel opening, the window resized. Its backing
@@ -10,11 +11,19 @@ import QtQuick
 //
 // The surface paints as a Canvas does, with two duties: `wholeWanted` is its "paint everything again", and its
 // whole paint calls `markPainted()` (the view it now shows) and skips while `waiting` (the stretched picture stands).
+// A surface painted in parts (Blocks.js) keeps what its picture shows in `kept` and asks for a whole paint with
+// `again()` (`whole`); once idle after one, the picture's columns are made (Blocks.index), so the first edit after
+// never pays for them.
 Canvas {
     id: v
     property var ruler                          // start (s) and perSec (px per s) of what is shown
     property int slot: 0                        // the frame after a resize it paints again in
     signal wholeWanted()
+    readonly property var kept: Blocks.kept()  // what the picture shows (painting in parts)
+    property bool whole: true
+    function again() { whole = true; requestPaint() }
+    onPainted: if (!kept.whole && kept.cols === null) idle.restart()
+    Timer { id: idle; interval: 150; onTriggered: if (!v.whole) Blocks.index(v.kept) }
     readonly property bool waiting: later.running
     property real paintedStart: 0               // the view the picture was painted at
     property real paintedPerSec: 0
