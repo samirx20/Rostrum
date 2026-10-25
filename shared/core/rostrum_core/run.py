@@ -133,7 +133,7 @@ def _check_valid_when(kind, op, items, args, view, where):
                                    hint=f"Set that in the same call to use {name}.")
 
 
-def _changed(edits, idx, lists) -> list[dict]:
+def changed_items(edits, idx, lists) -> list[dict]:
     """The items whose own values these edits set or brought in (still in the document)."""
     ids = dict.fromkeys(i for e in edits if isinstance(e, (E.Set, E.Insert))
                         for i in ([e.id] if isinstance(e, E.Set) else subtree_ids(e.item, lists)))
@@ -146,8 +146,9 @@ def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list,
     return plan_indexed(kind, data, calls, locked_by, who)[:3]
 
 
-def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
-    """plan, plus the new document's index (its positions may be stale). `idx`: data's index, when known."""
+def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None, check=True):
+    """plan, plus the new document's index (its positions may be stale). `idx`: data's index, when known. `check=False`:
+    the whole-document check is left out (a "would this change anything?" question; applying always checks)."""
     calls = kind.registry.resolve(normalize(calls))
     work, idx = E.fork(data, kind.lists, idx)          # one index for the whole call, kept up to date by its edits
     applied, late = [], []
@@ -175,7 +176,7 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
     for err, op, target, args, where in late:
         view = View(work, kind.lists, idx)
         _check_valid_when(kind, op, [view.locs()[t].item for t in target if t in view.locs()], args, view, where)
-    problems = kind.problems(work, _changed(applied, idx, kind.lists))
+    problems = kind.problems(work, changed_items(applied, idx, kind.lists)) if check else []
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "
                            + "; ".join(problems))
