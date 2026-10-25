@@ -28,9 +28,10 @@ class HandleSlots:
 
     @Slot(float, float, float, result="QVariantMap")
     def rollHandleAt(self, t, row, tol):
-        """{id, handle: "length"} when the pointer is on a note's right end in the Editor; {} otherwise."""
+        """{id, handle: "length"} when the pointer is on a note's right end in the Editor (inside the note: handles.edge);
+        {} otherwise."""
         for b in self._view["roll"].get("blocks", []):
-            if b["type"] == "note" and int(round(row)) in b["keys"] and abs(t - (b["t"] + b["dur"])) <= tol:
+            if b["type"] == "note" and int(round(row)) in b["keys"] and 0 <= b["t"] + b["dur"] - t <= handles.edge(b["dur"], tol):
                 return {"id": b["id"], "handle": "length"}
         return {}
 

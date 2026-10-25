@@ -247,7 +247,7 @@ class RenderExport(ExportSheet):
     def preset(self):
         """The preset the sheet's choices equal now ("" when none)."""
         return export_stems.matching({"format": self._format, "sampleRate": self.options().sample_rate, "trim": self._trim,
-                                      "stems": self.stemsMode, "markers": self._markers})
+                                      "stems": self.stemsMode, "markers": self._markers}, self.bridge.doc.data)
 
     @Property(bool, notify=own)
     def trim(self):

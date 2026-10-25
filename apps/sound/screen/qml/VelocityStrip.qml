@@ -11,6 +11,7 @@ import RostrumKit
 Item {
     id: s
     property var roll
+    property var blocks: []
     property var ruler
     property int keysWidth: 52
     readonly property bool folded: backend.velocityFolded
@@ -29,7 +30,7 @@ Item {
     height: folded ? foldedHeight : fullHeight
     property string hoverId: ""
     readonly property var shown: {   // {x, y, text} of the value readout, or null
-        var b = roll.blocks || [], ids = hoverId !== "" ? [hoverId] : Object.keys(picked), vs = [], x = 1e9, top = 0
+        var b = s.blocks, ids = hoverId !== "" ? [hoverId] : Object.keys(picked), vs = [], x = 1e9, top = 0
         for (var i = 0; i < b.length; i++) {
             if ((b[i].type !== "note" && b[i].type !== "hit") || ids.indexOf(b[i].id) < 0) continue
             vs.push(b[i].vel)
@@ -42,7 +43,7 @@ Item {
     }
     function vAt(y) { return Math.max(0, Math.min(1, 1 - (y - padTop) / plotH)) }
     function nearest(x) {                       // the bar under x (within 5 px), "" for none
-        var b = roll.blocks || [], best = "", d = 6
+        var b = s.blocks, best = "", d = 6
         for (var i = 0; i < b.length; i++) {
             if (b[i].type !== "note" && b[i].type !== "hit") continue
             var e = Math.abs(ruler.xOf(b[i].t) - x)
@@ -78,12 +79,12 @@ Item {
         x: s.keysWidth; width: s.width - x; height: s.height; clip: true
         onWidthChanged: requestPaint()
         onHeightChanged: requestPaint()
-        Connections { target: s; function onRollChanged() { c.requestPaint() } function onPickedChanged() { c.requestPaint() } }
+        Connections { target: s; function onRollChanged() { c.requestPaint() } function onBlocksChanged() { c.requestPaint() } function onPickedChanged() { c.requestPaint() } }
         Connections { target: s.ruler; function onStartChanged() { c.requestPaint() } function onPerSecChanged() { c.requestPaint() } }
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
             ctx.fillStyle = Theme.border; ctx.fillRect(0, s.padTop + s.plotH / 2, width, 1)      // the half-way guide
-            var b = s.roll.blocks || [], on = s.picked
+            var b = s.blocks, on = s.picked
             for (var pass = 0; pass < 2; pass++)           // selected bars last, on top
                 for (var i = 0; i < b.length; i++) {
                     if (b[i].type !== "note" && b[i].type !== "hit") continue

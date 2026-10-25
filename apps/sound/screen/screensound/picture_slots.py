@@ -13,41 +13,41 @@ class PictureSlots:
     def pictureOpen(self):
         return self._picture_open
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def pictureChoice(self):
         """The document's `picture` field: a video file or a 2D item's link ("" when none)."""
         return str(self.doc.data.get("picture") or "")
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def picture(self):
         """The video file to show: the chosen file, or the linked 2D item's newest render ("" when none)."""
         return picture.resolve(self.pictureChoice, self.doc.folder)[0]
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def pictureProblem(self):
         """Why a linked picture shows nothing ("not rendered yet" …); "" when fine or none chosen."""
         return picture.resolve(self.pictureChoice, self.doc.folder)[1] or picture.start(self.doc.data)[1]
 
-    @Property(float, notify=S.timelineChanged)
+    @Property(float, notify=S.pictureChanged)
     def pictureStart(self):
         """When the picture's first frame is (seconds): a marker's time, so it follows the marker."""
         return picture.start(self.doc.data)[0]
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def pictureMarker(self):
         """The shared marker the picture starts on ("" when a plain time)."""
         return picture.start_marker(self.doc.data)
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def pictureName(self):
         return picture.name(self.pictureChoice, self.doc.folder)
 
-    @Property("QVariantList", notify=S.timelineChanged)
+    @Property("QVariantList", notify=S.pictureChanged)
     def pictureItems(self):
         """The project's 2D items, to link one as the picture: [{id, label}]."""
         return picture.items(self.doc.folder)
 
-    @Property(str, notify=S.timelineChanged)
+    @Property(str, notify=S.pictureChanged)
     def pictureUrl(self):
         return picture.url(self.picture)
 

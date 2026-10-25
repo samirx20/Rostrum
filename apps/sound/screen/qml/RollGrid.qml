@@ -9,6 +9,7 @@ import RostrumKit
 Item {
     id: g
     property var roll
+    property var blocks: []     // the roll's notes / hits / clips (sent apart from its layout)
     property var ruler
     property int keysWidth: 52
     property real viewHeight: 400
@@ -123,6 +124,7 @@ Item {
             Connections {
                 target: g
                 function onRollChanged() { c.requestPaint() }
+                function onBlocksChanged() { c.requestPaint() }
                 function onPickedChanged() { c.requestPaint() }
                 function onRowHChanged() { c.requestPaint() }
             }
@@ -183,7 +185,7 @@ Item {
             }
             onPaint: {
                 var ctx = getContext("2d"); ctx.reset()
-                var blocks = g.roll.blocks || [], picked = g.picked
+                var blocks = g.blocks, picked = g.picked
                 for (var pass = 0; pass < 2; pass++) {          // what is selected is drawn last, on top
                     for (var i = 0; i < blocks.length; i++) {
                         var b = blocks[i], on = !!picked[b.id]

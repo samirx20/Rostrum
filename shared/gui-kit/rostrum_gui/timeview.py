@@ -3,13 +3,16 @@ of truth for time → x: the ruler, rows, markers, playhead and a piano roll's t
 span` across their own width. It is screen state, never part of the document: zooming is not an edit, there is no
 undo step, and an agent never moves it.
 
-    v = TimeView(20.0)                 # 20 s long; "fit" (the default) shows it all and follows its length
+    v = TimeView(20.0)                 # 20 s long; "fit" (the default) shows it all
     v.zoom(2, 0.75)                    # zoom in around the moment 3/4 across the width (the pointer)
     v.x_of(t, width) / v.t_of(x, width)  # seconds <-> pixels for a strip `width` px wide
     v.follow(playhead)                 # while playing: turn the page when the playhead leaves the view
     TimeViewObject(v)                  # the same view for QML: start / span / fit / length, the slots below
 
-Zooming in leaves fit; zooming back out to the whole length returns to it. `auto` is a view the screen chose (fit to a
+Zooming in leaves fit; zooming back out to the whole length returns to it. Only the person moves the view: when an
+edit makes the timeline longer or shorter (`set_length`), the view keeps what it shows, so the grid never moves under
+the pointer between two clicks (critic r4, M3); a view showing everything keeps that stretch, with spare room after a
+shorter end, until the person zooms, scrolls or fits. The first length a new view is given is shown whole. `auto` is a view the screen chose (fit to a
 track's notes); a person's first zoom or scroll clears it. Bad input (a length or factor that is not a positive number)
 is refused loudly with a ValueError. Moved from Sound's screensound/view.py (S35).
 """
@@ -37,23 +40,27 @@ class TimeView:
     def __init__(self, length: float = 1.0):
         self.start, self._span, self.fit, self.auto = 0.0, 1.0, True, False
         self.length = _num("length", length, positive=True)
+        self._given = False              # set_length not called yet: its first length is shown whole
 
     @property
     def span(self) -> float:
-        """How many seconds the view shows across its width."""
+        """How many seconds the view shows across its width (more than the length after an edit shortened it)."""
         n = self.length
-        return n if self.fit else min(max(self._span, min(MIN_SPAN, n)), n)
+        return n if self.fit else max(self._span, min(MIN_SPAN, n))
 
     def set_length(self, length: float):
-        """The timeline got longer or shorter (an edit): keep the view inside it."""
-        self.length = _num("length", length, positive=True)
+        """The timeline got longer or shorter (an edit): the view stays as it is (only the person moves it)."""
+        length = _num("length", length, positive=True)
+        if self.fit and self._given and abs(length - self.length) > 1e-9:
+            self._span, self.fit = self.length, False          # what is shown now stays shown
+        self.length, self._given = length, True
         self.clamp()
 
     def clamp(self):
-        if self.fit or self.span >= self.length - 1e-6:
-            self.start, self.fit = 0.0, True
+        if self.fit:
+            self.start = 0.0
         else:
-            self.start = min(max(self.start, 0.0), self.length - self.span)
+            self.start = min(max(self.start, 0.0), max(self.length - self.span, 0.0))
 
     def x_of(self, t: float, width: float) -> float:
         return (t - self.start) * width / self.span
@@ -67,8 +74,8 @@ class TimeView:
         frac = min(max(float(frac), 0.0), 1.0)
         self.auto = False
         t = self.start + frac * span
-        new = min(max(span / factor, min(MIN_SPAN, n)), n)
-        self._span, self.fit = new, new >= n - 1e-6
+        new = min(max(span / factor, min(MIN_SPAN, n)), max(n, span))   # never out past what is shown already
+        self._span, self.fit = new, abs(new - n) <= 1e-6
         self.start = t - frac * new
         self.clamp()
 

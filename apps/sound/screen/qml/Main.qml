@@ -17,7 +17,7 @@ AppShell {
     helpEntries: guides
     readonly property bool wide: width >= 1500                       // the Library pushes instead of floating
     readonly property bool hasTracks: backend.tracks.some(r => !r.mix)
-    readonly property bool hasSound: backend.tracks.some(r => !r.mix && r.blocks.length > 0)
+    readonly property bool hasSound: backend.tracks.some(r => !r.mix && r.sound)
     leftWidth: wide && workspace.library ? (width >= 1920 ? 280 : 260) : 0
     rightWidth: width >= 1920 ? 320 : width >= 1646 ? 296 : width >= 1366 ? 264 : 256
     bottomHeight: -Theme.gap        // no full-width bottom panel: the dock sits under the arrangement only (kit request)

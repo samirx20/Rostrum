@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Blocks.js" as Blocks
 
 // The Editor (bottom dock): the selection's track up close. Notes: bars on a keyboard (drag = time and pitch,
 // double-click empty space = a new note, Delete removes). Drums: one row per drum. Recorded clips: their
@@ -9,7 +10,14 @@ import RostrumKit
 // It opens framed on the track's notes: the rows fit every note in view, centred on them.
 Panel {
     id: p
-    readonly property var roll: backend.roll
+    readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
+    readonly property var blocks: patched || backend.rollBlocks    // its notes / hits / clips, sent alone (an edit on them)
+    property var patched: null                              // a few of them changed since (backend.rollPatched)
+    Connections {
+        target: backend
+        function onRollPatched(gone, put) { p.patched = Blocks.patch(p.blocks, gone, put) }
+        function onRollBlocksChanged() { p.patched = null }
+    }
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
     BarRuler {
@@ -28,7 +36,7 @@ Panel {
             id: view
             anchors.fill: parent
             contentHeight: grid.height; boundsBehavior: Flickable.StopAtBounds; interactive: false
-            RollGrid { id: grid; width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; ruler: bars; keysWidth: p.keysWidth }
+            RollGrid { id: grid; width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth }
             RollInput {   // every click, drag, box and right-click on the roll (select first, then act)
                 id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height
@@ -49,7 +57,7 @@ Panel {
             }
             function centre() {   // framed on the notes: the rows fit them all (grid.frame), the view centred on them
                 seenHi = p.roll.hi; seenShown = shown
-                var ks = [], b = p.roll.blocks
+                var ks = [], b = p.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
                 if (!ks.length || p.kind !== "notes") { grid.frame(0); contentY = 0; return }
                 var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
@@ -67,7 +75,7 @@ Panel {
                 visible: bars.visibleX(x - p.keysWidth); color: Theme.fg4; opacity: 0.6 }
         }
         Repeater {   // a voice line with several takes: ◂ ▸ on its block (TakeArrows.qml)
-            model: (p.roll.blocks || []).filter(b => b.canBack || b.canNext)
+            model: p.blocks.filter(b => b.canBack || b.canNext)
             TakeArrows { required property var modelData; block: modelData; ruler: bars; xOffset: p.keysWidth; inset: well.height * 0.2 + 5 }
         }
         Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height
@@ -91,7 +99,7 @@ Panel {
         visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
         anchors { left: parent.left; right: parent.right; bottom: played.visible ? played.top : laneFold.visible ? laneFold.top : parent.bottom
                   bottomMargin: played.visible || laneFold.visible ? Theme.grid : 0 }
-        roll: p.roll; ruler: bars; keysWidth: p.keysWidth
+        roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth
     }
     // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
     readonly property bool laneUsed: !!p.roll.played && p.roll.played.choices.some(c => c.used)

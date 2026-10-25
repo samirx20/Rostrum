@@ -13,7 +13,7 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge
+from rostrum_gui import DocBridge, many, pointer_quiet
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.model import RowsModel
@@ -25,7 +25,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import block_patch, cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
@@ -60,7 +60,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._made: dict = {}               # track id -> its row as last made, and the song it was made from (_shown):
         self._shown = None                  # a drag's step makes again only the tracks it changed (stepped.py)
         self._stepping = False              # a gesture is open (its steps came, its change not yet): the sound waits
-        self._lanes = RowsModel(("track",), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
+        self._lanes = RowsModel(("track", "blocks"), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
+        self._held = block_patch.RowBlocks()  # each row's blocks as the row model holds them (patches since: rows_view)
         self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
         self._zoom = self._tv.view
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
@@ -77,7 +78,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
             self.link = LiveLink(self, "sound", screen_seen.state)
         self._picture_open = bool(self.doc.data.get("picture"))     # the corner opens by itself on a song with a picture
         self._follow_render = picture.Follow(lambda: (self.pictureChoice, self.doc.folder), self)
-        self._follow_render.changed.connect(self.timelineChanged)       # the linked item has a newer render
+        self._follow_render.changed.connect(self.pictureChanged)        # the linked item has a newer render
         self._marks = MarkerWatch(self.doc.folder, self, self.who, self._fail, "sound")
         self._marks.changed.connect(self._markers_changed)
         self.join_history(self._marks)                      # marker edits undo with the screen's one history
@@ -87,7 +88,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.selectedItemsChanged.connect(self._drop_point)
         self._follow_selection()
         self._rebuild()
-        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping)
+        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping, pointing=pointer_quiet.busy)
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
@@ -120,7 +121,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
 
     @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):
-        return self._view["rows"]
+        """The arrangement's rows, laid out: without their blocks (those come by `trackRows`' own role, rows_view)."""
+        return self._view["shape"]
 
     @Property(QObject, constant=True)
     def trackRows(self):
@@ -135,12 +137,23 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
 
     @Property("QVariantMap", notify=S.rollChanged)
     def roll(self):
-        """The piano roll of the selection's track (or the last one picked)."""
-        return self._view["roll"]
+        """The piano roll of the selection's track (or the last one picked): its layout; the blocks are `rollBlocks`."""
+        return self._view["rollShape"]
+
+    @Property("QVariantList", notify=S.rollBlocksChanged)
+    def rollBlocks(self):
+        """The roll's notes / hits / clips (sent alone: an edit on them leaves the roll's layout as it was)."""
+        return self._view["roll"].get("blocks", [])
 
     @Property("QVariantMap", notify=S.renderChanged)
     def lastRender(self):
         return self.transport.last
+
+    @Property("QVariantMap", notify=S.renderChanged)
+    def duckSpans(self):
+        """track id -> the dips the last render pulled it down by ([start s, end s, deepest dB]): what each arrangement
+        row reads (DuckDips.qml). A row reading `lastRender` copied the whole render answer, twice a row (M4)."""
+        return {d["track"]: d["spans"] for d in (self.transport.last or {}).get("ducks") or []}
 
     @Property(str, notify=S.soundChanged)
     def soundState(self):
@@ -185,9 +198,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
 
     def _rows(self):
-        rows = output_pick.without_none(super()._rows())
-        sel = self._kit.selection          # times in bars.beats, pitches as names (inspect.musical_rows)
-        return inspect.musical_rows(self.doc.item(sel[0]), rows, self.doc.data) if len(sel) == 1 else rows
+        """The kit's rows, each item's with times in bars.beats and pitches as names (inspect.musical_rows) before
+        several are merged: notes of one length read "1/2" together, never "1.154 s" (one note never does)."""
+        each = [inspect.musical_rows(it, self._item_rows(it), self.doc.data) for it in map(self.doc.item, self._kit.selection)]
+        return output_pick.without_none([] if not each else each[0] if len(each) == 1 else many.merge(each))
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot()

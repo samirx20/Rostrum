@@ -71,7 +71,7 @@ class EditorSide(QObject):
         before its end), one step, selected; its speech is made at once (DESIGN.md §10 #1: made when you finish
         typing; once, kept)."""
         b = self.bridge
-        row = next((r for r in b.tracks if r["id"] == track_id), {"blocks": []})
+        row = next((r for r in b.rows_now() if r["id"] == track_id), {"blocks": []})
         ends = [x["t"] + x["dur"] for x in row["blocks"] if x["type"] == "line"]
         return self.typeAt(track_id, text, max(b.time, max(ends) + 0.1) if ends and b.time < max(ends) else b.time)
 

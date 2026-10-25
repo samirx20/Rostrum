@@ -53,10 +53,12 @@ class GridSlots:
         "grid" (one grid step)."""
         return self.__dict__.get("_note_len", "beat")
 
-    @Property("QVariantList", constant=True)
+    @Property("QVariantList", notify=gridChanged)
     def noteLengthChoices(self):
-        return [{"value": v, "label": "Grid step" if v == "grid" else WORDS[v], "keys": "",
-                 "group": "grid" if v == "grid" else "steps"} for v in NOTE_CHOICES]
+        """Note ▾'s menu, headed "Note length", the current length ticked ("One grid step" follows the Grid)."""
+        return [{"value": v, "label": "One grid step" if v == "grid" else WORDS[v], "keys": "",
+                 "group": "grid" if v == "grid" else "steps", "checked": v == self.noteLength,
+                 **({"heading": "Note length"} if i == 0 else {})} for i, v in enumerate(NOTE_CHOICES)]
 
     @Slot(str)
     def setNoteLength(self, value):

@@ -27,20 +27,28 @@ def level_y(volume: float) -> float:
     return min(1.0, max(0.0, 1 / 3 - db / DB_PER_HEIGHT))
 
 
+def edge(dur: float, tol: float) -> float:
+    """How far in from an item's edge its edge handle reaches: `tol` (a few pixels), at most a third of the item, so
+    its body stays draggable. Handles sit inside the item, never in the space beside it: a click just past a note's end
+    is empty space, where Draw adds the next note (critic r4, M1)."""
+    return min(tol, dur / 3)
+
+
 def at(block: dict, t: float, y: float, tol: float) -> str:
-    """The handle of a clip block under the pointer (time t, height y 0..1 in the clip), "" for its body."""
+    """The handle of a clip block under the pointer (time t, height y 0..1 in the clip), "" for its body or off it."""
     s, e = block["t"], block["t"] + block["dur"]
-    if not s - tol <= t <= e + tol:
+    if not s <= t <= e:
         return ""
-    if y < CORNER and abs(t - (s + block.get("fadeIn", 0))) <= tol:
+    near = edge(block["dur"], tol)
+    if y < CORNER and abs(t - (s + block.get("fadeIn", 0))) <= near:
         return "fadeIn"
-    if y < CORNER and abs(t - (e - block.get("fadeOut", 0))) <= tol:
+    if y < CORNER and abs(t - (e - block.get("fadeOut", 0))) <= near:
         return "fadeOut"
-    if y > 1 - CORNER and abs(t - e) <= tol:
+    if y > 1 - CORNER and e - t <= near:
         return "stretch"
-    if abs(t - s) <= tol:
+    if t - s <= near:
         return "start"
-    if abs(t - e) <= tol:
+    if e - t <= near:
         return "end"
     if abs(y - level_y(block.get("volume", 1))) <= LEVEL_NEAR:
         return "level"

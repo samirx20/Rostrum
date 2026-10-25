@@ -6,7 +6,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 - **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** (in words with a dot:
   "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber; rest the pointer
-  on it for the number; the Mixer tab shows the same with its curve) and **Export** (both once the
+  on it for the number, click it to open the Mixer, which shows the same with its curve) and **Export** (both once the
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
@@ -61,11 +61,14 @@ The **Colour** row shows the colour the track is drawn in.
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. **Note ▾** sets how long a new
-   note is (a quarter at first; 1/8, 1/16, a bar … or one grid step). With **Draw**, drag on after the click to make a
+   note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
+   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to make a
    longer note: the click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
    scrolls by itself after an edit: only you move the view.
-   Drag a note to move it in time and pitch.
+   Drag a note to move it in time and pitch, or its right end to make it longer or shorter (the pointer shows ↔ over
+   the note's last few pixels; every selected note changes by the same amount). A click just past a note's end is
+   empty space, so with **Draw** you can write notes on one key back to back.
    - It snaps to the grid. **Grid ▾** in the arrangement's header strip sets the step (Auto follows the zoom; Bar,
      1/2, 1/4, 1/8, 1/16, 1/32, triplets; the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
      without snapping once.
@@ -85,14 +88,16 @@ The **Colour** row shows the colour the track is drawn in.
    - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
      inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
-     copies just those notes. **Shift+Delete** cuts the range out of the clips under it and closes the gap.
+     copies just those notes. **Shift+Delete** (**Cut out and close the gap**) cuts the range out of the clips under it and closes the gap.
    - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave).
    - **Q** quantises. **Ctrl+T** splits a clip at the playhead and **Ctrl+J** joins clips.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
    - **M** puts a marker at the playhead.
-6. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song.
+6. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
+   edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
+   (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.
 7. A mistake? **Ctrl+Z** undoes it (**Ctrl+Shift+Z** redoes). Every drag is one step.
 
 ## 5. Play it

@@ -15,6 +15,8 @@ import sys
 from PySide6.QtCore import QObject, QTimer
 from rostrum_core import RostrumError, screen_state
 
+from . import pointer_quiet
+
 TICK_MS = 300
 
 
@@ -28,6 +30,8 @@ class LiveLink(QObject):
             self._timer.start(TICK_MS)
 
     def tick(self):
+        if pointer_quiet.busy():                  # never inside a click or a drag: the next tick takes it in
+            return
         doc = self.bridge.doc
         try:
             if doc.live is not None:

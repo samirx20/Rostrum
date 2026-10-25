@@ -91,7 +91,7 @@ Rectangle {
         id: list
         anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: parent.bottom
                   leftMargin: Theme.gap; rightMargin: Theme.pad; topMargin: Theme.grid
-                  bottomMargin: Theme.gap + (scrollbar.visible ? scrollbar.height + Theme.grid : 0) }
+                  bottomMargin: Theme.gap + scrollbar.height + Theme.grid }   // room kept: rows never move when it shows
         contentHeight: column.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: false
         Column {
             id: column
@@ -102,6 +102,7 @@ Rectangle {
                 delegate: Item {
                     id: row
                     required property var track
+                    required property var blocks
                     required property int index
                     readonly property var modelData: track
                     readonly property var auto: tl.autoOf(modelData)
@@ -141,7 +142,7 @@ Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
                         BeatGrid { anchors.fill: parent; ruler: bars }
-                        LaneBlocks { anchors.fill: parent; track: row.modelData; ruler: bars }
+                        LaneBlocks { anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                         Loader {   // the take growing while this track records (made only on the armed row)
                             anchors.fill: parent; active: recorder.take.track === row.modelData.id
@@ -169,7 +170,7 @@ Rectangle {
         }
         LaneInput {   // every click, drag, box and right-click on the lanes (select first, then act)
             id: lanes
-            x: bars.x - list.x; width: bars.width; height: column.height
+            x: bars.x - list.x; width: bars.width; height: Math.max(column.height, list.height)   // the space below Master too: a click there clears
             tl: tl; bars: bars; flick: list
             onMenuAt: (entries, px, py) => tl.openMenu(entries, lanes.mapToItem(tl, px, py))
         }
