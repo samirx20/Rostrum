@@ -53,7 +53,9 @@ Item {
         onPositionChanged: (m) => { const h = Math.round(Math.min(d.room, Math.max(tabs.height + 120, h0 - (mapToItem(null, m.x, m.y).y - y0))))
                                     workspace.setHeight("editor", h); workspace.setHeight("mixer", h) }
     }
+    function openInKey() { header.openInKey() }
     EditorHeader {   // on the same line as the tabs: the Editor has no second header row
+        id: header
         visible: d.tool === "editor"
         x: tabs.x + pick.x + pick.width + Theme.pad; width: fold.x - Theme.gap - x; y: tabs.y; height: tabs.height
     }

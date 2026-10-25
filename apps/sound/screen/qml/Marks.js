@@ -8,6 +8,12 @@
 
 function xOf(b, k) { return Math.round(k.x0 + b.t * k.perSec) }
 
+function keyRow(k, key) {                // a key's row from the top (the roll's one mapping: RollGrid.rowOf)
+    if (!k.idx) return k.hi - key
+    var i = k.idx[key]
+    return i === undefined ? -2 : i
+}
+
 function drumRows(drums) {               // drum name -> its row
     var row = {}, ds = drums || []
     for (var i = 0; i < ds.length; i++) row[ds[i]] = i
@@ -15,12 +21,12 @@ function drumRows(drums) {               // drum name -> its row
 }
 
 // ---- the Editor's roll ----------------------------------------------------------------------------------------------
-// k: x0, perSec, rowH, hi, row (drum -> row), d (a diamond's half), H, hue, lit, accent, app, rowH, widths, clip(ctx, b, on, x)
+// k: x0, perSec, rowH, hi, idx (key -> row when only the key's rows show), row (drum -> row), d (a diamond's half), H, hue, lit, accent, app, rowH, widths, clip(ctx, b, on, x)
 
 function rollRects(b, x, k) {            // where a block is painted, 2 px of margin
     if (b.type === "note") {
         var w = Math.max(4, b.dur * k.perSec - 1), out = []
-        for (var i = 0; i < b.keys.length; i++) out.push(Blocks.box(x, (k.hi - b.keys[i]) * k.rowH + 1, w, k.rowH - 2, 2))
+        for (var i = 0; i < b.keys.length; i++) out.push(Blocks.box(x, keyRow(k, b.keys[i]) * k.rowH + 1, w, k.rowH - 2, 2))
         return out
     }
     if (b.type === "hit") {
@@ -42,7 +48,7 @@ function _nameWidth(ctx, k, name) {      // measured once a name (the font never
 function _note(ctx, b, on, x, k) {
     var w = Math.max(4, b.dur * k.perSec - 1), h = k.rowH - 2, fill = on ? k.lit : k.hue
     for (var i = 0; i < b.keys.length; i++) {
-        var y = (k.hi - b.keys[i]) * k.rowH + 1
+        var y = keyRow(k, b.keys[i]) * k.rowH + 1
         ctx.fillStyle = fill; _round(ctx, x, y, w, h, 3); ctx.fill()
         if (on) { ctx.strokeStyle = k.accent; ctx.lineWidth = 2; _round(ctx, x + 1, y + 1, w - 2, h - 2, 2); ctx.stroke() }
         var out = b.out && b.out[i]

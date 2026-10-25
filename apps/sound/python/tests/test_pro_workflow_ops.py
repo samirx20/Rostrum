@@ -92,3 +92,36 @@ def test_quantize_swing_moves_only_the_off_beat_cells():
     d.apply(_op("hit.quantize", [f"h{i}" for i in range(4)], grid=0.5, swing=1), P)
     got = [d.item(f"h{i}")["at"]["beat"] for i in range(4)]
     assert got == pytest.approx([0, 0.5 + 1 / 6, 1, 1.5 + 1 / 6], abs=1e-3)
+
+
+def test_hit_fill_never_doubles_a_step_that_has_the_drum_and_is_one_undo_step():
+    d = Document.new(KIND)
+    d.apply([_op("doc.set", ["root"], tempo=120), _op("track.add", [], id="k", instrument="kit", kit="drums"),
+             _op("hit.add", ["k"], id="mine", drum="hat", at={"beat": 1}, vel=0.3),
+             _op("hit.add", ["k"], id="snare", drum="snare", at={"beat": 2})], P)
+    d.apply(_op("hit.fill", ["k"], drum="hat", every=1, **{"from": {"beat": 0}, "to": {"beat": 4}}), P)
+    hats = sorted((h["at"]["beat"], h["vel"]) for h in d.item("k")["hits"] if h["drum"] == "hat")
+    assert hats == [(0, 0.85), (1, 0.3), (2, 0.85), (3, 0.85)]                    # the hat already on beat 1 stays as it was
+    d.apply(_op("hit.fill", ["k"], drum="hat", every=1, **{"from": {"beat": 0}, "to": {"beat": 4}}), P)
+    assert len(d.item("k")["hits"]) == 5                                         # again: nothing doubled
+    d.apply(_op("hit.fill", ["k"], drum="hat", every=0.5, offset=0.5, accentEvery=2, accentVel=1, **{"from": {"beat": 4}, "to": {"beat": 6}}), P)
+    d.undo(P)
+    assert len(d.item("k")["hits"]) == 5                                         # the fill was one step
+    with pytest.raises(RostrumError, match="kit plays"):
+        d.apply(_op("hit.fill", ["k"], drum="mandolin", **{"from": 0, "to": 2}), P)
+
+
+def test_fit_key_moves_only_notes_outside_the_key_in_one_undo_step():
+    d = _doc(_op("key.add", [], at=0, key="D minor"),
+             _op("note.add", ["t"], id="cs", pitch="C#4", at={"beat": 0}, dur=0.5),    # outside: C4 and D4 are both a half step away, a tie goes down
+             _op("note.add", ["t"], id="ok", pitch="F4", at={"beat": 1}, dur=0.5),
+             _op("note.add", ["t"], id="ch", pitch=["D4", "F#4"], at={"beat": 2}, dur=0.5))
+    d.apply(_op("note.fit_key", ["cs", "ok", "ch"]), P)
+    assert (d.item("ok")["pitch"], d.item("ch")["pitch"]) == ("F4", ["D4", "F4"])       # F# -> F (tie goes down)
+    assert d.item("cs")["pitch"] == "C4"
+    d.undo(P)
+    assert d.item("cs")["pitch"] == "C#4" and d.item("ch")["pitch"] == ["D4", "F#4"]    # one step
+    d.apply(_op("note.fit_key", ["cs"], direction="up"), P)       # up: D4
+    assert d.item("cs")["pitch"] == "D4"
+    with pytest.raises(RostrumError, match="not a key"):
+        d.apply(_op("note.fit_key", ["cs"], key="blue"), P)

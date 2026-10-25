@@ -95,6 +95,16 @@ def all(doc: dict, own: bool = False) -> list[tuple[str, float]]:  # noqa: A001 
     return sorted(((n, _at(m, n, doc, ())) for n, m in marks), key=lambda p: p[1])
 
 
+def seconds_of(doc: dict, at) -> float:
+    """A marker's `at` (seconds, {"beat": n} or "#other+0.5") in seconds."""
+    return _at({"at": at}, "new", doc, ())
+
+
+def at_time(doc: dict, sec: float, within: float = 1e-3) -> str | None:
+    """The name of the marker at `sec` (within a millisecond), or None: one spot never holds two markers."""
+    return next((n for n, t in all(doc) if abs(t - sec) < within), None)
+
+
 def time_of(doc: dict, name: str, where: str = "marker", seen=()) -> float:
     """The marker's time in seconds. A missing marker is a loud error that names it."""
     marks = by_name(doc)

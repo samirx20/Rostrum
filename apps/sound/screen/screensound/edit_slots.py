@@ -61,7 +61,7 @@ class EditSlots:
         def go():
             before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
             self._apply([moves.add_note_call(self.doc, self._track, t, key, beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                              grid=self._grid_now, px=px)], "Add note")
+                                              grid=self._grid_now, px=px, lock=self.keepInKey)], "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
                 self.select(new[0])
@@ -89,7 +89,7 @@ class EditSlots:
             return ""
         grid = self._grid_now
         call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                   grid=grid, px=px)
+                                   grid=grid, px=px, lock=self.keepInKey)
         return self._draw_note(call, t)
 
     @Slot(int)
@@ -98,11 +98,7 @@ class EditSlots:
         (rostrum_sound.audition.render_key, cached: the second click is at once). Nothing in the song changes."""
         if not self._track or self._view["roll"].get("kind") != "notes":
             return
-        if self.__dict__.get("_keys_heard") is None:
-            from .auditioner import Auditioner
-            self._keys_heard = Auditioner(self)
-            self._keys_heard.failed.connect(self._fail)
-        self._keys_heard.start({"key": int(key)}, timing.name(int(key)), self._track)
+        self._auditioner().start({"key": int(key)}, timing.name(int(key)), self._track)
 
     def _add_one(self, key, call, label):
         before = {x["id"] for x in self.doc.item(self._track).get(key, [])}
@@ -162,11 +158,11 @@ class EditSlots:
                 self._set_snap(caught)
                 return self._drag.preview(moves.drag_calls(self.doc, g, to - g["t"], 0, True, self._grid_now))
             if "primary" not in g:
-                return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now))
+                return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now, self.keepInKey))
             root = self.doc.data
             end = timing.sec(root["length"], root) if root.get("length") is not None else None    # a set length: kept inside it
             calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), scale,
-                                              self._grid_now, end)
+                                              self._grid_now, end, self.keepInKey)
             if not only_time:
                 calls += moves.track_calls(self.doc, g, getattr(self, "_to_track", ""))
             if copy and not self._copy:

@@ -14,9 +14,12 @@ Item {
     property var ruler
     property int keysWidth: 52
     property real viewHeight: 400
+    signal drumMenuAt(string drum, real x, real y)     // right-click on a drum's name (PianoRoll opens its menu)
     property real scrollY: 0               // how far the view is scrolled: a row name shows only while its row is whole
     readonly property bool notes: roll.kind === "notes"
-    readonly property int count: notes ? roll.hi - roll.lo + 1 : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
+    readonly property var shownKeys: roll.rows || null       // Only the key's rows: the keys shown, top first (null = every key from hi to lo)
+    readonly property var rowIdx: { if (!shownKeys) return null; var m = {}; for (var i = 0; i < shownKeys.length; i++) m[shownKeys[i]] = i; return m }
+    readonly property int count: notes ? (shownKeys ? shownKeys.length : roll.hi - roll.lo + 1) : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
     property int fitRows: 0
     function frame(n) { fitRows = n }
     readonly property real rowH: notes ? Math.max(viewHeight / count, fitRows > 0 ? Math.max(9, Math.min(16, viewHeight / (fitRows + 2))) : 12)
@@ -30,7 +33,11 @@ Item {
         var s = String(d).replace(/_/g, " ").replace(/([a-z])([A-Z0-9])/g, "$1 $2").toLowerCase()
         return s.charAt(0).toUpperCase() + s.slice(1)
     }
-    function rowAt(y) { var i = Math.floor(y / rowH); return notes ? roll.hi - i : roll.kind === "drums" ? i : 0 }
+    // The one mapping between a key and its row: every painted key, lit key, name, note and click goes through these two.
+    function keyAtRow(i) { return shownKeys ? shownKeys[Math.max(0, Math.min(shownKeys.length - 1, i))] : roll.hi - i }
+    function rowOf(key) { if (!rowIdx) return roll.hi - key; var i = rowIdx[key]; return i === undefined ? -2 : i }
+    function shows(key) { return rowIdx ? rowIdx[key] !== undefined : key <= roll.hi && key >= roll.lo }
+    function rowAt(y) { var i = Math.floor(y / rowH); return notes ? keyAtRow(i) : roll.kind === "drums" ? i : 0 }
     // The row names follow the key in force at the view's left edge: scrolling past a key change renames the keys.
     readonly property var rowKey: {
         var list = roll.rowNames, at = ruler.start + 1e-6, hit = list.length ? list[0] : ({ names: [], inKey: [] })
@@ -58,7 +65,7 @@ Item {
             var ctx = getContext("2d"); ctx.reset()
             var h = g.rowH, kw = g.keysWidth, n = g.count, W = width
             for (var i = 0; i < n; i++) {
-                var y = i * h, key = g.roll.hi - i
+                var y = i * h, key = g.keyAtRow(i)
                 if (!g.notes) {
                     ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1)
                     ctx.fillStyle = Theme.panel; ctx.fillRect(0, y, kw - 6, h - 1)
@@ -72,14 +79,18 @@ Item {
                     ctx.fillRect(kw, y, W - kw, h); ctx.globalAlpha = 1
                 }
                 if (key % 12 === 0) { ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1) }
+                else if (g.shownKeys) { ctx.globalAlpha = 0.45; ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1); ctx.globalAlpha = 1 }
                 paintKey(ctx, key, y, h, kw - 2, "#d6d6d6", "#161616")
             }
         }
         function paintKey(ctx, key, y, h, w, white, black) {      // a white key, or a black one over the white behind it
             ctx.fillStyle = g.black(key) ? "#d6d6d6" : white; ctx.fillRect(0, y, w, h)
             ctx.fillStyle = "#8a8a8a"
-            if (key % 12 === 0 || key % 12 === 5) ctx.fillRect(0, y + h - 1, w, 1)   // B | C and E | F touch
-            if (g.black(key)) {
+            if (g.shownKeys) {            // Only the key's rows: each row its own key, a line under every one
+                ctx.fillRect(0, y + h - 1, w, 1)
+                if (g.black(key)) { ctx.fillStyle = black; ctx.beginPath(); ctx.roundedRect(0, y, Math.round(w * 0.6), h - 1, 2, 2); ctx.fill() }
+            } else if (key % 12 === 0 || key % 12 === 5) ctx.fillRect(0, y + h - 1, w, 1)   // B | C and E | F touch
+            if (!g.shownKeys && g.black(key)) {
                 ctx.fillRect(0, y + Math.floor(h / 2), w, 1)                       // the line between its two white keys
                 ctx.fillStyle = black; ctx.beginPath(); ctx.roundedRect(0, y, Math.round(w * 0.6), h, 2, 2); ctx.fill()
             }
@@ -87,24 +98,24 @@ Item {
         }
     }
     Repeater {   // the lit key (under the pointer or pressed), over the painted one, with its name
-        model: g.notes && g.litKey >= 0 && g.litKey <= g.roll.hi && g.litKey >= g.roll.lo ? 1 : 0
+        model: g.notes && g.litKey >= 0 && g.shows(g.litKey) ? 1 : 0
         Item {
             readonly property int key: g.litKey
             readonly property bool down: g.downKey === key
-            y: (g.roll.hi - key) * g.rowH; width: g.keysWidth - 2; height: g.rowH
+            y: g.rowOf(key) * g.rowH; width: g.keysWidth - 2; height: g.rowH
             Rectangle { anchors.fill: parent; color: g.black(parent.key) ? "#d6d6d6" : parent.down ? Theme.accent : "#f2f2f2" }
             Rectangle { visible: [0, 5].indexOf(parent.key % 12) >= 0; width: parent.width; height: 1; y: parent.height - 1; color: "#8a8a8a" }
             Rectangle { visible: g.black(parent.key); width: parent.width; height: 1; y: Math.floor(parent.height / 2); color: "#8a8a8a" }
             Rectangle { visible: g.black(parent.key); width: Math.round(parent.width * 0.6); height: parent.height; radius: 2
                         color: parent.down ? Theme.accent : "#3a3a3a" }
             Rectangle { visible: g.keyRoot === parent.key % 12; x: parent.width - 3; width: 3; height: parent.height; color: Theme.accent }
-            KeyName { key: parent.key; row: g.roll.hi - parent.key }
+            KeyName { key: parent.key; row: g.rowOf(parent.key) }
         }
     }
     Repeater {   // C on every octave (C4 = middle C)
         model: g.notes ? Math.floor(g.roll.hi / 12) - Math.ceil(g.roll.lo / 12) + 1 : 0
-        KeyName { required property int index; key: 12 * (Math.ceil(g.roll.lo / 12) + index); row: g.roll.hi - key
-                  y: row * g.rowH; visible: g.litKey !== key }
+        KeyName { required property int index; key: 12 * (Math.ceil(g.roll.lo / 12) + index); row: g.rowOf(key)
+                  y: row * g.rowH; visible: g.litKey !== key && g.shows(key) }
     }
     component KeyName: Item {     // a key's name on the keyboard: "C4", or the key under the pointer's name in the song's key
         property int key
@@ -123,15 +134,28 @@ Item {
     }
     Repeater {   // a drum's name
         model: g.roll.kind === "drums" ? g.count : 0
-        Text {
+        Item {
+            id: nameCell
             required property int index
+            readonly property string drum: g.roll.drums[index]
             y: index * g.rowH
             visible: y >= g.scrollY - 1 && y + height <= g.scrollY + g.viewHeight + 1
-            x: Theme.gap; width: g.keysWidth - Theme.gap - 6; height: g.rowH     // fits its row: a short row shrinks the name
-            verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7
-            elide: Text.ElideRight
-            text: g.drumName(g.roll.drums[index]); color: Theme.fg3
-            font.family: uiFont; font.pixelSize: Theme.label
+            x: 0; width: g.keysWidth - 6; height: g.rowH
+            Text {
+                x: Theme.gap; width: parent.width - Theme.gap; height: parent.height     // fits its row: a short row shrinks the name
+                verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7
+                elide: Text.ElideRight
+                text: g.drumName(nameCell.drum); color: nameHover.containsMouse ? Theme.fg : Theme.fg3
+                font.family: uiFont; font.pixelSize: Theme.label
+            }
+            Item { objectName: "action:fill_row"; anchors.fill: parent; visible: backend.fillDrum === nameCell.drum }   // Fill row… opens under its name
+            MouseArea {   // click: hear the drum and select its hits; right-click: its menu (Fill ▸, Clear …)
+                id: nameHover
+                objectName: "drumRow_" + nameCell.drum
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: (m) => { if (m.button === Qt.RightButton) g.drumMenuAt(nameCell.drum, m.x + parent.x, m.y + parent.y); else backend.drumRowClicked(nameCell.drum) }
+            }
         }
     }
     property int hoverKey: -1

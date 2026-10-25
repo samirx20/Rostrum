@@ -12,7 +12,7 @@ from PySide6.QtCore import Property, Signal, Slot
 from . import action_calls as C
 from rostrum_sound.doc import keys, meter
 
-from . import moves, selection, timing
+from . import key_lock, moves, selection, timing
 
 
 class KeySlots:
@@ -57,7 +57,7 @@ class KeySlots:
         f = C.Facts(self.doc, self._picks.ids)
         notes = f.by_kind(("note",)).get("note")
         if notes:
-            return self._act([{"op": "note.transpose", "target": notes, "args": {"semitones": semis}}],
+            return self._act([key_lock.step_call(self.doc.data, 0.0, notes, semis, self.keepInKey)],
                              "Transpose " + f.words(("note",)))
         if f.kinds != {"clip"}:
             self._refuse("↑ / ↓ move notes a half step, or clips to another track: " +
@@ -200,11 +200,14 @@ class KeySlots:
     @Slot(float, result=bool)
     def markerAt(self, t):
         """M: a marker at `t` (the playhead), "Marker n", with its name field open in place. One is there already:
-        that one is selected and the line says so (never a second marker on the same spot)."""
-        there = next((m for m in self._view["markers"] if not m.get("named") and abs(m["t"] - t) < 1e-3), None)
+        that one is selected with its name field open, and the line says so (never a second marker on the same spot;
+        marker.add refuses one too)."""
+        there = next((m for m in self._view["markers"] if abs(m["t"] - t) < 1e-3), None)
         if there is not None:
             self._pick([there["id"]])
-            self.say(f"A marker is already here: “{there['name']}” (selected). F2 renames it")
+            if not there.get("shared") and not there.get("named"):
+                self.startRename(there["id"])
+            self.say(f"A marker is already here: “{there['name']}”")
             return False
         have = {m["name"] for m in self._view["markers"]}
         n = len(have) + 1

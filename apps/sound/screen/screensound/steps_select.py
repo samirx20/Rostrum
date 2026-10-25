@@ -14,7 +14,7 @@ bridge call a click, a box, a key or a menu makes.
     lock <track> (the header's lock: lock / unlock) | loop (Shift+L) | range-edge in|out (Shift+I / Shift+O)
     rename-open <id> (its name field, open) | rename <new name> (Enter in the open field) | open <id> (double-click: select + Editor)
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
-    marker-add (M: a marker at the playhead, its name field open) | fit-bar <bar> (Land a bar on the selected
+    marker-add (M: a marker at the playhead, its name field open) | marker-menu <name> (its right-click menu, open) | fit-bar <bar> (Land a bar on the selected
       marker) | ask <action key> (its number field, open: for a picture) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
@@ -34,7 +34,7 @@ from PySide6.QtTest import QTest
 
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
-         "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
+         "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add", "marker-menu", "drum-menu", "drum-fill-menu", "drum-fill-row",
          "fit-bar", "ask", "amount", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
 
@@ -90,6 +90,13 @@ def do_select_step(bridge, win, word, rest):
             raise RuntimeError(f"{word}: the area is not on screen")
         target = bridge.doc.item(rest[0][:-5]).get("clips", [{}])[0].get("id", "") if rest[0].endswith("/clip") else rest[0]
         QMetaObject.invokeMethod(host, "menuFor", Q_ARG("QVariant", target))
+    elif word in ("drum-menu", "drum-fill-menu"):   # drum-menu <drum>: a drum row's right-click menu (drum-fill-menu: Fill ▸ open too)
+        host = _find(win.contentItem(), "keysWidth")
+        if host is None:
+            raise RuntimeError(f"{word}: the Editor is not on screen")
+        QMetaObject.invokeMethod(host, "drumMenuFor", Q_ARG("QVariant", rest[0]), Q_ARG("QVariant", word == "drum-fill-menu"))
+    elif word == "drum-fill-row":              # drum-fill-row <drum>: its menu's Fill row… (the first bar), the amounts popover open
+        bridge.runAt(f"at:drum:fillrow:{rest[0]}:0.0:2.0")
     elif word == "key":
         _key(win, rest[0])
     elif word in ("copy", "cut", "paste"):
@@ -136,6 +143,9 @@ def do_select_step(bridge, win, word, rest):
         bridge.fitSelection()
     elif word == "marker-add":
         bridge.markerAt(bridge.time)
+    elif word == "marker-menu":               # marker-menu <name>: its right-click menu, open under its tag
+        mid = next(m["id"] for m in bridge.markers if m["name"] == rest[0].replace("_", " "))
+        QMetaObject.invokeMethod(_find(win.contentItem(), "sharedDx"), "menuFor", Q_ARG("QVariant", mid))
     elif word == "fit-bar":
         bridge.actions.ask("fit_bar")         # a set-up step: the amounts popover's session, its bar, kept
         bridge.actions.amounts.setValue("bar", float(rest[0]))

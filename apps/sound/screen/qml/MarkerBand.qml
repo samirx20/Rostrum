@@ -3,7 +3,8 @@ import RostrumKit
 
 // The named markers above the ruler, each a small tag at its time. Click selects the marker and puts the playhead on
 // it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels the renaming);
-// right-click: its menu (Rename, Delete, and what a marker can do); drag moves it
+// right-click: its menu (marker_slots.py: Rename, Move to playhead, Colour, Put a sound here, Start a bar here…,
+// Loop to the next marker, Delete; only what applies); its colour is the tag's edge; drag moves it
 // (marker.set at, one gesture = one undo step; the ruler's snap: other markers, section edges, then the window's grid,
 // with the snap line saying what it caught; Ctrl = free). The project's shared
 // markers show with a dashed edge; dragging one moves only its tag while the mouse is down, and the release is one
@@ -11,6 +12,7 @@ import RostrumKit
 // The clicks are taken here in one place, so a drag keeps going while the tags are redrawn.
 Item {
     id: band
+    objectName: "markerBand"
     property var ruler
     clip: true
     property string sharedId: ""    // the project marker being dragged (its tag follows the mouse until release)
@@ -25,6 +27,11 @@ Item {
         }
         return best
     }
+    function menuFor(id) {      // a scripted step's door to the same menu (layout check): open under that marker's tag
+        var m = backend.markers.find(k => k.id === id)
+        markMenu.marker = id; markMenu.entries = backend.markerMenu(id)
+        var q = mapToItem(null, ruler.xOf(m.t) + 6, height); markMenu.openAt(q.x, q.y)
+    }
     FontMetrics { id: metrics; font.family: uiFont; font.pixelSize: Theme.label }
 
     Repeater {
@@ -37,7 +44,8 @@ Item {
             visible: !modelData.named && x + width > 0 && x < band.width
             width: (naming ? Math.max(90, field.contentWidth + 10) : tag.implicitWidth) + 12; height: band.height - 2
             radius: 3; color: on ? Theme.accent : Theme.raised
-            Rectangle { width: 2; height: parent.height; color: parent.on ? Theme.fg : Theme.fg3; radius: 1
+            Rectangle { width: modelData.colour ? 3 : 2; height: parent.height; radius: 1
+                        color: modelData.colour ? modelData.colour : parent.on ? Theme.fg : Theme.fg3
                         visible: !modelData.shared }
             Column { visible: modelData.shared; spacing: 2; Repeater { model: Math.ceil(band.height / 4)
                      Rectangle { width: 2; height: 2; color: Theme.accent } } }
@@ -69,7 +77,7 @@ Item {
             x0 = m.x
             if (m.button === Qt.RightButton) {      // a song marker's menu (Rename, Delete, Put a sound here …): the selection's
                 if (hit === null || hit.shared) { m.accepted = false; return }
-                markMenu.entries = backend.itemMenu(hit.id)
+                markMenu.marker = hit.id; markMenu.entries = backend.markerMenu(hit.id)
                 var q = mapToItem(null, m.x, m.y); markMenu.openAt(q.x, q.y)
                 return
             }
@@ -93,5 +101,6 @@ Item {
         }
         onCanceled: { if (dragging && band.sharedId === "") backend.cancelDrag(); band.sharedId = ""; band.sharedDx = 0; dragging = false }
     }
-    ActionMenu { id: markMenu; objectName: "markerMenu"; onPicked: (v) => backend.menuPick(v) }
+    ActionMenu { id: markMenu; objectName: "markerMenu"; property string marker: ""
+                 onPicked: (v) => backend.markerPick(marker, v) }
 }

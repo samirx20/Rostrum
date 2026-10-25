@@ -32,13 +32,16 @@ from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, out
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .drum_rows import DrumRowSlots
+from .drum_step_slots import DrumStepSlots
 from .edit_slots import EditSlots
 from .grid_slots import GridSlots
 from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
 from .velocity_slots import VelocitySlots
 from .key_slots import KeySlots
+from .key_lock_slots import KeyLockSlots
 from .lane_slots import LaneSlots
+from .marker_slots import MarkerSlots
 from .picture_slots import PictureSlots
 from .rows_view import RowsView
 from .select_slots import SelectSlots
@@ -51,7 +54,7 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, ActionSlots, KeySlots, SelectSlots, RowsView, S, DocBridge):
+class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, DrumStepSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, MarkerSlots, ActionSlots, KeySlots, KeyLockSlots, SelectSlots, RowsView, S, DocBridge):
     songChanged = Signal()                  # the ruler's song (length, grid): its own signal, a drag's step rarely moves it
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name
@@ -94,6 +97,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
         self.selectedItemsChanged.connect(self._drop_point)
+        for s in (self.docChanged, self.rollChanged):      # the In key chip: it comes and goes with the song's key and the track's kind
+            s.connect(self.keyLockChanged)
         self.picksChanged.connect(self._roll_picks)              # the velocity readout's blocks (rows_view)
         self._follow_selection()
         self._rebuild()

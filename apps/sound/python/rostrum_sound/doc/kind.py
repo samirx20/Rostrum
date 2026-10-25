@@ -15,7 +15,7 @@ from rostrum_core import DocKind
 from .. import names
 from . import dropped, markers, media, migrations, past_end
 from . import fields as FD
-from . import ops_bus_tracks, ops_buses, ops_cleanup, ops_mix, ops_music, ops_range, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_swap, ops_timed, ops_tracks, ops_transpose, ops_feel, ops_voice  # noqa: F401  (they register the operations)
+from . import ops_bus_tracks, ops_buses, ops_cleanup, ops_mix, ops_music, ops_range, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_swap, ops_timed, ops_tracks, ops_transpose, ops_fit_key, ops_feel, ops_fill, ops_voice  # noqa: F401  (they register the operations)
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
 

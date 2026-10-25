@@ -31,6 +31,7 @@ Put hits, clips, sections, automation points and look-tool checks on markers (`"
 When the cut moves, move the marker once (`marker.move`: `edit_markers` for a project marker, `edit_document` for one of the song's own,
 the same name for both; `marker.set` is read as it, `inspect_operations name=marker.move` answers as marker.set, and an error names the one you sent; `edit_markers` times are seconds only (a plain number): for beats or a time on another marker use `edit_document`; or drag it on the arrangement's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.
+On the screen, **right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it. One spot holds one marker: `marker.add` at a time that already has one fails and names it (rename or move that one instead), and **M** there selects it and opens its name.
 
 Markers shared with other apps (a 2D "logo lands" read by Sound) come through the project service (`inspect_markers`
 lists them; a project marker shows dashed on the marker band). Drag one there and it moves for every app, as one undo

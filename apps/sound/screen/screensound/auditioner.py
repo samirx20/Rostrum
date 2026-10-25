@@ -6,6 +6,7 @@ the console), never a silent nothing.
 
     a = Auditioner(bridge); a.start(entry, "Grand piano", track="pad"); a.stop()
     a.start({"key": 60}, "C4", track="melody")      # one key of the track's own instrument (the Editor's keyboard)
+    a.start({"drum": "snare"}, "Snare", track="kit")  # one hit of a drum row's drum (click a drum's name)
 `busy` is "" when idle, else what is being rendered or played ("Grand piano"); `playing` is True once it is sounding.
 `program` is the player's test seam (as LivePlay.program).
 `loop` True: a sound that runs out starts again (through the same engine player, never Qt Multimedia) until it is
@@ -60,11 +61,12 @@ class Auditioner(QObject):
 
     # ---- inside -----------------------------------------------------------------------------------------------
     def _render(self, n, entry, doc, track, label):
-        from rostrum_sound.audition import render_audition, render_key
+        from rostrum_sound.audition import render_audition, render_hit, render_key
         from .playback import open_engine
         try:
             self._engine = self._engine or open_engine()
             r = (render_key(self._engine, doc, track, entry["key"]) if "key" in entry
+                 else render_hit(self._engine, doc, track, entry["drum"]) if "drum" in entry and "instrument" not in entry
                  else render_audition(self._engine, entry, doc, track))
             self._made.emit(n, r["file"], "")
         except Exception as e:  # noqa: BLE001  said on the screen, never swallowed

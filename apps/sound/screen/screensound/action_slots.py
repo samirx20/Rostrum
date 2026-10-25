@@ -21,7 +21,7 @@ from rostrum_sound import main_mix
 from . import action_calls as C
 from . import amount_actions as A
 from . import voice_actions as V
-from . import block_menu, clipboard, palette, timing
+from . import block_menu, clipboard, inspect, palette, timing
 from .actions import ACTS_ON, LIST, RANGE
 
 AMOUNTS = {a.id for a in LIST.actions if a.amounts}      # Ctrl+K opens their popover ("Quantise…")
@@ -89,6 +89,7 @@ class ActionSlots:
         later = QTimer(self, singleShot=True, interval=SETTLE_MS, timeout=self._refresh_actions)
         self.rangeChanged.connect(later.start)           # a range drawn on the ruler: its band at once, its actions after the frame
         self.timeChanged.connect(lambda: None if self.playing else self._refresh_actions())   # Split at playhead
+        self._hub.amounts.changed.connect(self._fill_over)       # Fill row… is offered only while its popover is open
         self._hub.refresh()
 
     def _refresh_actions(self):
@@ -102,7 +103,7 @@ class ActionSlots:
 
     def _facts(self):
         return C.Facts(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]), self._track,
-                       self.__dict__.get("_range_newer", False))
+                       self.__dict__.get("_range_newer", False), self.__dict__.get("_fill"))
 
     def _what(self, f) -> str:
         return self.selectionWords or ("Time range" if self._picks.range else "")
@@ -114,6 +115,9 @@ class ActionSlots:
         rng = self._picks.range
         if key == "repeat_range" and rng:
             return A.range_words(self._facts())
+        if key == "fill_row" and self.__dict__.get("_fill"):          # "Fill row · Hat, bar 5"
+            f = self._fill
+            return f'{inspect.drum_words(f["drum"]).lower()}, {self._words_of(f["from"], f["to"])}'
         if key == "fit_bar" and len(self._picks.ids) == 1:          # "Start a bar here · marker logo"
             return f'marker {self.doc.item(self._picks.ids[0]).get("name") or self._picks.ids[0]}'
         if key in RANGE and rng:
@@ -256,6 +260,8 @@ class ActionSlots:
         """An empty-space menu entry ("at:<what>:…"): paste here, a marker, select all on a track, a section."""
         parts = value.split(":")
         what = parts[1]
+        if what == "drum":                                     # a drum row's menu (drum_menu.py, drum_step_slots.py)
+            return self.runDrum(parts[2:])
         if what == "paste":                                    # in the grid cell under the pointer, as a click that adds a note
             px = float(parts[4]) if len(parts) > 4 else 0.0
             return self._paste(parts[2], timing.snap(float(parts[3]), self.doc.data, False, self._grid_now, "cell", px))
