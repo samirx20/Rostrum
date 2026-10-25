@@ -16,7 +16,8 @@ from ..errors import codes
 from ..params import Param
 from ..tree import index
 from . import marked
-from .anims import PLAIN, PRESETS, Names
+from .anims import PLAIN, Names
+from .easing import EASE_LIST, OLD_NAMES
 from .evaluate import key_value, keys_of
 from .fields import KEY_FIELDS
 
@@ -45,12 +46,13 @@ def register_anim_ops(registry, *, owners, put_key: Callable, names: Names = PLA
     from .stagger import register_key_stagger
 
     @registry.operation("anim.ease", "Ease whole stretches (the time between two keys of one setting) in one change: a "
-                        "preset (linear, smooth, in, out, spring, bounce, hold), or a curve (x1 y1 x2 y2, as CSS "
+                        "preset (an ease's id, the words key.set {ease} takes: " + ", ".join(e["id"] for e in EASE_LIST) +
+                        '; "in" and "out" still mean easeIn and easeOut), or a curve (x1 y1 x2 y2, as CSS '
                         "cubic-bezier: the ease becomes custom), or a spring's bounce and speed. Targets: the keys each "
                         "stretch starts at (anim.list gives them as a stretch's ids). A setting's last key starts no "
                         "stretch and is refused.",
                         target="key", label="Ease", importance="secondary",
-                        params=[Param.choice("preset", list(PRESETS), label="Preset"),
+                        params=[Param.choice("preset", [*(e["id"] for e in EASE_LIST), *OLD_NAMES], label="Preset"),
                                 Param.number("x1", label="Curve x1", min=0, max=1), Param.number("y1", label="Curve y1", min=-2, max=3),
                                 Param.number("x2", label="Curve x2", min=0, max=1), Param.number("y2", label="Curve y2", min=-2, max=3),
                                 Param.number("bounce", label="Bounce", min=0, max=1), Param.number("speed", label="Speed", min=0, max=1)])
@@ -65,7 +67,7 @@ def register_anim_ops(registry, *, owners, put_key: Callable, names: Names = PLA
             ctx.fail(codes.BAD_ARGUMENT, '"bounce" / "speed"', "only shape a spring", hint='Give preset: "spring" (or leave it out).')
         if not (curve or spring or "preset" in args):
             ctx.fail(codes.BAD_ARGUMENT, '"preset"', "is required (or a curve, or a spring's bounce / speed)")
-        ease = "custom" if curve else "spring" if spring else PRESETS[args["preset"]]
+        ease = "custom" if curve else "spring" if spring else OLD_NAMES.get(args["preset"], args["preset"])
         for kid in targets:
             _starts_stretch(ctx, kid)
             ctx.set(kid, "ease", ease)

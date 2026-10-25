@@ -24,7 +24,7 @@ class Bridge(QObject):
         super().__init__()
         self.doc, self.said = Doc(), []
 
-    def _set_status(self, text):
+    def _set_status(self, text, failed=None):
         self.said.append(text)
 
     def _fail(self, line):

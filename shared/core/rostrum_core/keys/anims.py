@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from . import marked
+from .easing import label_of
 from .evaluate import key_value, keys_of, track_value
 
 
@@ -34,18 +35,6 @@ class Names:
 
 
 PLAIN = Names()      # every field its own setting, named by itself
-# the presets a person picks (SPEC §9.3) -> the key's `ease` in the document (rostrum_core.keys.easing)
-PRESETS = {"linear": "linear", "smooth": "smooth", "in": "easeIn", "out": "easeOut", "spring": "spring",
-           "bounce": "bounce", "hold": "hold"}
-PRESET_LABELS = {"linear": "Linear", "smooth": "Smooth", "in": "In", "out": "Out", "spring": "Spring",
-                 "bounce": "Bounce", "hold": "Hold"}
-NAME_OF = {v: k for k, v in PRESETS.items()}
-OTHER_EASES = {"snappy": "Snappy", "natural": "Natural", "heavy": "Heavy", "easeInOut": "Ease in and out", "custom": "Custom"}   # eases no preset button is
-
-
-def ease_name(ease: str) -> str:
-    """What the panel calls an ease no preset button is (a key written by a script: "snappy"); "" for a preset's."""
-    return "" if ease in NAME_OF else OTHER_EASES.get(ease, ease)
 
 
 def pack(spans: list[tuple[float, float]]) -> list[int]:
@@ -66,7 +55,7 @@ def pack(spans: list[tuple[float, float]]) -> list[int]:
 def animations(owner: dict, names: Names = PLAIN, markers: dict | None = None, origin: float = 0.0) -> list[dict]:
     """[{setting, label, word, props, start, end, line, keys: [{id, t}], stretches: [...]}] of one item (a layer, an
     effect, a mask, a 3D object), settings named by the app's `names`, in the owner's own seconds (keys on a shared marker placed through `markers`, `origin` as curve_of). A
-    stretch: {ids (the keys it starts at), endIds, start, length, ease, preset, from: {prop: v}, to: {prop: v}}."""
+    stretch: {ids (the keys it starts at), endIds, start, length, ease (its id in EASE_LIST), easeLabel, from: {prop: v}, to: {prop: v}}."""
     owner = {**owner, "keys": [dict(k) for k in owner.get("keys", [])]}
     if any(marked.marked(k) for k in owner["keys"]):
         marked.resolve(owner, markers, origin)
@@ -88,7 +77,7 @@ def animations(owner: dict, names: Names = PLAIN, markers: dict | None = None, o
             first = at[t0][0]
             ease = first.get("ease", "smooth")
             stretches.append({"ids": [k["id"] for k in at[t0]], "endIds": [k["id"] for k in at[t1]],
-                              "start": t0, "length": round(t1 - t0, 6), "ease": ease, "preset": NAME_OF.get(ease, ""), "easeName": ease_name(ease),
+                              "start": t0, "length": round(t1 - t0, 6), "ease": ease, "easeLabel": label_of(ease),
                               "from": {p: _value(tracks[p], t0) for p in props}, "to": {p: _value(tracks[p], t1) for p in props}})
         label = names.label_of(owner, setting)
         out.append({"setting": setting, "label": label, "word": names.words.get(setting, label),

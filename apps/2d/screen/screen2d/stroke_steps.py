@@ -25,6 +25,7 @@ through the calls the pointer and keys make.
     clickat <x> <y>                a real click at that window point (logical px) | dclickat <x> <y>: a real double-click there
 """
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 from PySide6.QtCore import Q_ARG, QObject, QCoreApplication, QMetaObject, QPoint, QPointF, Qt
 from PySide6.QtGui import QKeySequence
@@ -97,15 +98,15 @@ def _texts(win, word):
 
 
 def _click_item(win, o):
-    QTest.qWait(120)        # let a bar or menu rebuilt by the last step be laid out first: read its place after, as a person sees it
+    wait(120)        # let a bar or menu rebuilt by the last step be laid out first: read its place after, as a person sees it
     c = o.mapToScene(QPointF(o.width() / 2, o.height() / 2))
     QTest.mouseMove(win, QPoint(int(c.x()), int(c.y())))
-    QTest.qWait(80)
+    wait(80)
     at = QPoint(int(c.x()), int(c.y()))
     QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, at)
-    QTest.qWait(90)
+    wait(90)
     QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, at)
-    QTest.qWait(400)
+    wait(400)
 
 
 def _named(item, name):
@@ -123,8 +124,8 @@ def do_stroke_step(bridge, win, word, rest, step):
         for _ in range(100):
             if bridge.frames.idle() and bridge.frame > 0:
                 break
-            QTest.qWait(100)
-        QTest.qWait(700)
+            wait(100)
+        wait(700)
         if bridge.status.startswith("Error"):
             raise RuntimeError(bridge.status)
         save_snap(win, rest[0], ready=bridge.frames.idle)
@@ -132,41 +133,41 @@ def do_stroke_step(bridge, win, word, rest, step):
     elif word == "key":
         keys = QKeySequence(rest[0])[0]
         QTest.keyClick(win, Qt.Key(keys.key()), keys.keyboardModifiers())
-        QTest.qWait(150)
+        wait(150)
     elif word in ("keydown", "keyup"):
         held = {"Ctrl": Qt.Key.Key_Control, "Shift": Qt.Key.Key_Shift, "Alt": Qt.Key.Key_Alt}.get(rest[0]) or Qt.Key(QKeySequence(rest[0])[0].key())
         (QTest.keyPress if word == "keydown" else QTest.keyRelease)(win, held)
-        QTest.qWait(100)
+        wait(100)
     elif word == "cmove":
         QTest.mouseMove(win, _scene_of(win, float(rest[0]), float(rest[1])))
-        QTest.qWait(250)
+        wait(250)
     elif word == "cclick":
         p = _scene_of(win, float(rest[0]), float(rest[1]))
         QTest.mouseMove(win, p)
-        QTest.qWait(80)
+        wait(80)
         QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p)
-        QTest.qWait(250)
+        wait(250)
     elif word == "cpath":
         mod = Qt.KeyboardModifier.ControlModifier if rest[0] == "ctrl" else Qt.KeyboardModifier.NoModifier
         pts = [_scene_of(win, *(float(v) for v in a.split(","))) for a in rest if a != "ctrl"]
         QTest.mouseMove(win, pts[0])
-        QTest.qWait(60)
+        wait(60)
         QTest.mousePress(win, Qt.MouseButton.LeftButton, mod, pts[0])
         for a, b in zip(pts, pts[1:]):
             for k in range(1, 5):
                 QTest.mouseMove(win, QPoint(a.x() + (b.x() - a.x()) * k // 4, a.y() + (b.y() - a.y()) * k // 4))
                 QCoreApplication.processEvents()
         QTest.mouseRelease(win, Qt.MouseButton.LeftButton, mod, pts[-1])
-        QTest.qWait(300)
+        wait(300)
     elif word == "reston":
-        QTest.qWait(700)                     # the window has settled (the top bar slides in at start)
+        wait(700)                     # the window has settled (the top bar slides in at start)
         hits = _find(win, " ".join(rest))
         if not hits:
             raise RuntimeError(f"step {step!r}: nothing visible is called {' '.join(rest)!r}")
         c = hits[0].mapToScene(QPointF(hits[0].width() / 2, hits[0].height() / 2))
         QTest.mouseMove(win, QPoint(int(c.x()) - 6, int(c.y())))
         QTest.mouseMove(win, QPoint(int(c.x()), int(c.y())))
-        QTest.qWait(900)
+        wait(900)
     elif word in ("clickbtn", "clicktext", "clickstarts"):
         hits = _find(win, " ".join(rest), prefix=word == "clickstarts")
         if not hits:
@@ -184,13 +185,13 @@ def do_stroke_step(bridge, win, word, rest, step):
         c = hits[0].mapToScene(QPointF(hits[0].width() / 2, hits[0].height() / 2))
         a, dy = QPoint(int(c.x()), int(c.y())), int(rest[0])
         QTest.mouseMove(win, a)
-        QTest.qWait(60)
+        wait(60)
         QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, a)
         for k in range(1, 9):
             QTest.mouseMove(win, QPoint(a.x(), a.y() + dy * k // 8))
-            QTest.qWait(20)
+            wait(20)
         QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(a.x(), a.y() + dy))
-        QTest.qWait(300)
+        wait(300)
     elif word == "altpick":
         pick.setAlt(True)
         x, y = float(rest[0]), float(rest[1])
@@ -222,13 +223,13 @@ def do_stroke_step(bridge, win, word, rest, step):
         a, b = handle_point(rest[0], sel.box, zoom, sel.knobBelow), (float(rest[1]), float(rest[2]))
         pts = [_scene_of(win, a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8) for k in range(9)]
         QTest.mouseMove(win, pts[0])
-        QTest.qWait(60)
+        wait(60)
         QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pts[0])
         for q in pts[1:]:
             QTest.mouseMove(win, q)
-            QTest.qWait(20)
+            wait(20)
         QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pts[-1])
-        QTest.qWait(300)
+        wait(300)
         if bridge.status not in ("Scale strokes", "Turn strokes"):
             raise RuntimeError(f"step {step!r}: the drag did not take the handle (status: {bridge.status})")
     elif word == "strokesturn":
@@ -249,7 +250,7 @@ def do_stroke_step(bridge, win, word, rest, step):
         win.resize(w, h)
         for _ in range(8):
             QCoreApplication.processEvents()
-            QTest.qWait(60)
+            wait(60)
     elif word == "barbutton":
         label, todo = " ".join(rest), [win.contentItem()]
         while todo:
@@ -262,7 +263,7 @@ def do_stroke_step(bridge, win, word, rest, step):
                 if menu is None:
                     raise RuntimeError(f"step {step!r}: {label!r} has no menu")
                 QMetaObject.invokeMethod(menu, "openAt", Q_ARG("QVariant", c.x()), Q_ARG("QVariant", c.y()), Q_ARG("QVariant", c.x() + o.width()))
-                QTest.qWait(400)                    # the menu opens with a short reveal
+                wait(400)                    # the menu opens with a short reveal
                 break
             todo.extend(o.childItems())
         else:
@@ -277,7 +278,7 @@ def do_stroke_step(bridge, win, word, rest, step):
         QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p)
         QTest.mouseDClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p)
         QCoreApplication.processEvents()
-        QTest.qWait(150)
+        wait(150)
     elif word == "clickarea":
         fx, fy = AREAS[rest[0]]
         QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,

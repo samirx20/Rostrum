@@ -65,7 +65,7 @@ AppShell {
     // message line says why), or Sound's own job (play, the playhead, nudges, the loop, zoom: keys.ROUTES). The jobs
     // in `skip` (files, undo, Ctrl+K, F1, R) keep their own Shortcuts here and in the kit's AppShell.
     readonly property bool typing: OpenPopups.typing      // a text field has the keys (the kit's one test of it)
-    KeyMap { hub: backend.actions; enabled: !startScreen.visible; typing: shell.typing; whileTyping: ["library"]; skip: backend.actions.skip }
+    KeyMap { hub: backend.actions; typing: shell.typing; whileTyping: ["library"]; skip: backend.actions.skip }
     // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
     // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)

@@ -31,6 +31,14 @@ ListView {
         menu.openAt(g.x, g.y)
     }
     ActionMenu { id: menu; onPicked: (key) => backend.run(key) }
+    // the list follows the pick: a layer picked anywhere (the canvas, Tab, Ctrl+K) brings its row into view, the last
+    // picked one; a row already in view stays put (ListView.Contain), so a click in the list never scrolls it
+    function follow() {
+        const sel = backend.selection
+        const i = sel.length ? backend.layers.findIndex(r => r.id === sel[sel.length - 1]) : -1
+        if (i >= 0 && !list.compact && list.dragId === "") list.positionViewAtIndex(i, ListView.Contain)
+    }
+    Connections { target: backend; function onSelectedItemsChanged() { Qt.callLater(list.follow) } }
     function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
         for (let i = 0; i < count; i++) {
             const item = itemAtIndex(i)

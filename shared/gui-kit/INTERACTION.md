@@ -242,8 +242,8 @@ cards.
    - The message says what it did ("Keyed 4 settings on 3 layers").
 5. **Keys show in the timeline**, on the item's bar (all its keys) and on the opened setting rows or lanes (that
    setting's keys). They are selected and moved like any timeline item (1.3, 1.6).
-6. **The key bar:** with keys selected, the **timeline header** shows Ease ▾ (Linear, Ease in, Ease out, Smooth,
-   Spring, Jump, Custom) and a small curve to drag. For one key it also shows Time and Value. Every selected key
+6. **The key bar:** with keys selected, the **timeline header** shows Ease (the kit's EasePicker: Linear, Smooth, Ease in, Ease out,
+   Spring, Hold, More ▸ the rest; Custom after a drag) and a small curve to drag. For one key it also shows Time and Value. Every selected key
    changes. The settings panel **does not** swap to the key: it keeps showing the item.
 7. **Curves:** Keys | Curves in the timeline header turns the bar area into the curve view, in the same place.
 8. **A** shows the selection's animated rows or lanes (only those that change), and A again folds them.
@@ -507,7 +507,8 @@ the agent's `inspect_tools`.
   1. the chips (else each shows only its dot and count);
   2. the message, **whole or not at all**. If it doesn't fit beside "Saved · 14 changes", the count steps back to
      "Saved" (hover says "14 changes"). If it still doesn't fit, the message steps aside: hover on "Saved" says it,
-     and History keeps it;
+     and History keeps it. **A failure never steps aside** (it must be read where it happened): a red message too
+     long for its slot takes Search's room and the name's (Search folds to its icon) until the next message;
   3. Search (else its icon);
   4. the project name beyond its first 160 px (the scene name never shortens).
 - **Never shrunk or hidden:** "Saved" (the door to History), ↶ ↷, Export, ?.
@@ -752,7 +753,7 @@ the agent's `inspect_tools`.
 | **Animate** | ◇ click | Start animating / remove the key here | shared |
 | | K | Key the selection at the playhead | shared |
 | | A | Show / hide the selection's animated rows / automation lanes | shared |
-| | F9 · Shift+F9 · Ctrl+Shift+F9 · Ctrl+Alt+J | Smooth · ease in · ease out · jump | shared (2D now; Sound when curves land) |
+| | F9 · Shift+F9 · Ctrl+Shift+F9 · Ctrl+Alt+J | Smooth · ease in · ease out · hold | shared (2D now; Sound when curves land) |
 | | M | Add a marker at the playhead (name it at once) | shared |
 | **View** | Ctrl+wheel · pinch | Zoom at the pointer | shared |
 | | Shift+wheel · wheel | Scroll sideways / up and down | shared |

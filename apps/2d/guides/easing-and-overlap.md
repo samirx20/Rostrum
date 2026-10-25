@@ -3,20 +3,26 @@
 A key's `ease` shapes the stretch that starts at that key. Same distance, same time, different feel. These describe the
 curves, not what to choose; choose by what the move must say, then check by looking.
 
-| Ease | What the value does |
-|---|---|
-| `linear` | Constant speed. Starts and stops abruptly. Right for things that never really start or stop: a continuous drift, a spinner, a scrub. |
-| `hold` | Does not travel: stays at this key's value and jumps at the next key. A cut. |
-| `smooth` | Gentle start, longer settle (CSS `ease`). A safe default for small changes. |
-| `natural` | Gentle at both ends, a little more weight in the middle. Calm, even movements. |
-| `easeIn` | Starts slow, ends at full speed. The value leaves; nothing slows it at the end. Used for things leaving the frame. |
-| `easeOut` | Starts at full speed, slows into the end. Things arriving and settling. |
-| `easeInOut` | Symmetrical slow-fast-slow. Things travelling between two resting places. |
-| `snappy` | Almost all the travel happens in the first part, then a long soft settle. Reads as quick but not rough. |
-| `heavy` | Like `snappy`, with an even longer, softer landing. The last part crawls. |
-| `spring` | Overshoots the target and settles. Two words control it: `bounce` (0 none – 1 a lot) and `speed` (0 slow – 1 fast); the Key block's sliders are the same two. Experts may write `stiffness` and `damping` instead (bounce 0.6, speed 0.5 is stiffness 170, damping 12). The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
-| `bounce` | Falls onto the target and rebounds. Ends exactly on the value. |
-| `custom` | Your own curve: `x1 y1 x2 y2` (x 0–1; y may go below 0 or above 1 to overshoot). |
+Every screen and every agent uses the same list and words (the **Ease** picker in the Key block, a key's right-click and
+the Move view; `key.set {ease}` and `anim.ease {preset}` take the id, and `inspect` gives it back). The first six are
+shown first; the rest are under **More**.
+
+| On screen | Id | Key | What the value does |
+|---|---|---|---|
+| Linear | `linear` | | Constant speed. Starts and stops abruptly. Right for things that never really start or stop: a continuous drift, a spinner, a scrub. |
+| Smooth | `smooth` | F9 | Gentle start, longer settle (CSS `ease`). A safe default for small changes. |
+| Ease in | `easeIn` | Shift+F9 | Starts slow, ends at full speed. The value leaves; nothing slows it at the end. Used for things leaving the frame. |
+| Ease out | `easeOut` | Ctrl+Shift+F9 | Starts at full speed, slows into the end. Things arriving and settling. |
+| Spring | `spring` | | Overshoots the target and settles. Two words control it: `bounce` (0 none – 1 a lot) and `speed` (0 slow – 1 fast); the Key block's sliders are the same two. Experts may write `stiffness` and `damping` instead (bounce 0.6, speed 0.5 is stiffness 170, damping 12). The 0–1 of the stretch is read as one second, so a short stretch squeezes the wobble. |
+| Hold | `hold` | Ctrl+Alt+J | Does not travel: stays at this key's value and jumps at the next key. A cut. |
+| Snappy | `snappy` | | Almost all the travel happens in the first part, then a long soft settle. Reads as quick but not rough. |
+| Natural | `natural` | | Gentle at both ends, a little more weight in the middle. Calm, even movements. |
+| Heavy | `heavy` | | Like Snappy, with an even longer, softer landing. The last part crawls. |
+| Stronger smooth | `easeInOut` | | Symmetrical slow-fast-slow, stronger than Smooth. Things travelling between two resting places. |
+| Bounce | `bounce` | | Falls onto the target and rebounds. Ends exactly on the value. |
+| Custom | `custom` | | Your own curve: `x1 y1 x2 y2` (x 0–1; y may go below 0 or above 1 to overshoot). Not picked from the list: a key becomes Custom when you drag its small curve or shape it in the Curves tab. |
+
+`anim.ease` still takes `in` and `out` (the first words it had) for `easeIn` and `easeOut`.
 
 `look_motion` reports `overshoot` for a move whose curve goes past its landing value, so you can see how far a spring
 or custom curve really goes.

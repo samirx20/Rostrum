@@ -33,9 +33,10 @@ The same actions are in the command box (**Ctrl+K**).
 
 1. The app opens the project you had open last.
 2. With nothing to reopen, the start screen shows: **New**, **Open…**, **Open the sample** (the very first time only), your recent projects (with a picture of each), and three guides.
+3. While the start screen shows, only its own keys work: **Ctrl+N** (New), **Ctrl+O** (Open…) and **Esc** (back to your project, when one is open). The project behind it hears nothing (Space doesn't play it, Ctrl+K doesn't open its command box).
 
 ## 5. If a project can't be opened
 
-A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why and that nothing was changed.
+A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why, in plain words ("This project file is damaged and can't be opened: proj.mtn"), and that nothing was changed.
 
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

@@ -8,6 +8,8 @@
 //   db        stored as a linear gain (1 = as recorded), shown "−1.9 dB"; 0 is "−∞ dB"; typing -6 stores 0.501
 //   pan       stored −1..1, shown "L 30", "C", "R 30"; typing L30, R 30, -30 or 30 (right) works
 // Minus signs on screen are real minus signs (−); typing accepts either.
+// Typed sums work in every kind: 3*4, 12+8, 20/4, (2+3)*4, 1,5 (Arithmetic.js, the one parser).
+.import "Arithmetic.js" as Arith
 
 var KINDS = ["", "percent", "db", "pan"]
 var FLOOR = -60                       // dB: at or under this the gain is 0 (the Mixer's fader floor too)
@@ -69,11 +71,13 @@ function format(kind, v, s) {
 // typed words -> the stored value (NaN: not a value of this kind)
 function parse(kind, t) {
     var s = String(t).replace(/−/g, "-").trim().toLowerCase()
+    var sum = kind === "pan" ? null : Arith.calc(s)
+    if (sum) return sum.error ? NaN : stored(kind, sum.value)               // 3*4, 12+8, 1,5; a bad sum is refused whole
     if (kind === "db" && /^-?(inf|∞)/.test(s)) return 0
     if (kind === "pan") {
         if (s === "c" || s === "center" || s === "centre") return 0
         var side = s.charAt(0) === "l" ? -1 : s.charAt(0) === "r" ? 1 : 0
-        if (side) s = s.slice(1)
+        if (side) { s = s.slice(1); sum = Arith.calc(s); if (sum) return sum.error ? NaN : stored(kind, side * Math.abs(sum.value)) }
         var n = parseFloat(s.replace(/[^0-9eE+\-.]/g, ""))
         if (isNaN(n)) return NaN
         return stored(kind, side ? side * Math.abs(n) : n)
@@ -81,4 +85,27 @@ function parse(kind, t) {
     var thousands = /^[+\-]?[\d.]+\s*k(hz)?$/.test(s)          // "2k", "2.5 kHz": thousands (a frequency)
     var x = parseFloat(s.replace(/[^0-9eE+\-.]/g, ""))
     return isNaN(x) ? NaN : stored(kind, thousands ? x * 1000 : x)
+}
+
+var BAD = "Type a number or a sum, like 1920/3; start with = for an expression"
+// What a person typed into a box, read once (SPEC base T): {expression: "=…"} (a live expression, the app's own), {value}
+// (a plain number or a sum, stored; with `current` an array - a Mixed box - the same value for every one), {value, by}
+// / {value, factor} for a relative entry (+20 adds, *2 and /2 scale; `current` a number or an array gives each one's own
+// result; `by` stored units, `factor` unitless; "+-45" takes 45 away), or {error}. A leading "-" is a plain negative.
+function read(kind, text, current) {
+    var t = String(text).replace(/−/g, "-").trim()
+    if (t.charAt(0) === "=") return { expression: t }
+    var op = t.charAt(0), rel = op === "+" || op === "*" || op === "/"
+    if (rel && kind !== "db") {
+        var n = parse(kind === "pan" || kind === "percent" ? "" : kind, t.slice(1))      // the operand in shown units
+        if (isNaN(n)) return { error: BAD }
+        var by = op === "+" ? stored(kind, n) : 0, factor = op === "*" ? n : op === "/" ? 1 / n : 1
+        if (op === "/" && n === 0) return { error: BAD }
+        var f = function (c) { return op === "+" ? c + by : c * factor }
+        var out = { by: op === "+" ? by : undefined, factor: op === "+" ? undefined : factor }
+        if (current !== undefined && current !== null) out.value = typeof current === "object" ? Array.prototype.map.call(current, function (c) { return f(c) }) : f(current)
+        return out
+    }
+    var v = parse(kind, t)
+    return isNaN(v) ? { error: BAD } : { value: typeof current === "object" && current !== null ? Array.prototype.map.call(current, function () { return v }) : v }
 }

@@ -1,4 +1,4 @@
-"""The key bar (UX_SPEC 3.18, INTERACTION 1.5 point 6): the settings panel's Key block (KeyPanel.qml) while keys are picked. Ease ▾, a small
+"""The key bar (UX_SPEC 3.18, INTERACTION 1.5 point 6): the settings panel's Key block (KeyPanel.qml) while keys are picked. Ease (the kit's EasePicker.qml), a small
 curve to drag, for one key its Time and Value, and for a spring Bounce and Speed. Every picked key changes; each pick,
 field edit or whole drag is ONE change (key.set, key.handles: the operations an agent calls). Offered to QML as
 `backend.keyBar`. Screen state only; the keys picked are key_select.py's.
@@ -15,6 +15,7 @@ from rostrum_gui.edits import Drag
 from rostrum2d import fields as F
 
 from . import beat_words, eases
+from .keys2d import KEYS2D
 
 
 def kept(fn):
@@ -84,23 +85,15 @@ class KeyBar(QObject):
     @Property(str, notify=easeChanged)
     @kept
     def ease(self):
-        """The first key's ease ("" when the picked keys differ: the field then reads Mixed)."""
+        """The first key's ease id ("" when the picked keys differ: the picker then reads Mixed; "custom" after a drag)."""
         ids = self.picked()
         found = {self.b.doc.item(i).get("ease", "smooth") for i in ids}
         return found.pop() if len(found) == 1 else ""
 
     @Property("QVariantList", constant=True)
-    def eases(self):
-        return [{"value": e["value"], "label": e["label"]} for e in eases.EASES]
-
-    @Property("QVariantList", notify=easeChanged)
-    @kept
-    def options(self):
-        """The Ease ▾ list, plus the key's own ease when it is one of the document's others (Snappy …) or Mixed."""
-        out, now = self.eases, self.ease
-        if not now:
-            return [{"value": "", "label": "Mixed"}, *out]
-        return out if any(e["value"] == now for e in out) else [{"value": now, "label": eases.label_of(now)}, *out]
+    def easeList(self):
+        """The one ease list (EASE_LIST) with each ease's key (F9 …): what the Ease picker and a key's right-click show."""
+        return eases.rows(KEYS2D.key_of)
 
     @Property("QVariantList", notify=easeChanged)
     @kept
@@ -167,6 +160,11 @@ class KeyBar(QObject):
     def askMenu(self, x, y):
         self.menuAsked.emit(x, y)
 
+    @Slot(str)
+    def preview(self, value):
+        """The pointer on an ease in the list: the picked keys play it, nothing kept; "" puts them back (ease_play.py)."""
+        self.b._ease_play.preview(self.picked(), value)
+
     # ---- one change each --------------------------------------------------------------------------------------
     def _all(self, args: dict) -> list[dict]:
         return [{"op": "key.set", "target": self.picked(), "args": args}]
@@ -176,7 +174,7 @@ class KeyBar(QObject):
 
     @Slot(str, result=bool)
     def setEase(self, value):
-        """Ease ▾ or a key's right-click or F9 …: every picked key. Custom starts from the curve shown now."""
+        """The Ease picker, a key's right-click or F9 …: every picked key. Custom starts from the curve shown now."""
         if not self.picked() or not value:
             return False
         n = len(self.picked())

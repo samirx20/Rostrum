@@ -21,15 +21,21 @@ from . import export_area
 from .render import _fail
 
 
+def nothing_showing(comp: dict) -> bool:
+    """The scene has nothing to draw: no layer showing (the frame is the box that is exported, not something drawn) and no
+    soundtrack. The one rule behind "There is nothing to export yet", for the Export button and the agent tool alike."""
+    return not any(not lay.get("hidden") and lay.get("type") != "camera" for lay in comp.get("layers", [])) and not comp.get("soundtrack")
+
+
 def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> dict:
     """What a job exports, taken now (edits made while it runs are not in the file): the engine's scene, or for motion
     the samples themselves (read from the composition as it plays)."""
     from . import render
     if fmt != "motion":
         comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
-        if comp is not None and not any(not lay.get("hidden") for lay in comp.get("layers", [])) and not comp.get("soundtrack"):
+        if comp is not None and nothing_showing(comp):
             raise RostrumError(codes.BAD_ARGUMENT, "export", f'composition "{comp_id}"', "has nothing showing to export", hint="Add a layer (or show a hidden one) first.",
-                               plain="There is nothing to export yet: the composition has no layers showing. Add one first.")
+                               plain="There is nothing to export yet: the scene has no layers showing. Add one first.")
         return render.scene_of(doc, comp_id)
     import copy
     from rostrum_core import markers
@@ -58,7 +64,7 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
         from rostrum2d.io.lottie import write_lottie
         try:
             baked: list[str] = []
-            report = write_lottie(scene, target, baked=baked)
+            report = write_lottie(scene, target, baked=baked, progress=progress)
             doc = json.loads(target.read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
             raise _fail(where, f"the Lottie file {target.name}", e) from e

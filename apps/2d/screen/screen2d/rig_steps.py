@@ -17,6 +17,7 @@ or the sheets' clicks make. Bones, chains, poses and drawings are named by id or
     blinks open|close|apply | blinks every <s> | blinks vary <0..1> | blinks pick open|closed|half <drawing|->
 """
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 import time
 
@@ -171,9 +172,9 @@ def _real_click(bridge, bone, ctrl):
     win, p = _window_point(bridge, bone)
     mod = Qt.KeyboardModifier.ControlModifier if ctrl else Qt.KeyboardModifier.NoModifier
     QTest.mouseMove(win, p)
-    QTest.qWait(80)
+    wait(80)
     QTest.mouseClick(win, Qt.MouseButton.LeftButton, mod, p)
-    QTest.qWait(250)
+    wait(250)
 
 
 def _real_drag(bridge, bone, dx, dy):
@@ -183,11 +184,11 @@ def _real_drag(bridge, bone, dx, dy):
     win, p0 = _window_point(bridge, bone)           # the bone moves while it is posed: the path is made from where it began
     p1 = _window_point(bridge, bone, dx, dy)[1]
     QTest.mouseMove(win, p0)
-    QTest.qWait(80)
+    wait(80)
     QTest.mousePress(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p0)
-    QTest.qWait(40)
+    wait(40)
     for k in range(1, 21):
         QTest.mouseMove(win, QPoint(p0.x() + (p1.x() - p0.x()) * k // 20, p0.y() + (p1.y() - p0.y()) * k // 20))
-        QTest.qWait(16)
+        wait(16)
     QTest.mouseRelease(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p1)
-    QTest.qWait(250)
+    wait(250)

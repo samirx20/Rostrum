@@ -39,10 +39,11 @@ class AnchorSlots:
         item, p, b = self.doc.item(g.layer), g.p, g.box
         dx, dy = bounds.parent_delta(b, dx, dy)
         ldx, ldy = T.turn(dx, dy, -b["lrot"])                    # the drag along the layer's own sides
-        ax, ay = p["anchorX"] + ldx / b["lw"], p["anchorY"] + ldy / b["lh"]
+        sx, sy = (-1 if b["fx"] else 1), (-1 if b["fy"] else 1)    # a mirrored layer: its own sides run the other way
+        ax, ay = p["anchorX"] + sx * ldx / b["lw"], p["anchorY"] + sy * ldy / b["lh"]
         if not free:
             ax, ay = self._caught(ax, b["lw"]), self._caught(ay, b["lh"])
-        dx, dy = T.turn((ax - p["anchorX"]) * b["lw"], (ay - p["anchorY"]) * b["lh"], b["lrot"])
+        dx, dy = T.turn(sx * (ax - p["anchorX"]) * b["lw"], sy * (ay - p["anchorY"]) * b["lh"], b["lrot"])
         sets = {"anchorX": round(ax, 4), "anchorY": round(ay, 4)}
         if not g.placed:
             sets.update({"x": round(p["x"] + dx, 2), "y": round(p["y"] + dy, 2)})

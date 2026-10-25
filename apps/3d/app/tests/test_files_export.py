@@ -33,6 +33,6 @@ def test_new_scene_opens_again_and_a_failed_export_says_so(tmp_path):
     ex = Export3D(b, make_engine=BrokenEngine)
     ex.request()
     assert ex.wait(30)
-    assert ex.state == "failed" and "engine would not start" in ex.note and b.status.startswith("Error")
+    assert ex.state == "failed" and "engine would not start" in ex.note and b.statusFailed and "engine would not start" in b.status
     assert not list((folder / "renders").glob("*/v???")) if (folder / "renders").exists() else True
     b.close()

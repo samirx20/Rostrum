@@ -101,8 +101,8 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
         self.changed.emit()
 
     # ---- the actions -----------------------------------------------------------------------------------------------
-    @Slot(result=bool)
-    @Slot(str, result=bool)
+    # Those that put another project on screen (new, open, recent, sample, copy, rescue, rename) are not slots: they
+    # swap the window, so QML reaches them only through pickLater (file_menu.py), after the handler that asked.
     def newProject(self, name=""):
         def go():
             root = F.projects_root(self.kind)
@@ -114,21 +114,17 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
             self._fresh = Path(doc.folder)
         return self._try(go)
 
-    @Slot(str, result=bool)
     def openPath(self, path):
         return self._try(lambda: self._open(*self.kind.resolve(local(path)), quiet=False))
 
-    @Slot(int, result=bool)
     def openRecent(self, i):
         rows = self._rows()
         return 0 <= i < len(rows) and self._try(lambda: self._open(rows[i]["folder"], rows[i]["item"], quiet=False))
 
-    @Slot(result=bool)
     def openSample(self):
         """The app's sample, as the person's own copy (rostrum_core.samples): the original never changes."""
         return self._try(lambda: self._open(*samples.open_copy(self.kind.sample, self.kind.app), quiet=False))
 
-    @Slot(result=bool)
     def openCopy(self):
         return bool(self._copy) and self._try(lambda: self._open(*self._copy, quiet=False))
 
@@ -152,7 +148,6 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
             self.copied.emit(new.name)
         return self._try(go)
 
-    @Slot(str, result=bool)
     def rename(self, name):
         """Rename the project (its name on the top bar, clicked): the folder is renamed and the window reopens it
         there, live, where it was; Open recent follows (the old row drops out with its folder)."""
@@ -213,7 +208,7 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
             F.remember(self.kind, doc.folder, doc.item_id, self._name())
         self.changed.emit()
         if self._said:
-            self._say("Error: " + self._said)
+            self._refuse(self._said)
             self._said = ""
 
     def _picture(self, bridge, doc):
@@ -238,14 +233,18 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
         if self.host.bridge is not None:
             self.host.bridge.say(line)
 
+    def _refuse(self, sentence):
+        """A refused open / save in the person's words, red in the top bar; the console gets it as an error line."""
+        print("Error: " + sentence, file=sys.stderr)
+        if self.host.bridge is not None:
+            self.host.bridge.refuse(sentence)
+
     def _try(self, fn) -> bool:
         try:
             fn()
             return True
         except (RostrumError, OSError, ValueError) as e:
-            line = "Error: " + F.said(e)
             if self.host.bridge is None:
                 raise
-            self._say(line)
-            print(line, file=sys.stderr)
+            self._refuse(F.said(e))
             return False

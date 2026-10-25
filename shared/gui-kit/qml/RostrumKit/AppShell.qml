@@ -157,7 +157,7 @@ QQC.ApplicationWindow {
     // The shell's own keys and Ctrl+K's rows for them are ONE thing: runJob(job), by key-map job (an app's palette calls it too).
     function runJob(job) {
         switch (job) {
-        case "command_box": commandBar.open(); return true
+        case "command_box": commandBar.opened ? commandBar.close() : commandBar.open(); return true   // Ctrl+K again closes it, as F1 and Ctrl+/ do
         case "guides": win.guidesOpen ? win.closeGuides() : win.openGuides(); return true
         case "key_list": keyList.item && keyList.item.opened ? keyList.item.close() : keyList.get().open(); return true
         case "next_area": win.nextArea(); return true
@@ -185,24 +185,25 @@ QQC.ApplicationWindow {
     EscCloses { when: win.guidesOpen && win.focusArea === "guides"; area: guidesDrawer; onAsked: win.closeGuides() }
     EscCloses { when: win.historyOpen; area: historySheet; onAsked: { win.historyOpen = false; win.backToWork() } }
     EscCloses { when: win.exportOpen; area: exportSheet; onAsked: win.exporter.setOpen(false) }
-    Shortcut { sequence: "Ctrl+K"; onActivated: runJob("command_box") }
-    Shortcut { sequence: "F1"; onActivated: runJob("guides") }
-    Shortcut { sequence: "Ctrl+/"; onActivated: runJob("key_list") }
-    Shortcut { sequence: "F6"; onActivated: runJob("next_area") }
-    Shortcut { sequence: "Ctrl+\\"; onActivated: runJob("fold_panels") }
-    Shortcut { sequence: "Ctrl+H"; onActivated: runJob("history") }
+    // the shell's keys: never while a screen covers the work (the start screen: OpenPopups.covered)
+    Shortcut { sequence: "Ctrl+K"; enabled: !OpenPopups.covered; onActivated: runJob("command_box") }
+    Shortcut { sequence: "F1"; enabled: !OpenPopups.covered; onActivated: runJob("guides") }
+    Shortcut { sequence: "Ctrl+/"; enabled: !OpenPopups.covered; onActivated: runJob("key_list") }
+    Shortcut { sequence: "F6"; enabled: !OpenPopups.covered; onActivated: runJob("next_area") }
+    Shortcut { sequence: "Ctrl+\\"; enabled: !OpenPopups.covered; onActivated: runJob("fold_panels") }
+    Shortcut { sequence: "Ctrl+H"; enabled: !OpenPopups.covered; onActivated: runJob("history") }
     Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
-    Shortcut { sequence: "Ctrl+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export") }
-    Shortcut { sequence: "Ctrl+Shift+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export_again") }
-    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: runJob("undo") }
-    Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: runJob("redo") }
+    Shortcut { sequence: "Ctrl+E"; enabled: !OpenPopups.covered && (!!win.exporter || win.noExportWhy !== ""); onActivated: runJob("export") }
+    Shortcut { sequence: "Ctrl+Shift+E"; enabled: !OpenPopups.covered && (!!win.exporter || win.noExportWhy !== ""); onActivated: runJob("export_again") }
+    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened && !OpenPopups.covered; onActivated: runJob("undo") }
+    Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened && !OpenPopups.covered; onActivated: runJob("redo") }
 
     TopBar {
         id: topBar
         anchors { left: parent.left; right: parent.right; top: parent.top }
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
         renamable: typeof files !== "undefined" && !!files && files.hasProject     // the kit's files (project_files.py)
-        onRenameAsked: (name) => files.rename(name)
+        onRenameAsked: (name) => files.pickLater("rename:" + name)      // later: the window reopens under the new name
         job: win.exporter
         onCommandClicked: commandBar.open()
         onAboutClicked: win.openAbout()

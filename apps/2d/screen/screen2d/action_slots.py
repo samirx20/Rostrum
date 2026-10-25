@@ -21,7 +21,16 @@ from .keys2d import HAVE_ROWS, KEYS2D, ROUTES, SHELL, WINDOW
 COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release", "shape.boolean", "path.boolean",
            "layer.align", "layer.distribute", "layer.match_size", "style.apply", "layer.lock", "layer.unlock",
            "layer.hide", "layer.remove", "layer.duplicate", "style.define", "style.use", "style.detach",
-           "frame.fit", "frame.cut", "frame.home", "background.fit")
+           "frame.fit", "frame.cut", "frame.home", "background.fit", "layer.fill_frame")
+COVERED_FIELDS = ("locked", "hidden", "screenLock")      # settings whose own toggle an action is (Lock, Hide, Pin to frame)
+UNLISTED = ("key",)                                       # items Ctrl+K never offers to select: keys are picked on the timeline
+
+
+def _covered(key: str) -> bool:
+    """A kit command an action already is: the same operation, or the toggle of a setting an action switches."""
+    return any(key == o or key.startswith(o + ":") for o in COVERED) or any(key.endswith(f".set:{f}") for f in COVERED_FIELDS)
+
+
 MAKES = ("group.make", "rig.make", "mask.make", "shape.boolean")        # operations that make a layer: it is selected after
 
 
@@ -119,7 +128,8 @@ class ActionSlots(SlotMixin):
     def _commands(self):
         """Ctrl+K: the actions first (the same list as the bar and the menus), then the kit's commands they don't
         repeat."""
-        out = [c for c in super()._commands() if not any(c["key"] == o or c["key"].startswith(o + ":") for o in COVERED)]
+        out = [c for c in super()._commands() if not _covered(c["key"])
+               and not (c.get("select") and self.doc.item(c["select"])["type"] in UNLISTED)]
         f = self._facts()
         if f.facts.get("any_locked"):               # a locked pick: only Unlock-like commands; the rest would refuse
             out = [c for c in out if not _needs_unlock(c)]

@@ -4,7 +4,8 @@ a still one changes). The maths is transform.py. A slot mix-in for Bridge2D (see
 
 What a resize changes, per layer type: shapes and images change Width / Height (their own size); every other
 type (group, text, video, drawing, path, ...) changes Scale (a corner) or Stretch X / Y (an edge). X / Y follow so the opposite
-side stays put (Alt: the centre does), except in an auto layout, where the layout places the layer.
+side stays put (Alt: the centre does), except in an auto layout, where the layout places the layer. Dragged past the
+opposite side, a layer (a group too) mirrors (a negative Stretch) and keeps resizing.
 """
 from __future__ import annotations
 
@@ -75,7 +76,7 @@ class HandleSlots:
     @Slot(int, int, result=bool)
     def beginResize(self, hx, hy):
         def fields_of(g, item):
-            size = ("w", "rotation") if g.kit == "ends" else ("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
+            size = ("w", "rotation") if g.kit == "ends" else ("w", "h", "scaleX", "scaleY") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
             return size + (() if g.placed else ("x", "y"))
         ok = self._handle_begin("Resize", hx, hy, fields_of)
         if ok and self._grab.kit != "ends":             # the dragged edge snaps (snapper.py); not on a turned box
@@ -94,8 +95,9 @@ class HandleSlots:
         dx, dy = self._snap.edge(g.hx, g.hy, dx, dy)
         scaled = item["type"] not in OWN_SIZE
         dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
-        r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": b["ax"], "ay": b["ay"], "rot": b["lrot"]},
-                     g.hx, g.hy, dx, dy, shift, alt, uniform=scaled)
+        hx, hy, ax, ay = bounds.parent_side(b, g.hx, g.hy)    # inside a mirrored group the box runs the other way
+        r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": ax, "ay": ay, "rot": b["lrot"]},
+                     hx, hy, dx, dy, shift, alt, uniform=scaled)
         sets = {}
         if scaled and g.hx and g.hy:
             sets["scale"] = p["scale"] * r["w"] / b["lw"]
@@ -104,9 +106,13 @@ class HandleSlots:
         else:
             sets.update({"w": p["w"] * r["w"] / b["lw"]} if g.hx else {})
             sets.update({"h": p["h"] * r["h"] / b["lh"]} if g.hy else {})
+        for axis, crossed in (("scaleX", r["cx"]), ("scaleY", r["cy"])):      # past the opposite side: mirrored (a negative Stretch)
+            if crossed:
+                sets[axis] = -sets.get(axis, p[axis])
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
-        self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()]))
+        # fresh: on the values from before the drag, so a Stretch mirrored on one step and not on the next goes back
+        self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()], fresh=True))
 
     def _end_by(self, g, item, dx, dy, shift, alt):
         """A line's or arrow's end dragged: the end follows the pointer (line_ends.py); length and turn come with it."""
@@ -134,4 +140,5 @@ class HandleSlots:
         g.turned += 0.0 if g.last is None else T.short(a - g.last)
         g.last = a
         item = self.doc.item(g.layer)
-        self._guard(lambda: self._drag.preview([route.value_call(item, "rotation", round(T.rotate(g.p["rotation"], g.turned, shift), 2), self.own_t(g.layer))]))
+        turned = -g.turned if b.get("pm") else g.turned            # in a mirrored group, a turn on screen is the other way round in it
+        self._guard(lambda: self._drag.preview([route.value_call(item, "rotation", round(T.rotate(g.p["rotation"], turned, shift), 2), self.own_t(g.layer))]))

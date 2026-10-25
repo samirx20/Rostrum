@@ -17,7 +17,8 @@ from .history import Change, History
 from .tree import index
 from .who import Who
 
-NUDGE_S = 1.0     # repeated small changes to the same fields by the same person merge within this time
+NUDGE_S = 1.0     # repeated small changes to the same fields by the same person merge within this time (never one
+                  # that puts a field back where the merged step began: that is an undo-able step of its own)
 _last_t = [0.0]
 
 
@@ -200,6 +201,8 @@ class Document:
         if {(e.id, *e.path) for e in edits} != {(e.id, *e.path) for e in last.edits}:
             return False
         first = {(e.id, *e.path): e.before for e in last.edits}
+        if any(e.value == first[(e.id, *e.path)] for e in edits):   # back where it began (a switch turned off again, a
+            return False                                            # group added then taken away): its own step to undo
         last.edits = [E.Set(e.id, e.path, e.value, first[(e.id, *e.path)]) for e in edits]
         last.calls, last.t = last.calls + calls, self.clock()
         last.hash_of(work)

@@ -28,6 +28,21 @@ class EditSlots(SlotMixin):
         return self._guard(lambda: self._apply([self.edit_call(i, param, value) for i in ids],
                                                self._many(self._edit_label(ids[0], param, value), len(ids))))
 
+    @Slot(str, float, float, result=bool)
+    def setRelative(self, param, by, factor):
+        """A typed +20 / *2 / /2: each item's own value, as `value.set {by}` (the call an agent makes; `relative_call`),
+        all of them one change. `by` adds (stored units); `factor` scales (1 = not a scaling)."""
+        ids = self._targets(param)
+        calls = [c for c in (self.relative_call(i, param, by, factor) for i in ids) if c]
+        if not calls:
+            self._fail(f"Error: setRelative {param}: no item can take it.", "This setting can't take +20 or *2 here; type the number.")
+            return False
+        return self._guard(lambda: self._apply(calls, self._many(edit_label(self.doc, ids[0], param, by), len(calls))))
+
+    def relative_call(self, item_id, param, by, factor):
+        """The `value.set {by}` call for one item, or None (an app that takes +20 / *2 overrides this)."""
+        return None
+
     @Slot(str)
     def holdEdit(self, param):
         """A settings field's caret went in: what it commits goes to the items selected now (pending.py)."""
@@ -139,11 +154,15 @@ class EditSlots(SlotMixin):
 
     @Slot()
     def undo(self):
-        """The person's newest change in this document or a joined one (the markers): one history (desk.py)."""
+        """The person's newest change in this document or a joined one (the markers): one history (desk.py). A change
+        still open (a colour picker's session, a field being dragged) is closed first, so Ctrl+Z takes back what was
+        just done there, never "Nothing to undo"; the control's next change opens a new one (`scrub`)."""
+        self._close_scrub(cancel=False)
         self._guard(lambda: self._step(desk.undo, "Nothing to undo"))
 
     @Slot()
     def redo(self):
+        self._close_scrub(cancel=False)
         self._guard(lambda: self._step(desk.redo, "Nothing to redo"))
 
     def _step(self, fn, nothing):

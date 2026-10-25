@@ -23,6 +23,7 @@ from .marked import id_part, marked, order, same_time
 TIME = dict(min=0, max=36000, unit="s")                         # a moment to read or set a value at
 KEY_TIME = dict(min=-36000, max=36000, unit="s", markers=True)  # where a key sits: seconds or "#drop+0.2" (marked.py)
 V = Param.number("v", label="Value", help="For a number field")
+BY = Param.number("by", label="By", help="Instead of a value: how much to add to each target's own value now (+20; a doubling is by = its value)")
 C = Param.color("c", label="Colour", help="For a colour field")
 EASE = Param.choice("ease", EASES, label="Ease", help="Shapes the way to the next key")
 FROM = Param.text("from", label="From", importance="deep",
@@ -138,17 +139,27 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
     @registry.operation("value.set", "Change a field as a person sees it now: a still field changes; an animated field "
                         "gets a key at `at`.", target=owners, label="Set value",
                         params=[PROP_NEEDED, Param.number("at", label="At", help="The time (needed when the field is animated)",
-                                                   **TIME), *vals])
+                                                   **TIME), BY, *vals])
     def value_set(ctx, targets, args):
+        if "by" in args and any(k in args for k in ("v", "c", "d")):
+            ctx.fail(codes.BAD_ARGUMENT, '"by"', "can't be given with a value (\"v\")", hint="Give the new value, or how much to add to each one's own value.")
         for t in targets:
-            owner, prop = ctx.item(t), args["prop"]
+            owner, prop, a = ctx.item(t), args["prop"], args
             settable(ctx, owner, prop)
-            if keys_of(owner, prop):
-                if "at" not in args:
+            if "by" in args:         # added to this item's own value now (at `at` for an animated field)
+                keys = keys_of(owner, prop)
+                if keys and "at" not in args:
                     ctx.fail(codes.BAD_ARGUMENT, '"at"', f"is needed: {t}.{prop} is animated", hint="Give the time.")
-                put_key(ctx, t, prop, args["at"], args)
+                now = track_value(keys, args["at"]) if keys else owner.get(prop)
+                if isinstance(now, bool) or not isinstance(now, (int, float)):
+                    ctx.fail(codes.BAD_ARGUMENT, '"by"', f"only changes a number; {t}.{prop} is not one")
+                a = {**{k: v for k, v in args.items() if k != "by"}, "v": now + args["by"]}
+            if keys_of(owner, prop):
+                if "at" not in a:
+                    ctx.fail(codes.BAD_ARGUMENT, '"at"', f"is needed: {t}.{prop} is animated", hint="Give the time.")
+                put_key(ctx, t, prop, a["at"], a)
             else:
-                ctx.set(t, prop, check_still(ctx, owner, prop, args))
+                ctx.set(t, prop, check_still(ctx, owner, prop, a))
 
     @registry.operation("key.clear", "Stop animating a field: delete its keys and keep its value at `at` as the still value.",
                         target=owners, label="Stop animating", importance="secondary",

@@ -33,7 +33,7 @@ it by its type (`frame.view.of`), never by its id.
 | any top-level layer: `screenLock` | Pinned to frame: its `x`, `y` are in the frame's own px. |
 
 `x`, `y`, `zoom`, `rotation` and `rideAlong` are keyed with the one animation model. A **cut** is a jump: a key with
-the `hold` ease, then the next key (the screen will call that ease *Jump*). Keys may sit on shared markers
+the `hold` ease, then the next key (the screen calls that ease *Hold*). Keys may sit on shared markers
 (`"#reveal-0.033"`), so a cut moves with its marker.
 
 **Refused**, naming the item and field: no frame or two in a scene (so the frame can't be deleted or a second added);
@@ -58,7 +58,7 @@ stays on it, so moving the marker moves the framing or the cut.
 | Operation | Args | Does | Valid when |
 |---|---|---|---|
 | `frame.fit` | `to` `view` / `rect` / `items`; `rect` `[x, y, w, h]` world px (the screen sends its visible view); `ids` (layers); `at` (default 0); `pad` (share of the output per side: 0.05 for layers, 0 for a rectangle); `keepRotation` (default true); `cut` (true = `frame.cut` with this `to`) | A rectangle: the largest output-shaped box inside it, turned as the frame is. Layers: the frame that shows them as they will look **in the export at `at`**, depth counted (a far layer moves less, so the frame goes further), as close as `pad` allows, centred (`frame/fit.py`). | not locked |
-| `frame.cut` | `at` (required, at least one frame after 0); optional `to`, `ids`, `rect`, `pad`, `keepRotation` as `frame.fit` | x, y, zoom, rotation each get the place the frame has one frame before `at`, keyed there with the `hold` ease (the screen's *Jump*), and at `at` the same place, or with `to` the new one (the jump and the next shot in one step). On a marker the key before is the marker minus one frame (`"#logo lands-0.033333"`). | not locked |
+| `frame.cut` | `at` (required, at least one frame after 0); optional `to`, `ids`, `rect`, `pad`, `keepRotation` as `frame.fit` | x, y, zoom, rotation each get the place the frame has one frame before `at`, keyed there with the `hold` ease (the screen's *Hold*), and at `at` the same place, or with `to` the new one (the jump and the next shot in one step). On a marker the key before is the marker minus one frame (`"#logo lands-0.033333"`). | not locked |
 | `frame.home` | `at` (default 0) | x, y back to home, zoom 1, rotation 0: a still field changes, an animated one gets a key at `at`. Refused when the frame is already home there. | not locked, and the frame is away (fact `frameAway`: keyed, or still off home) |
 
 **The keying rule of a fit:** x, y and zoom (and rotation when the turn isn't kept) get a key at `at`; a field with no

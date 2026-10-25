@@ -167,6 +167,9 @@ def open_whole(kind: AppFiles, folder, item):
         if "newer" in e.problem:
             raise RostrumError(codes.CHECK_FAILED, "open", name, f"was saved by a newer {kind.title}",
                                hint=f"Update {kind.title} to open it. {UNTOUCHED}") from e
+        if "can't be read" in e.problem:     # a file that is not valid JSON: plain words, never the parser's own (kept as the cause)
+            raise RostrumError(codes.CHECK_FAILED, "open", f"This {kind.noun} file", f"is damaged and can't be opened: "
+                               f"{Path(e.subject).name or Path(folder).name}", hint=UNTOUCHED) from e
         hint = e.hint or ""
         raise RostrumError(e.code, "open", e.subject if e.subject.startswith("The ") else name,
                            e.problem if e.subject.startswith("The ") else f"didn't open: {e.subject} {e.problem}",

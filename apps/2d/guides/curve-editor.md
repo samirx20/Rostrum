@@ -27,13 +27,6 @@ If the layer has nothing animated, the view says "Select a layer with animated f
 
 ## 4. Change the ease without the curve
 
-You don't need the curve editor for a named ease. Select keys (in **Keys**, or by clicking in the curve view) and the **Key** block appears at the top of the settings panel:
+Pick a key (or the stretch between two keys) and open **Ease**: each ease shows its curve, and hovering one plays it on the canvas. The common ones have keys: **F9** Smooth, **Shift+F9** Ease in, **Ctrl+Shift+F9** Ease out, **Ctrl+Alt+J** Hold. **More** has the rest. Drag the small curve, or use the Curves tab, for your own.
 
-- **Ease** list: **Linear**, **Ease in**, **Ease out**, **Smooth**, **Spring**, **Jump**, **Custom**. Every selected key changes. Right-click a key for the same list.
-- With **Spring** picked, **Bounce** and **Speed** sliders appear.
-- The ease's curve, always whole inside its box: a spring's or a back ease's overshoot is fitted in, with faint lines at the start and end values. Drag its two round handles (a custom curve); **Time** and **Value** for a single key.
-- The **⋯** menu: **After the last key** (Stay, Repeat, Back and forth, Carry on), and whether the canvas plays an ease once when you pick it.
-
-Clicking the **bar between two keys** in the timeline (not a diamond) shows a different view of the same thing: a **Move** view over the whole settings panel, with the ease buttons **Linear**, **Smooth**, **In**, **Out**, **Spring**, **Bounce** and **Hold**, the move's **Start** and **Length**, **Reverse** and **Delete**. **‹** or **Esc** goes back to the layer's settings. See [first-animation.md](first-animation.md), section 6.
-
-Keys: **F9** Smooth, **Shift+F9** Ease in, **Ctrl+Shift+F9** Ease out, **Ctrl+Alt+J** Jump.
+**Ease** is the same button and list in three places: the **Key** block at the top of the settings panel (keys picked in **Keys** or in the curve view), a key's right-click, and the **Move** view (click the **bar between two keys**, not a diamond; **‹** or **Esc** goes back; see [first-animation.md](first-animation.md), section 6). The button shows the current ease and its curve: **Mixed** when the picked keys differ, **Custom** after its curve was dragged. With **Spring**, **Bounce** and **Speed** sliders appear under it. The Key block's **⋯** has **After the last key** (Stay, Repeat, Back and forth, Carry on) and whether the canvas plays an ease once when you pick it.

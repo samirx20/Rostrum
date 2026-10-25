@@ -4,8 +4,9 @@ StretchSelect (stretch_select.py). Each is ONE operation call, one history step;
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Slot
-from rostrum_core.keys.anims import PRESET_LABELS, PRESETS
+from rostrum_core.keys.easing import EASE_LIST, OLD_NAMES
 
+from . import eases
 from .edits import Drag
 
 
@@ -17,11 +18,18 @@ class StretchEdits(QObject):
         return bool(calls) and self.b._guard(lambda: self.b._done(self.b.doc.apply(calls, self.b.who, label=label), ""))
 
     @Slot(str, result=bool)
-    def setEase(self, preset):
+    def setEase(self, ease):
+        """An ease of the one list (its id, as key.set {ease} takes it; "in" / "out" still read): anim.ease, one change."""
         f = self._found()
-        if not f or preset not in PRESETS:
+        if not f or not any(e["id"] == OLD_NAMES.get(ease, ease) for e in EASE_LIST):
             return False
-        return self._apply([{"op": "anim.ease", "target": f[1]["ids"], "args": {"preset": preset}}], f"Ease: {PRESET_LABELS[preset]}")
+        return self._apply([{"op": "anim.ease", "target": f[1]["ids"], "args": {"preset": ease}}], f"Ease: {eases.label_of(ease)}")
+
+    @Slot(str)
+    def preview(self, ease):
+        """The pointer on an ease in the list: the app plays it on the stretch, nothing kept; "" puts it back."""
+        f = self._found()
+        self.preview_ease(f[1]["ids"] if f else [], ease)
 
     def _moves(self, keys, by):
         return [{"op": "key.set", "target": [k], "args": {"t": round(self.own_t(self._owner, self.key(k)["t"] + by), 6)}}

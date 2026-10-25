@@ -4,7 +4,6 @@ the timeline's stretches and lines). X and Y of Position (W and H of Size, …) 
 from __future__ import annotations
 
 from rostrum_core.keys import anims as core
-from rostrum_core.keys.anims import NAME_OF, PRESET_LABELS, PRESETS, ease_name, pack  # noqa: F401  (2D's importers)
 
 from . import fields as F
 

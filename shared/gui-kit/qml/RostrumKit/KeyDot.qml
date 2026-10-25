@@ -10,6 +10,7 @@ import RostrumKit
 // (a layer's bar), so it sits at its time whatever holds it.
 Item {
     id: key
+    objectName: "keyDot:" + (key.ids[0] || "")     // a scripted hand finds a key by its (first) id
     required property int index
     property var list                 // the row's dots (LayerTrack.barDots / loneDots); this one is list[index], kept while the list is shorter
     property var dot: ({ t: 0, id: "", ids: [] })

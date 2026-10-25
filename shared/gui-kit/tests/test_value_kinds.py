@@ -22,3 +22,14 @@ def test_typed_forms():
     assert K.parse("db", "-inf") == 0
     assert K.parse("pan", "R30") == pytest.approx(0.3) and K.parse("pan", "-30") == pytest.approx(-0.3)
     assert K.parse("percent", "lots") is None                                # not a value: the field keeps its own
+
+
+def test_read_what_was_typed():
+    r = K.read
+    assert r("", "3*4")["value"] == 12 and r("", "1,5")["value"] == 1.5 and r("", "-45")["value"] == -45
+    assert r("", "+20", 100)["value"] == 120 and r("", "+20", 100)["by"] == 20
+    assert r("", "*2", [10, 30])["value"] == [20, 60] and r("", "/2", 100)["value"] == 50
+    assert r("", "+-45", 100)["value"] == 55 and r("", "12 px")["value"] == 12
+    assert r("percent", "+20", 0.5)["value"] == pytest.approx(0.7)
+    assert r("", "=time") == {"expression": "=time"}
+    assert r("", "abc")["error"].startswith("Type a number or a sum") and "error" in r("", "3*")

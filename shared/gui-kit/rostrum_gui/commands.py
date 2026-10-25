@@ -157,13 +157,15 @@ def search(commands: list[dict], query: str) -> list[dict]:
     """The commands whose words match the query, best first. The one rule: a command whose NAME is the query, or starts
     with it ("split" -> "Split at the playhead"), beats every other; then a name that has every query word starting a
     word of it ("move" finds "move it", never "remove"; any order, any case); then the command's own `words`, then
-    the rest (hint, `context`, operation names). Within a rank: the app's own actions on the selection (`own`) first,
+    the rest (hint, `context`, operation names). Names win: when any command's name says the words, commands that only have them in a description are not listed. Within a rank: the app's own actions on the selection (`own`) first,
     then the most used (`weight`). A command that makes something new (`makes`) is found by its name only, never by a
     loose word of its summary ("mute" must not add a group). An empty query: every command, most used first."""
     q = " ".join(query.lower().split())
     words = q.split()
     ranked = sorted((r, 0 if c.get("own") else 1, c.get("weight", 0), i) for i, c in enumerate(commands)
                     if (r := rank(c, words, q)) is not None)
+    if q and any(r <= 1 for r, *_ in ranked):         # a command NAMED by the words: descriptions only help when no name does
+        ranked = [x for x in ranked if x[0] <= 1]
     return [commands[i] for *_, i in ranked]
 
 

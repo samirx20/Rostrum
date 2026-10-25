@@ -34,7 +34,7 @@ Only the settings that apply to the chosen format are shown.
 4. **Bit depth** (PNG): how finely colour is kept, **8-bit** or **16-bit**.
 4. **Include the project's sound** (MP4 only, and only when the project has sound): a switch.
 5. **Range**: a picker at the top of the sheet, above the list of formats. **Everything** (with the length in seconds) is the first choice; after it come the stretches between your markers, one for each pair of neighbouring markers, such as "intro → drop". It shows only when the project has at least two markers to pick from; with none, you export everything.
-6. If the project has more than one picture to choose from, a **Composition** picker appears first.
+6. **Scene**: when the project has more than one scene, a picker below the list of formats, first of the settings. It starts on the scene the window shows (showing another scene changes it too).
 
 ## 4. Where the file goes
 
@@ -45,10 +45,12 @@ Only the settings that apply to the chosen format are shown.
 
 ## 5. Export
 
-1. Click **Export**. A progress bar runs, and **Cancel** appears beside it while it works.
+1. Click **Export**. A progress bar runs (for Lottie it moves layer by layer; a Lottie file takes well under a second for most scenes), and **Cancel** appears beside it while it works.
 2. When it finishes, the panel says **Exported** and the file's real name (for a run of pictures: how many, and the first and last, such as "48 pictures, Scene_0001.png to Scene_0048.png"), with **Play** and **Show in folder**. One line above it says the file as written: its size on disk, its pixel size and its frames, such as "0.2 MB · 960×540 · 150 frames at 15 fps" (a GIF says its length instead: "0.2 MB · 960×540 · 10 s at 15 fps"). Only what that line and the settings above don't already say is listed under the settings (for an MP4: how it was encoded). Change a setting and the result line goes, because it no longer describes what **Export** would make.
 3. Click **Show in folder** to open where it went.
-4. If something goes wrong the panel says so in red. Nothing is reported as done unless the file was made.
+4. If something goes wrong the panel and the top bar say so in red, in plain words: what could not be saved and why, such as "Couldn't save the file: this computer won't let Rostrum write to …. Pick another folder." (the full technical line goes to the console, for agents and logs). Nothing is reported as done unless the file was made.
+5. A scene with nothing showing (no layer, or every layer hidden; the frame alone draws nothing) is not exported: the panel says "There is nothing to export yet: the scene has no layers showing. Add one first." and no file is made. Agents get the same refusal from `render_export`.
+6. **Ctrl+Shift+E** exports again with the last settings without opening the panel. Before your first export in this window there are no last settings: the top bar says "Nothing exported yet — Ctrl+E to export".
 
 ## 6. How long it takes
 

@@ -59,15 +59,16 @@ Item {
     ActionMenu { id: menu; onPicked: (key) => vc.act(key) }
 
     // The keys of the key map (Ctrl+0, Ctrl+1, F, Shift+C, Ctrl+= / Ctrl+-) come through the one KeyMap (Main.qml windowJobs → key(job));
-    // only the extra spellings of two of them live here
+    // Shift+1 and Shift+2 are in it too; only the typed-symbol spellings of two live here
     function key(job) {
         if (job === "fit_all") fitFrame()
         else if (job === "actual_size") view.show(1)
         else if (job === "fit") fitSelection()
+        else if (job === "fit_everything") fitEverything()
         else if (job === "look_through") look.toggle()
         else if (job === "zoom_in") view.step(1)
         else if (job === "zoom_out") view.step(-1)
     }
-    Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+1"]); onActivated: vc.fitEverything() }
-    Shortcut { sequences: ["Shift+2", "@"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+2"]); onActivated: vc.fitSelection() }
+    Shortcut { sequences: ["!"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+1"]); onActivated: vc.fitEverything() }
+    Shortcut { sequences: ["@"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+2"]); onActivated: vc.fitSelection() }
 }

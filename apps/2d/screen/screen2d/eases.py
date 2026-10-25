@@ -1,2 +1,2 @@
-"""The eases a person picks: the kit's one list (rostrum_gui/eases.py), shared with 3D's timeline."""
-from rostrum_gui.eases import BEZIERS, EASES, OTHER, handles, label_of  # noqa: F401  (2D's importers)
+"""The eases a person picks: the one list (rostrum_core.keys.easing.EASE_LIST) as the kit shows it (rostrum_gui/eases.py)."""
+from rostrum_gui.eases import BEZIERS, EASE_LIST, handles, label_of, rows  # noqa: F401  (2D's importers)

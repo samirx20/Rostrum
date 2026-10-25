@@ -21,12 +21,22 @@ def new_item(ctx, type_, args, **extra) -> dict:
     id_ = args.get("id") or ctx.new_id(type_)
     if id_ in _all_ids(ctx):
         ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
-    name = args.get("name") or (unique_name(_names(ctx), F.LABELS[type_])
-                                if type_ in (*F.LAYERS, "comp") else F.LABELS[type_])
+    name = args.get("name") or (scene_name(ctx) if type_ == "comp" else unique_name(_names(ctx), F.LABELS[type_])
+                                if type_ in F.LAYERS else F.LABELS[type_])
     item = {"id": id_, "type": type_, "name": name, **F.defaults(type_), **extra}
     for key in LISTS.get(type_, []):
         item[key] = []
     return item
+
+
+def scene_name(ctx) -> str:
+    """A new scene is numbered: "Scene 2", then "Scene 3" (the first scene is the project's own, "Main" or the like)."""
+    taken, n = _names(ctx), 2
+    if not ctx.doc.get("comps"):
+        return F.LABELS["comp"]
+    while f"{F.LABELS['comp']} {n}" in taken:
+        n += 1
+    return f"{F.LABELS['comp']} {n}"
 
 
 def _all_ids(ctx):
@@ -42,7 +52,7 @@ def _names(ctx) -> set[str]:
 
 
 @R.operation("comp.add", "Add a composition (one shot: its frame size, frame rate and length). It comes with its frame "
-             "(the box that is exported) at home, still.", label="Add scene",
+             "(the box that is exported) at home, still.", label="New scene",
              params=[ID, NAME, *F.FIELDS["comp"]])
 def comp_add(ctx, targets, args):
     from .frame import make
@@ -52,8 +62,8 @@ def comp_add(ctx, targets, args):
     ctx.insert(item["id"], "layers", make.new(item, {*_all_ids(ctx), item["id"]}))
 
 
-@R.operation("comp.remove", "Delete compositions with everything in them. Never the last one.",
-             target=("comp",), label="Delete composition", importance="secondary")
+@R.operation("comp.remove", "Delete scenes with everything in them (Undo brings them back). Never the last one.",
+             target=("comp",), label="Delete scene", importance="secondary")
 def comp_remove(ctx, targets, args):
     comps = ctx.doc.get("comps", [])
     left = [c["id"] for c in comps if c["id"] not in targets]

@@ -151,7 +151,7 @@ def _cut(ctx, fid, args):
 
 
 @R.operation("frame.cut", "Cut: the frame jumps at `at` (seconds or a marker). Keys its place now one frame before with "
-             "the hold ease (Jump) and at `at` the same place, or with `to` (view, items or rect, as frame.fit) the new "
+             "the hold ease (the screen's Hold) and at `at` the same place, or with `to` (view, items or rect, as frame.fit) the new "
              "place: the jump and the next shot in one step.", target=TYPE, label="Cut here", valid_when=UNLOCKED,
              params=[replace(AT, required=True, help="Where the cut is (composition seconds, or a marker: the cut "
                                                          "follows it)"), *TO])

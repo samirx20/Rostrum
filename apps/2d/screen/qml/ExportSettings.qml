@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// 2D's part of the kit Export sheet (AppShell.exportSettings): the composition (only when there is more than one), the
+// 2D's part of the kit Export sheet (AppShell.exportSettings): the scene (only when there is more than one), the
 // chosen format's settings (only the ones that apply: backend.exporter.settings, screen2d/export_rows.py; a GIF's ends
 // with what it comes to), and after it is done, what the file holds beyond the kit's result line and, for Lottie, what it couldn't carry.
 Column {
@@ -17,7 +17,7 @@ Column {
     }
     Row {
         visible: root.job.comps.length > 0
-        Label { text: "Composition" }
+        Label { text: "Scene" }
         ChoiceField { anchors.verticalCenter: parent.verticalCenter; width: root.width - root.labelW
                       options: root.job.comps; current: root.job.comp; onPicked: (v) => root.job.setComp(v) }
     }

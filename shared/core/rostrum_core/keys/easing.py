@@ -19,7 +19,25 @@ BEZIERS = {
     "easeOut": (0.0, 0.0, 0.58, 1.0),
     "easeInOut": (0.65, 0.0, 0.35, 1.0),
 }
-NAMES = ["linear", "hold", *BEZIERS, "spring", "bounce", "custom"]
+# THE ONE LIST of eases a person or an agent picks (2D SPEC pro-workflows, base E): `id` is the key's `ease` in the
+# document (what key.set {ease} and anim.ease {preset} take, and what inspect gives back), `label` the one word every
+# screen says, `job` the shared key map job that sets it (its key: F9 …), `group` "main" (shown first) or "more" (the
+# picker's More fold), `curve` 17 points [x, y] for the small picture (added below, from `ease`). "custom" is no row:
+# it is what a key becomes when its curve handles are dragged (CUSTOM).
+EASE_LIST = [{"id": i, "label": label, "job": job, "group": group} for i, label, job, group in (
+    ("linear", "Linear", "", "main"), ("smooth", "Smooth", "smooth", "main"), ("easeIn", "Ease in", "ease_in", "main"),
+    ("easeOut", "Ease out", "ease_out", "main"), ("spring", "Spring", "", "main"), ("hold", "Hold", "jump", "main"),
+    ("snappy", "Snappy", "", "more"), ("natural", "Natural", "", "more"), ("heavy", "Heavy", "", "more"),
+    ("easeInOut", "Stronger smooth", "", "more"), ("bounce", "Bounce", "", "more"))]
+CUSTOM = {"id": "custom", "label": "Custom"}
+OLD_NAMES = {"in": "easeIn", "out": "easeOut"}      # anim.ease's first preset words, kept for scripts already written
+NAMES = [*(e["id"] for e in EASE_LIST), "custom"]
+LABELS = {e["id"]: e["label"] for e in (*EASE_LIST, CUSTOM)}
+
+
+def label_of(name: str) -> str:
+    """The one word for an ease ("easeIn" is "Ease in"); an old name reads as its ease's."""
+    return LABELS.get(OLD_NAMES.get(name, name), name)
 
 
 def _bez(p1: float, p2: float, u: float) -> float:
@@ -82,3 +100,7 @@ def ease(key: dict, x: float) -> float:
     if name == "bounce":
         return bounce(x)
     raise ValueError(f'unknown ease "{name}"; accepted: {", ".join(NAMES)}')
+
+
+for _e in EASE_LIST:
+    _e["curve"] = [[round(i / 16, 4), round(ease({"ease": _e["id"]}, i / 16), 4)] for i in range(17)]

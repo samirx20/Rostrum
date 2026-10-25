@@ -5,8 +5,8 @@ import "."
 // beside it (to its left): square, hue, hex, pipette, the project's and the brand's swatches; a hex typed in the box
 // is one change (`edited`). `atRest` ("Mixed") shows in words in place of the hex. Project / brand swatches come from
 // the app's optional `colourBank`.
-// One picker session = one undo: with `scrubbed` set (the inspector does) the changes go out as began() / live(hex) ...
-// ended(); otherwise `edited(hex)` is sent once, with the last colour, when the picker closes.
+// One whole change in the picker (a drag let go, a hex or swatch taken: ColorPicker.done) = one undo: with `scrubbed` set
+// (the inspector does) it goes out as began() / live(hex) ... ended(); otherwise `edited(hex)` is sent once, with its colour.
 SwatchHex {
     id: f
     property string hex: "#ffffff"
@@ -53,6 +53,7 @@ SwatchHex {
                 f.changing = true
             }
             onSwatchAdd: (hx) => f.saveSwatch(hx)
+            onDone: f.settle()
         }
     }
     }

@@ -27,6 +27,7 @@ Column {
     property string rowsHost: ""
     signal edited(var paint)
     signal chosen(var paint)
+    signal done()                         // a whole colour change ended (ColorPicker.done): the field closes its open change
     signal added()                        // Painted's New painting (the field ends its open change first)
     signal paintAsked()                   // Paint it (the field closes the picker and asks the app)
     property string paintIt: ""           // the app's Paint it action ("" = no Paint it)
@@ -128,6 +129,7 @@ Column {
         }
         onExtraEdited: (t) => pp.moveStop(t)
         onSwatchAdd: (hx) => pp.swatchAdd(hx)
+        onDone: pp.done()
     }
 
     PicturePaint {

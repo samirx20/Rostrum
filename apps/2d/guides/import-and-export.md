@@ -56,13 +56,14 @@ the picture comes out black. webm and ProRes go through FFmpeg; PNG and EXR are 
 
 ### Lottie
 
-`write_lottie(scene, path)` (and `to_lottie(scene)`) writes bodymovin 5.x JSON from the scene description and returns a
+`write_lottie(scene, path, progress=None)` (and `to_lottie(scene)`) writes bodymovin 5.x JSON from the scene description and returns a
 **report** of everything Lottie could not carry. Today:
 
 - Carried: shapes, paths, images (embedded), groups (as precomps, `clip` as a mask), keys with ease, the background as the
   bottom solid. A solid fill's `fillOpacity` goes to the Lottie fill's own opacity, keyed when it is keyed.
 - Text is exported as glyph outlines, with line baselines placed by the engine's own line-box rule (whole-pixel ascent, descent and line tops), so a wrapped paragraph sits where the engine draws it.
-- Not exported, always listed in the report: text, drawings, video, tilt, effects, conic gradients, soft mask edges.
+- Not exported, always listed in the report: drawings (frame-by-frame), video, tilt, effects, motion blur, conic gradients, soft mask edges, and a text whose font is not found on this computer.
+- `progress(done, total)` (optional, as for the other exports) is called as each of the scene's layers is done; the Export sheet's bar follows it.
 
 ## Seeing and checking an export
 

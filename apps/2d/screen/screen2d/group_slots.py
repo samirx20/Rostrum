@@ -5,13 +5,16 @@ The maths is `union` / `resized` / `turned` below (No Qt). A slot mix-in for Bri
 
 What a layer takes from a resize: shapes, images, groups change Width / Height; every other type changes Scale (a corner)
 or Stretch X / Y (an edge), as one layer's handles do (handle_slots.py). Its position follows so it stays in the same
-place inside the box. A layer turned a quarter still scales along the box's axes, not its own.
+place inside the box. A layer turned a quarter still scales along the box's axes, not its own. Dragged past the
+opposite side, the box mirrors (transform.resize, the one rule for every box): each layer's place mirrors across the
+fixed edge, and its Stretch and turn as layer.flip's (rostrum2d/ops_flip.mirrored).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from PySide6.QtCore import Slot
+from rostrum2d import ops_flip as flip
 from rostrum2d.evaluate import resolve
 
 from . import bounds, exprs, layout_drag, route, transform as T
@@ -29,16 +32,27 @@ def union(boxes: list[dict]) -> dict:
 
 
 def resized(box: dict, hx: int, hy: int, dx: float, dy: float, shift=False, alt=False) -> tuple[float, float, tuple[float, float]]:
-    """Dragging handle (hx, hy) of `box` by (dx, dy): the factors (fx, fy) every layer scales by, and the fixed point."""
+    """Dragging handle (hx, hy) of `box` by (dx, dy): the factors (fx, fy) every layer scales by (below 0: mirrored on
+    that axis, past the opposite side), and the fixed point."""
     w, h = box["w"], box["h"]
-    k = 2 if alt else 1
-    fx = max(T.MIN, w + hx * dx * k) / w if hx else 1.0
-    fy = max(T.MIN, h + hy * dy * k) / h if hy else 1.0
-    if hx and hy and shift:
-        fx = fy = max(fx, fy)
+    r = T.resize({"x": 0.0, "y": 0.0, "w": w, "h": h, "ax": 0.5, "ay": 0.5, "rot": 0.0}, hx, hy, dx, dy, shift, alt)
+    fx = (-1 if r["cx"] else 1) * r["w"] / w
+    fy = (-1 if r["cy"] else 1) * r["h"] / h
     px = box["x"] + w * (0.5 if (alt or not hx) else (0.0 if hx > 0 else 1.0))
     py = box["y"] + h * (0.5 if (alt or not hy) else (0.0 if hy > 0 else 1.0))
     return fx, fy, (px, py)
+
+
+def mirrored(sets: dict, p: dict, fx: float, fy: float) -> dict:
+    """`sets` (a layer's new values) when the box round it is mirrored (fx or fy below 0): the Stretch on that axis (of
+    its new size) and its turn as rostrum2d/ops_flip.mirrored says (the one rule, layer.flip's)."""
+    out = dict(sets)
+    for k, v in flip.mirrored(p, fx < 0, fy < 0).items():
+        if k != "rotation":
+            out[k] = -out.get(k, p[k])
+        elif v != p[k]:                                         # (no turn: nothing to write, no key)
+            out[k] = v
+    return out
 
 
 def turned(point: tuple[float, float], centre: tuple[float, float], deg: float) -> tuple[float, float]:
@@ -84,7 +98,7 @@ class GroupSlots:
     @Slot(int, int, result=bool)
     def beginGroupResize(self, hx, hy):
         def fields_of(item):
-            return (("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")) + ("x", "y")
+            return (("w", "h") if item["type"] in OWN_SIZE else ("scale",)) + ("scaleX", "scaleY", "x", "y")
         return self._group_begin("Resize", hx, hy, fields_of)
 
     @Slot(float, float, bool, bool)
@@ -101,14 +115,14 @@ class GroupSlots:
             mx, my = self._parent_drag(lay, px + (ax - px) * fx - ax, py + (ay - py) * fy - ay)
             sets = {"x": p["x"] + mx, "y": p["y"] + my}
             if item["type"] in OWN_SIZE:
-                sets.update({"w": p["w"] * fx} if g.hx else {})
-                sets.update({"h": p["h"] * fy} if g.hy else {})
+                sets.update({"w": p["w"] * abs(fx)} if g.hx else {})
+                sets.update({"h": p["h"] * abs(fy)} if g.hy else {})
             elif g.hx and g.hy:
-                sets["scale"] = p["scale"] * (fx + fy) / 2
+                sets["scale"] = p["scale"] * (abs(fx) + abs(fy)) / 2
             else:
-                sets.update({"scaleX": p["scaleX"] * fx} if g.hx else {"scaleY": p["scaleY"] * fy})
-            calls += [route.value_call(item, k, round(v, 2), self.own_t(lay)) for k, v in sets.items()]
-        self._guard(lambda: self._drag.preview(calls))
+                sets.update({"scaleX": p["scaleX"] * abs(fx)} if g.hx else {"scaleY": p["scaleY"] * abs(fy)})
+            calls += [route.value_call(item, k, round(v, 2), self.own_t(lay)) for k, v in mirrored(sets, p, fx, fy).items()]
+        self._guard(lambda: self._drag.preview(calls, fresh=True))      # on the values from before: a mirror undone mid-drag goes back
 
     @Slot(result=bool)
     def beginGroupRotate(self):

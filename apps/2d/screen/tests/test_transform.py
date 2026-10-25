@@ -97,3 +97,17 @@ def test_dragging_a_line_end_moves_that_end_only_and_alt_keeps_the_middle():
     assert hypot(start[0] - 400, start[1] - 300) < 1e-6 and round(r["w"], 3) == round(hypot(230, 40), 3)
     m = drag_end(g, -1, -30, 10, alt=True)                                         # Alt: the middle stays at (500, 300)
     assert (round(m["x"], 6), round(m["y"], 6)) == (500, 300) and round(m["w"], 3) == round(hypot(260, 20), 3)
+
+
+def test_a_corner_dragged_past_the_opposite_corner_flips_in_one_step(bridge):  # noqa: F811
+    doc = bridge.doc
+    bridge.select("box")                                              # 40 x 40 about its centre 200, 90: top-left 180, 70
+    n = len(doc.history.changes)
+    assert bridge.beginResize(1, 1)
+    for d in (-20, -40, -60):                                         # through zero and 20 px out the other side
+        bridge.resizeBy(d, d, False, False)
+    bridge.endDrag()
+    box = doc.item("box")
+    assert len(doc.history.changes) == n + 1
+    assert box["scaleX"] < 0 and box["scaleY"] < 0 and (box["w"], box["h"]) == (20, 20)   # the sign only in Stretch
+    assert (box["x"], box["y"]) == (170, 60)                          # the top-left corner stayed: the box is 160..180

@@ -100,7 +100,7 @@ class KeyBar3D(QObject):
         super().__init__(parent)
         self.b = bridge
 
-    eases = Property("QVariantList", lambda self: [{"value": e["value"], "label": e["label"]} for e in eases.EASES], constant=True)
+    easeList = Property("QVariantList", lambda self: eases.rows(), constant=True)     # the one ease list (EASE_LIST)
     easeOnKey = Property(bool, lambda self: True, constant=True)    # a key's right-click is the Ease list (the kit's KeyDot.qml)
 
     @Slot(float, float)
