@@ -11,7 +11,7 @@ import "Blocks.js" as Blocks
 Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
-    readonly property var blocks: patched || backend.rollBlocks    // its notes / hits / clips, sent alone (an edit on them)
+    readonly property var blocks: patched || Blocks.own(backend.rollBlocks)    // its notes / hits / clips, sent alone (an edit on them)
     property var patched: null                              // a few of them changed since (backend.rollPatched)
     Connections {
         target: backend

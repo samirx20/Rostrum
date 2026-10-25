@@ -14,6 +14,15 @@ function patch(blocks, gone, put) {
     return out
 }
 
+// A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list
+// itself hands out a new object for a block on every read, so a surface's kept entries never matched the blocks of the
+// next read: the first edit after every whole send painted the whole surface again (a first note: ~10-20 ms).
+function own(list) {
+    var out = new Array(list.length)
+    for (var i = 0; i < list.length; i++) out[i] = list[i]
+    return out
+}
+
 // ---- painting in parts (RollNotes, LaneBlocks, VelocityStrip) -------------------------------------------------------
 // A surface keeps what its picture shows (`kept()`): an entry per block, [block, selected, order, gone], in the order
 // painted, and columns COL px wide (at the zoom and scroll painted) holding the entries over them. After an edit or a

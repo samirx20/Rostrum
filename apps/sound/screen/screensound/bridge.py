@@ -12,7 +12,7 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import DocBridge, many, pointer_quiet
 from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.live_link import LiveLink
@@ -106,6 +106,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._tv.changed.connect(self.viewChanged)
         self.viewChanged.connect(self._follow_zoom)       # Grid "Auto" follows the zoom (grid_slots.py)
         self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
+        # a moment after the window is up: the settings rows of each kind in the song (a note, a hit, a track …) are
+        # made ahead, a kind per frame, so the first note drawn shows its panel as quickly as the tenth (bridge_select)
+        QTimer.singleShot(1000, self, lambda: self.make_panels_ahead(self._one_of_each()))
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(str, constant=True)
@@ -242,6 +245,12 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
         if self._view and self._track != was:     # the roll of another track: in the frame after the pick's (rows_view)
             self._roll_later.ask()
+
+    def _one_of_each(self) -> list[str]:
+        first: dict = {}
+        for it in self.doc.items():
+            first.setdefault(it["type"], it["id"])
+        return list(first.values())
 
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
