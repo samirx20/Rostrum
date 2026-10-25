@@ -78,6 +78,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
         self._lanes.setParent(self)
+        self._roll_later.setParent(self)    # goes with this song (a freed song's job never runs: after_frame)
         self.link = None
         if doc.folder and doc.item_id:      # live: one door for every save, shared with agents' servers (rostrum_core.live)
             live.keep(doc)
