@@ -55,13 +55,14 @@ Rectangle {
         id: column
         x: (rail.width - Theme.button - 8) / 2; y: 6
         spacing: 4
-        Repeater {
-            id: buttons
-            model: rail.usable
+        KeptRepeater {  // kept: the groups list is remade whenever one of its parts changes (the tool, what the
+            id: buttons // selection allows), and a Repeater on it remade every button, icon and tip each time
+            needed: rail.usable.length
             delegate: Item {
                 id: slot
-                required property var modelData
-                readonly property var g: modelData
+                required property int index
+                visible: index < buttons.needed
+                readonly property var g: rail.usable[index] || ({ sep: true, when: false, items: [] })
                 readonly property var e: g.sep ? null : rail.shown(g)
                 readonly property bool many: !!(!g.sep && g.items.length > 1)
                 readonly property bool on: !g.sep && g.items.some(x => x.tool && x.tool === rail.current) || (flyout.visible && flyout.group === g.id)

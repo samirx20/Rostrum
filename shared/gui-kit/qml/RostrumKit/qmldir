@@ -95,3 +95,4 @@ TimeRuler 1.0 TimeRuler.qml
 TimeReadout 1.0 TimeReadout.qml
 AddMarker 1.0 AddMarker.qml
 LipSyncSheet 1.0 LipSyncSheet.qml
+KeptRepeater 1.0 KeptRepeater.qml

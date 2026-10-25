@@ -144,11 +144,13 @@ Item {
                           rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
                 spacing: Theme.pad
                 readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
-                Repeater {      // by count: another kind's names take the same items (a new list remade each name, ~3 ms a pick)
-                    model: names.entries.length
+                KeptRepeater {  // kept: another kind's names take the same items (a new list remade each name, ~3 ms a pick)
+                    id: namesKept
+                    needed: names.entries.length
                     delegate: Row {
                         id: nameItem
                         required property int index
+                        visible: index < namesKept.needed
                         readonly property var modelData: names.entries[index] || ({})
                         height: Theme.rowDense
                         Text {
