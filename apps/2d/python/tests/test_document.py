@@ -36,6 +36,18 @@ def test_rerun_keeps_a_persons_key_edits():
     assert [h["key"] for h in report.held] == ["title.y.k1000.v"]     # ... and the agent is told
 
 
+def test_a_rerun_updates_the_agents_own_earlier_output_and_keeps_a_persons_move():
+    agent, src = Who.agent("claude-code"), 'comp("c", duration=3)\nt = text("t", body="Hi")\nt.key("opacity", {0: %s, %s: 1})\n'
+    d = Document.new(KIND)
+    for v, t in (("0", "0.5"), ("0.0", "0.5")):                      # 0 then 0.0: equal, but written differently
+        d.run_script("p.py", run_source(src % (v, t), "p.py"), agent)
+    d.apply({"op": "value.set", "target": "t", "args": {"prop": "x", "v": 700}}, SAM)
+    report = d.run_script("p.py", run_source((src % ("0.25", "0.4")).replace('"Hi"', '"Hi", x=300'), "p.py"), agent)
+    keys = {k["id"]: k["v"] for k in d.item("t")["keys"]}
+    assert keys == {"t.opacity.k0": 0.25, "t.opacity.k400": 1}       # its own value and moved key time went in
+    assert d.item("t")["x"] == 700 and [h["key"] for h in report.held] == ["t.x"]   # the person's move stays
+
+
 def test_an_animated_field_is_decided_by_its_keys_only():
     d = doc()
     d.apply({"op": "value.set", "target": "title", "args": {"prop": "y", "at": 2.0, "v": 300}}, SAM)

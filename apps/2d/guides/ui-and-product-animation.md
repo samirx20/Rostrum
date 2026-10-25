@@ -52,7 +52,9 @@ estimated from size and letters, so a row of texts may sit a little off; put tex
 laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
 (each placed layer's x, y and size at a time) and `look_frame` (`what: "sheet"`).
 
-`clip=True` on a group hides children outside its box (a scrolling list, a window). `layer.arrange` moves a layer in the
+`clip=True` on a group hides children outside its box (a scrolling list, a window). The box is a plain rectangle: for
+rounded corners (a phone's screen) give the group a mask with a radius instead, the size of its box:
+`screen.mask("screen_round", x=0, y=0, w=390, h=844, radius=56)` (see Masks below). `layer.arrange` moves a layer in the
 stack or into another group; `inspect_item` with no `id` lists the tree.
 
 ## Boxes, images, video

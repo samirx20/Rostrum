@@ -33,6 +33,11 @@ def scaled_copy(src: Path, width: int, dest: Path) -> tuple[int, int]:
     return img.width, img.height
 
 
+def tile_width(sheet_w: int, cols: int) -> int:
+    """Each tile's width so that `cols` tiles with their gaps and margins make a sheet `sheet_w` px wide."""
+    return max(16, (sheet_w - 2 * MARGIN - (cols - 1) * GAP) // max(1, cols))
+
+
 def contact_sheet(tiles: list[tuple[Path, str]], tile_w: int, cols: int, dest: Path) -> tuple[int, int]:
     """A grid of (png, label) tiles, each labelled underneath; written whole to `dest`. Returns the size."""
     pictures = [_open(p) for p, _ in tiles]

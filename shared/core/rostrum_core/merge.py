@@ -7,19 +7,25 @@
 A collision keeps the other author's value and is reported ("logo.x: script says 400, kept 620 (person:sam,
 "Move logo")"). `force=True` or `force=["logo.x", "logo"]` lets the script win there. B moves forward only by
 what was applied, so a held-back change is reported again next run.
+
+Only another author's work holds a value back. A difference between B and C whose last change was this script's own
+run, the same agent's or script's (re-running its script; a person's hand edits always count) or an older file brought up to date (who.UPGRADE) is nobody
+else's, and the script's new value goes in. The output is brought up to date the same way first (the app's `upgrade`),
+so a run never writes what the next open would rewrite.
 """
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 
 from . import edits as E
 from .diff import diff
 from .errors import RostrumError, codes
-from .tree import index, walk
+from .tree import bare, index, walk
+from .who import UPGRADE
 
 
 SHOWN = 5   # names a reply lists before saying "and N more"
+GONE = "(its place is gone)"   # a held edit that could not land at all (its parent is gone, its id is taken)
 
 
 def _owner(r: dict) -> str:
@@ -54,6 +60,9 @@ def held_words(h: dict) -> str:
     """One held-back thing in words: placeholders like "(add)" / "(kept, edited)" say who got there first instead."""
     name = h["who"] if h["who"] not in ("?", None) else "someone else (a person or agent; the history doesn't say who, e.g. the change was made inside it or before the file was opened)"
     who = f'{name} ("{h["label"]}")' if h["label"] not in ("?", None) else name
+    if h["kept"] == GONE:                   # not someone's work: the edit can't land (force can't help either)
+        return (f'{h["key"]}: the script could not {_WANTS.get(h["script"], "set it").replace(" it", "")} it: {h["label"]} '
+                "(force can't help: remove or rename what is in its way, or give the script's item another id)")
     if h["script"] in _WANTS:
         return f'{h["key"]}: the script wanted to {_WANTS[h["script"]]}, but it was already changed by {who}'
     if h["kept"] == "(kept, edited)":
@@ -73,7 +82,8 @@ class MergeReport:
     def warnings(self) -> list:
         """One line per thing a caller must not miss: each held-back value, what the run took out, and that a new
         script name adds beside what earlier scripts made instead of replacing it."""
-        held = [f'Held back {held_words(h)}. Pass force: ["{h["key"]}"] to take over.' for h in self.held]
+        held = [f'Held back {held_words(h)}.' + ("" if h["kept"] == GONE else f' Pass force: ["{h["key"]}"] to take over.')
+                for h in self.held]
         gone = [f"Removed {removed_text(self.removed)}: the script no longer makes them."] if self.removed else []
         new = [f'"{self.script}" is a new script name, so it ADDED its items beside what {", ".join(self.others)} made. '
                f"To change those instead, run again under their name (a script re-run under the same name replaces what it made)."] if self.others else []
@@ -86,8 +96,10 @@ class MergeReport:
         if not self.held:
             return text + "."
         lines = [f"  {held_words(h)}" for h in self.held]
-        return text + f", {len(self.held)} held back to keep other people's work:\n" + "\n".join(lines) + \
-            "\nChange them with an operation, or run again with force=[...] to let the script win."
+        keys = ", ".join(f'"{h["key"]}"' for h in self.held if h["kept"] != GONE)
+        win = (f"\nTo let the script win, run again with force: [{keys}] (or force: true for all); or change them with an "
+               "operation." if keys else "")
+        return text + f", {len(self.held)} held back:\n" + "\n".join(lines) + win
 
 
 def _forced(force, ks) -> bool:
@@ -97,8 +109,9 @@ def _forced(force, ks) -> bool:
     return bool(E.overlap(ks, wanted))
 
 
-def _current(data, lists, key):
-    loc = index(data, lists).get(key[0])
+def _current(data, lists, key, idx=None):
+    """`idx`: data's index when kept already (the merge's): one lookup, not an index of the whole tree per edit."""
+    loc = (index(data, lists) if idx is None else idx).get(key[0])
     if loc is None:
         return "(removed)"
     node = loc.item
@@ -159,27 +172,58 @@ def twin_hint(doc, name: str, output: dict) -> str:
             f"name to replace them, or give these items other ids. The check says: ")
 
 
+def _up_to_date(doc, output: dict) -> dict:
+    """The script's output as an opened file would hold it (the app's upgrade: 2D moves a gradient effect into the fill)."""
+    up = doc.kind.upgrade(output, doc.kind.lists, doc.folder) if doc.kind.upgrade else None
+    return up[0] if up else output
+
+
+def _own(c, who, name: str) -> bool:
+    """Change `c` is not another author's work: this script's own run, the same agent or script (never a person: their
+    own hand edits stay theirs), or an older file's upgrade."""
+    if (c.who == who and who.kind != "person") or c.who == UPGRADE:
+        return True
+    return any(k.get("op") == "run_script" and (k.get("args") or {}).get("script") == name for k in c.calls)
+
+
+def _other_author(doc, hit: set, who, name: str):
+    """(key, change) for the first collided key whose last change is another author's, else None. Unknown counts as
+    another's: a value held back wrongly is reported and can be forced; a person's work wiped is lost."""
+    for key in sorted(hit):
+        c = doc.who_changed(*key[:2]) if len(key) > 1 else doc.who_changed(key[0])
+        if c is None or not _own(c, who, name):
+            return key, c
+    return None
+
+
 def merge_script(doc, name, output: dict, who, force=False, session=None) -> MergeReport:
     lists = doc.kind.lists
     base = doc.script_bases.get(name) or doc.kind.blank()
+    output = _up_to_date(doc, output)
     check_output(doc.kind, output, f"run_script {name}")
     check_kinds(base, output, lists, f"run_script {name}")
     others = diff(base, doc.data, lists)
     other_keys = set().union(*(E.keys(e, lists) for e in others)) if others else set()
-    work, new_base = copy.deepcopy(doc.data), copy.deepcopy(base)
-    idx, base_idx = index(work, lists), index(new_base, lists)     # each kept up to date by its edits
+    work, idx = E.fork(doc.data, lists, doc.locs())        # versions sharing every item no edit touches (edits.fork),
+    new_base, base_idx = E.fork(base, lists)                # each index kept up to date by its edits
     report, applied = MergeReport(name), []
     for e in diff(base, output, lists):
         ks = E.keys(e, lists)
-        if isinstance(e, E.Set) and _current(work, lists, (e.id, *e.path)) == e.value:
-            _record(new_base, lists, e, name, base_idx)                              # everyone already agrees
+        now = _current(work, lists, (e.id, *e.path), idx) if isinstance(e, E.Set) else None
+        if isinstance(e, E.Set) and now == e.value:          # everyone already agrees: B takes the value as the
+            _record(new_base, lists, E.Set(e.id, e.path, now, e.before), name, base_idx)   # document writes it (0, 0.0)
+            continue
+        if (isinstance(e, E.Remove) and e.id not in idx) or (  # already gone, or already there just as the script
+                isinstance(e, E.Insert) and e.id in idx and idx[e.id].parent == e.parent   # makes it (an older
+                and bare(idx[e.id].item, lists) == e.item):                                 # file's upgrade did it)
+            _record(new_base, lists, e, name, base_idx)
             continue
         hit = E.overlap(ks, other_keys)
-        if hit and not _forced(force, ks):
-            key = sorted(hit)[0]
-            c = doc.who_changed(*key[:2]) if len(key) > 1 else doc.who_changed(key[0])
+        held_by = _other_author(doc, hit, who, name) if hit and not _forced(force, ks) else None
+        if held_by:
+            key, c = held_by
             report.held.append({"key": E.key_text(key), "script": _script_value(e),
-                                "kept": _current(work, lists, key), "who": str(c.who) if c else "?",
+                                "kept": _current(work, lists, key, idx), "who": str(c.who) if c else "?",
                                 "label": c.label if c else "?"})
             continue
         try:
@@ -188,7 +232,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
             if err.code not in (codes.NOT_FOUND, codes.CONFLICT):
                 raise
             report.held.append({"key": E.key_text(sorted(ks)[0]), "script": _script_value(e),
-                                "kept": "(its place is gone)", "who": "?", "label": err.problem})
+                                "kept": GONE, "who": "?", "label": err.problem})
             continue
         _record(new_base, lists, e, name, base_idx)
     problems = doc.kind.check(work)

@@ -50,3 +50,6 @@ class Who:
 
     def __str__(self):
         return f"{self.kind}:{self.name}"
+
+
+UPGRADE = Who("outside", "Rostrum (older file)")   # an older file brought up to date on open: nobody's edit

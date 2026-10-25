@@ -125,10 +125,13 @@ def register(tools: Tools):
         rows = [o.schema() if full else {"name": o.name, "summary": o.summary, "target": o.shown_targets()} for o in ops.values()]
         return Reply(f"{len(ops)} operations: {', '.join(ops)}. Ask with name for one's arguments.", {"operations": rows})
 
-    @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}}})
+    @tools.tool("inspect_guide", {"properties": {"topic": {"type": "string"}, "section": {"type": "string", "description":
+            'Only the section whose heading has these words (e.g. "Scripts"), or "all" for the whole guide. Default: start-here '
+            "whole; a long guide's first sections, then the headings of the rest."}}})
     def inspect_guide(ctx, args):
-        """A how-to guide by topic; read 'start-here' first. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>)."""
+        """A how-to guide by topic; read 'start-here' first. With no topic, the list of topics (also served as MCP resources rostrum://guide/<topic>).
+        A long guide comes as its first sections and the headings of the rest; ask for one with `section`."""
         g = ctx.app.guides
         if "topic" not in args:
             return Reply(f"{len(g.topics())} guides: {', '.join(g.topics())}.", {"topics": [{"topic": t, "title": g.title(t)} for t in g.topics()]})
-        return Reply(g.get(args["topic"]), {"topic": args["topic"]})
+        return Reply(g.part(args["topic"], args.get("section")), {"topic": args["topic"], "section": args.get("section")})

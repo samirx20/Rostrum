@@ -15,7 +15,7 @@ from pathlib import Path
 from rostrum_core import filestamps
 from rostrum_paint import canvas, ink
 
-from . import looping
+from . import drawing_loop, looping
 from .sizes import own_size
 
 
@@ -43,10 +43,13 @@ def cycle(drawing: dict) -> tuple[int, int] | None:
 
 def frame_at(drawing: dict, n: int) -> dict | None:
     """The drawing exposed at frame number `n`: the last one with at <= n (held until the next); None before the first.
-    A looping drawing (Loop: loop or ping-pong) repeats its run from the first drawing on, through looping.fold."""
+    A looping drawing (Loop: loop or ping-pong) repeats its run from the first drawing on, through looping.fold, as many
+    times as its loopTimes says (then the drawing last shown holds; drawing_loop.py)."""
     run = cycle(drawing)
     if run and n >= run[0]:
-        n = run[0] + looping.fold(n - run[0], run[1], looping.mode_of(drawing.get("loop")))
+        over = drawing_loop.held_from(drawing, *run)
+        i = n - run[0] if over is None else min(n - run[0], over - 1)
+        n = run[0] + looping.fold(i, run[1], looping.mode_of(drawing.get("loop")))
     shown = None
     for f in shown_frames(drawing):
         if f["at"] <= n:
@@ -67,6 +70,27 @@ def repeats(drawing: dict, last: int) -> list[tuple[int, dict]]:
         if not out or out[-1][1] is not here:
             out.append((n, here))
     return out
+
+
+def within(run: list[tuple[int, dict]], first: int, last: int) -> list[tuple[int, dict]]:
+    """The entries of `run` (from `repeats`, sorted by frame) that show somewhere in frames first..last: the one
+    showing at `first` and every one starting by `last`. A look at one moment needs only these pictures made."""
+    return [(n, f) for i, (n, f) in enumerate(run) if n <= last and (i + 1 == len(run) or run[i + 1][0] > first)]
+
+
+WORKERS = 4                 # pictures made side by side (the stamper runs outside Python's lock); memory: ~0.3 GB each
+
+
+def make_all(jobs: list) -> None:
+    """Run picture-making jobs (`later`'s calls) side by side; the first failure is raised, loudly."""
+    if len(jobs) < 2:
+        for job in jobs:
+            job()
+        return
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(min(WORKERS, len(jobs)), thread_name_prefix="paint-picture") as pool:
+        for done in [pool.submit(job) for job in jobs]:
+            done.result()
 
 
 def frame_number(t: float, fps: float) -> int:

@@ -11,7 +11,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from rostrum_core import Document, bug, live
+from rostrum_core import Document, bug, ids, live
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.storage import paths
@@ -77,20 +77,31 @@ def inspect_recent_projects(ctx, args):
 
 
 @tools.tool("run_open_project", {"required": ["folder"], "properties": {
-    "folder": {"type": "string", "description": "The project folder (absolute path; one from run_open_project (what: recent), or any folder with docs/<item>.mtn)."},
-    "item": {"type": "string", "description": "The document to open. Default: the one its recent row names, else the only / newest in the folder."}}})
+    "folder": {"type": "string", "description": "The project folder, an absolute path: one from run_open_project (what: recent), "
+               "any folder with docs/<item>.mtn, or a new folder (made, with its folders above it, when it isn't there yet)."},
+    "item": {"type": "string", "description": "The document to open. Default: the one its recent row names, else the only / "
+             "newest in the folder, else a new \"main\". A name the folder doesn't have yet starts a new document of that name."}}})
 def run_open_project(ctx, args):
-    """Switch to another project: closes the open documents and opens this folder's (every change is saved at once, so nothing is lost); then all other tools work on it. Use run_open_project (what: recent) to see what the person has."""
+    """Open a project, making it when it is new: closes the open documents (every change is already saved, so nothing is lost) and opens this folder's; then all other tools work on it. A folder that doesn't exist yet is made, and a document the folder doesn't have yet is started empty, e.g. {"folder": "C:/Users/me/Videos/launch"} or {"folder": "...", "item": "teaser"}. Use run_open_project (what: recent) to see what the person has."""
     folder = Path(args["folder"])
-    if not folder.is_dir():
-        raise RostrumError(codes.NOT_FOUND, "run_open_project", f'"{folder}"', "is not a project folder",
-                           list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from run_open_project (what: recent).")
-    found = last.docs_in(folder)
+    if not folder.is_absolute():
+        raise RostrumError(codes.BAD_ARGUMENT, "run_open_project", f'"{folder}"', "is not an absolute path",
+                           ["C:/Users/<you>/Videos/<project>"], "Pass the whole path to the project folder.")
+    if folder.exists() and not folder.is_dir():
+        raise RostrumError(codes.BAD_ARGUMENT, "run_open_project", f'"{folder}"', "is a file, not a folder", [],
+                           "Pass the project folder (the one holding docs/), or a new folder's path.")
+    found, made = last.docs_in(folder), not folder.exists()
     item = args.get("item") or last.default_item(folder, explicit=True)
-    if item not in found and found:
-        raise RostrumError.not_found("run_open_project", "document", item, found, f"the documents in {folder}")
-    if item not in found:
-        ctx.note(f'{folder} had no document yet: "{item}" was created there.')
+    if not ids.is_valid(item):
+        raise RostrumError(codes.BAD_ARGUMENT, "run_open_project", f'item "{item}"', "is not a usable document name",
+                           found, "Letters, digits, _ . - (not starting with a digit), e.g. \"teaser\".")
+    try:
+        folder.mkdir(parents=True, exist_ok=True)        # checks first, then make: a refused call leaves nothing behind
+    except OSError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, "run_open_project", f'"{folder}"', f"could not be made ({e.strerror})", [],
+                           "Pass a folder you can write to.") from e
+    new = ("" if item in found else " Made the folder and started the document, empty." if made else
+           f' Started the document, empty; the project\'s other documents: {", ".join(found)}.' if found else " Started the document, empty.")
     open_project(ctx.app, str(folder.resolve()), [item])
-    return Reply(f'Opened {ctx.app.folder} (document "{item}"). Other tools now work on it.',
-                 {"folder": ctx.app.folder, "item": item, "documents": sorted(ctx.app.documents)})
+    return Reply(f'Opened {ctx.app.folder} (document "{item}").{new} Other tools now work on it.',
+                 {"folder": ctx.app.folder, "item": item, "documents": sorted(ctx.app.documents), "others": found, "new": item not in found})
