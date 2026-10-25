@@ -1,5 +1,6 @@
-"""The four edits (OPERATIONS.md § 3), each addressed by id, each carrying what was there before so it can be
-reversed without an old copy of the document.
+"""The edits (OPERATIONS.md § 3), each addressed by id, each carrying what was there before so it can be
+reversed without an old copy of the document. Four are per item; `Shift` is one edit for a uniform change of many
+items (a whole-song nudge: ids + one amount), so it costs one history entry, not one per item.
 
 `apply(data, lists, edit)` changes `data` in place and returns the edit as it really happened (actual
 before-values and positions), which is what history stores. Positions use `after` (the sibling it follows)
@@ -63,7 +64,21 @@ class Move:
     from_after: object = NO_AFTER     # filled on apply
 
 
-KINDS = {"set": Set, "insert": Insert, "remove": Remove, "move": Move}
+@dataclass
+class Shift:
+    """The number at `path` of every item in `ids` moved by the same amount `by`: each becomes round(value + by,
+    places) (`places` None: not rounded). Exact both ways: `to` gives some items an exact value instead (an undo's), and
+    applying fills `back` with the old values that the sum taken back would not give exactly (rounding), so its
+    reverse restores every value as it was, type included."""
+    ids: list
+    path: list
+    by: object = 0
+    places: object = None
+    to: dict = field(default_factory=dict)
+    back: dict = field(default_factory=dict)
+
+
+KINDS = {"set": Set, "insert": Insert, "remove": Remove, "move": Move, "shift": Shift}
 
 
 _NAMES = {c: k for k, c in KINDS.items()}
@@ -170,15 +185,20 @@ def clone(v):
     return copy.deepcopy(v)
 
 
-def _set(item, lists, e, where):
-    if not e.path or e.path[0] == "id" or e.path[0] in child_keys(item, lists):
-        raise RostrumError(codes.INTERNAL, where, f"{e.id}.{e.path}", "is not a field a Set may change")
+def _field(item, lists, id_, path, where):
+    """The dict holding `path`'s last key in `item` (nested values copied on the way: they may be shared)."""
+    if not path or path[0] == "id" or path[0] in child_keys(item, lists):
+        raise RostrumError(codes.INTERNAL, where, f"{id_}.{path}", "is not a field an edit may change")
     node = item
-    for k in e.path[:-1]:                           # nested values may be shared with other versions: copy the way
+    for k in path[:-1]:                             # nested values may be shared with other versions: copy the way
         if isinstance(node.get(k), dict):
             node[k] = dict(node[k])
         node = node.setdefault(k, {})
-    last = e.path[-1]
+    return node
+
+
+def _set(item, lists, e, where):
+    node, last = _field(item, lists, e.id, e.path, where), e.path[-1]
     before = node.get(last, MISSING)                # the old version's value: never written in place, so kept as is
     value = clone(e.value)
     if value == MISSING:
@@ -193,6 +213,8 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     history, a script's merge, one call's plan) indexes the tree once instead of once per edit."""
     if idx is None:
         idx = index(data, lists)
+    if isinstance(e, Shift):
+        return _shift(idx, lists, e, where)
     target = e.parent if isinstance(e, Insert) else e.id
     if target not in idx:
         raise _missing(where, target, idx)
@@ -238,6 +260,37 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
     raise TypeError(f"not an edit: {e!r}")
 
 
+_NUMBER = (int, float)
+
+
+def _same(a, b) -> bool:
+    return type(a) is type(b) and a == b
+
+
+def _shift(idx, lists, e, where):
+    path, last, by, places, to, back = list(e.path), e.path[-1], e.by, e.places, e.to, {}
+    if path[0] in ("type", "locked"):
+        raise RostrumError(codes.INTERNAL, where, f"{path}", "is not a field a Shift may change")
+    for id_ in e.ids:
+        if id_ not in idx:
+            raise _missing(where, id_, idx)
+        node = _field(_own(idx, id_, lists), lists, id_, path, where)
+        before = node.get(last, MISSING)
+        if type(before) not in _NUMBER:
+            raise RostrumError(codes.INTERNAL, where, f"{id_}.{path}", f"is {before!r}, not a number a Shift can move")
+        value = to[id_] if id_ in to else before + by if places is None else round(before + by, places)
+        node[last] = value
+        undone = value - by if places is None else round(value - by, places)
+        if not _same(undone, before):
+            back[id_] = before
+    return Shift(list(e.ids), path, by, places, dict(to), back)
+
+
+def ids(e) -> list:
+    """The items an edit addresses (a Shift: many; the others: one)."""
+    return e.ids if isinstance(e, Shift) else [e.id]
+
+
 def _position(lst: list, loc: Loc) -> int:
     """Where the item sits now: a kept index's positions go stale when siblings come and go, so check, then look."""
     if loc.index is not None and loc.index < len(lst) and lst[loc.index] is loc.item:
@@ -261,6 +314,8 @@ def reverse(e):
         return Insert(e.id, e.parent, e.key, e.index, e.item, e.after)
     if isinstance(e, Move):
         return Move(e.id, e.to, e.from_, e.from_after)
+    if isinstance(e, Shift):
+        return Shift(list(e.ids), list(e.path), -e.by, e.places, dict(e.back))
     raise TypeError(f"not an edit: {e!r}")
 
 
@@ -269,9 +324,13 @@ def keys(e, lists: dict) -> set[tuple]:
     if isinstance(e, Set):
         return {(e.id, *e.path)}
     if isinstance(e, (Insert, Remove)):
+        if not child_keys(e.item, lists):           # a note or a key: itself (a walk per item cost a whole-song Esc ~10 ms)
+            return {(e.id,)}
         return {(i,) for i in subtree_ids(e.item, lists)} or {(e.id,)}
     if isinstance(e, Move):
         return {(e.id, "@place")}
+    if isinstance(e, Shift):
+        return {(i, *e.path) for i in e.ids}
     raise TypeError(f"not an edit: {e!r}")
 
 

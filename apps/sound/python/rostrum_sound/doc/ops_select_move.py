@@ -42,6 +42,20 @@ def _free_group(ctx, group):
     return f"{group} {n}"
 
 
+def _uniform(ctx, every, by):
+    """(ids, path, amount): the items whose time moves by the very same number in the way it is written (a time in
+    beats moved by beats, one in seconds moved by seconds), so the move is one `Shift`; the rest are set one by one."""
+    beats = isinstance(by, dict)
+    path, d = (["at", "beat"], float(by["beats"])) if beats else (["at"], float(by))
+    even = []
+    for t in every:
+        at = ctx.item(t)["at"]
+        v = at.get("beat") if beats and type(at) is dict and len(at) == 1 else at if not beats else None
+        if type(v) in (int, float) and v + d >= 0:
+            even.append(t)
+    return even, path, d
+
+
 def _register(kind):
     label, key = LABELS[kind], KINDS[kind]
 
@@ -49,7 +63,9 @@ def _register(kind):
                         "keeps the way it was written.", target=kind, params=[BY_REQUIRED], label=f"Move {label}")
     def move(ctx, targets, args):
         every = _with_group(ctx, targets, kind)
-        plan = [(t, moved(ctx, ctx.item(t), args["by"])) for t in every]   # all from the start state, then set
+        even, path, d = _uniform(ctx, every, args["by"])                    # one edit for every time written alike
+        plan = [(t, moved(ctx, ctx.item(t), args["by"])) for t in every if t not in even]   # from the start state
+        ctx.shift(even, path, d, 4)
         for t, at in plan:
             ctx.set(t, "at", at)
 

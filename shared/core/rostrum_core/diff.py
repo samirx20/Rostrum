@@ -14,8 +14,8 @@ from __future__ import annotations
 import bisect
 import json
 
-from .edits import MISSING, Insert, Move, Remove, Set
-from .tree import bare, child_keys, fields, index
+from .edits import MISSING, Insert, Move, Remove, Set, Shift
+from .tree import bare, child_keys, fields, index, subtree_ids
 
 
 def _stable(positions: list[int]) -> set[int]:
@@ -75,8 +75,11 @@ def _changed_walk(b: dict, ia: dict, lists: dict):
                          if not (c["id"] in ia and ia[c["id"]].item is c))
 
 
-def diff(a: dict, b: dict, lists: dict, ia: dict | None = None, ib: dict | None = None) -> list:
-    """`ia`, `ib`: a's and b's indexes when already known (positions may be stale)."""
+def diff(a: dict, b: dict, lists: dict, ia: dict | None = None, ib: dict | None = None, near=None) -> list:
+    """`ia`, `ib`: a's and b's indexes when already known (positions may be stale). `near`: the only ids whose own
+    fields or presence can differ (b made from a by edits that touched just those: a drag's steps, `touched`), so
+    items gone and fields set are looked for there, not across the whole document (a preview on top of a 13,000-item
+    song)."""
     ia = ia if ia is not None else index(a, lists)
     ib = ib if ib is not None else index(b, lists)
     edits = []
@@ -98,10 +101,22 @@ def diff(a: dict, b: dict, lists: dict, ia: dict | None = None, ib: dict | None 
                     loc = ia[child["id"]]
                     edits.append(Move(child["id"], (loc.parent, loc.key, _at(ia, child["id"])), (parent["id"], key, n),
                                       after))
-    for id_, loc in ia.items():
+    pool = ia if near is None else {i: ia[i] for i in near if i in ia}
+    for id_, loc in pool.items():
         if id_ not in ib and loc.parent in ib:
             edits.append(Remove(id_, loc.parent, loc.key, _at(ia, id_), loc.item))
-    for id_, loc in ia.items():
+    for id_, loc in pool.items():
         if id_ in ib and ib[id_].item is not loc.item:
             _field_sets(id_, [], fields(loc.item, lists), fields(ib[id_].item, lists), edits)
     return edits
+
+
+def touched(edits, lists) -> set:
+    """The ids whose own fields or presence these edits changed (diff's `near`)."""
+    out = set()
+    for e in edits:
+        if isinstance(e, (Insert, Remove)):
+            out.update(subtree_ids(e.item, lists) or (e.id,))
+        else:
+            out.update(e.ids if isinstance(e, Shift) else (e.id,))
+    return out
