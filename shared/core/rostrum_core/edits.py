@@ -17,7 +17,7 @@ merge) write the tree in place, so there an inserted item's record is a copy of 
 from __future__ import annotations
 
 import copy
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields
 
 from .errors import RostrumError, codes
 from .tree import Loc, child_keys, index, subtree_ids
@@ -66,9 +66,18 @@ class Move:
 KINDS = {"set": Set, "insert": Insert, "remove": Remove, "move": Move}
 
 
+_NAMES = {c: k for k, c in KINDS.items()}
+_FIELDS = {c: [f.name for f in fields(c)] for c in KINDS.values()}
+
+
 def to_dict(e) -> dict:
-    d = {"edit": next(k for k, c in KINDS.items() if isinstance(e, c)), **asdict(e)}
-    return {k: (list(v) if isinstance(v, tuple) else v) for k, v in d.items()}
+    """The edit as its history line holds it. Its values are shared, not copied (dataclasses.asdict deep-copied every
+    item a big Ctrl+D brought in, only to write it out): the caller writes it and drops it."""
+    out = {"edit": _NAMES[type(e)]}
+    for name in _FIELDS[type(e)]:
+        v = getattr(e, name)
+        out[name] = list(v) if isinstance(v, tuple) else v
+    return out
 
 
 def from_dict(d) -> object:

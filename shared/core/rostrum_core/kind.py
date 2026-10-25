@@ -105,7 +105,8 @@ class DocKind:
         operation arguments obey, so no field of any kind can hold what its control could never set (a frame rate
         of 0). `only`: item id -> the field names to check (a call's Sets; an item not in it: all its fields). Yields
         RostrumErrors."""
-        ops, params = {}, {}                        # per kind / (kind, field): asked once, not per item
+        ops, params, passed = {}, {}, set()         # per kind / (kind, field): asked once, not per item; plain
+                                                    # values that passed (3,000 notes share a few pitches)
         for item in items:
             kind = item.get("type")
             op = ops[kind] if kind in ops else ops.setdefault(kind, self.registry.field_op(kind))
@@ -115,6 +116,9 @@ class DocKind:
                 p = params[kind, name] if (kind, name) in params else params.setdefault((kind, name), op.param(name))
                 if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
                     continue
+                seen = (kind, name, type(value), value) if type(value) in (str, int, float, bool) else None
+                if seen in passed:
+                    continue
                 where = f'{item.get("type")} "{item.get("id")}"'
                 try:
                     stored = p.check(value, where)
@@ -123,6 +127,8 @@ class DocKind:
                     continue
                 if stored != value:     # checks take forms people write ("#fff"); a file holds only the stored one
                     yield RostrumError(codes.BAD_ARGUMENT, where, f"{name}={value!r}", "is not written as stored", [repr(stored)])
+                elif seen is not None:
+                    passed.add(seen)
 
     def problems(self, data: dict, items=None, only=None) -> list[str]:
         """The whole-document check: every field value (or only `items`', the ones a call changed; `only`: of those,

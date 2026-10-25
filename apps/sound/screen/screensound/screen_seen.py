@@ -9,6 +9,18 @@ def _times(bridge) -> dict:
 
 
 def _selected(bridge) -> list[dict]:
+    """Kept while the song, the selection and the rows are the very same (asked every 300 ms: naming 3,000 selected
+    notes took ~40 ms each time)."""
+    key = (bridge.doc.data, bridge._view["rows"], tuple(bridge.selection))
+    kept = getattr(bridge, "_seen_selected", None)
+    if kept and kept[0][0] is key[0] and kept[0][1] is key[1] and kept[0][2] == key[2]:
+        return kept[1]
+    out = _named(bridge)
+    bridge._seen_selected = key, out
+    return out
+
+
+def _named(bridge) -> list[dict]:
     at, out = _times(bridge), []
     for i in bridge.selection:
         if not bridge.doc.has(i):
@@ -22,11 +34,12 @@ def _selected(bridge) -> list[dict]:
 
 
 def state(bridge) -> dict:
-    ids = [r["id"] for r in _selected(bridge)]
+    selected = _selected(bridge)
+    ids = [r["id"] for r in selected]
     z = bridge._zoom
     w = bridge.workspace
     return {
-        "selection": _selected(bridge),
+        "selection": selected,
         "playhead": bridge.time,                       # seconds
         "range": bridge.timeRange or None,             # [start, end] seconds of the ruler's time range
         "scene": bridge.name,                          # the open song
