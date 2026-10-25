@@ -16,7 +16,7 @@ fn check(schedule: Value) -> Value {
 
 #[test]
 fn unknown_names_fail_loudly() {
-    let base = || json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "keys", "instrument": { "builtIn": "grandPiano" },
+    let base = || json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "keys", "instrument": { "builtIn": "classic.grandPiano" },
         "notes": [{ "pitch": "C4", "at": 0, "dur": 1 }] }] });
     let cases: Vec<(Value, &str, &str)> = vec![
         ({ let mut s = base(); s["tracks"][0]["tone"] = json!("warmm"); s }, "schedule.tracks[0].tone", "warm"),
@@ -68,7 +68,7 @@ fn render_request_round_trip() {
     let req = json!({ "id": 7, "do": "render", "out": out, "stems": "all", "schedule": {
         "contract": "rostrum-sound-schedule/1", "length": 2.0, "tempo": 120, "master": { "loudness": -18 },
         "tracks": [
-            { "id": "drums", "instrument": { "kit": "synth" }, "hits": [{ "drum": "kick", "at": 0 }, { "drum": "snare", "at": { "beat": 1 } }] },
+            { "id": "drums", "instrument": { "kit": "classic" }, "hits": [{ "drum": "kick", "at": 0 }, { "drum": "snare", "at": { "beat": 1 } }] },
             { "id": "pad", "instrument": { "builtIn": "warmPad" }, "notes": [{ "pitch": "A3", "at": 0, "dur": 1.5 }], "effects": [{ "type": "reverb", "mix": 0.2 }] },
             { "id": "take", "clips": [{ "media": take, "in": 0.1, "at": 1.0 }] }
         ] } });
@@ -150,4 +150,47 @@ fn stretch_keeps_the_pitch_and_shift_keeps_the_length() {
         assert!((measured - hz).abs() < hz * 0.03, "stretch {stretch} shift {shift}: {measured} Hz, expected {hz}");
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_missing_pack_or_an_unknown_name_is_a_loud_error() {
+    let root = std::env::temp_dir().join(format!("rostrum-sound-no-packs-{}", std::process::id()));
+    let e = super::plain::file_in(&root, "piano", "salamander-piano", "Salamander.sfz", "instrument.builtIn").unwrap_err().to_json();
+    assert_eq!((e["code"].clone(), e["subject"].clone()), (json!("NOT_FOUND"), json!("\"piano\"")), "{e}");
+    assert!(e["problem"].as_str().unwrap().contains("salamander-piano") && e["hint"].as_str().unwrap().contains("rostrum_sound.packs install salamander-piano"), "{e}");
+    let e = error_of(check(json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "k", "instrument": { "builtIn": "kazoo" } }], "length": 1 })));
+    let accepted: Vec<&str> = e["accepted"].as_array().unwrap().iter().filter_map(Value::as_str).collect();
+    assert!(accepted.contains(&"piano") && accepted.contains(&"classic.choirPad"), "{e}");
+    let e = error_of(check(json!({ "contract": "rostrum-sound-schedule/1", "tracks": [{ "id": "d", "instrument": { "kit": "synth" } }], "length": 1 })));
+    assert!(e["accepted"].as_array().unwrap().contains(&json!("drums")), "{e}");
+}
+
+/// The voices the engine is handed for a schedule of chords and hits, performed as `perform` says.
+fn voices(perform: Value) -> Vec<Value> {
+    let notes: Vec<Value> = (0..8).map(|i| json!({ "pitch": ["C4", "E4", "G4"], "at": { "beat": i as f64 * 0.5 }, "dur": 0.4, "vel": 0.7, "strum": 20 })).collect();
+    let hits: Vec<Value> = (0..8).map(|i| json!({ "drum": "hat", "at": { "beat": i as f64 * 0.5 }, "vel": 0.6 })).collect();
+    let mut s = json!({ "contract": "rostrum-sound-schedule/1", "tempo": 100, "tracks": [
+        { "id": "keys", "instrument": { "builtIn": "classic.feltPiano" }, "notes": notes },
+        { "id": "drums", "instrument": { "kit": "classic" }, "hits": hits }] });
+    for t in s["tracks"].as_array_mut().unwrap() { if !perform.is_null() { t["perform"] = perform.clone() } }
+    let c = super::schedule::compile(&s, "schedule").unwrap();
+    c.job["tracks"].as_array().unwrap().iter().flat_map(|t| t["clips"][0]["content"]["voices"].as_array().unwrap().clone()).collect()
+}
+
+#[test]
+fn perform_false_plays_as_written_and_performing_is_the_same_every_time() {
+    let written = voices(json!(false));
+    let sr = 48000.0;
+    for (i, v) in written.iter().enumerate() {
+        let (n, k) = (i / 3, i % 3);    // 8 strummed chords (3 tones, 20 ms apart), then 8 hats
+        let (at, vel) = if i < 24 { (n as f64 * 0.3 + k as f64 * 0.02, 0.7) } else { ((i - 24) as f64 * 0.3, 0.6) };
+        assert_eq!(v["startIdx"], json!((at * sr).round() as u64), "voice {i}: {v}");
+        assert_eq!(v["velocity"], json!(vel), "voice {i}");
+        if i < 24 { assert_eq!(v["duration"], json!(0.4 - k as f64 * 0.02), "voice {i}") }
+    }
+    let (a, b) = (voices(Value::Null), voices(json!({})));
+    assert_eq!(a, b, "the same performance every render");
+    assert_ne!(a, written, "on by default");
+    assert!(a.iter().all(|v| v["startIdx"].as_u64().is_some()));
+    assert_ne!(voices(json!({ "seed": 7 })), a, "another seed, another performance");
 }

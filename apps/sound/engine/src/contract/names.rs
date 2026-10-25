@@ -8,16 +8,44 @@ pub const TONES: &[&str] = &["neutral", "muffled", "warm", "sub-boost", "bright"
 pub const SPACES: &[&str] = &["dry", "room", "hall", "cathedral", "shimmer", "freeverb.room", "freeverb.hall", "freeverb.cathedral"];
 /// EQ band shapes (fx/eq.rs biquad).
 pub const EQ_SHAPES: &[&str] = &["lowshelf", "highshelf", "peak", "lowpass", "highpass", "notch"];
-/// Synthesized instruments (instruments/voices/tones.rs).
-pub const BUILT_INS: &[&str] = &["feltPiano", "grandPiano", "warmPad", "analogStrings", "spiccatoStrings", "choirPad", "cinematicBrass", "subBass", "glassMarimba"];
+pub use super::names_instruments::{built_in_names, kit_names};
 /// The synthesized drum kit (instruments/voices/tones.rs drum voices).
 pub const SYNTH_DRUMS: &[&str] = &["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"];
-/// General MIDI percussion keys an SFZ kit on GM keys answers to.
+/// General MIDI percussion keys the recorded kits (and an SFZ kit on GM keys) answer to: one list on every kit.
 pub const GM_DRUMS: &[(&str, u8)] = &[
-    ("kick", 36), ("rim", 37), ("snare", 38), ("clap", 39), ("hat", 42), ("pedalHat", 44), ("openHat", 46), ("tomLow", 45),
-    ("tom", 47), ("tomHigh", 50), ("crash", 49), ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55),
-    ("crash2", 57), ("ride2", 59),
+    ("kick", 36), ("kick2", 35), ("rim", 37), ("snare", 38), ("clap", 39), ("snare2", 40), ("hat", 42), ("pedalHat", 44), ("openHat", 46),
+    ("lowTom", 41), ("floorTom", 43), ("tomLow", 45), ("tom", 47), ("midTom", 47), ("tomHigh", 50), ("highTom", 50), ("crash", 49),
+    ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55), ("crash2", 57), ("ride2", 59), ("shaker", 70),
 ];
+/// The performance layer's families and their defaults (ENGINE_CONTRACT.md § Perform; the experiment's
+/// performDefaults.ts, Sam 2026-10-15): timing ms, velocity spread, accent, strum, articulation.
+pub const PERFORM_DEFAULTS: &[(&str, &str)] = &[
+    ("plucked", r#"{"timing":8,"velocity":0.12,"accent":0.07,"strum":0.6}"#),
+    ("mallets", r#"{"timing":6,"velocity":0.12,"accent":0.08}"#),
+    ("drums", r#"{"timing":4,"velocity":0.1,"accent":0.06}"#),
+    ("sustained", r#"{"timing":10,"velocity":0.08,"accent":0.04,"articulation":"legato"}"#),
+    ("detached", r#"{"timing":6,"velocity":0.1,"accent":0.06}"#),
+    ("keys", r#"{"timing":6,"velocity":0.1,"accent":0.05}"#),
+    ("synth", r#"{"velocity":0.05}"#),
+];
+/// A recorded articulation's family (any other, sustain, soft, vibrato …, is sustained).
+pub const ART_FAMILY: &[(&str, &str)] = &[("keys", "keys"), ("pedal", "keys"), ("spiccato", "detached"), ("staccato", "detached"), ("tremolo", "detached"),
+    ("pizzicato", "plucked"), ("pluck", "plucked"), ("fingerstyle", "plucked"), ("hit", "drums"), ("roll", "drums"), ("mallet", "mallets")];
+/// A classic voice's or a model's family (any other classic voice is synth).
+pub const NAMED_FAMILY: &[(&str, &str)] = &[("feltPiano", "keys"), ("grandPiano", "keys"), ("glassMarimba", "mallets"), ("spiccatoStrings", "detached"),
+    ("guitar", "plucked"), ("nylonGuitar", "plucked"), ("marimba", "mallets"), ("vibraphone", "mallets"), ("glockenspiel", "mallets"), ("tubularBell", "mallets"), ("violin", "sustained")];
+
+pub fn art_family(art: &str) -> &'static str {
+    ART_FAMILY.iter().find(|(a, _)| *a == art).map_or("sustained", |(_, f)| *f)
+}
+
+pub fn named_family(name: &str) -> &'static str {
+    NAMED_FAMILY.iter().find(|(n, _)| *n == name).map_or("synth", |(_, f)| *f)
+}
+
+pub fn perform_defaults(family: &str) -> serde_json::Value {
+    PERFORM_DEFAULTS.iter().find(|(f, _)| *f == family).map_or(serde_json::json!({}), |(_, d)| serde_json::from_str(d).expect("the defaults table is JSON"))
+}
 /// Procedural instruments (instruments/model/): the contract's name -> the engine's.
 pub const MODELS: &[(&str, &str)] = &[("guitar", "model.guitar"), ("nylonGuitar", "model.nylonGuitar"), ("marimba", "model.marimba"),
     ("vibraphone", "model.vibraphone"), ("glockenspiel", "model.glockenspiel"), ("tubularBell", "model.tubularBell"), ("violin", "ddsp.violin")];
@@ -111,10 +139,6 @@ pub fn gm_drum(name: &str) -> Option<u8> {
     GM_DRUMS.iter().find(|(n, _)| *n == name).map(|(_, k)| *k)
 }
 
-pub fn gm_names() -> Vec<&'static str> {
-    GM_DRUMS.iter().map(|(n, _)| *n).collect()
-}
-
 /// The names as `describe` answers them.
 pub fn describe() -> serde_json::Value {
     use serde_json::{json, Value};
@@ -141,7 +165,10 @@ pub fn describe() -> serde_json::Value {
         };
         (n.to_string(), Value::Array(fields))
     }).collect();
-    json!({ "tones": TONES, "spaces": SPACES, "eqShapes": EQ_SHAPES, "builtIns": BUILT_INS, "synthDrums": SYNTH_DRUMS,
+    json!({ "tones": TONES, "spaces": SPACES, "eqShapes": EQ_SHAPES, "builtIns": built_in_names(), "synthDrums": SYNTH_DRUMS,
+            "instruments": super::plain::describe(), "kits": super::plain::describe_kits(), "kitNames": kit_names(),
+            "perform": { "families": PERFORM_DEFAULTS.iter().map(|(f, _)| (f.to_string(), perform_defaults(f))).collect::<serde_json::Map<_, _>>(),
+                         "articulations": ART_FAMILY.iter().map(|(a, f)| (a.to_string(), json!(f))).collect::<serde_json::Map<_, _>>() },
             "gmDrums": GM_DRUMS.iter().map(|(n, k)| json!({ "name": n, "key": k })).collect::<Vec<_>>(),
             "mediaFormats": MEDIA_FORMATS, "pluginFormats": PLUGIN_FORMATS, "effects": effects, "models": model_names(), "waves": WAVES,
             "instrumentFields": instrument_fields })

@@ -146,7 +146,7 @@ mod tests {
         let out = dir.join("mix.wav");
         let req = json!({ "do": "render", "out": out, "schedule": { "contract": "rostrum-sound-schedule/1", "length": 2.0,
             "buses": [{ "id": "music" }],
-            "tracks": [{ "id": "keys", "instrument": { "builtIn": "grandPiano" }, "notes": [{ "pitch": "C4", "at": 0.5, "dur": 0.5 }], "output": "music" },
+            "tracks": [{ "id": "keys", "instrument": { "builtIn": "classic.grandPiano" }, "notes": [{ "pitch": "C4", "at": 0.5, "dur": 0.5 }], "output": "music" },
                        { "id": "pad", "instrument": { "builtIn": "warmPad" }, "notes": [{ "pitch": "A3", "at": 1.0, "dur": 0.5 }] }] } });
         let a = crate::contract::answer(&req);
         assert_eq!(a["ok"], json!(true), "{a}");

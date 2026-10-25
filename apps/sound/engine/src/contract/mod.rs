@@ -9,9 +9,13 @@ mod clip;
 mod effects;
 mod error;
 mod expression;
+mod hit;
 mod instrument;
 mod media;
 pub mod names;
+mod names_instruments;
+mod perform;
+mod plain;
 mod pitch;
 mod plugin;
 mod plugin_requests;
@@ -20,6 +24,7 @@ mod read;
 mod render;
 mod schedule;
 pub mod serve;
+mod meter;
 mod time;
 mod track;
 #[cfg(test)]
@@ -54,7 +59,7 @@ fn handle(req: &Value) -> Result<Value, Error> {
         }
         "check" => {
             let c = schedule::compile(o.required("schedule")?, "schedule")?;
-            json!({ "resolved": c.resolved, "length": c.seconds, "tracks": c.ids.len() })
+            json!({ "resolved": c.resolved, "length": c.seconds, "tracks": c.ids.len(), "credits": c.credits })
         }
         "range" => range::range(o.required("instrument")?, "instrument")?,
         "render" | "plugins" | "pluginWindow" => json!(null),

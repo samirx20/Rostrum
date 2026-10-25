@@ -28,7 +28,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
      "notes": [{"pitch": "D4", "at": {"beat": 0}, "dur": {"beats": 4}, "vel": 0.7},
                {"pitch": ["D3", "A3", "F4"], "at": 2.5, "dur": 1.0}],
      "effects": [{"type": "eq", "bands": [{"shape": "highpass", "freq": 80}]}]},
-    {"id": "drums", "instrument": {"kit": "synth"},
+    {"id": "drums", "instrument": {"kit": "drums"},
      "hits": [{"drum": "kick", "at": {"beat": 0}}, {"drum": "snare", "at": {"beat": 1}, "vel": 0.7}]},
     {"id": "door", "clips": [{"media": "C:\\...\\door.wav", "in": 0.42, "length": 1.2, "at": 3.0, "volume": 0.6}]}
   ]
@@ -43,6 +43,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `sampleRate` | 22050 … 192000 | 48000 | The mix's rate |
 | `length` | time | end of the last sound + 2 s | How long the mix is; nothing past it is heard |
 | `tempo` | number or list | 120 | A number (bpm), or tempo segments `[{"beat": b, "bpm": x}, …]` sorted by beat, the first at beat 0; tempo is constant inside a segment, or with `"ramp": true` glides evenly per beat to the next segment's bpm (exact: seconds = 60/k·ln(bpm/bpm₀), k bpm per beat; not on the last segment) |
+| `meter` | list | 4/4 throughout | The bar map the performance accents by: `[{"at": beat, "bar": beats in a bar, "beat": a main beat in beats}, …]`, the first at beat 0, in beat order (3/4: bar 3, beat 1; 6/8: bar 3, beat 1.5) |
 | `master` | object | see below | The master bus |
 | `tracks` | list | required (may be empty only with `length`) | Tracks, summed in this order |
 | `buses` | list | `[]` | Buses tracks feed and send to (§ Buses and sends) |
@@ -67,20 +68,39 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 | `output` | bus id | none (the master) | The bus this track feeds instead of the master (§ Buses and sends) |
 | `sends` | list | `[]` | Copies of the track into buses (§ Buses and sends) |
 | `expression` | object | none | CC-style dynamics and vibrato lanes (§ Track expression) |
+| `perform` | `true`, `false` or object | `true` | How the notes and hits are played (§ Perform): `true` the instrument family's defaults, an object merged over them, `false` exactly as written |
 
 ### Instrument (one key)
 
 | Form | Meaning |
 |---|---|
-| `{"builtIn": "grandPiano"}` | A synthesized instrument: `feltPiano`, `grandPiano`, `warmPad`, `analogStrings`, `spiccatoStrings`, `choirPad`, `cinematicBrass`, `subBass`, `glassMarimba` |
+| `{"builtIn": "piano"}` | A plain name (§ Plain names): a recorded instrument, an analog synth preset, or `classic.<voice>` for a synthesized one |
 | `{"sfz": "<path>", "legato": false, "swell": false}` | A sampled instrument (SFZ file). A note outside its samples fails and names the range |
-| `{"kit": "synth"}` | The engine's synthesized drum kit: `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal`, `tom`, `rim` |
-| `{"kitSfz": "<path>"}` | An SFZ drum kit on General MIDI keys; hits name a GM drum (`kick`, `snare`, `hat`, `openHat`, `crash`, `ride`, `tom`, …) or a key number |
+| `{"kit": "drums"}` | A drum kit: `drums` (recorded rock kit), `studio` (recorded studio kit) or `classic` (the synthesized kit: `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal`, `tom`, `rim`). `synth` is no longer a kit name (documents open it as `drums`) |
+| `{"kitSfz": "<path>"}` | An SFZ drum kit on General MIDI keys; hits name a GM drum or a key number |
 | `{"model": "guitar", "position": 0.13, "damping": 0, "hardness": 0.5}` | A procedural instrument (§ 2a): `guitar`, `nylonGuitar` (plucked strings), `marimba`, `vibraphone`, `glockenspiel`, `tubularBell` (struck bars), `violin` (a bowed solo voice, learned model). The touch fields are the track's defaults; a note may override them |
 | `{"synth": "saw", "attack": 0.3, "brightness": 2400, …}` | A subtractive synth (§ 2a): the value is the wave (`saw`, `square`, `triangle`, `sine`) |
 | `{"plugin": {"format": "clap", "path": "C:\\…\\Synth.clap", "id": "<id>", "params": {…}, "state": "<base64>"}}` | A CLAP / VST3 instrument plugin (§ Plugins). One instance plays all the track's notes (its own polyphony and releases) |
 
 An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "articulations": {"spiccato": "<spic.sfz>", "tremolo": "<trem.sfz>"}}`. A note picks one with `"art": "spiccato"`; without `art` it plays the main file. This is the keyswitch for libraries that ship one file per playing style (VSCO 2, most CC0 libraries); SFZ files with `sw_*` keyswitch opcodes are still refused with that message.
+
+### Plain names (added 2026-10-25: recorded instruments, Sam's choice by ear)
+
+The plain names are the `builtIn` names; the table is `engine/src/contract/names_instruments.rs` and `describe` answers it (`instruments`, each with what it plays, `about`, `pack`, `range`, `articulations` (the first plays by default), `family`, `credit`, `installed`). A document keeps the name as written; the engine resolves it when it plays.
+
+- **Recorded** (packs under `<assets>/sounds/<pack>/`; `<assets>` is `ROSTRUM_ASSETS_DIR`, else `%USERPROFILE%\.rostrum\assets`): `piano`, `grandPiano`, `acousticPiano`, `feltPiano` (Salamander concert grand, CC-BY: credited); `electricPiano`, `wurlitzer` (Wurlitzer EP200, CC-BY: credited); `organ`, `drawbarOrgan` (FreePats drawbar organ), `pipeOrgan` (VCSL); `guitar`, `nylonGuitar` (FreePats Spanish classical guitar, a SoundFont); `acousticGuitar`, `steelGuitar`, `archtopGuitar` (Karoryfer Shinyguitar); `electricGuitar`, `cleanGuitar` (FreePats FSBS clean); `bass`, `electricBass`, `bassGuitar` (Karoryfer Growlybass); `uprightBass`, `doubleBass` (D. Smolken, pizzicato); `strings`, `analogStrings` (a VSCO 2 string section split by pitch: basses below C2, cellos to B2, violas to F#3, violins above; sustain) and `spiccatoStrings` (the same, spiccato); `violins`, `violas`, `cellos`, `basses`, `violin`, `harp` (VSCO 2); `cello` (Karoryfer x bigcat solo cello); `brass`, `cinematicBrass` (a VSCO 2 brass section split by pitch: tuba to D2, trombone to A3, horn to A#4, trumpet above); `horn`, `trumpet`, `trombone`, `tuba` (VSCO 2); `flute`, `piccolo`, `oboe`, `clarinet`, `bassoon` (VSCO 2); `saxophone`, `tenorSax` (VCSL); `marimba`, `glassMarimba`, `vibraphone`, `xylophone`, `glockenspiel`, `tubularBells` (VCSL); `timpani` (VSCO 2).
+- **Analog synth presets:** `warmPad`, `pad` (analog pad), `subBass` (analog bass), `pluck` (analog pluck).
+- **Classic synthesized voices:** `choirPad` (no permissive recorded choir exists), and every old voice by `classic.<name>`: `classic.feltPiano`, `classic.grandPiano`, `classic.warmPad`, `classic.analogStrings`, `classic.spiccatoStrings`, `classic.choirPad`, `classic.cinematicBrass`, `classic.subBass`, `classic.glassMarimba`.
+
+A recorded instrument's note may name an articulation with `art` (`"spiccato"`, `"pizzicato"`, `"staccato"`, `"muted"`, …, as `describe` lists them; an instrument with a `sustain` also plays `legato` and `swell` on it). A plain name whose pack is missing is a loud `NOT_FOUND` error naming the instrument, the pack and the install step (`Install it: python -m rostrum_sound.packs install <pack> (an agent: run_model_install with "<pack>")`), never silence or a synth instead. A render answers `credits`: the distinct credit lines of the CC-BY instruments it played (every export carries them); `check` answers them too.
+
+**Kits** (`describe` › `kits`): `drums` (MuldjordKit, CC-BY: credited; rim, clap and shaker from the studio kit), `studio` (Karoryfer Big Rusty Drums + VCSL claps and shaker, CC0), `classic` (synthesized). The recorded kits answer to one list of hit names (`gmDrums`): `kick`, `kick2`, `rim`, `snare`, `clap`, `snare2`, `hat`, `pedalHat`, `openHat`, `lowTom`, `floorTom`, `tomLow`, `tom`, `midTom`, `tomHigh`, `highTom`, `crash`, `cymbal`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, `shaker`. A name or key the kit has no sample for is an error listing what it plays.
+
+### Perform (added 2026-10-25: the performance layer, on by default)
+
+A track's notes and hits are played, not just sequenced: each note lands up to ± `timing` ms off the grid, `lean` lays the whole part back (+ ms) or pushes it (−), `swing` (0 … 1) makes the off-beat `swingGrid` cells (0.5 = 8ths, 0.25 = 16ths) late, `velocity` (± fraction) varies each note, `dynamics` `[[time, factor 0 … 2], …]` shapes the part, `accent` (0 … 0.5) lifts notes on the beat (the bar's downbeat, 4 beats, by all of it, the others by half), `articulation` (`legato`: a note joins the next when only a breath, < 0.15 s, separates them; `staccato`: shortened; `normal`) applies to notes without their own `art`, `vibrato` `{"rateHz", "depthCents", "delaySec": 0.2}` or `false` goes on held notes (0.3 s or more) that have no vibrato of their own, `pedal` (`true`, `false` or `[[from, to], …]` times) holds notes to the range's end, `strum` (0 … 1) varies a strummed chord's gaps string to string and makes each string a little softer, `seed` (any number) picks another, still repeatable, performance. Seeded by the track id: the same every render. No voice moves before 0 or past a given `length`.
+
+Defaults by family (`describe` › `perform`): plucked {timing 8, velocity 0.12, accent 0.07, strum 0.6}; mallets {6, 0.12, 0.08}; drums {4, 0.1, 0.06}; sustained {10, 0.08, 0.04, articulation legato}; detached {6, 0.1, 0.06}; keys {6, 0.1, 0.05}; synth {velocity 0.05}; the rest 0 (`lean`, `swing`, `dynamics`, `vibrato`, `pedal` off). The family: a recorded instrument's from its default articulation (`keys`, `pedal` keys; `spiccato`, `staccato`, `tremolo` detached; `pizzicato`, `pluck`, `fingerstyle` plucked; `hit`, `roll` drums; `mallet` mallets; any other sustained); kits drums; synth presets and `synth` synth; models guitar / nylonGuitar plucked, bars mallets, violin sustained; classic voices feltPiano / grandPiano keys, glassMarimba mallets, spiccatoStrings detached, the others synth; `sfz` files and plugins keys. Recorded clips are never performed.
 
 ### 2a. Instrument settings (added 2026-10-21, P4)
 
@@ -116,6 +136,7 @@ An `sfz` instrument may also name **articulations**: `{"sfz": "<sustain.sfz>", "
 | `dynamics` | `[[fraction 0 … 1, level 0 … 2], …]` | none | The note's own swell / fade across its length (fraction of `dur`), straight lines between, multiplied into its level |
 | `vibrato` | `{"rate": 5.5, "depth": 20, "delay": 0.2}` (Hz, cents, seconds) | none | Steady vibrato, fading in over a quarter second after `delay` |
 | `bend` | `[[seconds into the note, cents], …]` | none | Pitch bend (a slide, a fall, a scoop) |
+| `strum` | −200 … 200 ms | 0 | A chord's tones one after another, this far apart (low to high; negative: from the top), each held to the chord's end |
 
 ### Track expression (CC-style lanes; added 2026-10-21, P4)
 
@@ -131,7 +152,7 @@ Added 2026-10-23 (S56): `"sustain": [[time, 0 … 1], …]` is the pedal (CC 64)
 | `at` | time | required |
 | `vel` | 0 … 1 | 0.85 |
 | `pan` | −1 … 1 | 0 |
-| `tune` | 0.25 … 4 (pitch ratio; `synth` kit only) | 1 |
+| `tune` | 0.25 … 4 (pitch ratio; `classic` kit only) | 1 |
 | `decay` | 0.1 … 4 (factor of the hit's length) | 1 |
 
 ### Clip (recorded audio)
@@ -235,10 +256,10 @@ Every answer is `{"id": …, "ok": true, "result": {…}}` or `{"id": …, "ok":
 
 | `do` | Fields | Answer |
 |---|---|---|
-| `describe` | — | `contract`, `engine` (version), and every accepted name: `tones`, `spaces`, `eqShapes`, `effects` (each with its fields and defaults), `builtIns`, `synthDrums`, `gmDrums`, `mediaFormats`, `pluginFormats`. Installed plugins are not listed here (that loads each one): ask `plugins` |
-| `check` | `schedule` | The schedule with every default filled in and every time in seconds (`resolved`), plus `length` and `tracks` count. Nothing is rendered |
-| `render` | `schedule`, `out` (WAV path), optional `stems` (`"all"` or a list of track ids), `stemsDir` (default: beside `out`, named `<out stem>.stems`), `master` (true; false skips mastering), `from` / `to` (seconds, both or neither: the file is that stretch of the song; tracks render whole and stay cached, the master stage, its loudness target and the file's measures work on the stretch alone, stems are cut to it; P29) | `file`, `seconds` (the song's), `range` (`[from, to]` in seconds as rendered, `to` held at the song's end; null without), `renderSeconds`, `lufs`, `truePeak`, `peak`, `lra`, `clipped`, `bands`, `series` (short-term loudness, true peak and stereo correlation every 100 ms), `tracks` (per track: `id`, `peak`, `rms`, `lufs`, `span`, `onsets`, `bands`), `stems` (`{id: path}`), `busStems` (`{bus id: path}`, when any stem is asked for and there are buses), `direct` (track ids), `ducks` (where each duck dipped) |
-| `range` | `instrument` (as in a track) | `low`, `high` (note names), `lowKey`, `highKey` (MIDI), `gaps` (keys inside the range with no sample), `layers` (velocity layers), `drums` (names a kit answers to) |
+| `describe` | — | `contract`, `engine` (version), and every accepted name: `tones`, `spaces`, `eqShapes`, `effects` (each with its fields and defaults), `builtIns` (every `builtIn` name), `instruments` (each plain name: what it plays, § Plain names), `kitNames`, `kits`, `perform` (`families`: each family's defaults; `articulations`: an articulation's family), `synthDrums`, `gmDrums`, `mediaFormats`, `pluginFormats`. Installed plugins are not listed here (that loads each one): ask `plugins` |
+| `check` | `schedule` | The schedule with every default filled in and every time in seconds (`resolved`), plus `length`, `tracks` count and `credits`. Nothing is rendered |
+| `render` | `schedule`, `out` (WAV path), optional `stems` (`"all"` or a list of track ids), `stemsDir` (default: beside `out`, named `<out stem>.stems`), `master` (true; false skips mastering), `from` / `to` (seconds, both or neither: the file is that stretch of the song; tracks render whole and stay cached, the master stage, its loudness target and the file's measures work on the stretch alone, stems are cut to it; P29) | `file`, `seconds` (the song's), `credits` (the CC-BY instruments' credit lines), `range` (`[from, to]` in seconds as rendered, `to` held at the song's end; null without), `renderSeconds`, `lufs`, `truePeak`, `peak`, `lra`, `clipped`, `bands`, `series` (short-term loudness, true peak and stereo correlation every 100 ms), `tracks` (per track: `id`, `peak`, `rms`, `lufs`, `span`, `onsets`, `bands`), `stems` (`{id: path}`), `busStems` (`{bus id: path}`, when any stem is asked for and there are buses), `direct` (track ids), `ducks` (where each duck dipped) |
+| `range` | `instrument` (as in a track) | `instrument` (as resolved; a plain name is read as a track reads it, so a missing pack is the same error), `low`, `high` (note names), `lowKey`, `highKey` (MIDI), `gaps` (keys inside the range with no sample), `layers` (velocity layers), `drums` (names a kit answers to) |
 | `plugins` | optional `path` (a `.clap` / `.vst3`, or a folder, searched 4 levels deep) | Without `path`: the standard folders (`CLAP_PATH`, `VST3_PATH`, `%LOCALAPPDATA%\Programs\Common\CLAP` and `…\VST3`, `C:\Program Files\Common Files\CLAP` and `…\VST3`) and `%USERPROFILE%\.rostrum\assets\plugins`. Answers `folders` (searched), `plugins` (each: `format`, `path`, `id`, `name`, `vendor`, `kind` (`effect` / `instrument`), `hasWindow`, `params`: `[{id, name, min, max, default, steps?, unit?, plainMin?, plainMax?}]`; `steps` only on stepped parameters; `plainMin` / `plainMax` the VST3 range the 0 … 1 value stands for) and `failed` (files that would not load, each with its `error`). Each plugin is loaded in the engine's own process to read it |
 | `pluginWindow` | `plugin`: a plugin (§ Plugins; `params` and `state` optional) | Opens the plugin's own window for a person and answers when they close it: `state` (base64, for the document), `params` (`{id: value}`: the current values of the parameters the request named; everything else is in `state`), `errors` (anything the plugin reported meanwhile). Nothing else is answered while the window is open. The window runs in its own process (`rostrum-sound plugin`), so a plugin crash fails the request (`JOB_FAILED`), not the engine |
 
