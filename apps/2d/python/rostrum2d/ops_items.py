@@ -66,14 +66,20 @@ def comp_remove(ctx, targets, args):
 
 @R.operation("layer.add", "Add a shape, text, image, group or drawing to a composition or group (on top unless index is given).",
              target=LAYER_HOLDERS, label="Add layer",
-             params=[Param.choice("type", list(F.PLACED), label="Type", required=True), ID, NAME, INDEX])
+             params=[Param.choice("type", list(F.PLACED), label="Type", required=True), ID, NAME, INDEX,
+                     Param.number("frame", label="First drawing at frame", min=0, max=10**7, integer=True, importance="deep",
+                                  help="A drawing layer: the frame its first drawing starts at (default 0). Give it with "
+                                       "eachFrame on to start a frame-by-frame run at the playhead")])
 def layer_add(ctx, targets, args):
     from .ops_draw import starter_frame
+    if "frame" in args and args["type"] != "drawing":
+        ctx.fail(codes.BAD_ARGUMENT, '"frame"', f'only a drawing layer has a first drawing: a {args["type"]} has none',
+                 hint="Leave frame out, or add a drawing layer.")
     for t in targets:
         item = new_item(ctx, args["type"], args if len(targets) == 1 else {**args, "id": None})
         ctx.insert(t, "layers", item, args.get("index"))
         if item["type"] == "drawing":            # a new drawing starts with one drawing at frame 0, ready to paint
-            ctx.insert(item["id"], "frames", starter_frame(ctx))
+            ctx.insert(item["id"], "frames", starter_frame(ctx, args.get("frame", 0)))
 
 
 @R.operation("layer.remove", "Delete layers (with their effects, masks and keys). Never a scene's frame.", target=F.LAYERS,

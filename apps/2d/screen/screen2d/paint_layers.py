@@ -31,6 +31,7 @@ class PaintLayers(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._picked, self._drag = bridge, "", None
+        self.fresh_each = False                           # Draw each frame, asked for before the first stroke makes the drawing
         self.thumbs = ThumbProvider()                     # image://paintthumbs (session.py)
         self.thumbs.notes.ready.connect(self.changed)      # a thumbnail drawn off the GUI thread: the list shows it
         for sig in (bridge.docChanged, bridge.outlineChanged, bridge.toolChanged, bridge.frameChanged):
@@ -89,8 +90,9 @@ class PaintLayers(QObject):
         (an element: a drawing has no outline) and Draw each frame, from the first moment, before any paint, so an
         animation can start on an empty layer (painting design §2.2, §2.5)."""
         d = self._item()
-        if not d:
-            return []
+        if not d:                       # New drawing: the switch is there before anything is painted; the first stroke reads it
+            return [{"id": "eachFrame", "label": p.label, "help": p.help, "value": self.fresh_each}
+                    for p in paint_fields.DRAWING if p.name == "eachFrame"]
         if d["type"] == "painting":     # a painting (in place or opened): its Seamless and Draw each frame (design § 3.7, 3.8)
             return [{"id": p.name, "label": p.label, "help": p.help, "value": bool(d.get(p.name))}
                     for p in painting_fields.FIELDS if p.name in ("seamless", "eachFrame")]
@@ -157,8 +159,16 @@ class PaintLayers(QObject):
     @Slot(str, bool)
     def setToggle(self, name, value):
         d = self._item()
-        if d:
-            self._apply([{"op": f'{d["type"]}.set', "target": [d["id"]], "args": {name: value}}], "Paint")
+        if not d:                                         # nothing to change yet: the first stroke makes the drawing with it
+            self.fresh_each = bool(value)
+            self.changed.emit()
+            return
+        calls = [{"op": f'{d["type"]}.set', "target": [d["id"]], "args": {name: value}}]
+        if name == "eachFrame" and value and d["type"] != "painting" and len(d.get("frames", [])) == 1:
+            n = self.b.painter._n()                       # its one drawing starts where the playhead is, not at the start of time
+            if d["frames"][0]["at"] != n:
+                calls.append({"op": "frame.move", "target": [d["frames"][0]["id"]], "args": {"to": n}})
+        self._apply(calls, "Paint")
 
     @Slot(str, "QVariant")
     def setPainting(self, name, value):

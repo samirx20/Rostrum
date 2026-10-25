@@ -53,3 +53,20 @@ def test_a_script_cannot_write_a_key_the_document_would_refuse():
         run_source('comp("c")\ntext("t").key("opacty", {0: 1})', "bad.py")
     with pytest.raises(RostrumError, match="out of range"):
         run_source('comp("c")\ntext("t").key("opacity", {0: 3})', "bad.py")
+
+
+def test_key_clear_and_value_set_refuse_without_a_field_in_plain_words():
+    d = doc()                                                         # (was a KeyError: 'prop' in Ctrl+K)
+    for op in ("key.clear", "value.set"):
+        with pytest.raises(RostrumError, match="prop"):
+            d.apply({"op": op, "target": "title", "args": {}}, SAM)
+
+
+def test_a_new_drawing_made_with_draw_each_frame_starts_at_the_playhead_frame():
+    d = doc()                                                         # the screen's first stroke with the switch on
+    d.apply({"op": "layer.add", "target": "intro", "args": {"type": "drawing", "id": "sketch", "frame": 50}}, SAM)
+    d.apply({"op": "drawing.set", "target": "sketch", "args": {"eachFrame": True}}, SAM)
+    d.apply({"op": "paint.stroke", "target": "sketch", "args": {"points": [[10, 10], [60, 40]], "space": "canvas", "frame": 50}}, SAM)
+    assert [f["at"] for f in d.item("sketch")["frames"]] == [50]
+    with pytest.raises(RostrumError, match="only a drawing layer"):
+        d.apply({"op": "layer.add", "target": "intro", "args": {"type": "text", "frame": 5}}, SAM)
