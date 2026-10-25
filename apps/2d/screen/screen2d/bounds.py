@@ -42,7 +42,8 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
     screen. A layer inside groups is carried through their whole chain (position, turn, scale, anchor), as the engine
     does: a layer sits at (x, y) inside its parent and turns and scales about its anchor, and a group's layers live in
     the group's own px, so they follow the group's turn. Also `lw lh lrot` (the box in its parent's px) and `m` (the
-    parent's matrix, a b c d e f), for drags in the parent's frame. Each layer is read at the stepped time the engine
+    parent's matrix, a b c d e f), for drags in the parent's frame; `fx fy`: mirrored across / up and down by a negative
+    Stretch (the box shows the same, `ax ay` read from the other side). Each layer is read at the stepped time the engine
     draws it at (Timing > Steps on it, its group or the composition). For picking: `up` (its groups, outermost first),
     `opacity` (with its groups'), `handles` (which knobs it shows: handle_kinds.py), `paint` (the part it paints itself, as fractions x0 y0 x1 y1 of w and h; None: none).
     """
@@ -77,15 +78,20 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
             ang = math.atan2(m[1], m[0])
             gx, gy = math.hypot(m[0], m[1]), math.hypot(m[2], m[3])
             ax_s, ay_s = m[0] * p["x"] + m[2] * p["y"] + m[4], m[1] * p["x"] + m[3] * p["y"] + m[5]
-            W, H = w * sx * gx, h * sy * gy
+            fx, fy = sx < 0, sy < 0                  # mirrored by a negative Stretch: the box shows the same, its anchor on the other side
+            W, H = w * abs(sx) * gx, h * abs(sy) * gy
+            axf, ayf = (1 - p["anchorX"] if fx else p["anchorX"]), (1 - p["anchorY"] if fy else p["anchorY"])
             opacity = seen * min(1.0, max(0.0, p["opacity"]))
             paint = BX.painted(lay, w, h, frame_number(te, fps), p) if lay["id"] not in mattes else None
+            if paint and (fx or fy):
+                x0, y0, x1, y1 = paint
+                paint = (w - x1 if fx else x0, h - y1 if fy else y0, w - x0 if fx else x1, h - y0 if fy else y1)
             out.append({"up": up, "opacity": opacity, "frame": frame_number(te, fps),
                         "paint": [v / (w or 1) if i % 2 == 0 else v / (h or 1) for i, v in enumerate(paint)] if paint else None,
-                        "id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
-                        "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": p["anchorX"], "ay": p["anchorY"],
-                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m, "handles": kit_of(lay["type"], p),
-                        "locked": locked or bool(lay.get("locked"))})
+                        "id": lay["id"], "type": lay["type"], "x": ax_s - axf * W, "y": ay_s - ayf * H,
+                        "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": axf, "ay": ayf,
+                        "lw": w * abs(sx), "lh": h * abs(sy), "lrot": p["rotation"], "m": m, "handles": kit_of(lay["type"], p),
+                        "fx": fx, "fy": fy, "locked": locked or bool(lay.get("locked"))})
             if lay["type"] == "group":
                 inner = _compose(m, *BX.matrix(p, w, h))           # this group's own px -> the screen's
                 walk(lay.get("layers", []), inner, ln, locked or bool(lay.get("locked")), up + (lay["id"],), opacity)
