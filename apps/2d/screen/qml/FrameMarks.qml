@@ -19,6 +19,9 @@ Item {
     readonly property int cur: { for (const f of frames) if (backend.time >= f.t0 - 1e-6 && backend.time < f.t1 - 1e-6) return f.n; return 0 }
     readonly property bool onion: painter.onionOn && painter.drawingId === owner
     function framesOf(dx) { return Math.round(dx / m.timeRuler.perSec * m.fps) }
+    property bool trims: false            // the layer's ends can be dragged here (a layer with a start and an end)
+    property real layerStart: 0
+    property real layerEnd: 1e9
     property bool drawing: false          // a drawing layer's row (its frames may be none yet)
     property var keys: []                 // the row's keys ({t}): each diamond's 16 px, centred on its time
     function keyX(k) { return 8 + Math.round(m.timeRuler.xOf(k.t)) }
@@ -34,28 +37,34 @@ Item {
         return best
     }
     // The empty frames before the first drawing (or all of them, with none): a faint "+" on each, or (frames under
-    // 16 px wide) one "+" over the whole empty stretch; a click there is a new drawing on the frame under the pointer
-    // (painter.newFrame on an empty frame puts it at the playhead).
+    // 16 px wide) one "+" over the whole empty stretch. One click there only picks the layer and moves the playhead
+    // (never makes anything); a DOUBLE-click, inside the layer's own time (`layerStart`..`layerEnd`), is a new drawing on
+    // the frame under the pointer (painter.newFrame on an empty frame puts it at the playhead).
     readonly property real step: m.timeRuler.perSec / m.fps
     readonly property bool wide: step >= 16
-    readonly property int empty: !drawing ? 0 : frames.length ? Math.round(frames[0].t0 * m.fps)
-                                 : Math.round((backend.frameInfo.duration || 0) * m.fps)
+    readonly property int from: Math.round(Math.max(0, layerStart) * m.fps)          // the layer's own time starts here
+    readonly property int to: !drawing ? 0 : frames.length ? Math.round(frames[0].t0 * m.fps)
+                              : Math.round(Math.min(layerEnd, backend.frameInfo.duration || 0) * m.fps)
+    readonly property int empty: Math.max(0, to - from)
     Repeater {
         model: m.empty === 0 ? 0 : m.wide ? m.empty : 1
         delegate: Text {
             required property int index
             objectName: "emptyFrame" + index
-            x: 8 + Math.round(m.timeRuler.xOf(index / m.fps)); height: m.height
-            width: m.wide ? Math.floor(m.step) : Math.max(16, Math.round(m.timeRuler.xOf(m.empty / m.fps) - m.timeRuler.xOf(0)) - 1)
+            x: 8 + Math.round(m.timeRuler.xOf((m.from + index) / m.fps)); height: m.height
+            width: m.wide ? Math.floor(m.step) : Math.max(16, Math.round(m.timeRuler.xOf(m.to / m.fps) - m.timeRuler.xOf(m.from / m.fps)) - 1)
             visible: x + width > 0 && x < m.width && m.free(x, x + width) !== null
             horizontalAlignment: m.wide ? Text.AlignHCenter : Text.AlignLeft; leftPadding: m.wide ? 0 : 4
             verticalAlignment: Text.AlignVCenter
             text: "+"; color: Theme.fg3; opacity: plus.containsMouse ? 0.9 : 0.35
             font.family: uiFont; font.pixelSize: Theme.label
             MouseArea { id: plus; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        HoverTip { hovered: plus.containsMouse; text: "Double-click: new drawing here" }
+                        function frameAt(ev) { return m.from + (m.wide ? parent.index : Math.min(m.empty - 1, Math.floor(ev.x / m.step))) }
                         onClicked: (ev) => { if (backend.selected !== m.owner) backend.select(m.owner)
-                                             painter.goToFrame(m.wide ? parent.index : Math.min(m.empty - 1, Math.floor(ev.x / m.step)))
-                                             painter.newFrame(false) } }
+                                             painter.goToFrame(frameAt(ev)) }
+                        onDoubleClicked: (ev) => { if (backend.selected !== m.owner) backend.select(m.owner)
+                                                   painter.goToFrame(frameAt(ev)); painter.newFrame(false) } }
         }
     }
     Repeater {      // a looping drawing's later rounds: the same cells again, faint, not to be clicked
@@ -79,7 +88,7 @@ Item {
             readonly property int side: !m.onion || m.cur === 0 ? 0
                 : modelData.n < m.cur && m.cur - modelData.n <= painter.onionReach.before ? -1
                 : modelData.n > m.cur && modelData.n - m.cur <= painter.onionReach.after ? 1 : 0
-            readonly property bool last: modelData.n === m.frames.length
+            readonly property bool last: modelData.n === m.frames[m.frames.length - 1].n
             readonly property real x0: 8 + Math.round(m.timeRuler.xOf(modelData.t0))      // where it lies, not dragged
             readonly property real w0: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
             readonly property bool grip: !last && w0 >= 32 && m.free(x0 + w0 - 16, x0 + w0) !== null
@@ -162,6 +171,27 @@ Item {
             }
             Menu { id: cellMenu; y: cell.y + cell.height; entries: [{ value: "delete", label: "Delete" }]
                    onPicked: (v) => { if (backend.selected !== m.owner) backend.select(m.owner); painter.removeFrame(f.modelData.id) } }
+        }
+    }
+    Repeater {      // the layer's own ends: drag one to trim the layer (its start or end), as a bar's ends do
+        model: m.trims && m.frames.length ? ["start", "end"] : []
+        delegate: MouseArea {
+            id: grab
+            required property string modelData
+            objectName: "cellEnd:" + m.owner + ":" + modelData
+            property string held: ""
+            readonly property bool atStart: modelData === "start"
+            readonly property real edge: 8 + Math.round(m.timeRuler.xOf(atStart ? m.frames[0].t0 : m.frames[m.frames.length - 1].t1))
+            x: atStart ? edge : edge - width - 1; width: 16; y: Math.round((m.height - 16) / 2); height: 16
+            hoverEnabled: true; preventStealing: true; cursorShape: Qt.SizeHorCursor
+            z: 3
+            HoverTip { hovered: grab.containsMouse && !grab.held; text: grab.atStart ? "Drag to start the layer later or earlier" : "Drag to end the layer sooner or later" }
+            function tAt(ev) { return m.timeRuler.tOf(mapToItem(m, ev.x, 0).x - 8) }
+            onPressed: (ev) => { if (backend.selected !== m.owner) backend.select(m.owner)
+                                 held = backend.beginBarDrag(m.owner, modelData, tAt(ev)) === false ? "" : modelData }
+            onPositionChanged: (ev) => { if (held) backend.barDragTo(tAt(ev), (ev.modifiers & Qt.ControlModifier) ? 0 : 6 / m.timeRuler.perSec) }
+            onReleased: { if (held) backend.endDrag(); held = "" }
+            onCanceled: { if (held) backend.endDrag(); held = "" }
         }
     }
 }

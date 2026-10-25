@@ -13,8 +13,10 @@ from PySide6.QtGui import QGuiApplication
 from rostrum_gui.gui_filter import GuiFilter
 
 
-def _typing() -> bool:
-    f = QGuiApplication.focusObject()
+def _typing(obj=None) -> bool:
+    """A text field has the keyboard. `focusObject` is empty while the window is not the active one (a test window kept behind
+    the person's work, a scripted run), so the window's own focus item is asked then: its caret is there all the same."""
+    f = QGuiApplication.focusObject() or (obj.activeFocusItem() if hasattr(obj, "activeFocusItem") else None)
     return f is not None and (f.inherits("QQuickTextInput") or f.inherits("QQuickTextEdit"))
 
 
@@ -39,7 +41,7 @@ class SpaceKey(GuiFilter):
         kind = ev.type()
         if kind not in (QEvent.KeyPress, QEvent.KeyRelease, QEvent.ShortcutOverride) or ev.key() != Qt.Key_Space:
             return False
-        if ev.modifiers() & ~Qt.KeypadModifier or (_typing() and not self._held):
+        if ev.modifiers() & ~Qt.KeypadModifier or (_typing(obj) and not self._held):
             return False
         if kind == QEvent.KeyPress and not ev.isAutoRepeat() and not self._held:
             self._held, self._used = True, False

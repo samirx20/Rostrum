@@ -83,6 +83,7 @@ FocusScope {
         clip: true
         readOnly: !f.editable
         activeFocusOnPress: f.editable
+        activeFocusOnTab: f.editable        // Tab goes from field to field in the order they lie (X, then Y), never back to the top bar
         selectByMouse: f.editable
         enabled: f.editable
         focus: true

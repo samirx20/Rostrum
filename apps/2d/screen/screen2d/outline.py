@@ -166,6 +166,8 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         row["fold"] = "" if not inside else "open" if is_open else "closed"
         if lay["type"] == "drawing" or (lay.get("frames") and each_frame(lay)):   # drawings, as cells (FrameMarks.qml)
             row["frames"] = framing.marks(lay, fps, duration)
+            if "start" in row:                  # a drawing with a start and an end shows only inside them
+                row["frames"] = framing.clipped(row["frames"], row["start"], row["end"])
             row["again"] = framing.again(lay, fps, duration)    # a looping drawing's later rounds, faint
         out.append(row)
         out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)

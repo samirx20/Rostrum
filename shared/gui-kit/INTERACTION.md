@@ -60,7 +60,7 @@ Every pattern below follows the same layout:
 ## 1.1 The window's regions
 
 ```
-┌ ≡ App │ Project › Scene ▾ ····· message   Saved · 14 changes │ chips │ ↶ ↷ │ Search Ctrl K │ Export │ ? ┐  top bar
+┌ ≡ App │ Project › Scene ▾ ····· message   Saved · 14 changes │ chips │ ↷ ↶ │ Search Ctrl K │ Export │ ? ┐  top bar
 ├──┬───────────────────────────────────────────────────────────────────────────┬────────────────────────┤
 │T │            ┌ context bar: 3 layers · Group  Mask ▾  Align ▾ ⋯ ┐            │ SETTINGS               │
 │O │                                                                           │ name · Kind            │
@@ -77,7 +77,7 @@ Every pattern below follows the same layout:
 
 | Region | Where | Holds | When |
 |---|---|---|---|
-| **Top bar** | top row, 44 px, one line, never two | Fixed order, left to right: **≡** menu · **project › scene ▾** (or song name) · **message** (what just happened) · **Saved · N changes** · **chips**, each shown only while it has something to say (agent at work, Problems, a running job, an app's own chip such as Sound's loudness) · **↶ ↷** (only when they can act) · **Search Ctrl K** · **Export** (once there is something to export) · **?** | Always. Project-wide things only: nothing that makes or edits one item lives here. |
+| **Top bar** | top row, 44 px, one line, never two | Fixed order, left to right: **≡** menu · **project › scene ▾** (or song name) · **message** (what just happened) · **Saved · N changes** · **chips**, each shown only while it has something to say (agent at work, Problems, a running job, an app's own chip such as Sound's loudness) · **↷ ↶** (only when they can act; Undo keeps its place, Redo sits left of it) · **Search Ctrl K** · **Export** (once there is something to export) · **?** | Always. Project-wide things only: nothing that makes or edits one item lives here. |
 | **Tool strip** | floating on the left edge of the view it acts on, 40 px wide | Tools that make or draw things, then tools that appear with their thing (Bone with a rig), then **+ Add** at the bottom | In apps and views with tools: the 2D canvas, the 3D view, the Editor's viewer. Sound's Editor has two tools (Select V, Draw B), so they sit at the left end of the Editor's header instead. |
 | **Context bar** | floating at the **top-centre of the main view** (for Sound, of the area that has focus: the arrangement or the Editor), one row, never wraps | With the Move / Select tool and a selection: what is selected ("3 layers") and its top actions, then **⋯** for the rest. With another tool: that tool's few options. | Only when there is something to say. Hidden while dragging. Never covers the tool strip. |
 | **Main view** | the middle | The work itself: the canvas (2D), the arrangement (Sound), the 3D view, the viewer (Editor). Bottom-right: **view controls** (Fit · zoom % ▾ · preview size · Fast / Final). Bottom-left: where you are (the group path "Logo › mark"). | Always. |

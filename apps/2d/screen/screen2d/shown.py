@@ -23,6 +23,8 @@ import time
 from PySide6.QtCore import Slot
 from rostrum_core.tree import index
 from rostrum2d import retime
+from rostrum2d.names import display_name
+from rostrum_core.errors import RostrumError, codes
 
 from . import bounds, painting_open
 from .playstats import STATS
@@ -85,7 +87,13 @@ class ShownState:
             return painting_open.place(self._opened.item())
         if not self._scene:
             raise RuntimeError("the canvas can't be drawn right now, so there is nowhere to paint (see the status line)")
-        return self.frames.place(self._scene, self._t, [layer_id], world=not self.play.playing)[layer_id]
+        got = self.frames.place(self._scene, self._t, [layer_id], world=not self.play.playing)
+        if layer_id not in got:             # not drawn at the playhead (outside its own time, or its group's): nowhere to paint
+            name = display_name(self.doc.item(layer_id))
+            raise RostrumError(codes.CHECK_FAILED, "paint", f'"{name}"', f"is not on screen at {self._t:.2f} s",
+                               hint="Move the playhead to where it shows.",
+                               plain=f"{name} isn't on screen at {self._t:.2f} s: move the playhead")
+        return got[layer_id]
 
     def _note_change(self):
         """A document change: remember when, while dragging (for drag→shown)."""

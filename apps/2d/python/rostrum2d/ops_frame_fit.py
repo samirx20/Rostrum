@@ -143,9 +143,11 @@ def _cut(ctx, fid, args):
     was = _now(timed, t - 1 / fps)
     new = {**was, **(_goal(ctx, frame, timed, t, args, was["rotation"]) if args.get("to") else {})}
     before = marked.moved(at, -1 / fps)          # on a marker: the marker minus one frame, so the cut moves with it
-    for f in ALL:
-        _key(ctx, fid, f, before, was[f], ease="hold")
-        _key(ctx, fid, f, at, new[f])
+    for f in ALL:       # only what changes is keyed (a field that holds one value gets no keys: they would do nothing); a cut
+                        # with no `to` is waiting for its shot, so x, y and zoom hold their place for the person's next move
+        if keys_of(frame, f) or abs(new[f] - was[f]) > 1e-9 or (not args.get("to") and f in MOVE):
+            _key(ctx, fid, f, before, was[f], ease="hold")
+            _key(ctx, fid, f, at, new[f])
 
 
 @R.operation("frame.cut", "Cut: the frame jumps at `at` (seconds or a marker). Keys its place now one frame before with "

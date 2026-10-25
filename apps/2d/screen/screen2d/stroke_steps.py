@@ -22,7 +22,7 @@ through the calls the pointer and keys make.
     shot <png>                     wait for the newest frame, then save a picture of the window (a walk takes one per step)
     windowsize <W>x<H>             resize the window now (a picture of an open menu needs the final size before it opens)
     barbutton <label>              open that context-bar button's ▾ menu (Set depth)
-    clickat <x> <y>                a real click at that window point (logical px)
+    clickat <x> <y>                a real click at that window point (logical px) | dclickat <x> <y>: a real double-click there
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from PySide6.QtTest import QTest
 from rostrum_gui.settle import save_snap
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokeshandle", "grabhandle", "strokesdelete", "strokescopy",
-         "strokespaste", "strokesclear", "clickarea", "clickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clickname", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
+         "strokespaste", "strokesclear", "clickarea", "clickat", "dclickat", "barbutton", "windowsize", "key", "keydown", "keyup", "cclick", "cpath", "clickbtn", "clickname", "clicktext", "clickstarts", "dragtext", "reston", "shot", "cmove")
 
 # where an empty spot of each area is, as fractions of the window (width, height)
 AREAS = {"canvas": (0.45, 0.30), "timeline": (0.60, 0.93), "settings": (0.93, 0.55)}
@@ -268,8 +268,16 @@ def do_stroke_step(bridge, win, word, rest, step):
         else:
             raise RuntimeError(f"step {step!r}: no context-bar button called {label!r}")
     elif word == "clickat":
+        QTest.mouseMove(win, QPoint(int(rest[0]), int(rest[1])))        # the pointer arrives first, as a hand's does
         QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(int(rest[0]), int(rest[1])))
         QCoreApplication.processEvents()
+    elif word == "dclickat":
+        p = QPoint(int(rest[0]), int(rest[1]))
+        QTest.mouseMove(win, p)
+        QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p)
+        QTest.mouseDClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, p)
+        QCoreApplication.processEvents()
+        QTest.qWait(150)
     elif word == "clickarea":
         fx, fy = AREAS[rest[0]]
         QTest.mouseClick(win, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
