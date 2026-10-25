@@ -37,6 +37,8 @@ def show_behind(win):
     win.setProperty("_q_showWithoutActivating", True)
     win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
     win.setVisible(True)
+    from .laid_out import watch                       # a window that draws no frame is laid out before each press or key
+    watch(win)
 
 
 def qt_app():
