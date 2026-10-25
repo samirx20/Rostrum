@@ -18,8 +18,10 @@ from . import fields as F, follow, render3d, retime
 from .engine import EngineError
 from .expr import ExprError, find
 from .grain import is_recipe
+from .frame import TYPE as FRAME
 from .exprbake import exprs_of, items_of, parse_cached, problems as expr_problems
 from .layoutbake import uses_layout
+from .names import display_name
 from .seen import unseen
 
 KINDS = ("refused", "missing-font", "missing-file", "outside-project", "broken-link", "missing-marker", "expression",
@@ -133,6 +135,16 @@ def _unseen(comp: dict) -> list[dict]:
     return out
 
 
+def _said(item: dict, prop: str) -> str:
+    """"Frame's Turn": the layer's name and the field's label, as a person reads them (never `frame.rotation`)."""
+    p = F.param(item["type"], prop)
+    return f"{display_name(item)}'s {(p.label if p and p.label else prop).lower()}"
+
+
+def _value_words(v) -> str:
+    return f"{v:g}" if isinstance(v, (int, float)) and not isinstance(v, bool) else repr(v)
+
+
 def _unused_keys(comp: dict, items: dict, exprs: dict) -> list[dict]:
     """Keys that change nothing: past the composition's end, outside the layer's own time, under an expression or an
     auto layout (which decide the field), or a field whose keys all hold one value."""
@@ -142,7 +154,7 @@ def _unused_keys(comp: dict, items: dict, exprs: dict) -> list[dict]:
         if item["type"] not in F.ANIMATED_OWNERS:
             continue
         for prop in sorted(animated(item)):
-            keys, where = keys_of(item, prop), f'{item["id"]}.{prop}'
+            keys, where = keys_of(item, prop), _said(item, prop)
             if (item["id"], prop) in exprs:
                 out.append(_p("unused-keys", item["id"], f"{where}: {len(keys)} keys under an expression, which decides the field",
                               "Clear the expression or the keys"))
@@ -158,9 +170,10 @@ def _unused_keys(comp: dict, items: dict, exprs: dict) -> list[dict]:
             if item["type"] in F.LAYERS and keys and all(not start <= k["t"] < end for k in keys) and len(keys) > 1:
                 out.append(_p("unused-keys", item["id"], f"{where}: every key is outside the layer's own time ({start:g}–{end:g} s)",
                               "Move the keys or the layer's start / end"))
-            if len(keys) > 1 and all(key_value(k) == key_value(keys[0]) for k in keys):
-                out.append(_p("unused-keys", item["id"], f"{where}: {len(keys)} keys that all hold {key_value(keys[0])!r}",
-                              "Change one, or stop animating the field"))
+            waiting = item["type"] == FRAME and any(k.get("ease") == "hold" for k in keys)     # a cut waiting for its shot
+            if len(keys) > 1 and not waiting and all(key_value(k) == key_value(keys[0]) for k in keys):
+                out.append(_p("unused-keys", item["id"], f"{where}: {len(keys)} keys that all hold {_value_words(key_value(keys[0]))}",
+                              "Change one, or remove the keys"))
     return out
 
 

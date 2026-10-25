@@ -87,6 +87,8 @@ again after editing it and:
 - Keys have ids made from layer, field and time, so a key at the same time is the same key on re-run.
 - A script starts with `comp("id", ...)`: a layer line before it is refused ("make a composition first"). The scene arrives with its own frame; when the project already has a frame called `frame`, the new scene's is called `<scene id>-frame`. Ids the project already holds (a person's, another scene's) are never taken by a counted id.
 
+**Scripts cannot `import` anything.** `random`, `numpy`, `os` and the rest are refused. Only `math` (already there, `import math` is fine) and Python's plain built-ins work: `range`, `len`, `min`, `max`, `abs`, `round`, `enumerate`, `zip`, `sorted`, `sum`. For variety, use arithmetic (`(i * 37) % 11`) rather than random numbers, so a re-run gives the same piece.
+
 ```python
 comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
 t = text("headline", body="Words", size=160, x=960, y=520)
@@ -147,7 +149,7 @@ You can't judge motion from the script. Look.
 
 | Tool | Use it to |
 |---|---|
-| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Run it after every script. |
+| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Short by default (a line a layer); pass `full` (with `layers`) for every move. Run it after every script. |
 | `look_sheet` | See the **whole motion at a glance**: N frames over a time range in one labelled image. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |

@@ -31,10 +31,17 @@ LEAN_STEP = 100.0         # composition px: the lean's direction is measured ove
 
 
 def check_showing(item: dict, own_t: float, playhead: float) -> None:
-    """Paint only where the layer can be seen, as Procreate refuses a hidden layer: a stroke on a layer that is hidden, or
-    has no opacity at the playhead, would be drawn and never seen. Refused loudly, naming the layer and the moment."""
+    """Paint only where the layer can be seen, as Procreate refuses a hidden layer: a stroke on a layer that is hidden, has no
+    opacity at the playhead, or is outside its own start and end there, would be drawn and never seen (outside its time the
+    engine has no place for it to land). Refused loudly, naming the layer and the moment it shows."""
+    name = display_name(item)
+    start, end = item.get("start", 0.0), item.get("end", math.inf)
+    if not start - 1e-9 <= own_t < end:
+        goes = f"shows from {start + playhead - own_t:.2f} s" if own_t < start else "is over by then"
+        raise RostrumError(codes.CHECK_FAILED, "paint", f'"{name}"', f"is not on screen at {playhead:.2f} s",
+                           hint="Move the playhead to where it shows, then paint.",
+                           plain=f"{name} {goes}: move the playhead there")
     if item.get("hidden") or resolve(item, own_t).get("opacity", 1) <= 0:
-        name = display_name(item)
         raise RostrumError(codes.CHECK_FAILED, "paint", f'"{name}"', f"is not showing at {playhead:.1f} s",
                            hint="Show it, or move the playhead to where it shows, then paint.",
                            plain=f"{name} isn't showing at {playhead:.1f} s. Show it or move the playhead, then paint.")

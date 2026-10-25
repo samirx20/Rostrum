@@ -19,6 +19,12 @@ def marks(drawing: dict, fps: float, duration: float) -> list[dict]:
              "t1": max(end, f["at"] + 1) / fps} for i, (f, end) in enumerate(zip(fr, ends))]
 
 
+def clipped(cells: list[dict], start: float, end: float) -> list[dict]:
+    """The cells as the layer shows them: only inside its own start and end (a cell cut by one is shorter, one wholly
+    outside is gone), so the row's bar ends where the layer does."""
+    return [{**c, "t0": max(c["t0"], start), "t1": min(c["t1"], end)} for c in cells if c["t1"] > start + 1e-9 and c["t0"] < end - 1e-9]
+
+
 def again(drawing: dict, fps: float, duration: float) -> list[dict]:
     """[{n, t0, t1}]: the cells a looping drawing shows again after its own run (empty with Loop off), drawn faintly."""
     run = cycle(drawing)

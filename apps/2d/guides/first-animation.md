@@ -89,7 +89,7 @@ The top of the **settings panel** shows only what applies to them: **Combine** (
 ## 10. Undo a mistake
 
 1. Press **Ctrl+Z** to take back the last change. **Ctrl+Shift+Z** (or **Ctrl+Y**) brings it back.
-2. The undo and redo arrows near the top do the same. They appear only when there is something to undo or redo. Point at one to read what it would take back.
+2. The undo and redo arrows near the top do the same. They appear only when there is something to undo or redo; undo is always the right-hand one, so clicking it twice takes back two steps. Point at one to read what it would take back.
 3. The line next to them says what you did last, and how many changes you have made since you opened the project.
 
 Next: [the-screen.md](the-screen.md) for every part of the window, [drawing.md](drawing.md) to draw by hand, and [exporting.md](exporting.md) to get a video file out.
