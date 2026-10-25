@@ -133,9 +133,13 @@ class DocKind:
             return [f"{type(e).__name__}: {e}"]
 
     def view(self, doc) -> View:
+        """A View of `doc`; a Document lends the index it keeps (finding an item's parent walked the whole song on
+        every selection: ~18 ms a click on a 3-minute Sound song)."""
         if isinstance(doc, View):
             return doc
-        return View(doc if isinstance(doc, dict) else doc.data, self.lists)
+        if isinstance(doc, dict):
+            return View(doc, self.lists)
+        return View(doc.data, self.lists, doc.locs() if hasattr(doc, "locs") else None)
 
     def blank(self) -> dict:
         if self.new:

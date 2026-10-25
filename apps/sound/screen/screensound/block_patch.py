@@ -45,6 +45,9 @@ class RowBlocks:
         model, patches, resets = {}, [], []
         for r in rows:
             k, now = r["id"], r.get("blocks", [])
+            if k in self.held and prev.get(k) is now:    # a row the change did not touch: its very same list
+                model[k] = self.held[k]
+                continue
             p = diff(prev.get(k), now) if k in self.held else None
             if p is None:
                 model[k] = self.held[k] = now

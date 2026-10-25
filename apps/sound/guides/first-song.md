@@ -71,7 +71,7 @@ The **Colour** row shows the colour the track is drawn in.
    the note's last few pixels; every selected note changes by the same amount). A click just past a note's end is
    empty space, so with **Draw** you can write notes on one key back to back.
    - It snaps to the nearest grid line. **Grid ▾** in the arrangement's header strip sets the step: **Auto**, ticked
-     at first, follows the zoom, never a step narrower than 8 pixels on screen (beats or bars when zoomed out, finer as
+     at first, follows the zoom (the button reads the step it is on: "Grid Auto · 1/8"), never a step narrower than 8 pixels on screen (beats or bars when zoomed out, finer as
      you zoom in); or Bar, 1/2, 1/4, 1/8, 1/16, 1/32, triplets (the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
      without snapping once.
    - Hold **Alt** to drag a copy.
@@ -83,7 +83,7 @@ The **Colour** row shows the colour the track is drawn in.
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
-   track; on the ruler, Add marker here, Make a section from here and Show seconds. **Ctrl+K** finds every action by
+   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line under the pointer when one is within 3 pixels, else in the grid step it is in, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
    name, and every key on the Keys list (Ctrl+/): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid. The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).

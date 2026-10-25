@@ -224,7 +224,7 @@ Rectangle {
         var sp = e.tracks && e.tracks.length ? rowSpan(e.tracks[0]) : null
         openMenu(entries, Qt.point(bars.x + Math.max(0, bars.xOf(e.t0 || 0)) + 12, sp ? sp.bottom : bars.y + bars.height))
     }
-    Connections { target: bars; function onMenuAt(t, px, py) { tl.openMenu(backend.atMenu("", t), bars.mapToItem(tl, px, py)) } }
+    Connections { target: bars; function onMenuAt(t, px, py) { tl.openMenu(backend.atMenu("", t, 1 / bars.perSec), bars.mapToItem(tl, px, py)) } }
     Item {   // what a drag snapped to: the kit's snap line (a marker's or the playhead's name in its chip)
         x: bars.x; y: bars.y; width: bars.width; height: list.y + list.height - y
         readonly property var s: backend.snapLine

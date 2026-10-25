@@ -44,11 +44,13 @@ Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, s.low ? 72 : 94)
                 chips: s.model.effects; ownerId: s.model.id
             }
-            Flickable {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls when many
-                visible: !s.low && s.routed
-                Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, 80)
-                contentHeight: routes.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
-                MixRoutes { id: routes; width: parent.width; strip: s }
+            Loader {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls when many
+                active: !s.low && s.routed; visible: active      // made only where shown: most laptops' docks are low
+                Layout.fillWidth: true; Layout.preferredHeight: item ? Math.min(item.contentHeight, 80) : 0
+                sourceComponent: Flickable {
+                    contentHeight: routes.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
+                    MixRoutes { id: routes; width: parent.width; strip: s }
+                }
             }
             Item {   // where it plays to: a pick when there is a bus to choose, plain words when the master is the only place
                 visible: s.routed
@@ -73,18 +75,23 @@ Rectangle {
                     id: sendsBtn
                     visible: s.low && s.model.reverb !== null && s.model.reverb !== undefined
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    height: 20; selected: sendsPop.opened
+                    readonly property bool open: !!sendsPop.item && sendsPop.item.opened
+                    height: 20; selected: open
                     text: "…"   // the same on every strip: the output's name keeps the room
-                    tip: sendsPop.opened ? "" : "Reverb send, sends to groups and dips"
-                    onClicked: sendsPop.opened ? sendsPop.close() : sendsPop.open()
-                    SmallPopup {
+                    tip: open ? "" : "Reverb send, sends to groups and dips"
+                    onClicked: { sendsPop.active = true; open ? sendsPop.item.close() : sendsPop.item.open() }
+                    Loader {   // made on the first click: every strip has one, and a closed one made its sends and picks anyway
                         id: sendsPop
-                        // above the button (the Mixer sits at the bottom of the window), inside the window
-                        y: Math.max(8 - sendsBtn.mapToItem(null, 0, 0).y, -implicitHeight - 2)
-                        x: Math.max(8 - sendsBtn.mapToItem(null, 0, 0).x, sendsBtn.width - width)
-                        width: 150; padding: Theme.gap
-                        background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
-                        contentItem: MixRoutes { strip: s }
+                        active: false
+                        sourceComponent: SmallPopup {
+                            parent: sendsBtn
+                            // above the button (the Mixer sits at the bottom of the window), inside the window
+                            y: Math.max(8 - sendsBtn.mapToItem(null, 0, 0).y, -implicitHeight - 2)
+                            x: Math.max(8 - sendsBtn.mapToItem(null, 0, 0).x, sendsBtn.width - width)
+                            width: 150; padding: Theme.gap
+                            background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
+                            contentItem: MixRoutes { strip: s }
+                        }
                     }
                 }
             }
