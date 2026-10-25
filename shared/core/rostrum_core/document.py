@@ -91,6 +91,10 @@ class Document:
             self._idx = (self.data, self._top(), index(self.data, self.kind.lists))
         return self._idx[2]
 
+    def locs(self) -> dict:
+        """id -> Loc for the current data (items and parents are current; positions may be stale, see parent_of)."""
+        return self._index()
+
     def _indexed(self, data, idx):
         self._idx = (data, self._top(data), idx)
 
