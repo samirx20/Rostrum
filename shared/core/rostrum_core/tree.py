@@ -69,7 +69,10 @@ def subtree_ids(item: dict, lists: dict) -> list[str]:
 
 def fields(item: dict, lists: dict) -> dict:
     """An item's own values: everything except its id and its child lists."""
-    skip = set(child_keys(item, lists)) | {"id"}
+    keys = child_keys(item, lists)
+    if not keys:                                    # most items (a note, a hit) hold no child lists
+        return {k: v for k, v in item.items() if k != "id"}
+    skip = set(keys) | {"id"}
     return {k: v for k, v in item.items() if k not in skip}
 
 

@@ -54,6 +54,16 @@ def test_a_drag_back_to_the_start_takes_its_steps_back_and_a_click_sends_nothing
     assert heard == [] and doc.seq == 0 and x(doc) == 0
 
 
+def test_a_drag_taken_back_says_what_it_undid():
+    doc, heard = toy.sample(), []
+    doc.subscribe(heard.append)
+    with doc.gesture("Move card", SAM) as g:
+        g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 50}})
+        g.cancel()
+    back = heard[-1]
+    assert back.kind == "reset" and [(e.id, e.path, e.value) for e in back.edits] == [("card", ["x"], 0)]
+
+
 def test_undo_refuses_when_someone_changed_the_same_thing_later():
     doc = toy.sample()
     doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)

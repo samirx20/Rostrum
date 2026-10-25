@@ -48,12 +48,12 @@ def _inside(idx, item_id, ids: set) -> bool:
 
 
 def of(doc, event) -> Touched | None:
-    """What the change or the drag's step touched, or None when it can't be told (a reset, a change with no edits
-    listed). A drag's step carries its own edits (on top of the step before): the one "what did this preview change"
-    every part reads."""
+    """What the change or the drag's step touched, or None when it can't be told (a reset that doesn't say, a change
+    with no edits listed). A drag's step carries its own edits (on top of the step before), a drag taken back (Esc)
+    the edits that undid it: the one "what did this preview change" every part reads."""
     c = getattr(event, "change", None)
-    edits = c.edits if event.kind == "change" and c is not None else getattr(event, "edits", None) if event.kind == "preview" else None
-    if event.kind == "preview" and edits == []:
+    edits = c.edits if event.kind == "change" and c is not None else getattr(event, "edits", None)
+    if event.kind != "change" and edits == []:
         return Touched(set(), False)                # a step that changed nothing reaches nothing
     if not edits:
         return None

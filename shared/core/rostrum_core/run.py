@@ -140,6 +140,20 @@ def changed_items(edits, idx, lists) -> list[dict]:
     return [idx[i].item for i in ids if i in idx]
 
 
+def set_fields(edits) -> dict:
+    """item id -> the top-level fields these edits set, for items only Set (an inserted item, or one whose kind
+    changed, is checked whole). A field nobody set holds what passed the check before."""
+    out, whole = {}, set()
+    for e in edits:
+        if isinstance(e, E.Set) and e.path[0] != "type":
+            out.setdefault(e.id, set()).add(e.path[0])
+        elif isinstance(e, (E.Insert, E.Set)):
+            whole.add(e.id)
+    for i in whole:
+        out.pop(i, None)
+    return out
+
+
 def plan(kind, data: dict, calls, locked_by=None, who=None) -> tuple[dict, list, list[dict]]:
     """(the new document, the applied edits, the normalized calls). Pure: `data` is not touched. `locked_by(id)`: the
     Who that locked an item (Document.locked_by); `who`: who asks, so an agent can't unlock a person's lock."""
@@ -176,7 +190,7 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None, ch
     for err, op, target, args, where in late:
         view = View(work, kind.lists, idx)
         _check_valid_when(kind, op, [view.locs()[t].item for t in target if t in view.locs()], args, view, where)
-    problems = kind.problems(work, changed_items(applied, idx, kind.lists)) if check else []
+    problems = kind.problems(work, changed_items(applied, idx, kind.lists), set_fields(applied)) if check else []
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "
                            + "; ".join(problems))

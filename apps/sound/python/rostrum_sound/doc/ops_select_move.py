@@ -72,7 +72,7 @@ def _register(kind):
                 for k in range(1, n + 1) for item in items]
         renamed_groups: dict = {}
         for item, track, at, k in plan:
-            new = copy.deepcopy(item)
+            new = copy.deepcopy(item) if kind == "clip" else dict(item)   # the insert copies it whole; a clip: effects renamed below
             new["at"] = at
             if point is not None:                       # `until`: cut at the point (its end moved with the copy)
                 new = repeat.cut(ctx, kind, new, end_of(root, item) + start_of(root, new) - start_of(root, item), point)

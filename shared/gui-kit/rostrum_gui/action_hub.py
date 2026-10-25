@@ -115,6 +115,9 @@ class ActionHub(QObject):
         if offered != self._offered:
             self._offered = offered
             self.offeredChanged.emit()
+            if self._page:                      # the popovers this selection may open: their rows made ahead
+                with_amounts = {e["id"] for e in entries if e["amounts"]}
+                self._page.make_ahead([a for a in self.list.actions if a.id in with_amounts], self._facts)
 
     @Slot()
     def refresh_later(self):

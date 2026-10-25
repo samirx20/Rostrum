@@ -35,6 +35,7 @@ class AmountsPage(QObject):
         self._title, self._more, self._rows, self._vals, self._found = "", False, [], {}, []
         self._static: list[dict] = []
         self._later = AfterFrame(self._refresh, self)     # a slider drag's moves: one re-run per frame, the last value
+        self._ahead, self._todo, self._made = AfterFrame(self._make_one, self, ahead=True), [], set()
 
     # ---- what the popover (and InspectorRow) reads -------------------------------------------------------------
     @Property(QObject, constant=True)
@@ -72,12 +73,8 @@ class AmountsPage(QObject):
         """Start a session for `action` on the selection `facts`: its rows, then the action at once, live."""
         self.cancel()
         mine = self.memory.get(action.id, {})
-        calls = action.calls(facts, mine)
-        fit = action.fit(facts, mine) if action.fit else {}
-        self._found = A.params(action, calls, facts.doc.kind.registry, fit)
+        self._found, self._static, self._vals = self._made_for(action, facts, mine)
         self._action, self._facts, self._title, self._more = action, facts, title, False
-        self._static = A.layout(self._found)
-        self._vals = A.values(self._found, mine, fit)
         self._drag = self._drag_fn(title)
         self._refresh(preview=False, instant=True)   # at once, on the delegates made before (RowsModel keeps them per
         self._later.ask()                            # setting, parked between uses); the action runs the frame after
@@ -158,7 +155,39 @@ class AmountsPage(QObject):
     def rowAction(self, _id):
         pass
 
+    # ---- made ahead ----------------------------------------------------------------------------------------------
+    def make_ahead(self, actions, facts_fn):
+        """The rows of these actions' popovers (the selection's actions with amounts), made after the screen is drawn,
+        one action per frame, parked in the closed popover (RowsModel.park): its first open finds them waiting and
+        only their values change (a first Ctrl+R made its rows on the key: ~10-12 ms of 26). Once per action."""
+        self._todo, self._facts_fn = [a for a in actions if a.amounts and a.id not in self._made], facts_fn
+        if self._todo:
+            self._ahead.ask()
+
+    def _make_one(self):
+        if self._drag is not None or not self._todo:      # open: its rows are the shown ones; nothing to park
+            return
+        action = self._todo.pop(0)
+        self._made.add(action.id)
+        facts, mine = self._facts_fn(), self.memory.get(action.id, {})
+        try:
+            found, static, vals = self._made_for(action, facts, mine)
+            fit = action.fit(facts, vals) if action.fit else {}
+            self.model.park(A.evaluate(static, vals, fit, False), ready=True)   # hidden by the next open's update
+        except RostrumError:
+            self._made.discard(action.id)                 # not for this selection: tried again with another
+        if self._todo:
+            self._ahead.ask()
+
     # ---- inside ------------------------------------------------------------------------------------------------
+    @staticmethod
+    def _made_for(action, facts, mine):
+        """(its params, their layout, the values shown first) for `action` on `facts` with the amounts `mine`."""
+        calls = action.calls(facts, mine)
+        fit = action.fit(facts, mine) if action.fit else {}
+        found = A.params(action, calls, facts.doc.kind.registry, fit)
+        return found, A.layout(found), A.values(found, mine, fit)
+
     def _refresh(self, preview=True, instant=False):
         a, f = self._action, self._facts
         fit = a.fit(f, self._vals) if a.fit else {}

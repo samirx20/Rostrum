@@ -63,9 +63,21 @@ def clips_one_track(f):
     return f.one == "clip" and f.count >= 2 and len(f.parents) == 1
 
 
+_SPAN: list = [None, None, None]                    # [song, ids, span]: the last one asked (a refresh asks 2-5 times)
+
+
 def span_by(f):
     """How far a copy sits after the original: the selection's span; notes and hits round up to whole beats (a hit
-    has no length, and the groove stays on the beat)."""
+    has no length, and the groove stays on the beat). Kept for the same song and selection (every item's start and
+    end in seconds: ~15 ms a time for 3,000 notes, and the action list asks on every change)."""
+    root, ids = f.doc.data, tuple(f.ids)
+    if _SPAN[0] is root and _SPAN[1] == ids:
+        return _SPAN[2]
+    _SPAN[:] = root, ids, _span(f)
+    return _SPAN[2]
+
+
+def _span(f):
     root = f.doc.data
     items = [it for it in f.items if it["type"] in TIMED]
     start = min(ST.start_of(root, i) for i in items)

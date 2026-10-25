@@ -8,18 +8,16 @@ The group is just a name on each clip, so there is no second list that could dis
 """
 from __future__ import annotations
 
-from rostrum_core.tree import index
-
 from . import fields as FD
 from . import shift, times
-from .registry import LISTS, REGISTRY, set_fields
+from .registry import REGISTRY, set_fields
 
 VOLUME_MAX = 4.0
 
 
 def mates(ctx, clip_id: str) -> list[dict]:
     """The other members of this clip's group (same track, same `group`); none when it has no group."""
-    loc = index(ctx.doc, LISTS)[clip_id]
+    loc = ctx.idx[clip_id]                      # the call's kept index (indexing the song per clip: ~12 ms each)
     group = loc.item.get("group")
     if not group:
         return []
