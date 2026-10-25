@@ -305,7 +305,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # painted fill P6: the Library's Paintings (long name, seamless four repeats, uses), two layers picked; its right-click menu
         ("library-paintings", ["--sample"], LIBRARY_PAINTINGS),
         ("library-paintings-menu", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj paintingRow:painting_2 0.5 0.5 right"]),
-        ("library-paintings-open", "path-points", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj openPainting:painting_2"]),   # the row's Open button: the painting alone, nothing used
+        ("library-paintings-open", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj openPainting:painting_2"]),   # the row's Open button: the painting alone, nothing used
         # P6: a painting opened on its own (its repeats round it, the path chip, Size and Used by); it boiling, three
         # drawings as cells with the onion skin; Select strokes on a painted fill painted in place
         ("painting-opened", ["--sample"], OPENED),
