@@ -20,7 +20,7 @@ doc ─ comps ─ comp (width, height, fps, duration, background)
 
 - **One fields table** (`fields.py`): every field's type, range, group, importance and `valid_when`. The field operations (`text.set`, `glow.set`, `key.set` …), the inspector, the script layer's checks and the scene's defaults all read it.
 - **One animation model** (`evaluate.py`, `easing.py`, `ops_keys.py`): a field is still, or animated by keys. Keys are items (`title.opacity.k1500`: id from owner, field and time; kept when moved), so a script re-run merges key by key and field by field. `value.set` is "change it as I see it now": a still field changes, an animated one gets a key at `at`.
-- **Operations:** `comp.add`, `layer.add / remove / arrange`, `item.rename`, `effect.add / remove`, `mask.add`, `key.add / remove / clear`, `value.set`, and one `<type>.set` per item type.
+- **Operations:** `comp.add / duplicate / move / remove`, `layer.add / remove / arrange`, `item.rename`, `effect.add / remove`, `mask.add`, `key.add / remove / clear`, `value.set`, and one `<type>.set` per item type.
 - **Expressions and bindings** (`expr.py` parser, `expr_run.py`, `expr_lib.py`, `exprbake.py`, `ops_expr.py`): one number
   or colour field can be driven by a small safe expression (`expr.set`: `sin(time * 3) * 40 + logo.x`) or bound to
   another item's field (`link.set`: value = other · scale + offset, the same thing written as an expression;

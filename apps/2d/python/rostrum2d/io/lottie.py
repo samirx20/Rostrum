@@ -32,10 +32,13 @@ NOT_EXPORTED = {"drawing": "frame-by-frame drawings are not exported (Lottie has
                 "video": "video layers are not exported (Lottie holds no video)"}
 
 
-def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int = 1) -> list[dict]:
-    """Our layers (bottom first) → Lottie layers (top first)."""
+def _layers(children: list[dict], ctx: Ctx, assets: list[dict], start_ind: int = 1, progress=None) -> list[dict]:
+    """Our layers (bottom first) → Lottie layers (top first). `progress(done, total)`: called as each layer is done
+    (the scene's own layers only; the file's writing is the last step)."""
     out, ctx.siblings = [], children
-    for node in children:
+    for n, node in enumerate(children):
+        if progress:
+            progress(n, len(children) + 1)
         ctx.layer = node["id"]
         kind = node["type"]
         if kind == "camera":                   # the scene's frame: bake_frame carries its move, after the layers
@@ -103,7 +106,7 @@ def _round(v):
     return v
 
 
-def to_lottie(scene: dict, background: bool = True, baked: list | None = None) -> tuple[dict, list[str]]:
+def to_lottie(scene: dict, background: bool = True, baked: list | None = None, progress=None) -> tuple[dict, list[str]]:
     """The scene description (rostrum2d.scene.describe) → (Lottie JSON as a dict, report sentences); `baked` gets the
     lines for what is carried as a keyframe every frame."""
     if scene.get("format") != "rostrum-2d-scene":
@@ -113,7 +116,7 @@ def to_lottie(scene: dict, background: bool = True, baked: list | None = None) -
     outlines = Outlines(scene)
     ctx, assets = Ctx(float(pr["fps"]), float(pr["duration"]), outlines=outlines), []
     try:
-        layers = _layers(comp.get("layers", []), ctx, assets)
+        layers = _layers(comp.get("layers", []), ctx, assets, progress=progress)
     finally:
         outlines.close()
     for i, layer in enumerate(layers):
@@ -130,8 +133,10 @@ def to_lottie(scene: dict, background: bool = True, baked: list | None = None) -
     return _round(doc), ctx.report
 
 
-def write_lottie(scene: dict, path: str | Path, background: bool = True, baked: list | None = None) -> list[str]:
-    """Write the Lottie file (UTF-8 JSON); returns the report."""
-    doc, report = to_lottie(scene, background, baked)
+def write_lottie(scene: dict, path: str | Path, background: bool = True, baked: list | None = None, progress=None) -> list[str]:
+    """Write the Lottie file (UTF-8 JSON); returns the report. `progress(done, total)` as for an engine export."""
+    doc, report = to_lottie(scene, background, baked, progress)
     Path(path).write_text(json.dumps(doc, separators=(",", ":")), encoding="utf-8")
+    if progress:
+        progress(1, 1)
     return report

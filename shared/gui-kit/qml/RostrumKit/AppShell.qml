@@ -157,7 +157,7 @@ QQC.ApplicationWindow {
     // The shell's own keys and Ctrl+K's rows for them are ONE thing: runJob(job), by key-map job (an app's palette calls it too).
     function runJob(job) {
         switch (job) {
-        case "command_box": commandBar.open(); return true
+        case "command_box": commandBar.opened ? commandBar.close() : commandBar.open(); return true   // Ctrl+K again closes it, as F1 and Ctrl+/ do
         case "guides": win.guidesOpen ? win.closeGuides() : win.openGuides(); return true
         case "key_list": keyList.item && keyList.item.opened ? keyList.item.close() : keyList.get().open(); return true
         case "next_area": win.nextArea(); return true

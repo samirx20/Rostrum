@@ -86,7 +86,7 @@ AppShell {
         hold_shorter: () => { if (painter.drawingId !== "") painter.holdBy(-1) },
         zoom_in: () => viewControls.key("zoom_in"), zoom_out: () => viewControls.key("zoom_out"),
         fit_all: () => viewControls.key("fit_all"), actual_size: () => viewControls.key("actual_size"),
-        fit: () => viewControls.key("fit"), look_through: () => viewControls.key("look_through")
+        fit: () => viewControls.key("fit"), fit_everything: () => viewControls.key("fit_everything"), look_through: () => viewControls.key("look_through")
     })
     Connections { target: backend.actions; function onWindowJob(job) { const run = shell.windowJobs[job]; if (run) run(); else shell.runJob(job) } }   // else the kit's (undo, Export, History, Guides, Keys, About ...)
     // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one

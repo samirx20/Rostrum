@@ -37,6 +37,6 @@ The same actions are in the command box (**Ctrl+K**).
 
 ## 5. If a project can't be opened
 
-A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why and that nothing was changed.
+A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why, in plain words ("This project file is damaged and can't be opened: proj.mtn"), and that nothing was changed.
 
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

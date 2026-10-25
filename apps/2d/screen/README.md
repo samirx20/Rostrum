@@ -63,7 +63,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "Width and slant" / "Ligatures and numbers" for a text (kit `sections.WORDS`; the group keys stay Font / Type); a text's Fill group is the Colour row's picker (`hooks.on_page` leaves its fields out, so no "+ Gradient and opacity" name is offered). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
-  at the pointer, Space+drag or middle-drag, Ctrl+0 (fit the frame), Shift+1 (fit everything), Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
+  at the pointer, Space+drag or middle-drag, Ctrl+0 (fit the frame), Shift+1 (fit everything), Ctrl+1, F or Shift+2 (fit the selection), Ctrl+= / Ctrl+−; all on the Keys sheet (`keys2d.py` is the one list: Alt+arrows are the 0.1 px nudge, Shift+arrows the big one).
+  The "Fit · 43 % ▾" menu holds, top to bottom: Fit the frame, Fit everything, 25 / 50 / 100 / 200 / 400 %, Zoom to selection (only with a layer picked), Look through the frame (ticked while on), Turn snapping on / off, Show the frame's path (ticked), and for a large composition Preview while playing Full / Half / Quarter and Motion blur while playing. The
   canvas is the world (camera spec § 3.1): the engine draws the world rectangle the view shows, with a margin, at the
   size shown, the frame's quad holding the export (`screen2d/world_view.py`, `frames.py` keeps the last pictures; the
   engine's `frame.world`); a new picture only when the view leaves it or the size shown changes. Outside the frame
@@ -254,8 +255,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   behind More.
 - **Frames** (`screen2d/framing.py`): a mark where each drawing starts and a bar for its hold (Draw bar and the
   drawing's Animate row). Buttons (in the panel: `DrawEachFrame.qml`, in Draw and in Move; only the ones that apply at the playhead) and shortcuts, each one change:
-  Previous / Next (Alt+Left / Alt+Right), New drawing (Alt+N) / New from this (Alt+Shift+N), Hold longer / shorter
-  (Alt+Up / Alt+Down), Onion skin (Alt+O, tinted neighbours from `rostrum_paint.see.onion`, over the layer's box).
+  Previous / Next (`,` / `.`, the same keys as "previous / next thing that happens"; held they flip through), New drawing
+  (Alt+N) / New from this (Alt+Shift+N), Hold longer / shorter (`=` or `+` / `-`), Onion skin (Alt+O, tinted neighbours from `rostrum_paint.see.onion`, over the layer's box).
 - Steps: `draw <x> <y> <x> <y> …` (one stroke, composition px), `brush <setting> <value>`, `newframe [copy]`,
   `hold <+n|-n>`, `frame next|prev`, `onion on|off`.
 
@@ -272,14 +273,15 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 - A selected layer's outline turns with it. With one layer selected (not a path, whose points show instead) it has 4 corner +
   4 edge knobs (`qml/Handles.qml`; an edge knob is absent on a small box) and a turn zone just outside each corner (open-hand
-  cursor). Resize: the opposite side stays put; **Shift** keeps the proportion, **Alt** resizes from the centre. Turn: about the
+  cursor). Resize: the opposite side stays put; **Shift** keeps the proportion, **Alt** resizes from the centre; dragged past the
+  opposite side the layer mirrors (Stretch below 0) and keeps resizing, any type, a group too. Turn: about the
   anchor, **Shift** snaps to 15°. Maths: `screen2d/transform.py`; slots: `screen2d/handle_slots.py`.
-- What a resize changes: shapes, images, groups -> Width / Height (and X / Y); every other type (text, video, drawing, ...) ->
+- What a resize changes: shapes, images -> Width / Height (and X / Y); every other type (group, text, video, drawing, ...) ->
   Scale from a corner, Stretch X / Y from an edge. An animated field gets a key at the playhead; an expression-driven one refuses
   loudly; a layer in an auto layout changes size only (the layout places it). Each drag is one undo step.
 - **Several layers** (`screen2d/multi.py`, `backend.multi`): drag on empty canvas = a rubber band; layers whose boxes touch it
   are selected (not a layer inside a selected group). **Shift+click** adds / removes one. The first is the inspector's;
-  every outline shows, and one **box round all of them** (`Multi.groupBox`) has the same knobs and turn zones as a single layer: resize scales every layer about the opposite side (Alt: the centre), turn turns them about the box's centre, one drag = one undo step (`screen2d/group_slots.py`, `qml/Handles.qml` with `group: true`). A resized shape / image / group changes Width / Height, any other type its Scale (corner) or Stretch (edge); each layer keeps its place inside the box. Refused loudly for a layer in an auto layout or driven by an expression. Dragging any one moves them all in one undo step (not layers in
+  every outline shows, and one **box round all of them** (`Multi.groupBox`) has the same knobs and turn zones as a single layer: resize scales every layer about the opposite side (Alt: the centre), turn turns them about the box's centre, one drag = one undo step (`screen2d/group_slots.py`, `qml/Handles.qml` with `group: true`). A resized shape / image changes Width / Height, any other type its Scale (corner) or Stretch (edge); each layer keeps its place inside the box. Past the opposite side the box mirrors (`transform.resize`, the one rule): each layer's Stretch on that screen axis goes below 0 and its turn reverses (both axes: Stretches only). Refused loudly for a layer in an auto layout or driven by an expression. Dragging any one moves them all in one undo step (not layers in
   an auto layout or driven by an expression: refused loudly). A plain click on another layer resets to one.
 - One source for "where a layer's box is on screen": `bounds.boxes` carries each layer through its groups' whole chain (position,
   turn, scale, anchor), so a layer inside a turned group outlines, picks, resizes and moves where it shows (drags are read in the
@@ -374,7 +376,11 @@ A step that leaves an error in the status line fails the run.
   marker), where it goes (the project's `renders/<item>/vNNN/` with a manifest; Browse for a folder: a file there is never
   replaced without Replace / Keep both / Cancel), Export. It runs as a background job (the top bar's job chip, Cancel); done,
   the message line says "Exported <file> · Play · Show in folder", the sheet shows what was read back (Lottie: what it
-  couldn't carry), and the document gets a version "Exported v003". A failure is red, in words; no unfinished file is left.
+  couldn't carry), and the document gets a version "Exported v003". A failure is red, in words (the kit's `export_errors.said`: an OS
+  error names what could not be saved and where; the full line goes to the console); no unfinished file is left. A scene
+  with nothing showing is refused before anything starts (`exporting.nothing_showing`, the agent tool's rule too). Ctrl+Shift+E
+  before any export in the window says "Nothing exported yet — Ctrl+E to export". The Scene picker (more than one scene) is
+  the first setting and follows the scene shown.
 - The formats and their settings are data (`rostrum2d.io.formats.FORMATS` + Lottie, listed by `rostrum2d.mcp.exporting`); the
   MCP tool `render_export` runs the same code (`exporting.run`), so a person and an agent get the same files.
 - **Project sound** (a toggle in the settings, like Transparency, only for MP4 and only when the project has sound; on by default): the scene's

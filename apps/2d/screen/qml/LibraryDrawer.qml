@@ -13,6 +13,7 @@ Rectangle {
     readonly property var lib: backend.library
     readonly property var paint: backend.library.paintings
     color: Theme.panel; radius: Theme.radiusPanel
+    EscCloses { when: drawer.visible; area: drawer; onAsked: drawer.lib.setOpen(false) }   // Esc from anywhere (the window's one Esc, AppShell)
 
     Text {
         id: head

@@ -33,7 +33,9 @@ tools = Tools()
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. Always a job: it
     returns a job id at once; ask with inspect_job (wait_s up to 25). The file is written under a .partial name and renamed once it
-    read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name."""
+    read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
+    A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
+    before any job, as the Export button refuses it."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),

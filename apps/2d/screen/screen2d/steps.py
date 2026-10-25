@@ -53,6 +53,7 @@
 A step that leaves an error in the status fails (nonzero exit).
 """
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 import json
 import time
@@ -354,7 +355,7 @@ def do_step(bridge, win, step):
         from PySide6.QtCore import QPoint
         from PySide6.QtTest import QTest
         QTest.mouseMove(win, QPoint(int(rest[0]), int(rest[1])))
-        QTest.qWait(150)
+        wait(150)
     elif word == "mouseclick":                   # mouseclick <x> <y> [right] [ctrl|shift]: a real click in the window
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest

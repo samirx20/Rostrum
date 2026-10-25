@@ -14,6 +14,7 @@
     typekeys <words…>                                real key presses into what has the focus (_ for spaces)
 """
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 WORDS = ("shape", "shapedrag", "shapeend", "text", "textbox", "typetext", "edittext", "endtext", "canvasdrag", "canvasclick",
          "typekeys")
@@ -46,7 +47,7 @@ def _hand(word, rest):
             key, mod = Qt.Key(ord(ch.upper())), Qt.ShiftModifier if ch.isupper() else Qt.NoModifier
             for kind in (QEvent.KeyPress, QEvent.KeyRelease):
                 QGuiApplication.sendEvent(win, QKeyEvent(kind, key, mod, ch))
-            QTest.qWait(10)
+            wait(10)
     elif word == "canvasclick":
         p = at(*rest[:2])
         QTest.mouseMove(win, p)
@@ -66,9 +67,9 @@ def _hand(word, rest):
             for i in range(1, 9):                           # a move carries the held key as a hand's does
                 q = QPointF(a + (b - a) * i / 8)
                 QGuiApplication.sendEvent(win, QMouseEvent(QEvent.MouseMove, q, win.mapToGlobal(q), Qt.NoButton, Qt.LeftButton, mod))
-                QTest.qWait(10)
+                wait(10)
         QTest.mouseRelease(win, Qt.LeftButton, mod, pts[-1])
-    QTest.qWait(120)
+    wait(120)
 
 
 def do_create_step(bridge, word, rest, step):

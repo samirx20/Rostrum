@@ -14,6 +14,7 @@
     depthtyped <depth> [open|cancel]  Set depth ▾ › Other depth…, type the number, Enter (open: leave the popover open)
 """
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 import json
 
@@ -30,7 +31,7 @@ def keytap(win, key: str, mods: list[str]):
         m |= getattr(Qt.KeyboardModifier, MODS[w])
     code = {"[": Qt.Key.Key_BracketLeft, "]": Qt.Key.Key_BracketRight, ",": Qt.Key.Key_Comma, ".": Qt.Key.Key_Period}.get(key) or getattr(Qt.Key, "Key_" + (key.upper() if len(key) == 1 else key.capitalize()))
     QTest.keyClick(win, code, m)
-    QTest.qWait(50)
+    wait(50)
 
 
 def do_paint_step(bridge, word, rest, step, win=None):

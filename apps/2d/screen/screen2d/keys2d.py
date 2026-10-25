@@ -21,6 +21,8 @@ OWN = [
     {"job": "text_tool", "keys": ["T"], "label": "Text"},
     {"job": "pick_frame", "keys": ["C"], "label": "Pick the frame"},
     {"job": "look_through", "keys": ["Shift+C"], "label": "Look through the frame"},
+    {"job": "fit_everything", "keys": ["Shift+1"], "label": "Fit everything"},
+    {"job": "fit", "keys": ["Shift+2"], "label": "Fit the selection"},               # F's second key (Figma habit)
     {"job": "bone_tool", "keys": ["J"], "label": "Bone"},
     {"job": "hand_tool", "keys": ["H"], "label": "Hand"},
     {"job": "zoom_tool", "keys": ["Z"], "label": "Zoom"},
@@ -43,7 +45,8 @@ NOT_HERE = ("preferences",          # no setting of 2D is a person's to change: 
             "play_from_selection", "go_out", "next_item", "prev_item", "find_item", "paste_other", "delete_close_gap",
             "split", "join", "trim_start", "trim_end", "loop", "range_start", "range_end", "notes_tool")
 # a tool is listed by the name its button has in the tool rail ("Brush"), so searching the Keys sheet by a tool's name finds it
-KEYS2D = KeyMap("Rostrum2D", OWN, drop=NOT_HERE, words={"paint_tool": "Brush (paint and draw)"})
+KEYS2D = KeyMap("Rostrum2D", OWN, drop=NOT_HERE, words={"paint_tool": "Brush (paint and draw)",
+                                    "fit_all": "Fit the frame"})   # Ctrl+0 fits the frame here, not "all"
 
 NUDGE = [f"{d}{s}" for d in ("left", "right", "up", "down") for s in ("", "_big", "_fine")]
 ROUTES = {
@@ -60,7 +63,7 @@ ROUTES = {
 # the window's own (Main.qml `windowJobs`): they need the canvas, the rail or the painter
 WINDOW = ("paint_tool", "pick_frame", "prev_event", "next_event", "prev_beat", "next_beat", "delete", "library", "add_file", "quit",
           "new_drawing", "copy_drawing", "onion", "hold_longer", "hold_shorter",
-          "zoom_in", "zoom_out", "fit_all", "actual_size", "fit", "look_through")
+          "zoom_in", "zoom_out", "fit_all", "fit_everything", "actual_size", "fit", "look_through")
 # bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the
 # Inspector), the kit's FilesMenu (files), Space (spacekey.py: a tap plays, held it pans), Esc and Enter (Main.qml: they
 # step by what is open)
@@ -72,4 +75,4 @@ ASKED = {"play": ("togglePlay",)}
 SHELL = ("undo", "redo", "history", "export", "export_again", "guides", "key_list", "fold_panels", "next_area",
          "find_setting", "problems")
 HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "add_file",
-           "zoom_in", "zoom_out", "fit_all", "actual_size", "fit", "look_through")   # the view menu's rows are in Ctrl+K already (view_commands.py)
+           "zoom_in", "zoom_out", "fit_all", "fit_everything", "actual_size", "fit", "look_through")   # the view menu's rows are in Ctrl+K already (view_commands.py)

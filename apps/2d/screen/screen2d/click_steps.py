@@ -8,6 +8,7 @@
     choicefile <row id> <path>         a choice's "Load …" dialog (Tip picture's Load picture…) picks this file
 Used for the colour picker's proofs (the Fill row "row:paint", the picker's own named parts)."""
 from __future__ import annotations
+from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker threads
 
 WORDS = {"clickobj", "dragobj", "hoverobj", "picturefile", "choicefile", "typekeys"}
 
@@ -15,7 +16,7 @@ WORDS = {"clickobj", "dragobj", "hoverobj", "picturefile", "choicefile", "typeke
 def do_click_step(win, word, rest, step):
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtTest import QTest
-    QTest.qWait(400)                         # the panel's reveals (160 ms) settle first: a hand clicks what it sees
+    wait(400)                         # the panel's reveals (160 ms) settle first: a hand clicks what it sees
     if word == "picturefile":                # a file dialog can't be clicked by script: hand it the file it would give
         from pathlib import Path
         from PySide6.QtCore import Q_ARG, QMetaObject, QUrl
@@ -23,11 +24,11 @@ def do_click_step(win, word, rest, step):
         if pic is None:
             raise RuntimeError(f"step {step!r}: the paint picker isn't open")
         QMetaObject.invokeMethod(pic, "accept", Q_ARG("QVariant", QUrl.fromLocalFile(str(Path(rest[0]).resolve())).toString()))
-        QTest.qWait(150)
+        wait(150)
         return
     if word == "typekeys":
         QTest.keyClicks(win, " ".join(rest).replace("_", " "))
-        QTest.qWait(100)
+        wait(100)
         return
     if word == "choicefile":
         from pathlib import Path
@@ -36,7 +37,7 @@ def do_click_step(win, word, rest, step):
         if row is None:
             raise RuntimeError(f"step {step!r}: no settings row {rest[0]!r} on screen")
         QMetaObject.invokeMethod(row, "loadChoice", Q_ARG("QVariant", str(Path(rest[1]).resolve())))
-        QTest.qWait(300)
+        wait(300)
         return
     item = _named(win, rest[0])
     if item is None:
@@ -67,7 +68,7 @@ def do_click_step(win, word, rest, step):
         for i in range(1, 9):
             QTest.mouseMove(win, a + (b - a) * i / 8, 10)
         QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, b)
-    QTest.qWait(150)
+    wait(150)
 
 
 def _named(win, name, shown=True):

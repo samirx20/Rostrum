@@ -128,8 +128,9 @@ class SceneSlots(SlotMixin):
 
     @Slot(str, result=bool)
     def run(self, key):
-        """Ctrl+K: a scene's own commands go through the scene routes above, like the crumb's menu."""
-        if key.startswith("select:") and any(c["id"] == key[7:] for c in self._scenes()):
+        """Ctrl+K: a scene's own commands go through the scene routes above, like the crumb's menu. Select <another scene>
+        shows it; Select <the scene shown> picks it, as any Select row does (its settings in the panel)."""
+        if key.startswith("select:") and key[7:] != self.comp_id and any(c["id"] == key[7:] for c in self._scenes()):
             self.showScene(key[7:])
             return True
         if key in ROUTES:
