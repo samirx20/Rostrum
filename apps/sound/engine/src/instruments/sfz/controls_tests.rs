@@ -64,7 +64,7 @@ fn reads_extensible_float_wavs_and_note_polyphony_stops_a_restruck_key() {
     let file = d.join("p.sfz").to_string_lossy().into_owned();
     let (mut l, mut r) = (vec![0.0f32; 44100], vec![0.0f32; 44100]);
     let n = |start| Note { start, len: 2000, freqs: &[440.0], velocity: 1.0, pan: 0.0, expression: None };
-    render(&SfzSpec { file, legato: false, swell: false }, &[n(0), n(22050)], &mut l, &mut r, sr).unwrap();
+    render(&SfzSpec { file, legato: false, swell: false, even: false, gains: vec![] }, &[n(0), n(22050)], &mut l, &mut r, sr).unwrap();
     // After the second strike only one voice sounds (the first stopped), not two summed.
     let peak = l[30000..34000].iter().fold(0.0f32, |m, v| m.max(v.abs()));
     assert!(peak < 0.6, "{peak}");

@@ -12,6 +12,7 @@ reference phrase per preset) and moved by `mix_offsets.json` (drums and bass sit
 from __future__ import annotations
 
 import json
+import math
 from functools import cache
 from pathlib import Path
 
@@ -36,6 +37,17 @@ def gain(track: dict, table: Path = TABLE) -> float:
     if form == "builtIn":
         name = names.BUILT_IN_ALIASES.get(name, name)        # a name that plays the same sound shares its gain
     return presets(table).get(f"{form}:{name}", {}).get("gain", 1.0) if form in FORMS else 1.0
+
+
+def starting_levels_db(table: Path = TABLE) -> dict:
+    """{instrument key ("builtIn:piano", "kit:drums" …): dB}: the gain the compiler puts under each instrument's track
+    volume, so a track's volume in dB is already "against its starting level" (volume 1 = 0 dB = as levelled). Names
+    that play the same sound share their sound's level."""
+    out = {k: 20 * math.log10(v["gain"]) for k, v in presets(table).items() if v.get("gain", 0) > 0}
+    for alias, name in names.BUILT_IN_ALIASES.items():
+        if f"builtIn:{name}" in out:
+            out.setdefault(f"builtIn:{alias}", out[f"builtIn:{name}"])
+    return {k: round(v, 2) for k, v in sorted(out.items())}
 
 
 def scaled(points, g: float, cap: float | None = None) -> list:

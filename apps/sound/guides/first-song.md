@@ -157,9 +157,10 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
   and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the
   last sound**, the default, or a number of bars: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
-  room to write in) and **More**. With a number of bars, **Soft end** (under **More**, on at first) fades the last tenth of a
-  second, so a chord still ringing at the end stops softly instead of with a click; switch it off for a dead stop
-  (agents: `doc.set` `endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
+  room to write in) and **More**. With a number of bars, **Ring out** (right under **Length**, on at first) lets what still
+  rings at the end (a held chord's release, a cymbal, an echo) die away before the song stops (agents: `doc.set` `ringOut`).
+  Switch it off to stop at the length; then **Soft end** appears below it (on at first) and fades the last tenth of a second so the stop has no
+  click; switch that off too for a dead stop (`endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
   playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
   signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**

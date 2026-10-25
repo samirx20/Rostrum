@@ -99,3 +99,19 @@ def line(span: dict) -> str:
     d = span[f"{a}_over_{b}_db"]
     who = f"{a if d > 0 else b} {abs(d):.1f} dB over {b if d > 0 else a}"
     return f"{span['start_s']:g}–{span['end_s']:g} s, {span['band_hz'][0]:.0f}–{span['band_hz'][1]:.0f} Hz: {who}"
+
+
+def by_pair(spans: list) -> list:
+    """Which pair the clashes come from: [{buried, over, count, worst_db}], the most clashes first (64 spans are usually 3 pairs)."""
+    pairs: dict = {}
+    for sp in spans:
+        a, b = sp["tracks"]
+        over = a if sp[f"{a}_over_{b}_db"] > 0 else b
+        row = pairs.setdefault((sp["buried_track"], over), {"buried": sp["buried_track"], "over": over, "count": 0, "worst_db": 0.0})
+        row["count"] += 1
+        row["worst_db"] = max(row["worst_db"], sp["buried_by_db"])
+    return sorted(pairs.values(), key=lambda r: -r["count"])
+
+
+def pairs_words(rows: list, n: int = 3) -> str:
+    return ", ".join(f"{r['over']} over {r['buried']} ×{r['count']} (up to {r['worst_db']:g} dB)" for r in rows[:n])

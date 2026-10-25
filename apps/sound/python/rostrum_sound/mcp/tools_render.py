@@ -9,28 +9,41 @@ from rostrum_core.mcp import Reply, Tools
 from .. import deliver, handoff, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
+from ..doc.fields import FIELDS
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
 
-def held(r: dict) -> str:
-    """The master's gentle limiting, said when it turned the whole mix down (engine `master.heldDb`)."""
+MAX_LIMIT = next(f.max for f in FIELDS["master"] if f.name == "maxLimit")      # the most the document's master `maxLimit` takes
+
+
+def held(r: dict, goal=None) -> str:
+    """The master's gentle limiting, said when it turned the whole mix down (engine `master.heldDb`: how far the mix was
+    turned down so the limiter stays within `maxLimit`; `limiterMaxReductionDb`: what the limiter then pulls). The limiter's
+    need rises dB for dB with the mix, so reaching the target takes `maxLimit` = what it pulls now + `heldDb`."""
     m = r.get("master") or {}
-    if (m.get("heldDb") or 0) < 0.1:
+    h = m.get("heldDb") or 0
+    if h < 0.1:
         return ""
-    return (f" The master turned the whole mix down {m['heldDb']:.1f} dB so its limiter pulls at most "
-            f"{m.get('limiterMaxReductionDb', 0):.1f} dB at the loudest moment (Gentle limiting); for more loudness turn "
-            "down the loudest part's track or raise Most limiting.")
+    pulls = m.get("limiterMaxReductionDb", 0)
+    under = f"landed {goal - r['lufs']:.1f} dB under the {goal:g} LUFS target" if isinstance(goal, (int, float)) and goal > r["lufs"] else "was turned down"
+    loud = max(r.get("tracks") or [], key=lambda t: t.get("peak", 0), default=None)
+    down = f" or turn down {loud['id']} (the highest peak)" if loud else ""
+    need = pulls + h
+    way = (f"to reach it, set master maxLimit to {need + 0.05:.1f} (Most limiting){down}" if need <= MAX_LIMIT
+           else f"it needs more than the {MAX_LIMIT} dB maxLimit allows, so turn down {loud['id'] if loud else 'the loudest track'} (the highest peak)")
+    return (f" Gentle limiting turned the whole mix down {h:.1f} dB so the limiter pulls at most {pulls:.1f} dB at the loudest moment; "
+            f"the mix {under}: {way}.")
 
 
-def summary(r: dict) -> str:
+def summary(r: dict, goal=None) -> str:
     credits = packs.credit_lines(r)
     quiet = sorted(r["tracks"], key=lambda t: t["lufs"])[:1]
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
-            + f".{q}" + held(r) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
-            + "".join(f" {w}." for w in r.get("warnings") or []))
+            + f".{q}" + held(r, goal) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
+            + "".join(f" {w.rstrip('.')}." for w in r.get("warnings") or []))
 
 
 def register(tools: Tools):
@@ -73,6 +86,8 @@ def register(tools: Tools):
                     options[k] = times.seconds(args[k], doc.data, k)
         deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers now, not after the render
 
+        goal = (schedule.get("master") or {}).get("loudness")       # the target the engine was given (None: no target)
+
         def work(job):
             job.progress(note="rendering")
             if partial:     # a listening check, not the item's sound: never a version the Editor could pick up
@@ -84,7 +99,7 @@ def register(tools: Tools):
                                    markers_file=bool(args.get("markers")))
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
-            return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+            return Reply(summary(r, goal), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
 

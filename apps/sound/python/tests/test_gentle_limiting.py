@@ -26,3 +26,10 @@ def test_a_song_saved_before_gentle_limiting_limits_as_before():
     data, _ = KIND.migrate({"id": "root", "type": "doc", "tempo": 120, "tracks": [], "master": [
         {"id": "master", "type": "master", "normalize": True, "loudness": -14, "truePeak": -1}]}, 4)
     assert "maxLimit" not in compile(data)["master"]
+
+
+def test_a_song_saved_before_ring_out_and_even_kits_ends_and_drums_as_before():
+    data, _ = KIND.migrate({"id": "root", "type": "doc", "tempo": 120, "length": 4, "tracks": [
+        {"id": "d", "type": "track", "instrument": "kit", "kit": "studio", "hits": []}], "master": []}, 5)
+    s = compile(data)
+    assert "ringOut" not in s and s["master"]["fadeOut"] == 0.1 and s["tracks"][0]["instrument"] == {"kit": "studio"}, s

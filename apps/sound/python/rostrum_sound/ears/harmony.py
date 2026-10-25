@@ -30,24 +30,56 @@ def windows(root: dict, end: float, per: str) -> list[tuple[float, float, int, i
     return out
 
 
+CHORDY_SHARE = 0.3      # a track is a chord part when this share of its notes sound together
+BASS_BELOW = 7          # a one-line track this far under the chord part (semitones, on average) is its bass, not a melody
+
+
+def split_parts(notes) -> tuple[list, list]:
+    """(chord notes, melody notes): the chord is named from the tracks that play chords (a note with several pitches, or
+    notes that overlap), plus a one-line track well under them (the bass); one-line tracks above are the melody. With no
+    chord track the whole song is the chord (nothing to split)."""
+    by: dict = {}
+    for n in notes:
+        by.setdefault(n["track"], []).append(n)
+
+    def plays_chords(v):                 # most of its notes are chords or sound over another note of the track (a stray chord does not make a melody a chord part)
+        v = sorted(v, key=lambda n: n["start"])
+        together = sum(len(n["midis"]) > 1 or any(o is not n and o["start"] < n["end"] - 1e-6 and n["start"] < o["end"] - 1e-6 for o in v) for n in v)
+        return together >= CHORDY_SHARE * len(v)
+    chord = [t for t, v in by.items() if plays_chords(v)]
+    if not chord:
+        return list(notes), []
+    mean = lambda t: float(np.mean([m for n in by[t] for m in n["midis"]]))
+    floor = float(np.mean([mean(t) for t in chord])) - BASS_BELOW
+    chord += [t for t in by if t not in chord and mean(t) < floor]
+    return [n for n in notes if n["track"] in chord], [n for n in notes if n["track"] not in chord]
+
+
+def _sounding(notes, s, e):
+    weight: dict = {}
+    for n in notes:
+        over = min(e, n["end"]) - max(s, n["start"])
+        if over > 0:
+            for m in n["midis"]:
+                weight[m] = weight.get(m, 0) + over
+    span = max(e - s, 1e-9)
+    return [m for m, w in weight.items() if w / span >= MIN_SHARE]
+
+
 def chart_from_notes(notes, wins, key_at=lambda s: None) -> list[dict]:
-    """The chord per window, chords and notes spelled in the key playing there (`key_at(seconds)`)."""
+    """The chord per window, chords and notes spelled in the key playing there (`key_at(seconds)`). The chord is named from
+    the chord part alone (split_parts); the melody over it is listed apart (`melody`), never part of the name."""
     rows = []
+    chord_notes, melody_notes = split_parts(notes)
     for s, e, bar, beat in wins:
         key = key_at(s)
-        weight: dict = {}
-        for n in notes:
-            over = min(e, n["end"]) - max(s, n["start"])
-            if over > 0:
-                for m in n["midis"]:
-                    weight[m] = weight.get(m, 0) + over
-        span = max(e - s, 1e-9)
-        sounding = [m for m, w in weight.items() if w / span >= MIN_SHARE]
+        sounding = _sounding(chord_notes, s, e)
         low = min(sounding) if sounding else None
         chord = name_chord(sounding, low, key) if sounding else None
         rows.append({"bar": bar, "beat": beat, "start_s": num(s, 2),
                      "chord": chord or ("?" if len({m % 12 for m in sounding}) > 1 else keys.pitch_name(low, key) if sounding else "—"),
-                     "notes": [keys.pitch_name(m, key) for m in sorted(sounding)]})
+                     "notes": [keys.pitch_name(m, key) for m in sorted(sounding)],
+                     **({"melody": [keys.pitch_name(m, key) for m in sorted(_sounding(melody_notes, s, e))]} if melody_notes else {})})
     return rows
 
 

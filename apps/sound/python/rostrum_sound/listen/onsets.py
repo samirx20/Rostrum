@@ -40,8 +40,44 @@ def file_onsets(wav):
     return detect(mono(y), sr)
 
 
-def _nearest(ons, e):
+REACH_S = 0.25           # a stem's onset counts for a time only within this far of it (another sound's start is not this one's)
+SOFT_RISE_DB = 6.0       # a soft or masked start: the level rises this far over the quietest it was just before
+SOFT_FLOOR_DBFS = -70.0
+ENV_S = 0.01
+
+
+def soft_onset(m, sr, e, reach=REACH_S, rise_db=SOFT_RISE_DB):
+    """The start of a soft or masked sound near `e` that the hit detector (which wants a sharp jump) misses: a swell,
+    a bow, a brass entry over a held chord. Reads the 10 ms level around `e` and returns the first time (within `reach`)
+    where it stands `rise_db` over the quietest it has been since `reach` before `e`, else None."""
+    h = max(1, int(ENV_S * sr))
+    a, b = max(0, int((e - reach) * sr)), min(len(m), int((e + reach) * sr))
+    n = (b - a) // h
+    if n < 3:
+        return None
+    seg = m[a:a + n * h].astype(np.float64).reshape(n, h)
+    env = 10 * np.log10(np.mean(seg ** 2, axis=1) + 1e-12)
+    low = np.minimum.accumulate(env)
+    hit = np.nonzero((env - low >= rise_db) & (env > SOFT_FLOOR_DBFS))[0]
+    return None if not len(hit) else (a + int(hit[0]) * h) / sr
+
+
+def with_soft(m, sr, ons, expect, reach=REACH_S):
+    """`ons` plus, for each expected time with no onset within `reach`, the soft onset there (when there is one)."""
+    out = list(ons)
+    for e in expect:
+        if not any(abs(t - e) <= reach for t in ons):
+            t = soft_onset(m, sr, e, reach)
+            if t is not None:
+                out.append(t)
+    return sorted(out)
+
+
+def _nearest(ons, e, reach=None):
+    """(the nearest onset, its offset in ms), None when there is none (within `reach` seconds, when given)."""
     near = min(ons, key=lambda t: abs(t - e)) if ons else None
+    if near is not None and reach is not None and abs(near - e) > reach:
+        near = None
     return near, (None if near is None else num((near - e) * 1000, 1))
 
 
@@ -49,12 +85,13 @@ def which_stem(mix, stems, expect, tolerance=0.04):
     """For each expected time: the stem whose onset is nearest (and how far off, ms; > 0 = late), the next two
     stems, and the mix's own nearest onset: one answer per time instead of one look per stem. Same detector as `onsets`."""
     def of(p):
-        return file_onsets(p)
+        y, sr = load(p)
+        return with_soft(mono(y), sr, file_onsets(p), expect)
     found = {k: of(p) for k, p in stems.items()}
-    mix_ons = of(mix)
+    mix_ons = file_onsets(mix)
     rows = []
     for e in expect:
-        near = {k: _nearest(o, e) for k, o in found.items()}
+        near = {k: _nearest(o, e, REACH_S) for k, o in found.items()}
         ranked = sorted((k for k, (t, _) in near.items() if t is not None), key=lambda k: abs(near[k][1]))
         mt, mo = _nearest(mix_ons, e)
         best = ranked[0] if ranked else None
@@ -64,8 +101,10 @@ def which_stem(mix, stems, expect, tolerance=0.04):
                      "next_stems": [{"stem": k, "offset_ms": near[k][1]} for k in ranked[1:3]],
                      "mix_onset_s": None if mt is None else num(mt, 4), "mix_offset_ms": mo})
     return {"expected": rows, "tolerance_ms": num(tolerance * 1000, 1), "all_pass": all(r["pass"] for r in rows),
-            "note": "stem = the track whose onset is nearest the time; mix_* = the mix's nearest onset (a louder sound "
-                    "nearby can win there). Stems are the last render's."}
+            "note": "stem = the track whose onset is nearest the time, within 250 ms (a stem with none that close is not listed: "
+                    "another sound's start is never quoted as its own); a soft or masked start (a swell, a bow, an entry over a held "
+                    "chord) is found as the level rising 6 dB over its quietest just before; mix_* = the mix's nearest onset (a louder "
+                    "sound nearby can win there). Stems are the last render's."}
 
 
 def onsets(wav, expect=None, tolerance=0.04):
@@ -74,12 +113,14 @@ def onsets(wav, expect=None, tolerance=0.04):
     seconds (one video frame = 1 / fps)."""
     y, sr = load(wav)
     ons = file_onsets(wav)
+    if expect:
+        ons = with_soft(mono(y), sr, ons, expect)
     out = {"file": name_of(wav), "duration_s": num(duration(y, sr), 3),
            "onsets_s": [num(t, 4) for t in ons]}
     if expect is not None:
         rows = []
         for e in expect:
-            near = min(ons, key=lambda t: abs(t - e)) if ons else None
+            near = _nearest(ons, e, REACH_S)[0]
             off = None if near is None else (near - e) * 1000
             rows.append({"expected_s": e, "nearest_onset_s": None if near is None else num(near, 4),
                          "offset_ms": None if off is None else num(off, 1),

@@ -67,9 +67,15 @@ pub fn run(job: Job) -> Result<Value, Error> {
     }
     let t0 = std::time::Instant::now();
     let cache = crate::mix::trackcache::TrackCache::default_dir();
-    let mix = render::render_keep(&s, cache.as_ref(), &stems).map_err(Error::render)?;
+    let mut mix = render::render_keep(&s, cache.as_ref(), &stems).map_err(Error::render)?;
     let took = t0.elapsed().as_secs_f64();
     let sr = s.sample_rate;
+    // The song's end (ending.rs): where a ring-out died away, or whether a given length cut the sound.
+    let ending = match (c.ending, s.range) {
+        (Some((song, ring, held)), None) => Some(super::ending::finish(&mut mix, song, ring, s.fade_out_samples, held, sr as f64).map_err(Error::render)?),
+        _ => None,
+    };
+    let seconds = ending.as_ref().map_or(c.seconds, |e| e.end);
     crate::mix::wavwriter::write_mix(&out, &mix, sr).map_err(Error::render)?;
     // The stems, `<track>.wav`, and the bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play
     // straight to the master the bus stems add up to what reaches the master (`direct` lists those tracks).
@@ -93,7 +99,8 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let tracks: Vec<Value> = mix.tracks.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs,
         "span": t.span.map(|(a, b)| [a, b]), "onsets": t.onsets, "bands": t.bands })).collect();
     Ok(json!({
-        "file": out.to_string_lossy(), "seconds": c.seconds, "credits": c.credits,
+        "file": out.to_string_lossy(), "seconds": seconds, "credits": c.credits,
+        "ending": ending.as_ref().map(|e| e.to_json()), "warnings": ending.as_ref().map_or(vec![], |e| e.warnings()),
         "range": s.range.map(|(a, b)| [a as f64 / sr as f64, b as f64 / sr as f64]), "renderSeconds": took, "sampleRate": sr,
         "lufs": mix.lufs, "truePeak": mix.true_peak, "peak": mix.peak, "lra": loud.lra, "clipped": mix.clipped, "bands": mix.bands,
         "series": { "hop": 0.1, "shortTermWindow": 3.0, "correlationWindow": 0.4, "momentaryWindow": 0.4,

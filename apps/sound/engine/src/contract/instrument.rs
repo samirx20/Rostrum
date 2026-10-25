@@ -49,7 +49,7 @@ pub fn read(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<(Resolved, Val
     let own = |inst, family| Resolved { inst, family, credit: None };
     let r = match key {
         "builtIn" => { let n = o.str("builtIn", None)?; plain::built_in(&n, &o.at("builtIn"))? }
-        "kit" => { let n = o.str("kit", None)?; plain::kit(&n, &o.at("kit"))? }
+        "kit" => { let n = o.str("kit", None)?; let even = o.bool("even", false)?; plain::kit(&n, even, &o.at("kit"))? }
         "sfz" => {
             let file = file_arg(&mut o, "sfz")?;
             let (legato, swell) = (o.bool("legato", false)?, o.bool("swell", false)?);

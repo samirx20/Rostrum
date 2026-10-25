@@ -4,6 +4,9 @@
 
 - Every reply has `ok`, `summary` (read it first), `data`, `files` (absolute paths) and `warnings`. A failure has `ok: false`
   and an `error` with `code`, `where`, `problem`, `accepted` and a hint. Read `accepted`: it lists what would have worked.
+- **Guides.** `inspect_guide` takes one argument, `topic`: `{"tool": "inspect_guide", "arguments": {"topic": "writing-music"}}`.
+  Everywhere a guide writes `inspect_guide 'x'` it means that call with `topic: "x"` (there is no `name` argument). With no
+  `topic` it lists every guide.
 - Tool names are `<verb>_<thing>`: `inspect_*` reads, `edit_*` and `run_*` change the document through operations,
   `render_*` makes files as a job, `look_*` lets you see or hear a result. Every tool and its arguments: `inspect_tools`.
 - `inspect_operations` lists every operation and its arguments (`name: "master.set"` for one). `edit_document` applies a
@@ -16,7 +19,7 @@
 
 ## The order of work
 
-1. **Read** `inspect_guide 'writing-music'` (the craft), then `script` (the names a script knows). Scoring to a picture:
+1. **Read** `inspect_guide` with `topic: "writing-music"` (the craft), then `topic: "script"` (the names a script knows). Scoring to a picture:
    `scoring-to-picture`.
 2. **Pick the sounds.** `inspect_engine` lists every instrument marked *recorded* or *synthesized*, the part each suits and
    where it sounds best, plus every effect's settings with units. `inspect_engine` with `what: "instrument"` and ONE of
@@ -32,11 +35,14 @@
    with the song).
 5. **Render.** `render_mix` with `stems: true`, then `inspect_job` until it is done.
 6. **Look at the result.** `look_sound` (`what`: `loudness` by default, `levels`, `low_end`, `clash`, `spectrum`, `stereo`) and
-   `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` checks a chord part note by note; the loudness summary names the loudest moment and its time. Which tool answers which question: `listening`. Whether it is musical is
+   `look_music` (`what`: `events`, `beats`, `pitch`). `pitch` (with `track`) checks a chord part note by note; the loudness summary names the loudest moment and its time and has an `ending` line (see 8). Which tool answers which question: `listening`. Whether it is musical is
    for a person to hear; say so in your report.
 7. **Fix, render again.** Change one thing at a time. To change a value a script made, edit the script and run it again under
    the same `name`; to change one value, use `edit_document`.
-8. **End it cleanly** (`inspect_guide 'script'`, section "Ending a song") and render the last version.
+8. **End it cleanly** (`topic: "script"`, section "Ending a song") and render the last version. Check the end with
+   `look_sound` (`what: "loudness"`): its `ending` line gives the level of the last 0.5 s, whether the file still sounds above
+   -50 dBFS at its end, and whether the last 50 ms drop faster than the fade. Still above -50 dBFS with a fast last-50-ms drop is a cut: lengthen
+   the song or add `master(fadeOut=...)`. Below -50 dBFS (or no fast drop) is a clean end.
 
 ## Rules that save a render
 
@@ -53,3 +59,39 @@
 - **Volume.** A bare number is gain 0 to 4 (1 = 0 dB); in dB write `{"db": -6}`.
 - **Effect settings** are plain numbers in the units `inspect_engine` lists: a compressor's `threshold` is dB as a plain number
   (`-24`, not `{"db": -24}`), `attack` and `release` are in seconds (`0.01`, not `10`).
+
+## Loudness: louder or cleaner (`maxLimit`)
+
+A new song has gentle limiting on: the master's limiter may pull the loudest moment down by at most `maxLimit` (default 2 dB;
+the screen's **Most limiting**; the document takes 0 to 12 dB). A mix whose peaks stand further above its average loudness is
+turned down as a whole instead, so it lands under its target (for a quiet piano or peaky drums, 1 to 3 dB under is normal) and
+the `render_mix` reply says how far and what would reach it. Two ways to get louder, and they trade against each other:
+
+- **Cleaner:** turn the track that sets the peaks down (`look_sound` `loudness` names who drove the limiter's worst moment; `levels`
+  shows each track's level), or write its loudest notes softer. The balance of the mix changes, and no limiting is added.
+- **Louder:** `master.set` with `maxLimit` higher (the reply names the value that reaches the target). More limiting means a
+  flatter, denser master; 4 to 6 dB is a loud, pressed one. The balance between tracks does not change.
+
+Take the cleaner way first; raise `maxLimit` only when the dense sound is what the piece wants.
+
+## Which arguments go with which `what`
+
+`look_sound` and `look_music` are one tool each; `what` picks the question and the call is checked against that question's own
+arguments (a wrong one is refused with the list that works).
+
+| Call | Arguments that work |
+|---|---|
+| `look_sound` `loudness` | `item`, `wav` only (no `start`, `end` or `track`: it reads the whole file; the short-term curve and `loudest` give times) |
+| `look_sound` `levels`, `low_end` | `item` only (they read every stem of the last render) |
+| `look_sound` `clash` | `tracks` (up to 12), `within_db`, `floor_db`, `min_over_db`, `min_length`, `detail` |
+| `look_sound` `spectrum` | `track`, `marks`, and `start` with `end` together (both or neither) |
+| `look_sound` `stereo` | `section` (seconds per section) |
+| `look_music` `events` | `track`, `expect`, `tolerance`, `by_stem`, `detail` |
+| `look_music` `beats` | `track`, `stems`, `division`, `beats_per_bar`, `tolerance` |
+| `look_music` `pitch` | `track` (needed to compare with the written notes), `fmin`, `fmax`, `cents_tolerance`, `timing_tolerance` |
+| `look_music` `harmony` | `track`, `per` (`bar` or `beat`), `key`, `source`, `checks` |
+
+All of them take `item` (when more than one song is open) and, except `levels`, `low_end` and `clash`, `wav` (any file instead of the last render).
+`look_music events` finds an onset only where a sound starts clearly: a soft or masked start (a held chord under another)
+has none, and the reply then names another stem's nearest onset; read the stem's own row. `beats` reads the document's tempo
+as the answer; the `heard_bpm` from the sound alone can be a related tempo (half, double, 2/3, 3/2) on a groove with rolls.

@@ -7,6 +7,7 @@ mod buses;
 mod channel;
 mod clip;
 mod effects;
+mod ending;
 mod error;
 mod expression;
 mod hit;

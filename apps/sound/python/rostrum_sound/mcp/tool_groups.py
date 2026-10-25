@@ -6,7 +6,7 @@ from __future__ import annotations
 from rostrum_core.mcp.combine import combine
 
 GROUPS = [
-    ("look_sound", "Hear the mix as numbers and pictures: loudness and clipping (default), each track's level, a "
+    ("look_sound", "Hear the mix as numbers and pictures: loudness, clipping and how the file ends (default; `start` / `end` read a stretch, as for the spectrogram), each track's level, a "
      "spectrogram, stereo balance, the low end, where one stem buries another, or what a clip's clean-up did. Use "
      "\"loudness\" before delivering, \"levels\" / \"low_end\" / \"clash\" to balance a mix (they read the last render's stems).",
      {"loudness": "look_loudness", "levels": "look_levels", "spectrum": "look_spectrum", "stereo": "look_stereo",

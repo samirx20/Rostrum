@@ -40,6 +40,17 @@ pub fn range(v: &Value, at: &str) -> Result<Value, Error> {
         Inst::KitSfz(files) => names::GM_DRUMS.iter().filter(|(_, k)| files.iter().any(|(_, keys)| keys.contains(k))).map(|(n, _)| *n).collect(),
         _ => vec![],
     };
+    // How early its notes start so each is heard on its time (instruments/sfz/onset.rs), over its main files' samples.
+    let mut attack: Option<(f64, f64)> = None;
+    if let Inst::Sfz(_) = &r.inst {
+        for f in &files {
+            if let Some((med, most)) = crate::instruments::sfz::onset::typical_ms(f).map_err(|e| Error::new("BAD_ARGUMENT", at, format!("\"{f}\""), e))? {
+                attack = Some(attack.map_or((med, most), |(a, b)| (a.max(med), b.max(most))));
+            }
+        }
+    }
+    let round = |v: f64| v.round();
     Ok(json!({ "instrument": resolved, "low": name(lo), "high": name(hi), "lowKey": lo, "highKey": hi,
-               "gaps": gaps.iter().map(|&k| name(k)).collect::<Vec<_>>(), "layers": vel_edges.len(), "drums": drums }))
+               "gaps": gaps.iter().map(|&k| name(k)).collect::<Vec<_>>(), "layers": vel_edges.len(), "drums": drums,
+               "attackMs": attack.map(|(med, most)| json!({ "typical": round(med), "most": round(most) })) }))
 }

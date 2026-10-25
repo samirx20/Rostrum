@@ -2,7 +2,7 @@
 import numpy as np
 
 from .bs1770 import integrated
-from .core import db, duration, is_float_file, load, num, peak_db, sections
+from .core import SPEECH_HZ, band_power, db, duration, is_float_file, load, mono, num, peak_db, sections
 from .loudness import CLIP_LEVEL
 from .memo import remembered
 
@@ -48,12 +48,14 @@ def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
                        for k in ids])                      # [stems, sections], dB RMS
     lufs = {k: _lufs(ys[k], sr) for k in ids}
     top = max(v for v in lufs.values())
+    mix_speech = band_power(mono(my), sr, *SPEECH_HZ)
     rows = {}
     for k in ids:
         rows[k] = {"lufs": num(lufs[k]), "peak_dbfs": num(peak_db(ys[k])),
                    "rms_dbfs": num(db(np.mean(ys[k].astype(np.float64) ** 2))),
                    "db_under_loudest": num(top - lufs[k], 1),
-                   "db_vs_mix": num(lufs[k] - mix_lufs, 1)}
+                   "db_vs_mix": num(lufs[k] - mix_lufs, 1),
+                   "speech_1_4k_db_vs_mix": num(db(band_power(mono(ys[k]), sr, *SPEECH_HZ)) - db(mix_speech), 1)}
     flags = []
     for k, r in rows.items():
         r["format"] = "32-bit float" if floats[k] else "fixed-point"
@@ -74,6 +76,8 @@ def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
             flags.append({"flag": "buried", "stem": k, "smallest_gap_db": num(min(gaps), 1),
                           "detail": f"always more than {buried_db:g} dB under the loudest other stem "
                                     f"({len(gaps)} active sections of {section_s:g} s)"})
-    return {"mix_lufs": num(mix_lufs), "mix": mix or "sum of stems", "section_s": section_s,
+    return {"mix_lufs": num(mix_lufs), "mix_speech_1_4k_db_under_whole": num(db(mix_speech) - db(np.mean(mono(my).astype(np.float64) ** 2)), 1), "mix": mix or "sum of stems", "section_s": section_s,
             "stems": rows, "flags": flags,
-            "note": "flags are facts, not verdicts: a stem may be meant to sit low"}
+            "note": "flags are facts, not verdicts: a stem may be meant to sit low; speech_1_4k_db_vs_mix is the stem's energy between "
+                    f"{SPEECH_HZ[0]:g} and {SPEECH_HZ[1]:g} Hz against the mix's in the same region (0 = it is all of it; -6 = half the "
+                    "power; a voice that reads far under here is masked), mix_speech_1_4k_db_under_whole is that region's share of the whole mix"}

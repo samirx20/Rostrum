@@ -2,7 +2,8 @@
 import numpy as np
 
 from . import bs1770
-from .core import db, duration, load, name_of, num, peak_db
+from .core import BANDS, db, duration, load, name_of, num, peak_db
+from .ending import ending
 from .memo import remembered
 
 CLIP_LEVEL = 0.999           # full scale: the sample is clipped
@@ -80,13 +81,22 @@ def clip_moments(y, sr):
 
 
 @remembered
-def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
+def loudness(wav, out_png=None, step=1.0, series=None, limiter=None, range=None):
     """Facts about how loud `wav` is. `series` = the engine's own short-term values
     [(time_s, lufs)] (e.g. its 100 ms series), used for the curve instead of computing one.
     `out_png` writes the loudness + band-energy picture and returns its path under "png".
     `limiter` = {"stems": {track: wav}, "reduction": [dB per 100 ms], "caveat": str}: adds where the master limiter worked and which tracks
-    drove it (listen/limiter.py) to the facts and a third panel to the picture."""
+    drove it (listen/limiter.py) to the facts and a third panel to the picture.
+    `range` (from_s, to_s) measures only that stretch of the file (the engine's series and the limiter are of the whole
+    file, so they are left out); every time in the answer is then in the file's own time."""
     y, sr = load(wav)
+    t0, at_end = 0.0, True
+    if range is not None:
+        a, b = float(range[0]), float(range[1])
+        if not 0 <= a < b <= duration(y, sr) + 1e-6:
+            raise ValueError(f"loudness: range {a:g}–{b:g} s is outside the file (0 to {duration(y, sr):.3f} s)")
+        at_end = b >= duration(y, sr) - 1e-3
+        y, t0, series, limiter = y[int(a * sr):int(b * sr)], a, None, None
     if series is not None:
         t = np.array([p[0] for p in series], float)
         st = np.array([-200.0 if p[1] is None else p[1] for p in series], float)
@@ -96,6 +106,9 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
            "integrated_lufs": num(bs1770.integrated(y, sr)), "true_peak_dbtp": num(true_peak_db(y)),
            "lra_lu": num(loudness_range(st)), "sample_peak_dbfs": num(peak_db(y)),
            "rms_dbfs": num(db(np.mean(y.astype(np.float64) ** 2))),
+           "ending": ending(y, sr) if at_end else None,
+           "range_s": None if range is None else [num(t0, 3), num(t0 + duration(y, sr), 3)],
+           "band_edges_hz": {n: [lo, hi] for n, lo, hi in BANDS},
            "clipped_samples": int(np.sum(np.abs(y) >= CLIP_LEVEL)),
            "clip_moments": clip_moments(y, sr),
            "loudest": loudest(y, sr),
@@ -103,10 +116,18 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
            "short_term_lufs": [num(v, 1) if v > -70 else None for v in st],
            "note": "short-term = 3 s window ending at each step (so a curve's peak shows up to 3 s after the loud moment: `loudest` gives the window itself); null = silence or under 0.4 s of audio; "
                    f"clip_moments are samples within {abs(NEAR_CLIP_DB):g} dB of full scale"}
+    if t0:                                  # a stretch of the file: every time says where in the file it is
+        for c in out["clip_moments"]:
+            c["time_s"] = num(c["time_s"] + t0, 3)
+        for v in out["loudest"].values():
+            for k in ("from_s", "to_s", "time_s"):
+                if k in v:
+                    v[k] = num(v[k] + t0, 2)
+        out["short_term_start_s"] = num(t0, 3)
     panel = None
     if limiter:
         from .limiter import HOP_S, limiter as measure
-        lim = measure(limiter["stems"], limiter["reduction"], limiter.get("caveat", ""), engine_max_db=limiter.get("engine_max_db"))
+        lim = measure(limiter["stems"], limiter["reduction"], limiter.get("caveat", ""), engine_max_db=limiter.get("engine_max_db"), max_limit_db=limiter.get("max_limit_db"))
         curve = lim.pop("_curve")
         out["limiter"] = lim
         panel = (HOP_S, curve.tolist(), lim["worst"])

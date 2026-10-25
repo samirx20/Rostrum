@@ -29,7 +29,7 @@ pub struct MasterGain {
 impl MasterGain {
     pub fn new(s: &Schedule) -> MasterGain {
         let (offset, end) = s.range.unwrap_or((0, s.total_samples));
-        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.total_samples, offset, total: end - offset, norm: 1.0, dynamics: None }
+        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.song_samples.unwrap_or(s.total_samples), offset, total: end - offset, norm: 1.0, dynamics: None }
     }
 
     /// The fades' envelope at song frame `i`.
@@ -39,7 +39,9 @@ impl MasterGain {
         if fi > 0 && i < fi {
             env = 0.5 * (1.0 - (std::f64::consts::PI * (i as f64 / fi.max(1) as f64)).cos());
         }
-        if fo > 0 && i + fo >= total {
+        if fo > 0 && i >= total {
+            env = 0.0; // past a song's faded end: its ring-out was faded with it
+        } else if fo > 0 && i + fo >= total {
             let rem = (total as f64 - 1.0 - i as f64) / (fo.max(2) - 1) as f64;
             env = f64::min(env, (0.5 * (1.0 - (std::f64::consts::PI * rem).cos())).powf(2.2));
         }

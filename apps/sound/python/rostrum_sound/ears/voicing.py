@@ -50,7 +50,7 @@ def _stacks(notes):
 
 
 def stack_problems(notes) -> list[dict]:
-    """Close intervals low down (under the low-interval limit) and upper voices more than an octave apart."""
+    """Close intervals low down (under the low-interval limit, across all tracks: parts piling up low are mud) and upper voices more than an octave apart (inside one track)."""
     ev = []
     for t, st in _stacks(notes):
         mids = sorted({m for m, _ in st})
@@ -60,12 +60,21 @@ def stack_problems(notes) -> list[dict]:
                 who = sorted({tr for m, tr in st if m in (lo, hi)})
                 ev.append({"kind": "close_interval_low", "at_s": t, "tracks": who, "notes": [_name(lo), _name(hi)],
                            "why": f"a {interval_name(hi - lo)} ({_name(lo)}–{_name(hi)}) under {_name(lim)} is muddy"})
-        for lo, hi in zip(mids[1:], mids[2:]):
-            if hi - lo > WIDE_UPPER:
-                ev.append({"kind": "wide_upper_spacing", "at_s": t, "tracks": sorted({tr for m, tr in st if m in (lo, hi)}),
-                           "notes": [_name(lo), _name(hi)],
-                           "why": f"{_name(lo)} and {_name(hi)} are {hi - lo} semitones apart (over an octave) between upper voices"})
-    return merge_repeats(ev)
+    return merge_repeats(ev + _wide_upper(notes))
+
+
+def _wide_upper(notes) -> list[dict]:
+    """Upper voices more than an octave apart, judged inside each track's own chord (a melody over its accompaniment is
+    two parts, not one voicing: their distance is not a spacing problem)."""
+    ev = []
+    for tr in sorted({n["track"] for n in notes}):
+        for t, st in _stacks([n for n in notes if n["track"] == tr]):
+            mids = sorted({m for m, _ in st})
+            for lo, hi in zip(mids[1:], mids[2:]):
+                if hi - lo > WIDE_UPPER:
+                    ev.append({"kind": "wide_upper_spacing", "at_s": t, "tracks": [tr], "notes": [_name(lo), _name(hi)],
+                               "why": f"{_name(lo)} and {_name(hi)} are {hi - lo} semitones apart (over an octave) between {tr}'s upper voices"})
+    return ev
 
 
 def crossings(notes, min_apart: int = 3) -> list[dict]:

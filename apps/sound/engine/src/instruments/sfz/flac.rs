@@ -22,7 +22,7 @@ pub fn read_flac(path: &Path) -> Result<Sample, String> {
         frames.extend(l.iter().zip(rr).map(|(&a, &b)| [a as f32 * scale, b as f32 * scale]));
         buf = block.into_buffer();
     }
-    Ok(Sample { frames, rate: info.sample_rate as f64, looped: None })
+    Ok(Sample::new(frames, info.sample_rate as f64, None))
 }
 
 #[cfg(test)]

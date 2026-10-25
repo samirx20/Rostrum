@@ -15,8 +15,8 @@ pub struct Track {
     /// Where its last sound ends (seconds), for the default length.
     pub end: f64,
     head: Value,
-    voices: Vec<Value>,
-    clips: Vec<Value>,
+    pub(super) voices: Vec<Value>,
+    pub(super) clips: Vec<Value>,
     /// The credit line its instrument's licence asks for (CC-BY packs).
     pub credit: Option<&'static str>,
 }
