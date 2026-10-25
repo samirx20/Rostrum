@@ -29,3 +29,11 @@ def test_a_click_takes_the_cell_under_the_pointer():
         before = timing.snap(drawn - px, ROOT, False, g, "cell", px)
         assert abs(before - (line - step * SPB)) < 1e-6, value   # a pixel before the line: the cell before
 
+
+
+def test_a_range_edge_takes_the_nearest_line_either_side():
+    """A ruler range released a few pixels past the bar line ends on it, as one released a few pixels before it does
+    (critic r6 M3: past it, the end took the whole next eighth and Duplicate section shifted every copy late)."""
+    px, g, line = SPB / 14.0, grid("1/8"), 32 * SPB      # an eighth 7 px wide; bar 9
+    for dx in (-3, -1, 0, 1, 2, 3):
+        assert timing.snap(line + dx * px, ROOT, False, g) == round(line, 6), dx

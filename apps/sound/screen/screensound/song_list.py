@@ -7,7 +7,7 @@ The song's own start tempo and time signature are the document's fields (the pan
 """
 from __future__ import annotations
 
-from rostrum_sound.doc import meter, tempo
+from rostrum_sound.doc import musical, tempo
 
 from . import music_map, song_edit, timeline
 
@@ -15,12 +15,10 @@ NEAR = 1e-3      # seconds: two things this close are at the same place
 
 
 def place(root: dict, t: float) -> str:
-    """Where `t` seconds is, in bars as the ruler counts them: "Bar 5" on a bar line, else "Bar 5.3"."""
-    beat = tempo.beat_at(root, t)
-    seg, bars = meter.seg_at(root, beat), meter.bar_at(root, beat)
-    whole = int(bars + 1e-6)
-    count = (bars - whole) * seg.per
-    return f"Bar {whole + 1}" if count < 0.05 else f"Bar {whole + 1}.{int(count + 1e-6) + 1}"
+    """Where `t` seconds is, as the ruler and every field count it (musical.position): "Bar 5" on a bar line, else
+    "Bar 5.3", or "Bar 9.1.3" between counts (a section that ends an eighth late shows it: critic r6 M3)."""
+    at = musical.position(t, root)
+    return "Bar " + (at[:-2] if at.count(".") == 1 and at.endswith(".1") else at)
 
 
 def span(root: dict, t: float, end: float) -> str:

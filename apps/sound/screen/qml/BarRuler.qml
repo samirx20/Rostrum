@@ -5,7 +5,7 @@ import RostrumKit
 // backend.timeView) with Sound's bars on its upper line, plus what is Sound's own: the punch range (with a take
 // armed and punch on: a drag across the scale sets it, its edges drag; takeSetup.setPunch, a quarter beat grid,
 // Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
-// backend.setRange (each edge on a grid line within a few px, else around the grid cell it is in); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
+// backend.setRange (each edge on the nearest grid line, as any drag); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
 // markers and piano roll use too, the kit's, following backend.timeView.
 Item {
     id: r
@@ -62,7 +62,7 @@ Item {
         value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t) => backend.setTime(t)
-        onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds, 1 / r.perSec)   // drawn on the seconds scale: exact seconds, no grid
+        onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds)   // drawn on the seconds scale: exact seconds, no grid
         onRangeCleared: backend.clearRange()
     }
     MouseArea {   // above the kit's: the right-click menu, and the punch range while a take is armed with punch on
