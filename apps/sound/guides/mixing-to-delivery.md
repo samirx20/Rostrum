@@ -12,8 +12,11 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
 down by at most `maxLimit`. A mix that would need more (piano chords or drum hits whose peaks stand far above the
 song's loudness) is turned down as a whole instead, one gain for the whole song, so the balance between tracks stays
 and the master stays clean; the song then lands under its loudness target, and the `render_mix` reply says by how
-much ("The master turned the whole mix down 2.4 dB …"). To get louder, turn the loudest part's track down so the
-peaks come in, or raise `maxLimit` (4–6 dB is a loud, pressed master). Songs saved before 2026-10-25 open with it
+much and which setting would reach the target ("… landed 1.9 dB under the -14 LUFS target: to reach it, set master maxLimit
+to 3.9 (Most limiting) or turn down drums"). `maxLimit` is in dB, 0 to 12 in the document (`master.set`; the screen's **Most
+limiting**). The trade-off: **cleaner** (turn the track that sets the peaks down; nothing is squeezed, the balance moves) or
+**louder** (raise `maxLimit` by what the reply says: the master gets flatter and denser, the balance does not move; 4–6 dB
+is a loud, pressed master). Songs saved before 2026-10-25 open with it
 off, so they sound as they did.
 
 - **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a plain-named instrument or a drum kit start roughly balanced at the same volume for the part each suits (inspect_engine; kits and bass a few dB under, brass no louder than strings), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_sound` (`what: "levels"`): a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
@@ -90,7 +93,7 @@ row cites its source in `screensound/delivery.py`) that sets both in one step (a
 that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
-target allows comes out under the target (the reply says how far) rather than squeezed; with it off the limiter works
+target allows comes out under the target (the reply says how far and the `maxLimit` that reaches it) rather than squeezed; with it off the limiter works
 as hard as it must. Either way the fix is at the source: turn the loud parts down rather than squeezing harder.
 
 ## Checking (agents)
@@ -119,4 +122,5 @@ everything that reaches the master), `stems_add_up`, and the master's `master_ga
 `warnings` (and the Export sheet's result line) say in words when a file was cut flat or the stems don't add up.
 **Ending a file:** a held note and its reverb stop at the song's `length`; `master(fadeOut=...)`, a later `length` and the `trim` option are in
 `inspect_guide 'script'` ("Ending a song"). `trim` only cuts below -80 dBFS and says `trimmed: false` when sound is still above that at the end.
+Check the end with `look_sound` (`what: "loudness"`), whose `ending` line gives the last 0.5 s level, whether it is still above -50 dBFS and whether the last 50 ms drop faster than the fade (a cut).
 `render_mix` with `master: false` gives the mix before mastering, for someone else to master.

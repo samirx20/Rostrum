@@ -94,7 +94,12 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
 4. `look_music` (`what: "beats"`) says whether the audio's beats fit the document's tempo, and shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
 5. `look_sound` (`what: "spectrum"`) with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 
-Read onset times as measurements: a soft sound reads 10–30 ms late. Whether a sound *fits* the image is decided by a
+Read onset times as measurements. The engine compensates each recorded instrument's attack, so a note written at a marker
+is heard at the marker; the offsets that remain are small (a few ms to about 20 ms for a very soft start, which also reads
+late because onset detection finds a soft sound after it begins). If a stem still reads consistently early or late by more
+than your tolerance, write that stem's notes that many ms off the marker (`"#logo-0.02"`), one change at a time, and check
+again with `look_music` (`events`, `by_stem: true`). A soft or masked start (strings under a sustained chord) may show no onset
+at all: read that stem's own row, not the mix's nearest onset. Whether a sound *fits* the image is decided by a
 person watching and listening; say so in your report.
 
 ## Sound from motion

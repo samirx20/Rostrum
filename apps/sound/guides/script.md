@@ -82,8 +82,27 @@ limiter never pulls the loudest moment down by more than this; a mix that would 
 so it lands under its loudness target and `render_mix` says by how much), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
 `safetyClip`.
 
-There is no vinyl-crackle or bit-crush effect. For a worn, lo-fi sound the tools that exist are `tape` (wow, flutter, age),
-`saturate` (drive), an `eq` low-pass (`lowpass`) and a `reverb`.
+There is no vinyl-crackle or bit-crush effect, and no noise-bed sound. For a worn, lo-fi sound the tools that exist are
+`tape` (wow, flutter, age), `saturate` (drive), an `eq` low-pass (`lowpass`) and high-pass, a `reverb`, a `delay`, and the
+performance layer's swing and lean (below).
+
+**Tape settings.** All three run 0 to 1 and default 0.2. `wow` is a slow pitch drift (up to about 15 cents at 1; the
+"seasick" one), `flutter` a fast waver, `age` adds saturation and a darker, thinner tone. For a gentle worn sound stay
+under about 0.4 on `wow` and `flutter`; the number a look tool reports (`look_music pitch`: drift and vibrato per note)
+shows what it did, whether it is pleasant is for a person to hear.
+
+**Lo-fi, as techniques** (settings to start from, not a finished piece; move each to taste and check with the look tools):
+
+- *Dull the top:* an `eq` band `{"shape": "lowpass", "freq": 3500 to 6000, "q": 0.7}` on keys, vibes and the drums, so
+  nothing sparkles; a `highpass` near 60 to 80 Hz on the keys so they leave the bass room.
+- *Warble and wear:* `tape` on the keys and the lead, `wow` 0.2 to 0.4, `flutter` about 0.2, `age` 0.4 to 0.7; not on the
+  bass or kick, where pitch drift reads as out of tune.
+- *Grit:* `saturate` with `drive` 0.2 to 0.5 on the drums and the bass; a compressor with a slow `release` (0.2 to 0.4 s)
+  on the drums holds the hits together.
+- *Laid back:* `perform={"swing": 0.3 to 0.6, "lean": 5 to 15}` on the drums and keys (see "Swing" below); keep the notes on the grid.
+- *Space:* a small `room` reverb with a low `mix` and a dark `delay` (`damp` 0.5 or more) on the lead, not on the bass.
+- *What is missing:* crackle, hiss and bit-crush do not exist; a recorded sound you add as a clip (`inspect_library`) is the
+  only way to get a noise bed, and the sound must be one you may use.
 
 ## Ending a song
 
@@ -93,6 +112,11 @@ A song stops at its `length`. What a clean end needs, with what exists today:
   up to `length`. Make `length` later than the last note by the tail you want (a held chord that ends at bar 21 with a
   4-beat tail: `length(bar(21) + beats(4))`). Render and read the last second with `look_sound`: a file that still sounds at
   its end was cut.
+- **Check the end.** `look_sound` (`what: "loudness"`) answers an `ending` line from the render: the level of the last 0.5 s,
+  whether that is still above -50 dBFS, and whether the last 50 ms drop faster than the fade before it. Still above -50 dBFS
+  with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is a later `length` (or
+  `master(fadeOut=...)`). The engine lets the last notes ring out to the song's end and warns when the `length` you gave
+  cuts a note or its tail (`render_mix` and `run_script` warnings name them).
 - **Soft end.** On by default (the song field `endFade`): anything sounding at `length` is faded over its last 0.1 s so the
   file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
   if it is off and sound still plays.
@@ -124,7 +148,17 @@ vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the tr
 ```
 
 - `legato`: overlapping notes glide as one line (write each note slightly longer than its gap). `swell`: long
-  notes swell in. Both are per track, sampled tracks only.
+  notes swell in. Both are per track, and **only for a track made from an `sfz` file** (`sfz=...`): on `builtIn`, `model`,
+  `synth`, kit or `plugin` tracks the call is refused with `"legato" only applies when Instrument is "sfz"`, so a recorded
+  `builtIn="violins"` cannot take it. A recorded builtIn sustained instrument (strings, brass, winds, organ) already
+  slurs overlapping notes through the performance layer; to ask for it explicitly on any track write
+  `perform={"articulation": "legato"}` (holds each note into the next).
+- **Swing.** `perform={"swing": 0.5}` delays the off-beat notes: with the default `swingGrid` 0.5 (eighth notes) every second
+  eighth comes late by `swing` x one sixth of a beat (swing 1 is a triplet feel, 2:1; 0.5 halfway there, a light
+  shuffle, 58 ms late at 85 bpm); `swingGrid` 0.25 swings the sixteenths instead. A note is moved only if it is written on that
+  grid (within 8 percent of a cell), so write the notes straight and let `swing` move them. `lean` (ms, + behind the beat) and
+  `timing` (ms, random) are separate. There is no look tool that scores swing: `look_music beats` shows each onset's ms off
+  the grid, which is the swing plus the lean.
 - Touch fields (`position`, `damping`, `hardness`) are a model track's defaults; a note may override them.
   `damping` is plucked strings only; `position` / `hardness` not for violin. Wrong ones fail with the reason.
 - `humanize` and `phrase` write plain numbers into the notes when the script runs. Offsets come from the seed and

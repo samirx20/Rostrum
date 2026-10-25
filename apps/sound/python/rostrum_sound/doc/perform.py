@@ -18,7 +18,7 @@ FIELDS = [
     Param.number("timing", min=0, max=100, unit="ms", help="Each note lands up to this many ms off the grid."),
     Param.number("lean", min=-200, max=200, unit="ms", help="The whole part laid back (+, behind the beat) or pushed (−)."),
     Param.number("swing", min=0, max=1, help="The off-beat 8ths (or 16ths, swingGrid 0.25) come late; 1 is a triplet feel."),
-    Param.number("swingGrid", min=0.0625, max=1, help="The beat fraction that swings: 0.5 = 8ths (default), 0.25 = 16ths."),
+    Param.number("swingGrid", min=0.125, max=1, help="The beat fraction that swings: 0.5 = 8ths (default), 0.25 = 16ths."),
     Param.number("velocity", min=0, max=1, help="Each note's velocity varies by up to this fraction of itself."),
     V.curve("dynamics", (0, None), (0, 4), help="Dynamics across the part: [[seconds, factor], …] multiplies velocity (a crescendo is [[0, 0.6], [4, 1.1]])."),
     Param.number("accent", min=0, max=0.3, help="Notes on a bar's downbeat this much louder, the other beats half of it."),
