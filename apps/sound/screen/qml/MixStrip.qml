@@ -57,8 +57,8 @@ Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: 20
                 MixPick {
                     visible: s.routed && s.model.outputs.length > 1
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.visible ? sendsBtn.left : parent.right
-                              rightMargin: sendsBtn.visible ? Theme.grid : 0 }
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.shown ? sendsBtn.left : parent.right
+                              rightMargin: sendsBtn.shown ? Theme.grid : 0 }
                     row: true
                     text: s.model.output; choices: s.model.outputs
                     tip: "Plays to " + s.model.output.replace(/^→\s*/, "") + ". Click to pick the master or a group"
@@ -66,14 +66,15 @@ Rectangle {
                 }
                 Text {
                     visible: s.routed && s.model.outputs.length <= 1
-                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.visible ? sendsBtn.left : parent.right }
+                    anchors { left: parent.left; top: parent.top; bottom: parent.bottom; right: sendsBtn.shown ? sendsBtn.left : parent.right }
                     leftPadding: Theme.gap; verticalAlignment: Text.AlignVCenter
                     text: s.model.output; color: Theme.fg2; elide: Text.ElideRight
                     font.family: uiFont; font.pixelSize: Theme.label
                 }
                 MixChip {   // a low dock: the sends and ducks open from here, so they stay one click away
                     id: sendsBtn
-                    visible: s.low && s.model.reverb !== null && s.model.reverb !== undefined
+                    readonly property bool shown: s.low && s.model.reverb !== null && s.model.reverb !== undefined
+                    visible: shown
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     readonly property bool open: !!sendsPop.item && sendsPop.item.opened
                     height: 20; selected: open

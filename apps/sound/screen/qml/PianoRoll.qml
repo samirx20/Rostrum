@@ -20,16 +20,22 @@ Panel {
     }
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
+    // What shows, as conditions (never read from `visible`, which turns false while the dock shows the Mixer: the roll
+    // then grew under a hidden strip and was laid out and painted whole on every E / X)
+    readonly property bool shows: kind !== "none" && kind !== "empty"
+    readonly property bool hasStrip: shows && (kind === "notes" || kind === "drums")
+    readonly property bool laneShown: hasStrip && !!roll.played && !strip.folded && (lanesOpen || laneUsed)
+    readonly property bool foldShown: hasStrip && !!roll.played && !strip.folded && !laneShown
     BarRuler {
         id: bars
-        visible: p.kind !== "none" && p.kind !== "empty"
+        visible: p.shows
         x: p.keysWidth; width: parent.width - x; height: implicitHeight
     }
     Rectangle {
         id: well
-        visible: bars.visible
-        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: strip.visible ? strip.top : parent.bottom; topMargin: Theme.grid
-                  bottomMargin: strip.visible ? Theme.grid : 0 }
+        visible: p.shows
+        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: p.hasStrip ? strip.top : parent.bottom; topMargin: Theme.grid
+                  bottomMargin: p.hasStrip ? Theme.grid : 0 }
         radius: Theme.radiusCtl; color: Theme.sunken; clip: true
 
         Flickable {
@@ -101,9 +107,9 @@ Panel {
     }
     VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)
         id: strip
-        visible: bars.visible && (p.kind === "notes" || p.kind === "drums")
-        anchors { left: parent.left; right: parent.right; bottom: played.visible ? played.top : laneFold.visible ? laneFold.top : parent.bottom
-                  bottomMargin: played.visible || laneFold.visible ? Theme.grid : 0 }
+        visible: p.hasStrip
+        anchors { left: parent.left; right: parent.right; bottom: p.laneShown ? played.top : p.foldShown ? laneFold.top : parent.bottom
+                  bottomMargin: p.laneShown || p.foldShown ? Theme.grid : 0 }
         roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth
     }
     // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
@@ -113,7 +119,7 @@ Panel {
     onLaneTrackChanged: lanesOpen = false
     Item {
         id: laneFold
-        visible: strip.visible && !!p.roll.played && !strip.folded && !played.visible
+        visible: p.foldShown
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 18
         Chevron { id: laneChev; x: 4; anchors.verticalCenter: parent.verticalCenter; rotation: -90
@@ -126,7 +132,7 @@ Panel {
     }
     AutomationLane {   // the playing lane under the velocity strip: sustain pedal, expression, pitch bend (folds with it)
         id: played
-        visible: strip.visible && !!p.roll.played && !strip.folded && (p.lanesOpen || p.laneUsed)
+        visible: p.laneShown
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
         row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.roll.played })

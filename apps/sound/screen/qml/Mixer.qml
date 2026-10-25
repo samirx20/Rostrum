@@ -9,12 +9,18 @@ import RostrumKit
 Rectangle {
     id: page
     color: Theme.panel; radius: Theme.radiusPanel; clip: true
+    // The plug-in scan (the chips drop a plug-in's vendor from its name) starts when the Mixer first shows, not when it
+    // is made ahead (Dock.qml).
+    onVisibleChanged: if (visible) mixer.plugins.scan()
+    Component.onCompleted: if (visible) mixer.plugins.scan()
     readonly property real loudMin: 200          // the loudness panel's least width: strips come first, it takes what is left
-    readonly property bool side: plug.visible || duck.visible
+    // (layout reads conditions, never `visible`: that turns false while the Editor shows, and the Mixer was laid out
+    // again on every X)
+    readonly property bool side: !!plug.panel || !!mixer.ducks.panel.id
     readonly property real head: {   // the tallest strip's parts above its fader: every fader, the master's too, starts there
         let m = master.naturalHead
         for (let i = 0; i < row.children.length; i++)
-            if (row.children[i].naturalHead !== undefined && row.children[i].visible) m = Math.max(m, row.children[i].naturalHead)
+            if (row.children[i].naturalHead !== undefined) m = Math.max(m, row.children[i].naturalHead)
         return m
     }
 
@@ -30,10 +36,11 @@ Rectangle {
             width: row.width <= room ? row.width
                  : Math.max(0, Math.floor((room + Theme.gap) / (master.width + Theme.gap)) * (master.width + Theme.gap) - Theme.gap)
             contentWidth: row.width; clip: true; boundsBehavior: Flickable.StopAtBounds
+            readonly property bool over: contentWidth > width + 1     // the strips overflow: the scroll bar shows
             flickableDirection: Flickable.HorizontalFlick
             Row {
                 id: row
-                height: scroller.height - (bar.visible ? bar.height + 2 : 0)
+                height: scroller.height - (scroller.over ? bar.height + 2 : 0)
                 spacing: Theme.gap
                 Item {   // an empty song: the hint where the strips will be
                     visible: strips.count === 0; width: 220; height: row.height
@@ -50,7 +57,7 @@ Rectangle {
             }
             Rectangle {   // where the view is along the strips, only while they overflow (drag or wheel to scroll)
                 id: bar
-                visible: scroller.contentWidth > scroller.width + 1
+                visible: scroller.over
                 y: scroller.height - height; height: Theme.scrollWidth; radius: height / 2; color: Theme.line
                 x: scroller.contentX + scroller.contentX / scroller.contentWidth * scroller.width
                 width: scroller.width * scroller.width / scroller.contentWidth
@@ -60,7 +67,7 @@ Rectangle {
             id: master
             model: mixer.master; head: page.head
             anchors { left: scroller.right; leftMargin: scroller.width > 0 ? Theme.gap : 0; top: parent.top; bottom: parent.bottom
-                      bottomMargin: bar.visible ? bar.height + 2 : 0 }   // level with the strips above the scroll bar
+                      bottomMargin: scroller.over ? bar.height + 2 : 0 }   // level with the strips above the scroll bar
         }
         MixLoudness {
             anchors { left: master.right; leftMargin: Theme.gap; right: page.side ? plug.left : parent.right
@@ -75,7 +82,11 @@ Rectangle {
             Flickable {
                 anchors { fill: parent; margins: Theme.gap + 2 }
                 contentHeight: settings.height; clip: true; boundsBehavior: Flickable.StopAtBounds
-                PluginSettings { id: settings; ownerId: plug.panel ? plug.panel.owner : "" }
+                Loader {   // made while a plug-in effect is selected (a Mixer made ahead, hidden, starts no plug-in scan)
+                    id: settings
+                    width: parent.width; active: !!plug.panel
+                    sourceComponent: PluginSettings { ownerId: plug.panel ? plug.panel.owner : "" }
+                }
             }
         }
         Rectangle {   // the open duck's settings (only while a duck is open; the panel closes with the track's selection)
