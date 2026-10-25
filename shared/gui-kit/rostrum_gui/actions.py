@@ -106,8 +106,9 @@ class ActionList:
     def keys_of(self, a: Action) -> str:
         return normal(a.keys) if a.keys else (self.keymap.key_of(a.job) if a.job else "")
 
-    def _check(self, a: Action, facts):
-        """(why it is absent | None, its calls). The one guard every door uses."""
+    def _check(self, a: Action, facts, kind_facts=None):
+        """(why it is absent | None, its calls). The one guard every door uses. `kind_facts`: {item id: the kind's
+        facts}, shared by every action of one `available` (each `valid_when` read them again per action)."""
         n, items = len(facts.ids), facts.items
         if n < a.min_targets:
             return "few", []
@@ -116,7 +117,7 @@ class ActionList:
         if a.kinds is not None and any(it["type"] not in a.kinds for it in items):
             return "kind", []
         doc = getattr(facts, "doc", None)
-        if a.valid_when and not all(holds(a.valid_when, it, doc.kind.facts(it, doc) if doc else {}) for it in items):
+        if a.valid_when and not all(holds(a.valid_when, it, _kind_facts(it, doc, kind_facts)) for it in items):
             return "when", []
         if a.when and not holds(a.when, {}, getattr(facts, "facts", {})):
             return "invalid", []
@@ -129,9 +130,9 @@ class ActionList:
 
     def available(self, facts) -> list[dict]:
         """The actions this selection allows, resolved, in order: promoted first, then by rank."""
-        out = []
+        out, kind_facts = [], {}
         for i, a in enumerate(self.actions):
-            reason, calls = self._check(a, facts)
+            reason, calls = self._check(a, facts, kind_facts)
             if reason is None:
                 first = 0 if a.promoted and a.promoted(facts) else 1
                 out.append(((first, a.rank, i), {
@@ -189,3 +190,14 @@ class ActionList:
 
 
 from .action_views import bar, commands, menu, panel  # noqa: E402,F401  (the views live beside: one import for apps)
+
+
+def _kind_facts(item: dict, doc, kept: dict | None) -> dict:
+    """The document kind's facts of `item` (none without a document), worked out once per `kept` (one `available`)."""
+    if doc is None:
+        return {}
+    if kept is None:
+        return doc.kind.facts(item, doc)
+    if item["id"] not in kept:
+        kept[item["id"]] = doc.kind.facts(item, doc)
+    return kept[item["id"]]

@@ -83,10 +83,35 @@ def by_kind(kinds: list[tuple[str, str]]) -> list[dict]:
 
 def last_change(doc, ids):
     """The newest change still in force that touched any of these items (an Insert, Set, Move or Remove of one), or
-    None: the panel's "Last changed by" line. An undo or redo step isn't one; the step it acted on is."""
-    h, ids = doc.history, set(ids)
-    return next((c for c in reversed(h.changes) if c.original and h.done[c.seq]
-                 and any(getattr(e, "id", None) in ids for e in c.edits)), None)
+    None: the panel's "Last changed by" line. An undo or redo step isn't one; the step it acted on is.
+    Asked on every pick: each item's own steps (`_by_item`), not the whole history back to the item's last change."""
+    h, best = doc.history, None
+    by_item = _by_item(h)
+    for i in dict.fromkeys(ids):
+        c = next((c for c in reversed(by_item.get(i, ())) if h.done[c.seq]), None)
+        if c is not None and (best is None or c.seq > best.seq):
+            best = c
+    return best
+
+
+_indexed: dict = {}         # id(history) -> (history, steps read, {item id: its original steps, oldest first})
+
+
+def _by_item(h) -> dict:
+    """The original steps that touched each item, read once: a history only grows (Undo is a step of its own)."""
+    got = _indexed.get(id(h))
+    if got is None or got[0] is not h or got[1] > len(h.changes):
+        if len(_indexed) > 8:
+            _indexed.clear()
+        got = _indexed[id(h)] = [h, 0, {}]
+    index = got[2]
+    for c in h.changes[got[1]:]:
+        if c.original:
+            for i in dict.fromkeys(getattr(e, "id", None) for e in c.edits):
+                if i is not None:
+                    index.setdefault(i, []).append(c)
+    got[1] = len(h.changes)
+    return index
 
 
 def ago(t: float, now: float) -> str:

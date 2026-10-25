@@ -451,9 +451,26 @@ class Painter(BrushPanel):
     def _doc_changed(self):
         self._rev += 1
 
+    _seen = None                                    # (document, target, the rest): what _refresh last worked from
+
+    def _paint_state(self):
+        """Everything the painter's properties are worked out from. A pick that leaves it as it was (from one text to
+        another: nothing to paint on either way) changes nothing the painter shows."""
+        t, op = self.target(), self.b.opened
+        rest = (op.on, op.frame() if op.on else None, self._fresh is not None and self._fresh == self.b.selectedLayer,
+                self.b._t if t is not None else None, self._onion, tuple(self._reach.items()),
+                tuple(sorted(self._on_fill.items())), self._new_layer, self._serial, self._built, self._stroke is None,
+                self.b.comp_id, id(self.b.marks.times) if self.b.marks else None)
+        return self.b.doc.data, t, rest
+
     def _refresh(self):
         """The outline or the playhead moved: announced only when what QML reads of the painter changed (sent on every
-        edit and every frame of a scrub, it re-ran the paint panel, the brush header and the frame marks: ~5 ms)."""
+        edit and every frame of a scrub, it re-ran the paint panel, the brush header and the frame marks: ~5 ms).
+        Worked out only when what it is worked out from moved (_paint_state)."""
+        state, seen = self._paint_state(), self._seen
+        if seen is not None and seen[0] is state[0] and seen[1] is state[1] and seen[2] == state[2]:
+            return
+        self._seen = state
         if self._stroke is None:                    # not while a stroke is being drawn: the neighbours don't change
             self._rebuild_onion()
         told = (self.drawingId, self.now, self.frameMarks, self.onionOn, self.onionReach, self.newHold,

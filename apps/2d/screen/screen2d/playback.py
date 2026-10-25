@@ -37,7 +37,6 @@ class Playback(QObject):
         super().__init__(bridge)
         self.b, self._clock, self._blur, self._size = bridge, (0.0, 0.0), False, "full"
         self._once = None                                   # (until, back to): playing a stretch once (once())
-        self._asked, self._step = None, 1.0                 # (frame asked last, when) and the frames a picture takes (ahead())
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.timeout.connect(self._tick)
@@ -74,7 +73,7 @@ class Playback(QObject):
             self.stop()
             self.b.setTime(self.b.time)        # the rest of the screen catches up; the full frame is drawn
         else:
-            self._clock, self._asked = (time.perf_counter(), self.b.time), None
+            self._clock = (time.perf_counter(), self.b.time)
             self._timer.start(self._tick_ms())
             self.b.soundtrack.play(self.b.time)     # the project's sound, through Sound's engine (soundtrack.py)
             self.changed.emit()
@@ -84,7 +83,7 @@ class Playback(QObject):
         self.stop()
         self._once = (t1, back)
         self.b.setTime(t0)
-        self._clock, self._asked = (time.perf_counter(), self.b.time), None
+        self._clock = (time.perf_counter(), self.b.time)
         self._timer.start(self._tick_ms())
         self.changed.emit()
 
@@ -111,22 +110,12 @@ class Playback(QObject):
         return max(1, round(500 / self.b.comp()["fps"]))
 
     def ahead(self, t: float) -> float | None:
-        """While playing, the frame the next tick will really ask for (bridge.setTime's own rounding): `t` plus the
-        frames one picture takes to come, at least one (the time between asks, smoothed so one late tick doesn't move
-        it), so a picture that takes longer than a frame still finds the one drawn ahead ready (asking t + 1 then made
-        the engine drop it: blur at 60 fps fell to 25 fps). Asked with `t`, the engine draws it while `t` is shown.
-        None paused or at the end."""
+        """While playing, the frame after `t` (bridge.setTime's own rounding, so the next tick asks for exactly it): asked
+        with `t`, the engine draws it while `t` is shown. None paused or at the end."""
         if not self._timer.isActive():
-            self._asked = None
             return None
         c = self.b.comp()
-        n, now = round(t * c["fps"]), time.perf_counter()
-        if self._asked is None or n < self._asked[0]:          # a start, or a loop back to 0
-            self._asked, self._step = (n, now), 1.0
-        elif n > self._asked[0]:
-            gap = (now - self._asked[1]) * c["fps"]            # frames of the clock between the two asks
-            self._asked, self._step = (n, now), 0.7 * self._step + 0.3 * gap
-        nxt = (n + max(1, round(self._step))) / c["fps"]      # = round(nxt * fps) / fps, as setTime rounds
+        nxt = round((t + 1 / c["fps"]) * c["fps"]) / c["fps"]
         return nxt if nxt <= c["duration"] else None
 
     def _tick(self):

@@ -9,6 +9,7 @@ Its renders are the finished version folders `renders/<item>/vNNN/`, each with a
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 import shutil
@@ -22,6 +23,22 @@ _VERSION = re.compile(r"^v(\d{3,})$")
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
+_kept: dict = {}        # str(path) -> (its stamp, what was read from it): read again only when the file changed
+
+
+def _kept_read(path: Path, read):
+    """`read(path)`, kept per file stamp (filestamps): a screen listing the project on every pick (a scene's Soundtrack
+    pick) parsed every document whole each time, so a pick cost more the bigger the documents."""
+    when = filestamps.stamp(path)
+    got = _kept.get(str(path))
+    if when is not None and got is not None and got[0] == when:
+        return got[1]
+    out = read(path)
+    if when is not None:
+        _kept[str(path)] = (when, out)
+    return out
+
+
 def _read_json(path: Path, where: str) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -29,12 +46,18 @@ def _read_json(path: Path, where: str) -> dict:
         raise RostrumError(codes.CHECK_FAILED, where, str(path), f"can't be read: {e}") from e
 
 
+def _read_kept(path: Path, where: str) -> dict:
+    """_read_json kept per file stamp, for listing only: the caller gets its own copy (it may change it)."""
+    return copy.deepcopy(_kept_read(path, lambda p: _read_json(p, where)))
+
+
 def _doc_name(path: Path, item_id: str) -> str:
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8")).get("doc", {})
-    except (OSError, ValueError):
-        return item_id
-    return doc.get("name") or item_id
+    def read(p):
+        try:
+            return json.loads(p.read_text(encoding="utf-8")).get("doc", {}).get("name") or ""
+        except (OSError, ValueError):
+            return ""
+    return _kept_read(path, read) or item_id
 
 
 def renders(folder, item_id: str) -> list[dict]:
@@ -45,7 +68,7 @@ def renders(folder, item_id: str) -> list[dict]:
         m = _VERSION.match(d.name)
         if not m or not d.is_dir() or not (d / "manifest.json").is_file():
             continue
-        manifest = _read_json(d / "manifest.json", f"render {item_id}/{d.name}")
+        manifest = _read_kept(d / "manifest.json", f"render {item_id}/{d.name}")
         out.append({"version": int(m.group(1)), "kind": manifest.get("kind", ""), "path": str(d),
                     "files": sorted(p.name for p in d.iterdir() if p.name != "manifest.json"), "manifest": manifest})
     return sorted(out, key=lambda r: -r["version"])
@@ -62,7 +85,7 @@ def items(folder, kind: str | None = None) -> list[dict]:
             found[f.stem] = {"id": f.stem, "kind": KIND_OF_EXT[f.suffix], "name": _doc_name(f, f.stem),
                              "file": f"docs/{f.name}"}
     if (folder / "project.json").is_file():
-        for row in _read_json(folder / "project.json", "project").get("items", []):
+        for row in _read_kept(folder / "project.json", "project").get("items", []):
             found[row["id"]] = {**found.get(row["id"], {}), **{k: row[k] for k in ("id", "kind", "name", "file", "hash")
                                                               if k in row}}
     out = [{**it, "name": it.get("name") or it["id"], "renders": renders(folder, it["id"])} for it in found.values()]

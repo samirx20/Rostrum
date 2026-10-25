@@ -29,6 +29,15 @@ def shots(comp: dict) -> list[tuple]:
     return [view.shot(comp, n / fps) or home for n in range(max(1, int(math.ceil(dur * fps))) + 1)]
 
 
+def frame_reads(comp: dict) -> tuple:
+    """What of the scene `shots` reads besides its timing and size: the frame and the path layer it rides (or None).
+    A screen that keeps shots (the cover band) keeps them while these are the same items (the document replaces
+    what it changes): a moved path moves a riding frame."""
+    frame = view.of(comp)
+    name = frame.get("ridePath") if frame is not None else None
+    return frame, next((l for l in comp.get("layers", []) if l["id"] == name and l["type"] == "path"), None) if name else None
+
+
 def seen_box(comp: dict, depth: float, shot_list=None) -> tuple[float, float, float, float]:
     """(x0, y0, x1, y1) in world px: everything of a layer at `depth` the frame shows over the whole composition."""
     w, h = comp_size(comp)

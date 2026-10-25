@@ -50,10 +50,21 @@ class MotionPath(QObject):
         self._tracks = None            # (doc.data, selection, frame path on, [(owner id, faint, track, frame keys)])
         self._view = None              # (tracks, t, the canvas paths)
         self._by_owner = {}            # {owner id: (what it is made of, (track, frame outlines) or None)}: _track_of
+        self._rows = {}                # {owner id: (what its canvas row is made of, the row)}: _row
         for sig in (bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
-        for sig in (bridge.docChanged, bridge.docStepped):      # a change or drag step elsewhere leaves the paths be
-            sig.connect(lambda: self.b.reached([o for o, _ in self._owners()]) and self.changed.emit())
+        for sig in (bridge.docChanged, bridge.docStepped):
+            sig.connect(self._doc)
+
+    def _doc(self):
+        """A change or a drag's step: the canvas is told only when a path it shows is another (an edit of anything the
+        paths are not made of, like a colour or an unanimated x, redraws none: the frame's path was ~900 points)."""
+        if not self.b.reached([o for o, _ in self._owners()]):
+            return
+        was = self._view[2] if self._view is not None else None
+        now = self.paths
+        if was is None or len(now) != len(was) or any(a is not b for a, b in zip(now, was)):
+            self.changed.emit()
 
     # ---- the View menu's "Show the frame's path" (screen state, never the document) -------------------------
     @Property(bool, notify=changed)
@@ -109,19 +120,29 @@ class MotionPath(QObject):
         tracks, t = self._read(), self.b._t
         if self._view is not None and self._view[0] is tracks and self._view[1] == t:
             return self._view[2]
-        comp, out, picked = self.b.placed(), [], set(self.b._keys.ids)
-        for oid, faint, tr, frames in tracks[1]:
-            owner = self.b.placed_item(oid)
-            row = {"id": oid, "frame": owner["type"] == FRAME, "faint": faint, "lines": [], "cuts": [], "ticks": [],
-                   "keys": [], "frames": frames}
-            if tr:
-                row.update(G.on_canvas(tr, G.mapping(comp, owner, t)))
-                for k in row["keys"]:
-                    k["picked"] = bool(picked & set(k["ids"]))
-                    k["handles"] = not faint and (k["stored"] or k["picked"])
-            out.append(row)
+        picked = set(self.b._keys.ids)
+        out = [self._row(oid, faint, tr, frames, t, picked) for oid, faint, tr, frames in tracks[1]]
         self._view = (tracks, t, out)
         return out
+
+    def _row(self, oid, faint, tr, frames, t, picked):
+        """One owner's canvas row, made again only when its track, outlines, mapping or picked keys changed."""
+        owner = self.b.placed_item(oid)
+        m = tuple(G.mapping(self.b.placed(), owner, t)) if tr else None
+        mine = frozenset(i for k in tr["keys"] for i in k["ids"] if i in picked) if tr else None
+        key = (tr, frames, faint, owner["type"] == FRAME, m, mine)
+        got = self._rows.get(oid)
+        if got is not None and all(a is b or a == b for a, b in zip(got[0], key)):
+            return got[1]
+        row = {"id": oid, "frame": key[3], "faint": faint, "lines": [], "cuts": [], "ticks": [], "keys": [],
+               "frames": frames}
+        if tr:
+            row.update(G.on_canvas(tr, m))
+            for k in row["keys"]:
+                k["picked"] = bool(picked & set(k["ids"]))
+                k["handles"] = not faint and (k["stored"] or k["picked"])
+        self._rows[oid] = (key, row)
+        return row
 
     # ---- drags ------------------------------------------------------------------------------------------------
     def _owner_ok(self, oid: str) -> dict | None:

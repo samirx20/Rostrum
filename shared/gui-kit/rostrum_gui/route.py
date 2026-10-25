@@ -25,6 +25,18 @@ class KeyRoute:
     def __init__(self, fields, drives: Callable, value_at: Callable, expr_drives: Callable | None = None):
         self.F, self.drives, self.value_at = fields, drives, value_at
         self.expr_drives = expr_drives or (lambda item, prop: False)
+        self._by_prop = (None, None, {})     # (owner, its keys list, {prop: its keys}): _keys
+
+    def _keys(self, item: dict, prop: str) -> list[dict]:
+        """keys_of, with the owner's keys sorted out by field once: the panel asks every row of one owner in turn (a
+        scan of all its keys per row). The screen reads finished document states, never changed in place."""
+        owner, keys, by = self._by_prop
+        if owner is not item or keys is not item.get("keys"):
+            by = {}
+            for k in item.get("keys", ()):
+                by.setdefault(k.get("prop"), []).append(k)
+            self._by_prop = (item, item.get("keys"), by)
+        return keys_of({"keys": by[prop]}, prop) if prop in by else []
 
     def _arg(self, item: dict, prop: str, value) -> dict:
         p = self.F.param(item["type"], prop)
@@ -44,7 +56,7 @@ class KeyRoute:
     def anim_state(self, item: dict, prop: str, t: float, fps: float) -> str:
         if not self.drives(item, prop) or self.expr_drives(item, prop):
             return ""
-        keys = keys_of(item, prop)
+        keys = self._keys(item, prop)
         if not keys:
             return "still"
         return "onkey" if any(abs(k["t"] - t) < 0.5 / fps for k in keys) else "keyed"

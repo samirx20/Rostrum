@@ -140,10 +140,18 @@ def _inked(comp: dict, b: dict, x: float, y: float) -> bool:
     return BX.ink_at(layer, b["frame"], (lx - b["x"]) / (b["w"] or 1), (ly - b["y"]) / (b["h"] or 1))
 
 
+_pickable = [(None, None, [])]   # [(composition, t, its pickable boxes)]: a press and its click ask twice, and every
+                                 # click until the next change or playhead move asks the same (a walk of every layer)
+
+
 def pick_chain(comp: dict, t: float, x: float, y: float) -> list[str]:
     """The topmost layer painted under (x, y) with its groups, outermost first ([] for none): what a click can select
-    (picking.py chooses which of them)."""
-    hits = [b for b in boxes(comp, t) if pickable(b) and inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
+    (picking.py chooses which of them). The boxes are worked out once per composition state (every change gives a new
+    one) and time."""
+    got = _pickable[0]
+    if got[0] is not comp or got[1] != t:
+        got = _pickable[0] = (comp, t, [b for b in boxes(comp, t) if pickable(b)])
+    hits = [b for b in got[2] if inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
     return [*hits[-1]["up"], hits[-1]["id"]] if hits else []
 
 

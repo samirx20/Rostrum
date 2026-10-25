@@ -93,6 +93,20 @@ class Busy:
         self._d.aboutToBlock.disconnect(self._block)
 
 
+def gc_watch():
+    """Python's cycle collector, timed into STATS (gc0 / gc1 / gc2: a pause shows as a slow step); remove the returned
+    callback from gc.callbacks when done."""
+    at = [0.0]
+
+    def collected(phase, info):
+        if phase == "start":
+            at[0] = time.perf_counter()
+        elif STATS.on:
+            STATS.ms[f"gc{info['generation']}"].append((time.perf_counter() - at[0]) * 1000)
+    gc.callbacks.append(collected)
+    return collected
+
+
 def drag_time(bridge, kind, n=60, profile=False):
     begin, move, end = _drag(bridge, kind)
     _wait(300)                                   # what opening set off settles first
@@ -110,14 +124,7 @@ def drag_time(bridge, kind, n=60, profile=False):
         import cProfile
         prof = cProfile.Profile()
     busy = Busy()
-    gc_at = [0.0]
-
-    def collected(phase, info):                  # Python's cycle collector, timed (a pause shows as a slow move)
-        if phase == "start":
-            gc_at[0] = time.perf_counter()
-        elif STATS.on:
-            STATS.ms[f"gc{info['generation']}"].append((time.perf_counter() - gc_at[0]) * 1000)
-    gc.callbacks.append(collected)
+    collected = gc_watch()
     try:
         if not begin():
             raise RuntimeError(f"dragtime {kind}: the drag didn't start: {bridge.status}")

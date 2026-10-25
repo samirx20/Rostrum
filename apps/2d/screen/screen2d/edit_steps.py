@@ -1,6 +1,6 @@
 """`edittime`: what one edit costs, per edit kind, through the same bridge slots a click, a typed field, a drag or a key uses.
 
-    edittime field|dragend|key|pin|undo [n] [layer=<id>] [profile]
+    edittime field|dragend|key|pin|undo|typed|ctrlz [n] [layer=<id>] [profile]
         n repetitions (default 20), each a real change (alternating), on the layer "card" (any document with it; else
         layer=<id>):
         field: its x typed in the inspector | dragend: a canvas drag, only the release timed | key: a key at the playhead
@@ -10,6 +10,9 @@
         change arrived; the stages (describe, load, pixels, engine split) are each repetition's sum. Medians and worst
         on one line. Everything done is undone after. `profile`: the 40 most costly functions of the timed parts
         (rostrum_gui/select_steps.py's print_profile).
+        slide: a real mouse drag on the Opacity slider (edit_keys.py): press, first move, later moves, release.
+        typed | ctrlz: the same with a person's real keys (edit_keys.py): X typed into its field and Enter (Enter timed),
+        or a real Ctrl+Z after such an edit (Ctrl+Z timed).
 """
 from __future__ import annotations
 
@@ -18,11 +21,13 @@ import time
 
 from PySide6.QtCore import QCoreApplication
 
-from .drag_steps import Busy, _wait
+import gc
+
+from .drag_steps import Busy, _wait, gc_watch
 from .playstats import STATS
 
 WORDS = ("edittime",)
-KINDS = ("field", "dragend", "key", "pin", "undo")
+KINDS = ("field", "dragend", "key", "pin", "undo", "typed", "ctrlz")
 IDLE_MS, LIMIT_S = 100, 10.0
 
 
@@ -69,6 +74,9 @@ def _settle(pics, what):
 
 
 def _kind(bridge, kind):
+    if kind in ("typed", "ctrlz"):
+        from .edit_keys import keys
+        return keys(bridge, kind)
     """(setup before the timed part or None, the timed action i -> None, how many undo steps one repetition leaves)."""
     if kind in ("field", "undo"):
         def act(i):
@@ -99,6 +107,15 @@ def _spread(v):
     return f"median {_med(v)} worst {max(v):.1f}"
 
 
+def _calm():
+    """The heap as a person meets it after a pause (rostrum_gui/heap.py; a checkout without it: one full collection)."""
+    try:
+        from rostrum_gui import heap
+    except ImportError:
+        return gc.collect()
+    heap.calm_now()
+
+
 def edit_time(bridge, kind, n=20, layer="card", profile=False):
     setup, action, undos = _kind(bridge, kind)
     bridge.select(layer)
@@ -107,9 +124,10 @@ def edit_time(bridge, kind, n=20, layer="card", profile=False):
     if profile:
         import cProfile
         prof = cProfile.Profile()
+    _calm()                                      # as after a person's pause once the piece opened
     _wait(300)
     STATS.on = True
-    pics, busy = _Pictures(bridge), Busy()
+    pics, busy, collected = _Pictures(bridge), Busy(), gc_watch()
     gui, pic, stages, done = [], [], {}, 0
     try:
         for i in range(n):
@@ -131,17 +149,17 @@ def edit_time(bridge, kind, n=20, layer="card", profile=False):
             pic.append((pics.last_ready - t0) * 1000)
             for k, v in STATS.ms.items():
                 stages.setdefault(k, []).append(sum(v))
-            if kind != "undo":
-                done += undos
+            done += undos
             pics.armed = False
-        for _ in range(done):                    # the document as it was (edits of one field may be one step: never
-            if repr(bridge.placed_item(layer)) == start:     # undo past where it started)
+    finally:
+        for _ in range(done + 2):                # the document as it was, a failed step's own change too (edits of one
+            if repr(bridge.placed_item(layer)) == start:     # field may be one step: never undo past where it started)
                 break
             bridge.undo()
             _wait(IDLE_MS)
-    finally:
         pics.close()
         busy.close()
+        gc.callbacks.remove(collected)
         STATS.on = STATS.log
     if repr(bridge.placed_item(layer)) != start:
         raise RuntimeError(f"edittime {kind}: the document did not come back as it started")
@@ -160,4 +178,7 @@ def do_edit_step(bridge, word, rest, step):
         raise ValueError(f"step {step!r}: edittime {' | '.join(KINDS)} [n]")
     n = next((int(a) for a in rest[1:] if a.isdigit()), 20)
     layer = next((a.split("=", 1)[1] for a in rest[1:] if a.startswith("layer=")), "card")
+    if rest[0] == "slide":                       # a real drag on a slider: press, first move, moves, release
+        from .edit_keys import slide_time
+        return slide_time(bridge, next((int(a) for a in rest[1:] if a.isdigit()), 10), layer)
     edit_time(bridge, rest[0], n, layer, "profile" in rest)

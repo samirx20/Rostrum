@@ -42,13 +42,22 @@ class TimelineRows:
         rows, told = self.layer_rows(), self._rows_told
         self._rows_told = rows
         if rows != told:
-            facts = row_facts.of(rows)
+            facts = self.row_facts()
             if facts != self._facts_told:
                 self._facts_told = facts
                 self.rowFactsChanged.emit()
             self.layersChanged.emit()
         if self._row_models:
             self._push_rows(rows)
+
+    _facts_at = None         # (rows, their facts): rowFacts, worked out once per rows
+
+    def row_facts(self) -> dict:
+        """row_facts.of the rows as they are now, once per rows (QML reads it on every pick: canPickRows)."""
+        rows = self.layer_rows()
+        if self._facts_at is None or self._facts_at[0] is not rows:
+            self._facts_at = (rows, row_facts.of(rows))
+        return self._facts_at[1]
 
     _row_models = None       # (all rows, the shown layer's row): made when QML first asks
 
