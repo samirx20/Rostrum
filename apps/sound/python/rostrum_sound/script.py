@@ -4,7 +4,8 @@
     marker("drop", at=bar(5)); tempo_change(bar(5), 132); key("D minor"); section("verse", bar(1), bar(5))
     s = track("strings", sfz=r"C:\\...\\Violins.sfz", volume=0.8)      # instrument inferred from sfz= / builtIn= / kit=
     s.note("D4", at=beat(0), dur=beats(4), vel=0.7); s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
-    d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
+    p = track("keys", builtIn="piano"); b = track("bass", builtIn="uprightBass", perform=False)   # perform=False: every note exactly as written
+    d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
     v = track("door"); v.clip(r"C:\\...\\door.wav", at=3.0, in_=0.42, length=1.2).effect("eq", bands=[...])
     s.effect("reverb", space="hall", mix=0.3); s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
     master(loudness=-16); master.effect("limiter", ceiling=-1)
@@ -28,12 +29,13 @@ from rostrum_core.merge import check_output
 from . import expression as EX
 from .builder import Song, Track
 from .doc import KIND, meter
-from . import script_scope
+from . import script_scope, writing
 from .script_time import Beat, Beats, plain, until
 
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)",
        "marker(name, at)", "tempo_change(at, bpm, ramp=False)", "meter_change(at, beats_per_bar, beat_unit=4)", "key(key, at)", "section(name, at, end)", "import_midi(path)",
-       "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)"]
+       "master(**fields)", "beat(n)", "beats(n)", "bar(n)", "until(time)", "vel_curve(points, start, end)",
+       *writing.API]                                         # writing helpers: inspect_guide 'writing-music'
 
 
 def scope(song: Song) -> dict:
@@ -57,6 +59,7 @@ def scope(song: Song) -> dict:
         "track": song.track, "marker": song.marker, "master": song.master,
         "tempo_change": song.tempo_change, "meter_change": song.meter_change, "key": song.key, "section": song.section, "import_midi": song.import_midi,
         "beat": Beat, "beats": Beats, "bar": bar, "until": until, "vel_curve": vel_curve,
+        **writing.scope(song),
     }
 
 
