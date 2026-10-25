@@ -41,6 +41,7 @@ class LivePlay(QObject):
     changed = Signal()
     _line = Signal(int, "QVariantMap")         # from the reader thread, delivered on the screen's thread
     _gone = Signal(int, int, str)
+    _opened = Signal(int, object, str, str)    # warm's process (or why it could not start), on the screen's thread
 
     program: list[str] | None = None
 
@@ -48,6 +49,8 @@ class LivePlay(QObject):
         super().__init__(parent)
         self._line.connect(self._on_line)
         self._gone.connect(self._on_gone)
+        self._opened.connect(self._on_opened)
+        self._starting = False
         self._proc, self._gen, self.file, self.opts = None, 0, "", {}
         self.state: dict = {}
         self.ready: dict = {}
@@ -90,8 +93,35 @@ class LivePlay(QObject):
                 self.send({k: v})
 
     def warm(self):
-        """Start the process now, stopped (the engine starts stopped), so the first play has no start-up wait."""
-        self._ensure()
+        """Start the process now, stopped (the engine starts stopped), so the first play has no start-up wait. Started
+        off the screen's thread: starting a process takes ~15-20 ms, and the first render's arrival stalled whatever the
+        person was doing (a click, a drag). A play or a set-up before it is there opens one at once (this one is then
+        ended unused)."""
+        if self._proc is not None or self._starting or not self.alive or not self.file:
+            return
+        self._starting, gen, file = True, self._gen, self.file
+
+        def start():
+            try:
+                self._opened.emit(gen, self._popen(), file, "")
+            except OSError as e:
+                self._opened.emit(gen, None, file, str(e))
+            except RuntimeError:                     # the screen closed first
+                pass
+        threading.Thread(target=start, daemon=True).start()
+
+    def _on_opened(self, gen, proc, file, err):
+        self._starting = False
+        if gen != self._gen or self._proc is not None:       # opened or ended since: this one is not needed
+            if proc is not None:
+                threading.Thread(target=self._quit, args=(proc,), daemon=True).start()
+            return
+        if proc is None:
+            return self._dead(f"the engine's player could not start: {err}")
+        self._proc = proc
+        self._started()
+        if self.file != file:
+            self.send({"load": self.file})
 
     def play(self, t: float):
         self._ensure()
@@ -143,19 +173,25 @@ class LivePlay(QObject):
         self._t, self.alive, self.reason, self.ready = t, True, "", {}
         self._gen += 1
         try:
-            self._proc = subprocess.Popen(self._args(), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                                          env=settings.engine_env())
+            self._proc = self._popen()
         except OSError as e:
             self._dead(f"the engine's player could not start: {e}")
             return
+        self._started()
+        if was:
+            self.play(t)
+
+    def _popen(self):
+        return subprocess.Popen(self._args(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, encoding="utf-8", env=settings.engine_env())
+
+    def _started(self):
+        """The process is there (`_proc`): its readers, and the state it should have."""
         gen, proc, err = self._gen, self._proc, []
         threading.Thread(target=lambda: err.extend(proc.stderr), daemon=True).start()
         threading.Thread(target=self._read, args=(gen, proc, err), daemon=True).start()
         for k, v in self.state.items():
             self.send({k: v})
-        if was:
-            self.play(t)
         self.changed.emit()
 
     def _read(self, gen, proc, err):
@@ -226,8 +262,11 @@ class LivePlay(QObject):
         """Quit the running process (its own handle): ask, then end it if it does not go."""
         proc, self._proc = self._proc, None
         self._gen += 1
-        if proc is None:
-            return
+        if proc is not None:
+            self._quit(proc)
+
+    @staticmethod
+    def _quit(proc):
         try:
             proc.stdin.write('{"quit": true}\n')
             proc.stdin.close()
