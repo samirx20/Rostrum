@@ -116,13 +116,15 @@ class ActionHub(QObject):
 
     @Slot(str, result=str)
     def whyNot(self, typed):
-        """Ctrl+K: the line for an exact action name typed that isn't offered now ("" when it is, or no such name
-        among the actions)."""
-        facts = self._facts()
-        t = typed.strip().lower()
-        if not any(t in (a.id.lower(), a.label_for(facts).lower()) for a in self.list.actions):
-            return ""
-        return self.list.why_not(facts, typed)
+        """Ctrl+K found nothing: the line for the action whose name the words name (as the command box matches a name:
+        command_box.rank, "past" finds Paste) when it isn't offered now, in its own words ("Nothing to paste yet: copy
+        something first"); "" when no action is called so, or the best one is offered."""
+        facts, words = self._facts(), typed.lower().split()
+        q = " ".join(words)
+        named = [(r, i, a) for i, a in enumerate(self.list.actions)
+                 if (r := command_box.rank({"label": a.label_for(facts), "words": a.id.replace("_", " "), "hint": ""}, words, q))
+                 is not None and r <= 2]       # its name, else its id ("mute" while its name reads "Unmute")
+        return self.list.why_not(facts, min(named, key=lambda x: x[:2])[2].id) if named else ""
 
     @Slot(str)
     def run(self, id_):

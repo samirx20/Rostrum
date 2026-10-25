@@ -97,16 +97,29 @@ instrument can use are offered (the screen hides the rest). On the screen a note
   piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
   is). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
-  Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
-  is one undo step (a note drawn with the Draw tool, dragged long, too: "Draw note"); the new note is selected. Clicks in the roll never move the playhead and the view never scrolls by itself. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
-  from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.
+  Alt = a copy, Shift = only in time), drag its right end to lengthen or shorten it, its left end to move its start (the end
+  stays; neither makes it shorter than one grid step), Delete removes. A note dragged towards the end of a song of a set
+  length stops on the last grid line before the end. Each drag
+  is one undo step (a note drawn with the Draw tool, dragged long, too: "Draw note"); the new note is selected. Clicks in the roll never move the playhead and the view never scrolls by itself. Drum tracks show a row per drum, a hit as a diamond on its time (click anywhere on the diamond); **+ Drum ▾** on the top line adds a row for any other drum of the kit, and a hit's **Drum** field in the settings panel is a picker of the kit's drums. Select several (Ctrl+click, Shift+click, a box) and act on them
+  from the top of the settings panel, the right-click menu (Cut, Copy, Duplicate, Delete, then Quantise, Humanise,
+  Transpose ▸) or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step. Right-click on empty roll space offers Add note
+  here, Paste here (in the grid cell under the pointer), Select all on this track and Select every C4 (the key you
+  clicked); right-click on the roll's ruler: Add marker here, Make a section from here, Show seconds.
+- **A note's own playing** (in its settings panel under **More**): **Swell** (its level across its length, 1 = as played:
+  `0.8` for all of it, `0.5 → 1.5` for a swell, `0.5 → 1.2 → 0.8` spread evenly), **Vibrato** (`30` = 30 cents at 5.5 Hz;
+  `40 · 6 Hz · after 0.2 s`; `off`) and **Bend** in cents (`-100` bends the whole note down a half step, `0 → 200` slides
+  up a whole step across it; `0` = none). The **Pitch** field takes a name (`C5`), a MIDI number (`72`) or a chord
+  (`60 64 67`).
 - **Velocity strip** (under the notes): one bar per note, as high as it plays loud. Drag a bar, or draw a line
-  across several. The value of the bar under the pointer (or of the selected notes) is written beside it ("70 %").
+  across several: the line sets the selected notes when some are, else every note under it, and says which beside it
+  while you draw ("80 % · every note", "the selected note"). The value of the bar under the pointer (or of the selected
+  notes) is written beside it ("70 %").
 - **Playing lane** (under the velocity strip, for an instrument that plays notes; folded to one line "› Sustain · Expression · Bend" while the track has none of them: click it to open): the picker at its head (it names the lane, "Sustain ▾") chooses **Sustain** (the pedal: up
   at the bottom, down at the top; a note let go while it is down rings on until it lifts), **Expression** (how loud
   the whole part plays, like a swell on the strings) or **Bend** (the pitch wheel: the middle is no bend, the top
   and bottom are up and down by the track's **Bend range**, 2 semitones unless you change it in the settings panel).
-  Click to add a point, drag it, Delete removes it; one drag is one undo step. It is the same lane as the track's
+  Click to add a point, drag it, Delete removes it (or right-click it: **Delete point**); ← / → move the selected point
+  a grid step, ↑ / ↓ a twentieth of the lane's height (Shift: five times as far); one drag is one undo step. It is the same lane as the track's
   Auto lanes in the arrangement, and it folds away with the velocity strip.
 - **MIDI keyboard:** choose the input device (shown only when one is connected), arm the track, record: what you play
   lands in the selected track's piano roll as one undo step for the whole take.

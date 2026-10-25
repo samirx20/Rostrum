@@ -77,7 +77,7 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
   is exported. The file is exactly that stretch (2 s to 6 s is 4.00 s long; any ring-out past the end is cut). Its loudness is the whole song's, matched
   by the master and then cut, so a quiet section stays quieter than a loud one, as it sounds in the song. The silent
   end is not cut for a range. Agents: `render_mix` with `from` and `to` (seconds, a beat or a marker).
-- **+ Another version** adds a row with its own target, file type and quality (for example Streaming WAV and a
+- **+ Another version** adds a row (**Version 2**, …; the first then reads **Version 1**) with its own target, file type and quality (for example Streaming WAV and a
   Podcast MP3 from one click). Each row has its own line: how far up or down the sound that plays now will be turned
   to reach it, and whether the loudest peak stays under the limit (when Normalize is off the line also says plainly how far the mix is from the song's loudness target, in amber, never a green tick; with the master's **Gentle limiting** on, a version whose peaks would need more limiting than **Most limiting** says it comes out that much quieter than its target instead, in amber). **Export** makes every row, each in its own
   numbered folder. A version's target does not change the song's own target. Stems come with the first version only.

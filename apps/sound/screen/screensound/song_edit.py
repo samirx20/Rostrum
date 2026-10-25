@@ -7,6 +7,8 @@ the form they were written in (beats stay beats, a section on a marker stays on 
 """
 from __future__ import annotations
 
+import math
+
 from rostrum_core import RostrumError, codes
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import meter, tempo
@@ -28,7 +30,10 @@ def _beat_at(root, t, free=False):
     return round(b, 4) if free else round(b / timing.SNAP_BEATS) * timing.SNAP_BEATS
 
 
-snapped_beat = _beat_at       # where a new change at the playhead is written (song_list.py: is one there already?)
+def snapped_beat(root, t):
+    """Where a new change at the playhead is written: the grid step the playhead is in, so it starts at or before the
+    playhead and the header's fields (what plays here) read it at once (song_list.py: is one there already?)."""
+    return math.floor(tempo.beat_at(root, t) / timing.SNAP_BEATS + 1e-6) * timing.SNAP_BEATS
 
 
 def bar_beat(root, t) -> float:
@@ -40,7 +45,7 @@ def bar_beat(root, t) -> float:
 ROLES = ("intro", "verse", "chorus", "bridge", "drop", "outro")
 
 
-def _name(have):
+def section_name(have):
     """A new section's name, in words: its next musical role (intro, verse, chorus …), then "part-7" (a section's name
     is part of its id, so it has no spaces); never a made-up "section_1"."""
     for r in ROLES:
@@ -86,7 +91,7 @@ def start_tempo_call(bpm: float) -> dict:
 def add_tempo_call(root: dict, t: float, bpm: float | None = None) -> dict:
     """A tempo change at the playhead, on its beat (stays on it when earlier tempos change); starts at the tempo
     already playing there."""
-    b = _beat_at(root, t)
+    b = snapped_beat(root, t)
     if b <= 1e-9:
         raise _bad("tempo.add", "the start of the song", "is the song's own tempo: change that one instead")
     return {"op": "tempo.add", "target": [],
@@ -114,15 +119,15 @@ def key_call(root: dict, t: float, tonic: str, mode: str, new_here: bool) -> dic
     here = next((k for k in reversed(ks) if k["t"] <= t + 1e-6), None)
     if here is not None and not new_here:
         return {"op": "key.set", "target": [here["id"]], "args": {"key": key}}
-    at = {"beat": _beat_at(root, t)} if new_here and ks else 0
+    at = {"beat": snapped_beat(root, t)} if new_here and ks else 0
     return {"op": "key.add", "target": [], "args": {"at": at, "key": key}}
 
 
 def add_section_call(root: dict, t: float) -> dict:
     """A section from the playhead, four bars long, in beats."""
-    b = _beat_at(root, t)
+    b = snapped_beat(root, t)
     bars = SECTION_BARS * meter.start_bar(root)
-    name = _name({s.get("name") for s in root.get("sections", [])})
+    name = section_name({s.get("name") for s in root.get("sections", [])})
     return {"op": "section.add", "target": [], "args": {"name": name, "at": {"beat": b}, "end": {"beat": b + bars}}}
 
 

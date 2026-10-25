@@ -216,8 +216,18 @@ class ActionSlots:
             self._pick([item_id])
         self._hub.refresh()
         out = self._hub.menu()
-        swap = any(e["id"] == "swap" for e in LIST.available(self._facts()))
-        return out + block_menu.clip_entries(self.doc, item_id, t, swap)
+        valid = LIST.available(self._facts())
+        swap = any(e["id"] == "swap" for e in valid)
+        return out + block_menu.selection_entries(valid) + block_menu.clip_entries(self.doc, item_id, t, swap)
+
+    @Slot(float, float, float, result="QVariantList")
+    def rollMenu(self, t, row, px):
+        """Right-click on empty space in the Editor's roll (`row`: the key, or the drum row; `px`: one screen pixel
+        in seconds): what can be done there (block_menu.roll_entries)."""
+        roll = self._view["roll"]
+        key = timing.name(int(round(row))) if roll.get("kind") == "notes" else ""
+        return block_menu.roll_entries(roll.get("kind"), self._track, round(t, 4), int(round(row)), px,
+                                       bool(self._track and self._board["items"]), key)
 
     @Slot(str, float, result="QVariantList")
     @Slot(str, float, float, result="QVariantList")
@@ -228,7 +238,7 @@ class ActionSlots:
         if track_id:
             out.append({"value": "at:addtrack:0", "label": "Add track…", "keys": "Ctrl+L", "group": "here"})
         if track_id and self._board["items"]:
-            out.append({"value": f"at:paste:{track_id}:{t}", "label": "Paste here", "keys": "Ctrl+V", "group": "here"})
+            out.append({"value": f"at:paste:{track_id}:{t}:{px:.6g}", "label": "Paste here", "keys": "Ctrl+V", "group": "here"})
         out.append({"value": f"at:marker:{t}", "label": "Add marker here", "keys": "M", "group": "here"})
         if track_id:
             out.append({"value": f"at:all:{track_id}", "label": "Select all on this track", "keys": "", "group": "select"})
@@ -243,8 +253,15 @@ class ActionSlots:
         """An empty-space menu entry ("at:<what>:…"): paste here, a marker, select all on a track, a section."""
         parts = value.split(":")
         what = parts[1]
-        if what == "paste":
-            return self._paste(parts[2], float(parts[3]))
+        if what == "paste":                                    # in the grid cell under the pointer, as a click that adds a note
+            px = float(parts[4]) if len(parts) > 4 else 0.0
+            return self._paste(parts[2], timing.snap(float(parts[3]), self.doc.data, False, self._grid_now, "cell", px))
+        if what == "rolladd":
+            t, row, px = float(parts[2]), float(parts[3]), float(parts[4])
+            return bool(self.addHit(t, row, px)) if self._view["roll"].get("kind") == "drums" else self.addNote(t, int(row), px) or True
+        if what == "allkey":
+            key = int(parts[3])
+            return self._pick([b["id"] for b in self._view["roll"].get("blocks", []) if b["type"] == "note" and key in b["keys"]]) or True
         if what == "addtrack":
             self.workspace.setLibrary(True)
             return True
@@ -253,11 +270,13 @@ class ActionSlots:
             return self._act(calls, label, what == "split")
         if what == "all":
             return self._pick([b["id"] for r in self._view["rows"] if r["id"] == parts[2] for b in r["blocks"]]) or True
+        if what == "point":                                    # a lane point's menu (lane_slots.pointMenu): Delete point
+            return self._remove_point() or True
         if what == "seconds":
             self.workspace.toggleSeconds()
             return True
-        if what == "marker":
-            return self.markerAt(float(parts[-1]))
+        if what == "marker":                                   # on the grid line nearest the click (Snap off: where it was)
+            return self.markerAt(timing.snap(float(parts[-1]), self.doc.data, False, self._grid_now))
         t = float(parts[2])                                    # a section: starts as a drawn range's start does
         f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, self.workspace.seconds, self._grid_now),
                                        self._length()))
@@ -296,7 +315,8 @@ class ActionSlots:
 
     # ---- Ctrl+K and scripts -------------------------------------------------------------------------------------
     def _commands(self):
-        """Ctrl+K: the action list first (with keys), then the kit's commands it doesn't repeat."""
+        """Ctrl+K: the action list first (with keys), the selected item's settings that need a value ("Edit Velocity":
+        the field in the settings panel) and its track's lanes, then the kit's commands it doesn't repeat."""
         f = self._facts()
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
@@ -304,8 +324,11 @@ class ActionSlots:
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
                               where=self._what(f))
-        return (mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
-                        and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
+        picked = self._picks.ids
+        own = commands.field_rows(self.doc, picked[0], self.label_of) if len(picked) == 1 else []     # "velocity", "volume"
+        own += palette.lane_rows(self.doc, self._paste_track(), self.openLane, self.openPlayLane)      # "automation", "sustain"
+        return (mine + own + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
+                              and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
                 + (self.files.commands() if self.files else []) + palette.rows({LIST.job_of(a) for a in LIST.actions},
                                                                               {"selected": bool(self._picks.ids), "problems": bool(self.problems.rows)}))
 

@@ -10,6 +10,7 @@ from rostrum_core import RostrumError, run
 from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
 
+from . import song_edit
 from .moves import remove_calls
 
 TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
@@ -123,6 +124,12 @@ def group_buses(f) -> list[str]:
     return [b] if len(out) == 1 and (b := out.pop()) in {x["id"] for x in f.doc.data.get("buses", [])} else []
 
 
+def is_whole_group(f) -> bool:
+    """The selected tracks are exactly one group's tracks: grouping them again means nothing (Ungroup is the action)."""
+    buses = group_buses(f) if f.one == "track" else []
+    return bool(buses) and set(f.ids) == {t["id"] for t in f.doc.data.get("tracks", []) if t.get("output") == buses[0]}
+
+
 def delete_time(f):
     return [call("range.remove", [], at=round(f.range[0], 4), end=round(f.range[1], 4))]
 
@@ -176,11 +183,9 @@ def range_duplicate(f):
 
 
 def section(f):
-    have = {s.get("name") for s in f.doc.data.get("sections", [])}
-    n = len(have) + 1
-    while f"section_{n}" in have:            # a section name is one word (doc/sections.py); renamed in place at once
-        n += 1
-    return [{"op": "section.add", "args": {"name": f"section_{n}", "at": round(f.range[0], 4), "end": round(f.range[1], 4)}}]
+    """The time range as a section, named like "+ Section" names one (its next role: intro, verse …)."""
+    name = song_edit.section_name({s.get("name") for s in f.doc.data.get("sections", [])})
+    return [{"op": "section.add", "args": {"name": name, "at": round(f.range[0], 4), "end": round(f.range[1], 4)}}]
 
 
 def bar_near(f) -> int:

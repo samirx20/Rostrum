@@ -1,7 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// The short-term loudness over the song (one value per hop) with the delivery target as a dashed line and the playhead.
+// The short-term loudness over the song (one value per hop) with the delivery target as a dashed line and the playhead;
+// a click on it moves the playhead there.
 // The target's number is the loudness panel's title, not repeated here. `values[k]` ends at k * hop + window seconds. `target` is a LUFS number, or null while there is no target to show.
 Item {
     id: c
@@ -78,5 +79,12 @@ Item {
     Rectangle {   // the playhead
         x: Math.min(c.width - 1, c.now / c.span * c.width); width: 1; height: c.plotH; color: Theme.fg
         visible: c.values.length > 0
+    }
+    MouseArea {   // click (or drag along) the curve: the playhead goes to that moment, to hear the loud or quiet part
+        objectName: "loudnessCurve"
+        anchors.fill: parent; enabled: c.values.length > 0; cursorShape: Qt.PointingHandCursor
+        function go(x) { backend.setTime(Math.max(0, Math.min(c.span, x / c.width * c.span))) }
+        onPressed: (m) => go(m.x)
+        onPositionChanged: (m) => { if (pressed) go(m.x) }
     }
 }

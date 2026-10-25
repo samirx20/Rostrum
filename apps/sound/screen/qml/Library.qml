@@ -24,7 +24,7 @@ Panel {
     function back() {                                    // Esc: end a swap or a preview first; with neither, the Library closes
         if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else workspace.setLibrary(false)
     }
-    Keys.onEscapePressed: p.back()
+    EscCloses { when: p.visible; area: p; onAsked: p.back() }   // Esc from anywhere (the window's one Esc, AppShell)
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound"
     onFoundChanged: { current = 0; noHear = "" }
@@ -135,19 +135,21 @@ Panel {
         text: "Add a folder of my sounds…"; kind: "normal"
         onClicked: { p.chip = "mine"; mine.addFolder() }
     }
-    Item {      // only while something plays: what it is, and the way to stop it
+    Item {      // only while something plays: what it is, and the way to stop it; or why the picked one has no preview
         id: heard
-        visible: soundLibrary.auditioning !== "" || p.noHear !== ""
+        objectName: "libraryHeard"
+        readonly property string problem: p.noHear !== "" ? p.noHear : soundLibrary.auditioning === "" ? soundLibrary.heardProblem : ""
+        visible: soundLibrary.auditioning !== "" || problem !== ""
         height: visible ? heardCol.height : 0
         anchors { left: parent.left; right: parent.right; bottom: foot.top }
         Column {
             id: heardCol
             x: Theme.gap; width: parent.width - 2 * Theme.gap; spacing: Theme.grid
             Text { width: parent.width; wrapMode: Text.Wrap
-                   text: p.noHear !== "" ? p.noHear : "Hearing " + soundLibrary.auditioning
-                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                   text: heard.problem !== "" ? heard.problem : "Hearing " + soundLibrary.auditioning
+                   color: heard.problem !== "" && p.noHear === "" ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row { spacing: Theme.grid; layoutDirection: Qt.RightToLeft; width: parent.width
-                  Button { visible: p.noHear === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() } }
+                  Button { visible: heard.problem === ""; text: "■ Stop"; kind: "ghost"; onClicked: soundLibrary.stopAudition() } }
         }
     }
 }

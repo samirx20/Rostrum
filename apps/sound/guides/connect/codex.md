@@ -4,7 +4,7 @@ Rostrum2D and RostrumSound each have a small server (`rostrum-2d`, `rostrum-soun
 
 ## The easy way
 
-In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to Codex, then **Add** again to say yes, and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first and never touches servers it didn't add.
+In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to Codex and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file first, never touches servers it didn't add, and **Remove** takes back only what it added.
 
 ## By hand
 

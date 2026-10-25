@@ -21,6 +21,7 @@ HELP = {"shape": "Bell lifts or dips around one frequency; shelves lift or dip e
         "freq": "Where the band works.", "gain": "How much it lifts (+) or dips (−) there.",
         "q": "How narrow the band is: higher is narrower."}
 COUNT = "Bands"
+UNSET = {"gain": 0, "q": 0.707}                     # what the engine plays for a field a band leaves out (contract/names.rs)
 _PARAMS = {
     "shape": Param.choice("shape", names.EQ_SHAPES, labels=SHAPE_WORDS, label="Type", group="Effect", help=HELP["shape"]),
     "freq": V.N("freq", 20, 24000, "Effect", "Hz", label="Frequency", help=HELP["freq"]),
@@ -57,7 +58,7 @@ def band_rows(item: dict, rows: list[dict]) -> list[dict]:
             more.append({"row": "group", "id": f"group:Band {n}", "label": f"Band {n}", "members": ids, "value": None, "anim": "",
                          "expr": "", "holds": base["valid"], "valid": base["valid"]})
         for f in FIELDS:
-            v = b.get(f)
+            v = b.get(f, UNSET.get(f))                   # a band that leaves Width out plays 0.707: show that, never 0
             plain = not isinstance(v, list)                # an envelope: a lane moves it, no number here
             ok = base["valid"] and plain and (f != "gain" or b.get("shape") in GAINS)
             more.append(_row(base, _PARAMS[f], _id(n, f), v if plain else None, ok))

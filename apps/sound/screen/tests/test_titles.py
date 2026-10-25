@@ -25,7 +25,7 @@ def test_master_and_old_section_names_read_as_words():
 
 
 def test_a_new_section_is_named_in_words():
-    from screensound.song_edit import _name
+    from screensound.song_edit import section_name as _name
     assert _name(set()) == "intro" and _name({"intro", "verse"}) == "chorus"
     assert "_" not in _name({"intro", "verse", "chorus", "bridge", "drop", "outro"})
 

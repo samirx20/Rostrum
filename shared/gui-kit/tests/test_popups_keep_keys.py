@@ -1,7 +1,7 @@
-"""No popup silently stops the window's keys. A plain QQC.Popup that closes on Esc (Qt's default) stops EVERY window shortcut
-while it is open (Ctrl+Z, Space ... dead). So every menu, dropdown, flyout and panel is a SmallPopup (OpenPopups.qml); a plain
-QQC.Popup is only a dialog that blocks the window on purpose (`modal: true`) or a passive line that never closes by itself
-(`NoAutoClose`: a hover tip)."""
+"""No popup silently stops the window's keys, and every one closes on the window's one Esc. A plain QQC.Popup that closes on
+Esc (Qt's default) stops EVERY window shortcut while it is open (Ctrl+Z, Space ... dead), and its Esc works only while it has
+the keyboard. So every menu, dropdown, flyout, panel and dialog (modal ones too) is a SmallPopup (OpenPopups.qml: AppShell's
+Esc closes the newest); a plain QQC.Popup is only a passive line that never closes by itself (`NoAutoClose`: a hover tip)."""
 import re
 from pathlib import Path
 
@@ -34,19 +34,19 @@ def test_every_popup_keeps_the_window_keys():
             text = f.read_text(encoding="utf-8")
             for m in POPUP.finditer(text):
                 own = _block(text, m.start())
-                if not re.search(r"\bmodal:\s*true", own) and "NoAutoClose" not in own:
+                if re.search(r"\bmodal:\s*true", own) or "NoAutoClose" not in own:
                     bad.append(f"{f.relative_to(ROOT)}:{text[:m.start()].count(chr(10)) + 1}")
-    assert not bad, "a plain QQC.Popup would stop the window's keys while open; make it a SmallPopup: " + ", ".join(bad)
+    assert not bad, ("a plain QQC.Popup would stop the window's keys while open, and Esc would not reach it; make it a "
+                     "SmallPopup (a dialog too: SmallPopup { modal: true }): " + ", ".join(bad))
 
 
-def test_only_a_dialog_closes_on_esc_by_qt():
-    """Qt's own Esc close (CloseOnEscape) only on a modal dialog: anywhere else it stops every window key while open."""
+def test_no_popup_closes_on_esc_by_qt():
+    """Qt's own Esc close (CloseOnEscape) nowhere: it stops every window key while open, works only while the popup has the
+    keyboard, and would answer the same Esc as the window's one (AppShell), which then does nothing."""
     bad = []
     for folder in FOLDERS:
         for f in folder.rglob("*.qml"):
-            lines = f.read_text(encoding="utf-8").splitlines()
-            for n, line in enumerate(lines):
-                near = " ".join(lines[max(0, n - 8):n + 3])
-                if "CloseOnEscape" in line and not re.search(r"\bmodal:\s*true", near):
+            for n, line in enumerate(f.read_text(encoding="utf-8").splitlines()):
+                if "CloseOnEscape" in line and not line.strip().startswith("//"):
                     bad.append(f"{f.relative_to(ROOT)}:{n + 1}")
-    assert not bad, "CloseOnEscape on a popup that is not a modal dialog (use SmallPopup: its Esc keeps the window keys): " + ", ".join(bad)
+    assert not bad, "CloseOnEscape on a popup (make it a SmallPopup: the window's one Esc closes it): " + ", ".join(bad)

@@ -64,8 +64,10 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
 - **Tempo map:** `tempo.add` (`bpm`, `at`, `ramp`) adds a tempo change, `tempo.set` / `tempo.remove` edit it. With
   `ramp: true` the tempo glides evenly from this change's bpm to the next change's (an accelerando into a reveal, a
   slow-down into the last shot); the flag on the ruler reads "♩ 100 ↗" or ↘. On the screen, the tempo field in the header
-  strip changes the tempo at the playhead, **+ Tempo change** adds one there, and a flag's panel has **Bpm**, **At** and
-  **Glide to next**; flags drag on the ruler (one undo step per drag).
+  strip edits the tempo playing at the playhead: the song's own tempo (the whole song, when it has no changes) or the
+  tempo change in force there; it adds no change. To change the tempo from a moment on, put the playhead there and
+  press **+ Tempo change**. A flag's panel has **Bpm**, **At** and **Glide to next**; flags drag on the ruler (one undo
+  step per drag). A typed tempo keeps its decimals (99.5 bpm); a drag moves in whole bpm.
 - **Time signature:** `meter.add` (`beatsPerBar`, `beatUnit`, `at`) starts a new bar at that beat, until the next
   change: 3 and 4 is 3/4; 6 and 8 is 6/8, a bar of six eighths whose click plays its two main beats. A beat unit left
   out is 4. `meter.set` / `meter.remove` edit it. The ruler's bar numbers, the grid and the click follow it. On the

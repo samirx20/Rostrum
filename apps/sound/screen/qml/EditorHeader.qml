@@ -3,8 +3,9 @@ import RostrumKit
 
 // The Editor's part of the dock's one header line (right of the Editor | Mixer tabs): the track's colour and name,
 // then at the right Before / after (a cleaned take), the two tools (Select V, Draw B; INTERACTION 1.1) and Note ▾,
-// the length a drawn or double-clicked note gets (backend.noteLength). Each shows only
-// where it does something: the tools on notes and drums, Note ▾ on notes.
+// the length a drawn or double-clicked note gets (backend.noteLength), and on drums + Drum ▾ (a row for another drum of the
+// kit, drum_rows.py). Each shows only where it does something: the tools on notes and drums, Note ▾ on notes, + Drum ▾
+// on drums while the kit has a drum the rows don't show.
 Item {
     id: h
     readonly property var roll: backend.roll
@@ -43,7 +44,20 @@ Item {
                 HoverTip { text: parent.modelData.label + "  " + parent.modelData.key + h.toolHint(parent.modelData.v); hovered: ta.containsMouse; pressed: ta.pressed }
             }
         }
-        Item { width: Theme.gap; height: 1; visible: note.visible }
+        Item { width: Theme.gap; height: 1; visible: note.visible || drumAdd.visible }
+        Rectangle {   // + Drum ▾: a row for another drum of the kit (backend.drumRowChoices; absent when every drum shows)
+            id: drumAdd
+            objectName: "addDrumRow"
+            visible: h.kind === "drums" && backend.drumRowChoices.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            width: dt.implicitWidth + 2 * Theme.gap; height: 24; radius: 4
+            color: da.containsMouse ? Theme.hover : Theme.raised; border.color: Theme.popupEdge
+            Text { id: dt; anchors.centerIn: parent; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label; text: "+ Drum  ▾" }
+            MouseArea { id: da; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: { var q = drumAdd.mapToItem(null, 0, drumAdd.height + 2); drumMenu.openAt(q.x, q.y) } }
+            HoverTip { text: "Add a row for another drum of this kit"; hovered: da.containsMouse; pressed: da.pressed }
+            ActionMenu { id: drumMenu; objectName: "addDrumRowMenu"; entries: backend.drumRowChoices; onPicked: (v) => backend.addDrumRow(v) }
+        }
         Rectangle {   // Note ▾
             id: note
             visible: h.kind === "notes"

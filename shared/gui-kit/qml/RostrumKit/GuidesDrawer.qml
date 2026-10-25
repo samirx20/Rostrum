@@ -38,8 +38,7 @@ Panel {
                  help: drawer.back.length ? "Back to the guide you came from." : "Back to the list of guides." },
         IconButton { glyph: "×"; kind: "normal"; tip: "Close the guides"; job: "guides"; onClicked: drawer.closed() }
     ]
-    Keys.onEscapePressed: drawer.closed()
-    Keys.onShortcutOverride: (e) => e.accepted = e.key === Qt.Key_Escape && !find.input.activeFocus      // an app's own Esc shortcut doesn't take it first (Esc in the search box clears it)
+    // Esc closes it while the keys are in it: the window's one Esc (AppShell's EscCloses for the drawer)
 
     FieldFrame {
         id: find

@@ -21,6 +21,9 @@ Item {
     function frame(n) { fitRows = n }
     readonly property real rowH: notes ? Math.max(viewHeight / count, fitRows > 0 ? Math.max(9, Math.min(16, viewHeight / (fitRows + 2))) : 12)
                                : roll.kind === "drums" ? Math.min(56, viewHeight / count) : viewHeight
+    // A drum hit's diamond, centred on its time on its row: half its width (and height) in px. The one place: RollNotes
+    // draws it this size, RollInput catches a click anywhere on it (backend.rollAt, a hit is caught either side of its time).
+    readonly property real hitHalf: Math.min(12, rowH * 0.5) * 0.7071
     // a drum's stored name ("openHat", "kick") in words for the row: "Open hat", "Kick"
     function drumName(d) {
         if (!d) return ""

@@ -13,7 +13,7 @@ on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
 """
 from __future__ import annotations
 
-from . import block_patch, lanes, stepped, timeline, voice_card, voice_takes
+from . import block_patch, drum_rows, lanes, stepped, timeline, voice_card, voice_takes
 from .block_memo import BlockMemo
 
 
@@ -122,7 +122,9 @@ class RowsView:
             self._view["song"] = timeline.song(root, tracks, self._view["markers"], self._memo)   # the rest follows the tempo
             self._tv.setLength(self._length())
             self.songChanged.emit()
-        if same:
+        if same:            # (the rows draw nothing of it, but the Editor's playing lane may: a point added or dragged)
+            if self._track in changed:
+                self._played_again(root)
             return
         laid = [shape(r) for r in rows]               # the layout: only when a row's own settings or span moved
         if laid != self._view["shape"]:
@@ -136,6 +138,9 @@ class RowsView:
         """The roll as made: its layout (`roll`) and its blocks (`rollBlocks`) are each sent only when they changed."""
         before, self._view["roll"] = self._view["roll"], roll
         laid, moved = shape(roll), roll.get("blocks") != before.get("blocks")
+        laid.pop("played", None)            # the playing lane is its own property (rollPlayed): its points relay nothing
+        if roll.get("played") != before.get("played"):
+            self.rollPlayedChanged.emit()
         relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
         if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
             p = block_patch.diff(before.get("blocks"), roll.get("blocks", []))
@@ -151,6 +156,16 @@ class RowsView:
             self._roll_picks()
         if relaid:
             self.rollChanged.emit()
+
+    def _played_again(self, root):
+        """Only the Editor's playing lane made again (a change no row shows: a point on the track's sustain lane)."""
+        roll = self._view.get("roll") or {}
+        if roll.get("kind") != "notes" or not self.doc.has(self._track):
+            return
+        now = lanes.played(self.doc.item(self._track), root, self._play_lane)
+        if now != roll.get("played"):
+            self._view["roll"] = {**roll, "played": now}
+            self.rollPlayedChanged.emit()
 
     def _roll_picks(self):
         """The roll's selected blocks again (`rollPicked`, after a pick or when the roll's blocks changed), looked up
@@ -177,6 +192,7 @@ class RowsView:
         span = self._span
         roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None,
                              memo=self._memo)
+        drum_rows.extend(roll, self._drum_rows().get(self._track))        # rows asked for with + Drum (drum_rows.py)
         if roll["kind"] == "notes":
             self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
         self._marks_on([roll])

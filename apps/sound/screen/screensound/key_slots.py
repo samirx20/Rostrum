@@ -36,6 +36,8 @@ class KeySlots:
     @Slot(str, int, result=bool)
     def nudge(self, how, sign):
         beats = {"grid": timing.step_beats(self.doc.data, self._grid_now), "bar": meter.bar_length_beats(self.doc.data, timing.beat(self._t, self.doc.data)), "fine": 1 / 32}[how]
+        if self._apt:                                   # a lane's point selected: the arrows move it (lane_slots)
+            return self._nudge_point(beats=sign * beats)
         f = C.Facts(self.doc, self._picks.ids)
         if not f.by_kind():
             return False
@@ -48,7 +50,10 @@ class KeySlots:
     @Slot(int, result=bool)
     def pitchStep(self, semis):
         """↑ ↓: the selected notes by `semis` (in a mixed selection, its notes: Facts.words); a selection of only
-        clips to the next track up (semis > 0) or down that holds them; anything else says so."""
+        clips to the next track up (semis > 0) or down that holds them; a lane's selected point up or down (Shift: five
+        times as far); anything else says so."""
+        if self._apt:
+            return self._nudge_point(steps=(1 if semis > 0 else -1) * (5 if abs(semis) > 1 else 1))
         f = C.Facts(self.doc, self._picks.ids)
         notes = f.by_kind(("note",)).get("note")
         if notes:
@@ -194,7 +199,13 @@ class KeySlots:
 
     @Slot(float, result=bool)
     def markerAt(self, t):
-        """M: a marker at `t` (the playhead), "Marker n", with its name field open in place."""
+        """M: a marker at `t` (the playhead), "Marker n", with its name field open in place. One is there already:
+        that one is selected and the line says so (never a second marker on the same spot)."""
+        there = next((m for m in self._view["markers"] if not m.get("named") and abs(m["t"] - t) < 1e-3), None)
+        if there is not None:
+            self._pick([there["id"]])
+            self.say(f"A marker is already here: “{there['name']}” (selected). F2 renames it")
+            return False
         have = {m["name"] for m in self._view["markers"]}
         n = len(have) + 1
         while f"Marker {n}" in have:
@@ -202,10 +213,9 @@ class KeySlots:
         before = {m["id"] for m in self.doc.data.get("markers", [])}
         done = self._act([{"op": "marker.add", "args": {"name": f"Marker {n}", "at": round(t, 4)}}], "Add marker")
         new = [m["id"] for m in self.doc.data.get("markers", []) if m["id"] not in before]
-        if done and new:                                # its name field opens at once (Enter keeps, Esc takes it back)
+        if done and new:                                # its name field opens at once (Enter keeps a new name, Esc the one it has)
             self._pick(new)
             self.startRename(new[0])
-            self._new_marker = new[0]
         return done
 
     @Slot(str, result=bool)
@@ -229,14 +239,12 @@ class KeySlots:
 
     @Slot(str, str)
     def finishRename(self, item_id, text):
-        """Enter: the new name as one `<kind>.set` (a track, a marker, a section); Esc ("") keeps the old one, and a
-        marker just added with M is taken back (Esc cancels the whole thing)."""
-        new, self._renaming = getattr(self, "_new_marker", ""), ""
-        self._new_marker = ""
+        """Enter: the new name as one `<kind>.set` (a track, a marker, a section); Esc ("") keeps the old one (a
+        marker just added with M stays, with the name it was given: Esc cancels the renaming, not the marker; Ctrl+Z
+        takes the marker back)."""
+        self._renaming = ""
         self.renamingChanged.emit()
         name = text.strip()
-        if not name and new == item_id and self.doc.has(item_id):
-            return self.undo()
         if name and self.doc.has(item_id) and name != (self.doc.item(item_id).get("name") or item_id):
             kind = self.doc.item(item_id)["type"]
             self._act([{"op": f"{kind}.set", "target": [item_id], "args": {"name": name}}], f"Rename to {name}")

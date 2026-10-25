@@ -78,6 +78,7 @@ function parse(kind, t) {
         if (isNaN(n)) return NaN
         return stored(kind, side ? side * Math.abs(n) : n)
     }
+    var thousands = /^[+\-]?[\d.]+\s*k(hz)?$/.test(s)          // "2k", "2.5 kHz": thousands (a frequency)
     var x = parseFloat(s.replace(/[^0-9eE+\-.]/g, ""))
-    return isNaN(x) ? NaN : stored(kind, x)
+    return isNaN(x) ? NaN : stored(kind, thousands ? x * 1000 : x)
 }

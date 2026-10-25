@@ -7,6 +7,7 @@
   an expression or binding, a pick, a list, a curve, a file — is absent when the items differ.
 - The key mark: "onkey" / "keyed" when every item is; else "still" when any could be animated ("" when one can't).
 Each item's own rows come from rows.evaluate (and rows.omit) as for one item; `merge` folds them together.
+- An item's name (ONE_ONLY) is absent: several items never share one typed name.
 - Mixed kinds also get a narrowing line per kind ("3 layers", "1 text": click one to keep only that kind, `by_kind`),
   and the panel's last line says who changed the selection last and when (`last_change`, `ago`).
 """
@@ -17,6 +18,7 @@ from types import SimpleNamespace
 from .rows import _headers
 
 SAME_ONLY = ("list",)                       # types shown only when every item has the same value
+ONE_ONLY = ("name",)                        # an item's own name: never typed for several at once (both would be called it)
 SAME_ONLY_CONTROLS = ("pick", "curve", "file", "folder")
 
 
@@ -46,7 +48,7 @@ def merge(each: list[list[dict]]) -> list[dict]:
     out = []
     for r in each[0]:
         alike = [o.get(r["id"]) for o in others]
-        if any(a is None for a in alike):
+        if any(a is None for a in alike) or r["id"] in ONE_ONLY:
             continue
         out.append(_param(r, alike) if r["row"] == "param" else {**r, "mixed": False})
     holds = {r["id"]: r["holds"] for r in out if r["row"] == "param"}

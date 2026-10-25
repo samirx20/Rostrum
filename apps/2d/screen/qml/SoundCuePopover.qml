@@ -5,13 +5,12 @@ import RostrumKit
 // Add a sound here… (UX_SPEC 3.28 Sync sound): one layer selected → this popover under the context bar lists a note / hit
 // on the song's instruments first, then the person's recordings (typed words search Sound's library too); type words to narrow it (Enter); a click ties the sound to the
 // layer's start (backend.cuePick, screen2d/sound_cue_pick.py) and closes it. Esc or a click outside closes it.
-QQC.Popup {
+SmallPopup {     // Esc: the window's one Esc (OpenPopups); a click outside closes it
     id: pop
     readonly property var cp: backend.cuePick
     width: 360
     modal: true; dim: false
     padding: Theme.pad
-    closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     Connections { target: pop.cp; function onOpened() { pop.open() } }
     contentItem: Column {

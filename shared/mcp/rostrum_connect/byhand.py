@@ -67,8 +67,8 @@ def guide_markdown(agent_id: str) -> str:
            f"that lets {a.name} use them. Connecting means telling {a.name} how to start those servers.", "",
            "## The easy way", "",
            f"In Rostrum click the **?** button in the top bar and choose **Connect an AI agent…**. Press **Add** next to "
-           f"{a.name}, then **Add** again to say yes, and follow the last line it shows (restart or check). Rostrum keeps "
-           f"a copy of your settings file first and never touches servers it didn't add.", "",
+           f"{a.name} and follow the last line it shows (restart or check). Rostrum keeps a copy of your settings file "
+           f"first, never touches servers it didn't add, and **Remove** takes back only what it added.", "",
            "## By hand", ""]
     for app in servers.APPS:
         h = by_hand(agent_id, app, generic=True)

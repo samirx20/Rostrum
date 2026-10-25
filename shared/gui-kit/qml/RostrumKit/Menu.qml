@@ -34,13 +34,16 @@ SmallPopup {
     onHeightChanged: if (visible && spotAnchor) reposition()
     onWidthChanged: if (visible && spotAnchor) reposition()
     onOpened: Qt.callLater(reposition)       // its size has settled by now
-    onClosed: spotAnchor = null
+    // the choice runs once the menu has closed (its fade done): closing gives the keyboard back to where it was, so a
+    // choice that takes the keyboard (Help › Keys: its search box) would lose it to the menu's own close a moment later
+    property var chosen: undefined
+    onClosed: { spotAnchor = null; if (chosen !== undefined) { const v = chosen; chosen = undefined; picked(v) } }
     background: MenuBackground { }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
     contentItem: Column {
         focus: true
-        function pick(i) { const v = menu.entries[i].value; menu.close(); menu.picked(v) }
+        function pick(i) { menu.chosen = menu.entries[i].value; menu.close() }
         Keys.onUpPressed: menu.highlighted = Math.max(0, menu.highlighted - 1)
         Keys.onDownPressed: menu.highlighted = Math.min(menu.entries.length - 1, menu.highlighted + 1)
         Keys.onReturnPressed: pick(menu.highlighted)

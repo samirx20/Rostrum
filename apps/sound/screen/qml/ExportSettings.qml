@@ -17,7 +17,9 @@ Column {
     width: parent ? parent.width : 0
     spacing: Theme.gap
     property bool more: false          // "More": the sample rate (DESIGN.md §2.4), for the file and each version
-    onVisibleChanged: job.watch(visible)   // closed, the live check waits: it is measured again once the sheet shows
+    // closed, the live check waits: it is measured again once the sheet shows (a moment after: the news is the exporter's
+    // one `changed`, and sent while the sheet's own opening is still being worked out it made AppShell's exportOpen loop)
+    onVisibleChanged: Qt.callLater(job.watch, visible)
     Component.onCompleted: job.watch(visible)
 
     component Field: Column {         // a label, its control under it at full width (the sheet is narrow)
@@ -56,6 +58,12 @@ Column {
             HoverHandler { id: prHover }
             HoverTip { text: pr.modelData.detail; hovered: prHover.hovered }
         }
+    }
+    Text {   // with "+ Another version" rows below, the first one is named too: Version 1 (the What for above, File, Quality)
+        objectName: "exportVersion1"
+        visible: root.job.more.length > 0
+        width: root.width
+        text: "Version 1"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
     }
     Text {   // the live check: the sound that plays now against the target (only once both exist)
         readonly property var check: root.job.check      // one read per change (each read measures it again)

@@ -556,7 +556,7 @@ the agent's `inspect_tools`.
 | A new song (Sound) | "Start with a sound." **Add a track** · **Bring in a picture** · "or drop a file here" |
 | Empty rows | "Your layers appear here as bars. Drag a bar to change when it shows." |
 | History | "Changes you and agents make will be listed here." |
-| Search finds nothing | "Nothing called 'xyz'. Try a shorter word." |
+| Search finds nothing | "Nothing called 'xyz'. Try a shorter word." An action of that name that can't run now says why instead ("Nothing to paste yet: copy something first"). |
 
 - **No tours, no tip of the day, no welcome dialog.** The first run is the start screen (1.19), then the empty state.
 
@@ -639,7 +639,7 @@ the agent's `inspect_tools`.
    - With nothing to reopen, the **start screen** shows:
      - the ways in as three tiles on one grid: **New** (the accent), **Open…**, the app's sample (opened as a copy, so
        the original never changes);
-     - recent projects as pictures;
+     - recent projects as pictures (a project with no picture, such as a song: a short card with its name and date, up to twelve);
      - three guide cards.
 4. **Versions:**
    - **Ctrl+S** saves a **named version**. The name field opens in place at the top of History, with the time as the

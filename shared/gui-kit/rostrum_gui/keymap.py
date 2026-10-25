@@ -104,6 +104,22 @@ def normal(key: str) -> str:
     return "+".join([m for m in MODS if m in mods] + [name])
 
 
+# A key whose sign needs Shift on the keyboard arrives in several spellings: Ctrl and "+" is "Ctrl++" from one keyboard,
+# "Ctrl+Shift+=" or "Ctrl+Shift++" (the Shift still held) from another. All run the job; the key list shows the map's.
+SHIFTED = {"+": "="}
+
+
+def typed(key: str) -> list[str]:
+    """Every spelling a key may arrive in: itself, and for a shifted sign with Shift held ("Ctrl++" ->
+    ["Ctrl++", "Ctrl+Shift+=", "Ctrl+Shift++"])."""
+    k = normal(key)
+    name = "+" if k.endswith("+") else k.rsplit("+", 1)[-1]
+    mods = k[:len(k) - len(name)].rstrip("+").split("+") if len(k) > len(name) else []
+    if name in SHIFTED and "Shift" not in mods:
+        return [k, normal("+".join(mods + ["Shift", SHIFTED[name]])), normal("+".join(mods + ["Shift", "plus" if name == "+" else name]))]
+    return [k]
+
+
 class KeyMap:
     """The shared keys plus one app's own (`app_keys`: [{job, keys, label, hold?}]). An app entry whose job is a
     shared job adds another key for it (2D's Shift+2 for Fit). A hold key is a single key without Ctrl / Alt, so
@@ -146,6 +162,10 @@ class KeyMap:
             for k in keys:
                 self._by_key[k] = row
         self._jobs = jobs
+        for r in self._rows:                    # the other spelling of a shifted sign runs the same job (SHIFTED)
+            for k in r["keys"]:
+                for also in typed(k)[1:]:
+                    self._by_key.setdefault(also, r)
 
     def has(self, job: str) -> bool:
         return job in self._jobs
@@ -175,8 +195,9 @@ class KeyMap:
         return [r["job"] for r in self._rows if r["hold"] and any(k.split("+")[-1] == name for k in r["keys"])]
 
     def entries(self) -> list[dict]:
-        """Every key, shared first: {job, keys, label, area, where, hold} for Qt shortcuts and the Ctrl+/ list."""
-        return [dict(r, keys=list(r["keys"])) for r in self._rows]
+        """Every key, shared first: {job, keys, label, area, where, hold, sequences} for Qt shortcuts (`sequences`:
+        every spelling a key may arrive in, `typed`) and the Ctrl+/ list (`keys`)."""
+        return [dict(r, keys=list(r["keys"]), sequences=[t for k in r["keys"] for t in typed(k) if self._by_key.get(t) is r]) for r in self._rows]
 
 
 def _index(rows, where) -> dict:

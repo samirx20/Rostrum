@@ -13,7 +13,7 @@ from rostrum_gui.edits import field_call
 from rostrum_sound.doc import fields as FD
 from rostrum_sound.doc import effects, musical, sounds
 
-from . import eq_rows, output_pick, pitch_merge, timeline, timing
+from . import drum_rows, effect_rows, eq_rows, note_feel, output_pick, pitch_merge, timeline, timing
 
 
 def _time_kind(item: dict, param: str) -> str:
@@ -61,10 +61,13 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
                  "help": f"{help_}Now {sec:.2f} s. Type " + ("a note value (1/8), " if kind == "length" and item["type"] != "clip" else "") + "bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
         elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
             r = {**r, "value": musical.note_name(r["value"])}
-        elif r["row"] == "param" and item["type"] == "hit" and r["id"] == "drum" and isinstance(r["value"], str):
-            r = {**r, "value": drum_words(r["value"])}          # as the roll's rows say it ("Open hat"); typing it back is understood
+        elif r["row"] == "param" and item["type"] == "hit" and r["id"] == "drum":
+            r = {**r, "type": "choice", "control": "", "options": drum_options(root, item)}   # a pick of the kit's drums
+        elif r["row"] == "param" and item["type"] == "note" and r["id"] in note_feel.PARAMS:
+            r = {**r, "type": "text", "label": note_feel.LABELS[r["id"]], "help": note_feel.HELP[r["id"]],
+                 "value": note_feel.words(r["id"], r["value"], _seconds(item, root))}
         out.append(r)
-    return pitch_merge.merge_rows(item, eq_rows.band_rows(item, out))
+    return pitch_merge.merge_rows(item, eq_rows.band_rows(item, effect_rows.own_rows(item, out)))
 
 
 def edit_call(doc, item_id, param, value) -> dict:
@@ -78,6 +81,13 @@ def edit_call(doc, item_id, param, value) -> dict:
     bands = eq_rows.edit_args(item, param, value)               # an EQ band's row: the whole bands list is written
     if bands is not None:
         return field_call(doc, item_id, "bands", bands["bands"])
+    if item["type"] == "note" and isinstance(value, str) and param in note_feel.PARAMS:     # typed words: Swell, Vibrato, Bend
+        try:
+            value = note_feel.parse(param, value, _seconds(item, doc.data))
+        except ValueError as e:
+            raise RostrumError(codes.BAD_ARGUMENT, "set", note_feel.LABELS[param], str(e)) from None
+    if item["type"] == "note" and param == "pitch" and isinstance(value, str):
+        value = typed_pitch(value)
     kind = _time_kind(item, param)
     if kind and isinstance(value, str):             # typed words: bars.beats or seconds, as seconds
         start = _start(item, doc.data)
@@ -89,6 +99,27 @@ def edit_call(doc, item_id, param, value) -> dict:
         old = item[param]
         value = timing.write_time(old, float(value), doc.data) if kind == "time" else             timing.write_length(old, float(value), doc.data, _start(item, doc.data))
     return field_call(doc, item_id, param, value)
+
+
+def _seconds(note: dict, root: dict) -> float:
+    return timing.length_sec(note["dur"], root, _start(note, root), note)
+
+
+def typed_pitch(text: str):
+    """A typed pitch: a name ("C5", "F#3"), a MIDI number ("72"), or several for a chord ("60 64 67", "C4, E4")."""
+    keys = [int(k) if k.lstrip("-").isdigit() else k for k in re.split(r"[\s,]+", text.strip()) if k]
+    return keys[0] if len(keys) == 1 else keys if keys else text
+
+
+def drum_options(root: dict, hit: dict) -> list[dict]:
+    """The Drum picker: every drum the hit's track's kit plays, in its own order, by plain name (the one it is now
+    first kept, if the kit does not have it: a GM key number, an old name)."""
+    tid = str(hit["id"]).split(".", 1)[0]
+    track = next((t for t in root.get("tracks", []) if t["id"] == tid and hit in t.get("hits", [])), None) or next(
+        (t for t in root.get("tracks", []) if any(h["id"] == hit["id"] for h in t.get("hits", []))), {})
+    drums = drum_rows.kit_drums(track)
+    have = [hit["drum"]] if hit.get("drum") not in drums else []
+    return [{"value": d, "label": drum_words(d) if isinstance(d, str) else f"Key {d}"} for d in [*have, *drums]]
 
 
 KIND_WORDS = {"tempo": "Tempo change", "meter": "Time signature", "key": "Key change", "section": "Section",

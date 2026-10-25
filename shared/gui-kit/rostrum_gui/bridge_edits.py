@@ -113,6 +113,8 @@ class EditSlots(SlotMixin):
         if "select" in cmd:
             self.select(cmd["select"])
             return True
+        if "reveal" in cmd:                 # a setting that needs a value: its field in the settings panel (commands.field_rows)
+            return self.revealField(cmd["reveal"])
         if "do" in cmd:                     # an app's own command that isn't an operation (extra_commands)
             if not callable(cmd["do"]):     # a word where a function belongs: say so, never "'str' is not callable"
                 self._fail(f'Error: command bar: "{key}" has "do" = {cmd["do"]!r}; it must be a function (extra_commands).')

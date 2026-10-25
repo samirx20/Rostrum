@@ -114,13 +114,19 @@ work as usual; the app's `onClosed` runs beside the popover's own). The optional
 Esc does not close it while a list opened from inside (a ChoiceField's) is open; that list takes the Esc.
 
 ## SmallPopup: the kit's one popup
-Every menu, dropdown, flyout and small panel is a `SmallPopup` (Menu, ActionMenu, ChoiceField's list, Popover, SidePopup,
-ToolFlyout, MarkerNamer, the job and problems chips, the Record panel …). A plain `QQC.Popup` that closes on Esc stops
-EVERY window shortcut while it is open (Qt's rule), so SmallPopup closes on a click outside and on Esc through its own
-Shortcut (only the popup opened last), and the window's Ctrl+Z, Space … keep working. List the keys a popup uses itself in
+Every menu, dropdown, flyout, small panel and dialog is a `SmallPopup` (Menu, ActionMenu, ChoiceField's list, Popover, SidePopup,
+ToolFlyout, MarkerNamer, the job and problems chips, the Record panel; Keys, About, Report a problem, Connect an AI agent,
+Ctrl+K and Preferences with `modal: true`). A plain `QQC.Popup` that closes on Esc stops EVERY window shortcut while it is
+open (Qt's rule) and its Esc works only while it has the keyboard, so SmallPopup closes on a click outside and on the
+window's ONE Esc (AppShell's application shortcut: `OpenPopups.closeTop()` closes the popup opened last, wherever the
+keyboard is, one level per press; a dialog's scrim does not stop it), and the window's Ctrl+Z, Space … keep working. A panel
+or sheet that is not a popup but closes on Esc registers with `EscCloses { when: …; area: panel; onAsked: … }` (History,
+Export, the guides drawer while the keys are in it, the start screen, Sound's Library). A text box outside the newest
+popup keeps its Esc (it drops the typing first). List the keys a popup uses itself in
 `ownKeys` (a menu: `["Up", "Down", "Enter"]`); a control does the same while it has the keyboard (Slider: ← →). Every
 window shortcut asks `OpenPopups.takes(keys)` first (the kit's KeyMap does it for you). `escCloses: false` leaves Esc to the
-app (2D's brush panel). Only a dialog with a scrim is a plain `modal: true` popup. `tests/test_popups_keep_keys.py` keeps it so.
+app (2D's brush panel). `tests/test_popups_keep_keys.py` keeps every popup a SmallPopup; `tests/test_esc_closes.py` presses
+Esc on each kind.
 
 ### Adoption: Team Hem, 2D `StaggerPopover.qml` (opened by `backend.stagger`; Esc takes back, a click away keeps)
 Replace `QQC.Popup { … }` with the kit's and keep the content rows:

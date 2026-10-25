@@ -51,6 +51,7 @@ class LibraryPanel(QObject):
         self._text, self._kind, self._length, self._bright = "", ANY, ANY, ANY
         self._results: list[dict] = []
         self._total, self._busy, self._status = 0, "", ""
+        self._heard_problem = ""            # why the last preview could not play, in words (the Library's footer)
         self._heard = Auditioner(bridge, self)
         self._heard.changed.connect(self.changed)
         self._heard.failed.connect(self._heard_failed)
@@ -180,6 +181,7 @@ class LibraryPanel(QObject):
     def audition(self, i):
         """Play result `i` on its own: its stretch of the file, through the engine."""
         r = self._results[i]
+        self._heard_problem = ""
         self._heard.start({"media": r["path"], "in": r["start"], "length": r["end"] - r["start"]}, r["name"])
 
     @Slot(str)
@@ -192,11 +194,13 @@ class LibraryPanel(QObject):
             return self._say(f'Error: audition: no sound "{key}".')
         b = self.bridge
         track = b._track if getattr(b, "_track", "") else None
+        self._heard_problem = ""
         self._heard.start({k: v for k, v in e["fields"].items() if k != "name"}, e["label"], track)
 
     @Slot()
     def stopAudition(self):
         """The audition stops (Esc, ■ Stop, another track picked, closing the Library)."""
+        self._heard_problem = ""
         self._heard.stop()
         self.changed.emit()
 
@@ -211,7 +215,13 @@ class LibraryPanel(QObject):
         self.changed.emit()
 
     def _heard_failed(self, line):
-        self._say(line)
+        """Said where "Hearing …" shows (Library.qml), until the next pick: the console has the full line."""
+        self._heard_problem = line
+        self.changed.emit()
+
+    @Property(str, notify=changed)
+    def heardProblem(self):
+        return self._heard_problem
 
     @Slot(int)
     def place(self, i):

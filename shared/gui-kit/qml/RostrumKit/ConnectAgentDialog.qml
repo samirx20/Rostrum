@@ -3,13 +3,12 @@ import QtQuick.Controls as QQC
 import "."
 
 // Help → Connect an AI agent. Lets a coding agent (Claude, Codex, Cursor …) use this app's tools. One row per agent
-// (agents found on this computer first): its name, then "Add" (asks first), or once connected "● Connected" and
-// Remove. One "Set up by hand…" at the foot: pick an agent, get the exact command or file text to copy.
+// (agents found on this computer first): its name, then "Add" (one click: it changes that agent's settings file, keeping a
+// copy of it first; its hover says so), or once connected "● Connected" and Remove (takes back only what Add put in). One "Set up by hand…" at the foot: pick an agent, get the exact command or file text to copy.
 // `data` is the app's `agents` object (rostrum_gui/agents.py).
-QQC.Popup {
+SmallPopup {
     id: dlg
     property var data
-    property string asking: ""          // the agent whose "Add" waits for the person's yes
     property bool byHand: false         // the by-hand section is open
     property string handId: ""          // the agent it shows ("" = the first one)
     readonly property var rows: opened && data ? data.rows : []
@@ -23,7 +22,7 @@ QQC.Popup {
     padding: 0
     objectName: "connectAgentDialog"
     modal: true; focus: true
-    onOpened: { asking = ""; byHand = false; if (data) data.refresh() }
+    onOpened: { byHand = false; if (data) data.refresh() }
     QQC.Overlay.modal: Rectangle { color: Theme.scrim }
     background: Rectangle { color: Theme.panel; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
@@ -177,9 +176,12 @@ QQC.Popup {
                                font.family: uiFont; font.pixelSize: Theme.label }
                     }
                     Button {
-                        visible: row.a.installed && row.a.state === "none" && dlg.asking !== row.a.id && !row.busy
+                        objectName: "agentAdd:" + row.a.id
+                        visible: row.a.installed && row.a.state === "none" && !row.busy
                         text: "Add"
-                        onClicked: dlg.asking = row.a.id
+                        help: "Adds " + (dlg.data ? dlg.data.server : "") + " to " + row.a.file + ". Rostrum keeps a copy of the file "
+                              + "as it is now; Remove takes back only what it added."
+                        onClicked: dlg.data.add(row.a.id)
                     }
                     Button {   // not found here: the way in is its exact text to copy
                         visible: !row.a.installed
@@ -188,35 +190,13 @@ QQC.Popup {
                     }
                     Button {
                         visible: row.a.state === "ours" && !row.busy
+                        objectName: "agentRemove:" + row.a.id
                         text: "Remove"; kind: "ghost"; danger: true
                         onClicked: dlg.data.remove(row.a.id)
                     }
                 }
                 HoverHandler { id: rowHover }
                 HoverTip { text: row.why !== "" ? row.a.name : ""; help: row.why; hovered: rowHover.hovered }
-            }
-            Item {  // asking first: what will change, and where the copy of the old file goes
-                visible: dlg.asking === row.a.id
-                width: parent.width; height: visible ? ask.height + Theme.pad : 0
-                Item {
-                    id: ask
-                    width: parent.width; height: Math.max(askText.height, Theme.button)
-                    Text {
-                        id: askText
-                        anchors { left: parent.left; right: askButtons.left; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-                        wrapMode: Text.WordWrap
-                        text: "Add " + (dlg.data ? dlg.data.server : "") + " to " + row.a.name + "? This changes " + row.a.file
-                              + ". Rostrum keeps a copy of the file as it is now, and only ever removes what it added."
-                        color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
-                    }
-                    Row {
-                        id: askButtons
-                        anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                        spacing: Theme.gap
-                        Button { text: "Add"; kind: "primary"; onClicked: { dlg.asking = ""; dlg.data.add(row.a.id) } }
-                        Button { text: "Cancel"; kind: "ghost"; onClicked: dlg.asking = "" }
-                    }
-                }
             }
         }
     }

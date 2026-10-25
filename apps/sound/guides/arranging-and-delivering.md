@@ -8,8 +8,8 @@ make spoken lines again, and hand the song on.
 A group is one shared channel that several tracks play into. It gives you one row to mute, solo and fold away.
 
 1. Select two or more tracks (Ctrl+click or Shift+click their names).
-2. Press **Ctrl+G**, or use **Group** at the top of the settings panel. (In the Mixer, **+ Group** makes an empty
-   group.)
+2. Press **Ctrl+G**, or use **Group** at the top of the settings panel. (In the Mixer, **+ Group** on the master's strip makes an
+   empty group.)
 3. The group has its own row. Click the arrow at its left to **fold** its tracks away; Alt+click the arrow folds all
    groups. **M** and **S** on the row mute or solo every track in the group.
 4. To undo the grouping, select the group (or a track in it) and choose **Ungroup** (**Ctrl+Shift+G**).

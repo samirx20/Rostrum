@@ -4,8 +4,9 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## The screen in one look
 
-- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
-  "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber; rest the pointer
+- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet, every setting of what is selected and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
+  "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber, or "… the
+  target …" when the loudness target is not streaming's −14 LUFS ("Quieter than the target wants"); rest the pointer
   on it for the number, click it to open the Mixer, which shows the same with its curve) and **Export** (both once the
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
@@ -68,7 +69,8 @@ The **Colour** row shows the colour the track is drawn in.
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
    scrolls by itself after an edit: only you move the view.
    Drag a note to move it in time and pitch, or its right end to make it longer or shorter (the pointer shows ↔ over
-   the note's last few pixels; every selected note changes by the same amount). A click just past a note's end is
+   the note's last few pixels; every selected note changes by the same amount), or its left end to move where it starts
+   (its end stays put). Neither end makes a note shorter than one grid step (Ctrl: no snapping, then down to 20 ms). A click just past a note's end is
    empty space, so with **Draw** you can write notes on one key back to back.
    - It snaps to the nearest grid line. **Grid ▾** in the arrangement's header strip sets the step: **Auto**, ticked
      at first, follows the zoom (the button reads the step it is on: "Grid Auto · 1/8"), never a step narrower than 8 pixels on screen (beats or bars when zoomed out, finer as
@@ -85,8 +87,11 @@ The **Colour** row shows the colour the track is drawn in.
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
-   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
-   name, and every key on the Keys list (Ctrl+/): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid. The same keys
+   track; on empty space in the Editor, Add note here (a hit on a drum row), Paste here, Select all on this track and Select every C4 (that key); on notes and hits it adds Quantise, Humanise and Transpose ▸; on a marker's flag, Rename, Delete, Put a sound here and Start a bar here…; on a lane's point, Delete point; on either ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
+   name, every key on the Keys list (Ctrl+/; "nudge" finds the arrow keys): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid;
+   a setting of what is selected by its name ("velocity", "volume": Enter jumps to its field in the settings panel) and the selected track's lanes
+   ("automation", "sustain": Show the Volume lane, Playing lane: Sustain). An action that can't run right now says why instead ("paste" before a copy:
+   "Nothing to paste yet: copy something first"). The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 5. **Keys on the selection:**
@@ -103,7 +108,7 @@ The **Colour** row shows the colour the track is drawn in.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
-   - **M** puts a marker at the playhead.
+   - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and says so instead of adding a second. Paste here and Add marker here land on the grid line under the pointer while Snap is on.
 6. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
    edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
    (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.

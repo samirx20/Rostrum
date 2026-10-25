@@ -64,13 +64,17 @@ def snap_to(t: float, root: dict, free: bool, targets: list[snap.Target], scale:
 
 
 def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[snap.Target], scale: float,
-               grid=None):
+               grid=None, end=None):
     """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
-    follow; never before the song's start. `dsemi`: semitones for notes, drum rows for hits (down is +). Shift
+    follow; never before the song's start, and with `end` (a song of a set length, seconds) none starts later than one
+    grid step before its end (a note dragged past it would vanish from the screen and never play). `dsemi`: semitones for notes, drum rows for hits (down is +). Shift
     (`only_time`): no pitch or drum change."""
     root, p = doc.data, g["primary"]
     to, caught = snap_to(p["t"] + dt, root, free, targets, scale, grid)
     d = max(to - p["t"], -min(x["t"] for x in g["items"]))
+    if end is not None:
+        last = timing.lines_around(max(0.0, end - 1e-6), root, grid)[0]      # the grid line before the end
+        d = min(d, last - max(x["t"] for x in g["items"]))
     calls = []
     for x in g["items"]:
         args = {"at": timing.write_time(x["at"], max(0.0, x["t"] + d), root)}
@@ -94,6 +98,16 @@ def track_calls(doc, g: dict, dest: str) -> list[dict]:
     if kind_of(doc.item(dest)) not in ("audio", "empty") or doc.item(dest).get("instrument") == "voice":
         return []
     return [{"op": "clip.to_track", "target": movers, "args": {"track": dest}}]
+
+
+def track_refusal(doc, g: dict, dest: str) -> str:
+    """Why clips let go over another track did not go there ("" when they did, or stayed on their own row)."""
+    movers = [x for x in g.get("items", []) if x["type"] == "clip" and doc.parent_of(x["id"])[0] != dest]
+    if not movers or not dest or not doc.has(dest) or doc.item(dest)["type"] != "track" or track_calls(doc, g, dest):
+        return ""
+    t = doc.item(dest)
+    what = "a voice track" if t.get("instrument") == "voice" else "a notes track" if kind_of(t) == "notes" else "a drum track"         if kind_of(t) == "drums" else "that track"
+    return f"A clip can't go on {t.get('name') or dest}: it is {what}. Drop it on an audio track or an empty one."
 
 
 def copy_calls(g: dict) -> list[dict]:

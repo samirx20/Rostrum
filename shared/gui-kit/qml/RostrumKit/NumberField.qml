@@ -19,6 +19,7 @@ FieldFrame {
     property real from: -1e9
     property real to: 1e9
     property real step: 1
+    property real typeStep: step                               // a typed value keeps this much (a tempo scrubs in 1 bpm but keeps a typed 99.5)
     property string unit: ""
     property var words: []
     property bool expressions: false
@@ -78,11 +79,14 @@ FieldFrame {
         var v = VK.parse(display, t)
         if (isNaN(v)) { problem = t.trim() === "" ? "Type a number" + (label ? " for " + label : "") : "“" + t + "” is not a number" + (label ? " for " + label : ""); input.text = text; return }   // keep the value, and say so
         const n = VK.shown(display, v), tol = showStep * 1e-6
-        if (n < showRange[0] - tol || n > showRange[1] + tol) {   // typed out of range: refused with the range, never clamped
+        // dB: the number as typed (−60 dB reads back as −∞, the floor, and is in range); "-inf" is in range when silence is
+        const said = display === "db" ? parseFloat(String(t).replace(/−/g, "-").replace(/[^0-9eE+\-.]/g, "")) : n
+        const out = isFinite(said) ? said < showRange[0] - tol || said > showRange[1] + tol : v < from || v > to
+        if (out) {   // typed out of range: refused with the range, never clamped
             problem = (label ? label + " is " : "Allowed: ") + refusalRange()
             input.text = text; return
         }
-        f.edited(clamp(n))
+        f.edited(clamp(n, VK.step(display, typeStep)))
     }
     function refusalRange() {
         const u = unitShown ? (unitFirst ? "" : " ") + unitShown : ""

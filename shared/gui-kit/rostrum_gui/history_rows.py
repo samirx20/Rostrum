@@ -38,10 +38,25 @@ def _folds(c) -> bool:
     return c.session is not None and c.who.kind in ("agent", "script")
 
 
-def _step(i, doc, c, me) -> dict:
+def blocked(doc) -> set[int]:
+    """The steps whose Undo this would be refused: a later live change touched what they changed (the core's
+    history.blockers rule, worked out for every step in one pass, newest first). Their row shows no Undo this."""
+    h, out = doc.history, set()
+    later, inside = set(), set()                # keys changed later, and every leading part of them
+    for c in sorted((c for c in h.changes if c.original and h.done[c.seq]), key=lambda c: -h.at[c.seq]):
+        keys = h.keys(c)
+        if any(k in inside or any(k[:n] in later for n in range(1, len(k) + 1)) for k in keys):
+            out.add(c.seq)
+        later |= keys
+        inside |= {k[:n] for k in keys for n in range(1, len(k) + 1)}
+    return out
+
+
+def _step(i, doc, c, me, stuck=frozenset()) -> dict:
+    undone = not doc.history.done[c.seq]
     return {"kind": "step", "who": who_name(c.who, me), "whoKind": c.who.kind, "label": c.label, "when": clock(c),
             "seq": c.seq, "doc": i, "item": doc.item_id or "", "session": c.session or "", "count": 1,
-            "undone": not doc.history.done[c.seq], "steps": []}
+            "undone": undone, "undoable": not undone and c.seq not in stuck, "steps": []}
 
 
 def _run(steps: list[dict]) -> dict:
@@ -66,6 +81,7 @@ def rows(docs, me, show="everyone") -> list[dict]:
     if show not in SHOWS:
         raise ValueError(f"history rows: show must be one of {SHOWS}, not {show!r}")
     index = {id(d): i for i, d in enumerate(docs)}
+    stuck = {id(d): blocked(d) for d in docs}
     out, run, run_key = [], [], None          # out: (row, made by me); run: the steps of the open agent run
     for doc, c in desk.changes(docs):
         if not c.original:
@@ -75,9 +91,9 @@ def rows(docs, me, show="everyone") -> list[dict]:
             out.append((_run(run), False))
             run = []
         if key is not None:
-            run, run_key = run + [_step(index[id(doc)], doc, c, me)], key
+            run, run_key = run + [_step(index[id(doc)], doc, c, me, stuck[id(doc)])], key
         else:
-            out.append((_step(index[id(doc)], doc, c, me), c.who == me))
+            out.append((_step(index[id(doc)], doc, c, me, stuck[id(doc)]), c.who == me))
     if run:
         out.append((_run(run), False))
     return [r for r, mine in reversed(out) if _keep(r, mine, show)]

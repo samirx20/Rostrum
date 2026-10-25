@@ -1,6 +1,6 @@
 """Ctrl+K lists a key-map job only while it can do something visible (the same "valid when" idea as an action's, for the
 jobs the window or a route runs): Beat steps need a sound with a tempo, the drawing keys a drawing, A a layer picked,
-and the Move tool is not offered while it is the tool. One table; `rows` drops the jobs that would do nothing now."""
+the nudges a layer picked, and the Move tool is not offered while it is the tool. One table; `rows` drops the jobs that would do nothing now."""
 from __future__ import annotations
 
 WHEN = {
@@ -13,6 +13,8 @@ WHEN = {
     "hold_shorter": lambda b: b.painter.drawingId != "",
     "animated_rows": lambda b: any(i != "frame" for i in b.selected_layers()),     # the Frame has no animated rows
     "move_tool": lambda b: b.tool != "move",
+    **{f"nudge_{d}{s}": (lambda b: bool(b.selected_layers()))          # the arrows move what is picked; nothing picked: no row
+       for d in ("left", "right", "up", "down") for s in ("", "_big", "_fine")},
 }
 
 

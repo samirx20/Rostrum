@@ -1,8 +1,8 @@
 """The command bar's list, fed by the operation registry: only what can run right now (absent, not greyed).
 
-Each command is {"key", "label", "hint", "calls" | "select" | "do"}; running one applies its calls as ONE operation
-batch, changes the selection (screen state), or calls the app's own `do()` (an app action that isn't an operation,
-e.g. Copy). Everything acts on the WHOLE selection:
+Each command is {"key", "label", "hint", "calls" | "select" | "do" | "reveal"}; running one applies its calls as ONE
+operation batch, changes the selection (screen state), calls the app's own `do()` (an app action that isn't an
+operation, e.g. Copy), or jumps to a setting that needs a value (`field_rows`). Everything acts on the WHOLE selection:
 - The selection's settings (the ones every selected item shares, many.py) become one command per toggle ("Turn on
   Depth of field") and per choice option ("Type: Spot"), for params valid on every item; one call per item (mixed
   kinds have different field operations). Numbers, text and colours need a value: the settings panel.
@@ -77,6 +77,38 @@ def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> 
                         "hint": kind_of(it) if kind_of else it["type"].capitalize(),
                         "select": it["id"], "words": it["type"], "weight": len(IMPORTANCE)})
     return out
+
+
+NEEDS_VALUE = ("number", "color", "text")
+
+
+def field_rows(doc, item_id: str, label_of, shows=None) -> list[dict]:
+    """Ctrl+K's "Edit <setting>" for ONE selected item's settings that need a value (numbers, text, colours: `build`
+    leaves them out), each valid now and on its settings row (not a script-only field). Running one jumps to the field
+    (`reveal`: the bridge's revealField opens its group, scrolls the panel to it and puts the keys in it), so a word
+    such as "velocity" or "volume" finds the setting. Search reads the field's own words (name, label, group, help).
+    `shows(name)`, when given, keeps only settings whose row the panel shows now (a colour drawn in a row of its own,
+    a setting that needs another on, is not offered). A number that switches its group on (`sections.switch_of`) is
+    named as the panel names it: "Add Motion blur" while off, "Edit Motion blur amount" once on."""
+    item = doc.item(item_id)
+    facts = doc.kind.facts(item, doc)
+    out = []
+    for op in doc.kind.registry.available(doc, [item_id]):
+        if op.fields and item["type"] in (op.targets or ()):
+            out += [{"key": f"field:{p.name}", "label": _edit_label(p, op, item), "reveal": p.name,
+                     "hint": " · ".join(w for w in (label_of(item), p.group) if w),
+                     "words": field_words(p), "context": op_words(op), "weight": IMPORTANCE.index(p.importance)}
+                    for p in op.params if p.type in NEEDS_VALUE and p.shown != "script" and holds(p.valid_when, item, facts)
+                    and (shows is None or shows(p.name))]
+    return out
+
+
+def _edit_label(p, op, item) -> str:
+    """ "Edit Opacity"; a group's switch says the group: "Add Motion blur" while it is off, "Edit Motion blur amount"."""
+    from .sections import switch_of
+    if not p.group or switch_of([q for q in op.params if q.group == p.group]) != p.name:
+        return f"Edit {p.label}"
+    return f"Edit {p.group} {p.label.lower()}" if item.get(p.name, p.default) != p.default else f"Add {p.group}"
 
 
 def _field_commands(doc, selection, where):
