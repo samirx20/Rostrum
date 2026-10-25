@@ -25,6 +25,8 @@ from pathlib import Path
 from PySide6.QtCore import Property, QCoreApplication, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
+from . import export_errors
+
 
 def free_path(path: Path) -> Path:
     """`path`, or "name 2.ext", "name 3.ext" … the first that isn't there (Keep both: nothing is ever replaced)."""
@@ -50,6 +52,7 @@ def version_name(result: dict, versions) -> str:
 
 class ExportSheet(QObject):
     CHOICES_PICKER = False                        # "What for" as one picker, not rows (see `choicesPicker`)
+    WHAT = "the file"                            # what a failed save names ("Couldn't save the file: …")
     VERBS = ("Export", "Exporting", "Exported")   # an app whose sheet makes something else says so ("Render", …)
     changed = Signal()
     asked = Signal(str, bool)                  # (the name already there, whether it can be replaced): QML asks
@@ -274,7 +277,10 @@ class ExportSheet(QObject):
 
     @Slot()
     def again(self):
-        """Ctrl+Shift+E: export with the last settings, without opening the sheet (a file there is still asked about)."""
+        """Ctrl+Shift+E: export with the last settings, without opening the sheet (a file there is still asked about).
+        With no export made yet there are no "last settings": it says so and starts nothing."""
+        if not self._started:
+            return self.bridge._set_status(f"Nothing {self.VERBS[2].lower()} yet — Ctrl+E to {self.VERBS[0].lower()}", False)
         self.request()
 
     @Slot()
@@ -321,11 +327,14 @@ class ExportSheet(QObject):
         QCoreApplication.processEvents()
         return not self.running()
 
+    _started = False                             # an export was started in this window (Ctrl+Shift+E repeats it)
+
     def _go(self, out, overwrite):
         try:
             plan = self.begin(out, overwrite)
         except Exception as e:  # noqa: BLE001  refused before it started: say why, nothing written
-            return self._finish({}, e.line() if hasattr(e, "line") else f"Error: export: {e}")
+            return self._finish({}, export_errors.said(e, self.WHAT))
+        self._started = True
         self._result, self._progress, self._stopping = {}, 0.0, False
         self._state, self._note = "running", f"{self.VERBS[1]} {out.name if out else self.file_name()}"
         self.changed.emit()
@@ -335,8 +344,7 @@ class ExportSheet(QObject):
             try:
                 self._landed.emit(dict(self.work(plan, self._progressed.emit)), "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was (a cancel is the one expected stop)
-                self._landed.emit({}, "" if self._stopping else e.line() if hasattr(e, "line")
-                                  else f"Error: export: {type(e).__name__}: {e}")
+                self._landed.emit({}, "" if self._stopping else export_errors.said(e, self.WHAT))
         self._thread = threading.Thread(target=run, name="export", daemon=True)
         self._thread.start()
 
@@ -366,7 +374,7 @@ class ExportSheet(QObject):
         elif error or not result.get("files"):
             self._state, self._result, self._done_message = "failed", {}, ""
             self._note = error or "Error: export: nothing was written. The old file, if any, is kept."
-            b._fail(self._note)
+            b._set_status(self._note, True)        # (the full line is already on the console: export_errors.said)
         else:
             self._state, self._result, self._progress = "done", dict(result), 1.0
             mark = getattr(b.doc, "mark_version", None)
