@@ -63,8 +63,8 @@ The **Colour** row shows the colour the track is drawn in.
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
    grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
    **Note ▾** sets how long a new note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
-   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to make a
-   longer note: the click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
+   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to set its
+   length: the note ends on the grid line nearest the pointer (drag two beats, it is two beats long). The click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
    scrolls by itself after an edit: only you move the view.
    Drag a note to move it in time and pitch, or its right end to make it longer or shorter (the pointer shows ↔ over
@@ -85,14 +85,14 @@ The **Colour** row shows the colour the track is drawn in.
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
-   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line under the pointer when one is within 3 pixels, else in the grid step it is in, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
+   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
    name, and every key on the Keys list (Ctrl+/): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid. The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 5. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
-   - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
+   - **A time range:** drag on the ruler's thin top band. Each end goes to the grid line nearest the pointer. The settings panel offers **Make a section** and **Select
      inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
      copies just those notes. **Shift+Delete** (**Cut out and close the gap**) cuts the range out of the clips under it and closes the gap.
