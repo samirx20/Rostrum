@@ -37,7 +37,7 @@ from .bridge_select import SelectSlots
 from .edits import field_call
 from .history_rows import who_name
 from .kit_state import KitState
-from .model import RowsModel
+from .row_pages import RowPages
 from .parts import Parts
 
 
@@ -65,7 +65,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         super().__init__(parent)
         self._kit = KitState(doc.history.mark())
         self.doc, self.who = doc, who or Who.person("sam")
-        self.model = RowsModel(rows.ROLES, self)
+        self.model = RowPages(rows.ROLES, self)            # the panel's rows: a list per kind's layout (row_pages.py)
         self._kit.agent = AgentWatch(self)
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self._history_check()                              # the count and ↶ ↷ as the window opens

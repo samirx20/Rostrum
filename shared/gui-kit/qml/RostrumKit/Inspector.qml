@@ -21,9 +21,9 @@ Panel {
     property bool effects: false         // the "Effects (n) +" section (an app that called rostrum_gui.effects.attach)
     property bool keyMarks: false        // an app with keys: rows show key marks (see InspectorRow)
     property var actions: null           // the app's ActionHub: the selection's actions first (ActionsSection), above everything
-    // the rows' `instant`, read from the model once here: each row reading it (two Python reads a row, twice a pick) cost
-    // ~8 ms a pick over a panel's rows
-    readonly property bool instant: panel.bridge.rows.instant
+    // a bridge's rows as one list per kind's layout (rostrum_gui/row_pages.py: a pick of another kind shows that kind's
+    // list, kept made, instead of turning one list's rows into the other kind's), else one list (a RowsModel)
+    readonly property var pages: panel.bridge.rows && panel.bridge.rows.paged === true ? panel.bridge.rows : null
     property var highlight: []           // field ids marked as in focus (2D: the settings whose keys are picked)
     property alias above: aboveSlot.data // an app's own group above the rows, in the same scroll (2D: a rig's Poses)
     property alias below: belowSlot.data // an app's own group under the rows, in the same scroll (2D: "Paint on …")
@@ -95,11 +95,28 @@ Panel {
                 Item { width: 1; height: Theme.groupGap }      // a gap before the first setting
             }
             Column { id: aboveSlot; width: parent.width }
-            Repeater {
-                id: rowsView
-                model: panel.bridge.rows
-                delegate: InspectorRow { bridge: panel.bridge; keyMarks: panel.keyMarks; instant: panel.instant
-                                         highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
+            Repeater {  // a list of rows per kind's layout, kept made; only the shown one is visible (row_pages.py)
+                id: pagesView
+                model: panel.pages || [panel.bridge.rows]
+                delegate: Column {
+                    id: page
+                    required property int index
+                    required property var model
+                    readonly property var rowsModel: panel.pages ? model.page : model.modelData
+                    readonly property alias rowsView: rowsView
+                    // the rows' `instant`, read once here: each row reading it (two Python reads a row, twice a pick)
+                    // cost ~8 ms a pick over a panel's rows
+                    readonly property bool instant: rowsModel.instant
+                    width: list.width
+                    visible: !panel.pages || index === panel.pages.shown
+                    Repeater {
+                        id: rowsView
+                        model: page.rowsModel
+                        delegate: InspectorRow { bridge: panel.bridge; rows: page.rowsModel; keyMarks: panel.keyMarks
+                                                 instant: page.instant
+                                                 highlighted: model.row === "param" && panel.highlight.indexOf(model.id) >= 0 }
+                    }
+                }
             }
             EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
             Column { id: belowSlot; width: parent.width }
@@ -135,7 +152,9 @@ Panel {
         property string field: ""
         interval: Theme.reveal + 40
         onTriggered: {
-            for (let i = 0; i < rowsView.count; i++) {
+            const page = pagesView.itemAt(panel.pages ? panel.pages.shown : 0)
+            const rowsView = page ? page.rowsView : null
+            for (let i = 0; rowsView && i < rowsView.count; i++) {
                 const r = rowsView.itemAt(i)
                 if (!r || r.model.id !== field || r.model.row !== "param" || !r.model.valid) continue   // (not a parked row)
                 const top = r.y, bottom = r.y + r.height

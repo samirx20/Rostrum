@@ -40,6 +40,7 @@ Item {
     required property var model           // roles from rostrum_gui.rows.ROLES
     objectName: model.row === "param" && model.valid ? "row:" + model.id : ""      // scripted steps (the layout check) find a row by it
     property var bridge
+    property var rows: bridge ? bridge.rows : null      // the list this row is in (its page: Inspector.qml), for rows inside it
     property bool keyMarks: false
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
     property bool instant: false          // the list model's `instant`: this change is a new selection, shown at once
@@ -390,7 +391,7 @@ Item {
                 stopOpacity: o.stopOpacity !== false
                 sources: o.sources || []; add: o.add || ""          // Painted: the paintings, and the app's New painting action
                 paintIt: o.paintIt || ""; paintItNote: o.paintItNote || ""   // and its Paint it (the brush on the painting)
-                rows: row.bridge.rows; rowsBridge: row.bridge; rowsHost: row.model.id     // the rows marked inside this one
+                rows: row.rows; rowsBridge: row.bridge; rowsHost: row.model.id     // the rows marked inside this one
                 onAsked: (a) => row.bridge.rowAction(a)
                 onEdited: (v) => row.set(v)
                 onTypingStarted: row.hold(true)

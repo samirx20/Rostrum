@@ -97,9 +97,23 @@ def timed(comp: dict, markers: dict | None, fps: float, memo: dict | None = None
     return {**comp, "layers": layers} if "layers" in comp else comp
 
 
+_offsets = [(None, None, {})]   # [(document data, markers, {item id: offset})]: a screen asks per settings row
+
+
 def offset_of(doc_data: dict, item_id: str, markers: dict | None) -> float:
     """Where an item's own time 0 sits in its composition's seconds: its marker's time, or its nearest timed
-    parent's (0 when none). A key on a marker sits at that marker's time minus this, in the item's own seconds."""
+    parent's (0 when none). A key on a marker sits at that marker's time minus this, in the item's own seconds.
+    Kept per document state and markers (each change gives new ones): one walk per item, not one per ask."""
+    got = _offsets[0]                       # (one read and one write of the cell: a worker thread may ask too)
+    if got[0] is not doc_data or got[1] is not markers:
+        got = _offsets[0] = (doc_data, markers, {})
+    kept = got[2]
+    if item_id not in kept:
+        kept[item_id] = _offset_walk(doc_data, item_id, markers)
+    return kept[item_id]
+
+
+def _offset_walk(doc_data: dict, item_id: str, markers: dict | None) -> float:
     def walk(node: dict, off: float):
         for key in CHILDREN:
             for child in node.get(key, []):

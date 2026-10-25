@@ -34,3 +34,17 @@ def test_last_changed_names_the_author_and_follows_undo(bridge):
     assert bridge.lastChanged()["who"] == "You"
     bridge.undo()
     assert bridge.lastChanged()["who"] == "Claude"
+    bridge.select("card")                       # each item's own steps (many._by_item): the title's are not the card's
+    assert bridge.lastChanged() == {}
+
+
+def test_a_kinds_rows_come_back_as_the_document_is_now(bridge):
+    """Each kind keeps its own list of rows (row_pages.py); one shown again has today's values, not its last ones."""
+    bridge.select("title")
+    text_rows = bridge.model.current
+    bridge.select("card")
+    assert bridge.model.current is not text_rows
+    bridge.doc.apply([bridge.edit_call("title", "x", 123)], Who.agent("claude-code"), label="Moved title")
+    bridge.select("title")
+    assert bridge.model.current is text_rows
+    assert next(r for r in text_rows.rows if r["id"] == "x")["value"] == 123
