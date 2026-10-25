@@ -8,6 +8,11 @@ when given, so an edit still lands right when other people inserted things meanw
 `fork(data)` starts a new version of a document without copying it: edits through the fork's index copy only
 the items they change and the items above them (copy on write); everything else, values included, is shared
 with the old version, which therefore must never be changed in place.
+
+An edit through a fork copies what it brings in once (`clone`): the tree and the edit history stores share that
+copy. Neither is ever written in place afterwards: an item an Insert brought in is not the fork's own, so a later
+edit in the same call copies it first, like any shared item. Edits on a plain index (opening a file, a script's
+merge) write the tree in place, so there an inserted item's record is a copy of its own.
 """
 from __future__ import annotations
 
@@ -141,6 +146,21 @@ def _own_list(idx: dict, id_: str, key: str, lists: dict) -> list:
     return lst
 
 
+_PLAIN = (str, int, float, bool, type(None))
+
+
+def clone(v):
+    """A deep copy of a document value (dicts, lists, plain values), several times faster than copy.deepcopy."""
+    t = type(v)
+    if t in _PLAIN:
+        return v
+    if t is dict:
+        return {k: clone(x) for k, x in v.items()}
+    if t is list:
+        return [clone(x) for x in v]
+    return copy.deepcopy(v)
+
+
 def _set(item, lists, e, where):
     if not e.path or e.path[0] == "id" or e.path[0] in child_keys(item, lists):
         raise RostrumError(codes.INTERNAL, where, f"{e.id}.{e.path}", "is not a field a Set may change")
@@ -150,12 +170,13 @@ def _set(item, lists, e, where):
             node[k] = dict(node[k])
         node = node.setdefault(k, {})
     last = e.path[-1]
-    before = copy.deepcopy(node.get(last, MISSING))
-    if e.value == MISSING:
+    before = node.get(last, MISSING)                # the old version's value: never written in place, so kept as is
+    value = clone(e.value)
+    if value == MISSING:
         node.pop(last, None)
     else:
-        node[last] = copy.deepcopy(e.value)
-    return Set(e.id, list(e.path), copy.deepcopy(e.value), before)
+        node[last] = value
+    return Set(e.id, list(e.path), value, before)
 
 
 def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = None):
@@ -173,13 +194,15 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
             idx.update(index(data, lists))
         return done
     if isinstance(e, Insert):
-        if any(i in idx for i in subtree_ids(e.item, lists)):
+        if any(i in idx for i in (subtree_ids(e.item, lists) if child_keys(e.item, lists) else (e.item["id"],))):
             raise RostrumError(codes.CONFLICT, where, f'"{e.id}"', "is already in this document")
         lst = _own_list(idx, e.parent, e.key, lists)
         pos = _place(lst, e.after, e.index)
-        lst.insert(pos, copy.deepcopy(e.item))
-        _add(idx, lst[pos], e.parent, e.key, pos, lists)
-        return Insert(e.id, e.parent, e.key, pos, copy.deepcopy(e.item), _prev(lst, pos))
+        item = clone(e.item)                        # through a fork: one copy, the tree's and the history's (see top)
+        lst.insert(pos, item)
+        _add(idx, item, e.parent, e.key, pos, lists)
+        kept = item if isinstance(idx, Fork) else clone(item)
+        return Insert(e.id, e.parent, e.key, pos, kept, _prev(lst, pos))
     loc = idx[e.id]
     if loc.parent is None:
         raise RostrumError(codes.BAD_ARGUMENT, where, '"root"', "can't be removed or moved")
@@ -214,11 +237,9 @@ def _position(lst: list, loc: Loc) -> int:
 
 
 def _add(idx: dict, item: dict, parent: str, key: str, pos: int, lists: dict):
-    sub = index(item, lists)
-    sub[item["id"]] = Loc(item, parent, key, pos)
-    idx.update(sub)
-    if getattr(idx, "owned", None) is not None:     # a fresh copy: this version's own
-        idx.owned.update((id(loc.item), loc.item) for loc in sub.values())
+    if child_keys(item, lists):
+        idx.update(index(item, lists))
+    idx[item["id"]] = Loc(item, parent, key, pos)
 
 
 def reverse(e):

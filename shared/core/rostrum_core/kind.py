@@ -100,14 +100,19 @@ class DocKind:
                 labels.append(label)
         return data, labels
 
-    def bad_values(self, items):
+    def bad_values(self, items, only=None):
         """Each stored field value its kind's own field op refuses (range, kind of value, choices): the same rule
         operation arguments obey, so no field of any kind can hold what its control could never set (a frame rate
-        of 0). Yields RostrumErrors."""
+        of 0). `only`: item id -> the field names to check (a call's Sets; an item not in it: all its fields). Yields
+        RostrumErrors."""
+        ops, params = {}, {}                        # per kind / (kind, field): asked once, not per item
         for item in items:
-            op = self.registry.field_op(item.get("type"))
-            for name, value in (fields(item, self.lists).items() if op else ()):
-                p = op.param(name)
+            kind = item.get("type")
+            op = ops[kind] if kind in ops else ops.setdefault(kind, self.registry.field_op(kind))
+            names = only.get(item.get("id")) if only else None
+            values = fields(item, self.lists) if names is None else {n: item[n] for n in names if n in item}
+            for name, value in (values.items() if op else ()):
+                p = params[kind, name] if (kind, name) in params else params.setdefault((kind, name), op.param(name))
                 if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
                     continue
                 where = f'{item.get("type")} "{item.get("id")}"'
@@ -119,12 +124,13 @@ class DocKind:
                 if stored != value:     # checks take forms people write ("#fff"); a file holds only the stored one
                     yield RostrumError(codes.BAD_ARGUMENT, where, f"{name}={value!r}", "is not written as stored", [repr(stored)])
 
-    def problems(self, data: dict, items=None) -> list[str]:
-        """The whole-document check: every field value (or only `items`', the ones a call changed) against its
-        field's own data, then the app's own check. Run after every call and on every open."""
+    def problems(self, data: dict, items=None, only=None) -> list[str]:
+        """The whole-document check: every field value (or only `items`', the ones a call changed; `only`: of those,
+        just the fields it set, see bad_values) against its field's own data, then the app's own check. Run after
+        every call and on every open."""
         try:
             out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
-                   for e in self.bad_values(walk(data, self.lists) if items is None else items)]
+                   for e in self.bad_values(walk(data, self.lists) if items is None else items, only)]
             return out + list(self.check(data, items))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]

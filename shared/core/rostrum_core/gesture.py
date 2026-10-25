@@ -1,6 +1,7 @@
 """A drag is one step (OPERATIONS.md § 6). While a person drags or scrubs, each move runs the same operations
 (same checks) and updates the document live; on release the whole drag is saved as one change. Escape
-(`cancel`) or an error puts everything back and records nothing.
+(`cancel`) or an error puts everything back and records nothing; its "reset" event lists the edits that took the
+document back (None: can't tell), so listeners redo only what the drag had touched.
 
     with doc.gesture("Move logo", Who.person()) as g:
         g.preview({"op": "layer.move", "target": ["logo"], "args": {"x": x}})
@@ -68,12 +69,19 @@ class Gesture:
         self.doc._indexed(self.start, self._start_idx)
         if not self._stepped:        # a press and a release with no step between (a click): nothing was shown, so
             return False             # nothing to take back; a reset made every listener redo its work (~7 ms a pick)
-        if exc_type or self.cancelled:
-            self.doc._emit(Event("reset"))
+        if exc_type or self.cancelled:          # taken back: listeners hear what that undid on what they show, so
+            self._reset(end, end_idx)           # they redo only that (Esc in a popover redrew every row: 34-64 ms)
             return False
         edits = diff(self.start, end, self.doc.kind.lists, self._start_idx, end_idx)
         if edits:
             self.change = self.doc.commit(end, edits, self.who, self.label, self._calls, idx=end_idx)
         else:
-            self.doc._emit(Event("reset"))
+            self.doc._emit(Event("reset", edits=[]))
         return False
+
+    def _reset(self, end, end_idx):
+        try:
+            back = diff(end, self.start, self.doc.kind.lists, end_idx, self._start_idx)
+        except Exception:  # noqa: BLE001  a step that broke the tree can't be compared: everyone redoes all
+            back = None
+        self.doc._emit(Event("reset", edits=back))

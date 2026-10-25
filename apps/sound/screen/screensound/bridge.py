@@ -293,7 +293,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
     def _on_doc(self, event):
         self._stepping = event.kind == "preview"
         super()._on_doc(event)
-        self._guard(lambda: self._drag_step(change=not self._stepping) if event.kind != "reset" else self._rebuild())
+        known = event.kind != "reset" or event.edits is not None    # a drag taken back says what it undid: those rows
+        self._guard(lambda: self._drag_step(change=not self._stepping) if known else self._rebuild())
         if event.kind == "change":             # a drag renders once, when it lands (never during one: Transport.held)
             self.transport.changed()
 
