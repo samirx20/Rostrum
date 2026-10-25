@@ -57,23 +57,19 @@ Item {
         visible: d.tool === "editor"
         x: tabs.x + pick.x + pick.width + Theme.pad; width: fold.x - Theme.gap - x; y: tabs.y; height: tabs.height
     }
-    // Both tools are made once and kept (hidden while the other shows): making the Mixer's strips again on every E / X
-    // cost ~0.6 s on a 16-track song (S59). They are made ahead, a slice per frame (asynchronous), a moment after the
-    // window opens, so the first E or X shows a tool that is already there (a first Mixer made on the click: ~170 ms
-    // with 8 tracks). A tool opened before it is ready is finished at once (asynchronous turned off). A hidden Mixer's
-    // meters rest (MixStrip: live).
-    // Each tool is always its own height, shown or hidden: following the dock, the hidden roll was laid out and painted
-    // whole for nothing on every E / X (and again when it came back).
+    // Both tools are made once, when first opened, and kept (hidden while the other shows): making the Mixer's strips
+    // again on every E / X cost ~0.6 s on a 16-track song (S59). Not made ahead: building both behind every song
+    // opened kept the screen busy for seconds on a loaded machine (the layout check's pictures never settled). Both
+    // tools share the dock's height, shown or hidden: the hidden roll is never laid out or painted again for nothing.
     property var made: ({})
     function mark(t) { if (t !== "" && !made[t]) { let m = Object.assign({}, made); m[t] = true; made = m } }
     onToolChanged: mark(tool)
     Component.onCompleted: mark(tool)
-    Timer { id: ahead; interval: 1500; running: d.visible; onTriggered: { d.mark("editor"); d.mark("mixer") } }
     Loader {
         id: editorTool
         objectName: "editorTool"
         anchors { left: parent.left; right: parent.right; top: tabs.bottom; topMargin: Theme.grid }
-        active: !!d.made.editor; visible: d.tool === "editor"; asynchronous: !visible
+        active: !!d.made.editor; visible: d.tool === "editor"
         height: d.editorHeight - tabs.height - Theme.grid
         sourceComponent: EditorDock { }
     }
@@ -81,7 +77,7 @@ Item {
         id: mixerTool
         objectName: "mixerTool"
         anchors { left: parent.left; right: parent.right; top: tabs.bottom; topMargin: Theme.grid }
-        active: !!d.made.mixer; visible: d.tool === "mixer"; asynchronous: !visible
+        active: !!d.made.mixer; visible: d.tool === "mixer"
         height: d.mixerHeight - tabs.height - Theme.grid
         sourceComponent: Mixer { }
     }
