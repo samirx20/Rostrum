@@ -68,7 +68,7 @@ fn a_gradient_of_no_size_in_a_tilted_flipped_group_exports() {
     flip["layers"] = json!([screen]);
     let mut tilt = item("tilt", "group", json!({ "x": 160.0, "y": 120.0, "w": 240.0, "h": 200.0, "tiltY": -4.0 }));
     tilt["layers"] = json!([flip]);
-    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 0.2, "background": "#101418" }));
+    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 0.2, "background": "#101418", "shutterSamples": 1.0 }));
     comp["layers"] = json!([tilt]);
     let (mut held, mut session) = (Held::default(), None);
     load(&mut held, &mut session, &mut None, &json!({ "scene": { "format": FORMAT, "version": VERSION, "comp": comp }, "cpu": true })).unwrap();
