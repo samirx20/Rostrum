@@ -80,6 +80,19 @@ class RowPages(QAbstractListModel):
         their final state), updated in place at once (`instant`: a page coming back shows as it is now, no easing)."""
         self._show(rows, lambda p, new: p.reset(rows) if new else p.update(rows, instant or p is not self._page()))
 
+    def park(self, rows: list[dict]):
+        """Rows a later pick will show, made ahead (bridge_select.make_panels_ahead): that layout's page, filled and
+        hidden; the shown page stays. It counts as shown longest ago, so it is the first to go for room."""
+        key = tuple(r.get("id") for r in rows)
+        if any(k == key for k, _ in self._pages):
+            return
+        self._drop_old()
+        self.beginInsertRows(QModelIndex(), len(self._pages), len(self._pages))
+        self._pages.append((key, RowsModel(self._row_roles, self)))
+        self.endInsertRows()
+        self._used.insert(0, key)
+        self._pages[-1][1].reset(rows)
+
     def _show(self, rows: list[dict], fill):
         key = tuple(r.get("id") for r in rows)
         at = next((i for i, (k, _) in enumerate(self._pages) if k == key), -1)
