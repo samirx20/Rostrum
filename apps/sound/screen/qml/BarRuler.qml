@@ -5,7 +5,7 @@ import RostrumKit
 // backend.timeView) with Sound's bars on its upper line, plus what is Sound's own: the punch range (with a take
 // armed and punch on: a drag across the scale sets it, its edges drag; takeSetup.setPunch, a quarter beat grid,
 // Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
-// backend.setRange (each edge on the nearest grid line, as any drag); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
+// backend.setRange (each edge on a bar or beat line a few px away, else the nearest grid line: timing.snap); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
 // markers and piano roll use too, the kit's, following backend.timeView.
 // A click or scrub on the scale (and the press that starts a punch scrub) puts the playhead through the one snap, in
 // Python (backend.setTimeSnapped: markers, section edges, then the grid; the seconds line with a picture: its frames;
@@ -71,7 +71,7 @@ Item {
         value: playTime.value; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t, free) => backend.setTimeSnapped(t, free, kit.onSeconds, kit.perSec)
-        onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds)   // drawn on the seconds scale: exact seconds, no grid
+        onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds, kit.perSec)   // drawn on the seconds scale: exact seconds, no grid
         onRangeCleared: backend.clearRange()
     }
     MouseArea {   // above the kit's: the right-click menu, and the punch range while a take is armed with punch on
