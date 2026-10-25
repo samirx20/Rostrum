@@ -40,6 +40,10 @@ MouseArea {
     function alt(e) { return (e.modifiers & Qt.AltModifier) !== 0 }
     function far(e) { return Math.abs(e.x - x0) >= 4 || Math.abs(e.y - y0) >= 4 }
     function rowIndex(y) { var s = tl.slot(Math.max(0, Math.min(height - 1, y))); return s.i }
+    function boxRow(y) {   // a box's edge: the row at y; in a gap (+ Track) or below every row, the row above it (none above: the first)
+        for (var yy = Math.min(height - 1, y); yy >= 0; yy -= 2) { var i = tl.slot(yy).i; if (i >= 0) return i }
+        return 0
+    }
     function under(e) {   // {r, s, t, lane}: the row, its slot, the time and the height in the row (0 top .. 1 bottom)
         var s = tl.slot(e.y)
         if (s.i < 0) return null
@@ -65,7 +69,7 @@ MouseArea {
         var a = tl.autoOf(u.r)
         if (u.s.lane && a && e.button === Qt.LeftButton) {
             laneTop = u.s.laneTop; mode = "point"
-            backend.laneBegin(u.r.id, a.target, a.lane, u.t, yFrac(e.y), 7 / bars.perSec, 7 / (tl.laneH - 16), shift(e))
+            backend.laneBegin(u.r.id, a.target, a.lane, u.t, yFrac(e.y), 7 / bars.perSec, 7 / (tl.laneH - 16), shift(e), 1 / bars.perSec)
             return
         }
         hit = u.r.mix ? "" : backend.blockAt(u.r.id, u.t, u.lane, snapPx / bars.perSec)
@@ -98,8 +102,8 @@ MouseArea {
         else if (mode === "handle") backend.handleTo((e.x - x0) / bars.perSec, (e.y - y0) / rowH, ctrl(e))
         else if (mode === "point") backend.laneDrag(bars.tOf(e.x), yFrac(e.y), shift(e))
         else if (mode === "box") {
-            var a = rowIndex(y0), b = rowIndex(y1), ids = []
-            for (var i = Math.min(a, b); i <= Math.max(a, b); i++) if (i >= 0) ids.push(tl.rows[i].id)
+            var a = boxRow(y0), b = boxRow(y1), ids = []                 // every row the box crosses
+            for (var i = Math.min(a, b); i <= Math.max(a, b) && i < tl.rows.length; i++) ids.push(tl.rows[i].id)
             backend.boxSelect(ids, bars.tOf(x0), bars.tOf(x1), ctrl(e))
         }
     }

@@ -41,9 +41,11 @@ class LaneSlots:
         self._rebuild()
 
     @Slot(str, str, str, float, float, float, float, bool)
-    def laneBegin(self, track_id, target, lane, t, yfrac, tol_t, tol_y, free):
+    @Slot(str, str, str, float, float, float, float, bool, float)
+    def laneBegin(self, track_id, target, lane, t, yfrac, tol_t, tol_y, free, px=0.0):
         """Press in a lane (`yfrac` 0 top .. 1 bottom, tolerances: seconds and a fraction of the height): grab
-        the point there or add one, and start one gesture."""
+        the point there or add one (in the grid cell under the pointer; `px`: one screen pixel in seconds), and start
+        one gesture."""
         self.endDrag()
         self.select(track_id)
 
@@ -51,7 +53,7 @@ class LaneSlots:
             track = self.doc.item(track_id)
             e = lanes.PointEdit(target, lanes.owner_of(track, target), self.doc.data, lane, self._grid_now)
             span = e.hi - e.lo
-            call = e.press(t, e.lo + (1 - yfrac) * span, tol_t, tol_y * span, free)
+            call = e.press(t, e.lo + (1 - yfrac) * span, tol_t, tol_y * span, free, px)
             self._edit, self._drag = e, Drag(self.doc, self.who, "Automate")
             if call:
                 self._drag.preview([call])

@@ -51,12 +51,12 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 
 ## On the screen
 
-- **A new track** starts from a sound in the **Library** (Ctrl+L): double-click an instrument. With a notes track
-  selected the Library offers to change its instrument instead (the notes stay).
+- **A new track** starts from a sound in the **Library** (Ctrl+L): every row has its own **Add**, and Add always makes a new
+  track. To change a track's sound, pick another in the **Sound ▾** field of its settings panel (the notes stay).
 - **Editor** (the dock under the arrangement, E; the selected track): it opens tall (about three quarters of the room under the arrangement) and framed on the track's notes (keys never smaller than 9 px; the view scrolls if the part is wider), beside a
   piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
-  is). Double-click to add, or the **Draw** tool where every click adds; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+  is). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag the end to lengthen, Delete removes. Each drag
   is one undo step (a note drawn with the Draw tool, dragged long, too: "Draw note"); the new note is selected. Clicks in the roll never move the playhead and the view never scrolls by itself. Drum tracks show a row per drum. Select several (Ctrl+click, Shift+click, a box) and act on them
   from the top of the settings panel, the right-click menu or keys: Q quantise, Ctrl+D duplicate, ↑ / ↓ a half step.

@@ -18,6 +18,7 @@ from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.model import RowsModel
 from rostrum_gui.timeview import TimeViewObject
+from rostrum_gui.touched import Touched
 from rostrum_core import live
 from rostrum_sound import clean_clips, compile as compile_doc
 from rostrum_sound.doc import markers as MK
@@ -170,6 +171,13 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def rollAt(self, t, row, tol):
         """The note / hit / clip under the pointer in the piano roll ("" when none)."""
         return pick.roll_at(self._view["roll"], t, row, tol)
+
+    def reached_here(self, ids) -> bool:
+        """The change being announced touched `ids`, an item above one or one inside one. Unlike the kit's `reached`,
+        an add or remove elsewhere does not count (a note drawn reaches no master: the loudness and export parts
+        stay as they are instead of reading the master again on every click)."""
+        t = self._kit.touched
+        return t is None or Touched(t.keys, False).reaches(self.doc, list(ids))
 
     # ---- the kit's hooks: names, times shown in seconds but written in the item's own form, fields on the page --
     def label_of(self, item):

@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Blocks.js" as Blocks
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
@@ -20,6 +21,10 @@ Item {
     readonly property real padTop: 6
     readonly property real plotH: height - padTop - 4
     readonly property var picked: backend.picked
+    property var own: ({})              // the strip's note / hit ids (made when they change)
+    property string chosen: ""          // which of them are selected: a selection elsewhere leaves the picture as it is
+    onBlocksChanged: { own = Blocks.ids(blocks); chosen = Blocks.chosen(picked, own) }
+    onPickedChanged: chosen = Blocks.chosen(picked, own)
     property string mode: ""                    // "" | "press" | "bar" | "line"
     property string hit: ""
     property real x0: 0
@@ -77,20 +82,40 @@ Item {
         id: c
         visible: !s.folded
         x: s.keysWidth; width: s.width - x; height: s.height; clip: true
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        Connections { target: s; function onRollChanged() { c.requestPaint() } function onBlocksChanged() { c.requestPaint() } function onPickedChanged() { c.requestPaint() } }
-        Connections { target: s.ruler; function onStartChanged() { c.requestPaint() } function onPerSecChanged() { c.requestPaint() } }
+        // painted whole on a new zoom, scroll, size or track, else only where an edit or a selection changed (Blocks.js)
+        property bool whole: true
+        property var drawn: ({})                // id -> [block, selected] as the picture shows it
+        function again() { whole = true; requestPaint() }
+        onWidthChanged: again()
+        onHeightChanged: again()
+        Connections { target: s; function onRollChanged() { c.again() } function onBlocksChanged() { c.requestPaint() }
+                      function onChosenChanged() { c.requestPaint() } }
+        Connections { target: s.ruler; function onStartChanged() { c.again() } function onPerSecChanged() { c.again() } }
+        property bool stale: false              // asked while hidden (the Mixer shows): painted when shown again
+        onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
+        function rectsOf(b) {                   // a bar's column (its grip reaches 3 px around it)
+            return b.type === "note" || b.type === "hit" ? [Blocks.box(Math.round(s.ruler.xOf(b.t)) - 3, 0, 7, height, 2)] : []
+        }
         onPaint: {
-            var ctx = getContext("2d"); ctx.reset()
+            if (!visible) { stale = true; return }
+            var ctx = getContext("2d"), now = Blocks.state(s.blocks, s.picked)
+            var dirty = whole ? null : Blocks.changes(drawn, now, rectsOf)
+            drawn = now; whole = false
+            if (dirty === null) { ctx.reset(); paintIn(ctx, now, null); return }
+            for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, now, dirty[i]); ctx.restore()
+            }
+        }
+        function paintIn(ctx, now, d) {                         // the guide and every bar (over the place `d`, when one)
+            var b = s.blocks
             ctx.fillStyle = Theme.border; ctx.fillRect(0, s.padTop + s.plotH / 2, width, 1)      // the half-way guide
-            var b = s.blocks, on = s.picked
             for (var pass = 0; pass < 2; pass++)           // selected bars last, on top
                 for (var i = 0; i < b.length; i++) {
                     if (b[i].type !== "note" && b[i].type !== "hit") continue
-                    if (!!on[b[i].id] !== (pass === 1)) continue
+                    if (now[b[i].id][1] !== (pass === 1)) continue
                     var x = Math.round(s.ruler.xOf(b[i].t))
                     if (x < -4 || x > width + 4) continue
+                    if (d !== null && (x + 6 < d[0] || x - 6 > d[0] + d[2])) continue
                     var h = Math.max(2, b[i].vel * s.plotH)
                     ctx.fillStyle = pass === 1 ? Theme.accent : s.roll.hue
                     ctx.globalAlpha = pass === 1 ? 1 : 0.8

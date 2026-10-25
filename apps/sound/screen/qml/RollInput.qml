@@ -6,7 +6,7 @@ import RostrumKit
 // drags every selected item in time and (notes) in pitch (Ctrl: no snapping, Shift: only in time, Alt: a copy;
 // one undo step). Empty space: a click clears the selection (the playhead stays; only the ruler moves it), a drag draws a box (Ctrl adds),
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
-// a note Note ▾ long (drag on: longer) or a hit. The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
+// a note Note ▾ long (drag on: longer) or a hit. A new note or hit goes in the grid cell under the pointer (timing.snap). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
 // just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
 // step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
 MouseArea {
@@ -54,7 +54,7 @@ MouseArea {
         var h = endUnder(e)
         if (h.id) { hit = h.id; mode = "hpress"; return }
         if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
-            hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y))
+            hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
             return
         }
@@ -90,8 +90,8 @@ MouseArea {
     onDoubleClicked: (e) => {   // empty space: a note on that key, or a hit on that drum (Select tool; Draw adds on a click)
         if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), 0) !== "") return
         mode = ""                  // the release that follows must not clear the new note's selection
-        if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)))
-        else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y))
+        if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)), 1 / bars.perSec)
+        else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
     }
 
     Rectangle {   // the box being dragged
