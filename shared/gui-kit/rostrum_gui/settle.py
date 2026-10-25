@@ -91,16 +91,29 @@ def loading(item) -> bool:
         p = item.property("progress")
         if isinstance(p, float) and p < 1:
             return True
-    return any(loading(c) for c in item.childItems())
+    return any(loading(c) for c in live(item.childItems()))
 
 
 def animating(obj) -> bool:
     """Any Animation, Behavior's animation or Transition under `obj` is running and will end (an endless one, loops
-    Infinite, is a spinner or a blink: not waited for). Walks `children()` (items and the animations they own)."""
-    for o in obj.children():
-        name = o.metaObject().className()
-        if ("Animation" in name or "Transition" in name) and o.property("running") is True and o.property("loops") != -2:
+    Infinite, is a spinner or a blink: not waited for; QML reads Infinite as -1, the C++ enum says -2). Walks
+    `children()` (items and the animations they own)."""
+    for o in live(obj.children()):
+        if any(o.inherits(c) for c in ANIMS) and o.property("running") is True and o.property("loops") not in (-1, -2):
             return True
         if animating(o):
             return True
     return False
+
+
+# every QML animation (NumberAnimation, a Behavior's, an Animator ...) and transition, by base class: o.inherits() asks
+# Qt itself, so the walk never makes a Python wrapper for each object's metaobject
+ANIMS = ("QQuickAbstractAnimation", "QQuickTransition", "QAbstractAnimation")
+
+
+def live(objs) -> list:
+    """The real objects among `children()` / `childItems()`. Mid-run, while windows and Loaders come and go, PySide can
+    hand back a stale wrapper for an object freed and remade at the same address (seen as a QMetaObject): asking it for
+    a property broke the whole check ("QMetaObject.property(str)"). Such a thing is no item on the screen."""
+    from PySide6.QtCore import QObject
+    return [o for o in objs if isinstance(o, QObject)]

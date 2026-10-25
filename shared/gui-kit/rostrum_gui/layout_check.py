@@ -24,6 +24,8 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QRectF
 
+from .settle import live
+
 MIN_CLICK = 16            # px (logical): smaller than this is hard to hit with a mouse
 SLACK = 2                 # px: anti-aliasing and rounding never count
 SHORT = 80                # px: a text taller than this is a block of text, not a row (a sliver of it is just scrolling)
@@ -102,11 +104,11 @@ def walk(win) -> list[Node]:
         out.append(node)
         if item.clip():
             clip, clipper = seen, node
-        for i, child in enumerate(item.childItems()):
+        for i, child in enumerate(live(item.childItems())):
             visit(child, node, f"{path}/{short(child)}#{i}", clip, clipper, layer, opacity)
 
     whole = QRectF(0, 0, root.width(), root.height())
-    for i, child in enumerate(root.childItems()):
+    for i, child in enumerate(live(root.childItems())):
         visit(child, None, f"{short(child)}#{i}", whole, None, "page", 1.0)
     return out
 
