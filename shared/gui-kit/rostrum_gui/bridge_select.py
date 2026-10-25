@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import time
 
+import shiboken6
+
 from PySide6.QtCore import Slot
 
 from . import commands, many, pointer_quiet, rows
@@ -13,6 +15,8 @@ from .after_frame import AfterFrame
 from .history_rows import who_name
 from .pending import finish_typing
 from .parts import SlotMixin
+
+AHEAD_ROWS = 3          # settings rows made ahead per frame (~1.5-4 ms each: make_panels_ahead)
 
 
 class SelectSlots(SlotMixin):
@@ -48,28 +52,43 @@ class SelectSlots(SlotMixin):
             self._show_panel()
 
     def make_panels_ahead(self, ids):
-        """The settings rows of these items' kinds, made ahead: one kind per frame, after the screen is drawn, parked
-        in the panel's model (absent) so a later pick of that kind finds its rows waiting (model_pick.py). A kind's
-        first panel made every row's control on the click that showed it (a first note drawn: ~20-30 ms)."""
-        for i in ids:
-            job = AfterFrame(None, self)
-            job._fn = lambda i=i, job=job: job.ask() if pointer_quiet.busy() else self._park_rows(i)   # never in a click
-            job.ask()
+        """The settings rows of these items' kinds, made ahead after the screen is drawn: each kind's page of the panel
+        (row_pages.py), hidden, its rows parked (absent) a few per frame, so a later pick of that kind finds its rows
+        waiting (model_pick.py). A kind's first panel made every row's control on the click that showed it (a first
+        note drawn: ~20-30 ms; a group's first Ctrl+G or a kind's first pick in 2D: ~30-90 ms). Never in a click; a
+        whole page at once held the screen ~30-60 ms, long enough to meet the next click."""
+        steps, job = self._ahead_steps(ids), AfterFrame(None, self)
 
-    def _park_rows(self, item_id):
+        def run():
+            if not shiboken6.isValid(self.model):     # the window closed meanwhile (a new project, the layout check's
+                return                              # next state): its panel is gone, nothing to make
+            if pointer_quiet.busy() or next(steps, None) is not None:
+                job.ask()                   # the next few rows after the next frame
+        job._fn = run
+        job.ask()
+
+    def _ahead_steps(self, ids):
+        for item_id in ids:
+            rows = self._rows_of(item_id) or []
+            shown = [r for r in rows if r.get("valid", True)]          # (a layout holds every setting; ~1 in 8 applies)
+            for n in range(0, len(shown), AHEAD_ROWS):
+                self.model.park(rows, shown[n:n + AHEAD_ROWS])
+                yield True
+
+    def _rows_of(self, item_id):
+        """The rows a pick of this item alone would show, worked out with nothing sent (None: gone, or picked now)."""
         k = self._kit
         if not self.doc.has(item_id) or item_id in k.selection:
-            return
+            return None
         was = (k.selection, k.sel, k.op_kind, k.static)
-        try:                                # the rows that item's pick would show, worked out with nothing sent
+        try:
             kind = self.doc.item(item_id)["type"]
             k.selection, k.sel = [item_id], item_id
             k.op_kind = (many.shared_op([self.doc.kind.registry.field_op(kind)]), kind)
             k.static = self._layout()
-            rows = self._rows()
+            return self._rows()
         finally:
             k.selection, k.sel, k.op_kind, k.static = was
-        self.model.park(rows)
 
     def _panel_later(self) -> AfterFrame:
         if self._kit.panel is None:

@@ -80,7 +80,18 @@ class RowPages(QAbstractListModel):
         their final state), updated in place at once (`instant`: a page coming back shows as it is now, no easing)."""
         self._show(rows, lambda p, new: p.reset(rows) if new else p.update(rows, instant or p is not self._page()))
 
-    def _show(self, rows: list[dict], fill):
+    def park(self, rows: list[dict], part: list[dict]):
+        """Made ahead (bridge_select.make_panels_ahead): the page of `rows`' layout, hidden (made empty the first
+        time), with `part` of its rows parked in it, their controls made; the pick that later shows it moves them
+        into place (model_pick.py) and only their values change."""
+        at, new = self._page_of(rows)
+        if new:
+            self._pages[at][1].reset([])
+        self._pages[at][1].park(part, ready=True)
+
+    def _page_of(self, rows: list[dict]) -> tuple[int, bool]:
+        """The index of the page of `rows`' layout (made, hidden, if there is none) and whether it was made now; it
+        becomes the page used last (the last to go)."""
         key = tuple(r.get("id") for r in rows)
         at = next((i for i, (k, _) in enumerate(self._pages) if k == key), -1)
         new = at < 0
@@ -93,6 +104,10 @@ class RowPages(QAbstractListModel):
         else:
             self._used.remove(key)
         self._used.append(key)
+        return at, new
+
+    def _show(self, rows: list[dict], fill):
+        at, new = self._page_of(rows)
         fill(self._pages[at][1], new)                    # filled while still hidden, then shown
         if at != self._at:
             self._at = at

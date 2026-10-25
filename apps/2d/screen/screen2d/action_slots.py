@@ -43,7 +43,7 @@ class ActionSlots(SlotMixin):
         self._hub = KeyHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._set_status,
                           preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
         self.panelShown.connect(self._hub.refresh)          # the panel's actions and the context bar come with the panel
-        self.docChanged.connect(self._hub.refresh)
+        self.docChanged.connect(self._hub.refresh_later)   # (an action's own pick then refreshes once: action_hub)
         self._keys.changed.connect(self._hub.refresh)       # Ease's keys (F9 …) follow the keys picked
         for sig in (self.timeChanged, self.playingChanged, self.markersChanged):   # Cut here, Frame home: at the playhead
             sig.connect(self._hub_at)

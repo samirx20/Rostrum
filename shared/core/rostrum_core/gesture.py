@@ -17,6 +17,7 @@ class Gesture:
     def __init__(self, doc, label, who):
         self.doc, self.label, self.who = doc, label, who
         self.change, self.cancelled, self._calls = None, False, []
+        self._stepped = False        # a step was shown: listeners saw a state that the end must take back or keep
 
     def __enter__(self):
         if self.doc._gesture is not None:
@@ -32,6 +33,7 @@ class Gesture:
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = calls          # the last step says where the drag ended
+        self._stepped = True
         self.doc._emit(Event("preview", edits=edits))     # what this step changed: listeners redo only that
 
     def cancel(self):
@@ -42,6 +44,8 @@ class Gesture:
         end, end_idx = self.doc.data, self.doc._index()
         self.doc.data = self.start
         self.doc._indexed(self.start, self._start_idx)
+        if not self._stepped:        # a press and a release with no step between (a click): nothing was shown, so
+            return False             # nothing to take back; a reset made every listener redo its work (~7 ms a pick)
         if exc_type or self.cancelled:
             self.doc._emit(Event("reset"))
             return False

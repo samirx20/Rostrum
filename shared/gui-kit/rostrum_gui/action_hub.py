@@ -12,7 +12,7 @@ that raises is reported by name (qt_faults: the person sees "Select inside didn'
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from . import commands as command_box
 from . import action_views as views
@@ -39,6 +39,10 @@ class ActionHub(QObject):
         self._offered: list = []
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
         self._hold = KeyHold(self, action_list.keymap)     # watches releases only when the map has hold keys
+        self._later = QTimer(self)                          # refresh_later: once, when this turn of the loop is over
+        self._later.setSingleShot(True)
+        self._later.setInterval(0)
+        self._later.timeout.connect(self.refresh)
 
     def _now(self):
         facts = self._facts()
@@ -80,6 +84,7 @@ class ActionHub(QObject):
         """Call after the selection or the document changed. Re-sends only what changed: a drag step that leaves the
         actions alone redraws neither row."""
         self._refreshed = True
+        self._later.stop()
         facts, entries = self._now()
         bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
         if bar != self._bar:
@@ -92,6 +97,13 @@ class ActionHub(QObject):
         if offered != self._offered:
             self._offered = offered
             self.offeredChanged.emit()
+
+    @Slot()
+    def refresh_later(self):
+        """`refresh` once the event being handled is done (connect a document change here): an action that changes
+        the document and then picks what it made (Ctrl+G's group) refreshed for the change and again for the pick,
+        each rebuilding the bar and the panel's buttons (~6-12 ms); a `refresh` meanwhile is that one."""
+        self._later.start()
 
     @Slot(result="QVariantList")
     def menu(self):
