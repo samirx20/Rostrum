@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Blocks.js" as Blocks
 
 // The Editor (bottom dock): the selection's track up close. Notes: bars on a keyboard (drag = time and pitch,
 // double-click empty space = a new note, Delete removes). Drums: one row per drum. Recorded clips: their
@@ -10,7 +11,13 @@ import RostrumKit
 Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
-    readonly property var blocks: backend.rollBlocks        // its notes / hits / clips, sent alone (an edit on them)
+    readonly property var blocks: patched || backend.rollBlocks    // its notes / hits / clips, sent alone (an edit on them)
+    property var patched: null                              // a few of them changed since (backend.rollPatched)
+    Connections {
+        target: backend
+        function onRollPatched(gone, put) { p.patched = Blocks.patch(p.blocks, gone, put) }
+        function onRollBlocksChanged() { p.patched = null }
+    }
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
     BarRuler {

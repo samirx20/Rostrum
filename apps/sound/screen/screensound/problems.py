@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer
 from rostrum_core import RostrumError
+from rostrum_gui import pointer_quiet
 from rostrum_gui.problems import ProblemsList
 from rostrum_sound.diagnose import problems
 
@@ -41,6 +42,8 @@ def make(bridge, cleaning=None) -> ProblemsList:
         bridge.select(row["item"])
     plist = ProblemsList(jump, bridge)
     def show(*_):
+        if pointer_quiet.busy():                     # never inside a click or a drag: a moment later
+            return later.start()
         plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
     later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=show)   # once, after the edit is drawn: the
     if cleaning:                                     # chip is never what the pointer waits for (a drop ran it twice)

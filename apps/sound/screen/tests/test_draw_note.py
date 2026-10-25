@@ -1,5 +1,5 @@
 """Drawing a note is one undo step ("Draw note"), however far the pointer drags on, and the new note is selected."""
-from test_select import bridge  # noqa: F401  (the fixture: a small song, the engine stood in for)
+from test_select import bridge, drag  # noqa: F401  (the fixture: a small song, the engine stood in for)
 
 
 def test_draw_then_drag_longer_is_one_step_and_selected(bridge):  # noqa: F811
@@ -37,19 +37,41 @@ def test_a_note_drawn_where_the_last_one_ends_is_kept(bridge):  # noqa: F811
     assert second and second != first and bridge.doc.has(first) and bridge.doc.has(second)
 
 
-def test_an_edit_on_notes_sends_only_their_blocks(bridge):  # noqa: F811
-    """A note added or undone reaches the row's blocks and the roll's blocks, while the layouts (`tracks`, `roll`)
-    send nothing: a block missed there would be a note missing from the screen (rows_view.shape, critic r4 M4)."""
-    heard = []
-    for s in ("timelineChanged", "rollChanged", "rollBlocksChanged"):
-        getattr(bridge, s).connect(lambda s=s: heard.append(s))
-    m = bridge.trackRows
+
+def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
+    """What the screen shows for the lead row and the roll, kept as the QML does (whole lists, patches, resets,
+    block_patch.py), always equals the song: a missed patch would be a note missing from the screen, or one that
+    stays after its undo. The layouts (`tracks`, `roll`) say nothing for a note's edit (critic r4 M4)."""
+    import json
+    from screensound.block_patch import apply
+    m, heard = bridge.trackRows, []
     row = next(i for i in range(m.rowCount()) if m.rows[i]["id"] == "lead")
-    blocks = lambda: m.data(m.index(row), m._ids["blocks"])        # noqa: E731  the row model's "blocks" role
+    role = lambda: m.data(m.index(row), m._ids["blocks"])        # noqa: E731  the row model's "blocks" role
+    screen = {"row": role(), "roll": bridge.rollBlocks}
+    def patch(k, gone, put):
+        screen[k] = apply(screen[k], gone, put)
+    m.dataChanged.connect(lambda *_: screen.update(row=role()))
+    bridge.blocksPatched.connect(lambda k, g, p: k == "lead" and patch("row", g, p))
+    bridge.blocksReset.connect(lambda k: k == "lead" and screen.update(row=role()))
+    bridge.rollPatched.connect(lambda g, p: patch("roll", g, p))
+    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=bridge.rollBlocks))
+    for s in ("timelineChanged", "rollChanged"):
+        getattr(bridge, s).connect(lambda s=s: heard.append(s))
+
+    def same():
+        key = lambda bl: sorted(json.dumps(b, sort_keys=True) for b in bl)       # noqa: E731
+        truth = next(r for r in bridge.rows_now() if r["id"] == "lead")["blocks"]
+        assert key(screen["row"]) == key(truth) and key(screen["roll"]) == key(bridge._view["roll"]["blocks"])
     nid = bridge.drawAt(1.0, 62)
     bridge.endDrag()
-    assert nid in {b["id"] for b in bridge.rollBlocks} and nid in {b["id"] for b in blocks()}
-    assert "rollBlocksChanged" in heard and "rollChanged" not in heard and "timelineChanged" not in heard
-    assert all("blocks" not in r for r in bridge.tracks) and "blocks" not in bridge.roll
+    same()
+    assert heard == [] and all("blocks" not in r for r in bridge.tracks) and "blocks" not in bridge.roll
+    drag(bridge, nid, 0.5, 2)
+    same()
     bridge.undo()
-    assert nid not in {b["id"] for b in bridge.rollBlocks} and nid not in {b["id"] for b in blocks()}
+    same()
+    bridge.undo()
+    same()
+    assert nid not in {b["id"] for b in screen["roll"]}
+    bridge.redo()
+    same()

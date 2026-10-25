@@ -30,9 +30,9 @@ class Transport(QObject):
     failed = Signal(str)
     said = Signal(str)             # a plain one-line notice for the status (not an error)
 
-    def __init__(self, schedule_fn, length_fn, parent=None, held=lambda: False):
+    def __init__(self, schedule_fn, length_fn, parent=None, held=lambda: False, pointing=lambda: False):
         super().__init__(parent)
-        self._schedule, self._length, self._held = schedule_fn, length_fn, held
+        self._schedule, self._length, self._held, self._pointing = schedule_fn, length_fn, held, pointing
         self.last: dict = {}
         self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
         self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
@@ -62,8 +62,8 @@ class Transport(QObject):
 
     def render(self):
         self.stale = True
-        if self._held():                       # a drag is open: its release asks again (changed); wait till then
-            self._debounce.start()
+        if self._held() or self._pointing():   # a drag is open (its release asks again), or the person is clicking:
+            self._debounce.start()             # the render thread's work on the song shares the screen's time
             return
         self._set_state("Rendering…")
         try:
@@ -103,16 +103,15 @@ class Transport(QObject):
         if not self._want and not settings.load()["exclusive"]:
             self.player.warm()       # the first render opens the player, stopped: the first Play starts at once (it
                                      # waited ~0.5 s for the process); "Use speakers alone" keeps them free until Play
-        if self._held():
-            self._told.start()       # a drag is open: what shows the render (loudness, meters, Problems) follows
-        else:                        # when it lands (~20 ms the pointer must not wait for; the drop renders again)
-            self._tell()
+        self._tell()                 # what shows the render (loudness, meters, Problems): once the pointer is quiet
         if self._want:
             self._want = False
             self._play(self._at)
 
     def _tell(self):
-        if self._held():
+        """The render's news, unless a drag is open or the person is pointing (5-30 ms the pointer must not wait
+        for; a drag's drop renders again): then a moment later, asked again."""
+        if self._held() or self._pointing():
             return self._told.start()
         self.renderChanged.emit()
         self._show_state()

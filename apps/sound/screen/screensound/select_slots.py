@@ -8,6 +8,8 @@ person's undo / redo, what that step touched is selected again (read from the ch
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QTimer, Signal, Slot
+from rostrum_gui import pointer_quiet
+
 from . import selection, timing
 
 SETTLE_MS = 40      # a press's outline and first moves are drawn before the settings panel is made (_settle)
@@ -91,6 +93,8 @@ class SelectSlots:
             QTimer.singleShot(SETTLE_MS, self, self._settled)
 
     def _settled(self):
+        if pointer_quiet.busy():                 # the person is still clicking or dragging: the panel waits for a quiet
+            return QTimer.singleShot(SETTLE_MS, self, self._settled)    # pointer, never inside a click (M4)
         if self.__dict__.get("_unsettled") and self._drag is None and self._kit.scrub is None:
             self._pick([i for i in self._picks.ids if self.doc.has(i)], self._picks.anchor)
 

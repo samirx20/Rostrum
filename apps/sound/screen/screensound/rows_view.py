@@ -13,7 +13,7 @@ on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
 """
 from __future__ import annotations
 
-from . import lanes, stepped, timeline, voice_card, voice_takes
+from . import block_patch, lanes, stepped, timeline, voice_card, voice_takes
 
 
 MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
@@ -24,12 +24,20 @@ def shape(part: dict) -> dict:
     return {**{k: v for k, v in part.items() if k != "blocks"}, "sound": bool(part.get("blocks"))}
 
 
-def lane_rows(rows) -> list[dict]:
-    """The row model's rows: the layout and the blocks as two roles, so a block change signals only `blocks`."""
-    return [{"id": r["id"], "track": shape(r), "blocks": r.get("blocks", [])} for r in rows]
 
 
 class RowsView:
+    def _send_rows(self, rows, before):
+        """The row model's rows (the layout and the blocks as two roles, so a block change signals only `blocks`);
+        a small block change goes as a patch instead (block_patch.py). `before`: the rows the screen shows (None:
+        every row whole, as after tracks came, went or moved)."""
+        held, patches, resets = self._held.send(rows, before)
+        self._lanes.update([{"id": r["id"], "track": shape(r), "blocks": held[r["id"]]} for r in rows], instant=True)
+        for k in resets:
+            self.blocksReset.emit(k)
+        for k, gone, put in patches:
+            self.blocksPatched.emit(k, gone, put)
+
     def rows_now(self) -> list[dict]:
         """The arrangement's rows with their blocks, as made (QML's `tracks` is their layout only)."""
         return self._view["rows"]
@@ -60,7 +68,7 @@ class RowsView:
         self.timelineChanged.emit()
         self.pictureChanged.emit()
         self.markersChanged.emit()
-        self._lanes.update(lane_rows(rows), instant=True)   # after: `tracks` is new for the rows made
+        self._send_rows(rows, None)                 # after: `tracks` is new for the rows made
         self.rollBlocksChanged.emit()             # the blocks first: the layout's handlers (framing the keys) read them
         self.rollChanged.emit()
         self.viewChanged.emit()
@@ -83,7 +91,8 @@ class RowsView:
         rows = timeline.arrange(root, tracks, self._open, self._folded)
         self._marks_on([t for t in tracks if t["id"] in changed])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
-        same = rows == self._view["rows"]             # a fader or a pan moves no row: the screen is told nothing
+        before = self._view["rows"]
+        same = rows == before                         # a fader or a pan moves no row: the screen is told nothing
         self._view["rows"] = rows
         song = timeline.song(root, tracks, self._view["markers"])
         if song != self._view["song"]:
@@ -97,7 +106,7 @@ class RowsView:
             if laid != self._view["shape"]:
                 self._view["shape"] = laid
                 self.timelineChanged.emit()
-        self._lanes.update(lane_rows(rows), instant=True)
+        self._send_rows(rows, before)
         if self._track in changed:
             self._send_roll(self._roll(rows))
 
@@ -107,7 +116,11 @@ class RowsView:
         laid, moved = shape(roll), roll.get("blocks") != before.get("blocks")
         relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
         if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
-            self.rollBlocksChanged.emit()
+            p = block_patch.diff(before.get("blocks"), roll.get("blocks", []))
+            if p:
+                self.rollPatched.emit(*p)     # a few: the screen patches the list it shows (block_patch.py)
+            else:
+                self.rollBlocksChanged.emit()
         if relaid:
             self.rollChanged.emit()
 

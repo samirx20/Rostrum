@@ -13,7 +13,7 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge, many
+from rostrum_gui import DocBridge, many, pointer_quiet
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.model import RowsModel
@@ -25,7 +25,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import block_patch, cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
@@ -61,6 +61,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._shown = None                  # a drag's step makes again only the tracks it changed (stepped.py)
         self._stepping = False              # a gesture is open (its steps came, its change not yet): the sound waits
         self._lanes = RowsModel(("track", "blocks"), None)   # the arrangement's rows by track id: a row that stays keeps its delegate
+        self._held = block_patch.RowBlocks()  # each row's blocks as the row model holds them (patches since: rows_view)
         self._tv = TimeViewObject()         # which stretch of the song is on screen (screen state, not an edit)
         self._zoom = self._tv.view
         self._open: dict = {}               # track id -> (item id, lane) of the automation lane shown under its row
@@ -87,7 +88,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.selectedItemsChanged.connect(self._drop_point)
         self._follow_selection()
         self._rebuild()
-        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping)
+        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping, pointing=pointer_quiet.busy)
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
