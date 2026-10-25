@@ -9,7 +9,10 @@ from rostrum_core import project as P
 from . import clean_clips, cleanup
 from .doc import media, past_end
 
-KINDS = ("missing-file", "outside-project", "pending-take", "broken-tie", "after-the-end", "no-longer-made")
+# every kind of problem and its name on the chip: ONE list (the chip never looks a kind up anywhere else)
+LABELS = {"missing-file": "Missing file", "outside-project": "File outside the song", "pending-take": "Cleaned take not made",
+          "broken-tie": "Note ends before it starts", "after-the-end": "Sounds after the end", "no-longer-made": "No longer made"}
+KINDS = tuple(LABELS)
 
 
 def said(found: list[dict]) -> str:

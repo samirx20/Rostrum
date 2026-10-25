@@ -80,16 +80,14 @@ Rectangle {
             Rectangle { x: 2; y: 0; width: 6; height: 7; radius: 3; color: "transparent"; border.width: 1.2; border.color: Theme.warn }
             Rectangle { x: 0; y: 5; width: 10; height: 7; radius: 1.5; color: Theme.warn }
         }
-        TextInput {   // F2 / double-click the name: rename in place (Enter keeps it, Esc or clicking away cancels)
+        NameBox {   // F2 / double-click the name: rename in place (Enter keeps it, Esc or clicking away cancels)
             id: rename
+            objectName: "trackNameBox"
             visible: backend.renaming === h.track.id
+            current: h.track.name
             x: nameText.x - 3; width: nameText.width + 3; anchors.verticalCenter: parent.verticalCenter
-            font.family: uiFont; font.pixelSize: Theme.body; color: Theme.fg; selectByMouse: true; clip: true
-            selectionColor: Theme.accent
-            onVisibleChanged: if (visible) { text = h.track.name; forceActiveFocus(); selectAll() }
-            onAccepted: backend.finishRename(h.track.id, text)
-            Keys.onEscapePressed: backend.finishRename(h.track.id, "")
-            onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(h.track.id, "")
+            onDone: (t) => backend.finishRename(h.track.id, t)
+            onCancelled: backend.finishRename(h.track.id, "")
             Rectangle { z: -1; anchors.fill: parent; anchors.margins: -2; radius: 3; color: Theme.sunken; border.color: Theme.accent }
         }
     }

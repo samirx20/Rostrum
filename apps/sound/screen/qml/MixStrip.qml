@@ -5,7 +5,7 @@ import RostrumKit
 import "MixFormat.js" as F
 
 // One track's, bus' or the master's strip, top to bottom: a cap in the track's colour and its name, its effects (one
-// line each, "+ Effect"), its sends and ducks, where it plays to, pan, the level block (dB scale, fader, meter with its
+// line each, "+ Effect" pinned under them), its sends and ducks, where it plays to, pan, the level block (dB scale, fader, meter with its
 // peak), M S R and the volume. Editing works on the strip at once (one change on it) and selects it; the inspector follows the release.
 Rectangle {
     id: s
@@ -40,7 +40,7 @@ Rectangle {
                 font.pixelSize: Theme.title; font.weight: Font.DemiBold
                 MouseArea { anchors.fill: parent; onPressed: s.pick() }
             }
-            MixChain {   // one line per effect, then "+ Effect"; scrolls past three lines
+            MixChain {   // one line per effect (scrolls past three), "+ Effect" pinned under them
                 Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, s.low ? 72 : 94)
                 chips: s.model.effects; ownerId: s.model.id
             }
@@ -77,7 +77,7 @@ Rectangle {
                     text: "…"   // the same on every strip: the output's name keeps the room
                     tip: sendsPop.opened ? "" : "Reverb send, sends to groups and dips"
                     onClicked: sendsPop.opened ? sendsPop.close() : sendsPop.open()
-                    QQC.Popup {
+                    SmallPopup {
                         id: sendsPop
                         // above the button (the Mixer sits at the bottom of the window), inside the window
                         y: Math.max(8 - sendsBtn.mapToItem(null, 0, 0).y, -implicitHeight - 2)

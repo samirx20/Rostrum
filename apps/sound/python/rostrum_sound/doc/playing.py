@@ -10,7 +10,7 @@ from __future__ import annotations
 from rostrum_core import Param
 
 from .. import names, voice
-from . import plugins
+from . import plugins, sounds
 from . import values as V
 
 N = V.N
@@ -57,12 +57,16 @@ INSTRUMENT_WORDS = {"none": "None (clips only)", "builtIn": "Built-in sound", "s
                     "synth": "Synth", "voice": "Spoken voice", "plugin": "Plug-in instrument"}
 KIT_WORDS = {"synth": "Built-in kit"}          # "Synth" is also an instrument: a kit is called what it is
 INSTRUMENT = [
-    # The form of the instrument is the track's kind, not a setting a person flips: the Library (Add sound, or a
-    # selected track + a sound there) changes it, an agent sets it here. The screen shows the one choice that is left:
-    # Sound (a built-in sound or a played instrument), Kit, Speaker; an audio track has none (shown="script").
+    # The form of the instrument and the field that names it are never shown: the one Sound picker (below) sets both.
+    # An audio track has none (valid_when).
     Param.choice("instrument", names.INSTRUMENTS, group="Instrument", label="Instrument", labels=INSTRUMENT_WORDS, shown="script",
                  help="What plays the track's notes / hits; none = recorded clips only."),
-    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Sound", valid_when=IS("instrument", "builtIn")),
+    # One Sound picker for the whole track (any instrument, kit or voice): `track.set {sound: key}` sets the instrument and
+    # the field that names it, and the track's name follows (doc/sounds.py). Never stored: the panel reads it from the track.
+    Param.text("sound", group="Instrument", label="Sound", control="pick", valid_when=sounds.VALID,
+               help=f"What plays the track's notes, hits or lines: {', '.join(sounds.KEYS)} (the ones its content suits: notes an "
+                    "instrument, hits the drum kit, lines a voice). The content stays; the name follows unless you renamed the track."),
+    Param.choice("builtIn", names.BUILT_INS, group="Instrument", label="Built-in sound", shown="script", valid_when=IS("instrument", "builtIn")),
     Param.text("sfz", group="Instrument", label="SFZ file", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "sfz")),
     Param.toggle("legato", group="Instrument", importance="secondary", valid_when=IS("instrument", "sfz"),
                  help="Notes that overlap glide into each other (one bowed line)."),
@@ -71,12 +75,12 @@ INSTRUMENT = [
     V.mapping("articulations", "articulations", group="Instrument", importance="secondary",
               valid_when=IS("instrument", "sfz"), help="Other playing styles of this instrument, each its own SFZ "
               'file ({"spiccato": "…spic.sfz"}); a note picks one with art.'),
-    Param.choice("kit", names.KITS, group="Instrument", label="Kit", labels=KIT_WORDS, valid_when=IS("instrument", "kit")),
+    Param.choice("kit", names.KITS, group="Instrument", label="Kit", labels=KIT_WORDS, shown="script", valid_when=IS("instrument", "kit")),
     Param.text("kitSfz", group="Instrument", label="SFZ drum kit", control="file", filters=["SFZ instruments (*.sfz)"], valid_when=IS("instrument", "kitSfz")),
-    Param.choice("model", names.MODELS, group="Instrument", label="Sound", valid_when=MODEL,
+    Param.choice("model", names.MODELS, group="Instrument", label="Played instrument", shown="script", valid_when=MODEL,
                  help="A played (procedural) instrument: plucked strings, struck bars or a bowed violin."),
     *touch(),
-    Param.choice("voice", voice.VOICES, group="Instrument", label="Speaker", valid_when=VOICE,
+    Param.choice("voice", voice.VOICES, group="Instrument", label="Speaker", labels=voice.SPEAKER_WORDS, shown="script", valid_when=VOICE,
                  help="Who speaks the track's lines (a preset voice)."),
     Param.choice("language", voice.LANGUAGES, group="Instrument", label="Language", valid_when=VOICE,
                  help="The language the lines are spoken in; auto = from the text."),

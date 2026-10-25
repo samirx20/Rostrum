@@ -10,6 +10,8 @@ from rostrum_core import RostrumError, run
 from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
 
+from .moves import remove_calls
+
 TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
 REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
 
@@ -117,7 +119,7 @@ def duplicate(f):
 
 
 def delete(f):
-    return [call(f"{k}.remove", ids) for k, ids in f.by_kind(REMOVABLE).items()]
+    return [c for k, ids in f.by_kind(REMOVABLE).items() for c in remove_calls(f.doc, k, ids)]
 
 
 def toggle_all(field):

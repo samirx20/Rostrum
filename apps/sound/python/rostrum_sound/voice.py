@@ -26,6 +26,14 @@ from rostrum_core.cache import Cache, cache_key
 from . import memory, settings
 
 VOICES = ("ryan", "aiden", "vivian", "serena", "uncle_fu", "dylan", "eric", "ono_anna", "sohee")
+SPEAKER_WORDS = {v: " ".join(w.capitalize() for w in v.split("_")) for v in VOICES}     # "uncle_fu" -> "Uncle Fu": a name, every word capitalised
+
+
+def speaker_name(v: str) -> str:
+    """A speaker as a person's name; the one place that spells it (the Library, the Sound picker, the Speaker field)."""
+    return SPEAKER_WORDS.get(v) or " ".join(w.capitalize() for w in str(v).split("_"))
+
+
 LANGUAGES = ("auto", "english", "chinese", "japanese", "korean", "german", "french", "russian", "portuguese",
              "spanish", "italian")
 ENGINE = "qwen3-tts-1.7b-customvoice-q6k@qwentts-01b6127"   # bump when anything that decides the audio changes

@@ -77,7 +77,7 @@ def _param(field_name, specs, kind):
     if first.default == BANDS:
         return V.listof("bands", _band_rule, _band_schema, help="EQ bands: {shape, freq, gain, q}", **kw)
     if first.default == SPACE:
-        return Param.choice("space", names.SPACES, label="Space", default="hall", **kw)
+        return Param.choice("space", names.SPACES, labels=names.SPACE_WORDS, label="Space", default="hall", **kw)
     if first.default == TOGGLE:
         return Param.toggle(field_name, default=False, **kw)
     lo, hi = min(s.lo for s in specs), max(s.hi for s in specs)

@@ -32,8 +32,22 @@ AppShell {
     // Export: the kit's sheet in the settings panel's place (Ctrl+E; Ctrl+Shift+E again: AppShell), filled with Sound's
     // targets and settings (screensound/export.py, ExportSettings.qml); the job chip comes with it. Problems: the kit chip.
     exporter: shell.hasSound ? mixer.export : null
+    noExportWhy: "Nothing to export yet: add a sound first"
     exportSettings: ExportSettings { }
     problems: mixer.problems
+    // Ctrl+K named a key-map job only the window can run (palette.py): the file jobs, Preferences, Quit, the song's tempo, the grid,
+    // else the kit's own (undo, Export, History, Guides, the Keys list ...: AppShell.runJob, the same call their keys make)
+    function runSoundJob(job) {
+        const files = { new: "new", open: "open", save_version: "version", duplicate_file: "duplicate" }
+        if (files[job]) fileMenu.source.pickLater(files[job])
+        else if (job === "preferences") settingsPanel.open()
+        else if (job === "quit") Qt.quit()
+        else if (job === "add_file") arrangement.addFromFile()
+        else if (job === "tempo") openSong()
+        else if (job === "grid") openGrid()
+        else shell.runJob(job)
+    }
+    Connections { target: backend; function onJobWanted(job) { shell.runSoundJob(job) } }
     function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
     // Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S: the kit's FilesMenu makes them (from the key map)
     Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
@@ -49,7 +63,7 @@ AppShell {
         const f = activeFocusItem
         return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
     }
-    KeyMap { hub: backend.actions; enabled: !shell.typing && !startScreen.visible; skip: backend.actions.skip }
+    KeyMap { hub: backend.actions; enabled: !startScreen.visible; typing: shell.typing; whileTyping: ["library"]; skip: backend.actions.skip }
     // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
     // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)

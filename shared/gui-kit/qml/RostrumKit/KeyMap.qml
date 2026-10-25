@@ -11,6 +11,10 @@ Instantiator {
     property var hub
     property bool enabled: true
     property var skip: []
+    // `typing`: a text field has the keys, so the window's keys wait. `whileTyping`: the jobs that still answer then
+    // (a panel's own toggle key: Ctrl+L must close the Library whose search box has the keyboard).
+    property bool typing: false
+    property var whileTyping: []
     // the jobs the kit's AppShell binds itself (and the app's own Export through it), never made here
     readonly property var shell: ["undo", "redo", "command_box", "history", "guides", "key_list", "next_area",
                                   "fold_panels", "export", "export_again"]
@@ -20,7 +24,7 @@ Instantiator {
         sequences: modelData.keys
         context: Qt.WindowShortcut
         autoRepeat: !modelData.hold
-        enabled: km.enabled && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
+        enabled: km.enabled && !(OpenPopups.count > 0 && modelData.keys.indexOf("Esc") >= 0) && (!km.typing || km.whileTyping.indexOf(modelData.job) >= 0) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
         onActivated: km.hub.key(modelData.job)
     }
 }

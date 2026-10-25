@@ -41,7 +41,7 @@ root (tempo, length, beatsPerBar, sampleRate)
 ```
 
 Operations: `doc.set`, `track.add/set/remove`, `note.add/add_many/set/remove`, `hit.add/add_many/set/remove`,
-`clip.add/set/remove`, `effect.add/set/remove` (on a track, clip or the master), `automation.set` (replace a lane;
+`clip.add/set/remove`, `effect.add/set/remove/move` (on a track, clip or the master; `effect.move {to}` reorders a chain), `track.move {by | after}`, `track.set {sound}` (changes a track's sound, keeping its notes: doc/sounds.py), `automation.set` (replace a lane;
 empty points remove it), `marker.add/set/remove`, `master.set`.
 
 ## Script API

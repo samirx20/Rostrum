@@ -64,7 +64,8 @@ FieldFrame {
         const t = String(Number(Number(value).toFixed(9))).replace("-", "−")
         return t === text ? "" : t
     }
-    function reset() { if (hasDefault) { f.edited(Math.max(from, Math.min(to, Number(defaultValue)))); f.input.focus = false } }
+    // The caret leaves first: leaving commits the shown text (the old value), which must not land after the reset.
+    function reset() { if (hasDefault) { f.input.focus = false; f.edited(Math.max(from, Math.min(to, Number(defaultValue)))) } }
 
     editable: true
     engaged: scrub.scrubbing
@@ -127,9 +128,11 @@ FieldFrame {
         }
         onReleased: {
             if (scrubbing) { scrubbing = false; f.scrubEnded(); return }
+            if (justReset) { justReset = false; return }
             f.input.forceActiveFocus(); f.input.selectAll(); twice.restart()
         }
-        onDoubleClicked: f.reset()
+        property bool justReset: false      // the second release of a reset opens no caret
+        onDoubleClicked: { justReset = true; f.reset() }
         onCanceled: if (scrubbing) { scrubbing = false; f.scrubEnded() }
     }
 }

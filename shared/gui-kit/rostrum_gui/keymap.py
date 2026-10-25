@@ -87,6 +87,8 @@ _MODIFIER_KEYS = {"ctrl", "control", "alt", "altgr", "shift", "meta", "super", "
 
 def normal(key: str) -> str:
     """One spelling per key: "ctrl+shift+g" and "Shift+Ctrl+G" are both "Ctrl+Shift+G"; Escape is Esc."""
+    if key.strip() == "+":                      # the Plus key on its own (Qt names it so when it comes up)
+        return "+"
     parts = [p.strip() for p in key.replace("++", "+plus").split("+")]
     mods, rest = set(), []
     for p in parts:

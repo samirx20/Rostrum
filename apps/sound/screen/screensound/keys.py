@@ -29,7 +29,14 @@ WORDS = {
     "frame_back_ten": "Playhead back ten grid steps", "frame_on_ten": "Playhead on ten grid steps",
     "prev_event": "Previous start, end or marker", "next_event": "Next start, end or marker",
 }
-KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=("prev_beat", "next_beat", "go_in", "go_out", "find_item"), words=WORDS)   # Sound is the beat grid: no beat keys of its own; nothing behind Go in / Go out / Find an item
+# Shared jobs Sound has nothing behind: no key, and not on the Keys sheet (test_keys_wired keeps the sheet honest:
+# every key listed runs a ROUTE, an action, a SKIP job (files, undo ...) or the kit's AppShell)
+NOT_HERE = ("prev_beat", "next_beat", "go_in", "go_out", "find_item",     # Sound is the beat grid: no beat keys of its own; nothing behind Go in / Go out / Find an item
+            "play_from_selection", "next_item", "prev_item", "nudge_up_fine", "nudge_down_fine", "front", "back", "hide",
+            "trim_start", "trim_end", "copy_style", "paste_style", "key_here", "animated_rows", "smooth", "ease_in",
+            "ease_out", "jump", "actual_size", "notes_tool", "paste_other")
+SHELL = ("history", "key_list", "fold_panels", "next_area", "find_setting")      # bound by the kit's AppShell / Inspector
+KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=NOT_HERE, words=WORDS)
 
 _NUDGE = {"": "grid", "_big": "bar", "_fine": "fine"}
 ROUTES = {
@@ -44,6 +51,9 @@ ROUTES = {
     **{f"nudge_{d}{s}": ("nudge", how, 1 if d == "right" else -1) for d in ("left", "right") for s, how in _NUDGE.items()},
     "nudge_up": ("pitchStep", 1), "nudge_down": ("pitchStep", -1), "nudge_up_big": ("pitchStep", 12),
     "nudge_down_big": ("pitchStep", -12),
+    "pitch_scale_up": ("pitchScaleStep", 1), "pitch_scale_down": ("pitchScaleStep", -1),
+    "add_section": ("songDo", "add_section", ""),                       # no key: Ctrl+K and the song panel's "+ Section"
+    "to_end": ("toEnd",), "next_marker": ("markerJump", 1), "prev_marker": ("markerJump", -1),
     "move_tool": ("setTool", "select"), "paint_tool": ("setTool", "draw"),        # V / B: the Editor's tools
     "snap": ("toggleSnap",),
     "editor_dock": ("dock", "editor"), "mixer_dock": ("dock", "mixer"), "library": ("dock", "library"),

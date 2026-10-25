@@ -124,7 +124,7 @@ class EditSlots:
         if len(self.selectedIds) > 1:
             return self._hub.run("delete")
         if self._sel and self.doc.has(self._sel):
-            self._guard(lambda: self._apply([moves.remove_call(self.doc, self._sel)], "Delete"))
+            self._guard(lambda: self._apply(moves.remove_calls(self.doc, self.doc.item(self._sel)["type"], [self._sel]), "Delete"))
 
     @Slot(str, result=bool)
     def beginDrag(self, item_id):
