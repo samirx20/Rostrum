@@ -14,6 +14,7 @@ Ruler {
     unit: "seconds"
     markers: backend.markers
     editMarkers: backend.markerEdit.available
+    markerSource: backend.markerEdit              // right-click a flag: its menu (Rename, Move to playhead, Colour, Delete)
     onScrubbed: (t) => backend.setTime(t)       // an app adds its own (2D: a burst of the sound, Main.qml)
     onMarkerMoved: (id, at) => backend.markerEdit.move(id, at)
     onMarkerRenamed: (id, name) => backend.markerEdit.rename(id, name)

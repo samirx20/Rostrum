@@ -41,7 +41,7 @@ IconButton {
     MenuSpot { id: spot; anchor: root; menu: menu; x0: Theme.gap }
     ActionMenu {
         id: menu
-        onPicked: (v) => { if (root.extra.some(e => e.value === v)) root.picked(v); else root.source.pick(v) }
+        onPicked: (v) => { if (root.extra.some(e => e.value === v)) root.picked(v); else Qt.callLater(() => root.source.pick(v)) }      // later: New / Open swap the whole screen, and this menu goes with it (never inside its own handler)
     }
     Connections {
         target: root.source

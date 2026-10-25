@@ -120,6 +120,8 @@ class KeyBar(QObject):
         """[bounce, speed] of the first key's spring."""
         return list(springs.feel_of(self._first())) if self.ease == "spring" else []
 
+    easeOnKey = Property(bool, lambda self: True, constant=True)    # a key's right-click is the Ease list (the kit's KeyDot.qml), as the guides say
+
     @Slot(float, float)
     def askMenu(self, x, y):
         self.menuAsked.emit(x, y)
