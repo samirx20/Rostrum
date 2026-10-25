@@ -200,6 +200,8 @@ def _do_step(bridge, win, step, recorder=None):
             raise RuntimeError(f"step {step!r}: the marker didn't move")
     elif word == "picture-start":            # picture-start <marker name>|none
         bridge.setPictureStart("" if rest[0] == "none" else rest[0])
+    elif word == "inkey":                     # inkey keep|rows: a row of the In key ▾ menu, as a click on it
+        bridge.toggleKeyLock(rest[0])
     elif word == "add-note":
         bridge.addNote(float(rest[0]), int(rest[1]))
     elif word == "delete":

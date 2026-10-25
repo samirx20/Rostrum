@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer
 
-from . import block_patch, drum_rows, lanes, stepped, timeline, voice_card, voice_takes
+from . import block_patch, drum_rows, key_lock, lanes, stepped, timeline, voice_card, voice_takes
 from .block_memo import BlockMemo
 
 
@@ -239,7 +239,7 @@ class RowsView:
         if roll["kind"] == "notes":
             self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
         self._marks_on([roll])
-        return roll
+        return key_lock.fold(roll, root) if self.onlyKeyRows else roll
 
     def _marks_on(self, rows):
         side = getattr(self, "side", None)               # lines being spoken say so on their blocks

@@ -18,7 +18,7 @@ REGISTRY.operation("master.set", "Change the master bus: level, loudness target,
                    target="master", params=FD.params("master"), label="Edit master", fields=True)(set_fields)
 REGISTRY.operation("effect.set", "Change an effect's settings.", target="effect", params=FD.params("effect"),
                    label="Edit effect", fields=True)(set_fields)
-REGISTRY.operation("marker.set", "Rename or move a marker (also written marker.move / marker.rename).", target="marker", params=FD.params("marker"),
+REGISTRY.operation("marker.set", "Rename, move or colour a marker (also written marker.move / marker.rename).", target="marker", params=FD.params("marker"),
                    label="Edit marker", fields=True)(set_fields)
 for _name in ("marker.move", "marker.rename"):      # the project's markers' names (shared/core markers.py)
     REGISTRY.alias(_name, "marker.set")
@@ -80,12 +80,18 @@ def automation_set(ctx, targets, args):
             ctx.insert(t, "automation", {"id": id_, "type": "automation", "lane": lane, "points": pts})
 
 
-@REGISTRY.operation("marker.add", "Add a named time (\"drop\") that times elsewhere can name as \"#drop\".",
+@REGISTRY.operation("marker.add", "Add a named time (\"drop\") that times elsewhere can name as \"#drop\". A spot "
+                    "that already has a marker refuses a second one (rename or move the one there).",
                     label="Add marker", params=[Param.text("id", label="Id"), *FD.params("marker", required=True)])
 def marker_add(ctx, targets, args):
     id_ = args.get("id") or ids.marker(args["name"])
     if id_ in taken(ctx):
         ctx.fail(codes.BAD_ARGUMENT, f'marker "{args["name"]}"', "already exists")
+    there = MK.at_time(ctx.doc, MK.seconds_of(ctx.doc, args["at"]))
+    if there is not None:
+        ctx.fail(codes.BAD_ARGUMENT, f'marker "{args["name"]}"', f'would sit on marker "{there}", which is already there',
+                 hint=f'Rename "{there}" (marker.set {{name}}) or add the new one at another time.',
+                 plain=f"A marker is already here: “{there}”.")
     ctx.insert("root", "markers", {"id": id_, "type": "marker", "name": args["name"], "at": args["at"]})
 
 

@@ -40,7 +40,7 @@ Item {
         onNameFontChanged: widths = ({})
         function view() {
             var r = grid.ruler, rowH = grid.rowH, hue = grid.roll.hue
-            return { x0: r.xOf(0), perSec: r.perSec, rowH: rowH, hi: grid.roll.hi, row: Marks.drumRows(grid.roll.drums),
+            return { x0: r.xOf(0), perSec: r.perSec, rowH: rowH, hi: grid.roll.hi, idx: grid.rowIdx, row: Marks.drumRows(grid.roll.drums),
                      d: grid.hitHalf, H: grid.height, W: width, hue: hue,
                      lit: Qt.lighter(hue, 1.25), accent: Theme.accent, app: Theme.app, widths: widths, clip: paintClip }   // selected: a lighter fill, the accent outline
         }

@@ -126,17 +126,28 @@ def render_audition(engine, entry: dict, doc: dict | None = None, track: str | N
     return {**_render(engine, schedule, entry, out_dir), "what": what}
 
 
-def render_key(engine, doc: dict, track: str, pitch: int, out_dir: Path | None = None) -> dict:
-    """One key of `track`'s instrument, as the song would play it (its own sound settings and effects; the Editor's
-    keyboard: click a key, hear it). Returns {file, seconds, cached, what}."""
+def _lone(engine, doc: dict, track: str, field: str, item: dict, what: str, out_dir: Path | None) -> dict:
+    """`item` alone on a copy of `track` (its own sound settings and effects), rendered once into the cache."""
     t = next((x for x in doc.get("tracks", []) if x["id"] == track), None)
     if t is None:
-        raise RostrumError.not_found("render_key", "track", track, [x["id"] for x in doc.get("tracks", [])])
-    note = {"id": "n_key", "type": "note", "pitch": int(pitch), "at": 0, "dur": KEY_S, "vel": 0.8}
-    lone = {**t, "notes": [note], "hits": [], "clips": [], "automation": [], "mute": False, "solo": False,
-            "output": "master"}
+        raise RostrumError.not_found("audition", "track", track, [x["id"] for x in doc.get("tracks", [])])
+    lone = {**t, "notes": [], "hits": [], "clips": [], "automation": [], "mute": False, "solo": False, "output": "master",
+            field: [item]}
     root = {**doc, "tracks": [lone], "markers": [], "buses": [], "length": KEY_S + 1.5}
-    return {**_render(engine, compile_doc(root, master=False), {}, out_dir), "what": "one key"}
+    return {**_render(engine, compile_doc(root, master=False), {}, out_dir), "what": what}
+
+
+def render_key(engine, doc: dict, track: str, pitch: int, out_dir: Path | None = None) -> dict:
+    """One key of `track`'s instrument, as the song would play it (the Editor's keyboard: click a key, hear it).
+    Returns {file, seconds, cached, what}."""
+    return _lone(engine, doc, track, "notes", {"id": "n_key", "type": "note", "pitch": int(pitch), "at": 0, "dur": KEY_S,
+                                              "vel": 0.8}, "one key", out_dir)
+
+
+def render_hit(engine, doc: dict, track: str, drum, out_dir: Path | None = None) -> dict:
+    """One hit of `drum` on `track`'s kit, as the song would play it (a drum row's name: click it, hear it)."""
+    return _lone(engine, doc, track, "hits", {"id": "h_key", "type": "hit", "drum": drum, "at": 0, "vel": 0.85},
+                 "one drum", out_dir)
 
 
 def _render(engine, schedule: dict, entry: dict, out_dir: Path | None) -> dict:

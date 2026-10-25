@@ -6,6 +6,7 @@ themselves come from the operations' own parameters. No Qt.
     Humanise ▾   Timing, Velocity, Length (notes); Another take; More: Seed
     Transpose ▾ › By…    Semitones (−24 … +24), or with "Along the key" (only when the song has a key) Steps (−14 … +14)
     Repeat…      Times (2 … 64) and Until (Just N times · End of <section> · End of the range · Next marker <name>)
+    Fill row…    Every, Starting on, Velocity (beats, 0 … 1); More: Accent every  (a drum row's menu; hit.fill)
     Start a bar here…    Bar
 """
 from __future__ import annotations
@@ -15,6 +16,7 @@ from rostrum_sound.doc import keys, markers, musical
 from rostrum_sound.doc import select_time as ST
 
 from . import action_calls as C
+from . import drum_steps as D
 from .action_calls import TIMED
 
 GRIDS = [(1.0, "1/4"), (0.5, "1/8"), (0.25, "1/16"), (0.125, "1/32"), (2.0, "1/2"), (1 / 3, "1/8 triplet"),
@@ -125,6 +127,18 @@ def repeat_fit(f, a):
     times, until = a.get("times", 4), a.get("until", "times")
     return {"times": {"importance": "primary", "min": 2, "default": 4, "unit": "times", "valid": until == "times"},
             "until": {"options": until_options(f, times), "said": until != "times"}}
+
+
+# ---- Fill row… (a drum row's menu: hit.fill) ---------------------------------------------------------------------
+def fill_calls(f, a):
+    x = f.fill
+    return [D.fill_call(f.doc, x["track"], x["drum"], x["from"], x["to"], every=a.get("every", 0.25), offset=a.get("offset", 0),
+                        vel=a.get("vel", 0.85), accentEvery=a.get("accentEvery"))]
+
+
+def fill_fit(f, a):
+    return {"every": {"importance": "primary"}, "offset": {"importance": "primary"}, "vel": {"importance": "primary"},
+            "accentEvery": {"importance": "secondary"}}
 
 
 # ---- Start a bar here… -----------------------------------------------------------------------------------------

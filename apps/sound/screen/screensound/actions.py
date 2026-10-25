@@ -32,6 +32,7 @@ from rostrum_gui.actions import SHORT_MENU, ActionList
 
 from . import action_calls as C
 from . import amount_actions as A
+from . import key_lock
 from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
@@ -63,6 +64,11 @@ def _inside_clip(f):
 def _can_make_main(f):
     """Nothing selected, the song is in a project and is not its main mix yet (rule of individuality: else absent)."""
     return f.count == 0 and bool(f.doc.folder) and not main_mix.is_main(f.doc.folder, f.doc.item_id)
+
+
+def _outside_key(f):
+    """The selection holds a note with a tone outside the key playing at its start (Fit to key leads then)."""
+    return any(key_lock.outside(f.doc.data, n, ST.start_of(f.doc.data, n)) for n in f.items if n["type"] == "note")
 
 
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),
@@ -103,11 +109,17 @@ ACTIONS = [
       for k, n, label, keys in _STEPS],
     act("transpose_by", "By…", lambda f: bool(f.by_kind(NOTE)), A.transpose_calls, importance="primary", group="pitch",
         menu="Transpose", on=NOTE, amounts=("semitones", "steps", A.ALONG), asks=True, fit=A.transpose_fit),
+    act("fit_key", "Fit to key", lambda f: bool(f.by_kind(NOTE)) and key_lock.has_key(f.doc.data), *A.on(NOTE, "fit_key")[1:],
+        group="pitch", on=NOTE, promoted_when=_outside_key,         # first only while the selection holds notes outside the key
+        needs="Fit to key needs notes selected, in a song with a key"),
     act("humanize", "Humanise", *A.on(NOTE_HIT, "humanize"), importance="primary", group="time", on=NOTE_HIT,
         amounts=("timing", "velocity", "length", "seed")),
     act("repeat", "Repeat…", A.repeat_valid, A.repeat_calls, "Ctrl+R", group="time", asks=True,
         amounts=("times", A.UNTIL), fit=A.repeat_fit,
         needs="Repeat needs notes, drum hits or clips selected, or a time range with something inside"),
+    # a drum row's Fill row… (its menu sets the target; keys and Ctrl+K only while it is open: drum_step_slots.py)
+    act("fill_row", "Fill row…", lambda f: f.fill is not None, A.fill_calls, group="fill", asks=True, panel=False,
+        amounts=("every", "offset", "vel", "accentEvery"), fit=A.fill_fit),
     # markers (the song's own, placed in seconds)
     act("place_sound", "Put a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),

@@ -595,7 +595,7 @@ E (tracks, strips), F (the person's selection is what they hand to the agent).
    | 1 clip | **Clean up** · Even out level · Split at playhead (Ctrl+T, only when the playhead is inside it) · Fade ▾ | Split into parts (stems) · Add effect to this · Duplicate | `clip.set {isolate…}` + `render_cleanup`, `clip.normalize`, `clip.split`, `clip.set {fadeIn…}`, `clip.split_stems`, `effect.add`, `clip.duplicate` |
    | 2+ clips | Clean up · Even out level · **Join** (Ctrl+J, only when they play one file back to back) · **Crossfade** (only when two touch on one track) | Layer as one sound (Ctrl+G) · Fade · Split at playhead · Duplicate | `clip.join`, `clip.crossfade`, `clip.set {group}` |
    | Voice lines | Speak again · Voice ▾ · Edit words | Duplicate | `line.set`, `render_voice`, `line.duplicate` **(new)** |
-   | 1 marker | **Place a sound here** · Land a bar here · Rename (F2) | Delete marker (Sound's own; a project marker: "Delete from the project", says what is tied to it first) | `marker.set`, `marker.add`, tempo fit **(new: `tempo.fit_bar`)** |
+   | 1 marker | **Place a sound here** · Land a bar here · Rename (F2) | Delete marker (Sound's own; a project marker: "Delete from the project", says what is tied to it first). Right-click a tag: the kit's marker menu (Rename · Move to playhead · Colour ▸ · Put a sound here · Start a bar here… · Loop to the next marker · Delete; `screensound/marker_slots.py`) | `marker.set {name, at, colour}`, `marker.add` (refuses a second marker on one spot), tempo fit **(new: `tempo.fit_bar`)** |
    | 1 section | Duplicate section · Rename · Select what's inside | Delete section (label only) | `section.move`, `section.set`, `section.duplicate` **(new)** |
    | Time range | **Loop** (C) · Make a section · Duplicate (Ctrl+D) · Select what's inside | Export this range · Bounce to audio (both later, §9) | screen state; `section.add`; `<kind>.duplicate {by: range length}` |
    | Automation points | Flatten · Duplicate | Curve shape (later) | `automation.set` |
@@ -1220,7 +1220,12 @@ from: 0.4, to: 1.0}` for relative and ramp changes in one call (what the drag do
 - The keyboard names the root ("D") in bold.
 - Chord names: above the grid, a thin row shows the chord each bar / beat makes across **all** instrument tracks
   (from `inspect_harmony`), spelled in the key ("Dm", "Bb", "A7"). Shown only when the song has a key.
-- **Keep in key** (toolbar) makes ↑/↓, vertical drags and new notes from the Draw tool land on scale notes.
+- **In key ▾** (a chip in the Editor header, left of Note ▾; there only on a notes track in a song with a key; reads
+  "Key: D minor", or "In key" while Keep is on). Its menu, headed with the key: **Keep notes in the key** makes ↑/↓,
+  vertical drags and new notes from the Draw tool (and double-click) land on the key's notes (Ctrl while dragging: free);
+  **Only the key's rows** hides the other rows, except those a note sits on (`key_lock.fold`, one row mapping in
+  RollGrid: `keyAtRow` / `rowOf`). Both are screen state per window, never saved, never in the history. **Fit to key**
+  (`note.fit_key`) is an action, leading only when the selection holds notes outside the key.
 
 **Agent.** `inspect_harmony` (exists: key, chords per bar, out-of-key notes, range, voicing facts); `key.*` (exists).
 **Why this way (3E).** Helps without forbidding: shading and a dot, never a lock. **Rejected:** hiding out-of-key rows by default.
@@ -1329,7 +1334,13 @@ hat"), time across, the same ruler and velocity strip as the piano roll.
 2. The drum grid starts with the **Draw tool**: **click** an empty cell adds a hit; **click** a hit removes it;
    **drag along a row** paints a hit on each grid step it passes (one step); drag along a row starting on a hit
    erases along the drag. Velocity of a new hit: 0.85; **Shift+click** = accent (1.0), **Alt+click** = soft (0.5)
-   (proposed).
+   (built: `drum_steps.py`; one stroke is one gesture). Steps are the window's Grid ▾ cells (timing.py's one snap).
+   **Click a drum's name** = hear it (`render_hit`) and select all its hits. **Right-click it** (`drumRowMenu_<drum>`):
+   Hear · Select all <Drum> hits · **Fill ▸** (Every step · Every 2nd step · Every beat · Off-beats · Downbeats ·
+   **Fill row…**, the kit's amounts popover on `hit.fill`: Every, Starting on, Velocity; More: Accent every) · Clear
+   (that drum's hits in the time range, or all) · Change drum ▸ (`hit.set {drum}` on those hits). Fill acts on the time
+   range, else the bar the pointer last was in, and adds hits only on empty steps (`hit.fill`, never doubles). Rows
+   show only when they apply. Making it a beat for the verse is Repeat…, never a second pattern system.
 3. **V** switches to Select (box select, drag moves hits, double-click adds) — the same tools as the piano roll.
 4. Grid default for drums: **1/16** (Auto in the piano roll); same grid menu.
 5. Hits are diamonds; size and brightness show velocity.

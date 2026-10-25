@@ -9,7 +9,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_gui import snap
 
-from . import song_edit, timing
+from . import key_lock, song_edit, timing
 from .timeline import kind_of, roll_drums
 
 MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
@@ -31,16 +31,17 @@ def grab(doc, item_id) -> dict:
             "pitch": it.get("pitch"), "drum": it.get("drum")}
 
 
-def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False, grid=None) -> list[dict]:
+def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False, grid=None, lock: bool = False) -> list[dict]:
     """The calls for a drag `dt` seconds (and `dsemi` semitones, notes only) from where it started."""
     root = doc.data
     if g["type"] == "section":
         return section_calls(doc, g, dt, free, grid)
     if g["type"] in song_edit.TYPES:
         return song_edit.drag_calls(doc, g, dt, free, grid)
-    args = {"at": timing.write_time(g["at"], timing.snap(g["t"] + dt, root, free, grid), root)}
+    to = timing.snap(g["t"] + dt, root, free, grid)
+    args = {"at": timing.write_time(g["at"], to, root)}
     if g["type"] == "note" and dsemi:
-        args["pitch"] = timing.shift_pitch(g["pitch"], int(dsemi))
+        args["pitch"] = key_lock.shifted(root, to, g["pitch"], int(dsemi), lock and not free)
     return [{"op": f"{g['type']}.set", "target": [g["id"]], "args": args}]
 
 
@@ -64,7 +65,7 @@ def snap_to(t: float, root: dict, free: bool, targets: list[snap.Target], scale:
 
 
 def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[snap.Target], scale: float,
-               grid=None, end=None):
+               grid=None, end=None, lock=False):
     """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
     follow; never before the song's start, and with `end` (a song of a set length, seconds) none starts later than one
     grid step before its end (a note dragged past it would vanish from the screen and never play). `dsemi`: semitones for notes, drum rows for hits (down is +). Shift
@@ -79,7 +80,7 @@ def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool,
     for x in g["items"]:
         args = {"at": timing.write_time(x["at"], max(0.0, x["t"] + d), root)}
         if x["type"] == "note" and dsemi and not only_time:
-            args["pitch"] = timing.shift_pitch(x["pitch"], int(dsemi))
+            args["pitch"] = key_lock.shifted(root, max(0.0, x["t"] + d), x["pitch"], int(dsemi), lock and not free)
         if x["type"] == "hit" and dsemi and not only_time and x["drum"]:     # up or down the drum rows the roll shows
             rows = roll_drums(doc.item(doc.parent_of(x["id"])[0]))
             if x["drum"] in rows:
@@ -141,13 +142,14 @@ def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False, grid=No
 
 
 def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0, grid=None,
-                  px: float = 0.0) -> dict:
+                  px: float = 0.0, lock: bool = False) -> dict:
     """A note `beats` long on `key` in the grid cell at `t` (`px`: one screen pixel in seconds, timing.snap), written in the form the track's
     notes already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("notes", [])), None)
     secs = first is not None and isinstance(first["at"], (int, float))
     at = timing.snap(t, root, free, grid, "cell", px)
+    key = key_lock.snapped(root, at, key) if lock and not free else key       # Keep notes in the key
     pitch = key if first is not None and isinstance(first["pitch"], int) else timing.name(key)
     if secs:
         args = {"at": round(at, 4), "dur": round(timing.spb(root, at) * beats, 4)}

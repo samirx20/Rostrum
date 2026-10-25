@@ -17,6 +17,23 @@ from .pitch import refuse
 VELS = {"X": 0.95, "x": 0.75, "o": 0.32, "r": 0.6, "t": 0.6}
 FILLS = ("snare", "toms", "roll", "build", "stop")
 KEEP_TIME = {"hat", "openHat", "shaker", "pedalHat"}
+STEP = 0.25                                      # a step is a 16th: a quarter of a beat
+TOL = 1e-3                                       # beats: a step this close to the end is past it (times pass through seconds)
+
+
+def spaced(every: float, start: float, end: float, offset: float = 0.0, accent_every: float | None = None) -> list[tuple[float, bool]]:
+    """The steps (beat, accented?) of a fill from beat `start` up to (not including) `end`: one every `every` beats, the
+    first `offset` beats after `start`; every `accent_every` beats from `start` they are accented. The one place the
+    step spacing is worked out: `hit.fill` (the document's operation) makes its hits from it."""
+    out, k = [], 0
+    while True:
+        at = start + offset + k * every
+        if at >= end - TOL:
+            return out
+        k += 1
+        if at >= start - TOL:
+            rel = at - start
+            out.append((at, bool(accent_every) and abs(rel / accent_every - round(rel / accent_every)) < 1e-6))
 
 
 def _steps(voice: str, p, where: str) -> str:
@@ -82,10 +99,10 @@ def drum_grid(patterns: dict, bars=1, fill=None, every=4, fill_beats=1, crash=Fa
     out = []
     for v, steps in voices.items():
         for i, ch in enumerate(steps):
-            at = i / 4
+            at = i * STEP
             if ch in "Xxo":
                 out.append({"drum": v, "at": at, "vel": VELS[ch]})
             elif ch in "rt":
                 k = 2 if ch == "r" else 3
-                out += [{"drum": v, "at": at + j * 0.25 / k, "vel": round(VELS[ch] * (1 if j == 0 else 0.85), 3)} for j in range(k)]
+                out += [{"drum": v, "at": at + j * STEP / k, "vel": round(VELS[ch] * (1 if j == 0 else 0.85), 3)} for j in range(k)]
     return sorted(out, key=lambda h: h["at"])

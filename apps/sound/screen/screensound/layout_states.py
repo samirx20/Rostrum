@@ -25,7 +25,7 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
-         "grid-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range")
+         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -35,6 +35,7 @@ SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","t
               '{"op":"meter.add","target":[],"args":{"at":{"beat":15},"beatsPerBar":6,"beatUnit":8}},'
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
 
+DKEY = 'agent A key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]'
 SIX_EIGHT = 'agent Song in 6/8|[{"op":"doc.set","target":["root"],"args":{"beatsPerBar":6,"beatUnit":8}}]'
 
 
@@ -103,6 +104,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("clean-open", ["--sample"], ["select-clip door", "dock editor", "clean-open"]),            # F16: the three controls once
         ("clean-before-after", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1"]),
         ("grid-menu", ["--sample"], ["grid-open"]),
+        # In key ▾ (SPEC 3.6): the chip's menu on a notes track in a song with a key, Keep on; and the roll with only the key's rows
+        ("in-key-menu", ["--sample"], [DKEY, "select melody", "dock editor", "inkey keep", "inkey-open"]),
+        ("fit-to-key", ["--sample"], [DKEY, 'agent A note outside the key|[{"op":"note.add","target":["melody"],"args":{"id":"out","pitch":"C#4","at":{"beat":0},"dur":{"beats":1}}}]',
+                                       "select out", "dock editor"]),         # Fit to key leads the panel's actions
+        ("in-key-rows", ["--sample"], [DKEY, "select melody", "dock editor", "inkey rows"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),
         ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
         ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
@@ -147,7 +153,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("two-tracks-mixed", ["--sample"], ["select-many pad melody"]),               # S49: "Mixed" in a unit field, no unit over it
         ("actions-audio-clip-menu", ["--sample"], ["select-clip door", "menu door/clip"]),     # Split here, Fades, Swap…
         ("actions-range", ["--sample"], ["range 2 4"]),
-        ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),               # Start a bar here…: the kit's amounts popover
+        ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
+        ("marker-menu", ["--sample"], ["time 4", "marker-add", "rename hit", "time 1", "marker-menu hit"]),   # the kit's
+                                                                             # marker menu: Sound's rows, Loop to "drop"               # Start a bar here…: the kit's amounts popover
         # the amounts popover (kit base A): Humanise ▾, Quantise ▾ with More open, Transpose ▾ › By… along the key, Repeat…
         ("amounts-humanize", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
                                             "ask humanize"]),
@@ -155,6 +163,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                  "ask quantize", "amount swing 0.5"]),
         ("amounts-transpose-key", ["--sample"], [SONG_FLAGS, "select melody", "dock editor",
                                                  "select-many melody.n9600 melody.n10200", "ask transpose_by", "amount along 1"]),
+        # a drum row's name menu (SPEC 3.8): Hear, Select all, Fill ▸ (open), Clear, Change drum ▸; Fill row… in the amounts popover
+        ("drum-row-menu", ["--sample"], ["dock editor", "select drums", "drum-menu hat"]),
+        ("drum-row-fill-menu", ["--sample"], ["dock editor", "select drums", "drum-fill-menu hat"]),
+        ("amounts-fill-row", ["--sample"], ["dock editor", "select drums", "drum-fill-row hat"]),
         ("amounts-repeat-range", ["--sample"], ["range 2 4", "ask repeat_range"]),
         ("amounts-repeat-notes", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200",
                                                 "ask repeat", "amount until #drop"]),

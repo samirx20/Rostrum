@@ -21,13 +21,14 @@ _NAMES = {"note": "note", "hit": "drum hit", "clip": "clip"}
 class Facts:
     """What the selection is: ids in pick order, their items and kinds, their tracks, the playhead, the range."""
 
-    def __init__(self, doc, ids, playhead=0.0, rng=None, clipboard=False, track="", range_newer=False):
+    def __init__(self, doc, ids, playhead=0.0, rng=None, clipboard=False, track="", range_newer=False, fill=None):
         self.doc, self.ids, self.count = doc, list(ids), len(ids)
         self.items = [doc.item(i) for i in self.ids]
         self.kinds = {it["type"] for it in self.items}
         self.one = next(iter(self.kinds)) if len(self.kinds) == 1 else ""
         self.parents = {doc.parent_of(i)[0] for i in self.ids if self.one != "track"}
         self.playhead, self.range, self.clipboard, self.track = playhead, rng, clipboard, track
+        self.fill = fill                  # a drum row's Fill row… being asked: {track, drum, from, to} (drum_step_slots.py)
         # what Ctrl+D and "Select what's inside" act on when both a time range and items are selected: the one made
         # last (a range drawn after picking items is the newer intent; picking items after a range means them)
         self.on_range = bool(rng) and (not self.count or range_newer)

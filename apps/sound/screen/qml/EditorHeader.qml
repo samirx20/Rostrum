@@ -10,6 +10,7 @@ Item {
     id: h
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
+    function openInKey() { inKey.openMenu() }     // (the scripted `inkey-open` step)
     function toolHint(tool) {   // what the Select / Draw tool does here, said on hover (not as a line on the screen)
         var free = "Ctrl drags freely"
         return kind === "notes" ? "  ·  " + (tool === "draw" ? "Click to add a note" : "Double-click to add a note") + "  ·  " + free
@@ -45,6 +46,22 @@ Item {
             }
         }
         Item { width: Theme.gap; height: 1; visible: note.visible || drumAdd.visible }
+        Rectangle {   // In key ▾: only on a notes track in a song with a key (backend.inKeyChip is empty otherwise); screen state, never saved
+            id: inKey
+            objectName: "inKeyChip"
+            readonly property var chip: backend.inKeyChip
+            readonly property bool keep: !!chip.entries && chip.entries[0].checked
+            visible: h.kind === "notes" && !!chip.label
+            anchors.verticalCenter: parent.verticalCenter
+            width: kt.implicitWidth + 2 * Theme.gap; height: 24; radius: 4
+            color: keep ? Theme.accentSoft : ka.containsMouse ? Theme.hover : Theme.raised; border.color: keep ? Theme.accent : Theme.popupEdge
+            Text { id: kt; anchors.centerIn: parent; color: parent.keep ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
+                   text: (parent.chip.label || "") + "  ▾" }
+            MouseArea { id: ka; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: inKey.openMenu() }
+            HoverTip { text: "Notes drawn and moved stay in the song's key, and which rows show"; hovered: ka.containsMouse; pressed: ka.pressed }
+            function openMenu() { var q = inKey.mapToItem(null, 0, inKey.height + 2); keyMenu.openAt(q.x, q.y) }
+            ActionMenu { id: keyMenu; objectName: "inKeyMenu"; entries: inKey.chip.entries || []; onPicked: (v) => backend.toggleKeyLock(v) }
+        }
         Rectangle {   // + Drum ▾: a row for another drum of the kit (backend.drumRowChoices; absent when every drum shows)
             id: drumAdd
             objectName: "addDrumRow"

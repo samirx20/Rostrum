@@ -64,6 +64,14 @@ The **Colour** row shows the colour the track is drawn in.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
    grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
+   **Drums:** with **Draw** (B), click a step to add a hit and click that hit again to remove it; drag along a row to
+   paint every step you pass (start the drag on a hit to erase along the row); one drag is one step, one **Ctrl+Z**
+   takes it away. Steps are the window's **Grid ▾** cells. **Shift+click**: an accent (100 %); **Alt+click**: soft
+   (50 %). Click a drum's name to hear it and select all its hits (so Velocity, Humanise and Delete act on "the
+   snare"); **right-click** it for **Hear**, **Select all … hits**, **Fill ▸** (Every step, Every 2nd step, Every beat,
+   Off-beats, Downbeats, or **Fill row…** to set Every, Starting on, Velocity and, under More, Accent every), **Clear**
+   and **Change drum ▸**. Fill works on the time range if there is one, otherwise on the bar you last pointed at, and
+   adds hits only on empty steps; Clear removes that drum's hits in the time range, or all of them.
    **Note ▾** sets how long a new note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
    the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to set its
    length: the note ends on the grid line nearest the pointer (drag two beats, it is two beats long). The click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
@@ -81,11 +89,18 @@ The **Colour** row shows the colour the track is drawn in.
      without snapping once.
    - Hold **Alt** to drag a copy.
    - Hold **Shift** to move it only in time.
-3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
+3. **In key.** When the song has a key, the rows of its notes are lighter. **In key ▾** in the Editor's header (it
+   is there only on a notes track in a song with a key; it reads "Key: D minor", or "In key" while it is on):
+   **Keep notes in the key** makes new notes, drags and ↑ / ↓ land only on the key's notes (↑ / ↓ move a step of the key,
+   Shift an octave; **Ctrl** while dragging: any note); **Only the key's rows** hides the others (a note that is outside
+   the key keeps its row). Both are only how this window looks and works: they are not saved and never an undo step.
+   **Fit to key** (on a selection with notes outside the key; it leads the settings panel's actions then, and is in
+   **Ctrl+K** otherwise) moves them to the nearest note of the key. A note outside the key has a small dot.
+4. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all, **Esc** clears.
    A key on a mixed selection acts on the part it can: after Ctrl+A, **Q** quantises the notes and drum hits, ↑ / ↓
    and Ctrl+↑ / Ctrl+↓ move the notes, and the step in History names them ("Quantise · 178 notes and 202 drum hits").
-4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
+5. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
    as **Quantise** and **Transpose**, each always in the same place. A button with a small **▾** beside it (Quantise ▾,
    Humanise ▾) runs at once with the amounts you used last; its **▾** opens a small box of amounts. While it is open
    every change plays straight away on the notes; **Enter** or a click away keeps it as one undo step, **Esc** puts
@@ -104,7 +119,7 @@ The **Colour** row shows the colour the track is drawn in.
    "Nothing to paste yet: copy something first"). The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
-5. **Keys on the selection:**
+6. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
    - **A time range:** drag on the ruler's thin top band. Each end goes to the grid line nearest the pointer. The settings panel offers **Make a section**, **Select
@@ -118,11 +133,11 @@ The **Colour** row shows the colour the track is drawn in.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
-   - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and says so instead of adding a second. Paste here and Add marker here land on the grid line under the pointer while Snap is on.
-6. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
+   - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and opens its name instead of adding a second. **Right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it (only the rows that make sense for that marker show). Paste here and Add marker here land on the grid line under the pointer while Snap is on.
+7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
    edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
    (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.
-7. A mistake? **Ctrl+Z** undoes it (**Ctrl+Shift+Z** redoes). Every drag is one step.
+8. A mistake? **Ctrl+Z** undoes it (**Ctrl+Shift+Z** redoes). Every drag is one step.
 
 ## 5. Play it
 

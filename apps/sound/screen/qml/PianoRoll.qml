@@ -42,7 +42,8 @@ Panel {
             id: view
             anchors.fill: parent
             contentHeight: grid.height; boundsBehavior: Flickable.StopAtBounds; interactive: false
-            RollGrid { id: grid; width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth }
+            RollGrid { id: grid; onDrumMenuAt: (drum, px, py) => { drumMenu.drum = drum; drumMenu.entries = backend.drumRowMenu(drum, input.lastT); var q = grid.mapToItem(null, px, py); drumMenu.openAt(q.x, q.y) }
+                      width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth }
             RollInput {   // every click, drag, box and right-click on the roll (select first, then act)
                 id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height
@@ -57,7 +58,7 @@ Panel {
             property string seenShown: ""
             readonly property int topKey: p.roll.hi
             onTopKeyChanged: {
-                if (shown === seenShown && grid.notes && topKey !== seenHi)
+                if (shown === seenShown && grid.notes && !grid.shownKeys && topKey !== seenHi)
                     contentY = Math.max(0, Math.min((p.roll.hi - p.roll.lo + 1) * grid.rowH - height, contentY + (topKey - seenHi) * grid.rowH))
                 seenHi = topKey
             }
@@ -67,15 +68,15 @@ Panel {
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
                 if (!ks.length || p.kind !== "notes") {
                     grid.frame(0)   // an empty notes track opens on the middle of its range (its sound's best keys), else the top
-                    contentY = p.kind === "notes" ? Math.max(0, Math.min(contentHeight - height, (p.roll.hi - p.roll.lo + 1) / 2 * grid.rowH - height / 2)) : 0
+                    contentY = p.kind === "notes" ? Math.max(0, Math.min(contentHeight - height, grid.count / 2 * grid.rowH - height / 2)) : 0
                     return
                 }
                 var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
-                grid.frame(hi - lo + 1)
-                contentY = Math.max(0, Math.min(contentHeight - height, (p.roll.hi - (hi + lo) / 2 + 0.5) * grid.rowH - height / 2))
+                grid.frame(grid.rowOf(lo) - grid.rowOf(hi) + 1)
+                contentY = Math.max(0, Math.min(contentHeight - height, ((grid.rowOf(hi) + grid.rowOf(lo)) / 2 + 0.5) * grid.rowH - height / 2))
             }
             onHeightChanged: centre()
-            readonly property string shown: p.roll.id + "/" + p.kind      // another track (or kind): framed again
+            readonly property string shown: p.roll.id + "/" + p.kind + (grid.shownKeys ? "/rows" : "")      // another track (or kind): framed again
             onShownChanged: centre()
         }
         Repeater {   // marker lines
@@ -138,10 +139,17 @@ Panel {
         height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
         row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.playedLane })
     }
+    ActionMenu { id: drumMenu; property string drum: ""; objectName: "drumRowMenu_" + drum; onPicked: (v) => backend.menuPick(v) }   // a drum row's name: Hear, Fill ▸, Clear …
     ActionMenu { id: rollMenu; objectName: "rollMenu"; onPicked: (v) => backend.menuPick(v) }      // the kit's
     Connections {   // right-click on the roll's ruler: what the arrangement's ruler offers (Add marker here, Make a section …)
         target: bars
         function onMenuAt(t, px, py) { rollMenu.entries = backend.atMenu("", t, 1 / bars.perSec); var q = bars.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
+    }
+    function drumMenuFor(drum, fillOpen) {   // a drum row's menu, open under its name, Fill ▸ open too (a scripted step: steps_select.py)
+        drumMenu.drum = drum; drumMenu.entries = backend.drumRowMenu(drum, input.lastT)
+        var q = grid.mapToItem(null, 30, (roll.drums.indexOf(drum) + 0.5) * grid.rowH)
+        drumMenu.openAt(q.x, q.y)
+        if (fillOpen) drumMenu.openSub(drumMenu.entries.findIndex(e => e.sub && e.sub.length && e.label === "Fill"))
     }
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)
         rollMenu.entries = backend.itemMenu(id)

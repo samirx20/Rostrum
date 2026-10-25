@@ -169,6 +169,16 @@ notes only; the same seed on the same notes gives the same result every time).
   them two steps of the song's key (a third), each note in the key at its own time, a chord by its lowest note's step.
   Give one of the two. Without a key, `steps` fails ("The song has no key …"); past the 128 notes it fails and changes
   nothing.
+- **Fit to key:** `note.fit_key {}` moves the notes that are outside the key to the nearest note of the key (the song's
+  key at each note's own time; `key: "D minor"` to name one; `direction: "down"` or `"up"` to always go one way, a tie
+  in "nearest" goes down). Notes already in the key are not touched, a chord is fitted tone by tone, and it is one
+  undo step. Without a key (and no `key` given) it fails. Find the wrong notes first with `inspect_harmony`.
+- **Fill a drum row:** `hit.fill {track, drum: "hat", every: 0.5, offset: 0, from: {"beat": 0}, to: {"beat": 4}, vel: 0.85}`
+  adds hits of one drum every `every` beats (1/32 … 32) from `from` up to (not including) `to`, the first one `offset`
+  beats after `from`; `accentEvery: 2, accentVel: 1` makes every second beat an accent. It adds only where that drum has no
+  hit within 10 ms, so it never doubles a hit and never moves one, and it is one undo step. The drum must be one the
+  track's kit plays. Off-beats are `every: 1, offset: 0.5`. To clear a drum, call `hit.remove` on its hits. In a
+  script, `drum_grid(...)` makes the same hits from step strings.
 - **Quantise with swing:** `hit.quantize {grid: 0.5, swing: 0.6}` writes a swing into the hits: the off-beat grid lines
   move late (1 = a triplet feel) and the hits snap to them. To swing without moving the notes, use the track's feel
   (below).

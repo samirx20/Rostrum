@@ -116,7 +116,9 @@ FIELDS = {
     "effect": [Param.choice("effect", effects.TYPES, group="Effect", label="Effect type", labels=effects.WORDS),
                Param.toggle("bypass", group="Effect", importance="secondary"), *effects.params("effect"),
                plugins.record(IS("effect", "plugin"))],
-    "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker")],
+    "marker": [Param.text("name", group="Marker"), V.time("at", group="Marker"),
+               Param.color("colour", group="Marker", importance="secondary", label="Colour", display="swatch", shown="changed",
+                           help="The marker's colour on its tag (a hex like #4cc38a); optional.")],
     "master": [
         V.volume("volume", "Master"),
         Param.toggle("normalize", group="Loudness", label="Normalize"),
