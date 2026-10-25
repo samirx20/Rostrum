@@ -43,7 +43,7 @@ def summary(r: dict, goal=None) -> str:
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
             + f".{q}" + held(r, goal) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
-            + "".join(f" {w}." for w in r.get("warnings") or []))
+            + "".join(f" {w.rstrip('.')}." for w in r.get("warnings") or []))
 
 
 def register(tools: Tools):
@@ -86,8 +86,7 @@ def register(tools: Tools):
                     options[k] = times.seconds(args[k], doc.data, k)
         deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers now, not after the render
 
-        m = doc.data.get("master") or {}
-        goal = m.get("loudness") if master and m.get("normalize") else None
+        goal = (schedule.get("master") or {}).get("loudness")       # the target the engine was given (None: no target)
 
         def work(job):
             job.progress(note="rendering")
