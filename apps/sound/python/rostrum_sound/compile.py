@@ -158,6 +158,8 @@ class _Compiler:
         if full:
             out.update({k: m[k] for k in MASTERING if k in m})
             out["loudness"] = m.get("loudness") if m.get("normalize") else None
+            if m.get("gentle"):
+                out["maxLimit"] = m.get("maxLimit", 2)
             out.update(_nonempty("effects", self.effects(m, "master")))
         return {**out, **self.lanes(m, "master")}
 

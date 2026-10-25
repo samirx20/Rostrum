@@ -13,13 +13,23 @@ from ..doc import markers, ops_mix, times
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
 
+def held(r: dict) -> str:
+    """The master's gentle limiting, said when it turned the whole mix down (engine `master.heldDb`)."""
+    m = r.get("master") or {}
+    if (m.get("heldDb") or 0) < 0.1:
+        return ""
+    return (f" The master turned the whole mix down {m['heldDb']:.1f} dB so its limiter pulls at most "
+            f"{m.get('limiterMaxReductionDb', 0):.1f} dB at the loudest moment (Gentle limiting); for more loudness turn "
+            "down the loudest part's track or raise Most limiting.")
+
+
 def summary(r: dict) -> str:
     credits = packs.credit_lines(r)
     quiet = sorted(r["tracks"], key=lambda t: t["lufs"])[:1]
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
-            + f".{q}" + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
+            + f".{q}" + held(r) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
             + "".join(f" {w}." for w in r.get("warnings") or []))
 
 

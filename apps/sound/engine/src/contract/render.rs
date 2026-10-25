@@ -107,7 +107,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
         // The stems carry the master's whole gain (fader, fades, glue, loudness gain, limiter: one curve, worked out on
         // the mix); what they cannot carry is listed by name, and how far their sum is from the mix, when measured.
         "master": { "gainDb": r2(mix.master.gain_db), "glueMaxReductionDb": r2(mix.master.glue_db),
-                    "limiterMaxReductionDb": r2(mix.master.limiter_db),
+                    "limiterMaxReductionDb": r2(mix.master.limiter_db), "heldDb": r2(mix.master.held_db),
                     "insertsOnMix": !s.effects.is_empty() || s.master_reverb != "dry" || !s.time_warps.is_empty(),
                     "onMixOnly": on_mix_only(&s, mix.safety_clipped),
                     "stemsMaxDifference": written.max_difference },

@@ -21,15 +21,21 @@ pub struct MasterSpec {
     pub true_peak: f64,
     /// Glue compression 0 (none) … 1 (firm): ratio 1 + 3·glue over the program's own loudness.
     pub glue: f64,
+    /// The most the limiter may pull (dB), or none: a mix that would need more is turned down as a whole instead
+    /// (one gain for the song, so the balance is untouched), landing under its loudness target.
+    #[serde(default)]
+    pub max_limit: Option<f64>,
 }
 
 /// What the mastering stage did: `gain_db` is the gain to the loudness target (the same on every sample);
-/// `glue_db` and `limiter_db` are the largest gain reductions (≥ 0 dB) of the glue and the limiter.
+/// `glue_db` and `limiter_db` are the largest gain reductions (≥ 0 dB) of the glue and the limiter; `held_db` (≥ 0 dB)
+/// how far the whole mix was turned down under its target (or fader) so the limiter keeps within `max_limit`.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MasterReport {
     pub gain_db: f64,
     pub glue_db: f64,
     pub limiter_db: f64,
+    pub held_db: f64,
 }
 
 /// The mastering stage's gain at every frame, as it was applied to the mix (one channel each, spooled like the mix):
@@ -300,9 +306,17 @@ pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], sp
         let g = 10f64.powf(gain_db / 20.0) as f32;
         let p = limited(src, nch, total, Some(g), ceiling, sr, on_disk, spec.loudness.map(|_| weights))?;
         (report.gain_db, report.limiter_db) = (gain_db, p.deepest);
-        match (spec.loudness, p.lufs) {
-            (Some(target), Some(got)) if (got - target).abs() > 0.2 && pass < 3 => gain_db += target - got,
-            _ => return Ok((p.out, report, Dynamics { glue: glue_gains, limiter: p.gains })),
+        // Over the most limiting: the whole mix down by what is over (the limiter's need falls dB for dB), and the
+        // target no longer pulls it back up.
+        let over = spec.max_limit.map_or(0.0, |m| p.deepest - m);
+        if over > 0.05 && pass < 6 {
+            gain_db -= over + 0.02;
+            report.held_db += over + 0.02;
+        } else {
+            match (spec.loudness, p.lufs) {
+                (Some(target), Some(got)) if report.held_db == 0.0 && (got - target).abs() > 0.2 && pass < 3 => gain_db += target - got,
+                _ => return Ok((p.out, report, Dynamics { glue: glue_gains, limiter: p.gains })),
+            }
         }
         pass += 1;
     }

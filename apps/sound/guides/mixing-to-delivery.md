@@ -8,6 +8,14 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
+**Gentle limiting** (master `gentle`, on in every new song; `maxLimit` 2 dB): the limiter may pull the loudest moment
+down by at most `maxLimit`. A mix that would need more (piano chords or drum hits whose peaks stand far above the
+song's loudness) is turned down as a whole instead, one gain for the whole song, so the balance between tracks stays
+and the master stays clean; the song then lands under its loudness target, and the `render_mix` reply says by how
+much ("The master turned the whole mix down 2.4 dB …"). To get louder, turn the loudest part's track down so the
+peaks come in, or raise `maxLimit` (4–6 dB is a loud, pressed master). Songs saved before 2026-10-25 open with it
+off, so they sound as they did.
+
 - **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a plain-named instrument or a drum kit start roughly balanced at the same volume for the part each suits (inspect_engine; kits and bass a few dB under, brass no louder than strings), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_sound` (`what: "levels"`): a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; every new effect starts valid and playable with its default settings: an EQ starts with one flat band (peak, 1000 Hz, 0 dB, q 1) that changes nothing until you move it, and settings depend on the kind: an EQ has `bands`,
@@ -81,8 +89,9 @@ An open effect's settings or a duck sit at the right end while they are open.
 row cites its source in `screensound/delivery.py`) that sets both in one step (and says so on the sheet), and a "Right for the target" / "Misses the target" line from the sound
 that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
-Normalizing makes the number right; it does not make the mix right. If the master limiter is working hard to hold the
-ceiling, the mix is denser than the target allows: turn the loud parts down at the source rather than squeezing harder.
+Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
+target allows comes out under the target (the reply says how far) rather than squeezed; with it off the limiter works
+as hard as it must. Either way the fix is at the source: turn the loud parts down rather than squeezing harder.
 
 ## Checking (agents)
 

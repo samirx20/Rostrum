@@ -14,7 +14,7 @@ from .registry import LISTS, REGISTRY, set_fields, taken
 
 INSERTS = ("track", "clip", "bus", "master")
 
-REGISTRY.operation("master.set", "Change the master bus: level, loudness target, true peak, glue, spaces, fades.",
+REGISTRY.operation("master.set", "Change the master bus: level, loudness target, true peak, gentle limiting (most limiting, dB), glue, spaces, fades.",
                    target="master", params=FD.params("master"), label="Edit master", fields=True)(set_fields)
 REGISTRY.operation("effect.set", "Change an effect's settings.", target="effect", params=FD.params("effect"),
                    label="Edit effect", fields=True)(set_fields)

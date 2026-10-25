@@ -101,13 +101,14 @@ fn master(v: &Value, at: &str, tempo: &Tempo, sr: u32) -> Result<Master, Error> 
     let loudness = o.opt_num("loudness", -60.0, 0.0)?;
     let true_peak = o.num("truePeak", -12.0, 0.0, Some(-1.0))?;
     let glue = o.num("glue", 0.0, 1.0, Some(0.0))?;
+    let max_limit = o.opt_num("maxLimit", 0.0, 24.0)?;
     let safety = o.bool("safetyClip", true)?;
     let auto = track::automation(&mut o, tempo, false)?;
     let sr = sr as f64;
     let job = json!({
         "masterVolume": volume, "masterReverb": reverb, "trackReverbSpace": track_space,
         "fadeInSamples": (fade_in * sr) as usize, "fadeOutSamples": (fade_out * sr) as usize,
-        "effects": effects::job(&fx, 0.0), "master": { "loudness": loudness, "truePeak": true_peak, "glue": glue }, "safetyClip": safety,
+        "effects": effects::job(&fx, 0.0), "master": { "loudness": loudness, "truePeak": true_peak, "glue": glue, "maxLimit": max_limit }, "safetyClip": safety,
         "masterAutomation": auto.get("volume").cloned().unwrap_or(Value::Null),
     });
     Ok(Master { resolved: Value::Object(o.done()?), job })

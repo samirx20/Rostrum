@@ -77,7 +77,9 @@ master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
 ```
 
 `master(...)` takes `volume` (gain 0 to 4), `normalize`, `loudness` (LUFS, -60 to 0: giving it turns `normalize` on),
-`truePeak` (dBTP, -12 to 0), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
+`truePeak` (dBTP, -12 to 0), `gentle` (on by default) and `maxLimit` (dB, 0 to 12, default 2: with `gentle` on, the
+limiter never pulls the loudest moment down by more than this; a mix that would need more is turned down as a whole,
+so it lands under its loudness target and `render_mix` says by how much), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
 `safetyClip`.
 
 There is no vinyl-crackle or bit-crush effect. For a worn, lo-fi sound the tools that exist are `tape` (wow, flutter, age),

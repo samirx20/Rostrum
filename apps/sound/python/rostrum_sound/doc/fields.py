@@ -114,6 +114,12 @@ FIELDS = {
           help="Integrated loudness (LUFS) the whole mix is made to: -14 suits streaming, -23 broadcast."),
         N("truePeak", -12, 0, "Loudness", "dBTP", "secondary", label="Loudest peak allowed",
           help="True peak ceiling (dBTP): no moment of the mix goes above it, so it never distorts after re-encoding."),
+        Param.toggle("gentle", group="Loudness", label="Gentle limiting",
+                     help="On: the limiter pulls the loudest moments down by at most Most limiting; a mix that would "
+                          "need more is turned down as a whole instead (the balance stays, the loudness lands under "
+                          "its target and the render says by how much). Off: the limiter pulls as hard as it must."),
+        N("maxLimit", 0, 12, "Loudness", "dB", "secondary", when=IS("gentle", True), label="Most limiting",
+          help="The most the limiter may pull the loudest moment down (dB): 1-2 keeps the master clean."),
         N("glue", 0, 1, "Master", imp="secondary", label="Smooth the mix", display="percent",
           help="Glue compression: gently squeezes the whole mix so the parts sit together."),
         Param.choice("reverb", names.SPACES, labels=names.SPACE_WORDS, group="Spaces", importance="secondary", label="Master reverb"),
@@ -136,7 +142,7 @@ DEFAULTS = {
     "clip": dict(**{"in": 0}, volume=1, **FC.DEFAULTS),
     "line": dict(seed=1, volume=1),
     "marker": {},
-    "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
+    "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, gentle=True, maxLimit=2, glue=0, reverb="dry",
                    trackReverbSpace="hall", fadeIn=0, fadeOut=0, safetyClip=True),
 }
 # A number's own default is what a new item stores: the panel's double-click puts the value back to it (the kit's rule).

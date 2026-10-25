@@ -61,7 +61,7 @@ pub fn fold_bed(chs: &[Vec<f32>], from: Layout, to: &str, spec: Option<MasterSpe
     let lufs = |c: &[Vec<f32>]| loudness::integrated_lufs_n(&c.iter().map(|v| v.as_slice()).collect::<Vec<_>>(), &weights, sr);
     let tp = |c: &[Vec<f32>]| loudness::true_peak_db_n(&c.iter().map(|v| v.as_slice()).collect::<Vec<_>>());
     let (raw_lufs, raw_tp) = (lufs(&folded), tp(&folded));
-    let held = spec.map(|s| MasterSpec { glue: 0.0, ..s }).or((raw_tp > -1.0).then_some(MasterSpec { loudness: None, true_peak: -1.0, glue: 0.0 }));
+    let held = spec.map(|s| MasterSpec { glue: 0.0, ..s }).or((raw_tp > -1.0).then_some(MasterSpec { loudness: None, true_peak: -1.0, glue: 0.0, max_limit: None }));
     if let Some(s) = &held {
         master::master_n(&mut folded, &weights, s, sr);
     }
