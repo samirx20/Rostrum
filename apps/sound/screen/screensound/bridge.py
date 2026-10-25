@@ -257,7 +257,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
         side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
         doc = clean_clips.without_pending(self.doc)        # a clip whose cleaned take is not made yet plays its original
-        s = compile_doc(voice_card.without(doc, side.voice.making() | side.voice.waiting()) if side else doc)
+        s = compile_doc(voice_card.without(doc, side.voice.making() | side.voice.waiting()) if side else doc,
+                        memo=self.__dict__.setdefault("_compiled", {}))      # each track made again only when it changed
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s

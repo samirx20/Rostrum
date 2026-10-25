@@ -171,13 +171,15 @@ def _ids(given, tracks, what):
     return set(given or ())
 
 
-def compile(doc, solo=None, mute=None, master=True, matched=True) -> dict:
+def compile(doc, solo=None, mute=None, master=True, matched=True, memo: dict | None = None) -> dict:
     """The schedule for a Document (or its data dict). Pure: the document is not touched. A Document in a project
-    folder reads that project's shared markers (doc/markers.py)."""
+    folder reads that project's shared markers (doc/markers.py). `memo` (a dict the caller keeps, a screen's): each
+    track's part is made again only when it changed (`_kept`), so a note drawn compiles one track, not the song (a
+    3-minute song: ~16 ms each edit). The parts it returns are shared with later schedules: never change them."""
     folder = getattr(doc, "folder", None)
     if folder is not None:
         with markers.project(folder):
-            return compile(doc.data, solo, mute, master, matched)
+            return compile(doc.data, solo, mute, master, matched, memo)
     root = getattr(doc, "data", doc)
     tracks = root.get("tracks", [])
     heard = _ids(solo, tracks, "solo") | {t["id"] for t in tracks if t.get("solo")}
@@ -187,8 +189,28 @@ def compile(doc, solo=None, mute=None, master=True, matched=True) -> dict:
     if root.get("length") is not None:
         out["length"] = c.time(root["length"], "length")
     out["master"] = c.master(root["master"][0], master) if root.get("master") else {}
-    out["tracks"] = [c.track(t, t.get("mute") or t["id"] in silent or bool(heard) and t["id"] not in heard)
-                     for t in tracks]
+    around = (matched, markers.project_rows() or None, *(v for k, v in root.items() if k != "tracks"))
+    out["tracks"] = [_kept(memo, c, t, bool(t.get("mute") or t["id"] in silent or bool(heard) and t["id"] not in heard),
+                           around) for t in tracks]
+    if memo is not None:
+        for gone in set(memo) - {t["id"] for t in tracks}:
+            del memo[gone]
     if root.get("buses"):
         out["buses"] = [c.bus(b) for b in root["buses"]]
     return out
+
+
+def _kept(memo, c, track, muted, around):
+    """A track's part as made last time when it is the very same track (the document is never changed in place: an
+    edit makes new objects only along its path) with the same song around it (every top-level value but the tracks,
+    the project's markers: compared by identity). A track with clips or voice lines reads takes on disk (a cleaned or
+    spoken take can land with the track unchanged): always made again."""
+    if memo is None or track.get("clips") or track.get("lines"):
+        return c.track(track, muted)
+    was = memo.get(track["id"])
+    if (was is not None and was[0] is track and was[1] == muted and len(was[2]) == len(around)
+            and all(a is b for a, b in zip(was[2], around))):
+        return was[3]
+    part = c.track(track, muted)
+    memo[track["id"]] = (track, muted, around, part)
+    return part

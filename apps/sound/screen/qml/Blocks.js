@@ -1,17 +1,43 @@
 .pragma library
 // A patch of a row's or the roll's blocks (screensound/block_patch.py `apply`, the same rule): the blocks whose ids
-// are gone are left out, changed ones take their place, new ones go at the end.
+// are gone are left out, changed ones take their place, new ones go at the end. The list made remembers the patch
+// (`__patch`: the list it came from, what it put and took), so a surface that painted that list looks only at those
+// blocks (`update`), and where each block sits (`__at`, id -> index, shared while no block goes): a hit drawn on a
+// track of 3,000 costs what one block costs, not a walk over all of them on each surface.
 function patch(blocks, gone, put) {
-    var drop = {}, by = {}, out = [], i
-    for (i = 0; i < gone.length; i++) drop[gone[i]] = true
-    for (i = 0; i < put.length; i++) by[put[i].id] = put[i]
-    for (i = 0; i < blocks.length; i++) {
-        var b = blocks[i]
-        if (drop[b.id]) continue
-        if (by[b.id]) { out.push(by[b.id]); delete by[b.id] } else out.push(b)
+    put = own(put)
+    var out, at, i, j
+    if (gone.length === 0) {
+        out = blocks.slice(); at = _at(blocks)
+        for (i = 0; i < put.length; i++) {
+            j = at[put[i].id]
+            if (j !== undefined && j < blocks.length && blocks[j].id === put[i].id) out[j] = put[i]
+            else { at[put[i].id] = out.length; out.push(put[i]) }
+        }
+        out.__at = at
+    } else {
+        var drop = {}, by = {}
+        out = []
+        for (i = 0; i < gone.length; i++) drop[gone[i]] = true
+        for (i = 0; i < put.length; i++) by[put[i].id] = put[i]
+        for (i = 0; i < blocks.length; i++) {
+            var b = blocks[i]
+            if (drop[b.id]) continue
+            if (by[b.id]) { out.push(by[b.id]); delete by[b.id] } else out.push(b)
+        }
+        for (i = 0; i < put.length; i++) if (by[put[i].id]) out.push(put[i])
     }
-    for (i = 0; i < put.length; i++) if (by[put[i].id]) out.push(put[i])
+    out.__patch = { from: blocks, put: put, gone: own(gone) }
     return out
+}
+
+function _at(list) {                     // id -> index (made once per list a patch starts from)
+    if (list.__at === undefined) {
+        var m = {}
+        for (var i = 0; i < list.length; i++) m[list[i].id] = i
+        list.__at = m
+    }
+    return list.__at
 }
 
 // A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list
@@ -58,37 +84,52 @@ function rebuild(k, blocks, picked, rectsOf, width) {
         if (e[1]) k.sel[b.id] = true
         _place(k, e, rectsOf)
     }
-    k.count = blocks.length; k.next = blocks.length
+    k.count = blocks.length; k.next = blocks.length; k.list = blocks
     return out
 }
 
 // The places to paint again for the blocks and the selection now ([]: none); null: so many that one whole paint is as
 // quick (then `rebuild`). Changed blocks keep their place in the order, new ones come last (as `patch`).
 function update(k, blocks, picked, rectsOf) {
-    var dirty = [], seen = {}, n = 0, changed = 0, i, e, id
+    var dirty = [], seen = {}, changed = 0, i, e, id
     function mark(rs) {
         for (var j = 0; j < rs.length; j++) { var key = rs[j].join(","); if (!seen[key]) { seen[key] = true; dirty.push(rs[j]) } }
     }
-    for (i = 0; i < blocks.length; i++) {
-        var b = blocks[i]
-        e = k.by[b.id]
-        if (e !== undefined && e[0] === b) { n++; continue }
-        if (++changed > MANY) return null
-        var ne = [b, !!picked[b.id], e !== undefined ? e[2] : k.next++, false, 0]
-        if (e !== undefined) { n++; e[3] = true; mark(rectsOf(e[0])) }
+    function took(b) {                   // a block new or changed: where it was and where it is now
+        var was = k.by[b.id]
+        if (was !== undefined && was[0] === b) return true
+        if (++changed > MANY) return false
+        var ne = [b, !!picked[b.id], was !== undefined ? was[2] : k.next++, false, 0]
+        if (was !== undefined) { was[3] = true; mark(rectsOf(was[0])) }
         k.by[b.id] = ne
         if (ne[1]) k.sel[b.id] = true; else delete k.sel[b.id]
         mark(_place(k, ne, rectsOf))
+        return true
     }
-    if (n < k.count) {                       // some are gone
-        var now = {}
-        for (i = 0; i < blocks.length; i++) now[blocks[i].id] = true
-        for (id in k.by) {
-            if (now[id]) continue
-            if (++changed > MANY) return null
-            e = k.by[id]; e[3] = true; mark(rectsOf(e[0])); delete k.by[id]; delete k.sel[id]
+    function dropped(id) {               // a block gone: where it was
+        var was = k.by[id]
+        if (was === undefined) return true
+        if (++changed > MANY) return false
+        was[3] = true; mark(rectsOf(was[0])); delete k.by[id]; delete k.sel[id]
+        return true
+    }
+    var p = blocks.__patch
+    if (p !== undefined && p.from === k.list) {          // a patch of the list painted: only the blocks it names
+        for (i = 0; i < p.put.length; i++) if (!took(p.put[i])) return null
+        for (i = 0; i < p.gone.length; i++) if (!dropped(p.gone[i])) return null
+    } else {
+        var n = 0
+        for (i = 0; i < blocks.length; i++) {
+            if (k.by[blocks[i].id] !== undefined) n++
+            if (!took(blocks[i])) return null
+        }
+        if (n < k.count) {                   // some are gone
+            var now = {}
+            for (i = 0; i < blocks.length; i++) now[blocks[i].id] = true
+            for (id in k.by) if (!now[id] && !dropped(id)) return null
         }
     }
+    k.list = blocks
     k.count = blocks.length
     for (id in k.sel) {                      // the selection's difference
         if (picked[id]) continue
