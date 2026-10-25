@@ -41,11 +41,13 @@ class MixPage(QObject):
         bridge.mix = self                                 # the scripted steps (steps.py) reach these through the bridge
         self._problems = problems.make(bridge, self._cleaning)
         bridge.exporter, bridge.problems = self._export, self._problems   # the kit's sheet, chips and steps (EXPORT.md)
+        self._behind = False             # the song or the render moved while the Mixer was not shown
         self._refresh()
-        self._plugins.catalogChanged.connect(self._refresh)      # the scan names the vendors the chips drop
-        bridge.docChanged.connect(self._refresh)
+        self._plugins.catalogChanged.connect(self._follow)      # the scan names the vendors the chips drop
+        bridge.docChanged.connect(self._stepped)               # only the strips whose item the change made new
         bridge.docStepped.connect(self._stepped)               # the strips follow a fader drag live
-        bridge.renderChanged.connect(self._refresh)
+        bridge.renderChanged.connect(self._follow)
+        bridge.workspace.changed.connect(self._shown_again)
 
     def close(self):
         self._plugins.close()
@@ -181,13 +183,37 @@ class MixPage(QObject):
             self._master = master
             self.masterChanged.emit()
 
+    def _hidden(self) -> bool:
+        """The Mixer is not on screen: its strips (read only by Mixer.qml) wait, and catch up once when it opens. A
+        track added from the Library made its strip on the same click (~9 ms), and every render remade every strip."""
+        hidden = self.bridge.workspace.dock != "mixer"
+        self._behind = self._behind or hidden
+        return hidden
+
+    def _shown_again(self):
+        if self._behind and self.bridge.workspace.dock == "mixer":
+            self._behind = False
+            self._refresh()
+
+    def _follow(self):
+        if not self._hidden():
+            self._refresh()
+
     def _stepped(self):
-        """A drag's step (a fader, a pan, a knob): only the strips whose item it changed are made again (the document
-        is never changed in place: an untouched item is the same object). Strips that came or went: all again."""
+        """A change or a drag's step (a fader, a pan, a knob; a note drawn): only the strips whose item it changed are
+        made again (the document is never changed in place: an untouched item is the same object), so a note drawn
+        makes one strip, not every one. Strips that came, went or moved, one renamed (the Output lists and the duck
+        chips name the others) or a group playing elsewhere (the groups it may feed): all again."""
+        if self._hidden():
+            return
         root = self.doc.data
         now = [*root.get("tracks", []), *root.get("buses", []), self.doc.item(strips.MASTER)]
         if [i["id"] for i in now] != list(self._seen):
             return self._refresh()
-        changed = {i["id"] for i in now if self._seen[i["id"]] is not i}
+        changed = [(self._seen[i["id"]], i) for i in now if self._seen[i["id"]] is not i]
+        label = self.bridge.label_of
+        if any(label(a) != label(b) or (b["type"] == "bus" and a.get("output") != b.get("output")) for a, b in changed):
+            return self._refresh()
+        changed = {b["id"] for _, b in changed}
         if changed:
             self._refresh(changed)

@@ -5,6 +5,7 @@ page's cards; with the page gone they follow the track the Editor shows. Exposed
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_gui import news
 
 from .voice_card import VoiceMaker, card_roles
 
@@ -18,8 +19,9 @@ class EditorSide(QObject):
         super().__init__(parent)
         self.bridge, self._typing = bridge, {}
         self.voice = VoiceMaker(bridge, self)
+        told = news.relay(self)        # `changed` only when the Editor's track reads differently (a note drawn: no news)
         for s in (self.voice.changed, bridge.timelineChanged, bridge.rollChanged, bridge.docChanged, bridge.docStepped):
-            s.connect(self.changed)
+            s.connect(told)
         bridge.voiceWanted.connect(self.voice.start)
         bridge.side = self                                    # the scripted steps reach it (line-type)
         self.voice.changed.connect(bridge._rebuild)             # a line starts or stops being spoken: its block says so

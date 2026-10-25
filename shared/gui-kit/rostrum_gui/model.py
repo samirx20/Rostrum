@@ -75,6 +75,22 @@ class RowsModel(QAbstractListModel):
                 self._instant = False
                 self.instantChanged.emit()
 
+    def park(self, rows: list[dict]):
+        """Delegates made ahead for rows a later selection will show: added after the shown rows, absent, unless one
+        that showed the same setting is here already (model_pick.py takes them, as it takes any parked row)."""
+        have = {(r.get("id"), self._look(r)) for r in self._shown + self._parked}
+        new = []
+        for r in rows:
+            key = (r.get("id"), self._look(r))
+            if key not in have:
+                have.add(key)
+                new.append({**r, "valid": False})
+        if new:
+            n = self.rowCount()
+            self.beginInsertRows(QModelIndex(), n, n + len(new) - 1)
+            self._parked.extend(new)
+            self.endInsertRows()
+
     def _send(self, rows: list[dict], at: int = 0):
         for i, new in enumerate(rows, at):
             old = self._shown[i]

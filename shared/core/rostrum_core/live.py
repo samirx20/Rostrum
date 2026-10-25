@@ -12,11 +12,23 @@ screen shows an agent's work live and can tell who made it.
 A step made from an older picture of the document (a person's drag that started before an agent's step landed) is
 put on top of the newer document edit by edit when it is recorded (`Document.commit`). Steps on the same field by
 someone else later are refused as always (history.py).
+
+The document file (the whole song, written in one go) is not written on every change: the history file is the truth
+(opening plays whatever the document file lacks, so a crash at any moment loses nothing the history holds). It is
+brought up to date ("folded"):
+  - by Save, when the window closes, and by the first door of a new document;
+  - in a program without a window (an agent's server, a script): in the door, every FOLD_STEPS steps;
+  - in a window (`windowed()`, the kit's LiveLink): never inside a change, so no click or drag pays for writing the
+    whole song; the link's timer calls `fold_if_quiet()` between pointer actions, which folds once the person has
+    paused FOLD_QUIET_S, or at once when the file is FOLD_STEPS steps behind.
+So a reader of the document file alone sees the song at most FOLD_STEPS steps old (in a window: plus the steps made
+within one tick of its timer), and the latest within FOLD_QUIET_S of the person pausing.
 """
 from __future__ import annotations
 
 import contextlib
 import json
+import time
 
 from .document import Event
 from .history import History
@@ -27,6 +39,7 @@ from .userhome import locked
 
 
 FOLD_STEPS = 20       # the document file is brought up to date at least this often (steps behind the history file)
+FOLD_QUIET_S = 1.0    # a window folds once the person has made no change for this long (fold_if_quiet)
 
 
 def keep(doc) -> "Live":
@@ -46,7 +59,11 @@ class Live:
     def __init__(self, doc):
         self.doc, self.p, self._depth, self._started = doc, paths(doc.folder, doc.item_id, doc.kind.ext), 0, False
         self._filed = doc.seq                    # the step the document file last got from us (or was at when we began)
+        self._filed_data = doc.data if doc.file_at == doc.seq else None   # the tree the file holds (never changed
+                                                 # in place: `is` tells); None: behind or unknown, folded when quiet
         self._doc_there = False                  # the document file is known to be there (we wrote it, or saw it)
+        self._windowed = False                   # a window folds on its own timer, never inside a change
+        self._changed_at = 0.0                   # time.monotonic() of the last change saved through the door
 
     def _mine(self):
         h = self.doc.history
@@ -55,10 +72,9 @@ class Live:
     @contextlib.contextmanager
     def door(self):
         """Held around one change (re-entrant: undo inside a run of steps takes it once). Yields the steps caught up
-        on entry, so a change planned on an older picture knows to rebase. A change appends to the history file only;
-        the document file is written by the first door (a new document), by Save, when the window closes, and every
-        FOLD_STEPS steps, so a reader of the document file alone is never more than that far behind the history file
-        (which stays the truth: opening plays whatever the document file lacks)."""
+        on entry, so a change planned on an older picture knows to rebase. A change appends its own line to the
+        history file (a small cost that never grows with the song); the whole document file only as the module
+        docstring says."""
         if self._depth:
             yield []
             return
@@ -70,15 +86,44 @@ class Live:
                 yield caught
                 first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
                 if self._mine() != before or first:     # a first look at a saved document writes nothing
-                    behind = self.doc.seq - self._filed >= FOLD_STEPS
+                    behind = not self._windowed and self.doc.seq - self._filed >= FOLD_STEPS
                     whole = first or behind or not self._doc_there and not self.p["doc"].exists()
-                    save(self.doc, document=whole)
+                    save(self.doc, document=whole, p=self.p)
                     self._doc_there = True                  # (asked of the disk once, not on every change)
-                    if first or behind:
-                        self._filed = self.doc.seq
+                    if whole:
+                        self._filed, self._filed_data = self.doc.seq, self.doc.data
+                    self._changed_at = time.monotonic()
                 self._started = True
             finally:
                 self._depth -= 1
+
+    def windowed(self):
+        """A window holds this document: from now on its document file is written on the window's timer
+        (`fold_if_quiet`), on Save and on close, never inside a change (the kit's LiveLink says so)."""
+        self._windowed = True
+
+    def behind(self) -> bool:
+        """The document file lacks something this program holds (a step of its own, or one taken in)."""
+        return self.doc.data is not self._filed_data
+
+    def fold(self, always=True):
+        """Write the document file now, through the door (lock, catch up): Save and close (`always`), or only when
+        it is behind."""
+        with self.door():
+            if always or self.behind():
+                save(self.doc, p=self.p)
+                self._filed, self._filed_data, self._doc_there = self.doc.seq, self.doc.data, True
+
+    def fold_if_quiet(self) -> bool:
+        """A window's timer, between pointer actions: fold once the person has paused FOLD_QUIET_S, or at once when
+        the file is FOLD_STEPS steps behind. Never during a drag (the document holds the drag's unsaved picture
+        then). True when it folded."""
+        if not self.behind() or self.doc._gesture is not None:
+            return False
+        if time.monotonic() - self._changed_at < FOLD_QUIET_S and self.doc.seq - self._filed < FOLD_STEPS:
+            return False
+        self.fold(always=False)
+        return True
 
     def catch_up(self) -> list:
         """Take in what another program saved since we last looked; return those steps (oldest first). A window's

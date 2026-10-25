@@ -3,6 +3,7 @@ re-makes only the changed tracks' rows must show exactly what a full rebuild sho
 is open, and its release renders once."""
 from test_select import A, bridge  # noqa: F401  (the fixture: a small song, the engine stood in for)
 
+from PySide6.QtCore import QCoreApplication
 from screensound import timeline
 
 
@@ -36,9 +37,13 @@ def test_no_render_while_dragging_and_one_on_release(bridge):  # noqa: F811
     assert bridge.beginDrag(A)
     bridge.dragTo(0.5, 0, True, False, False, 0.0)
     t.render()                                       # the debounce of an earlier edit fires mid-drag: it waits
+    QCoreApplication.processEvents()
     assert asked == [] and t.busy()
     bridge.endDrag()
-    t.render()                                       # the release's change: one render
+    t.render()                                       # the release's change: one render, after the frame (never dropped)
+    assert asked == [] and t.busy()                  # (the compile waits for the next turn of the loop: play waits too)
+    t.render()                                       # asked again before it ran: still that one render
+    QCoreApplication.processEvents()
     assert len(asked) == 1
 
 

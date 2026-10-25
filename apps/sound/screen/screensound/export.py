@@ -65,10 +65,27 @@ class RenderExport(ExportSheet):
         self._markers = False                         # markers.json beside the files
         self._choice = self._target_key()
         self._more = Versions()
+        self._watching, self._missed = False, False   # the sheet on screen (`watch`); news it missed meanwhile
         bridge.docChanged.connect(self._sync)
-        bridge.historyChanged.connect(self.changed)      # Undo beside the target's sentence follows the newest step
-        bridge.renderChanged.connect(self.changed)       # each extra version's line follows the sound that plays
-        bridge.rangeChanged.connect(self.changed)        # What: a time range on the ruler is a choice
+        bridge.historyChanged.connect(self._news)        # Undo beside the target's sentence follows the newest step
+        bridge.renderChanged.connect(self._news)         # each extra version's line follows the sound that plays
+        bridge.rangeChanged.connect(self._news)          # What: a time range on the ruler is a choice
+
+    @Slot(bool)
+    def watch(self, on):
+        """The sheet is on screen or not (ExportSettings.qml). Its live check measures the render again on every read:
+        while it is closed, the newest step, render or range is kept as news for when it opens (each edit re-ran the
+        check of a closed sheet: ~4-8 ms a click)."""
+        if on and not self._watching and self._missed:
+            self._missed = False
+            self.changed.emit()
+        self._watching = on
+
+    def _news(self, *_):
+        if self._watching:
+            self.changed.emit()
+        else:
+            self._missed = True
 
     def _target_key(self) -> str:
         return (self._loud.target.get("key") or "") if self._loud is not None else ""

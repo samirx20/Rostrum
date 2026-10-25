@@ -54,6 +54,7 @@ class Document:
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
         self.file_version = kind.version                # the file format it was read as (an older one is migrated on open)
         self.saved_by: str | None = None                # the app version that last saved it (storage.py)
+        self.file_at: int | None = None                 # opened: the step its document file showed (None: unknown)
         self._subs, self._gesture = [], None
         self.live = None                                # live.Live when another program shares the file
         self._written = None                            # storage.Written: where the history file ends, as we left it
@@ -85,9 +86,11 @@ class Document:
 
     # reading
     def _index(self) -> dict:
-        """id -> Loc for the current data, kept until the data is replaced (every change makes a new one) or its
-        top lists are (a set-up that writes into doc.data directly). Positions may be stale (parent_of looks)."""
-        if self._idx[0] is not self.data or self._idx[1] != self._top():
+        """id -> Loc for the current data, kept until the data is replaced (every change makes a new tree; a tree is
+        never written in place, edits.fork). One `is` per read (screens ask 100+ times per change). The one exception
+        is a set-up filling a new document's data before its first change (tests do: `doc.data["tracks"].append`):
+        until the history has a step, its top lists are compared too. Positions may be stale (parent_of looks)."""
+        if self._idx[0] is not self.data or (not self.history.changes and self._idx[1] != self._top()):
             self._idx = (self.data, self._top(), index(self.data, self.kind.lists))
         return self._idx[2]
 
@@ -295,10 +298,12 @@ class Document:
     def save(self):
         """Write the document to its project folder. A live document (live.keep) has every change in its history file
         already; this writes its document file too, through the one door (lock, catch up), so a save never writes over
-        another program's steps."""
+        another program's steps (live.Live.fold)."""
+        if self.live is not None:
+            self.live.fold()
+            return
         from .storage import save
-        with self._door():
-            save(self)
+        save(self)
 
 
 def _now() -> str:

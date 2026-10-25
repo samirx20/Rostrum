@@ -41,63 +41,99 @@ Item {
     function black(k) { return [1, 3, 6, 8, 10].indexOf(k % 12) >= 0 }
     height: count * rowH
 
-    Repeater {   // rows and their names
-        model: g.roll.kind === "audio" ? 0 : g.count
-        delegate: Item {
-            required property int index
-            readonly property int key: g.roll.hi - index
-            y: index * g.rowH; width: g.width; height: g.rowH
-            Rectangle { x: g.keysWidth; width: parent.width - x; height: parent.height
-                        color: g.notes && g.black(parent.key) ? Theme.app : "transparent" }
-            Rectangle { x: g.keysWidth; width: parent.width - x; height: parent.height     // in the key: lighter; out: darker
-                        visible: g.notes && g.keyed; color: g.rowInKey[parent.index] ? Theme.raised : "black"
-                        opacity: g.rowInKey[parent.index] ? 1 : 0.75 }   // a clear step between the two
-            Rectangle { x: g.keysWidth; width: parent.width - x; height: 1; y: parent.height - 1
-                        visible: g.notes ? parent.key % 12 === 0 : true; color: Theme.border }
-            Item {   // the keyboard: a white key, or a black one over the white behind it
-                visible: g.notes; width: g.keysWidth - 2; height: parent.height
-                readonly property bool down: g.downKey === parent.key
-                readonly property bool lit: down || g.hoverKey === parent.key
-                Rectangle { anchors.fill: parent; color: !g.black(parent.parent.key) && parent.down ? Theme.accent
-                                                        : !g.black(parent.parent.key) && parent.lit ? "#f2f2f2" : "#d6d6d6" }
-                Rectangle {   // the line between two white keys that touch: B | C and E | F
-                    visible: [0, 5].indexOf(parent.parent.key % 12) >= 0
-                    width: parent.width; height: 1; y: parent.height - 1; color: "#8a8a8a" }
-                Rectangle {   // behind a black key, the line between its two white keys
-                    visible: g.black(parent.parent.key)
-                    width: parent.width; height: 1; y: Math.floor(parent.height / 2); color: "#8a8a8a" }
-                Rectangle {   // a black key: shorter, over the line between its two white keys
-                    visible: g.black(parent.parent.key)
-                    width: Math.round(parent.width * 0.6); height: parent.height; radius: 2
-                    color: parent.down ? Theme.accent : parent.lit ? "#3a3a3a" : "#161616" }
-                Text {   // C on every octave (C4 = middle C); the key under the pointer says its name
-                    readonly property int k: parent.parent.key
-                    z: 1
-                    visible: (k % 12 === 0 || parent.lit) && g.rowH >= 7
-                             && parent.parent.y >= g.scrollY - 1 && parent.parent.y + parent.parent.height <= g.scrollY + g.viewHeight + 1
-                    anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
-                    text: k % 12 === 0 ? "C" + (Math.floor(k / 12) - 1) : (g.rowNames[parent.parent.index] || "")
-                    color: g.black(k) ? "#e6e6e6" : "#3c3c3c"
-                    font.family: uiFont; font.pixelSize: Math.min(Theme.label - 1, Math.max(9, g.rowH)); font.features: { "tnum": 1 }
-                    font.weight: k % 12 === 0 ? Font.DemiBold : Font.Normal
+    // The rows and the keyboard, painted on one surface: an item per key (a dozen each) made ~600 items again each
+    // time the roll's key range changed (another track, a note past the top key: ~30 ms). Only what moves or names a
+    // key stays an item: the lit key, the C names, the drums' names.
+    Canvas {
+        id: rows
+        visible: g.roll.kind !== "audio"
+        width: Math.max(g.width, Screen.width); height: g.height     // as wide as the screen: a resize keeps the picture
+        readonly property var look: [g.roll, g.rowH, g.count, g.keyed, g.rowInKey, g.keyRoot, g.keysWidth, Theme.app]
+        onLookChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        onPaint: {
+            var ctx = getContext("2d"); ctx.reset()
+            var h = g.rowH, kw = g.keysWidth, n = g.count, W = width
+            for (var i = 0; i < n; i++) {
+                var y = i * h, key = g.roll.hi - i
+                if (!g.notes) {
+                    ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1)
+                    ctx.fillStyle = Theme.panel; ctx.fillRect(0, y, kw - 6, h - 1)
+                    continue
                 }
-                Rectangle {   // the key's root (the song's key there): an accent tick at the keys' inner edge
-                    visible: g.keyRoot === parent.parent.key % 12
-                    x: parent.width - 3; width: 3; height: parent.height; color: Theme.accent }
+                var blk = g.black(key)
+                if (blk) { ctx.fillStyle = Theme.app; ctx.fillRect(kw, y, W - kw, h) }
+                if (g.keyed) {            // in the key: lighter; out: darker (a clear step between the two)
+                    var inKey = g.rowInKey[i]
+                    ctx.globalAlpha = inKey ? 1 : 0.75; ctx.fillStyle = inKey ? Theme.raised : "black"
+                    ctx.fillRect(kw, y, W - kw, h); ctx.globalAlpha = 1
+                }
+                if (key % 12 === 0) { ctx.fillStyle = Theme.border; ctx.fillRect(kw, y + h - 1, W - kw, 1) }
+                paintKey(ctx, key, y, h, kw - 2, "#d6d6d6", "#161616")
             }
-            Rectangle { visible: !g.notes; width: g.keysWidth - 6; height: parent.height - 1; color: Theme.panel }
-            Text {   // a drum's name
-                visible: !g.notes && parent.y >= g.scrollY - 1 && parent.y + parent.height <= g.scrollY + g.viewHeight + 1
-                x: Theme.gap; width: g.keysWidth - Theme.gap - 6; height: parent.height     // fits its row: a short row
-                verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7  // shrinks the name
-                elide: Text.ElideRight
-                text: g.drumName(g.roll.drums[parent.index]); color: Theme.fg3
-                font.family: uiFont; font.pixelSize: Theme.label
+        }
+        function paintKey(ctx, key, y, h, w, white, black) {      // a white key, or a black one over the white behind it
+            ctx.fillStyle = g.black(key) ? "#d6d6d6" : white; ctx.fillRect(0, y, w, h)
+            ctx.fillStyle = "#8a8a8a"
+            if (key % 12 === 0 || key % 12 === 5) ctx.fillRect(0, y + h - 1, w, 1)   // B | C and E | F touch
+            if (g.black(key)) {
+                ctx.fillRect(0, y + Math.floor(h / 2), w, 1)                       // the line between its two white keys
+                ctx.fillStyle = black; ctx.beginPath(); ctx.roundedRect(0, y, Math.round(w * 0.6), h, 2, 2); ctx.fill()
             }
+            if (g.keyRoot === key % 12) { ctx.fillStyle = Theme.accent; ctx.fillRect(w - 3, y, 3, h) }   // the key's root
+        }
+    }
+    Repeater {   // the lit key (under the pointer or pressed), over the painted one, with its name
+        model: g.notes && g.litKey >= 0 && g.litKey <= g.roll.hi && g.litKey >= g.roll.lo ? 1 : 0
+        Item {
+            readonly property int key: g.litKey
+            readonly property bool down: g.downKey === key
+            y: (g.roll.hi - key) * g.rowH; width: g.keysWidth - 2; height: g.rowH
+            Rectangle { anchors.fill: parent; color: g.black(parent.key) ? "#d6d6d6" : parent.down ? Theme.accent : "#f2f2f2" }
+            Rectangle { visible: [0, 5].indexOf(parent.key % 12) >= 0; width: parent.width; height: 1; y: parent.height - 1; color: "#8a8a8a" }
+            Rectangle { visible: g.black(parent.key); width: parent.width; height: 1; y: Math.floor(parent.height / 2); color: "#8a8a8a" }
+            Rectangle { visible: g.black(parent.key); width: Math.round(parent.width * 0.6); height: parent.height; radius: 2
+                        color: parent.down ? Theme.accent : "#3a3a3a" }
+            Rectangle { visible: g.keyRoot === parent.key % 12; x: parent.width - 3; width: 3; height: parent.height; color: Theme.accent }
+            KeyName { key: parent.key; row: g.roll.hi - parent.key }
+        }
+    }
+    Repeater {   // C on every octave (C4 = middle C)
+        model: g.notes ? Math.floor(g.roll.hi / 12) - Math.ceil(g.roll.lo / 12) + 1 : 0
+        KeyName { required property int index; key: 12 * (Math.ceil(g.roll.lo / 12) + index); row: g.roll.hi - key
+                  y: row * g.rowH; visible: g.litKey !== key }
+    }
+    component KeyName: Item {     // a key's name on the keyboard: "C4", or the key under the pointer's name in the song's key
+        property int key
+        property int row                                 // its row from the top
+        readonly property real rowY: row * g.rowH
+        readonly property bool whole: rowY >= g.scrollY - 1 && rowY + g.rowH <= g.scrollY + g.viewHeight + 1   // a row cut by the edge: no name
+        width: g.keysWidth - 2; height: g.rowH
+        Text {
+            visible: g.rowH >= 7 && parent.whole
+            anchors { right: parent.right; rightMargin: 4; verticalCenter: parent.verticalCenter }
+            text: parent.key % 12 === 0 ? "C" + (Math.floor(parent.key / 12) - 1) : (g.rowNames[parent.row] || "")
+            color: g.black(parent.key) ? "#e6e6e6" : "#3c3c3c"
+            font.family: uiFont; font.pixelSize: Math.min(Theme.label - 1, Math.max(9, g.rowH)); font.features: { "tnum": 1 }
+            font.weight: parent.key % 12 === 0 ? Font.DemiBold : Font.Normal
+        }
+    }
+    Repeater {   // a drum's name
+        model: g.roll.kind === "drums" ? g.count : 0
+        Text {
+            required property int index
+            y: index * g.rowH
+            visible: y >= g.scrollY - 1 && y + height <= g.scrollY + g.viewHeight + 1
+            x: Theme.gap; width: g.keysWidth - Theme.gap - 6; height: g.rowH     // fits its row: a short row shrinks the name
+            verticalAlignment: Text.AlignVCenter; fontSizeMode: Text.Fit; minimumPixelSize: 7
+            elide: Text.ElideRight
+            text: g.drumName(g.roll.drums[index]); color: Theme.fg3
+            font.family: uiFont; font.pixelSize: Theme.label
         }
     }
     property int hoverKey: -1
     property int downKey: -1
+    readonly property int litKey: downKey >= 0 ? downKey : hoverKey
     MouseArea {   // the keyboard plays: press a key, or drag across the keys
         visible: g.notes; width: g.keysWidth - 2; height: g.height
         hoverEnabled: true; preventStealing: true; cursorShape: Qt.PointingHandCursor

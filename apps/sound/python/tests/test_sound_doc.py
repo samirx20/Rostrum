@@ -143,3 +143,21 @@ def test_removing_a_used_marker_is_refused_after_other_edits():
     drop = next(m["id"] for m in doc.data["markers"] if m.get("name") == "drop")
     with pytest.raises(RostrumError, match="drop"):
         doc.apply({"op": "marker.remove", "target": [drop], "args": {}}, Who.person())
+
+
+def test_compile_memo_follows_every_edit():
+    """The screen's compile keeps each track's part (memo): an edit, a tempo change and an undo still reach the sound,
+    and only a track the edit made new is made again."""
+    doc = Document.new(KIND)
+    doc.run_script("cue.py", run_source(CUE, "cue.py"), Who.script("cue.py"))
+    memo = {}
+    first = compile(doc, memo=memo)
+    doc.apply({"op": "track.set", "target": ["pad"], "args": {"volume": 0.3}}, Who.person())
+    second = compile(doc, memo=memo)
+    assert second["tracks"][0]["volume"] != first["tracks"][0]["volume"]
+    assert second["tracks"][1] is first["tracks"][1]                  # the drums, untouched: the same part
+    doc.apply({"op": "doc.set", "target": ["root"], "args": {"tempo": 90}}, Who.person())
+    assert compile(doc, memo=memo)["tracks"][0]["notes"] == compile(doc)["tracks"][0]["notes"]   # the tempo reaches every part
+    doc.undo(Who.person())
+    doc.undo(Who.person())
+    assert compile(doc, memo=memo) == compile(doc)

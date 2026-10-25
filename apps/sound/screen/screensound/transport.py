@@ -4,6 +4,9 @@ play starts at once, unless the person chose Use speakers alone; later ones are 
 
 Nothing renders while a drag is open (`held`): a draw-click followed by a drag on its length, or the next drag
 right after a release, never shares the machine with a render; the drag's change renders once, when it lands. The
+song is compiled (5-7 ms on a 3-minute song, on the screen's thread) only once the pointer is quiet, and then right
+after a frame is on screen (after_frame.py), so it takes the time between two frames, never the frame a click waits
+for; edits in between are that one render (coalesced, never dropped: `stale` until it is asked). The
 engine itself runs below the screen's priority (playback.py), so a render that is running keeps the screen at 60 fps.
 
 Play waits for a render that is on its way (never plays a stale one silently). A failed render is loud: `failed`
@@ -15,6 +18,8 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from rostrum_sound import settings
+
+from rostrum_gui.after_frame import AfterFrame
 
 from .live_transport import LivePlay
 from .playback import Renderer
@@ -45,6 +50,7 @@ class Transport(QObject):
         self.player.ended.connect(self._ended)
         self._tick = QTimer(self, interval=33, timeout=self._advance)
         self._debounce = QTimer(self, singleShot=True, interval=DEBOUNCE_MS, timeout=self.render)
+        self._framed = AfterFrame(self._compile, self)      # the compile, right after the next frame (render)
         self._told = QTimer(self, singleShot=True, interval=50, timeout=self._tell)
 
     @property
@@ -64,6 +70,12 @@ class Transport(QObject):
         self.stale = True
         if self._held() or self._pointing():   # a drag is open (its release asks again), or the person is clicking:
             self._debounce.start()             # the render thread's work on the song shares the screen's time
+            return
+        self._framed.ask()                     # after the next frame: the time between frames, not a click's frame
+
+    def _compile(self):
+        if self._held() or self._pointing():   # a press came meanwhile: once the pointer is quiet again
+            self._debounce.start()
             return
         self._set_state("Rendering…")
         try:
@@ -161,6 +173,7 @@ class Transport(QObject):
     def close(self):
         self._tick.stop()
         self._debounce.stop()
+        self._framed.due = False
         self._told.stop()
         self.player.close()
         self.renderer.close()

@@ -59,8 +59,7 @@ def _partners(docs, first, c, who, done: bool, open_item):
         docs.append(d)
     out = []
     for d in docs:
-        cs = [x for x in d.history.changes if x.original and x.step == c.step and x.who == who
-              and d.history.done[x.seq] == done]
+        cs = [x for x in d.history.of_step(c.step) if x.original and x.who == who and d.history.done[x.seq] == done]
         if cs:
             out.append((d, cs))
     return out
@@ -89,7 +88,7 @@ def redo(docs, who: Who, open_item=None):
     """(document, the redo change) for what the person undid last across `docs`; None when there is nothing to
     redo, or the person has made a new change in any of them since that undo. A step is redone whole."""
     best = _newest(docs, lambda h, w: h.last_redoable(w), who)
-    newest_own = max((c.t for d in docs for c in d.history.changes if c.original and c.who == who), default=0.0)
+    newest_own = max((c.t for d in docs for c in [d.history.newest_own(who)] if c is not None), default=0.0)
     if best is None or best[0] < newest_own:
         return None
     _, d, c = best

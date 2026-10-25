@@ -47,6 +47,30 @@ class SelectSlots(SlotMixin):
             self._panel_later().due = False
             self._show_panel()
 
+    def make_panels_ahead(self, ids):
+        """The settings rows of these items' kinds, made ahead: one kind per frame, after the screen is drawn, parked
+        in the panel's model (absent) so a later pick of that kind finds its rows waiting (model_pick.py). A kind's
+        first panel made every row's control on the click that showed it (a first note drawn: ~20-30 ms)."""
+        for i in ids:
+            job = AfterFrame(None, self)
+            job._fn = lambda i=i, job=job: job.ask() if pointer_quiet.busy() else self._park_rows(i)   # never in a click
+            job.ask()
+
+    def _park_rows(self, item_id):
+        k = self._kit
+        if not self.doc.has(item_id) or item_id in k.selection:
+            return
+        was = (k.selection, k.sel, k.op_kind, k.static)
+        try:                                # the rows that item's pick would show, worked out with nothing sent
+            kind = self.doc.item(item_id)["type"]
+            k.selection, k.sel = [item_id], item_id
+            k.op_kind = (many.shared_op([self.doc.kind.registry.field_op(kind)]), kind)
+            k.static = self._layout()
+            rows = self._rows()
+        finally:
+            k.selection, k.sel, k.op_kind, k.static = was
+        self.model.park(rows)
+
     def _panel_later(self) -> AfterFrame:
         if self._kit.panel is None:
             self._kit.panel = AfterFrame(self._show_panel, self)

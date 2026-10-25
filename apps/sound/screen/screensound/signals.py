@@ -13,6 +13,7 @@ class SoundSignals:
     rollChanged = Signal()          # the Editor's piano roll's layout (another track, kind, keys): the rows stay
     rollBlocksChanged = Signal()    # the roll's notes / hits / clips only (an edit on them): its layout stays
     rollPatched = Signal("QVariantList", "QVariantList")            # a few of them: (ids gone, blocks new or changed)
+    rollPickedChanged = Signal()    # the roll's selected blocks (`rollPicked`): a pick, or an edit on one of them
     blocksPatched = Signal(str, "QVariantList", "QVariantList")     # a few of an arrangement row's (block_patch.py)
     blocksReset = Signal(str)       # that row's whole list again: the screen drops its patch
     pictureChanged = Signal()       # the picture corner's choice, start or render (picture_slots.py)

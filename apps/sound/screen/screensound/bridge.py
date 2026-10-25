@@ -12,8 +12,9 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import DocBridge, many, pointer_quiet
+from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.model import RowsModel
@@ -72,6 +73,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
         self._apt: tuple | None = None      # the selected automation point: (track id, item id, lane, index)
         self._play_lane = "sustain"         # the Editor's playing lane (sustain, dynamics, bend): the person's view
+        self._roll_later = AfterFrame(lambda: self._guard(self._show_roll))   # (made before the kit's first selection)
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
@@ -90,6 +92,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
         self.selectedItemsChanged.connect(self._drop_point)
+        self.picksChanged.connect(self._roll_picks)              # the velocity readout's blocks (rows_view)
         self._follow_selection()
         self._rebuild()
         self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping, pointing=pointer_quiet.busy)
@@ -103,6 +106,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._tv.changed.connect(self.viewChanged)
         self.viewChanged.connect(self._follow_zoom)       # Grid "Auto" follows the zoom (grid_slots.py)
         self._make_actions()                # the one action list: context bar, menus, Ctrl+K, keys (action_slots.py)
+        # a moment after the window is up: the settings rows of each kind in the song (a note, a hit, a track …) are
+        # made ahead, a kind per frame, so the first note drawn shows its panel as quickly as the tenth (bridge_select)
+        QTimer.singleShot(1000, self, lambda: self.make_panels_ahead(self._one_of_each()))
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     @Property(str, constant=True)
@@ -134,6 +140,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         (their lanes keep their picture until it is redrawn); only a row added or removed is made or freed. A plain
         list made every row again on every change, so every lane showed blank until it painted (S63, after a take)."""
         return self._lanes
+
+    @Property("QVariantList", notify=S.rollPickedChanged)
+    def rollPicked(self):
+        """The roll's selected notes / hits / clips (the velocity strip's readout): only those, never every block."""
+        return self.__dict__.get("_roll_picked", [])
 
     @Property("QVariantList", notify=S.markersChanged)
     def markers(self):
@@ -232,15 +243,22 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
             self._track = i
         elif not (self._track and self.doc.has(self._track)):
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
-        if self._view and self._track != was:
-            self._show_roll()
+        if self._view and self._track != was:     # the roll of another track: in the frame after the pick's (rows_view)
+            self._roll_later.ask()
+
+    def _one_of_each(self) -> list[str]:
+        first: dict = {}
+        for it in self.doc.items():
+            first.setdefault(it["type"], it["id"])
+        return list(first.values())
 
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a
         song: it renders as silence the length the screen shows, instead of the engine refusing an empty schedule."""
         side = getattr(self, "side", None)                 # lines being spoken right now play once they are made
         doc = clean_clips.without_pending(self.doc)        # a clip whose cleaned take is not made yet plays its original
-        s = compile_doc(voice_card.without(doc, side.voice.making() | side.voice.waiting()) if side else doc)
+        s = compile_doc(voice_card.without(doc, side.voice.making() | side.voice.waiting()) if side else doc,
+                        memo=self.__dict__.setdefault("_compiled", {}))      # each track made again only when it changed
         if "length" not in s and not any(t.get(k) for t in s["tracks"] for k in SOUNDING):
             s["length"] = self._length()
         return s
