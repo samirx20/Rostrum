@@ -481,8 +481,9 @@ settings panel on the right. Shortcuts are written Ctrl / Alt / Shift; on the Ma
 - **Goal:** draw a curve at a comfortable angle, as on paper.
 - **Steps:** Shift+Space+drag turns the view; on a pen display, two-finger twist. Click the small compass that appears
   in the view controls to set it straight again (or Shift+0).
-- **Mirror:** Shift+H mirrors the view left to right (the animator's and painter's check for a lopsided drawing); a
-  small "Mirrored" label shows until Shift+H again.
+- **Mirror:** "Mirror the view" in the view menu (no key: Shift+H is Flip across, Figma's habit) mirrors the view left
+  to right (the animator's and painter's check for a lopsided drawing); a small "Mirrored" label shows until it is
+  chosen again.
 - **Where and when:** the compass shows only while the view is turned; the label only while mirrored.
 - **Feedback:** the frame turns or mirrors on screen; the picture and export do not.
 - **Agent:** none (view only).
@@ -959,8 +960,8 @@ Design and mockups: `C:\Users\Sam\.rostrum\waves\results\2d-painted-fill\DESIGN.
 ### Numbers, nudge and arithmetic · Now
 - **Goal:** exact values.
 - **Steps:** in settings, X Y sit on one row, W H on one row with a link for proportions. Drag a field's label left /
-  right to scrub (Shift ×10, Alt ×0.1). Type maths: `+20`, `*2`, `50%` (of the frame), `=` starts an expression
-  (3.26). Arrows nudge the selection on the canvas by 1 px (Shift: 10 px).
+  right to scrub (Shift ×10, Alt ×0.1). Type maths: `+20` adds, `*2` doubles (from each picked layer's own value), `=` starts an expression
+  (3.26); `50%` is not taken (in a % box it is just the unit). Arrows nudge the selection on the canvas by 1 px (Shift: 10 px).
 - **Feedback:** the canvas follows the scrub live.
 - **Undo and adjust:** one step per committed value, per scrub, per nudge burst (key presses within 1 s are one step).
 - **Agent:** `value.set`.
@@ -1152,8 +1153,8 @@ operation is one (`mask.make`).
 
 ### The key bar · Now
 - **Goal:** set how a move starts and lands, for one key or many.
-- **Steps:** select keys → the **timeline header** shows the key bar: **Ease ▾** (Linear, Ease in, Ease out, Smooth,
-  Spring, Jump (no in-between: the value jumps at the next key), Custom), a **small curve** you can drag (two handles, like a CSS cubic curve), and, for one key, its
+- **Steps:** select keys → the **timeline header** shows the key bar: **Ease** (the one ease list: Linear, Smooth, Ease in, Ease out,
+  Spring, Hold (no in-between: the value jumps at the next key), and under More Snappy, Natural, Heavy, Stronger smooth, Bounce; Custom after a drag), a **small curve** you can drag (two handles, like a CSS cubic curve), and, for one key, its
   **Time** and **Value**. Pick or drag; every selected key changes. Right-click on a key gives the same Ease list.
 - **Where and when:** in the timeline header, only while keys are selected; the settings panel keeps showing the
   layer, with the keyed setting highlighted (decision 5).
@@ -2496,12 +2497,12 @@ core (the shared operations and history), svc (the project service).
 | Stroke reveal | None | Reveal % | M | Py, eng |
 | Shape morphing | Path-shape keys (H14); points edited on screen | The Shape diamond; Start point | S | screen |
 | Brush steadiness | None | A Steadiness slider | M | painting kit |
-| Mirror the view | None | Shift+H | S | screen |
+| Mirror the view | None | The view menu (no key) | S | screen |
 | Frame-by-frame | Done on screen (frames, holds, onion, Alt keys) | Plus "New drawings hold", light table, flip, `,` `.` | S (hold, flip) · M (light table) | screen |
 | **Selecting and arranging** | | | | |
 | Picking by paint, outer group, double-click in, Ctrl+click deep, Shift / Ctrl rules | Done (H28) | Same, plus hover outline, group path at bottom-left, Tab to next layer, Shift+Enter out | S | screen |
 | Handles | Done; resize pointers don't turn with a turned box | Pointers turn | S | screen |
-| X Y / W H pairs, scrubbing labels, maths in fields | One per row; no scrub | Pairs; scrub; `+20`, `*2`, `50%`, `=` | M | kit |
+| X Y / W H pairs, scrubbing labels, maths in fields | One per row; no scrub | Pairs; scrub; `+20`, `*2`, `=` (not `50%`) | M | kit |
 | Anchor point | Anchor X \| Y in % (one pair, "50 %") | Alt+drag on canvas, 9-dot picker | M | screen, kit |
 | Find a layer, U for animated settings | None | Search box over 12 layers; U | S | screen |
 | Layer rows, reorder, rename, hide, lock | Done (H28) | Plus solo with its banner, smart duplicate | S | screen |
@@ -2617,12 +2618,12 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 | **Select** | Click · Shift+click (canvas) · Ctrl+click / Shift+click (rows), also keys and bars in the timeline *(S30)* · Shift+box adds, Ctrl+box deepest (canvas) *(S30)* · Ctrl+A · Esc · Enter / double-click (go in) · Shift+Enter (go out) · Ctrl+click (deepest) · Tab / Shift+Tab (next / previous layer) |
 | **Move and size** | Arrows nudge 1 px / Shift 10 px (canvas) / Alt 0.1 px *(S30)* · Shift while dragging (proportions, straight) · Alt while dragging (from the centre) · Alt+drag (a copy) · Ctrl while dragging (no snapping) · drag the anchor circle |
 | **Edit** | Ctrl+Z · Ctrl+Shift+Z / Ctrl+Y · Ctrl+C · Ctrl+X · Ctrl+V (in place) · Ctrl+Shift+V (at the pointer) · Ctrl+D · Delete · F2 rename |
-| **Arrange** | Ctrl+] / Ctrl+[ forward / back · Ctrl+Shift+] / [ front / back · Ctrl+G group · Ctrl+Shift+G ungroup · Shift+A auto layout · Ctrl+Alt+M mask · Ctrl+Alt+U / S / I / X combine (union, subtract, intersect, exclude) · Alt+A / D / W / S align left / right / top / bottom · Alt+H / V centre across / up and down · Ctrl+Shift+H hide · Ctrl+Shift+L lock · Alt+click an eye (solo) · Ctrl+Alt+K make symbol · Ctrl+Alt+C / V copy / paste style |
+| **Arrange** | Ctrl+] / Ctrl+[ forward / back · Ctrl+Shift+] / [ front / back · Ctrl+G group · Ctrl+Shift+G ungroup · Shift+A auto layout · Ctrl+Alt+M mask · Ctrl+Alt+U / S / I / X combine (union, subtract, intersect, exclude) · Alt+A / D / W / S align left / right / top / bottom · Alt+H / V centre across / up and down · Shift+H / Shift+V flip across / down · Ctrl+Shift+H hide · Ctrl+Shift+L lock · Alt+click an eye (solo) · Ctrl+Alt+K make symbol · Ctrl+Alt+C / V copy / paste style |
 | **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+J jump (no in-between) · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) · **A** show animated settings *(S30, was U)* |
 | **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker or drawing · Shift+`,` / Shift+`.` previous / next beat · Shift+I / Shift+O time range start / end · **Shift+L** loop on / off *(S30)* · Shift+Space play from the selection's start *(S30)* · Alt+M / Alt+Shift+M next / previous marker *(S30)* |
 | **Frame-by-frame** | `,` / `.` previous / next drawing *(S30: Alt+arrows are the fine nudge now)* · Alt+N new drawing · Alt+Shift+N copy of this drawing · = / − hold longer / shorter *(S30)* · Alt+O onion skin · hold `,` or `.` to flip through |
 | **Paint** | E eraser · G fill · [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |
-| **View** | Shift+H mirror the view · Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · **F** (or Shift+2) zoom to selection *(S30)* · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
+| **View** | Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · **F** (or Shift+2) zoom to selection *(S30)* · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
 | **Find and help** | Ctrl+K search and run · Ctrl+F find a setting · Ctrl+Shift+F find a layer · Ctrl+/ key list · F1 guides *(S30)* · Ctrl+L library · Ctrl+H history · Ctrl+S save a version |
 | **Export** | Ctrl+E export · Ctrl+Shift+E export again |
 

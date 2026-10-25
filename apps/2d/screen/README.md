@@ -132,8 +132,12 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 ## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
 
-- **Key block** (`qml/KeyPanel.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list in `eases.py`):
-  at the top of the settings panel only while keys are picked. Ease ▾, the curve (fitted whole in its box, overshoot
+- **Key block** (`qml/KeyPanel.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list is
+  `EASE_LIST` in `rostrum_core/keys/easing.py`, rows for the screen in the kit's `rostrum_gui/eases.py`):
+  at the top of the settings panel only while keys are picked. **Ease** (the kit's `EasePicker.qml` + `EaseList.qml`,
+  objectNames `easePicker`, `ease_<id>`, `easeMore`; the same control in the Move view, `animEase`, and the list on a
+  key's right-click, `keyEaseMenu`): hovering a row plays that ease without keeping it (`ease_play.py` `preview`: one
+  gesture, cancelled when the pointer leaves), a click is one `key.set {ease}` / `anim.ease {preset}`. The curve (fitted whole in its box, overshoot
   included; drag its two handles: `key.handles`), one
   key's Time and Value, a spring's Bounce and Speed (`key.set {bounce, speed}`; the words become stiffness / damping in one
   place, `rostrum_core/keys/spring.py`, and `scene.py` sends the engine those). Every picked key changes; each pick, edit
@@ -274,7 +278,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - A selected layer's outline turns with it. With one layer selected (not a path, whose points show instead) it has 4 corner +
   4 edge knobs (`qml/Handles.qml`; an edge knob is absent on a small box) and a turn zone just outside each corner (open-hand
   cursor). Resize: the opposite side stays put; **Shift** keeps the proportion, **Alt** resizes from the centre; dragged past the
-  opposite side the layer mirrors (Stretch below 0) and keeps resizing, any type, a group too. Turn: about the
+  opposite side the layer mirrors (Stretch below 0) and keeps resizing, any type, a group too (the same fields as the
+  Flip across / Flip down actions, Shift+H / Shift+V: `layer.flip`, rostrum2d/ops_flip.py). Turn: about the
   anchor, **Shift** snaps to 15°. Maths: `screen2d/transform.py`; slots: `screen2d/handle_slots.py`.
 - What a resize changes: shapes, images -> Width / Height (and X / Y); every other type (group, text, video, drawing, ...) ->
   Scale from a corner, Stretch X / Y from an edge. An animated field gets a key at the playhead; an expression-driven one refuses

@@ -33,6 +33,8 @@ OWN = [
     {"job": "align_bottom", "keys": ["Alt+S"], "label": "Align bottom"},
     {"job": "centre_across", "keys": ["Alt+H"], "label": "Align centre"},
     {"job": "centre_down", "keys": ["Alt+V"], "label": "Align middle"},
+    {"job": "flip_across", "keys": ["Shift+H"], "label": "Flip across"},              # Figma's keys (Shift+H, Shift+V)
+    {"job": "flip_down", "keys": ["Shift+V"], "label": "Flip down"},
     {"job": "mask", "keys": ["Ctrl+Alt+M"], "label": "Mask"},
     {"job": "union", "keys": ["Ctrl+Alt+U"], "label": "Combine: union"},
     {"job": "subtract", "keys": ["Ctrl+Alt+S"], "label": "Combine: subtract"},

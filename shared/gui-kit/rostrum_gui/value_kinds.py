@@ -10,7 +10,9 @@ from pathlib import Path
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtQml import QJSEngine, QJSValue
 
-SOURCE = Path(__file__).resolve().parent.parent / "qml" / "RostrumKit" / "ValueKinds.js"
+KIT = Path(__file__).resolve().parent.parent / "qml" / "RostrumKit"
+SOURCE = KIT / "ValueKinds.js"
+ARITHMETIC = KIT / "Arithmetic.js"     # ValueKinds.js `.import`s it; here the two are one script
 
 
 @lru_cache(maxsize=1)
@@ -18,7 +20,10 @@ def _js():
     # A JS engine needs a Qt application (without one it crashes the process): the app's own, else a plain one.
     _js.app = QCoreApplication.instance() or QCoreApplication([])
     engine = QJSEngine()
-    code = SOURCE.read_text(encoding="utf-8").replace(".pragma library", "", 1)
+    sums = ARITHMETIC.read_text(encoding="utf-8").replace(".pragma library", "", 1)
+    own = SOURCE.read_text(encoding="utf-8").replace(".pragma library", "", 1)
+    own = "\n".join(ln for ln in own.split("\n") if not ln.startswith(".import"))
+    code = sums + "\nvar Arith = {calc: calc}\n" + own
     done = engine.evaluate(code, str(SOURCE))
     if done.isError():
         raise RuntimeError(f"ValueKinds.js failed to load: {done.toString()}")
@@ -26,7 +31,7 @@ def _js():
 
 
 def _call(name: str, *args):
-    out = _js().globalObject().property(name).call([QJSValue(a) for a in args])
+    out = _js().globalObject().property(name).call([_js().toScriptValue(a) for a in args])
     if out.isError():
         raise RuntimeError(f"ValueKinds.{name}{args}: {out.toString()}")
     return out.toVariant()
@@ -39,6 +44,12 @@ def kinds() -> list[str]:
 def format(kind: str, value: float, step: float = 0.01) -> str:   # noqa: A001 — the kit's own word
     """The stored value as the screen shows it: format("percent", 0.8) == "80 %"."""
     return _call("format", kind or "", float(value), float(step))
+
+
+def read(kind: str, text: str, current=None) -> dict:
+    """What typed words mean (the kit's `read`): {"value"}, {"value", "by"} / {"value", "factor"} for +20 / *2 / /2
+    (`current` a number or a list, one result each), {"expression"} for "=…", or {"error"}."""
+    return _call("read", kind or "", str(text), current)
 
 
 def parse(kind: str, text: str) -> float | None:

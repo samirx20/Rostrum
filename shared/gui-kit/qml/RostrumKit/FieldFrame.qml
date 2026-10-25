@@ -16,6 +16,7 @@ FocusScope {
     property int elide: Text.ElideRight   // how the text at rest is cut
     property bool editable: false       // typing allowed: a click puts the caret in
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
+    property bool keepOnRefusal: false  // a refused entry keeps the caret and the typed text, to be fixed (Esc puts the value back)
     property string problem: ""         // a refused entry, said in a sentence: the field shows red until the next edit
     onProblemChanged: if (problem !== "" && typeof backend !== "undefined" && backend && backend.refuse) backend.refuse(problem)
     readonly property bool active: engaged || input.activeFocus
@@ -94,12 +95,21 @@ FocusScope {
         readonly property bool pending: activeFocus && text !== f.text && text !== f.editText && text !== sent
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
-        function commit() { if (text !== f.text && text !== f.editText && text !== sent) { sent = text; f.committed(text); sent = text } }
-        onAccepted: { commit(); f.entered(); focus = false }
-        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; if (f.editText !== "") text = f.editText; f.typingStarted() } else { commit(); f.typingEnded() }
-        Keys.onEscapePressed: { text = f.text; focus = false; f.escaped() }
+        function commit() { if (text !== f.text && text !== f.editText && text !== sent) { sent = text; if (f.keepOnRefusal) f.problem = ""; f.committed(text); sent = text } }
+        onAccepted: { commit(); f.entered(); if (!(f.keepOnRefusal && f.problem !== "")) focus = false; else selectAll() }
+        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; if (f.editText !== "") text = f.editText; f.typingStarted() } else { commit(); if (f.keepOnRefusal && f.problem !== "") text = f.text; f.typingEnded() }
+        Keys.onEscapePressed: { text = f.text; if (f.keepOnRefusal) f.problem = ""; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)
+        // Ctrl+Z / redo with nothing typed here (the box holds its value, or a find box what it found): the box lets go
+        // and the window's undo runs, never a box swallowing the key (a focused text box takes it before any shortcut)
+        Keys.onPressed: (e) => {
+            const undo = e.matches(StandardKey.Undo), redo = e.matches(StandardKey.Redo) || (e.key === Qt.Key_Y && e.modifiers === Qt.ControlModifier)
+            if ((!undo && !redo) || pending || typeof backend === "undefined" || !backend || !backend.undo) return
+            e.accepted = true
+            focus = false
+            if (undo) backend.undo(); else backend.redo()
+        }
     }
     Binding {  // the shown text follows the value, except while the person is typing
         target: input; property: "text"; value: f.text

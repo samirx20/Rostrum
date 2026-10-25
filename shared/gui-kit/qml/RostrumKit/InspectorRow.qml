@@ -356,12 +356,14 @@ Item {
                 atRest: row.mixed
                 words: row.model.words || []
                 expressions: row.bridge.typesExpressions === true     // a bridge without the flag (a sub-panel) takes no typed =…
+                relative: row.bridge.typesRelative === true           // …nor +20 / *2 from each one's own value
                 display: row.model.display || ""
                 defaultValue: row.model.default === undefined ? null : row.model.default   // double-click puts it back
                 leading: [Text { visible: !!row.model.letter; text: row.model.letter || ""; color: Theme.fg3     // a pair's small letter
                                  font.family: uiFont; font.pixelSize: Theme.label }]
                 onEdited: (v) => row.set(v)
                 onTypedExpression: (t) => row.set(t)
+                onEditedRelative: (by, factor) => row.bridge.setRelative(row.model.id, by, factor)
                 onScrubStarted: row.bridge.beginScrub(row.model.id)
                 onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
                 onScrubEnded: row.bridge.endScrub()

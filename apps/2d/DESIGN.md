@@ -393,6 +393,7 @@ screen state (selection, playhead, tool, open groups, the search text, the timel
 | Mask, track matte, release | `mask.make {cutter, targets, mode}` / `mask.release` |
 | Boolean | `shape.boolean {ids, op}` |
 | Align / distribute / match size | `layer.align` / `layer.distribute` / `layer.match_size` |
+| Flip across / down (Shift+H / Shift+V); a resize dragged past the opposite side | `layer.flip {ids, axis, around}`; the resize writes the same fields (Stretch below 0, position, rotation) through `value.set` |
 | Paste style | `style.apply {from, ids}` |
 | Lock / hide | `layer.lock` / `layer.hide` |
 | Nudge | `value.set` x / y (at the playhead when animated) |

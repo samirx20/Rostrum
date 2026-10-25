@@ -17,20 +17,18 @@ def turn(vx: float, vy: float, deg: float) -> tuple[float, float]:
 
 
 def resize(g: dict, hx: int, hy: int, dx: float, dy: float, shift: bool = False, alt: bool = False,
-           uniform: bool = False, flip: bool = False) -> dict:
+           uniform: bool = False) -> dict:
     """The box after dragging handle (hx, hy) by (dx, dy) composition px: {x, y, w, h, cx, cy} (anchor position, size,
     and whether the pointer is past the opposite side, so the shape is mirrored on that axis).
     The opposite side stays put (Alt: the centre does); Shift (or `uniform`, for a corner) keeps the proportion.
-    `flip`: dragging past the opposite side mirrors the shape and keeps resizing (a box that cannot be mirrored, a
-    group, stops at MIN instead). g["ax"], g["ay"]: where the anchor sits across the box as it shows (a mirrored
-    shape's anchor is on the other side), so after a crossing the anchor's place is read from its other side."""
+    Dragged past the opposite side, the box mirrors and keeps resizing (never smaller than MIN). g["ax"], g["ay"]:
+    where the anchor sits across the box as it shows (a mirrored shape's anchor is on the other side), so after a
+    crossing the anchor's place is read from its other side."""
     w0, h0 = g["w"], g["h"]
     ldx, ldy = turn(dx, dy, -g["rot"])                       # the drag along the box's own sides
     k = 2 if alt else 1
     sw = w0 + hx * ldx * k if hx else w0                     # signed: below 0 is past the opposite side
     sh = h0 + hy * ldy * k if hy else h0
-    if not flip:
-        sw, sh = max(MIN, sw), max(MIN, sh)
     if hx and hy and (shift or uniform):
         f = max(abs(sw) / w0, abs(sh) / h0)
         sw, sh = math.copysign(w0 * f, sw), math.copysign(h0 * f, sh)

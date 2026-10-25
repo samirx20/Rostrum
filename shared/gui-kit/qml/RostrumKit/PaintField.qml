@@ -6,8 +6,9 @@ import "ColourMath.js" as M
 // A fill in the inspector: a swatch square (the colour, the gradient, a chequer for none, a picture or painting's own
 // picture) and beside it the hex code of a solid colour (typed in place: one change) or the fill's name ("Linear · 3
 // stops", "None", a painting's name). A click on the square (or on the name) opens the PaintPicker beside it (to its left).
-// One picker session = one undo: began() on the first change, live(paint) while it goes on, ended() when the picker closes;
-// a pick that is a whole change by itself (a painting, a fit, a picture file) ends the session at once. Painted's New
+// One whole change in the picker = one undo: began() on its first step, live(paint) while it goes on, ended() when it is
+// done (a colour drag let go, a hex or swatch taken: PaintPicker.done; a painting, a fit, a picture file at once) or the
+// picker closes. Painted's New
 // painting is the app's: `asked(add)` after the open change ends (a new painting is a change of its own); so is Paint it
 // (`asked(paintIt)`: the picker closes and the app's brush paints the painting).
 // Painted, the paintings to pick (`sources`) and the rows drawn under Fit (`rows`, `rowsBridge`, `rowsHost`) come from
@@ -87,6 +88,7 @@ SwatchHex {
             types: f.add === "" ? f.types.filter(t => t !== "painted") : f.types
             onEdited: (p) => f.take(p)
             onChosen: (p) => { f.take(p); f.settle() }
+            onDone: f.settle()
             onAdded: { f.settle(); f.asked(f.add) }
             onPaintAsked: { picker.close(); f.asked(f.paintIt) }
             onSwatchAdd: (hx) => f.saveSwatch(hx)

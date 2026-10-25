@@ -198,3 +198,17 @@ def test_setting_a_value_to_what_it_is_records_nothing():
     before = doc.seq
     assert doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 40}}, SAM) is None
     assert doc.seq == before and x(doc) == 40
+
+
+def test_quick_repeats_merge_but_a_change_back_is_its_own_step():
+    """A person's quick nudges of one field are one undo step; a switch turned on and off again (motion blur added then
+    taken away) is two, so Ctrl+Z brings the first back."""
+    doc = toy.sample()
+    for v in (10, 20, 30):                                          # three quick nudges: one step
+        doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": v}}, SAM)
+    assert len(doc.history.changes) == 1
+    doc.apply(CAM, SAM)
+    doc.apply({"op": "camera.set", "target": ["cam_1"], "args": {"dof": False}}, SAM)   # back off at once: a step of its own
+    assert len(doc.history.changes) == 3
+    doc.undo(SAM)
+    assert doc.item("cam_1")["dof"] is True

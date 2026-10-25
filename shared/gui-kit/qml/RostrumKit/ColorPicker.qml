@@ -7,6 +7,8 @@ import "ColourMath.js" as M
 // brightness, a hue strip, an alpha strip, then pipette · hex · alpha % (· `extra`, e.g. a gradient stop's place in %),
 // then the project's swatches and the brand's. It keeps the colour as HSV inside, so the hue stays put when the
 // brightness reaches 0. `changed` comes live while dragging; the owner sets `hex` / `alpha` back (or not: it keeps its own).
+// `done` follows each whole change (a drag let go; a hex, an opacity or a swatch taken): the owner closes its open
+// change there, so each is one undo step and Ctrl+Z in the open picker takes back the last one.
 // The pipette needs the optional `colourBank` (its pixel(x, y) reads the screen); without it the button is not shown.
 Column {
     id: p
@@ -18,6 +20,7 @@ Column {
     property var brand: []
     property string brandName: ""
     signal changed(string hex, real alpha)
+    signal done()
     signal swatchAdd(string hex)
     signal extraEdited(string text)
 
@@ -37,7 +40,7 @@ Column {
         if (c.s > 0 && c.v > 0) h = c.h
     }
     function send() { changed(current, a) }
-    function choose(hx) { take(hx); send() }
+    function choose(hx) { take(hx); send(); done() }
     Component.onCompleted: { take(M.parseHex(hex) || "#ffffff"); a = alpha }
     onHexChanged: take(M.parseHex(hex) || "#ffffff")
     onAlphaChanged: a = alpha
@@ -56,7 +59,7 @@ Column {
                                          GradientStop { position: 1; color: "#000000" } } }
         function at(m) { p.s = M.clamp01(m.x / width); p.v = 1 - M.clamp01(m.y / height); p.send() }
         MouseArea { anchors.fill: parent; cursorShape: Qt.CrossCursor
-                    onPressed: (m) => sv.at(m); onPositionChanged: (m) => { if (pressed) sv.at(m) } }
+                    onPressed: (m) => sv.at(m); onPositionChanged: (m) => { if (pressed) sv.at(m) }; onReleased: p.done() }
         Knob { x: p.s * sv.width - 7; y: (1 - p.v) * sv.height - 7 }
     }
 
@@ -79,7 +82,7 @@ Column {
         }
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     function at(m) { p.h = M.clamp01((m.x - 7) / (width - 14)); p.send() }
-                    onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) } }
+                    onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) }; onReleased: p.done() }
         Knob { x: p.h * (parent.width - 14) }
     }
 
@@ -98,7 +101,7 @@ Column {
         }
         MouseArea { objectName: "alphaStrip"; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                     function at(m) { p.a = M.clamp01((m.x - 7) / (width - 14)); p.send() }
-                    onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) } }
+                    onPressed: (m) => at(m); onPositionChanged: (m) => { if (pressed) at(m) }; onReleased: p.done() }
         Knob { x: p.a * (parent.width - 14) }
     }
 
@@ -129,7 +132,7 @@ Column {
         FieldFrame {
             visible: p.showAlpha; editable: true; width: 56
             text: String(Math.round(p.a * 100)); suffix: "%"
-            function put(n) { p.a = M.clamp01(n / 100); p.send() }
+            function put(n) { p.a = M.clamp01(n / 100); p.send(); p.done() }
             onCommitted: (t) => { const n = parseFloat(t); if (isNaN(n)) { problem = "“" + t + "” is not a number: type 0 to 100"; input.text = text } else put(n) }
             onArrow: (d, big) => put(Math.round(p.a * 100) + d * (big ? 10 : 1))
         }

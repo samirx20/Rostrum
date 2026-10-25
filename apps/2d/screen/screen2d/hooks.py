@@ -70,6 +70,15 @@ class Hooks2D:
     def starts(self, item):              # the Text tool's top-left start isn't a change (a group opens only for one)
         return F.STARTS.get(item.get("type"), {})
 
+    def relative_call(self, item_id, param, by, factor):   # +20 / *2: value.set {by} from this layer's own value now
+        item = self.doc.item(item_id)
+        cur = self.shown_values(item).get(param) if route.drives(item, param) and not exprs.drives(item, param) else None
+        if isinstance(cur, bool) or not isinstance(cur, (int, float)):
+            return None
+        add = by if factor == 1 else cur * (factor - 1)
+        add = round(add) if F.param(item["type"], param).integer else round(add, 6)
+        return {"op": "value.set", "target": [item_id], "args": {"prop": param, "at": self.own_t(item_id), "by": add}}
+
     def edit_call(self, item_id, param, value):
         if param == size_rows.ROW and self.doc.item(item_id)["type"] == "comp":      # Scene settings › Format: comp.size
             return size_rows.call(item_id, value)

@@ -20,7 +20,7 @@ from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
 from . import cover_move, frame_actions, pin_depth
 from .action_rules import SHAPES, Facts, calls_of
-from .eases import EASES
+from .eases import EASE_LIST
 from .keys2d import KEYS2D
 
 __all__ = ["ACTIONS", "DATA", "Facts", "LIST"]
@@ -111,8 +111,8 @@ DATA = [
        why="Ties a sound from Sound's library to the layer's start; RostrumSound mixes it"),
     _a("key_here", "Key here", rank=45, group="animate", job="key_here", calls={"rule": "pose"}, panel=False, frame_ok=True),   # K; the diamonds
     *frame_actions.data(_a, lambda how: {"rule": "frame", "how": how}),    # Frame the view, Cut here … (frame_actions.py)
-    *[_a(f"ease_{e['value']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
-         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["value"]), panel=False, frame_ok=True) for e in EASES if e["value"] != "custom"],
+    *[_a(f"ease_{e['id']}", f"Ease: {e['label']}", rank=50, group="animate", bar="Ease", job=e["job"],
+         when=FACT("keys_picked"), calls=_op("key.set", "keys", ease=e["id"]), panel=False, frame_ok=True) for e in EASE_LIST],
     # Styles ▾ on texts (rostrum2d/text_styles.py): the document's styles come first (_List.available adds them)
     _a("style_save", "Save as style", rank=81, importance="primary", group="look", bar="Styles", kinds=("text",),
        max_targets=1, when=NOT("styled"), calls=_op("style.define", "ids")),
@@ -143,6 +143,9 @@ DATA = [
     _a("delete", "Delete", rank=100, group="edit", job="delete", calls=_op("layer.remove", "ids")),
     *[_a(k, label, rank=110, group="order", bar="Order", job=k, calls={"rule": "order", "how": k}, panel=False) for k, label in _ORDER.items()],
     _a("rename", "Rename", rank=110, group="order", job="rename", max_targets=1, do="rename"),
+    # the flip (rostrum2d/ops_flip.py): around the picked layers' centre; under the order moves in the right-click menu
+    *[_a(f"flip_{ax}", f"Flip {ax}", rank=112, group="order", job=f"flip_{ax}", kinds=F.PLACED,
+         calls=_op("layer.flip", "ids", axis=ax, at="$at")) for ax in ("across", "down")],
 ]
 
 
@@ -203,8 +206,9 @@ def _style_uses(f) -> list[dict]:
 
 
 ACTIONS = [_action(d) for d in DATA]
-# the right-click's Order block is all four moves (only those that would move something are there), never one alone
+# the right-click's Order block is all four moves (only those that would move something are there), never one alone,
+# then the two flips
 # and its Make block offers Make painted fill (only on a layer it can be made from)
-SHORT = tuple((n, ("front", "forward", "backward", "back") if n == "order" else (*jobs, "make_painted_fill") if n == "make" else jobs)
+SHORT = tuple((n, ("front", "forward", "backward", "back", "flip_across", "flip_down") if n == "order" else (*jobs, "make_painted_fill") if n == "make" else jobs)
               for n, jobs in SHORT_MENU)
 LIST = _List(ACTIONS, KEYS2D, noun="layer", short_menu=SHORT)

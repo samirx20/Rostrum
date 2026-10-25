@@ -146,6 +146,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         overrides clear_expr_calls (2D). Elsewhere "=5" is just 5."""
         return type(self).clear_expr_calls is not DocBridge.clear_expr_calls
 
+    @Property(bool, constant=True)
+    def typesRelative(self):
+        """A number field may take +20 / *2 / /2 from each item's own value (the app overrides relative_call: 2D)."""
+        return type(self).relative_call is not DocBridge.relative_call
+
     # The count, ↶ ↷ and versions: worked out once per change (_history_check), read from there by every binding
     @Property(int, notify=countChanged)
     def historyCount(self):

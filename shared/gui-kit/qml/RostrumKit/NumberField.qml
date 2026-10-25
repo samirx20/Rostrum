@@ -9,6 +9,9 @@ import "ValueKinds.js" as VK
 // A typed value or an arrow step is one edited(value); a typed value outside from…to is refused (the field turns red and says
 // the range, `label` first: "Tempo is 20–400 bpm"), never clamped. Scrubbing, arrows and the wheel stop at the ends. `words` ([{value, label}]): a value that means something
 // ("End of comp") shows as its words, not as a number; it can't be scrubbed from (click and type a number instead).
+// Typing goes through ValueKinds.read (one reader): a number, a sum (1920/3, (100+20)*2, 1,5), or - where the app takes it
+// (`relative`) - +20 / *2 / /2 from each layer's own value (editedRelative; "+-45" takes 45 away, "-45" is a plain negative);
+// anything else is refused with one sentence. 
 // `expressions`: the app can drive a value by an expression (2D), so a typed "=…" is sent whole as typedExpression
 // (the text, "=" included), never stripped to the number in it. Off, "=…" is read as the number it holds.
 // `display` ("percent", "db", "pan"; ValueKinds.js): the value is shown, typed, scrubbed and stepped in that kind's
@@ -23,6 +26,7 @@ FieldFrame {
     property string unit: ""
     property var words: []
     property bool expressions: false
+    property bool relative: false                              // the app takes +20 / *2 / /2 as from each one's own value (value.set {by})
     property var defaultValue: null                            // the setting's own default; null = none (no reset)
     property string display: ""
     property string label: ""                                  // what it is, for the refusal ("Tempo is 20–400 bpm")
@@ -30,6 +34,7 @@ FieldFrame {
     readonly property bool scrubbing: scrub.scrubbing
     signal edited(real value)
     signal typedExpression(string text)
+    signal editedRelative(real by, real factor)               // +20 (by, in stored units) or *2 / /2 (factor): from each one's own value
     signal scrubStarted()
     signal scrubbed(real value)
     signal scrubEnded()
@@ -69,6 +74,7 @@ FieldFrame {
     function reset() { if (hasDefault) { f.input.focus = false; f.edited(Math.max(from, Math.min(to, Number(defaultValue)))) } }
 
     editable: true
+    keepOnRefusal: true
     engaged: scrub.scrubbing
     text: word || format(value)
     editText: fullText
@@ -76,15 +82,17 @@ FieldFrame {
     suffix: unitFirst || word ? "" : unitShown
     onCommitted: (t) => {
         if (expressions && t.trim().startsWith("=")) { f.typedExpression(t.trim()); return }
-        var v = VK.parse(display, t)
-        if (isNaN(v)) { problem = t.trim() === "" ? "Type a number" + (label ? " for " + label : "") : "“" + t + "” is not a number" + (label ? " for " + label : ""); input.text = text; return }   // keep the value, and say so
+        const r = VK.read(display, t, value)                    // the one reader (ValueKinds.read): a number, a sum, +20 / *2, or why not
+        if (relative && (r.by !== undefined || r.factor !== undefined)) { f.editedRelative(r.by === undefined ? 0 : r.by, r.factor === undefined ? 1 : r.factor); return }
+        var v = r.value === undefined ? VK.parse(display, t) : r.value   // a leading + * / with no relative form here is a plain sum
+        if (isNaN(v)) { problem = t.trim() === "" ? "Type a number" + (label ? " for " + label : "") : VK.BAD; return }   // keep the typed text, and say so
         const n = VK.shown(display, v), tol = showStep * 1e-6
         // dB: the number as typed (−60 dB reads back as −∞, the floor, and is in range); "-inf" is in range when silence is
         const said = display === "db" ? parseFloat(String(t).replace(/−/g, "-").replace(/[^0-9eE+\-.]/g, "")) : n
         const out = isFinite(said) ? said < showRange[0] - tol || said > showRange[1] + tol : v < from || v > to
         if (out) {   // typed out of range: refused with the range, never clamped
             problem = (label ? label + " is " : "Allowed: ") + refusalRange()
-            input.text = text; return
+            return
         }
         f.edited(clamp(n, VK.step(display, typeStep)))
     }
