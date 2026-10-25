@@ -54,7 +54,7 @@ class Create(QObject):
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
-        self.b, self._press, self._box, self._text = bridge, None, {}, None
+        self.b, self._press, self._box, self._text, self._whole = bridge, None, {}, None, True
         self._ink = "#ffffff"                  # the new text's starting colour (text_ink.py), set when typing starts
         bridge.toolChanged.connect(self._tool_changed)
         bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
@@ -172,11 +172,19 @@ class Create(QObject):
         self.b.select("")
         self._text_box()
 
+    @Property(bool, notify=typingChanged)
+    def editWhole(self):
+        """Typing starts with every word picked (Enter: what is typed replaces them), not the caret at the end (a
+        double-click: a typo fixed, the words kept), as in Figma."""
+        return self._whole
+
     @Slot(str)
-    def editText(self, layer_id):
-        """Type in an existing text again (double-click): `text.set {body}`, one change; empty or unchanged = nothing."""
+    def editText(self, layer_id, whole=True):
+        """Type in an existing text again (Enter; a double-click with whole=False): `text.set {body}`, one change; empty
+        or unchanged = nothing."""
         if self.b.doc.has(layer_id) and self.b.doc.item(layer_id)["type"] == "text":
             self.finish()
+            self._whole = whole
             self._text = Session(self.b, layer_id, {}, {})
             self.b.select(layer_id)
             self._text_box()
@@ -188,7 +196,7 @@ class Create(QObject):
         hit = self.b._multi.target(x, y, "in")
         kind = hit and self.b.doc.item(hit)["type"]
         if kind == "text":
-            self.editText(hit)
+            self.editText(hit, False)
         elif kind == "path":
             self.b.select(hit)
             self.b._pen.editPoints(True)

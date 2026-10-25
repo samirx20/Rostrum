@@ -139,6 +139,6 @@ Item {
                 if (editor.on && edit.text !== ov.create.body) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.cursorPosition = edit.length }
             }
         }
-        onOnChanged: if (on) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.forceActiveFocus(); edit.cursorPosition = edit.length }   // the caret at the end: a typo fixed, never the words replaced (Ctrl+A for that)
+        onOnChanged: if (on) { edit.loading = true; edit.text = ov.create.body; edit.loading = false; edit.forceActiveFocus(); if (ov.create.editWhole) edit.selectAll(); else edit.cursorPosition = edit.length }   // Enter: every word picked; a double-click: the caret at the end (create.editWhole)
     }
 }

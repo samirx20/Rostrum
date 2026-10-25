@@ -59,8 +59,12 @@ QQC.Popup {
         const e = entries[i]
         if (!e) return
         if (hasSub(i)) { openSub(i); return }
-        closeAll(); picked(e.value)
+        var top = menu; while (top.owner) top = top.owner
+        top.chosen = e.value; closeAll()
     }
+    // the choice runs once the top menu has closed (its fade done): closing gives the keyboard back to where it was, so a
+    // choice that takes the keyboard (Rename's name box) would lose it to the menu's own close a moment later
+    property var chosen: undefined
     function closeAll() { close(); if (owner) owner.closeAll() }
     function openSub(i) {
         highlighted = i
@@ -74,7 +78,10 @@ QQC.Popup {
         s.openAt(p.x, p.y - padding, left)
     }
     onAboutToShow: highlighted = Math.max(0, entries.findIndex(e => !!e.checked))
-    onClosed: { rested(""); if (subLoader.item) subLoader.item.close() }
+    onClosed: {
+        rested(""); if (subLoader.item) subLoader.item.close()
+        if (chosen !== undefined) { const v = chosen; chosen = undefined; picked(v) }
+    }
     Connections {
         target: subLoader.item; ignoreUnknownSignals: true
         function onPicked(v) { menu.picked(v) }
