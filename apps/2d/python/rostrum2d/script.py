@@ -85,7 +85,8 @@ class Item:
                 if e != SHAPE_EASE[name]:
                     raise ValueError(f'{self.id}.{prop} at {t} s: "{name}" only applies to a {SHAPE_EASE[name]} ease, this key is {e}')
                 k[name] = F.param("key", name).check(x, f"{self.id}.{prop} at {t} s {name}")
-            self.node["keys"].append(k)
+            # a key at a time this field already has a key (an earlier key() or f.cut / f.fit) replaces it: the later call wins
+            self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
         return self
 
     def show(self, choices: dict) -> "Item":
