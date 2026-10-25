@@ -27,7 +27,7 @@ include = ["rostrum_sound*"]
 rostrum-sound-mcp = "rostrum_sound.mcp.server:main"
 
 [tool.setuptools.package-data]
-rostrum_sound = ["library_data/*.json"]          # guides: apps/sound/guides/ (read from the source tree, like 2D skills/)
+rostrum_sound = ["library_data/*.json", "library_data/packs/*.json", "library_data/packs/sfz/**/*"]          # guides: apps/sound/guides/ (read from the source tree, like 2D skills/)
 
 [tool.rostrum]
 notices-extras = ["listen", "mcp", "cleanup"]     # About lists these and what they need (not the whole dev venv)

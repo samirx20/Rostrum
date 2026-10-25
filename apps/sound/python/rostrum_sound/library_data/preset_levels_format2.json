@@ -1,0 +1,111 @@
+{
+ "about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's loudness: equal track volumes sound balanced. Measured, not tuned by ear.",
+ "referenceLufs": -21.56,
+ "presets": {
+  "builtIn:analogStrings": {
+   "role": "pad",
+   "lufs": -24.57,
+   "gain": 1.4134
+  },
+  "builtIn:choirPad": {
+   "role": "pad",
+   "lufs": -26.89,
+   "gain": 1.8463
+  },
+  "builtIn:cinematicBrass": {
+   "role": "pad",
+   "lufs": -21.87,
+   "gain": 1.0364
+  },
+  "builtIn:feltPiano": {
+   "role": "comp",
+   "lufs": -24.59,
+   "gain": 1.4171
+  },
+  "builtIn:glassMarimba": {
+   "role": "lead",
+   "lufs": -23.08,
+   "gain": 1.1919
+  },
+  "builtIn:grandPiano": {
+   "role": "comp",
+   "lufs": -24.52,
+   "gain": 1.4068
+  },
+  "builtIn:spiccatoStrings": {
+   "role": "comp",
+   "lufs": -32.51,
+   "gain": 3.5266
+  },
+  "builtIn:subBass": {
+   "role": "bass",
+   "lufs": -17.98,
+   "gain": 0.6621
+  },
+  "builtIn:warmPad": {
+   "role": "pad",
+   "lufs": -24.61,
+   "gain": 1.4215
+  },
+  "kit:synth": {
+   "role": "groove",
+   "lufs": -18.22,
+   "gain": 0.6805
+  },
+  "model:glockenspiel": {
+   "role": "lead",
+   "lufs": -21.56,
+   "gain": 1.0004
+  },
+  "model:guitar": {
+   "role": "comp",
+   "lufs": -20.51,
+   "gain": 0.8862
+  },
+  "model:marimba": {
+   "role": "lead",
+   "lufs": -20.62,
+   "gain": 0.897
+  },
+  "model:nylonGuitar": {
+   "role": "comp",
+   "lufs": -22.14,
+   "gain": 1.0692
+  },
+  "model:tubularBell": {
+   "role": "lead",
+   "lufs": -12.07,
+   "gain": 0.3355
+  },
+  "model:vibraphone": {
+   "role": "lead",
+   "lufs": -17.86,
+   "gain": 0.6529
+  },
+  "model:violin": {
+   "role": "lead",
+   "lufs": -19.16,
+   "gain": 0.7588
+  },
+  "synth:saw": {
+   "role": "pad",
+   "lufs": -24.12,
+   "gain": 1.3428
+  },
+  "synth:sine": {
+   "role": "lead",
+   "lufs": -18.16,
+   "gain": 0.6758
+  },
+  "synth:square": {
+   "role": "pad",
+   "lufs": -19.25,
+   "gain": 0.7665
+  },
+  "synth:triangle": {
+   "role": "lead",
+   "lufs": -19.93,
+   "gain": 0.8288
+  }
+ }
+}

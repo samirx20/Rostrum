@@ -25,7 +25,7 @@ for n, p in enumerate(line):
 lead.note("D5", at=beat(8), dur=beats(2), vel=0.6)
 lead.note("C5", at=beat(10), dur=beats(2), vel=0.55)
 
-drums = track("drums", kit="synth", volume=0.8)
+drums = track("drums", kit="drums", volume=0.8)
 for b in range(16):
     drums.hit("hat", at=beat(b * 2 + 0.5), vel=0.4)
 for b in range(16, 32):

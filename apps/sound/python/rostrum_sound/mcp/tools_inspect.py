@@ -5,7 +5,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from .. import library, roles, userlib
+from .. import library, names, packs, roles, userlib
 from ..userlib.kinds import OFFERED
 
 
@@ -23,7 +23,7 @@ def _instrument(args) -> dict:
 def register(tools: Tools):
     @tools.tool("inspect_engine", {"properties": {}})
     def inspect_engine(ctx, args):
-        """Every name the sound engine accepts: tones, reverb spaces, EQ shapes, built-in instruments, drum names, effects with their fields and defaults; and which built-in sound suits which part (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`)."""
+        """Every name the sound engine accepts: tones, reverb spaces, EQ shapes, the plain instrument names (recorded instruments, synth presets, classic.<name> synthesized voices), drum kits (drums, studio, classic) and names, drum names, effects with their fields and defaults; and which plain instrument suits which part (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`)."""
         d = ctx.app.state.engine.request("describe")
         said = "; ".join(r["line"] for r in roles.rows())
         return Reply(f"Engine {d['engine']}, contract {d['contract']}: {len(d['builtIns'])} built-in instruments, "
@@ -33,16 +33,16 @@ def register(tools: Tools):
     @tools.tool("inspect_instrument", {"properties": {
         "builtIn": {"type": "string"}, "model": {"type": "string"}, "synth": {"type": "string"},
         "sfz": {"type": "string", "description": "Absolute path to an .sfz file."},
-        "kit": {"type": "string", "enum": ["synth"]}, "kitSfz": {"type": "string"}}})
+        "kit": {"type": "string", "enum": names.KITS}, "kitSfz": {"type": "string"}}})
     def inspect_instrument(ctx, args):
-        """What an instrument can play before you write for it: its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`)."""
+        """What an instrument can play before you write for it: its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step."""
         inst = _instrument(args)
         r = ctx.app.state.engine.request("range", instrument=inst)
         k = roles.key(inst)
         said = f" {roles.line(k)}." if k in roles.ROLES else ""
         if k in roles.ROLES:
             r = {**r, "role": roles.ROLES[k]._asdict()}
-        if r.get("low") and said:
+        if r.get("low") and said and (inst.get("synth") or inst.get("builtIn") in names.SYNTHESIZED):
             return Reply(f"Synthesized: plays any key.{said}", r)
         if r.get("low"):
             gaps = f", {len(r['gaps'])} gaps" if r.get("gaps") else ""
@@ -60,8 +60,8 @@ def register(tools: Tools):
 
     @tools.tool("inspect_library", {"properties": {
         "find": {"type": "string", "description": "Words that must appear in the path or the description (case-insensitive), e.g. \"cello\" or \"door slam\"."},
-        "kind": {"type": "string", "enum": ["instruments", "recordings", "sounds", *OFFERED], "default": "instruments",
-                 "description": "instruments / recordings: the installed packs. sounds (all) or a sound kind (foley, ambience, a struck hit, …): "
+        "kind": {"type": "string", "enum": ["instruments", "recordings", "packs", "sounds", *OFFERED], "default": "instruments",
+                 "description": "packs: every sample pack (the recorded instruments, drum kits, sound effects) installed or missing, with size, licence and credit; a missing one is installed with run_model_install. instruments / recordings: the installed packs' files. sounds (all) or a sound kind (foley, ambience, a struck hit, …): "
                                 "the user's own sound folders, cut into single sounds and measured."},
         "folder": {"type": "string", "description": "Absolute path to one of the user's sound folders (a Sonniss bundle, BOOM, "
                    "Soundly exports, their recordings): listed in their settings and indexed once (later calls read the index)."},
@@ -78,6 +78,11 @@ def register(tools: Tools):
         attack, loudest moment (peak_s), brightness and loudness; filter by words, plain shape words or [low, high] ranges.
         Nothing is copied from the user's folders. Guide: inspect_guide 'library'."""
         kind, words = args.get("kind", "instruments"), args.get("find") or ""
+        if kind == "packs":
+            rows = [r for r in packs.listing() if all(w in f"{r['pack']} {r['title']}".lower() for w in words.lower().split())]
+            gone = [r["pack"] for r in rows if r["state"] != "installed"]
+            return Reply(f"{len(rows) - len(gone)} of {len(rows)} sample packs installed" + (f"; missing: {', '.join(gone)}. Install with run_model_install (model: <pack>)." if gone else "."),
+                         {"packs": rows})
         added = _add_folder(args["folder"]) if args.get("folder") else None
         if kind in ("instruments", "recordings") and not added:
             return _installed(kind, words, args.get("limit", 40))

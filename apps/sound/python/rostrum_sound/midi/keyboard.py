@@ -26,7 +26,7 @@ from rostrum_core import RostrumError, codes
 from .. import settings
 from ..doc import tempo
 from ..engine import find_engine
-from .song import GM_TO_SYNTH
+from .song import GM_TO_DRUM, drum_for
 
 READY_S = 8         # winmm can take seconds to load the first time
 QUIT_S = 5
@@ -149,8 +149,8 @@ class Take:
 
 def take_call(track: dict, notes: list[dict], at: float, root: dict, grid: float | None = None) -> dict | None:
     """The one call that puts a take on `track`, a note's time `at + start` seconds (`at` = the timeline time of the
-    engine's stream start): notes in beats (they follow the tempo map), or drum hits on a drum track (keys the synth
-    kit has no drum for are left out). `grid` (beats): starts and ends snap to it (quantize). Notes before the song's
+    engine's stream start): notes in beats (they follow the tempo map), or drum hits on a drum track (keys the kit
+    has no drum for are left out). `grid` (beats): starts and ends snap to it (quantize). Notes before the song's
     start are left out. None when nothing was played."""
     notes = [n for n in notes if at + n["start"] >= 0]
 
@@ -158,9 +158,9 @@ def take_call(track: dict, notes: list[dict], at: float, root: dict, grid: float
         b = tempo.beat_at(root, at + sec)
         return round(round(b / grid) * grid if grid else b, 4)
     if track.get("instrument") in ("kit", "kitSfz"):
-        hits = [{"drum": GM_TO_SYNTH[n["key"]] if track["instrument"] == "kit" else n["key"],
+        hits = [{"drum": drum_for(n["key"], track.get("kit")) if track["instrument"] == "kit" else n["key"],
                  "at": {"beat": beat(n["start"])}, "vel": round(min(1.0, n["velocity"]), 3)}
-                for n in notes if track["instrument"] == "kitSfz" or n["key"] in GM_TO_SYNTH]
+                for n in notes if track["instrument"] == "kitSfz" or n["key"] in GM_TO_DRUM]
         return {"op": "hit.add_many", "target": [track["id"]], "args": {"hits": hits}} if hits else None
     out = [{"pitch": int(n["key"]), "at": {"beat": beat(n["start"])},
             "dur": {"beats": max(grid or 0.01, round(beat(n["end"]) - beat(n["start"]), 4))},

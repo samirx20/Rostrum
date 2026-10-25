@@ -8,7 +8,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from .. import clean_clips, cleanup, listen
+from .. import clean_clips, cleanup, listen, packs
 from ..cleanup import fetch
 from ..doc import media as media_of
 
@@ -72,13 +72,24 @@ def register(tools: Tools):
         return ctx.long(f"cleanup {doc.item_id}", work, key=f"cleanup:{doc.item_id}:{ids}")
 
     @tools.tool("run_model_install", {"required": ["model"], "properties": {"model": {"type": "string",
-        "enum": list(fetch.BUNDLES), "description": "The model to download: " + "; ".join(
-            f"{n} ({what}, {fetch.size_said(n)})" for n, (what, _) in fetch.BUNDLES.items()) + "."}}})
+        "enum": [*fetch.BUNDLES, "all-instruments", "all", *packs.cat.names()], "description": "What to download. A model: " + "; ".join(
+            f"{n} ({what}, {fetch.size_said(n)})" for n, (what, _) in fetch.BUNDLES.items()) + ". Or a sample pack (the recorded "
+            "instruments, drum kits and sound effects): a pack name from `inspect_library` / `python -m rostrum_sound.packs list` "
+            "(salamander-piano, wurlitzer, studio-kit, vsco2-strings, …), all-instruments, or all."}}})
     def run_model_install(ctx, args):
-        """Download a model a tool needs (models are not installed with the app): deepfilternet3 and umxhq for render_cleanup, voice for render_voice, speech for render_voice (what: words). Every "not installed" error names the model to pass here. Each file is checked by its fingerprint; files already there are left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
+        """Download what a tool needs (nothing is installed with the app). Models: deepfilternet3 and umxhq for render_cleanup, voice for render_voice, speech for render_voice (what: words). Sample packs: the recorded instruments and drum kits the plain instrument names play, and the sound-effect packs; a render or playback that needs a missing pack stops and names the pack to pass here (or `python -m rostrum_sound.packs install <pack>`). Every download is checked by its fingerprint before it is kept (a wrong one is deleted and fails); files already there are left alone. Answers the folder; for a CC-BY pack also the credit line to give."""
         name = args["model"]
+        if name in packs.cat.catalog() or name in ("all", "all-instruments"):
+            def pack_work(job):
+                done = packs.install_many(name, lambda note: job.progress(note=note))
+                new = [r["pack"] for r in done if r["installed"]]
+                credits = [r["credit"] for r in done if r.get("credit")]
+                said = f"Installed {', '.join(new)}." if new else f"{name} is already installed."
+                return Reply(said + (f" Credit: {'; '.join(credits)}." if credits and new else ""),
+                             {"packs": done, "credits": credits})
+            return ctx.long(f"install {name}", pack_work, key=f"run_model_install:{name}")
         if name not in fetch.BUNDLES:
-            raise RostrumError.not_found("run_model_install", "model", name, list(fetch.BUNDLES), in_="the models")
+            raise RostrumError.not_found("run_model_install", "model", name, [*fetch.BUNDLES, *packs.cat.names()], in_="the models and packs")
         files = fetch.BUNDLES[name][1]
 
         def work(job):

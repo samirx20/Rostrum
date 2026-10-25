@@ -51,10 +51,10 @@ def test_beats_mixed_with_seconds_are_refused_naming_the_form(src):
 
 
 def test_drum_names_agents_reach_for():
-    t = run_source("d = track('d', kit='synth'); d.hit('Hi-Hat', at=0); d.hit('bd', at=1)", "t.py")
+    t = run_source("d = track('d', kit='classic'); d.hit('Hi-Hat', at=0); d.hit('bd', at=1)", "t.py")
     assert [h["drum"] for h in t["tracks"][0]["hits"]] == ["hat", "kick"]
     with pytest.raises(RostrumError, match='write "cymbal"'):
-        run_source("d = track('d', kit='synth'); d.hit('crash', at=0)", "t.py")
+        run_source("d = track('d', kit='classic'); d.hit('crash', at=0)", "t.py")
 
 
 def test_random_is_the_same_every_run_and_print_comes_back():

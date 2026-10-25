@@ -182,9 +182,11 @@ class Engine:
         """Differences between names.py and the engine's `describe` (the authority); empty when they agree."""
         d = self.request("describe")
         pairs = {"tones": names.TONES, "spaces": names.SPACES, "eqShapes": names.EQ_SHAPES, "builtIns": names.BUILT_INS,
-                 "synthDrums": names.SYNTH_DRUMS, "gmDrums": names.GM_DRUMS}
+                 "synthDrums": names.SYNTH_DRUMS, "gmDrums": names.GM_DRUMS, "kitNames": names.KITS}
         out = []
         for key, ours in pairs.items():
+            if key not in d:
+                continue
             theirs = [g["name"] for g in d[key]] if key == "gmDrums" else d[key]
             if sorted(ours) != sorted(theirs):
                 out.append(f"{key}: python {sorted(set(ours) ^ set(theirs))} differ from the engine")

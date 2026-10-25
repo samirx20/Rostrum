@@ -3,11 +3,11 @@
 
 use super::error::Error;
 use super::instrument::{self, Inst};
-use super::names::{self, SYNTH_DRUMS, TONES};
+use super::names::TONES;
 use super::pitch;
-use super::read::{Obj, number};
+use super::read::Obj;
 use super::time::Tempo;
-use super::{buses, clip, effects, expression};
+use super::{buses, clip, effects, expression, hit, perform};
 use serde_json::{json, Map, Value};
 
 pub struct Track {
@@ -17,6 +17,8 @@ pub struct Track {
     head: Value,
     voices: Vec<Value>,
     clips: Vec<Value>,
+    /// The credit line its instrument's licence asks for (CC-BY packs).
+    pub credit: Option<&'static str>,
 }
 
 /// Every track's (or bus') id, checked (pattern, unique), before the tracks are read.
@@ -39,12 +41,15 @@ pub fn ids(v: &Value, at: &str, what: &str) -> Result<Vec<String>, Error> {
     Ok(out)
 }
 
-pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids: &[String]) -> Result<Track, Error> {
+/// A track read; `length` is the song's when the schedule gives it (no voice is moved past it).
+pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, length: Option<f64>, ids: &[String], bus_ids: &[String]) -> Result<Track, Error> {
     let mut o = Obj::new(v, at)?;
     let id = o.str("id", None)?;
     let inst_at = o.at("instrument");
-    let (inst, inst_resolved) = instrument::read(o.raw("instrument"), &inst_at, tempo)?;
+    let (played, inst_resolved) = instrument::read(o.raw("instrument"), &inst_at, tempo)?;
+    let inst = &played.inst;
     o.put("instrument", inst_resolved);
+    let perf = perform::read(&mut o, played.family, tempo)?;
     let volume = o.num("volume", 0.0, 4.0, Some(0.85))?;
     let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
     let reverb = o.num("reverb", 0.0, 1.0, Some(0.0))?;
@@ -62,6 +67,8 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
     let sri = |t: f64| (t * sr as f64).round() as usize;
     let mut end: f64 = 0.0;
     let mut voices = vec![];
+    let mut own_art = vec![];
+    let mut index = 0;
     let notes = o.list("notes", |n, p| {
         let mut no = Obj::new(n, p)?;
         let pa = no.at("pitch");
@@ -78,22 +85,30 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
         let vel = no.num("vel", 0.0, 1.0, Some(0.8))?;
         let npan = no.num("pan", -1.0, 1.0, Some(0.0))?;
         let freqs: Vec<f64> = keys.iter().map(|&k| pitch::freq(k)).collect();
-        let mut voice = json!({ "kind": "note", "freqs": freqs, "startIdx": sri(at_s), "duration": dur, "velocity": vel, "pan": npan });
-        inst.note(&mut no, &mut voice)?;
+        let voice = json!({ "kind": "note", "freqs": freqs, "startIdx": sri(at_s), "duration": dur, "velocity": vel, "pan": npan });
+        let mut vs = inst.note(&mut no, voice)?;
         if let Some(e) = expression::note(&mut no, &lanes, at_s, dur)? {
             if matches!(inst, Inst::Plugin(_)) {
                 return Err(Error::new("BAD_ARGUMENT", &no.path, "this note's expression", "is not sent to a plugin instrument (it is sent notes only)").hint("Leave out dynamics, vibrato, bend and the track's expression lanes, or set the plugin's own parameters."));
             }
-            voice["expression"] = e;
+            vs.iter_mut().for_each(|v| v["expression"] = e.clone());
         }
+        let strum = no.num("strum", -200.0, 200.0, Some(0.0))?;
+        let art = no.has("art");
+        for v in vs {
+            let parts = perform::strum(v, strum, perf.as_ref().map_or(0.0, |p| p.strum), &format!("{id}:{index}"), sr as f64);
+            own_art.extend(parts.iter().map(|_| art));
+            voices.extend(parts);
+        }
+        index += 1;
         end = end.max(at_s + dur);
-        voices.push(voice);
         Ok(Value::Object(no.done()?))
     })?;
     o.put("notes", json!(notes));
     let hits = o.list("hits", |h, p| {
-        let (resolved, voice, t) = hit(h, &p, &inst, tempo, sr)?;
+        let (resolved, voice, t) = hit::read(h, &p, inst, tempo, sr)?;
         end = end.max(t + 0.5);
+        own_art.push(false);
         voices.push(voice);
         Ok(resolved)
     })?;
@@ -106,11 +121,15 @@ pub fn read(v: &Value, at: &str, tempo: &Tempo, sr: u32, ids: &[String], bus_ids
         Ok(resolved)
     })?;
     o.put("clips", json!(clip_list));
+    if let Some(p) = &perf {
+        let ctx = perform::Ctx { key: &id, sr: sr as f64, tempo, end: length.unwrap_or(end + 2.0), last: length.map(|l| ((l * sr as f64).round() as u64).saturating_sub(1)) };
+        perform::apply(&mut voices, &own_art, p, &ctx);
+    }
     let resolved = Value::Object(o.done()?);
     let head = json!({ "name": id, "tone": tone, "volume": volume, "pan": pan, "reverb": reverb, "mix": !mute,
         "ducks": ducks.into_iter().map(|d| d.1).collect::<Vec<_>>(), "effects": effects::job(&fx, 0.0), "automation": auto,
         "output": output, "sends": sends });
-    Ok(Track { resolved, end, head, voices, clips })
+    Ok(Track { resolved, end, head, voices, clips, credit: played.credit })
 }
 
 impl Track {
@@ -125,37 +144,6 @@ impl Track {
         head["clips"] = Value::Array(clips);
         head
     }
-}
-
-fn hit(v: &Value, at: &str, inst: &Inst, tempo: &Tempo, sr: u32) -> Result<(Value, Value, f64), Error> {
-    let mut o = Obj::new(v, at)?;
-    let drum = o.required("drum")?;
-    let t = tempo.time(o.required("at")?, &o.at("at"))?;
-    o.put("at", json!(t));
-    let vel = o.num("vel", 0.0, 1.0, Some(0.85))?;
-    let pan = o.num("pan", -1.0, 1.0, Some(0.0))?;
-    let tune = o.num("tune", 0.25, 4.0, Some(1.0))?;
-    let decay = o.num("decay", 0.1, 4.0, Some(1.0))?;
-    let idx = (t * sr as f64).round() as usize;
-    let da = o.at("drum");
-    let voice = match inst {
-        Inst::Kit => {
-            let name = drum.as_str().ok_or_else(|| Error::bad(&da, drum, "is not a drum name", SYNTH_DRUMS))?;
-            super::read::one_of(name, &da, SYNTH_DRUMS)?;
-            o.put("drum", json!(name));
-            json!({ "kind": "drum", "voice": name, "startIdx": idx, "velocity": vel, "pan": pan, "tune": tune, "decay": decay })
-        }
-        Inst::KitSfz(spec) => {
-            let key = match drum {
-                Value::String(s) => names::gm_drum(s).ok_or_else(|| Error::unknown(&da, s, &names::gm_names()))? as f64,
-                v => number(v, &da, 27.0, 87.0)?.round(),
-            };
-            o.put("drum", drum.clone());
-            json!({ "kind": "note", "instrument": "sampled", "sfz": spec, "freqs": [pitch::freq(key)], "startIdx": idx, "duration": 0.2 * decay, "velocity": vel, "pan": pan })
-        }
-        _ => return Err(Error::new("BAD_ARGUMENT", at, "a hit", "needs a drum kit on its track").hint("Give the track {\"kit\": \"synth\"} or {\"kitSfz\": …}.")),
-    };
-    Ok((Value::Object(o.done()?), voice, t))
 }
 
 #[allow(clippy::too_many_arguments)]

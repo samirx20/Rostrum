@@ -52,7 +52,7 @@ marker("drop", at=bar(5))
 s = track("strings", sfz=r"C:\...\Violins.sfz", volume=0.8)   # instrument from sfz= / builtIn= / kit= / kitSfz=
 s.note("D4", at=beat(0), dur=beats(4), vel=0.7)
 s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
-d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
+d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
 v = track("door"); v.clip(r"C:\...\door.wav", at=3.0, in_=0.42, length=1.2).effect("eq", bands=[{"shape": "highpass", "freq": 80}])
 s.effect("reverb", space="hall", mix=0.3)
 s.automate("volume", [(0, 0.2), ("#drop", 0.9)])

@@ -93,3 +93,9 @@ Nothing is overwritten.
 - With stems: one file per track (named after it) and one per group. A track with nothing in it still gets its file, silent; the
   result line names it ("silent: Recording").
 - A manifest saying which file is which, and what format and rate was used.
+
+## Credits for recorded instruments
+
+A song that used an instrument licensed CC-BY (the Salamander piano, the Wurlitzer electric piano, the rock drum kit) must
+carry its credit. The render's reply says the credit lines, and the export's manifest holds them (`credits`): put them in
+the video's description or end titles. CC0 instruments need none.

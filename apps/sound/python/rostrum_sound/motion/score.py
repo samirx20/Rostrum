@@ -19,9 +19,9 @@ SAYS = {"note": "a struck bell note on the moment", "hit": "a kick and cymbal hi
         "strings": "a string swell rising into the moment", "cymbal": "a cymbal roll swelling into the moment",
         "piano": "a piano run up the key, landing on the moment", "library": "a real recording from your sound library"}
 # answer -> (track id, how the track plays)
-TRACKS = {"note": ("motion_bell", {"model": "tubularBell"}), "hit": ("motion_hits", {"kit": "synth"}),
-          "strings": ("motion_strings", {"builtIn": "analogStrings"}), "cymbal": ("motion_hits", {"kit": "synth"}),
-          "piano": ("motion_piano", {"builtIn": "grandPiano"})}
+TRACKS = {"note": ("motion_bell", {"model": "tubularBell"}), "hit": ("motion_hits", {"kit": "drums"}),
+          "strings": ("motion_strings", {"builtIn": "strings"}), "cymbal": ("motion_hits", {"kit": "drums"}),
+          "piano": ("motion_piano", {"builtIn": "piano"})}
 NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 SCALES = {"major": (0, 2, 4, 5, 7, 9, 11), "minor": (0, 2, 3, 5, 7, 8, 10)}
 RISE_S = (0.4, 2.0)       # a rise lasts the move, kept inside these (s)

@@ -1,3 +1,20 @@
+# The sound library
+
+## Sample packs: the recorded instruments, drum kits and sound effects
+
+The plain instrument names (piano, strings, bass, flute …), the drum kits (`drums`, `studio`) and the sound-effect library
+are **sample packs**: real recordings installed on this machine, not part of the app (the piano alone is 1.2 GB). Each pack
+is listed with its author, licence and size; every file is checked by its fingerprint before it is kept (a wrong one is
+deleted and the install fails, saying so), and what was installed is recorded in `<assets>/assets.json`.
+
+    inspect_library kind="packs"                       # every pack: installed or missing, size, licence, credit
+    run_model_install model="salamander-piano"         # one pack; also all-instruments and all
+    python -m rostrum_sound.packs list | install <pack> | verify <pack>      # the same in a terminal
+
+A name whose pack is missing fails loudly and names the pack to install; it never falls back to another sound. Packs
+licensed CC-BY (Salamander piano, Wurlitzer, the rock kit) need a credit: a render or export that used them returns the
+credit lines and writes them into the export's manifest. Everything else is CC0 or MIT: no credit needed.
+
 # Your own sound library
 
 Point Rostrum at a folder of sound effects you own: a bought sound-effects bundle, Soundly exports, your own

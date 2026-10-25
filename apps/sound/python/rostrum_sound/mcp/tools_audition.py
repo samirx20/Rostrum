@@ -9,7 +9,7 @@ from .. import audition
 from ..builder import INSTRUMENT_KEYS
 
 ENTRY = {"type": "object", "description": (
-    "What to hear. An instrument: {instrument: builtIn|synth|model|sfz|plugin, builtIn|model|sfz|plugin: name}; a drum kit: {instrument: kit} "
+    "What to hear. An instrument: {instrument: builtIn|synth|model|sfz|plugin, builtIn|model|sfz|plugin: name, e.g. builtIn: cello}; a drum kit: {instrument: kit, kit: drums|studio|classic} "
     "or {instrument: kitSfz, kitSfz: path}; a sound file: "
     "{media: absolute path, in: seconds, length: seconds}. Omit it (with `track`) to hear the track's own sound.")}
 

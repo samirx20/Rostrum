@@ -11,6 +11,8 @@ use serde_json::{json, Value};
 pub struct Tempo {
     /// (start beat, bpm, start seconds, bpm per beat)
     segs: Vec<(f64, f64, f64, f64)>,
+    /// The bar map (schedule `meter`), for the performance's accents.
+    pub meter: super::meter::Meter,
 }
 
 impl Tempo {
@@ -47,7 +49,7 @@ impl Tempo {
             segs.push((beat, bpm, secs, k));
         }
         let resolved = json!(raw.iter().map(|&(b, t, r)| if r { json!({ "beat": b, "bpm": t, "ramp": true }) } else { json!({ "beat": b, "bpm": t }) }).collect::<Vec<_>>());
-        Ok((Tempo { segs }, resolved))
+        Ok((Tempo { segs, meter: Default::default() }, resolved))
     }
 
     fn secs_in((b0, bpm0, s0, k): (f64, f64, f64, f64), beat: f64) -> f64 {

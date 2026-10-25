@@ -17,6 +17,7 @@ import argparse
 import json
 import math
 import os
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -35,7 +36,7 @@ TABLE = Path(preset_level.__file__).resolve().parents[1] / "library_data" / "pre
 # Four bars at 120 bpm over Dm – Gm – Bb – A (voiced as 4 notes: root, third, fifth, seventh) in the preset's octave.
 BARS = [("D", "F", "A", "C"), ("G", "Bb", "D", "F"), ("Bb", "D", "F", "A"), ("A", "C", "E", "G")]
 OCTAVE = {"comp": 3, "pad": 3, "bass": 2, "lead": 4}
-LEAD_OCTAVE = {"glockenspiel": 5, "glassMarimba": 5}
+LEAD_OCTAVE = {"glockenspiel": 5, "piccolo": 5, "classic.glassMarimba": 5}
 
 
 def role(name: str) -> str:
@@ -43,9 +44,10 @@ def role(name: str) -> str:
     return next(r.parts[0] for k, r in roles.ROLES.items() if k.split(":", 1)[1] == name)
 
 
-def part(name: str) -> str:
+def part(name: str, shift: int | None = None) -> str:
     """The notes of the preset's role: `s.note(...)` lines, as an agent writes them (vel is what they wrote)."""
     r, o = role(name), OCTAVE[role(name)] + (LEAD_OCTAVE.get(name, 4) - 4 if role(name) == "lead" else 0)
+    o += shift or 0
     lines = []
     for b, voicing in enumerate(BARS):
         t = f"bar({b + 1})"
@@ -62,8 +64,25 @@ def part(name: str) -> str:
     return "\n".join(lines)
 
 
+def midi(note: str) -> int:
+    return 12 * (int(note[-1]) + 1) + {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}[note[0]] + ("#" in note) - ("b" in note[1:2])
+
+
+def fitted(name: str) -> str:
+    """The part, moved by whole octaves (nearest first) until every note lies inside the instrument's recorded range."""
+    r = roles.ROLES[next(k for k in roles.ROLES if k.split(":", 1)[1] == name)]
+    if not r.low:
+        return part(name)
+    for shift in (0, 1, -1, 2, -2):
+        text = part(name, shift)
+        notes = [midi(n) for n in re.findall(r"[A-G][b#]?\d", text)]
+        if midi(r.low) <= min(notes) and max(notes) <= midi(r.high):
+            return text
+    raise SystemExit(f"{name}: no octave puts the reference part inside {r.low}-{r.high}")
+
+
 def pitched(form: str, name: str) -> tuple[str, str]:
-    return role(name), f"s = track('{form}_{name}', {form}='{name}')\n{part(name)}\n"
+    return role(name), f"s = track('{form}_{name.replace('.', '_')}', {form}='{name}')\n{fitted(name)}\n"
 
 
 def kit(name: str) -> str:
@@ -78,7 +97,7 @@ def kit(name: str) -> str:
 
 def phrases() -> dict[str, tuple[str, str]]:
     """{preset key: (role, script)}"""
-    out = {f"builtIn:{n}": pitched("builtIn", n) for n in names.BUILT_INS}
+    out = {f"builtIn:{n}": pitched("builtIn", n) for g in names.BUILT_IN_GROUPS.values() for n in g}   # a name that plays the same sound as a listed one shares its gain
     out |= {f"model:{n}": pitched("model", n) for n in names.MODELS}
     out |= {f"synth:{n}": pitched("synth", n) for n in names.WAVES}
     out |= {f"kit:{n}": ("groove", kit(n)) for n in names.KITS}
@@ -91,7 +110,7 @@ def measure(engine: Engine, out: Path, apply_table: bool) -> dict[str, float]:
     doc = run_source("tempo(120); length(bar(5))\n" + "\n".join(code for _, code in ph.values()), "level_match.py")
     got = engine.request("render", schedule=compile(doc, matched=apply_table), out=str(out), stems=[])
     heard = {t["id"]: t["lufs"] for t in got["tracks"]}
-    return {k: heard[k.replace(":", "_")] for k in ph}
+    return {k: heard[k.replace(":", "_").replace(".", "_")] for k in ph}
 
 
 def main():

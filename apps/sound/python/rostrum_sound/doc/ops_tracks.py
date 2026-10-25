@@ -18,9 +18,9 @@ def sound_fields(ctx, track_id, key) -> dict:
     """What `sound: key` sets on that track: the instrument form and its field, and the name when it still follows the
     sound (the person's own name stays). Never stored itself."""
     track = ctx.item(track_id)
-    if key not in sounds.KEYS:
+    if not sounds.known(key):
         ctx.fail(codes.BAD_ARGUMENT, f"sound={key!r}", "is not a sound", sounds.KEYS)
-    if key not in sounds.allowed(track):
+    if sounds.canonical(key) not in sounds.allowed(track):
         ctx.fail(codes.BAD_ARGUMENT, f"sound={key!r}", f"can't play track {track_id}'s notes, hits or lines",
                  sounds.allowed(track), "Notes need an instrument, hits the drum kit, lines a voice.")
     out = sounds.fields(key)
@@ -29,8 +29,8 @@ def sound_fields(ctx, track_id, key) -> dict:
     return out
 
 
-@REGISTRY.operation("track.set", "Change a track's sound (sound: any built-in sound, the synth, a played instrument, the drum "
-                    "kit or a voice, e.g. \"builtIn:warmPad\", \"synth\", \"model:guitar\", \"kit\", \"voice:ryan\"; the notes stay "
+@REGISTRY.operation("track.set", "Change a track's sound (sound: a plain recorded instrument, a synth preset, the synth, a modelled instrument, a "
+                    "drum kit or a voice, e.g. \"builtIn:piano\", \"builtIn:warmPad\", \"synth\", \"model:guitar\", \"kit:studio\", \"voice:ryan\"; the notes stay "
                     "and the name follows unless it was renamed), level, pan, reverb, tone, mute or solo.",
                     target="track", params=FD.params("track"), label="Edit track", fields=True)
 def track_set(ctx, targets, args):

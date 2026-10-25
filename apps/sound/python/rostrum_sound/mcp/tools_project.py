@@ -47,7 +47,7 @@ EDIT_DOCUMENT = (
     "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
     "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter.")
-RUN_SCRIPT = ("Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
+RUN_SCRIPT = ("Before composing, read inspect_guide 'writing-music'. Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
               "bar(n) is where bar n starts, so length(bar(9)) is an 8-bar song: for N bars write length(bar(N+1)). The "
               "reply ends with the song's length in bars and seconds.")
 ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'start-here' for how replies work."

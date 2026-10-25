@@ -15,7 +15,7 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.project import begin_render, finish_render
 
-from . import deliver, stem_groups
+from . import deliver, packs, stem_groups
 from .doc import markers, times
 
 ENGINE = "rostrum-sound-schedule/1"     # the contract the schedule was rendered through (names.CONTRACT)
@@ -61,6 +61,7 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
             **({"range": r["range"]} if r.get("range") else {}),
             **({"stems_by": r["stemsBy"]} if r.get("stemsBy") else {}), **({"markers_file": MARKERS_FILE} if r.get("markersFile") else {}),
             "clipped_samples": r.get("clippedSamples", 0), "mastered": master,
+            **({"credits": lines} if (lines := packs.credit_lines(r)) else {}),    # CC-BY instruments: credit them where the sound goes
             # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus
             # the bus stems do (a track feeding a bus is inside its bus) — under `stems_rule`.
             "stems_add_up": rule["stems_add_up"], "stems_rule": rule,

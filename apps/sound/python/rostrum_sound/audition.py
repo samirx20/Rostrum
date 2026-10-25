@@ -2,7 +2,7 @@
 renders it with the engine's normal render request, the same path as render_mix, so what you audition is what the
 song would sound like (one audio engine). Nothing in the person's document changes.
 
-    entry = {"instrument": "builtIn", "builtIn": "grandPiano"}    # an instrument (builtIn / synth / model / sfz / plugin)
+    entry = {"instrument": "builtIn", "builtIn": "piano"}    # an instrument (builtIn / synth / model / sfz / plugin)
           | {"instrument": "kit"}                                # a drum kit (kit / kitSfz)
           | {"media": r"C:\\...\\door.wav", "in": 0.4, "length": 1.2}   # a sound file (or a stretch of one), as itself
     render_audition(engine, entry, doc=doc.data, track="pad")    # -> {"file", "seconds", "cached", "what"}

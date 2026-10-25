@@ -1,6 +1,6 @@
 """MIDI files: edit_import_midi puts a .mid into the document (one change, one undo step); render_mix (what: midi) writes the
 document's notes, hits, sustain / expression / bend lanes, tempo map, keys, markers and sections as `renders/<item>/midi/<item>.mid` (a job, as every
-render_* tool). What MIDI can't carry (a drum key the synth kit lacks, a drum with no GM key) comes back as a
+render_* tool). What MIDI can't carry (a drum key the kit lacks, a drum with no GM key) comes back as a
 warning, never dropped quietly."""
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def register(tools: Tools):
                      "signature and key changes (replacing the document's). False: only tracks, markers, sections."}}})
     def edit_import_midi(ctx, args):
         """Import a MIDI file: one track per MIDI track (notes in beats on a built-in instrument picked from the GM
-        program; channel 10 as drum hits on the synth kit; the sustain pedal CC 64, expression CC 11, mod wheel CC 1
+        program; channel 10 as drum hits on the drum kit; the sustain pedal CC 64, expression CC 11, mod wheel CC 1
         and pitch wheel as the track's sustain / dynamics / vibrato / bend lanes, RPN 0 as its bendRange), its markers, cue-point sections and (song_map) tempo map
         and keys. One change in the history. Then set each new track's instrument with track.set."""
         doc = ctx.document(args.get("item"))

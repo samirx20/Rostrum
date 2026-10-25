@@ -1,9 +1,11 @@
-//! A track's instrument (exactly one key), read strictly, and how each of its notes becomes an engine voice:
-//! sampled (with named articulations), built-in, procedural model (with its touch), synth, a CLAP / VST3
-//! plugin (contract/plugin.rs; one instance plays the track's notes), or a drum kit.
+//! A track's instrument (exactly one key), read strictly, and how each of its notes becomes engine voices:
+//! sampled (with named articulations, split by pitch into zones for a section), a SoundFont, a plain name
+//! (plain.rs: recorded, an analog preset or a classic voice), procedural model (with its touch), synth, a
+//! CLAP / VST3 plugin (contract/plugin.rs; one instance plays the track's notes), or a drum kit.
 
 use super::error::Error;
-use super::names::{self, Def, Field, Kind, BUILT_INS, MODEL_FIELDS, PLUCKED, SYNTH_FIELDS, WAVES};
+use super::names::{self, Def, Field, Kind, MODEL_FIELDS, PLUCKED, SYNTH_FIELDS, WAVES};
+use super::plain::{self, Resolved};
 use super::read::Obj;
 use super::time::Tempo;
 use serde_json::{json, Map, Value};
@@ -11,54 +13,71 @@ use serde_json::{json, Map, Value};
 pub const FORMS: [&str; 7] = ["builtIn", "sfz", "model", "synth", "plugin", "kit", "kitSfz"];
 const TOUCH: [&str; 3] = ["position", "damping", "hardness"];
 
+/// SFZ files for the keys up to `hikey`: the main file's spec and each named articulation's.
+pub struct Zone {
+    pub hikey: u8,
+    pub main: Value,
+    pub arts: Vec<(String, Value)>,
+}
+
 pub enum Inst {
     None,
+    /// A classic synthesized voice (instruments/voices/tones.rs).
     BuiltIn(String),
-    /// The main file's spec and each named articulation's.
-    Sfz { main: Value, arts: Vec<(String, Value)> },
+    /// SFZ zones, lowest first (a single file is one zone up to key 127).
+    Sfz(Vec<Zone>),
+    /// A SoundFont's preset (instruments/sampler.rs SamplerSpec).
+    Sampler(Value),
     /// The contract's name, the engine's, and the track's touch (position, damping, hardness).
     Model { name: String, engine: &'static str, touch: [Option<f64>; 3] },
     /// The engine's synth spec.
     Synth(Value),
     /// The job's PluginSpec (song time 0: the notes are one clip over the whole mix).
     Plugin(Value),
+    /// The synthesized kit.
     Kit,
-    KitSfz(Value),
+    /// SFZ kit files on GM keys, each with the keys it plays (the first file that plays a key plays it).
+    KitSfz(Vec<(Value, Vec<u8>)>),
 }
 
-/// The instrument and its resolved form (every default written in).
-pub fn read(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<(Inst, Value), Error> {
-    let Some(v) = v else { return Ok((Inst::None, Value::Null)) };
+/// The instrument (with its performance family, "" for none, and credit line) and its resolved form.
+pub fn read(v: Option<&Value>, at: &str, tempo: &Tempo) -> Result<(Resolved, Value), Error> {
+    let Some(v) = v else { return Ok((Resolved { inst: Inst::None, family: "", credit: None }, Value::Null)) };
     let key = v.as_object().and_then(|m| FORMS.iter().find(|f| m.contains_key(**f)).copied())
         .ok_or_else(|| Error::bad(at, v, "is not an instrument", &FORMS))?;
     let mut o = Obj::new(v, at)?;
-    let inst = match key {
-        "builtIn" => Inst::BuiltIn(o.name("builtIn", BUILT_INS, None)?),
-        "kit" => { o.name("kit", &["synth"], None)?; Inst::Kit }
+    let own = |inst, family| Resolved { inst, family, credit: None };
+    let r = match key {
+        "builtIn" => { let n = o.str("builtIn", None)?; plain::built_in(&n, &o.at("builtIn"))? }
+        "kit" => { let n = o.str("kit", None)?; plain::kit(&n, &o.at("kit"))? }
         "sfz" => {
             let file = file_arg(&mut o, "sfz")?;
             let (legato, swell) = (o.bool("legato", false)?, o.bool("swell", false)?);
             let spec = |f: &str| json!({ "file": f, "legato": legato, "swell": swell });
             let arts = articulations(&mut o)?;
-            Inst::Sfz { main: spec(&file), arts: arts.iter().map(|(n, f)| (n.clone(), spec(f))).collect() }
+            own(Inst::Sfz(vec![Zone { hikey: 127, main: spec(&file), arts: arts.iter().map(|(n, f)| (n.clone(), spec(f))).collect() }]), "keys")
         }
         "model" => {
             let name = o.name("model", &names::model_names(), None)?;
             let engine = names::MODELS.iter().find(|(n, _)| *n == name).map(|(_, e)| *e).unwrap_or("");
             let touch = touch(&mut o, &name, None)?;
-            Inst::Model { name, engine, touch }
+            let family = names::named_family(&name);
+            own(Inst::Model { name, engine, touch }, family)
         }
-        "synth" => synth(&mut o)?,
+        "synth" => own(synth(&mut o)?, "synth"),
         "plugin" => {
             let pa = o.at("plugin");
             let p = super::plugin::read(Obj::new(o.required("plugin")?, pa)?, tempo, Some("instrument"))?;
             let job = super::plugin::spec(&p.resolved, 0.0);
             o.put("plugin", Value::Object(p.resolved));
-            Inst::Plugin(job)
+            own(Inst::Plugin(job), "keys")
         }
-        _ => Inst::KitSfz(json!({ "file": file_arg(&mut o, "kitSfz")?, "legato": false, "swell": false })),
+        _ => {
+            let file = file_arg(&mut o, "kitSfz")?;
+            own(Inst::KitSfz(vec![plain::kit_file(&file, &o.at("kitSfz"))?]), "drums")
+        }
     };
-    Ok((inst, Value::Object(o.done()?)))
+    Ok((r, Value::Object(o.done()?)))
 }
 
 pub fn file_arg(o: &mut Obj, key: &'static str) -> Result<String, Error> {
@@ -124,8 +143,9 @@ fn synth(o: &mut Obj) -> Result<Inst, Error> {
 }
 
 impl Inst {
-    /// Fills a note's voice with what plays it, reading the note's own instrument fields (`art`, the touch).
-    pub fn note(&self, no: &mut Obj, voice: &mut Value) -> Result<(), Error> {
+    /// A note's voices (one, or one per zone its chord spans), reading the note's own instrument fields
+    /// (`art`, the touch).
+    pub fn note(&self, no: &mut Obj, mut voice: Value) -> Result<Vec<Value>, Error> {
         if !matches!(self, Inst::Model { .. }) {
             if let Some(f) = TOUCH.iter().find(|f| no.has(f)) {
                 return Err(Error::new("BAD_ARGUMENT", &no.at(f), *f, "needs a model instrument on its track").hint("Touch (position, damping, hardness) is how a procedural instrument is played: {\"model\": \"guitar\"}."));
@@ -134,25 +154,15 @@ impl Inst {
         if matches!(self, Inst::Plugin(_)) && no.has("pan") {
             return Err(Error::new("BAD_ARGUMENT", &no.at("pan"), "pan", "is not sent to a plugin instrument (it plays in its own stereo)").hint("Pan the track instead."));
         }
-        if !matches!(self, Inst::Sfz { .. }) && no.has("art") {
-            return Err(Error::new("BAD_ARGUMENT", &no.at("art"), "art", "needs an sfz track with articulations"));
+        if !matches!(self, Inst::Sfz(_)) && no.has("art") {
+            return Err(Error::new("BAD_ARGUMENT", &no.at("art"), "art", "needs a recorded instrument with articulations (or an sfz track with articulations)"));
         }
         match self {
             Inst::BuiltIn(name) => voice["instrument"] = json!(name),
-            Inst::Sfz { main, arts } => {
-                let at = no.at("art");
-                let spec = match no.raw("art") {
-                    None => main,
-                    Some(a) => {
-                        let s = a.as_str().unwrap_or("");
-                        let known: Vec<&str> = arts.iter().map(|(n, _)| n.as_str()).collect();
-                        let found = arts.iter().find(|(n, _)| n == s).ok_or_else(|| Error::unknown(&at, s, &known))?;
-                        no.put("art", json!(s));
-                        &found.1
-                    }
-                };
+            Inst::Sfz(zones) => return sfz_voices(zones, no, voice),
+            Inst::Sampler(spec) => {
                 voice["instrument"] = json!("sampled");
-                voice["sfz"] = spec.clone();
+                voice["sampler"] = spec.clone();
             }
             Inst::Model { name, engine, touch: t } => {
                 let n = touch(no, name, Some(*t))?;
@@ -169,6 +179,41 @@ impl Inst {
             }
             _ => return Err(Error::new("BAD_ARGUMENT", &no.path, "a note", "needs a pitched instrument on its track").hint("Give the track {\"builtIn\": …}, {\"sfz\": …}, {\"model\": …}, {\"synth\": …} or {\"plugin\": …}; drum kits take hits.")),
         }
-        Ok(())
+        Ok(vec![voice])
     }
+}
+
+/// A note on SFZ zones: its articulation's file in each zone its keys fall in, one voice per zone.
+fn sfz_voices(zones: &[Zone], no: &mut Obj, voice: Value) -> Result<Vec<Value>, Error> {
+    let at = no.at("art");
+    let art = match no.raw("art") {
+        None => None,
+        Some(a) => Some(a.as_str().ok_or_else(|| Error::bad(&at, a, "is not an articulation name", &[]))?.to_string()),
+    };
+    let freqs: Vec<f64> = voice["freqs"].as_array().map(|a| a.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
+    let key = |f: f64| (69.0 + 12.0 * (f / 440.0).log2()).round().clamp(0.0, 127.0) as u8;
+    let (mut out, mut lo) = (vec![], 0u8);
+    for z in zones {
+        let mine: Vec<f64> = freqs.iter().copied().filter(|&f| (lo..=z.hikey).contains(&key(f))).collect();
+        lo = z.hikey.saturating_add(1);
+        if mine.is_empty() {
+            continue;
+        }
+        let spec = match &art {
+            None => &z.main,
+            Some(s) => {
+                let known: Vec<&str> = z.arts.iter().map(|(n, _)| n.as_str()).collect();
+                &z.arts.iter().find(|(n, _)| n == s).ok_or_else(|| Error::unknown(&at, s, &known))?.1
+            }
+        };
+        let mut v = voice.clone();
+        v["freqs"] = json!(mine);
+        v["instrument"] = json!("sampled");
+        v["sfz"] = spec.clone();
+        out.push(v);
+    }
+    if let Some(a) = art {
+        no.put("art", json!(a));
+    }
+    Ok(out)
 }
