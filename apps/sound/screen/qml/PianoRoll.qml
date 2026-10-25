@@ -82,7 +82,8 @@ Panel {
             model: p.kind === "audio" ? p.blocks.filter(b => b.canBack || b.canNext) : []   // only a voice track (audio) has takes
             TakeArrows { required property var modelData; block: modelData; ruler: bars; xOffset: p.keysWidth; inset: well.height * 0.2 + 5 }
         }
-        Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height
+        PlayTime { id: playTime }
+        Rectangle { x: p.keysWidth + Math.round(bars.xOf(playTime.value)); width: 1; height: well.height
                     visible: bars.visibleX(x - p.keysWidth); color: Theme.accent; opacity: 0.9 }
         Rectangle {   // the time range, shaded
             readonly property var r: backend.timeRange

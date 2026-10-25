@@ -55,11 +55,12 @@ Item {
         Rectangle { width: 3; height: parent.height; color: Theme.danger }
         Rectangle { x: parent.width - 3; width: 3; height: parent.height; color: Theme.danger }
     }
+    PlayTime { id: playTime }
     Ruler {
         id: kit
         anchors.fill: parent
         duration: r.length; fps: 1000                        // (whole milliseconds: the grid does the snapping)
-        value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
+        value: playTime.value; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
         onScrubbed: (t) => backend.setTime(t)
         onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds)   // drawn on the seconds scale: exact seconds, no grid
