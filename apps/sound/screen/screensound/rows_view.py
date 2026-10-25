@@ -94,7 +94,7 @@ class RowsView(RollView):
         self._marks_on([t for t in tracks if t["id"] not in made])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
         marks = timeline.markers(root)
-        song = timeline.song(root, tracks, marks, self._memo)
+        song = timeline.song(root, tracks, marks, self._memo, self._picture_end())
         laid = [shape(r) for r in rows]
         self._view = {"rows": rows, "shape": laid, "markers": marks, "song": song,
                       "roll": old.get("roll", {}), "rollShape": old.get("rollShape")}
@@ -138,8 +138,8 @@ class RowsView(RollView):
         before = self._view["rows"]
         same = rows == before                         # a fader or a pan moves no row: the screen is told nothing
         self._view["rows"] = rows
-        if timeline.song_length(root, tracks, self._view["markers"], self._memo) != self._view["song"]["length"]:
-            self._view["song"] = timeline.song(root, tracks, self._view["markers"], self._memo)   # the rest follows the tempo
+        if timeline.song_length(root, tracks, self._view["markers"], self._memo, self._picture_end()) != self._view["song"]["length"]:
+            self._view["song"] = timeline.song(root, tracks, self._view["markers"], self._memo, self._picture_end())   # the rest follows the tempo
             self._tv.setLength(self._length())
             self.songChanged.emit()
             self._place_by(self._view["song"])
@@ -161,7 +161,7 @@ class RowsView(RollView):
         to the song would zoom on every move, painting every row whole again for rows not yet re-timed."""
         root = self.doc.data
         marks = timeline.markers(root)
-        song = timeline.song(root, list(self._made.values()), marks, self._memo)
+        song = timeline.song(root, list(self._made.values()), marks, self._memo, self._picture_end())
         if marks != self._view["markers"]:
             self._view["markers"] = marks
             self.markersChanged.emit()

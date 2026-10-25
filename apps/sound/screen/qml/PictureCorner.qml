@@ -20,6 +20,8 @@ Panel {
     property real lastSeek: 0
     readonly property real fps: mp.metaData.value(MediaMetaData.VideoFrameRate) || 0
     onFpsChanged: backend.setPictureFps(fps)        // the ruler's seconds line snaps to the picture's frames
+    readonly property real videoSec: mp.source != "" && mp.duration > 0 ? mp.duration / 1000 : 0
+    onVideoSecChanged: backend.setPictureLength(videoSec)   // the song has room for the whole picture (mark its cuts first)
     title: "Picture"
     readonly property bool hasVideo: backend.picture !== ""      // no video yet: just "Choose video…", no empty box over the tracks
     height: Theme.header + well.height + below.height + Theme.gap + bodyPad

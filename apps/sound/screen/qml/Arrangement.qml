@@ -34,6 +34,17 @@ Rectangle {
         nameFilters: fileIn.filters
         onAccepted: fileIn.add(selectedFile.toString())
     }
+    DropArea {   // files dragged in from the desktop or Explorer: each as From a file… takes it (a video: the picture)
+        objectName: "arrangementDrop"
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onEntered: (drag) => drag.accept(Qt.CopyAction)
+        onDropped: (drop) => {
+            var took = false
+            for (var i = 0; i < drop.urls.length; i++) took = fileIn.add(String(drop.urls[i])) || took
+            if (took) drop.accept(Qt.CopyAction)
+        }
+    }
     Item {   // the header strip
         id: strip
         anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: Theme.gap; rightMargin: Theme.gap }
