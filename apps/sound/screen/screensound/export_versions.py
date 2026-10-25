@@ -65,14 +65,19 @@ def _n(v: float) -> str:
 def expected(t: dict, master: dict, render: dict) -> dict:
     """{ok, text} for a version at target `t`, from the render that plays now: the loudness before its own master gain
     is the measured one less that gain, so the song would be turned up or down to reach `t`; the peak follows by the
-    same gain, and past the ceiling the limiter holds it (amber: the loud parts get squeezed). {} before a render."""
+    same gain, and past the ceiling the limiter holds it (amber: the loud parts get squeezed), or with gentle limiting
+    on, past its most limiting the whole song comes out quieter (amber). {} before a render."""
     lufs, peak = render.get("lufs"), render.get("truePeak")
     if not isinstance(lufs, (int, float)) or not isinstance(peak, (int, float)):
         return {}
-    gain = (render.get("master") or {}).get("gainDb", 0.0) if master.get("normalize") else 0.0
+    gain = (render.get("master") or {}).get("gainDb", 0.0)        # the target gain, or what gentle limiting held back
     need = t["lufs"] - (lufs - gain)
     words = f"Will be turned {'up' if need > 0 else 'down'} {abs(need):.1f} dB to reach {_n(t['lufs'])}"
     over = peak - gain + need - t["peak"]
+    most = master.get("maxLimit", 2) if master.get("gentle") else None
+    if most is not None and over > most + 0.05:
+        return {"ok": False, "text": f"{words}; the loudest peak would pass {_n(t['peak'])} by {over:.1f} dB, more than gentle "
+                                     f"limiting allows, so it comes out about {over - most:.1f} dB quieter than {_n(t['lufs'])}"}
     if over > 0.05:
         return {"ok": False, "text": f"{words}; the loudest peak would pass {_n(t['peak'])} by {over:.1f} dB, so the limiter holds it down"}
     return {"ok": True, "text": f"{words}; the loudest peak stays under {_n(t['peak'])}"}

@@ -84,8 +84,11 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
     goal, ceiling = master.get("loudness", -16), master.get("truePeak", -1)
     off = lufs - goal
     problems = []
+    held = (render.get("master") or {}).get("heldDb") or 0
     if "loudness" in fields and abs(off) > LUFS_TOLERANCE:
-        problems.append(f"{abs(off):.1f} dB too {'loud' if off > 0 else 'quiet'}")
+        problems.append(f"{abs(off):.1f} dB too {'loud' if off > 0 else 'quiet'}" + (
+            f" (Gentle limiting turned the mix down {held:.1f} dB to keep its peaks clean: turn the loudest track down "
+            "or raise Most limiting)" if held >= 0.1 and off < 0 else ""))
     if peak > ceiling:
         problems.append(f"loudest peak {peak - ceiling:.1f} dB over the limit")
     measured = f"loudness {_n(round(lufs, 1))}, loudest peak {_n(round(peak, 1))} dB"

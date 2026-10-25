@@ -23,7 +23,7 @@ IGNORE = ()
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 BATCH = 1        # one state to a process: measured, Sound opens a song slower the more windows it has made (10 states
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
-QUICK = ("empty-song", "editor", "mixer", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
+QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
          "grid-menu", "problems-chip")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -56,6 +56,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("empty-song", ["--new"], []),
         ("editor", ["--sample"], ["dock editor", "select melody"]),
         ("mixer", ["--sample"], ["dock mixer", "select drums"]),
+        ("master-selected", ["--sample"], ["dock mixer", "select master"]),          # the master's loudness and gentle limiting
         ("f11-track", ["--sample"], ["select melody"]),                         # F11: the track's settings panel
         ("f11-clip", ["--sample"], ["select-clip door"]),                       # F11: a clip's settings panel
         ("header-long-name-selected", long_project(), [f"select {LONG_TRACK}"]),               # B3: the name keeps its room, buttons stay put

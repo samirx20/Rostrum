@@ -15,7 +15,8 @@ The script API is in inspect_guide `script`; instruments in `library`.
   line, pad or groove for each comes out equally loud), and on top of that each starts at a rough-mix level: the
   recorded drum kits and the bass sit a few dB under, brass is no louder than strings in a full chord, strings a little
   up. So tracks written as the part each suits (the table below) at the same volume are roughly balanced: a piano comp
-  at 0 dB sits over the bass and drums at 0 dB, and the master needs little limiting. Roughly, not exactly:
+  at 0 dB sits over the bass and drums at 0 dB. The master's gentle limiting keeps its limiter to 2 dB at most (it turns
+the whole mix down instead: guides/mixing-to-delivery.md). Roughly, not exactly:
   the same chord on every sound spreads about 11 dB, so check with `look_sound` (`what: "levels"`) after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
   is quieter than a bass note at 0.9. Sampled (SFZ) files you point at, plug-in instruments and recorded clips are not matched (their level is the file's).
 - **The song's length** (`length`) is where it ends, a time: `bar(9)` is where bar 9 starts, so `length(bar(9))` is an

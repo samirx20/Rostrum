@@ -12,6 +12,9 @@ means adding its step here (the kind refuses to start without it).
     3 → 4   a sensible starting balance (2026-10-25): drum kits, bass and brass sit lower, strings a little higher at the
             same volume (`mix_offsets.json`). Each track's volume is moved from the old table's gain to the new one
             (`preset_levels_format3.json` is the old table, frozen), so a saved song sounds exactly as before.
+    4 → 5   gentle limiting (2026-10-25): a new song's master turns the whole mix down rather than limit its loudest
+            moment by more than 2 dB (master `gentle`, `maxLimit`). A saved song's master gets `gentle` off: it
+            limits as hard as before, so it sounds exactly as before.
 """
 from __future__ import annotations
 
@@ -75,5 +78,11 @@ def balance(data: dict, lists: dict):
     return data, f"{moved} track volume{'s' * (moved != 1)} moved to the new starting balance, so the song sounds as before" if moved else "Starting balance: nothing to change"
 
 
-STEPS = {1: level_matched, 2: plain_names, 3: balance}
+def gentle_limiting(data: dict, lists: dict):
+    for m in data.get("master", []):
+        m.update(gentle=False, maxLimit=2)
+    return data, "The master limits as it did (Gentle limiting off), so the song sounds as before"
+
+
+STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting}
 FORMAT = len(STEPS) + 1

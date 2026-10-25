@@ -17,6 +17,7 @@ These apply to songs you make from now on. A song keeps its own once made.
 - **Sample rate**: **44.1 kHz (music CDs)**, **48 kHz (video)** (the default) or **96 kHz**. How finely the sound is stored.
 - **Loudness target**: how loud a new song is made when you export with loudness matching. Default −14 LUFS, which suits streaming sites. −23 is broadcast TV. The range is −30 to −5.
 - **Loudest peak allowed**: the loudest any moment may reach, so it doesn't distort after a video site re-encodes it. Default −1 dBTP, from −12 to 0.
+- Every new song's master also starts with **Gentle limiting** on (**Most limiting** 2 dB): rather than squash its loudest moments harder, the master turns the whole song down, so it may come out a little under the loudness target. Change both on the master (click **Master** in the track list).
 
 ## Files
 

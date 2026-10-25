@@ -35,7 +35,7 @@ fn a_click_too_short_to_measure_still_stays_under_the_ceiling() {
     let l: Vec<f32> = (0..3528).map(|i| ((i as f64 * 0.3).sin() * 0.99) as f32).collect();
     let r = l.clone();
     let mut chs = [l, r];
-    master_n(&mut chs, &[1.0, 1.0], &MasterSpec { loudness: Some(-18.0), true_peak: -1.0, glue: 0.5 }, sr);
+    master_n(&mut chs, &[1.0, 1.0], &MasterSpec { loudness: Some(-18.0), true_peak: -1.0, glue: 0.5, max_limit: None }, sr);
     let [l, r] = chs;
     assert!(true_peak_db(&l, &r) <= -1.0, "{}", true_peak_db(&l, &r));
 }
@@ -50,7 +50,7 @@ fn mastering_reaches_the_target_without_passing_the_ceiling() {
         l[i] = 0.9;
         r[i] = -0.9;
     }
-    let spec = MasterSpec { loudness: Some(-14.0), true_peak: -1.0, glue: 0.5 };
+    let spec = MasterSpec { loudness: Some(-14.0), true_peak: -1.0, glue: 0.5, max_limit: None };
     let mut chs = [l, r];
     master_n(&mut chs, &[1.0, 1.0], &spec, sr);
     let (lufs, tp) = (integrated_lufs(&chs[0], &chs[1], sr), true_peak_db(&chs[0], &chs[1]));
