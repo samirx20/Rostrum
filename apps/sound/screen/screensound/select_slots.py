@@ -62,7 +62,8 @@ class SelectSlots:
         kept = self.__dict__.get("_picked_maps_")
         if kept is None or kept[0] != ids:
             js, plain = qjsEngine(self), dict.fromkeys(ids, True)
-            heads = {i: True for i in ids if self.doc.has(i) and self.doc.item(i)["type"] not in BLOCKS}
+            live = [i for i in ids if self.doc.has(i)]
+            heads = {i: True for i, t in zip(live, self.kinds_of(live)) if t not in BLOCKS}
             kept = self.__dict__["_picked_maps_"] = (ids, js.toScriptValue(plain) if js is not None else plain, heads)
         return kept
 
@@ -75,10 +76,10 @@ class SelectSlots:
         """The kit's panel title and Ctrl K hints: one item's name, else Sound's count words ("5 notes")."""
         if len(ids) == 1:
             return super().selection_label(ids)
-        return selection.count_words([self.doc.item(i)["type"] for i in ids])
+        return selection.count_words(self.kinds_of(ids))
 
     def _kinds(self):
-        return [self.doc.item(i)["type"] for i in self._picks.ids]
+        return self.kinds_of(self._picks.ids)
 
     # ---- picking ----------------------------------------------------------------------------------------------
     @Slot(str)
@@ -113,6 +114,7 @@ class SelectSlots:
             self.__dict__["_range_newer"] = False        # items picked after the range: actions mean them (Facts)
         if later or self._drag is not None:
             self.__dict__["_unsettled"] = True
+            self._rows_due().cancel()       # a change's rows for the old selection: the settled pick shows the panel anew
         else:
             self.__dict__["_unsettled"] = False
             self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged

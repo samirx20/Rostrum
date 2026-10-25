@@ -49,3 +49,15 @@ def line_calls(grabs: list[dict], t0: float, v0: float, t1: float, v1: float) ->
             k = 0.0 if hi - lo < 1e-9 else (g["t"] - t0) / (t1 - t0)
             out.append(_call(g, v0 + (v1 - v0) * k))
     return out
+
+
+def readout(picked: list[dict]) -> dict:
+    """What the strip says of the selected notes / hits (`rollPicked`): how many of each kind, their lowest and highest
+    velocity, and the earliest one's time (seconds) and velocity (the readout stands over it). A few numbers however
+    many are selected: the strip once read every selected block, converted for each reader on every pick."""
+    bs = [b for b in picked if b["type"] in ("note", "hit")]
+    out = {"note": sum(1 for b in bs if b["type"] == "note"), "hit": sum(1 for b in bs if b["type"] == "hit")}
+    if bs:
+        first, vs = min(bs, key=lambda b: b["t"]), [b["vel"] for b in bs]
+        out.update(lo=min(vs), hi=max(vs), t=first["t"], v=first["vel"])
+    return out

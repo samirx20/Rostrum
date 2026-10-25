@@ -24,7 +24,7 @@ class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
                  "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "rows_due",
-                 "ready_kinds", "kinds_job", "ahead_filter")
+                 "ready_kinds", "kinds_job", "ahead_filter", "kinds")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -46,6 +46,7 @@ class KitState:
         self.ready_kinds, self.kinds_job = set(), None      # kinds whose panel is made ahead; the job that finds a new kind
         self.paced = None                  # news.OnceAFrame: the panel's rows during a drag (the bridge makes it)
         self.stepping = False               # the rows being worked out are a drag's step: values only (rows.evaluate step)
+        self.kinds = (None, (), [])         # (song data, ids, their types): bridge_select.kinds_of, once per selection
 
 
 def _is_kit(cls) -> bool:

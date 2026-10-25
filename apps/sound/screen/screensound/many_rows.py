@@ -99,7 +99,7 @@ def _keys(bridge, items: list[dict], struct: list, plain: list) -> list:
     if _LAYOUT[0] != layout or len(_KEYS) > 100_000:
         _KEYS.clear()
         _LAYOUT[0] = layout
-    idx, out, pages = bridge.doc.locs(), [], {}
+    idx, out, pages, facts = bridge.doc.locs(), [], {}, {}
     for n, it in enumerate(items):
         if it["type"] not in FOLDED:
             out.append(n)
@@ -111,17 +111,19 @@ def _keys(bridge, items: list[dict], struct: list, plain: list) -> list:
             page = pages[it["type"]] = frozenset(bridge.on_page(it))
         kept = _KEYS.get(it["id"])
         if kept is None or kept[0] is not it or kept[1] is not parent or kept[2] != page:
-            kept = _KEYS[it["id"]] = (it, parent, page, _key(bridge, it, struct, plain, page))
+            f = facts.get((it["type"], id(parent)))         # a note's facts are its track's, a hit's none: once a track
+            if f is None:
+                f = facts[(it["type"], id(parent))] = tuple(sorted(bridge.facts_of(it).items()))
+            kept = _KEYS[it["id"]] = (it, parent, page, _key(it, struct, plain, page, f))
         out.append(kept[3])
     return out
 
 
-def _key(bridge, it: dict, struct: list, plain: list, page: frozenset) -> tuple:
+def _key(it: dict, struct: list, plain: list, page: frozenset, facts: tuple) -> tuple:
     """What the item's rows are made of but for their values: its facts, what its page shows elsewhere, its fields
     that decide which rows apply, and the type each plain value is written in (a time written in beats is shown as
     bars.beats). Written values, not shown ones: the same written value is always shown the same (but a length)."""
-    facts = bridge.facts_of(it)
-    return (it["type"], tuple(sorted(facts.items())), page,
+    return (it["type"], facts, page,
             tuple(_frozen(it.get(n)) for n in struct), tuple(type(it.get(n)) for n in plain))
 
 

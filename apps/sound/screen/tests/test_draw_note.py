@@ -77,7 +77,9 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
         truth = next(r for r in bridge.rows_now() if r["id"] == "lead")["blocks"]
         assert key(screen["row"]) == key(truth) and key(screen["roll"]) == key(bridge._view["roll"]["blocks"])
         by = {b["id"]: b for b in screen["roll"]}          # the velocity readout's blocks: the selected ones, as shown
-        assert [seen(b) for b in bridge.rollPicked] == [seen(by[i]) for i in bridge.selectedIds if i in by]
+        from screensound import velocity           # the velocity readout: the selected ones, as shown
+        want = velocity.readout([{**by[i], "t": bridge._roll_by[i]["t"]} for i in bridge.selectedIds if i in by])
+        assert bridge.rollPicked == want
     nid = bridge.drawAt(1.0, 62)
     bridge.endDrag()
     same()

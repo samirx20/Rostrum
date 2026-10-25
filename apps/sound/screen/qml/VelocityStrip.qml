@@ -32,23 +32,23 @@ Item {
     height: folded ? foldedHeight : fullHeight
     property string hoverId: ""
     readonly property var shown: {   // {x, y, text} of the value readout, or null
-        // the hovered stem's, else the selected ones' (backend.rollPicked: only those, never a pass over every block)
-        var one = hoverId, b = one !== "" ? s.blocks : backend.rollPicked, vs = [], x = 1e9, top = 0
-        for (var i = 0; i < b.length; i++) {
-            if ((b[i].type !== "note" && b[i].type !== "hit") || (one !== "" && b[i].id !== one)) continue
-            vs.push(b[i].vel)
-            var bx = ruler.xOf(b[i].t)
-            if (bx < x) { x = bx; top = b[i].vel }
+        // the hovered stem's, else the selected ones' (backend.rollPicked: their few numbers, velocity.readout)
+        if (mode === "bar" || mode === "line") return null
+        var one = hoverId, r = backend.rollPicked
+        if (one !== "") {
+            var b = s.blocks
+            r = null
+            for (var i = 0; i < b.length; i++)
+                if (b[i].id === one && (b[i].type === "note" || b[i].type === "hit")) { r = { lo: b[i].vel, hi: b[i].vel, t: b[i].t, v: b[i].vel }; break }
         }
-        if (!vs.length || mode === "bar" || mode === "line") return null
-        var lo = Math.round(100 * Math.min.apply(null, vs)), hi = Math.round(100 * Math.max.apply(null, vs))
-        return { x: x, v: top, text: lo === hi ? lo + " %" : lo + "–" + hi + " %" }
+        if (!r || r.t === undefined) return null
+        var lo = Math.round(100 * r.lo), hi = Math.round(100 * r.hi)
+        return { x: ruler.xOf(r.t), v: r.v, text: lo === hi ? lo + " %" : lo + "–" + hi + " %" }
     }
     // What a line drawn now changes, said beside it while it is drawn: the selected notes (hits) of this track when
     // there are some, else every one (backend.beginVelocity: the same rule, every time).
     readonly property string lineScope: {
-        var kind = roll.kind === "drums" ? "hit" : "note", n = 0, p = backend.rollPicked
-        for (var i = 0; i < p.length; i++) if (p[i].type === kind) n++
+        var kind = roll.kind === "drums" ? "hit" : "note", n = backend.rollPicked[kind] || 0
         var word = kind === "hit" ? "hit" : "note"
         return n === 0 ? "every " + word : n === 1 ? "the selected " + word : n + " selected " + word + "s"
     }

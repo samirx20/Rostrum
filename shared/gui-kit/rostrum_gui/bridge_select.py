@@ -38,10 +38,10 @@ class SelectSlots(SlotMixin):
             finish_typing()                 # a field's typing lands on the items it was typed for, before they change
             k.held = None
         k.selection, k.sel = ids, ids[0] if ids else ""
-        kinds = [self.doc.item(i)["type"] for i in ids]
+        kinds = dict.fromkeys(self.kinds_of(ids))           # each kind once, the first item's first
         reg = self.doc.kind.registry
         k.op_kind = (many.shared_op([reg.field_op(t) for t in kinds]) if ids else None,
-                     kinds[0] if len(set(kinds)) == 1 else "")
+                     next(iter(kinds)) if len(kinds) == 1 else "")
         k.static = self._layout()
         if moved:
             self.selectedItemsChanged.emit()
@@ -50,6 +50,14 @@ class SelectSlots(SlotMixin):
         else:                               # makes it now. A script's or an agent's: at once
             self._panel_later().due = False
             self._show_panel()
+
+    def kinds_of(self, ids) -> list[str]:
+        """Each id's item type, worked out once per selection and song data (the panel, its title, the count chip and
+        the narrowing lines all ask; a whole-song selection is thousands of items). Read only."""
+        key, kept = tuple(ids), self._kit.kinds
+        if kept[0] is not self.doc.data or kept[1] != key:
+            kept = self._kit.kinds = (self.doc.data, key, [self.doc.item(i)["type"] for i in key])
+        return kept[2]
 
     def ready_new_kinds(self):
         """Every kind in the document that has no panel made ahead yet gets one, at idle: a kind present at open, and a
@@ -145,8 +153,13 @@ class SelectSlots(SlotMixin):
     def narrowLines(self):
         """Mixed kinds selected: a line per kind, [{kind, label: "3 layers", count}] (else []). Read it in a binding
         that also reads `selection`, so it follows the selection."""
-        k = self._kit
-        return many.by_kind([(it["type"], self.kind_label(it)) for it in map(self.doc.item, k.selection)])
+        sel = self._kit.selection
+        kinds = self.kinds_of(sel)
+        if len(set(kinds)) < 2:                     # one kind: no lines
+            return []
+        last = {t: i for i, t in zip(sel, kinds)}   # each kind in words once (by_kind keeps a kind's last item's words)
+        words = {t: self.kind_label(self.doc.item(i)) for t, i in last.items()}
+        return many.by_kind([(t, words[t]) for t in kinds])
 
     @Slot(str)
     def narrowTo(self, kind):

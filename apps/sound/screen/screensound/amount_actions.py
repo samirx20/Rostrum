@@ -84,7 +84,7 @@ def range_words(f) -> str:
 def _end(f) -> float:
     if f.on_range:
         return f.range[1]
-    return max(ST.end_of(f.doc.data, it) for it in f.items)
+    return f.once("end", lambda f: max(ST.end_of(f.doc.data, it) for it in f.items))     # (asked twice a pick)
 
 
 def _section_at(f, t):

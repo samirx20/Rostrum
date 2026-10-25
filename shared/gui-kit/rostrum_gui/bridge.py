@@ -104,13 +104,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         words) when it is one, else "Different kinds"."""
         if not self._kit.sel:
             return {"id": "", "label": "", "kind": "", "kindLabel": "", "count": 0}
-        its = [self.doc.item(i) for i in self._kit.selection]
-        kinds = {it["type"] for it in its}
-        one = len(kinds) == 1
-        return {"id": its[0]["id"], "label": self.selection_label(self._kit.selection),
-                "kind": its[0]["type"] if one else "", "count": len(its),
-                "kindLabel": self.kind_label(its[0]) if one else "Different kinds",
-                "subtitle": self.subtitle(its[0]) if one else "Different kinds"}
+        first, sel = self.doc.item(self._kit.sel), self._kit.selection
+        one = len(set(self.kinds_of(sel))) == 1             # (never an item read per selected one: read 3x a pick)
+        return {"id": first["id"], "label": self.selection_label(sel),
+                "kind": first["type"] if one else "", "count": len(sel),
+                "kindLabel": self.kind_label(first) if one else "Different kinds",
+                "subtitle": self.subtitle(first) if one else "Different kinds"}
 
     @Property("QVariantList", notify=docChanged)
     def items(self):
