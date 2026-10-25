@@ -20,7 +20,10 @@ brought up to date ("folded"):
   - in a program without a window (an agent's server, a script): in the door, every FOLD_STEPS steps;
   - in a window (`windowed()`, the kit's LiveLink): never inside a change, so no click or drag pays for writing the
     whole song; the link's timer calls `fold_if_quiet()` between pointer actions, which folds once the person has
-    paused FOLD_QUIET_S, or at once when the file is FOLD_STEPS steps behind.
+    paused FOLD_QUIET_S, or at once when the file is FOLD_STEPS steps behind. That fold writes the document file on
+    a thread of its own (the song as it stands is shared, never copied: a tree is never changed in place), so a key
+    pressed meanwhile never waits; the next tick hears how it went, and a failed write is said loudly (and tried
+    again). Save and close wait for a write in progress, then write what is newer, so quitting always completes.
 So a reader of the document file alone sees the song at most FOLD_STEPS steps old (in a window: plus the steps made
 within one tick of its timer), and the latest within FOLD_QUIET_S of the person pausing.
 """
@@ -29,11 +32,13 @@ from __future__ import annotations
 import contextlib
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 from .document import Event
+from .errors import RostrumError, codes
 from .history import History
 from .histfile import LAYOUT
-from .storage import _wrote, doc_hash, paths, read_history, save
+from .storage import _wrote, canonical_pieces, doc_hash, paths, read_history, save, write_document
 from . import edits as E
 from .userhome import locked
 
@@ -64,6 +69,8 @@ class Live:
         self._doc_there = False                  # the document file is known to be there (we wrote it, or saw it)
         self._windowed = False                   # a window folds on its own timer, never inside a change
         self._changed_at = 0.0                   # time.monotonic() of the last change saved through the door
+        self._writing = None                     # a background write of the document file: (future, tree, step, change)
+        self._pool = None
 
     def _mine(self):
         h = self.doc.history
@@ -108,7 +115,10 @@ class Live:
 
     def fold(self, always=True):
         """Write the document file now, through the door (lock, catch up): Save and close (`always`), or only when
-        it is behind."""
+        it is behind. A background write still going is waited for first (a failed one is written again here)."""
+        if self._writing is not None:
+            self._writing[0].exception()            # (waits; its failure is not raised: this write replaces it)
+            self._collect(raise_=False)
         with self.door():
             if always or self.behind():
                 save(self.doc, p=self.p)
@@ -118,12 +128,48 @@ class Live:
         """A window's timer, between pointer actions: fold once the person has paused FOLD_QUIET_S, or at once when
         the file is FOLD_STEPS steps behind. Never during a drag (the document holds the drag's unsaved picture
         then). True when it folded."""
-        if not self.behind() or self.doc._gesture is not None:
+        self._collect()
+        if self._writing is not None or not self.behind() or self.doc._gesture is not None:
             return False
         if time.monotonic() - self._changed_at < FOLD_QUIET_S and self.doc.seq - self._filed < FOLD_STEPS:
             return False
-        self.fold(always=False)
+        with self.door():                           # lock, catch up, history appended: then the tree as it stands
+            if not self.behind():
+                return False
+            doc, ch = self.doc, self.doc.history.changes
+            last = ch[-1] if ch else None
+            pool = self._pool = self._pool or ThreadPoolExecutor(1, thread_name_prefix="document-file")
+            job = pool.submit(lambda d=doc.data, at=doc.seq, t=last.t if last else 0.0: write_document(
+                self.p["doc"], doc.kind.format, doc.kind.version, at, t, canonical_pieces(d)))
+            self._writing = (job, doc.data, doc.seq, last)
         return True
+
+    def _collect(self, raise_=True):
+        """Take in a finished background write: the file is up to date with its tree, or (`raise_`) it failed, loudly
+        in words, and the next quiet tick writes again (nothing is lost: every step is in the history file)."""
+        w = self._writing
+        if w is None or not w[0].done():
+            return
+        self._writing = None
+        job, data, seq, last = w
+        err = job.exception()
+        if err is None:
+            h, self.doc.saved_by = job.result()
+            self._filed, self._filed_data, self._doc_there = seq, data, True
+            if last is not None and last._after is data:
+                last.hash_after = h                 # its hash, known for free (the next history line carries it)
+        elif raise_:
+            raise RostrumError(codes.INTERNAL, "save", str(self.p["doc"]), f"could not be written ({err})",
+                               hint="Every change is kept in the history file; Rostrum tries again in a moment.",
+                               plain="Your work could not be written to its file just now. Nothing is lost; "
+                                     "Rostrum will try again.") from err
+
+    def settle(self):
+        """Wait for a background write of the document file and take it in (a failure raises): a script or a check
+        that reads the file right after a fold."""
+        if self._writing is not None:
+            self._writing[0].exception()
+            self._collect()
 
     def catch_up(self) -> list:
         """Take in what another program saved since we last looked; return those steps (oldest first). A window's

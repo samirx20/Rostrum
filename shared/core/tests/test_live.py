@@ -65,7 +65,66 @@ def test_a_window_writes_the_whole_file_only_when_quiet_and_never_loses_a_step(t
     assert crashed.seq == window.seq and crashed.data == window.data and crashed.item("title")["name"] == "Hi"
     monkeypatch.setattr(live, "FOLD_QUIET_S", 0.0)
     assert window.live.fold_if_quiet() is True and window.live.fold_if_quiet() is False
+    window.live.settle()                                                     # (written on its own thread)
     on_disk = json.loads(file.read_text(encoding="utf-8"))
     assert on_disk["at"] == window.seq and on_disk["doc"] == window.data
     server.apply(move(99), AGENT)                                            # the agent's server took in every step
     assert Document.open(tmp_path, "itm", toy.KIND).seq == window.seq + 1 == server.seq
+
+
+def _held_write(monkeypatch, fail=False):
+    """The window's document-file write, held on its thread until the test lets it go (a slow or failing disk)."""
+    import threading
+    go = threading.Event()
+    real = live.write_document
+
+    def slow(*a, **kw):
+        assert go.wait(10), "the write was never let go"
+        if fail:
+            raise OSError("disk full")
+        return real(*a, **kw)
+    monkeypatch.setattr(live, "write_document", slow)
+    monkeypatch.setattr(live, "FOLD_QUIET_S", 0.0)
+    return go
+
+
+def test_a_key_never_waits_for_the_document_file_being_written(tmp_path, monkeypatch):
+    """The quiet fold writes on its own thread: while it is held (a slow disk), changes and timer ticks go on at
+    once, and Save still ends with the newest song in the file."""
+    import json
+    import time
+    toy.sample(tmp_path, "itm").save()
+    window = Document.open(tmp_path, "itm", toy.KIND)
+    live.keep(window).windowed()
+    window.apply(move(1), SAM, join=False)
+    go = _held_write(monkeypatch)
+    assert window.live.fold_if_quiet() is True                     # the write starts, and is held
+    t = time.perf_counter()
+    window.apply(move(2), SAM, join=False)                         # a key while the file is being written
+    assert window.live.fold_if_quiet() is False                    # the next tick doesn't wait either
+    assert time.perf_counter() - t < 1.0
+    go.set()
+    window.save()                                                  # Save (and close) wait, then write what is newer
+    on_disk = json.loads((tmp_path / "docs" / f"itm{toy.KIND.ext}").read_text(encoding="utf-8"))
+    assert on_disk["at"] == window.seq and on_disk["doc"] == window.data
+
+
+def test_a_failed_document_write_is_said_and_tried_again(tmp_path, monkeypatch):
+    import pytest
+    from rostrum_core import RostrumError
+    toy.sample(tmp_path, "itm").save()
+    window = Document.open(tmp_path, "itm", toy.KIND)
+    live.keep(window).windowed()
+    window.apply(move(1), SAM, join=False)
+    go = _held_write(monkeypatch, fail=True)
+    assert window.live.fold_if_quiet() is True
+    go.set()
+    with pytest.raises(RostrumError) as e:                         # the link's next tick: loud, in the top bar
+        window.live.settle()
+    assert "disk full" in str(e.value) and "Nothing is lost" in e.value.person()
+    assert window.live.behind()                                    # never taken for written
+    monkeypatch.undo()
+    monkeypatch.setattr(live, "FOLD_QUIET_S", 0.0)
+    assert window.live.fold_if_quiet() is True                     # tried again
+    window.live.settle()
+    assert not window.live.behind()
