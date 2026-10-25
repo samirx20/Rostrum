@@ -3,6 +3,7 @@ document as the ones before it left it, then the app's whole-document check. Any
 RostrumError naming the operation; the caller's document is untouched (we work on a fork: edits.fork)."""
 from __future__ import annotations
 
+from . import bug
 from . import edits as E
 from . import ids, locks
 from .conditions import describe, holds
@@ -167,7 +168,7 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None):
         except RostrumError:
             raise
         except Exception as e:  # a bug in an operation is loud, never half-applied
-            raise RostrumError(codes.INTERNAL, where, op.name, f"failed: {type(e).__name__}: {e}") from e
+            raise bug.internal(where, op.name, e) from e
         locks.check(ctx.edits, idx, kind.lists, where, locked_by, who)
         call["args"] = args
         applied += ctx.edits

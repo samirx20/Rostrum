@@ -8,8 +8,6 @@ from __future__ import annotations
 import base64
 import json
 import threading
-import time
-import traceback
 from pathlib import Path
 
 import anyio
@@ -17,6 +15,7 @@ import mcp_types as types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
+from .. import bug
 from ..errors import RostrumError, codes
 from ..who import Who
 from . import shared_edit, shared_inspect, shared_markers, shared_screen, tools_list
@@ -26,17 +25,7 @@ from .jobs import InProcessJobs
 from .reply import Reply, error_dict
 from .tools import Tools
 
-LOG_DIR = Path.home() / ".rostrum" / "logs"
 STANDARD_INSTRUCTIONS = "Read inspect_guide topic 'start-here' first. Replies always carry ok + summary; failures say what is accepted."
-
-
-def _log(text: str) -> str:
-    """Write a bug's traceback to a log file and return its path (INTERNAL errors name it)."""
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    path = LOG_DIR / f"mcp-{time.strftime('%Y%m%d')}.log"
-    with path.open("a", encoding="utf-8") as f:
-        f.write(f"--- {time.strftime('%H:%M:%S')}\n{text}\n")
-    return str(path)
 
 
 class Runtime:
@@ -52,7 +41,7 @@ class Runtime:
         self.app, self.tools = app, shared.merged_with(tools) if tools else shared
         if app.script_help:
             self.tools.described("run_script", app.script_help)
-        self.jobs = jobs or InProcessJobs(log=_log)
+        self.jobs = jobs or InProcessJobs(log=bug.log)
         self.groups = groups or Groups(used=lambda: {c.session for d in app.documents.values() for c in d.history.changes})
         self._one_at_a_time = threading.Lock()          # one writer: tools never overlap on the document
 
@@ -76,9 +65,7 @@ class Runtime:
         except RostrumError as e:
             return error_dict(e.within(name) if not e.where.startswith(name) else e), []
         except Exception as e:                           # a bug: loud, with a log, never a silent success
-            path = _log(traceback.format_exc())
-            err = RostrumError(codes.INTERNAL, name, f"unexpected {type(e).__name__}", f"in Rostrum: {e}", hint=f"Log: {path}")
-            return error_dict(err), []
+            return error_dict(bug.internal(name, "", e)), []
 
 
 def _content(reply: dict, images: list) -> list:
