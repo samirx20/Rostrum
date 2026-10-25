@@ -31,11 +31,10 @@ Column {
             Item {      // a note (what a GIF comes to) wraps onto a second line rather than lose its end
                 width: srow.wide ? root.width : root.width - root.labelW
                 height: srow.modelData.kind === "note" ? Math.max(Theme.row, note.implicitHeight) : Theme.row
-                Toggle { visible: srow.modelData.kind === "toggle" || srow.wide; anchors.verticalCenter: parent.verticalCenter
+                Toggle { visible: srow.modelData.kind === "toggle"; anchors.verticalCenter: parent.verticalCenter
                          checked: !!srow.modelData.value; onToggled: (v) => root.job.setSetting(srow.modelData.key, v) }
-                Text { visible: srow.wide; x: 32 + Theme.gap; width: parent.width - x; height: parent.height
-                       verticalAlignment: Text.AlignVCenter; text: srow.modelData.label; color: Theme.fg2
-                       font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight }
+                SwitchRow { visible: srow.wide; wordsAfter: true; width: parent.width; label: srow.modelData.label      // the words flip it too
+                            checked: !!srow.modelData.value; onToggled: (v) => root.job.setSetting(srow.modelData.key, v) }
                 Text { id: note; visible: srow.modelData.kind === "note"; width: parent.width; anchors.verticalCenter: parent.verticalCenter
                        text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; wrapMode: Text.Wrap
                        font.family: uiFont; font.pixelSize: Theme.body }

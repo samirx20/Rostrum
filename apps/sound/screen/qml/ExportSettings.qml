@@ -29,15 +29,6 @@ Column {
                HoverTip { text: field.tip; hovered: capHover.hovered } }
         Item { id: slot; width: parent.width; height: Theme.field }
     }
-    component Switch: Row {
-        property alias checked: sw.checked
-        property alias text: words.text
-        signal toggled(bool on)
-        spacing: Theme.gap
-        Toggle { id: sw; anchors.verticalCenter: parent.verticalCenter; onToggled: (v) => parent.toggled(v) }
-        Text { id: words; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
-    }
-
     component Action: Text {           // a quiet word to click, at the same left edge as the labels
         signal clicked()
         color: actHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
@@ -54,10 +45,10 @@ Column {
             id: pr
             required property var modelData
             width: root.width; height: sw.height
-            Switch {
-                id: sw
+            SwitchRow {      // the kit's switch line: the words flip it too
+                id: sw; wordsAfter: true
                 checked: root.job.preset === pr.modelData.value
-                text: pr.modelData.label
+                label: pr.modelData.label
                 onToggled: (on) => root.job.setPreset(pr.modelData.value, on)
             }
             HoverHandler { id: prHover }
@@ -117,10 +108,10 @@ Column {
         label: "Stems"; tip: "Separate files for the Editor or a mix elsewhere; they add up to the mix"
         ChoiceField { width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
     }
-    Switch { visible: root.job.hasMarkers; checked: root.job.markers; onToggled: (v) => root.job.setMarkers(v)
-             text: "Markers file" }
-    Switch { checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
-             text: "Cut the silence at the end" }
+    SwitchRow { wordsAfter: true; visible: root.job.hasMarkers; checked: root.job.markers; onToggled: (v) => root.job.setMarkers(v)
+                label: "Markers file" }
+    SwitchRow { wordsAfter: true; checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
+                label: "Cut the silence at the end" }
     Item {   // "› More" like every other More: the chevron points down while it is open
         width: root.width; height: Theme.rowDense
         Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
