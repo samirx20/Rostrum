@@ -66,6 +66,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self.model = RowsModel(rows.ROLES, self)
         self._kit.agent = AgentWatch(self)
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
+        self._history_check()                              # the count and ↶ ↷ as the window opens
         self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.faultSeen.connect(self._fault_said)           # queued from a worker thread: shown on the screen's thread
@@ -141,14 +142,15 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         overrides clear_expr_calls (2D). Elsewhere "=5" is just 5."""
         return type(self).clear_expr_calls is not DocBridge.clear_expr_calls
 
+    # The count, ↶ ↷ and versions: worked out once per change (_history_check), read from there by every binding
     @Property(int, notify=countChanged)
     def historyCount(self):
-        return self.changes_since_open()
+        return self._kit.told[0]
 
     # History, ↶ ↷ and the agent chip (reads in bridge_review.py; Qt properties must sit on the QObject class)
-    undoLabel = Property(str, ReviewSlots.next_undo_label, notify=historyChanged)        # "" = nothing to undo
-    redoLabel = Property(str, ReviewSlots.next_redo_label, notify=historyChanged)
-    versions = Property("QVariantList", ReviewSlots.versions_list, notify=historyChanged)
+    undoLabel = Property(str, lambda self: self._kit.told[1][0], notify=historyChanged)    # "" = nothing to undo
+    redoLabel = Property(str, lambda self: self._kit.told[1][1], notify=historyChanged)
+    versions = Property("QVariantList", lambda self: list(self._kit.told[1][2]), notify=historyChanged)
     agent = Property(QObject, lambda self: self._kit.agent, constant=True)    # agent_watch.AgentWatch
 
     @Property(str, notify=statusChanged)
@@ -254,8 +256,10 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         return t is None or t.reaches(self.doc, list(ids))
 
     def _history_check(self):
-        """The count and the ↶ ↷ labels are their own signals, sent only when they changed: on docChanged every binding
-        that reads them ran again on every edit (the top bar re-measured its words each time)."""
+        """The count, the ↶ ↷ labels and the versions, worked out once per change (each scans the history) and kept:
+        every read (the top bar, the Inspector, an app's binding, Python) takes the kept value. Their own signals are
+        sent only when they changed: on docChanged every binding that reads them ran again on every edit (the top bar
+        re-measured its words each time), and each read worked them out again (7 history scans per Undo)."""
         k, count = self._kit, self.changes_since_open()
         labels = (self.next_undo_label(), self.next_redo_label(), self.versions_list())
         if count != k.told[0]:

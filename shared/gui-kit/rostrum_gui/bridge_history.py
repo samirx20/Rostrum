@@ -43,6 +43,7 @@ class HistoryParts:
                 seen[0] = _key(c)
             self._heard(c if new else None, partner.history_doc())
         partner.changed.connect(heard)
+        self._history_check()                       # the count and ↶ ↷ now take in the partner's history
 
 
 def _key(change):

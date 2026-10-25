@@ -51,3 +51,25 @@ def test_screen_undo_takes_back_marker_edits_in_one_history(tmp_path):
     w.refresh()
     assert b.status == "Claude: Move marker"                           # an agent's marker edit: who changed what
     w.close()
+
+
+def test_a_change_asks_no_file_between_polls(tmp_path, monkeypatch):
+    """A change and an Undo on a screen whose project has no markers yet look at no file: the marker document, its
+    file's stamp and the ↶ ↷ labels are kept between the marker watch's polls (Sound asked 12 times per Undo)."""
+    from rostrum_core import toy
+    from rostrum_gui import DocBridge
+    _app = QCoreApplication.instance() or QCoreApplication([])
+    b = DocBridge(toy.sample(), who=Who.person("sam"))
+    w = MarkerWatch(tmp_path, who=b.who, owner="2d")
+    b.join_history(w)
+    b.select("cam_1")
+    asked, real = [], os.stat
+    monkeypatch.setattr(os, "stat", lambda *a, **k: asked.append(str(a[0])) or real(*a, **k))
+    b.setValue("focal", 60)
+    b.undo()
+    monkeypatch.undo()
+    assert b.undoLabel == "" and b.redoLabel and b.historyCount == 0
+    assert not asked, asked
+    w.add(1.0)                                          # this process's own save: seen at once, no poll needed
+    assert len(w.rows()) == 1 and b.historyCount == 1
+    w.close()
