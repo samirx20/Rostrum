@@ -53,7 +53,7 @@ function timed(list, map) {
         var x = list[i]
         if (x.atBeat === undefined || x.__tempo === key) continue
         if (out === null) { out = list.slice(); made = new Map() }
-        var o = Object.create(x)                 // its fields read through (a copy of each cost ~30 ms a tempo step)
+        var o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)   // (a re-timed one: from its own block, never a layer more); its fields read through (a copy of each cost ~30 ms a tempo step)
         o.t = Tempo.seconds(map, x.atBeat)
         if (x.endBeat !== undefined) o.dur = Tempo.seconds(map, x.endBeat) - o.t
         o.__tempo = key

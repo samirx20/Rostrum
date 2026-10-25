@@ -8,6 +8,7 @@ One rule, the engine's (engine/src/contract/ending.rs): the render says the same
 """
 from __future__ import annotations
 
+import threading
 from contextlib import contextmanager
 
 from rostrum_core import RostrumError
@@ -15,25 +16,33 @@ from rostrum_core import RostrumError
 from . import item_times, times
 
 SHOWN = 3
-_SCOPE: list[dict] = []          # inside `same_song()`: (check, song) -> its words
+_HERE = threading.local()        # inside `same_song()`, per thread: (check, song) -> its words (a render thread's checks
+                                 # never read the screen thread's block)
+
+
+def _scope() -> list[dict]:
+    if not hasattr(_HERE, "scope"):
+        _HERE.scope = []
+    return _HERE.scope
 
 
 @contextmanager
 def same_song():
     """Inside it each check runs once per song tree (the Problems list reads `ties` and `late` again to name the
     warnings `warn` gave): one read of the song, never kept past the block."""
-    _SCOPE.append({})
+    _scope().append({})
     try:
         yield
     finally:
-        _SCOPE.pop()
+        _scope().pop()
 
 
 def _once(fn):
     def check(data: dict) -> list[str]:
-        if not _SCOPE:
+        scope = _scope()
+        if not scope:
             return fn(data)
-        kept, key = _SCOPE[-1], (fn.__name__, id(data))
+        kept, key = scope[-1], (fn.__name__, id(data))
         if key not in kept:
             kept[key] = (data, fn(data))             # the song held, so its id is never another's inside the block
         return kept[key][1]
