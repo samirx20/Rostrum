@@ -20,6 +20,7 @@ class Touched:
         self.keys, self.structural = keys, structural
         self.ids = {k[0] for k in keys}
         self.fields = {(k[0], k[1]) for k in keys if len(k) > 1}
+        self._above: set | None = None       # every item above a touched one (`reaches`: once per change)
 
     def reaches(self, doc, ids) -> bool:
         """Did the change touch any of `ids`, an item above one (a parent's time or place moves it) or one inside
@@ -35,16 +36,14 @@ class Touched:
                 loc = idx.get(loc.parent) if loc.parent else None
         if near & self.ids:
             return True
-        return any(idx.get(t) is not None and _inside(idx, t, set(ids)) for t in self.ids)
-
-
-def _inside(idx, item_id, ids: set) -> bool:
-    loc = idx.get(item_id)
-    while loc is not None and loc.parent:
-        if loc.parent in ids:
-            return True
-        loc = idx.get(loc.parent)
-    return False
+        if self._above is None:              # (a whole-song Right: 3,352 notes walked up once, not per question)
+            self._above = set()
+            for t in self.ids:
+                loc = idx.get(t)
+                while loc is not None and loc.parent and loc.parent not in self._above:
+                    self._above.add(loc.parent)
+                    loc = idx.get(loc.parent)
+        return not self._above.isdisjoint(ids)
 
 
 def of(doc, event) -> Touched | None:
