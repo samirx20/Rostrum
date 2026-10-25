@@ -47,7 +47,7 @@ def own_moments(comp: dict, ids: set | None = None) -> dict[str, set]:
 def unseen(comp: dict) -> dict[str, dict[str, int]]:
     """Layers seen at none of the moments: {id: {reason: how many moments it was the reason}}. A layer shown only as
     another's track matte is left out (that is what it is for). Where a layer is doesn't count: the world around the
-    frame is for designing in (what is in the frame is look_in_frame's question)."""
+    frame is for designing in (what is in the frame is look_frame (what: in_frame)'s question)."""
     w, h = comp_size(comp)
     seen, why = set(), {}
 

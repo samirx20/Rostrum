@@ -1,4 +1,4 @@
-"""look_motion: what moves and how; look_path: the path one layer or the frame travels. Both computed from the document's
+"""look_motion: what moves and how; look_motion (what: path): the path one layer or the frame travels. Both computed from the document's
 keys (nothing is rendered)."""
 from __future__ import annotations
 

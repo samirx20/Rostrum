@@ -1,4 +1,4 @@
-"""look_world's key labels never overlap (an agent reads them); each is placed clear of the ones before it."""
+"""look_frame {what: "world"}'s key labels never overlap (an agent reads them); each is placed clear of the ones before it."""
 from PIL import Image, ImageDraw, ImageFont
 
 from rostrum2d.mcp.world_picture import _free_spot

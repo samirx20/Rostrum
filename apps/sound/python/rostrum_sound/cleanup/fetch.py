@@ -34,7 +34,7 @@ NEEDS = {"stem": (models.UMXHQ,), "isolate": (models.UMXHQ, models.DFN3), "denoi
 BUNDLES = {"deepfilternet3": ("noise removal", (models.DFN3,)),
            "umxhq": ("splitting music into stems and pulling a voice out of music", (models.UMXHQ,)),
            "voice": ("spoken lines on a voice track", voice_models.FILES),
-           "speech": ("each spoken word's start and end (render_voice_words)", speech_models.FILES)}
+           "speech": ("each spoken word's start and end (render_voice (what: words))", speech_models.FILES)}
 
 
 def bundle_of(m: Model) -> str:

@@ -1,4 +1,4 @@
-"""look_frame and look_sheet: the agent's eyes on the picture, drawn by the same engine as export (preview ≡ export)."""
+"""look_frame and look_frame (what: sheet): the agent's eyes on the picture, drawn by the same engine as export (preview ≡ export)."""
 from __future__ import annotations
 
 import tempfile
@@ -29,7 +29,7 @@ def look_frame(ctx, args):
     doc, comp = doc_and_comp(ctx, args)
     t, frame = time_of(ctx, comp, args)
     scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
-    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}')
+    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
     seen = shown_ids(comp, t)
 
     def job_fn(job):
@@ -62,7 +62,7 @@ def look_sheet(ctx, args):
     frames = sorted({round((start + (end - start) * i / (count - 1)) * fps) for i in range(count)})
     scene, tile_w = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps)), args.get("width", 480)
     cols = args.get("cols", min(4, len(frames)))
-    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet')
+    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet', project=doc.folder)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_sheet_") as tmp:
@@ -74,4 +74,4 @@ def look_sheet(ctx, args):
                      {"frames": frames, "times": [round(f / fps, 4) for f in frames], "width": w, "height": h, "cols": cols}, [dest], [dest],
                      scene.get("warnings", []))
 
-    return ctx.long(f'look_sheet {comp["id"]}', job_fn)
+    return ctx.long(f'look_frame (what: sheet) {comp["id"]}', job_fn)

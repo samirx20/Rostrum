@@ -1,4 +1,4 @@
-"""look_rig and inspect_rig_motion: the agent's eyes on a rig. Both ask the engine for the posed bones (screen px, through the frame; FRAME.md)."""
+"""look_frame (what: rig) and look_motion (what: rig): the agent's eyes on a rig. Both ask the engine for the posed bones (screen px, through the frame; FRAME.md)."""
 from __future__ import annotations
 
 import tempfile
@@ -36,7 +36,7 @@ def look_rig(ctx, args):
     t, frame = time_of(ctx, comp, args)
     _need_rig(ctx, comp)
     scene, comp_w = render.scene_of(doc, comp["id"]), comp_size(comp)[0]
-    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_rig_f{frame}')
+    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_rig_f{frame}', project=doc.folder)
 
     def job_fn(job):
         from rostrum2d.engine import Engine
@@ -55,7 +55,7 @@ def look_rig(ctx, args):
         return Reply(f'Frame {frame} ({t:.3f} s) of {comp["id"]} with {n} bones in {len(rigs)} rig{"s" * (len(rigs) != 1)} drawn, {w}×{h}.',
                      {"time": t, "frame": frame, "width": w, "height": h, "rigs": rigs}, [dest], [dest])
 
-    return ctx.long(f'look_rig {comp["id"]} f{frame}', job_fn)
+    return ctx.long(f'look_frame (what: rig) {comp["id"]} f{frame}', job_fn)
 
 
 @tools.tool("inspect_rig_motion", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
@@ -92,4 +92,4 @@ def inspect_rig_motion(ctx, args):
                 + (f'Pinned tips that moved over {rig_view.SLIDE_PX} px: {"; ".join(sliding)}.' if sliding else "No pinned tip slid."))
         return Reply(text, {"start": times[0], "end": times[-1], "fps": fps, "chains": chains})
 
-    return ctx.long(f'inspect_rig_motion {comp["id"]}', job_fn)
+    return ctx.long(f'look_motion (what: rig) {comp["id"]}', job_fn)

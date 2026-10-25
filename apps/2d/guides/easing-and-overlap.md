@@ -39,12 +39,12 @@ that the file says what you decided.
   number. In the screen: **Stagger…** at the top of the settings panel.
 - A stagger in a script is easiest to keep consistent with a loop: the start time is `base + i * step`, so changing
   `step` changes the whole rhythm in one place.
-- `look_sheet` over just the entrance window (`start`, `end`) shows what the overlap looks like.
+- `look_frame` (`what: "sheet"`) over just the entrance window (`start`, `end`) shows what the overlap looks like.
 
 ## Checking an ease choice
 
 1. `look_motion layers: [id]`: peak speed, where it peaks, overshoot, how long the move is.
-2. `look_sheet` across the move (`start`/`end` = the move, `count` 8–12): the spacing between where things are from frame to
+2. `look_frame` (`what: "sheet"`) across the move (`start`/`end` = the move, `count` 8–12): the spacing between where things are from frame to
    frame is the ease. Bunched early tiles, wide-open later ones: slow-fast. The reverse: fast-slow.
 3. `look_frame` on the landing frame and one frame after: the layer should be where you meant, and not still moving unless
    you meant it to.
@@ -63,5 +63,5 @@ The ease decides how fast a layer goes; spatial handles decide which way. `key.p
 on a layer or the frame bends the path at its position key at `t` (it needs an x and a y key there): `out` is the handle
 leaving that key, `in` the one arriving at it, in px from the key's place; `null` removes one (a straight line again
 when both ends of a stretch have none). Give the x and y keys the same ease for a true curve. The speed along the
-curve follows the ease, not the distance. `look_path {layer}` reads the path back: per sample its own x / y and where it
+curve follows the ease, not the distance. `look_motion (what "path") {layer}` reads the path back: per sample its own x / y and where it
 is seen on screen, the keys with their handles, the path's length and its peak speed.

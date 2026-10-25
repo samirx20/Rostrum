@@ -146,7 +146,7 @@ def curve_of(owner: dict, prop: str, per_stretch: int = 24, markers: dict | None
 
 @R.operation("key.handles", "Shape the stretch from a key to the next one with a cubic Bézier (x1 y1 x2 y2, as in CSS "
              "cubic-bezier): the key's ease becomes `custom`. y may leave 0..1 for overshoot. Start from a named "
-             "ease's numbers (inspect_curve shows them).", target="key", label="Curve handles",
+             "ease's numbers (look_motion (what: curve) shows them).", target="key", label="Curve handles",
              params=[Param.number("x1", label="Curve x1", min=0, max=1, required=True),
                      Param.number("y1", label="Curve y1", min=-2, max=3, required=True),
                      Param.number("x2", label="Curve x2", min=0, max=1, required=True),

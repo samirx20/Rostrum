@@ -1,4 +1,4 @@
-"""inspect_lipsync: the agent's ears on lip sync. Phones, words and mouth cues of a voice clip, in comp seconds."""
+"""inspect_sounds (what: lipsync): the agent's ears on lip sync. Phones, words and mouth cues of a voice clip, in comp seconds."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -47,4 +47,4 @@ def inspect_lipsync(ctx, args):
                 + (f" Words: {words}." if words else ""))
         return Reply(text, out)
 
-    return ctx.long(f"inspect_lipsync {src.name}", job_fn)
+    return ctx.long(f"inspect_sounds (what: lipsync) {src.name}", job_fn)

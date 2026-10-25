@@ -1,4 +1,4 @@
-"""look_at: what is at a point of the frame, from the evaluated values (no rendering). inspect_colour_at: the colour
+"""look_at: what is at a point of the frame, from the evaluated values (no rendering). look_at (what: colour): the colour
 there in the rendered frame (the export engine), and which layer is on top there."""
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ POINT = {"x": {"type": "number", "description": "Pixels from the left of the com
 
 SPACE = {"space": {"type": "string", "enum": ["frame", "world"], "default": "frame",
                    "description": "frame: x, y are px of the picture (the export). world: x, y are world px, the canvas the frame moves over "
-                                  "(what look_world's ruler shows); boxes are where the world view draws each layer."}}
+                                  "(what look_frame (what: world)'s ruler shows); boxes are where the world view draws each layer."}}
 
 
 def _painted(doc, n: dict, x: float, y: float, t: float, frame: int, fps: float) -> dict | None:
@@ -61,7 +61,7 @@ def _covering(comp: dict, t: float, x: float, y: float, world: bool = False) -> 
 def look_at(ctx, args):
     """What is at a point at a time: the layers whose painted part covers it (a drawing: a painted pixel or one within 3 canvas px, not its empty canvas), top first, with their values at that time and their box.
     `space` "frame" (default): x, y are composition pixels, the picture. "world": x, y are world px, the canvas around the frame
-    (read them off look_world's ruler); the reply says whether the point is inside the frame then. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
+    (read them off look_frame (what: world)'s ruler); the reply says whether the point is inside the frame then. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
     effects like glow and shadow, and masks, are not counted. Layers that are covered but invisible (opacity 0) are marked.
     A layer with a painted fill says where the point lands in its painting (`painted_fill`: painting px, folded into the
     painting on Tile, and which drawing): paint.stroke {target: the painting, through: the layer} lands there."""
@@ -117,4 +117,4 @@ def inspect_colour_at(ctx, args):
                      {"time": t, "frame": frame, "point": [x, y], "color": hexc, "opacity": alpha, "layer": layer},
                      warnings=scene.get("warnings", []))
 
-    return ctx.long(f'inspect_colour_at {comp["id"]} f{frame}', job_fn)
+    return ctx.long(f'look_at (what: colour) {comp["id"]} f{frame}', job_fn)

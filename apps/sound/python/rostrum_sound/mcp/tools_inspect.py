@@ -15,7 +15,7 @@ FORMS = ("builtIn", "model", "synth", "sfz", "kit", "kitSfz")
 def _instrument(args) -> dict:
     forms = [k for k in FORMS if args.get(k)]
     if len(forms) != 1:
-        raise RostrumError(codes.BAD_ARGUMENT, "inspect_instrument", "the instrument", f"needs exactly one of {', '.join(FORMS)}",
+        raise RostrumError(codes.BAD_ARGUMENT, "inspect_engine (what: instrument)", "the instrument", f"needs exactly one of {', '.join(FORMS)}",
                            list(FORMS))
     return {forms[0]: args[forms[0]]}
 
@@ -95,7 +95,7 @@ def _installed(kind, words, limit):
         raise RostrumError(codes.NOT_FOUND, "inspect_library", str(library.LIBRARY), "is not installed") from e
     shown = f", showing the first {limit} (raise limit or narrow find)" if len(found) > limit else ""
     sounds = [library.describe(p) for p in found[:limit]]
-    sampled = (" These are sampled (SFZ) instruments: their level is the file's, and inspect_instrument sfz=<path> gives each "
+    sampled = (" These are sampled (SFZ) instruments: their level is the file's, and inspect_engine (what: instrument) sfz=<path> gives each "
                "one's range. The built-in sounds (no file, level-matched) and which part each suits: inspect_engine."
                if kind == "instruments" else "")
     return Reply(f"{len(found)} {kind} found" + (f" for \"{words}\"" if words else "") + f" under {library.LIBRARY}{shown}.{sampled}",

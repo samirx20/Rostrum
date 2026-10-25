@@ -109,13 +109,13 @@ the same in a script with `lipsync(..., slot=mouth)` (the slot must be made earl
 Same rule as above: it only adds keys, and a `show` key moved by a person stays. A group that is not a swap set keeps
 the opacity keys.
 
-### An agent's ears: `inspect_lipsync`
+### An agent's ears: `inspect_sounds` (`what: "lipsync"`)
 
-`inspect_lipsync {"source": …, "text": …, "start": …, "end": …, "at": …, "shapes": {"X": "mouth_X", …}}` answers, in
+`inspect_sounds (what "lipsync") {"source": …, "text": …, "start": …, "end": …, "at": …, "shapes": {"X": "mouth_X", …}}` answers, in
 composition seconds: every **phone** (IPA, with the ARPAbet from the dictionary when the words were given, and its word),
 every **word** (start, end), every **mouth cue** after the timing tools and, with `shapes`, which layer shows (and
 which shape stood in for a missing one). It changes nothing. Check: does each word start where you hear it? Are the
-closed mouths (A) on the M / B / P? Then look at frames (`look_frame`, `look_sheet`) and play the render with the sound.
+closed mouths (A) on the M / B / P? Then look at frames (`look_frame`, `look_frame` (`what: "sheet"`)) and play the render with the sound.
 
 ## Cost
 

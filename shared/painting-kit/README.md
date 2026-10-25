@@ -44,7 +44,7 @@ see.view(canvas.rgba8(frame, w, h), zoom=(x0, y0, x1, y1), grid=0)    # the same
 ```
 
 **Zooming in: pixels or smooth** (`sampling` on `see.view` / `see.before_after`, and on the 2D tools `look_drawing` /
-`look_drawing_change`). `"pixels"` blows each canvas pixel up into a sharp square: use it to place strokes on the
+`look_drawing` (`what: "change"`)). `"pixels"` blows each canvas pixel up into a sharp square: use it to place strokes on the
 pixel grid. `"smooth"` resamples (bicubic up, Lanczos down), so bristle streaks, grain and soft edges look as they
 will on screen: use it to judge texture. The default `"auto"` is pixels when a grid is drawn and smooth when it isn't
 (`grid=0`), because the grid is for placing and no grid is for looking. Under 3× (and every look that shrinks the

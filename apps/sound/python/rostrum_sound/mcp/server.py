@@ -4,8 +4,8 @@
     python -m rostrum_sound.mcp --project <folder> [--item <id>]       (that project; --folder is the same)
 
 With no options the server opens the song the Sound screen would open: the newest row of Recent songs still on disk. With
-none, no document is open (inspect_project says so). While running, inspect_recent_projects lists the person's songs and
-run_open_project switches (the one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
+none, no document is open (inspect_project says so). While running, run_open_project lists the person's songs
+(what "recent") and switches (the one engine process stays). Songs are `<folder>/docs/<item>.trk`, saved after every change.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import anyio
 from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import Runtime, Tools, build_server
 
-from . import tools_arrangement, tools_audition, tools_cleanup, tools_ears, tools_inspect, tools_look, tools_main_mix, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
+from . import tool_groups, tools_arrangement, tools_audition, tools_cleanup, tools_ears, tools_inspect, tools_look, tools_main_mix, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
 from .song_line import with_song_line
 from .app import make_app
 
@@ -25,7 +25,7 @@ def sound_tools() -> Tools:
     for m in (tools_render, tools_audition, tools_look, tools_arrangement, tools_inspect, tools_sfx, tools_voice, tools_motion, tools_plugins, tools_midi,
               tools_cleanup, tools_ears, tools_project, tools_main_mix):
         m.register(tools)
-    return tools
+    return tool_groups.group(tools)
 
 
 def make_runtime(app) -> Runtime:

@@ -1,13 +1,13 @@
-"""Which part each built-in sound suits, in plain words: the one table agents (inspect_engine, inspect_instrument,
+"""Which part each built-in sound suits, in plain words: the one table agents (inspect_engine, inspect_engine (what: instrument),
 inspect_library) and the level-match measurement (devtools/level_match.py) read.
 
     {"builtIn:subBass": Role(parts=("bass",), low="E1", high="G3", sounds="a round, deep synth bass")}
 
 `parts` are the parts the sound is made for, best first: comp (chords that keep time), bass, lead (a tune on top), pad
 (held chords under everything), groove (drums). The first is the one its level is matched on (preset_levels.json), so
-tracks written as that part at the same volume sit together roughly; check with look_levels. `low` / `high` is where it
+tracks written as that part at the same volume sit together roughly; check with look_sound (what: levels). `low` / `high` is where it
 sounds like itself (synthesized sounds play any key; outside this they thin out or boom). Sampled (SFZ) packs carry
-their own range: inspect_instrument reads it from the file.
+their own range: inspect_engine (what: instrument) reads it from the file.
 """
 from __future__ import annotations
 

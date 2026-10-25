@@ -8,13 +8,13 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
-- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a built-in instrument or the built-in kit start roughly balanced at the same volume for the part each suits (inspect_engine), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_levels`: a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
+- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a built-in instrument or the built-in kit start roughly balanced at the same volume for the part each suits (inspect_engine), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_sound` (`what: "levels"`): a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; every new effect starts valid and playable with its default settings: an EQ starts with one flat band (peak, 1000 Hz, 0 dB, q 1) that changes nothing until you move it, and settings depend on the kind: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).
   `effect.set` changes one, `bypass` switches it off without losing settings. On screen an effect's amounts (mix,
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
-  chain (inspect_plugins).
+  chain (inspect_engine (what "plugins")).
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
@@ -85,10 +85,10 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 ## Checking (agents)
 
 1. `render_mix` (stems on). Its reply already has integrated LUFS, true peak and each track's level.
-2. `look_loudness`: integrated, true peak, range, the short-term curve as a picture, clipped moments.
-3. `look_levels`: each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
-4. `look_clash`: which two tracks fight in which frequency band, and when.
-5. `look_low_end`: each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_stereo`: balance and mono safety.
+2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the short-term curve as a picture, clipped moments.
+3. `look_sound` (`what: "levels"`): each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
+4. `look_sound` (`what: "clash"`): which two tracks fight in which frequency band, and when.
+5. `look_sound` (`what: "low_end"`): each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_sound` (`what: "stereo"`): balance and mono safety.
 6. Change one thing, render, look again. Compare numbers between renders, not against a rule.
 
 ## Stems and handoff

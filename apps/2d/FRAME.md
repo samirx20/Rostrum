@@ -174,11 +174,11 @@ shots.
 ## Agents' eyes
 
 - **Frames, contact sheets, video, `boxes`, `place`**: drawn through the stage, so they show the export.
-- **`look_world`** (`mcp/world.py`, `world_picture.py`: the engine's world picture plus veil, outline, path, key outlines, ruler) and **`look_in_frame`** (`world_facts.py`: in / partly / out from the boxes, over a span with the frame's keys and layers' start / end as extra looks); **`look_at {space: world}`** reads world px.
+- **`look_frame` (`what: "world"`)** (`mcp/world.py`, `world_picture.py`: the engine's world picture plus veil, outline, path, key outlines, ruler) and **`look_frame` (`what: "in_frame"`)** (`world_facts.py`: in / partly / out from the boxes, over a span with the frame's keys and layers' start / end as extra looks); **`look_at {space: world}`** reads world px.
 - **Export › Picture › Area** (`mcp/export_area.py`): a png of the picked layers' box or of everything, from the same world picture, with no veil.
 - **`look_at`** (its reply's `frame_at`: x, y, zoom, rotation), **`look_frame`'s list**, **`look_motion`**
   (`mcp/geometry.py`): boxes are where the layer shows in the picture, through `frame/view.py`.
-- **`look_rig`**: the `bones` reply gives each rig's frame matrix as `frame`; **`inspect_rig_motion`** undoes it.
-- **`look_path layer=frame`**: the frame's path from its keys; motion samples list it as `camera:<frame id>`.
+- **`look_frame` (`what: "rig"`)**: the `bones` reply gives each rig's frame matrix as `frame`; **`look_motion` (`what: "rig"`)** undoes it.
+- **`look_motion (what "path") layer=frame`**: the frame's path from its keys; motion samples list it as `camera:<frame id>`.
 - **Lottie**: a frame that never leaves home writes nothing extra; one that moves is baked into one null per depth,
   a cut as a hold keyframe (`io/lottie_frame.py`).

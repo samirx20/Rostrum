@@ -1,4 +1,4 @@
-"""The scene's soundtrack (UX_SPEC 3.28): agents read what plays (inspect_soundtrack), a wrong pick is a loud error
+"""The scene's soundtrack (UX_SPEC 3.28): agents read what plays (inspect_sounds {what: "soundtrack"}), a wrong pick is a loud error
 naming the Sound items, and the field never reaches the 2D engine (it refuses fields it doesn't know)."""
 from rostrum_core import Document, Who, markers
 from rostrum_core.mcp import Runtime
@@ -28,12 +28,12 @@ def project(tmp_path):
 
 def test_agents_read_what_plays_and_a_wrong_pick_is_loud(tmp_path):
     app, rt = project(tmp_path)
-    reply, _ = rt.call("inspect_soundtrack", {}, AGENT)
+    reply, _ = rt.call("inspect_sounds", {"what": "soundtrack"}, AGENT)
     f = reply["data"]["soundtrack"]
     assert (f["item"], f["seconds"], f["bpm"], f["bars"]) == ("song", 4.0, 120.0, [0.0, 2.0, 4.0])
     assert f["markers"] == [{"name": "drop", "at": 2.0}]
     doc = app.documents["film"]
     doc.apply([{"op": "comp.set", "target": ["main"], "args": {"soundtrack": "nope"}}], AGENT)
-    reply, _ = rt.call("inspect_soundtrack", {}, AGENT)
+    reply, _ = rt.call("inspect_sounds", {"what": "soundtrack"}, AGENT)
     assert not reply["ok"] and "not a RostrumSound item" in str(reply) and "song" in str(reply)
     assert "soundtrack" not in describe(doc.data, "main", {}, None, (0, 4))["comp"]["props"]

@@ -134,7 +134,7 @@ How the shapes are paired, so you can steer the in-between:
   Draw both shapes in the **same direction** (both clockwise): opposite directions turn the shape inside out half way.
 - Open and closed pieces may be paired; the piece closes from half way.
 
-Check the in-between with `look_sheet` over the stretch; the settings panel's "value now" shows the shape of the key that
+Check the in-between with `look_frame` (`what: "sheet"`) over the stretch; the settings panel's "value now" shows the shape of the key that
 starts the stretch (the engine draws the blend). The Lottie export holds a morphing path at its first shape and says so.
 
 Other ways to change a shape over time: `scale` / `scaleX` / `scaleY`, `rotation`, a mask, or a rig bind (a path bound
@@ -164,7 +164,7 @@ layer.ride target=spark path=                     # stop riding (stays where it 
 - A ridden path can't ride a path itself, and a text following a path layer (`text.follow`) can't also ride one.
 - **The frame can ride a path too.** `layer.ride target=frame path=road at=along` and key `rideAlong` 0 → 1: the
   frame's centre sits on the path, its own `x` / `y` are an offset, and `turn=true` rolls it with the path's direction.
-  `look_sheet` over the shot shows where it is at each time.
+  `look_frame` (`what: "sheet"`) over the shot shows where it is at each time.
 - **Ride a path, or draw the move with keys.** A layer riding a path shows that path; it has no motion path of its own.
   For a move you shape by hand without a path layer, key its position and curve the motion path (below).
 
@@ -184,13 +184,13 @@ y keys. With handles the move follows a Bézier curve, drawn the same by the can
 away; a handle left out stays as it is. A missing handle counts as a third of the way to the next key, so one handle
 alone bends just that end. The ease still decides the timing: speed along the curve follows the ease, not the curve's
 length, so a tight bend with a long straight part reads faster on the straight part. Check with the frame dots or
-`look_path`.
+`look_motion` (`what: "path"`).
 
 ## Seeing and checking
 
-- `look_frame` at the extremes, `look_sheet` over a draw-on (the spacing of tiles is the ease).
+- `look_frame` at the extremes, `look_frame` (`what: "sheet"`) over a draw-on (the spacing of tiles is the ease).
 - `inspect_item id=mark` shows `d`, the box and the operations that fit it now.
-- `look_path layer=spark` gives the path a layer travels, sample by sample (own x / y and on screen), with its keys,
+- `look_motion (what "path") layer=spark` gives the path a layer travels, sample by sample (own x / y and on screen), with its keys,
   handles, length and top speed.
 - `look_motion layers=[line]` lists `trimEnd` / `dashOffset` moves, peak rates, holds.
 - `look_at x y time` tells which layers' boxes cover a point (boxes only, not the curve).

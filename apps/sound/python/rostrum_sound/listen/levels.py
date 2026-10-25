@@ -64,7 +64,7 @@ def levels(stems, mix=None, section_s=2.0, buried_db=18.0):
         elif not floats[k] and r["peak_dbfs"] >= db(CLIP_LEVEL ** 2):
             flags.append({"flag": "clips", "stem": k, "peak_dbfs": r["peak_dbfs"], "clips": True,
                           "detail": "this fixed-point stem file reaches full scale: its peaks are cut flat in the stem file. The mix is "
-                                    "not (its limiter holds it; look_loudness). A stem carries the master's loudness gain but not "
+                                    "not (its limiter holds it; look_sound (what: loudness)). A stem carries the master's loudness gain but not "
                                     "its limiter: turn this track down a few dB (track.set volume {\"db\": -4}) until the flag "
                                     "goes, or render with format \"wav32f\" for stems that hold every peak"})
     for i, k in enumerate(ids):

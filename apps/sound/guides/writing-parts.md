@@ -14,7 +14,7 @@ The script API is in inspect_guide `script`; instruments in `library`.
   instrument, played instrument, synth wave and the built-in kit is level-matched** (measured: a typical comp, bass, lead
   line, pad or groove for each comes out equally loud), so tracks written as the part each suits (the table below) at
   the same volume are roughly balanced: a piano comp at 0 dB sits with the bass and drums at 0 dB. Roughly, not exactly:
-  the same chord on every sound spreads about 11 dB, so check with `look_levels` after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
+  the same chord on every sound spreads about 11 dB, so check with `look_sound` (`what: "levels"`) after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
   is quieter than a bass note at 0.9. Sampled (SFZ), plug-in and recorded sounds are not matched (their level is the file's).
 - **The song's length** (`length`) is where it ends, a time: `bar(9)` is where bar 9 starts, so `length(bar(9))` is an
   8-bar song. For N bars write `length(bar(N+1))`. `run_script` and `inspect_item` (the song) end with the length in
@@ -25,7 +25,7 @@ The script API is in inspect_guide `script`; instruments in `library`.
 ## Which sound for which part
 
 Every built-in sound is made for a part; its level is matched on the first part listed. `inspect_engine` lists the same
-table (`roles`), `inspect_instrument builtIn=… / model=… / synth=…` gives one sound's line. Synthesized sounds play any
+table (`roles`), `inspect_engine (what "instrument") builtIn=… / model=… / synth=…` gives one sound's line. Synthesized sounds play any
 key; "sounds best" is where they sound like themselves.
 
 | Part | Sounds (`builtIn` / `model` / `synth` / `kit`) | Sounds best |
@@ -37,7 +37,7 @@ key; "sounds best" is where they sound like themselves.
 | groove (drums) | kit synth | kick, snare, clap, hat, openHat, cymbal, tom, rim |
 
 Pianos, guitars, marimba, vibraphone, brass and the saw and square waves also play leads (`inspect_engine` lists every
-part each suits). Sampled (SFZ) instruments carry their own range (`inspect_instrument sfz=<path>`) and are not
+part each suits). Sampled (SFZ) instruments carry their own range (`inspect_engine (what "instrument") sfz=<path>`) and are not
 level-matched.
 
 ## Notes are data
@@ -79,7 +79,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 - `edit_import_midi` with `path` = a `.mid` file: one track per part (channel 10 becomes drum hits), its markers and
   sections, and with `song_map` the tempo map and key. The sustain pedal (CC 64), expression (CC 11), mod wheel
   (CC 1) and pitch wheel come in as the part's Sustain, Expression, Vibrato and Bend lanes (its bend range too).
-- `render_midi` writes the document's notes and those lanes as a `.mid` for other tools. On the screen: Export
+- `render_mix` (`what: "midi"`) writes the document's notes and those lanes as a `.mid` for other tools. On the screen: Export
   (Ctrl+E) › What for › **MIDI file**, the same file.
 - Agents set the lanes with `automation.set` on the track: lane `sustain` (0 up … 1 down), `dynamics` (expression,
   0 … 2, 1 = as played), `bend` (-1 … 1 × `bendRange` semitones, `track.set {bendRange}`: a track with no bend lane yet takes it only in the
@@ -95,11 +95,11 @@ notes already written is `note.humanize`, with note ids as its targets (not the 
 
 ## Checking the part
 
-- `inspect_harmony` (`track` optional): the key, the chord per bar or beat, and plain facts about the written notes:
+- `look_music` (`what: "harmony"`) (`track` optional): the key, the chord per bar or beat, and plain facts about the written notes:
   notes outside the instrument's range, voices crossing, close intervals low down, notes out of key. Chord and note names
   are spelled for the key (flats in flat keys).
-- `look_pitch` with `track` after a render: the notes heard against the notes written (wrong note, wrong octave, early,
+- `look_music` (`what: "pitch"`) with `track` after a render: the notes heard against the notes written (wrong note, wrong octave, early,
   late, out of tune, missing). One line at a time: read a single-voice stem.
-- `look_beats`: whether the played notes sit on the grid, per onset in ms.
+- `look_music` (`what: "beats"`): whether the played notes sit on the grid, per onset in ms.
 
 These report facts; whether a line is musical is decided by listening.

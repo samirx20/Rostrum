@@ -1,4 +1,4 @@
-"""Seeing and checking drawings: look_drawing, look_drawing_change, inspect_drawing_at, inspect_stroke_landed.
+"""Seeing and checking drawings: look_drawing, look_drawing (what: change), look_drawing (what: at), look_drawing (what: landed).
 
 Every coordinate here is a canvas pixel (a drawing layer's own w × h; a painted element's paintW × paintH, stretched over
 its box; a painting's own w × h), never a composition pixel. `layer` may be a drawing, a painting or any painted element.
@@ -25,6 +25,21 @@ GRID = {"grid": {"type": "integer", "minimum": 0, "description": "Grid spacing i
 SAMPLING = {"sampling": {"type": "string", "enum": list(see.SAMPLINGS), "default": "auto",
                          "description": "How a zoom enlarges: pixels = sharp squares, to place strokes on the grid; smooth = resampled, "
                                         "to judge texture and edges. auto = pixels with a grid, smooth with grid 0."}}
+CROP = {"crop": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2,
+                 "description": "[x, y] canvas px: the part around this point at 100 % (one canvas px = one picture px, "
+                                "nothing enlarged or smoothed), `width` px wide (default 480) and 2/3 as tall, to judge paper "
+                                "grain, chalk and edges as they really are. Instead of zoom."}}
+
+
+def at_actual_size(args: dict, w: int, h: int) -> dict:
+    """`args` with a `crop` turned into the zoom, width, grid and sampling that show that part at 100 % (see CROP)."""
+    if not args.get("crop"):
+        return args
+    cw = min(int(args.get("width", 480)), w)
+    ch = min(max(16, cw * 2 // 3), h)
+    x0 = int(min(max(0, round(args["crop"][0] - cw / 2)), w - cw))
+    y0 = int(min(max(0, round(args["crop"][1] - ch / 2)), h - ch))
+    return {**args, "zoom": [x0, y0, x0 + cw, y0 + ch], "width": cw, "grid": 0, "sampling": "pixels"}
 
 
 def drawing_of(ctx, doc, layer):
@@ -71,7 +86,7 @@ def blank(w, h):
 
 
 @tools.tool("look_drawing", {"required": ["layer"], "properties": {
-    **ITEM, **LAYER, **FRAME, **ZOOM, **GRID, **SAMPLING,
+    **ITEM, **LAYER, **FRAME, **ZOOM, **CROP, **GRID, **SAMPLING,
     "paint": {"type": "string", "description": "Show only this paint layer of the frame (its id). Default: all paint layers together."},
     "onion": {"anyOf": [{"type": "boolean"}, {"type": "object", "additionalProperties": False, "properties": {
         "before": {"type": "integer", "minimum": 0, "maximum": 5}, "after": {"type": "integer", "minimum": 0, "maximum": 5}}}],
@@ -80,12 +95,14 @@ def blank(w, h):
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1200, "description": "Picture width in px."}}})
 def look_drawing(ctx, args):
     """One drawing of a drawing layer, in canvas pixels: the frame shown at a frame number, optionally zoomed, with a labelled
-    pixel grid, one paint layer alone, or onion skin. Transparent paper shows as a checkerboard."""
+    pixel grid, one paint layer alone, or onion skin. Transparent paper shows as a checkerboard. `crop` [x, y]: that part
+    at 100 % (one canvas px = one picture px) on flat grey, to judge grain and edges as they really are."""
     doc = ctx.document(args.get("item"))
     drawing = drawing_of(ctx, doc, args["layer"])
     n = args.get("frame", 0)
     frame = frame_of(ctx, drawing, n)
     w, h = D.canvas_size(drawing)
+    args = at_actual_size(args, w, h)
     paint = args.get("paint")
     if paint is not None and paint not in [p["id"] for p in frame.get("paints", [])]:
         raise RostrumError.not_found(ctx.tool, "paint layer", paint, [p["id"] for p in frame.get("paints", [])], f"frame {frame['id']}")
@@ -98,11 +115,14 @@ def look_drawing(ctx, args):
         before, after = before[:b], after[:a]
         img = see.onion(img, [canvas.rgba8(f, w, h) for f in before], [canvas.rgba8(f, w, h) for f in after])
     note = f'{drawing["id"]} frame {n} (drawing {frame["id"]} at {frame["at"]})' + (f", paint {paint}" if paint else "") + (", onion skin" if args.get("onion") else "")
+    if args.get("crop"):                # short: the picture may be narrow
+        note = f'{drawing["id"]} at 100 %, from ({args["zoom"][0]}, {args["zoom"][1]})' + (f", paint {paint}" if paint else "")
     try:
-        pic = see.view(img, args.get("zoom"), args.get("grid"), args.get("width", 1200), label=note, sampling=args.get("sampling", "auto"))
+        pic = see.view(img, args.get("zoom"), args.get("grid"), args.get("width", 1200), label=note, sampling=args.get("sampling", "auto"),
+                       checker=0.45 if args.get("crop") else True)
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom", "width" or "sampling"', str(e)) from e
-    dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_f{n}')
+    dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_f{n}', project=doc.folder)
     pic.save(dest)
     return Reply(f'{drawing["id"]} at frame {n} shows drawing {frame["id"]} (at {frame["at"]}): {stroke_count(frame)} strokes on {len(frame.get("paints", []))} paint layer(s), canvas {w}×{h}.',
                  {"drawing": drawing["id"], "frame_item": frame["id"], "at": frame["at"], "strokes": stroke_count(frame), "canvas": [w, h],
@@ -140,7 +160,7 @@ def look_drawing_change(ctx, args):
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom"', str(e)) from e
     box = see.changed_box(before, canvas.rgba8(frame, w, h))
-    dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_change{c.seq}')
+    dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_change{c.seq}', project=doc.folder)
     pic.save(dest)
     what = f'change {c.seq} by {c.who}, "{c.label}"'
     return Reply(f'Drawing {frame["id"]} (frame {n}) before and after {what}: ' + (f"changed box x {box[0]}..{box[2]}, y {box[1]}..{box[3]}." if box else "no pixel changed."),

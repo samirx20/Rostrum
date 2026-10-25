@@ -1,4 +1,4 @@
-"""Painted backgrounds: look_background (a big canvas in tiles, with what the frame sees of it) and inspect_background
+"""Painted backgrounds: look_drawing (what: tiles) (a big canvas in tiles, with what the frame sees of it) and look_drawing (what: depths)
 (the depth layers, how far each moves, and whether each covers everything the frame shows of it). The maths is
 background.py; painting is the kit's stroke.add, looking close is look_drawing.
 
@@ -84,7 +84,7 @@ def look_background(ctx, args):
         pic = see.view(img, None, 0, args.get("width", 1400), sampling="smooth")
         _draw_overlay(pic, w, boxes, _frame_boxes(comp, layer) if comp else {})
         text = f"{layer['id']}: canvas {w}×{h} in {cols}×{rows} tiles ({', '.join(boxes)}); {stroke_count(frame)} strokes. Yellow = the frame (solid: start, dashed: end, thin: all it shows)."
-    dest = look_path(f'{doc.item_id or "doc"}_{layer["id"]}_bg{args.get("tile", "")}')
+    dest = look_path(f'{doc.item_id or "doc"}_{layer["id"]}_bg{args.get("tile", "")}', project=doc.folder)
     pic.save(dest)
     return Reply(text, {"drawing": layer["id"], "canvas": [w, h], "tiles": {k: list(v) for k, v in boxes.items()}, "picture": [pic.width, pic.height]},
                  [dest], [dest], warnings=[n for n in [canvas.slow_note()] if n])

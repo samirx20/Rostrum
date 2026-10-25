@@ -55,7 +55,7 @@ def register(tools: Tools):
         "limit": {"type": "integer", "default": 60, "description": "Cuts listed in the reply (all are cached)."}}})
     def inspect_cuts(ctx, args):
         """The cut pool: recordings cut into single sounds, each with start, end, peak, floor, attack, brightness and low-end share. Analysed once, then read from the cache."""
-        paths = [_file(p, f"inspect_cuts › recordings[{i}]") for i, p in enumerate(args["recordings"])]
+        paths = [_file(p, f"inspect_library (what: cuts) › recordings[{i}]") for i, p in enumerate(args["recordings"])]
 
         def work(job):
             job.progress(note=f"cutting {len(paths)} recordings")

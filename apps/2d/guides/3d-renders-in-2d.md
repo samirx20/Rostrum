@@ -51,7 +51,7 @@ marker, and moves when someone moves the marker in any app. *Starts at* and *End
 - **Agents:** add it with `run_script` (`render3d("hero", item="product", w=1600, h=900, marker="product lands")`),
   then `look_frame`; `inspect_diagnose` tells you if the render is missing or out of date.
 
-- **3D not rendered yet?** In looks (`look_frame`, `look_sheet`), a part of a video and the screen, the layer is a grey
+- **3D not rendered yet?** In looks (`look_frame`, `look_frame` (`what: "sheet"`)), a part of a video and the screen, the layer is a grey
   card at its own box labelled "3D: <item> — not rendered yet", and the reply warns; you can judge the rest of the film
   now. A whole-film `render_export` / `render_video` refuses until the render is there. "Out of date" means the 3D
   scene's content changed after the render; a re-run that changed nothing is not out of date.

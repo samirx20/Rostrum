@@ -20,7 +20,7 @@ The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum
 pitch bend, tempo map, time signature, keys, markers and sections as a `.mid` for another music app. The sound
 settings below (file type, quality, stems, versions, the silent end) don't apply to it, so they disappear; the whole
 song is written. It lands in the project's `renders/<song>/midi/` folder (Browse also copies it where you choose),
-and anything MIDI can't hold is listed when it is done. Agents make the same file with `render_midi`.
+and anything MIDI can't hold is listed when it is done. Agents make the same file with `render_mix` (`what: "midi"`).
 
 Under the choices a line checks the sound that plays now against that target. With a range chosen it reads that range alone (its loudness and loudest peak), because that is the file you get:
 - "✓ Right for the target: loudness −14.2, loudest peak −1.3 dB" (green), or

@@ -58,8 +58,8 @@ def register(tools: Tools):
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds an onset may sit off the grid."}}})
     def look_beats(ctx, args):
         """Tempo (BPM, steady or drifting), the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture."""
-        doc, wav, stems = _source(ctx, args, "look_beats")
-        src = _pick(stems, args["track"], "look_beats") if args.get("track") else wav
+        doc, wav, stems = _source(ctx, args, "look_music (what: beats)")
+        src = _pick(stems, args["track"], "look_music (what: beats)") if args.get("track") else wav
         r = engine_ears.beats(src, args.get("beats_per_bar") or int(doc.data.get("beatsPerBar", 4)))
         div, tol = args.get("division", 4), args.get("tolerance", 0.04) * 1000
         sources = {args["track"]: src} if args.get("track") else {"mix": wav, **(stems if args.get("stems") else {})}
@@ -99,9 +99,9 @@ def register(tools: Tools):
         "timing_tolerance": {"type": "number", "default": 0.06, "description": "Seconds a note may start early or late."}}})
     def look_pitch(ctx, args):
         """The pitch of one melodic line as notes with times and cents off (vibrato, drift, tuning); with a track, each written note checked for wrong note, wrong octave, late, out of tune or missing. A picture of the curve over a note grid with the written notes as bars. One note at a time: use a single-voice stem."""
-        doc, wav, stems = _source(ctx, args, "look_pitch")
+        doc, wav, stems = _source(ctx, args, "look_music (what: pitch)")
         tid = args.get("track")
-        src = _pick(stems, tid, "look_pitch") if tid else wav
+        src = _pick(stems, tid, "look_music (what: pitch)") if tid else wav
         written = written_notes(doc.data, [tid]) if tid else []
         lo = min((m for w in written for m in w["midis"]), default=None)
         hi = max((m for w in written for m in w["midis"]), default=None)
@@ -136,17 +136,17 @@ def register(tools: Tools):
         "min_length": {"type": "number", "default": 0.3, "description": "Shortest clash to report, seconds."}}})
     def look_clash(ctx, args):
         """Where one stem buries another: both loud in the same frequency band at the same time and one stands at least 3 dB (min_over_db) over the other. Spans (start, end, band in Hz, the two tracks, buried_track, buried_by_db, how many dB each stands over the other) ranked by how far one is buried, and a time × band picture coloured by pair. Parts at the same level are not reported: an empty list means no real problem. Needs the last render's stems."""
-        doc, _, stems = _source(ctx, args, "look_clash")
+        doc, _, stems = _source(ctx, args, "look_sound (what: clash)")
         if not stems:
-            raise RostrumError(codes.NOT_FOUND, "look_clash", "stems", "were not rendered", hint="render_mix with stems: true.")
+            raise RostrumError(codes.NOT_FOUND, "look_sound (what: clash)", "stems", "were not rendered", hint="render_mix with stems: true.")
         want, left_out = args.get("tracks"), []
         if want and len(want) > C.MAX_STEMS:
-            raise RostrumError(codes.BAD_ARGUMENT, "look_clash", f"{len(want)} tracks", f"is more than the {C.MAX_STEMS} the clash finder reads at once",
+            raise RostrumError(codes.BAD_ARGUMENT, "look_sound (what: clash)", f"{len(want)} tracks", f"is more than the {C.MAX_STEMS} the clash finder reads at once",
                                hint="Split them over two calls, or leave `tracks` out to read the loudest ones.")
         if not want:
             want = C.loudest(stems) if len(stems) > C.MAX_STEMS else list(stems)
             left_out = [t for t in stems if t not in want]
-        levels, hop = C.stem_levels({t: _pick(stems, t, "look_clash") for t in want})
+        levels, hop = C.stem_levels({t: _pick(stems, t, "look_sound (what: clash)") for t in want})
         floor = args["floor_db"] if "floor_db" in args else C.floor_for(levels)
         spans, maps = C.find_clashes(levels, args.get("within_db", 6), floor, args.get("min_length", 0.3), hop, args.get("min_over_db", C.MIN_OVER_DB))
         png = ctx.app.state.look_dir(doc.item_id) / "clash.png"
@@ -175,13 +175,13 @@ def register(tools: Tools):
         warnings, chroma = [], None
         if use_notes:
             if not notes:
-                raise RostrumError(codes.NOT_FOUND, "inspect_harmony", "notes", "none written in the document" + (f" for track {tid}" if tid else ""))
+                raise RostrumError(codes.NOT_FOUND, "look_music (what: harmony)", "notes", "none written in the document" + (f" for track {tid}" if tid else ""))
             end = max(n["end"] for n in notes)
             est = H.key_from_notes(notes)
             rows = H.chart_from_notes(notes, H.windows(doc.data, end, per), H.speller(doc.data, args.get("key"), est))
         else:
-            _, wav, stems = _source(ctx, args, "inspect_harmony")
-            src = _pick(stems, tid, "inspect_harmony") if tid else wav
+            _, wav, stems = _source(ctx, args, "look_music (what: harmony)")
+            src = _pick(stems, tid, "look_music (what: harmony)") if tid else wav
             chroma, ct = H.chroma_of(src)
             y, sr = load(src)
             est = engine_ears.key_of_audio(src)        # the engine's key: the one source for audio (ears/engine_ears.py)

@@ -1,8 +1,8 @@
 """The project's brand kit for agents (rostrum2d/brand_kit.py, the screen's Library › Brand kit uses the same):
 
-    inspect_brand_kit {}                                          its colours, text styles and logos
-    run_brand_kit {do: add|remove, section, name, value?, file?, style?}   change the kit (`style`: copy a document's text style)
-    run_brand_use {section, name, layers, item?}                  a kit colour or text style on layers, as one undo step
+    run_brand_kit {what: list}                                                    its colours, text styles and logos
+    run_brand_kit {what: change, do: add|remove, section, name, value?, file?, style?}   change the kit (`style`: copy a document's text style)
+    run_brand_kit {what: use, section, name, layers, item?}                       a kit colour or text style on layers, as one undo step
 
 A logo is placed with run_import {path: <its file>, fit: true}. A document's own text styles are operations
 (style.define, style.use, textstyle.set …); the kit is the project's, shared by every document.
@@ -33,7 +33,7 @@ def _say(kit: dict) -> str:
 @tools.tool("inspect_brand_kit", {"properties": {}})
 def inspect_brand_kit(ctx, args):
     """The project's brand kit, shared by every document of the project: colours {name, value}, text styles {name,
-    font, size, weight, color, …} and logos {name, file relative to the project}. Use one with run_brand_use; place a
+    font, size, weight, color, …} and logos {name, file relative to the project}. Use one with run_brand_kit (what: use); place a
     logo with run_import {path: file, fit: true}."""
     kit = B.read(_folder(ctx))
     return Reply(f"Brand kit: {_say(kit)}.", {"kit": kit})

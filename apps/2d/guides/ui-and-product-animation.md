@@ -50,7 +50,7 @@ Layout uses each layer's own box (`w` × `h`) before scale and turn: animate `sc
 others, `w` / `h` for one that does. A layer before its start time or after its end takes no room. Text boxes are
 estimated from size and letters, so a row of texts may sit a little off; put text inside a fixed-size group. While
 laid out, a layer's `x` / `y` belong to the layout (setting them is refused, loudly). See it with `inspect_layout`
-(each placed layer's x, y and size at a time) and `look_sheet`.
+(each placed layer's x, y and size at a time) and `look_frame` (`what: "sheet"`).
 
 `clip=True` on a group hides children outside its box (a scrolling list, a window). `layer.arrange` moves a layer in the
 stack or into another group; `inspect_item` with no `id` lists the tree.
@@ -135,7 +135,7 @@ Boxes the look tools report (`look_at`) leave tilt out, so a tilted layer's box 
 
 ## Seeing and checking
 
-- `look_frame` (set `width=1920` to check crisp edges), `look_sheet` over the animation, `look_motion` for what moves.
+- `look_frame` (set `width=1920` to check crisp edges), `look_frame` (`what: "sheet"`) over the animation, `look_motion` for what moves.
 - `look_at x y time`: the layers whose box covers a point, top first, with values (effects and masks are not counted).
 - Animate toward the final layout you already placed: look at the last frame first, then key the way into it.
 - Use `value.set` when a person says "make it bigger": a still field changes, an animated one gets a key at `at`.

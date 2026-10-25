@@ -30,7 +30,7 @@ take, then play. To compare, switch **Use cleaned take** off and on.
    makes each missing take, one clip at a time, and answers per clip: `id`, `media` (the original), `file` (the
    cleaned take), `generated` or from the cache, and `steps` (each step's engine and file). Python:
    `rostrum_sound.clean_clips.make_clips(doc, ids)`, or for one file `rostrum_sound.cleanup.make(file, recipe)`.
-3. `look_cleanup` to hear the difference (below), then `render_mix` and the other look tools.
+3. `look_sound` (`what: "cleanup"`) to hear the difference (below), then `render_mix` and the other look tools.
 
 **Split a song into stems:** `clip.split_stems` on a clip adds four tracks right under its track, named
 `<track> · vocals` (… drums, bass, other), each with a copy of the clip (same file, time, in-point, length, fades,
@@ -38,7 +38,7 @@ level) playing that stem. The original clip's volume goes to 0, so nothing is he
 clips are untouched. One undo step. Running it again on the same clip fails (`is already split into stems`): delete
 those tracks first to split again. Then `render_cleanup` makes the stems (all four are made together, once).
 
-## Listening: look_cleanup
+## Listening: look_sound (what "cleanup")
 
 - `clip`: that clip's file before vs its cleaned take, plus its four stems when it plays a stem or they are made.
 - `before` + `after`: any two WAVs. `stems`: `{name: wav}` to check. `reference`: `{name: wav}`, the true parts, to
@@ -50,7 +50,7 @@ the sound stops: bigger = drier), with the change (after minus before). For stem
 every pair, the correlation of their 50 ms level envelopes: near 0 = independent, near 1 = one is heard in the other)
 and with reference stems the **SDR** in dB. Pictures: before / after spectrograms stacked on one colour scale with the
 level line, floor and speech level drawn; the stems' levels over time, one row each. They are written to
-`<project folder>/renders/<item>/look/` and returned as the reply's files.
+`<project folder>/looks/<item>/` and returned as the reply's files.
 
 ## When something is missing (it fails loudly)
 
@@ -60,7 +60,7 @@ level line, floor and speech level drawn; the stems' levels over time, one row e
 - `render_cleanup` with a clip id that has no step set: `has no cleanup step set`. An unknown id names the known ones.
 - A model that is not installed, too little free memory or a step that fails: the job fails, names the clip and the
   step, and the cache keeps nothing from it.
-- `look_cleanup` on a clip whose take or stems are not made: `is not made yet`, run `render_cleanup` first.
+- `look_sound` (`what: "cleanup"`) on a clip whose take or stems are not made: `is not made yet`, run `render_cleanup` first.
 
 ## Where things are
 

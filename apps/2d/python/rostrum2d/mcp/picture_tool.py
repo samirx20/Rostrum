@@ -1,7 +1,7 @@
 """The project's own brush tip and paper pictures for agents (rostrum_paint/library.py; the screen's Edit brush page
 lists the same choices):
 
-    run_paint_picture {path, as: tip|paper, name?}     keep a picture in the project; its id is a brush choice
+    run_import (what: paint_picture) {path, as: tip|paper, name?}     keep a picture in the project; its id is a brush choice
 
 The picture is copied into the project (media/brushtip/ or media/paper/) and named by an item id. Paint with it by
 that id: paint.stroke {texture: <id>} for a tip, {paper: <id>, grain > 0} for a paper.

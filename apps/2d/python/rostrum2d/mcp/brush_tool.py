@@ -35,7 +35,7 @@ def _out(b):
               "description": "save: where to keep it (default both; the library alone when no project is open)."},
     "settings": {"type": "object", "description": "save: brush settings as paint.stroke takes them (brush, size, "
                  "hardness, opacity, texture, paper …); colour and seed are never kept. A loaded tip or paper is named "
-                 "by its project item id (run_paint_picture); keeping the brush in the library copies that picture too."}},
+                 "by its project item id (run_import (what: paint_picture)); keeping the brush in the library copies that picture too."}},
     "required": ["action"]})
 def run_brush(ctx, args):
     """List, save, use, duplicate, rename, delete, keep or drop saved brushes (My brushes: the project's and the

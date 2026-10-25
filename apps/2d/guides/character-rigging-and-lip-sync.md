@@ -27,7 +27,7 @@ show the same thing.
    `bone.add id=thigh parent=hip length=180`, `bone.add id=shin parent=thigh length=170`.
    Fix a bone's rest place later with `bone.set` (x, y, angle, length). That is the *rest pose*: pivot on the
    real joint of the picture (the knee, the shoulder), not the middle of the part.
-3. Look: `look_rig` (at a time) draws each bone's pivot and tip over the frame and gives them in comp px. Check the
+3. Look: `look_frame` (`what: "rig"`) (at a time) draws each bone's pivot and tip over the frame and gives them in comp px. Check the
    pivots sit on the joints.
 
 ## 2. Bind pictures to bones
@@ -69,7 +69,7 @@ An IK chain makes the lower bone's tip reach a point; the engine finds the two t
   `targetY`) starts at the shin's tip, so nothing jumps.
 - Move the foot by keying `targetX` / `targetY`. A target too far to reach: the leg straightens toward it.
 - `bend` picks the way the knee folds (`clockwise` / `counterclockwise`). Flip it if the knee points the wrong way.
-- Check with `look_rig`: each ik reports its target and `gap`, how far the tip misses it (0 = reached).
+- Check with `look_frame` (`what: "rig"`): each ik reports its target and `gap`, how far the tip misses it (0 = reached).
 
 ### Pin feet in a walk
 
@@ -86,11 +86,11 @@ then grabs a handle. Key `mix` over a few frames, not one.
 
 ## Seeing a rig
 
-- `look_rig time=…` (or `frame=`): the frame with every skeleton drawn over it: each bone a yellow line from pivot to tip, a
+- `look_frame (what "rig") time=…` (or `frame=`): the frame with every skeleton drawn over it: each bone a yellow line from pivot to tip, a
   white dot at the pivot, each IK target a red cross (green square while pinned). It also returns the posed bones in comp px.
-- `inspect_rig_motion start end`: per IK chain, sampled every frame: the tip's path, the largest gap to its target, and for
+- `look_motion (what "rig") start end`: per IK chain, sampled every frame: the tip's path, the largest gap to its target, and for
   each pinned span how far the tip moved (over 0.5 px = a sliding foot). Facts only.
-- `look_frame`, `look_sheet`, `look_motion` as always. A rig's `x`, `y`, `scale` and so on animate like any layer's.
+- `look_frame`, `look_frame` (`what: "sheet"`), `look_motion` as always. A rig's `x`, `y`, `scale` and so on animate like any layer's.
 
 ## Cut-out characters
 
@@ -123,7 +123,7 @@ the engine (RIG.md › Long IK chains), so the canvas and the export show the sa
 - Fade `mix` from 0 to 1 to lift an arm from its own (FK) swing into a reach, and back down.
 - A long chain spreads the bend over all its joints. For a joint that should stay stiff, shorten the chain or key that
   bone yourself.
-- Check the tip with `look_frame` / `look_sheet` at the extremes. `look_rig` draws the bones; its IK crosses are
+- Check the tip with `look_frame` / `look_frame` (`what: "sheet"`) at the extremes. `look_frame` (`what: "rig"`) draws the bones; its IK crosses are
   two-bone chains only for now.
 
 ## Lip sync
@@ -132,7 +132,7 @@ A mouth drawn in a few shapes (one layer per shape, X A B C D E F G H; any subse
 for a missing one) follows a voice clip. The clip is heard once, the result is stored, and the mouth layers get ordinary
 `opacity` keys with `hold` ease: 1 while their shape shows, 0 otherwise. You can move or change any of them by hand.
 
-Hear it first, changing nothing: `inspect_lipsync source=<wav> text="the words said" at=0.5 shapes={"X": "mouth_X", ...}`.
+Hear it first, changing nothing: `inspect_sounds (what "lipsync") source=<wav> text="the words said" at=0.5 shapes={"X": "mouth_X", ...}`.
 It lists every phone, word and mouth cue in composition seconds, and with `shapes` which layer shows when. Timing tools:
 `lead_frames` (shapes start before the sound; default 1), `min_frames` (shorter shapes give their time away; default 1),
 `rest_gap` (a silence longer than this closes the mouth; default 0.25 s), `tail` (how long a sound lasts; default 0.08 s).
@@ -164,7 +164,7 @@ with **One at a time** on; its children are the drawings, in order, and **Shows*
   (opacity fades, moves); it plays only while it is the one showing.
 - **Key a choice.** `slot.show({0: "open", 1.2: "closed", 1.3: "open"})` in a script, or `swap.show` with `t` and `layer`
   (or `index`) as an operation. Each is a jump: it holds until the next key. No ease is needed or has any effect.
-  `inspect_swaps time=1.25` says which child shows then; `look_frame` shows it.
+  `inspect_layout (what "swaps") time=1.25` says which child shows then; `look_frame` shows it.
 - **Blink.** `blink.add` on the eyes' slot with `open`, `closed` and optionally `half` (a half-closed drawing for the
   frame before and after). `every` is the mean gap in seconds, `vary` how uneven it is, `frames` how long the eyes stay
   closed, `start` / `end` the stretch. A `seed` makes the same blinks every run; change it for others. It never moves

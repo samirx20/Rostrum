@@ -1,4 +1,4 @@
-"""What agents rely on for the world: look_in_frame says what is in the frame (and when, over a span), look_at reads world px,
+"""What agents rely on for the world: look_frame {what: "in_frame"} says what is in the frame (and when, over a span), look_at reads world px,
 and an area picture is the size of the layers it was asked for."""
 import sys
 
@@ -30,11 +30,11 @@ def start(tmp_path):
 
 def test_in_frame_names_what_is_in_partly_in_out_and_hidden(tmp_path):
     rt = start(tmp_path)
-    reply, _ = rt.call("look_in_frame", {"time": 0}, AGENT)
+    reply, _ = rt.call("look_frame", {"what": "in_frame", "time": 0}, AGENT)
     rows = {r["id"]: r for r in reply["data"]["layers"]}
     assert (rows["near"]["state"], rows["far"]["state"], rows["edge"]["state"]) == ("in", "out", "partly") and rows["edge"]["share"] == 50
     assert not rows["ghost"]["showing"] and "opacity 0" in rows["ghost"]["why_not_showing"]
-    reply, _ = rt.call("look_in_frame", {"from": 0, "to": 3.9}, AGENT)
+    reply, _ = rt.call("look_frame", {"what": "in_frame", "from": 0, "to": 3.9}, AGENT)
     spans = {r["id"]: r for r in reply["data"]["layers"]}
     assert spans["near"]["leaves"] and not spans["near"]["always"]            # the frame pans away from it
     assert spans["far"]["enters"] and spans["far"]["spans"][-1]["to"] == 3.9   # and arrives at the far one

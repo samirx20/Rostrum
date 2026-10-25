@@ -1,6 +1,6 @@
 """Which project the 2D server works on: the person's last one at start-up, and switching while it runs.
 
-    inspect_recent_projects {}                         the person's recent projects (folder, item, name, last changed)
+    run_open_project (what: recent) {}                         the person's recent projects (folder, item, name, last changed)
     run_open_project {folder, item?}                   close the open documents and open another project, as start-up does
 
 Start-up (server.py) and run_open_project both go through `open_project`, so every other tool works on the new project
@@ -9,10 +9,9 @@ at once. Switching changes no document and does not touch the person's Open rece
 from __future__ import annotations
 
 import dataclasses
-import sys
 from pathlib import Path
 
-from rostrum_core import Document, live
+from rostrum_core import Document, bug, live
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 from rostrum_core.storage import paths
@@ -35,7 +34,7 @@ def open_documents(project: str, items: list[str]) -> dict:
         exists = paths(project, item, KIND.ext)["doc"].exists()
         doc = Document.open(project, item, KIND) if exists else Document.new(KIND, project, item)
         live.keep(doc)                       # one door for every save, shared with the person's window (rostrum_core.live)
-        sound_cues.watch(doc, lambda line: print(line, file=sys.stderr))   # cue markers follow their layers
+        sound_cues.watch(doc, bug.note)   # cue markers follow their layers
         docs[item] = doc
     return docs
 
@@ -78,14 +77,14 @@ def inspect_recent_projects(ctx, args):
 
 
 @tools.tool("run_open_project", {"required": ["folder"], "properties": {
-    "folder": {"type": "string", "description": "The project folder (absolute path; one from inspect_recent_projects, or any folder with docs/<item>.mtn)."},
+    "folder": {"type": "string", "description": "The project folder (absolute path; one from run_open_project (what: recent), or any folder with docs/<item>.mtn)."},
     "item": {"type": "string", "description": "The document to open. Default: the one its recent row names, else the only / newest in the folder."}}})
 def run_open_project(ctx, args):
-    """Switch to another project: closes the open documents and opens this folder's (every change is saved at once, so nothing is lost); then all other tools work on it. Use inspect_recent_projects to see what the person has."""
+    """Switch to another project: closes the open documents and opens this folder's (every change is saved at once, so nothing is lost); then all other tools work on it. Use run_open_project (what: recent) to see what the person has."""
     folder = Path(args["folder"])
     if not folder.is_dir():
         raise RostrumError(codes.NOT_FOUND, "run_open_project", f'"{folder}"', "is not a project folder",
-                           list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from inspect_recent_projects.")
+                           list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from run_open_project (what: recent).")
     found = last.docs_in(folder)
     item = args.get("item") or last.default_item(folder, explicit=True)
     if item not in found and found:
