@@ -16,7 +16,8 @@ from rostrum_core.mcp import Reply, Tools, open_folder
 
 from .. import KIND
 from .. import lastproject as last
-from .. import script_scope
+from .. import note_ranges, script_scope
+from ..diagnose import FIXES
 from .app import NO_PROJECT, open_project
 
 
@@ -73,13 +74,17 @@ def with_sound_edit_help(runtime) -> None:
 
 
 def with_script_print(runtime) -> None:
-    """run_script's reply carries what the script printed (as warnings), so a script can show what it computed."""
+    """run_script's reply carries what the script printed (as warnings), so a script can show what it computed, and
+    notes a track's sound can't play (note_ranges: said now, not first by the render)."""
     old = runtime.tools.get("run_script")
 
     def run_script(ctx, args):
         script_scope.forget_printed()
         try:
-            return old.fn(ctx, args)
+            out = old.fn(ctx, args)
+            for p in note_ranges.problems(ctx.document(args.get("item")).data, ctx.app.state.engine):
+                ctx.note(f"{p['message']}. {FIXES['out-of-range']}.")
+            return out
         finally:
             for line in script_scope.printed():
                 ctx.note(f"print: {line}")

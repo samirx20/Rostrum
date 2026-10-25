@@ -89,7 +89,7 @@ It lists, in one place:
 - **No longer made**: a designed sound an older song still holds (see *scoring-motion*).
 - **Clipping** (red): the newest mix goes over full scale.
 
-Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix).
+Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix), plus **out-of-range**: a track with notes its recorded sound can't play, named with the sound's range (the render would refuse the whole song). `run_script` says the same in its reply.
 
 ## 9. Duplicate a section, then vary it
 
@@ -98,13 +98,15 @@ A second verse or a "B" that answers "A": copy the section with everything in it
 1. **Copy it.** On the screen, click the section's band on the ruler and choose **Duplicate section** at the top of
    the settings panel. An agent calls `edit_document` with
    `{"op": "section.duplicate", "target": ["section.A"]}`. Every note, drum hit and clip that **starts** inside the
-   section is copied to right after it, and the copy is a new section named like the first with a number (`A_2`, id
-   `section.A_2`). Nothing after the section moves: the copy sits on top of what is already there, so set the song's
-   length (`doc.set`) if it should now run longer. One undo step.
+   section is copied to right after it, and the copy is a new section named like the first with the next free
+   number (`A-2`, id `section.A-2`; a copy of `A-2` is `A-3`). Nothing after the section moves, so the bars right
+   after it must be free: when they already hold notes, hits, clips or another section, the copy is refused and
+   says what is there (move what follows later first with `section.move`). Set the song's length (`doc.set`) if it
+   should now run longer. One undo step.
 2. **List the copy's ids.** A copied note, hit or clip gets a new id made from its track and where it now starts, in
    milliseconds: `<track>.n<ms>` for a note (`melody.n22222` starts at 22.222 s), `<track>.<drum><ms>` for a hit
    (`drums.kick22222`), so you cannot guess them before the copy exists. Ask for them afterwards:
-   - `inspect_item {"id": "section.A_2"}` gives the copy's `at` and `end`;
+   - `inspect_item {"id": "section.A-2"}` gives the copy's `at` and `end`;
    - `inspect_item {"id": "melody", "detail": "full"}` lists every note on that track with its id and values (`at`,
      `pitch`, `dur`); keep the ones that start between the copy's `at` and `end`.
    - `look_arrangement` shows both sections side by side, to check the copy landed where you meant.

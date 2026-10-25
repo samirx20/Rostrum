@@ -19,7 +19,8 @@ from ..ears import pitch as P
 from ..ears import voicing as V
 from ..ears.draw import beats_picture, pitch_picture
 from ..ears.draw_clash import clash_picture
-from ..ears.written import instrument_spec, written_notes
+from .. import note_ranges
+from ..ears.written import written_notes
 from ..listen.core import load
 from .tools_look import ITEM, WAV, _source
 
@@ -214,18 +215,8 @@ def register(tools: Tools):
         used = declared or est["key"] or None
         r["key_declared"], r["key_used_for_checks"] = declared, used
         if use_notes and args.get("checks", True):
-            ranges, unchecked = {}, {}
-            for t in sorted({n["track"] for n in notes}):
-                spec = instrument_spec(doc.data, t)
-                if not spec or not set(spec) & {"builtIn", "sfz"}:
-                    unchecked[t] = "its instrument has no fixed range to ask the engine for"
-                    continue
-                try:
-                    rg = ctx.app.state.engine.request("range", instrument={k: spec[k] for k in spec if k in ("builtIn", "sfz")})
-                    ranges[t] = (rg["lowKey"], rg["highKey"])
-                except Exception as e:                       # the engine said no: say so, don't pretend the range was fine
-                    unchecked[t] = f"engine range request failed: {e}"
-                    warnings.append(f"range of {t} not checked: {e}")
+            ranges, unchecked = note_ranges.ranges(doc.data, ctx.app.state.engine, {n["track"] for n in notes})
+            warnings += [f"range of {t} not checked: {why}" for t, why in unchecked.items() if why.startswith("engine")]
             found = [*V.range_problems(notes, ranges), *V.stack_problems(notes), *V.crossings(notes), *V.out_of_key(notes, {**doc.data, "keys": []} if args.get("key") else doc.data, used)]
             found.sort(key=lambda e: e["at_s"])
             r["checks"] = {"problems": _cap(found, {**args, "detail": args.get("detail")}, 40), "total": len(found),

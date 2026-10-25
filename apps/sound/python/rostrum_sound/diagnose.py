@@ -1,23 +1,25 @@
 """Everything wrong with a song, as one list: what inspect_diagnose returns and the screen's Problems chip shows.
 Each problem: {kind, item, message, fix}. Read-only. The checks come from the pieces that already decide each thing:
 the shared file rule (rostrum_core.project.media_problems: missing and outside files), the cleaned-take cache
-(cleanup.cached) and the song's warnings (DocKind.warn: designed sounds no longer made)."""
+(cleanup.cached), the song's warnings (DocKind.warn: designed sounds no longer made) and, given the sound engine, notes a
+track's recorded sound can't play (note_ranges: the render would refuse the whole song)."""
 from __future__ import annotations
 
 from rostrum_core import project as P
 
-from . import clean_clips, cleanup
+from . import clean_clips, cleanup, note_ranges
 from .doc import media, past_end
 
 # every kind of problem and its name on the chip: ONE list (the chip never looks a kind up anywhere else)
 LABELS = {"missing-file": "Missing file", "outside-project": "File outside the song", "pending-take": "Cleaned take not made",
           "broken-tie": "Note ends before it starts", "after-the-end": "Sounds after the end", "held-past-end": "Held past the end",
           "no-longer-made": "No longer made",
-          "hard-end": "Stops dead at the end"}
+          "hard-end": "Stops dead at the end", "out-of-range": "Notes it can't play"}
 KINDS = tuple(LABELS)
 FIXES = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "Move them earlier or make the song longer",
          "held-past-end": "Shorten them or make the song longer if they should be heard whole (or turn on Ring out to let them ring)",
-         "no-longer-made": "Remove it or replace it with an instrument"}
+         "no-longer-made": "Remove it or replace it with an instrument",
+         "out-of-range": "Move those notes into its range (Up or Down an octave) or pick another sound"}
 _OUTSIDE: dict = {}         # (folder, item, name, path) -> the shared rule's outside-project rows for that file (see _files)
 
 
@@ -36,7 +38,7 @@ def _called(root: dict, track: dict) -> str:
     return f'track {[t["id"] for t in root.get("tracks", [])].index(track["id"]) + 1}'
 
 
-def problems(doc) -> list[dict]:
+def problems(doc, engine=None) -> list[dict]:
     clips = [(t, c) for t in doc.data.get("tracks", []) for c in t.get("clips", [])]
     refs = [(c["id"], f"the clip on {_called(doc.data, t)}", c["media"]) for t, c in clips if isinstance(c.get("media"), str)]
     out = _files(getattr(doc, "folder", None), refs)
@@ -59,6 +61,8 @@ def problems(doc) -> list[dict]:
     if cut := past_end.hard_end(doc.data):
         out.append({"kind": "hard-end", "item": cut, "message": "Soft end is off and sound is still playing at the song's Length, "
                     "so the file ends with a click", "fix": "Turn Soft end back on (doc.set endFade true), or end the music before the Length"})
+    if engine is not None:
+        out += [{**p, "fix": FIXES["out-of-range"]} for p in note_ranges.problems(doc.data, engine)]
     return out
 
 
