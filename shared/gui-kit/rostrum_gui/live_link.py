@@ -3,7 +3,9 @@
   as ordinary change events, so the bridge, History and the agent chip see them and nothing on screen moves;
 - the agent sees what the person sees: the app's `state_fn(bridge)` (selection, playhead, range, scene, focus, view,
   dragging) is written for `inspect_screen` whenever it differs (rostrum_core.screen_state), on the link's own thread
-  (`settle()` waits for it). Screen state, not a change.
+  (`settle()` waits for it). Screen state, not a change;
+- the whole document file is written here, between pointer actions, once the person pauses (live.Live.fold_if_quiet),
+  never inside a click or a drag: each change only appends its line to the history file.
 
     link = LiveLink(bridge, "2d", screen_seen.state)      # after live.keep(doc); link.close() when the window closes
 
@@ -30,6 +32,8 @@ class LiveLink(QObject):
         self._written = None                      # the last write's future: its failure is said at the next tick
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.tick)
+        if bridge.doc.live is not None:
+            bridge.doc.live.windowed()            # the whole document file is written on this timer, not in a change
         if bridge.doc.folder is not None:
             self._timer.start(TICK_MS)
 
@@ -39,7 +43,9 @@ class LiveLink(QObject):
         doc = self.bridge.doc
         try:
             if doc.live is not None:
+                doc.live.windowed()               # (the bridge may hold another document now)
                 doc.live.catch_up()
+                doc.live.fold_if_quiet()
             if self._written is not None and self._written.done():
                 done, self._written = self._written, None
                 done.result()                     # a failed write raises here, on the screen's thread
@@ -65,6 +71,6 @@ class LiveLink(QObject):
         self._timer.stop()
         self._writer.shutdown(wait=True)          # the last write lands before the file is cleared
         if self.bridge.doc.live is not None:
-            self.bridge.doc.save()                # fold the history into the document file: readers of the file alone see the end
+            self.bridge.doc.live.fold(always=False)   # the document file up to date: readers of the file alone see the end
         if self.bridge.doc.folder is not None:
             screen_state.clear(self.bridge.doc.folder, self.app)

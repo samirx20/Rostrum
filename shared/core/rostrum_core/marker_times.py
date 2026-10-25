@@ -20,13 +20,20 @@ def _key(name: str) -> str:
     return " ".join(str(name).split()).lower()
 
 
+_FILES: dict = {}       # folder (as given) -> the marker history's and document's paths, as filestamps keys
+
+
 def _stamp(folder) -> int:
     """When the markers last changed: the history's write time (every change appends to it, S39). Only without a
     history (a project copied without its .rostrum folder, like a sample) the document file's. Never the document
     file beside a history: Save rewrites it with nothing changed, and Sound re-rendered on every save (S42).
-    0 = no markers yet."""
-    p = paths(folder, ITEM, EXT)
-    for f in (p["history"], p["doc"]):
+    0 = no markers yet. Asked on every change of a screen: the file names are made once per folder, and on a screen
+    the answer comes from filestamps (looked at on the marker watch's poll, not on the change)."""
+    files = _FILES.get(folder)
+    if files is None:
+        p = paths(folder, ITEM, EXT)
+        files = _FILES[folder] = (str(p["history"]), str(p["doc"]))
+    for f in files:
         got = filestamps.stamp(f)                 # kept between a screen's ticks; this process's writes forget it
         if got is not None:
             return got[0]

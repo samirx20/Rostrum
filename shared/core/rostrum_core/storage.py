@@ -11,9 +11,9 @@ In the project folder:
 
 The history file is appended to (a crash mid-append cuts only its last line, left out loudly on open); the others are
 written whole (temp file, then rename; retried while Windows holds the file). A live document (live.py) appends after
-each change and writes the document file on Save, on close and every live.FOLD_STEPS steps, so the document file can be
-some steps behind (a program reading only the document file sees the song as of its last write; use the history for the
-latest): opening takes it as
+each change and writes the document file on Save, on close, and every live.FOLD_STEPS steps (a window: on its timer
+once the person pauses, never inside a change), so the document file can be some steps behind (a program reading only
+the document file sees the song as of its last write; use the history for the latest): opening takes it as
 step "at" and plays the steps after it. A document file whose contents don't match its "hash" (or an old one without)
 is checked against the whole history; one changed by something without history is recorded first as a change by
 `outside`.
@@ -92,15 +92,17 @@ class Written:
     last_t: float               # the last one's clock time (a nudge changes it: that step is appended again)
     versions: dict
     script: dict
+    hashed: tuple = ()          # (seq, t, hash) of the last hash line written: a fold with nothing new adds none
 
 
-def save(doc, document=True):
+def save(doc, document=True, p=None):
     """Append the new steps to the history file (or write it whole: a new file, an old layout, one changed under us),
     then the script record if it changed, then (`document`) the document file. History first: a crash between them
-    leaves a document file a few steps behind, which opening catches up."""
+    leaves a document file a few steps behind, which opening catches up. A step already in the file is written again
+    only when it changed since (a person's nudge merged into it: its clock time moved). `p`: the document's paths()."""
     if doc.folder is None or doc.item_id is None:
         raise RostrumError(codes.BAD_ARGUMENT, "save", "the document", "has no project folder or item id")
-    p, kind, ch = paths(doc.folder, doc.item_id, doc.kind.ext), doc.kind, doc.history.changes
+    p, kind, ch = p or paths(doc.folder, doc.item_id, doc.kind.ext), doc.kind, doc.history.changes
     w, hist = doc._written, p["history"]
     body = h = None
     if document:
@@ -117,8 +119,10 @@ def save(doc, document=True):
         else:
             w, text = None, histfile.head(kind, doc.base) + "".join(histfile.change_line(c) for c in ch)
             text += "".join(histfile.version_line(n, s) for n, s in doc.history.versions.items())
-        if ch and h and ch[-1]._hash == h:
+        hashed = w.hashed if w is not None else ()
+        if ch and h and ch[-1]._hash == h and hashed != (ch[-1].seq, ch[-1].t, h):
             text += histfile.hash_line(ch[-1].seq, h)
+            hashed = (ch[-1].seq, ch[-1].t, h)
         if w is None:
             write_atomic(hist, text)
         elif text:
@@ -131,7 +135,7 @@ def save(doc, document=True):
             c._after = None                       # written without its hash: no tree kept for it
         if w is None or doc.script_bases != w.script:
             write_atomic(p["script"], json.dumps(doc.script_bases, indent=1, ensure_ascii=False))
-        _wrote(doc, hist, st=os.fstat(fh.fileno()) if fh is not None else None)
+        _wrote(doc, hist, st=os.fstat(fh.fileno()) if fh is not None else None, hashed=hashed)
     finally:
         if fh is not None:
             fh.close()
@@ -159,13 +163,13 @@ def _append_to(w, hist, n):
     return None
 
 
-def _wrote(doc, hist, end=None, st=None):
+def _wrote(doc, hist, end=None, st=None, hashed=()):
     """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line).
     The script bases are copied shallow: a run replaces its base, never changes it in place (merge.py), so that tells
     a new one apart; a deep copy of every base cost milliseconds on every change."""
     st, ch = st or hist.stat(), doc.history.changes
     doc._written = Written(st.st_ino, st.st_size if end is None else end, len(ch), ch[-1].t if ch else 0.0,
-                           dict(doc.history.versions), dict(doc.script_bases))
+                           dict(doc.history.versions), dict(doc.script_bases), hashed)
 
 
 def _read_json(path: Path, where: str):
@@ -260,6 +264,7 @@ def _read_doc(cls, folder, item, kind, p):
         items = _changed(played, idx, kind.lists)
     doc = cls(kind, data, folder, item, base=r.base)
     doc.saved_by, doc.notes = file.get("saved_by"), [r.torn] if r.torn else []
+    doc.file_at = file.get("at") if trusted else None       # the step the document file shows (live.py folds the rest)
     doc.file_version = file.get("version", 1)
     for c in changes:
         doc.history.add(c)

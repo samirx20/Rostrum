@@ -81,6 +81,9 @@ class History:
         self.done: dict[int, bool] = {}
         self.at: dict[int, int] = {}
         self.versions: dict[str, int] = {}
+        self._asked: dict = {}                      # (question, who) -> answer, until the next step (add)
+        self._tallies: dict = {}                    # id(mark) -> [mark, steps counted, count, {seq: done}]
+        self._steps: dict = {}                      # step id (joint.py) -> its changes here
 
     @property
     def seq(self) -> int:
@@ -92,13 +95,28 @@ class History:
 
     def moved_since(self, mark) -> int:
         """How many originals are not as they were at `mark`: made since and still done, or older ones undone or
-        redone since. 0 right after `mark`; Undo takes it down, Redo brings it back (a screen's "N changes")."""
+        redone since. 0 right after `mark`; Undo takes it down, Redo brings it back (a screen's "N changes").
+        Kept as a tally per mark that takes in only the steps added since it was last asked (a screen asks on every
+        change: a count over the whole history grew with it)."""
         seq0, done0 = mark
-        return sum(1 for c in self.changes if c.original
-                   and (self.done[c.seq] if c.seq > seq0 else self.done[c.seq] != done0.get(c.seq)))
+        t = self._tallies.get(id(mark))
+        if t is None or t[0] is not mark:
+            t = self._tallies[id(mark)] = [mark, 0, 0, {}]
+
+        def counts(s, v):                           # does original s, done or not (None: not made yet), count?
+            return 0 if v is None else int(v if s > seq0 else v != done0.get(s))
+        for c in self.changes[t[1]:]:
+            for s, v in ([(c.seq, True)] if c.original else []) + [(s, False) for s in c.undoes] +                     [(s, True) for s in c.redoes]:
+                t[2] += counts(s, v) - counts(s, t[3].get(s, done0.get(s) if s <= seq0 else None))
+                t[3][s] = v
+        t[1] = len(self.changes)
+        return t[2]
 
     def add(self, c: Change):
         self.changes.append(c)
+        self._asked.clear()
+        if c.step:
+            self._steps.setdefault(c.step, []).append(c)
         if c.original:
             self.done[c.seq], self.at[c.seq] = True, c.seq
         for s in c.undoes:
@@ -110,27 +128,54 @@ class History:
         """Clock time of the step that last did or undid original `c` (desk.py orders undo across documents by it)."""
         return self.get(self.at[c.seq]).t
 
+    def of_step(self, step) -> list[Change]:
+        """The changes here that are part of one step across documents (joint.py), oldest first."""
+        return list(self._steps.get(step, ()))
+
     def get(self, seq) -> Change:
         return self.changes[seq - 1]
 
     def keys(self, c: Change) -> set:
         return set().union(*(E.keys(e, self.lists) for e in c.edits)) if c.edits else set()
 
+    # Undo / redo picks: read from the newest step back, stopping at the answer, and kept until the next step (the
+    # screen's labels ask on every change; a look over the whole history grew with it).
     def last_undoable(self, who: Who) -> Change | None:
-        mine = [c for c in self.changes if c.original and c.who == who and self.done[c.seq]]
-        return max(mine, key=lambda c: self.at[c.seq], default=None)
+        """`who`'s done original that was done last (the largest `at`): the newest step whose doing of it is still
+        its last act."""
+        return self._ask("undo", who, lambda: self._newest_act(who, True, lambda c: [c.seq] if c.original else c.redoes))
 
     def last_redoable(self, who: Who) -> Change | None:
-        newest_own = max((c.seq for c in self.changes if c.original and c.who == who), default=0)
-        mine = [c for c in self.changes if c.original and c.who == who and not self.done[c.seq]
-                and self.at[c.seq] > newest_own]
-        return max(mine, key=lambda c: self.at[c.seq], default=None)
+        """`who`'s original undone last, as long as they made no new original since."""
+        own = self.newest_own(who)
+        return self._ask("redo", who, lambda: self._newest_act(who, False, lambda c: c.undoes, own.seq if own else 0))
+
+    def newest_own(self, who: Who) -> Change | None:
+        """`who`'s newest original step."""
+        return self._ask("own", who, lambda: next((c for c in reversed(self.changes) if c.original and c.who == who), None))
+
+    def _ask(self, q, who, work):
+        key = (q, who)
+        if key not in self._asked:
+            self._asked[key] = work()
+        return self._asked[key]
+
+    def _newest_act(self, who, done, acted, after=0):
+        for c in reversed(self.changes):
+            if c.seq <= after:
+                break
+            hit = [s for s in acted(c) if self.at.get(s) == c.seq and self.done[s] is done and self.get(s).who == who]
+            if hit:
+                return self.get(min(hit))           # one step that acted on several: the oldest, as before
+        return None
 
     def blockers(self, targets: list[Change], since: int):
-        """Refuse to toggle `targets` when a later live change touched the same things."""
+        """Refuse to toggle `targets` when a later live change touched the same things. Only originals acted on
+        after step `since` can (their `at` is later): read from the steps after it, not the whole history."""
         mine = {c.seq for c in targets}
         touched = set().union(*(self.keys(c) for c in targets))
-        for c in self.changes:
+        later = {s for x in self.changes[since:] for s in ([x.seq] if x.original else [*x.undoes, *x.redoes])}
+        for c in (self.get(s) for s in sorted(later)):
             if c.original and c.seq not in mine and self.done[c.seq] and self.at[c.seq] > since:
                 hit = E.overlap(self.keys(c), touched)
                 if hit:
