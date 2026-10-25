@@ -46,7 +46,7 @@
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame|scrub [n] [profile]
-  Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n] [layer=<id>] [profile]
+  Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo|typed|ctrlz|slide [n] [layer=<id>] [profile] (typed, ctrlz, slide: real keys and mouse)
   Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n] | painthold <x> <y> <x> <y> … (the pen left down)
   Selection cost (rostrum_gui/select_steps.py, any app): selecttime <id> <id> … [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]

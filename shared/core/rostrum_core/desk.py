@@ -89,7 +89,7 @@ def redo(docs, who: Who, open_item=None):
     """(document, the redo change) for what the person undid last across `docs`; None when there is nothing to
     redo, or the person has made a new change in any of them since that undo. A step is redone whole."""
     best = _newest(docs, lambda h, w: h.last_redoable(w), who)
-    newest_own = max((c.t for d in docs for c in d.history.changes if c.original and c.who == who), default=0.0)
+    newest_own = max((d.history.own_t(who) for d in docs), default=0.0)
     if best is None or best[0] < newest_own:
         return None
     _, d, c = best

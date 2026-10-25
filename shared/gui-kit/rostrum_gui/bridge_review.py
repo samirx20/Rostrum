@@ -41,7 +41,7 @@ class ReviewSlots(SlotMixin):
         if not found:
             return None
         at, c = max(found, key=lambda f: f[0])
-        if redo and at < max((x.t for h in hs for x in h.changes if x.original and x.who == self.who), default=0.0):
+        if redo and at < max((h.own_t(self.who) for h in hs), default=0.0):
             return None
         return c
 

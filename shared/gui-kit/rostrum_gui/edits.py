@@ -72,4 +72,7 @@ class Scrub(Drag):
         self._call = call or (lambda i, n, v: field_call(doc, i, n, v))
 
     def preview(self, value):
+        if getattr(self, "_shown", None) == (value,):     # the pointer moved but the value didn't (a release on the
+            return                                        # last move's place): nothing to plan, tell or draw again
         super().preview([self._call(i, self.name, value) for i in self.items])
+        self._shown = (value,)

@@ -19,7 +19,7 @@ from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from rostrum_core import RostrumError, codes, live, samples
 
-from . import docfiles as F
+from . import docfiles as F, heap
 from .file_menu import FileMenuSlots
 from .file_repairs import RepairSlots
 from .keymap import KeyMap
@@ -208,6 +208,7 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
                 shutil.rmtree(self._fresh, ignore_errors=True)
             self._fresh = None
         self.doc, self._start = doc, False
+        heap.calm_later()                                # what this open made is set aside from the collector (heap.py)
         if self.has_project():
             F.remember(self.kind, doc.folder, doc.item_id, self._name())
         self.changed.emit()

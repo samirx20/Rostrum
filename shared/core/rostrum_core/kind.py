@@ -133,9 +133,12 @@ class DocKind:
             return [f"{type(e).__name__}: {e}"]
 
     def view(self, doc) -> View:
+        """A Document is looked at through its own index (kept up to date by every edit: no walk of the tree)."""
         if isinstance(doc, View):
             return doc
-        return View(doc if isinstance(doc, dict) else doc.data, self.lists)
+        if isinstance(doc, dict):
+            return View(doc, self.lists)
+        return View(doc.data, self.lists, doc._index() if hasattr(doc, "_index") else None)
 
     def blank(self) -> dict:
         if self.new:

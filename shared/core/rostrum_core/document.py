@@ -194,6 +194,7 @@ class Document:
         first = {(e.id, *e.path): e.before for e in last.edits}
         last.edits = [E.Set(e.id, e.path, e.value, first[(e.id, *e.path)]) for e in edits]
         last.calls, last.t = last.calls + calls, self.clock()
+        self.history.touched()
         last.hash_of(work)
         self.data = work
         self._indexed(work, idx)

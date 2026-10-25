@@ -81,6 +81,15 @@ class History:
         self.done: dict[int, bool] = {}
         self.at: dict[int, int] = {}
         self.versions: dict[str, int] = {}
+        self._mine: dict[Who, _Own] = {}    # per author, kept by `add`: what Undo / Redo would take, with no walk
+        self._moved: dict[int, list] = {}   # id(mark's done) -> [mark, count]: moved_since, kept by `add`
+
+    def touched(self):
+        """The newest change was changed in place (a nudge merged into it: a later clock time)."""
+        if self.changes:
+            last = self.changes[-1]
+            own = self._own(last.who)
+            own.t = max(own.t, last.t)
 
     @property
     def seq(self) -> int:
@@ -93,18 +102,46 @@ class History:
     def moved_since(self, mark) -> int:
         """How many originals are not as they were at `mark`: made since and still done, or older ones undone or
         redone since. 0 right after `mark`; Undo takes it down, Redo brings it back (a screen's "N changes")."""
+        got = self._moved.get(id(mark[1]))
+        if got is None or got[0] is not mark:          # counted once, then kept by `add`, step by step
+            got = self._moved[id(mark[1])] = [mark, sum(self._moved_by(mark, c.seq) for c in self.changes if c.original)]
+        return got[1]
+
+    def _moved_by(self, mark, s: int) -> int:
+        """1 when original `s` counts as moved since `mark` now (made since and done, or toggled since)."""
         seq0, done0 = mark
-        return sum(1 for c in self.changes if c.original
-                   and (self.done[c.seq] if c.seq > seq0 else self.done[c.seq] != done0.get(c.seq)))
+        d = self.done.get(s)
+        return 0 if d is None else int(d) if s > seq0 else int(d != done0.get(s))
+
+    def _own(self, who: Who) -> "_Own":
+        got = self._mine.get(who)
+        if got is None:
+            got = self._mine[who] = _Own()
+        return got
 
     def add(self, c: Change):
+        seqs = ([c.seq] if c.original else []) + list(c.undoes) + list(c.redoes)
+        before = [(m, sum(self._moved_by(m[0], s) for s in seqs)) for m in self._moved.values()]
         self.changes.append(c)
         if c.original:
             self.done[c.seq], self.at[c.seq] = True, c.seq
+            own = self._own(c.who)
+            own.done.append(c.seq)
+            own.last, own.t = c.seq, max(own.t, c.t)
         for s in c.undoes:
             self.done[s], self.at[s] = False, c.seq
+            own = self._own(self.get(s).who)
+            _drop(own.done, s)
+            _drop(own.undone, s)
+            own.undone.append(s)
         for s in c.redoes:
             self.done[s], self.at[s] = True, c.seq
+            own = self._own(self.get(s).who)
+            _drop(own.undone, s)
+            _drop(own.done, s)
+            own.done.append(s)
+        for m, was in before:
+            m[1] += sum(self._moved_by(m[0], s) for s in seqs) - was
 
     def acted(self, c: Change) -> float:
         """Clock time of the step that last did or undid original `c` (desk.py orders undo across documents by it)."""
@@ -114,30 +151,46 @@ class History:
         return self.changes[seq - 1]
 
     def keys(self, c: Change) -> set:
-        return set().union(*(E.keys(e, self.lists) for e in c.edits)) if c.edits else set()
+        """What change `c` touched (kept with it while its edits are the same list: a nudge gives it a new one)."""
+        got = c.__dict__.get("_keys")
+        if got is None or got[0] is not c.edits:
+            got = c.__dict__["_keys"] = (c.edits, set().union(*(E.keys(e, self.lists) for e in c.edits)) if c.edits else set())
+        return got[1]
 
     def last_undoable(self, who: Who) -> Change | None:
-        mine = [c for c in self.changes if c.original and c.who == who and self.done[c.seq]]
-        return max(mine, key=lambda c: self.at[c.seq], default=None)
+        """`who`'s done original that was done last (made or redone)."""
+        own = self._mine.get(who)
+        return self.get(own.done[-1]) if own is not None and own.done else None
+
+    def own_t(self, who: Who) -> float:
+        """Clock time of `who`'s newest original change (0 when none): a redo is offered only after it."""
+        own = self._mine.get(who)
+        return own.t if own is not None else 0.0
 
     def last_redoable(self, who: Who) -> Change | None:
-        newest_own = max((c.seq for c in self.changes if c.original and c.who == who), default=0)
-        mine = [c for c in self.changes if c.original and c.who == who and not self.done[c.seq]
-                and self.at[c.seq] > newest_own]
-        return max(mine, key=lambda c: self.at[c.seq], default=None)
+        """`who`'s original undone last, unless they made a new change since."""
+        own = self._mine.get(who)
+        if own is None or not own.undone or self.at[own.undone[-1]] <= own.last:
+            return None
+        return self.get(own.undone[-1])
 
     def blockers(self, targets: list[Change], since: int):
         """Refuse to toggle `targets` when a later live change touched the same things."""
         mine = {c.seq for c in targets}
         touched = set().union(*(self.keys(c) for c in targets))
-        for c in self.changes:
-            if c.original and c.seq not in mine and self.done[c.seq] and self.at[c.seq] > since:
-                hit = E.overlap(self.keys(c), touched)
-                if hit:
-                    k = E.key_text(sorted(hit)[0])
-                    raise RostrumError(codes.CONFLICT, "undo", f'"{targets[-1].label}"',
-                                       f"can't be taken back or brought back: {c.who.words()} changed {k} since "
-                                       f"(\"{c.label}\", step {c.seq})", hint="Undo that first, in History.")
+        later = []                                  # done originals done after `since`: each author's newest end
+        for own in self._mine.values():
+            for s in reversed(own.done):
+                if self.at[s] <= since:
+                    break
+                later.append(s)
+        for c in (self.get(s) for s in sorted(later) if s not in mine):
+            hit = E.overlap(self.keys(c), touched)
+            if hit:
+                k = E.key_text(sorted(hit)[0])
+                raise RostrumError(codes.CONFLICT, "undo", f'"{targets[-1].label}"',
+                                   f"can't be taken back or brought back: {c.who.words()} changed {k} since "
+                                   f"(\"{c.label}\", step {c.seq})", hint="Undo that first, in History.")
 
     def who_changed(self, id_, field_=None) -> Change | None:
         want = (id_,) if field_ is None else (id_, field_)
@@ -148,3 +201,20 @@ class History:
 
     def since(self, seq) -> list[Change]:
         return [c for c in self.changes if c.seq > seq]
+
+
+class _Own:
+    """One author's originals, each list in the order they were last done / undone (so by `History.at`)."""
+
+    def __init__(self):
+        self.done: list[int] = []       # done now
+        self.undone: list[int] = []     # undone now
+        self.last = 0                   # seq of their newest original
+        self.t = 0.0                    # its clock time (a nudge moves it later)
+
+
+def _drop(seqs: list, s: int):
+    if seqs and seqs[-1] == s:
+        seqs.pop()
+    elif s in seqs:
+        seqs.remove(s)

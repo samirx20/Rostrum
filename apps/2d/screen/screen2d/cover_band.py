@@ -1,8 +1,9 @@
 """The warning band (2d-camera SPEC §4.12): with one of a scene's own sized, not pinned layers picked that covers the
 whole frame at some moment (a backdrop), each edge the frame sees past at another moment is marked on the canvas with
 when it starts ("shows past the right edge from 3.2 s"; Cover the frame's move fixes it). Worked out from the document
-(rostrum2d/cover.report: the layer's own turned box at every frame), once per document state, markers and layer: the
-playhead never changes it, so scrubbing costs nothing here (the band rides the selection box in QML: CoverBand.qml).
+(rostrum2d/cover.report: the layer's own turned box at every frame), once per state of the layer, the frame (and the path
+it rides), the scene's size and times, and the markers: the playhead never changes it, so scrubbing costs nothing here
+(the band rides the selection box in QML: CoverBand.qml).
 Worked out off the screen's thread (every frame of the piece: ~10-20 ms of each edit to the picked layer on an 18 s
 piece), once the person pauses (WAIT_MS with no new change, the pointer quiet): a run of edits or picks walks the
 piece once, after the last (Python's one lock made the walk slow the screen down while it ran beside an edit). A pick
@@ -17,7 +18,6 @@ from concurrent.futures import ThreadPoolExecutor
 from PySide6.QtCore import Property, QObject, QTimer, Signal
 from rostrum_gui import pointer_quiet
 from rostrum2d import background as B, cover
-from rostrum2d.frame import view
 from rostrum2d.ops_align import SIZED
 
 
@@ -47,7 +47,7 @@ class CoverBand(QObject):
     @staticmethod
     def _same(a, b) -> bool:
         """The same state: the same items by identity (the document replaces what it changes), the sizes by value."""
-        return all(x is y or (i == 2 and x == y) for i, (x, y) in enumerate(zip(a, b)))
+        return all(x is y or (i == 2 and x == y) or (i == 1 and _items_same(x, y)) for i, (x, y) in enumerate(zip(a, b)))
 
     def _update(self):
         """Worked out again only when what the band reads changed: the picked layer, the frame, the scene's size and
@@ -56,7 +56,7 @@ class CoverBand(QObject):
         ids = b.selected_layers()
         comp = b.placed()
         layer = next((l for l in comp.get("layers", []) if l["id"] == ids[0]), None) if len(ids) == 1 else None
-        key = (layer, view.of(b.comp()), tuple(comp.get(k) for k in ("fps", "duration", "width", "height")),
+        key = (layer, B.frame_reads(b.comp()), tuple(comp.get(k) for k in ("fps", "duration", "width", "height")),
                b.marks.times if b.marks else None)
         if self._key is not None and self._same(self._key, key):
             return
@@ -75,9 +75,9 @@ class CoverBand(QObject):
         """The layer can't cover the frame at any moment (cover.never_covers), told from the frame's shots worked out
         last when they still hold: a title or a small shape is answered without waiting for the walk."""
         comp, (frame, times, size, shots) = self.b.placed(), self._shots
-        now = (view.of(self.b.comp()), self.b.marks.times if self.b.marks else None,
+        now = (B.frame_reads(self.b.comp()), self.b.marks.times if self.b.marks else None,
                tuple(comp.get(k) for k in ("fps", "duration", "width", "height")))
-        return frame is now[0] and times is now[1] and size == now[2] and cover.never_covers(comp, layer, shots)
+        return _items_same(frame, now[0]) and times is now[1] and size == now[2] and cover.never_covers(comp, layer, shots)
 
     def _show(self, rows):
         if rows != self._rows:
@@ -94,7 +94,7 @@ class CoverBand(QObject):
         if self._asked is None or not self._same(self._asked[0], self._key):
             return                                                 # the state asked about is gone
         (key, layer), self._asked = self._asked, None
-        comp, frame = self.b.placed(), view.of(self.b.comp())     # times in scene seconds (keys on markers placed)
+        comp, frame = self.b.placed(), B.frame_reads(self.b.comp())     # times in scene seconds (keys on markers placed)
         times = self.b.marks.times if self.b.marks else None
         size = tuple(comp.get(k) for k in ("fps", "duration", "width", "height"))
         shots = self._shots
@@ -102,7 +102,7 @@ class CoverBand(QObject):
         def work():
             try:
                 got = shots
-                if not (got[0] is frame and got[1] is times and got[2] == size):
+                if not (_items_same(got[0], frame) and got[1] is times and got[2] == size):
                     got = (frame, times, size, B.shots(comp))     # the frame at every frame of the piece
                 found, once = (([], False) if cover.never_covers(comp, layer, got[3])
                                else cover.report(comp, layer, got[3], float(comp.get("fps", 30)) or 30.0))
@@ -117,3 +117,8 @@ class CoverBand(QObject):
         self._kept = self._kept[-(self.KEEP - 1):] + [(key, rows)]
         if self._key is not None and self._same(self._key, key):  # still the state asked about
             self._show(rows)
+
+
+def _items_same(a, b) -> bool:
+    """Two tuples of the same document items (by identity)."""
+    return a is b or (a is not None and b is not None and len(a) == len(b) and all(x is y for x, y in zip(a, b)))

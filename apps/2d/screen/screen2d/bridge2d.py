@@ -5,7 +5,7 @@ one doc.gesture = one undo step. How an edit becomes a call lives in route.py on
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui import DocBridge, effects, news, row_facts
+from rostrum_gui import DocBridge, effects, news
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_core import live, marker_times
@@ -175,10 +175,10 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         Worked out once per document, markers and scene shown (every change gives a new doc.data, every marker read a new
         marks.times, showing another scene a new comp_id), not on every read: rows, outline and drags read it many times a
         frame. Callers only read it."""
-        key = (self.doc.data, self.marks.times if self.marks else None)
-        if self._placed is None or any(a is not b for a, b in zip(self._placed[0], key)) or self._placed[2] != self.comp_id:
-            self._placed = (key, retime.timed(self.comp(), self.times(), self.comp()["fps"]), self.comp_id)
-        return self._placed[1]
+        data, times, got = self.doc.data, self.marks.times if self.marks else None, self._placed
+        if got is None or got[0][0] is not data or got[0][1] is not times or got[2] != self.comp_id:
+            self._placed = got = ((data, times), retime.timed(self.comp(), self.times(), self.comp()["fps"]), self.comp_id)
+        return got[1]
 
     def placed_item(self, id_: str) -> dict:
         """One item of `placed()` (a layer, effect, mask or key owner), its times in composition seconds."""
@@ -186,10 +186,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         return found.item if found else self.doc.item(id_)
 
     def placed_index(self) -> tuple:
-        """(placed(), its index by id), worked out once per document and markers."""
+        """(placed(), its index by id), worked out once per document and markers. A scene with nothing timed from a marker
+        is placed as it is: the document's own index (kept by every edit) is its index, no walk of the scene."""
         placed = self.placed()
         if self._placed_idx is None or self._placed_idx[0] is not placed:
-            self._placed_idx = (placed, index(placed, self.doc.kind.lists))
+            own = placed is self.comp()
+            self._placed_idx = (placed, self.doc._index() if own else index(placed, self.doc.kind.lists))
         return self._placed_idx
 
     def offset(self, id_: str) -> float:
@@ -259,7 +261,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     @Property("QVariantMap", notify=rowFactsChanged)
     def rowFacts(self):
         """What the timeline asks of its rows besides drawing them (rostrum_gui/row_facts.py): QML reads this, not `layers`."""
-        return row_facts.of(self.layer_rows())
+        return self.row_facts()
 
     @Property(QObject, constant=True)
     def rowsModel(self):
