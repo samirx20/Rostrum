@@ -40,3 +40,16 @@ def test_no_render_while_dragging_and_one_on_release(bridge):  # noqa: F811
     bridge.endDrag()
     t.render()                                       # the release's change: one render
     assert len(asked) == 1
+
+
+def test_a_track_added_keeps_the_others_blocks_and_a_tempo_change_remakes_them(bridge):  # noqa: F811
+    """Adding a track reuses every other track's row and blocks (block_memo.follow); a tempo change moves every block
+    and must not show the old ones."""
+    before = dict(bridge._made)
+    bridge._apply([{"op": "track.add", "args": {"name": "Pad", "instrument": "synth"}}], "Add track")
+    assert shown(bridge) and all(bridge._made[k] is r for k, r in before.items())
+    bridge._apply([{"op": "doc.set", "target": ["root"], "args": {"tempo": 90}}], "Edit song")
+    assert shown(bridge)
+    bridge.undo()
+    bridge.undo()
+    assert shown(bridge)

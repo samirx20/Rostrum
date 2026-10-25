@@ -14,7 +14,7 @@ from rostrum_sound import clean_clips, names, roles, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
-from rostrum_sound.doc import meter
+from rostrum_sound.doc import meter, times
 
 from . import groups, lanes, music_map, pick, timing
 from . import block_memo
@@ -140,12 +140,24 @@ def layered(clips: list[dict]) -> list[dict]:
     return clips
 
 
+OWN = ("tracks", "buses", "master")     # what no other track's block reads (stepped.py: the mix rows are always made)
+
+
+def clock(root: dict) -> tuple:
+    """Everything a note's or hit's block reads besides its own item: the song's settings (tempo and its map, meter,
+    keys, markers, sections …) and the project's shared markers (a time may be written on one). Blocks made under an
+    equal clock are still right (block_memo.py)."""
+    return {k: v for k, v in root.items() if k not in OWN}, mk.project_rows()
+
+
 def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]:
     """A track's blocks: notes, hits, clips, voice lines. `memo`: notes and hits not changed since are not made again
     (block_memo.py; the blocks are then shared: never changed in place)."""
     clips = layered([{**clip_block(c, root), **({"group": c["group"]} if c.get("group") else {})}
                      for c in track.get("clips", [])])
-    return (block_memo.made(memo, (track["id"], "notes"), track.get("notes", []), lambda n: note_block(n, root))
+    notes = track.get("notes", [])
+    held = block_memo.Same(notes) if any(n.get("dur") == times.NEXT for n in notes) else None   # reads its neighbours
+    return (block_memo.made(memo, (track["id"], "notes"), notes, lambda n: note_block(n, root), held)
             + block_memo.made(memo, (track["id"], "hits"), track.get("hits", []), lambda h: hit_block(h, root))
             + clips
             + [line_block(track, ln, root) for ln in track.get("lines", [])])
@@ -211,21 +223,16 @@ def arrange(root: dict, tracks: list[dict], open_lanes: dict | None, folded) -> 
 
 
 def track_row(t: dict, i: int, root: dict, open_lanes: dict, memo: BlockMemo | None = None) -> dict:
-    """A track's row: name, hue, mute / solo, kind, header icon, and its blocks with lanes 0..1 (top to
-    bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll."""
+    """A track's row: name, hue, mute / solo, kind, header icon, its blocks, and what places them across the row so
+    it reads like a small piano roll (`span`: its lowest and highest key, notes by pitch; `drums`: its drum rows, in
+    order; pick.lanes). The blocks are the roll's own (shared, never changed in place): a note above the span or a
+    first hit on a new drum changes the row's layout only, never every block (that sent a drum row's 850 hits again
+    on the first hit, ~40-70 ms on a 3-minute song)."""
     bl = blocks(t, root, memo)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
-    lo, hi = (min(ks), max(ks)) if ks else (60, 60)
-    drums = drums_of(t)
-
-    def laned(b):                        # a new dict: a block from the memo is shared with the roll
-        if b["type"] == "note":
-            return {**b, "lanes": [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]}
-        return {**b, "lanes": [drums.index(b["drum"]) / max(len(drums) - 1, 1)]}
-    timed = [b for b in bl if b["type"] in ("note", "hit")]       # first in `bl` (blocks): the order stays
-    bl = block_memo.made(memo, (t["id"], "lanes"), timed, laned, (lo, hi, tuple(drums))) + bl[len(timed):]
     pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
     return {"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
+            "span": [min(ks), max(ks)] if ks else [60, 60], "drums": drums_of(t),
             "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
             "icon": icon_of(t), "canRecord": can_record(t),
             "autoUsed": lanes.used(t),

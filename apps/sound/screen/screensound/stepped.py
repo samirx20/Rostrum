@@ -27,3 +27,12 @@ def changed_tracks(before: dict | None, now: dict) -> set[str] | None:
     if len(old) != len(new) or any(a["id"] != b["id"] for a, b in zip(old, new)):
         return None
     return {b["id"] for a, b in zip(old, new) if a is not b}
+
+
+def kept_rows(before: dict | None, now: dict, made: dict, open_was: dict, open_now: dict) -> dict:
+    """After a change that added, removed or moved tracks (the song's clock as it was): the rows in `made` (track id
+    -> row) that still hold, their track the same object at the same place (its hue) with the same lane open."""
+    was = {t["id"]: (i, t) for i, t in enumerate(before.get("tracks", []))} if before else {}
+    return {t["id"]: made[t["id"]] for i, t in enumerate(now.get("tracks", []))
+            if t["id"] in made and was.get(t["id"], (None, None))[1] is t and was[t["id"]][0] == i
+            and open_now.get(t["id"]) == open_was.get(t["id"])}

@@ -61,32 +61,44 @@ class RowsView:
         return {k: v for k, v in self._open.items() if self.doc.has(k) and v in lanes.applicable(self.doc.item(k), root)}
 
     def _rebuild(self):
-        root = self.doc.data
+        """Everything made again, and each part of the screen told only when its part changed. The blocks are kept
+        while the song's clock stayed (block_memo.py: a track added, removed or moved keeps the others'); after a
+        change to the document, a row whose track is the same object in the same place with the same lane open is
+        taken as it was (as a drag's step does). A rebuild with the document as it was (a lane opened, a take made,
+        a line spoken) makes every row again: what they show changed outside the song."""
+        root, was, old = self.doc.data, self._open, self._view
         self._open = self._lanes_now()
-        self._memo.clear()                        # the song's times or keys may have moved: every block is made again
-        tracks = timeline.track_rows(root, self._open, memo=self._memo)
+        ids = {t["id"] for t in root.get("tracks", [])}
+        kept = self._memo.follow(timeline.clock(root), ids)
+        made = (stepped.kept_rows(self._shown, root, self._made, was, self._open)
+                if kept and old and self._shown is not root else {})
+        tracks = timeline.track_rows(root, self._open, made, self._memo)
         rows = timeline.arrange(root, tracks, self._open, self._folded)
-        self._marks_on(rows)
+        self._marks_on([t for t in tracks if t["id"] not in made])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
         marks = timeline.markers(root)
-        roll = self._roll(rows)
-        self._view = {"rows": rows, "shape": [shape(r) for r in rows], "markers": marks,
-                      "song": timeline.song(root, tracks, marks), "roll": roll, "rollShape": shape(roll)}
+        song = timeline.song(root, tracks, marks)
+        laid = [shape(r) for r in rows]
+        self._view = {"rows": rows, "shape": laid, "markers": marks, "song": song,
+                      "roll": old.get("roll", {}), "rollShape": old.get("rollShape")}
         self._tv.setLength(self._length())        # the view is the person's: nothing new on screen zooms or scrolls it
-        self.songChanged.emit()
-        self.timelineChanged.emit()
-        self.pictureChanged.emit()
-        self.markersChanged.emit()
+        if song != old.get("song"):
+            self.songChanged.emit()
+            self.viewChanged.emit()
+        if laid != old.get("shape"):
+            self.timelineChanged.emit()
+        if not kept:
+            self.pictureChanged.emit()
+        if marks != old.get("markers"):
+            self.markersChanged.emit()
         self._send_rows(rows, None)                 # after: `tracks` is new for the rows made
-        self.rollBlocksChanged.emit()             # the blocks first: the layout's handlers (framing the keys) read them
-        self.rollChanged.emit()
-        self.viewChanged.emit()
+        self._send_roll(self._roll(rows))           # its blocks, then its layout, each only when it changed
 
     def _drag_step(self, change=False):
         """A drag's step, or a change that touched only tracks (a drag's drop, an edit on a note, undo of one): only
         the rows of the tracks it changed are made again and sent (the row model signals just those), the roll only
-        when its track is one, the song only when its length moved. A step leaves the layout `tracks` as it was; a
-        change sends it when a row's layout moved (timelineChanged). Anything else (a marker, the tempo, tracks
+        when its track is one, the song only when its length moved. The layout `tracks` is sent only when a row's
+        layout moved (timelineChanged: its settings, or a note dragged past its key span). Anything else (a marker, the tempo, tracks
         added …): everything (_rebuild)."""
         root = self.doc.data
         if self._mix_only(root):
@@ -109,11 +121,10 @@ class RowsView:
             self.songChanged.emit()
         if same:
             return
-        if change:                                    # the layout: only when a row's own settings moved
-            laid = [shape(r) for r in rows]
-            if laid != self._view["shape"]:
-                self._view["shape"] = laid
-                self.timelineChanged.emit()
+        laid = [shape(r) for r in rows]               # the layout: only when a row's own settings or span moved
+        if laid != self._view["shape"]:
+            self._view["shape"] = laid
+            self.timelineChanged.emit()
         self._send_rows(rows, before)
         if self._track in changed:
             self._send_roll(self._roll(rows))

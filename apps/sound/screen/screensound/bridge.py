@@ -54,7 +54,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.name = name
         self._asked = cleanable.Asked()     # clips whose Cleanup rows were asked for (cleanable.py)
         self._t, self._track = 0.0, ""
-        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
+        # the dock changed what the inspector leaves out (onpage.py): its rows change in place, each keeping the
+        # delegate that showed the same setting (a reset made every row's control again: ~45 ms per dock switch)
+        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.update(self._rows(), instant=True))
         self._drag = self._grab = None
         self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
@@ -165,7 +167,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def blockAt(self, track_id, t, lane, tol):
         """The note / hit / clip under the pointer in an arrangement row ("" when none)."""
         row = next((r for r in self._view["rows"] if r["id"] == track_id), None)
-        return pick.block_at(row["blocks"], t, lane, tol, 0.3) if row else ""
+        return pick.block_at(row, t, lane, tol, 0.3) if row else ""
 
     @Slot(float, float, float, result=str)
     def rollAt(self, t, row, tol):

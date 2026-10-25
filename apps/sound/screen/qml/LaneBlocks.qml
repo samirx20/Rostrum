@@ -29,6 +29,19 @@ Item {
     property string chosen: ""          // which of them are selected: a new selection repaints only rows it reached
     onShownChanged: { own = Blocks.ids(shown); chosen = Blocks.chosen(picked, own) }
     onPickedChanged: chosen = Blocks.chosen(picked, own)
+    // Where a block sits across the row (0 top .. 1 bottom), one place per bar: the row's layout places notes by key
+    // (`span`) and hits by drum (`drums`), so a new top key or drum relays the row, never every block (pick.lanes,
+    // the same rule)
+    readonly property var drumAt: { var o = {}, d = track.drums || []; for (var i = 0; i < d.length; i++) o[d[i]] = i; return o }
+    function lanesOf(b) {
+        if (b.type === "note") {
+            var lo = track.span[0], hi = track.span[1], out = []
+            for (var i = 0; i < b.keys.length; i++) out.push(hi === lo ? 0.5 : 1 - (b.keys[i] - lo) / (hi - lo))
+            return out
+        }
+        if (b.type === "hit") return [drumAt[b.drum] / Math.max((track.drums || []).length - 1, 1)]
+        return b.lanes || []
+    }
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 
@@ -135,7 +148,7 @@ Item {
         function paintNote(ctx, b, on, x, w, h) {          // a note or a hit: a bar per lane
             var barH = b.type === "hit" ? lane.mark * 1.8 : lane.mark
             ctx.fillStyle = on ? Theme.accent : lane.track.hue
-            var ls = b.lanes || []
+            var ls = lane.lanesOf(b)
             for (var i = 0; i < ls.length; i++) ctx.fillRect(x, lane.pad + ls[i] * (h - barH), w, barH)
         }
 
