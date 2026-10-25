@@ -1,12 +1,12 @@
 """What the arrangement and the Editor's roll show, made from the song (a mix-in for SoundBridge, see gui-kit parts.py):
-the rows (timeline.py), the markers, the song's length and grid, the roll of the current track.
+the rows (timeline.py), the markers, the song's length and grid, the roll of the current track (roll_view.py).
 
 A change that touched only tracks, and every step of a drag, makes again only the rows of the tracks it changed
 (stepped.py: the document is never changed in place, so an untouched track is the very same object); anything else
 makes everything again (`_rebuild`). The row model (`trackRows`) then signals only the rows that changed.
 
 What a row or the roll holds is sent in two parts (`shape`): its layout (name, kind, hue, lane, key range …) and its
-blocks. A note or a hit added, moved or undone changes only the blocks: only that row's or the roll's blocks are
+blocks (a whole list as JSON text, block_patch.py). A note or a hit added, moved or undone changes only the blocks: only that row's or the roll's blocks are
 sent and painted again; the arrangement's layout (`tracks`), the headers and the Editor's header are told nothing.
 Each read of a QML map or list property copies all of it, so a song's every block re-read by every layout binding
 on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
@@ -21,22 +21,16 @@ from __future__ import annotations
 
 from PySide6.QtCore import QTimer
 
-from . import block_patch, drum_rows, key_lock, lanes, stepped, timeline, voice_card, voice_takes
+from . import lanes, stepped, timeline, voice_card, voice_takes
 from .block_memo import BlockMemo
+from .roll_view import RollView, shape
 
 
 MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
 REST_MS = 120           # a drag's re-timing steps are drawn once the pointer stays this long (and at the drop)
 
 
-def shape(part: dict) -> dict:
-    """A row or the roll without its blocks: what lays the screen out (`sound`: it has any)."""
-    return {**{k: v for k, v in part.items() if k != "blocks"}, "sound": bool(part.get("blocks"))}
-
-
-
-
-class RowsView:
+class RowsView(RollView):
     @property
     def _memo(self) -> BlockMemo:
         """Each note's and hit's block, made once while it stays the same item (block_memo.py)."""
@@ -73,12 +67,6 @@ class RowsView:
     def rows_now(self) -> list[dict]:
         """The arrangement's rows with their blocks, as made (QML's `tracks` is their layout only)."""
         return self._view["rows"]
-
-    def _show_roll(self):
-        """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
-        row on a click cost ~250 ms on a 16-track song, S59)."""
-        self._span = ("", 0, 0)                       # another track: its keys are framed afresh
-        self._send_roll(self._roll(self._view["rows"]))
 
     def _lanes_now(self) -> dict:
         root = self.doc.data
@@ -177,69 +165,12 @@ class RowsView:
             self.songChanged.emit()
         self._rest.start()
 
-    def _send_roll(self, roll):
-        """The roll as made: its layout (`roll`) and its blocks (`rollBlocks`) are each sent only when they changed."""
-        before, self._view["roll"] = self._view["roll"], roll
-        laid, moved = shape(roll), roll.get("blocks") != before.get("blocks")
-        laid.pop("played", None)            # the playing lane is its own property (rollPlayed): its points relay nothing
-        if roll.get("played") != before.get("played"):
-            self.rollPlayedChanged.emit()
-        relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
-        if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
-            p = block_patch.diff(before.get("blocks"), roll.get("blocks", []))
-            by = self.__dict__.setdefault("_roll_by", {})
-            if p:
-                for i in p[0]:
-                    by.pop(i, None)
-                by.update((b["id"], b) for b in p[1])
-                self.rollPatched.emit(*p)     # a few: the screen patches the list it shows (block_patch.py)
-            else:
-                self.__dict__["_roll_by"] = {b["id"]: b for b in roll.get("blocks", [])}
-                self.rollBlocksChanged.emit()
-            self._roll_picks()
-        if relaid:
-            self.rollChanged.emit()
-
-    def _played_again(self, root):
-        """Only the Editor's playing lane made again (a change no row shows: a point on the track's sustain lane)."""
-        roll = self._view.get("roll") or {}
-        if roll.get("kind") != "notes" or not self.doc.has(self._track):
-            return
-        now = lanes.played(self.doc.item(self._track), root, self._play_lane)
-        if now != roll.get("played"):
-            self._view["roll"] = {**roll, "played": now}
-            self.rollPlayedChanged.emit()
-
-    def _roll_picks(self):
-        """The roll's selected blocks again (`rollPicked`, after a pick or when the roll's blocks changed), looked up
-        by id: a pick or an edit costs the selected blocks, not every block of the track. rollPickedChanged only when
-        they read differently."""
-        by = self.__dict__.get("_roll_by", {})
-        now = [by[i] for i in self._picks.ids if i in by]
-        if now != self.__dict__.get("_roll_picked", []):
-            self.__dict__["_roll_picked"] = now
-            self.rollPickedChanged.emit()
-
     def _mix_only(self, root) -> bool:
         """The change (or step) set only a track's own level, pan, reverb or output, and no lane is open: no row,
         block or roll shows those, so the screen is told nothing (touched.py)."""
         t = self._kit.touched
         return (t is not None and not t.structural and bool(t.fields) and not self._open and self._shown is not None
                 and all(f in MIX_FIELDS and self.doc.has(i) and self.doc.item(i)["type"] == "track" for i, f in t.fields))
-
-    def _roll(self, rows) -> dict:
-        """The Editor's piano roll of the current track (`_track`), in its row's colour."""
-        root = self.doc.data
-        hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
-        track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
-        span = self._span
-        roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None,
-                             memo=self._memo)
-        drum_rows.extend(roll, self._drum_rows().get(self._track))        # rows asked for with + Drum (drum_rows.py)
-        if roll["kind"] == "notes":
-            self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
-        self._marks_on([roll])
-        return key_lock.fold(roll, root) if self.onlyKeyRows else roll
 
     def _marks_on(self, rows):
         side = getattr(self, "side", None)               # lines being spoken say so on their blocks

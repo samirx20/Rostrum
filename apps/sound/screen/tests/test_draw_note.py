@@ -59,15 +59,16 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
     from screensound.block_patch import apply
     m, heard = bridge.trackRows, []
     row = next(i for i in range(m.rowCount()) if m.rows[i]["id"] == "lead")
-    role = lambda: m.data(m.index(row), m._ids["blocks"])        # noqa: E731  the row model's "blocks" role
-    screen = {"row": role(), "roll": bridge.rollBlocks}
+    role = lambda: json.loads(m.data(m.index(row), m._ids["blocks"]))   # noqa: E731  the row model's "blocks" role (JSON text)
+    roll = lambda: json.loads(bridge.rollBlocks)                         # noqa: E731
+    screen = {"row": role(), "roll": roll()}
     def patch(k, gone, put):
         screen[k] = apply(screen[k], gone, put)
     m.dataChanged.connect(lambda *_: screen.update(row=role()))
     bridge.blocksPatched.connect(lambda k, g, p: k == "lead" and patch("row", g, p))
     bridge.blocksReset.connect(lambda k: k == "lead" and screen.update(row=role()))
     bridge.rollPatched.connect(lambda g, p: patch("roll", g, p))
-    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=bridge.rollBlocks))
+    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=roll()))
     for s in ("timelineChanged", "rollChanged"):
         getattr(bridge, s).connect(lambda s=s: heard.append(s))
 

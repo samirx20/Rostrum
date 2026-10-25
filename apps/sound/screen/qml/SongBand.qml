@@ -8,7 +8,7 @@ import RostrumKit
 Item {
     id: band
     property var ruler
-    readonly property var song: backend.song
+    readonly property var song: ruler.song          // the ruler's (one read of backend.song per ruler, shared)
     readonly property var marks: {      // flags at the same moment sit side by side (dx: the widths before it)
         var out = song.tempoMarks.map(c => ({ id: c.id, t: c.t, text: "♩ " + Math.round(c.bpm), arrow: c.ramp > 0 ? "↗" : c.ramp < 0 ? "↘" : "", tempo: true }))
                   .concat(song.meterMarks.map(c => ({ id: c.id, t: c.t, text: c.per + "/" + c.unit, tempo: true })))

@@ -6,8 +6,14 @@ applies to the list it shows (qml/Blocks.js, the same rule as `apply` here); a b
 track) goes whole. The arrangement's row model keeps the last whole list sent for each row (`held`): a patched row
 leaves the model's value as it was, and when a whole list follows, a row the screen had patched is told to drop its
 patch (`resets`), so the screen shows the model's value again even when that value did not change.
+
+A whole list goes as JSON text (`text`), which the screen parses once (Blocks.js `parse`): handing Qt a list of
+dicts converted every block field by field (3,352 notes: ~150-250 ms of a whole-song Right or Esc), the text costs a
+few ms each way. Made once per list (the same list object is the same text).
 """
 from __future__ import annotations
+
+import json
 
 from .block_memo import same_ends
 
@@ -37,16 +43,38 @@ def apply(blocks: list, gone: list, put: list) -> list:
     return out + [b for b in put if b["id"] in by]
 
 
+def text(blocks: list) -> str:
+    """A whole list of blocks as the screen receives it (JSON; fails loudly on anything that is not plain data)."""
+    return json.dumps(blocks, separators=(",", ":"), allow_nan=False)
+
+
+class Texts:
+    """The JSON text of the lists last sent, by key: the very same list is never written twice."""
+
+    def __init__(self):
+        self._held: dict = {}
+
+    def of(self, key, blocks: list) -> str:
+        held = self._held.get(key)
+        if held is None or held[0] is not blocks:
+            held = self._held[key] = (blocks, text(blocks))
+        return held[1]
+
+    def keep(self, keys):
+        self._held = {k: v for k, v in self._held.items() if k in keys}
+
+
 class RowBlocks:
     """The arrangement rows' blocks: the whole list the row model holds for each row, and the rows patched since."""
 
     def __init__(self):
         self.held: dict[str, list] = {}
         self.patched: set[str] = set()
+        self._texts = Texts()
 
     def send(self, rows: list[dict], before: list[dict] | None):
-        """For the rows now and the rows the screen shows (`before`): ({row id: the model's blocks}, [(id, gone, put)],
-        [ids whose patch the screen drops])."""
+        """For the rows now and the rows the screen shows (`before`): ({row id: the model's blocks, as JSON text},
+        [(id, gone, put)], [ids whose patch the screen drops])."""
         prev = {r["id"]: r.get("blocks", []) for r in before or []}
         model, patches, resets = {}, [], []
         for r in rows:
@@ -67,4 +95,5 @@ class RowBlocks:
                 self.patched.add(k)
         self.held = {k: v for k, v in self.held.items() if k in model}
         self.patched &= set(model)
-        return model, patches, resets
+        self._texts.keep(model)
+        return {k: self._texts.of(k, v) for k, v in model.items()}, patches, resets

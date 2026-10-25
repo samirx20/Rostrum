@@ -44,8 +44,9 @@ def problems(doc) -> list[dict]:
     out += [{"kind": "pending-take", "item": i, "message": f"The clip on {_called(doc.data, t)} needs a cleaned take that is not made yet; until it is, "
              "the original plays", "fix": clean_clips.HINT}
             for i, t in waiting]
-    ties, late = past_end.ties(doc.data), past_end.late(doc.data)
-    for w in doc.kind.warnings(doc.data):
+    with past_end.same_song():                       # the song's warnings read once, then named by the check that said each
+        warnings, ties, late = doc.kind.warnings(doc.data), past_end.ties(doc.data), past_end.late(doc.data)
+    for w in warnings:
         kind = "broken-tie" if w in ties else "after-the-end" if w in late else "no-longer-made"
         fix = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "Move them earlier or make the song longer",
                "no-longer-made": "Remove it or replace it with an instrument"}[kind]

@@ -50,17 +50,46 @@ def _row(track, ids, start, end, tones, written, listed) -> dict:
     return {"track": track, "ids": ids, "start": start, "end": end, "tones": tones, "written": written, "listed": listed}
 
 
+def _joins(g: list[tuple], n: tuple) -> bool:
+    """Note `n` (start, end, …) joins chord `g`, the one before it in time order (the module's rule)."""
+    return n[0] - g[0][0] <= TOGETHER or (n[0] - g[-1][0] <= STRUM_SPAN and any(abs(n[1] - m[1]) <= SAME_END for m in g))
+
+
+def _in_order(notes: list[tuple]) -> list[tuple]:
+    return sorted(notes, key=lambda x: (x[0], x[2:]))
+
+
 def group(notes: list[tuple]) -> list[list[tuple]]:
     """(start, end, …) tuples as chords (the module's rule), in time order."""
     groups: list[list[tuple]] = []
-    for n in sorted(notes, key=lambda x: (x[0], x[2:])):
+    for n in _in_order(notes):
         g = groups[-1] if groups else None
-        if g and (n[0] - g[0][0] <= TOGETHER or
-                  (n[0] - g[-1][0] <= STRUM_SPAN and any(abs(n[1] - m[1]) <= SAME_END for m in g))):
+        if g and _joins(g, n):
             g.append(n)
         else:
             groups.append([n])
     return groups
+
+
+def any_chord(root: dict, note_ids) -> bool:
+    """Whether the selected notes hold a chord of two or more tones (what `of_selection` would find), stopping at the
+    first: a list-pitch note of 2+ tones, or two notes of one track next in time order where the second joins the
+    first (while no chord has formed yet, every chord before is one note, so that pair is the first chord's start)."""
+    wanted, by_track = set(note_ids), {}
+    for track in root.get("tracks", []):
+        for n in track.get("notes", []):
+            if n["id"] not in wanted:
+                continue
+            if isinstance(n["pitch"], list):
+                if len(n["pitch"]) > 1:
+                    return True
+                continue
+            by_track.setdefault(track["id"], []).append((start_of(root, n), end_of(root, n), keys.midi(n["pitch"]), n["id"]))
+    for notes in by_track.values():
+        ordered = _in_order(notes)
+        if any(_joins([a], b) for a, b in zip(ordered, ordered[1:])):
+            return True
+    return False
 
 
 def _chord(track: str, g: list[tuple]) -> dict:

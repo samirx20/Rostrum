@@ -10,7 +10,7 @@ import dataclasses
 from rostrum_core import RostrumError, codes
 from rostrum_core import edits as E
 
-from . import media, ops_music, tempo, times
+from . import item_times, media, ops_music, tempo, times
 from .shift import write_like
 
 BY = dataclasses.replace(ops_music.BY, required=False, group="Move", label="By",
@@ -28,7 +28,8 @@ def delta(root: dict, sec: float, by) -> float:
 
 
 def start_of(root: dict, item: dict) -> float:
-    return times.seconds(item["at"], root, item["id"])
+    kept = item_times.span(root, item)            # a note's or a hit's, kept while it is the same item (item_times)
+    return kept[0] if kept is not None else times.seconds(item["at"], root, item["id"])
 
 
 def moved(ctx, item: dict, by, where: str | None = None):
@@ -83,6 +84,9 @@ def length_like(old, source_seconds: float, root: dict, start: float, item: dict
 
 def end_of(root: dict, item: dict) -> float:
     """Where a note / hit / clip ends, seconds (a hit ends where it starts; a note that can't tell, too)."""
+    kept = item_times.span(root, item)
+    if kept is not None:
+        return kept[1]
     start = start_of(root, item)
     if item["type"] == "clip":
         return start + clip_length(item, root)

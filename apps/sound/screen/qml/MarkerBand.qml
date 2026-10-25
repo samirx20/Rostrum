@@ -21,23 +21,25 @@ Item {
     function tagWidth(name) { return metrics.advanceWidth(name) + 14 }
     function markerAt(x) {
         var best = null
-        for (var i = 0; i < backend.markers.length; i++) {
-            var m = backend.markers[i], mx = ruler.xOf(m.t)
+        for (var i = 0; i < band.marks.length; i++) {
+            var m = band.marks[i], mx = ruler.xOf(m.t)
             if (!m.named && x >= mx - 4 && x <= mx + tagWidth(m.name)) best = m
         }
         return best
     }
     function menuFor(id) {      // a scripted step's door to the same menu (layout check): open under that marker's tag
-        var m = backend.markers.find(k => k.id === id)
+        var m = band.marks.find(k => k.id === id)
         markMenu.marker = id; markMenu.entries = backend.markerMenu(id)
         var q = mapToItem(null, ruler.xOf(m.t) + 6, height); markMenu.openAt(q.x, q.y)
     }
     FontMetrics { id: metrics; font.family: uiFont; font.pixelSize: Theme.label }
 
-    Repeater {
-        model: backend.markers
+    readonly property var marks: backend.markers        // one read per change (each read copies the list)
+    Repeater {   // by count: a tempo drag moves the markers without making them again
+        model: band.marks.length
         delegate: Rectangle {
-            required property var modelData
+            required property int index
+            readonly property var modelData: band.marks[index]
             readonly property bool on: !!backend.pickedHeads[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0)); y: 1

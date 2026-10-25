@@ -10,7 +10,7 @@ import RostrumKit
 Item {
     id: band
     property var ruler
-    readonly property var sections: backend.song.sections
+    readonly property var sections: ruler.song.sections     // the ruler's song (one read, shared)
     clip: true
     visible: sections.length > 0
     function sectionAt(x) {
@@ -29,10 +29,11 @@ Item {
         return x <= l + grip ? "at" : x >= r - grip ? "end" : ""
     }
 
-    Repeater {
-        model: band.sections
+    Repeater {   // by count: a tempo drag moves the sections without making them again (each read is the held list)
+        model: band.sections.length
         delegate: Rectangle {
-            required property var modelData
+            required property int index
+            readonly property var modelData: band.sections[index]
             readonly property bool on: !!backend.pickedHeads[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1

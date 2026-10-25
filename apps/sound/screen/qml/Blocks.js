@@ -40,6 +40,12 @@ function _at(list) {                     // id -> index (made once per list a pa
     return list.__at
 }
 
+// A list as sent whole from Python: JSON text (an arrangement row's role, backend.rollBlocks: block_patch.py `text`),
+// parsed once into plain blocks; a list (anything else) as `own`.
+function parse(sent) {
+    return typeof sent === "string" ? (sent === "" ? [] : JSON.parse(sent)) : own(sent || [])
+}
+
 // A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list
 // itself hands out a new object for a block on every read, so a surface's kept entries never matched the blocks of the
 // next read: the first edit after every whole send painted the whole surface again (a first note: ~10-20 ms).

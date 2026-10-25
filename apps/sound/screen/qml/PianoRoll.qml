@@ -11,7 +11,8 @@ import "Blocks.js" as Blocks
 Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
-    readonly property var blocks: patched || Blocks.own(backend.rollBlocks)    // its notes / hits / clips, sent alone (an edit on them)
+    readonly property var marks: backend.markers            // one read per change (each read copies the list)
+    readonly property var blocks: patched || Blocks.parse(backend.rollBlocks)    // its notes / hits / clips, sent alone (an edit on them)
     property var patched: null                              // a few of them changed since (backend.rollPatched)
     Connections {
         target: backend
@@ -79,9 +80,9 @@ Panel {
             readonly property string shown: p.roll.id + "/" + p.kind + (grid.shownKeys ? "/rows" : "")      // another track (or kind): framed again
             onShownChanged: centre()
         }
-        Repeater {   // marker lines
-            model: backend.markers
-            delegate: Rectangle { required property var modelData
+        Repeater {   // marker lines; by count: a tempo drag moves them without making them again
+            model: p.marks.length
+            delegate: Rectangle { required property int index; readonly property var modelData: p.marks[index]
                 x: p.keysWidth + Math.round(bars.xOf(modelData.t)); width: 1; height: well.height
                 visible: bars.visibleX(x - p.keysWidth); color: Theme.fg4; opacity: 0.6 }
         }

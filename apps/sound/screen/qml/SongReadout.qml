@@ -31,7 +31,7 @@ Row {
 
     FieldFrame {   // type "5.3" (bars.beats) or "9.6 s" and Enter to jump there; a refusal says why
         id: place
-        readonly property string full: backend.positionText(backend.time, ro.song)
+        readonly property string full: backend.positionText(backend.time, ro.song.length)   // (the length: a dependency on the song, not the whole map sent)
         readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
         text: ro.compact ? parts[0] : full
         editable: true
