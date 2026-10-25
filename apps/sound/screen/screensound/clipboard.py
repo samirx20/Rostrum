@@ -9,7 +9,9 @@ from __future__ import annotations
 import copy
 
 from rostrum_core import RostrumError, codes
+from rostrum_sound.doc import media
 from rostrum_sound.doc import select_time as ST
+from rostrum_sound.doc.fields import DEFAULTS
 from rostrum_sound.doc.shift import write_like
 
 from .timeline import kind_of
@@ -18,6 +20,18 @@ KINDS = ("note", "hit", "clip", "line")
 MANY = {"note": "notes", "hit": "hits"}     # kinds with an add_many (one call per track)
 FITS = {"note": ("notes", "empty"), "hit": ("drums", "empty"), "clip": ("audio", "empty", "notes", "drums"),
         "line": ("audio",)}
+_KEPT = [{"items": [], "tracks": []}]       # the one clipboard of this run: every song open in the app shares it
+
+
+def kept() -> dict:
+    return _KEPT[0]
+
+
+def keep(board: dict) -> dict:
+    _KEPT[0] = board
+    return board
+
+
 WHAT = {"note": "notes", "hit": "drum hits", "clip": "clips", "line": "voice lines"}
 
 
@@ -32,6 +46,10 @@ def copy_items(doc, ids) -> dict:
     out = [{"kind": it["type"], "track": doc.parent_of(it["id"])[0], "offset": ST.start_of(root, it) - first,
             "fields": {k: copy.deepcopy(v) for k, v in it.items() if k not in ("id", "type", "effects")}}
            for it in items]
+    with media.of(doc):                     # a clip's sound as a full path: it can be pasted into another song
+        for o in out:
+            if o["kind"] == "clip" and isinstance(o["fields"].get("media"), str):
+                o["fields"]["media"] = media.file(o["fields"]["media"])
     return {"items": out, "tracks": sorted({o["track"] for o in out}, key=order.index)}
 
 
@@ -70,7 +88,15 @@ def paste_calls(doc, board: dict, at: float, onto: str = "") -> list[dict]:
 
 def _args(doc, it, seconds):
     params = {p.name for p in doc.kind.registry.get(f"{it['kind']}.add").params} - {"id"}
-    args = {k: v for k, v in it["fields"].items() if k in params}
+    stored = DEFAULTS.get(it["kind"], {})
+    # a field still at its default is left out: a setting that only applies while another is on (useCleaned) is
+    # refused when added alone, and the new item gets that default anyway
+    args = {k: v for k, v in it["fields"].items() if k in params and not (k in stored and v == stored[k])}
+    if it["kind"] == "clip" and isinstance(args.get("media"), str):     # into this song's own media folder (a no-op at home)
+        if not media.exists(args["media"]):
+            raise RostrumError(codes.NOT_FOUND, "paste", f'the sound "{args["media"]}"', "is not there any more",
+                               hint="Copy the clip again from a song that still has its sound.")
+        args["media"] = media.keep(doc.folder, args["media"])
     args["at"] = write_like(it["fields"]["at"], max(0.0, round(seconds, 6)), doc.data)
     return args
 

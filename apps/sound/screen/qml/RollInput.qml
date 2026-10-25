@@ -73,7 +73,7 @@ MouseArea {
             mode = "box"
         }
         if (mode === "drag")
-            backend.dragTo((e.x - x0) / bars.perSec, kind === "notes" ? -Math.round((e.y - y0) / grid.rowH) : 0,
+            backend.dragTo((e.x - x0) / bars.perSec, kind === "notes" ? -Math.round((e.y - y0) / grid.rowH) : kind === "drums" ? Math.round((e.y - y0) / grid.rowH) : 0,
                            ctrl(e), shift(e), alt(e), bars.perSec)
         else if (mode === "box")
             backend.boxRoll(bars.tOf(x0), bars.tOf(x1), grid.rowAt(y0), grid.rowAt(y1), ctrl(e))

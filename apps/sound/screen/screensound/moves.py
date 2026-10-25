@@ -10,7 +10,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_gui import snap
 
 from . import song_edit, timing
-from .timeline import kind_of
+from .timeline import kind_of, roll_drums
 
 MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
 MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "meter", "key")
@@ -28,7 +28,7 @@ def grab(doc, item_id) -> dict:
         raise RostrumError(codes.BAD_ARGUMENT, "timeline drag", f'"{item_id}"', "can't be moved in time",
                            list(MOVABLE))
     return {"id": item_id, "type": it["type"], "at": it["at"], "t": timing.sec(it["at"], doc.data, item_id),
-            "pitch": it.get("pitch")}
+            "pitch": it.get("pitch"), "drum": it.get("drum")}
 
 
 def drag_calls(doc, g: dict, dt: float, dsemi: int = 0, free: bool = False, grid=None) -> list[dict]:
@@ -66,7 +66,8 @@ def snap_to(t: float, root: dict, free: bool, targets: list[snap.Target], scale:
 def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool, targets: list[snap.Target], scale: float,
                grid=None):
     """(calls, what it snapped to) for moving every grabbed item by the same amount: the grabbed one snaps, the rest
-    follow; never before the song's start. Shift (`only_time`): no pitch change."""
+    follow; never before the song's start. `dsemi`: semitones for notes, drum rows for hits (down is +). Shift
+    (`only_time`): no pitch or drum change."""
     root, p = doc.data, g["primary"]
     to, caught = snap_to(p["t"] + dt, root, free, targets, scale, grid)
     d = max(to - p["t"], -min(x["t"] for x in g["items"]))
@@ -75,6 +76,10 @@ def many_calls(doc, g: dict, dt: float, dsemi: int, free: bool, only_time: bool,
         args = {"at": timing.write_time(x["at"], max(0.0, x["t"] + d), root)}
         if x["type"] == "note" and dsemi and not only_time:
             args["pitch"] = timing.shift_pitch(x["pitch"], int(dsemi))
+        if x["type"] == "hit" and dsemi and not only_time and x["drum"]:     # up or down the drum rows the roll shows
+            rows = roll_drums(doc.item(doc.parent_of(x["id"])[0]))
+            if x["drum"] in rows:
+                args["drum"] = rows[max(0, min(len(rows) - 1, rows.index(x["drum"]) + int(dsemi)))]
         calls.append({"op": f"{x['type']}.set", "target": [x["id"]], "args": args})
     return calls, caught
 
@@ -137,11 +142,16 @@ def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: 
     return {"op": "note.add", "target": [track_id], "args": {"pitch": pitch, **args}}
 
 
-def remove_call(doc, item_id) -> dict:
-    kind = doc.item(item_id)["type"]
+def remove_calls(doc, kind, ids) -> list[dict]:
+    """The calls that delete items of one kind (the one place, for the Delete key and the Delete action). A group
+    that tracks play to or send to goes the way Ungroup does: its tracks keep playing where the group played to and
+    the sends into it go with it, never a refusal."""
     if kind not in REMOVABLE:
-        raise RostrumError(codes.BAD_ARGUMENT, "delete", f'"{item_id}"', "can't be deleted", list(REMOVABLE))
-    return {"op": f"{kind}.remove", "target": [item_id], "args": {}}
+        raise RostrumError(codes.BAD_ARGUMENT, "delete", f'"{ids[0]}"', "can't be deleted", list(REMOVABLE))
+    if kind != "bus":
+        return [{"op": f"{kind}.remove", "target": list(ids), "args": {}}]
+    sends = [s["id"] for t in doc.data.get("tracks", []) for s in t.get("sends", []) if s.get("bus") in ids]
+    return ([{"op": "send.remove", "target": sends, "args": {}}] if sends else []) +            [{"op": "bus.ungroup", "target": list(ids), "args": {}}]
 
 
 def toggle_call(doc, item_id, field: str) -> tuple[dict, str]:
