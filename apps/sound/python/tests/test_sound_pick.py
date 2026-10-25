@@ -17,7 +17,7 @@ def _doc():
     d = Document.new(KIND)
     d.apply([_op("track.add", [], id="a", name="Felt piano", instrument="builtIn", builtIn="feltPiano"),
              _op("track.add", [], id="b", name="Lead", instrument="builtIn", builtIn="feltPiano"),
-             _op("track.add", [], id="k", name="Drums", instrument="kit", kit="synth"),
+             _op("track.add", [], id="k", name="Drums", instrument="kit", kit="drums"),
              _op("note.add", ["a"], id="n", pitch="C4", at=0, dur=1),
              _op("hit.add", ["k"], id="h", drum="kick", at=0)], P)
     return d

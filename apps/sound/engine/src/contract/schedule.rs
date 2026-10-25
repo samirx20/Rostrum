@@ -19,6 +19,8 @@ pub struct Compiled {
     pub seconds: f64,
     /// Track ids, in schedule order.
     pub ids: Vec<String>,
+    /// The distinct credit lines of the CC-BY instruments the tracks play (every export carries them).
+    pub credits: Vec<&'static str>,
 }
 
 pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
@@ -29,8 +31,11 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     }
     let sr = o.num("sampleRate", 22050.0, 192000.0, Some(48000.0))? as u32;
     let tempo_at = o.at("tempo");
-    let (tempo, tempo_resolved) = Tempo::read(o.raw("tempo"), &tempo_at)?;
+    let (mut tempo, tempo_resolved) = Tempo::read(o.raw("tempo"), &tempo_at)?;
     o.put("tempo", tempo_resolved);
+    let (meter, meter_resolved) = super::meter::Meter::read(o.raw("meter"), &o.at("meter"))?;
+    tempo.meter = meter;
+    o.put("meter", meter_resolved);
     let length_given = match o.raw("length") {
         Some(l) => Some(tempo.time(l, &o.at("length"))?),
         None => None,
@@ -42,8 +47,12 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     let bus_ids = buses::ids(o.raw("buses"), &o.at("buses"), &ids)?;
     let (buses_resolved, buses_job) = buses::read(&mut o, &tempo, &bus_ids)?;
     let tracks_at = o.at("tracks");
-    let tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, &ids, &bus_ids))?;
+    let tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, length_given, &ids, &bus_ids))?;
     let end = tracks.iter().map(|t| t.end).fold(0.0, f64::max);
+    let mut credits: Vec<&'static str> = vec![];
+    for c in tracks.iter().filter_map(|t| t.credit) {
+        if !credits.contains(&c) { credits.push(c) }
+    }
     let seconds = match length_given {
         Some(l) if l > 0.0 => l,
         Some(_) => return Err(Error::new("BAD_ARGUMENT", &o.at("length"), "length", "must be more than 0 s")),
@@ -71,7 +80,7 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     job["timeWarps"] = json!([]);
     job["tracks"] = Value::Array(tracks.into_iter().map(|t| t.job(total)).collect());
     job["buses"] = Value::Array(buses_job);
-    Ok(Compiled { resolved, job, seconds, ids })
+    Ok(Compiled { resolved, job, seconds, ids, credits })
 }
 
 struct Master {

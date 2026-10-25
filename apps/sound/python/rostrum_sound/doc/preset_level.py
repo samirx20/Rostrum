@@ -15,18 +15,25 @@ import json
 from functools import cache
 from pathlib import Path
 
-TABLE = Path(__file__).resolve().parents[1] / "library_data" / "preset_levels.json"
+from .. import names
+
+DATA = Path(__file__).resolve().parents[1] / "library_data"
+TABLE = DATA / "preset_levels.json"
+FORMAT2 = DATA / "preset_levels_format2.json"      # the table songs of file format 2 were offset by (frozen: doc/migrations.py)
 FORMS = ("builtIn", "model", "synth", "kit")        # the instrument forms whose value names a preset
 
 
 @cache
-def presets() -> dict:
-    return json.loads(TABLE.read_text(encoding="utf-8"))["presets"] if TABLE.exists() else {}
+def presets(table: Path = TABLE) -> dict:
+    return json.loads(table.read_text(encoding="utf-8"))["presets"] if table.exists() else {}
 
 
-def gain(track: dict) -> float:
+def gain(track: dict, table: Path = TABLE) -> float:
     form = track.get("instrument", "none")
-    return presets().get(f"{form}:{track.get(form)}", {}).get("gain", 1.0) if form in FORMS else 1.0
+    name = track.get(form)
+    if form == "builtIn":
+        name = names.BUILT_IN_ALIASES.get(name, name)        # a name that plays the same sound shares its gain
+    return presets(table).get(f"{form}:{name}", {}).get("gain", 1.0) if form in FORMS else 1.0
 
 
 def scaled(points, g: float, cap: float | None = None) -> list:

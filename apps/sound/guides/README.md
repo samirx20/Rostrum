@@ -15,12 +15,16 @@ Short pages in everyday words, with the names of the real buttons.
 
 How-to pages for the tools and the document. They assume MCP tools and operations.
 
+- **[writing-music.md](writing-music.md): read first, before composing anything.** The craft: form, voicing and voice
+  leading, bass motion, melody and motif, groove, arranging by register, dynamics, the performance layer, and checking
+  without ears. Its tools (chords from numerals, voicings, comping, bass lines, arpeggios, drum patterns and fills,
+  developing a line) are in [writing-music-tools.md](writing-music-tools.md).
 - [writing-parts.md](writing-parts.md): writing notes and parts.
 - [scoring-to-picture.md](scoring-to-picture.md): scoring against a picture and shared markers.
 - [scoring-motion.md](scoring-motion.md): answering movement in the picture with instruments.
 - [script.md](script.md): the Python script API for `run_script` (tracks, notes, times, the song's length).
 - [voice.md](voice.md): spoken lines on a voice track, and the voice models.
-- [library.md](library.md): your own sound folders (the Library's My sounds).
+- [library.md](library.md): the sample packs behind the plain instrument names (install, credits) and your own sound folders (the Library's My sounds).
 - [cleaning-a-recording.md](cleaning-a-recording.md) and [cleanup.md](cleanup.md): clean-up steps.
 - [mixing-to-delivery.md](mixing-to-delivery.md): mix, loudness and export.
 - [listening.md](listening.md) and [checking-a-mix-by-ear.md](checking-a-mix-by-ear.md): seeing and hearing the result.

@@ -27,7 +27,7 @@ def _instrument(track) -> list[str]:
             out.append(f"track {tid} has {key} but its instrument is {kind!r} (needs {' or '.join(ok)})")
     if kind not in ("none", "voice") and not track.get(kind) and (track.get("notes") or track.get("hits")):
         out.append(f"track {tid}: instrument {kind} needs its {kind} file set before it can play its notes")
-    drums = names.SYNTH_DRUMS if kind == "kit" else names.GM_DRUMS
+    drums = names.kit_drums(track.get("kit")) if kind == "kit" else names.GM_DRUMS
     unknown: dict = {}      # one message per unknown drum name, not one per hit
     for h in track.get("hits", []) if kind in ("kit", "kitSfz") else []:
         d = h.get("drum")
@@ -35,11 +35,13 @@ def _instrument(track) -> list[str]:
             continue
         if d not in drums:
             unknown.setdefault(d, []).append(h["id"])
+    classic = kind == "kit" and track.get("kit") == "classic"
+    word = "SFZ" if kind == "kitSfz" else track.get("kit", "drums")
     for d, ids in unknown.items():
         more = f" and {len(ids) - 1} more hit(s)" if len(ids) > 1 else ""
-        near = names.KIT_NEAREST[kind].get(names.drum_key(d)) if isinstance(d, str) else None
+        near = names.KIT_NEAREST["kit" if classic else "kitSfz"].get(names.drum_key(d)) if isinstance(d, str) else None
         write = f': write "{near}" (the nearest drum this kit has)' if near else ""
-        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {'synth' if kind == 'kit' else 'SFZ'} kit{write} (accepted: {', '.join(drums)})")
+        out.append(f"{ids[0]}{more}: drum {d!r} is not on track {tid}'s {word} kit{write} (accepted: {', '.join(drums)})")
     return out + playing(track)
 
 

@@ -10,12 +10,12 @@ The script API is in inspect_guide `script`; instruments in `library`.
   wrong one is refused and says which to use. Bars and "5.3" are for typing on the screen; in operations and scripts use
   `{"beat": n}` (or `bar(n)` in a script).
 - **Volume:** a bare number is gain 0 … 4 (1 = 0 dB, 0.5 = -6 dB, 2 = +6 dB). The screen shows dB; agents may give dB too:
-  `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master. **Every built-in
-  instrument, played instrument, synth wave and the built-in kit is level-matched** (measured: a typical comp, bass, lead
+  `"volume": {"db": -6}` or `"volume": "-6 dB"` on a track, bus, clip, line or the master. **Every plain-named
+  instrument, modelled instrument, synth wave and drum kit is level-matched** (measured: a typical comp, bass, lead
   line, pad or groove for each comes out equally loud), so tracks written as the part each suits (the table below) at
   the same volume are roughly balanced: a piano comp at 0 dB sits with the bass and drums at 0 dB. Roughly, not exactly:
   the same chord on every sound spreads about 11 dB, so check with `look_sound` (`what: "levels"`) after the first render. How hard you play (`vel`) and how many notes you stack are still loudness: a five-note chord at vel 0.5
-  is quieter than a bass note at 0.9. Sampled (SFZ), plug-in and recorded sounds are not matched (their level is the file's).
+  is quieter than a bass note at 0.9. Sampled (SFZ) files you point at, plug-in instruments and recorded clips are not matched (their level is the file's).
 - **The song's length** (`length`) is where it ends, a time: `bar(9)` is where bar 9 starts, so `length(bar(9))` is an
   8-bar song. For N bars write `length(bar(N+1))`. `run_script` and `inspect_item` (the song) end with the length in
   bars and seconds ("8 bars long (ends where bar 9 starts, 20.0 s)").
@@ -24,21 +24,49 @@ The script API is in inspect_guide `script`; instruments in `library`.
 
 ## Which sound for which part
 
-Every built-in sound is made for a part; its level is matched on the first part listed. `inspect_engine` lists the same
-table (`roles`), `inspect_engine (what "instrument") builtIn=… / model=… / synth=…` gives one sound's line. Synthesized sounds play any
-key; "sounds best" is where they sound like themselves.
+A plain instrument name (`builtIn`) plays a **recorded instrument**: piano, strings, bass, flute and the rest are real
+recordings, not synthesized. Three names are analog synth presets (`warmPad`, `subBass`, `pluck`); `choirPad` is the older
+synthesized choir (no free recorded choir exists); and every older synthesized voice is still there as `classic.<name>`
+(`classic.feltPiano`, `classic.grandPiano`, `classic.warmPad`, `classic.analogStrings`, `classic.spiccatoStrings`,
+`classic.choirPad`, `classic.cinematicBrass`, `classic.subBass`, `classic.glassMarimba`) for when you want that sound on
+purpose. A name whose sample pack is not installed fails loudly and says how to install it (below). Each name has one part
+it is made for and its level is matched on the first part listed. `inspect_engine` lists the same table (`roles`),
+`inspect_engine (what "instrument") builtIn=… / model=… / synth=…` gives one sound's line and the range it was recorded
+over: a note outside a recorded range thins out or is refused, so write inside it. Synthesized sounds play any key.
 
-| Part | Sounds (`builtIn` / `model` / `synth` / `kit`) | Sounds best |
+| Part | Plain names (`builtIn`) | Recorded range |
 |---|---|---|
-| comp (chords that keep time) | feltPiano, grandPiano, spiccatoStrings; model guitar, nylonGuitar | C2-C6 (strings G2-E6, guitars E2-E5) |
-| bass (the low line) | subBass (synth sine also works as a sub under it) | E1-G3 |
-| lead (a tune on top) | glassMarimba; model marimba, vibraphone, glockenspiel (keep it quiet), tubularBell (single strikes), violin; synth triangle, sine | C4-C7 (glockenspiel G5-C8, violin G3-E7, bell C4-F5) |
-| pad (held chords under everything) | warmPad, analogStrings, choirPad, cinematicBrass; synth saw, square | C2-C6 (choir C3-C6, brass E2-C5) |
-| groove (drums) | kit synth | kick, snare, clap, hat, openHat, cymbal, tom, rim |
+| comp (chords that keep time) | piano (grandPiano, acousticPiano, feltPiano), electricPiano (wurlitzer), guitar (nylonGuitar), acousticGuitar (steelGuitar), electricGuitar (cleanGuitar), harp, spiccatoStrings, organ | piano A0-C8, electric piano A1-C7, nylon guitar F1-B5, steel guitar A1-G6, electric guitar B1-D6, harp E1-F7, strings C1-D6 |
+| bass (the low line) | bass (electricBass, bassGuitar), uprightBass (doubleBass), subBass (analog), basses, tuba, timpani | bass A1-G5, upright C1-C4, basses C1-C4, tuba F1-D4, timpani C2-C4, subBass E1-G3 |
+| lead (a tune on top) | violin, cello, flute, piccolo, oboe, clarinet, saxophone (tenorSax), trumpet, marimba, vibraphone, xylophone, glockenspiel (keep it quiet), tubularBells (single strikes); `model` guitar / violin and `synth` triangle, sine | violin G3-C7, flute C4-C7, piccolo G4-G6, oboe A#3-F6, clarinet D3-F#6, sax G#2-F6, trumpet E3-C6, marimba F2-C#7, vibraphone F3-F6, xylophone G3-C#7, glockenspiel G4-C#7, bells C4-G5 |
+| pad (held chords under everything) | strings (analogStrings: one section split by pitch into basses, cellos, violas, violins), violins, violas, cellos, brass (cinematicBrass), horn, trombone, pipeOrgan, organ, warmPad (pad), choirPad; `synth` saw, square | strings C1-D6, brass F1-C6, horn A1-F5, trombone A#1-F4, pipe organ C2-C#7, organ A1-D7, warmPad C2-C6, choirPad C3-C6 |
+| groove (drums) | `kit`: drums (a recorded rock kit, the default), studio (a recorded studio kit), classic (synthesized) | the drum names under Notes in `inspect_guide script` |
 
-Pianos, guitars, marimba, vibraphone, brass and the saw and square waves also play leads (`inspect_engine` lists every
-part each suits). Sampled (SFZ) instruments carry their own range (`inspect_engine (what "instrument") sfz=<path>`) and are not
-level-matched.
+Pianos, guitars, marimba, vibraphone and brass also play leads (`inspect_engine` lists every part each suits). Sampled (SFZ)
+instruments you point at carry their own range (`inspect_engine (what "instrument") sfz=<path>`) and are not level-matched.
+
+### Sample packs: install what a name needs
+
+The recorded instruments are sample packs (large: the piano alone is 1.2 GB), installed on this machine, each file checked
+by its fingerprint before it is kept. `inspect_library (kind: packs)` lists every pack, installed or missing, with its size,
+licence and credit. A render, playback or audition that plays a name whose pack is missing stops and names the pack:
+install it with `run_model_install` (`model: "salamander-piano"`, or `all-instruments`), or in a terminal
+`python -m rostrum_sound.packs install salamander-piano` (`list` and `verify <pack>` are there too). Packs with a CC-BY
+licence (the Salamander piano, the Wurlitzer, the rock kit) must be credited: a render that used them returns the credit
+lines and writes them into the export's manifest.
+
+### Played like a person (`perform`)
+
+Every instrument is played, not just sequenced. It is **on by default**: a track's notes get the timing feel, velocity
+variety, accents, legato (sustained instruments), vibrato on held notes and strum of its family (plucked, mallets, drums,
+sustained, detached, keys, synth); recorded clips, voice lines and audio are never performed. It is the same on every
+render, because it is seeded by the track. The track field `perform` changes it: `perform=False` plays every note exactly
+as written (use it for a part whose exact timing you wrote: a tight bass, a hit locked to a click, a MIDI import you want
+as it is); `perform={"timing": 4, "velocity": 0.05}` changes some values over the family's defaults (`timing` ms, `lean` ms
+behind the beat, `swing` 0…1 with `swingGrid`, `velocity` spread, `accent` 0…0.3, `strum` 0…1, `articulation` legato /
+staccato / normal, `vibrato` {rateHz, depthCents} or false, `seed`). On the screen it is **Played like a person** in the
+track's settings. `humanize` and `phrase` in a script are different: they write values into your notes, while `perform`
+leaves the notes as written and plays them differently.
 
 ## Notes are data
 

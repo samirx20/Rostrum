@@ -10,7 +10,7 @@ marker("drop", at=bar(3))
 pad = track("pad", builtIn="warmPad", volume=0.6)
 pad.chord(["D3", "A3", "F4"], at=beat(0), dur=beats(4))
 pad.note("D4", at="#drop+0.5", dur=1.0, vel=0.6)
-kit = track("drums", kit="synth")
+kit = track("drums", kit="drums")
 kit.hit("kick", at=beat(0))
 master(loudness=-16)
 """
@@ -40,7 +40,7 @@ def test_compile_has_the_contract_shape():
     assert pad["id"] == "pad" and pad["instrument"] == {"builtIn": "warmPad"}
     assert all({"pitch", "at", "dur"} <= set(n) for n in pad["notes"])
     assert pad["notes"][1]["at"] == 4.5                           # "#drop+0.5": bar 3 at 120 bpm = 4 s, + 0.5
-    assert drums["instrument"] == {"kit": "synth"} and drums["hits"][0]["drum"] == "kick"
+    assert drums["instrument"] == {"kit": "drums"} and drums["hits"][0]["drum"] == "kick"
     assert s["master"]["loudness"] == -16 and s["master"]["truePeak"] == -1
 
 

@@ -66,7 +66,7 @@ FIELDS = {
         V.drum("drum", group="Hit", help="A drum name or a GM key number."), V.time("at", group="Hit"),
         N("vel", 0, 1, "Hit", label="Velocity", display="percent"), N("pan", **PAN, group="Hit", imp="deep"),
         N("tune", 0.25, 4, "Hit", "×", imp="secondary", default=1,
-          help="Pitch of the drum, as a ratio: 1× as it is, 2× an octave up, 0.5× an octave down (synth kit only)."),
+          help="Pitch of the drum, as a ratio: 1× as it is, 2× an octave up, 0.5× an octave down (classic kit only)."),
         N("decay", 0.1, 4, "Hit", "×", imp="secondary", default=1, label="Ring time",
           help="How long the drum rings, as a ratio of its usual: 1× as it is, 2× twice as long."),
     ],

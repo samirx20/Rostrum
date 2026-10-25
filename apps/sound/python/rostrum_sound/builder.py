@@ -166,6 +166,8 @@ class Song(MusicMap):
     def track(self, id, **fields) -> Track:
         if any(t.id == id for t in self.tracks):
             raise RostrumError(codes.BAD_ARGUMENT, "script", f'track "{id}"', "is made twice")
+        if fields.get("kit") in names.OLD_KITS:
+            fields = {**fields, "kit": names.OLD_KITS[fields["kit"]]}
         self.tracks.append(Track(self, id, fields))
         return self.tracks[-1]
 

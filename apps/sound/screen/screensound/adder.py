@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from PySide6.QtCore import Property, QObject, Slot
-from rostrum_sound import names
+from rostrum_sound import names, roles
 from rostrum_sound.doc import sounds
 from rostrum_sound.voice import VOICES, speaker_name
 
@@ -23,11 +23,11 @@ from .cards import FAMILY, spaced
 KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("record", "Mic and files"), ("voice", "Voice"),
          ("mine", "My sounds")]
 # What a sound adds beyond its name (shown under it; "" when there is nothing to add, and `note` hides a repeat of the name).
-SAID = {"feltPiano": "Soft and close", "warmPad": "Slow start", "analogStrings": "Smooth ensemble",
-        "spiccatoStrings": "Short, bouncy", "choirPad": "Held notes", "cinematicBrass": "Big, filmic",
-        "glassMarimba": "Glassy, bright", "grandPiano": "Full, clear and even", "subBass": "Deep, one low line",
-        "marimba": "Wooden bars, round and warm", "vibraphone": "Metal bars, soft shimmer",
-        "glockenspiel": "Small metal bars, bright and high", "tubularBell": "Long, ringing bell tones"}
+# An instrument says what it is in the one role table (roles.py: the words before its bracket); a few more words here.
+SAID = {"marimba": "Wooden bars, round and warm", "vibraphone": "Metal bars, soft shimmer",
+        "glockenspiel": "Small metal bars, bright and high", "tubularBell": "Long, ringing bell tones",
+        "drums": "Rock kit: kick, snare, hats, toms, crash, ride", "studio": "Close-miked, rusty and dry",
+        "classic": "Synthesized: kick, snare, clap, hats, tom, cymbal, rim"}
 
 
 NO_HEAR = {"voice": "A voice is made from a line you type: add it, type a line, then press Play.",
@@ -55,16 +55,26 @@ def _entry(key, label, what, kind, fields, arm=False) -> dict:
     return {"key": key, "label": label, "what": what, "kind": kind, "fields": fields, "arm": arm}
 
 
+def _built_in(key: str) -> dict:
+    name = key[8:]
+    role = roles.ROLES.get(key)
+    what = role.sounds.split(" (")[0] if role else ""
+    return _entry(key, sounds.LABELS[key], SAID.get(name, what[:1].upper() + what[1:]), "instrument",
+                  {"name": sounds.default_name(key), **sounds.fields(key)})
+
+
 def _entries() -> list[dict]:
-    """Every sound a new track can start from: {key, label, what, kind, fields, arm}."""
-    out = [_entry(f"builtIn:{b}", _said(b), SAID.get(b, ""), "instrument",
-                  {"name": _said(b), **sounds.fields(f"builtIn:{b}")}) for b in names.BUILT_INS]
+    """Every sound a new track can start from: {key, label, what, kind, fields, arm}. The recorded instruments first,
+    the classic synthesized voices last among the instruments (the Sound picker's order, doc/sounds.py)."""
+    built_in = [k for k in sounds.KEYS if k.startswith("builtIn:")]
+    out = [_built_in(k) for k in built_in if not k.startswith("builtIn:classic.")]
     out.append(_entry("synth", "Synth", "A simple synth: saw, square, sine", "instrument",
                       {"name": sounds.SYNTH_NAME, **sounds.fields("synth")}))
-    out += [_entry(f"model:{m}", _said(m), SAID.get(m, FAMILY.get(m, "")), "instrument",
+    out += [_entry(f"model:{m}", sounds.LABELS[f"model:{m}"], SAID.get(m, FAMILY.get(m, "")), "instrument",
                    {"name": _said(m), **sounds.fields(f"model:{m}")}) for m in names.MODELS]
-    out.append(_entry("kit", "Drum kit", "Kick, snare, hats, toms: a row for each drum", "drums",
-                      {"name": sounds.KIT_NAME, **sounds.fields("kit")}))
+    out += [_built_in(k) for k in built_in if k.startswith("builtIn:classic.")]
+    out += [_entry(f"kit:{k}", sounds.LABELS[f"kit:{k}"], SAID[k], "drums",
+                   {"name": sounds.KIT_NAME, **sounds.fields(f"kit:{k}")}) for k in names.KITS]
     out.append(_entry("mic", "Microphone", "Record your voice or an instrument (ready to record)", "record",
                       {"name": "Recording", "instrument": "none"}, arm=True))
     out.append(_entry("files", "Sound files", "Recordings and loops", "record",
@@ -75,8 +85,8 @@ def _entries() -> list[dict]:
 
 
 ENTRIES = _entries()
-OLD_KEYS = {"piano": "builtIn:grandPiano", "strings": "builtIn:analogStrings", "pad": "builtIn:warmPad",   # `add-track`
-            "bass": "builtIn:subBass", "drums": "kit", "voice": "voice:ryan", "audio": "files"}
+OLD_KEYS = {"piano": "builtIn:piano", "strings": "builtIn:strings", "pad": "builtIn:warmPad",   # `add-track`
+            "bass": "builtIn:bass", "drums": "kit:drums", "voice": "voice:ryan", "audio": "files"}
 
 
 def placed_at(b, lead: float = 0.0):
@@ -109,6 +119,7 @@ def find(text: str, kind: str) -> list[dict]:
 
 def _entry_of(key: str) -> dict | None:
     key = OLD_KEYS.get(key, key)
+    key = sounds.canonical(key) if sounds.known(key) else key
     return next((e for e in ENTRIES if e["key"] == key), None)
 
 

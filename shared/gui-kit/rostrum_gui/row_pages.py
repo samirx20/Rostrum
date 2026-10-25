@@ -81,8 +81,8 @@ class RowPages(QAbstractListModel):
         self._show(rows, lambda p, new: p.reset(rows) if new else p.update(rows, instant or p is not self._page()))
 
     def park(self, rows: list[dict]):
-        """Rows a later pick will show, made ahead (bridge_select.make_panels_ahead): that layout's page, filled and
-        hidden; the shown page stays. It counts as shown longest ago, so it is the first to go for room."""
+        """A later selection's rows made ahead (bridge_select._park_rows): that layout's page, filled and hidden, so
+        the pick only shows it. Kept as the page shown longest ago, so it is the first to go when room is needed."""
         key = tuple(r.get("id") for r in rows)
         if any(k == key for k, _ in self._pages):
             return

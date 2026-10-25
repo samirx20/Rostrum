@@ -15,12 +15,17 @@ OLD = {"id": "root", "type": "doc", "tempo": 120, "tracks": [
 
 def test_a_song_saved_before_level_matching_gets_the_engine_the_same_volumes():
     data, labels = KIND.migrate(copy.deepcopy(OLD), 1)
-    assert labels and data["tracks"][0]["volume"] != 0.9 and data["tracks"][2]["volume"] == 0.7     # a sampled track has no gain
+    assert labels and data["tracks"][2]["volume"] == 0.7     # a sampled track has no gain; the others are offset by the new table (none yet for the recorded names)
     sent = {t["id"]: t for t in compile(data)["tracks"]}
     assert all(abs(sent[t["id"]]["volume"] - t["volume"]) < 1e-4 for t in OLD["tracks"])
     assert all(abs(a[1] - b[1]) < 1e-4 for a, b in zip(sent["keys"]["automation"]["volume"], LANE))
 
 
-def test_every_built_in_and_the_kit_has_a_measured_gain():
+def test_the_classic_voices_and_kit_keep_their_measured_gains():
     have = preset_level.presets()
-    assert all(f"builtIn:{n}" in have for n in names.BUILT_INS) and "kit:synth" in have
+    assert all(f"builtIn:{n}" in have for n in names.BUILT_IN_GROUPS["Classic (synthesized)"]) and "kit:classic" in have
+
+
+def test_every_plain_name_and_kit_has_a_measured_gain():
+    have = preset_level.presets()
+    assert all(f"builtIn:{n}" in have for g in names.BUILT_IN_GROUPS.values() for n in g) and {"kit:drums", "kit:studio"} <= set(have)

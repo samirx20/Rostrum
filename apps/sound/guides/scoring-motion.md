@@ -23,7 +23,7 @@ re-times. Check the timing with `look_music` (`what: "events"`) and listen with 
 ```python
 bell = track("bell", model="tubularBell")
 bell.note("G5", at="#logo lands", dur=2.0, vel=0.7)
-hits = track("hits", kit="synth")
+hits = track("hits", kit="drums")
 hits.hit("kick", at="#logo lands", vel=0.8)
 hits.hit("cymbal", at="#logo lands", vel=0.8)
 ```

@@ -1,0 +1,302 @@
+{
+ "packs": [
+  {
+   "id": "kenney-interface",
+   "title": "Kenney Interface Sounds",
+   "author": "Kenney (kenney.nl)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://kenney.nl/assets/interface-sounds",
+   "zip": {
+    "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+    "sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+    "bytes": 834536
+   }
+  },
+  {
+   "id": "kenney-ui",
+   "title": "Kenney UI Audio",
+   "author": "Kenney (kenney.nl)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://kenney.nl/assets/ui-audio",
+   "zip": {
+    "url": "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip",
+    "sha256": "946fc23a63d535d693eb31b2eabb80c8c28d6351e2186b344ceb71b2cb1d5eb6",
+    "bytes": 411949
+   }
+  },
+  {
+   "id": "kenney-impact",
+   "title": "Kenney Impact Sounds",
+   "author": "Kenney (kenney.nl)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://kenney.nl/assets/impact-sounds",
+   "zip": {
+    "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+    "sha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+    "bytes": 800850
+   }
+  },
+  {
+   "id": "kenney-digital",
+   "title": "Kenney Digital Audio",
+   "author": "Kenney (kenney.nl)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://kenney.nl/assets/digital-audio",
+   "zip": {
+    "url": "https://kenney.nl/media/pages/assets/digital-audio/216eac4753-1677590265/kenney_digital-audio.zip",
+    "sha256": "24e6ce28b76a6d8c89cff4d331e0965ff5c3de8a73c612028e9d363cc64e4f06",
+    "bytes": 990367
+   }
+  },
+  {
+   "id": "owlish",
+   "title": "Owlish Media Sound Effects Pack",
+   "author": "Owlish Media (OpenGameArt)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://opengameart.org/content/sound-effects-pack",
+   "zip": {
+    "url": "https://opengameart.org/sites/default/files/Owlish%20Media%20Sound%20Effects.zip",
+    "sha256": "57d7059fe2c0ea5f47c7554ace22a538ea22ab40bfc0906b71aa259afffd3d18",
+    "bytes": 142384346
+   }
+  },
+  {
+   "id": "bigsoundbank",
+   "title": "BigSoundBank picks (Joseph Sardin)",
+   "author": "Joseph Sardin (bigsoundbank.com)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://bigsoundbank.com",
+   "files": true
+  },
+  {
+   "id": "freesound",
+   "title": "Freesound CC0 picks",
+   "author": "Freesound.org authors (CC0 files only; credits in picks.json)",
+   "group": "sfx",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://freesound.org",
+   "files": true
+  },
+  {
+   "id": "musescore-general",
+   "title": "MuseScore General (General MIDI SoundFont: 128 instruments and drum kits)",
+   "author": "S. Christian Collins, from FluidR3 by Frank Wen and FluidR3Mono by Michael Cowgill",
+   "group": "instruments",
+   "license": "MIT (FluidR3 / FluidR3Mono / MuseScore_General); its acknowledgements and copyright notices travel with it: MuseScore_General_License.md",
+   "page": "https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/",
+   "direct": [
+    {
+     "url": "https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf2",
+     "path": "MuseScore_General.sf2",
+     "sha256": "ee51d2c4b1525e70f19a45909c4fd7a2e26d91d115fa89dbf5a6bc413d8b9bf3",
+     "bytes": 215617455
+    },
+    {
+     "url": "https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General_License.md",
+     "path": "MuseScore_General_License.md",
+     "sha256": "5ad8d737e13c7f01f5b9674872a82a92b4ba253603e8ed14b9db12293550b4b9",
+     "bytes": 0
+    }
+   ]
+  },
+  {
+   "id": "vsco2-strings",
+   "title": "VSCO 2 Community Edition orchestra: violin, viola and cello sections, contrabass, solo violin, harp",
+   "author": "Versilian Studios (Samuel Gossner and contributors)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VSCO-2-CE",
+   "files": true
+  },
+  {
+   "id": "vsco2-brass",
+   "title": "VSCO 2 Community Edition orchestra: horn, trumpet, trombone, tuba",
+   "author": "Versilian Studios (Samuel Gossner and contributors)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VSCO-2-CE",
+   "files": true
+  },
+  {
+   "id": "vsco2-woodwinds",
+   "title": "VSCO 2 Community Edition orchestra: flute, piccolo, oboe, clarinet, bassoon",
+   "author": "Versilian Studios (Samuel Gossner and contributors)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VSCO-2-CE",
+   "files": true
+  },
+  {
+   "id": "vsco2-percussion",
+   "title": "VSCO 2 Community Edition orchestra: timpani",
+   "author": "Versilian Studios (Samuel Gossner and contributors)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VSCO-2-CE",
+   "files": true
+  },
+  {
+   "id": "freepats-guitar",
+   "title": "FreePats Spanish classical guitar (nylon strings, a SoundFont)",
+   "author": "Roberto for the FreePats project (freepats.zenvoid.org)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://freepats.zenvoid.org/Guitar/acoustic-guitar.html",
+   "archive": {
+    "url": "https://freepats.zenvoid.org/Guitar/SpanishClassicalGuitar/SpanishClassicalGuitar-SF2-20190618.7z",
+    "sha256": "8c192f1fc640a553199a4a43a17ae12354a6a05e3d6aad79bd43b5d29314ff51",
+    "bytes": 9990750,
+    "extract": "\\.(sf2|txt)$"
+   }
+  },
+  {
+   "id": "salamander-piano",
+   "title": "Salamander Grand Piano V3 (Yamaha C5, SFZ, 44.1 kHz 16-bit)",
+   "author": "Alexander Holm (packaged by FreePats)",
+   "group": "instruments",
+   "license": "CC-BY 3.0: free for any use, commercial included; credit \"Salamander Grand Piano by Alexander Holm (CC-BY 3.0)\" (its README travels with it)",
+   "page": "https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html",
+   "credit": "Salamander Grand Piano by Alexander Holm (CC-BY 3.0)",
+   "archive": {
+    "url": "https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/SalamanderGrandPianoV3+20161209_44khz16bit.tar.xz",
+    "sha256": "58750eb1366761e187f71ddb9b932355ea894d28ec4331e74ab8acb44c819936",
+    "bytes": 412313804,
+    "extract": "(\\.sfz|\\.wav|README)$"
+   }
+  },
+  {
+   "id": "studio-kit",
+   "title": "Studio drum kit: Karoryfer Big Rusty Drums (close and overhead mics) with VCSL claps and shaker",
+   "author": "Karoryfer Samples (Big Rusty Drums); Versilian Studios (VCSL)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/karoryfer.big-rusty-drums",
+   "files": true,
+   "generated": true
+  },
+  {
+   "id": "shinyguitar",
+   "title": "Shinyguitar: archtop steel-string guitar, acoustic (microphone) half",
+   "author": "Karoryfer Samples",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/karoryfer.shinyguitar",
+   "files": true,
+   "generated": true
+  },
+  {
+   "id": "growlybass",
+   "title": "Growlybass: Squier Jazz Bass, fingered, direct (sustain)",
+   "author": "Karoryfer Samples",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/karoryfer.growlybass",
+   "files": true
+  },
+  {
+   "id": "dsmolken-bass",
+   "title": "D. Smolken double bass (1958 Otto Rubner), pizzicato",
+   "author": "D. Smolken (sfzinstruments)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/dsmolken.double-bass",
+   "files": true
+  },
+  {
+   "id": "bigcat-cello",
+   "title": "Karoryfer x bigcat solo cello (sustain, pizzicato)",
+   "author": "Karoryfer Samples and bigcat",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/karoryfer-bigcat.cello",
+   "files": true
+  },
+  {
+   "id": "wurlitzer",
+   "title": "Wurlitzer EP200 electric piano",
+   "author": "Greg Sullivan (SFZ by kinwie)",
+   "group": "instruments",
+   "license": "CC-BY 3.0: free for any use, commercial included; credit \"Wurlitzer EP200 samples by Greg Sullivan (CC-BY 3.0)\" (its README travels with it)",
+   "page": "https://github.com/sfzinstruments/GregSullivan.E-Pianos",
+   "credit": "Wurlitzer EP200 samples by Greg Sullivan (CC-BY 3.0)",
+   "files": true
+  },
+  {
+   "id": "vcsl-mallets",
+   "title": "VCSL mallets: marimba, vibraphone, xylophone, glockenspiel, tubular bells",
+   "author": "Versilian Studios (VCSL)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VCSL",
+   "files": true
+  },
+  {
+   "id": "vcsl-organ",
+   "title": "VCSL pipe organ (loud registration: manual and pedal)",
+   "author": "Versilian Studios (VCSL), sampled by Simon Dalzell",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VCSL",
+   "files": true
+  },
+  {
+   "id": "vcsl-sax",
+   "title": "VCSL tenor saxophone (non-vibrato, vibrato, staccato)",
+   "author": "Versilian Studios (VCSL)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VCSL",
+   "files": true
+  },
+  {
+   "id": "fsbs-clean-guitar",
+   "title": "FreePats FSBS electric guitar, clean #1 (Fender, bridge pickup, amped)",
+   "author": "FreePats project (freepats.zenvoid.org)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://freepats.zenvoid.org/ElectricGuitar/clean-electric-guitar.html",
+   "archive": {
+    "url": "https://github.com/freepats/electric-guitar-FSBS-clean/releases/download/2026-08-07/EGuitarFSBS-clean-SFZ%2BFLAC-20260807.7z",
+    "sha256": "a929a3cbfc8289e325be56dab49f5fd560bbc3995c40b69f8f05caee380e8be3",
+    "bytes": 123736791,
+    "extract": "(\\.sfz|\\.flac|\\.wav|\\.txt)$"
+   }
+  },
+  {
+   "id": "drawbar-organ",
+   "title": "FreePats drawbar organ emulation (tonewheel, rendered with setBfree)",
+   "author": "FreePats project (freepats.zenvoid.org)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://freepats.zenvoid.org/Organ/electric-organ.html",
+   "archive": {
+    "url": "https://freepats.zenvoid.org/Organ/DrawbarOrganEmulation/DrawbarOrganEmulation-SFZ-20190712.tar.xz",
+    "sha256": "e2da18b0a4d13be7020037e18e4a719387433357e7603d0773990e794dcf5d0f",
+    "bytes": 6042972,
+    "extract": "(\\.sfz|\\.flac|\\.wav|\\.txt)$"
+   }
+  },
+  {
+   "id": "muldjord-kit",
+   "title": "MuldjordKit (FreePats stereo version of the DrumGizmo kit): rock drum kit",
+   "author": "FreePats project (freepats.zenvoid.org)",
+   "group": "instruments",
+   "license": "CC-BY 4.0: free for any use, commercial included; credit \"Drum samples provided by DrumGizmo.org (MuldjordKit by Lars Muldjord, CC-BY 4.0)\"",
+   "page": "https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html",
+   "credit": "Drum samples provided by DrumGizmo.org (MuldjordKit by Lars Muldjord, CC-BY 4.0)",
+   "generated": true,
+   "archive": {
+    "url": "https://github.com/freepats/muldjordkit/releases/download/2020-10-18/MuldjordKit-SFZ%2BFLAC-20201018.7z",
+    "sha256": "89261006296a9a4d93dfda2c1c5a3925215e24329f408c2c8bc1bcf6ea123c8f",
+    "bytes": 165026479,
+    "extract": "(\\.sfz|\\.flac|\\.wav|\\.txt)$"
+   }
+  }
+ ]
+}

@@ -15,7 +15,7 @@ p = track("lead", builtIn="feltPiano")
 p.note("D4", at=beat(0), dur=beats(1), vel=0.5); p.note("F4", at=bar(2), dur=beats(2)); p.note("A4", at=bar(4), dur=1.0)
 p.note("C5", at="#hit+0.25", dur=0.5)
 p.automate("volume", [(0, 0.5), (bar(2), 0.8), (bar(4), 1.0)])
-d = track("drums", kit="synth"); d.hit("kick", at=beat(0)); d.hit("snare", at=bar(4))
+d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at=bar(4))
 """
 
 

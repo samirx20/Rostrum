@@ -87,7 +87,7 @@ pub fn run(job: Job) -> Result<Value, Error> {
     let tracks: Vec<Value> = mix.tracks.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs,
         "span": t.span.map(|(a, b)| [a, b]), "onsets": t.onsets, "bands": t.bands })).collect();
     Ok(json!({
-        "file": out.to_string_lossy(), "seconds": c.seconds,
+        "file": out.to_string_lossy(), "seconds": c.seconds, "credits": c.credits,
         "range": s.range.map(|(a, b)| [a as f64 / sr as f64, b as f64 / sr as f64]), "renderSeconds": took, "sampleRate": sr,
         "lufs": mix.lufs, "truePeak": mix.true_peak, "peak": mix.peak, "lra": loud.lra, "clipped": mix.clipped, "bands": mix.bands,
         "series": { "hop": 0.1, "shortTermWindow": 3.0, "correlationWindow": 0.4, "momentaryWindow": 0.4,

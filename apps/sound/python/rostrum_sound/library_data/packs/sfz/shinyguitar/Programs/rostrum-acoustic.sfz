@@ -1,0 +1,9 @@
+// Rostrum: Shinyguitar (Karoryfer, CC0), the acoustic microphone half at its default controllers (packMaps.ts).
+<control> default_path=../Samples/ set_cc100=127
+<global> ampeg_attack=0.0002
+#include "acoustic_one.sfz"
+#include "acoustic_two.sfz"
+#include "acoustic_three.sfz"
+#include "acoustic_four.sfz"
+#include "acoustic_five.sfz"
+#include "acoustic_release.sfz"

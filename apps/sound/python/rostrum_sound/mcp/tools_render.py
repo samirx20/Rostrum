@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
-from .. import deliver, handoff, presets
+from .. import deliver, handoff, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 
@@ -14,11 +14,12 @@ ITEM = {"item": {"type": "string", "description": "The Sound document's item id.
 
 
 def summary(r: dict) -> str:
+    credits = packs.credit_lines(r)
     quiet = sorted(r["tracks"], key=lambda t: t["lufs"])[:1]
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
-            + f".{q}")
+            + f".{q}" + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else ""))
 
 
 def register(tools: Tools):
@@ -39,7 +40,7 @@ def register(tools: Tools):
         "to": {"description": "Where the part ends (a time). Needs `from`."}}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
-        peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Returns a job."""
+        peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them. Returns a job."""
         doc = ctx.document(args.get("item"))
         args = presets.expand(args, args.get("preset"))             # a wrong preset answers now
         item = doc.item_id
@@ -71,6 +72,7 @@ def register(tools: Tools):
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+                              **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy") if k in r}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options)))}")
