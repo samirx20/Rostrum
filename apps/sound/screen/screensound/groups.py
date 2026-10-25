@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from rostrum_sound import names
 
+from . import pick
+
 
 def _children(root: dict) -> dict[str, list[str]]:
     """{bus id: ids of the tracks and buses that play to it}, tracks first, each in document order."""
@@ -34,7 +36,8 @@ def arrange(root: dict, tracks: list[dict], mix: list[dict], folded) -> list[dic
         under, fold = [by_id[k] for k in below(bus) if not by_id[k].get("mix")], bus in folded
         out.append({**by_id[bus], "group": True, "depth": depth, "folded": fold, "count": len(under),
                     "solo": bool(under) and all(r.get("solo") for r in under),     # lit when every track in it is soloed
-                    "blocks": [b for r in under for b in r["blocks"]]})      # open or folded, its lane shows theirs, dimmed
+                    "blocks": [{**b, "lanes": pick.lanes(b, r)} for r in under for b in r["blocks"]]})   # open or folded,
+        # its lane shows theirs, dimmed, each where its own track's row places it (the header has no key span of its own)
         if fold:
             seen.update(below(bus))
             return

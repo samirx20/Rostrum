@@ -16,14 +16,17 @@ def _score(b, t, tol):
 def lanes(b: dict, row: dict) -> list[float] | None:
     """Where a block sits across its arrangement row (0 top .. 1 bottom), one place per bar it draws: a note's keys
     in the row's `span`, a hit's drum among the row's `drums`, a stacked clip's own row (`stack`); None: anywhere.
-    LaneBlocks.qml `lanesOf` is the same rule."""
+    A block that says its places (`lanes`: a group header's, from its own track's row) keeps them. LaneBlocks.qml
+    `lanesOf` is the same rule."""
+    if "lanes" in b:
+        return b["lanes"]
     if b["type"] == "note":
         lo, hi = row["span"]
         return [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
     if b["type"] == "hit":
         d = row["drums"]
         return [d.index(b["drum"]) / max(len(d) - 1, 1)]
-    return b.get("lanes")
+    return None
 
 
 def block_at(row: dict, t: float, lane: float, tol: float, lane_tol: float = 1.0) -> str:

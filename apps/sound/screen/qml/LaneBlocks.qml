@@ -30,13 +30,14 @@ Item {
     // the same rule)
     readonly property var drumAt: { var o = {}, d = track.drums || []; for (var i = 0; i < d.length; i++) o[d[i]] = i; return o }
     function lanesOf(b) {
+        if (b.lanes) return b.lanes            // a group header's: placed by its own track's row
         if (b.type === "note") {
             var lo = track.span[0], hi = track.span[1], out = []
             for (var i = 0; i < b.keys.length; i++) out.push(hi === lo ? 0.5 : 1 - (b.keys[i] - lo) / (hi - lo))
             return out
         }
         if (b.type === "hit") return [drumAt[b.drum] / Math.max((track.drums || []).length - 1, 1)]
-        return b.lanes || []
+        return []
     }
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
