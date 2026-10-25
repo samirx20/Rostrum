@@ -145,18 +145,14 @@ Popover {
 Delete: `padding`, `closePolicy`, `background`, the title `Text`, both `Shortcut`s, and the `x:` / `y:` on the instance in
 `Main.qml:121`. `pop.width` is the real width after the first open (the popover re-places itself when its size settles).
 
-### Adoption: Team Priyam, Sound `AskPopover.qml` ("Land a bar": one number; Enter or the button answers, Esc closes)
-Today opened by `backend.askWanted` through `Timeline.qml:185` (`AskPopover { id: ask; parent: cbar; x: …; y: cbar.height + 2 }`):
-```qml
-Popover {
-    id: ask
-    property string key; property string label; property real value
-    focusItem: field
-    onOpened: { field.text = String(value); field.selectAll() }       // Popover has put the keys in `field`
-    function go() { const v = Number(field.text); if (!isNaN(v) && field.text !== "") { close(); backend.landBar(key, v) } }
-    // the Row (label, the TextInput box with onAccepted: ask.go(), the Land button) unchanged
-}
-```
-Delete: `padding`, `closePolicy`, `background`, and on the instance in `Timeline.qml` the `parent: cbar` and `x` / `y`. Where it opens:
-`ask.openAt(<the item it belongs under>)` or `ask.openAtPoint(x, y)` instead of the fixed `x` / `y` (the popover lives on the
-window's overlay, so it can never leave the window). Esc needs no code (it closes; `escaped()` if the app wants it).
+### The amounts popover (`AmountsPopover.qml`, sound-pro-workflows SPEC § 2, "base A")
+An action whose operation takes amounts lists them as data (`amounts=["timing", "velocity", …]` in the action dict;
+`action_adapt` reads it). Its panel button runs at once with the amounts last kept and gets a small ▾
+(`actionAmounts:<id>`); in menus and Ctrl+K its name ends in "…" (`asks=True`: every door opens the popover, keys too).
+The rows are made from the operation's own `Param`s (`rostrum_gui/amounts.py`: primary rows, secondary under More,
+an app filter for rows that don't apply now); `amounts_page.py` runs the live session: each change re-runs the action
+on the state from before it opened (`Gesture.preview(calls, fresh=True)`), Enter or a click away ends the gesture as one
+step named with the amounts (`Drag.end(label=…)`), Esc cancels it. One instance per window:
+`AmountsPopover { hub: backend.actions }`. Objectnames: `amountsPopover`, `amount_<param>`, `amountsMore`,
+`amountsAnotherTake` (shown for a `seed` amount). Sound's first users: Humanise ▾, Quantise ▾, Transpose › By…,
+Repeat…, Start a bar here… (it replaced Sound's one-number `AskPopover.qml`).

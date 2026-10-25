@@ -2,7 +2,8 @@
 //! not just sequenced: micro-timing, a lean, swing, velocity variety, a dynamics curve, accents on the beat,
 //! legato or staccato, vibrato on held notes, the pedal, strums that vary string to string. On by default
 //! with the instrument family's values (names.rs PERFORM_DEFAULTS); a track's `perform` object merges over
-//! them and `false` plays exactly as written. Seeded by the track id (and `seed`): the same every render.
+//! them (`person: false` drops the family's values, so only the fields named play, e.g. swing alone) and
+//! `false` plays exactly as written. Seeded by the track id (and `seed`): the same every render.
 //! It rewrites the voices the contract hands the engine, so the render and everything that plays it hear one thing.
 
 use super::effects;
@@ -43,9 +44,10 @@ pub fn read(o: &mut Obj, family: &str, tempo: &Tempo) -> Result<Option<Perform>,
         Some(v @ Value::Object(_)) => v,
         Some(v) => return Err(Error::bad(&at, v, "is not true, false or an object of performance fields", &["true", "false", "{\"timing\": 8, \"swing\": 0.3}"])),
     };
-    let d = perform_defaults(family);
-    let def = |k: &str| Some(d.get(k).and_then(Value::as_f64).unwrap_or(0.0));
     let mut p = Obj::new(src, at)?;
+    // `person: false`: the family's looseness off (no defaults); the fields named beside it still apply.
+    let d = if p.bool("person", true)? { perform_defaults(family) } else { json!({}) };
+    let def = |k: &str| Some(d.get(k).and_then(Value::as_f64).unwrap_or(0.0));
     let seed = p.num("seed", -1e9, 1e9, Some(0.0))?;
     let timing = p.num("timing", 0.0, 60.0, def("timing"))?;
     let lean = p.num("lean", -60.0, 60.0, Some(0.0))?;

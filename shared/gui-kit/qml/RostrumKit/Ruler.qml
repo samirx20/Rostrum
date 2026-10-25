@@ -8,7 +8,9 @@ import "."
 //   marker band (markers, or editMarkers): MarkerFlag.qml per marker, shared solid with a chain, own hollow;
 //   time scale: ticks and labels (the first inside the left edge; a label that would be cut is left out), with an
 //     optional upper line the app fills (`upper`: [{at seconds, text}], e.g. Sound's bars over seconds).
-// Press or drag on the scale emits scrubbed(value), in the ruler's unit: the app's playhead op does the seeking.
+// Press or drag on the scale emits scrubbed(value, free), in the ruler's unit (free: Ctrl held, the app puts it exactly
+// there; else the app snaps it, Sound to its grid, 2D to whole frames): the app's playhead op does the seeking.
+// `scrubbing` is true from that press to its release; `onSeconds`: the press is on the seconds line under an `upper` line.
 // newMarker() (the app's M key) opens a name field at the playhead with a Shared switch when canShare; Enter emits
 // markerAdded(name, shared, at seconds) and the app's marker operation adds it. The kit never edits on its own.
 // Right-click on a flag (editMarkers, and `markerSource`: the screen's MarkerWatch, rostrum_gui/markers.py): its menu,
@@ -35,7 +37,7 @@ Item {
     property var upper: []             // the scale's upper line: [{at, text}] in seconds; empty: one line
     property bool canShare: false      // the document is in a project: new markers may be shared
     property var markerSource: null    // a MarkerWatch: gives the right-click menu and runs its choices
-    signal scrubbed(real t)
+    signal scrubbed(real t, bool free)
     signal markerMoved(string id, real at)        // seconds, on whole frames
     signal markerRenamed(string id, string name)
     signal markerRemoved(string id)
@@ -44,6 +46,9 @@ Item {
     signal rangeSet(real a, real b)               // seconds, a < b, on whole frames
     signal rangeCleared()
 
+    readonly property bool scrubbing: area.pressed && !area.ranging
+    readonly property bool onSeconds: onSecondsAt(area.mouseY)
+    function onSecondsAt(y) { return seconds && upper.length > 0 && y >= labelTop + 13 }   // (the upper line is above it)
     readonly property bool frames: unit === "frames"
     readonly property real total: frames ? Math.max(1, last + 1 - first) : Math.max(duration, 0.001)   // whole length
     readonly property real origin: (frames ? first : 0) + (view ? view.start * (frames ? fps : 1) : 0)
@@ -141,9 +146,9 @@ Item {
             ranging = r.rangeBand && m.y < r.bandH
             const e = ranging ? edgeAt(m.x) : 0        // an edge of the range: drag it, the other end stays
             if (e) { a = e === 1 ? r.range.end : r.range.start; b = r.secOf(m.x) }
-            else if (ranging) { a = r.secOf(m.x); b = a } else r.scrubbed(r.tOf(m.x))
+            else if (ranging) { a = r.secOf(m.x); b = a } else r.scrubbed(r.tOf(m.x), (m.modifiers & Qt.ControlModifier) !== 0)
         }
-        onPositionChanged: (m) => { if (!pressed) return; if (ranging) b = r.secOf(m.x); else r.scrubbed(r.tOf(m.x)) }
+        onPositionChanged: (m) => { if (!pressed) return; if (ranging) b = r.secOf(m.x); else r.scrubbed(r.tOf(m.x), (m.modifiers & Qt.ControlModifier) !== 0) }
         onReleased: { if (ranging && Math.abs(r.xOfSec(b) - r.xOfSec(a)) >= 2) r.rangeSet(Math.min(a, b), Math.max(a, b))
                       ranging = false }
         onDoubleClicked: (m) => { if (r.rangeBand && m.y < r.bandH && r.range) r.rangeCleared() }

@@ -196,6 +196,21 @@ fn perform_false_plays_as_written_and_performing_is_the_same_every_time() {
 }
 
 #[test]
+fn person_false_keeps_swing_and_drops_the_family_looseness() {
+    // Swing 1 on 8ths at 100 bpm: every off-beat 8th (odd chord, odd hat) lands 1/6 beat = 0.1 s late; no velocity or length changes.
+    let (written, swung) = (voices(json!(false)), voices(json!({ "person": false, "swing": 1 })));
+    assert_eq!(written.len(), swung.len());
+    for (i, (w, s)) in written.iter().zip(&swung).enumerate() {
+        let (n, root) = if i < 24 { (i / 3, i % 3 == 0) } else { (i - 24, true) };
+        let late = if n % 2 == 1 { (0.1f64 * 48000.0).round() as u64 } else { 0 };
+        // A strum's later tones (40 ms off the grid) are past the engine's swing window (0.08 of a cell): roots and hats only.
+        if root { assert_eq!(s["startIdx"].as_u64().unwrap(), w["startIdx"].as_u64().unwrap() + late, "voice {i}") }
+        assert_eq!(s["velocity"], w["velocity"], "voice {i}: no velocity spread or accent");
+        assert_eq!(s["duration"], w["duration"], "voice {i}: no articulation");
+    }
+}
+
+#[test]
 fn stems_carry_the_limiter_so_they_add_up_to_the_mix_and_never_clip() {
     // Two tracks of the same loud tone, mastered loud: the limiter works. The stems take its gain too (the critic's piano
     // stem took the master's gain but not its limiter and clipped), so they stay under full scale and add up to the mix.

@@ -9,6 +9,8 @@ import "."
 // selection has; the slots are fixed in the data (action_views.panel: what applies to one item first, so a second item
 // only adds after). The runs flow on the panel grid, a wider gap between runs, wrapping when the panel is narrow. The
 // less used ones (secondary) are one "⋯" at the end of the row, folded like right-click; no main action, no row.
+// An action with amounts (rostrum_gui/amounts.py) has a small ▾ beside its button: the button runs it at once with the
+// last amounts, the ▾ opens the app's AmountsPopover under it (hub.ask); in a menu its name ends in "…" (hub.choose).
 // Resting on an action (about 250 ms) shows its would-be result on the canvas, recorded nowhere (hub.previewStart; H63);
 // moving off (or the row changing, or a click) takes it back. An app whose hub has no preview shows nothing.
 Item {
@@ -65,18 +67,30 @@ Item {
                         onClicked: { delay.stop(); section.hub.run(modelData.id) }
                     }
                 }
-                KeptRepeater {  // the untitled actions: small buttons
+                KeptRepeater {  // the untitled actions: small buttons; one with amounts has its ▾ right beside it
                     id: buttonsKept
                     needed: run.icons || run.folded ? 0 : run.modelData.items.length
-                    delegate: Button {
+                    delegate: Row {
                         required property int index
                         visible: index < buttonsKept.needed
                         readonly property var modelData: run.modelData.items[index] || ({})
-                        objectName: "action:" + modelData.id
-                        implicitHeight: section.size; text: modelData.label || ""; tip: modelData.label || ""
-                        help: modelData.keys ? modelData.label + " (" + modelData.keys + ")" : ""
-                        onHoveredChanged: hovered ? section.rest(modelData.id) : section.leave()
-                        onClicked: { delay.stop(); section.hub.run(modelData.id) }
+                        spacing: 1
+                        Button {
+                            objectName: "action:" + parent.modelData.id
+                            implicitHeight: section.size; text: parent.modelData.label || ""; tip: parent.modelData.label || ""
+                            help: parent.modelData.keys ? parent.modelData.label + " (" + parent.modelData.keys + ")" : ""
+                            onHoveredChanged: hovered ? section.rest(parent.modelData.id) : section.leave()
+                            onClicked: { delay.stop(); section.hub.run(parent.modelData.id) }
+                        }
+                        IconButton {    // ▾: the amounts popover under it (the button itself runs with the last amounts)
+                            id: amountsButton
+                            visible: !!parent.modelData.amounts
+                            objectName: "actionAmounts:" + parent.modelData.id
+                            width: section.size - 6; height: section.size
+                            tip: (parent.modelData.label || "") + " amounts"; help: "How much: changes it live, Enter keeps it"
+                            Chevron { anchors.centerIn: parent; color: amountsButton.ink }
+                            onClicked: { delay.stop(); section.leave(); section.hub.ask(parent.modelData.id) }
+                        }
                     }
                 }
                 Button {        // a bar without icons: one button, its actions in a menu
@@ -98,5 +112,5 @@ Item {
             }
         }
     }
-    ActionMenu { id: menu; onPicked: (v) => { delay.stop(); section.hub.run(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }
+    ActionMenu { id: menu; onPicked: (v) => { delay.stop(); section.hub.choose(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }
 }

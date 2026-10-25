@@ -53,6 +53,14 @@ class Action:
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
     why: str = ""                             # the app's own sentence for why it isn't offered
     release: str = ""                         # a hold key let go: the app's own "do" run then (only if the press ran)
+    # Amounts (the kit's amounts popover, amounts.py): the names of its operation's parameters a person may set; then
+    # calls(facts, amounts) gets {name: value} (empty = the operation's defaults). A button runs it at once with the
+    # last amounts used and its ▾ opens the popover; menus and Ctrl+K say "Name…" and open it. `asks`: every door
+    # opens it first (Repeat…). `fit(facts, amounts)` -> {name: row changes}: the app's own say on each row now
+    # ({"valid": False} = absent; a label, range, options, or the starting "default").
+    amounts: tuple = ()
+    asks: bool = False
+    fit: Callable | None = None
 
     def __post_init__(self):
         if self.importance not in ("primary", "secondary"):
@@ -106,9 +114,10 @@ class ActionList:
     def keys_of(self, a: Action) -> str:
         return normal(a.keys) if a.keys else (self.keymap.key_of(a.job) if a.job else "")
 
-    def _check(self, a: Action, facts, kind_facts=None):
+    def _check(self, a: Action, facts, kind_facts=None, amounts=None):
         """(why it is absent | None, its calls). The one guard every door uses. `kind_facts`: {item id: the kind's
-        facts}, shared by every action of one `available` (each `valid_when` read them again per action)."""
+        facts}, shared by every action of one `available` (each `valid_when` read them again per action). `amounts`:
+        {action id: the amounts last used} (screen state the hub keeps)."""
         n, items = len(facts.ids), facts.items
         if n < a.min_targets:
             return "few", []
@@ -123,19 +132,20 @@ class ActionList:
             return "invalid", []
         if a.valid and not a.valid(facts):
             return "invalid", []
-        calls = a.calls(facts) if a.calls else []
+        calls = (a.calls(facts, (amounts or {}).get(a.id, {})) if a.amounts else a.calls(facts)) if a.calls else []
         if a.calls and not calls:
             return "nothing", []
         return None, calls
 
-    def available(self, facts, among=None) -> list[dict]:
+    def available(self, facts, among=None, amounts=None) -> list[dict]:
         """The actions this selection allows, resolved, in order: promoted first, then by rank. `among`: only these
-        action ids are looked at (a key's own: every action's rule ran for one key press, ~3-5 ms)."""
+        action ids are looked at (a key's own: every action's rule ran for one key press, ~3-5 ms). `amounts`: the
+        amounts last used per action (their calls are made with them)."""
         out, kind_facts = [], {}
         for i, a in enumerate(self.actions):
             if among is not None and a.id not in among:
                 continue
-            reason, calls = self._check(a, facts, kind_facts)
+            reason, calls = self._check(a, facts, kind_facts, amounts)
             if reason is None:
                 first = 0 if a.promoted and a.promoted(facts) else 1
                 out.append(((first, a.rank, i), {
@@ -144,7 +154,7 @@ class ActionList:
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
                     "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon,
                     "row": a.row, "row_label": a.row_label(facts) if callable(a.row_label) else a.row_label,
-                    "min_targets": a.min_targets}))
+                    "min_targets": a.min_targets, "amounts": bool(a.amounts), "asks": a.asks}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
 
     def why_not(self, facts, typed: str) -> str:
@@ -178,14 +188,17 @@ class ActionList:
             return f"{label} would change nothing here."
         return f"{label} doesn't fit what is selected."
 
-    def on_key(self, facts, job_or_keys: str):
+    def find(self, id_: str) -> Action | None:
+        return next((a for a in self.actions if a.id == id_), None)
+
+    def on_key(self, facts, job_or_keys: str, amounts=None):
         """A shortcut pressed: (entry to run, "") or (None, why). A job with no action here: (None, "")."""
         job = job_or_keys if self.keymap.has(job_or_keys) else self.keymap.job_of(job_or_keys)
         mine = [a for a in self.actions if job and self.job_of(a) == job]
         if not mine:
             return None, ""
         ids = {a.id for a in mine}
-        entry = next(iter(self.available(facts, ids)), None)
+        entry = next(iter(self.available(facts, ids, **({"amounts": amounts} if amounts is not None else {}))), None)
         if entry:
             return entry, ""
         near = next((a for a in mine if self._check(a, facts)[0] not in ("kind",)), mine[0])

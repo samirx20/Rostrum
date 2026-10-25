@@ -9,6 +9,13 @@ QML reads `bar` (the context bar), `panel` (the settings panel's actions at its 
 `keyUp(job)` (keyhold.py), and runs the release of the action its press ran: nothing if the press ran nothing. Every door re-reads the list at the
 moment it is used, so a stale bar can never run an action that is no longer valid: it says why instead. An action
 that raises is reported by name (qt_faults: the person sees "Select inside didn't work: …", a scripted run fails).
+
+Amounts (actions.Action.amounts; amounts.py, amounts_page.py): a button (`run`) and a key run such an action at once
+with the amounts last kept; its ▾ (`ask`), a menu or Ctrl+K (`choose`), and every door of an action that `asks`
+first, open the amounts popover: `ask` starts the live session on `amounts` (the popover's rows) and sends
+`amountsWanted(id, anchors)`, the objectNames on screen to open it under (the ▾, the button, its menu's button), and
+the app's one AmountsPopover opens there. An app with amounts gives `drag_fn(label)` (a Drag on its document) and
+`kept_fn(change, label)`; `subject_fn(id, facts)` names what an action acts on in its title ("12 notes").
 """
 from __future__ import annotations
 
@@ -19,6 +26,7 @@ from . import action_views as views
 from . import qt_faults
 from .actions import ActionList
 from .after_frame import AfterFrame
+from .amounts_page import AmountsPage
 from .keyhold import KeyHold
 from .match import starts
 
@@ -27,9 +35,10 @@ class ActionHub(QObject):
     barChanged = Signal()
     panelChanged = Signal()
     offeredChanged = Signal()
+    amountsWanted = Signal(str, "QVariantList")      # an action's amounts popover: open it under the first of these shown
 
     def __init__(self, action_list: ActionList, facts_fn, what_fn, apply_fn, do_fn, message_fn, parent=None,
-                 preview_fn=None, unpreview_fn=None):
+                 preview_fn=None, unpreview_fn=None, drag_fn=None, kept_fn=None, subject_fn=None):
         super().__init__(parent)
         self.list = action_list
         self._jobs = None
@@ -41,10 +50,21 @@ class ActionHub(QObject):
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
         self._hold = KeyHold(self, action_list.keymap)     # watches releases only when the map has hold keys
         self._later = AfterFrame(self.refresh, self)        # refresh_later: once, the frame after
+        self._subject = subject_fn or (lambda _id, facts: self._what(facts))
+        self._page = AmountsPage(drag_fn, kept_fn or (lambda change, label: None), message_fn, self) if drag_fn else None
 
     def _now(self):
         facts = self._facts()
-        return facts, self.list.available(facts)
+        return facts, self.list.available(facts, **self._kept())
+
+    def _kept(self) -> dict:
+        """The amounts last kept, for an app with amounts (an app's own list may override `available` without them)."""
+        return {"amounts": self._page.memory} if self._page else {}
+
+    @Property(QObject, constant=True)
+    def amounts(self):
+        """The amounts popover's live session (amounts_page.AmountsPage); None for an app without amounts."""
+        return self._page
 
     @Property("QVariantMap", notify=barChanged)
     def bar(self):
@@ -126,12 +146,41 @@ class ActionHub(QObject):
 
     @Slot(str)
     def run(self, id_):
+        """A click on its button: at once (an action with amounts: with the last kept; one that `asks`: its popover)."""
         facts, entries = self._now()
         entry = next((e for e in entries if e["id"] == id_), None)
         if entry is None:
             self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
             return
-        self._go(entry)
+        self.ask(id_) if entry["asks"] else self._go(entry)
+
+    @Slot(str)
+    def choose(self, id_):
+        """Picked in a menu or Ctrl+K: an action with amounts ("Name…") opens its popover; the rest run."""
+        a = self.list.find(id_)
+        self.ask(id_) if a is not None and a.amounts else self.run(id_)
+
+    @Slot(str, result=bool)
+    def ask(self, id_):
+        """Its ▾ (or a "…" door): start the amounts session, live, and ask the app's popover to open by its button."""
+        facts, entries = self._now()
+        entry = next((e for e in entries if e["id"] == id_), None)
+        a = self.list.find(id_)
+        if entry is None or a is None or not a.amounts or self._page is None:
+            self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
+            return False
+        label, bar = entry["label"].rstrip("…. "), entry["bar"]
+        if bar and not label.lower().startswith(bar.lower()):       # "By…" in Transpose ▾ is "Transpose by"
+            label = f"{bar} {label[:1].lower()}{label[1:]}"
+        words = self._subject(id_, facts)
+        try:
+            self._page.open(a, facts, f"{label} · {words}" if words else label)
+        except Exception:
+            qt_faults.python_error(f'action "{id_}"', label)
+            return False
+        self.amountsWanted.emit(id_, [f"actionAmounts:{id_}", f"action:{id_}"]
+                                + ([f"actionBar:{entry['bar']}"] if entry["bar"] else []) + ["actionsMore"])
+        return True
 
     @Slot(str)
     def previewStart(self, id_):
@@ -150,8 +199,10 @@ class ActionHub(QObject):
     @Slot(str)
     def key(self, job):
         """A shortcut pressed: run its action if valid now, else say why. A key with no action here does nothing."""
-        entry, why = self.list.on_key(self._facts(), job)
-        if entry:
+        entry, why = self.list.on_key(self._facts(), job, **self._kept())
+        if entry and entry["asks"]:
+            self.ask(entry["id"])
+        elif entry:
             if entry["release"]:
                 self._held[job] = entry
             self._go(entry)

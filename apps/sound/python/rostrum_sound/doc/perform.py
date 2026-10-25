@@ -14,6 +14,7 @@ from . import values as V
 
 ARTICULATIONS = ["legato", "staccato", "normal"]
 FIELDS = [
+    Param.toggle("person", help="False: the instrument family's looseness off (timing, velocity, accent, strum, articulation); the fields named beside it (swing) still play."),
     Param.number("seed", help="Any number: a different, still repeatable, performance."),
     Param.number("timing", min=0, max=100, unit="ms", help="Each note lands up to this many ms off the grid."),
     Param.number("lean", min=-200, max=200, unit="ms", help="The whole part laid back (+, behind the beat) or pushed (−)."),
@@ -48,5 +49,5 @@ def perform(**kw) -> V.Value:
     """The track's field: a toggle on screen (true while the field is absent), an object for scripts and agents."""
     return V.Value("perform", "toggle", rule=_rule, schema=PERMITTED, default=True, label="Played like a person",
                    help="On (also when the field is absent): the part is played like a person would, in the instrument family's way. "
-                        "An object changes some values (timing, lean, swing, velocity, accent, strum, articulation, vibrato, seed, dynamics); "
-                        "false plays every note exactly as written.", **kw)
+                        "An object changes some values (person, timing, lean, swing, velocity, accent, strum, articulation, vibrato, seed, dynamics; "
+                        "person false = only the named ones play, e.g. swing on a tight part); false plays every note exactly as written.", **kw)
