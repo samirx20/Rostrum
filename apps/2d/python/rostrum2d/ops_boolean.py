@@ -16,6 +16,7 @@ from rostrum_core.tree import index
 
 from . import pathdata as PD
 from .kind import REGISTRY as R
+from .names import display_name
 from .ops_items import ID, new_item
 from .ops_path import _LOOK, shape_paths, to_parent
 
@@ -66,11 +67,6 @@ def commands_of(p: pathops.Path) -> list[tuple]:
         cur = out[-1][-2:]
     return out
 
-NOTHING_LEFT = {"intersect": "These shapes don't overlap, so there is nothing to keep. Move them over each other first.",
-                "subtract": "The shape in front covers all of the other, so nothing would be left.",
-                "exclude": "These shapes are the same, so nothing would be left."}
-
-
 @R.operation("path.boolean", "Combine two or more path or shape layers into one new path: union, subtract (the "
              "first minus the others), intersect or exclude. They must be in the same group or composition. The "
              "inputs are removed; the new path sits where they were, with the first one's fill and stroke.",
@@ -90,14 +86,26 @@ def shape_boolean(ctx, targets, args):
     combine(ctx, targets, args["op"], args)
 
 
+def _named(ctx, targets) -> str:
+    """"Rectangle 1, Rectangle 2 and Ellipse 3": the layers as a person reads them, for every refusal below."""
+    names = [display_name(ctx.item(t)) for t in targets]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+_NOTHING = {"intersect": "don't overlap all together", "subtract": "leave nothing once the others are cut from the first",
+            "union": "have no area to join", "exclude": "cancel each other out exactly"}
+
+
 def combine(ctx, targets, mode, args):
     if len(targets) < 2:
-        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", "a boolean needs two or more layers")
+        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", "a boolean needs two or more layers",
+                 plain="Pick two or more shapes to combine.")
     idx = index(ctx.doc, ctx.kind.lists)
     parents = {idx[t].parent for t in targets}
     if len(parents) > 1:
         ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"are in different groups ({', '.join(sorted(parents))}); "
-                 "move them into one first (layer.arrange)")
+                 "move them into one first (layer.arrange)",
+                 plain=f"{_named(ctx, targets)} are in different groups. Move them into one group first.")
     items = [ctx.item(t) for t in targets]
     result = None
     try:
@@ -107,10 +115,11 @@ def combine(ctx, targets, mode, args):
             result = p if result is None else pathops.op(result, p, MODES[mode])
         cmds = commands_of(result)
     except (ValueError, pathops.PathOpsError) as e:
-        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"can't be combined: {e}")
+        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"can't be combined: {e}",
+                 plain=f"{_named(ctx, targets)} can't be combined ({e}).")
     if not cmds:
         ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"{mode} leaves nothing",
-                 plain=NOTHING_LEFT.get(mode, "Nothing would be left, so nothing was combined."))
+                 plain=f"{mode.capitalize()} leaves nothing: {_named(ctx, targets)} {_NOTHING[mode]}.")
     first, parent, key = items[0], idx[targets[0]].parent, idx[targets[0]].key
     place = min(idx[t].index for t in targets)
     moved, (x0, y0, w, h) = PD.fit(cmds)

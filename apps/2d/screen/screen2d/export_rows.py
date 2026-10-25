@@ -54,10 +54,12 @@ def megabytes(n: int) -> str:
     return f"{n / 1e6:.1f} MB" if n >= 1e5 else f"{max(1, round(n / 1e3))} KB"
 
 
-def line(weight: str, size, frames: int, fps: float) -> str:
+def line(weight: str, size, frames: int, fps: float, seconds: float | None = None) -> str:
     """The file in one line, the one way the sheet says it, before (the estimate) and after (the result):
-    "about 9 KB · 960×540 · 150 frames at 15 fps". `size`: (w, h) or None."""
-    parts = [weight] + (["×".join(map(str, size))] if size else []) + [f"{frames} frames at {fps:g} fps"]
+    "about 9 KB · 960×540 · 150 frames at 15 fps". `size`: (w, h) or None. A GIF gives `seconds` and says its length
+    instead of a frame count: it stores identical neighbouring frames once, so its picture count is never the frames
+    played (the length is exact, and is what the export checks)."""
+    parts = [weight] + (["×".join(map(str, size))] if size else []) +         [f"{seconds:.3g} s at {fps:g} fps" if seconds is not None else f"{frames} frames at {fps:g} fps"]
     return " · ".join(p for p in parts if p)
 
 
@@ -66,13 +68,13 @@ def gif_line(w: int, h: int, fps: float, seconds: float, values: dict, found) ->
     out, or the failure in words."""
     ow, oh, ofps, n = table.gif_shape(w, h, fps, max(1, round(seconds * fps)), values["size"], values["rate"])
     weight = (f"about {megabytes(found)}" if isinstance(found, int) else "Working out the size…" if found is None else found)
-    return line(weight, (ow, oh), n, ofps)
+    return line(weight, (ow, oh), n, ofps, seconds)
 
 
 def result(f: dict) -> str:
     """After export: the file as written (its bytes on disk, its size and frames read back): the sheet's result line."""
     weight = sum(Path(x).stat().st_size for x in f.get("files") or [] if Path(x).is_file())
-    return line(megabytes(weight) if weight else "", (f.get("checked") or {}).get("size"), f["frames"], f["fps"])
+    return line(megabytes(weight) if weight else "", (f.get("checked") or {}).get("size"), f["frames"], f["fps"], f.get("seconds"))
 
 
 def facts(f: dict) -> list[dict]:

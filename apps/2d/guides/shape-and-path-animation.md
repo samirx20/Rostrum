@@ -104,7 +104,7 @@ mid-draw (`look_frame`) to check the head and the tail read the way you want.
 
 `mode`: `union`, `subtract` (the first minus the others), `intersect`, `exclude`. The inputs are removed (one undo step
 brings them back); the result sits where they were, with the first one's fill and stroke. A tilted layer cannot be
-combined (refused). The curves stay curves.
+combined (refused). The curves stay curves. A combine that would leave nothing (intersect of shapes that don't all overlap) is refused in plain words on the screen, naming the layers ("Intersect leaves nothing: Rectangle, Rectangle 2 and Ellipse don't overlap all together."); an agent gets the same refusal with the layer ids.
 
 ## Keys on paths
 

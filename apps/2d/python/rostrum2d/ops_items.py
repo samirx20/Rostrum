@@ -22,7 +22,7 @@ def new_item(ctx, type_, args, **extra) -> dict:
     if id_ in _all_ids(ctx):
         ctx.fail(codes.BAD_ARGUMENT, f'id "{id_}"', "is already used in this document")
     name = args.get("name") or (unique_name(_names(ctx), F.LABELS[type_])
-                                if type_ in F.LAYERS else F.LABELS[type_])
+                                if type_ in (*F.LAYERS, "comp") else F.LABELS[type_])
     item = {"id": id_, "type": type_, "name": name, **F.defaults(type_), **extra}
     for key in LISTS.get(type_, []):
         item[key] = []
@@ -89,7 +89,8 @@ def layer_remove(ctx, targets, args):
         ctx.remove(t)
 
 
-@R.operation("layer.duplicate", "Copy layers: each copy lands just above its original, named \"<name> copy\", with its keys, "
+@R.operation("layer.duplicate", "Copy layers: each copy lands just above its original in the stack, named \"<name> copy\", "
+             "and nudged 24 px right and down (further for each more copy, so none sits exactly on another), with its keys, "
              "effects, masks and layers inside it copied under new ids.", target=F.PLACED, label="Duplicate",
              importance="secondary")
 def layer_duplicate(ctx, targets, args):
@@ -97,19 +98,21 @@ def layer_duplicate(ctx, targets, args):
     from rostrum_core.tree import bare, child_keys
     lists = ctx.kind.lists
 
-    def put(item, parent, key, at, taken):
-        new = {**bare(item, lists), "id": ids.counted(taken, item["type"])}
+    def put(item, parent, key, at, taken, step=0):
+        new = stepped({**bare(item, lists), "id": ids.counted(taken, item["type"])}, step)
         taken.add(new["id"])
         ctx.insert(parent, key, new, at)
         for k in child_keys(item, lists):
             for child in item.get(k, []):
-                put(child, new["id"], k, None, taken)
+                put(child, new["id"], k, None, taken, for_child(child, step))
         return new["id"]
 
+    from .ops_nudge import for_child, steps_for, stepped
     for t in targets:
         idx = _all_ids(ctx)
         loc = idx[t]
-        copy = put(loc.item, loc.parent, loc.key, loc.index + 1, set(idx))
+        step = steps_for(ctx.item(loc.parent).get(loc.key, []), [loc.item])
+        copy = put(loc.item, loc.parent, loc.key, loc.index + 1, set(idx), step)
         ctx.set(copy, "name", unique_name(_names(ctx), f"{display_name(loc.item)} copy"))
 
 
