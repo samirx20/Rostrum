@@ -47,7 +47,7 @@ def merged(bridge, items: list[dict], root: dict) -> list[dict] | None:
         key = _key(bridge, it, struct, plain) if it["type"] in FOLDED else n
         g = groups.get(key)
         if g is None:
-            rows = bridge._item_rows(it)
+            rows = bridge.sound_rows(it)
             ev = {r["id"]: r for r in rows if r["row"] == "param" and r["id"] in plain}
             g = groups[key] = (ev, inspect.musical_rows(it, rows, root))
             if first is None:                   # the first item: what every other value is compared with

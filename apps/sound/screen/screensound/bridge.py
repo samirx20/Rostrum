@@ -232,12 +232,12 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         folded = many_rows.merged(self, items, root)
         if folded is not None:
             return output_pick.without_none(folded)
-        each = [inspect.musical_rows(it, self._item_rows(it), root) for it in items]
+        each = [inspect.musical_rows(it, self.sound_rows(it), root) for it in items]
         return output_pick.without_none([] if not each else each[0] if len(each) == 1 else many.merge(each))
 
-    def _item_rows(self, it):
-        """One item's evaluated rows; a track's Played-like-a-person switch as the Feel group (feel_rows)."""
-        return feel_rows.rows(it, super()._item_rows(it), self._kit.more)
+    def sound_rows(self, it):
+        """One item's evaluated rows (the kit's), a track's Played-like-a-person switch as the Feel group (feel_rows)."""
+        return feel_rows.rows(it, self._item_rows(it), self._kit.more)
 
     # ---- screen state -----------------------------------------------------------------------------------------
     @Slot()

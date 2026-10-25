@@ -38,8 +38,12 @@ class GuiFilter(QObject):
                 self.watch(w)
                 w.destroyed.connect(lambda _=None, i=id(w): seen.discard(i))
         if not self.__dict__.get("_following"):
-            self._following = True
-            app.focusWindowChanged.connect(lambda _w: self.watch_windows(app))
+            self._following = app
+            app.focusWindowChanged.connect(self._focus_moved)     # a method: the link ends with this filter (a lambda
+                                                                  # outlived it and called into a deleted object)
+
+    def _focus_moved(self, _w):
+        self.watch_windows(self._following)
 
     def on_event(self, obj, event) -> bool:
         return False
