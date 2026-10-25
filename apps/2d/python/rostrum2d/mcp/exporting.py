@@ -42,7 +42,7 @@ def snapshot(doc, comp_id: str, fmt: str, layers: list[str] | None = None) -> di
     return {"comp": {"id": comp_id, "props": {"fps": comp.get("fps", 30), "duration": comp.get("duration", 5.0)}}, "samples": data}
 
 
-def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory, folder=None) -> dict:
+def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress, engine_factory, folder=None, on_stop=None) -> dict:
     """Draw into `target` (a file; for a sequence the base its frames are named from). Facts read back, or RENDER_FAILED."""
     if fmt == "motion":
         data, p = scene["samples"], scene["comp"]["props"]
@@ -70,6 +70,8 @@ def _to_file(where: str, scene: dict, fmt: str, s: dict, target: Path, progress,
     from rostrum2d.io.export import export
     try:
         with (engine_factory or _engine)() as eng:
+            if on_stop:                              # a job's on_cancel: run_stop ends the engine at once, even mid-frame
+                on_stop(eng.kill)
             eng.load(scene)
             facts = export(eng, fmt, target, s["alpha"], s["depth"], s["start"], s["end"], progress, s.get("quality"), s.get("bitrate"), s.get("gif"))
     except Exception as e:  # noqa: BLE001  the engine, the encoder, or the read-back: one loud failure naming what was drawn
@@ -118,13 +120,14 @@ def _manifest(item, doc_seq, comp_id, fmt, s, facts, version, names, size) -> di
 
 
 def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_seq=0, out=None, progress=None, engine_factory=None,
-        name=None, overwrite=False) -> dict:
+        name=None, overwrite=False, on_stop=None) -> dict:
     """Export `scene` as `fmt` with settings `s` (from settings()). Where it goes: `out` (a file; for a sequence a folder), else
     project_renders(folder, item) for every format, else default_folder (Videos, or a scripted run's scratch home).
     Written under a .partial name and renamed when read back right; a failed or cancelled run removes what it wrote. Returns the facts: file, frames, fps, alpha, depth, checked,
     files (what was written), report (Lottie: what it couldn't carry).
     `name`: the file's name without its extension (export_name.stem_of: the project's and the composition's); default item_composition.
-    An `out` that already exists is refused unless `overwrite` (a sequence's folder is never replaced)."""
+    An `out` that already exists is refused unless `overwrite` (a sequence's folder is never replaced).
+    `on_stop`: a job's on_cancel, handed the engine's end so a stop needs no next frame."""
     row, comp = info(where, fmt), scene["comp"]
     stem = name or f'{item or "doc"}_{comp["id"]}'
     png = fmt in table.FORMATS and not table.FORMATS[fmt].video     # a sequence: one file per frame, in a folder
@@ -133,7 +136,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
         part = project.begin_render(folder, item)
         name = f"{stem}{row['ext']}"
         try:
-            facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory, folder)
+            facts = _to_file(where, scene, fmt, s, part / (stem if png else name), progress, engine_factory, folder, on_stop)
             names = sorted(p.name for p in part.iterdir())
             done = project.finish_render(part, _manifest(item, doc_seq, comp["id"], fmt, s, facts, int(part.name[1:].split(".")[0]),
                                                          names, facts["checked"]["size"] if s.get("area") else (comp["props"].get("width"), comp["props"].get("height"))))
@@ -158,7 +161,7 @@ def run(where: str, scene: dict, fmt: str, s: dict, folder=None, item=None, doc_
     else:
         part.unlink(missing_ok=True)
     try:
-        facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory, folder)
+        facts = _to_file(where, scene, fmt, s, part / final.name if png else part, progress, engine_factory, folder, on_stop)
         if not png and (not part.is_file() or part.stat().st_size == 0):
             raise _fail(where, f"the {fmt} export {final.name}", RuntimeError(f"no file at {part}"))
     except BaseException:                            # a failed or stopped (cancelled) export leaves no .partial behind

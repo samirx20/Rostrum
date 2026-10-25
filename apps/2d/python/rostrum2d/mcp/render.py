@@ -44,12 +44,42 @@ def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=No
         raise _fail(where, "the engine", e) from e
 
 
-def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None, quality=None, bitrate=None) -> dict:
-    """Export to `<name>.partial.mp4`, then rename: a failed export never leaves a file under the final name."""
+def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width: int, progress=None) -> None:
+    """Draw each (time, png path) `width` px wide: the same frame drawn smaller by the engine (Engine.pixels' scale, as
+    the canvas plays), not a full-size frame shrunk after; a sheet's tiles cost a fraction. Full width or more: stills."""
+    from PIL import Image
+    from rostrum2d.engine import Engine
+    fps, comp_w = scene["comp"]["props"]["fps"], scene["comp"]["props"]["width"]
+    if width >= comp_w:
+        return stills(where, scene, items, progress)
+    try:
+        with Engine() as eng:
+            eng.load(scene)
+            for i, (t, png) in enumerate(items):
+                try:
+                    view, w, h, stride = eng.pixels(t, scale=width / comp_w)
+                    data = bytes(view)                   # copied out: the engine's memory is reused next frame
+                    view.release()
+                    Image.frombuffer("RGBA", (w, h), data, "raw", "RGBA", stride, 1).save(png, "PNG")
+                except Exception as e:
+                    raise _fail(where, f"frame {round(t * fps)} ({t:.3f} s)", e) from e
+                if progress:
+                    progress(i + 1, len(items))
+    except RostrumError:
+        raise
+    except Exception as e:
+        raise _fail(where, "the engine", e) from e
+
+
+def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None, quality=None, bitrate=None, on_stop=None) -> dict:
+    """Export to `<name>.partial.mp4`, then rename: a failed export never leaves a file under the final name. `on_stop`: a
+    job's on_cancel, given the engine's end (run_stop ends the engine at once, even mid-frame)."""
     from rostrum2d.engine import Engine
     part = mp4.with_name(mp4.stem + ".partial.mp4")
     try:
         with Engine() as eng:
+            if on_stop:
+                on_stop(eng.kill)
             eng.load(scene)
             out = eng.video(part, start=start, end=end, progress=progress, quality=quality, bitrate=bitrate)
     except Exception as e:

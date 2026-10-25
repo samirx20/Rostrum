@@ -12,7 +12,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 
 - A **drawing layer** has a canvas `w × h` px. Untransformed and placed at its default spot, canvas px = composition px.
   The canvas **grows with the strokes, in any direction**: `paint.stroke` past an edge makes it bigger (in 256 px
-  steps) in the same undo step (an erasing stroke, `mode: "erase"`, never grows it: past the edge there is nothing to
+  steps) in the same undo step, and so does a script's stroke or fill when the script runs (the `w`, `h` you give
+  `drawing(...)` are a starting size, never a crop) (an erasing stroke, `mode: "erase"`, never grows it: past the edge there is nothing to
   take away). Growing left or up moves every stroke, fill and paint mask of every drawing by the same
   amount in canvas px and moves the anchor with them, so nothing moves on screen (re-read canvas px after a stroke that
   grew it: `look_drawing` (`what: "at"`), `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
@@ -21,7 +22,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   it (same parent, depth, pin, position, scale, turn and keys; named "<name> 2", "<name> 3" …), in the same undo step;
   the screen says "'sky' is at its largest; this stroke started 'sky 2'". Never a lost or cropped stroke.
 - A **frame** is one drawing. It shows from frame `at` until the next drawing (it is **held**); nothing shows before the
-  first. Drawings on twos = a drawing every 2 frames. `frame.hold frames=3` makes one last 3 frames and moves the later
+  first. Its id (`frame_6`) is a counted name, not a frame number: `look_drawing` says "char at frame 0 shows its
+  drawing 1 of 12, which starts at frame 0 (id frame_6 …)". `at` counts the layer's frames as written: inside a group
+  timed from a marker (`marker=`), frame 0 is the marker's moment, so moving the marker moves every drawing with it. Drawings on twos = a drawing every 2 frames. `frame.hold frames=3` makes one last 3 frames and moves the later
   ones.
 - A **paint** layer (blend `normal`, `multiply`, `screen`, `add`; opacity; visible; locked) holds **strokes** in painting
   order. Several paint layers on one layer: e.g. a base and a light layer in `add`. In a layer that draws each frame
@@ -55,6 +58,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
                  color="#ffb040", size=30, brush="round")
   ```
   `look_frame` (`what: "sheet"`) then shows the drawing changing from frame to frame; `look_drawing layer=blob frame=N` shows one drawing.
+- **A fill in a script:** `ink.fill([(x, y), …], color="#2a2340", opacity=1)` lays a filled polygon (the same item
+  `paint.fill` makes from a click, `fill.add` in an edit): a silhouette or a ridge in one call. Add a third number
+  per point for holes (`[x, y, ring]`, ring 0 the outside).
   A refusal "drawing … must have the same paint layers" means a drawing's paint lacks that shared `layer="…"`.
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
@@ -143,6 +149,33 @@ canvas. Two spaces say where the points are:
 In a script, `painting(...)` and `drawing(...)` take points in their own px; to paint on an element write
 `edit_document` with `paint.stroke` (target the element id, points, `frame`, optional `space`).
 
+## Cycles: a run of drawings that repeats
+
+Draw a cycle once (a walk is often 8 or 12 drawings) and let the layer repeat it; never copy drawings for each repeat.
+
+| Setting | What it does |
+|---|---|
+| `loop` | `off` holds the last drawing; `loop` starts the run again; `pingpong` goes back and forth. The run is from the first drawing to the end of the last one's hold (the last is held as long as the one before it). |
+| `loopTimes` | How many times the run plays, then the drawing last shown holds; 0 (the default) = until the layer ends. |
+| `loopStepX`, `loopStepY` | With `loop`: how far each repeat sits from the one before, in the drawing's own px. Draw the walk travelling across its canvas with the planted foot fixed, then set the step to one stride: the figure walks on and its feet never slide. It turns and scales with the layer. |
+
+```python
+walk = drawing("walk", w=900, h=600, x=300, y=800, eachFrame=True, loop="loop", loopTimes=6, loopStepX=240)
+for i in range(8):                                   # 8 drawings on twos: a 16-frame cycle, played 6 times, 240 px on each time
+    ink = walk.frame(i * 2).paint()
+    ...                                              # the pose of drawing i, travelling right across the canvas
+```
+
+On the screen they are the drawing layer's **Loop**, **Times** and **Step across / Step down** (Timing); agents
+`set walk loop "loop"`, `set walk loopTimes 6`. A layer moving at a steady speed (a key on `x`) with a walk drawn in
+place is the other way; the step suits a walk drawn with the feet planted. `look_drawing frame=N` says which drawing
+shows at N and when it is a repeat.
+
+**Boil** (lines that shimmer while held): 2 or 3 drawings of the same strokes, each with `jitter` (Scatter) a little
+above 0 and the points moved a px or two at random, on twos with `loop="loop"`. Each stroke's seed comes from its
+id, so every drawing scatters differently. A painting (a painted fill) boils with `frame.add` on the painting
+(`inspect_guide drawing`).
+
 ## Stepped timing
 
 - **Drawings:** each drawing is held until the next, so "on twos" is drawings at frames 0, 2, 4 …; "on threes" is 0, 3, 6.
@@ -166,6 +199,9 @@ In a script, `painting(...)` and `drawing(...)` take points in their own px; to 
 1. Block the motion first: a few key drawings (the extremes), checked with `look_frame` (`what: "sheet"`).
 2. Fill the in-betweens with `onion=true`, so each drawing sits between its neighbours.
 3. Check the loop: the last drawing must lead into the first. `render_video` and watch it.
+
+A look (`look_frame`, a sheet, a part of a video) makes only the drawings that show then, several at once; the first
+look at a big painted scene is the slowest (each new drawing is painted once, then kept by its content).
 
 ## Not yet
 

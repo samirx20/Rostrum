@@ -12,6 +12,9 @@ import copy
 def upgrade(data: dict, lists: dict):
     """(new data, label) with `hugPin` off on every old hugging group, or None when there is none."""
     from rostrum_core.tree import walk
+    if not any(g.get("type") == "group" and g.get("layout", "none") != "none" and not {"hugPin", "hugWidth", "hugHeight", "padding"} <= g.keys()
+               for g in walk(data, lists)):          # nothing old: no copy of a big document
+        return None
     work = copy.deepcopy(data)
     old = [g for g in walk(work, lists) if g.get("type") == "group" and g.get("layout", "none") != "none"
            and (g.get("hugWidth") or g.get("hugHeight")) and "hugPin" not in g]

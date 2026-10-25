@@ -9,11 +9,9 @@ at once. Switching changes no document and does not touch the person's Open rece
 from __future__ import annotations
 
 import dataclasses
-from pathlib import Path
 
 from rostrum_core import Document, bug, live
-from rostrum_core.errors import RostrumError, codes
-from rostrum_core.mcp import Reply, Tools
+from rostrum_core.mcp import Reply, Tools, open_folder
 from rostrum_core.storage import paths
 from rostrum_paint import library
 
@@ -77,20 +75,8 @@ def inspect_recent_projects(ctx, args):
 
 
 @tools.tool("run_open_project", {"required": ["folder"], "properties": {
-    "folder": {"type": "string", "description": "The project folder (absolute path; one from run_open_project (what: recent), or any folder with docs/<item>.mtn)."},
-    "item": {"type": "string", "description": "The document to open. Default: the one its recent row names, else the only / newest in the folder."}}})
+    "folder": {"type": "string", "description": open_folder.folder_description(KIND.ext)},
+    "item": {"type": "string", "description": open_folder.item_description("document", last.DEFAULT_ITEM)}}})
 def run_open_project(ctx, args):
-    """Switch to another project: closes the open documents and opens this folder's (every change is saved at once, so nothing is lost); then all other tools work on it. Use run_open_project (what: recent) to see what the person has."""
-    folder = Path(args["folder"])
-    if not folder.is_dir():
-        raise RostrumError(codes.NOT_FOUND, "run_open_project", f'"{folder}"', "is not a project folder",
-                           list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from run_open_project (what: recent).")
-    found = last.docs_in(folder)
-    item = args.get("item") or last.default_item(folder, explicit=True)
-    if item not in found and found:
-        raise RostrumError.not_found("run_open_project", "document", item, found, f"the documents in {folder}")
-    if item not in found:
-        ctx.note(f'{folder} had no document yet: "{item}" was created there.')
-    open_project(ctx.app, str(folder.resolve()), [item])
-    return Reply(f'Opened {ctx.app.folder} (document "{item}"). Other tools now work on it.',
-                 {"folder": ctx.app.folder, "item": item, "documents": sorted(ctx.app.documents)})
+    """Open a project, making it when it is new: closes the open documents (every change is already saved, so nothing is lost) and opens this folder's; then all other tools work on it. A folder that doesn't exist yet is made, and a document the folder doesn't have yet is started empty, e.g. {"folder": "C:/Users/me/Videos/launch"} or {"folder": "...", "item": "teaser"}. Use run_open_project (what: recent) to see what the person has."""
+    return open_folder.open_folder(ctx, args, docs_in=last.docs_in, default_item=last.default_item, open_project=open_project)

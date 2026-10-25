@@ -41,8 +41,8 @@ def test_no_options_opens_the_newest_recent_song_and_run_open_project_switches(t
         reply, _ = rt.call("inspect_project", {}, AGENT)
         assert reply["data"]["folder"] == b and [d["item"] for d in reply["data"]["open"]] == ["song"]
         assert app.state.folder.name == "b" and app.state.engine is engine
-        reply, _ = rt.call("run_open_project", {"folder": b, "item": "nope"}, AGENT)
-        assert not reply["ok"] and reply["error"]["code"] == "NOT_FOUND" and reply["error"]["accepted"] == ["song"]
+        reply, _ = rt.call("run_open_project", {"folder": b, "item": "verse"}, AGENT)    # a new name starts a new song, naming the others
+        assert reply["ok"] and reply["data"]["others"] == ["song"] and list(app.documents) == ["verse"]
     finally:
         app.state.engine.close()
 

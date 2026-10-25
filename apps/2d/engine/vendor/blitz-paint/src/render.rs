@@ -649,7 +649,7 @@ impl<'dom, 'a> BlitzDomPainter<'dom, 'a> {
                                     y: content_position.y - node.scroll_offset().y,
                                 };
 
-                                cx.transform = cx.transform.then_translate(Vec2 {
+                                cx.transform = cx.transform.pre_translate(Vec2 {
                                     x: -node.scroll_offset().x * self.scale,
                                     y: -node.scroll_offset().y * self.scale,
                                 });
@@ -1256,8 +1256,8 @@ impl ElementCx<'_, '_> {
 
         let transform = self
             .transform
-            .pre_scale_non_uniform(x_scale, y_scale)
-            .then_translate(Vec2 { x, y });
+            .pre_translate(Vec2 { x, y })
+            .pre_scale_non_uniform(x_scale, y_scale);
 
         anyrender_svg::render_svg_tree(scene, svg, transform);
     }
@@ -1311,7 +1311,7 @@ impl ElementCx<'_, '_> {
         if let Some(widget_scene) = self.custom_widget_scene {
             let x = self.frame.content_box.origin().x;
             let y = self.frame.content_box.origin().y;
-            let transform = self.transform.then_translate(Vec2 { x, y });
+            let transform = self.transform.pre_translate(Vec2 { x, y });
 
             // TODO: eliminate clone
             scene.append_scene(widget_scene.clone(), transform);

@@ -35,8 +35,8 @@ GROUPS = [
     ("run_import", "Bring a file into the project: as new layers of a composition (svg, pdf, psd, figma, …; default), or "
      "a picture as a brush tip or paper for painting.",
      {"layers": "run_import", "paint_picture": "run_paint_picture"}, "layers"),
-    ("run_open_project", "The person's projects: open one (default; every change is already saved, so nothing is lost), "
-     "or list the recent ones to pick from.",
+    ("run_open_project", "The person's projects: open one, or make a new one by giving a folder that doesn't exist yet "
+     "(default; every change is already saved, so nothing is lost), or list the recent ones to pick from.",
      {"open": "run_open_project", "recent": "inspect_recent_projects"}, "open"),
 ]
 

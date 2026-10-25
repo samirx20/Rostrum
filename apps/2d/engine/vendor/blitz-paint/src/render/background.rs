@@ -245,7 +245,7 @@ impl ElementCx<'_, '_> {
         let layout = node.final_layout();
         let scroll = node.scroll_offset();
         // The contents are scrolled (render_element): the transform, and the inline layout's position.
-        let transform = transform.then_translate(Vec2 { x: -scroll.x * self.scale, y: -scroll.y * self.scale });
+        let transform = transform.pre_translate(Vec2 { x: -scroll.x * self.scale, y: -scroll.y * self.scale });
         if node.flags.is_inline_root() {
             if let Some(text) = node.element_data().and_then(|e| e.inline_layout_data.as_ref()) {
                 let x = (layout.border.left + layout.padding.left) as f64 - scroll.x;
@@ -615,20 +615,22 @@ impl ElementCx<'_, '_> {
             y_ratio,
         );
 
-        let transform = base_transform
-            .pre_scale_non_uniform(x_ratio, y_ratio)
-            .then_translate(Vec2 {
-                x: x.translate,
-                y: y.translate,
-            });
+        // Rostrum patch (item 7 seam): offsets in the element's own space, before the image's scale (see
+        // draw_gradient_layer).
+        let transform = base_transform.pre_translate(Vec2 {
+            x: x.translate,
+            y: y.translate,
+        });
         let tile_rect = Rect::new(0.0, 0.0, x.rect_len, y.rect_len);
 
         for hc in 0..y.count {
             for wc in 0..x.count {
-                let transform = transform.then_translate(Vec2 {
-                    x: wc as f64 * x.stride,
-                    y: hc as f64 * y.stride,
-                });
+                let transform = transform
+                    .pre_translate(Vec2 {
+                        x: wc as f64 * x.stride,
+                        y: hc as f64 * y.stride,
+                    })
+                    .pre_scale_non_uniform(x_ratio, y_ratio);
 
                 scene.fill(
                     peniko::Fill::NonZero,
@@ -712,14 +714,17 @@ impl ElementCx<'_, '_> {
         );
         let brush = anyrender::Paint::Gradient(&gradient);
 
-        let transform = base_transform.then_translate(Vec2 {
+        // Rostrum patch (item 7 seam): tile offsets are in the element's own space (pre_translate). Added after
+        // its transform (then_translate) they stayed unscaled on screen: a scaled box's tiles overlapped and the
+        // next tile restarted the gradient at the unscaled box's edge, a hard seam inside the shape.
+        let transform = base_transform.pre_translate(Vec2 {
             x: x.translate,
             y: y.translate,
         });
 
         for hc in 0..y.count {
             for wc in 0..x.count {
-                let transform = transform.then_translate(Vec2 {
+                let transform = transform.pre_translate(Vec2 {
                     x: wc as f64 * x.stride,
                     y: hc as f64 * y.stride,
                 });

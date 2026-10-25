@@ -199,7 +199,7 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: im
         let (t, tf) = (span.time(i), Instant::now());
         let staged = match rx.recv() {
             Ok((got, _)) if got != i => return Err(format!("export: frame {got}'s markup came when frame {i}'s was due")),
-            Ok((_, staged)) => staged.map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?,
+            Ok((_, staged)) => staged.map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?,
             Err(_) => return Err(format!("export: the markup thread stopped before frame {i} (t={t:.3} s)")),
         };
         let mut f = json!({ "t": t, "index": span.index(i), "alpha": req["alpha"].as_bool() == Some(true) });
@@ -207,7 +207,11 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: im
             Some(p) => f["image"] = json!(p.replace("{frame}", &format!("{:04}", span.index(i)))),
             None => f["encode"] = json!(true),
         }
-        let (reply, _) = draw(held, s, &f, staged).map_err(|e| format!("export frame {i} (t={t:.3} s): {e}"))?;
+        // A panic while drawing fails this frame, named, like any error: uncaught on worker 0 (this thread) it left the
+        // other workers waiting for its frame in the encoder's turn, and the export hung with no word (p1, 2026-10-25).
+        let (reply, _) = catch_unwind(AssertUnwindSafe(|| draw(held, s, &f, staged)))
+            .unwrap_or_else(|p| Err(format!("the engine crashed drawing it ({})", panic_words(&p))))
+            .map_err(|e| format!("export frame {} (t={t:.3} s): {e}", span.index(i)))?;
         let took = tf.elapsed().as_secs_f64() * 1000.0;
         if i % EVERY == EVERY / 2 || span.n <= EVERY / 2 && i == 0 {
             costs.sample(s).map_err(|e| format!("export frame {i}: timing its layers: {e}"))?;
@@ -218,4 +222,9 @@ fn draw_frames(held: &Held, s: &mut Session, req: &Value, span: Span, frames: im
         on_row(Row { i, took, steps, samples, still });
     }
     Ok(costs)
+}
+
+/// A caught panic's message, in its own words.
+fn panic_words(p: &Box<dyn std::any::Any + Send>) -> String {
+    p.downcast_ref::<&str>().map(|m| m.to_string()).or_else(|| p.downcast_ref::<String>().cloned()).unwrap_or_else(|| "no message".into())
 }

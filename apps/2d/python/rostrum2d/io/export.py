@@ -8,7 +8,7 @@ from . import formats, readback
 
 
 def _engine_request(eng: Engine, req: dict, **kw) -> dict:
-    # The one private use: Team Sam is asked for a public Engine method (export with encode / alpha / depth).
+    # The one private use (reloading at another depth); the export itself goes through Engine.export, which watches it.
     return eng._request(req, **kw)
 
 
@@ -39,13 +39,13 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     n = max(1, round((end - start) * fps))                       # the engine's own count of the frames it sends
     shape = formats.gif_shape(w, h, fps, n, **{**formats.GIF_DEFAULTS, **(gif or {})}) if fmt == "gif" else None
     encode = formats.gif_encode(target, w, h, fps, **{**formats.GIF_DEFAULTS, **(gif or {})}) if fmt == "gif"         else f.build(target, w, h, fps, depth, first, rate)
-    req = {"start": start, "end": end, "alpha": alpha, "progress": progress is not None, "encode": encode}
+    req = {"start": start, "end": end, "alpha": alpha, "encode": encode}
     if f.video:
         req["file"] = target
     if depth != 8:                                   # the engine sends 16-bit frames only while loaded that way
         _engine_request(eng, {"scene": eng.scene, "depth": depth})
     try:
-        reply = _engine_request(eng, {"export": req}, timeout_s=3600.0, progress=progress)
+        reply = eng.export(req, progress)                     # watched: a frame stuck over FRAME_LIMIT_S fails it, named
     finally:
         if depth != 8:
             _engine_request(eng, {"scene": eng.scene, "depth": 8})

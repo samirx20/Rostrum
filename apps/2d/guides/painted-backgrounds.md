@@ -62,7 +62,9 @@ A drawing is at most 8192 px a side; `background.add` / `background.fit` refuse 
 give it a larger depth, a shorter move, or split it.
 
 Painting on a background layer grows it in any direction, like any drawing: paint past its edge and the canvas gets
-bigger (in 256 px steps), nothing already painted moving on screen. Its picture holds only what is painted, so a wide
+bigger (in 256 px steps), nothing already painted moving on screen. A script's strokes and fills grow it the same way
+when the script runs, so `w`, `h` in `drawing(...)` are a starting size, not a crop: nothing a script paints is cut off
+(past 8192 px a side the run is refused, naming the drawing). Its picture holds only what is painted, so a wide
 sky with a few clouds costs the clouds. At 8192 px a side a stroke that needs more starts a new drawing at the same
 depth just above it ("'Far' is at its largest; this stroke started 'Far 2'"), one undo step with the stroke.
 
@@ -100,6 +102,11 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
 - **Block in big shapes** with large opaque strokes before any detail; a base that covers the whole shape stops sky
   showing through gaps between texture strokes later. Clip a shape with a paint mask for a clean silhouette and let
   strokes cross it where the edge should be soft.
+- **Ridges and silhouettes in one call.** A filled polygon is a fill: `fill.add {target: <paint layer>, points: [[x, y,
+  0], …], color}` (in a script `ink.fill([(x, y), …], color="#2a2340")`), sharp and flat, in painting order with the
+  strokes. For a painted edge instead, make the ridge's outline a paint mask (`frame.paintmask(points)` in a script,
+  `paintmask.add`) and lay a few broad strokes with `mask=` its id: they fill the shape and keep the brush's texture.
+  Either is one item instead of a hundred thin strokes.
 - **Values far → near.** Look at the values (`see.values` in the kit, or squint at `look_frame` small): planes further
   back usually sit closer to the sky's value and colour; the nearest plane carries the darkest darks and strongest
   contrast. Decide this for your picture; it is a lever, not a law.

@@ -325,6 +325,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # cells on the timeline
         ("draw-each-frame", ["--sample"], [*FRAMES, "onion on", "frame prev"]),
         ("move-frame-layer", ["--sample"], [*FRAMES, "tool move"]),   # H61: the drawing's frame rows in the Move panel
+        # a drawing cycle: Loop on shows Times and the Step rows under it (drawing_loop.py)
+        ("drawing-cycle", ["--sample"], [*FRAMES, "tool move", 'set loop "loop"', "set loopTimes 3", "set loopStepX 120"]),
         # H59: the drawing keyed where its drawings start and inside one: cells and key dots never cross, at any size
         ("draw-each-frame-keys", ["--sample"], [*FRAMES, "time 0", "keyhere", "time 0.0667", "set x 10", "time 0.5",
                                                 "set x 20", "time 1", "set x 40", "onion on", "time 0.07"]),

@@ -55,6 +55,7 @@ NOT_A_NAME = {
     "spring": 'a key\'s ease: item.key("scale", {0: 0, 0.6: 1}, ease="spring")',
     "marker": 'a key time names a shared marker: item.key("opacity", {"#beat-0.3": 0, "#beat": 1})',
     "layer": "shape / text / image / path / group(id, **fields)", "svg": 'path(id, d="M … Z")',
+    "print": "nothing: a script has nowhere to print. See what it made with inspect_item, look_motion or look_frame",
 }
 
 

@@ -15,8 +15,18 @@ codes = SimpleNamespace(**{c: c for c in (
 ALL_CODES = frozenset(vars(codes))
 
 
+# Words other tools use for the same thing, tried before spelling: an agent writing `from` / `to` is told `start` / `end`.
+SAME_AS = {"from": ("start", "t0"), "to": ("end", "t1"), "begin": ("start",), "stop": ("end",), "until": ("end",),
+           "columns": ("cols",), "frames": ("count",), "n": ("count",), "time": ("t", "at"), "script": ("source", "path"),
+           "code": ("source",), "file": ("path",), "dir": ("folder",), "project": ("folder",), "doc": ("item",)}
+
+
 def did_you_mean(word, choices) -> str | None:
-    close = difflib.get_close_matches(str(word), [str(c) for c in choices], n=1, cutoff=0.6)
+    named = [str(c) for c in choices]
+    same = next((s for s in SAME_AS.get(str(word).lower(), ()) if s in named), None)
+    if same:
+        return f"Did you mean {same}?"
+    close = difflib.get_close_matches(str(word), named, n=1, cutoff=0.6)
     return f"Did you mean {close[0]}?" if close else None
 
 

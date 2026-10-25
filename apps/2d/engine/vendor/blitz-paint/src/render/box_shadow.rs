@@ -53,7 +53,7 @@ impl ElementCx<'_, '_> {
 
                     let alpha = shadow_color.components[3];
                     if alpha != 0.0 {
-                        let transform = self.transform.then_translate(Vec2 {
+                        let transform = self.transform.pre_translate(Vec2 {
                             x: shadow.base.horizontal.px() as f64 * self.scale,
                             y: shadow.base.vertical.px() as f64 * self.scale,
                         });
@@ -110,7 +110,7 @@ impl ElementCx<'_, '_> {
             // TODO draw shadows with matching individual radii instead of averaging
             let spread = shadow.spread.px() as f64 * self.scale;
             let radius = spread_radius(self.frame.border_radii.average(), -spread);
-            let transform = self.transform.then_translate(Vec2 {
+            let transform = self.transform.pre_translate(Vec2 {
                 x: shadow.base.horizontal.px() as f64 * self.scale,
                 y: shadow.base.vertical.px() as f64 * self.scale,
             });

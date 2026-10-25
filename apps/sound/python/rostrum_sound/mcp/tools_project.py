@@ -10,11 +10,11 @@ document and does not touch the person's Recent songs list.
 from __future__ import annotations
 
 import dataclasses
-from pathlib import Path
 
-from rostrum_core import RostrumError, codes
-from rostrum_core.mcp import Reply, Tools
+from rostrum_core import RostrumError
+from rostrum_core.mcp import Reply, Tools, open_folder
 
+from .. import KIND
 from .. import lastproject as last
 from .. import script_scope
 from .app import NO_PROJECT, open_project
@@ -98,20 +98,8 @@ def register(tools: Tools):
                      {"recent": rows, "open": now})
 
     @tools.tool("run_open_project", {"required": ["folder"], "properties": {
-        "folder": {"type": "string", "description": "The project folder (absolute path; one from run_open_project (what: recent), or any folder with docs/<item>.trk)."},
-        "item": {"type": "string", "description": "The song to open. Default: the one its recent row names, else the only / newest in the folder."}}})
+        "folder": {"type": "string", "description": open_folder.folder_description(KIND.ext)},
+        "item": {"type": "string", "description": open_folder.item_description("song", last.DEFAULT_ITEM)}}})
     def run_open_project(ctx, args):
-        """Switch to another project: closes the open songs and opens this folder's (every change is saved at once, so nothing is lost); the engine keeps running, and all other tools work on the new project. Use run_open_project (what: recent) to see what the person has."""
-        folder = Path(args["folder"])
-        if not folder.is_dir():
-            raise RostrumError(codes.NOT_FOUND, "run_open_project", f'"{folder}"', "is not a project folder",
-                               list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from run_open_project (what: recent).")
-        found = last.docs_in(folder)
-        item = args.get("item") or last.default_item(folder, explicit=True)
-        if item not in found and found:
-            raise RostrumError.not_found("run_open_project", "song", item, found, f"the songs in {folder}")
-        if item not in found:
-            ctx.note(f'{folder} had no song yet: "{item}" was created there.')
-        open_project(ctx.app, folder, [item])
-        return Reply(f'Opened {ctx.app.folder} (song "{item}"). Other tools now work on it.',
-                     {"folder": ctx.app.folder, "item": item, "documents": sorted(ctx.app.documents)})
+        """Open a project, making it when it is new: closes the open songs (every change is saved at once, so nothing is lost) and opens this folder's; the engine keeps running, and all other tools work on the new project. A folder that doesn't exist yet is made, and a song the folder doesn't have yet is started empty. Use run_open_project (what: recent) to see what the person has."""
+        return open_folder.open_folder(ctx, args, docs_in=last.docs_in, default_item=last.default_item, open_project=open_project, word="song")

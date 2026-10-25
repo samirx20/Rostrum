@@ -45,7 +45,8 @@ def _field_sets(id_, path, a, b, out):
     elif not path:
         for k in list(a) + [k for k in b if k not in a]:
             _field_sets(id_, [k], a.get(k, MISSING), b.get(k, MISSING), out)
-    elif a != b or _written(a) != _written(b):    # 0 and 0.0 are equal in Python but not in the file (its hash)
+    elif a != b or (repr(a) != repr(b) and _written(a) != _written(b)):   # 0 and 0.0 are equal in Python but not in
+        # the file (its hash); repr tells them apart at C speed, the file's own text only decides when repr differs
         out.append(Set(id_, path, b, a))
 
 

@@ -5,6 +5,7 @@ The document changes only through `ctx.apply` / `ctx.run_script` (= `Document.ap
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from ..errors import RostrumError, codes
 from .jobs import MAX_WAIT_S, outcome
@@ -29,6 +30,20 @@ def _new_advice(doc, before: set) -> list[str]:
     return [a for a in doc.kind.advice(doc.data) if a not in before]
 
 
+def _script_source(args) -> tuple[str, Path | None]:
+    """run_script's text: `source`, or the file at `path` (exactly one of them). Returns (text, file or None)."""
+    if ("source" in args) == ("path" in args):
+        raise RostrumError(codes.BAD_ARGUMENT, "run_script", "the script", "needs exactly one of `source` or `path`",
+                           ["source", "path"], 'e.g. {"path": "C:/work/promo.py"}, or {"source": "comp(\\"main\\", ...)", "name": "promo.py"}')
+    if "source" in args:
+        return args["source"], None
+    file = Path(args["path"])
+    if not file.is_absolute() or not file.is_file():
+        raise RostrumError(codes.NOT_FOUND, "run_script", f'"{file}"', "is not a script file", ["an absolute path to a .py file"],
+                           "Write the script to a file first, or pass its text as `source`.")
+    return file.read_text(encoding="utf-8"), file
+
+
 def register(tools: Tools):
     @tools.tool("edit_document", {"required": ["ops"], "properties": {
         **_ITEM, "ops": {"type": "array", "minItems": 1, "items": _CALL}, "label": {"type": "string"}, **_GROUP}})
@@ -47,20 +62,22 @@ def register(tools: Tools):
         return Reply(f"Applied {len(names)} operation{'s' * (len(names) != 1)} ({', '.join(names)}) as change {change.seq}, group {group}.",
                      {"seq": change.seq}, warnings=warn, changed=changed)
 
-    @tools.tool("run_script", {"required": ["source"], "properties": {
-        **_ITEM, "source": {"type": "string", "description": "Python source for this app's script layer."},
-        "name": {"type": "string", "default": "agent_script.py", "description": "The script's name. SAME name = replaces and merges what that script made before (a person's edits stay); a NEW name = adds a second copy beside it. To change something an earlier script made, run under its name."},
+    @tools.tool("run_script", {"properties": {
+        **_ITEM, "source": {"type": "string", "description": "The script itself, as text (Python for this app's script layer). Give `source` or `path`."},
+        "path": {"type": "string", "description": "A .py file to run instead of `source` (absolute path), e.g. \"C:/work/promo.py\". Its file name is the default `name`."},
+        "name": {"type": "string", "default": "agent_script.py", "description": "The script's name (default: the file name with `path`, else agent_script.py). SAME name = replaces and merges what that script made before (a person's edits stay); a NEW name = adds a second copy beside it. To change something an earlier script made, run under its name."},
         "force": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string"}}],
-                  "description": "Overwrite what a person changed: true for all held-back values, or a list of their keys."},
+                  "description": "Overwrite what someone else changed since this script's last run (a person, or another agent or script; your own earlier runs and edits never hold anything back): true for all held-back values, or a list of their keys, as the reply names them."},
         "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def run_script(ctx, args):
-        """Run a Python script that builds the document tree and merge it in. What a person moved by hand stays; held-back values are listed.
-        Run again under the same `name` it replaces what it made; under a new name it adds a second copy."""
+        """Run a Python script that builds the document tree and merge it in: {"path": "C:/work/promo.py"} runs a file, {"source": "...", "name": "promo.py"} runs text.
+        What a person moved by hand stays; held-back values are listed. Run again under the same `name` it replaces what it made (the file name, with `path`); under a new name it adds a second copy."""
         if ctx.app.run_source is None:
             raise RostrumError(codes.BAD_ARGUMENT, "", "this app", "has no script layer wired to the server")
-        doc, name = ctx.document(args.get("item")), args.get("name", "agent_script.py")
+        source, file = _script_source(args)
+        doc, name = ctx.document(args.get("item")), args.get("name") or (file.name if file else "agent_script.py")
         run = ctx.app.run_source
-        tree = run(args["source"], name, doc) if getattr(run, "wants_doc", False) else run(args["source"], name)
+        tree = run(source, name, doc) if getattr(run, "wants_doc", False) else run(source, name)
         advised = set(doc.kind.advice(doc.data))
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
@@ -68,11 +85,13 @@ def register(tools: Tools):
         return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings() + _new_advice(doc, advised), changed=changed)
 
     @tools.tool("inspect_job", {"properties": {
-        "job_id": {"type": "string", "description": "The job. Without it: every job in the queue's order (running, waiting, then ended)."},
+        "job_id": {"type": "string", "description": "The job (this server's, or one another program has waiting or running). Without it: every job in the queue's order (running, waiting, other programs', then ended)."},
         "wait_s": {"type": "number", "minimum": 0, "maximum": MAX_WAIT_S, "default": 0}}})
     def inspect_job(ctx, args):
-        """A job's status and progress, and its result when done. wait_s (up to 25) waits for it to finish. Without job_id:
-        the jobs queue in order (one heavy job runs at a time; the rest wait their turn)."""
+        """A job's status and progress (frames done of total, and how long since the last one: a stall shows), and its result when
+        done. wait_s (up to 25) waits for it to finish. A frame stuck past its limit (2 min) fails the job by itself, naming the frame.
+        Jobs other programs (another server or session) run are seen too, read-only. Without job_id: the jobs queue in order
+        (one heavy job runs at a time; the rest wait their turn)."""
         if "job_id" not in args:
             jobs = [j.state() for j in ctx.jobs.listing()] if hasattr(ctx.jobs, "listing") else []
             return Reply(f"{len(jobs)} job{'s' * (len(jobs) != 1)}: " + ("; ".join(f"{j['job_id']} {j['label']} {j['status']}" for j in jobs) or "none"),
@@ -81,6 +100,7 @@ def register(tools: Tools):
 
     @tools.tool("run_stop", {"required": ["job_id"], "properties": {"job_id": {"type": "string"}}})
     def run_stop(ctx, args):
-        """Stop a job by its id. Its output is marked incomplete."""
+        """Stop a job by its id, this server's or another program's (that program stops it within a few seconds). A stopped
+        render ends its engine at once, even mid-frame. Its output is marked incomplete."""
         job = ctx.jobs.cancel(args["job_id"])
-        return Reply(f"Stop requested for {job.id} ({job.label}); it is {job.status}.", job.state())
+        return Reply(f"Stop requested for {job.id} ({job.label}); it is {job.status}.{' ' + job.note if job.owner else ''}", job.state())

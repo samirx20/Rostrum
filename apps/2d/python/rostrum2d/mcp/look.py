@@ -14,6 +14,7 @@ from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
 tools = Tools()
 FRAME_WIDTH = 960
+SHEET_WIDTH = 1280      # the whole contact sheet (tiles, gaps and margins), so a 24-frame sheet is still one readable picture
 
 
 def shown_ids(comp: dict, t: float) -> list[str]:
@@ -25,7 +26,8 @@ def shown_ids(comp: dict, t: float) -> list[str]:
                                                                           "description": "Picture width in px (never larger than the composition). Default 960."}}})
 def look_frame(ctx, args):
     """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
-    Also lists which layers are on screen then (approximate: judged from their values, not from pixels)."""
+    Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
+    can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait."""
     doc, comp = doc_and_comp(ctx, args)
     t, frame = time_of(ctx, comp, args)
     scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
@@ -48,10 +50,12 @@ def look_frame(ctx, args):
                                            "end": {"type": "number", "minimum": 0, "description": "Seconds. Default (and the comp's duration): the last frame."},
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
-                                           "width": {"type": "integer", "minimum": 64, "maximum": 1280, "default": 480, "description": "Width of each tile in px."}}})
+                                           "width": {"type": "integer", "minimum": 256, "maximum": 2048, "default": SHEET_WIDTH,
+                                                     "description": "Width of the whole sheet in px (default 1280); the tiles share it."}}})
 def look_sheet(ctx, args):
-    """A contact sheet: `count` frames spread over a time range in one image, each tile labelled with its time and frame.
-    Use it to check a whole motion at a glance; look_frame for detail."""
+    """A contact sheet: `count` frames spread over a time range (`start`, `end` in seconds) in one image `width` px wide,
+    each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
+    a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     last = (round(duration * fps) - 1) / fps
@@ -60,14 +64,15 @@ def look_sheet(ctx, args):
     if not 0 <= start < end <= last + 1e-9:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'range {start}–{end} s', f"must satisfy 0 <= start < end <= {last:.3f} (the last frame)")
     frames = sorted({round((start + (end - start) * i / (count - 1)) * fps) for i in range(count)})
-    scene, tile_w = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps)), args.get("width", 480)
-    cols = args.get("cols", min(4, len(frames)))
+    scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps))
+    cols = min(args.get("cols", 4), len(frames))
+    tile_w = sheet.tile_width(args.get("width", SHEET_WIDTH), cols)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet', project=doc.folder)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum_sheet_") as tmp:
             items = [(f / fps, Path(tmp) / f"f{f}.png") for f in frames]
-            render.stills(ctx.tool, scene, items, job.progress)
+            render.small_stills(ctx.tool, scene, items, tile_w, job.progress)
             tiles = [(png, f"{t:.2f} s   f{f}") for (t, png), f in zip(items, frames)]
             w, h = sheet.contact_sheet(tiles, tile_w, cols, dest)
         return Reply(f'Contact sheet of {comp["id"]}: {len(frames)} frames from {frames[0] / fps:.2f} to {frames[-1] / fps:.2f} s, {w}×{h}.',

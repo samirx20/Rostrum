@@ -536,6 +536,18 @@ impl SkiaScenePainter<'_> {
         }
     }
 
+    /// Rostrum patch: on a linear surface a solid colour is a float shader uniform (working_space::solid). Ganesh hands a paint
+    /// colour inside 0..1 to the GPU as 8-bit vertex colour, which in linear light crushes dark colours
+    /// (#101010 came out #0d0d0d); display surfaces keep the plain colour (their 8 bits are the code).
+    fn set_solid(&mut self, c: skia_safe::Color4f) {
+        if crate::working_space::get().is_some() {
+            self.cache.paint.set_color4f(skia_safe::Color4f::new(0.0, 0.0, 0.0, 1.0), None);
+            self.cache.paint.set_shader(crate::working_space::solid(c));
+        } else {
+            self.cache.paint.set_color4f(c, &ColorSpace::new_srgb());
+        }
+    }
+
     fn set_paint_brush<'a>(
         &mut self,
         brush: impl Into<anyrender::PaintRef<'a>>,
@@ -543,26 +555,18 @@ impl SkiaScenePainter<'_> {
     ) {
         let brush: anyrender::PaintRef<'a> = brush.into();
         match brush {
-            anyrender::Paint::Solid(alpha_color) => {
-                let c = sk_peniko::color4f_from_alpha_color(alpha_color);
-                // Rostrum patch: on a linear surface a solid colour is a float shader uniform (working_space::solid). Ganesh hands a paint
-                // colour inside 0..1 to the GPU as 8-bit vertex colour, which in linear light crushes dark colours
-                // (#101010 came out #0d0d0d); display surfaces keep the plain colour (their 8 bits are the code).
-                if crate::working_space::get().is_some() {
-                    self.cache.paint.set_color4f(skia_safe::Color4f::new(0.0, 0.0, 0.0, 1.0), None);
-                    self.cache.paint.set_shader(crate::working_space::solid(c));
-                } else {
-                    self.cache.paint.set_color4f(c, &ColorSpace::new_srgb());
-                }
-            }
+            anyrender::Paint::Solid(alpha_color) => self.set_solid(sk_peniko::color4f_from_alpha_color(alpha_color)),
             anyrender::Paint::Gradient(_) if skips("gradient") => {
                 self.cache.paint.set_color4f(skia_safe::Color4f::new(0.5, 0.5, 0.5, 0.5), None);
             }
-            anyrender::Paint::Gradient(gradient) => {
-                self.cache
-                    .paint
-                    .set_shader(sk_peniko::shader_from_gradient(gradient, brush_transform));
-            }
+            anyrender::Paint::Gradient(gradient) => match sk_peniko::shader_from_gradient(gradient, brush_transform) {
+                Some(shader) => {
+                    self.cache.paint.set_shader(shader);
+                }
+                // Rostrum patch: a gradient of no size (a radial `closest-side` whose centre is on the box's edge) has
+                // no shader; CSS draws it as its edge colour: the last stop when padded, else the stops' mean.
+                None => self.set_solid(sk_peniko::degenerate_colour(gradient)),
+            },
             anyrender::Paint::Image(image_brush) => {
                 // Rostrum patch (G7, hem): the image is kept, not the shader: the shader held the first draw's brush
                 // transform and sampler, so the same picture drawn at another size or place reused them.
@@ -1817,10 +1821,13 @@ mod sk_peniko {
         )
     }
 
+    /// Rostrum patch: None when Skia can make no shader for it (a gradient of no size: its brush transform can't be
+    /// inverted; a radial `closest-side` centred on the box's edge); the caller draws `degenerate_colour`. It unwrapped,
+    /// and the panic on an export's drawing thread left the whole export waiting forever (p1, 2026-10-25).
     pub(super) fn shader_from_gradient(
         gradient: &Gradient,
         brush_transform: Option<kurbo::Affine>,
-    ) -> SkShader {
+    ) -> Option<SkShader> {
         fn rad_to_deg(rad: f32) -> f32 {
             if rad == 0.0 {
                 return 0.0;
@@ -1862,7 +1869,6 @@ mod sk_peniko {
                     ),
                     &brush_transform.map(super::sk_kurbo::matrix_from_affine),
                 )
-                .unwrap()
             }
             GradientKind::Radial(radial_gradient_position) => {
                 let mut colors: Vec<SkColor4f> = vec![];
@@ -1900,7 +1906,6 @@ mod sk_peniko {
                         ),
                         &brush_transform.map(super::sk_kurbo::matrix_from_affine),
                     )
-                    .unwrap()
                 } else {
                     two_point_conical_gradient(
                         (start_center, start_radius),
@@ -1916,7 +1921,6 @@ mod sk_peniko {
                         ),
                         &brush_transform.map(super::sk_kurbo::matrix_from_affine),
                     )
-                    .unwrap()
                 }
             }
             GradientKind::Sweep(sweep_gradient_position) => {
@@ -1954,7 +1958,21 @@ mod sk_peniko {
                     ),
                     &brush_transform.map(super::sk_kurbo::matrix_from_affine),
                 )
-                .unwrap()
+            }
+        }
+    }
+
+    /// Rostrum patch: the one colour a gradient with no size draws as (CSS Images: its edge colour): the last stop when
+    /// padded, the mean of the stops when it repeats.
+    pub(super) fn degenerate_colour(gradient: &Gradient) -> SkColor4f {
+        let colours: Vec<SkColor4f> = gradient.stops.iter().map(|s| color4f_from_dynamic_color(s.color)).collect();
+        match (gradient.extend, colours.last()) {
+            (_, None) => SkColor4f::new(0.0, 0.0, 0.0, 0.0),
+            (peniko::Extend::Pad, Some(last)) => *last,
+            _ => {
+                let n = colours.len() as f32;
+                let sum = colours.iter().fold([0.0f32; 4], |a, c| [a[0] + c.r, a[1] + c.g, a[2] + c.b, a[3] + c.a]);
+                SkColor4f::new(sum[0] / n, sum[1] / n, sum[2] / n, sum[3] / n)
             }
         }
     }

@@ -63,19 +63,50 @@ def describe(a: dict, full: bool = True) -> str:
     return "\n".join(lines)
 
 
-@tools.tool("look_motion", {"properties": {**ITEM_COMP, "layers": {"type": "array", "items": {"type": "string"}, "description": "Only these layer ids."},
+LIMIT = 30      # layers that move and findings a reply lists before "N more" (a 500-layer piece stays readable)
+
+
+def trimmed(a: dict, limit: int) -> tuple[dict, list[str]]:
+    """The analysis cut to `limit` moving layers and `limit` findings (still layers named in one line), with the lines
+    that say what was left out and how to ask for it."""
+    moving = [f for f in a["layers"] if f["moves"]]
+    still = [f["id"] for f in a["layers"] if not f["moves"]]
+    notes = []
+    if len(moving) > limit:
+        notes.append(f"{len(moving) - limit} more moving layers not listed: ask with `layers` (ids) or a bigger `limit`.")
+    if still:
+        notes.append(f'{len(still)} still layer{"s" * (len(still) != 1)} (no keys): {", ".join(still[:10])}{" …" if len(still) > 10 else ""}.')
+    count: dict[str, int] = {}
+    for x in a["findings"]:
+        count[x["kind"]] = count.get(x["kind"], 0) + 1
+    findings = sorted(a["findings"], key=lambda x: count[x["kind"]])    # rare kinds first: 6 dead keys before 1450 overlaps
+    if len(findings) > limit:
+        kinds: dict[str, int] = {}
+        for x in findings[limit:]:
+            kinds[x["kind"]] = kinds.get(x["kind"], 0) + 1
+        notes.append(f'{len(findings) - limit} more findings ({", ".join(f"{n} {k}" for k, n in kinds.items())}): '
+                     "ask with `layers` for the ones you are tuning, or a bigger `limit`.")
+    return {**a, "layers": moving[:limit], "findings": findings[:limit]}, notes
+
+
+@tools.tool("look_motion", {"properties": {**ITEM_COMP, "layers": {"type": "array", "items": {"type": "string"}, "description": "Only these layer ids (all of them listed, no limit)."},
     "full": {"type": "boolean", "description": "Every move of every layer (from, to, ease, peak speed) and the full data. Default false: one line a "
-                                              "layer, which is enough to judge a whole piece; ask `full` with `layers` for the few you are tuning."}}})
+                                              "layer, which is enough to judge a whole piece; ask `full` with `layers` for the few you are tuning."},
+    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": LIMIT, "description": "Without `layers`: how many moving "
+              "layers and findings to list (default 30); the reply says how many more there are."}}})
 def look_motion(ctx, args):
     """What moves and how, from the document's keys (no rendering): per layer when it moves, its path's start and end, peak speed,
     which fields animate, ease and overshoot, holds; plus facts: entrances that overlap, stretches where nothing moves,
-    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Short by default (a line a layer); `full` gives every move and the full data."""
+    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Short by default: a line a moving layer,
+    at most `limit` (30) layers and findings, then how many more; `layers` lists just those; `full` gives every move and the full data."""
     comp = doc_and_comp(ctx, args)[1]                 # times as they play (pick.py)
     a = analyse(comp, args.get("layers"))
     n, full = len(a["findings"]), bool(args.get("full"))
-    data = a if full else {**a, "layers": [{k: f[k] for k in ("id", "animated_fields", "moving", "holds") if k in f} for f in a["layers"]]}
+    shown, notes = (a, []) if args.get("layers") else trimmed(a, int(args.get("limit", LIMIT)))
+    data = shown if full else {**shown, "layers": [{k: f[k] for k in ("id", "animated_fields", "moving", "holds") if k in f} for f in shown["layers"]]}
     more = "" if full or not a["layers"] else "\n(Short form: ask `full` for every move, with `layers` for just the ones you are tuning.)"
-    return Reply(f'{len(a["layers"])} layers, {n} finding{"s" * (n != 1)}.\n{describe(a, full)}{more}', data)
+    text = "\n".join(x for x in (describe(shown, full), *notes) if x)
+    return Reply(f'{len(a["layers"])} layers, {n} finding{"s" * (n != 1)}.\n{text}{more}', data)
 
 
 def _all_layers(layers: list[dict]):

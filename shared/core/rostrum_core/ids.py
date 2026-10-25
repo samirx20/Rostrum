@@ -6,12 +6,13 @@ import re
 import secrets
 
 
-def counted(taken, type_: str, reserved=(), sep: str = "_") -> str:
+def counted(taken, type_: str, reserved=(), sep: str = "_", start: int = 1) -> str:
     """The next `type_N` not taken and not reserved (every quoted word in a script is reserved). The one source
-    of counted ids, for items (`layer_2`) and for change groups (`agent-run-2`, `sep="-"`)."""
-    taken = set(taken) | set(reserved)
-    n = 1
-    while f"{type_}{sep}{n}" in taken:
+    of counted ids, for items (`layer_2`) and for change groups (`agent-run-2`, `sep="-"`). `start`: an N known to be
+    no higher than the answer (a caller that only adds ids resumes after its last one: 10,000 strokes stay linear)."""
+    taken, reserved = (s if isinstance(s, (set, frozenset, dict)) else set(s) for s in (taken, reserved))
+    n = start
+    while f"{type_}{sep}{n}" in taken or f"{type_}{sep}{n}" in reserved:
         n += 1
     return f"{type_}{sep}{n}"
 
