@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui import DocBridge, many, pointer_quiet
+from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.model import RowsModel
@@ -72,6 +73,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self._edit = None                   # the automation point being dragged (lanes.PointEdit)
         self._apt: tuple | None = None      # the selected automation point: (track id, item id, lane, index)
         self._play_lane = "sustain"         # the Editor's playing lane (sustain, dynamics, bend): the person's view
+        self._roll_later = AfterFrame(lambda: self._guard(self._show_roll))   # (made before the kit's first selection)
         self._picture_open = False
         MK.use_project(doc.folder)          # the screen works in this document's project (its shared markers)
         super().__init__(doc, parent=parent)
@@ -238,8 +240,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
             self._track = i
         elif not (self._track and self.doc.has(self._track)):
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
-        if self._view and self._track != was:
-            self._show_roll()
+        if self._view and self._track != was:     # the roll of another track: in the frame after the pick's (rows_view)
+            self._roll_later.ask()
 
     def _schedule(self) -> dict:
         """The compiled song. A song with nothing in it yet (a new one, or an instrument with no notes) is still a

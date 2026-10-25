@@ -39,14 +39,14 @@ Panel {
         else if (e) soundLibrary.stopAudition()
     }
 
-    function finish() { soundLibrary.stopAudition(); workspace.setLibrary(false); p.used() }   // after an add: the preview stops and the Library closes
+    function finish() { soundLibrary.stopAudition(); workspace.closeLibraryAfterFrame(); p.used() }   // after an add: the preview stops and the Library closes (the frame after the new row)
 
     function use(i) {
         const e = found[i]
         if (!e) return
+        workspace.setDock("editor")                     // first: the Mixer, now hidden, makes no strip on this click
         if (!adder.add(e.key)) return
         if (e.arm) recorder.arm(backend.selected)
-        workspace.setDock("editor")
         finish()
     }
 
