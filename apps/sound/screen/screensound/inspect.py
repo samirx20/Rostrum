@@ -5,6 +5,7 @@ the names items go by (a note by its pitch, a hit by its drum, a clip by its fil
 """
 from __future__ import annotations
 
+import functools
 import re
 
 from rostrum_core import RostrumError, codes
@@ -182,6 +183,7 @@ def name_of(item: dict) -> str:
     return f"{word} {n}" if n and t in COUNTED else word
 
 
+@functools.lru_cache(maxsize=512)
 def drum_words(drum) -> str:
     """A drum's stored name ("openHat", "kick") in words, as the roll's rows say it: "Open hat", "Kick"."""
     s = re.sub(r"([a-z])([A-Z0-9])", r"\1 \2", str(drum).replace("_", " ")).lower()

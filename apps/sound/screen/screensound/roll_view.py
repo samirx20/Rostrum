@@ -1,6 +1,6 @@
 """The Editor's piano roll of the current track, as rows_view.py makes it (a mix-in of SoundBridge, under RowsView):
 its layout (`roll`) and its blocks (`rollBlocks`, JSON text: block_patch.py) each sent only when they changed, a few
-changed blocks as a patch (`rollPatched`), the selected ones (`rollPicked`), the playing lane (`rollPlayed`)."""
+change of them as a patch (`rollPatched`), the selected ones (`rollPicked`), the playing lane (`rollPlayed`)."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal
@@ -43,13 +43,15 @@ class RollView:
             self.rollPlayedChanged.emit()
         relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
         if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
-            p = block_patch.diff(before.get("blocks"), roll.get("blocks", []))
+            same = before.get("id") == roll.get("id")     # another track: its list whole
+            p = block_patch.diff(before.get("blocks"), roll.get("blocks", [])) if same else None
             by = self.__dict__.setdefault("_roll_by", {})
-            if p:
-                for i in p[0]:
+            if p is not None:
+                for i in p.gone:
                     by.pop(i, None)
-                by.update((b["id"], b) for b in p[1])
-                self.rollPatched.emit(*p)     # a few: the screen patches the list it shows (block_patch.py)
+                by.update((b["id"], b) for b in p.changed)
+                if p:
+                    self.rollPatched.emit(p.text())     # the screen patches the list it shows (block_patch.py)
             else:
                 self.__dict__["_roll_by"] = {b["id"]: b for b in roll.get("blocks", [])}
                 self.rollBlocksChanged.emit()

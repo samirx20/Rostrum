@@ -28,7 +28,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline, velocity
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .drum_rows import DrumRowSlots
@@ -149,10 +149,15 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         list made every row again on every change, so every lane showed blank until it painted (S63, after a take)."""
         return self._lanes
 
-    @Property("QVariantList", notify=S.rollPickedChanged)
+    @Property("QVariantMap", notify=S.rollPickedChanged)
     def rollPicked(self):
-        """The roll's selected notes / hits / clips (the velocity strip's readout): only those, never every block."""
-        return self.__dict__.get("_roll_picked", [])
+        """The velocity strip's readout of the roll's selected notes / hits (velocity.readout), once per pick or edit
+        of them: a few numbers, never the selected blocks themselves."""
+        picked = self.__dict__.get("_roll_picked", [])
+        kept = self.__dict__.get("_roll_readout")
+        if kept is None or kept[0] is not picked:
+            kept = self.__dict__["_roll_readout"] = (picked, velocity.readout(picked))
+        return kept[1]
 
     @Property("QVariantList", notify=S.markersChanged)
     def markers(self):

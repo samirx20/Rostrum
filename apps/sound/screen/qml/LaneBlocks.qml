@@ -15,12 +15,15 @@ Item {
     property var track          // the row's layout: hue, mute, group
     property var blocks: ""     // its notes / hits / clips as JSON text (the row model's own role: an edit on them sends only these)
     property var patched: null  // a few of them changed since (backend.blocksPatched): the list as patched
-    readonly property var sent: patched || Blocks.parse(blocks)    // (parsed once: Blocks.parse)
+    readonly property var parsed: Blocks.parse(blocks)              // (parsed once a text: a patch dropped shows it again)
+    readonly property var sent: patched || parsed
     readonly property var shown: Blocks.timed(sent, ruler ? ruler.placing : null)   // in seconds (a tempo change: here only)
+    readonly property string rowId: track.id
     onBlocksChanged: patched = null
+    onRowIdChanged: patched = null    // (this lane now shows another row: a patch is its row's alone)
     Connections {
         target: backend
-        function onBlocksPatched(key, gone, put) { if (key === lane.track.id) lane.patched = Blocks.patch(lane.shown, gone, put) }
+        function onBlocksPatched(key, text) { if (key === lane.track.id) lane.patched = Blocks.patch(lane.shown, text, lane.ruler ? lane.ruler.placing : null) }
         function onBlocksReset(key) { if (key === lane.track.id) lane.patched = null }
     }
     property var ruler

@@ -1,13 +1,26 @@
 .pragma library
 .import "Tempo.js" as Tempo
-// A patch of a row's or the roll's blocks (screensound/block_patch.py `apply`, the same rule): the blocks whose ids
-// are gone are left out, changed ones take their place, new ones go at the end. The list made remembers the patch
-// (`__patch`: the list it came from, what it put and took), so a surface that painted that list looks only at those
-// blocks (`update`), and where each block sits (`__at`, id -> index, shared while no block goes): a hit drawn on a
-// track of 3,000 costs what one block costs, not a walk over all of them on each surface.
-function patch(blocks, gone, put) {
-    put = own(put)
-    var out, at, i, j
+// A patch of a row's or the roll's blocks (screensound/block_patch.py `apply`, the same rule; JSON text, one per
+// change at any count): the blocks whose ids are gone are left out, changed ones take their place, new ones go at
+// the end, and the blocks only moved (`by`: [field, d, ids]) are made here from the ones shown, their place shifted by
+// d ("beats": atBeat and endBeat, "secs": t): a whole-song move sends ids and a number, not every block again. The
+// list made remembers the patch (`__patch`: the list it came from, what it put and took), so a surface that painted
+// that list looks only at those blocks (`update`), and where each block sits (`__at`, id -> index, shared while no
+// block goes): a hit drawn on a track of 3,000 costs what one block costs, not a walk over all of them on each surface.
+function patch(blocks, text, map) {
+    var p = JSON.parse(text), put = p.put, gone = p.gone, out, at, i, j
+    if (p.by.length) {
+        var tm = map && map.length ? [_plainMap(map), Tempo.key(map)] : null
+        at = _at(blocks)
+        for (i = 0; i < p.by.length; i++) {
+            var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2]
+            for (j = 0; j < ids.length; j++) {
+                var k = at[ids[j]]
+                if (k === undefined || k >= blocks.length || blocks[k].id !== ids[j]) throw new Error("Blocks.patch: no block " + ids[j] + " to move")
+                put.push(_moved(blocks[k], field, d, tm))
+            }
+        }
+    }
     if (gone.length === 0) {
         out = blocks.slice(); at = _at(blocks)
         for (i = 0; i < put.length; i++) {
@@ -28,8 +41,27 @@ function patch(blocks, gone, put) {
         }
         for (i = 0; i < put.length; i++) if (by[put[i].id]) out.push(put[i])
     }
-    out.__patch = { from: blocks, put: put, gone: own(gone) }
+    out.__patch = { from: blocks, put: put, gone: gone }
     return out
+}
+
+// A block shown, its place moved by d: one placed in beats, timed at once under the map shown (`tm`: [map, its key],
+// as `timed` makes it: a layer over its own block, never one more), so `timed` passes it by; one in seconds, a copy.
+// (Copying each moved block and timing it after cost ~25 µs a block: 0.1 s for a 1,900-note row.)
+function _moved(x, field, d, tm) {
+    var o
+    if (field === "beats" && tm !== null) {
+        o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)
+        o.atBeat = x.atBeat + d; o.t = Tempo.seconds(tm[0], o.atBeat)
+        if (x.endBeat !== undefined) { o.endBeat = x.endBeat + d; o.dur = Tempo.seconds(tm[0], o.endBeat) - o.t }
+        o.__tempo = tm[1]
+        return o
+    }
+    o = {}
+    for (var key in x) if (key !== "__tempo") o[key] = x[key]
+    if (field === "beats") { o.atBeat = x.atBeat + d; if (x.endBeat !== undefined) o.endBeat = x.endBeat + d }
+    else o.t = x.t + d
+    return o
 }
 
 function _at(list) {                     // id -> index (made once per list a patch starts from)
@@ -49,11 +81,15 @@ function _at(list) {                     // id -> index (made once per list a pa
 function timed(list, map) {
     if (!map || !map.length) return list
     var key = Tempo.key(map), out = null, made = null
+    if (list.__timed !== undefined && list.__timed[0] === key) return list.__timed[1]    // (a patch dropped: the list shown before)
+    map = _plainMap(map)
     for (var i = 0; i < list.length; i++) {
         var x = list[i]
         if (x.atBeat === undefined || x.__tempo === key) continue
         if (out === null) { out = list.slice(); made = new Map() }
         var o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)   // (a re-timed one: from its own block, never a layer more); its fields read through (a copy of each cost ~30 ms a tempo step)
+        o.atBeat = x.atBeat                     // (its own, when it was moved here: `_moved`)
+        if (x.endBeat !== undefined) o.endBeat = x.endBeat
         o.t = Tempo.seconds(map, x.atBeat)
         if (x.endBeat !== undefined) o.dur = Tempo.seconds(map, x.endBeat) - o.t
         o.__tempo = key
@@ -63,6 +99,15 @@ function timed(list, map) {
     var p = list.__patch
     if (p !== undefined) out.__patch = { from: p.from, gone: p.gone, put: p.put.map(function (b) { return made.get(b) || b }) }
     if (list.__at !== undefined) out.__at = list.__at
+    list.__timed = [key, out]
+    return out
+}
+
+// The tempo map as plain JS arrays, read once a call: each read of one from Python goes through Qt (~10 reads a
+// block: ~50 µs a block, 0.1 s for a 1,900-note row)
+function _plainMap(map) {
+    var out = new Array(map.length)
+    for (var i = 0; i < map.length; i++) out[i] = Array.prototype.slice.call(map[i])
     return out
 }
 
@@ -70,6 +115,14 @@ function timed(list, map) {
 // parsed once into plain blocks; a list (anything else) as `own`.
 function parse(sent) {
     return typeof sent === "string" ? (sent === "" ? [] : JSON.parse(sent)) : own(sent || [])
+}
+
+// The tempo map as plain JS arrays, read once a call: each read of one from Python goes through Qt (~10 reads a
+// block: ~50 µs a block, 0.1 s for a 1,900-note row)
+function _plainMap(map) {
+    var out = new Array(map.length)
+    for (var i = 0; i < map.length; i++) out[i] = Array.prototype.slice.call(map[i])
+    return out
 }
 
 // A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list
