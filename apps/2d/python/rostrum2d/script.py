@@ -127,7 +127,8 @@ class Item:
                 "paints": [], "paintmasks": []}
         frames = self.node["frames"]
         if any(f["at"] == node["at"] for f in frames):
-            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}")
+            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}: call {self.id}.frame({node['at']}) once, "
+                             f"keep what it returns (f = {self.id}.frame({node['at']})) and paint more on f, or use another frame")
         frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
         item = Item(self._b, node)
         item.drawings = frames
