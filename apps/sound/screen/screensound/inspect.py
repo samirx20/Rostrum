@@ -190,11 +190,19 @@ def drum_words(drum) -> str:
     return s[:1].upper() + s[1:]
 
 
+@functools.lru_cache(maxsize=1024)
+def _note_words(pitch) -> str:
+    """A note's name by its pitch alone ("D4 note", "C4 E4 G4 chord"): worked out once per pitch (a whole-song
+    selection names 3,352 notes that share a few dozen pitches)."""
+    keys = timing.keys(list(pitch) if type(pitch) is tuple else pitch)
+    return " ".join(timing.name(k) for k in keys) + (" chord" if len(keys) > 1 else " note")
+
+
 def label(item: dict) -> str:
     t = item.get("type")
     if t == "note":
-        keys = timing.keys(item["pitch"])
-        return " ".join(timing.name(k) for k in keys) + (" chord" if len(keys) > 1 else " note")
+        p = item["pitch"]
+        return _note_words(tuple(p) if type(p) is list else p)
     if t == "hit":
         return f"{drum_words(item['drum'])} hit"
     if t == "clip":

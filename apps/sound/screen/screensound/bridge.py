@@ -13,7 +13,7 @@ renamed in another app re-renders the sound, and a rename is followed as one rec
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
-from rostrum_gui import DocBridge, many, pointer_quiet
+from rostrum_gui import DocBridge, heap, many, pointer_quiet
 from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.live_link import LiveLink
 from rostrum_gui.markers import MarkerWatch
@@ -96,6 +96,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self.selectedItemsChanged.connect(self._follow_kit)      # Sound's list follows the kit's (select_slots)
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
+        self.docChanged.connect(heap.after_edit)                 # what an edit leaves is set aside from the collector
         self.selectedItemsChanged.connect(self._drop_point)
         for s in (self.docChanged, self.rollChanged):      # the In key chip: it comes and goes with the song's key and the track's kind
             s.connect(self.keyLockChanged)
@@ -205,7 +206,12 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         an add or remove elsewhere does not count (a note drawn reaches no master: the loudness and export parts
         stay as they are instead of reading the master again on every click)."""
         t = self._kit.touched
-        return t is None or Touched(t.keys, False).reaches(self.doc, list(ids))
+        if t is None:
+            return True
+        here = self.__dict__.get("_here")            # one per change: several parts ask (each built it: ~5 ms a
+        if here is None or here[0] is not t:          # whole-song Right)
+            here = self.__dict__["_here"] = (t, Touched(t.keys, False) if t.structural else t)
+        return here[1].reaches(self.doc, list(ids))
 
     # ---- the kit's hooks: names, times shown in seconds but written in the item's own form, fields on the page --
     def label_of(self, item):

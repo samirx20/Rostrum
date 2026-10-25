@@ -4,10 +4,12 @@ the shared file rule (rostrum_core.project.media_problems: missing and outside f
 (cleanup.cached) and the song's warnings (DocKind.warn: designed sounds no longer made)."""
 from __future__ import annotations
 
+from typing import Iterator
+
 from rostrum_core import project as P
 
 from . import clean_clips, cleanup
-from .doc import media, past_end
+from .doc import item_times, media, past_end
 
 # every kind of problem and its name on the chip: ONE list (the chip never looks a kind up anywhere else)
 LABELS = {"missing-file": "Missing file", "outside-project": "File outside the song", "pending-take": "Cleaned take not made",
@@ -37,29 +39,52 @@ def _called(root: dict, track: dict) -> str:
 
 
 def problems(doc) -> list[dict]:
-    clips = [(t, c) for t in doc.data.get("tracks", []) for c in t.get("clips", [])]
-    refs = [(c["id"], f"the clip on {_called(doc.data, t)}", c["media"]) for t, c in clips if isinstance(c.get("media"), str)]
-    out = _files(getattr(doc, "folder", None), refs)
-    for p in out:                                    # the row's `item` names the clip for an agent; the words never show the id
+    out: list[dict] = []
+    for _ in steps(doc, out):
+        pass
+    return out
+
+
+STEP = 400          # items whose times are worked out in one step (~2-4 ms), clips whose files are looked at: 8
+
+
+def steps(doc, out: list) -> Iterator[None]:
+    """`problems(doc)` in small steps, the list growing in `out` (complete when it ends): the screen's Problems chip
+    runs it between events, so checking a whole song after a whole-song Right never holds up a key. Read only; the
+    song is read as it was when it began (a change starts a new run: the screen drops the old one)."""
+    data, folder = doc.data, getattr(doc, "folder", None)
+    clips = [(t, c) for t in data.get("tracks", []) for c in t.get("clips", [])]
+    refs = [(c["id"], f"the clip on {_called(data, t)}", c["media"]) for t, c in clips if isinstance(c.get("media"), str)]
+    found: list[dict] = []
+    for n in range(0, len(refs), 8):                 # each file is looked for on disk: a few at a time
+        found += _files(folder, refs[n:n + 8])
+        yield
+    for p in found:                                  # the row's `item` names the clip for an agent; the words never show the id
         p["message"] = p["message"].replace(f" ({p['item']})", "", 1)
-    gone = {p["item"] for p in out if p["kind"] == "missing-file"}     # a missing file's take can't be looked up
+    out += found
+    gone = {p["item"] for p in found if p["kind"] == "missing-file"}     # a missing file's take can't be looked up
     with media.of(doc):
         waiting = [(c["id"], t) for t, c in clean_clips.clips(doc) if c["id"] not in gone
                    and cleanup.cached(media.file(c["media"]), cleanup.recipe_of(c)) is None]
-    out += [{"kind": "pending-take", "item": i, "message": f"The clip on {_called(doc.data, t)} needs a cleaned take that is not made yet; until it is, "
+    out += [{"kind": "pending-take", "item": i, "message": f"The clip on {_called(data, t)} needs a cleaned take that is not made yet; until it is, "
              "the original plays", "fix": clean_clips.HINT}
             for i, t in waiting]
+    yield
+    timed = [i for t in data.get("tracks", []) for k in ("notes", "hits") for i in t.get(k, [])]
+    for n in range(0, len(timed), STEP):             # each item's times worked out and kept (item_times): the checks
+        for i in timed[n:n + STEP]:                  # below then read them, all in one short step
+            item_times.span(data, i)
+        yield
     with past_end.same_song():                       # the song's warnings read once, then named by the check that said each
-        warnings, ties, late, held = (doc.kind.warnings(doc.data), past_end.ties(doc.data), past_end.late(doc.data),
-                                      past_end.held(doc.data))
+        warnings, ties, late, held = (doc.kind.warnings(data), past_end.ties(data), past_end.late(data),
+                                      past_end.held(data))
     for w in warnings:
         kind = "broken-tie" if w in ties else "after-the-end" if w in late else "held-past-end" if w in held else "no-longer-made"
         many = kind in ("after-the-end", "held-past-end")          # one line naming several: no one item to select
         out.append({"kind": kind, "item": w.split(":", 1)[0] if ":" in w and not many else "", "message": w, "fix": FIXES[kind]})
-    if cut := past_end.hard_end(doc.data):
+    if cut := past_end.hard_end(data):
         out.append({"kind": "hard-end", "item": cut, "message": "Soft end is off and sound is still playing at the song's Length, "
                     "so the file ends with a click", "fix": "Turn Soft end back on (doc.set endFade true), or end the music before the Length"})
-    return out
 
 
 def _files(folder, refs) -> list[dict]:

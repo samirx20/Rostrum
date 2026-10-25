@@ -4,11 +4,13 @@ cleaned takes not made yet, sounds no longer made) and the newest render's loude
 """
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import QTimer
 from rostrum_core import RostrumError
 from rostrum_gui import pointer_quiet
 from rostrum_gui.problems import ProblemsList
-from rostrum_sound.diagnose import LABELS, problems
+from rostrum_sound.diagnose import LABELS, problems, steps
 
 from .select_slots import SETTLE_MS
 from .strips import MASTER
@@ -23,13 +25,22 @@ def rows(render: dict) -> list[dict]:
              "fix": "Turn the master or the loudest track down, or turn on the master's limiter."}]
 
 
+SLICE_S = 0.004      # the most one step of the check holds the screen's thread; the next waits for the loop's next turn
+
+
+def _row(p: dict) -> dict:
+    return {**p, "label": LABELS[p["kind"]], "danger": p["kind"] == "missing-file"}
+
+
 def doc_rows(doc, making=frozenset()) -> list[dict]:
     """The song's problems; a cleaned take that is being made now is activity (the Clean up bar shows it), not a problem."""
-    return [{**p, "label": LABELS[p["kind"]], "danger": p["kind"] == "missing-file"} for p in problems(doc)
-            if not (p["kind"] == "pending-take" and p["item"] in making)]
+    return [_row(p) for p in problems(doc) if not (p["kind"] == "pending-take" and p["item"] in making)]
 
 
 def make(bridge, cleaning=None) -> ProblemsList:
+    """The chip. After a change it checks the song in steps of at most SLICE_S between events (diagnose.steps), so a
+    whole-song check (3,352 notes moved: their times worked out again, each clip's file looked for) never holds up a
+    key; a newer change drops the run and starts again from the song as it is then. The list shows once complete."""
     def jump(row):
         try:
             bridge.doc.item(row.get("item") or "")
@@ -37,14 +48,34 @@ def make(bridge, cleaning=None) -> ProblemsList:
             return
         bridge.select(row["item"])
     plist = ProblemsList(jump, bridge)
-    def show(*_):
+    run: dict = {}
+
+    def start(*_):
         if pointer_quiet.busy():                     # never inside a click or a drag: a moment later
             return later.start()
-        plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
-    later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=show)   # once, after the edit is drawn: the
-    if cleaning:                                     # chip is never what the pointer waits for (a drop ran it twice)
+        run["out"] = []
+        run["steps"] = steps(bridge.doc, run["out"])
+        step.start()
+
+    def go():
+        if "steps" not in run:
+            return
+        if pointer_quiet.busy():
+            return later.start()
+        end = time.perf_counter() + SLICE_S
+        for _ in run["steps"]:
+            if time.perf_counter() >= end:
+                return step.start()
+        making = cleaning.making() if cleaning else ()
+        found = [_row(p) for p in run.pop("out") if not (p["kind"] == "pending-take" and p["item"] in making)]
+        del run["steps"]
+        plist.show_rows(rows(bridge.lastRender or {}) + found)
+
+    later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=start)   # once, after the edit is drawn: the
+    step = QTimer(plist, singleShot=True, interval=0, timeout=go)               # chip is never what the pointer waits for
+    if cleaning:                                     # (a drop ran it twice)
         cleaning.changed.connect(later.start)        # a take finished (or began): the chip follows
     bridge.renderChanged.connect(later.start)
     bridge.docChanged.connect(later.start)       # every change (a clip added is a block: no layout news)
-    show()
+    plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
     return plist
