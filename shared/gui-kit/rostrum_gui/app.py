@@ -116,6 +116,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     win.resize(*size)
     if background():
         show_behind(win)
+        from .background_keys import watch as watch_keys     # its shortcuts answer though it is never the active window
+        watch_keys(app, win)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
     return app, engine, win
