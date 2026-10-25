@@ -212,7 +212,7 @@ KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, up
                new=lambda: {"id": "root", "type": "doc", "comps": [], "paintings": []})
 
 rostrum_paint.register(REGISTRY, canvas_types=("frame",), peers=shared_paints.peers, seamless=paintings.seamless_canvas)
-from . import ops_draw, ops_expr, ops_items, ops_keys, ops_painting  # noqa: E402,F401  (they register on REGISTRY)
+from . import ops_draw, ops_expr, ops_items, ops_keys, ops_painting, ops_scenes  # noqa: E402,F401  (they register on REGISTRY)
 from . import follow  # noqa: E402,F401  (text.follow: a text on a path layer)
 from . import ops_path, ops_stroke  # noqa: E402,F401  (vector paths, booleans, stroke width)
 from .rig import ops as _rig_ops, poses as _rig_poses, guess as _rig_guess, joints as _rig_joints, draw as _rig_draw, mirror as _rig_mirror  # noqa: E402,F401  (bones, IK chains, binds, poses, Bones from part names, joints and posing, the Bone tool, Mirror pose)
