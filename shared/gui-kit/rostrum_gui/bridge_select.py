@@ -202,17 +202,33 @@ class SelectSlots(SlotMixin):
                 + self.extra_commands())
 
     def _rows(self):
-        each = [self._item_rows(self.doc.item(i)) for i in self._kit.selection]
+        k = self._kit
+        each = [self._item_rows(self.doc.item(i)) for i in k.selection]
+        if len(k.evaluated) > len(k.selection):           # kept for the items these rows are of, never one picked before
+            k.evaluated = {i: k.evaluated[i] for i in k.selection}
         return [] if not each else each[0] if len(each) == 1 else many.merge(each)
 
     def _item_rows(self, it):
         k = self._kit
         static = k.static if k.op_kind[1] else many.own_rules(k.static, self.doc.kind.registry.field_op(it["type"]))
-        evaluated = rows.evaluate(static, self.shown_values(it), self.facts_of(it), k.more,
+        step, kept = bool(k.stepping), self._kept_rows(it["id"])
+        gone = self.on_page(it)
+        evaluated = rows.evaluate(static, self.shown_values(it), {} if step else self.facts_of(it), k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
-                                  lambda name: self.list_choices(it, name), k.open_groups, k.search, self.on_page(it),
-                                  self.starts(it), step=k.stepping)
-        return rows.omit(evaluated, self.on_page(it))
+                                  lambda name: self.list_choices(it, name), k.open_groups, k.search, gone,
+                                  {} if step else self.starts(it), step=step, kept=kept)
+        k.evaluated[it["id"]] = (self.doc.data, k.static, evaluated)       # (what later steps keep: no copy)
+        return rows.omit(evaluated, gone)
+
+    def _kept_rows(self, item_id):
+        """A drag's step: the item's rows the steps since the rows last followed left alone, as they were then
+        ({param row id: its row}); None: every row is read (not a step, or what the steps touched can't be told)."""
+        k = self._kit
+        was = k.evaluated.get(item_id)
+        if not k.stepping or was is None or k.stepping[1] is None or was[0] is not k.stepping[0] or was[1] is not k.static:
+            return None
+        fields = k.stepping[1].fields_of(self.doc, item_id)
+        return None if fields is None else {r["id"]: r for r in was[2] if r["row"] == "param" and r["id"] not in fields}
 
     def _refresh(self):
         """The same rows with new values or validity: changed in place, so each row animates its own reveal."""
@@ -229,13 +245,14 @@ class SelectSlots(SlotMixin):
         press until the drop (a row appearing mid-drag makes its control then: tens of ms in one pointer move)."""
         self._panel_now()
         old = self.model.rows
-        self._kit.stepping = True           # values only: the rows' HELD keys come from the press (rows.evaluate step)
+        k = self._kit                       # values only: the rows' HELD keys come from the press (rows.evaluate
+        k.stepping, k.stepped = k.stepped or (None, None), None     # step), and only those of the fields stepped
         try:
             new = self._rows()
         finally:
-            self._kit.stepping = False
+            k.stepping = False
         if [r["id"] for r in new] == [r["id"] for r in old]:
-            self.model.update([{**n, **{k: o[k] for k in self.HELD if k in o}} for n, o in zip(new, old)])
+            self.model.update([{**n, **{h: o[h] for h in self.HELD if h in o}} for n, o in zip(new, old)])
 
     def _follow_doc(self, step=False):
         """After a document change: a selected item that went away (e.g. undo of an add) leaves the selection. `step`:

@@ -246,12 +246,21 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """A drag's step (a gesture preview) is only docStepped: the rows' values and the picture follow it live; the
         actions row, history, ↶ ↷ and item lists wait for docChanged, sent once when the drag ends (its change or reset).
         First, what the change or step touched (touched.py): every part reads it to skip work elsewhere."""
-        self._kit.touched = touch.of(self.doc, event)
+        k = self._kit
+        k.touched = touch.of(self.doc, event)
+        k.stepped = (None if event.kind != "preview" else (k.seen, k.touched) if k.stepped is None
+                     else (k.stepped[0], k.stepped[1] and k.touched and k.stepped[1].joined(k.touched)))
+        k.seen = self.doc.data
+        self._before_followers(event)
         self._follow_doc(event.kind == "preview")
         if event.kind == "preview":
             self.docStepped.emit()
             return
         self._heard(event.change if event.kind == "change" else None)
+
+    def _before_followers(self, event):
+        """What an app starts before the rows, panels and lists follow a change (2D: a drag step's picture, so the
+        engine draws it meanwhile). `touched()` is known here."""
 
     def touched(self):
         """What the change being announced touched (touched.Touched: `reaches(doc, ids)`); None = can't tell, so a

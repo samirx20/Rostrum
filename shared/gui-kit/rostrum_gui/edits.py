@@ -38,10 +38,17 @@ class Drag:
     def __init__(self, doc, who, label):
         self._ctx = doc.gesture(label, who)
         self._ctx.__enter__()              # a second open drag raises CONFLICT
+        self._fresh = None                 # the last step's fresh calls (they say the state shown)
 
     def preview(self, calls, fresh=False):
-        """`fresh`: on the state from before the drag, not on top of the last step (Gesture.preview)."""
+        """`fresh`: on the state from before the drag, not on top of the last step (Gesture.preview). Fresh calls
+        equal to the step before give the same state: nothing is planned, told or drawn again (a release on the last
+        move's place sends that move once more)."""
+        if fresh and calls == self._fresh and not callable(calls):
+            return
+        self._fresh = None
         self._ctx.preview(calls, fresh)
+        self._fresh = calls if fresh else None
 
     def end(self, cancel=False, calls=None, label=None):
         """Close the drag: one change, or nothing with `cancel`; `label`: what the history calls it, decided at the end

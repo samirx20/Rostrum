@@ -37,6 +37,8 @@ def show_behind(win):
     win.setProperty("_q_showWithoutActivating", True)
     win.setFlags(win.flags() | Qt.WindowType.WindowDoesNotAcceptFocus | Qt.WindowType.WindowStaysOnBottomHint)
     win.setVisible(True)
+    from .laid_out import watch                       # a window that draws no frame is laid out before each press or key
+    watch(win)
 
 
 def qt_app():
@@ -53,7 +55,15 @@ def qt_app():
             os.environ.setdefault(k, v)
     if QGuiApplication.instance() is None and background():
         os.environ.setdefault("QSG_RENDER_LOOP", "basic")   # a window behind others: see background()
+    sys.setswitchinterval(SWITCH_S)
     return QGuiApplication.instance() or QGuiApplication(sys.argv)
+
+
+# How long the screen thread may keep Python's lock while a worker waits for it (Python's own is 5 ms). A picture
+# worker takes the lock several times per picture (the engine's reply, the copy, the hand-over), each time waiting
+# while the screen thread works out a drag step: at 5 ms a canvas picture reached the screen 23 ms after the pointer
+# moved (worst tenth 43); at 1 ms 14 (22), the steps no slower (2D canvas speed r2).
+SWITCH_S = 0.001
 
 
 def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | None = None, imports=()):

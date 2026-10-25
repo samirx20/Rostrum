@@ -446,12 +446,20 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             else:                                           # the frame after (outline_news.py); a change elsewhere
                 self._outline_paced.cancel()                # (an agent's, an undo): only the timeline's rows; the
                 self._outline_news.soon(bool(reached))      # canvas overlays follow the new picture (shownChanged)
-        with STATS.stage("doc.render"):
-            if event.kind == "preview" and not self._picture_changes():
-                self._scene = None                          # the picture stays: it shows the same (picture_change.py)
-            else:
+        if event.kind != "preview":                         # (a step's picture was asked before: _before_followers)
+            with STATS.stage("doc.render"):
                 self._render()
         self._problems.touch()
+
+    def _before_followers(self, event):
+        """A drag's step: its picture is asked first, so the engine draws it while the panels and overlays follow."""
+        if event.kind != "preview":
+            return
+        with STATS.stage("doc.render"):
+            if self._picture_changes():
+                self._render()
+            else:
+                self._scene = None                          # the picture stays: it shows the same (picture_change.py)
 
     def _picture_changes(self) -> bool:
         """A drag's step changes the picture at the playhead (else the engine is not asked again)."""

@@ -176,8 +176,19 @@ def frame_at(comp: dict, t: float) -> list[list[float]]:
     return [list(fview.undo(m, x, y)) for x, y in ((0, 0), (2 * w, 0), (2 * w, 2 * h), (0, 2 * h))]
 
 
+def _flat(m, pts) -> list[float]:
+    """Points mapped to the canvas as one flat run x0, y0, x1, y1 …: the canvas gets ~800 numbers per path, not ~800
+    lists of two (each a list QML is handed on every step of a drag: ~0.5 ms a path)."""
+    a, b, c, d, e, f = m
+    out = []
+    for x, y in pts:
+        out += (a * x + c * y + e, b * x + d * y + f)
+    return out
+
+
 def on_canvas(tr: dict, m) -> dict:
-    """The travel mapped to the canvas: lines, cuts, ticks and keys (with handle ends) in world px."""
+    """The travel mapped to the canvas, in world px: lines, cuts and ticks as flat runs of x, y (_flat), and keys (with
+    handle ends) as points."""
     keys = []
     for k in tr["keys"]:
         row = {"t": k["t"], "ids": k["ids"], "stored": k["stored"], "own": [k["x"], k["y"]], "pos": apply(m, k["x"], k["y"])}
@@ -186,6 +197,5 @@ def on_canvas(tr: dict, m) -> dict:
             row[side] = None if d is None else apply(m, k["x"] + d[0], k["y"] + d[1])
             row[side + "Own"] = d
         keys.append(row)
-    return {"lines": [[apply(m, *p) for p in line] for line in tr["lines"]],
-            "cuts": [[apply(m, *a), apply(m, *b)] for a, b in tr["cuts"]],
-            "ticks": [apply(m, *p) for p in tr["ticks"]], "keys": keys}
+    return {"lines": [_flat(m, line) for line in tr["lines"]], "cuts": [_flat(m, cut) for cut in tr["cuts"]],
+            "ticks": _flat(m, tr["ticks"]), "keys": keys}

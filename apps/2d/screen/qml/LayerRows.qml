@@ -17,6 +17,7 @@ ListView {
     interactive: !compact
     spacing: 2
     clip: true
+    cacheBuffer: 4000                   // rows are built ahead, off the click: a pick that scrolls the list to its row finds them made (was ~100 ms of row-making inside the click)
     boundsBehavior: Flickable.StopAtBounds
 
     // Right-click menu of a layer: what applies to the selection (backend.layerMenu: an unselected layer is selected

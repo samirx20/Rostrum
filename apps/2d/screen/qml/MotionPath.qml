@@ -16,30 +16,39 @@ Item {
     property real oy: 0
     property bool interactive: true
     property bool noFrame: false
-    readonly property var paths: noFrame ? backend.motionPath.paths.filter(r => !r.frame) : backend.motionPath.paths
+    // The layer's path and the frame's come apart (each sent only when it changed): a layer's drag never converts or
+    // redraws the frame's path, and each is drawn on its own canvas.
+    readonly property var layerRows: backend.motionPath.layerRows
+    readonly property var frameRows: noFrame ? [] : backend.motionPath.frameRows
+    readonly property var paths: layerRows.concat(frameRows)
     readonly property int hit: 18               // the invisible click target round a square or a handle end (≥ the kit's 16)
     function cx(p) { return mp.ox + p[0] * mp.fit }
     function cy(p) { return mp.oy + p[1] * mp.fit }
 
-    Canvas {
+    Ink { frame: true }
+    Ink { frame: false }
+
+    component Ink: Canvas {
         id: ink
+        property bool frame: false
         anchors.fill: parent
         onPaint: {
             const g = getContext("2d")
             g.reset()
             const a = Theme.accent
-            for (const row of mp.paths) {
+            for (const row of (ink.frame ? mp.frameRows : mp.layerRows)) {
                 const ac = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.35 : 0.7)
                 g.lineWidth = 1
                 g.strokeStyle = Qt.rgba(a.r, a.g, a.b, row.faint ? 0.18 : 0.4)
                 for (const f of row.frames) poly(g, f, true)                   // the frame at each of its keys
                 g.strokeStyle = ac
-                for (const line of row.lines) poly(g, line, false)
+                for (const line of row.lines) run(g, line)                   // lines, cuts, ticks: flat runs x, y, x, y …
                 g.setLineDash([4, 4])                                          // a jump: nothing travels there
-                for (const c of row.cuts) poly(g, c, false)
+                for (const c of row.cuts) run(g, c)
                 g.setLineDash([])
                 g.fillStyle = ac
-                for (const p of row.ticks) { g.beginPath(); g.arc(mp.cx(p), mp.cy(p), row.faint ? 1.2 : 1.6, 0, 2 * Math.PI); g.fill() }
+                const r = row.faint ? 1.2 : 1.6, t = row.ticks
+                for (let i = 0; i + 1 < t.length; i += 2) { g.beginPath(); g.arc(mp.ox + t[i] * mp.fit, mp.oy + t[i + 1] * mp.fit, r, 0, 2 * Math.PI); g.fill() }
                 for (const k of row.keys) {
                     if (!k.handles) continue
                     for (const s of ["out", "in"]) if (k[s]) poly(g, [k.pos, k[s]], false)
@@ -54,9 +63,17 @@ Item {
             if (closed) g.closePath()
             g.stroke()
         }
-        Connections { target: mp; function onPathsChanged() { ink.requestPaint() }
-                      function onFitChanged() { ink.requestPaint() } function onOxChanged() { ink.requestPaint() }
-                      function onOyChanged() { ink.requestPaint() } }
+        function run(g, xy) {
+            if (xy.length < 4) return
+            g.beginPath()
+            g.moveTo(mp.ox + xy[0] * mp.fit, mp.oy + xy[1] * mp.fit)
+            for (let i = 2; i + 1 < xy.length; i += 2) g.lineTo(mp.ox + xy[i] * mp.fit, mp.oy + xy[i + 1] * mp.fit)
+            g.stroke()
+        }
+        Connections { target: mp; function onFitChanged() { ink.requestPaint() } function onOxChanged() { ink.requestPaint() }
+                      function onOyChanged() { ink.requestPaint() }
+                      function onFrameRowsChanged() { if (ink.frame) ink.requestPaint() }
+                      function onLayerRowsChanged() { if (!ink.frame) ink.requestPaint() } }
     }
 
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters keep their marks
