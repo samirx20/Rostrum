@@ -25,6 +25,15 @@ COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release
 MAKES = ("group.make", "rig.make", "mask.make", "shape.boolean")        # operations that make a layer: it is selected after
 
 
+def _needs_unlock(c: dict) -> bool:
+    """A kit command that changes the picked locked layer (an operation on it, or a field to edit) and so would refuse:
+    not the lock switch itself, and not a command on the whole document (it has no target)."""
+    calls = c.get("calls") or []
+    if c["key"].startswith("field:"):
+        return True
+    return any(call.get("target") and set(call["args"]) != {"locked"} for call in calls)
+
+
 class ActionSlots(SlotMixin):
     # Bridge2D has `renameRequested = Signal(str)`: the Layers panel opens its name box for that layer
     _copied = ""                                    # the layer whose style Paste style puts on others (screen state)
@@ -112,6 +121,8 @@ class ActionSlots(SlotMixin):
         repeat."""
         out = [c for c in super()._commands() if not any(c["key"] == o or c["key"].startswith(o + ":") for o in COVERED)]
         f = self._facts()
+        if f.facts.get("any_locked"):               # a locked pick: only Unlock-like commands; the rest would refuse
+            out = [c for c in out if not _needs_unlock(c)]
         mine = [{**({**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c), "own": True}
                 for c in do_commands(LIST.available(f), self._what(f))]
         taken = {LIST.job_of(a) for a in LIST.actions} | set(HAVE_ROWS) | {"select_all"}    # select_all: the row just below
@@ -169,9 +180,12 @@ class ActionSlots(SlotMixin):
     @Slot(str, result="QVariantList")
     def layerMenu(self, layer_id):
         """A layer's right-click (its row, or the canvas under the pointer): an unselected layer is selected alone
-        first, a selected one keeps the selection; then the menu for the selection."""
+        first, a selected one keeps the selection; empty canvas ("" = no layer there) clears it (Paste, Select all);
+        then the menu for the selection."""
         if layer_id and layer_id not in self.selected_layers():
             self.select(layer_id)
+        elif not layer_id and self.selected_layers():       # empty canvas: nothing under the pointer, so nothing is picked
+            self.clearSelection()
         entries = self.actionMenu()
         if not self.selected_layers() and any(c["type"] != "camera" for c in self.comp()["layers"]):   # empty canvas: Paste (if any) and Select all
             entries = entries + [{"value": "layer:selectall", "label": "Select all", "keys": "Ctrl+A", "group": "edit", "sub": []}]

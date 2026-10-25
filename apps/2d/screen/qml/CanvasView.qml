@@ -11,6 +11,11 @@ QtObject {
     id: v
     property real wellW: 0
     property real wellH: 0
+    property real _wellH: 0                    // the well's height before this change
+    // The well grows or shrinks (the timeline folds for the Brush): the picture stays where it is, the extra room is below
+    // it. (The well's centre is the anchor otherwise, and the picture would jump by half the change.) A fit on a layout
+    // change sets cy itself after this.
+    onWellHChanged: { if (_wellH > 0 && wellH > 0) cy += (wellH - _wellH) / 2 / zoom; _wellH = wellH }
     property real compW: 1
     property real compH: 1
     property real coverLeft: 0                 // a drawer over the well's left edge hides this much: fits use the rest (Stage: AppShell.overLeft)
