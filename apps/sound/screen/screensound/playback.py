@@ -23,6 +23,8 @@ from PySide6.QtCore import QObject, Signal
 from rostrum_core import scratch
 from rostrum_sound import settings
 
+from .wholewav import require_whole_wav
+
 SCRATCH = settings.cache_dir() / "screensound" / str(os.getpid())
 _EACH = itertools.count(1)   # each song's renderer has its own folder: a closed one's sweep never takes a new one's renders
 KEEP = 2                     # renders kept on disk: the newest and the one that may still be playing
@@ -77,6 +79,7 @@ class Renderer(QObject):
                     result = eng.request("render", schedule=schedule, out=str(out), stems="all")
                     if not Path(result.get("file", "")).is_file():
                         raise RuntimeError(f"the engine answered but wrote no file at {out}")
+                    require_whole_wav(result["file"])    # never a partial or empty file into the player
                     if self._stop:       # the song closed meanwhile: nobody listens for this render
                         return
                     self._tidy()

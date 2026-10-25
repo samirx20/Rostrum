@@ -122,8 +122,9 @@ You can't hear the result, so check what you can measure and say plainly what yo
    enter where you meant, that registers don't pile up, and that the peak looks like a peak.
 2. **Harmony:** `look_music` with `what: "harmony"` reports the chord in each bar and checks the written notes: notes
    out of the instrument's range, voices crossing, close intervals too low, and notes outside the key. Fix every one
-   you didn't mean.
-3. **After rendering:** `look_sound` with `what: "loudness"` should show the short-term curve rising into the peak.
+   you didn't mean. It reads the written notes, so no render is needed.
+3. **After rendering:** `look_sound` with `what: "loudness"` should show the short-term curve rising into the peak; its
+   summary names the loudest moment and its time (the loudest 3 s and 0.4 s, and the highest sample): check the peak lands where you meant.
    `what: "levels"` shows whether a part is buried. `what: "low_end"` and `what: "clash"` show low parts or two parts
    in one range fighting each other.
 4. Print what a helper wrote (`print(voice(prog))`) to read the notes before you commit to them.

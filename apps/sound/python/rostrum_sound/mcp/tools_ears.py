@@ -11,6 +11,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from ..doc import tempo
 from ..ears import beats as B
+from ..ears import chords_heard as CH
 from ..ears import clash as C
 from ..ears import engine_ears
 from ..ears import harmony as H
@@ -57,14 +58,16 @@ def register(tools: Tools):
         "division": {"type": "integer", "default": 4, "description": "Grid to measure onsets against: 4 = sixteenth notes, 2 = eighths, 1 = beats."},
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds an onset may sit off the grid."}}})
     def look_beats(ctx, args):
-        """Tempo (BPM, steady or drifting), the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture."""
+        """Tempo, the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture. On a render the tempo is the document's, checked against the audio: the reply says whether the audio's beats fit it (a groove also repeats at half, double, 2/3 and 3/2 of its tempo, so a reading from the sound alone, `heard_bpm`, can name a related tempo). With `wav` (no document) the tempo is the audio's own, and a close call names the other reading."""
         doc, wav, stems = _source(ctx, args, "look_music (what: beats)")
         src = _pick(stems, args["track"], "look_music (what: beats)") if args.get("track") else wav
-        r = engine_ears.beats(src, args.get("beats_per_bar") or int(doc.data.get("beatsPerBar", 4)))
+        use_doc = not args.get("wav")
+        y, sr = load(src)
+        written = B.written_bpm(doc.data, len(y) / sr) if use_doc else None
+        r = engine_ears.beats(src, args.get("beats_per_bar") or int(doc.data.get("beatsPerBar", 4)), written)
         div, tol = args.get("division", 4), args.get("tolerance", 0.04) * 1000
         sources = {args["track"]: src} if args.get("track") else {"mix": wav, **(stems if args.get("stems") else {})}
         audio_pos = B.audio_grid(r["beats_s"]) if len(r["beats_s"]) >= 2 else None
-        use_doc = not args.get("wav")
         grids = {"against_audio_beats": audio_pos} if audio_pos else {}
         if use_doc:
             grids["against_document_tempo"] = (lambda t: tempo.beat_at(doc.data, t), lambda b: tempo.seconds_at(doc.data, b))
@@ -79,16 +82,16 @@ def register(tools: Tools):
         doc_beats = tempo.beats(doc.data, dur) if use_doc else None
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(src).stem}-beats.png"
         beats_picture(png, src, r["beats_s"], r["downbeats_s"], pic_on, doc_beats, limit_ms=tol)
-        r["onsets"], r["document_bpm"] = out, (tempo.start_bpm(doc.data) if use_doc else None)
+        r["onsets"], r["document_bpm"] = out, written
+        changes = use_doc and len(tempo.segments(doc.data)) > 1
         if use_doc:
-            ratio = (r["bpm"] or 0) / r["document_bpm"]
-            r["audio_vs_document"] = ("matches" if abs(ratio - 1) < 0.03 else "double" if abs(ratio - 2) < 0.06 else "half" if abs(ratio - 0.5) < 0.03 else "differs")
-            r["document_tempo_changes"] = len(tempo.segments(doc.data)) > 1
+            r["audio_vs_document"] = "fits" if B.fits(r, written) else B.relation(r["bpm"], written)
+            r["heard_vs_document"] = B.relation(r["heard_bpm"], written)
+            r["document_tempo_changes"] = changes
         r["beats_s"], r["downbeats_s"] = _cap(r["beats_s"], args, 80), _cap(r["downbeats_s"], args, 40)
         main = next(iter(out.values()))
         s = (main.get("against_document_tempo") or main.get("against_audio_beats") or {}).get("summary")
-        said = f"{r['bpm']} BPM, {r['steadiness']}" + (f" ({r['bpm_start']} → {r['bpm_end']})" if r["steadiness"] == "drifting" else "")
-        said += f"; document {r['document_bpm']:g} BPM ({r['audio_vs_document']})" if use_doc else ""
+        said = B.tempo_line(r, written, changes)
         said += f"; {main['onsets']} onsets" + (f", median {s['median_abs_off_ms']} ms off the {s['grid']} grid, {s['within_limit_pct']:.0f}% within {tol:.0f} ms, leaning {s['lean']}" if s else "")
         return Reply(said + ".", r, [str(png)], [str(png)])
 
@@ -98,7 +101,7 @@ def register(tools: Tools):
         "cents_tolerance": {"type": "number", "default": 25, "description": "Cents a note may be off before it is out of tune."},
         "timing_tolerance": {"type": "number", "default": 0.06, "description": "Seconds a note may start early or late."}}})
     def look_pitch(ctx, args):
-        """The pitch of one melodic line as notes with times and cents off (vibrato, drift, tuning); with a track, each written note checked for wrong note, wrong octave, late, out of tune or missing. A picture of the curve over a note grid with the written notes as bars. One note at a time: use a single-voice stem."""
+        """The pitch of one melodic line as notes with times and cents off (vibrato, drift, tuning); with a track, each written note checked for wrong note, wrong octave, late, out of tune or missing. A track that plays several notes at once (chords, a melody over its chords) is checked note by note instead: each written note of each chord looked for in the sound (ok, missing, or wrong octave when only the octave above is there); timing and tuning are judged only on one-voice parts. A picture of the curve over a note grid with the written notes as bars and a dot per written note."""
         doc, wav, stems = _source(ctx, args, "look_music (what: pitch)")
         tid = args.get("track")
         src = _pick(stems, tid, "look_music (what: pitch)") if tid else wav
@@ -114,15 +117,22 @@ def register(tools: Tools):
              "drifting_notes": [f"{n['note']}@{n['start']} ({n['drift_cents']:+g} cents)" for n in heard if n["drift_cents"] and abs(n["drift_cents"]) >= 25],
              "range_hz": [round(fmin), round(fmax)]}
         rows = None
+        chords = bool(written) and CH.polyphonic(written)
         if written:
-            cmp = P.compare(written, heard, args.get("cents_tolerance", 25), args.get("timing_tolerance", 0.06))
+            cmp = CH.check(src, written) if chords else P.compare(written, heard, args.get("cents_tolerance", 25), args.get("timing_tolerance", 0.06))
             rows = cmp["rows"]
             r["comparison"] = {**cmp, "rows": rows if args.get("detail") == "full" else [x for x in rows if x["status"] != "ok"][:60]}
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(src).stem}-pitch.png"
         pitch_picture(png, t, midi, written, rows)
         said = f"{len(heard)} notes heard" + (f"; the line sits {r['tuning_offset_cents']:+g} cents from equal temperament" if heard else "")
         said += f"; vibrato on {len(r['vibrato_notes'])}, drift on {len(r['drifting_notes'])}"
-        if rows is not None:
+        if chords:
+            said = (f"{tid} plays chords: each of its {len(rows)} written notes looked for in the sound: "
+                    + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in r["comparison"]["counts"].items())
+                    + "".join([f"; {x['status'].replace('_', ' ')}: {x['written']} at {x['start_s']:g} s" + (f" (heard {x['heard']})" if x.get("heard") else "")
+                               for x in rows if x["status"] != "ok"][:8])
+                    + ". Timing and tuning are judged only on one-voice parts (the pitch line follows the loudest note)")
+        elif rows is not None:
             said += f". Against {len(written)} written notes: " + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in r["comparison"]["counts"].items())
         elif not tid:
             said += ". No track given, so nothing to compare with (pitch of the mix follows its loudest line)"
@@ -165,7 +175,7 @@ def register(tools: Tools):
         "key": {"type": "string", "description": "Check notes against this key (\"D minor\") instead of the document's key map or the estimate."},
         "checks": {"type": "boolean", "default": True, "description": "Voicing checks on the written notes: range, low close intervals, crossings, wide spacing, out of key."}}})
     def inspect_harmony(ctx, args):
-        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart, notes out of key."""
+        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart, notes out of key. Reads the written notes when there are any, so it works before any render (check the harmony, then render); only `source: "audio"`, a `wav`, or a song with no notes reads a render (the voicing checks need notes)."""
         doc = ctx.document(args.get("item"))
         tid = args.get("track")
         notes = written_notes(doc.data, [tid] if tid else None)
@@ -180,7 +190,14 @@ def register(tools: Tools):
             est = H.key_from_notes(notes)
             rows = H.chart_from_notes(notes, H.windows(doc.data, end, per), H.speller(doc.data, args.get("key"), est))
         else:
-            _, wav, stems = _source(ctx, args, "look_music (what: harmony)")
+            try:
+                _, wav, stems = _source(ctx, args, "look_music (what: harmony)")
+            except RostrumError as e:                 # nothing written and nothing rendered: say what harmony reads
+                if args.get("source", "auto") != "auto" or args.get("wav"):
+                    raise
+                raise RostrumError(codes.NOT_FOUND, "look_music (what: harmony)", "notes", "none written yet" + (f" on track {tid}" if tid else "")
+                                   + ", and no render to hear", hint="Harmony reads the written notes, no render needed: write the notes "
+                                   "(run_script), then ask again. Or render_mix to read the audio.") from e
             src = _pick(stems, tid, "look_music (what: harmony)") if tid else wav
             chroma, ct = H.chroma_of(src)
             y, sr = load(src)
@@ -210,7 +227,8 @@ def register(tools: Tools):
                            "range_unchecked": unchecked, "low_interval_limits": "common orchestration chart, simplified (ears/theory.py LOW_LIMIT)"}
         bars = [x for x in rows if x["beat"] == 1] if per == "beat" else rows
         r["progression"] = " | ".join(x["chord"] for x in bars[:32]) + (" …" if len(bars) > 32 else "")
-        said = f"Key {H.key_line(est, r['source'], declared, bool(args.get('key')))}" + (f", checked against {used}" if use_notes else "")
+        said = ("Read from the written notes (no render needed). " if use_notes else "Read from the audio of the last render. " if not args.get("wav") else "Read from the audio file. ")
+        said += f"Key {H.key_line(est, r['source'], declared, bool(args.get('key')))}" + (f", checked against {used}" if use_notes else "")
         said += f". Chords: {r['progression']}."
         if "checks" in r:
             c = r["checks"]["counts"]

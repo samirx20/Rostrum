@@ -102,6 +102,20 @@ pub fn choose(on: &Onsets, mut period: f64) -> Choice {
     Choice { period, unsure: close_call(on, period) }
 }
 
+/// How clearly the sound must repeat at the score's tempo, against the reading heard alone, for the
+/// beats to follow the score (tempo.rs step 3b).
+pub const FIT: f64 = 0.75;
+
+/// The score's tempo against the reading heard alone: (its period, pinned by the grid; how clearly the
+/// onsets repeat at it over how clearly at `heard`, capped at 1.5). A groove repeats at its half, double,
+/// 2/3 and 3/2 too, so a blind reading can name a related level that ties with the written one (a 124 BPM
+/// song of driving eighths and arpeggios read at 82.6, the written 124 as strong): the score settles it.
+/// Under FIT the sound does not keep the written tempo, and the reading heard alone stands.
+pub fn expected(on: &Onsets, heard: f64, bpm: f64) -> (f64, f64) {
+    let p = on.refine(on.lag(bpm));
+    (p, (on.support(p) / on.support(heard).max(1e-12)).min(1.5))
+}
+
 /// The reading that nearly won, when one did: a 3:2 level landing on nearly as much; a fast beat
 /// (over 160, or over 120 with no snare between its half-time beats: a half-time groove, or an even
 /// stream of notes) whose half repeats nearly as clearly; a slow one with something on its half-beats;

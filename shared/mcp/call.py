@@ -11,7 +11,9 @@ the project folder, so calls in a row work on the same document.
 Several `:: tool args` in a row run in ONE session (one server process): a long job started by one call can be
 waited on by the next (jobs end with their server). `JOB` in a later call's arguments is replaced by the last
 reply's job id. Arguments may be `@args.json` (a file; a relative path is from the current folder). Prints each
-reply's JSON; images are saved by the server and listed in `files`. Exit code 1 when any reply's ok is false.
+reply's JSON; images are saved by the server and listed in `files`. The calls stop at the first reply whose ok is false: the later ones are NOT run (a render must
+never run on a document the failed step did not change), the output says which step failed and which were
+skipped, and the exit code is 1.
 """
 from __future__ import annotations
 
@@ -27,9 +29,9 @@ from mcp_types import Implementation
 
 async def call(server: list[str], name: str, calls: list[tuple[str, dict]]) -> int:
     params = StdioServerParameters(command=server[0], args=server[1:])
-    code, job = 0, None
+    job = None
     async with Client(params, client_info=Implementation(name=name, version="1")) as client:
-        for tool, args in calls:
+        for n, (tool, args) in enumerate(calls, 1):
             if tool == "tools":
                 for t in (await client.list_tools()).tools:
                     props = (t.input_schema or {}).get("properties", {})
@@ -44,11 +46,13 @@ async def call(server: list[str], name: str, calls: list[tuple[str, dict]]) -> i
             try:
                 reply = json.loads(texts[0])
             except (IndexError, ValueError):
-                code = 1
-                continue
-            code = code or (0 if reply.get("ok") else 1)
+                reply = {"ok": False}
+            if not reply.get("ok"):
+                left = [f"{i}. {t}" for i, (t, _) in enumerate(calls[n:], n + 1)]
+                print(f"*** STOPPED: step {n} ({tool}) failed." + (f" NOT run: {', '.join(left)}." if left else " It was the last step."))
+                return 1
             job = (reply.get("data") or {}).get("job_id") or job
-    return code
+    return 0
 
 
 def _args(raw: str) -> dict:

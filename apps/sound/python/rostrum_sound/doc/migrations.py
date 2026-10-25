@@ -9,6 +9,9 @@ means adding its step here (the kind refuses to start without it).
             a drum kit saved as "synth" (the only kit there was) opens as "drums", and each track's volume is moved from
             the old table's gain to the new one (`preset_levels_format2.json` is the old table, frozen), so the song keeps
             its loudness with the new sounds.
+    3 → 4   a sensible starting balance (2026-10-25): drum kits, bass and brass sit lower, strings a little higher at the
+            same volume (`mix_offsets.json`). Each track's volume is moved from the old table's gain to the new one
+            (`preset_levels_format3.json` is the old table, frozen), so a saved song sounds exactly as before.
 """
 from __future__ import annotations
 
@@ -43,7 +46,7 @@ def plain_names(data: dict, lists: dict):
         if t.get("kit") in names.OLD_KITS:         # every track stores its kit (the switch default), whatever its instrument
             t["kit"] = names.OLD_KITS[t["kit"]]
             kits += t.get("instrument") == "kit"
-        g = old / preset_level.gain(t)
+        g = old / preset_level.gain(t, preset_level.FORMAT3)     # what format 3 held; balance() moves it on
         if abs(g - 1) < 1e-6:
             continue
         moved += 1
@@ -57,5 +60,20 @@ def plain_names(data: dict, lists: dict):
     return data, "; ".join(w for w in (said, lev) if w) or "Instrument names: nothing to change"
 
 
-STEPS = {1: level_matched, 2: plain_names}
+def balance(data: dict, lists: dict):
+    moved = 0
+    for t in data.get("tracks", []):
+        g = preset_level.gain(t, preset_level.FORMAT3) / preset_level.gain(t)
+        if abs(g - 1) < 1e-6:
+            continue
+        moved += 1
+        if "volume" in t:
+            t["volume"] = round(min(t["volume"] * g, VOLUME_MAX), 6)
+        for lane in t.get("automation", []):
+            if lane.get("lane") == "volume":
+                lane["points"] = preset_level.scaled(lane["points"], g, cap=VOLUME_MAX)
+    return data, f"{moved} track volume{'s' * (moved != 1)} moved to the new starting balance, so the song sounds as before" if moved else "Starting balance: nothing to change"
+
+
+STEPS = {1: level_matched, 2: plain_names, 3: balance}
 FORMAT = len(STEPS) + 1

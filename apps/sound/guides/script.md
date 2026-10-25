@@ -8,6 +8,19 @@ a second copy beside it (the reply warns). Keep one script name per song, and to
 under its name; a check that fails because two scripts made the same things names the earlier script. A script error names the script and line; an unknown track method lists what a track
 can do, an unknown name lists the script's names.
 
+**The call.** `run_script` takes `source` (the Python text, required), `name` (the script's name, default `agent_script.py`),
+`item` (the song, when more than one is open), `force` and `detail`. There is no `script` or `code` argument.
+
+```json
+{"tool": "run_script", "arguments": {"name": "cue", "source": "tempo(96); length(bar(9))
+t = track('keys', builtIn='piano')
+t.note('D4', at=bar(1), dur=beats(4))"}}
+```
+
+**Names.** A track, section or other item id is 1 to 64 letters, digits, `_`, `.` or `-`: `"final_chorus"`, never `"final chorus"`
+(a track called `"guitar lead"` fails the same way). Marker names are free text and may hold spaces (`marker("logo lands", at=...)`,
+used as `"#logo lands"`). The song's item is `cue` unless `inspect_project` says another.
+
 The writing helpers (voicings, bass lines, arpeggios, fills, sections) that work inside a script are in inspect_guide 'writing-music-tools'.
 
 ```python
@@ -33,6 +46,59 @@ on the song.
 
 Check what you wrote before rendering: `look_arrangement` draws every track's notes and hits with the bars, sections
 and markers, and says which tracks start on each marker.
+
+## Effects and the master: every setting, with its unit
+
+`s.effect(type, **settings)` adds an effect to a track (`inspect_operations` `effect.add` / `effect.set` take the same
+names). Every number is a plain number in the unit below, never `{"db": ...}` and never milliseconds. The full list, with
+defaults and ranges, is what `inspect_engine` returns (`data.effects`, `data.master`): it is read from the same table the
+checks use, so it cannot disagree with them. A setting marked "curve" also takes a list of `[time, value]` points.
+
+| Effect | Settings (unit) |
+|---|---|
+| `compressor` | `threshold` dB (-80 to 0), `ratio` :1 (1 to 30), `attack` seconds (0.0001 to 1), `release` seconds (0.001 to 5), `makeup` dB, `knee` dB |
+| `eq` | `bands`: a list of `{shape, freq (Hz), gain (dB), q}`; shapes `lowshelf`, `highshelf`, `peak`, `lowpass`, `highpass`, `notch` |
+| `reverb` | `space` (below), `mix` 0 to 1, and with a `freeverb.*` space `decay` seconds, `damping`, `size` |
+| `delay` | `time` seconds, `feedback` 0 to 0.98, `mix`, `pingPong` true/false, `damp` |
+| `saturate` | `drive` 0 to 1, `mix` |
+| `tape` | `wow`, `flutter`, `age`, each 0 to 1 (`wow` a slow pitch drift of up to about 15 cents, `flutter` a fast waver, `age` adds saturation and a darker, thinner tone) |
+| `limiter` | `ceiling` dB, `release` seconds |
+| `width` | `width` 0 to 2 (1 = unchanged), `monoBelow` Hz |
+| `gate` | `threshold` dB, `ratio`, `range` dB, `attack` / `hold` / `release` seconds |
+| `deess`, `dehum` | see `inspect_engine` |
+
+Reverb spaces: `dry`, `room`, `hall`, `cathedral`, `shimmer`, and the adjustable `freeverb.room`, `freeverb.hall`,
+`freeverb.cathedral`. Tones (`tone=` on a track): `neutral`, `muffled`, `warm`, `sub-boost`, `bright`, `voice-clarity`, `radio`.
+
+```python
+s.effect("compressor", threshold=-24, ratio=4, attack=0.01, release=0.2)   # dB, :1, seconds
+s.effect("tape", wow=0.3, flutter=0.2, age=0.5)
+master(loudness=-14, truePeak=-1, glue=0.2, fadeOut=1.8)
+```
+
+`master(...)` takes `volume` (gain 0 to 4), `normalize`, `loudness` (LUFS, -60 to 0: giving it turns `normalize` on),
+`truePeak` (dBTP, -12 to 0), `glue` (0 to 1), `reverb` and `trackReverbSpace` (spaces), `fadeIn` and `fadeOut` (seconds, 0 to 600) and
+`safetyClip`.
+
+There is no vinyl-crackle or bit-crush effect. For a worn, lo-fi sound the tools that exist are `tape` (wow, flutter, age),
+`saturate` (drive), an `eq` low-pass (`lowpass`) and a `reverb`.
+
+## Ending a song
+
+A song stops at its `length`. What a clean end needs, with what exists today:
+
+- **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it, but only
+  up to `length`. Make `length` later than the last note by the tail you want (a held chord that ends at bar 21 with a
+  4-beat tail: `length(bar(21) + beats(4))`). Render and read the last second with `look_sound`: a file that still sounds at
+  its end was cut.
+- **Soft end.** On by default (the song field `endFade`): anything sounding at `length` is faded over its last 0.1 s so the
+  file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
+  if it is off and sound still plays.
+- **Fade out.** `master(fadeOut=1.8)` fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
+  where you want silence). On a held chord at the very end a 1.5 s fade measured: the last half second at -56 dB instead of -21 dB.
+- **`trim`.** `render_mix` trims the end only where the sound is below -80 dBFS; the reply says `trimmed: false` when sound above
+  that runs to the end (a long ring, a reverb tail). Trim removes silence; it does not fade anything. Pass `trim: false` to keep the
+  full `length`.
 
 ## Playing: instruments, articulations, expression
 

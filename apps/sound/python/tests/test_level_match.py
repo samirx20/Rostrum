@@ -29,3 +29,14 @@ def test_the_classic_voices_and_kit_keep_their_measured_gains():
 def test_every_plain_name_and_kit_has_a_measured_gain():
     have = preset_level.presets()
     assert all(f"builtIn:{n}" in have for g in names.BUILT_IN_GROUPS.values() for n in g) and {"kit:drums", "kit:studio"} <= set(have)
+
+
+def test_a_song_saved_before_the_starting_balance_sounds_as_before():
+    old = {"id": "root", "type": "doc", "tempo": 120, "master": [], "tracks": [
+        {"id": "kit", "type": "track", "instrument": "kit", "kit": "studio", "volume": 1.0},
+        {"id": "br", "type": "track", "instrument": "builtIn", "builtIn": "brass", "volume": 0.8}]}
+    data, _ = KIND.migrate(copy.deepcopy(old), 3)
+    sent = {t["id"]: t["volume"] for t in compile(data)["tracks"]}
+    heard = {t["id"]: t["volume"] * preset_level.gain(t, preset_level.FORMAT3) for t in old["tracks"]}
+    assert all(abs(sent[k] - heard[k]) < 1e-3 for k in heard)
+    assert data["tracks"][0]["volume"] > 1.0          # the new table is lower, so the saved volume rises to keep the sound

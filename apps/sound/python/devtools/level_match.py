@@ -130,10 +130,12 @@ def main():
         return
     ref = round(statistics.median(lufs.values()), 2)
     roles = {k: role for k, (role, _) in phrases().items()}
+    offsets = json.loads(preset_level.OFFSETS.read_text(encoding="utf-8"))["offsetsDb"]     # the starting balance, on top
     table = {"about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's "
-                      "loudness: equal track volumes sound balanced. Measured, not tuned by ear.",
+                      "loudness: equal track volumes sound balanced. Measured, then moved by mix_offsets.json (mixDb) to a sensible starting balance.",
              "referenceLufs": ref,
-             "presets": {k: {"role": roles[k], "lufs": round(v, 2), "gain": round(10 ** ((ref - v) / 20), 4)}
+             "presets": {k: {"role": roles[k], "lufs": round(v, 2), "gain": round(10 ** ((ref - v + offsets.get(k, 0)) / 20), 4),
+                                **({"mixDb": offsets[k]} if k in offsets else {})}
                          for k, v in sorted(lufs.items())}}
     TABLE.write_text(json.dumps(table, indent=1) + "\n", encoding="utf-8")
     for k, v in table["presets"].items():

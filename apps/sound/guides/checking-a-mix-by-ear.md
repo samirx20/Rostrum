@@ -11,7 +11,8 @@ order to use them in when checking a whole mix; the table of every tool and what
 ## A pass from the outside in
 
 1. **Overall:** `look_sound` (`what: "loudness"`). Integrated loudness and true peak against the delivery target; the short-term curve
-   shows whether the loud and quiet parts are where the piece needs them; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
+   shows whether the loud and quiet parts are where the piece needs them, and the summary names the loudest moment and
+   its time (the loudest 3 s and 0.4 s, and the highest sample): check that the climax is where you meant; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
    (the engine's own gain curve, the worst moments with the dB reduced) and, with stems, names the tracks that drove each
    moment: lower those tracks where it works.
 2. **Balance:** `look_sound` (`what: "levels"`). Which track is far under or over the rest. A track you meant to be quiet is not a problem;
@@ -29,9 +30,9 @@ order to use them in when checking a whole mix; the table of every tool and what
    (150–500 Hz); two tracks both heavy under 150 Hz usually fight, and several parts heavy in the low mids sound muddy.
    Compare the mix's numbers before and after a change.
 5. **Width:** `look_sound` (`what: "stereo"`). Balance per section and mono warnings (parts that cancel when summed to mono).
-6. **Timing:** `look_music` (`what: "beats"`) (steadiness, onsets against the grid) and `look_music` (`what: "events"`) with `expect` for hits that must land
+6. **Timing:** `look_music` (`what: "beats"`) (whether the audio's beats fit the document's tempo, steadiness, onsets against the grid) and `look_music` (`what: "events"`) with `expect` for hits that must land
    on markers. Add `by_stem: true` to learn which track hits each marker, in one call.
-7. **Notes:** `look_music` (`what: "harmony"`) for key, chords and written-note facts; `look_music` (`what: "pitch"`) on one stem for wrong or out-of-tune notes.
+7. **Notes:** `look_music` (`what: "harmony"`) for key, chords and written-note facts (it reads the notes: run it before rendering too); `look_music` (`what: "pitch"`) with `track` for wrong or out-of-tune notes in a one-voice part, and for a chord part, whether every written note of each chord is there.
 8. **Problems in a recording:** `look_sound` (`what: "spectrum"`) (hum lines, steady tones with note names, marks at times),
    `look_sound` (`what: "cleanup"`) for before / after of a cleaned clip.
 

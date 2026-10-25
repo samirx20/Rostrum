@@ -62,13 +62,19 @@ def key_of_audio(wav) -> dict:
             "unsure": bool(k.get("unsure"))}
 
 
-def beats(wav, beats_per_bar: int = 4) -> dict:
+def beats(wav, beats_per_bar: int = 4, expect_bpm: float | None = None) -> dict:
     """Facts about the pulse: bpm, how steady (`steadiness`: steady / drifting / uneven, from the beat spacing), every
     beat time (the engine follows a drifting tempo), the downbeats (the bar's beat where the lows land strongest) and
-    how much stronger they land (`downbeat_confidence`, 1 = no lead)."""
-    a = analyze(wav, extra=("--beats-per-bar", int(beats_per_bar)))
+    how much stronger they land (`downbeat_confidence`, 1 = no lead).
+    `expect_bpm`: the tempo the document writes. A groove repeats at its half, double, 2/3 and 3/2 too, so the sound
+    alone can name a related tempo (a 124 BPM song of driving eighths and arpeggios read at 82.6, 124 as strong);
+    the engine then follows the written tempo when the sound repeats at it (`expected.fits`) and keeps what it heard
+    alone in `heard_bpm`."""
+    extra = ("--beats-per-bar", int(beats_per_bar)) + (("--expect-bpm", float(expect_bpm)) if expect_bpm else ())
+    a = analyze(wav, extra=extra)
     b = np.asarray(a["beats"], dtype=float)
     out = {"duration_s": num(a["seconds"], 3), "beats_s": [num(x, 4) for x in b], "bpm": num(a["tempo"]["bpm"], 1),
+           "heard_bpm": a["tempo"].get("heard", a["tempo"]["bpm"]), "expected": a["tempo"].get("expected"),
            "tempo_alternatives": a["tempo"]["alternatives"], "tempo_unsure": a["tempo"]["unsure"]}
     if len(b) < 4:
         return {**out, "steadiness": "unknown", "downbeats_s": [], "downbeat_confidence": None,

@@ -11,6 +11,9 @@ deleted and the install fails, saying so), and what was installed is recorded in
     run_model_install model="salamander-piano"         # one pack; also all-instruments and all
     python -m rostrum_sound.packs list | install <pack> | verify <pack>      # the same in a terminal
 
+Which names play these recordings and which are synthesized (`warmPad`, `subBass`, `pluck`, `choirPad`, `classic.*`, `model=`, `synth=`):
+`inspect_engine` marks each "recorded" or "synthesized". No pack holds a pad: there is no recorded pad today.
+
 A name whose pack is missing fails loudly and names the pack to install; it never falls back to another sound. Packs
 licensed CC-BY (Salamander piano, Wurlitzer, the rock kit) need a credit: a render or export that used them returns the
 credit lines and writes them into the export's manifest. Everything else is CC0 or MIT: no credit needed.
