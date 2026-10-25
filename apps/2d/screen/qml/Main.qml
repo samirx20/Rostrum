@@ -110,6 +110,8 @@ AppShell {
                onActivated: backend.create.editText(backend.selected) }
     Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.pen.canEditPoints
                onActivated: backend.pen.editPoints(true) }                                               // the selected path: edit its points
+    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && (backend.selected, backend.canGoIn())
+               onActivated: backend.goIn() }                                                             // the picked group: its first layer (levels.py)
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
         sequence: "Escape"; enabled: shell.canvasKeys && !OpenPopups.takes(["Esc"])

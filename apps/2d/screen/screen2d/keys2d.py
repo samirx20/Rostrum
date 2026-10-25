@@ -44,7 +44,7 @@ OWN = [
 ]
 
 NOT_HERE = ("preferences",          # no setting of 2D is a person's to change: Ctrl+, would open an empty window
-            "play_from_selection", "go_out", "next_item", "prev_item", "find_item", "paste_other", "delete_close_gap",
+            "play_from_selection", "find_item", "paste_other", "delete_close_gap",
             "split", "join", "trim_start", "trim_end", "loop", "range_start", "range_end", "notes_tool")
 # a tool is listed by the name its button has in the tool rail ("Brush"), so searching the Keys sheet by a tool's name finds it
 KEYS2D = KeyMap("Rostrum2D", OWN, drop=NOT_HERE, words={"paint_tool": "Brush (paint and draw)",
@@ -61,6 +61,7 @@ ROUTES = {
     "move_tool": ("toolKey", "move"), "pen_tool": ("toolKey", "pen"), "rect_tool": ("toolKey", "rect"),
     "ellipse_tool": ("toolKey", "ellipse"), "text_tool": ("toolKey", "text"), "hand_tool": ("toolKey", "hand"),
     "zoom_tool": ("toolKey", "zoom"), "bone_tool": ("toolKey", "bone"),
+    "next_item": ("walk", 1), "prev_item": ("walk", -1), "go_out": ("goOut",),   # the layers at this level (levels.py)
 }
 # the window's own (Main.qml `windowJobs`): they need the canvas, the rail or the painter
 WINDOW = ("paint_tool", "pick_frame", "prev_event", "next_event", "prev_beat", "next_beat", "delete", "library", "add_file", "quit",
@@ -70,11 +71,11 @@ WINDOW = ("paint_tool", "pick_frame", "prev_event", "next_event", "prev_beat", "
 # Inspector), the kit's FilesMenu (files), Space (spacekey.py: a tap plays, held it pans), Esc and Enter (Main.qml: they
 # step by what is open)
 SKIP = ["play", "step_back", "go_in", "undo", "redo", "command_box", "guides", "key_list", "history", "export", "export_again",
-        "fold_panels", "next_area", "find_setting", "new", "open", "save_version", "duplicate_file"]
+        "fold_panels", "next_area", "find_setting", "new", "open", "save_version", "duplicate_file", "go_to_time"]
 # Ctrl+K runs these jobs too: ROUTES, WINDOW and the kit's shell jobs (AppShell.runJob); Space plays through spacekey.py, so its row calls
 # the bridge itself. The ≡ menu's rows (New, Open, Save a version ...) and Add from a file are already rows of their own.
 ASKED = {"play": ("togglePlay",)}
 SHELL = ("undo", "redo", "history", "export", "export_again", "guides", "key_list", "fold_panels", "next_area",
-         "find_setting", "problems")
+         "find_setting", "problems", "go_to_time")
 HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "add_file",
            "zoom_in", "zoom_out", "fit_all", "fit_everything", "actual_size", "fit", "look_through")   # the view menu's rows are in Ctrl+K already (view_commands.py)

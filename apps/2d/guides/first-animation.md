@@ -82,7 +82,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
 
-The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, Ctrl+Shift+G ungroups).
+The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, even one layer, Ctrl+Shift+G ungroups).
 
 ![Two layers picked: their actions are the buttons at the top of the settings panel](pictures/settings-actions.png)
 

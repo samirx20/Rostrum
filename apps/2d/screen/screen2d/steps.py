@@ -356,11 +356,11 @@ def do_step(bridge, win, step):
         from PySide6.QtTest import QTest
         QTest.mouseMove(win, QPoint(int(rest[0]), int(rest[1])))
         wait(150)
-    elif word == "mouseclick":                   # mouseclick <x> <y> [right] [ctrl|shift]: a real click in the window
+    elif word == "mouseclick":                   # mouseclick <x> <y> [right] [ctrl|shift] [alt]: a real click in the window
         from PySide6.QtCore import QPoint, Qt
         from PySide6.QtTest import QTest
         button = Qt.RightButton if "right" in rest[2:] else Qt.LeftButton
-        mods = Qt.ControlModifier if "ctrl" in rest[2:] else Qt.ShiftModifier if "shift" in rest[2:] else Qt.NoModifier
+        mods = (Qt.ControlModifier if "ctrl" in rest[2:] else Qt.ShiftModifier if "shift" in rest[2:] else Qt.NoModifier)             | (Qt.AltModifier if "alt" in rest[2:] else Qt.NoModifier)
         QTest.mouseClick(win, button, mods, QPoint(int(rest[0]), int(rest[1])))
     elif word == "layermenu":                    # layermenu <layer> [open|<command>]: the row's right-click menu
         QMetaObject.invokeMethod(win, "openLayerMenu", Q_ARG("QVariant", rest[0]))

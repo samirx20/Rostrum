@@ -11,7 +11,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
-  the position ("3.2  0:04.80": bars.beats, then the time; click it and type **5.3** or **9.6 s** to jump there; a beat the bar does not have, like 5.9 in 4/4, is refused with the reason), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
+  the position ("3.2  0:04.80": bars.beats, then the time; click it and type **5.3** or **9.6 s** to jump there (**Alt+Shift+J** does the same from the keyboard); a beat the bar does not have, like 5.9 in 4/4, is refused with the reason), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
   bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
 - **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
   it away.

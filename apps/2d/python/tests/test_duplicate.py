@@ -51,3 +51,14 @@ def test_copies_never_sit_exactly_on_another_and_paste_across_scenes_is_one_undo
     assert d.item("two")["layers"][-1]["x"] == 960 and len(d.item("two")["layers"]) == n + 1
     d.undo(SAM)
     assert len(d.item("two")["layers"]) == n
+
+
+def test_times_with_a_step_makes_a_row_in_one_undo_step():
+    """layer.duplicate {by_x, times}: copies at +100, +200, +300 from the original, each above the one before, one undo."""
+    d = _doc()
+    d.apply({"op": "layer.duplicate", "target": ["shape_1"], "args": {"by_x": 100, "times": 3}}, SAM)
+    ids = [c["id"] for c in d.item("film")["layers"]]
+    assert ids[1:5] == ["shape_1", "shape_3", "shape_4", "shape_5"]
+    assert [d.item(i)["x"] for i in ids[1:5]] == [960, 1060, 1160, 1260]
+    d.undo(SAM)
+    assert len(d.item("film")["layers"]) == 4

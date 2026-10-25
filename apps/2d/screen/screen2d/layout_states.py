@@ -40,8 +40,8 @@ TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]  
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
-QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
-         "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
+QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "canvas-menu-select-layer", "action-menu", "ctrl-k",
+         "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "time_box_typing", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -168,6 +168,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
           for w, h in ((1080, 1920), (1080, 1080), (1080, 1350))],
         ("animation-picked", ["--sample"], ["select title", "clickname stretch:title.opacity.k200"]),   # §9.3: the animation view
         ("right-click", ["--sample"], ["selectmany title card", "canvasmenu"]),
+        # Select layer ▸ (only where layers overlap): two overlapping shapes, one with a long name, its side menu open
+        ("canvas-menu-select-layer", ["--sample"], ["shape rect 100 100 500 400", "shape rect 200 150 600 450",
+                                                    'paintingop item.rename shape_2 {"name":"' + LONG_LAYER + '"}', "select shape_2", "wait 600", "canvasmenu", "hoverobj menu:selectLayerMenu"]),
         # H48: the selection's actions at the top of the settings panel; right-click is the one short menu
         ("picture-shape", ["--sample"], [f"drop {picture()} 900 500", "selectmany image_1 card"]),     # Mask first
         ("animation-spring", ["--sample"], ["select title", "clickname stretch:title.opacity.k200", "clickname animEase", "clickname ease_spring"]),
@@ -207,6 +210,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("guides-list", ["--sample"], ["guides open"]),                       # the kit's guides drawer (F1)
         ("guides-find", ["--sample"], ["guides find a_word_no_guide_has_anywhere_in_its_text_at_all"]),
         ("key-list", ["--sample"], ["keylist open"]),                          # Ctrl+/
+        ("time_box_typing", ["--sample"], ["clickobj timeBox", "typekeys logo_lands"]),   # the playhead's time as a box, a marker's name typed
         ("panels-folded", ["--sample"], ["panels fold"]),                      # Ctrl+\
         ("view-menu", ["--sample"], ["select title", "zoom 400", "viewmenu"]),     # zoomed in, the view's % menu open
         ("view-menu-blur", ["--sample"], ["select screen_sample", "set shutter 180", "viewmenu"]),   # H61: a blurred scene adds "Motion blur while playing"

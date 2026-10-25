@@ -36,6 +36,7 @@ SHARED = [
         ("prev_event", [","], "Previous thing that happens"), ("next_event", ["."], "Next thing that happens"),
         ("prev_beat", ["Shift+,"], "Previous beat"), ("next_beat", ["Shift+."], "Next beat"),
         ("next_marker", ["Alt+M"], "Next marker"), ("prev_marker", ["Alt+Shift+M"], "Previous marker"),
+        ("go_to_time", ["Alt+Shift+J"], "Go to a time"),
         ("loop", ["Shift+L"], "Loop on / off"),
         ("range_start", ["Shift+I"], "Time range starts here"), ("range_end", ["Shift+O"], "Time range ends here")]),
     *_area("Select", [
@@ -111,10 +112,12 @@ SHIFTED = {"+": "="}
 
 def typed(key: str) -> list[str]:
     """Every spelling a key may arrive in: itself, and for a shifted sign with Shift held ("Ctrl++" ->
-    ["Ctrl++", "Ctrl+Shift+=", "Ctrl+Shift++"])."""
+    ["Ctrl++", "Ctrl+Shift+=", "Ctrl+Shift++"]); Enter also arrives as Return (the big key; Qt's "Enter" is the number pad's)."""
     k = normal(key)
     name = "+" if k.endswith("+") else k.rsplit("+", 1)[-1]
     mods = k[:len(k) - len(name)].rstrip("+").split("+") if len(k) > len(name) else []
+    if name == "Enter":
+        return [k, k.removesuffix("Enter") + "Return"]
     if name in SHIFTED and "Shift" not in mods:
         return [k, normal("+".join(mods + ["Shift", SHIFTED[name]])), normal("+".join(mods + ["Shift", "plus" if name == "+" else name]))]
     return [k]

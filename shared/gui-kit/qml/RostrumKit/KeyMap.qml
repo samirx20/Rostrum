@@ -18,7 +18,7 @@ Instantiator {
     property var whileTyping: []
     // the jobs the kit's AppShell binds itself (and the app's own Export through it), never made here
     readonly property var shell: ["undo", "redo", "command_box", "history", "guides", "key_list", "next_area",
-                                  "fold_panels", "export", "export_again"]
+                                  "fold_panels", "export", "export_again", "go_to_time"]
     model: hub ? hub.keys : []
     delegate: Shortcut {
         required property var modelData

@@ -8,6 +8,7 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.parts import SlotMixin
 
+from . import levels
 from .keys2d import ASKED, ROUTES, SKIP, WINDOW
 
 
@@ -89,3 +90,32 @@ class KeyRoutes(SlotMixin):
         if tool == "bone" and not self._bone_tool.available:
             return self._set_status("Pick a rig to use the Bone tool")
         self.setTool("move" if tool == self._tool == "pen" else tool)
+
+    # ---- Tab, Shift+Tab, Enter, Shift+Enter: the layers at this level (levels.py) ---------------------------------
+    @Slot(int)
+    def walk(self, sign):
+        """Tab / Shift+Tab: the next / previous layer at this level (one pick), with the Select tool only."""
+        if self._tool == "move":
+            pick = levels.next_to(self.doc, self.selected_layers(), sign, self.comp_id)
+            if pick:
+                self.select(pick)
+
+    @Slot(result=bool)
+    def canGoIn(self):
+        """Enter would go into the picked group (Main.qml: the Enter that text and path points don't take)."""
+        one = self.selected_layers()
+        return len(one) == 1 and bool(levels.first_child(self.doc, one[0]))
+
+    @Slot()
+    def goIn(self):
+        """Enter on a group: its first layer."""
+        one = self.selected_layers()
+        if self._tool == "move" and len(one) == 1 and levels.first_child(self.doc, one[0]):
+            self.select(levels.first_child(self.doc, one[0]))
+
+    @Slot()
+    def goOut(self):
+        """Shift+Enter: the group the pick is in becomes the pick."""
+        picked = self.selected_layers()
+        if self._tool == "move" and picked and levels.parent_group(self.doc, picked[-1]):
+            self.select(levels.parent_group(self.doc, picked[-1]))

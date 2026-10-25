@@ -80,6 +80,16 @@ def painted(layer: dict, w: float, h: float, n: int, p: dict | None = None) -> t
     return max(0.0, min(xs)) * kx, max(0.0, min(ys)) * ky, min(cw, max(xs)) * kx, min(ch, max(ys)) * ky
 
 
+SEEN_OPACITY = 0.01     # at or under this a layer is see-through: a click goes through it
+
+
+def can_pick(paint, opacity: float, locked: bool) -> bool:
+    """A click may pick a layer that paints something, is not locked and is not see-through: the one rule the screen's
+    clicks (bounds.pickable) and the agents' look_at (`pickable`) share. (Hidden, out-of-time and track-matte-only layers
+    are left out earlier, where the layers are worked out.)"""
+    return bool(paint) and not locked and opacity > SEEN_OPACITY
+
+
 INK_SLOP = 3        # canvas px: a click this close to a painted pixel still lands on it (a hairline stroke can be hit)
 
 

@@ -39,6 +39,7 @@ class Action:
     min_targets: int = 1                      # 0 = needs nothing selected (a time range action)
     max_targets: int | None = None
     importance: str = "secondary"             # "primary": on the context bar; "secondary": under ⋯ and in menus
+    importance_one: str = ""                  # its importance when exactly one thing is selected (Group: primary with 2+, secondary alone)
     rank: int = 100                           # lower first
     promoted: Callable | None = None          # promoted(facts) -> bool: put it first
     job: str = ""                             # a key map job ("group"): its key comes from the key map
@@ -65,6 +66,8 @@ class Action:
     def __post_init__(self):
         if self.importance not in ("primary", "secondary"):
             raise ValueError(f"action {self.id}: importance {self.importance!r} is not primary or secondary")
+        if self.importance_one not in ("", "primary", "secondary"):
+            raise ValueError(f"action {self.id}: importance_one {self.importance_one!r} is not primary or secondary")
         if bool(self.calls) == bool(self.do):
             raise ValueError(f"action {self.id}: give it either calls or do (exactly one)")
 
@@ -150,7 +153,7 @@ class ActionList:
                 first = 0 if a.promoted and a.promoted(facts) else 1
                 out.append(((first, a.rank, i), {
                     "id": a.id, "label": a.label_for(facts), "keys": self.keys_of(a),
-                    "importance": "primary" if first == 0 else a.importance,    # promoted: a button while it holds
+                    "importance": "primary" if first == 0 else (a.importance_one if a.importance_one and len(facts.ids) == 1 else a.importance),   # promoted: a button while it holds
                     "group": "edit" if a.edit else a.group, "bar": a.bar, "calls": calls, "do": a.do,
                     "edit": a.edit, "rank": a.rank, "job": self.job_of(a), "release": a.release, "panel": a.panel, "icon": a.icon,
                     "row": a.row, "row_label": a.row_label(facts) if callable(a.row_label) else a.row_label,

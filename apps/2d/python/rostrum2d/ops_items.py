@@ -105,10 +105,20 @@ def layer_remove(ctx, targets, args):
         ctx.remove(t)
 
 
+def _by(name, label, unit, **kw):
+    return Param.number(name, label=label, unit=unit, min=-100000, max=100000, importance="secondary", **kw)
+
+
 @R.operation("layer.duplicate", "Copy layers: each copy lands just above its original in the stack, named \"<name> copy\", "
-             "and nudged 24 px right and down (further for each more copy, so none sits exactly on another), with its keys, "
-             "effects, masks and layers inside it copied under new ids.", target=F.PLACED, label="Duplicate",
-             importance="secondary")
+             "with its keys, effects, masks and layers inside it copied under new ids. Without `by_x` / `by_y` / `by_turn` / "
+             "`by_scale` it is nudged 24 px right and down (further for each more copy, so none sits exactly on another). "
+             "With them, `times` copies (1 to 200) each take that step from the one before, as one change: "
+             "{by_x: 240, times: 7} makes a row of eight. `by_scale` is a factor (1.1 = a tenth bigger each).",
+             target=F.PLACED, label="Duplicate", importance="secondary",
+             params=[_by("by_x", "Step across", "px"), _by("by_y", "Step down", "px"), _by("by_turn", "Step turn", "°"),
+                     Param.number("by_scale", label="Step scale", unit="×", min=0.01, max=100, importance="secondary"),
+                     Param.number("times", label="Copies", min=1, max=200, integer=True, default=1, importance="secondary",
+                                  help="How many copies, each one step on from the last")])
 def layer_duplicate(ctx, targets, args):
     from rostrum_core import ids
     from rostrum_core.tree import bare, child_keys
@@ -123,13 +133,20 @@ def layer_duplicate(ctx, targets, args):
                 put(child, new["id"], k, None, taken, for_child(child, step))
         return new["id"]
 
-    from .ops_nudge import for_child, steps_for, stepped
+    from .ops_nudge import NUDGE, for_child, steps_for, stepped
+    by = [args.get(k) for k in ("by_x", "by_y", "by_turn", "by_scale")]
+    given = any(v is not None for v in by)
+    dx, dy, turn, ratio = (by[0] or 0, by[1] or 0, by[2] or 0, by[3] if by[3] is not None else 1)
     for t in targets:
         idx = _all_ids(ctx)
         loc = idx[t]
-        step = steps_for(ctx.item(loc.parent).get(loc.key, []), [loc.item])
-        copy = put(loc.item, loc.parent, loc.key, loc.index + 1, set(idx), step)
-        ctx.set(copy, "name", unique_name(_names(ctx), f"{display_name(loc.item)} copy"))
+        first = steps_for(ctx.item(loc.parent).get(loc.key, []), [loc.item])
+        taken, at, name = set(idx), loc.index + 1, f"{display_name(loc.item)} copy"
+        for n in range(1, args.get("times", 1) + 1):
+            step = (n * dx, n * dy, n * turn, ratio ** n) if given else first + n - 1
+            copy = put(loc.item, loc.parent, loc.key, at, taken, step)
+            ctx.set(copy, "name", unique_name(_names(ctx), name))
+            at += 1
 
 
 @R.operation("item.rename", "Rename a composition, layer, effect, mask or a rig's saved pose.",

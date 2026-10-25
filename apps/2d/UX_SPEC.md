@@ -930,7 +930,7 @@ Design and mockups: `C:\Users\Sam\.rostrum\waves\results\2d-painted-fill\DESIGN.
 ### Into and out of groups · Now
 - **Goal:** move the whole logo usually; reach one piece when needed.
 - **Steps:** click picks the outer group; double-click goes one level in (or Enter); Ctrl+click picks the deepest
-  layer under the pointer straight away; Shift+Enter goes back to the parent. While inside a group, the canvas's
+  layer under the pointer straight away; Alt+click picks the layer behind the pick; Shift+Enter goes back to the parent. While inside a group, the canvas's
   bottom-left shows the path: `Logo › mark`; click a name to go back to it.
 - **Feedback:** outside the entered group, layers dim slightly.
 - **3E:** *Efficient:* most moves are whole groups (Hem's F2, F3); the piece is one more click. *Easy:* the path shows
@@ -2373,6 +2373,9 @@ per brief that touches them.
   area (keys; Ctrl+box adds).
 - Deeper: double-click or Enter goes into a group, a path's points, a text's letters, a symbol; Ctrl+click picks the
   deepest; Shift+Enter goes out.
+- Behind: Alt+click picks the layer below the pick under the pointer (again: further back, then the top; Ctrl+Alt the
+  pieces); right-click › Select layer ▸ lists everything under the pointer, only where two or more overlap. Alt+drag still
+  copies, the copy made when the pointer first moves.
 - Escape clears one level at a time: typing → keys → points → layers → nothing.
 - Several selected: one box on the canvas; "3 layers" in the panel; shared settings with "Mixed"; actions apply to
   all; drags move all.
@@ -2620,7 +2623,7 @@ Ctrl = ⌘ and Alt = ⌥ on the Mac. Single-letter keys work only when no text f
 | **Edit** | Ctrl+Z · Ctrl+Shift+Z / Ctrl+Y · Ctrl+C · Ctrl+X · Ctrl+V (in place) · Ctrl+Shift+V (at the pointer) · Ctrl+D · Delete · F2 rename |
 | **Arrange** | Ctrl+] / Ctrl+[ forward / back · Ctrl+Shift+] / [ front / back · Ctrl+G group · Ctrl+Shift+G ungroup · Shift+A auto layout · Ctrl+Alt+M mask · Ctrl+Alt+U / S / I / X combine (union, subtract, intersect, exclude) · Alt+A / D / W / S align left / right / top / bottom · Alt+H / V centre across / up and down · Shift+H / Shift+V flip across / down · Ctrl+Shift+H hide · Ctrl+Shift+L lock · Alt+click an eye (solo) · Ctrl+Alt+K make symbol · Ctrl+Alt+C / V copy / paste style |
 | **Animate** | K key the selection · M add a marker · F9 smooth · Shift+F9 ease in · Ctrl+Shift+F9 ease out · Ctrl+Alt+J hold (no in-between) · Alt+[ / Alt+] trim start / end to the playhead · arrows move selected keys or bars 1 frame / Shift 10 (timeline) · Alt+drag a key selection's end (stretch) · F fit curves (Curves) · **A** show animated settings *(S30, was U)* |
-| **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker or drawing · Shift+`,` / Shift+`.` previous / next beat · Shift+I / Shift+O time range start / end · **Shift+L** loop on / off *(S30)* · Shift+Space play from the selection's start *(S30)* · Alt+M / Alt+Shift+M next / previous marker *(S30)* |
+| **Time** | Space play / pause · Ctrl+← / → one frame · Ctrl+Shift+← / → ten frames · Home / End · `,` / `.` previous / next key, marker or drawing · Shift+`,` / Shift+`.` previous / next beat · Shift+I / Shift+O time range start / end · **Shift+L** loop on / off *(S30)* · Shift+Space play from the selection's start *(S30)* · Alt+M / Alt+Shift+M next / previous marker *(S30)* · **Alt+Shift+J** go to a time (the time in the timeline header is a box: click it, type `2.5`, `36f`, `1:12`, `+12f` or a marker's name) |
 | **Frame-by-frame** | `,` / `.` previous / next drawing *(S30: Alt+arrows are the fine nudge now)* · Alt+N new drawing · Alt+Shift+N copy of this drawing · = / − hold longer / shorter *(S30)* · Alt+O onion skin · hold `,` or `.` to flip through |
 | **Paint** | E eraser · G fill · [ / ] size · Shift+[ / ] softness · 1–0 opacity · Alt (hold) pick a colour · Shift+drag straight line · Ctrl+drag lasso strokes |
 | **View** | Ctrl+wheel / pinch zoom · Space+drag pan · Shift+Space+drag turn the view · Ctrl+0 fit · Ctrl+1 100 % · **F** (or Shift+2) zoom to selection *(S30)* · Ctrl+= / Ctrl+− · Shift+0 straighten the view · Shift+R rulers · Ctrl+\ hide panels |
