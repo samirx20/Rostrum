@@ -79,6 +79,12 @@ class LoudnessMeter(QObject):
             self.changed.emit()
 
     # ---- reads -----------------------------------------------------------------------------------------------
+    @Property("QVariant", notify=changed)
+    def lufs(self):
+        """The whole song's loudness from the last render (None before one): the top bar's chip reads it here, never
+        through a Mixer strip, which waits until the Mixer is first shown (critic r6 M4: "rendering…" forever)."""
+        return strips.master_meter(self.bridge.lastRender or {}).get("lufs")
+
     @Property("QVariantList", notify=changed)
     def curve(self):
         return list(self._series.get("shortTerm") or [])

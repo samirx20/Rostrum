@@ -10,7 +10,7 @@ Rectangle {
     id: r
     property bool compact: false
     readonly property var target: mixer.loudness.target
-    readonly property var lufs: mixer.master.meter ? mixer.master.meter.lufs : undefined
+    readonly property var lufs: mixer.loudness.lufs      // the last render's, whether or not the Mixer was ever opened
     readonly property bool measured: lufs !== undefined && lufs !== null && lufs > -70
     readonly property real goal: mixer.loudness.goal
     readonly property bool near: measured && Math.abs(lufs - goal) <= 1
