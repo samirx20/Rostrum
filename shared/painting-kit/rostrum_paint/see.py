@@ -36,14 +36,16 @@ def check_zoom(zoom, w, h):
 
 
 def _flat(img, checker=True):
-    """RGB float 0..1 from RGB or straight-alpha RGBA; transparency shows a checkerboard (or black)."""
+    """RGB float 0..1 from RGB or straight-alpha RGBA; transparency shows a checkerboard (True), or a flat grey 0..1
+    (a number: a 100 % crop judging grain, where the checkerboard's squares would read as a pattern in the paint)."""
     a = np.asarray(img)
     rgb = a[..., :3].astype(np.float32) / 255
     if a.shape[2] == 3:
         return rgb
     h, w = a.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w]
-    under = np.where(((xx // 8 + yy // 8) % 2 == 0)[..., None], 0.35, 0.55) if checker else np.zeros((h, w, 1))
+    under = (np.where(((xx // 8 + yy // 8) % 2 == 0)[..., None], 0.35, 0.55) if checker is True
+             else np.full((h, w, 1), float(checker or 0.0)))
     al = a[..., 3:4].astype(np.float32) / 255
     return rgb * al + under * (1 - al)
 
