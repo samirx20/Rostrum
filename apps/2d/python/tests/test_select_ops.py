@@ -69,3 +69,12 @@ def test_mask_make_links_the_cutter_and_align_left(doc):
 def test_align_left_moves_layers_to_one_edge(doc):
     doc.apply({"op": "layer.align", "target": ["a", "b"], "args": {"edge": "left"}}, SAM)
     assert boxes.box(doc.item("a"))[0] == boxes.box(doc.item("b"))[0] == 250
+
+
+def test_distribute_with_a_typed_gap_spaces_them_exactly_in_one_undo_step(doc):
+    data = copy.deepcopy(doc.data)
+    doc.apply({"op": "layer.distribute", "target": ["c", "a", "b"], "args": {"axis": "x", "gap": 40}}, SAM)
+    a, b, c = (boxes.box(doc.item(i)) for i in "abc")
+    assert a[0] == 250 and b[0] - a[2] == 40 and c[0] - b[2] == 40          # from the leftmost, which stays
+    doc.undo(SAM)
+    assert doc.data == data

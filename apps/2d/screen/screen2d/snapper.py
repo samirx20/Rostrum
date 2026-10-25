@@ -1,6 +1,7 @@
 """Snapping during a canvas drag, as QML sees it (backend.snap): what the dragged layers may catch, the offset, and the
-magenta lines of what they caught (`lines`, composition px; Stage.qml draws them through its mapping). The maths is
-snap.py; the boxes are bounds.boxes (the screen's one source of where layers are).
+magenta lines of what they caught (`lines`, composition px; Stage.qml draws them through its mapping, SnapLine.qml the
+equal-gap brackets and gap numbers among them). The maths is snap.py; the boxes are bounds.boxes (the screen's one
+source of where layers are). A layer's move also snaps to equal gaps (snap.spacing, worked out once at the press).
 
 A drag calls begin(layers) at the press, move(dx, dy) / edge(hx, hy, dx, dy) on every pointer move (the total drag,
 composition px; it returns the drag to use) and end() on release. QML reports the keys with keys(free, straight):
@@ -23,6 +24,7 @@ class Snapper(QObject):
         super().__init__(bridge)
         self.b, self._lines, self._on = bridge, [], True
         self._start, self._targets, self._free, self._straight = None, [], False, False
+        self._spaced = None                     # equal gaps among the targets (snap.spacing): a layer's move only
 
     @Property("QVariantList", notify=changed)
     def lines(self):
@@ -68,18 +70,19 @@ class Snapper(QObject):
             if b["id"] in moving or b["id"] in ups or moving & set(b["up"]) or b["w"] <= 0 or b["h"] <= 0 or b["opacity"] <= 0:
                 continue
             self._targets.append((1 if b["up"][-1:] == tuple(home) else 2, bounds.extent(b)))
+        self._spaced = S.spacing(self._targets) if point is None else None
 
     def begin_box(self, box, targets) -> None:
         """The press of a drag that isn't a layer's (the frame, frame_drag.py): its extent (x0, y0, x1, y1) and what it
         may catch, [(rank, extent)]."""
         self._free = self._straight = False
-        self._start, self._targets = tuple(box), list(targets)
+        self._start, self._targets, self._spaced = tuple(box), list(targets), None
 
-    def _snap(self, box, xs, ys):
+    def _snap(self, box, xs, ys, spaced=None):
         if not self._on or self._free or self._start is None:
             self._set([])
             return 0.0, 0.0
-        dx, dy, lines = S.snap(box, self._targets, S.threshold(self.b.view_zoom()), xs, ys)
+        dx, dy, lines = S.snap(box, self._targets, S.threshold(self.b.view_zoom()), xs, ys, spaced)
         self._set(lines)
         return dx, dy
 
@@ -91,7 +94,7 @@ class Snapper(QObject):
             return dx, dy
         s = self._start
         sx, sy = self._snap((s[0] + dx, s[1] + dy, s[2] + dx, s[3] + dy),
-                            S.ALL if dx or not self._straight else (), S.ALL if dy or not self._straight else ())
+                            S.ALL if dx or not self._straight else (), S.ALL if dy or not self._straight else (), self._spaced)
         return dx + sx, dy + sy
 
     def edge(self, hx: int, hy: int, dx: float, dy: float) -> tuple[float, float]:
@@ -110,7 +113,7 @@ class Snapper(QObject):
             self._start = None
 
     def end(self) -> None:
-        self._start, self._targets = None, []
+        self._start, self._targets, self._spaced = None, [], None
         self._set([])
 
     def _set(self, lines):

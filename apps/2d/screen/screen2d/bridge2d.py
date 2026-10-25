@@ -353,9 +353,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     @Slot(str)
     def select(self, item_id):
         """One item ("" = none). The painting open on its own is where you are, not something picked (its timeline
-        row and cells select it): nothing changes."""
+        row and cells select it): nothing changes. A layer picked by its name, its bar or Ctrl+K: the pick is about
+        layers, picked keys go (key_select.py, also when it was picked already)."""
         opened = getattr(self, "_opened", None)          # (the kit selects the first item before it is made)
         if not (item_id and opened is not None and item_id == opened.id):
+            if getattr(self, "_keys", None) is not None:
+                self._keys.clear()
             super().select(item_id)
 
     # ---- for the Painter (screen2d/painter.py) ----------------------------------------------------------------

@@ -60,7 +60,8 @@ that the file says what you decided.
 - `key.add {fields: "pose", t}` keys position, scale, rotation and opacity at once with their values now (K in the screen).
 - `key.scale {around, by}` on keys stretches (`by` 2: twice as slow) or squeezes (0.5) them in time around a moment.
 - `key.paste {from: [key ids], at}` on layers puts copies of those keys on the same settings, the first at `at`, the
-  others keeping their spacing, values and eases.
+  others keeping their spacing, values and eases. For the times they were copied from (the screen's Ctrl+Shift+V), give
+  `at` the first copied key's time; for a repeat right after them (Ctrl+D), the last one's time plus a frame.
 - `key.set {ease}` on many keys at once changes them in one step; `key.handles` shapes a custom curve.
 
 ## Bending the path a layer travels

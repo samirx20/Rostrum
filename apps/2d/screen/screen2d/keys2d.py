@@ -33,6 +33,8 @@ OWN = [
     {"job": "align_bottom", "keys": ["Alt+S"], "label": "Align bottom"},
     {"job": "centre_across", "keys": ["Alt+H"], "label": "Align centre"},
     {"job": "centre_down", "keys": ["Alt+V"], "label": "Align middle"},
+    {"job": "distribute_across", "keys": ["Alt+Shift+H"], "label": "Even gaps across"},   # beside the centre keys
+    {"job": "distribute_down", "keys": ["Alt+Shift+V"], "label": "Even gaps down"},
     {"job": "flip_across", "keys": ["Shift+H"], "label": "Flip across"},              # Figma's keys (Shift+H, Shift+V)
     {"job": "flip_down", "keys": ["Shift+V"], "label": "Flip down"},
     {"job": "mask", "keys": ["Ctrl+Alt+M"], "label": "Mask"},
@@ -44,7 +46,7 @@ OWN = [
 ]
 
 NOT_HERE = ("preferences",          # no setting of 2D is a person's to change: Ctrl+, would open an empty window
-            "play_from_selection", "go_out", "next_item", "prev_item", "find_item", "paste_other", "delete_close_gap",
+            "play_from_selection", "go_out", "next_item", "prev_item", "find_item", "delete_close_gap",
             "split", "join", "trim_start", "trim_end", "loop", "range_start", "range_end", "notes_tool")
 # a tool is listed by the name its button has in the tool rail ("Brush"), so searching the Keys sheet by a tool's name finds it
 KEYS2D = KeyMap("Rostrum2D", OWN, drop=NOT_HERE, words={"paint_tool": "Brush (paint and draw)",

@@ -60,6 +60,7 @@ class ActionSlots(SlotMixin):
 
     def _facts(self) -> Facts:
         return Facts(self.doc, self.selected_layers(), {"at": self.own_t, "now": self._t, "copied": self._copied, "keys": self._keys.ids,
+                                                         "key_clip": bool(self.keys_copied()),          # Ctrl+Shift+V's words
                                                          "sound": self._soundtrack.present, "picked": list(self._kit.selection),
                                                          "frame": frame_actions.state(self),
                                                          "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
@@ -100,14 +101,13 @@ class ActionSlots(SlotMixin):
             self.renameRequested.emit(self.selected_layers()[0])
         elif name == "clip_copy" and self._strokes.count:                # strokes picked while painting: those (stroke_select.py)
             self._strokes.copy()
-        elif name in ("clip_copy", "clip_cut") and self._keys.count:     # keys picked: their keys (key_edits.py)
-            (self.copyKeys if name == "clip_copy" else self.cutKeys)()
-        elif name == "paste" and not self.keys_copied() and self._strokes.has_clip():   # strokes copied (stroke_select.py)
+        elif name in ("paste", "paste_other") and not self.keys_copied() and self._strokes.has_clip():   # strokes copied (stroke_select.py)
             self._strokes.paste()
-        elif name == "paste" and self.keys_copied():
-            self.pasteKeys()
-        elif name in ("clip_copy", "clip_cut", "paste"):
-            {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers}[name]()
+        elif name in ("paste", "paste_other") and self.keys_copied():   # the latest copy wins: keys (key_edits.py)
+            self.pasteKeys("playhead" if name == "paste" else "original")
+        elif name in ("clip_copy", "clip_cut", "paste", "paste_other"):  # (keys picked took Copy and Cut already: KeyHub)
+            {"clip_copy": self.copyLayers, "clip_cut": self.cutLayers, "paste": self.pasteLayers,
+             "paste_other": self.pasteLayers}[name]()
         elif name == "stagger":
             self._stagger.start()
         elif name == "depth":                                            # Set depth ▾ › Other depth… (depth_typed.py)
@@ -166,7 +166,7 @@ class ActionSlots(SlotMixin):
             return True
         if not LIST.owns(key):
             return super().run(key)
-        if key == "layer:delete" and (self._keys.count or self._stretch.shown):   # the short menu's Delete on picked keys
+        if key == "layer:delete" and self._stretch.shown:   # the short menu's Delete on a picked stretch (keys: KeyHub)
             return self.layerCommand("delete")
         entry = next((e for e in LIST.available(self._facts()) if e["id"] == key), None)
         self._hub.run(key)                          # not valid now: the hub says why in the status
@@ -179,10 +179,10 @@ class ActionSlots(SlotMixin):
 
     @Slot(str, result=bool)
     def layerCommand(self, how):
-        """A key's or a script's action by job (front, delete, group …): runs if valid now, else says why. Keys picked
-        in the timeline take Delete first (key_select.py)."""
-        if how in ("delete", "layer:delete") and self._keys.count:
-            return self._keys.remove()
+        """A key's or a script's action by job (front, delete, group …): runs if valid now, else says why. While the
+        pick is about keys, the jobs that act on keys run on them (key_edits.key_jobs)."""
+        if self.keys_take("delete" if how == "layer:delete" else how):
+            return True
         if how in ("delete", "layer:delete") and self._stretch.shown:     # a picked stretch: its animation (stretch_select.py)
             return self._stretch.remove()
         entry, why = LIST.on_key(self._facts(), how)

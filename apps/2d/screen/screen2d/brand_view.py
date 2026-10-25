@@ -15,24 +15,28 @@ from rostrum2d import brand_kit as B
 from rostrum2d import fields as F, text_styles
 from rostrum2d.ops_look import COLOUR
 
+from . import library_search as S
 from .painting_library import PaintingLibrary
 
 
 class LibraryView(QObject):
     changed = Signal()
+    queryChanged = Signal()         # the typed words, or anything they are matched against, changed
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.b, self._open, self._kit = bridge, False, {s: [] for s in B.SECTIONS}
-        self._logos, self._told = [], None
+        self._logos, self._told, self._query = [], None, ""
         self._paintings = PaintingLibrary(bridge, self)      # its Paintings section (painting_library.py)
+        self._paintings.changed.connect(self.changed)
+        self.changed.connect(self.queryChanged)
         bridge.docChanged.connect(self._check)
         bridge.panelShown.connect(self._check)               # what the selection can take: not the pick's own frame
 
     def _check(self):
         """An edit or a selection: announced only when this document's styles or what the selection can take changed
         (sent on every edit, the drawer's lists were redone even while it was closed)."""
-        told = (self.docStyles, self.picked)
+        told = (self._doc_styles(), self.picked)
         if told != self._told:
             self._told = told
             self.changed.emit()
@@ -56,20 +60,61 @@ class LibraryView(QObject):
     open = Property(bool, lambda self: self._open, notify=changed)
     paintings = Property(QObject, lambda self: self._paintings, constant=True)
     hasProject = Property(bool, lambda self: bool(self._folder()), notify=changed)
+
+    # The lists are every entry and change only when the kit does; what the typed words leave is `shown` (keys of the
+    # rows to show) and `counts`, so a keystroke flips rows on or off and rebuilds nothing (library_search.py).
     colors = Property("QVariantList", lambda self: self._kit["colors"], notify=changed)
     textStyles = Property("QVariantList", lambda self: self._kit["textStyles"], notify=changed)
-
     # Each logo with `thumb` (the url of its file in the project) and `found` (it can be read: otherwise QML shows the
     # "missing" mark, never a blank).
     logos = Property("QVariantList", lambda self: self._logos, notify=changed)
+    paintingRows = Property("QVariantList", lambda self: self._paintings.rows, notify=changed)
+    docStyles = Property("QVariantList", lambda self: self._doc_styles(), notify=changed)
 
-    @Property("QVariantList", notify=changed)
-    def docStyles(self):
+    def _doc_styles(self):
         """This document's own text styles: {id, name, size, weight, color, font}. One the brand kit already lists (the
         same look) is not shown twice."""
         kept = {(k.get("font"), k.get("size"), k.get("weight"), str(k.get("color", "")).lower()) for k in self._kit["textStyles"]}
         mine = [{"id": s["id"], "name": s["name"], **text_styles.values(s)} for s in text_styles.styles(self.b.doc.data)]
         return [m for m in mine if (m.get("font"), m.get("size"), m.get("weight"), str(m.get("color", "")).lower()) not in kept]
+
+    def _all(self) -> dict:
+        return {"colors": self._kit["colors"], "textStyles": self._kit["textStyles"], "logos": self._logos,
+                "paintings": self._paintings.rows, "docStyles": self._doc_styles()}
+
+    def _found(self) -> dict:
+        return S.narrow(self._query, self._all())
+
+    searching = Property(bool, lambda self: bool(self._query.strip()), notify=queryChanged)
+    query = Property(str, lambda self: self._query, notify=queryChanged)
+    shown = Property("QVariantList", lambda self: [S.key(sec, e) for sec, es in self._found().items() for e in es], notify=queryChanged)
+    counts = Property("QVariantMap", lambda self: {sec: len(es) for sec, es in self._found().items()}, notify=queryChanged)
+    nothing = Property(bool, lambda self: self.searching and S.top(self._found()) is None, notify=queryChanged)    # "Nothing called …"
+    searchShown = Property(bool, lambda self: self.searching or S.count(self._all()) > S.MORE_THAN, notify=queryChanged)
+
+    @Slot(str)
+    def setQuery(self, text):
+        if text != self._query:
+            self._query = text
+            self.queryChanged.emit()
+
+    @Slot()
+    def useTop(self):
+        """Enter in the search box: the first thing shown, as a click on it."""
+        hit = S.top(self._found())
+        if hit is None:
+            return
+        section, e = hit
+        if section in ("colors", "textStyles"):
+            self.use(section, e["name"])
+        elif section == "logos":
+            self.placeLogo(e["name"])
+        elif section == "paintings":
+            self._paintings.use(e["id"])
+        elif self.picked == "texts":
+            self.useDocStyle(e["id"])
+        else:
+            self.b.select(e["id"])
 
     @Property(str, notify=changed)
     def picked(self):
@@ -82,7 +127,7 @@ class LibraryView(QObject):
     # ---- what a person does --------------------------------------------------------------------------------------
     @Slot(bool)
     def setOpen(self, on):
-        self._open = bool(on)
+        self._open, self._query = bool(on), ""               # each opening starts with nothing typed
         self._paintings.setOpen(self._open)
         if self._open:
             self._reload()
@@ -92,12 +137,18 @@ class LibraryView(QObject):
     def use(self, section, name):
         """A kit colour or text style on the selection: one change."""
         ids = self.b.selected_layers()
+        takes = self.picked == "texts" if section == "textStyles" else bool(self.picked)     # what the pick can take
+        if not takes:
+            return self.b._set_status(f"Pick a {'text' if section == 'textStyles' else 'shape, path or text'} first, "
+                                      f"then use {name} on it")
         self.b.guard(lambda: self.b._apply(B.use_calls(self.b.doc, section, B.entry(self._folder(), section, name), ids),
                                            f"Use {name}"))
 
     @Slot(str)
     def useDocStyle(self, style_id):
         ids = [i for i in self.b.selected_layers() if self.b.doc.item(i)["type"] == "text"]
+        if not ids:
+            return self.b._set_status("Pick a text first, then use the style on it")
         self.b.guard(lambda: self.b._apply([{"op": "style.use", "target": ids, "args": {"style": style_id}}], "Use style"))
 
     @Slot(str)

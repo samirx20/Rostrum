@@ -6,8 +6,13 @@ document; offered to QML as `backend.keys` (the kit's `attach`).
 
 Keys never enter the kit's one selection (UX_SPEC 3.18 decision 5): the selection is the layers the keys belong to, so
 the settings panel keeps showing the layer (the keyed settings highlighted: `props`) and the key bar alone shows the
-keys. This set is its own state: Delete removes keys, not layers, while it holds any; picking other layers (or a
-click on a row's empty part, or Esc) lets them go.
+keys. This set is its own state.
+
+What the pick is about (spec base F): `about` is "keys" while any key is picked, else "layers"; Ctrl+C / X / D, Delete
+and the arrows read it and nothing else (key_edits.key_jobs; Ctrl+V pastes what was copied last). The last click
+decides: a diamond, Ctrl+click or a box picks keys; a layer on the canvas, a name, a bar (Bridge2D.select), Ctrl+A or
+Esc picks layers and the keys go (`clear`). Undo and Redo drop the picked keys that no longer exist (`_prune`); none
+left, the pick is about layers.
 """
 from __future__ import annotations
 
@@ -32,6 +37,11 @@ class KeySelect(KeyMoves, QObject):
     @Property("QVariantList", notify=changed)
     def ids(self):
         return list(self._ids)
+
+    @Property(str, notify=changed)
+    def about(self):
+        """"keys" | "layers": what Ctrl+C, X, D, Delete and the arrows act on now (one fact: picked keys, else layers)."""
+        return "keys" if self._ids else "layers"
 
     @Property(int, notify=changed)
     def count(self):
@@ -78,7 +88,9 @@ class KeySelect(KeyMoves, QObject):
 
     @Slot()
     def clear(self):
-        self._set([])
+        """A layer picked (canvas, name, bar, Ctrl+A) or Esc: the pick is about layers; the keys go."""
+        if self._ids:
+            self._set([])
 
     def _set(self, ids):
         ids = list(dict.fromkeys(ids))

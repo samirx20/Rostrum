@@ -8,7 +8,7 @@ The curve editor shows how a value changes over time, as a line you can drag. Us
 2. In the timeline's header row, over the layer names, click **Curves** in the **Keys | Curves** switch. The bars area turns into the curve view. The layer list stays on the left, and the ruler stays above, so the time scale and the playhead are the same.
 3. Click **Keys** to go back.
 
-If the layer has nothing animated, the view says "Select a layer with animated fields to see its curves".
+The **Keys | Curves** switch is there only while the picked layer has an animated number. Pick a layer with nothing animated (or delete its last keys) and the timeline shows the keys again; pick an animated one and the curves come back.
 
 ## 2. Read it
 

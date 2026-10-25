@@ -1,7 +1,9 @@
 """Rostrum2D's keys that are not actions on the selection: the one hub (`KeyHub`, the kit's ActionHub) answers every job of the
 key map. An action of the list (actions.py) runs through the kit; a job in ROUTES calls a bridge method (below); a job in
 WINDOW is the window's own (Main.qml `windowJobs`: it needs the canvas, the rail or the painter); the rest (keys2d.SKIP) are
-bound by the kit's AppShell, FilesMenu and the few Shortcuts that need screen state. tests/test_keys_wired.py keeps the lists honest."""
+bound by the kit's AppShell, FilesMenu and the few Shortcuts that need screen state. tests/test_keys_wired.py keeps the lists honest.
+While the pick is about keys (key_select.about), every door (a key, a button, a menu, Ctrl+K) first offers its job to the
+picked keys (key_edits.key_jobs: copy, cut, duplicate, delete, the arrows); a job they don't take runs as usual."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
@@ -24,6 +26,8 @@ class KeyHub(ActionHub):
 
     @Slot(str)
     def key(self, job):
+        if self.bridge.keys_take(job):
+            return
         if job in ROUTES:
             name, *args = ROUTES[job]
             getattr(self.bridge, name)(*args)
@@ -32,9 +36,24 @@ class KeyHub(ActionHub):
         else:
             super().key(job)
 
+    @Slot(str)
+    def run(self, id_):
+        if not self._keys_took(id_):
+            super().run(id_)
+
+    @Slot(str)
+    def choose(self, id_):
+        if not self._keys_took(id_):
+            super().choose(id_)
+
+    def _keys_took(self, id_) -> bool:
+        a = self.list.find(id_)
+        return a is not None and self.bridge.keys_take(self.list.job_of(a))
 
     def ask(self, job):
         """Ctrl+K named a job of the key map (not an action): a route, else the window's (Main.qml, then the kit's AppShell.runJob)."""
+        if self.bridge.keys_take(job):
+            return
         if job in ROUTES or job in ASKED:
             name, *args = (ROUTES | ASKED)[job]
             getattr(self.bridge, name)(*args)
@@ -72,7 +91,8 @@ class KeyRoutes(SlotMixin):
 
     @Slot(str)
     def nudgeKey(self, how):
-        """An arrow key (NUDGE: "left", "right_big" ...): moves the picked layers, with the Select tool only."""
+        """An arrow key (NUDGE: "left", "right_big" ...): moves the picked layers, with the Select tool only (picked
+        keys take the arrows first: KeyHub.key)."""
         if self._tool == "move":
             name, _, size = how.partition("_")
             step = {"": 1, "big": 10, "fine": 0.1}[size]
@@ -80,7 +100,9 @@ class KeyRoutes(SlotMixin):
 
     @Slot()
     def selectAllKey(self):
+        """Ctrl+A: every layer; the pick is about layers then (picked keys go)."""
         if self._tool == "move":
+            self._keys.clear()
             self.selectAllLayers()
 
     @Slot(str)

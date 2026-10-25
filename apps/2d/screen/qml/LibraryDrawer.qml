@@ -12,8 +12,14 @@ Rectangle {
     id: drawer
     readonly property var lib: backend.library
     readonly property var paint: backend.library.paintings
+    readonly property var shownKeys: lib.shown          // the rows the typed words leave: a keystroke flips rows on or off, never rebuilds them
+    readonly property var counts: lib.counts
+    function on(section, id) { return !lib.searching || shownKeys.indexOf(section + ":" + id) >= 0 }
     color: Theme.panel; radius: Theme.radiusPanel
-    EscCloses { when: drawer.visible; area: drawer; onAsked: drawer.lib.setOpen(false) }   // Esc from anywhere (the window's one Esc, AppShell)
+    // Esc from anywhere (the window's one Esc, AppShell): first clears what was typed in the search, then closes
+    EscCloses { when: drawer.visible; area: drawer; onAsked: drawer.lib.searching ? drawer.lib.setQuery("") : drawer.lib.setOpen(false) }
+    onVisibleChanged: if (visible) Qt.callLater(drawer.takeKeys)    // the search has the keys as the drawer opens
+    function takeKeys() { if (drawer.visible && search.visible) search.input.forceActiveFocus() }
 
     Text {
         id: head
@@ -24,6 +30,16 @@ Rectangle {
     }
     IconButton { anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: head.verticalCenter }
                  glyph: "×"; kind: "ghost"; tip: "Close the library"; job: "library"; onClicked: drawer.lib.setOpen(false) }
+    TextField {    // only once the Library holds more than 12 things: typing narrows every section by name, live; Enter uses the top one
+        id: search
+        objectName: "librarySearch"
+        visible: drawer.lib.searchShown
+        anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: Theme.pad; rightMargin: Theme.pad; topMargin: Theme.header }
+        value: drawer.lib.query; placeholder: "Search the Library"
+        onEntered: { drawer.lib.useTop(); Qt.callLater(drawer.takeKeys) }   // the box keeps the keys: type on, or Esc
+        onEscaped: drawer.lib.setQuery("")
+        Connections { target: search.input; function onTextChanged() { if (search.input.activeFocus) drawer.lib.setQuery(search.input.text) } }
+    }
     FileDialog {
         id: logoDialog
         title: "Choose a logo for the brand kit"
@@ -93,57 +109,61 @@ Rectangle {
     }
 
     Flickable {
-        anchors { fill: parent; topMargin: Theme.header; leftMargin: Theme.pad; rightMargin: Theme.pad; bottomMargin: Theme.pad }
+        anchors { fill: parent; topMargin: Theme.header + (search.visible ? search.height + Theme.gap : 0); leftMargin: Theme.pad; rightMargin: Theme.pad; bottomMargin: Theme.pad }
         contentHeight: col.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         Column {
             id: col
             width: parent.width; spacing: 2
             EmptyHint { visible: !drawer.lib.hasProject; width: col.width; topPadding: Theme.gap   // one line, no box
                         text: "A project's scenes share colours, text styles and logos here." }
-            readonly property bool colourAdd: drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
-            readonly property bool styleAdd: drawer.lib.hasProject && drawer.lib.picked === "texts"
-            Heading { visible: drawer.lib.hasProject && (drawer.lib.colors.length > 0 || col.colourAdd); text: "Colours" }   // an empty section is not shown: select a layer and its "This colour" is here
+            EmptyHint { objectName: "libraryNothing"; visible: drawer.lib.nothing; width: col.width; topPadding: Theme.gap
+                        text: "Nothing called " + drawer.lib.query.trim() }
+            // while words are typed only what they found shows: no "+" rows, and a section with nothing folds away
+            readonly property bool find: drawer.lib.searching
+            readonly property bool colourAdd: !find && drawer.lib.hasProject && drawer.lib.picked !== "" && drawer.lib.picked !== "texts"
+            readonly property bool styleAdd: !find && drawer.lib.hasProject && drawer.lib.picked === "texts"
+            Heading { visible: drawer.lib.hasProject && (drawer.counts.colors > 0 || col.colourAdd); text: "Colours" }   // an empty section is not shown: select a layer and its "This colour" is here
             Repeater { model: drawer.lib.colors
-                       delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.value
+                       delegate: Row2 { required property var modelData; visible: drawer.on("colors", modelData.name); title: modelData.name; swatch: modelData.value
                                         sub: modelData.name.toUpperCase() !== modelData.value.toUpperCase() ? modelData.value.toUpperCase() : ""
                                         onPicked: drawer.lib.use("colors", modelData.name)
                                         onRemoved: drawer.lib.remove("colors", modelData.name) } }
             AddPicked { visible: col.colourAdd
                         text: "This colour"; help: "Keep the selected layer's colour in the project's brand kit." }
-            Heading { visible: drawer.lib.hasProject && (drawer.lib.textStyles.length > 0 || col.styleAdd); text: "Text styles" }
+            Heading { visible: drawer.lib.hasProject && (drawer.counts.textStyles > 0 || col.styleAdd); text: "Text styles" }
             Repeater { model: drawer.lib.textStyles
-                       delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color || "transparent"
+                       delegate: Row2 { required property var modelData; visible: drawer.on("textStyles", modelData.name); title: modelData.name; swatch: modelData.color || "transparent"
                                         sub: (modelData.font || "") + (modelData.size ? " · " + modelData.size + " px" : "")
                                              + (modelData.weight ? " · " + modelData.weight : "")
                                         onPicked: drawer.lib.use("textStyles", modelData.name)
                                         onRemoved: drawer.lib.remove("textStyles", modelData.name) } }
             AddPicked { visible: col.styleAdd
                         text: "This text's style"; help: "Keep the selected text's style in the project's brand kit." }
-            Heading { visible: drawer.lib.hasProject; text: "Logos" }
+            Heading { visible: drawer.lib.hasProject && (!col.find || drawer.counts.logos > 0); text: "Logos" }
             Repeater { model: drawer.lib.logos
-                       delegate: Row2 { required property var modelData; title: modelData.name; hasPicture: true; picture: modelData.thumb
+                       delegate: Row2 { required property var modelData; visible: drawer.on("logos", modelData.name); title: modelData.name; hasPicture: true; picture: modelData.thumb
                                         sub: modelData.found ? "" : "File missing"
                                         onPicked: drawer.lib.placeLogo(modelData.name)
                                         onRemoved: drawer.lib.remove("logos", modelData.name) } }
-            AddRow { visible: drawer.lib.hasProject; text: "Logo…"
+            AddRow { visible: drawer.lib.hasProject && !col.find; text: "Logo…"
                      help: "Keep a logo file in the project's brand kit."
                      onClicked: logoDialog.open() }
             // the scene's own paintings (painting_library.py): shown with or without a project
-            Heading { visible: drawer.paint.shown; text: "Paintings" }
-            Repeater { model: drawer.paint.rows
-                       delegate: PaintingRow { required property var modelData; p: modelData; width: col.width; canUse: drawer.paint.canUse
+            Heading { visible: drawer.paint.shown && (!col.find || drawer.counts.paintings > 0); text: "Paintings" }
+            Repeater { model: drawer.lib.paintingRows
+                       delegate: PaintingRow { required property var modelData; visible: drawer.on("paintings", modelData.id); p: modelData; width: col.width; canUse: drawer.paint.canUse
                                                onAsked: (what) => what === "use" ? drawer.paint.use(p.id) : what === "open" ? drawer.paint.open(p.id)
                                                         : what === "duplicate" ? drawer.paint.duplicate(p.id) : drawer.paint.remove(p.id)
                                                onRenamed: (name) => drawer.paint.rename(p.id, name) } }
-            AddRow { visible: drawer.paint.shown; objectName: "newPainting"; text: "New painting"
+            AddRow { visible: drawer.paint.shown && !col.find; objectName: "newPainting"; text: "New painting"
                      help: "A blank 512 × 512 painting that repeats seamlessly, opened to paint."
                      onClicked: drawer.paint.newPainting() }
-            AddRow { visible: drawer.paint.makerName !== ""; objectName: "paintingFromPicked"; text: "From " + drawer.paint.makerName + "'s paint"
+            AddRow { visible: drawer.paint.makerName !== "" && !col.find; objectName: "paintingFromPicked"; text: "From " + drawer.paint.makerName + "'s paint"
                      help: "Make a painting from the paint on the picked layer: it becomes the layer's fill, ready to use on other layers."
                      onClicked: drawer.paint.fromPicked() }
-            Heading { visible: drawer.lib.docStyles.length > 0; text: "This scene's text styles" }
+            Heading { visible: drawer.counts.docStyles > 0; text: "This scene's text styles" }
             Repeater { model: drawer.lib.docStyles
-                       delegate: Row2 { required property var modelData; title: modelData.name; swatch: modelData.color
+                       delegate: Row2 { required property var modelData; visible: drawer.on("docStyles", modelData.id); title: modelData.name; swatch: modelData.color
                                         sub: modelData.font + " · " + modelData.size + " px · " + modelData.weight
                                         removable: false
                                         onPicked: if (drawer.lib.picked === "texts") drawer.lib.useDocStyle(modelData.id)

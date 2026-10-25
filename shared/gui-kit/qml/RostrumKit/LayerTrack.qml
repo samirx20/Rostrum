@@ -97,6 +97,7 @@ Rectangle {
             property string held: ""
             onPressed: (m) => {          // a selected bar moves every selected bar (drags.py); else it is selected alone
                 if (m.button === Qt.RightButton) { track.openMenu(barArea, m.x, m.y); return }
+                backend.keys.clear()                     // a bar pressed: the pick is about layers (Ctrl+C, X, D, the arrows)
                 if (!backend.multi.has(track.rowData.id)) backend.select(track.rowData.id)
                 if (track.fixed) return
                 held = backend.beginBarDrag(track.rowData.id, "move", track.tAt(barArea, m.x)) === false ? "" : "move"

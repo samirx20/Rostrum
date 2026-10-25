@@ -1,6 +1,7 @@
 """Keys in time, the screen's side (a slot mix-in for Bridge2D): copy, cut and paste of keys picked in the timeline
 (INTERACTION 1.8: Ctrl+V puts them at the playhead on the same settings of the selected layers, keeping their spacing;
-key.paste, one change) and `,` / `.` (INTERACTION 1.7: the playhead to the previous / next thing that happens: a key,
+Ctrl+Shift+V at the times they were copied from; key.paste, one change), Ctrl+D (copies right after the last of them)
+and the arrows on picked keys (`key_jobs`: the jobs that act on keys while the pick is about keys, key_select.about), and `,` / `.` (INTERACTION 1.7: the playhead to the previous / next thing that happens: a key,
 a marker, a drawing, a layer's start or end; of the selected layers, or of everything when none is selected).
 
 The keys copied are screen state (their ids), not the system clipboard: the latest copy wins, so copying layers after
@@ -17,6 +18,24 @@ from . import framing
 
 class KeyEdits(SlotMixin):
     _key_clip: list = []
+
+    def key_jobs(self) -> dict:
+        """What each key-map job does while the pick is about keys (key_select.about): the one table the keys, the menus
+        and Ctrl+K go through (KeyHub). ↑ / ↓ do nothing to keys (a key's value is changed in its box)."""
+        k = self._keys
+        out = {"copy": self.copyKeys, "cut": self.cutKeys, "duplicate": self.duplicateKeys, "delete": k.remove}
+        for name, n in (("left", -1), ("right", 1)):
+            out[f"nudge_{name}"], out[f"nudge_{name}_big"] = (lambda n=n: k.nudgeKeys(n)), (lambda n=n: k.nudgeKeys(10 * n))
+        out |= {f"nudge_{d}{s}": (lambda: False) for d in ("up", "down") for s in ("", "_big")}
+        return out
+
+    def keys_take(self, job: str) -> bool:
+        """The pick is about keys and this job acts on keys: it ran on them (True); else the layers' action runs."""
+        do = self.key_jobs().get(job) if self._keys.about == "keys" else None
+        if do is None:
+            return False
+        do()
+        return True
 
     def keys_copied(self) -> list[str]:
         return [k for k in self._key_clip if self.doc.has(k)]
@@ -48,9 +67,11 @@ class KeyEdits(SlotMixin):
         return out
 
     @Slot(result=bool)
-    def pasteKeys(self):
-        """The copied keys onto the selected layers, the first at the playhead (each layer's own seconds). A layer that
-        has not a copied setting gets nothing and is named in the top bar, never skipped silently."""
+    @Slot(str, result=bool)
+    def pasteKeys(self, at="playhead"):
+        """The copied keys onto the selected layers, the first at the playhead (each layer's own seconds); at
+        "original": each at the time it was copied from. A layer that has not a copied setting gets nothing and is
+        named in the top bar, never skipped silently."""
         keys, layers = self.keys_copied(), self.selected_layers()
         if not keys or not layers:
             self._set_status("Select the layers to paste the keys onto" if keys else "The copied keys are gone")
@@ -62,12 +83,33 @@ class KeyEdits(SlotMixin):
         if not left:
             self._set_status(f"Can't paste these keys: {said}")
             return False
-        calls = [{"op": "key.paste", "target": [lay], "args": {"from": keys, "at": round(self.own_t(lay), 6)}} for lay in left]
+        first = min(self.placed_item(k)["t"] for k in keys) if at == "original" else self._t     # composition seconds
+        calls = [{"op": "key.paste", "target": [lay], "args": {"from": keys, "at": round(self.own_t(lay, first), 6)}} for lay in left]
         label = f"Paste {len(keys)} keys" + (f" on {len(left)} layers" if len(left) > 1 else "")
         ok = self._guard(lambda: self._apply(calls, label))
         if ok and said:
             self._set_status(f"Pasted on {', '.join(name(lay) for lay in left)}; not on the others: {said}")
         return ok
+
+    @Slot(result=bool)
+    def duplicateKeys(self):
+        """Ctrl+D with keys picked: copies of them right after the last of them (a frame on, spacing kept), on the
+        settings they are on, one change; the copies are picked then, so Ctrl+D again repeats."""
+        ids = [k for k in self._keys.ids if self.doc.has(k)]
+        if not ids:
+            return False
+        times = {k: self.placed_item(k)["t"] for k in ids}
+        by = max(times.values()) - min(times.values()) + 1 / self.comp()["fps"]
+        owners: dict[str, list[str]] = {}
+        for k in ids:
+            owners.setdefault(self.doc.parent_of(k)[0], []).append(k)
+        calls = [{"op": "key.paste", "target": [o], "args": {"from": ks, "at": round(self.own_t(o, min(times[k] for k in ks) + by), 6)}}
+                 for o, ks in owners.items()]
+        before = {k["id"] for o in owners for k in self.doc.item(o).get("keys", [])}
+        if not self._guard(lambda: self._apply(calls, "Duplicate a key" if len(ids) == 1 else f"Duplicate {len(ids)} keys")):
+            return False
+        self._keys.click([k["id"] for o in owners for k in self.doc.item(o).get("keys", []) if k["id"] not in before], "", [])
+        return True
 
     # ---- , and . ------------------------------------------------------------------------------------------------
     def event_times(self) -> list[float]:

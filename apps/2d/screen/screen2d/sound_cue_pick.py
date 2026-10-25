@@ -28,6 +28,10 @@ class _Search(PictureWorker):
     def handle(self, eng, job):
         if job == WARM:             # warm-up: Sound's library code loads (seconds, the first time) before the first search needs it
             from rostrum_sound import library, userlib  # noqa: F401
+            try:
+                library._listing()      # the library's files listed once now (~1 s), so the first search is quick too
+            except OSError:
+                pass                    # no library installed: the search says so when asked
             return
         n, words, folder, chosen = job
         self.found.emit(n, [{**r, "label": r["about"], "hint": f'{r["seconds"]:g} s · {r["where"]}' if r.get("seconds")

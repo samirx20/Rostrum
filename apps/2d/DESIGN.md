@@ -213,7 +213,7 @@ importance, so they always agree and nothing is greyed out):
 | **Auto layout** | layers | Auto layout. A row that spaces them evenly | `group.make {ids, as: "layout"}` | build |
 | **Swap set** | the drawings or pictures to swap | Make swap set. One of them shows at a time, keyed | `group.make {ids, as: "swap"}` | build |
 | **Align** | 2+ layers (or 1: to the composition) | Left · Centre · Right · Top · Middle · Bottom | `layer.align {ids, edge, to}` | build |
-| **Distribute** | 3+ layers | Even gaps across · down | `layer.distribute {ids, axis}` | build |
+| **Distribute** | 3+ layers | Even gaps across · down (Alt+Shift+H / V); Gap row once even | `layer.distribute {ids, axis, gap?}` | build |
 | **Match size** | 2+ layers; the first picked is the size to match | Match width · height · both | `layer.match_size {ids, to, dims}` | build |
 | **Copy / paste style** | a layer → Copy style; then other layers → Paste style | Fill, outline, opacity, blend, colour and effects copied onto each | `style.apply {from, ids}` | build |
 | **Effects** | layers | Add effect › Glow (each gets its own) | `effect.add` on several targets | build |
@@ -235,7 +235,7 @@ Painted background. Group and Rig are gone from it.
 | **Settings of several** | The settings panel shows what the selected layers share; a value that differs says "Mixed"; a change sets it on all, as one change | H28 |
 | **Group / ungroup** | Select → Ctrl G; Ctrl Shift G | H28 |
 | **Align and distribute** | In the action bar, right-click and Ctrl K | H28 |
-| **Snapping and guides** | Layer bars and keys snap to markers and the playhead. On the canvas: a dragged layer snaps to the frame's centre and edges and to other layers' edges and centres, with a thin line showing what it snapped to; Ctrl while dragging turns snapping off | H28 |
+| **Snapping and guides** | Layer bars and keys snap to markers and the playhead. On the canvas: a dragged layer snaps to the frame's centre and edges and to other layers' edges and centres, with a thin line showing what it snapped to, and to equal gaps between layers (the matching gaps marked with their size); the gap to a neighbour it lines up with is written on the line; Ctrl while dragging turns snapping off | H28 |
 | **Copy / paste / duplicate** | Ctrl D duplicates (with keys); Ctrl C / Ctrl X / Ctrl V copy, cut and paste layers (in place, also into another project); Alt drag drags a copy | H28 |
 | **Nudge with the arrow keys** | 1 px; Shift 10 px; every selected layer; one change per key press | H28 |
 | **Zoom and pan the canvas** | Ctrl wheel zooms at the pointer, Space drag or middle drag pans, Ctrl 0 fits, Ctrl 1 shows 100 %; the zoom shows in the canvas corner. On Sam's screen a 1080p frame is fitted at about half size, so this is needed for any detail | H28 |

@@ -1092,7 +1092,7 @@ operation is one (`mask.make`).
   sets the size). With one layer selected, Align aligns it to the frame.
 - **Feedback:** the change is instant; equal gaps flash pink once.
 - **Keys:** Alt+A / D / W / S (left / right / top / bottom), Alt+H / V (centre across / up and down).
-- **Agent:** `layer.align {ids, edge, to}`, `layer.distribute {ids, axis}`, `layer.match_size {ids, to, dims}`.
+- **Agent:** `layer.align {ids, edge, to}`, `layer.distribute {ids, axis, gap?}` (with `gap` px: that far apart from the first; 2+ layers then), `layer.match_size {ids, to, dims}`.
 - **3E:** *Efficient:* one pick replaces typing positions one by one (FINDINGS 3.3). Same keys as Figma.
 
 ### Auto layout · Now

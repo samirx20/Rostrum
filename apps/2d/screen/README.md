@@ -28,13 +28,19 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   them: `qml/StrokeBar.qml`; no tool puts options or hint words over the canvas), the **right-click menus** (a layer's name in the timeline, and the canvas: an
   unselected layer is selected alone first; sets of more than two choices fold into a side menu), **Ctrl+K**'s Do group
   and the **keys** (the kit's KeyMap). Esc steps back one level (the kit's `selection_rules.esc_step`: picked keys,
-  then layers); arrows nudge 1 px, Shift 10 px, Alt 0.1 px, one change per press.
+  then layers); arrows nudge 1 px, Shift 10 px, Alt 0.1 px, one change per press. With keys picked, ← / → move the keys
+  a frame (Shift: ten; `KeySelect.nudgeKeys`, the same `key.set {t}` calls a key drag sends) and ↑ / ↓ do nothing;
+  Alt+arrows still nudge the layers.
 - The selection is read in one place, `LayerOrder.selected_layers()`.
-- Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. A hidden layer is not drawn in the
+- Lock and the eye on each layer row (`qml/LayerName.qml`): fields `locked` / `hidden`. Press one and drag over more rows (`LayerRows.qml` swipe*): the first row's new state shows live on every row passed, then ONE change on release (`backend.setSwitches` → `layer.hide` / `layer.lock` / `layer.unlock`); Alt+click an eye = `backend.soloLayer` (show only this one at its level; again brings back only the ones it hid). A hidden layer is not drawn in the
   preview or an export (`scene.py` leaves it out) and has no box; `bounds.pick` skips locked layers.
 - **Keys in the timeline** (`key_select.py`, `backend.keys`): click picks a key, Ctrl+click adds / removes, Shift+click
   the run between; a diamond on a layer's bar stands for all its keys at that frame. Picked keys move together (one
-  change); Delete removes them. **A** opens the selected layers to their animated settings only; again folds them
+  change); Delete removes them. **What the pick is about** (`KeySelect.about`, "keys" | "layers"): a diamond, Ctrl+click
+  or a box → keys; a layer on the canvas, a name, a bar (`Bridge2D.select`), Ctrl+A or Esc → layers, the keys let go;
+  Undo / Redo drop picked keys that are gone. Ctrl+C / X / D, Delete and the arrows read it only, at every door (key,
+  button, menu, Ctrl+K: `KeyHub` → `key_edits.key_jobs`). A motion-path square at the playhead is the layer's own place:
+  pressing it picks and moves the layer (`motion_path.beginKey`). **A** opens the selected layers to their animated settings only; again folds them
   (`outline.rows(…, anim_only)`).
 - Steps: `selectmany <id> <id> …`, `act <action>` (`group`, `ungroup`, `mask`, `union`, `align_left`, `distribute_x`,
   `match_w`, `lock`, `hide`, `delete`, `front` …), `nudge <dx> <dy>`, `actionmenu`, `actionbar`; keys (`key_steps.py`):
@@ -73,6 +79,13 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   `pan`, `fitsel`, `viewmenu`, `viewtime` (pan / zoom / drag timings).
 - **Snapping** (`screen2d/snap.py` pure, `snapper.py` as `backend.snap`): moves and resize edges snap within 6 screen
   px to the frame's edges and centre, then other layers'; magenta lines; Ctrl during the drag = free, Shift = straight.
+  A move also snaps to equal gaps (`snap.gaps` / `snap.spacing`, base G of the 2d-pro-workflows spec): its gap to a
+  neighbour equal to a gap between two other layers in its row or column, or midway between its two neighbours (ranked
+  with the other layers). At most one line per axis, the nearest; a line to a neighbour carries the gap ("24"), and
+  equal gaps show as brackets with their size (`qml/SnapMarks.qml`, over the canvas, reading the same `backend.snap.lines`).
+- **Gap row** (`multi.gap`, `qml/GapRow.qml`, objectName `gapBox`): 3+ picked layers in one place sitting equally apart
+  (`snap.even`, within 0.5 px) show "Gap ⟷ 48 px" / "Gap ↕"; a typed (sums, `*2`) or scrubbed gap is
+  `layer.distribute {gap}`, one change. Alt+Shift+H / Alt+Shift+V are Even gaps across / down.
 - **Box select** (`multi.boxSelect(…, mods)` through the kit's `selection_rules.box`): Shift adds, Ctrl the deepest.
 - **Painting on any element** (`painter.py`, `brush_panel.py`, `strokes.py`): the Draw tool paints on the selected
   shape, text, picture or path (kept inside its outline by the engine), on a drawing, or with nothing selected makes a
@@ -132,6 +145,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 ## Animating: the key bar, K, retiming, Stagger, `,` `.` (H30)
 
+- **Library search** (`qml/LibraryDrawer.qml` `librarySearch`, `screen2d/library_search.py`, `backend.library.setQuery / useTop`): the box shows once the Library holds more than 12 things and has the keys as it opens; typing narrows every section by name (a colour also by hex, a logo by file name); Enter = the top result; Esc clears, a second Esc closes.
 - **Key block** (`qml/KeyPanel.qml`, `EaseCurve.qml`, `screen2d/key_bar.py`, `backend.keyBar`; the one ease list is
   `EASE_LIST` in `rostrum_core/keys/easing.py`, rows for the screen in the kit's `rostrum_gui/eases.py`):
   at the top of the settings panel only while keys are picked. **Ease** (the kit's `EasePicker.qml` + `EaseList.qml`,
@@ -149,6 +163,10 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   `KeySelect.beginStretch`): `key.scale {around, by}` around the other end. **Copy / paste keys** (`key_edits.py`): with keys
   picked Ctrl+C copies their ids (the latest copy wins over layers); Ctrl+V pastes onto the selected layers at the
   playhead (`key.paste {from, at}`, one call per layer, one change; a layer without a copied setting is skipped and named in the top bar).
+  Ctrl+Shift+V (shared job `paste_other`, action `paste_other`) pastes copied keys at their original times (`at` = the
+  first copied key's time in the layer's own seconds), copied layers in place as Ctrl+V does. Ctrl+D with keys picked
+  (`duplicateKeys`): `key.paste` on each key's owner, the copies starting a frame after the last picked key, one change,
+  and the copies picked (Ctrl+D again repeats).
 - **`,` / `.`** (`key_edits.stepEvent`): keys, markers, drawings, bar starts and ends; of the selected layers or all.
 - **Stagger…** (`qml/StaggerPopover.qml`, `screen2d/stagger.py`, `backend.stagger`): an action on the bar (2+ layers);
   the popover (kit Popover: light, never dims the window) previews `layer.stagger {by, order}` live in one open gesture; Enter or click away keeps it and closes it, Esc takes it back.
@@ -166,7 +184,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **The drag label and the snap line** (`backend.timeSnap`, `qml/DragLabel.qml`, `qml/SnapLine.qml`): "+6 f", "−3 f",
   "+6 f · drop" beside the dragged edge or key on its layer's row (placed from the drag's time and row, never the
   pointer: right for the mouse, steps and agents alike); a thin magenta line at the time it caught, only while snapped.
-  SnapLine.qml is the one place 2D's snap colour lives (the canvas's snap lines use it too).
+  The canvas's snap lines are the kit's SnapLine (Theme.snap) placed by Stage.qml; SnapMarks.qml adds their gap words.
 - **An ease picked plays once** (`screen2d/ease_play.py`, `playback.once`): picking an ease plays the stretch it shapes
   on the canvas, then the playhead goes back. Screen state only; drags never play; the Key block's ⋯ turns it off.
 - **Stagger on picked keys** (`stagger.py`): keys picked on two or more layers → `key.stagger {by, order}` (each
@@ -301,7 +319,9 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - The timeline's **Keys / Curves** switch shows the selected layer's animated number fields as value curves, overlaid,
   one colour each (the legend names them; click one to hide it). Drag a key (time and value, `key.set`) or a Bézier
   handle (`key.handles`: the stretch's ease becomes `custom`); each drag is one undo step. Handles show only for the
-  selected key's stretches with a cubic ease. Agents: `inspect_curve`. Steps: `curves on|off`,
+  selected key's stretches with a cubic ease. The switch is there only while the selected layer has an animated
+  number (`curves.offered`, the one fact LayerTimeline reads); without one the Keys view shows (`curves.on` = chosen
+  and offered, so the choice comes back with a layer that has curves). Agents: `inspect_curve`. Steps: `curves on|off`,
   `curvedrag <key> <dt> <dv>`, `handledrag <key> <1|2> <dx> <dy>`.
 
 ## Markers and auto layout

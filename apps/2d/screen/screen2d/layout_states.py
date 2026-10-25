@@ -47,6 +47,13 @@ QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "fr
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
+# P-b §3.13 (member C): a Library of more than 12 things shows its search; "sun" leaves a few, a long name among them
+LIBRARY_MANY = [f"brand colors {n} {c}" for n, c in (
+    ("Summer_sunset_coral_for_the_headphones_campaign", "#ff7a59"), ("Sky", "#4f8cff"), ("Skyline", "#3a5b7c"), ("Night", "#101820"),
+    ("Paper", "#f4efe6"), ("Ink", "#1b1b1f"), ("Mint", "#7be0b0"), ("Slate", "#5b6575"), ("Ocean", "#1f6fa8"), ("Moss", "#4d6b3a"),
+    ("Sunrise_yellow", "#ffd166"), ("Rose", "#e56b8a"), ("Plum", "#6a3d7c"), ("Sand", "#d9c3a0"))]
+
+
 def long_project() -> list[str]:
     """Start args for a saved project in a folder with a long name (made fresh in the temp folder)."""
     folder = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "Summer launch film for the new headphones - final cut v3"
@@ -111,6 +118,18 @@ MOUTHS = ["selectmany mouth_rest mouth_M_B_P mouth_E mouth_O mouth_A mouth_F_V",
 
 
 LONG_FOLDER = r"C:\Users\Sam\Documents\Rostrum_projects\Summer_launch_film_for_the_new_headphones\deliveries\final_round_three_for_the_client"
+
+
+THREE_BOXES = ('comp("main", name="Main", width=1920, height=1080, fps=30, duration=4, background="#0b0d14")\n'
+               + "".join(f'shape("{i}", w=200, h=200, x={x}, y={y}, fill="{c}")\n' for i, x, y, c in
+                         (("a", 300, 540, "#3a6ea5"), ("b", 860, 600, "#c0504d"), ("c", 1500, 540, "#4f9d69"))))
+
+
+def three_boxes() -> list[str]:
+    """P-b §3.3 / §3.10 (member B): three boxes in a row, the middle one off the equal-gap place by 40 px."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "three_boxes.py"
+    script.write_text(THREE_BOXES, encoding="utf-8")
+    return ["--script", str(script)]
 
 
 def states() -> list[tuple[str, list[str], list[str]]]:
@@ -357,6 +376,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                            "brand colors Summer_launch_coral_for_the_headphones_campaign #ff7a59",
                                            "brand colors Night #101820", f"brand logos Summer_launch_film_logo_for_the_headphones {PICTURE}",
                                            f"brand textStyles {LONG_LAYER.replace(' ', '_')} textstyle_1", "library open"]),
+        ("library-search", long_project(), ["select title_card_for_the_summer_launch_film", *LIBRARY_MANY, "library open",
+                                            "library find sun"]),
+        ("library-search-empty", long_project(), [*LIBRARY_MANY, "library open", "library find zzq"]),
             # H56: My brushes (a saved brush with a long name, chosen), Save this brush's name field on Edit brush ›
         ("brush-panel-mine", long_project(), ["select title_card_for_the_summer_launch_film", "tool draw", "preset oil",
                                               "savebrush Bristle_oil_for_the_night_sky_backgrounds", "preset chalk",
@@ -397,4 +419,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                       "time 2", "set x 1300", "select card", "fitall"]),
         ("paint-layer-menu", ["--sample"], [*PAINTED, "paintlayer", "draw 600 400 1200 420", "paintlayer", f"paintset {LONG_PAINT}",
                                             "clickobj paintLayer:Paint_2 right"]),
+        # P-b §3.3 / §3.10 (member B): a move held where the gaps are equal (brackets and their size); three evenly
+        # spaced layers picked: the Gap row
+        ("snap_equal_gap", three_boxes(), ["select b", "draghold b 37 0"]),
+        ("multi_gap_row", three_boxes(), ["select b", "set x 900", "selectmany a b c"]),
     ]
