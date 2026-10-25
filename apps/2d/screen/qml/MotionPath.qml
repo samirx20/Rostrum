@@ -59,8 +59,8 @@ Item {
                       function onOyChanged() { ink.requestPaint() } }
     }
 
-    // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters count marks (an int
-    // model), so a drag's changes update the marks in place and the pressed one keeps its drag.
+    // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters keep their marks
+    // (KeptRepeater), so a drag's changes update the marks in place and the pressed one keeps its drag.
     readonly property var squares: {
         const fit = mp.fit, hit = mp.hit      // read here, so the squares follow a zoom (a read inside a callback is not tracked)
         const all = []
@@ -84,8 +84,8 @@ Item {
                         out.push({ id: row.id, t: k.t, side: s, p: k[s] })
         return out
     }
-    Repeater { model: mp.squares.length; delegate: Mark { info: mp.squares[index] || ({}) } }
-    Repeater { model: mp.knobs.length; delegate: Mark { info: mp.knobs[index] || ({}) } }
+    KeptRepeater { needed: mp.squares.length; delegate: Mark { info: mp.squares[index] || ({}) } }   // kept: another layer's keys
+    KeptRepeater { needed: mp.knobs.length; delegate: Mark { info: mp.knobs[index] || ({}) } }     // reuse the marks (a mark past them: no info, hidden)
 
     component Mark: Item {
         id: mark

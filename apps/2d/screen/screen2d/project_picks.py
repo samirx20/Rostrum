@@ -5,12 +5,14 @@ And a picture's or video's File row at rest: the name the file came in with (`wi
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 
 from rostrum2d import fontlist, render3d, settings
 from rostrum_core import filestamps, project
 
 _faces: list[dict] | None = None
+_faces_lock = threading.Lock()      # the warm-up thread and a first pick: the list is made once
 SECTIONS = {"shipped": "In Rostrum", "installed": "On this computer"}
 
 
@@ -29,13 +31,26 @@ def fonts() -> list[dict]:
     """[{value, label, face, section}]: each family a text can name (rostrum2d/fontlist.py, the engine's one list), the
     app's own first, then the computer's; `face` the family Qt draws its name in, so the list shows each in its face."""
     global _faces
-    if _faces is None:
-        from PySide6.QtGui import QFontDatabase
-        known = set(QFontDatabase.families())
-        _faces = [{"value": f["family"], "label": f["family"], "section": SECTIONS.get(f["source"], ""),
-                   "face": _qt_face(f["family"], f["files"], known)}
-                  for f in fontlist.families()]
-    return _faces
+    with _faces_lock:
+        if _faces is None:
+            from PySide6.QtGui import QFontDatabase
+            known = set(QFontDatabase.families())
+            _faces = [{"value": f["family"], "label": f["family"], "section": SECTIONS.get(f["source"], ""),
+                       "face": _qt_face(f["family"], f["files"], known)}
+                      for f in fontlist.families()]
+        return _faces
+
+
+def warm() -> None:
+    """Make the font list now, on a thread of its own (the app's start): reading the engine's list and adding the
+    shipped fonts to Qt took ~170-230 ms of the first text pick. Qt's font database may be used from any thread. A
+    failure here (no engine built) is left for the first real pick to say, loudly."""
+    def make():
+        try:
+            fonts()
+        except Exception:  # noqa: BLE001  said again by the first pick that needs the list
+            pass
+    threading.Thread(target=make, daemon=True, name="font-list-warm").start()
 
 
 def _items(folder, kind: str) -> list[dict]:

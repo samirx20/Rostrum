@@ -20,7 +20,6 @@ Item {
     readonly property int i1: seamless ? Math.min(most, Math.ceil((visibleWorld.x + visibleWorld.width) / pw)) : 1
     readonly property int j0: seamless ? Math.max(-most, Math.floor(visibleWorld.y / ph)) : 0
     readonly property int j1: seamless ? Math.min(most, Math.ceil((visibleWorld.y + visibleWorld.height) / ph)) : 1
-    readonly property int cols: Math.max(1, i1 - i0)
 
     component Wet: Item {         // the wet ink moved by one repeat (dx, dy world px)
         property real dx: 0
@@ -37,14 +36,14 @@ Item {
                 cache: false; smooth: true; asynchronous: false }
     }
 
-    Repeater {      // the painting, and with Seamless its repeats
-        model: op.visible ? Math.max(0, (op.i1 - op.i0) * (op.j1 - op.j0)) : 0
-        delegate: Image {
-            required property int index
-            x: (op.i0 + index % op.cols) * op.pw * op.zoom; y: (op.j0 + Math.floor(index / op.cols)) * op.ph * op.zoom
-            width: op.pw * op.zoom; height: op.ph * op.zoom
-            source: backend.opened.picture; smooth: op.zoom < 2; mipmap: op.zoom < 1
-        }
+    Image {         // the painting, and with Seamless its repeats: ONE tiled picture in the painting's own px, scaled
+                    // by the zoom (an Image per repeat made up to 625 of them on opening and on every pan: ~60 ms)
+        visible: op.visible
+        x: op.i0 * op.pw * op.zoom; y: op.j0 * op.ph * op.zoom
+        width: (op.i1 - op.i0) * op.pw; height: (op.j1 - op.j0) * op.ph
+        transformOrigin: Item.TopLeft; scale: op.zoom
+        fillMode: Image.Tile; horizontalAlignment: Image.AlignLeft; verticalAlignment: Image.AlignTop
+        source: backend.opened.picture; smooth: op.zoom < 2; mipmap: op.zoom < 1
     }
     Repeater {      // the stroke being drawn, in the painting and the eight repeats round it
         model: op.seamless ? 9 : 0

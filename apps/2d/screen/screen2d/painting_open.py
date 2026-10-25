@@ -45,6 +45,7 @@ class OpenedPainting(QObject):
         super().__init__(bridge)
         self.b, self._id, self._before = bridge, "", None     # _before: (selection, tool) to go back to
         self._picture, self._shows, self._told = "", None, None
+        self._info = None                   # (document data, painting id, info): `info`
         self._pictures = PaintPictures(self)
         self._pictures.done.connect(self._made)
         self._pictures.failed.connect(bridge._fail)
@@ -69,10 +70,17 @@ class OpenedPainting(QObject):
 
     @Property("QVariantMap", notify=changed)
     def info(self):
-        """{name, w, h, seamless, eachFrame, loop, scene, sub, uses: [{id, name}]}; {} when none is open."""
+        """{name, w, h, seamless, eachFrame, loop, scene, sub, uses: [{id, name}]}; {} when none is open. Worked out once
+        per document state (a document is never changed in place): QML reads it ~30 times as a painting opens, and
+        each finding its uses walked the whole scene."""
         p = self.item()
         if p is None:
             return {}
+        if self._info is None or self._info[0] is not self.b.doc.data or self._info[1] != self._id:
+            self._info = (self.b.doc.data, self._id, self._info_of(p))
+        return self._info[2]
+
+    def _info_of(self, p: dict) -> dict:
         w, h = D.canvas_size(p)
         uses = [{"id": u["id"], "name": display_name(u)} for u in fill_aim.users(self.b.doc, p["id"])]
         used = f"used by {len(uses)} layer{'s' if len(uses) != 1 else ''}" if uses else "not used yet"

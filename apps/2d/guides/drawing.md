@@ -72,7 +72,7 @@ Once a brush is how you like it, click **+ Save this brush**: at the right of **
    - **Shift+[** and **Shift+]**: softer and harder edge.
    - **Alt + right-drag**: left and right sizes, up and down softens.
    - **1** … **9** set the opacity to 10 … 90 %, **0** to 100 %.
-4. **A drawing grows with what you paint.** Paint past its edge, in any direction, even outside the frame, and the drawing gets bigger so the whole stroke fits. Nothing already painted moves. A drawing is at most 8192 px a side; a stroke that would make it bigger goes into a **new drawing** beside it, in the same place and depth, and the top bar says so ("'sky' is at its largest; this stroke started 'sky 2'"). **Ctrl+Z** takes back the stroke and the new drawing together. No stroke is ever lost or cut off.
+4. **A drawing grows with what you paint.** Paint past its edge, in any direction, even outside the frame, and the drawing gets bigger so the whole stroke fits. Nothing already painted moves. The eraser never makes it bigger: past the edge there is nothing to take away. A drawing is at most 8192 px a side; a stroke that would make it bigger goes into a **new drawing** beside it, in the same place and depth, and the top bar says so ("'sky' is at its largest; this stroke started 'sky 2'"). **Ctrl+Z** takes back the stroke and the new drawing together. No stroke is ever lost or cut off.
 
 ### Pick a colour from the picture
 

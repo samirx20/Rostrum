@@ -7,6 +7,7 @@ A document opens with the playhead at 0, like the ruler says.
 from __future__ import annotations
 
 import sys
+import threading
 from pathlib import Path
 
 from rostrum_gui import guides, start
@@ -14,6 +15,7 @@ from rostrum_gui.app import free, stop
 from rostrum_gui.project_files import ProjectFiles
 from rostrum2d import textsize
 
+from . import bounds, project_picks
 from .bridge2d import Bridge2D
 from .files2d import FILES2D
 from .spacekey import SpaceKey
@@ -30,6 +32,20 @@ GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # 
 SWITCH_S = 0.001                     # s: Python's hand-over between threads (default 5 ms, a third of a frame)
 
 
+def _measure_ahead(bridge):
+    """The scene's texts measured now, on a thread of its own (textsize keeps each size): the engine reading a text's
+    font for its first measure made the first pick of a text wait ~120 ms for its box. A failure is said by the screen's
+    own first measure."""
+    comp, t = bridge.placed(), bridge._t
+
+    def measure():
+        try:
+            bounds.boxes(comp, t)
+        except Exception:  # noqa: BLE001  the screen's own measure says it
+            pass
+    threading.Thread(target=measure, daemon=True, name="text-measure-ahead").start()
+
+
 class Session:
     def __init__(self, size=(1600, 960), comp_id=None):
         sys.setswitchinterval(SWITCH_S)    # pictures are made on worker threads: the screen's thread waits for one at most this long
@@ -37,10 +53,12 @@ class Session:
         self.files = ProjectFiles(FILES2D, self)
         self.space = None                                # Space: tap plays, hold + drag pans (spacekey.py; one per app)
         textsize.warm()                                  # the text-measuring engine starts while the window loads
+        project_picks.warm()                             # ... and the font list is made (a text's Font pick)
 
     def show(self, doc):
         """Open `doc` in a new window; the old window closes (nothing to ask: every change is already on disk)."""
         bridge = Bridge2D(doc, self.comp_id)
+        _measure_ahead(bridge)
         self.comp_id = None                              # --comp: the first window only
         bridge.files = self.files
         self.space = self.space or SpaceKey()

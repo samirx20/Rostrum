@@ -31,6 +31,7 @@ from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
 from .frame_view import FrameView
 from .world_view import WorldView
+from .reveal_ahead import RevealAhead
 from .playback import Playback, size_offered
 from .playstats import STATS
 from .clipboard import ClipboardSlots
@@ -97,6 +98,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self._opened = OpenedPainting(self)                 # a painting opened on its own (painting_open.py)
         self.painter = Painter(self)
         self._paint_edge, self._world = PaintEdge(self), WorldView(self)   # paint_edge.py, world_view.py
+        self.painter.ahead = RevealAhead(self.painter, self)      # the eraser's reveal, drawn before the press (reveal_ahead.py)
         self.frames.pictured.connect(self._world.shown)
         self._frame_view = FrameView(self)                  # frame_view.py
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)

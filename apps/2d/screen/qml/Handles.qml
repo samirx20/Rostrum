@@ -21,10 +21,11 @@ Item {
     HaloLine { anchors.fill: parent; anchors.margins: -1 }
     // the turn zones sit under the knobs
     Repeater {
-        model: h.editable ? [[-1, -1], [1, -1], [1, 1], [-1, 1]] : []
+        model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]        // always made, shown while editable: a pick remakes nothing
         delegate: Item {
             id: zone
             required property var modelData
+            visible: h.editable
             width: 28; height: 28
             x: (modelData[0] + 1) / 2 * h.bw + modelData[0] * 11 - 14
             y: (modelData[1] + 1) / 2 * h.bh + modelData[1] * 11 - 14
@@ -42,7 +43,7 @@ Item {
         }
     }
     Repeater {
-        model: h.editable ? [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]] : []
+        model: [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]]
         delegate: Rectangle {
             id: knob
             required property var modelData
@@ -51,7 +52,7 @@ Item {
             readonly property int hy: modelData[1]
             readonly property bool edge: hx === 0 || hy === 0
             objectName: (h.group ? "groupHandle:" : "handle:") + ["nw", "ne", "se", "sw", "n", "e", "s", "w"][index]   // what a scripted hand drags (dragobj)
-            visible: !edge || (hx === 0 ? h.bw : h.bh) > 36          // a small box keeps only its corners
+            visible: h.editable && (!edge || (hx === 0 ? h.bw : h.bh) > 36)    // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
             x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2

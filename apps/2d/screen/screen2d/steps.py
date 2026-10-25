@@ -38,7 +38,7 @@
   Paint (paint_steps.py): preset <id> | painttool <tool> | brushedit on|off | keytap <key> [mods] | fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
     paintmove <paint> <row> | painttoggle <field> on|off
   Paintings (painting_steps.py): paintingop <op> <target|-> [<json>] | paintingsay
-    | paintingopen <id> | paintingclose | paintinguse <layer> (open_steps.py: a painting opened on its own)
+    | paintingopen <id> | paintingclose | paintinguse <layer> | opentime <id> [n] [profile] (open_steps.py: a painting opened on its own)
   Strokes (stroke_steps.py): altpick <x> <y> [click] | altoff | lasso <x,y> … [open] | selectstrokes on|off | strokesmove <dx> <dy> |
     strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
   Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |

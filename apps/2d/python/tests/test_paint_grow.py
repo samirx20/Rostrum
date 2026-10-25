@@ -62,3 +62,10 @@ def test_past_8192_a_stroke_starts_a_new_drawing_in_one_undo_step():
     d.undo(SAM)
     assert not any(lay.get("name") == "sky 2" for lay in d.item("film")["layers"])
     assert len(d.item("sky")["frames"][0]["paints"][0]["strokes"]) == 1
+
+
+def test_an_eraser_past_the_edge_never_grows_the_drawing():
+    d = drawing_doc()
+    d.apply({"op": "paint.stroke", "target": "sky", "args": {**INK, "mode": "erase", "points": [[-40, -30], [20, 20]]}}, SAM)
+    sky = d.item("sky")
+    assert (sky["w"], sky["h"], sky["anchorX"]) == (200, 100, 0.5)     # nothing to take away out there: nothing moves

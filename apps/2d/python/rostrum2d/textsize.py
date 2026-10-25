@@ -61,11 +61,12 @@ def warm() -> None:
     first answer, and the screen's first boxes (while its window loads) would otherwise wait for it on the GUI thread.
     A start that fails here fails again, loudly, at the first real measure (the engine is then still None)."""
     def start():
+        from . import fields as F
         with _lock:
             if _own is None:
                 try:
-                    _engine().measure([])
-                except Exception:  # noqa: BLE001  said by the first real measure, which starts it again
+                    sizes([F.defaults("text")])      # a real text: the engine reads its fonts now, not at the first
+                except Exception:  # noqa: BLE001     text picked (~230 ms); a failure is said by the first real measure
                     pass
     threading.Thread(target=start, daemon=True, name="textsize-warm").start()
 

@@ -47,6 +47,7 @@ class MotionPath(QObject):
         self.b, self._frame_path = bridge, True
         self._tracks = None            # (doc.data, selection, frame path on, [(owner id, faint, track, frame keys)])
         self._view = None              # (tracks, t, the canvas paths)
+        self._by_owner = (None, {})    # (placed document, {owner id: (track, frame outlines) or None}): _track_of
         for sig in (bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
         for sig in (bridge.docChanged, bridge.docStepped):      # a change or drag step elsewhere leaves the paths be
@@ -76,15 +77,27 @@ class MotionPath(QObject):
     def _read(self):
         key = (id(self.b.placed()), self.b.selectedLayer, self._frame_path, self.b.placed())   # the last keeps the id alive
         if self._tracks is None or self._tracks[0][:3] != key[:3]:
-            comp, rows = self.b.placed(), []
+            rows = []
             for oid, faint in self._owners():
-                owner = self.b.placed_item(oid)
-                if owner.get("ridePath"):
-                    continue
-                frames = [G.frame_at(comp, kt) for kt in G.frame_keys(owner)] if owner["type"] == FRAME else []
-                rows.append((oid, faint, G.track(owner, self.b.comp()["fps"]), frames))
+                got = self._track_of(oid)
+                if got is not None:
+                    rows.append((oid, faint, *got))
             self._tracks = (key, rows)
         return self._tracks
+
+    def _track_of(self, oid: str):
+        """(track, frame outlines) of one owner, worked out once per document state: picking another layer and back,
+        or the frame's faint path behind every pick, reuses it (a frame's track was ~7 ms of each pick)."""
+        comp = self.b.placed()
+        if self._by_owner[0] is not comp:
+            self._by_owner = (comp, {})
+        known = self._by_owner[1]
+        if oid not in known:
+            owner = self.b.placed_item(oid)
+            known[oid] = None if owner.get("ridePath") else (
+                G.track(owner, self.b.comp()["fps"]),
+                [G.frame_at(comp, kt) for kt in G.frame_keys(owner)] if owner["type"] == FRAME else [])
+        return known[oid]
 
     @Property("QVariantList", notify=changed)
     def paths(self):

@@ -58,11 +58,14 @@ Column {
             onPicked: (v) => painter.paintOn(v)
         }
     }
-    Repeater {      // Inside the outline, Draw each frame (paint_fields), before any paint
-        model: backend.paintLayers.toggles
+    KeptRepeater {  // Inside the outline, Draw each frame (paint_fields), before any paint: kept, so a pick that
+        id: togglesKept   // changes the list moves the same switch lines to it
+        needed: backend.paintLayers.toggles.length
         delegate: SwitchRow {      // the kit's switch line: the words flip it too
             id: tl
-            required property var modelData
+            required property int index
+            readonly property var modelData: backend.paintLayers.toggles[index] || ({ id: "", label: "", value: false, help: "" })
+            visible: index < togglesKept.needed
             height: tg.rowH; labelColumn: tg.labelColumn
             label: tl.modelData.label; checked: tl.modelData.value
             onToggled: (v) => backend.paintLayers.setToggle(tl.modelData.id, v)
