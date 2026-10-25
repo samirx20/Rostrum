@@ -40,6 +40,7 @@ class Transport(QObject):
         self._schedule, self._length, self._held, self._pointing = schedule_fn, length_fn, held, pointing
         self.last: dict = {}
         self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
+        self._warm = False                                 # open the player (stopped) once the render's news is out
         self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
         self.renderer = Renderer(self)
         self.renderer.rendered.connect(self._rendered)
@@ -112,9 +113,7 @@ class Transport(QObject):
             self.said.emit(result["restarted"])
         self.last, self.stale, self._render_failed = dict(result), False, False
         self.player.load(self.last["file"])
-        if not self._want and not settings.load()["exclusive"]:
-            self.player.warm()       # the first render opens the player, stopped: the first Play starts at once (it
-                                     # waited ~0.5 s for the process); "Use speakers alone" keeps them free until Play
+        self._warm = not self._want and not settings.load()["exclusive"]
         self._tell()                 # what shows the render (loudness, meters, Problems): once the pointer is quiet
         if self._want:
             self._want = False
@@ -126,6 +125,11 @@ class Transport(QObject):
         if self._held() or self._pointing():
             return self._told.start()
         self.renderChanged.emit()
+        if self._warm:               # the first render opens the player, stopped: the first Play starts at once (it
+            self._warm = False       # waited ~0.5 s for the process); "Use speakers alone" keeps them free until Play.
+            self.player.warm()       # After the render's news: the player starts with its set-up (the tempo and beats
+                                     # Recording.configure gives it), never started bare and reopened on the screen's
+                                     # thread a moment later (~400 ms: the old one quit, the new one started)
         self._show_state()
 
     def _failed(self, line):

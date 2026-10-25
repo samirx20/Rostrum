@@ -149,6 +149,7 @@ class Adder(QObject):
             before = {t["id"] for t in b.doc.data.get("tracks", [])}
             b._apply([{"op": "track.add", "args": dict(e["fields"])}], f"Add {_plain(e)}" + ("" if e["kind"] == "voice" else " track"))
             new = [t["id"] for t in b.doc.data.get("tracks", []) if t["id"] not in before]
-            if new:
-                b.select(new[0])
+            if new:                   # its outline now; the settings panel and the Editor's track once the click is drawn
+                b._pick(new[:1], later=True)
+                b._settle()
         return b._guard(go)

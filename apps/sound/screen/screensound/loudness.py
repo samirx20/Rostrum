@@ -10,6 +10,8 @@ is their gated mean, `integrated`).
 """
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from . import delivery, strips
@@ -26,21 +28,19 @@ def at(values: list, t: float, hop: float, offset: float = 0.0):
 def integrated(momentary: list, n: int):
     """BS.1770 integrated loudness of the first `n` 400 ms blocks (LUFS each): the mean power of the blocks above
     −70 LUFS, then of those above that mean − 10 LU. None when no block passes the first gate (silence so far)."""
-    import numpy as np
-    blocks = np.asarray(momentary[:n], dtype=float)
-    power = 10 ** ((blocks + 0.691) / 10)
-    loud = power[blocks > -70]
-    if not len(loud):
+    # Plain Python (a 3-minute song is ~1,800 blocks, well under a millisecond): numpy's first import on the screen's
+    # thread held the first render's news ~40 ms.
+    loud = [(b, 10 ** ((b + 0.691) / 10)) for b in momentary[:n] if b > -70]
+    if not loud:
         return None
-    gate = -0.691 + 10 * np.log10(loud.mean()) - 10
-    kept = power[(blocks > -70) & (blocks > gate)]
-    return float(-0.691 + 10 * np.log10(kept.mean()))
+    gate = -0.691 + 10 * math.log10(sum(p for _, p in loud) / len(loud)) - 10
+    kept = [p for b, p in loud if b > gate]
+    return float(-0.691 + 10 * math.log10(sum(kept) / len(kept)))
 
 
 def for_span(series: dict, a: float, b: float) -> dict:
     """{lufs, truePeak} of the stretch a..b (seconds) alone, from the render's series: the gated mean of the 400 ms blocks
     that lie inside it, and the highest true peak of its hops. {} when the stretch holds no whole block or the render has none."""
-    import math
     hop, win = series.get("hop", 0.1), series.get("momentaryWindow", 0.4)
     blocks, peaks = series.get("momentary") or [], series.get("truePeak") or []
     first, last = math.ceil(a / hop - 1e-9), math.floor((b - win) / hop + 1e-9)
