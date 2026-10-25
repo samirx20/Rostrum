@@ -572,8 +572,8 @@ the agent's `inspect_tools`.
 - **Hover help:** after **500 ms** over any button or setting, you see its name, one plain sentence (from the
   operation's or setting's `help`) and its key. A trade word ("Loudness", "Matte", "Ease") has a dotted underline the
   first time it shows in a session.
-- The **?** menu: Guides (F1) · Keys (Ctrl+/) · Connect an AI agent… · Report a problem (opens the log folder and
-  copies the version) · About and licences.
+- The **?** menu: Guides (F1) · Keys (Ctrl+/) · Connect an AI agent… · Report a problem (a small window: the
+  details a report needs, Open log folder and Copy details) · About and licences.
 - Guides are tools, not taste: how to use each tool, never finished pieces to copy.
 
 ## 1.18 Working with an agent

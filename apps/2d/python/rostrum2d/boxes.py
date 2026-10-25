@@ -78,3 +78,23 @@ def painted(layer: dict, w: float, h: float, n: int, p: dict | None = None) -> t
         return None
     kx, ky = w / (cw or 1), h / (ch or 1)            # canvas px -> the layer's own px
     return max(0.0, min(xs)) * kx, max(0.0, min(ys)) * ky, min(cw, max(xs)) * kx, min(ch, max(ys)) * ky
+
+
+INK_SLOP = 3        # canvas px: a click this close to a painted pixel still lands on it (a hairline stroke can be hit)
+
+
+def ink_at(layer: dict, n: int, fx: float, fy: float) -> bool:
+    """A drawing has paint under the point (fx, fy), fractions of its box, at composition frame n: a painted pixel (the
+    drawing's real pixels, as the canvas makes them: erased, see-through and hidden paint do not count) within
+    INK_SLOP canvas px. The rectangle `painted` gives only says where to look. Not a drawing: always True."""
+    if layer["type"] != "drawing":
+        return True
+    from rostrum_paint import canvas
+    frame = frame_at(layer, n)
+    cw, ch = canvas_size(layer)
+    if not frame or not frame.get("paints"):
+        return False
+    x, y = int(fx * cw), int(fy * ch)
+    px = canvas.rgba8(frame, cw, ch)
+    near = px[max(0, y - INK_SLOP):y + INK_SLOP + 1, max(0, x - INK_SLOP):x + INK_SLOP + 1, 3]
+    return bool(near.size and near.max() > 0)

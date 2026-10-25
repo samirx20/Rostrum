@@ -3,7 +3,7 @@ New, Open…, Open recent ▸, Duplicate…, Save a version, Show folder, Start 
 those). A slot mix-in for ProjectFiles; QML calls `menu()` when it opens and `pick(value)` with what was chosen."""
 from __future__ import annotations
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import QTimer, Slot
 
 ASKS = ("open", "duplicate", "version", "find")  # these need the window first (a dialog, History's name field)
 
@@ -53,3 +53,9 @@ class FileMenuSlots:
         go = {"rescue": self.openRescued, "new": self.newProject, "sample": self.openSample, "copy": self.openCopy,
               "folder": lambda: self.showFolder() or True, "start": lambda: self.setStart(True) or True}.get(value)
         return bool(go and go())
+
+    @Slot(str)
+    def pickLater(self, value):
+        """`pick` for a handler in QML (a key, a button, a menu row): it runs once that handler has finished. New, Open and
+        Start screen swap the whole screen, so the item whose handler is running would be deleted under it."""
+        QTimer.singleShot(0, lambda: self.pick(value))

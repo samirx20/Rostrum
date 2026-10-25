@@ -87,11 +87,26 @@ class Notices(QObject):
     def version(self) -> str:
         return VERSION
 
+    @Property(str, constant=True)
+    def reportDetails(self) -> str:
+        """? › Report a problem: what a report needs (report.py), shown in the window and copied by its button."""
+        from .report import details
+        return details(self.appName, self.app or "rostrum", VERSION)
+
+    @Property(str, constant=True)
+    def reportFolder(self) -> str:
+        from .report import LOGS
+        return str(LOGS)
+
     @Slot(result=str)
-    def reportProblem(self) -> str:
-        """? › Report a problem: the log folder opens, the version and log's name are copied (report.py)."""
-        from .report import report
-        return report(NAMES.get(self.app, "Rostrum"), self.app or "rostrum", VERSION)
+    def openLogs(self) -> str:
+        from .report import open_logs
+        return open_logs()
+
+    @Slot(result=str)
+    def copyDetails(self) -> str:
+        from .report import copy_details
+        return copy_details(self.appName, self.app or "rostrum", VERSION)
 
     @Property("QVariantList", constant=True)
     def items(self) -> list:

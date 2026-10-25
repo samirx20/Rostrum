@@ -43,10 +43,8 @@ Item {
     signal keysClicked()                 // ? › Keys (Ctrl+/): the key list
     signal helpPicked(string value)
     signal renameAsked(string name)
-    function reportProblem() {           // ? › Report a problem: the log folder, the details copied, said in the message bar
-        const line = notices.reportProblem()
-        if (bar.bridge && bar.bridge.say) bar.bridge.say(line); else console.log(line)
-    }      // the project's new name, typed on its tab (Enter or leaving the field)
+    signal reportClicked()               // ? › Report a problem: its small window (ReportDialog.qml)
+    // (renameAsked: the project's new name, typed on its tab, Enter or leaving the field)
     signal historyClicked()
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.openFrom(help, "right") }
@@ -292,7 +290,7 @@ Item {
                     .concat(typeof notices !== "undefined" && notices ? [{ value: "report", label: "Report a problem…" }] : [])
                     .concat([{ value: "about", label: "About and licences" }])
                 onPicked: (v) => v === "about" ? bar.aboutClicked() : v === "agents" ? bar.connectAgentClicked()
-                                : v === "report" ? bar.reportProblem()
+                                : v === "report" ? bar.reportClicked()
                                 : v === "guides" ? bar.guidesClicked() : v === "keys" ? bar.keysClicked()
                                 : /^file:.*\.md$/i.test(v) ? bar.guideClicked(v) : bar.helpPicked(v)
             }

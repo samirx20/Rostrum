@@ -80,7 +80,7 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
             W, H = w * sx * gx, h * sy * gy
             opacity = seen * min(1.0, max(0.0, p["opacity"]))
             paint = BX.painted(lay, w, h, frame_number(te, fps), p) if lay["id"] not in mattes else None
-            out.append({"up": up, "opacity": opacity,
+            out.append({"up": up, "opacity": opacity, "frame": frame_number(te, fps),
                         "paint": [v / (w or 1) if i % 2 == 0 else v / (h or 1) for i, v in enumerate(paint)] if paint else None,
                         "id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
                         "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": p["anchorX"], "ay": p["anchorY"],
@@ -128,10 +128,22 @@ def pickable(b: dict) -> bool:
     return bool(b["paint"]) and not b["locked"] and b["opacity"] > 0.01
 
 
+def _inked(comp: dict, b: dict, x: float, y: float) -> bool:
+    """A drawing is picked only where it has a painted pixel under (x, y), not anywhere in the rectangle round its
+    strokes (rostrum2d.boxes.ink_at); every other kind: its painted part is the rectangle."""
+    if b["type"] != "drawing":
+        return True
+    c, s = math.cos(math.radians(-b["rot"])), math.sin(math.radians(-b["rot"]))
+    ox, oy = b["x"] + b["ax"] * b["w"], b["y"] + b["ay"] * b["h"]
+    lx, ly = ox + c * (x - ox) - s * (y - oy), oy + s * (x - ox) + c * (y - oy)
+    layer = next(i for i in _layers(comp) if i["id"] == b["id"])
+    return BX.ink_at(layer, b["frame"], (lx - b["x"]) / (b["w"] or 1), (ly - b["y"]) / (b["h"] or 1))
+
+
 def pick_chain(comp: dict, t: float, x: float, y: float) -> list[str]:
     """The topmost layer painted under (x, y) with its groups, outermost first ([] for none): what a click can select
     (picking.py chooses which of them)."""
-    hits = [b for b in boxes(comp, t) if pickable(b) and inside(b, x, y, b["paint"])]
+    hits = [b for b in boxes(comp, t) if pickable(b) and inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
     return [*hits[-1]["up"], hits[-1]["id"]] if hits else []
 
 

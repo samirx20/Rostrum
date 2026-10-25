@@ -35,16 +35,39 @@ class KeyEdits(SlotMixin):
     def cutKeys(self):
         return self.copyKeys() and self._keys.remove()
 
+    def _paste_lacks(self, keys: list[str], layer_id: str) -> list[str]:
+        """The settings of the copied keys that this layer has not (a rectangle has no text Size; a camera no Opacity),
+        as the person reads them."""
+        kind = self.doc.item(layer_id)["type"]
+        have = set(F.animatable(kind))
+        out = []
+        for p in dict.fromkeys(self.doc.item(k)["prop"] for k in keys):
+            if p not in have:
+                known = next((q for q in (F.param(t, p) for t in F.FIELDS) if q), None)     # its words, from any kind that has it
+                out.append(known.label if known else p)
+        return out
+
     @Slot(result=bool)
     def pasteKeys(self):
-        """The copied keys onto the selected layers, the first at the playhead (each layer's own seconds)."""
+        """The copied keys onto the selected layers, the first at the playhead (each layer's own seconds). A layer that
+        has not a copied setting gets nothing and is named in the top bar, never skipped silently."""
         keys, layers = self.keys_copied(), self.selected_layers()
         if not keys or not layers:
             self._set_status("Select the layers to paste the keys onto" if keys else "The copied keys are gone")
             return False
-        calls = [{"op": "key.paste", "target": [lay], "args": {"from": keys, "at": round(self.own_t(lay), 6)}} for lay in layers]
-        label = f"Paste {len(keys)} keys" + (f" on {len(layers)} layers" if len(layers) > 1 else "")
-        return self._guard(lambda: self._apply(calls, label))
+        lacks = {lay: self._paste_lacks(keys, lay) for lay in layers}
+        name = lambda lay: self.doc.item(lay).get("name") or lay          # noqa: E731
+        left = [lay for lay in layers if not lacks[lay]]
+        said = "; ".join(f"{name(lay)} has no {' or '.join(w)}" for lay, w in lacks.items() if w)
+        if not left:
+            self._set_status(f"Can't paste these keys: {said}")
+            return False
+        calls = [{"op": "key.paste", "target": [lay], "args": {"from": keys, "at": round(self.own_t(lay), 6)}} for lay in left]
+        label = f"Paste {len(keys)} keys" + (f" on {len(left)} layers" if len(left) > 1 else "")
+        ok = self._guard(lambda: self._apply(calls, label))
+        if ok and said:
+            self._set_status(f"Pasted on {', '.join(name(lay) for lay in left)}; not on the others: {said}")
+        return ok
 
     # ---- , and . ------------------------------------------------------------------------------------------------
     def event_times(self) -> list[float]:

@@ -200,6 +200,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("commands", ["--sample"], ["commands"]),
         ("help-menu", ["--sample"], ["help"]),
         ("about", ["--sample"], ["about"]),
+        ("report-problem", ["--sample"], ["report"]),
         ("connect-agent", ["--sample"], ["agents"]),
         ("guide", ["--sample"], ["guide the-screen.md"]),
         ("start-screen-guide", ["--sample"], ["startscreen open", "guide text-on-a-path.md"]),   # no timeline under it
