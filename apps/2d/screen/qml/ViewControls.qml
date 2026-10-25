@@ -68,6 +68,6 @@ Item {
         else if (job === "zoom_in") view.step(1)
         else if (job === "zoom_out") view.step(-1)
     }
-    Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+1"]); onActivated: vc.fitEverything() }
-    Shortcut { sequences: ["Shift+2", "@"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+2"]); onActivated: vc.fitSelection() }
+    KeyShortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+1"]); onActivated: vc.fitEverything() }
+    KeyShortcut { sequences: ["Shift+2", "@"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+2"]); onActivated: vc.fitSelection() }
 }

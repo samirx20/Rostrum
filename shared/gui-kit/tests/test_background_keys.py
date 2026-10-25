@@ -3,10 +3,14 @@ reaches the window's shortcuts: the kit's Ctrl+K and an app's own Shortcut. It m
 the front (the bug: every scripted key check of a background window silently did nothing).
 
 The test runs the window in its own process on Windows' real screen platform: an offscreen window is always active,
-which hides the bug, and the test process shares one offscreen app."""
+which hides the bug, and the test process shares one offscreen app. Every shortcut is the kit's KeyShortcut, which
+answers application-wide in a background window from the moment it is made: a plain Shortcut made later (a Repeater's,
+a panel's) would silently do nothing there, so one is refused here."""
 import os
+import re
 import subprocess
 import sys
+from pathlib import Path
 
 WINDOW = """
 import QtQuick
@@ -15,7 +19,7 @@ AppShell {
     bridge: theBridge; helpEntries: []
     property int hits: 0
     centre: Item { anchors.fill: parent
-        Shortcut { sequence: "Ctrl+J"; onActivated: hits++ } }
+        KeyShortcut { sequence: "Ctrl+J"; onActivated: hits++ } }
 }
 """
 
@@ -54,6 +58,14 @@ def test_keys_reach_a_background_window_without_activating_it(tmp_path):
     done = subprocess.run([sys.executable, os.path.abspath(__file__), str(tmp_path)], env=env, capture_output=True,
                           text=True, timeout=120)
     assert done.returncode == 0, done.stderr[-1500:]
+
+
+def test_every_shortcut_is_the_kits_key_shortcut():
+    root = Path(__file__).resolve().parents[3]
+    plain = [f"{q.relative_to(root)}:{n}" for top in ("apps", "shared") for q in (root / top).rglob("*.qml")
+             if q.name != "KeyShortcut.qml"
+             for n, line in enumerate(q.read_text(encoding="utf-8").splitlines(), 1) if re.search(r"\bShortcut\s*\{", line)]
+    assert not plain, f"a plain Shortcut never answers in a background window; use KeyShortcut: {plain}"
 
 
 if __name__ == "__main__":

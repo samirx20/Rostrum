@@ -20,10 +20,9 @@ Instantiator {
     readonly property var shell: ["undo", "redo", "command_box", "history", "guides", "key_list", "next_area",
                                   "fold_panels", "export", "export_again"]
     model: hub ? hub.keys : []
-    delegate: Shortcut {
+    delegate: KeyShortcut {
         required property var modelData
         sequences: modelData.sequences || modelData.keys      // every spelling a key may arrive in (keymap.typed: Ctrl+Shift+= is Ctrl++)
-        context: Qt.WindowShortcut
         autoRepeat: !modelData.hold
         enabled: km.enabled && !OpenPopups.takes(modelData.keys) &&(!km.typing || km.whileTyping.indexOf(modelData.job) >= 0) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
         onActivated: km.hub.key(modelData.job)

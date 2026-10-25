@@ -60,7 +60,7 @@ Panel {
         trailing: KeyHint { text: "Ctrl F"; visible: find.input.text === "" && !find.input.activeFocus }
     }
     function openFind() { find.open = true; find.input.forceActiveFocus(); find.input.selectAll() }
-    Shortcut { sequences: [StandardKey.Find]; enabled: panel.finds && panel.bridge.selected !== "" && panel.visible
+    KeyShortcut { sequences: [StandardKey.Find]; enabled: panel.finds && panel.bridge.selected !== "" && panel.visible
                onActivated: panel.openFind() }
     Connections {   // Ctrl+K's "Find a setting": the same as Ctrl+F
         target: panel.bridge; ignoreUnknownSignals: true

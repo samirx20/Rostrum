@@ -45,8 +45,8 @@ Item {
         onHeightChanged: requestPaint()
     }
 
-    Shortcut { sequence: "Return"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
-    Shortcut { sequence: "Enter"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
-    Shortcut { sequence: "Backspace"; enabled: bonesLayer.tool.on && bonesLayer.tool.count > 0; onActivated: bonesLayer.tool.back() }
-    Shortcut { sequence: "Escape"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.cancel() }
+    KeyShortcut { sequence: "Return"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
+    KeyShortcut { sequence: "Enter"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
+    KeyShortcut { sequence: "Backspace"; enabled: bonesLayer.tool.on && bonesLayer.tool.count > 0; onActivated: bonesLayer.tool.back() }
+    KeyShortcut { sequence: "Escape"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.cancel() }
 }

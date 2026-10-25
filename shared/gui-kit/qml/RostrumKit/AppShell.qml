@@ -178,24 +178,24 @@ QQC.ApplicationWindow {
     Binding { target: OpenPopups; property: "focused"; value: win.activeFocusItem }   // a focused control's own keys (OpenPopups.takes)
     // The window's ONE Esc: it closes the newest open popup, dialog, drawer or sheet (OpenPopups.top), one per press,
     // wherever the keyboard is. An application shortcut: a modal dialog's scrim stops the window's own shortcuts.
-    Shortcut { objectName: "escCloses"; sequence: "Escape"; context: Qt.ApplicationShortcut; enabled: OpenPopups.escWanted
+    KeyShortcut { objectName: "escCloses"; sequence: "Escape"; context: Qt.ApplicationShortcut; enabled: OpenPopups.escWanted
                onActivated: OpenPopups.closeTop() }
     // the guides drawer is followed along while working: its Esc is the drawer's while the keys are in it (opened, or
     // clicked); after a click on the work, Esc steps back in the work and the drawer stays
     EscCloses { when: win.guidesOpen && win.focusArea === "guides"; area: guidesDrawer; onAsked: win.closeGuides() }
     EscCloses { when: win.historyOpen; area: historySheet; onAsked: { win.historyOpen = false; win.backToWork() } }
     EscCloses { when: win.exportOpen; area: exportSheet; onAsked: win.exporter.setOpen(false) }
-    Shortcut { sequence: "Ctrl+K"; onActivated: runJob("command_box") }
-    Shortcut { sequence: "F1"; onActivated: runJob("guides") }
-    Shortcut { sequence: "Ctrl+/"; onActivated: runJob("key_list") }
-    Shortcut { sequence: "F6"; onActivated: runJob("next_area") }
-    Shortcut { sequence: "Ctrl+\\"; onActivated: runJob("fold_panels") }
-    Shortcut { sequence: "Ctrl+H"; onActivated: runJob("history") }
+    KeyShortcut { sequence: "Ctrl+K"; onActivated: runJob("command_box") }
+    KeyShortcut { sequence: "F1"; onActivated: runJob("guides") }
+    KeyShortcut { sequence: "Ctrl+/"; onActivated: runJob("key_list") }
+    KeyShortcut { sequence: "F6"; onActivated: runJob("next_area") }
+    KeyShortcut { sequence: "Ctrl+\\"; onActivated: runJob("fold_panels") }
+    KeyShortcut { sequence: "Ctrl+H"; onActivated: runJob("history") }
     Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
-    Shortcut { sequence: "Ctrl+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export") }
-    Shortcut { sequence: "Ctrl+Shift+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export_again") }
-    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: runJob("undo") }
-    Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: runJob("redo") }
+    KeyShortcut { sequence: "Ctrl+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export") }
+    KeyShortcut { sequence: "Ctrl+Shift+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export_again") }
+    KeyShortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: runJob("undo") }
+    KeyShortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: runJob("redo") }
 
     TopBar {
         id: topBar
