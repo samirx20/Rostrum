@@ -41,7 +41,7 @@ Item {
                 return out
             }
             if (b.type === "hit") {
-                var cy = grid.roll.drums.indexOf(b.drum) * k.rowH + k.rowH / 2, d = Math.min(12, k.rowH * 0.5) * 0.7071
+                var cy = grid.roll.drums.indexOf(b.drum) * k.rowH + k.rowH / 2, d = grid.hitHalf
                 return [Blocks.box(x - d, cy - d, 2 * d, 2 * d, 2)]
             }
             return [Blocks.box(x, grid.height * 0.2, Math.max(4, b.dur * k.perSec), grid.height * 0.6, 2)]
@@ -76,7 +76,7 @@ Item {
         }
         function paintHit(ctx, b, on, x) {                  // a diamond on its drum's row
             var cy = grid.roll.drums.indexOf(b.drum) * grid.rowH + grid.rowH / 2
-            var d = Math.min(12, grid.rowH * 0.5) * 0.7071
+            var d = grid.hitHalf
             ctx.globalAlpha = on ? 1 : 0.5 + 0.5 * (b.vel || 0)
             ctx.fillStyle = fillOf(on)
             ctx.beginPath(); ctx.moveTo(x, cy - d); ctx.lineTo(x + d, cy); ctx.lineTo(x, cy + d); ctx.lineTo(x - d, cy); ctx.closePath(); ctx.fill()

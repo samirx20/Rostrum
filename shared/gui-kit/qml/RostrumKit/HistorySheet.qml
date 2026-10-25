@@ -4,7 +4,7 @@ import "."
 // History (INTERACTION.md 1.9, 1.18): a sheet in the right column, in the settings panel's place while open.
 // Versions at the top (Restore; "Save a version" with a name), a filter (Everyone · You · Agents · Scripts; only once an agent or script has changed something), then every
 // step newest first, "who · what · when". An agent's run is one folded row with Keep and Undo all (Bring back once
-// taken back); unfolded, each step has Undo this. Taken-back rows are faint and say so. Every button is one new
+// taken back); unfolded, each step has Undo this where it can be taken back (not after a later change to the same thing). Taken-back rows are faint and say so. Every button is one new
 // change by the person (or, Keep, none); refusals show in the top bar's message in words.
 // Reads bridge.historyRows(show), bridge.versions, bridge.agent; `focusSession`: show only that run (Review).
 Panel {
@@ -18,7 +18,7 @@ Panel {
     title: "History"
     bodyRight: Theme.fieldEdge                 // its buttons end where the settings column's fields end
     focus: visible
-    Keys.onEscapePressed: closed()
+    // Esc closes it from anywhere: the window's one Esc (AppShell's EscCloses for History)
     property bool others: false                // someone else (an agent, a script) changed something: only then is a filter worth showing
     function reload() {
         others = !!bridge && bridge.historyRows("you").length < bridge.historyRows("everyone").length
@@ -122,7 +122,7 @@ Panel {
                         Small {
                             id: what
                             x: row.isRun ? fold.width + Theme.grid : 0
-                            width: parent.width - x - (row.isRun ? 0 : stepUndo.width + Theme.gap)
+                            width: parent.width - x - (stepUndo.visible ? stepUndo.width + Theme.gap : 0)
                             height: Theme.row; verticalAlignment: Text.AlignVCenter
                             textFormat: Text.PlainText; color: Theme.fg
                             opacity: row.modelData.undone ? 0.5 : 1      // taken back: faint, its buttons stay clear
@@ -131,7 +131,7 @@ Panel {
                             HoverHandler { id: whatHover }
                             HoverTip { text: what.truncated ? what.text : ""; hovered: whatHover.hovered }
                         }
-                        Act { id: stepUndo; visible: !row.isRun && !row.modelData.undone; anchors.right: parent.right; y: 2
+                        Act { id: stepUndo; visible: !row.isRun && row.modelData.undoable; anchors.right: parent.right; y: 2   // only where it can: a later change to the same thing keeps it
                               text: "Undo this"; onClicked: sheet.bridge.undoStep(row.modelData.seq, row.modelData.doc) }
                         Row {  // a run's buttons, under its line
                             visible: row.isRun
@@ -155,7 +155,7 @@ Panel {
                                     text: modelData.label + (modelData.when ? " · " + modelData.when : "") + (modelData.undone ? " · taken back" : "")
                                     HoverHandler { id: stepHover }
                                     HoverTip { text: stepWhat.truncated ? stepWhat.text : ""; hovered: stepHover.hovered } }
-                            Act { id: undoOne; visible: !modelData.undone; anchors.right: parent.right; text: "Undo this"
+                            Act { id: undoOne; visible: modelData.undoable; anchors.right: parent.right; text: "Undo this"
                                   onClicked: sheet.bridge.undoStep(modelData.seq, modelData.doc) }
                         }
                     }

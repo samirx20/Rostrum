@@ -67,6 +67,11 @@ MouseArea {
         row0 = u ? u.s.i : -1
         if (!u) { mode = "empty"; return }
         var a = tl.autoOf(u.r)
+        if (u.s.lane && a && e.button === Qt.RightButton) {     // on a point: its menu (Delete point)
+            laneTop = u.s.laneTop; mode = ""
+            var pm = backend.pointMenu(u.r.id, a.target, a.lane, u.t, yFrac(e.y), 7 / bars.perSec, 7 / (tl.laneH - 16))
+            if (pm.length) { m.menuAt(pm, e.x, e.y); return }
+        }
         if (u.s.lane && a && e.button === Qt.LeftButton) {
             laneTop = u.s.laneTop; mode = "point"
             backend.laneBegin(u.r.id, a.target, a.lane, u.t, yFrac(e.y), 7 / bars.perSec, 7 / (tl.laneH - 16), shift(e), 1 / bars.perSec)
@@ -75,7 +80,7 @@ MouseArea {
         hit = u.r.mix ? "" : backend.blockAt(u.r.id, u.t, u.lane, snapPx / bars.perSec)
         if (e.button === Qt.RightButton) {
             mode = ""
-            m.menuAt(hit !== "" ? backend.blockMenu(hit, u.t) : backend.atMenu(u.r.mix ? "" : u.r.id, u.t), e.x, e.y)
+            m.menuAt(hit !== "" ? backend.blockMenu(hit, u.t) : backend.atMenu(u.r.mix ? "" : u.r.id, u.t, 1 / bars.perSec), e.x, e.y)
             return
         }
         var h = handleUnder(e)

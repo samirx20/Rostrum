@@ -8,7 +8,9 @@ import RostrumKit
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
 // a note Note ▾ long (drag on: longer) or a hit. A new note or hit goes in the grid cell under the pointer (timing.snap). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
 // just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
-// step; the pointer shows ↔ over it). Right-click: the selection's actions, or the menu for that time.
+// step; the pointer shows ↔ over it); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
+// Right-click: the item's actions (the kit's short menu, then Quantise, Humanise, Transpose ▸), or on empty space what
+// belongs there (Add note here, Paste here, Select all on this track, Select every C4: backend.rollMenu).
 MouseArea {
     id: m
     property var grid
@@ -23,6 +25,9 @@ MouseArea {
     readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11); a note's end handle is its last 6 px
     property string hover: ""
     cursorShape: mode === "handle" || hover !== "" ? Qt.SizeHorCursor : backend.tool === "draw" ? Qt.CrossCursor : Qt.ArrowCursor
+    // How near (seconds) a click must be to catch an item: the snapping 6 px, and on the drum rows the whole diamond
+    // (RollGrid.hitHalf) either side of the hit's time. Every press and double-click asks with this one tolerance.
+    function tol() { return (kind === "drums" ? Math.max(snapPx, grid.hitHalf + 1) : snapPx) / bars.perSec }
     function endUnder(e) { return kind === "notes" ? backend.rollHandleAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec) : ({}) }
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     property real x0: 0
@@ -30,6 +35,7 @@ MouseArea {
     property real x1: 0
     property real y1: 0
     property string hit: ""
+    property string handle: ""          // the note end pressed: "length" (right) or "noteStart" (left)
     property string mode: ""            // "press" | "hpress" (a note's end) | "drag" | "handle" | "empty" | "box"
     readonly property bool busy: mode === "drag" || mode === "box" || mode === "handle"
     function ctrl(e) { return (e.modifiers & Qt.ControlModifier) !== 0 }
@@ -45,17 +51,18 @@ MouseArea {
     onPressed: (e) => {
         backend.focusArea("roll")
         x0 = x1 = e.x; y0 = y1 = e.y
-        hit = backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec)
+        hit = backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol())
         if (e.button === Qt.RightButton) {
             mode = ""
-            m.menuAt(hit !== "" ? backend.itemMenu(hit) : backend.atMenu(trackId, bars.tOf(e.x)), e.x, e.y)
+            m.menuAt(hit !== "" ? backend.blockMenu(hit, bars.tOf(e.x)) : backend.rollMenu(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec), e.x, e.y)
             return
         }
         var h = endUnder(e)
-        if (h.id) { hit = h.id; mode = "hpress"; return }
+        if (h.id) { hit = h.id; handle = h.handle; mode = "hpress"; return }
         if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
             hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
+            handle = "length"
             return
         }
         if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.pressSelect(hit)   // the outline now, the panel after the frame
@@ -64,7 +71,7 @@ MouseArea {
     onPositionChanged: (e) => {
         x1 = e.x; y1 = e.y
         if (!pressed) { hover = endUnder(e).handle || ""; return }
-        if (mode === "hpress" && far(e)) mode = backend.beginHandle(hit, "length") ? "handle" : ""
+        if (mode === "hpress" && far(e)) mode = backend.beginHandle(hit, handle) ? "handle" : ""
         if (mode === "handle") { backend.handleTo((e.x - x0) / bars.perSec, 0, ctrl(e)); return }
         if (mode === "press" && far(e)) {
             if (!backend.picked[hit]) backend.clickSelect(hit, ctrl(e), false)
@@ -88,7 +95,7 @@ MouseArea {
     }
     onCanceled: { if (mode === "drag" || mode === "handle" || mode === "hpress") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
     onDoubleClicked: (e) => {   // empty space: a note on that key, or a hit on that drum (Select tool; Draw adds on a click)
-        if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), 0) !== "") return
+        if (backend.tool === "draw" || backend.rollAt(bars.tOf(e.x), grid.rowAt(e.y), tol()) !== "") return
         mode = ""                  // the release that follows must not clear the new note's selection
         if (kind === "notes") backend.addNote(bars.tOf(e.x), Math.round(grid.rowAt(e.y)), 1 / bars.perSec)
         else if (kind === "drums") backend.addHit(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)

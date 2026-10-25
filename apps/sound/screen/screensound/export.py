@@ -29,6 +29,7 @@ from .export_versions import Versions, ranges, schedule_for
 
 
 MIDI = "midi"     # the What for choice that writes a MIDI file, not a mix
+WAITING = "Measuring the new mix against the target…"   # the check line while the render after a change is on its way
 
 
 def midi_file(doc) -> Path:
@@ -363,7 +364,13 @@ class RenderExport(ExportSheet):
         m, fields = self._loud._fields() if self._loud is not None else ({}, [])
         if self._choice in ("", MIDI):              # no target chosen: nothing to judge against ("No target chosen" says so)
             return {}
+        if t.get("shown") and self._stale():        # the last render is from before the change: never judge it as if new
+            return {"ok": False, "text": WAITING}
         return delivery.verdict(m, self._measured(), fields) if t.get("shown") else {}
+
+    def _stale(self) -> bool:
+        tr = getattr(self.bridge, "transport", None)
+        return bool(tr is not None and tr.busy())
 
     @Property(str, notify=own)
     def loudnessSaid(self):
@@ -376,7 +383,7 @@ class RenderExport(ExportSheet):
     def more(self):
         """The extra delivery rows ("+ Another version"): {target, format, rate, verdict}."""
         m = self.bridge.doc.item("master")
-        return self._more.shown(m, self._measured(), self.bridge.doc.data.get("sampleRate", 48000))
+        return self._more.shown(m, {} if self._stale() else self._measured(), self.bridge.doc.data.get("sampleRate", 48000))
 
     @Property("QVariantList", constant=True)
     def targets(self):

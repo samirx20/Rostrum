@@ -2,7 +2,8 @@ import QtQuick
 import RostrumKit
 
 // The named markers above the ruler, each a small tag at its time. Click selects the marker and puts the playhead on
-// it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels); drag moves it
+// it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels the renaming);
+// right-click: its menu (Rename, Delete, and what a marker can do); drag moves it
 // (marker.set at, one gesture = one undo step; snapped to a quarter beat, Ctrl = free). The project's shared
 // markers show with a dashed edge; dragging one moves only its tag while the mouse is down, and the release is one
 // marker.move in the project's marker list (backend.moveSharedMarker), so it moves for every app.
@@ -54,6 +55,7 @@ Item {
     MouseArea {
         anchors.fill: parent
         preventStealing: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         property real x0: 0
         property bool dragging: false
         cursorShape: band.markerAt(mouseX) !== null ? Qt.SizeHorCursor : Qt.ArrowCursor
@@ -62,13 +64,19 @@ Item {
         onPressed: (m) => {
             var hit = band.markerAt(m.x)
             x0 = m.x
+            if (m.button === Qt.RightButton) {      // a song marker's menu (Rename, Delete, Put a sound here …): the selection's
+                if (hit === null || hit.shared) { m.accepted = false; return }
+                markMenu.entries = backend.itemMenu(hit.id)
+                var q = mapToItem(null, m.x, m.y); markMenu.openAt(q.x, q.y)
+                return
+            }
             if (hit !== null && hit.shared) { band.sharedId = hit.id; band.sharedDx = 0; dragging = true; return }
             if (hit !== null) { backend.focusArea("arrange"); backend.setTime(hit.t) }    // clicking a marker: playhead on it
             dragging = hit !== null && backend.beginDrag(hit.id)
             if (!dragging) m.accepted = false
         }
         onPositionChanged: (m) => {
-            if (!(dragging && pressed)) return
+            if (!(dragging && pressed && (pressedButtons & Qt.LeftButton))) return
             if (band.sharedId !== "") band.sharedDx = m.x - x0
             else backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0)
         }
@@ -82,4 +90,5 @@ Item {
         }
         onCanceled: { if (dragging && band.sharedId === "") backend.cancelDrag(); band.sharedId = ""; band.sharedDx = 0; dragging = false }
     }
+    ActionMenu { id: markMenu; objectName: "markerMenu"; onPicked: (v) => backend.menuPick(v) }
 }

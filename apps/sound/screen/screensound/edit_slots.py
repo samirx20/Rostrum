@@ -159,8 +159,10 @@ class EditSlots:
         def go():
             if "primary" not in g:
                 return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now))
+            root = self.doc.data
+            end = timing.sec(root["length"], root) if root.get("length") is not None else None    # a set length: kept inside it
             calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), scale,
-                                              self._grid_now)
+                                              self._grid_now, end)
             if not only_time:
                 calls += moves.track_calls(self.doc, g, getattr(self, "_to_track", ""))
             if copy and not self._copy:
@@ -179,12 +181,16 @@ class EditSlots:
 
     @Slot()
     def endDrag(self):
+        dest = getattr(self, "_to_track", "")
         d, g, self._drag, self._grab, self._to_track = self._drag, self._grab, None, None, ""
         self._set_snap({})
+        why = moves.track_refusal(self.doc, g, dest) if d is not None and g and "primary" in g else ""
         if d is not None and g and "handle" in g and not g.get("drawn"):      # the step says what it did ("Fade in 0.40 s")
             d._ctx.label = handles.label(self.doc, g["grabs"], g["handle"])
         if d is not None:
             self._guard(lambda: self._done(d.end(), ""))
+        if why:                                  # let go over a track that can't hold clips: said, never a silent stay
+            self.say(why)
         self._settle()
 
     @Slot()

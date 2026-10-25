@@ -11,7 +11,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.model import RowsModel
 
-from . import ducks, playback, problems, strips, timeline
+from . import ducks, moves, playback, problems, strips, timeline
 from .cleaning import CleanedTake
 from .export import RenderExport
 from .loudness import LoudnessMeter
@@ -129,6 +129,14 @@ class MixPage(QObject):
             return False
         self.bridge.select(effect_id)
         return True
+
+    @Slot(str, result=bool)
+    def remove(self, item_id):
+        """An effect or a send off its strip (its own right-click menu): the Delete key's calls (moves.remove_calls),
+        one change."""
+        b = self.bridge
+        return b._guard(lambda: b._apply(moves.remove_calls(self.doc, self.doc.item(item_id)["type"], [item_id]),
+                                         "Remove " + self.doc.item(item_id)["type"]))
 
     @Slot(result=bool)
     def addBus(self):

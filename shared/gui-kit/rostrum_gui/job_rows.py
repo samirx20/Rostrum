@@ -16,19 +16,21 @@ CONTEXT = (("problems", "Problems", "warning issue error list top bar chip", "pr
 ALSO = {"guides": "help how to", "key_list": "keys shortcuts", "preferences": "settings speakers audio",
         "export": "render bounce save wav mp3", "snap": "grid", "fit": "zoom", "fit_all": "zoom whole", "history": "versions changes",
         "library": "sounds instruments add", "play": "stop pause start", "fold_panels": "hide show side panels",
-        "next_area": "focus move between", "undo": "back step", "redo": "forward again"}
+        "next_area": "focus move between", "undo": "back step", "redo": "forward again",
+        **{f"nudge_{d}{s}": "move arrow" for d in ("left", "right", "up", "down") for s in ("", "_big", "_fine")}}
 
 
 def rows(keymap, runnable, taken=(), extra=(), hint="", state=None) -> list[dict]:
     """`runnable`: the jobs this app runs; `taken`: the jobs a row of the app's action list or the ≡ menu already shows;
     `extra`: (job, label, hint, words) for a job with no key.
     `state`: {"selected": bool, "problems": bool}: Find a setting is a row only while something is selected, Problems only while
-    the chip shows. Nudges are one family in the Keys sheet: not a row each."""
+    the chip shows. Every other key of the Keys sheet is a row (the nudges too: "nudge" finds them), so Ctrl+K and the
+    sheet are one list."""
     state = state or {}
     out = []
     for e in keymap.entries():
         job = e["job"]
-        if job in taken or job == "command_box" or job.startswith("nudge_") or job not in runnable or (job == "find_setting" and not state.get("selected")):
+        if job in taken or job == "command_box" or job not in runnable or (job == "find_setting" and not state.get("selected")):
             continue
         out.append({"key": f"job:{job}", "label": e["label"], "hint": e["area"], "keys": e["keys"][0] if e["keys"] else "",
                     "words": f'{e["label"]} {ALSO.get(job, "")}', "weight": 3, "own": True})

@@ -80,9 +80,10 @@ class RecordSetup(QObject):
 
     @Property("QVariantList", notify=changed)
     def punchRange(self):
-        """[in, out] seconds while a track is armed with punch on (the ruler and the rows shade it); [] otherwise."""
+        """[in, out] seconds while punch is on (the ruler and the rows shade it, so turning it on shows where; it acts on
+        the take of the armed track); [] otherwise."""
         p = self.punch()
-        return list(p) if p and self.armed else []
+        return list(p) if p else []
 
     @Property(bool, notify=openChanged)
     def open(self):

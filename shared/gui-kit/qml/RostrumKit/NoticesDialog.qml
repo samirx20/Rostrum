@@ -5,7 +5,7 @@ import "."
 // Help → About and licences. Top: the app's name, version and own licence, and where the full licence texts are.
 // Below: every component the app ships, with its licence and what that licence asks of us. `data` is the app's
 // `notices` object (appName, version, items [{name, version, licence, asks}], where). Esc or the × closes it.
-QQC.Popup {
+SmallPopup {
     id: dlg
     property var data
     // read only once the screen is opened; grouped by licence, so what a licence asks is said once over its run (F5, audit 51)

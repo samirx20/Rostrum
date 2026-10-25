@@ -99,4 +99,5 @@ LipSyncSheet 1.0 LipSyncSheet.qml
 KeptRepeater 1.0 KeptRepeater.qml
 NameBox 1.0 NameBox.qml
 SmallPopup 1.0 SmallPopup.qml
+EscCloses 1.0 EscCloses.qml
 singleton OpenPopups 1.0 OpenPopups.qml

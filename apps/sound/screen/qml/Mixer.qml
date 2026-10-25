@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The Mixer in the bottom dock (DESIGN.md §2.2, W3; mockup s51 #2): strips side by side from the left (tracks, then
-// groups, then "+ Group"), the Master strip right after them, and the room left over to the right is the loudness
+// groups; "+ Group" sits on the Master strip), the Master strip right after them, and the room left over to the right is the loudness
 // panel (MixLoudness). Too many strips: they scroll sideways and the Master stays pinned after the visible ones. The
 // selected plug-in effect's settings or the open duck sit at the right end while there is one, taking room from the
 // loudness panel. Clicking a strip selects its track everywhere.
@@ -42,11 +42,6 @@ Rectangle {
                 }
                 Repeater { id: strips; model: mixer.tracks; delegate: MixStrip { height: row.height; head: page.head } }
                 Repeater { model: mixer.buses; delegate: MixStrip { height: row.height; head: page.head } }   // groups, before the master
-                Item {   // "+ Group" at the end of the strips, level with the strip names
-                    width: addGroup.width; height: row.height
-                    Button { id: addGroup; y: Theme.gap + 2 + (22 - height) / 2; text: "+ Group"; kind: "ghost"
-                             tip: "New group"; help: "A shared channel several tracks play into"; onClicked: mixer.addBus() }
-                }
             }
             Rectangle {   // where the view is along the strips, only while they overflow (drag or wheel to scroll)
                 id: bar

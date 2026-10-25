@@ -9,6 +9,7 @@ import "MixFormat.js" as F
 Item {
     id: lv
     property real gain: 1
+    property string ownerId: ""         // the strip's: the fader is named "mixFader:" + it (a scripted hand finds it)
     property var meter: ({})            // {peak, lufs} from the last render, or {}: not measured
     property var live: null             // [peak dB, RMS dB] while playing (mixer.live), else null
     signal scrubStarted()
@@ -30,6 +31,7 @@ Item {
     MixScale { id: scale; anchors { left: parent.left; top: fader.top; bottom: fader.bottom } inset: 7 }
     MixFader {
         id: fader
+        objectName: "mixFader:" + lv.ownerId
         anchors { left: scale.right; leftMargin: Theme.grid; top: peakText.bottom; topMargin: 2; bottom: parent.bottom }
         width: 28; gain: lv.gain
         onScrubStarted: lv.scrubStarted()

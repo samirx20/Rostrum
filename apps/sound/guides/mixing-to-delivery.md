@@ -33,15 +33,16 @@ off, so they sound as they did.
 
 ## The Mixer's strips
 
-The Mixer (X) has one strip per track, then the groups (buses), then the master. Each strip, top to bottom:
+The Mixer (X) has one strip per track, then the groups (buses), then the master; **+ Group** sits on the master's strip,
+under its effects (a new group plays into the master). Each strip, top to bottom:
 
 - a bar in the track's colour (the same as in the arrangement; groups and the master are grey) and the name;
 - its effects, one line each in the order they play (click one to edit it in the settings panel; a switched-off one
-  is dim; **drag a line up or down** to change the order, a line shows where it will land, one Undo puts it back;
+  is dim; **drag a line up or down** to change the order (right-click a line for **Remove**, as the Delete key does), a line shows where it will land, one Undo puts it back;
   an agent calls `effect.move {to}`), and **+ Effect** under them on every strip: it stays in view under the lines even
   when there are more effects than fit (the lines scroll above it). The menu and the chain say the same names (Saturation, Stereo width, De-esser …);
-- its sends: **Reverb send** (how much goes to the master's reverb, in %; the same setting as Reverb in the settings
-  panel), one row per group it feeds (drag the slider), **+ Send** while there is a group it doesn't feed yet,
+- its sends: **Reverb send** (how much goes to the master's reverb, in dB like every send; the same setting as Reverb in the
+  settings panel), one row per group it feeds (drag the slider; right-click a group send for **Remove**), **+ Send** while there is a group it doesn't feed yet,
   and its dips with **+ Dip under…**;
 - where it plays to: "→ Master", or a pick of the groups when there are any;
 - **Pan** (C = centre) and its slider, which fills from the centre toward the side you pan to (double-click: back to the centre);
@@ -55,12 +56,13 @@ The Mixer (X) has one strip per track, then the groups (buses), then the master.
   put in. Green below −6 dB, amber from −6 to 0 and red over
   0, on every strip, group and the master. Rest the pointer on it for the track's loudness;
 - **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
-- its volume in dB: click it and type (−6, 1.5, −inf); a value outside −60 … +12 dB is refused with that range. The
+- its volume in dB: click it and type (−6, 1.5, −inf; −60, the fader's floor, also reads −∞); a value outside −60 … +12 dB is refused with that range. The
   fader's knob drags; the mouse wheel over the fader nudges it (1 dB a notch, Shift 3 dB, Alt 0.1 dB); Alt-click on the
   fader sets 0 dB; double-click the fader to type. While the Mixer is open the track's settings panel does not repeat the volume: it keeps Name, Colour, Sound and Tone filter. In the settings panel a number goes back to its default when you double-click its box or slider (or right-click it and choose Reset).
 
 The fader takes all the height the dock has left (the dock gets taller, the fader, its dB scale and the meter grow with it). In a dock under about 460 px (a laptop screen) the sends and ducks move into the **…** button on the output line (click it: the reverb send, the group
-sends and **+ Dip under…** open above it); the fader, M S R and the volume stay. Every fader starts at the same height,
+sends and **+ Dip under…** open above it); the fader, M S R and the volume stay. In a very low dock (a 720-px-high
+window) the effect lines get less room and scroll; the volume box is never cut off. Every fader starts at the same height,
 the master's too: a new track starts at 0 dB (gain 1), and headroom is the main bus's business, not each track's.
 
 ## The Mixer's loudness panel

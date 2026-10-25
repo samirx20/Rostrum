@@ -102,11 +102,19 @@ Item {
         enabled: a.inEditor; visible: enabled
         x: plotX; y: a.chipsH; width: ruler.width; height: parent.height - a.chipsH
         preventStealing: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         function yFrac(y) { return Math.max(0, Math.min(1, (y - a.pad) / a.plotH)) }
         onPressed: (e) => { backend.focusArea("roll")
+            if (e.button === Qt.RightButton) {       // a point's menu (Delete point); off every point, none
+                pointMenu.entries = backend.pointMenu(a.rowv.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y),
+                                                      7 / a.ruler.perSec, 7 / a.plotH)
+                if (pointMenu.entries.length) { var q = mapToItem(null, e.x, e.y); pointMenu.openAt(q.x, q.y) }
+                return
+            }
             backend.laneBegin(a.rowv.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y), 7 / a.ruler.perSec,
                               7 / a.plotH, (e.modifiers & Qt.ShiftModifier) !== 0, 1 / a.ruler.perSec) }
-        onPositionChanged: (e) => { if (pressed) backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
-        onReleased: backend.endDrag()
+        onPositionChanged: (e) => { if (pressed && (pressedButtons & Qt.LeftButton)) backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
+        onReleased: (e) => { if (e.button === Qt.LeftButton) backend.endDrag() }
     }
+    ActionMenu { id: pointMenu; objectName: "pointMenu"; onPicked: (v) => backend.menuPick(v) }
 }

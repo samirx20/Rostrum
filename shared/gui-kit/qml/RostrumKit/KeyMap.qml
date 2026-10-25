@@ -22,7 +22,7 @@ Instantiator {
     model: hub ? hub.keys : []
     delegate: Shortcut {
         required property var modelData
-        sequences: modelData.keys
+        sequences: modelData.sequences || modelData.keys      // every spelling a key may arrive in (keymap.typed: Ctrl+Shift+= is Ctrl++)
         context: Qt.WindowShortcut
         autoRepeat: !modelData.hold
         enabled: km.enabled && !OpenPopups.takes(modelData.keys) &&(!km.typing || km.whileTyping.indexOf(modelData.job) >= 0) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0

@@ -5,7 +5,7 @@ import "."
 // Help → Report a problem. Says what to send and gives both pieces in one click each: Open log folder, Copy details (the
 // app, its version, the system and the newest log's name). The line under the buttons says what the last click did.
 // `data` is the app's `notices` object (reportDetails, reportFolder, openLogs(), copyDetails()). Esc or the × closes it.
-QQC.Popup {
+SmallPopup {
     id: dlg
     property var data
     property string said: ""

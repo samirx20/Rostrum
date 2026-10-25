@@ -1,6 +1,7 @@
 """Item handles (no Qt; apps/sound/DESIGN.md §3.0 "Dragging items and their handles", §3.9): on a clip the left /
 right edge trims, the top corners set the fades, the bottom-right corner stretches, the level line sets its volume;
-on a note (the Editor) the right end sets its length. `at` says which handle is under the pointer; `calls` turns a
+on a note (the Editor) the right end sets its length and the left end its start (the end stays put); neither makes it
+shorter than one grid step (or than it was, when it was shorter; Ctrl or Snap off: 20 ms). `at` says which handle is under the pointer; `calls` turns a
 drag into one `clip.set_one` / `note.set` per selected item (every one gets the same change), and `label` names the
 step ("Trim clip", "Fade in 0.40 s").
 """
@@ -18,7 +19,8 @@ LEVEL_NEAR = 0.12            # how near (in clip heights) the pointer must be to
 MIN_S = 0.02                 # the shortest a trimmed clip or a note can get (seconds)
 DB_PER_HEIGHT = 24           # the level line: a whole clip height of drag = 24 dB
 NAMES = {"start": "Trim clip", "end": "Trim clip", "stretch": "Stretch clip", "fadeIn": "Fade in",
-         "fadeOut": "Fade out", "level": "Clip level", "length": "Note length"}
+         "fadeOut": "Fade out", "level": "Clip level", "length": "Note length", "noteStart": "Note start"}
+NOTE_HANDLES = ("length", "noteStart")
 
 
 def level_y(volume: float) -> float:
@@ -58,7 +60,7 @@ def at(block: dict, t: float, y: float, tol: float) -> str:
 def grab(doc, ids, handle) -> list[dict]:
     """What each selected item starts from (only the kind the handle belongs to). A drag goes from the item's end:
     `drawn` turns that into a drag from the press (a note just drawn)."""
-    root, kind = doc.data, "note" if handle == "length" else "clip"
+    root, kind = doc.data, "note" if handle in NOTE_HANDLES else "clip"
     out = []
     for i in ids:
         it = doc.item(i)
@@ -85,10 +87,17 @@ def calls(doc, grabs, handle, dt, dy, free, grid=None) -> list[dict]:
     root, out = doc.data, []
     for g in grabs:
         it, s, dur = g["it"], g["s"], g["dur"]
-        if handle == "length":                                 # (a note just drawn: `dur` is from its start to the press)
-            least = g.get("least", MIN_S)
-            end = s + max(least, dur + dt) if free else max(s + least, timing.snap(s + dur + dt, root, False, grid))
-            args = {"dur": timing.write_length(it["dur"], end - s, root, s)}
+        if handle in NOTE_HANDLES:                             # (a note just drawn: `dur` is from its start to the press)
+            snapping = not free and (grid or timing.DEFAULT).on
+            lo, hi = timing.lines_around(s, root, grid)
+            least = g.get("least") or (min(hi - lo, max(dur, MIN_S)) if snapping else MIN_S)
+            if handle == "length":
+                end = max(s + least, timing.snap(s + dur + dt, root, False, grid) if snapping else s + dur + dt)
+                args = {"dur": timing.write_length(it["dur"], end - s, root, s)}
+            else:
+                end = s + dur
+                start = min(max(0.0, timing.snap(s + dt, root, False, grid) if snapping else s + dt), end - least)
+                args = {"at": write_like(it["at"], start, root), "dur": timing.write_length(it["dur"], end - start, root, start)}
             out.append({"op": "note.set", "target": [g["id"]], "args": args})
             continue
         sp, inn = g["sp"], float(it.get("in", 0))
@@ -117,7 +126,7 @@ def calls(doc, grabs, handle, dt, dy, free, grid=None) -> list[dict]:
 def label(doc, grabs, handle) -> str:
     """The step's name, from the first item as it is now ("Fade in 0.40 s", "Clip level -3.0 dB")."""
     words, n = NAMES[handle], len(grabs)
-    more = f" ({n} {'notes' if handle == 'length' else 'clips'})" if n > 1 else ""
+    more = f" ({n} {'notes' if handle in NOTE_HANDLES else 'clips'})" if n > 1 else ""
     if not grabs or not doc.has(grabs[0]["id"]):
         return words + more
     it = doc.item(grabs[0]["id"])

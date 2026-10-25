@@ -9,7 +9,12 @@ from __future__ import annotations
 
 
 def _score(b, t, tol):
-    """0 on a block (its drawn time: start .. end, at least tol wide), None off it."""
+    """0 on a block (its drawn time: start .. end, at least tol wide), None off it. A drum hit is a mark ON its time
+    (the roll's diamond and the row's tick are drawn on it): it is caught `tol` either side, nearer scoring lower, so
+    a click on a diamond's left half picks it as its right half does."""
+    if b["type"] == "hit":
+        d = abs(t - b["t"])
+        return d if d <= tol else None
     return 0.0 if b["t"] <= t <= b["t"] + max(b["dur"], tol) else None
 
 

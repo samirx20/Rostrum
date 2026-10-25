@@ -189,12 +189,12 @@ Column {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: p.choose(parent.hex) }
     }
 
-    QQC.Popup {   // the pipette: the next click anywhere takes the colour under it; Esc cancels. Its own modal layer over
+    SmallPopup {   // the pipette: the next click anywhere takes the colour under it; Esc cancels. Its own modal layer over
         id: dropper  // the window, so the click lands here and never counts as a click outside the picker (closing it)
         parent: QQC.Overlay.overlay
         x: 0; y: 0; width: parent ? parent.width : 0; height: parent ? parent.height : 0
         padding: 0; modal: true; dim: false; focus: true
-        closePolicy: QQC.Popup.CloseOnEscape
+        closePolicy: QQC.Popup.NoAutoClose          // Esc: the window's one Esc (OpenPopups)
         visible: p.picking
         onClosed: p.picking = false
         background: Item { }

@@ -52,7 +52,7 @@ FIELDS = {
         *PL.INSTRUMENT,
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
-        N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb.", display="percent"),
+        N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb (a gain: 1 = 0 dB).", display="db"),
         Param.choice("tone", names.TONES, group="Mix", importance="secondary", labels=TONE_WORDS, label="Tone filter",
                      help="One filter over the whole track: muffled (as if behind a wall), warm, bass boost, bright, clear voice, "
                           "old radio; off leaves it as it is."),
@@ -90,7 +90,7 @@ FIELDS = {
         N("panTo", **PAN, group="Clip", imp="deep", label="Pan to", help="Pan at the clip's end (a sweep; agents set it, and it shows once a clip has one: the screen has one Pan).",
           when={"not": IS("panTo", None)}),
         N("fadeIn", 0, 600, "Fades", "s", label="Fade in"), N("fadeOut", 0, 600, "Fades", "s", label="Fade out"),
-        N("reverb", 0, 1, "Clip", imp="secondary", display="percent"),
+        N("reverb", 0, 1, "Clip", imp="secondary", display="db"),
         *FC.PARAMS,
     ],
     "line": [

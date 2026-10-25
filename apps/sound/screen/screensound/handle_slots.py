@@ -1,5 +1,5 @@
 """Dragging an item's handles (a slot mix-in for SoundBridge; handles.py has the rules): what is under the pointer
-(`handleAt` in the arrangement, `rollHandleAt` in the Editor: a note's right end), and the drag itself, one gesture
+(`handleAt` in the arrangement, `rollHandleAt` in the Editor: a note's right or left end), and the drag itself, one gesture
 for every selected item of that kind (`beginHandle`, `handleTo`; `endDrag` names the step).
 """
 from __future__ import annotations
@@ -28,11 +28,16 @@ class HandleSlots:
 
     @Slot(float, float, float, result="QVariantMap")
     def rollHandleAt(self, t, row, tol):
-        """{id, handle: "length"} when the pointer is on a note's right end in the Editor (inside the note: handles.edge);
-        {} otherwise."""
+        """{id, handle} when the pointer is on a note's end in the Editor (inside the note: handles.edge): "length" on
+        its right end, "noteStart" on its left; {} otherwise."""
         for b in self._view["roll"].get("blocks", []):
-            if b["type"] == "note" and int(round(row)) in b["keys"] and 0 <= b["t"] + b["dur"] - t <= handles.edge(b["dur"], tol):
+            if b["type"] != "note" or int(round(row)) not in b["keys"]:
+                continue
+            near = handles.edge(b["dur"], tol)
+            if 0 <= b["t"] + b["dur"] - t <= near:
                 return {"id": b["id"], "handle": "length"}
+            if 0 <= t - b["t"] <= near:
+                return {"id": b["id"], "handle": "noteStart"}
         return {}
 
     @Slot(str, str, result=bool)

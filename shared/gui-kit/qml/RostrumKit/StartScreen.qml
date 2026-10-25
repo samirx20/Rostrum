@@ -18,7 +18,7 @@ Rectangle {
     visible: !!source && source.startShown
     color: Theme.app
     focus: visible
-    Keys.onEscapePressed: if (source.hasProject) source.setStart(false)
+    EscCloses { when: start.visible && !!start.source && start.source.hasProject; area: start; onAsked: start.source.setStart(false) }   // Esc: back to the project (the window's one Esc)
     MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.AllButtons }   // nothing under it is reached
 
     readonly property var rows: source ? source.recent : []
@@ -31,9 +31,12 @@ Rectangle {
     readonly property int contentWidth: Math.min(width - 2 * margin, 960)
     readonly property int cardWidth: Math.floor((contentWidth - (columns - 1) * cardGap) / columns)
     readonly property int pictureHeight: Math.round(cardWidth * 9 / 16 * (height >= 900 ? 1 : 0.7))
-    readonly property int cardHeight: pictureHeight + 48
-    // recent rows that fit under the top row and above the guides (at least one row, at most two)
-    readonly property int recentLines: Math.max(1, Math.min(2, Math.floor((height - 2 * margin - 300) / (cardHeight + cardGap))))
+    // a recent project with no picture (Sound's songs) is a plain card, name and date, as tall as those two lines: no
+    // empty picture box, and more of them fit (up to four rows of three); with pictures, up to two rows
+    readonly property bool pictures: shownRows.some(r => !!r.thumb)
+    readonly property int cardHeight: pictures ? pictureHeight + 48 : 60
+    // recent rows that fit under the top row and above the guides (at least one row)
+    readonly property int recentLines: Math.max(1, Math.min(pictures ? 2 : 4, Math.floor((height - 2 * margin - 300) / (cardHeight + cardGap))))
     property string copyName: ""             // Duplicate just made this copy (its notice sits under the title)
     Connections { target: start.source; function onCopied(name) { start.copyName = name; copyTimer.restart() } }
     Timer { id: copyTimer; interval: 10000; onTriggered: start.copyName = "" }
@@ -140,6 +143,7 @@ Rectangle {
                     model: start.shownRows.slice(0, start.columns * start.recentLines)
                     delegate: Rectangle {
                         id: card
+                        objectName: "recentCard"
                         required property var modelData
                         required property int index
                         width: start.cardWidth; height: start.cardHeight; radius: Theme.radiusPanel

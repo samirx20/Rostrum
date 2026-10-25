@@ -5,7 +5,7 @@ import "Blocks.js" as Blocks
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
 // Alt = all to the same height). Drag across empty space: a line, and each note under it (the selected ones, when
-// some are) takes the line's height. One drag is one undo step (backend.beginVelocity … endVelocity); the number
+// some are; the words beside the line say which: "every note", "3 selected notes") takes the line's height. One drag is one undo step (backend.beginVelocity … endVelocity); the number
 // beside the pointer is the height being set. The fold arrow at the left folds it to one thin row (the person's own
 // screen state: backend.velocityFolded); the roll takes the room. The value of the stem under the pointer, else of the
 // selected one (several: their range), is written beside it ("70 %").
@@ -43,6 +43,14 @@ Item {
         var lo = Math.round(100 * Math.min.apply(null, vs)), hi = Math.round(100 * Math.max.apply(null, vs))
         return { x: x, v: top, text: lo === hi ? lo + " %" : lo + "–" + hi + " %" }
     }
+    // What a line drawn now changes, said beside it while it is drawn: the selected notes (hits) of this track when
+    // there are some, else every one (backend.beginVelocity: the same rule, every time).
+    readonly property string lineScope: {
+        var kind = roll.kind === "drums" ? "hit" : "note", n = 0, p = backend.rollPicked
+        for (var i = 0; i < p.length; i++) if (p[i].type === kind) n++
+        var word = kind === "hit" ? "hit" : "note"
+        return n === 0 ? "every " + word : n === 1 ? "the selected " + word : n + " selected " + word + "s"
+    }
     function vAt(y) { return Math.max(0, Math.min(1, 1 - (y - padTop) / plotH)) }
     function nearest(x) {                       // the bar under x (within 5 px), "" for none
         var b = s.blocks, best = "", d = 6
@@ -70,7 +78,7 @@ Item {
                text: "Velocity"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
         MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: backend.toggleVelocityFold() }
-        HoverTip { text: s.folded ? (s.roll.played ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across. Click to fold it away" + (s.roll.played ? " (with the playing lane under it)" : "")
+        HoverTip { text: s.folded ? (backend.rollPlayed ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across: it sets the selected notes, or every note when none is. Click to fold it away" + (backend.rollPlayed ? " (with the playing lane under it)" : "")
                    hovered: vh.containsMouse; pressed: vh.pressed }
     }
     Rectangle { visible: !s.folded; x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken
@@ -140,7 +148,7 @@ Item {
         visible: s.mode === "bar" || s.mode === "line"
         x: Math.min(s.width - width - 2, s.keysWidth + s.px + 10); y: Math.max(0, s.py - height - 4)
         width: tip.implicitWidth + 2 * Theme.grid; height: tip.implicitHeight + 4; radius: 3; color: Theme.raised; border.color: Theme.popupEdge
-        Text { id: tip; anchors.centerIn: parent; text: Math.round(100 * s.v) + " %"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
+        Text { id: tip; anchors.centerIn: parent; text: Math.round(100 * s.v) + " %" + (s.mode === "line" ? "  ·  " + s.lineScope : ""); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
                font.features: { "tnum": 1 } }
     }
     Rectangle {   // the hovered or selected stem's value

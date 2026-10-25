@@ -108,7 +108,8 @@ Item {
         }
         onPositionChanged: (m) => { if (!resetting) follow(m) }
         onDoubleClicked: if (hasDefault) s.edited(Math.max(s.from, Math.min(s.to, Number(s.defaultValue))))
-        onReleased: (m) => { lastUp = Date.now(); lastX = m.x; if (resetting) resetting = false; else s.scrubEnded() }
+        // after a reset the pair is spent: a press right after it is a new drag, never a third "double-click"
+        onReleased: (m) => { if (resetting) { resetting = false; lastUp = 0; return } lastUp = Date.now(); lastX = m.x; s.scrubEnded() }
         onCanceled: { if (resetting) resetting = false; else s.scrubEnded() }
     }
 }

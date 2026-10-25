@@ -1,7 +1,8 @@
 """Hearing a Library entry (DESIGN.md §3.2b, §3.7): the entry is rendered by the sound engine (rostrum_sound.audition,
 the same request as export) and the WAV is played by the engine's live player (live_transport.LivePlay), on its own
 process so a song that is playing is left alone. Picking another entry, Esc or closing the panel stops the one that
-plays. A failed render or player is said (`failed`), never a silent nothing.
+plays. A failed render or player is said (`failed`, a sentence in words: plain_errors.say_preview; the full line goes to
+the console), never a silent nothing.
 
     a = Auditioner(bridge); a.start(entry, "Grand piano", track="pad"); a.stop()
     a.start({"key": 60}, "C4", track="melody")      # one key of the track's own instrument (the Editor's keyboard)
@@ -13,11 +14,13 @@ stopped or another is picked.
 from __future__ import annotations
 
 import copy
+import sys
 import threading
 
 from PySide6.QtCore import QObject, Signal
 
 from .live_transport import LivePlay
+from .plain_errors import say_preview
 
 
 class Auditioner(QObject):
@@ -40,7 +43,7 @@ class Auditioner(QObject):
         self.changed.emit()
         doc = copy.deepcopy(self.bridge.doc.data)
         track = track if any(t["id"] == track for t in doc.get("tracks", [])) else None
-        threading.Thread(target=self._render, args=(self._serial, entry, doc, track), daemon=True,
+        threading.Thread(target=self._render, args=(self._serial, entry, doc, track, label), daemon=True,
                          name="audition-render").start()
 
     def stop(self):
@@ -56,7 +59,7 @@ class Auditioner(QObject):
             self._engine.close()
 
     # ---- inside -----------------------------------------------------------------------------------------------
-    def _render(self, n, entry, doc, track):
+    def _render(self, n, entry, doc, track, label):
         from rostrum_sound.audition import render_audition, render_key
         from .playback import open_engine
         try:
@@ -65,7 +68,9 @@ class Auditioner(QObject):
                  else render_audition(self._engine, entry, doc, track))
             self._made.emit(n, r["file"], "")
         except Exception as e:  # noqa: BLE001  said on the screen, never swallowed
-            self._made.emit(n, "", f"Error: audition: {getattr(e, 'line', lambda: e)()}")
+            line = f"Error: audition: {getattr(e, 'line', lambda: e)()}"
+            print(line, file=sys.stderr)
+            self._made.emit(n, "", say_preview(label, line))
 
     def _ready(self, n, file, err):
         if n != self._serial:

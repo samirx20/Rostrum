@@ -5,7 +5,7 @@ import "."
 // The key list (Ctrl+/, INTERACTION.md 1.17): every key of this app, grouped by job, searchable. Built from the same
 // key map the shortcuts are made from (`keys`: the hub's [{job, keys, label, area}]), so it can never be out of date.
 // Esc closes it and the keys go back to the work.
-QQC.Popup {
+SmallPopup {
     id: dlg
     objectName: "keyList"
     property var keys: []

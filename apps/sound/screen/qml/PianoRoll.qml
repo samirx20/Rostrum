@@ -106,13 +106,14 @@ Panel {
         roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth
     }
     // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
-    readonly property bool laneUsed: !!p.roll.played && p.roll.played.choices.some(c => c.used)
+    readonly property var playedLane: backend.rollPlayed        // its own property: a point added redraws only the lane
+    readonly property bool laneUsed: !!p.playedLane && p.playedLane.choices.some(c => c.used)
     property bool lanesOpen: false
     readonly property string laneTrack: p.roll.id + "/" + p.kind
     onLaneTrackChanged: lanesOpen = false
     Item {
         id: laneFold
-        visible: strip.visible && !!p.roll.played && !strip.folded && !played.visible
+        visible: strip.visible && !!p.playedLane && !strip.folded && !played.visible
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 18
         Chevron { id: laneChev; x: 4; anchors.verticalCenter: parent.verticalCenter; rotation: -90
@@ -125,12 +126,16 @@ Panel {
     }
     AutomationLane {   // the playing lane under the velocity strip: sustain pedal, expression, pitch bend (folds with it)
         id: played
-        visible: strip.visible && !!p.roll.played && !strip.folded && (p.lanesOpen || p.laneUsed)
+        visible: strip.visible && !!p.playedLane && !strip.folded && (p.lanesOpen || p.laneUsed)
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
-        row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.roll.played })
+        row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.playedLane })
     }
-    ActionMenu { id: rollMenu; onPicked: (v) => backend.menuPick(v) }      // the kit's
+    ActionMenu { id: rollMenu; objectName: "rollMenu"; onPicked: (v) => backend.menuPick(v) }      // the kit's
+    Connections {   // right-click on the roll's ruler: what the arrangement's ruler offers (Add marker here, Make a section …)
+        target: bars
+        function onMenuAt(t, px, py) { rollMenu.entries = backend.atMenu("", t, 1 / bars.perSec); var q = bars.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
+    }
     function menuFor(id) {   // the right-click menu on an item (a scripted step: steps_select.py)
         rollMenu.entries = backend.itemMenu(id)
         var e = backend.selectionExtent()

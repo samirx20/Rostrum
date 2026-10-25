@@ -4,6 +4,10 @@ import QtQuick
 // Who owns a key right now: the window's shortcuts ask here before they run (KeyMap, AppShell, an app's own Shortcut).
 //   OpenPopups.count              how many kit popups (SmallPopup and everything built on it) are open
 //   OpenPopups.top                the one opened last whose Esc closes it (`escCloses`): Esc closes that one
+//   OpenPopups.closeTop()         the window's ONE Esc (AppShell, while `escWanted`): closes `top`, after its `escaped()`
+// Popups add themselves (SmallPopup, modal dialogs included); a panel or sheet that is not a popup but closes on Esc
+// (the guides drawer, History, Export, Sound's Library, the start screen) is added by an EscCloses while it is open.
+// So Esc closes the newest open thing wherever the keyboard is, one level per press (a side menu, then its menu).
 //   OpenPopups.takes(keys)        true when an open popup, or the focused control, uses one of these keys itself
 //                                 ("Esc" while any popup is open; a menu's Up / Down / Enter; a clicked slider's Left / Right)
 // A popup lists the keys it uses in `ownKeys`; a control does the same with `ownKeys` and is asked while it has the keyboard
@@ -13,6 +17,20 @@ QtObject {
     readonly property int count: open.length
     readonly property var top: { for (let i = open.length - 1; i >= 0; i--) if (open[i].escCloses) return open[i]; return null }
     property Item focused: null                 // the window's activeFocusItem (AppShell)
+    readonly property bool typing: !!focused && focused.cursorPosition !== undefined && focused.selectByMouse !== undefined
+    // Esc closes `top`, except while a text box outside it has the keys: there Esc drops the typing first (a name box)
+    readonly property bool escWanted: !!top && !(typing && !holds(top, focused))
+    function holds(p, item) {                   // is `item` inside the open popup / panel `p`
+        for (let it = item; it; it = it.parent) if (it === p.contentItem || (!!p.area && it === p.area)) return true
+        return false
+    }
+    function closeTop() {
+        const p = top
+        if (!p) return false
+        if (typeof p.escaped === "function") p.escaped()
+        p.close()
+        return true
+    }
 
     function add(p) { if (open.indexOf(p) < 0) open = open.concat([p]) }
     function remove(p) { if (open.indexOf(p) >= 0) open = open.filter(o => o !== p) }

@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The punch range (dragged on the ruler, BarRuler.qml) shaded across the rows: only that part of the next take is kept.
-// Absent unless a track is armed with punch on.
+// Shown while punch is on (Record's ▾ panel), armed track or not; absent with punch off.
 Rectangle {
     property var ruler                     // the BarRuler the rows are drawn against
     readonly property var range: typeof takeSetup !== "undefined" ? takeSetup.punchRange : []

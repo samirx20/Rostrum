@@ -21,9 +21,11 @@ Row {
         }
         return best
     }
-    readonly property int tempoAt: Math.max(0, lastAt(song.tempos, backend.time, c => c.t))
-    readonly property int keyAt: lastAt(song.keys, backend.time, c => c.t)
-    readonly property string key: keyAt >= 0 ? song.keys[keyAt].key : ""
+    // the entry in force here, read from the list in the same step (an index kept apart went stale when an undo shrank the list)
+    function here(list) { const i = lastAt(list, backend.time, c => c.t); return i >= 0 ? list[i] : null }
+    readonly property var tempoHere: here(song.tempos) || song.tempos[0] || null
+    readonly property var keyHere: here(song.keys)
+    readonly property string key: keyHere ? keyHere.key : ""
     readonly property string tonic: key.split(" ")[0]
     readonly property string mode: key.split(" ")[1] || "major"
 
@@ -42,9 +44,10 @@ Row {
     }
     Row {   // tempo, time signature and key: the tempo and key edit what plays at the playhead (song_panel.py)
         anchors.verticalCenter: parent.verticalCenter; spacing: Theme.grid
-        readonly property int tempoNow: Math.round(ro.song.tempos[ro.tempoAt].bpm)
-        NumberField {   // the unit inside the field: one control, "100 bpm"
-            width: 76; label: "Tempo"; value: parent.tempoNow; from: 20; to: 400; step: 1; unit: "bpm"
+        readonly property real tempoNow: ro.tempoHere ? ro.tempoHere.bpm : 120
+        NumberField {   // the unit inside the field: one control, "100 bpm"; drags in whole bpm, keeps a typed 99.5
+            objectName: "songTempo"
+            width: 76; label: "Tempo"; value: parent.tempoNow; from: 20; to: 400; step: 1; typeStep: 0.01; unit: "bpm"
             onEdited: (v) => songPanel.setTempo(v)
             onScrubStarted: songPanel.beginTempo()
             onScrubbed: (v) => songPanel.scrubTempo(v)

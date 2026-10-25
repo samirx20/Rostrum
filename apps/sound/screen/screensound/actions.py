@@ -70,7 +70,7 @@ NAMED = ("track", "bus", "marker", "section")
 
 ACTIONS = [
     # tracks
-    act("group", "Group", TRACK, lambda f: [C.call("bus.from_tracks", f.ids)],
+    act("group", "Group", lambda f: TRACK(f) and not C.is_whole_group(f), lambda f: [C.call("bus.from_tracks", f.ids)],
         "Ctrl+G", "primary", "make", needs="Group needs two or more tracks selected", min_targets=2),
     act("ungroup", "Ungroup", lambda f: bool(C.group_buses(f)) and C.tries(f, [C.call("bus.ungroup", C.group_buses(f))]),
         lambda f: [C.call("bus.ungroup", C.group_buses(f))], "Ctrl+Shift+G", "primary", "make"),

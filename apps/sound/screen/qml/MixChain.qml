@@ -5,7 +5,8 @@ import RostrumKit
 // The insert chain of a track, bus or the master: one line per effect, top to bottom in insert order (it scrolls when
 // there are many), then "+ Effect" pinned under the lines so it is always there, on every strip.
 // A chip selects its effect (the inspector edits it); dragging a line up or down moves it in the chain (effect.move, one
-// change when you let go). "+ Effect" lists the effect types; picking one is effect.add.
+// change when you let go). "+ Effect" lists the effect types; picking one is effect.add. Right-click a line: its own
+// menu, Remove (as the Delete key on the selected effect).
 Item {
     id: chain
     property var chips: []
@@ -44,18 +45,21 @@ Item {
                     MouseArea {
                         id: grab
                         anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
                         property real startY: 0
                         property real shift: 0
                         property bool moved: false
                         readonly property int target: Math.max(0, Math.min(chain.chips.length - 1, slot.index + Math.round(shift / chain.rowStep)))
                         preventStealing: moved
-                        onPressed: (m) => { startY = m.y; shift = 0; moved = false }
+                        onPressed: (m) => { startY = m.y; shift = 0; moved = false
+                                            if (m.button === Qt.RightButton) { backend.select(slot.modelData.id); chain.menuFor(slot.modelData.id, grab, m.x, m.y) } }
                         onPositionChanged: (m) => {
-                            if (!pressed) return
+                            if (!pressed || !(pressedButtons & Qt.LeftButton)) return
                             if (!moved && Math.abs(m.y - startY) > 4) { moved = true; list.dragging = true }
                             if (moved) shift = Math.max(-slot.index * chain.rowStep, Math.min((chain.chips.length - 1 - slot.index) * chain.rowStep, m.y - startY))
                         }
-                        onReleased: {
+                        onReleased: (m) => {
+                            if (m.button === Qt.RightButton) return
                             const was = moved, to = target
                             moved = false; shift = 0; list.dragging = false
                             if (!was) backend.select(slot.modelData.id)
@@ -80,6 +84,21 @@ Item {
         anchors.bottom: parent.bottom
         tip: menu.item && menu.item.opened ? "" : chain.ownerId === "master" ? "Add an effect to the master" : "Add an effect to this track"
         onClicked: { menu.active = true; menu.item.showPlugins = false; mixer.plugins.scan(); menu.item.open() }
+    }
+    function menuFor(id, item, x, y) {   // an effect's own menu, at the pointer
+        own.active = true
+        const p = item.mapToItem(null, x, y)
+        own.item.target = id; own.item.openAt(p.x, p.y)
+    }
+    Loader {   // made on the first right-click (every strip has a chain)
+        id: own
+        active: false
+        sourceComponent: ActionMenu {
+            objectName: "effectMenu"
+            property string target: ""
+            entries: [{ value: "remove", label: "Remove", keys: "Delete", group: "", sub: [] }]
+            onPicked: (v) => { if (v === "remove") mixer.remove(target) }
+        }
     }
     Loader {   // the menu is made on the first click (every strip has a "+ Effect"; a closed menu made its rows anyway)
         id: menu

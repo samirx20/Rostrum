@@ -77,7 +77,10 @@ SmallPopup {
         s.entries = entries[i].sub; s.owner = menu
         s.openAt(p.x, p.y - padding, left)
     }
-    onAboutToShow: highlighted = Math.max(0, entries.findIndex(e => !!e.checked))
+    onAboutToShow: { highlighted = Math.max(0, entries.findIndex(e => !!e.checked)); keptShut = -1 }
+    // a side menu closed by Esc or Left stays shut while the pointer rests on its row (closing it re-enters the row:
+    // it would open again at once, and Esc would never get past it); it opens again once the pointer comes back
+    property int keptShut: -1
     onClosed: {
         rested(""); if (subLoader.item) subLoader.item.close()
         if (chosen !== undefined) { const v = chosen; chosen = undefined; picked(v) }
@@ -86,7 +89,7 @@ SmallPopup {
         target: subLoader.item; ignoreUnknownSignals: true
         function onPicked(v) { menu.picked(v) }
         function onRested(v) { menu.rested(v) }
-        function onClosed() { list.forceActiveFocus() }
+        function onClosed() { menu.keptShut = menu.highlighted; list.forceActiveFocus() }
     }
     Loader { id: subLoader; active: false; source: "ActionMenu.qml" }
 
@@ -164,9 +167,10 @@ SmallPopup {
                         onEntered: {
                             menu.highlighted = row.index
                             if (!row.sub) menu.rested(row.modelData.value)
-                            if (row.sub) menu.openSub(row.index)
+                            if (row.sub) { if (menu.keptShut !== row.index) menu.openSub(row.index) }
                             else if (subLoader.item) subLoader.item.close()
                         }
+                        onExited: if (menu.keptShut === row.index) menu.keptShut = -1
                         onClicked: menu.pick(row.index)
                     }
                     HoverTip { text: lab.truncated ? row.modelData.label : ""; hovered: ma.containsMouse }

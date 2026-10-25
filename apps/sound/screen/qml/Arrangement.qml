@@ -9,7 +9,10 @@ import RostrumKit
 // markers, track headers and lanes, + Track, the Master row last). A new song shows one button, Add a track. The picture floats at the top right while it is open.
 Rectangle {
     id: a
-    property alias headerWidth: timeline.headerWidth
+    property int headerWidth: 224                      // the window's choice (Main.qml); the headers never go under `minHeader`
+    // a short row puts R M S A beside the name (TrackHeader): this keeps about eight letters of the name beside them,
+    // so a small window shows names, never just "…"
+    readonly property int minHeader: 176
     property bool compact: false                       // a small window: the position and key show short
     readonly property bool tight: a.width < 860        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
     readonly property alias picture: corner
@@ -113,6 +116,7 @@ Rectangle {
     }
     Timeline {
         id: timeline
+        headerWidth: Math.max(a.headerWidth, a.minHeader)
         anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
         onAddTrack: a.addTrack()
     }

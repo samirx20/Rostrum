@@ -20,7 +20,7 @@ Panel {
     // titled by what it is; the chosen item is the list's highlighted row (never said twice), or the model's own `sheetTitle`
     title: model && model.sheetTitle ? model.sheetTitle : "Export"
     focus: visible
-    Keys.onEscapePressed: model.setOpen(false)
+    // Esc closes it from anywhere: the window's one Esc (AppShell's EscCloses for Export)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close  Esc"; onClicked: sheet.model.setOpen(false) }
 
     component Line: Text {                // one line of words, whole: a long name breaks at a space, else anywhere, never cut
@@ -163,7 +163,7 @@ Panel {
         target: sheet.model
         function onAsked(name, canReplace) { ask.name = name; ask.canReplace = canReplace; ask.open() }
     }
-    QQC.Popup {     // the one blocking question: a file of that name is already there
+    SmallPopup {     // the one blocking question: a file of that name is already there (Esc: Cancel)
         id: ask
         objectName: "exportQuestion"
         property string name: ""
@@ -175,11 +175,11 @@ Panel {
         padding: Theme.groupGap
         modal: true; focus: true
         closePolicy: QQC.Popup.NoAutoClose
+        onEscaped: sheet.model.answer("cancel")
         QQC.Overlay.modal: Rectangle { color: Theme.scrim }
         background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
         contentItem: FocusScope {
             implicitHeight: askCol.implicitHeight
-            Keys.onEscapePressed: ask.pick("cancel")
             Column {
                 id: askCol
                 width: parent.width; spacing: Theme.pad

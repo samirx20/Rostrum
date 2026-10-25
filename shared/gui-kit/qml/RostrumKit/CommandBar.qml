@@ -4,7 +4,7 @@ import "."
 
 // Ctrl+K: every command that can run right now, from the operation registry (bridge.commands).
 // Type to filter (all words, any order), Up / Down to move, Enter or click to run, Esc to close.
-QQC.Popup {
+SmallPopup {
     id: bar
     property var bridge
     property var shown: []
@@ -71,8 +71,12 @@ QQC.Popup {
                             onEntered: list.currentIndex = cmd.index; onClicked: bar.runCurrent() }
             }
         }
+        // nothing found: a command that exists but can't run now says why in its own words ("Nothing to paste yet: copy
+        // something first", the action list's), never "try a shorter word"
         EmptyHint { id: empty; visible: list.count === 0; width: parent.width
-                    text: search.input.text.trim() ? "Nothing called “" + search.input.text.trim() + "”. Try a shorter word."
-                                                   : "Nothing to run here yet." }
+                    readonly property string typed: search.input.text.trim()
+                    readonly property string why: list.count === 0 && typed && bar.bridge && bar.bridge.actions && bar.bridge.actions.whyNot
+                                                  ? bar.bridge.actions.whyNot(typed) : ""
+                    text: why || (typed ? "Nothing called “" + typed + "”. Try a shorter word." : "Nothing to run here yet.") }
     }
 }
