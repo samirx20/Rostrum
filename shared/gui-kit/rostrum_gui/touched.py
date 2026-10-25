@@ -7,6 +7,9 @@ does nothing for a change elsewhere. A drag's step is told the same way, from th
 the step before). When the kit can't tell (a reset, another program's steps taken in), `touched()` is None:
 everything counts as touched. A change that adds, removes or moves items, or renames one, reaches every part: lists
 of names and pick lists name other items.
+
+A drag's step says more: which fields of an item it moved (`fields_of`), so the settings panel works out only those
+rows; steps a part let pass between two of its runs add up (`joined`).
 """
 from __future__ import annotations
 
@@ -36,6 +39,30 @@ class Touched:
         if near & self.ids:
             return True
         return any(idx.get(t) is not None and _inside(idx, t, set(ids)) for t in self.ids)
+
+
+    def fields_of(self, doc, item_id) -> set[str] | None:
+        """The item's own fields this touched: a field of it, and for a key in it the field the key animates (the one
+        animation model, rostrum_core.keys: an owner's `keys`, each naming its `prop`). None when it can't be told that
+        narrowly: an add, remove, move or rename; the item touched whole; an item above it (its time or place moves
+        every value it shows); anything else inside it."""
+        if self.structural:
+            return None
+        idx, out = doc._index(), {f for i, f in self.fields if i == item_id}
+        for i in self.ids:
+            loc = idx.get(i)
+            if i == item_id:
+                if not out:
+                    return None                     # touched whole, no field named
+            elif loc is not None and loc.parent == item_id and loc.key == "keys" and "prop" in loc.item:
+                out.add(loc.item["prop"])
+            elif loc is None or _inside(idx, i, {item_id}) or _inside(idx, item_id, {i}):
+                return None
+        return out
+
+    def joined(self, other: "Touched | None") -> "Touched | None":
+        """This and `other` together (two steps a part takes in at once); None (can't tell) stays None."""
+        return None if other is None else Touched(self.keys | other.keys, self.structural or other.structural)
 
 
 def _inside(idx, item_id, ids: set) -> bool:

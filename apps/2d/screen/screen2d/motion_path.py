@@ -44,6 +44,9 @@ class HandleGrab:
 
 class MotionPath(QObject):
     changed = Signal()
+    layersChanged = Signal()           # the selected layer's path changed (layerRows)
+    framesChanged = Signal()           # the frame's path changed (frameRows): the canvas draws each apart, so a layer's
+                                       # drag never converts or redraws the frame's ~900 points again
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
@@ -53,7 +56,7 @@ class MotionPath(QObject):
         self._by_owner = {}            # {owner id: (what it is made of, (track, frame outlines) or None)}: _track_of
         self._rows = {}                # {owner id: (what its canvas row is made of, the row)}: _row
         for sig in (bridge.timeChanged, bridge.markersChanged):
-            sig.connect(self.changed)
+            sig.connect(self._check)
         bridge.docStepped.connect(self._doc)             # a drag's step: at once, the path follows the pointer
         self._after = AfterFrame(self._check, self)      # a change or a pick: the frame after, with the overlays
         bridge.docChanged.connect(self._after.ask)       # (outline_news.py)
@@ -66,11 +69,16 @@ class MotionPath(QObject):
             self._check()
 
     def _check(self):
-        """(After a change, whatever it touched: the changes since the frame before may be several.)"""
+        """(After a change, whatever it touched: the changes since the frame before may be several.) Each owner's row
+        is made again only when it changed (_row), so a row that is the same object shows the same: only the part
+        whose rows changed is told."""
         was = self._view[2] if self._view is not None else None
         now = self.paths
         if was is None or len(now) != len(was) or any(a is not b for a, b in zip(now, was)):
             self.changed.emit()
+            for frame, sig in ((False, self.layersChanged), (True, self.framesChanged)):
+                if was is None or _part(was, frame) != _part(now, frame):
+                    sig.emit()
 
     # ---- the View menu's "Show the frame's path" (screen state, never the document) -------------------------
     @Property(bool, notify=changed)
@@ -81,6 +89,7 @@ class MotionPath(QObject):
     def setFramePath(self, on: bool):
         self._frame_path = bool(on)
         self.changed.emit()
+        self._check()
 
     # ---- reads ------------------------------------------------------------------------------------------------
     def _owners(self) -> list[tuple[str, bool]]:
@@ -130,6 +139,16 @@ class MotionPath(QObject):
         out = [self._row(oid, faint, tr, frames, t, picked) for oid, faint, tr, frames in tracks[1]]
         self._view = (tracks, t, out)
         return out
+
+    @Property("QVariantList", notify=layersChanged)
+    def layerRows(self):
+        """The rows of `paths` that are a layer's (the canvas draws them apart from the frame's)."""
+        return [r for r in self.paths if not r["frame"]]
+
+    @Property("QVariantList", notify=framesChanged)
+    def frameRows(self):
+        """The rows of `paths` that are the frame's."""
+        return [r for r in self.paths if r["frame"]]
 
     def _row(self, oid, faint, tr, frames, t, picked):
         """One owner's canvas row, made again only when its track, outlines, mapping or picked keys changed."""
@@ -219,3 +238,7 @@ class MotionPath(QObject):
             calls = [{"op": "key.path_handles", "target": [g.owner], "args": args}]
         self.b._guard(lambda: self.b._drag.preview(calls))
 
+
+def _part(rows, frame: bool) -> list[int]:
+    """Which row objects of `rows` are (or are not) the frame's: the same objects show the same."""
+    return [id(r) for r in rows if r["frame"] is frame]

@@ -14,7 +14,7 @@ from __future__ import annotations
 HOOKS = frozenset({
     "label_of", "kind_label", "starts", "subtitle", "edit_call", "relative_call", "shown_values", "facts_of", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "sections", "selection_label", "extra_commands",
-    "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc",
+    "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
     "staticMetaObject",
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
@@ -24,7 +24,7 @@ class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
                  "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "rows_due",
-                 "ready_kinds", "kinds_job", "ahead_filter", "kinds")
+                 "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -45,7 +45,11 @@ class KitState:
         self.ahead_filter = None            # an app's say on which items have a panel worth making ahead: fn(item) -> bool
         self.ready_kinds, self.kinds_job = set(), None      # kinds whose panel is made ahead; the job that finds a new kind
         self.paced = None                  # news.OnceAFrame: the panel's rows during a drag (the bridge makes it)
-        self.stepping = False               # the rows being worked out are a drag's step: values only (rows.evaluate step)
+        self.stepping = False               # the rows being worked out are a drag's step: values only (rows.evaluate step),
+                                            # (data before the steps, what they touched) = k.stepped as the rows took it
+        self.stepped = None                 # the drag's steps since the rows last followed: (data before them, Touched or None)
+        self.seen = None                    # the document's data as last heard (where the next step starts from)
+        self.evaluated = {}                 # {item id: (data, layout, its rows as evaluated)}: rows.evaluate kept
         self.kinds = (None, (), [])         # (song data, ids, their types): bridge_select.kinds_of, once per selection
 
 

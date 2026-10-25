@@ -93,7 +93,8 @@ def _param_row(p) -> dict:
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
-             opened=(), query: str = "", elsewhere=frozenset(), starts=None, step: bool = False) -> list[dict]:
+             opened=(), query: str = "", elsewhere=frozenset(), starts=None, step: bool = False,
+             kept=None) -> list[dict]:
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is.
@@ -103,10 +104,15 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     `elsewhere`: params the screen shows in another place (bridge.on_page); here they count as not applying, so a
     group is never opened or named for them alone. `step`: a drag's step, whose rows keep what shows and what is open
     as at the press (bridge_select._step_rows): only the values are worked out (the rest of a busy panel cost a
-    canvas drag ~2 ms on every pointer move)."""
-    picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
+    canvas drag ~2 ms on every pointer move). `kept` (with `step`): {row id: the row as last worked out} for the param
+    rows whose fields the steps since then left alone (touched.fields_of): that row itself is given again, nothing read
+    (three layers moved by x and y: the other ~120 rows of each were read on every pointer move). A row given out is
+    never changed in place: it is copied to be changed (what a step holds as at the press goes on a copy)."""
+    kept = kept or {}
+    picks = {r["id"]: choices(r["id"]) if choices else [] for r in static
+             if r.get("control") == "pick" and r["id"] not in kept}
     if step:
-        return [_values(dict(r), item, anim, expr, choices, picks) for r in static]
+        return [kept.get(r["id"]) or _values(dict(r), item, anim, expr, choices, picks) for r in static]
     ok = {r["id"]: holds(r["valid_when"], item, facts) and _shown(r, item) and (r["id"] not in picks or bool(picks[r["id"]])
                                                                                 or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
