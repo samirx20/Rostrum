@@ -65,6 +65,23 @@ def edges(comp: dict, layer: dict, shots: list, fps: float) -> list[dict]:
     return report(comp, layer, shots, fps)[0]
 
 
+SIZE = frozenset(("scale", "scaleX", "scaleY", "w", "h", "depth"))     # what changes the area a box covers
+
+
+def never_covers(comp: dict, layer: dict, shots: list) -> bool:
+    """True when the layer can't cover the whole frame at any moment, without walking the piece: its size doesn't move
+    and its box is smaller in area than the least the frame shows at its depth (the frame at its closest). A box
+    covers a rectangle only if its area is at least the rectangle's, whatever its turn."""
+    if not shots or (animated(layer) if layer["type"] == "text" else animated(layer) & SIZE):
+        return False
+    p = resolve(layer, 0.0)
+    w, h = own_size(layer["type"], p)
+    area = w * h * p["scale"] ** 2 * p["scaleX"] * p["scaleY"]
+    s = 1 / (1 + p["depth"])
+    most = max(shot.zoom for shot in shots) ** (2 * s)
+    return area < float(comp.get("width", 1920)) * float(comp.get("height", 1080)) / most
+
+
 def report(comp: dict, layer: dict, shots: list, fps: float) -> tuple[list[dict], bool]:
     """(edges, whether it covers the whole frame at some moment: a backdrop, not a title the frame always sees round)."""
     worst: dict[str, list] = {}

@@ -41,3 +41,17 @@ def test_cover_the_frames_move_leaves_no_gap_for_a_turned_stretched_picture_and_
     sky = d.item("sky")
     assert B.gaps(d.item("c"), sky) == [] and sky["rotation"] == 20 and sky["scaleX"] == 1.5
     assert B.gaps(d.item("c"), d.item("hills")) == [] and d.item("hills")["rotation"] == 10      # the canvas grew
+
+
+def test_the_warning_bands_shortcut_never_skips_a_layer_that_covers_the_frame():
+    from rostrum2d import cover
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source(SETUP + 'cam.key("zoom", {0: 1, 2: 1.6})\n', "s.py"))
+    d.apply([{"op": "layer.add", "target": "c", "args": {"type": "shape", "id": "sky"}},
+             {"op": "shape.set", "target": "sky", "args": {"w": 400, "h": 300}}], AGENT)
+    c = d.item("c")
+    assert cover.never_covers(c, d.item("sky"), B.shots(c))          # far too small: no walk through the piece
+    d.apply({"op": "background.fit", "target": ["sky"], "args": {}}, AGENT)
+    c = d.item("c")
+    assert not cover.never_covers(c, d.item("sky"), B.shots(c))
+    assert cover.report(c, d.item("sky"), B.shots(c), 10.0)[1]       # it covers: the band is worked out
