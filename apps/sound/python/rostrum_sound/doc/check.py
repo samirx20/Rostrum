@@ -158,8 +158,9 @@ def check(data: dict, items=None) -> list[str]:
             out += _lane(item, data)
     for item in refs:
         for k, v in item.items():
-            if k == "colour" or type(v) not in (str, list):     # a colour ("#4aa3ff") is not a marker; a number or a
-                continue                                         # beat time holds none (a whole-song move: 3,352 items)
+            t = type(v)                 # a colour ("#4aa3ff") is not a marker; a number, a beat time, or a word not
+            if k == "colour" or (t is not list and (t is not str or v[:1] != "#")):   # starting "#" (an id, a pitch)
+                continue                                         # holds none (a whole-song move: 3,352 items)
             for ref in _refs(v):
                 if markers.key(markers.ref(ref)) not in marks:
                     out.append(f"{item['id']}.{k}: no marker {markers.ref(ref)!r} for {ref!r}")

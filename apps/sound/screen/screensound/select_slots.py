@@ -297,6 +297,8 @@ class SelectSlots:
                  for c in h.get(seq).calls for t in (c.get("target") or [])}
         touched = [i for i in touched if i in aimed] or touched      # a call aimed at a track that made notes: the notes
         back = [i for i in touched if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
+        if set(back) == set(self._picks.ids):       # already what is selected (undo of a whole-song Right): picking it
+            return                                  # again in the step's order redrew 3,352 outlines in every lane
         if back:                    # the outlines now; the settings panel once the undo is drawn (`_settle`)
             self._pick(back, later=True)
             self._settle()

@@ -64,7 +64,8 @@ def _register(kind):
     def move(ctx, targets, args):
         every = _with_group(ctx, targets, kind)
         even, path, d = _uniform(ctx, every, args["by"])                    # one edit for every time written alike
-        plan = [(t, moved(ctx, ctx.item(t), args["by"])) for t in every if t not in even]   # from the start state
+        alike = set(even)                   # (a list: each of 3,352 notes looked up in 3,352 ids, ~30 ms a Right)
+        plan = [(t, moved(ctx, ctx.item(t), args["by"])) for t in every if t not in alike]   # from the start state
         ctx.shift(even, path, d, 4)
         for t, at in plan:
             ctx.set(t, "at", at)
