@@ -21,10 +21,6 @@ Item {
     readonly property real padTop: 6
     readonly property real plotH: height - padTop - 4
     readonly property var picked: backend.picked
-    property var own: ({})              // the strip's note / hit ids (made when they change)
-    property string chosen: ""          // which of them are selected: a selection elsewhere leaves the picture as it is
-    onBlocksChanged: { own = Blocks.ids(blocks); chosen = Blocks.chosen(picked, own) }
-    onPickedChanged: chosen = Blocks.chosen(picked, own)
     property string mode: ""                    // "" | "press" | "bar" | "line"
     property string hit: ""
     property real x0: 0
@@ -35,9 +31,9 @@ Item {
     height: folded ? foldedHeight : fullHeight
     property string hoverId: ""
     readonly property var shown: {   // {x, y, text} of the value readout, or null
-        var b = s.blocks, ids = hoverId !== "" ? [hoverId] : Object.keys(picked), vs = [], x = 1e9, top = 0
+        var b = s.blocks, one = hoverId, vs = [], x = 1e9, top = 0
         for (var i = 0; i < b.length; i++) {
-            if ((b[i].type !== "note" && b[i].type !== "hit") || ids.indexOf(b[i].id) < 0) continue
+            if ((b[i].type !== "note" && b[i].type !== "hit") || (one !== "" ? b[i].id !== one : !picked[b[i].id])) continue
             vs.push(b[i].vel)
             var bx = ruler.xOf(b[i].t)
             if (bx < x) { x = bx; top = b[i].vel }
@@ -84,12 +80,12 @@ Item {
         x: s.keysWidth; width: s.width - x; height: s.height; clip: true
         // painted whole on a new zoom, scroll, size or track, else only where an edit or a selection changed (Blocks.js)
         property bool whole: true
-        property var drawn: ({})                // id -> [block, selected] as the picture shows it
+        readonly property var k: Blocks.kept()  // what the picture shows (painting in parts)
         function again() { whole = true; requestPaint() }
         onWidthChanged: again()
         onHeightChanged: again()
         Connections { target: s; function onRollChanged() { c.again() } function onBlocksChanged() { c.requestPaint() }
-                      function onChosenChanged() { c.requestPaint() } }
+                      function onPickedChanged() { if (Blocks.touches(c.k, s.picked)) c.requestPaint() } }   // a selection elsewhere: as it is
         Connections { target: s.ruler; function onStartChanged() { c.again() } function onPerSecChanged() { c.again() } }
         property bool stale: false              // asked while hidden (the Mixer shows): painted when shown again
         onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
@@ -98,25 +94,24 @@ Item {
         }
         onPaint: {
             if (!visible) { stale = true; return }
-            var ctx = getContext("2d"), now = Blocks.state(s.blocks, s.picked)
-            var dirty = whole ? null : Blocks.changes(drawn, now, rectsOf)
-            drawn = now; whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, now, null); return }
+            var ctx = getContext("2d"), dirty = whole ? null : Blocks.update(k, s.blocks, s.picked, rectsOf)
+            whole = false
+            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(k, s.blocks, s.picked, rectsOf, width), null); return }
             for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
-                Blocks.clear(ctx, dirty[i]); paintIn(ctx, now, dirty[i]); ctx.restore()
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(k, dirty[i]), dirty[i]); ctx.restore()
             }
         }
-        function paintIn(ctx, now, d) {                         // the guide and every bar (over the place `d`, when one)
-            var b = s.blocks
+        function paintIn(ctx, entries, d) {                     // the guide and these bars ([block, selected]; over `d`, when one)
             ctx.fillStyle = Theme.border; ctx.fillRect(0, s.padTop + s.plotH / 2, width, 1)      // the half-way guide
             for (var pass = 0; pass < 2; pass++)           // selected bars last, on top
-                for (var i = 0; i < b.length; i++) {
-                    if (b[i].type !== "note" && b[i].type !== "hit") continue
-                    if (now[b[i].id][1] !== (pass === 1)) continue
-                    var x = Math.round(s.ruler.xOf(b[i].t))
+                for (var i = 0; i < entries.length; i++) {
+                    var b = entries[i][0]
+                    if (b.type !== "note" && b.type !== "hit") continue
+                    if (entries[i][1] !== (pass === 1)) continue
+                    var x = Math.round(s.ruler.xOf(b.t))
                     if (x < -4 || x > width + 4) continue
                     if (d !== null && (x + 6 < d[0] || x - 6 > d[0] + d[2])) continue
-                    var h = Math.max(2, b[i].vel * s.plotH)
+                    var h = Math.max(2, b.vel * s.plotH)
                     ctx.fillStyle = pass === 1 ? Theme.accent : s.roll.hue
                     ctx.globalAlpha = pass === 1 ? 1 : 0.8
                     ctx.fillRect(x - 1, s.padTop + s.plotH - h, 3, h)

@@ -25,10 +25,6 @@ Item {
     readonly property int pad: 3
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
     readonly property var picked: backend.picked                           // one read per change
-    property var own: ({})              // this row's block ids (made when its blocks change)
-    property string chosen: ""          // which of them are selected: a new selection repaints only rows it reached
-    onShownChanged: { own = Blocks.ids(shown); chosen = Blocks.chosen(picked, own) }
-    onPickedChanged: chosen = Blocks.chosen(picked, own)
     // Where a block sits across the row (0 top .. 1 bottom), one place per bar: the row's layout places notes by key
     // (`span`) and hits by drum (`drums`), so a new top key or drum relays the row, never every block (pick.lanes,
     // the same rule)
@@ -58,7 +54,7 @@ Item {
         id: c
         anchors.fill: parent
         property bool whole: true
-        property var drawn: ({})            // id -> [block, selected] as the picture shows it
+        readonly property var k: Blocks.kept()  // what the picture shows (painting in parts)
         function again() { whole = true; requestPaint() }
         onWidthChanged: again()
         onHeightChanged: again()
@@ -66,7 +62,7 @@ Item {
             target: lane
             function onTrackChanged() { c.again() }
             function onShownChanged() { c.requestPaint() }
-            function onChosenChanged() { c.requestPaint() }
+            function onPickedChanged() { if (Blocks.touches(c.k, lane.picked)) c.requestPaint() }   // a selection elsewhere: as it is
             function onCleaningChanged() { c.again() }
         }
         Connections {
@@ -153,20 +149,19 @@ Item {
         }
 
         onPaint: {
-            var ctx = getContext("2d"), now = Blocks.state(lane.shown, lane.picked)
-            var dirty = whole ? null : Blocks.changes(drawn, now, rectsOf)
-            drawn = now; whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, now, null); return }
+            var ctx = getContext("2d"), dirty = whole ? null : Blocks.update(k, lane.shown, lane.picked, rectsOf)
+            whole = false
+            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(k, lane.shown, lane.picked, rectsOf, width), null); return }
             for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
-                Blocks.clear(ctx, dirty[i]); paintIn(ctx, now, dirty[i]); ctx.restore()
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(k, dirty[i]), dirty[i]); ctx.restore()
             }
         }
-        function paintIn(ctx, now, d) {                         // every block (over the place `d`, when one)
-            var blocks = lane.shown, r = lane.ruler
-            var h = lane.height - 2 * lane.pad, n = blocks.length
+        function paintIn(ctx, entries, d) {                     // these blocks ([block, selected]; over the place `d`, when one)
+            var r = lane.ruler
+            var h = lane.height - 2 * lane.pad, n = entries.length
             for (var pass = 0; pass < 3; pass++) {            // clips under, then the rest, then what is selected
                 for (var i = 0; i < n; i++) {
-                    var b = blocks[i], on = now[b.id][1], isClip = b.type === "clip" || b.type === "line"
+                    var b = entries[i][0], on = entries[i][1], isClip = b.type === "clip" || b.type === "line"
                     if ((pass === 0 ? !isClip || on : pass === 1 ? isClip || on : !on)) continue
                     var x = Math.round(r.xOf(b.t))
                     var w = widthOf(b, on)
