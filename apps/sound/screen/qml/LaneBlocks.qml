@@ -22,6 +22,7 @@ Item {
         function onBlocksReset(key) { if (key === lane.track.id) lane.patched = null }
     }
     property var ruler
+    property int slot: 0        // its row: after a resize, rows paint again in turn (ViewCanvas)
     readonly property int pad: 3
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
     readonly property var picked: backend.picked                           // one read per change
@@ -51,13 +52,14 @@ Item {
                    && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
                return b ? b.label : "" } } } }
 
-    Canvas {   // painted whole on a new zoom, scroll, size or row look, else only where an edit or a selection changed (Blocks.js)
+    ViewCanvas {   // painted whole on a new zoom, scroll or row look (a resize: stretched, then whole: ViewCanvas), else only where an edit or a selection changed (Blocks.js)
         id: c
-        anchors.fill: parent
+        height: parent.height
+        ruler: lane.ruler; slot: lane.slot
         property bool whole: true
         readonly property var k: Blocks.kept()  // what the picture shows (painting in parts)
         function again() { whole = true; requestPaint() }
-        onWidthChanged: again()
+        onWholeWanted: again()
         onHeightChanged: again()
         Connections {
             target: lane
@@ -65,11 +67,6 @@ Item {
             function onShownChanged() { c.requestPaint() }
             function onPickedChanged() { if (Blocks.touches(c.k, lane.picked)) c.requestPaint() }   // a selection elsewhere: as it is
             function onCleaningChanged() { c.again() }
-        }
-        Connections {
-            target: lane.ruler
-            function onStartChanged() { c.again() }
-            function onPerSecChanged() { c.again() }
         }
         function widthOf(b, on) { return b.type === "hit" ? (on ? 3 : 2) : Math.max(2, lane.ruler.wOf(b.dur) - 1) }
         function rectsOf(b) {               // a block's column of the row (its bars, or its clip and the clip's handles)
@@ -150,9 +147,10 @@ Item {
         }
 
         onPaint: {
+            if (waiting) return                                  // the stretched picture stands until its turn
             var ctx = getContext("2d"), dirty = whole ? null : Blocks.update(k, lane.shown, lane.picked, rectsOf)
             whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(k, lane.shown, lane.picked, rectsOf, width), null); return }
+            if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(k, lane.shown, lane.picked, rectsOf, width), null); return }
             for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
                 Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(k, dirty[i]), dirty[i]); ctx.restore()
             }
@@ -179,7 +177,7 @@ Item {
     }
 
     Repeater {   // a voice line with several takes: ◂ ▸ on the block itself (TakeArrows.qml)
-        model: lane.shown.filter(b => b.canBack || b.canNext)
+        model: lane.track.icon === "voice" ? lane.shown.filter(b => b.canBack || b.canNext) : []   // only a voice track has takes: no pass over a long track's blocks on each edit
         TakeArrows { required property var modelData; block: modelData; ruler: lane.ruler; inset: lane.pad + 2 }
     }
 

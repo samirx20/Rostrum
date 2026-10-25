@@ -14,13 +14,17 @@ Item {
     readonly property var song: backend.song        // one read per change (each read of the property copies the map)
     readonly property real from: ruler.start        // the stretch on screen: the lines are painted from these
     readonly property real perSec: ruler.perSec
-    Canvas {
+    property int slot: 0                            // its row: after a resize, rows paint again in turn (ViewCanvas)
+    ViewCanvas {
         id: c
-        anchors.fill: parent
-        onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
-        Connections { target: g; function onSongChanged() { c.requestPaint() } function onFromChanged() { c.requestPaint() }
-                      function onPerSecChanged() { c.requestPaint() } }
+        height: parent.height
+        ruler: g.ruler; slot: g.slot
+        onWholeWanted: requestPaint()
+        onHeightChanged: requestPaint()
+        Connections { target: g; function onSongChanged() { c.requestPaint() } }
         onPaint: {
+            if (waiting) return                         // the stretched picture stands until its turn
+            markPainted()
             var ctx = getContext("2d"); ctx.reset()
             var b = g.song.beats, bl = g.song.bars, ps = g.perSec, t0 = g.from - 2 / ps, t1 = g.from + (width + 2) / ps
             function first(a) { var lo = 0, hi = a.length

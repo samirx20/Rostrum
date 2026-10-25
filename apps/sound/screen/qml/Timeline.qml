@@ -148,8 +148,8 @@ Rectangle {
                     Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
-                        BeatGrid { anchors.fill: parent; ruler: bars }
-                        LaneBlocks { anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars }
+                        BeatGrid { anchors.fill: parent; ruler: bars; slot: row.index }
+                        LaneBlocks { anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars; slot: row.index }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                         Loader {   // the take growing while this track records (made only on the armed row)
                             anchors.fill: parent; active: recorder.take.track === row.modelData.id

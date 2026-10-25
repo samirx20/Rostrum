@@ -31,9 +31,10 @@ Item {
     height: folded ? foldedHeight : fullHeight
     property string hoverId: ""
     readonly property var shown: {   // {x, y, text} of the value readout, or null
-        var b = s.blocks, one = hoverId, vs = [], x = 1e9, top = 0
+        // the hovered stem's, else the selected ones' (backend.rollPicked: only those, never a pass over every block)
+        var one = hoverId, b = one !== "" ? s.blocks : backend.rollPicked, vs = [], x = 1e9, top = 0
         for (var i = 0; i < b.length; i++) {
-            if ((b[i].type !== "note" && b[i].type !== "hit") || (one !== "" ? b[i].id !== one : !picked[b[i].id])) continue
+            if ((b[i].type !== "note" && b[i].type !== "hit") || (one !== "" && b[i].id !== one)) continue
             vs.push(b[i].vel)
             var bx = ruler.xOf(b[i].t)
             if (bx < x) { x = bx; top = b[i].vel }
@@ -74,19 +75,21 @@ Item {
     }
     Rectangle { visible: !s.folded; x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken
                 border.color: Theme.border; border.width: 1 }
-    Canvas {
+    Item {   // the bars' plot, right of the keys
+    visible: !s.folded
+    x: s.keysWidth; width: s.width - x; height: s.height; clip: true
+    ViewCanvas {
         id: c
-        visible: !s.folded
-        x: s.keysWidth; width: s.width - x; height: s.height; clip: true
-        // painted whole on a new zoom, scroll, size or track, else only where an edit or a selection changed (Blocks.js)
+        height: parent.height
+        ruler: s.ruler; slot: 1
+        // painted whole on a new zoom, scroll or track (a resize: stretched, then whole: ViewCanvas), else only where an edit or a selection changed (Blocks.js)
         property bool whole: true
         readonly property var k: Blocks.kept()  // what the picture shows (painting in parts)
         function again() { whole = true; requestPaint() }
-        onWidthChanged: again()
+        onWholeWanted: again()
         onHeightChanged: again()
         Connections { target: s; function onRollChanged() { c.again() } function onBlocksChanged() { c.requestPaint() }
                       function onPickedChanged() { if (Blocks.touches(c.k, s.picked)) c.requestPaint() } }   // a selection elsewhere: as it is
-        Connections { target: s.ruler; function onStartChanged() { c.again() } function onPerSecChanged() { c.again() } }
         property bool stale: false              // asked while hidden (the Mixer shows): painted when shown again
         onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
         function rectsOf(b) {                   // a bar's column (its grip reaches 3 px around it)
@@ -94,9 +97,10 @@ Item {
         }
         onPaint: {
             if (!visible) { stale = true; return }
+            if (waiting) return                                  // the stretched picture stands until its turn
             var ctx = getContext("2d"), dirty = whole ? null : Blocks.update(k, s.blocks, s.picked, rectsOf)
             whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(k, s.blocks, s.picked, rectsOf, width), null); return }
+            if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(k, s.blocks, s.picked, rectsOf, width), null); return }
             for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
                 Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(k, dirty[i]), dirty[i]); ctx.restore()
             }
@@ -119,6 +123,7 @@ Item {
                 }
             ctx.globalAlpha = 1
         }
+    }
     }
     Canvas {   // the line, as drawn
         id: ln
@@ -152,7 +157,8 @@ Item {
         enabled: !s.folded
         onExited: s.hoverId = ""
         x: s.keysWidth; width: s.width - x; height: s.height
-        preventStealing: true; cursorShape: s.nearest(mouseX) !== "" ? Qt.SizeVerCursor : Qt.CrossCursor; hoverEnabled: true
+        preventStealing: true; cursorShape: s.hoverId !== "" ? Qt.SizeVerCursor : Qt.CrossCursor;   // the stem under the pointer (set as it moves: an edit never re-reads every stem)
+                    hoverEnabled: true
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true)
         onPressed: (e) => { backend.focusArea("roll"); s.hit = s.nearest(e.x); s.mode = "press"; s.x0 = s.px = e.x; s.y0 = s.py = e.y }

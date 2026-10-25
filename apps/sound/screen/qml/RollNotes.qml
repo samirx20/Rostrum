@@ -13,15 +13,16 @@ Item {
     clip: true
     readonly property var picked: backend.picked        // one read per change
     readonly property var blocks: grid.blocks
-    Canvas {
+    ViewCanvas {   // a resize: the picture stretched, then painted whole (ViewCanvas)
         id: c
-        anchors.fill: parent
+        height: parent.height
+        ruler: grid.ruler
+        onWholeWanted: again()
         property bool whole: true
         readonly property var kept: Blocks.kept()   // what the picture shows (painting in parts)
         property bool stale: false          // asked while hidden (the Mixer shows): painted when shown again
         onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
         function again() { whole = true; requestPaint() }
-        onWidthChanged: again()
         onHeightChanged: again()
         Connections {
             target: grid
@@ -32,11 +33,6 @@ Item {
             target: n
             function onBlocksChanged() { c.requestPaint() }
             function onPickedChanged() { if (Blocks.touches(c.kept, n.picked)) c.requestPaint() }   // a selection elsewhere: as it is
-        }
-        Connections {
-            target: grid.ruler
-            function onStartChanged() { c.again() }
-            function onPerSecChanged() { c.again() }
         }
         function rectsOf(b, x, k) {         // where a block is painted, 2 px of margin
             if (b.type === "note") {
@@ -113,12 +109,13 @@ Item {
         }
         onPaint: {
             if (!visible) { stale = true; return }
+            if (waiting) return                                  // the stretched picture stands until its turn
             var ctx = getContext("2d"), r = grid.ruler
             var k = { perSec: r.perSec, rowH: grid.rowH, hi: grid.roll.hi, hue: grid.roll.hue, lit: fillOf(true), W: width }
             var at = b => rectsOf(b, Math.round(r.xOf(b.t)), k)
             var dirty = whole ? null : Blocks.update(kept, n.blocks, n.picked, at)
             whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(kept, n.blocks, n.picked, at, width), k, null); return }
+            if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(kept, n.blocks, n.picked, at, width), k, null); return }
             for (var i = 0; i < dirty.length; i++) {        // only the changed places, each cleared and painted again
                 Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(kept, dirty[i]), k, dirty[i]); ctx.restore()
             }
