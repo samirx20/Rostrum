@@ -21,6 +21,7 @@ from rostrum2d.drawing import frame_number
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size
+from .handle_kinds import kit_of
 from rostrum2d.stepped import FIELD as STEPS
 
 
@@ -43,7 +44,7 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
     the group's own px, so they follow the group's turn. Also `lw lh lrot` (the box in its parent's px) and `m` (the
     parent's matrix, a b c d e f), for drags in the parent's frame. Each layer is read at the stepped time the engine
     draws it at (Timing > Steps on it, its group or the composition). For picking: `up` (its groups, outermost first),
-    `opacity` (with its groups'), `paint` (the part it paints itself, as fractions x0 y0 x1 y1 of w and h; None: none).
+    `opacity` (with its groups'), `handles` (which knobs it shows: handle_kinds.py), `paint` (the part it paints itself, as fractions x0 y0 x1 y1 of w and h; None: none).
     """
     out: list[dict] = []
     fps = comp.get("fps", 30)
@@ -83,7 +84,7 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
                         "paint": [v / (w or 1) if i % 2 == 0 else v / (h or 1) for i, v in enumerate(paint)] if paint else None,
                         "id": lay["id"], "type": lay["type"], "x": ax_s - p["anchorX"] * W, "y": ay_s - p["anchorY"] * H,
                         "w": W, "h": H, "rot": p["rotation"] + math.degrees(ang), "ax": p["anchorX"], "ay": p["anchorY"],
-                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m,
+                        "lw": w * sx, "lh": h * sy, "lrot": p["rotation"], "m": m, "handles": kit_of(lay["type"], p),
                         "locked": locked or bool(lay.get("locked"))})
             if lay["type"] == "group":
                 inner = _compose(m, *BX.matrix(p, w, h))           # this group's own px -> the screen's
