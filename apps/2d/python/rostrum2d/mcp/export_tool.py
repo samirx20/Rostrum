@@ -59,7 +59,7 @@ def render_export(ctx, args):
     name, overwrite = export_name.stem_of(doc, comp["id"]), bool(args.get("overwrite"))
 
     def job_fn(job):
-        facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite)
+        facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite, on_stop=job.on_cancel)
         say = f'Exported {comp["id"]} as {fmt}: {facts["frames"]} frames at {facts["fps"]} fps'
         data = {k: facts[k] for k in ("file", "frames", "fps", "alpha", "depth", "checked", "files", "sound") if k in facts}
         if "sound" in facts:

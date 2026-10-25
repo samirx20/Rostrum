@@ -23,11 +23,12 @@ class DyingEngine:
         self.scene = scene
 
     def _request(self, req, **kw):
-        if "export" in req:
-            if "file" in req:
-                Path(req["file"]).write_bytes(b"half a file")      # the encoder wrote something, then died
-            raise EngineError("encoder died")
         return {}
+
+    def export(self, req, progress=None):
+        if "file" in req:
+            Path(req["file"]).write_bytes(b"half a file")          # the encoder wrote something, then died
+        raise EngineError("encoder died")
 
 
 @pytest.mark.parametrize("fmt, name", [("webm", "a.webm"), ("gif", "a.gif"), ("png", "seq")])
