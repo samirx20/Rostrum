@@ -27,13 +27,11 @@ SmallPopup {
     function reposition() {
         const ov = QQC.Overlay.overlay
         if (!ov || !spotAnchor || !parent || !spotAnchor.Window.window) return
+        settle()                         // its true size now: it is placed once, before it shows, and never moves while visible
         const q = Place.near(spotAnchor, width, height, spotAnchor.Window.window.contentItem, ov, { align: spotAlign })
         const p = parent.mapFromItem(ov, q.x, q.y)
         x = p.x; y = p.y
     }
-    onHeightChanged: if (visible && spotAnchor) reposition()
-    onWidthChanged: if (visible && spotAnchor) reposition()
-    onOpened: Qt.callLater(reposition)       // its size has settled by now
     // the choice runs once the menu has closed (its fade done): closing gives the keyboard back to where it was, so a
     // choice that takes the keyboard (Help › Keys: its search box) would lose it to the menu's own close a moment later
     property var chosen: undefined

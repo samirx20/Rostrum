@@ -53,3 +53,12 @@ function floorBelow(root, ov, x, w, y, gap) {
         if (z.y > y && z.x < x + w && z.x + z.w > x) f = Math.min(f, z.y - gap)
     return f
 }
+
+// A popup's content lays itself out a moment after it is built (a Column's size is only right after its next polish): a popup
+// placed from a size that is not settled yet moves a moment after it shows, under a still pointer. Call this on its content
+// item right before placing it (bottom up, every Column / Row / Grid / Flow under it), so it is sized and placed ONCE, before it shows.
+function settle(item) {
+    if (!item) return
+    for (const c of item.children) settle(c)
+    if (typeof item.forceLayout === "function") item.forceLayout()
+}

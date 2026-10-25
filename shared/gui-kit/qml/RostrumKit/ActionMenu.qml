@@ -30,12 +30,22 @@ SmallPopup {
     padding: Theme.grid
     focus: true
     width: Math.max(180, Math.min(320, Math.ceil(widest.labelW + widest.keysW + menu.checkW + Theme.gap + Theme.pad + 2 * padding + 16)))
-    height: list.implicitHeight + 2 * padding
+    // the height comes from the entries, not from the rows (they are built only while open: a height taken from them
+    // grew after the menu showed, and the menu moved under the pointer)
+    height: rowsHeight + 2 * padding
+    readonly property real rowsHeight: {
+        let h = 0
+        for (let i = 0; i < entries.length; i++) {
+            const e = entries[i]
+            h += Theme.popupRow + (i > 0 && entries[i - 1].group !== e.group ? dividerHeight : 0) + (e.heading ? headingHeight : 0)
+        }
+        return h
+    }
     background: MenuBackground { }        // the one menu look: edge + soft shadow
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
 
-    property var at: null                    // where openAt asked for: placed again when the size settles
+    property var at: null                    // where openAt asked for
     function openAt(px, py, flippedX) {
         at = { px: px, py: py, fx: flippedX }
         place()
@@ -44,8 +54,8 @@ SmallPopup {
     function place() {
         if (!at) return
         const ov = parent, py = at.py
-        // a side menu goes by its owner menu as it is NOW (the owner settles its own width and place a moment after
-        // opening; a snapshot taken at the hover left the side menu flipped onto the owner's own rows)
+        // a side menu goes by its owner menu as it is NOW (the owner is sized and placed before it shows and stays put,
+        // so the side menu never lands on the owner's own rows)
         const px = owner ? owner.x + owner.width : at.px, flippedX = owner ? owner.x : at.fx
         let x0 = px, y0 = py
         if (x0 + width > ov.width - Theme.grid) x0 = (flippedX !== undefined ? flippedX : px) - width
@@ -54,9 +64,8 @@ SmallPopup {
         x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))     // asked from a point off the window:
         y = Math.max(Theme.grid, Math.min(y0, ov.height - height - Theme.grid))   // still whole on screen
     }
-    onHeightChanged: place()                 // the entries were set just before openAt: their size comes a moment later
-    Connections { target: menu.parent; function onHeightChanged() { menu.place() } function onWidthChanged() { menu.place() } }   // the window resized: still on screen
-    onWidthChanged: place()
+    // the window resized: still on screen (the one reason a visible menu moves)
+    Connections { target: menu.parent; function onHeightChanged() { if (menu.visible) menu.place() } function onWidthChanged() { if (menu.visible) menu.place() } }
     function hasSub(i) { return !!(entries[i] && entries[i].sub && entries[i].sub.length) }
     function pick(i) {
         const e = entries[i]
@@ -95,11 +104,6 @@ SmallPopup {
         function onClosed() { menu.keptShut = menu.highlighted; list.forceActiveFocus() }
     }
     Loader { id: subLoader; active: false; source: "ActionMenu.qml" }
-    Connections {       // this menu moved or resized after its side menu opened: the side menu follows
-        target: subLoader.item && subLoader.item.visible ? menu : null; ignoreUnknownSignals: true
-        function onXChanged() { subLoader.item.place() }
-        function onWidthChanged() { subLoader.item.place() }
-    }
 
     // measure the widest label and key, to size the menu
     // (FontMetrics.advanceWidth(text) reads without writing: a TextMetrics' text set inside a binding loops)

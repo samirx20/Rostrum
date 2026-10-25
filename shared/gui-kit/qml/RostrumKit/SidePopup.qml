@@ -19,6 +19,7 @@ SmallPopup {
 
     function openBeside(item) { anchorItem = item; place(); open() }
     function place() {
+        settle()
         const ov = parent
         if (!ov || !anchorItem) return
         const p = anchorItem.mapToItem(ov, 0, 0)
@@ -30,6 +31,4 @@ SmallPopup {
         x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))
         y = Math.max(Theme.grid, Math.min(p.y, ov.height - height - Theme.grid))
     }
-    onWidthChanged: if (visible) place()
-    onHeightChanged: if (visible) place()
 }

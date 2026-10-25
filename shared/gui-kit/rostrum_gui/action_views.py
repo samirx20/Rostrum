@@ -125,7 +125,8 @@ SUB = " › "         # a bar name "Chord › Make a chord": the Chord ▾ butto
 
 def _bar_menu(items: list[dict]) -> list[dict]:
     """A titled row's button menu: its actions in order, a divider where `group` changes, the ones sharing a side-menu
-    name (the bar name after " › ") one entry whose `sub` holds them (shown where the first of them ranks)."""
+    name (the bar name after " › ") one entry whose `sub` holds them (shown where the first of them ranks); a menu with only that one entry
+    shows its list directly."""
     out, subs = [], {}
     for i in items:
         row = {"value": i["id"], "label": i["label"], "keys": i["keys"],
@@ -137,6 +138,8 @@ def _bar_menu(items: list[dict]) -> list[dict]:
         else:
             subs[i["sub"]] = {"value": "menu:" + i["sub"], "label": i["sub"], "keys": "", "group": i["group"], "sub": [row]}
             out.append(subs[i["sub"]])
+    if len(out) == 1 and out[0]["sub"]:      # a menu of one side menu and nothing else: its list is the menu (one click, not two)
+        return out[0]["sub"]
     return out
 
 

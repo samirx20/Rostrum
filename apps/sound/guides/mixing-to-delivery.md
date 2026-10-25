@@ -123,6 +123,7 @@ everything that reaches the master), `stems_add_up`, and the master's `master_ga
 `glue_max_reduction_db` and `limiter_max_reduction_db` (all already in the stems). Each stem's `loudness_lufs`,
 `true_peak_db`, `sample_peak_db` and `clipped_samples` are measured on the file written. The render reply's
 `warnings` (and the Export sheet's result line) say in words when a file was cut flat or the stems don't add up.
+A render that made no stems has no `stems`, `bus_stems`, `direct`, `stems_rule` or `stems_add_up` in its manifest: the manifest says nothing about stems that do not exist.
 **Ending a file:** a held note and its reverb stop at the song's `length`; `master(fadeOut=...)`, a later `length` and the `trim` option are in
 `inspect_guide 'script'` ("Ending a song"). `trim` only cuts below -80 dBFS and says `trimmed: false` when sound is still above that at the end.
 Check the end with `look_sound` (`what: "loudness"`), whose `ending` line gives the last 0.5 s level, whether it is still above -50 dBFS and whether the last 50 ms drop faster than the fade (a cut).

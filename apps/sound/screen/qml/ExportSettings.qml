@@ -65,19 +65,23 @@ Column {
         width: root.width
         text: "Version 1"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
     }
-    Text {   // the live check: the sound that plays now against the target (only once both exist)
-        readonly property var check: root.job.check      // one read per change (each read measures it again)
-        width: root.width; wrapMode: Text.WordWrap
-        visible: root.target.shown && !!check && !!check.text
-        text: check && check.text ? (check.ok ? "✓ " : "") + check.text : ""
-        color: check && check.ok ? Theme.ok : Theme.warn
-        font.family: uiFont; font.pixelSize: Theme.body
-    }
-    Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click
-        width: root.width; spacing: Theme.gap; visible: root.job.loudnessSaid !== ""
-        Text { width: parent.width - (undo.visible ? undo.width + Theme.gap : 0); wrapMode: Text.WordWrap
-               text: root.job.loudnessSaid; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
-        Action { id: undo; visible: root.job.canTakeBack; text: "Undo"; font.pixelSize: Theme.label; onClicked: root.job.takeBack() }
+    Column {   // the verdict and what the target set: its room is kept, so picking a target never moves File, Stems or Export under the pointer
+        width: root.width; spacing: Theme.gap
+        height: Math.max(implicitHeight, 62)       // the two lines of the check + the line saying what was set (measured: 2 + 1 lines)
+        Text {   // the live check: the sound that plays now against the target (only once both exist)
+            readonly property var check: root.job.check      // one read per change (each read measures it again)
+            width: root.width; wrapMode: Text.WordWrap
+            visible: root.target.shown && !!check && !!check.text
+            text: check && check.text ? (check.ok ? "✓ " : "") + check.text : ""
+            color: check && check.ok ? Theme.ok : Theme.warn
+            font.family: uiFont; font.pixelSize: Theme.body
+        }
+        Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click
+            width: root.width; spacing: Theme.gap; visible: root.job.loudnessSaid !== ""
+            Text { width: parent.width - (undo.visible ? undo.width + Theme.gap : 0); wrapMode: Text.WordWrap
+                   text: root.job.loudnessSaid; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+            Action { id: undo; visible: root.job.canTakeBack; text: "Undo"; font.pixelSize: Theme.label; onClicked: root.job.takeBack() }
+        }
     }
     Field {
         label: "File"

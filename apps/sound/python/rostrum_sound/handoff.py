@@ -79,11 +79,18 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
             **({"stems_by": r["stemsBy"]} if r.get("stemsBy") else {}), **({"markers_file": MARKERS_FILE} if r.get("markersFile") else {}),
             "clipped_samples": r.get("clippedSamples", 0), "clipped_files": r.get("clippedFiles") or {}, "mastered": master,
             **({"credits": lines} if (lines := packs.credit_lines(r)) else {}),    # CC-BY instruments: credit them where the sound goes
-            # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus
-            # the bus stems do (a track feeding a bus is inside its bus) — under `stems_rule`.
-            "stems_add_up": rule["stems_add_up"], "stems_rule": rule,
-            "direct": r.get("direct", list(stems)),
             "mix": _file(Path(r["file"]).name, r),
+            **_stems_part(r, stems, bus_stems, rule, tracks, buses, clipped, names)}
+
+
+def _stems_part(r, stems, bus_stems, rule, tracks, buses, clipped, names) -> dict:
+    """What the manifest says about stems: nothing at all when none were made (an empty `stems` beside `stems_add_up: true`
+    claimed something about files that do not exist). Without buses the track stems add up to the mix; with buses, the
+    stems of the tracks in `direct` plus the bus stems do (a track feeding a bus is inside its bus), under `stems_rule`."""
+    if not stems and not bus_stems:
+        return {}
+    return {"stems_add_up": rule["stems_add_up"], "stems_rule": rule,
+            "direct": r.get("direct", list(stems)),
             # the id → file mapping: the file is named after the track as the screen shows it, the key is its id
             "stems": {tid: {**_stem(n, (r.get("stemMeters") or {}).get(tid), tracks.get(tid, {}), clipped.get(n, 0)),
                             "name": names.get(tid, tid)} for tid, n in stems.items()},
