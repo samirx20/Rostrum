@@ -29,46 +29,14 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Q_ARG, QMetaObject
-from PySide6.QtGui import QKeySequence
-from PySide6.QtTest import QTest
+
+from .steps_menu import _find, _key, bar_menu
 
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add", "marker-menu", "drum-menu", "drum-fill-menu", "drum-fill-row",
          "fit-bar", "ask", "amount", "bar-menu", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
-
-
-def _find(item, prop):
-    """The first item under `item` with a QML property `prop` (the Timeline: mixRows; the Editor: keysWidth)."""
-    if item.property(prop) is not None:
-        return item
-    for child in item.childItems():
-        found = _find(child, prop)
-        if found is not None:
-            return found
-    return None
-
-
-def _shown(item, name):
-    """The visible item called `name` under `item` (kept-but-hidden delegates are skipped)."""
-    if not item.isVisible():
-        return None
-    if item.objectName() == name and item.width() > 0:
-        return item
-    for child in item.childItems():
-        found = _shown(child, name)
-        if found is not None:
-            return found
-    return None
-
-
-def _key(win, text):
-    seq = QKeySequence(text)
-    if seq.isEmpty():
-        raise ValueError(f"key: {text!r} is not a key")
-    combo = seq[0]
-    QTest.keyClick(win, combo.key(), combo.keyboardModifiers())
 
 
 def do_select_step(bridge, win, word, rest):
@@ -166,35 +134,7 @@ def do_select_step(bridge, win, word, rest):
     elif word == "ask":                       # ask fit_bar / humanize: the action's amounts popover open (as Ctrl+K opens it)
         bridge.run(rest[0])
     elif word == "bar-menu":                  # bar-menu Chord [Make_a_chord]: a real click on the panel's Chord ▾, a side menu open
-        from PySide6.QtCore import QPoint, Qt
-        button = None
-        for _ in range(40):                   # the panel settles once the pointer is quiet (select_slots._settle)
-            button = _shown(win.contentItem(), "actionBar:" + rest[0])
-            if button is not None:
-                break
-            QTest.qWait(25)
-        if button is None:
-            raise RuntimeError(f"bar-menu: no {rest[0]} ▾ in the settings panel for this selection")
-        QTest.qWait(100)                      # its row placed (the panel lays out the frame after)
-        at = button.mapToScene(button.boundingRect().center())
-        at = QPoint(int(at.x()), int(at.y()))
-        QTest.mouseMove(win, at)
-        QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
-        if len(rest) > 1:                     # the pointer rests on the side menu's row (it opens on hover)
-            QTest.qWait(150)
-            row = _shown(win.contentItem(), "menu:menu:" + rest[1].replace("_", " "))
-            if row is None:
-                names = []
-                def walk(it):
-                    if it.objectName().startswith(("menu", "action")) and it.isVisible():
-                        names.append(it.objectName())
-                    for c in it.childItems():
-                        walk(c)
-                walk(win.contentItem())
-                raise RuntimeError(f"bar-menu: no {rest[1]} row in the {rest[0]} menu {names} {bridge.selectedIds}")
-            at = row.mapToScene(row.boundingRect().center())
-            QTest.mouseMove(win, QPoint(int(at.x()), int(at.y())))
-            QTest.qWait(300)
+        bar_menu(bridge, win, rest)
     elif word == "amount":                    # amount along 1: a set-up value in the open amounts popover (live)
         v = rest[1]
         bridge.actions.amounts.setValue(rest[0], v if not v.replace(".", "").replace("-", "").isdigit() else float(v))

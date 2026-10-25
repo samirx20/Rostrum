@@ -9,6 +9,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.after_frame import AfterFrame
 
 DOCKS = ("editor", "mixer", "")
+AHEAD_MS = 1500
 OLD_PAGES = {"timeline": "editor", "mix": "mixer", "instruments": ""}     # `page …` in old scripts
 
 
@@ -25,6 +26,11 @@ class Workspace(QObject):
     @Property(str, notify=changed)
     def dock(self):
         return self._dock
+
+    @Property(int, constant=True)
+    def aheadMs(self):
+        """How long after the window opens the hidden Mixer is made in the background (0 = only when first opened)."""
+        return AHEAD_MS
 
     @Property(bool, notify=changed)
     def library(self):

@@ -51,7 +51,9 @@ def trim(root=None, cap: int | None = None, now: float | None = None) -> int:
     store = Cache(root, cap)
     now = time.time() if now is None else now
     files = sorted(engine_files(store.root))
-    total, freed = store.stats()["bytes"] + sum(f[1] for f in files), 0
+    # the entries are read gently (a pause every few: this runs on a thread beside the window, and 12,000 entry.json
+    # reads in one go held the interpreter, so a click that came meanwhile waited ~0.4 s for its turn)
+    total, freed = sum(e[1] for e in store.entries(gently=True)) + sum(f[1] for f in files), 0
     for used, size, p in files:
         stale_tmp = p.suffix == ".tmp" and now - used > STALE_TMP_S
         if (total <= store.cap or now - used < KEEP_RECENT_S) and not stale_tmp:
