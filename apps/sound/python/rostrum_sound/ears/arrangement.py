@@ -19,7 +19,7 @@ def _clip_len(c: dict) -> float:
 
 def read(data: dict) -> dict:
     """{tracks: [{id, notes: [[start, end, midi, vel]], hits: [[t, drum]], clips: [[start, end]]}], markers, sections,
-    bars, end}."""
+    bars (every bar line, the closing one included), bar_count, end}."""
     tracks, last, broken = [], 0.0, []
     for t in data.get("tracks", []):
         notes = []
@@ -42,7 +42,7 @@ def read(data: dict) -> dict:
     sections = [[s["name"], times.seconds(s["at"], data, "section"), times.seconds(s["end"], data, "section")]
                 for s in data.get("sections", [])]
     return {"tracks": tracks, "markers": markers.all(data), "sections": sections,
-            "bars": meter.bar_seconds(data, end), "end": end, "broken": broken}
+            "bars": meter.bar_seconds(data, end), "bar_count": meter.bar_count(data, end), "end": end, "broken": broken}
 
 
 def starts(track: dict) -> list[float]:
@@ -77,6 +77,6 @@ def summary(arr: dict, near: list[dict]) -> str:
                       "nothing starts on it (nearest " + ", ".join(f'{r["track"]} {r["off_ms"]:+.0f} ms' for r in
                       sorted(m["tracks"], key=lambda r: abs(r["off_ms"]))[:2]) + ")") for m in near)
     broken = arr.get("broken", [])
-    return (f"{arr['end']:.2f} s, {len(arr['bars'])} bars. Tracks: {busy or 'none'}." + (f" Markers: {marks}." if near else "")
+    return (f"{arr['end']:.2f} s, {arr['bar_count']} bars. Tracks: {busy or 'none'}." + (f" Markers: {marks}." if near else "")
             + (f" {len(broken)} held note(s) end before they start and are drawn short: {', '.join(broken[:5])}"
                f"{' …' * (len(broken) > 5)} (the warnings say how to fix them)." if broken else ""))

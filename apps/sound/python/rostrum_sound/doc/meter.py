@@ -102,6 +102,18 @@ def bar_at(root: dict, beat: float) -> float:
     return s.bars + (beat - s.start) / s.bar
 
 
+def bars_long(root: dict, end: float) -> float:
+    """How many bars a song ending at `end` seconds lasts (2.5 = two bars and half of the third): the one bar-count
+    rule. Bar lines from `bar_seconds` include the closing line at the end, so their count is one more than this."""
+    return bar_at(root, tempo.beat_at(root, max(0.0, float(end))))
+
+
+def bar_count(root: dict, end: float) -> int:
+    """The bars a song ending at `end` seconds touches: a bar only partly played counts as one."""
+    n = bars_long(root, end)
+    return max(0, int(n) + (n - int(n) > 1e-6))
+
+
 def bar_start(root: dict, bar: int) -> float:
     """The beat bar `bar` starts on (bars counted from 1, as the ruler shows them)."""
     n = bar - 1
