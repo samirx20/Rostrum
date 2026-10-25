@@ -60,7 +60,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   back to Move; T: click or drag a box and type on the canvas, one change per typing session (previews `text.set` per
   key), Esc / Ctrl+Enter ends; double-click a text to type in it again. No bar of options pops up while typing (no Done
   either: Esc, Ctrl+Enter or a click outside ends); from the first letter
-  the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "Width and slant" / "Gradient and opacity" / "Ligatures and numbers" for a text (kit `sections.WORDS`; the group keys stay Font / Fill / Type). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
+  the new text is selected, so the settings panel shows its settings. A new text's colour is `text_ink.py` (one place): dark on a light spot of the frame, white on a dark one, read where it is created (a colour picked while typing wins). The settings panel's folded groups read "Width and slant" / "Ligatures and numbers" for a text (kit `sections.WORDS`; the group keys stay Font / Type); a text's Fill group is the Colour row's picker (`hooks.on_page` leaves its fields out, so no "+ Gradient and opacity" name is offered). Steps: `shape`, `shapedrag`, `text`, `textbox`, `typetext`, `edittext`.
 - **The view** (`qml/CanvasView.qml`, `ViewInput.qml`, `ViewControls.qml`, `screen2d/spacekey.py`, `view_steps.py`):
   one mapping (Stage's `compScale`, `toComp`, `fromComp`, `inWell`) for everything over the canvas. Ctrl+wheel / pinch
   at the pointer, Space+drag or middle-drag, Ctrl+0 (fit the frame), Shift+1 (fit everything), Ctrl+1, F (Shift+2), Ctrl+= / Ctrl+−; the "Fit · 43 % ▾" menu. The
@@ -143,7 +143,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Box-pick** (`LayerRows.qml` box, `KeySelect.box`): drag on an empty part of the rows. **Stretch** (`KeyDot.qml` Alt+press,
   `KeySelect.beginStretch`): `key.scale {around, by}` around the other end. **Copy / paste keys** (`key_edits.py`): with keys
   picked Ctrl+C copies their ids (the latest copy wins over layers); Ctrl+V pastes onto the selected layers at the
-  playhead (`key.paste {from, at}`, one call per layer, one change).
+  playhead (`key.paste {from, at}`, one call per layer, one change; a layer without a copied setting is skipped and named in the top bar).
 - **`,` / `.`** (`key_edits.stepEvent`): keys, markers, drawings, bar starts and ends; of the selected layers or all.
 - **Stagger…** (`qml/StaggerPopover.qml`, `screen2d/stagger.py`, `backend.stagger`): an action on the bar (2+ layers);
   the popover (kit Popover: light, never dims the window) previews `layer.stagger {by, order}` live in one open gesture; Enter or click away keeps it and closes it, Esc takes it back.
@@ -264,7 +264,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 - **Pen** (`screen2d/pen.py`, `qml/PenOverlay.qml`; button or P): click = corner point, press-drag = smooth point,
   click the first point = close, Enter / Escape = done. The finished path is one change (`layer.add` + `path.set`).
 - With a path layer selected its points (square = corner, round = smooth) show; **click a point** and only its in / out
-  handles show (while the pen draws, the newest point's). A drag is one `path.set_point` gesture (handles stay opposite;
+  handles show (while the pen draws, the newest point's). A drag is one `path.set_point` gesture ending with `path.fit` (the box follows the reshaped path; handles stay opposite;
   Alt moves one alone). A path inside a group is not offset by the group yet.
 - Steps: `pen <x,y> <x,y,hx,hy> … [close]`, `pointpick <layer> <i>`, `pointdrag <layer> <i> <dx> <dy> [in|out]`.
 

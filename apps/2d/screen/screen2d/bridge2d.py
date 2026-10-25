@@ -170,11 +170,12 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     def placed(self) -> dict:
         """The composition as the screen shows it: every time in composition seconds, where it plays (retime.timed:
         a layer timed from a marker, keys on a marker). The playhead is in these seconds; keys on a marker keep `ref`.
-        Worked out once per document and markers (every change gives a new doc.data, every marker read a new
-        marks.times), not on every read: rows, outline and drags read it many times a frame. Callers only read it."""
+        Worked out once per document, markers and scene shown (every change gives a new doc.data, every marker read a new
+        marks.times, showing another scene a new comp_id), not on every read: rows, outline and drags read it many times a
+        frame. Callers only read it."""
         key = (self.doc.data, self.marks.times if self.marks else None)
-        if self._placed is None or any(a is not b for a, b in zip(self._placed[0], key)):
-            self._placed = (key, retime.timed(self.comp(), self.times(), self.comp()["fps"]))
+        if self._placed is None or any(a is not b for a, b in zip(self._placed[0], key)) or self._placed[2] != self.comp_id:
+            self._placed = (key, retime.timed(self.comp(), self.times(), self.comp()["fps"]), self.comp_id)
         return self._placed[1]
 
     def placed_item(self, id_: str) -> dict:

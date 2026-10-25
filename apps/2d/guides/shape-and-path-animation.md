@@ -43,7 +43,7 @@ calls): `layer.add type=path`, then `path.add_point`, `path.set_point`, `path.re
 | `path.close` | Closes (or opens, `closed=false`) the subpath of point `i` (the last one by default). |
 | `path.fit` | Fits the box to the points; the drawing stays where it is. Refused when `x` or `y` has keys (it would move them). |
 
-Point edits never move the box; run `path.fit` when the drawing has grown past it. A path with no points has no `d` yet.
+Point edits through the operations never move the box; run `path.fit` when the drawing has grown past it (dragging a point on the screen does that for you, in the same undo step). A path with no points has no `d` yet.
 
 ## Look of a path
 

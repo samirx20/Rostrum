@@ -1686,8 +1686,8 @@ operation is one (`mask.make`).
 ### Hover names, key list, guides · Now
 - Every button has a hover name with its shortcut after 0.5 s. Ctrl+/ opens the key list (searchable, grouped by
   job). **?** in the top bar: **Guides** (also **F1**, S30) (the how-to guides, searchable, opened in a side drawer next to the canvas so
-  you can follow along), **Shortcuts**, **Connect an AI agent**, **Report a problem** (opens the log folder and copies
-  the version).
+  you can follow along), **Shortcuts**, **Connect an AI agent**, **Report a problem** (a small window: the details a report needs,
+  Open log folder and Copy details).
 - **3E:** *Easy:* help sits where you are working; nothing pops up uninvited. *Rejected:* a first-run tour (people
   skip it, then the hints are gone).
 

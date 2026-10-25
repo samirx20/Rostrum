@@ -183,7 +183,7 @@ clip stays Sound's; the Problems list gets `files.missingRows()`.
 - Rename by clicking the project name (S35): `files.rename(name)` renames the folder beside itself and reopens it
   live; the top bar's name tab opens a field in place (AppShell wires it to the kit's `files`, no app code). An agent
   that had the old folder open is refused on its next step (its folder is gone); it opens the new one. Layout state
-  `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py`.
+  `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py` and `ReportDialog.qml`. A QML handler runs a file action through `files.pickLater` (after the handler ends), never `pick`: New / Open swap the screen that holds the handler.
 - "Exactly where you left it", Find… and Open the last version that works are built in the kit (S36, above); the apps' hooks
   (`place`, `restore_place`, `refs`, `ref_op`, `doc_kind`) are written up for Hem and Priyam, not yet wired in their apps.
 - The guides drawer opens under the start screen when no project is open; StartScreen moves aside by

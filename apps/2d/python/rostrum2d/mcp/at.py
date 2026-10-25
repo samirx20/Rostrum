@@ -59,7 +59,7 @@ def _covering(comp: dict, t: float, x: float, y: float, world: bool = False) -> 
 
 @tools.tool("look_at", {"required": ["x", "y"], "properties": {**ITEM_COMP, **TIME, **POINT, **SPACE}})
 def look_at(ctx, args):
-    """What is at a point at a time: the layers whose box covers it, top first, with their values at that time and their box.
+    """What is at a point at a time: the layers whose painted part covers it (a drawing: a painted pixel or one within 3 canvas px, not its empty canvas), top first, with their values at that time and their box.
     `space` "frame" (default): x, y are composition pixels, the picture. "world": x, y are world px, the canvas around the frame
     (read them off look_world's ruler); the reply says whether the point is inside the frame then. APPROXIMATE: boxes come from each layer's size and transform (text width is estimated);
     effects like glow and shadow, and masks, are not counted. Layers that are covered but invisible (opacity 0) are marked.

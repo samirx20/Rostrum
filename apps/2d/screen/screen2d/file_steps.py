@@ -4,7 +4,7 @@ ProjectFiles, `bridge.files`); one that fails raises, so a scripted run exits no
     new [name] | openproject <doc file or project folder> | startscreen open|close | version [name] (Save a version; the
     time when no name) | duplicateproject <name> (a copy in the projects folder; the window stays;
     `duplicate` alone is the layer step) | filemenu open|close | scenemenu open|new|<scene id>
-    about (Help › About and licences) | agents [agent id] (Help › Connect an AI agent; with an id, its by-hand text open) | help (the Help menu, open) | guide <file.md> (Help › that guide)
+    about (Help › About and licences) | report (Help › Report a problem) | agents [agent id] (Help › Connect an AI agent; with an id, its by-hand text open) | help (the Help menu, open) | guide <file.md> (Help › that guide)
 Names: _ for spaces.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ from PySide6.QtCore import Q_ARG, QMetaObject
 
 from rostrum_gui import guides
 
-WORDS = ("new", "openproject", "startscreen", "version", "duplicateproject", "filemenu", "scenemenu", "about", "agents", "help", "guide")
+WORDS = ("new", "openproject", "startscreen", "version", "duplicateproject", "filemenu", "scenemenu", "about", "report", "agents", "help", "guide")
 
 
 def do_file_step(bridge, win, word, rest, step):
@@ -28,8 +28,8 @@ def do_file_step(bridge, win, word, rest, step):
     if word == "filemenu":
         QMetaObject.invokeMethod(win, "setFileMenuOpen", Q_ARG("QVariant", rest[0] == "open"))
         return
-    if word in ("about", "help"):
-        QMetaObject.invokeMethod(win, "openAbout" if word == "about" else "openHelp")
+    if word in ("about", "help", "report"):
+        QMetaObject.invokeMethod(win, {"about": "openAbout", "help": "openHelp", "report": "openReport"}[word])
         return
     if word == "agents":
         QMetaObject.invokeMethod(win, "openConnectAgent", Q_ARG("QVariant", rest[0] if rest else ""))
