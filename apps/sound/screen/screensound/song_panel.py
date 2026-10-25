@@ -22,7 +22,7 @@ from rostrum_sound import main_mix
 
 from rostrum_sound.doc import meter, tempo
 
-from . import music_map, song_edit, timing
+from . import music_map, song_edit, timeline, timing
 
 ELSEWHERE = ("tempo", "beatsPerBar", "beatUnit", "picture", "length")   # SongList's Bar 1 rows / the Picture corner / the Length picker (below): never rows here
 LENGTHS = (4, 8, 16, 32, 64, 128)                    # the bars the Length picker offers, after "Until the last sound"
@@ -44,7 +44,7 @@ class SongPanel(QObject):
         self._refresh()
         self._read_main()
         for sig in (bridge.docChanged, bridge.docStepped):     # the rows follow a drag live
-            sig.connect(self._refresh)
+            sig.connect(self._follow)
         bridge.mainMixChanged.connect(self._read_main)
 
     @property
@@ -218,8 +218,16 @@ class SongPanel(QObject):
         pass
 
     # ---- inside ------------------------------------------------------------------------------------------------
+    def _follow(self):
+        """A change or a drag's step: the rows only when one of the song's own settings changed. Its rows read only
+        those (its facts are none; times read the tempo and meter, also its own): a note drawn or a fader moved
+        leaves them equal (compared by value: a change may copy the song's small lists, the markers, the tempos …)."""
+        if {k: v for k, v in self.doc.data.items() if k not in timeline.OWN} != self._own:
+            self._refresh()
+
     def _refresh(self):
         root = self.doc.data
+        self._own = {k: v for k, v in root.items() if k not in timeline.OWN}
         evaluated = rows.evaluate(self._layout, self.bridge.shown_values(root), self.doc.kind.facts(root, self.doc),
                                   self._more)
         self._rows.update(evaluated) if self._rows.rows else self._rows.reset(evaluated)

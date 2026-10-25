@@ -35,6 +35,8 @@ def mark_takes(rows: list[dict], root: dict) -> None:
     """The take is named on the block ("Take 2 of 3 · words") for lines with more than one, and the block says which
     way a take is left (`canBack` / `canNext`): the lane draws its ◂ ▸ arrows from that (TakeArrows.qml)."""
     by_id = {ln["id"]: (t, ln) for t in root.get("tracks", []) if t.get("instrument") == "voice" for ln in t.get("lines", [])}
+    if not by_id:               # no voice lines in the song: no pass over every block of the rows
+        return
     for r in rows:
         for b in r.get("blocks", []):
             if b["type"] == "line" and b["id"] in by_id:

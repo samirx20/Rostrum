@@ -80,7 +80,8 @@ class PluginHub(QObject):
         self._failed.connect(self._fail)
         for sig in (bridge.docChanged, bridge.docStepped):     # a knob drag shows live
             sig.connect(self._refresh)
-        bridge.selectedItemsChanged.connect(self.selectedChanged)
+        self._told_panel = None                 # `selectedPanel` as QML last heard it
+        bridge.selectedItemsChanged.connect(self._tell_selected)
 
     def close(self):
         if self._engine is not None:
@@ -229,4 +230,12 @@ class PluginHub(QObject):
             self._panels.pop(owner).deleteLater()
         for p in self._panels.values():
             p.refresh()
-        self.selectedChanged.emit()
+        self._tell_selected()
+
+    def _tell_selected(self):
+        """selectedChanged only when the selected plug-in's panel is another one (or none): a note drawn re-ran the
+        Mix page's plug-in bindings on every edit and drag step."""
+        now = self.selectedPanel
+        if now is not self._told_panel:
+            self._told_panel = now
+            self.selectedChanged.emit()

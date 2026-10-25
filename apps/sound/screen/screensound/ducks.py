@@ -132,13 +132,15 @@ class DuckHub(QObject):
     def _refresh(self):
         if self._duck and not self.doc.has(self._duck):
             self._duck = ""
-        if not self._duck:
-            self._panel = {}
-            self._rows.reset([])
-            return self.changed.emit()
+        if not self._duck:                  # none open: news only when one was (every edit and drag step comes here)
+            if self._panel or self._rows.rows:
+                self._panel = {}
+                self._rows.reset([])
+                self.changed.emit()
+            return
         d = self._item()
         track = self.doc.parent_of(self._duck)[0]
-        names = {t["id"]: self.bridge.label_of(t) for t in self.doc.items() if t["type"] == "track"}
+        names = {t["id"]: self.bridge.label_of(t) for t in self.doc.data.get("tracks", [])}   # (never every note)
         self._panel = {"id": self._duck, "track": track, "trackName": names[track],
                        "under": [{"id": u, "label": names.get(u, u)} for u in d["under"]],
                        "addable": [{"id": i, "label": n} for i, n in names.items() if i != track and i not in d["under"]]}

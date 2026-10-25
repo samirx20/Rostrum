@@ -62,6 +62,8 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
         key = lambda bl: sorted(json.dumps(b, sort_keys=True) for b in bl)       # noqa: E731
         truth = next(r for r in bridge.rows_now() if r["id"] == "lead")["blocks"]
         assert key(screen["row"]) == key(truth) and key(screen["roll"]) == key(bridge._view["roll"]["blocks"])
+        by = {b["id"]: b for b in screen["roll"]}          # the velocity readout's blocks: the selected ones, as shown
+        assert bridge.rollPicked == [by[i] for i in bridge.selectedIds if i in by]
     nid = bridge.drawAt(1.0, 62)
     bridge.endDrag()
     same()

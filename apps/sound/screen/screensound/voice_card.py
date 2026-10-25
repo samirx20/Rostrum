@@ -85,6 +85,8 @@ def mark_speaking(rows: list[dict], ids) -> None:
 
 def mark_waiting(rows: list[dict], ids) -> None:
     """A line waiting for the voice model to be downloaded says so on its block."""
+    if not ids:                 # (none waiting: no pass over every block of the rows)
+        return
     for r in rows:
         for b in r.get("blocks", []):
             if b["type"] == "line" and b["id"] in ids:

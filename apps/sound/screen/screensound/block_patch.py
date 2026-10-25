@@ -9,17 +9,23 @@ patch (`resets`), so the screen shows the model's value again even when that val
 """
 from __future__ import annotations
 
+from .block_memo import same_ends
+
 MAX = 64            # changed blocks a patch may carry; more, and the whole list goes
 
 
 def diff(old: list | None, new: list) -> tuple[list, list] | None:
-    """(ids gone, blocks new or changed) taking `old` to `new`; None when it is cheaper to send `new` whole."""
+    """(ids gone, blocks new or changed) taking `old` to `new`; None when it is cheaper to send `new` whole. A block
+    the edit did not touch is the very same object in both (block_memo.py): only what lies between the lists' same
+    ends is compared, so a patch costs what changed, not the track's length."""
     if old is None:
         return None
-    was = {b["id"]: b for b in old}
-    ids = {b["id"] for b in new}
+    a, b = same_ends(new, old)
+    was = {x["id"]: x for x in old[a:len(old) - b]}
+    mid = new[a:len(new) - b]
+    ids = {x["id"] for x in mid}
     gone = [i for i in was if i not in ids]
-    put = [b for b in new if was.get(b["id"]) != b]
+    put = [x for x in mid if was.get(x["id"]) != x]
     n = len(gone) + len(put)
     return (gone, put) if n <= MAX and n < max(len(new), 1) else None
 

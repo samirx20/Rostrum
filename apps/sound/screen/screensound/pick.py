@@ -48,11 +48,13 @@ def block_at(row: dict, t: float, lane: float, tol: float, lane_tol: float = 1.0
 def roll_at(roll: dict, t: float, row: float, tol: float) -> str:
     """In the piano roll: the note on key `row` (a MIDI number) or the hit on drum row `row` at time t, or a clip
     (any row); "" when none."""
-    best, key = "", None
+    best, key, r = "", None, int(round(row))
+    drums = roll.get("drums") or []
+    drum = drums[r] if 0 <= r < len(drums) else None       # the drum on that row (each hit compared to it, not looked up)
     for b in roll.get("blocks", []):
-        if b["type"] == "note" and int(round(row)) not in b["keys"]:
+        if b["type"] == "note" and r not in b["keys"]:
             continue
-        if b["type"] == "hit" and roll["drums"].index(b["drum"]) != int(round(row)):
+        if b["type"] == "hit" and b["drum"] != drum:
             continue
         s = _score(b, t, tol)
         if s is not None and (key is None or (s, -b["t"]) < key):

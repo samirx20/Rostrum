@@ -90,6 +90,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
         self.selectedItemsChanged.connect(self._drop_point)
+        self.picksChanged.connect(self._roll_picks)              # the velocity readout's blocks (rows_view)
         self._follow_selection()
         self._rebuild()
         self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping, pointing=pointer_quiet.busy)
@@ -134,6 +135,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         (their lanes keep their picture until it is redrawn); only a row added or removed is made or freed. A plain
         list made every row again on every change, so every lane showed blank until it painted (S63, after a take)."""
         return self._lanes
+
+    @Property("QVariantList", notify=S.rollPickedChanged)
+    def rollPicked(self):
+        """The roll's selected notes / hits / clips (the velocity strip's readout): only those, never every block."""
+        return self.__dict__.get("_roll_picked", [])
 
     @Property("QVariantList", notify=S.markersChanged)
     def markers(self):

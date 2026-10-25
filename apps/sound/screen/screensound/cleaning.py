@@ -55,7 +55,7 @@ class CleanedTake(QObject):
         self._measure = Measures(self)                # "Did it help?": measured once per take
         self._measure.changed.connect(self.changed)
         self._download = ModelFetch(self)         # asked first when a step needs a model that is not installed
-        self._recipes: dict[str, str] = {}        # clip id -> the clean-up it had when last looked at (a change = made on release)
+        self._recipes: dict[str, tuple] = {}      # track id -> (the track, {clip id: its clean-up}) when last looked at (a change = made on release)
         self._pending: list[str] = []             # the clips a download was asked for (made once it lands)
         self._steps: dict[str, list] = {}         # clip id -> [progress notes seen, notes expected] while making
         self._download.ready.connect(lambda: self.makeFor(self._pending or [self._clip]))
@@ -260,13 +260,21 @@ class CleanedTake(QObject):
         """Made on release (DESIGN.md §3.10 step 3): a slider let go or a switch flipped changes a selected clip's
         clean-up, and its cleaned take starts at once (from the cache when it was made before: undo / redo / back to an
         earlier value are instant). A clip seen for the first time just records its clean-up."""
-        doc, now, changed = self.bridge.doc, {}, []
+        doc, now, changed, was_all = self.bridge.doc, {}, [], None
         for t in doc.data.get("tracks", []):
+            seen = self._recipes.get(t["id"])
+            if seen is not None and seen[0] is t:          # the very same track: its clips' clean-ups as they were
+                now[t["id"]] = seen
+                continue
+            if was_all is None:                             # every clip's last clean-up (a clip may change track)
+                was_all = {i: k for _, rs in self._recipes.values() for i, k in rs.items()}
+            rs = {}
             for c in t.get("clips", []):
                 r = cleanup.recipe_of(c)
-                now[c["id"]] = key = str(sorted(r.items()))
-                if r and c["id"] in self._recipes and self._recipes[c["id"]] != key and c["id"] in self.bridge._picks.ids:
+                rs[c["id"]] = key = str(sorted(r.items()))
+                if r and c["id"] in was_all and was_all[c["id"]] != key and c["id"] in self.bridge._picks.ids:
                     changed.append(c["id"])
+            now[t["id"]] = (t, rs)
         self._recipes = now
         if changed:
             self.makeFor(changed)

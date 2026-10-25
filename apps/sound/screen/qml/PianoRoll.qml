@@ -79,7 +79,7 @@ Panel {
                 visible: bars.visibleX(x - p.keysWidth); color: Theme.fg4; opacity: 0.6 }
         }
         Repeater {   // a voice line with several takes: ◂ ▸ on its block (TakeArrows.qml)
-            model: p.blocks.filter(b => b.canBack || b.canNext)
+            model: p.kind === "audio" ? p.blocks.filter(b => b.canBack || b.canNext) : []   // only a voice track (audio) has takes
             TakeArrows { required property var modelData; block: modelData; ruler: bars; xOffset: p.keysWidth; inset: well.height * 0.2 + 5 }
         }
         Rectangle { x: p.keysWidth + Math.round(bars.xOf(backend.time)); width: 1; height: well.height

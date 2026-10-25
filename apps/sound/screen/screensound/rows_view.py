@@ -77,7 +77,7 @@ class RowsView:
         self._marks_on([t for t in tracks if t["id"] not in made])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
         marks = timeline.markers(root)
-        song = timeline.song(root, tracks, marks)
+        song = timeline.song(root, tracks, marks, self._memo)
         laid = [shape(r) for r in rows]
         self._view = {"rows": rows, "shape": laid, "markers": marks, "song": song,
                       "roll": old.get("roll", {}), "rollShape": old.get("rollShape")}
@@ -104,8 +104,11 @@ class RowsView:
         if self._mix_only(root):
             self._shown = root
             return
+        relaid = change and self._lanes_now() != self._open
+        if root is self._shown and not relaid:    # a drag's drop: its last step already shows this very song
+            return
         changed = stepped.changed_tracks(self._shown, root)
-        if changed is None or (change and self._lanes_now() != self._open):
+        if changed is None or relaid:
             return self._rebuild()
         made = {k: v for k, v in self._made.items() if k not in changed}
         tracks = timeline.track_rows(root, self._open, made, self._memo)
@@ -115,8 +118,8 @@ class RowsView:
         before = self._view["rows"]
         same = rows == before                         # a fader or a pan moves no row: the screen is told nothing
         self._view["rows"] = rows
-        if timeline.song_length(root, tracks, self._view["markers"]) != self._view["song"]["length"]:
-            self._view["song"] = timeline.song(root, tracks, self._view["markers"])   # the rest follows the tempo
+        if timeline.song_length(root, tracks, self._view["markers"], self._memo) != self._view["song"]["length"]:
+            self._view["song"] = timeline.song(root, tracks, self._view["markers"], self._memo)   # the rest follows the tempo
             self._tv.setLength(self._length())
             self.songChanged.emit()
         if same:
@@ -136,12 +139,28 @@ class RowsView:
         relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
         if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
             p = block_patch.diff(before.get("blocks"), roll.get("blocks", []))
+            by = self.__dict__.setdefault("_roll_by", {})
             if p:
+                for i in p[0]:
+                    by.pop(i, None)
+                by.update((b["id"], b) for b in p[1])
                 self.rollPatched.emit(*p)     # a few: the screen patches the list it shows (block_patch.py)
             else:
+                self.__dict__["_roll_by"] = {b["id"]: b for b in roll.get("blocks", [])}
                 self.rollBlocksChanged.emit()
+            self._roll_picks()
         if relaid:
             self.rollChanged.emit()
+
+    def _roll_picks(self):
+        """The roll's selected blocks again (`rollPicked`, after a pick or when the roll's blocks changed), looked up
+        by id: a pick or an edit costs the selected blocks, not every block of the track. rollPickedChanged only when
+        they read differently."""
+        by = self.__dict__.get("_roll_by", {})
+        now = [by[i] for i in self._picks.ids if i in by]
+        if now != self.__dict__.get("_roll_picked", []):
+            self.__dict__["_roll_picked"] = now
+            self.rollPickedChanged.emit()
 
     def _mix_only(self, root) -> bool:
         """The change (or step) set only a track's own level, pan, reverb or output, and no lane is open: no row,

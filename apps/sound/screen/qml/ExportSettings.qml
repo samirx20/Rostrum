@@ -17,6 +17,8 @@ Column {
     width: parent ? parent.width : 0
     spacing: Theme.gap
     property bool more: false          // "More": the sample rate (DESIGN.md §2.4), for the file and each version
+    onVisibleChanged: job.watch(visible)   // closed, the live check waits: it is measured again once the sheet shows
+    Component.onCompleted: job.watch(visible)
 
     component Field: Column {         // a label, its control under it at full width (the sheet is narrow)
         id: field
