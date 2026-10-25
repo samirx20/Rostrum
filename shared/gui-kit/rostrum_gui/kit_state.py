@@ -38,7 +38,7 @@ class KitState:
         self.agent = None                   # agent_watch.AgentWatch (the bridge makes it)
         self.shown_sel = None               # selectedItem as last announced (_follow_doc re-announces only a change)
         self.held = None                    # (param, item ids): the field being typed in and the items it is for
-        self.told = [None, None]            # [historyCount, (undo, redo, versions)] as QML last heard them
+        self.told = [0, ("", "", [])]       # [historyCount, (undo, redo, versions)]: worked out once per change
         self.touched = None                 # what the last change touched (touched.py); None = can't tell: everything
         self.paced = None                   # news.OnceAFrame: the panel's rows during a drag (the bridge makes it)
 

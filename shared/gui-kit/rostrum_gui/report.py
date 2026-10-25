@@ -1,5 +1,5 @@
-r"""? › Report a problem (INTERACTION.md 1.17): the log folder opens and the details a report needs are copied, so the
-person pastes them into a mail or an issue. The launcher writes every run's log to %LOCALAPPDATA%\Rostrum\logs
+r"""? › Report a problem (INTERACTION.md 1.17): a small window (qml ReportDialog.qml) shows the details a report needs
+and the log folder, with two buttons: Open log folder, Copy details; the person pastes them into a mail or an issue. The launcher writes every run's log to %LOCALAPPDATA%\Rostrum\logs
 (tools/release/rostrum.pyw); a development run without the launcher has none, and the line says so. A scripted run
 never opens a folder or touches the person's clipboard: it only says what it would have done.
 """
@@ -27,16 +27,24 @@ def details(app_name: str, app: str, version: str) -> str:
                       f"Log: {log}" if log else f"Log: none yet in {LOGS} (started without the Rostrum launcher)"])
 
 
-def report(app_name: str, app: str, version: str) -> str:
-    """Open the log folder, copy the details; returns the line the message bar shows."""
+def open_logs() -> str:
+    """The Open log folder button: opens it; returns the line the dialog shows. A scripted run only says what it would do."""
     from rostrum_core import userhome
-    text = details(app_name, app, version)
+    if not LOGS.is_dir():
+        return f"There is no log folder yet ({LOGS}): this run did not start through the Rostrum launcher."
     if userhome.scripted():
-        return f"Report a problem: would open {LOGS} and copy {len(text.splitlines())} lines (a scripted run does neither)."
+        return f"Would open {LOGS} (a scripted run opens no folder)."
     from PySide6.QtCore import QUrl
-    from PySide6.QtGui import QDesktopServices, QGuiApplication
-    QGuiApplication.clipboard().setText(text)
-    if LOGS.is_dir():
-        QDesktopServices.openUrl(QUrl.fromLocalFile(str(LOGS)))
-        return f"The log folder is open, and {app_name} {version} with the log's name is copied: paste it into your report."
-    return f"No log folder yet ({LOGS}): {app_name} {version} and your system are copied: paste them into your report."
+    from PySide6.QtGui import QDesktopServices
+    QDesktopServices.openUrl(QUrl.fromLocalFile(str(LOGS)))
+    return "The log folder is open."
+
+
+def copy_details(app_name: str, app: str, version: str) -> str:
+    """The Copy details button: the details go to the clipboard (never in a scripted run); returns the line shown."""
+    from rostrum_core import userhome
+    if userhome.scripted():
+        return "Would copy the details (a scripted run leaves the clipboard alone)."
+    from PySide6.QtGui import QGuiApplication
+    QGuiApplication.clipboard().setText(details(app_name, app, version))
+    return "Copied: paste it into your report."

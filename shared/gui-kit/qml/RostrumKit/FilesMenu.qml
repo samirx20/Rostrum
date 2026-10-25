@@ -41,7 +41,7 @@ IconButton {
     MenuSpot { id: spot; anchor: root; menu: menu; x0: Theme.gap }
     ActionMenu {
         id: menu
-        onPicked: (v) => { if (root.extra.some(e => e.value === v)) root.picked(v); else Qt.callLater(() => root.source.pick(v)) }      // later: New / Open swap the whole screen, and this menu goes with it (never inside its own handler)
+        onPicked: (v) => { if (root.extra.some(e => e.value === v)) root.picked(v); else root.source.pickLater(v) }      // later: New / Open swap the whole screen, and this menu goes with it (never inside its own handler)
     }
     Connections {
         target: root.source
@@ -57,7 +57,7 @@ IconButton {
             sequence: modelData[1]
             context: Qt.WindowShortcut
             enabled: root.keysOn && (root.source.hasProject || modelData[0] === "new" || modelData[0] === "open")
-            onActivated: root.source.pick(modelData[0])
+            onActivated: root.source.pickLater(modelData[0])      // later: New swaps the screen this key belongs to
         }
     }
 
@@ -94,7 +94,7 @@ IconButton {
             spacing: Theme.gap
             Text { anchors.verticalCenter: parent.verticalCenter; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
                    text: "Copy made. This window stays on the original." }   // the message line names the copy
-            Button { text: "Open the copy"; kind: "primary"; onClicked: { notice.close(); root.source.pick("copy") } }
+            Button { text: "Open the copy"; kind: "primary"; onClicked: { notice.close(); root.source.pickLater("copy") } }
         }
     }
 }

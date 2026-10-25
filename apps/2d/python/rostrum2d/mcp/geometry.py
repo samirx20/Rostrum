@@ -63,6 +63,7 @@ def flatten(comp: dict, t: float, world: bool = False) -> list[dict]:
             out.append({"id": layer["id"], "type": layer["type"], "name": layer.get("name", ""), "props": p, "opacity": opacity,
                         "in_time": in_time, "matrix": m, "size": (w, h), "within": path,
                         "paint": boxes.painted(layer, w, h, frame_number(t, comp.get("fps", 30)), p),
+                        "frame": frame_number(t, comp.get("fps", 30)), "layer": layer,
                         "broken": follow.problem(layer, layers),
                         "matte_for": mattes.get(layer["id"], []), "matte_missing": _missing_matte(layer, layers),
                         "corners": [_apply(m, x, y) for x, y in ((0, 0), (w, 0), (w, h), (0, h))]})
@@ -115,7 +116,10 @@ def covers(node: dict, x: float, y: float) -> bool:
         return False
     lx, ly = _apply(inv, x, y)
     x0, y0, x1, y1 = node["paint"]
-    return x0 <= lx <= x1 and y0 <= ly <= y1
+    if not (x0 <= lx <= x1 and y0 <= ly <= y1):
+        return False
+    w, h = node["size"]
+    return boxes.ink_at(node["layer"], node["frame"], lx / (w or 1), ly / (h or 1))      # a drawing: a painted pixel
 
 
 def on_screen(node: dict, width: float, height: float) -> bool:

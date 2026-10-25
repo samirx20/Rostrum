@@ -93,7 +93,7 @@ Rectangle {
                    text: "Copy made: " + start.copyName + ". This window stays on the original."; elide: Text.ElideMiddle
                    color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
             Button { id: openCopy; anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-                     text: "Open the copy"; kind: "primary"; onClicked: { start.copyName = ""; start.source.pick("copy") } }
+                     text: "Open the copy"; kind: "primary"; onClicked: { start.copyName = ""; start.source.pickLater("copy") } }
         }
 
         Rectangle {     // a refused file the history can rebuild
@@ -120,10 +120,10 @@ Rectangle {
         Row {       // the ways in: New (big, the accent), Open…, the sample
             spacing: start.cardGap
             Way { main: true; label: "+  New"; hint: start.source && start.source.keys.new ? start.source.keys.new : ""
-                  onPicked: start.source.pick("new")
+                  onPicked: start.source.pickLater("new")
                   HoverTip { text: "New " + (start.source ? start.source.noun : ""); help: "Made at once in your projects folder, saved as you work"
                              hovered: parent.hovered } }
-            Way { label: "Open…"; hint: start.source ? start.source.keys.open : ""; onPicked: start.source.pick("open")
+            Way { label: "Open…"; hint: start.source ? start.source.keys.open : ""; onPicked: start.source.pickLater("open")
                   HoverTip { text: "Open a project folder"; hovered: parent.hovered } }
             Way { visible: !!start.source && start.source.hasSample; label: "Open the sample"
                   onPicked: start.source.openSample()

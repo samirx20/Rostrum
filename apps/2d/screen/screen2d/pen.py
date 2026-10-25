@@ -211,9 +211,17 @@ class Pen(QObject):
 
     @Slot()
     def endPointDrag(self):
-        d, self._drag, self._grab = self._drag, None, None
+        d, grab, self._drag, self._grab = self._drag, self._grab, None, None
         if d is not None:
-            self.b.guard(lambda: self.b.done(d.end(), ""))
+            self.b.guard(lambda: self.b.done(d.end(calls=self._fit_calls(grab[0])), ""))
+
+    def _fit_calls(self, lid: str) -> list[dict]:
+        """The edit's last step: the box follows the reshaped path (`path.fit`: the drawing stays where it is), so the
+        resize box, the outline and a click all agree with what is painted. Not when x or y has keys (fit refuses)."""
+        item = self.b.doc.item(lid)
+        if any(k["prop"] in ("x", "y") for k in item.get("keys", [])):
+            return []
+        return [{"op": "path.fit", "target": [lid], "args": {}}]
 
 
 def _flat(p, i):

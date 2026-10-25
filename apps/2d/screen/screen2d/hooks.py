@@ -1,7 +1,7 @@
 """Rostrum2D's hooks into the kit's DocBridge: the 2D animation model (route.py, exprs.py). A mix-in for Bridge2D."""
 from __future__ import annotations
 
-from rostrum2d import fields as F, stepped
+from rostrum2d import fields as F, fill_fields, stepped
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
@@ -23,10 +23,10 @@ for _t in F.LAYERS:                      # Locked and Hidden: the lock and eye o
 ON_PAGE[FRAME] |= {"homeX", "homeY", "timing"}
 
 
-# A text's folded groups would echo its essential rows (Font, Colour) as "+ Font" / "+ Fill", or say nothing ("+ Type"): they
-# read as what they hold.
-# Only the words on screen change; the groups' keys stay "Font" / "Fill" (kit sections.WORDS).
-sections.WORDS.update({("text", "Font"): "Width and slant", ("text", "Fill"): "Gradient and opacity", ("text", "Type"): "Ligatures and numbers", (FRAME, "Ride"): "Ride a path"})
+# A text's folded groups would echo its essential rows (Font) as "+ Font", or say nothing ("+ Type"): they read as what they
+# hold. (Its Fill group is the Colour row's picker: gradient and opacity live there, so no name is offered for it.)
+# Only the words on screen change; the groups' keys stay "Font" / "Type" (kit sections.WORDS).
+sections.WORDS.update({("text", "Font"): "Width and slant", ("text", "Type"): "Ligatures and numbers", (FRAME, "Ride"): "Ride a path"})
 
 
 def _home_reset(rows: list[dict], item: dict | None) -> list[dict]:
@@ -64,7 +64,8 @@ class Hooks2D:
         return super().selection_label(ids)
 
     def on_page(self, item):             # fields the screen shows elsewhere (agents still set them through the operation)
-        return ON_PAGE.get(item.get("type"), set()) | _open_line(item) | super().on_page(item)
+        painted = fill_rows.HIDDEN if item.get("type") in fill_fields.OWNERS else set()   # the Fill row's picker has them
+        return ON_PAGE.get(item.get("type"), set()) | painted | _open_line(item) | super().on_page(item)
 
     def starts(self, item):              # the Text tool's top-left start isn't a change (a group opens only for one)
         return F.STARTS.get(item.get("type"), {})

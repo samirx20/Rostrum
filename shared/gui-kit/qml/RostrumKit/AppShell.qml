@@ -140,6 +140,7 @@ QQC.ApplicationWindow {
     color: Theme.app
 
     function openAbout() { noticesDialog.get().open() }
+    function openReport() { reportDialog.get().open() }
     function openConnectAgent(handFor) {  // handFor: an agent id whose Set up by hand opens with it (scripted steps)
         agentsDialog.get().open()
         if (handFor) agentsDialog.item.showHand(handFor)
@@ -173,6 +174,7 @@ QQC.ApplicationWindow {
         job: win.exporter
         onCommandClicked: commandBar.open()
         onAboutClicked: win.openAbout()
+        onReportClicked: win.openReport()
         onConnectAgentClicked: win.openConnectAgent("")
         onGuideClicked: (url) => win.openGuide(url)
         onGuidesClicked: win.openGuides()
@@ -248,6 +250,8 @@ QQC.ApplicationWindow {
     FirstUse { id: keyList; sourceComponent: Component { KeyList { keys: win.allKeys; onDone: win.backToWork() } } }
     FirstUse { id: noticesDialog; sourceComponent: Component {      // the licence list is read only then too
         NoticesDialog { data: typeof notices !== "undefined" ? notices : null; onClosed: win.backToWork() } } }
+    FirstUse { id: reportDialog; sourceComponent: Component {
+        ReportDialog { data: typeof notices !== "undefined" ? notices : null; onClosed: win.backToWork() } } }
     FirstUse { id: agentsDialog; sourceComponent: Component {
         ConnectAgentDialog { data: typeof agents !== "undefined" ? agents : null; onClosed: win.backToWork() } } }
 }

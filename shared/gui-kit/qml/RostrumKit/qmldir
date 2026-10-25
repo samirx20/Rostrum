@@ -50,6 +50,7 @@ MenuBackground 1.0 MenuBackground.qml
 MenuSpot 1.0 MenuSpot.qml
 CurveField 1.0 CurveField.qml
 NoticesDialog 1.0 NoticesDialog.qml
+ReportDialog 1.0 ReportDialog.qml
 FirstUse 1.0 FirstUse.qml
 GuidesDrawer 1.0 GuidesDrawer.qml
 KeyList 1.0 KeyList.qml
