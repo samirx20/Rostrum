@@ -75,7 +75,7 @@ FieldFrame {
     onCommitted: (t) => {
         if (expressions && t.trim().startsWith("=")) { f.typedExpression(t.trim()); return }
         var v = VK.parse(display, t)
-        if (isNaN(v)) { input.text = text; return }           // not a number (the words themselves too): keep the value
+        if (isNaN(v)) { problem = t.trim() === "" ? "Type a number" + (label ? " for " + label : "") : "“" + t + "” is not a number" + (label ? " for " + label : ""); input.text = text; return }   // keep the value, and say so
         const n = VK.shown(display, v), tol = showStep * 1e-6
         if (n < showRange[0] - tol || n > showRange[1] + tol) {   // typed out of range: refused with the range, never clamped
             problem = (label ? label + " is " : "Allowed: ") + refusalRange()

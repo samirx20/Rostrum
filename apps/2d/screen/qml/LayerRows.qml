@@ -74,8 +74,7 @@ ListView {
     function boxStart(p) { keyBox.start(p) }
     function boxTo(p) { keyBox.to(p) }
     function boxEnd(how) { keyBox.end(how) }
-    KeyBox { id: keyBox; list: list; ruler: list.ruler }
-
+    KeyBox { id: keyBox; objectName: "keyBox"; list: list; ruler: list.ruler }
     footer: SoundRow {   // the project's sound, the last row (only when there is sound; kept in compact)
         width: ListView.view.width; ruler: list.ruler; labelWidth: list.labelWidth
         y: list.spacing

@@ -21,6 +21,8 @@ Item {
         else if (key === "everything") vc.fitEverything()
         else if (key === "sel") vc.fitSelection()
         else if (key === "look") vc.look.toggle()
+        else if (key === "in") vc.view.step(1)
+        else if (key === "out") vc.view.step(-1)
         else if (key === "snap") backend.snap.setOn(!backend.snap.on)
         else if (key === "framepath") backend.motionPath.setFramePath(!backend.motionPath.framePath)
         else if (key === "blur") backend.playback.setBlur(!backend.playback.blur)
@@ -28,12 +30,8 @@ Item {
         else view.show(Number(key) / 100)
     }
     function entries() {
-        const out = [{ value: "fit", label: "Fit the frame", keys: "Ctrl 0", group: "a" },
-                     { value: "everything", label: "Fit everything", keys: "Shift 1", group: "a" }]
-        for (const p of [25, 50, 100, 200, 400])
-            out.push({ value: String(p), label: p + " %", keys: p === 100 ? "Ctrl 1" : "", group: "a" })
-        if (backend.selectedLayer !== "") out.push({ value: "sel", label: "Zoom to selection", keys: "F", group: "a" })
-        out.push({ value: "look", label: "Look through the frame", keys: "Shift C", checked: vc.look.on, group: "a" })
+        const out = backend.viewEntries()                   // the steps Ctrl+K lists too (view_commands.py)
+        for (const e of out) if (e.value === "look") e.checked = vc.look.on
         out.push({ value: "snap", label: backend.snap.on ? "Turn snapping off" : "Turn snapping on", group: "b" })
         out.push({ value: "framepath", label: "Show the frame's path",            // faint while something else is picked
                    checked: backend.motionPath.framePath, group: "b" })
@@ -49,6 +47,7 @@ Item {
     function openMenu() {                       // under the button, right edges lined up (window px: the kit's menu)
         spot.open(vc.entries())
     }
+    Connections { target: backend; function onViewRequested(key) { vc.act(key) } }       // Ctrl+K's view commands
     MenuSpot { id: spot; anchor: vc; menu: menu; align: "right" }
     Button {
         id: button
@@ -65,5 +64,5 @@ Item {
     Shortcut { sequence: "Shift+C"; enabled: !vc.typing; onActivated: vc.look.toggle() }
     Shortcut { sequences: ["F", "Shift+2", "@"]; enabled: !vc.typing; onActivated: vc.fitSelection() }
     Shortcut { sequences: ["Ctrl+=", "Ctrl++", StandardKey.ZoomIn]; onActivated: vc.view.step(1) }
-    Shortcut { sequences: ["Ctrl+-", StandardKey.ZoomOut]; onActivated: vc.view.step(-1) }
+    Shortcut { sequence: "Ctrl+-"; onActivated: vc.view.step(-1) }
 }

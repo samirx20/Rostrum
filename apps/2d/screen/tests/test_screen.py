@@ -100,6 +100,20 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     assert not keys_of(box, "x") and not keys_of(box, "y") and (box["x"], box["y"]) == (200, 90)
 
 
+def test_alt_drag_copies_the_layer_and_moves_the_copy_in_one_undo_step(bridge):
+    layers = lambda: [c["id"] for c in bridge.comp()["layers"]]  # noqa: E731
+    before, n = layers(), len(bridge.doc.history.changes)
+    bridge.select("box")
+    assert bridge.beginCopyMove()
+    bridge.moveBy(30, 0)
+    bridge.endDrag()
+    copy = next(i for i in layers() if i not in before)
+    assert (bridge.doc.item("box")["x"], bridge.doc.item(copy)["x"]) == (200, 230) and bridge.selected_layers() == [copy]
+    assert len(bridge.doc.history.changes) == n + 1
+    bridge.undo()
+    assert layers() == before and bridge.doc.item("box")["x"] == 200
+
+
 def test_drag_in_an_auto_layout_reorders_in_one_undo_step(bridge):
     ids = lambda: [c["id"] for c in bridge.doc.item("row")["layers"]]  # noqa: E731
     assert ids() == ["ra", "rb", "rc"]

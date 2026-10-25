@@ -13,7 +13,8 @@ class FileCommands(SlotMixin):
 
     def _commands(self):
         out = [c for c in super()._commands() if not c["key"].startswith("layer.add:")]
-        return (self.files.commands() if self.files else []) + self._adder.commands() + out
+        files = [{**c, "weight": 1} for c in self.files.commands()] if self.files else []   # an action on the picked layer
+        return files + self._adder.commands() + out                                      # wins a tie: "dupl" → Duplicate
 
     @Slot(str, result=bool)
     def run(self, key):
