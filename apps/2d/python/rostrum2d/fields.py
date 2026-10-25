@@ -107,10 +107,11 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     N("rotation", "Rotation", "Transform", -36000, 36000, 0.1, "°"),
     N("opacity", "Opacity", "Transform", 0, 1, 0.01, default=1.0, display="percent"),
     # Stretch: Scale's uneven part (a side handle's drag on the canvas sets it). Its row shows under Scale only while it
-    # is uneven, never as a second scale control to look for.
-    N("scaleX", "Stretch X", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
+    # is uneven, never as a second scale control to look for. Below 0 it mirrors the layer (a resize dragged past the
+    # opposite side does that on the canvas).
+    N("scaleX", "Stretch X", "Transform", -100, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
       help="Scale across, on top of Scale"),
-    N("scaleY", "Stretch Y", "Transform", 0, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
+    N("scaleY", "Stretch Y", "Transform", -100, 100, 0.01, "×", default=1.0, display="percent", shown="changed",
       help="Scale up and down, on top of Scale"),
     N("anchorX", "Anchor X", "Anchor", -10, 10, 0.01, "", S, default=0.5, display="percent",
       help="The point it turns and scales around: 0 % = its left edge, 50 % = its centre, 100 % = its right edge"),

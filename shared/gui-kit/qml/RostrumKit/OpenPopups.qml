@@ -12,9 +12,12 @@ import QtQuick
 //                                 ("Esc" while any popup is open; a menu's Up / Down / Enter; a clicked slider's Left / Right)
 // A popup lists the keys it uses in `ownKeys`; a control does the same with `ownKeys` and is asked while it has the keyboard
 // (AppShell keeps `focused` up to date). Every other key stays the window's: Ctrl+Z and Space work with a menu open.
+//   OpenPopups.covered            a screen over the whole work is open (`covers`: the start screen): every key is its own,
+//                                 so `takes` is true for all of them; only its own Shortcuts (New, Open) and Esc still run
 QtObject {
     property var open: []                       // the open kit popups, oldest first
     readonly property int count: open.length
+    readonly property bool covered: open.some(p => !!p.covers)
     readonly property var top: { for (let i = open.length - 1; i >= 0; i--) if (open[i].escCloses) return open[i]; return null }
     property Item focused: null                 // the window's activeFocusItem (AppShell)
     readonly property bool typing: !!focused && focused.cursorPosition !== undefined && focused.selectByMouse !== undefined
@@ -46,6 +49,7 @@ QtObject {
         return false
     }
     function takes(keys) {
+        if (covered) return true                                  // nothing behind the start screen hears a key
         const ks = (keys || []).map(spell)
         if (ks.indexOf("Esc") >= 0 && top) return true          // its Esc closes it (BrushFlyout leaves Esc to the app)
         for (const p of open) if (owns(p.ownKeys, ks)) return true

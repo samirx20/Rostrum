@@ -47,7 +47,6 @@ class RepairSlots:
         self._rescue = None
         self.changed.emit()
 
-    @Slot(result=bool)
     def openRescued(self):
         if not self._rescue:
             return False

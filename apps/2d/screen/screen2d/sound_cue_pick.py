@@ -15,6 +15,9 @@ from rostrum2d import sound_cues
 from rostrum_gui.frames import PictureWorker
 
 
+WARM = (0,)                         # a job that only loads Sound's library code (CuePick.warm)
+
+
 class _Search(PictureWorker):
     """The library search on its own thread: (serial, words) in, (serial, rows) out; a failure is the worker's `failed`."""
     found = Signal(int, list)
@@ -23,6 +26,9 @@ class _Search(PictureWorker):
         return None                 # reads files only, no engine
 
     def handle(self, eng, job):
+        if job == WARM:             # warm-up: Sound's library code loads (seconds, the first time) before the first search needs it
+            from rostrum_sound import library, userlib  # noqa: F401
+            return
         n, words, folder, chosen = job
         self.found.emit(n, [{**r, "label": r["about"], "hint": f'{r["seconds"]:g} s · {r["where"]}' if r.get("seconds")
                              else r["where"]} for r in sound_cues.choices(words, 40, folder, chosen)])
@@ -51,6 +57,11 @@ class CuePick(QObject):
     @Property(str, notify=changed)
     def what(self):
         return self.b.label_of(self.b.doc.item(self._layer)) if self._layer and self.b.doc.has(self._layer) else ""
+
+    @Slot()
+    def warm(self):
+        """The Add a sound button just appeared: load the library code off the screen's thread, so the first search is quick."""
+        self._search.post_ordered(WARM)
 
     @Slot(result=bool)
     def start(self):

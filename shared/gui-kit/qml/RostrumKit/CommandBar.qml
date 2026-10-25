@@ -27,6 +27,7 @@ SmallPopup {
         close(); bridge.run(c.key)
     }
     onAboutToShow: { query(""); search.input.forceActiveFocus() }
+    Shortcut { objectName: "commandBarToggle"; sequence: "Ctrl+K"; enabled: bar.opened; context: Qt.ApplicationShortcut; onActivated: bar.close() }   // Ctrl+K again closes it
 
     Column {
         anchors.fill: parent

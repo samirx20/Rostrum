@@ -33,6 +33,7 @@ The same actions are in the command box (**Ctrl+K**).
 
 1. The app opens the project you had open last.
 2. With nothing to reopen, the start screen shows: **New**, **Open…**, **Open the sample** (the very first time only), your recent projects (with a picture of each), and three guides.
+3. While the start screen shows, only its own keys work: **Ctrl+N** (New), **Ctrl+O** (Open…) and **Esc** (back to your project, when one is open). The project behind it hears nothing (Space doesn't play it, Ctrl+K doesn't open its command box).
 
 ## 5. If a project can't be opened
 

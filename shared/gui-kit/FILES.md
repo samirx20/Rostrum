@@ -15,9 +15,9 @@ uses, so an agent's change shows in the window on the next LiveLink tick. There 
 |---|---|---|
 | Model | `rostrum_gui/docfiles.py` | No Qt, no app knowledge. `AppFiles` (the app's adapter, below), `projects_root(kind)` (a scripted run's scratch folder, never the person's), `new_folder(root, base)` ("Untitled", "Untitled 2" …), `clean(name)`, `recent` / `remember`, `duplicate(folder, dest)` (whole folder; refuses a full or inside folder), `version_name()` (the time), `open_whole(kind, folder, item)` (a damaged or newer file refused in words ending "Nothing was changed."), `said(e)`, `thumb(folder, item)` (`.rostrum/thumbs/<item>.png`). |
 | Open recent | `shared/core/rostrum_core/recent.py` | The one list: `<userhome>/settings/<app>-recent.json`, rows {folder, item, name}. The window, the start screen and both MCP servers' `lastproject.py` read it. Scripted runs use their scratch home (`userhome.py`). |
-| Files object | `rostrum_gui/project_files.py` (+ `file_menu.py`) | `ProjectFiles(kind, host)`, QML `files`. `launch(path, new)`, `put(doc)`, slots `newProject`, `openPath`, `openRecent`, `openSample`, `openCopy`, `duplicate`, `showFolder`, `saveVersion`, `setStart`, `pick(value)`, `menu()`; Ctrl+K `commands()`. Properties `name`, `hasProject`, `recent`, `startShown`, `projectsFolder`, `projectsUrl`, `hasSample`, `noun`, `keys`, `guides`, `copyName`. Every project it puts on screen is made live first. |
+| Files object | `rostrum_gui/project_files.py` (+ `file_menu.py`) | `ProjectFiles(kind, host)`, QML `files`. `launch(path, new)`, `put(doc)`, methods `newProject`, `openPath`, `openRecent`, `openSample`, `openCopy`, `rename`, `openRescued`, `pick(value)` (Python only: they swap the window), slots `duplicate`, `showFolder`, `saveVersion`, `setStart`, `pickLater(value)` (QML's one door to the swapping ones: `new`, `sample`, `copy`, `rescue`, `recent:<i>`, `rename:<name>`, `path:<folder>`), `menu()`; Ctrl+K `commands()`. Properties `name`, `hasProject`, `recent`, `startShown`, `projectsFolder`, `projectsUrl`, `hasSample`, `noun`, `keys`, `guides`, `copyName`. Every project it puts on screen is made live first. |
 | ≡ menu | `qml/RostrumKit/FilesMenu.qml` | The ≡ button: New, Open…, Open recent ▸, Open sample, Duplicate…, Save a version, Show folder, Start screen… (after a divider), then the app's `extra` rows. The open / duplicate dialogs, "Copy made · Open the copy", and the four file keys from the key map (`new`, `open`, `duplicate_file`, `save_version`). |
-| Start screen | `qml/RostrumKit/StartScreen.qml` | Fills the window, one three-column grid: the ways in as tiles (New, the accent; Open…; Open the sample), Continue <last> (at launch) or Back (Esc, a project open behind it) on the title's line, "Copy made · Open the copy" under the title after a Duplicate made there, recent projects (a picture when there is one, else a plain card with name and date; long names "…" with the whole name on hover), up to three guide cards (`guideAsked(url)`). |
+| Start screen | `qml/RostrumKit/StartScreen.qml` | Fills the window, one three-column grid: the ways in as tiles (New, the accent; Open…; Open the sample), Continue <last> (at launch) or Back (Esc, a project open behind it) on the title's line, "Copy made · Open the copy" under the title after a Duplicate made there, recent projects (a picture when there is one, else a plain card with name and date; long names "…" with the whole name on hover), up to three guide cards (`guideAsked(url)`). While it shows it covers the work (`OpenPopups.covered`): every key of the window waits (the key map, the shell's Ctrl+K / F1 / Ctrl+E / Ctrl+H / undo, an app's own keys that ask `OpenPopups.takes`, Space); only New, Open and Esc run. |
 | Versions | `HistorySheet.nameVersion(name)`, `AppShell.nameVersion(name)` | Ctrl+S opens History with the name field filled with the time and selected. |
 | Core | `rostrum_core/live.py` | `live.keep(doc)` on a document already live returns its Live (the model and the bridge both ask). |
 | Core | `rostrum_core/samples.py` | A scripted run's sample copies go to its scratch home, never the person's Documents. |
@@ -113,7 +113,7 @@ What changed in Sound on `team/sam`:
   app from quitting while it swaps windows (it closed the only window first, so New ended a scripted run).
   `test_projects.py` keeps only the damaged-song refusal (now through the kit's `open_whole`).
 - **Main.qml hooks:** `menu: FilesMenu { … extra: Preferences…, Quit }` (replaces `leading: FileMenu`), the
-  `StartScreen` line, `KeyMap.enabled` off while it shows. `RecordControls.qml`: the level reads only a number (it
+  `StartScreen` line, its keys off while it shows (the kit's `OpenPopups.covered`, no app line). `RecordControls.qml`: the level reads only a number (it
   printed "Unable to assign [undefined] to double" on every window).
 - **Keep:** the recent list file is unchanged (`settings/sound-recent.json`), so a person's list carries over. Export
   MIDI and Move into a project don't exist yet; when they do, add them to `extra`.
@@ -128,7 +128,7 @@ Three more pieces of INTERACTION 1.19, in the kit; the app gives `AppFiles` a fe
 |---|---|---|
 | **Reopen at the same place** | `rostrum_core/places.py` (data, in the person's home: `<userhome>/places/<app>.json`, never in the document; a scripted run's home is its scratch one), `rostrum_gui/place_keeper.py` (`files.places`) | `place(bridge) -> dict`, `restore_place(bridge, dict)` |
 | **Find…** | `rostrum_gui/find_files.py` (no Qt), `file_repairs.py` (≡ row, `files.findMissing(folderUrl)`, `files.missingRows()`, `files.missing`) | `refs(doc) -> [(item id, field, path)]`, `ref_op(doc, item id) -> "layer.set"` |
-| **Open the last version that works** | `rostrum_core/rescue.py` (`plan`, `rebuild`), `file_repairs.py` (`files.rescue`, `files.openRescued()`, `files.dismissRescue()`), StartScreen's banner, a ≡ row | `doc_kind=KIND` |
+| **Open the last version that works** | `rostrum_core/rescue.py` (`plan`, `rebuild`), `file_repairs.py` (`files.rescue`, `files.pickLater("rescue")`, `files.dismissRescue()`), StartScreen's banner, a ≡ row | `doc_kind=KIND` |
 
 **Place.** A place is a plain dict the app fills: `scene`, `selection` (ids), `playhead`, `range`, the canvas view
 (`CanvasView.place()` gives `{zoom, panX, panY, fitted}`; a fitted view fits again at the new window size), the time view
@@ -180,10 +180,10 @@ clip stays Sound's; the Problems list gets `files.missingRows()`.
 
 ## Left open
 
-- Rename by clicking the project name (S35): `files.rename(name)` renames the folder beside itself and reopens it
+- Rename by clicking the project name (S35): `files.pickLater("rename:" + name)` (→ `rename`) renames the folder beside itself and reopens it
   live; the top bar's name tab opens a field in place (AppShell wires it to the kit's `files`, no app code). An agent
   that had the old folder open is refused on its next step (its folder is gone); it opens the new one. Layout state
-  `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py` and `ReportDialog.qml`. A QML handler runs a file action through `files.pickLater` (after the handler ends), never `pick`: New / Open swap the screen that holds the handler.
+  `rename-name` (step `name edit`) in both apps. Report a problem (? menu): `rostrum_gui/report.py` and `ReportDialog.qml`. A QML handler runs a file action through `files.pickLater` (after the handler ends): New / Open / a Recent card / Continue / the sample / Rename swap the screen that holds the handler, so they are not slots at all (2D sweep r3: a Recent card, the sample, Continue and Rename ended the app).
 - "Exactly where you left it", Find… and Open the last version that works are built in the kit (S36, above); the apps' hooks
   (`place`, `restore_place`, `refs`, `ref_op`, `doc_kind`) are written up for Hem and Priyam, not yet wired in their apps.
 - The guides drawer opens under the start screen when no project is open; StartScreen moves aside by

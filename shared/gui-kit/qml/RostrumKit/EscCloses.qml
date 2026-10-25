@@ -10,6 +10,7 @@ QtObject {
     property bool when: false
     property Item area: null                    // the panel: a text box inside it never keeps Esc from closing it
     property bool escCloses: true
+    property bool covers: false                 // over the whole work (the start screen): OpenPopups.covered
     property var ownKeys: []
     signal asked()
     function close() { asked() }

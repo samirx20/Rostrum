@@ -39,7 +39,7 @@ AppShell {
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
     // painting: the Brush group's other tools (paint_tool.py), and [ ] size, Shift+[ ] hardness (the brush ring shows it)
-    readonly property bool painting: backend.tool === "draw" && !shell.typing
+    readonly property bool painting: backend.tool === "draw" && !shell.typing && !OpenPopups.covered
     Shortcut { sequence: "E"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "eraser" ? "brush" : "eraser") }
     Shortcut { sequence: "G"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "fill" ? "brush" : "fill") }
     Shortcut { sequence: "I"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "pick" ? "brush" : "pick") }
@@ -60,7 +60,7 @@ AppShell {
     Repeater { model: 10; delegate: Item { required property int index
         Shortcut { sequence: String(index); enabled: shell.painting; onActivated: painter.setValue("opacity", index === 0 ? 1 : index / 10) } } }
 
-    Connections { target: spaceKey; function onTapped() { backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
+    Connections { target: spaceKey; function onTapped() { if (!OpenPopups.covered) backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
     // , and . : the playhead to the previous / next thing that happens (a key, a marker, a drawing, a layer's start or end)
     // of the selected layers, or of everything when none is selected (backend.stepEvent, screen2d/key_edits.py)
@@ -103,7 +103,7 @@ AppShell {
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions
-        enabled: !shell.typing && !startScreen.visible
+        enabled: !shell.typing
         skip: backend.actions.skip
     }
     Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.create.canEdit       // the selected text: type in it

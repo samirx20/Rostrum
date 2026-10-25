@@ -4,7 +4,8 @@ a still one changes). The maths is transform.py. A slot mix-in for Bridge2D (see
 
 What a resize changes, per layer type: shapes and images change Width / Height (their own size); every other
 type (group, text, video, drawing, path, ...) changes Scale (a corner) or Stretch X / Y (an edge). X / Y follow so the opposite
-side stays put (Alt: the centre does), except in an auto layout, where the layout places the layer.
+side stays put (Alt: the centre does), except in an auto layout, where the layout places the layer. Dragged past the
+opposite side, a layer mirrors (a negative Stretch) and keeps resizing; a group stops at 1 px.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from rostrum2d.evaluate import resolve
 
 from . import bounds, exprs, layout_drag, line_ends, route, transform as T
 
+HOLDS = ("group", "rig")                       # layers with layers inside: their boxes cannot be mirrored (a resize stops at 1 px)
 OWN_SIZE = ("shape", "image")                 # types whose Width / Height can be keyed (fields.py); a group is resized by Scale, so what is in it grows with it
 
 
@@ -75,7 +77,7 @@ class HandleSlots:
     @Slot(int, int, result=bool)
     def beginResize(self, hx, hy):
         def fields_of(g, item):
-            size = ("w", "rotation") if g.kit == "ends" else ("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
+            size = ("w", "rotation") if g.kit == "ends" else ("w", "h", "scaleX", "scaleY") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
             return size + (() if g.placed else ("x", "y"))
         ok = self._handle_begin("Resize", hx, hy, fields_of)
         if ok and self._grab.kit != "ends":             # the dragged edge snaps (snapper.py); not on a turned box
@@ -95,7 +97,7 @@ class HandleSlots:
         scaled = item["type"] not in OWN_SIZE
         dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
         r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": b["ax"], "ay": b["ay"], "rot": b["lrot"]},
-                     g.hx, g.hy, dx, dy, shift, alt, uniform=scaled)
+                     g.hx, g.hy, dx, dy, shift, alt, uniform=scaled, flip=item["type"] not in HOLDS)
         sets = {}
         if scaled and g.hx and g.hy:
             sets["scale"] = p["scale"] * r["w"] / b["lw"]
@@ -104,6 +106,9 @@ class HandleSlots:
         else:
             sets.update({"w": p["w"] * r["w"] / b["lw"]} if g.hx else {})
             sets.update({"h": p["h"] * r["h"] / b["lh"]} if g.hy else {})
+        for axis, crossed in (("scaleX", r["cx"]), ("scaleY", r["cy"])):      # past the opposite side: mirrored (a negative Stretch)
+            if crossed:
+                sets[axis] = -sets.get(axis, p[axis])
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
         self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()]))
