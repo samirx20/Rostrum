@@ -19,7 +19,7 @@ from rostrum_sound import main_mix
 
 from . import action_calls as C
 from . import voice_actions as V
-from . import block_menu, clipboard, timing
+from . import block_menu, clipboard, palette, timing
 from .actions import LIST, RANGE
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
@@ -62,6 +62,7 @@ class SoundHub(ActionHub):
 
 
 class ActionSlots:
+    jobWanted = Signal(str)           # Ctrl+K named a job only the window can run (Preferences, Export, files ...): Main.qml runs it
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group (its three fields, once)
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
@@ -296,8 +297,9 @@ class ActionSlots:
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
                               where=self._what(f))
-        return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
-                       and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
+        return (mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
+                        and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
+                + palette.rows({LIST.job_of(a) for a in LIST.actions}))
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
@@ -309,6 +311,10 @@ class ActionSlots:
         why), an empty-space entry, else the kit's."""
         if key.startswith("at:"):
             return self.runAt(key)
+        if key.startswith("job:"):                       # a key-map job named in Ctrl+K (palette.py)
+            job = key[4:]
+            self._hub.key(job) if job in ROUTES else self.jobWanted.emit(job)
+            return True
         if not any(a.id == key for a in LIST.actions):
             return super().run(key)
         ok = any(e["id"] == key for e in LIST.available(self._facts()))

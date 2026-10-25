@@ -9,7 +9,7 @@ MixChip {
     property int popupWidth: 132         // wider for choices with a second line of detail
     signal picked(string id)
     onClicked: menu.open()
-    QQC.Popup {
+    SmallPopup {
         id: menu
         parent: pick
         y: pick.height + 2

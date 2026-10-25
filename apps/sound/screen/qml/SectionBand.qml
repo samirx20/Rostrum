@@ -42,14 +42,13 @@ Item {
             NameLabel { x: 6; width: parent.width - 10; anchors.verticalCenter: parent.verticalCenter
                         text: modelData.name; color: parent.on ? Theme.fg : Theme.fg2; visible: !parent.naming
                         font.pixelSize: Theme.label }
-            TextInput {   // the name field, in place (Enter keeps, Esc cancels)
+            NameBox {   // the name field, in place (Enter keeps, Esc cancels)
+                objectName: "sectionNameBox"
                 visible: parent.naming; x: 6; width: Math.max(60, parent.width - 10); anchors.verticalCenter: parent.verticalCenter
-                font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg; selectByMouse: true; clip: true
-                selectionColor: Theme.app
-                onVisibleChanged: if (visible) { text = modelData.name; forceActiveFocus(); selectAll() }
-                onAccepted: backend.finishRename(modelData.id, text)
-                Keys.onEscapePressed: backend.finishRename(modelData.id, "")
-                onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(modelData.id, text)
+                font.pixelSize: Theme.label; selectionColor: Theme.app
+                current: modelData.name; keepOnAway: true
+                onDone: (t) => backend.finishRename(modelData.id, t)
+                onCancelled: backend.finishRename(modelData.id, "")
             }
         }
     }

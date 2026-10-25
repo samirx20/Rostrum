@@ -8,7 +8,7 @@ from PySide6.QtCore import QTimer
 from rostrum_core import RostrumError
 from rostrum_gui import pointer_quiet
 from rostrum_gui.problems import ProblemsList
-from rostrum_sound.diagnose import problems
+from rostrum_sound.diagnose import LABELS, problems
 
 from .select_slots import SETTLE_MS
 from .strips import MASTER
@@ -23,13 +23,9 @@ def rows(render: dict) -> list[dict]:
              "fix": "Turn the master or the loudest track down, or turn on the master's limiter."}]
 
 
-WORDS = {"missing-file": "Missing file", "outside-project": "File outside the song", "pending-take": "Cleaned take not made",
-         "no-longer-made": "No longer made"}
-
-
 def doc_rows(doc, making=frozenset()) -> list[dict]:
     """The song's problems; a cleaned take that is being made now is activity (the Clean up bar shows it), not a problem."""
-    return [{**p, "label": WORDS[p["kind"]], "danger": p["kind"] == "missing-file"} for p in problems(doc)
+    return [{**p, "label": LABELS[p["kind"]], "danger": p["kind"] == "missing-file"} for p in problems(doc)
             if not (p["kind"] == "pending-take" and p["item"] in making)]
 
 

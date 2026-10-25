@@ -52,3 +52,9 @@ def test_hold_key_releases_only_what_its_press_ran():
     assert ran == ["said", "hear_on", "hear_off"]
     with pytest.raises(ValueError, match="on its own"):
         KeyMap("x", [{"job": "j", "keys": ["Ctrl+H"], "label": "J", "hold": True}])
+
+
+def test_the_plus_key_is_one_key():
+    """Letting go of "+" (Ctrl + the Plus key) named the key "+" and raised in every app."""
+    from rostrum_gui.keymap import normal
+    assert normal("+") == "+" and normal("Ctrl++") == "Ctrl++" and normal("ctrl+shift++") == "Ctrl+Shift++"

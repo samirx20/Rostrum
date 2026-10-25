@@ -15,7 +15,9 @@ QQC.Popup {
     height: Math.min(parent.height - 80, rowsHeight + 36 + foot.height + 2 * Theme.pad)
     modal: true; closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     QQC.Overlay.modal: Rectangle { color: Theme.scrim }
+    focus: true                                              // Esc closes it at once: the keyboard starts on the sheet, not the window behind
     onAboutToShow: settingsPage.reload()
+    onOpened: contentItem.forceActiveFocus()
     background: Rectangle { color: Theme.panel; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     Repeater {   // the height each kit row takes now (what InspectorRow works out), to size the popup to them
         id: measure

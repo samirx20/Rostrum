@@ -21,7 +21,10 @@ Panel {
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: 28; height: 28
                               onClicked: workspace.setLibrary(false) }
     onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0; noHear = "" }
-    Keys.onEscapePressed: (e) => { if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else e.accepted = false }
+    function back() {                                    // Esc: end a swap or a preview first; with neither, the Library closes
+        if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else workspace.setLibrary(false)
+    }
+    Keys.onEscapePressed: p.back()
     Connections { target: workspace; function onChanged() { if (!workspace.library) { soundLibrary.swapBack(); soundLibrary.stopAudition() } } }   // closed: it stops
     Connections { target: backend; function onLibraryWanted(chip) { p.chip = chip } }   // "Place a sound"
     onFoundChanged: { current = 0; noHear = "" }
@@ -53,7 +56,7 @@ Panel {
         anchors { left: parent.left; right: parent.right; top: parent.top }
         onCommitted: (t) => search.text = t                // the words stay after Enter
         onArrow: (dir) => p.chip === "mine" ? soundLibrary.swapStep(-dir) : p.pick(Math.max(0, Math.min(p.found.length - 1, p.current - dir)))
-        onEscaped: soundLibrary.swapping ? soundLibrary.swapBack() : soundLibrary.stopAudition()
+        onEscaped: p.back()
         onEntered: soundLibrary.swapping ? soundLibrary.swapKeep() : p.use(p.current)
     }
     Flow {      // the kinds as chips, one click each, wrapping when narrow; for "My sounds" also the Filter (length, tone, kind of recording)
