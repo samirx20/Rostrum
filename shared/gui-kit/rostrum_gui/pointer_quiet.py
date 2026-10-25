@@ -1,5 +1,5 @@
-"""Is the person pointing right now? A button is down, or a press, a release, a move or a wheel came in the last
-QUIET_S. Work that comes on its own (a finished render's meters and loudness, a settings panel made after a press,
+"""Is the person pointing (or pressing keys) right now? A button is down, or a press, a release, a move, a wheel or a
+key came in the last QUIET_S. Work that comes on its own (a finished render's meters and loudness, a settings panel made after a press,
 the live link's tick) asks `busy()` and waits while it is true, so it never lands in the same screen refresh as a
 click or a drag (sound-r5 M4: such work landing inside a click made it 35-70 ms).
 
@@ -17,14 +17,15 @@ from .gui_filter import GuiFilter
 
 QUIET_S = 0.08          # five screen refreshes: a click's press and release, and the frame each one draws
 POINTER = {QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.MouseButtonDblClick,
-           QEvent.Type.MouseMove, QEvent.Type.Wheel}
+           QEvent.Type.MouseMove, QEvent.Type.Wheel,
+           QEvent.Type.KeyPress, QEvent.Type.KeyRelease}    # a key is the person acting too (Ctrl+G's pick: its panel after)
 
 
 class _Watch(GuiFilter):
     def __init__(self, app):
         super().__init__(app)
         self.last = 0.0
-        self.watch(app)
+        self.watch_windows(app)         # the windows, never the whole app (gui_filter.watch_windows)
 
     def on_event(self, obj, event):
         if event.type() in POINTER:
@@ -42,4 +43,5 @@ def busy() -> bool:
     w = _watch.get(id(app))
     if w is None:
         w = _watch[id(app)] = _Watch(app)
+    w.watch_windows(app)              # (a window made since)
     return QGuiApplication.mouseButtons() != Qt.MouseButton.NoButton or time.monotonic() - w.last < QUIET_S

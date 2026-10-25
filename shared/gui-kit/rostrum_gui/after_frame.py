@@ -18,9 +18,10 @@ HEARD: list = []        # functions told when a run starts (the timing steps: wh
 
 
 class AfterFrame(QObject):
-    def __init__(self, fn, parent=None):
+    def __init__(self, fn, parent=None, ahead=False):
         super().__init__(parent)
         self._fn, self.due = fn, False
+        self.ahead = ahead              # work made ahead (a panel nobody shows yet): a settled picture doesn't wait for it
 
     def ask(self):
         if self.due:
@@ -28,6 +29,12 @@ class AfterFrame(QObject):
         self.due = True
         _TURNS.append(self)
         _TURNS.arm()
+
+    def cancel(self):
+        """Not needed any more (the work was just done another way)."""
+        if self.due:
+            self.due = False
+            _TURNS.drop(self)
 
     def flush(self):
         if self.due:
@@ -82,3 +89,8 @@ class _Turns(QObject):
 
 
 _TURNS = _Turns()
+
+
+def pending() -> bool:
+    """Work is still waiting for a frame (a scripted picture is not settled until it has run: settle.py)."""
+    return any(j.due and not j.ahead for j in _TURNS._jobs)

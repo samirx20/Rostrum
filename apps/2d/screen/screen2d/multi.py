@@ -10,33 +10,40 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.selection_rules import box, click
 
 from . import bounds, picking
+from .handle_kinds import dressed
 from .group_slots import union
 
 
 class Multi(QObject):
-    changed = Signal()
+    boxesChanged = Signal()                                 # the outlines and handles on the canvas (boxes, groupBox)
+    pickedChanged = Signal()                                # which layers (count, ids, lit: the list's rows)
+    rideChanged = Signal()
 
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
         self._known = None                                  # (selection, document data, its layers)
-        told = news.relay(self)                             # only news: the overlays redo their handles on it
-        for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
-            s.connect(told)
+        # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
+        # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
+        # of a Ctrl+G)
+        for name in ("boxesChanged", "pickedChanged", "rideChanged"):
+            told = news.relay(self, name)
+            for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
+                s.connect(told)
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=boxesChanged)
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
         shows them (shown.py; a layer newer than the picture has none yet)."""
-        return self.b.shown_boxes(self.layers())
+        return [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
 
-    @Property("QVariantMap", notify=changed)
+    @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
         """The one box round all the selected layers (their handles: group_slots.py); {} for fewer than two."""
-        boxes = self.boxes
-        return union(boxes) if len(boxes) > 1 else {}
+        boxes = self.b.shown_boxes(self.layers())
+        return dressed(union(boxes)) if len(boxes) > 1 else {}
 
-    @Property("QVariantMap", notify=changed)
+    @Property("QVariantMap", notify=rideChanged)
     def ride(self):
         """The path the primary selected layer (or the camera) rides, with the words the canvas shows for it
         (its `id`, `label`). {} when the selection rides nothing."""
@@ -48,16 +55,16 @@ class Multi(QObject):
         what = "Camera" if rider.get("type") == "camera" else rider.get("name") or ids[0]
         return {"id": path, "label": f"{what} rides {self.b.doc.item(path).get('name') or path}"}
 
-    @Property(int, notify=changed)
+    @Property(int, notify=pickedChanged)
     def count(self):
         return len(self.layers())
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=pickedChanged)
     def ids(self):
         """The selected layers (an effect, mask or key selected counts as its layer): the rows the list lights."""
         return self.layers()
 
-    @Property("QVariantMap", notify=changed)
+    @Property("QVariantMap", notify=pickedChanged)
     def lit(self):
         """{row id: "sel" | "in"}: how each layers-list row is lit, read once per change by the list (LayerRows.qml), so
         a row looks itself up instead of each row reading the selection again (~5 ms a pick over 20 rows): the selected

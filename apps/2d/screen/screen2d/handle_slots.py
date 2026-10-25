@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum2d.evaluate import resolve
 
-from . import bounds, exprs, handle_kinds, layout_drag, line_ends, route, transform as T
+from . import bounds, exprs, layout_drag, line_ends, route, transform as T
 
 OWN_SIZE = ("shape", "image")                 # types whose Width / Height can be keyed (fields.py); a group is resized by Scale, so what is in it grows with it
 
@@ -46,11 +46,6 @@ class HandleSlots:
     def resizeCursor(self, hx, hy, rot):
         """The arrow a resize knob shows on a layer turned `rot` degrees (transform.resize_cursor)."""
         return T.resize_cursor(hx, hy, rot)
-
-    @Slot(str, result="QVariantMap")
-    def handleKit(self, name):
-        """The knobs and turn zones a layer shows (handle_kinds.KITS); the box's `handles` names the kit."""
-        return handle_kinds.KITS.get(name, handle_kinds.KITS["box"])
 
     def _handle_grab(self, label, fields_of):
         layer = self.selectedLayer

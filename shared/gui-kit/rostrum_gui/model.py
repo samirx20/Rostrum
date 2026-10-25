@@ -75,16 +75,18 @@ class RowsModel(QAbstractListModel):
                 self._instant = False
                 self.instantChanged.emit()
 
-    def park(self, rows: list[dict]):
+    def park(self, rows: list[dict], ready: bool = False):
         """Delegates made ahead for rows a later selection will show: added after the shown rows, absent, unless one
-        that showed the same setting is here already (model_pick.py takes them, as it takes any parked row)."""
+        that showed the same setting is here already (model_pick.py takes them, as it takes any parked row).
+        `ready`: each keeps its own state, so a row that applies has its control made now (an absent row is only its
+        shell until it first shows: InspectorRow); for a page not shown (row_pages.py), where nothing is seen."""
         have = {(r.get("id"), self._look(r)) for r in self._shown + self._parked}
         new = []
         for r in rows:
             key = (r.get("id"), self._look(r))
             if key not in have:
                 have.add(key)
-                new.append({**r, "valid": False})
+                new.append(r if ready else {**r, "valid": False})
         if new:
             n = self.rowCount()
             self.beginInsertRows(QModelIndex(), n, n + len(new) - 1)

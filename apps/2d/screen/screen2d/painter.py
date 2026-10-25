@@ -226,7 +226,7 @@ class Painter(BrushPanel):
         c = self.b.comp()
         make = None
         if d is None:                       # Draw tool, no drawing selected: the first stroke makes the drawing layer too
-            make, lid = adding.new_drawing_at(self.b.doc, c, x, y)
+            make, lid = adding.new_drawing_at(self.b.doc, c, x, y, frame_number(self.b.time, c["fps"]) if self.b._paint_layers.fresh_each else None)
             d = {"id": lid}
         layer = "new" if self._new_layer else self.b._paint_layers.current()     # the highlighted paint layer
 
@@ -266,6 +266,7 @@ class Painter(BrushPanel):
             self._wet.show()
             if make:
                 self._fresh = None
+                self.b._paint_layers.fresh_each = False       # its Draw each frame is on the layer now
                 self.b.select(d["id"])
         return self.b.guard(go)
 

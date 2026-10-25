@@ -46,14 +46,17 @@ Item {
     readonly property int to: !drawing ? 0 : frames.length ? Math.round(frames[0].t0 * m.fps)
                               : Math.round(Math.min(layerEnd, backend.frameInfo.duration || 0) * m.fps)
     readonly property int empty: Math.max(0, to - from)
-    Repeater {
-        model: m.empty === 0 ? 0 : m.wide ? m.empty : 1
+    // Every list below is a KeptRepeater (index-based, delegates kept): a Repeater over the list itself remade every
+    // cell, with its menu and tips, at each change of the row, so each new drawing cost more than the one before.
+    KeptRepeater {
+        id: emptyCells
+        needed: m.empty === 0 ? 0 : m.wide ? m.empty : 1
         delegate: Text {
             required property int index
             objectName: "emptyFrame" + index
+            visible: index < emptyCells.needed && x + width > 0 && x < m.width && m.free(x, x + width) !== null
             x: 8 + Math.round(m.timeRuler.xOf((m.from + index) / m.fps)); height: m.height
             width: m.wide ? Math.floor(m.step) : Math.max(16, Math.round(m.timeRuler.xOf(m.to / m.fps) - m.timeRuler.xOf(m.from / m.fps)) - 1)
-            visible: x + width > 0 && x < m.width && m.free(x, x + width) !== null
             horizontalAlignment: m.wide ? Text.AlignHCenter : Text.AlignLeft; leftPadding: m.wide ? 0 : 4
             verticalAlignment: Text.AlignVCenter
             text: "+"; color: Theme.fg3; opacity: plus.containsMouse ? 0.9 : 0.35
@@ -67,10 +70,13 @@ Item {
                                                    painter.goToFrame(frameAt(ev)); painter.newFrame(false) } }
         }
     }
-    Repeater {      // a looping drawing's later rounds: the same cells again, faint, not to be clicked
-        model: m.again
+    KeptRepeater {  // a looping drawing's later rounds: the same cells again, faint, not to be clicked
+        id: againCells
+        needed: m.again.length
         delegate: Rectangle {
-            required property var modelData
+            required property int index
+            readonly property var modelData: m.again[index] || ({ t0: 0, t1: 0, n: 0 })
+            visible: index < againCells.needed
             objectName: "againCell"
             x: 8 + Math.round(m.timeRuler.xOf(modelData.t0)); width: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
             height: 16; y: Math.round((m.height - height) / 2); radius: 3
@@ -79,39 +85,50 @@ Item {
                    font.family: uiFont; font.pixelSize: Theme.label; font.features: { "tnum": 1 } }
         }
     }
-    Repeater {
-        model: m.frames
+    KeptRepeater {
+        id: cells
+        needed: m.frames.length
         delegate: Item {
             id: f
-            required property var modelData
-            readonly property bool current: modelData.n === m.cur
+            required property int index
+            readonly property var cellData: m.frames[index] || ({ id: "", n: -1, at: 0, held: 1, t0: 0, t1: 0 })
+            // read into plain values: a value that stays the same tells nothing, so a new drawing redoes only the
+            // cells that changed (every cell re-measured and re-placed itself at each change: ~3 ms a cell)
+            readonly property string fid: cellData.id
+            readonly property int n: cellData.n
+            readonly property int at: cellData.at
+            readonly property int held: cellData.held
+            readonly property real t0: cellData.t0
+            readonly property real t1: cellData.t1
+            visible: index < cells.needed
+            readonly property bool current: f.n === m.cur
             readonly property int side: !m.onion || m.cur === 0 ? 0
-                : modelData.n < m.cur && m.cur - modelData.n <= painter.onionReach.before ? -1
-                : modelData.n > m.cur && modelData.n - m.cur <= painter.onionReach.after ? 1 : 0
-            readonly property bool last: modelData.n === m.frames[m.frames.length - 1].n
-            readonly property real x0: 8 + Math.round(m.timeRuler.xOf(modelData.t0))      // where it lies, not dragged
-            readonly property real w0: Math.max(3, Math.round(m.timeRuler.xOf(modelData.t1) - m.timeRuler.xOf(modelData.t0)) - 1)
+                : f.n < m.cur && m.cur - f.n <= painter.onionReach.before ? -1
+                : f.n > m.cur && f.n - m.cur <= painter.onionReach.after ? 1 : 0
+            readonly property bool last: index === m.frames.length - 1
+            readonly property real x0: 8 + Math.round(m.timeRuler.xOf(f.t0))      // where it lies, not dragged
+            readonly property real w0: Math.max(3, Math.round(m.timeRuler.xOf(f.t1) - m.timeRuler.xOf(f.t0)) - 1)
             readonly property bool grip: !last && w0 >= 32 && m.free(x0 + w0 - 16, x0 + w0) !== null
             readonly property var span: m.free(x0, x0 + Math.max(16, w0 - (grip ? 16 : 0)))   // its click area, clear of keys
             readonly property bool shows: numberWidth.advanceWidth + 10 <= w0 + edge.dx
-            TextMetrics { id: numberWidth; font.family: uiFont; font.pixelSize: Theme.label; text: String(f.modelData.n) }
+            TextMetrics { id: numberWidth; font.family: uiFont; font.pixelSize: Theme.label; text: String(f.n) }
             x: x0 + (area.moving ? area.dx : 0)
             width: w0 + edge.dx
             height: m.height
             z: area.moving || edge.pressed ? 2 : 0
             Rectangle {     // the cell: the bar's height and roundness, centred
                 id: cell
-                objectName: "drawingCell" + f.modelData.n
+                objectName: "drawingCell" + f.n
                 width: parent.width; height: 16; y: Math.round((parent.height - height) / 2); radius: 3
                 color: f.current ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.30)
-                     : f.modelData.n % 2 ? Theme.raised : Theme.hover
+                     : f.n % 2 ? Theme.raised : Theme.hover
                 border.width: f.current ? 1 : 0; border.color: Theme.accent
                 opacity: area.moving && area.copying ? 0.6 : 1
                 Text {      // the number, only where the whole of it fits (else its hover help says it)
                     id: num
                     visible: f.shows
                     x: 5; anchors.verticalCenter: parent.verticalCenter
-                    text: f.modelData.n; color: f.current ? Theme.fg : Theme.fg2; font.family: uiFont
+                    text: f.n; color: f.current ? Theme.fg : Theme.fg2; font.family: uiFont
                     font.pixelSize: Theme.label; font.features: { "tnum": 1 }
                 }
             }
@@ -126,7 +143,7 @@ Item {
                 visible: f.span !== null; x: f.span ? f.span[0] - f.x0 : 0; width: f.span ? f.span[1] - f.span[0] : 0
                 acceptedButtons: Qt.LeftButton | Qt.RightButton; preventStealing: true; hoverEnabled: true
                 cursorShape: moving ? Qt.ClosedHandCursor : Qt.PointingHandCursor
-                HoverTip { hovered: area.containsMouse && !f.shows && !area.moving; text: "Drawing " + f.modelData.n }
+                HoverTip { hovered: area.containsMouse && !f.shows && !area.moving; text: "Drawing " + f.n }
                 property real x0: 0
                 property real dx: 0
                 property bool moving: false
@@ -142,9 +159,9 @@ Item {
                     if (ev.button === Qt.RightButton) { cellMenu.open(); return }
                     const by = m.framesOf(dx)
                     if (backend.selected !== m.owner) backend.select(m.owner)
-                    if (!moving) painter.goToFrame(f.modelData.at)
-                    else if (by !== 0) copying ? painter.copyFrameTo(f.modelData.id, f.modelData.at + by)
-                                               : painter.moveFrame(f.modelData.id, f.modelData.at + by)
+                    if (!moving) painter.goToFrame(f.at)
+                    else if (by !== 0) copying ? painter.copyFrameTo(f.fid, f.at + by)
+                                               : painter.moveFrame(f.fid, f.at + by)
                     moving = false; dx = 0
                 }
                 onCanceled: { moving = false; dx = 0 }
@@ -159,18 +176,18 @@ Item {
                 onPressed: (ev) => { x0 = mapToItem(m, ev.x, 0).x; dx = 0 }
                 onPositionChanged: (ev) => {
                     if (!pressed) return
-                    const by = Math.max(1 - f.modelData.held, m.framesOf(mapToItem(m, ev.x, 0).x - x0))
+                    const by = Math.max(1 - f.held, m.framesOf(mapToItem(m, ev.x, 0).x - x0))
                     dx = by / m.fps * m.timeRuler.perSec
                 }
                 onReleased: {
                     const by = m.framesOf(dx); dx = 0
                     if (backend.selected !== m.owner) backend.select(m.owner)
-                    if (by !== 0) painter.holdFrame(f.modelData.id, f.modelData.held + by)
+                    if (by !== 0) painter.holdFrame(f.fid, f.held + by)
                 }
                 onCanceled: dx = 0
             }
             Menu { id: cellMenu; y: cell.y + cell.height; entries: [{ value: "delete", label: "Delete" }]
-                   onPicked: (v) => { if (backend.selected !== m.owner) backend.select(m.owner); painter.removeFrame(f.modelData.id) } }
+                   onPicked: (v) => { if (backend.selected !== m.owner) backend.select(m.owner); painter.removeFrame(f.fid) } }
         }
     }
     Repeater {      // the layer's own ends: drag one to trim the layer (its start or end), as a bar's ends do

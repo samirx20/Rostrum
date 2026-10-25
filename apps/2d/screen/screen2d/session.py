@@ -10,10 +10,11 @@ import sys
 import threading
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from rostrum_gui import guides, start
 from rostrum_gui.app import free, stop
 from rostrum_gui.project_files import ProjectFiles
-from rostrum2d import textsize
+from rostrum2d import fields as F, textsize
 
 from . import bounds, project_picks
 from .bridge2d import Bridge2D
@@ -46,6 +47,17 @@ def _measure_ahead(bridge):
     threading.Thread(target=measure, daemon=True, name="text-measure-ahead").start()
 
 
+def _panels_ahead(bridge):
+    """A moment after the window is up: the settings panel of each kind in the piece (the scene, the frame, a shape, a
+    text, a group …) made ahead, a few rows a frame (the kit's make_panels_ahead). A kind's first pick, or the first
+    Ctrl+G's group, made its whole panel on the click: ~30-130 ms."""
+    first = {}
+    for it in bridge.doc.items():
+        if it["type"] in F.LAYERS or it["id"] == bridge.comp_id:
+            first.setdefault(it["type"], it["id"])
+    QTimer.singleShot(1000, bridge, lambda: bridge.make_panels_ahead(list(first.values())))
+
+
 class Session:
     def __init__(self, size=(1600, 960), comp_id=None):
         sys.setswitchinterval(SWITCH_S)    # pictures are made on worker threads: the screen's thread waits for one at most this long
@@ -72,6 +84,7 @@ class Session:
         self.space.watch(win)                            # Space: tap plays, hold pans (spacekey.py)
         old = (self.bridge, self.engine, self.win)
         self.bridge, self.engine, self.win = bridge, engine, win
+        _panels_ahead(bridge)
         if old[0] is not None:                           # the window and its bindings first, then what they read
             stop(old[1], old[2], then=lambda: self._close(old[0]))
 

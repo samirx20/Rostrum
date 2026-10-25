@@ -67,6 +67,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self._kit = KitState(doc.history.mark())
         self.doc, self.who = doc, who or Who.person("sam")
         self.model = RowPages(rows.ROLES, self)            # the panel's rows: a list per kind's layout (row_pages.py)
+        self.model.reader = self._panel_now                # read now: a pick's panel or a change's rows still waiting first
         self._kit.agent = AgentWatch(self)
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self._history_check()                              # the count and ↶ ↷ as the window opens
@@ -137,7 +138,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """A search is typed and no setting that applies matches it ("No setting matches")."""
         fx = self._kit.handlers.get("effects")         # an effect the search names counts as a match (effects.py)
         effect = fx is not None and fx().shown
-        return bool(self._kit.search.strip()) and not effect and not any(r["valid"] for r in self.model.rows if r["row"] == "param")
+        return bool(self._kit.search.strip()) and not effect and not any(r["valid"] for r in self.model.shown_rows if r["row"] == "param")
 
     @Property(bool, constant=True)
     def typesExpressions(self):

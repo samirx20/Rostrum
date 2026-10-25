@@ -171,13 +171,13 @@ class _List(ActionList):
     """The kit's list (promoted actions first), where a secondary action promoted now also joins the context bar as
     its own button (not in its `bar` menu): the selection makes it the obvious next step. Primaries keep their bar."""
 
-    def available(self, facts) -> list[dict]:
+    def available(self, facts, among=None) -> list[dict]:
         now = {a.id for a in self.actions if a.promoted and a.importance != "primary" and a.promoted(facts)}
-        out = [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts)]
+        out = [{**e, "importance": "primary", "bar": ""} if e["id"] in now else e for e in super().available(facts, among)]
         if facts.facts.get("picture"):                # a photo or clip: Fit to frame is on the bar, first
             out = [{**e, "importance": "primary", "rank": 0} if e["bar"] == "Fit to frame" else e for e in out]
             out.sort(key=lambda e: e["rank"] != 0)
-        uses = _style_uses(facts)
+        uses = _style_uses(facts) if among is None else []    # (a key's own actions: never a style's)
         if not facts.doc.data.get("textStyles"):      # no style yet: no Styles ▾, Save as style sits under ⋯
             out = [{**e, "importance": "secondary", "bar": ""} if e["bar"] == "Styles" else e for e in out]
         at = next((n for n, e in enumerate(out) if e["bar"] == "Styles"), len(out))

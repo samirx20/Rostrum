@@ -13,7 +13,7 @@ Item {
     property Item space
     property bool editable: false
     property bool group: false          // the one box round several selected layers: its drags act on all of them (group_slots.py)
-    readonly property var kit: backend.handleKit(box.handles || "box")      // which knobs and turn zones it shows (handle_kinds.py)
+    readonly property var kit: box.kit || ({ knobs: [], turn: false, anchor: false })   // which knobs and turn zones (handle_kinds.dressed)
     readonly property real bw: (box.w || 0) * fit
     readonly property real bh: (box.h || 0) * fit
     x: (box.x || 0) * fit; y: (box.y || 0) * fit; width: bw; height: bh
@@ -61,7 +61,7 @@ Item {
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
                 cursorShape: ({"hor": Qt.SizeHorCursor, "ver": Qt.SizeVerCursor, "fdiag": Qt.SizeFDiagCursor,
-                               "bdiag": Qt.SizeBDiagCursor})[backend.resizeCursor(knob.hx, knob.hy, h.box.rot || 0)]
+                               "bdiag": Qt.SizeBDiagCursor})[(h.box.cursors || [])[knob.index] || "hor"]
                 preventStealing: true
                 property bool on: false
                 property point p0
@@ -103,16 +103,20 @@ Item {
         }
     }
     // the fill's gradient handles, over the box while the Fill row's picker is open on a gradient (one drag = one change)
-    GradientHandles {
+    // (made only while shown: kept, its ~60 bindings ran on every change of the box)
+    Loader {
         anchors.fill: parent
-        visible: h.editable && !h.group && PaintSession.gradient
-        paint: PaintSession.paint || ({})
-        selected: PaintSession.selected
-        points: h.box.type !== "text"            // a text's letters take no point-to-point span
-        onBegan: backend.beginScrub("paint")
-        onEdited: (p) => backend.scrub("paint", p)
-        onEnded: backend.endScrub()
-        HoverHandler { onHoveredChanged: PaintSession.hold = hovered && parent.visible }   // a press here keeps the picker open
-        onVisibleChanged: if (!visible) PaintSession.hold = false
+        active: h.editable && !h.group && PaintSession.gradient
+        onActiveChanged: if (!active) PaintSession.hold = false
+        sourceComponent: GradientHandles {
+            anchors.fill: parent
+            paint: PaintSession.paint || ({})
+            selected: PaintSession.selected
+            points: h.box.type !== "text"            // a text's letters take no point-to-point span
+            onBegan: backend.beginScrub("paint")
+            onEdited: (p) => backend.scrub("paint", p)
+            onEnded: backend.endScrub()
+            HoverHandler { onHoveredChanged: PaintSession.hold = hovered }   // a press here keeps the picker open
+        }
     }
 }

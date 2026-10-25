@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_gui.after_frame import AfterFrame
 
 from rostrum_core.keys import keys_of
 
@@ -51,16 +52,21 @@ class MotionPath(QObject):
         self._view = None              # (tracks, t, the canvas paths)
         self._by_owner = {}            # {owner id: (what it is made of, (track, frame outlines) or None)}: _track_of
         self._rows = {}                # {owner id: (what its canvas row is made of, the row)}: _row
-        for sig in (bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
+        for sig in (bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
-        for sig in (bridge.docChanged, bridge.docStepped):
-            sig.connect(self._doc)
+        bridge.docStepped.connect(self._doc)             # a drag's step: at once, the path follows the pointer
+        self._after = AfterFrame(self._check, self)      # a change or a pick: the frame after, with the overlays
+        bridge.docChanged.connect(self._after.ask)       # (outline_news.py)
+        bridge.selectedItemsChanged.connect(self._after.ask)
 
     def _doc(self):
-        """A change or a drag's step: the canvas is told only when a path it shows is another (an edit of anything the
-        paths are not made of, like a colour or an unanimated x, redraws none: the frame's path was ~900 points)."""
-        if not self.b.reached([o for o, _ in self._owners()]):
-            return
+        """A drag's step: the canvas is told only when a path it shows is another (an edit of anything the paths are
+        not made of, like a colour or an unanimated x, redraws none: the frame's path was ~900 points)."""
+        if self.b.reached([o for o, _ in self._owners()]):
+            self._check()
+
+    def _check(self):
+        """(After a change, whatever it touched: the changes since the frame before may be several.)"""
         was = self._view[2] if self._view is not None else None
         now = self.paths
         if was is None or len(now) != len(was) or any(a is not b for a, b in zip(now, was)):

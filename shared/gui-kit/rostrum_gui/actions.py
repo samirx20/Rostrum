@@ -128,10 +128,13 @@ class ActionList:
             return "nothing", []
         return None, calls
 
-    def available(self, facts) -> list[dict]:
-        """The actions this selection allows, resolved, in order: promoted first, then by rank."""
+    def available(self, facts, among=None) -> list[dict]:
+        """The actions this selection allows, resolved, in order: promoted first, then by rank. `among`: only these
+        action ids are looked at (a key's own: every action's rule ran for one key press, ~3-5 ms)."""
         out, kind_facts = [], {}
         for i, a in enumerate(self.actions):
+            if among is not None and a.id not in among:
+                continue
             reason, calls = self._check(a, facts, kind_facts)
             if reason is None:
                 first = 0 if a.promoted and a.promoted(facts) else 1
@@ -182,7 +185,7 @@ class ActionList:
         if not mine:
             return None, ""
         ids = {a.id for a in mine}
-        entry = next((e for e in self.available(facts) if e["id"] in ids), None)
+        entry = next(iter(self.available(facts, ids)), None)
         if entry:
             return entry, ""
         near = next((a for a in mine if self._check(a, facts)[0] not in ("kind",)), mine[0])

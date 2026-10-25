@@ -54,11 +54,16 @@ def new_layer_calls(doc, comp: dict, type_: str, more: dict | None = None) -> tu
 FIRST_DRAWING = 256        # px a side of the drawing the pen's first stroke makes: it grows with the strokes (paint_grow.py)
 
 
-def new_drawing_at(doc, comp: dict, x: float, y: float) -> tuple[list[dict], str]:
+def new_drawing_at(doc, comp: dict, x: float, y: float, at: int | None = None) -> tuple[list[dict], str]:
     """(calls, id): a new drawing layer FIRST_DRAWING px a side centred on (x, y) (world px: a top-level layer at depth 0
     is where its x, y say), for the pen's first stroke with nothing picked, inside or outside the frame. It starts small
-    and grows with what is painted, in any direction."""
-    return new_layer_calls(doc, comp, "drawing", {"x": x, "y": y, "w": FIRST_DRAWING, "h": FIRST_DRAWING})
+    and grows with what is painted, in any direction. `at`: a frame number = Draw each frame is on from the start,
+    and drawing 1 is at that frame (the playhead's)."""
+    calls, lid = new_layer_calls(doc, comp, "drawing", {"x": x, "y": y, "w": FIRST_DRAWING, "h": FIRST_DRAWING,
+                                                        **({"eachFrame": True} if at is not None else {})})
+    if at is not None:
+        calls[0]["args"]["frame"] = at
+    return calls, lid
 
 
 class Adder(QObject):

@@ -65,7 +65,8 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
     owner can't key now: it is left out); key.add then takes `fields` instead of `prop` (K in the screens)."""
     vals = value_params if value_params is not None else [V, C]
     settable = settable or (lambda ctx, owner, prop: None)
-    PROP = Param.text("prop", label="Field", required=not field_sets, help=prop_help)
+    PROP = Param.text("prop", label="Field", required=not field_sets, help=prop_help)   # key.add: or `fields`
+    PROP_NEEDED = Param.text("prop", label="Field", required=True, help=prop_help)       # value.set, key.clear: always
     sets = [Param.choice("fields", list(field_sets), label="Fields", help="Key this set of fields with their values now "
                          "(instead of prop and a value): " + "; ".join(f"{k}: {', '.join(v)}" for k, v in field_sets.items()))]         if field_sets else []
 
@@ -136,7 +137,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
 
     @registry.operation("value.set", "Change a field as a person sees it now: a still field changes; an animated field "
                         "gets a key at `at`.", target=owners, label="Set value",
-                        params=[PROP, Param.number("at", label="At", help="The time (needed when the field is animated)",
+                        params=[PROP_NEEDED, Param.number("at", label="At", help="The time (needed when the field is animated)",
                                                    **TIME), *vals])
     def value_set(ctx, targets, args):
         for t in targets:
@@ -151,7 +152,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
 
     @registry.operation("key.clear", "Stop animating a field: delete its keys and keep its value at `at` as the still value.",
                         target=owners, label="Stop animating", importance="secondary",
-                        params=[PROP, Param.number("at", label="At", default=0.0, **TIME)])
+                        params=[PROP_NEEDED, Param.number("at", label="At", default=0.0, **TIME)])
     def key_clear(ctx, targets, args):
         for t in targets:
             keys = keys_of(ctx.item(t), args["prop"])

@@ -18,6 +18,7 @@ from . import commands as command_box
 from . import action_views as views
 from . import qt_faults
 from .actions import ActionList
+from .after_frame import AfterFrame
 from .keyhold import KeyHold
 from .match import starts
 
@@ -39,6 +40,7 @@ class ActionHub(QObject):
         self._offered: list = []
         self._held: dict[str, dict] = {}       # hold job -> the entry its press ran, until the key comes up
         self._hold = KeyHold(self, action_list.keymap)     # watches releases only when the map has hold keys
+        self._later = AfterFrame(self.refresh, self)        # refresh_later: once, the frame after
 
     def _now(self):
         facts = self._facts()
@@ -80,6 +82,7 @@ class ActionHub(QObject):
         """Call after the selection or the document changed. Re-sends only what changed: a drag step that leaves the
         actions alone redraws neither row."""
         self._refreshed = True
+        self._later.cancel()
         facts, entries = self._now()
         bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
         if bar != self._bar:
@@ -92,6 +95,13 @@ class ActionHub(QObject):
         if offered != self._offered:
             self._offered = offered
             self.offeredChanged.emit()
+
+    @Slot()
+    def refresh_later(self):
+        """`refresh` in the frame after this one (connect a document change here): an action that changes the document
+        and then picks what it made (Ctrl+G's group) refreshed for the change and again for the pick, each rebuilding
+        the bar and the panel's buttons (~6-12 ms) inside the click's frame; a `refresh` meanwhile is that one."""
+        self._later.ask()
 
     @Slot(result="QVariantList")
     def menu(self):
@@ -165,5 +175,5 @@ class ActionHub(QObject):
                 self._apply(entry["calls"], entry["label"])
         except Exception:
             qt_faults.python_error(f'action "{entry["id"]}"', entry["label"])
-        if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough)
-            self.refresh()
+        if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough);
+            self.refresh_later()        # else once the action's event is done (the buttons are not needed before)
