@@ -108,17 +108,19 @@ shows what it did, whether it is pleasant is for a person to hear.
 
 A song stops at its `length`. What a clean end needs, with what exists today:
 
-- **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it, but only
-  up to `length`. Make `length` later than the last note by the tail you want (a held chord that ends at bar 21 with a
-  4-beat tail: `length(bar(21) + beats(4))`). Render and read the last second with `look_sound`: a file that still sounds at
-  its end was cut.
+- **Let it ring.** A note ends where you wrote it, and the instrument's own release and any reverb ring on after it. With
+  **Ring out** (the song field `ringOut`, on in every new song) a sound still ringing at `length` plays on until it dies away
+  (under -60 dBFS, at most 6 s more) and the file ends there; a note held past `length` is let go at it, and a note that starts
+  at or after `length` is not heard (both are warned, in `run_script` and `render_mix`). `length` is where the music stops,
+  not where the file stops: `length(bar(21))` after a chord let go at bar 21 rings it out. Songs saved before 2026-10-25 open
+  with Ring out off (they sound as they did): there the file stops at `length`, so leave the tail room yourself.
 - **Check the end.** `look_sound` (`what: "loudness"`) answers an `ending` line from the render: the level of the last 0.5 s,
   whether that is still above -50 dBFS, and whether the last 50 ms drop faster than the fade before it. Still above -50 dBFS
-  with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is a later `length` (or
-  `master(fadeOut=...)`). The engine lets the last notes ring out to the song's end and warns when the `length` you gave
-  cuts a note or its tail (`render_mix` and `run_script` warnings name them).
-- **Soft end.** On by default (the song field `endFade`): anything sounding at `length` is faded over its last 0.1 s so the
-  file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
+  with a fast last-50-ms drop is a cut: the file stops while the sound is still ringing. The fix is `ringOut` on, a later
+  `length`, or `master(fadeOut=...)`. The render also answers `ending` (`length`, the file's `end`, `levelAtLengthDb`, `cut`)
+  and a warning when the ending is cut.
+- **Soft end.** Only with Ring out off; on by default (the song field `endFade`): anything sounding at `length` is faded over
+  its last 0.1 s so the file never ends on a click. It does not make a ring-out natural; it only removes the click. `inspect_diagnose` reports `hard-end`
   if it is off and sound still plays.
 - **Fade out.** `master(fadeOut=1.8)` fades the whole mix to silence over the last 1.8 seconds before `length` (so keep `length`
   where you want silence). On a held chord at the very end a 1.5 s fade measured: the last half second at -56 dB instead of -21 dB.
@@ -253,7 +255,10 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   `"classic"` (synthesized). The recorded kits take `kick`, `snare`, `clap`, `hat`, `openHat`, `pedalHat`, `rim`, `tomLow`,
   `tom`, `tomHigh`, `crash`, `cymbal`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, `shaker`. The classic kit has
   `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write it for a crash or a ride), `tom`, `rim`. An SFZ
-  kit on General MIDI keys (`kitSfz=`) also takes any GM key number 27 … 87. A song saved with the old kit `"synth"` opens as `"drums"`.
+  kit on General MIDI keys (`kitSfz=`) also takes any GM key number 27 … 87. **Even kit** (track field `evenKit`, on for
+  new kit tracks; script only): each drum plays at its measured level against the kick and snare, and each hit's very first
+  milliseconds are held to 15 dB over its own loudness, so one hot drum no longer sets the master's limiter (peaks 1.7–2.7 dB
+  lower at the same loudness; the drums still hit). Off (songs saved before 2026-10-25): the samples as recorded. A song saved with the old kit `"synth"` opens as `"drums"`.
   Common other names are read as these: `hihat` / `hh` / `closedHat` → `hat`, `openHihat` → `openHat`, `bd` →
   `kick`, `sd` → `snare`, `rimshot` / `sidestick` → `rim`, `handclap` → `clap` (any case, with or without - and _).
 - **Plain Python in a script:** `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `sorted`, `reversed`,

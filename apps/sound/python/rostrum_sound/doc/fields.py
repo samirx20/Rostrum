@@ -28,8 +28,13 @@ FIELDS = {
         N("tempo", 20, 400, "Time", "bpm"),
         V.time("length", group="Time", nullable=True,
                help="How long the mix is (a time); left out or null = the last sound + 2 s."),
-        Param.toggle("endFade", group="Time", importance="secondary", label="Soft end", default=True,
+        Param.toggle("ringOut", group="Time", importance="secondary", label="Ring out", default=True,
                      valid_when={"not": IS("length", None)},
+                     help="Sounds still ringing at the song's Length (a held chord's release, a cymbal, an echo) play on "
+                          "until they die away, and the song ends there; a note held past the Length is let go at it. "
+                          "Off: the song ends at its Length, cutting what still sounds."),
+        Param.toggle("endFade", group="Time", importance="secondary", label="Soft end", default=True,
+                     valid_when={"all": [{"not": IS("length", None)}, IS("ringOut", False)]},
                      help="The song's last tenth of a second fades out, so notes still ringing at its Length stop softly "
                           "instead of with a click. Off: the sound stops dead at the Length."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
@@ -50,6 +55,11 @@ FIELDS = {
         Param.color("colour", group="Track", importance="secondary", label="Colour", display="swatch",
                     help="The track's colour on the Timeline and Mixer (a hex like #4aa3ff); optional."),
         *PL.INSTRUMENT,
+        Param.toggle("evenKit", group="Instrument", importance="deep", label="Even kit", shown="script",
+                     valid_when=IS("instrument", "kit"),
+                     help="Each drum at its measured starting level against the kick and snare, and each hit's first "
+                          "milliseconds held within 15 dB of its loudness, so one drum's spike does not pull the master "
+                          "down. Off: the kit as recorded."),
         V.volume("volume", "Mix", help="Fader gain (1 = as recorded)."), N("pan", **PAN, group="Mix"),
         Param.toggle("mute", group="Mix"), Param.toggle("solo", group="Mix"), FB.OUTPUT,
         N("reverb", 0, 1, "Mix", imp="secondary", help="Send to the master's track reverb.", display="percent"),
@@ -132,9 +142,9 @@ FIELDS = {
 }
 # What a new item stores (switch fields always, so valid_when reads a real value).
 DEFAULTS = {
-    "doc": dict(tempo=120, beatsPerBar=4, sampleRate=48000),
+    "doc": dict(tempo=120, beatsPerBar=4, sampleRate=48000, ringOut=True),
     "track": dict(instrument="none", **PL.SWITCHES, volume=1, pan=0, mute=False, solo=False, reverb=0,
-                  tone="neutral", output=names.MASTER_OUT),
+                  tone="neutral", output=names.MASTER_OUT, evenKit=True),
     **FB.DEFAULTS,
     **FM.DEFAULTS,
     "note": dict(vel=0.8),

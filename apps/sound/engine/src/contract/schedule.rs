@@ -6,7 +6,7 @@ use super::error::Error;
 use super::names::SPACES;
 use super::read::Obj;
 use super::time::Tempo;
-use super::{buses, effects, track};
+use super::{buses, effects, ending, track};
 use serde_json::{json, Value};
 
 pub const CONTRACT: &str = "rostrum-sound-schedule/1";
@@ -21,6 +21,8 @@ pub struct Compiled {
     pub ids: Vec<String>,
     /// The distinct credit lines of the CC-BY instruments the tracks play (every export carries them).
     pub credits: Vec<&'static str>,
+    /// A given length (ending.rs): its frame, whether the song rings out past it, and the notes and clips held past it.
+    pub ending: Option<(usize, bool, usize)>,
 }
 
 pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
@@ -46,8 +48,9 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     let ids = track::ids(raw_tracks, &o.at("tracks"), "track")?;
     let bus_ids = buses::ids(o.raw("buses"), &o.at("buses"), &ids)?;
     let (buses_resolved, buses_job) = buses::read(&mut o, &tempo, &bus_ids)?;
+    let ring = o.bool("ringOut", false)?;
     let tracks_at = o.at("tracks");
-    let tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, length_given, &ids, &bus_ids))?;
+    let mut tracks: Vec<track::Track> = o.list("tracks", |t, p| track::read(t, &p, &tempo, sr, length_given, &ids, &bus_ids))?;
     let end = tracks.iter().map(|t| t.end).fold(0.0, f64::max);
     let mut credits: Vec<&'static str> = vec![];
     for c in tracks.iter().filter_map(|t| t.credit) {
@@ -60,7 +63,10 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
         None => return Err(Error::new("BAD_ARGUMENT", &tracks_at, "the schedule", "has no sound and no length").hint("Add notes, hits or clips, or give a length.")),
     };
     o.put("length", json!(seconds));
-    let total = (seconds * sr as f64).round() as usize;
+    let song = (seconds * sr as f64).round() as usize;
+    let ending = length_given.map(|_| (song, ring, tracks.iter_mut().map(|t| ending::hold_to(&mut t.voices, &mut t.clips, song, sr as f64, ring)).sum()));
+    // A song that rings out renders on past its length (the file is cut where the ring dies away: ending.rs).
+    let total = if ring && length_given.is_some() { song + (ending::RING_MAX * sr as f64).round() as usize } else { song };
 
     let master_at = o.at("master");
     let empty = json!({});
@@ -76,11 +82,14 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
     job["version"] = json!(JOB_VERSION);
     job["sampleRate"] = json!(sr);
     job["totalSamples"] = json!(total);
+    if total > song {
+        job["songSamples"] = json!(song);
+    }
     job["tailSamples"] = json!(0);
     job["timeWarps"] = json!([]);
     job["tracks"] = Value::Array(tracks.into_iter().map(|t| t.job(total)).collect());
     job["buses"] = Value::Array(buses_job);
-    Ok(Compiled { resolved, job, seconds, ids, credits })
+    Ok(Compiled { resolved, job, seconds, ids, credits, ending })
 }
 
 struct Master {

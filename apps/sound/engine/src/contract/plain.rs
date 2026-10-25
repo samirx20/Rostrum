@@ -80,15 +80,33 @@ fn recorded(name: &str, e: &Recorded, art: Option<&'static str>, at: &str) -> Re
     Ok(Resolved { inst: Inst::Sfz(zones), family: art_family(first), credit: e.credit })
 }
 
-/// `kit`: a recorded kit (its files and the keys each plays) or the synthesized one.
-pub fn kit(name: &str, at: &str) -> Result<Resolved, Error> {
+/// `kit`: a recorded kit (its files and the keys each plays) or the synthesized one. `even`: its transients held in
+/// reach and each piece at its starting level (instruments/sfz/tame.rs, kit_levels).
+pub fn kit(name: &str, even: bool, at: &str) -> Result<Resolved, Error> {
     let Some(k) = KITS.iter().find(|k| k.name == name) else { return Err(Error::unknown(at, name, &cat::kit_names())) };
     let Some((pack, rel)) = k.file else { return Ok(Resolved { inst: Inst::Kit, family: "drums", credit: None }) };
     let mut files = vec![];
     for (pack, rel) in std::iter::once((pack, rel)).chain(k.fill) {
-        files.push(kit_file(&file(&format!("kit {name}"), pack, rel, at)?, at)?);
+        let (mut spec, keys) = kit_file(&file(&format!("kit {name}"), pack, rel, at)?, at)?;
+        if even {
+            spec["even"] = json!(true);
+            spec["gains"] = json!(kit_levels(name));
+        }
+        files.push((spec, keys));
     }
     Ok(Resolved { inst: Inst::KitSfz(files), family: "drums", credit: k.credit })
+}
+
+/// A recorded kit's starting level per key (dB; engine/data/kit_levels.json, measured by devtools/kit_levels.py).
+pub fn kit_levels(kit: &str) -> Vec<(u8, f64)> {
+    kit_table(kit).iter().filter_map(|(d, db)| Some((super::names::gm_drum(d)?, db.as_f64()?))).collect()
+}
+
+/// The same by drum name, as the file holds it.
+fn kit_table(kit: &str) -> serde_json::Map<String, Value> {
+    static TABLE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
+    let t = TABLE.get_or_init(|| serde_json::from_str(include_str!("../../data/kit_levels.json")).expect("kit_levels.json is JSON"));
+    t["kits"][kit].as_object().cloned().unwrap_or_default()
 }
 
 /// An SFZ kit file's spec and the MIDI keys it plays.
@@ -126,5 +144,6 @@ pub fn describe() -> Vec<Value> {
 
 pub fn describe_kits() -> Vec<Value> {
     KITS.iter().map(|k| json!({ "name": k.name, "about": k.about, "packs": k.file.iter().chain(&k.fill).map(|f| f.0).collect::<Vec<_>>(), "credit": k.credit,
-        "family": "drums", "installed": k.file.iter().chain(&k.fill).all(|(p, f)| installed(p, f)) })).collect()
+        "family": "drums", "installed": k.file.iter().chain(&k.fill).all(|(p, f)| installed(p, f)),
+        "evenLevelsDb": kit_table(k.name) })).collect()
 }

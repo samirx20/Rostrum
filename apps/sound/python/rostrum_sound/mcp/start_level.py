@@ -1,18 +1,14 @@
-"""Each instrument's starting level: how loud the engine sets it at track volume 1 (so volume 1 = "as the engine
-levelled it", and a track's `volume_db` is already against that start). The ONE place that reads it from the engine.
-
-PLUG-IN POINT: the engine's `describe` answer is to carry `STARTING_LEVELS` = {instrument key: dB} (key as
-roles.key() names it, e.g. "builtIn:piano", "kit:drums"; dB against the engine's reference level). Until the engine answers it,
-everything here returns None and callers say nothing about starting levels."""
+"""Each instrument's starting level: the gain the compiler puts under its track's volume (doc/preset_level.py, so
+volume 1 = "as levelled", and a track's `volume_db` is already against that start). Keys as roles.key() names them:
+"builtIn:piano", "kit:drums"."""
 from __future__ import annotations
 
 from .. import roles
+from ..doc.preset_level import starting_levels_db
 
-STARTING_LEVELS = "startingLevelsDb"      # the field name in `describe`; change here only
 
-
-def table(describe: dict) -> dict:
-    return describe.get(STARTING_LEVELS) or {}
+def table(describe: dict | None = None) -> dict:
+    return starting_levels_db()
 
 
 def of(describe: dict, spec: dict | None):

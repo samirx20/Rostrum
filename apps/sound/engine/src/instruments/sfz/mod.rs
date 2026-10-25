@@ -28,7 +28,9 @@ use serde::Deserialize;
 
 mod controls;
 mod flac;
+pub mod onset;
 mod preprocess;
+pub mod tame;
 
 use crate::instruments::expression::Expression;
 
@@ -40,6 +42,11 @@ pub struct SfzSpec {
     pub legato: bool,
     #[serde(default)]
     pub swell: bool,
+    /// An even kit (tame.rs): transients held in reach of each hit's loudness, and each key's starting level (dB).
+    #[serde(default)]
+    pub even: bool,
+    #[serde(default)]
+    pub gains: Vec<(u8, f64)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -164,8 +171,21 @@ pub fn select_on(regions: &[Region], on_release: bool, key: u8, vel: u8, nth: u3
     regions.iter().filter(|r| !r.cc_only && r.on_release == on_release && key >= r.lokey && key <= r.hikey && vel >= r.lovel && vel <= r.hivel && rand >= r.lorand && (rand < r.hirand || r.hirand >= 1.0) && nth % r.seq_length.max(1) + 1 == r.seq_position).collect()
 }
 
-/// A decoded sample: interleaved stereo frames, its rate, and the file's own loop.
-pub struct Sample { pub frames: Vec<[f32; 2]>, pub rate: f64, pub looped: Option<(usize, usize)> }
+/// A decoded sample: interleaved stereo frames, its rate, the file's own loop, and where it is heard (frames from its
+/// start: onset.rs).
+pub struct Sample { pub frames: Vec<[f32; 2]>, pub rate: f64, pub looped: Option<(usize, usize)>, pub onset: usize }
+
+impl Sample {
+    pub fn new(frames: Vec<[f32; 2]>, rate: f64, looped: Option<(usize, usize)>) -> Sample {
+        let onset = onset::find(&frames, rate, 0);
+        Sample { frames, rate, looped, onset }
+    }
+
+    /// Frames from `from` (a region's `offset`) to where the sample is heard.
+    pub fn onset_from(&self, from: usize) -> usize {
+        if from <= self.onset { self.onset - from } else { onset::find(&self.frames, self.rate, from) }
+    }
+}
 
 pub fn read_wav(path: &Path) -> Result<Sample, String> {
     if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("flac")) { return flac::read_flac(path); }
@@ -198,7 +218,7 @@ pub fn read_wav(path: &Path) -> Result<Sample, String> {
     if !matches!((format, bits), (1, 16) | (1, 24) | (1, 32) | (3, 32)) || ch == 0 { return Err(format!("{}: WAV format {format} at {bits} bits is not supported", path.display())); }
     let frame = width * ch;
     let frames = data.chunks_exact(frame).map(|f| { let l = read(&f[..width]); [l, if ch > 1 { read(&f[width..2 * width]) } else { l }] }).collect();
-    Ok(Sample { frames, rate: rate as f64, looped })
+    Ok(Sample::new(frames, rate as f64, looped))
 }
 
 /// Files load once per process and are shared between clips.
@@ -254,15 +274,21 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
                 return Err(format!("{}: no sample for {} (key {key}) at velocity {vel}; the instrument plays {}–{}", spec.file, name(key), name(lo), name(hi)));
             }
             let (off, release, legato) = ends[i];
+            let level = spec.gains.iter().find(|(k, _)| *k == key).map_or(0.0, |g| g.1);
             for r in hits {
-                let mut v = SfzVoice::new(r, cached(&r.sample, read_wav)?, midi, n.velocity, n.pan, legato, spec.swell, n.len as f64 / sr, n.expression.cloned(), sr);
+                let sample = if spec.even { cached(&r.sample, tame::read)?.0.clone() } else { cached(&r.sample, read_wav)? };
+                let mut v = SfzVoice::new(r, sample, midi, n.velocity, n.pan, legato, spec.swell, n.len as f64 / sr, n.expression.cloned(), sr);
+                v.gain *= 10f64.powf(level / 20.0);
+                // It starts its attack early so it is heard on its time (onset.rs; a legato note enters past its attack;
+                // a note in the song's first moments starts at 0, as late as its attack); it is still let go at its end.
+                let at = if legato { n.start } else { n.start.saturating_sub(v.lead()) };
                 // A one-shot rings to its sample's end unless a note of its choke group stops it.
                 match (r.one_shot, choked[i]) {
-                    (false, c) => v.release(off.min(c.unwrap_or(usize::MAX)).saturating_sub(n.start), if c.is_some_and(|c| c < off) { Some(choke(r)) } else { release }),
-                    (true, Some(c)) => v.release(c.saturating_sub(n.start), Some(choke(r))),
+                    (false, c) => v.release(off.min(c.unwrap_or(usize::MAX)).saturating_sub(at), if c.is_some_and(|c| c < off) { Some(choke(r)) } else { release }),
+                    (true, Some(c)) => v.release(c.saturating_sub(at), Some(choke(r))),
                     (true, None) => {}
                 }
-                mix(&mut v, n.start, left, right);
+                mix(&mut v, at, left, right);
             }
             // The note's release samples (string resonance, hammer noise), from its end, softer the longer it was held.
             for r in select_on(&regions, true, key, vel, nth, rand) {
@@ -352,6 +378,13 @@ impl SfzVoice {
             (end, span, (0.3 * s.rate).min(span * 0.5))
         });
         SfzVoice { gain, pl: pl as f32, pr: pr as f32, step, looped, auto, release: r.release.max(0.002), attack: if legato { LEGATO_FADE } else { r.attack }, note_end: usize::MAX, dur, swell, expression, pos, i: 0, sr, r: r.clone(), s }
+    }
+
+    /// Output samples from the voice's start to where it is heard (onset.rs): the sample's attack at the note's pitch,
+    /// after the region's delay, at most `onset::MAX_LEAD`.
+    pub fn lead(&self) -> usize {
+        let frames = self.s.onset_from(self.pos as usize) as f64 / self.step.max(1e-9);
+        ((frames + self.r.delay * self.sr).min(onset::MAX_LEAD * self.sr)).round() as usize
     }
 
     /// Releases `after` samples from now, over `over` seconds (else the region's own release).

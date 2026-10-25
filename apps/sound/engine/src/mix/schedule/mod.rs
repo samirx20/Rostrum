@@ -18,6 +18,10 @@ pub struct Schedule {
     pub total_samples: usize,
     /// Rendered past the end and wrapped onto the start (a looping soundtrack), else 0.
     pub tail_samples: usize,
+    /// Where the song ends when it renders on past it to let its last sounds ring out (contract `ringOut`): the
+    /// master's fade-out ends here, silence after it. None: the song ends at `total_samples`.
+    #[serde(default)]
+    pub song_samples: Option<usize>,
     pub fade_in_samples: usize,
     pub fade_out_samples: usize,
     pub master_volume: f64,

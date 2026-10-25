@@ -26,13 +26,13 @@ def _instrument(args) -> dict:
 def register(tools: Tools):
     @tools.tool("inspect_engine", {"properties": {}})
     def inspect_engine(ctx, args):
-        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized. Where the engine gives it, each instrument's starting level (start_level_db: how loud it is at track volume 1; a track's volume_db in look_sound levels is against it). data.render_bands_hz names the five bands of the render reply (sub 20–60, bass 60–250, lowMid 250–1000, mid 1000–4000, high 4000–16000 Hz)."""
+        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized. Each instrument's starting level (start_level_db: how loud it is at track volume 1; a track's volume_db in look_sound levels is against it). data.render_bands_hz names the five bands of the render reply (sub 20–60, bass 60–250, lowMid 250–1000, mid 1000–4000, high 4000–16000 Hz)."""
         d = ctx.app.state.engine.request("describe")
         made = L.made_by(d)
         effects, master = L.effect_rows(), L.master_rows()
         said = "; ".join(roles.line(k, made[k], short=True) for k in roles.ROLES)
         rows = roles.rows(made)
-        for row in rows:                      # the starting level, once the engine gives it (mcp/start_level.py)
+        for row in rows:                      # the starting level (mcp/start_level.py)
             lv = start_level.table(d).get(row["sound"])
             if lv is not None:
                 row["start_level_db"] = round(lv, 1)
@@ -53,7 +53,7 @@ def register(tools: Tools):
         "kit": {"type": "string", "enum": names.KITS, "description": "A drum kit: drums, studio or classic."},
         "kitSfz": {"type": "string", "description": "Absolute path to an SFZ drum kit."}}})
     def inspect_instrument(ctx, args):
-        """What one instrument can play before you write for it: pass exactly ONE of builtIn, model, synth, sfz, kit, kitSfz (the argument is the form, its value the name: `builtIn: "marimba"`, `kit: "studio"`; there is no `name` argument). Gives its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step."""
+        """What one instrument can play before you write for it: pass exactly ONE of builtIn, model, synth, sfz, kit, kitSfz (the argument is the form, its value the name: `builtIn: "marimba"`, `kit: "studio"`; there is no `name` argument). Gives its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step. A recorded instrument also gives attackMs {typical, most}: how long its samples take to speak (ms at velocity 100); the engine starts each note that much early, so a note written at a marker is heard at the marker."""
         inst = _instrument(args)
         r = ctx.app.state.engine.request("range", instrument=inst)
         k = roles.key(inst)
