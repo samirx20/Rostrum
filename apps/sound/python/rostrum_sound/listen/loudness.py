@@ -54,7 +54,7 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
     """Facts about how loud `wav` is. `series` = the engine's own short-term values
     [(time_s, lufs)] (e.g. its 100 ms series), used for the curve instead of computing one.
     `out_png` writes the loudness + band-energy picture and returns its path under "png".
-    `limiter` = {"stems": {track: wav}, "caveat": str}: adds where the master limiter worked and which tracks
+    `limiter` = {"stems": {track: wav}, "reduction": [dB per 100 ms], "caveat": str}: adds where the master limiter worked and which tracks
     drove it (listen/limiter.py) to the facts and a third panel to the picture."""
     y, sr = load(wav)
     if series is not None:
@@ -75,7 +75,7 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None):
     panel = None
     if limiter:
         from .limiter import HOP_S, limiter as measure
-        lim = measure(wav, limiter["stems"], limiter.get("caveat", ""), engine_max_db=limiter.get("engine_max_db"))
+        lim = measure(limiter["stems"], limiter["reduction"], limiter.get("caveat", ""), engine_max_db=limiter.get("engine_max_db"))
         curve = lim.pop("_curve")
         out["limiter"] = lim
         panel = (HOP_S, curve.tolist(), lim["worst"])

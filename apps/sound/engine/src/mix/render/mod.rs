@@ -57,6 +57,7 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     // What reaches the master bus, in the order it is summed (the same sum every run): the direct tracks in schedule
     // order, then the buses (bus.rs sums them block by block from disk).
     let mut inputs: Vec<Arc<Tape>> = vec![];
+    let mut names: Vec<(bool, String)> = vec![];
     let (mut ducks, mut stats, mut stems) = (vec![], vec![], vec![]);
     // What the buses take (buses.rs): the outputs of the tracks that route or send to one.
     let mut routed: Vec<Option<Arc<Tape>>> = s.tracks.iter().map(|_| None).collect();
@@ -75,6 +76,7 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
         }
         if crate::mix::buses::direct(s, track) {
             inputs.push(out.clone());
+            names.push((false, track.name.clone()));
         }
         if crate::mix::buses::feeds_buses(track) {
             routed[k] = Some(out);
@@ -83,6 +85,9 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     let keep_stems = keep.iter().any(|&k| k);
     let (bus_stats, bus_stems, bus_outs) = crate::mix::buses::mix(s, routed, &rendered.pres, buf, keep_stems)?;
     inputs.extend(bus_outs);
+    if s.tap.is_none() {
+        names.extend(s.buses.iter().filter(|b| b.output.is_none()).map(|b| (true, b.name.clone())));
+    }
     let t3 = std::time::Instant::now();
     let mut mix = crate::mix::bus::master(s, &inputs)?;
     prof("master", t3);
@@ -91,5 +96,6 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
     mix.tracks = stats;
     mix.stems = stems;
     mix.bus_stems = bus_stems;
+    mix.inputs = names;
     Ok(mix)
 }

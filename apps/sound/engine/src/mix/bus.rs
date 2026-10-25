@@ -120,13 +120,14 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
     let weights = layout.weights();
     let (mastered, report) = match &s.master {
         Some(m) => {
-            let (sp, r) = crate::fx::master::master_blocks(&gained, nch, total, &weights, m, sr, true)?;
+            let (sp, r, d) = crate::fx::master::master_blocks(&gained, nch, total, &weights, m, sr, true)?;
+            gain.dynamics = Some(Arc::new(d));
             (Some(sp), r)
         }
         None => (None, Default::default()),
     };
     gain.norm = 10f64.powf(report.gain_db / 20.0);
-    let mut mix = Mix { layout, out: None, peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: report, bands: [-140.0; 5], loud: None, levels: vec![] };
+    let mut mix = Mix { layout, out: None, peak: 0.0001, sum_sq: 0.0, sums: vec![0.0; nch], clipped: 0, safety_clipped: 0, lufs: -70.0, true_peak: -120.0, true_peak_series: vec![], reduction_series: vec![], ducks: vec![], tracks: vec![], buses: vec![], stems: vec![], bus_stems: vec![], gain: None, master: report, bands: [-140.0; 5], loud: None, levels: vec![], inputs: vec![] };
     let mut win = crate::mix::render::levels::Windows::new(sr);
     let mut file = TapeWriter::new(nch, total)?;
     let (mut lufs, mut peaks, mut balance, mut loud) = (Lufs::new(nch, &weights, sr), Peaks::new(nch), Balance::new(sr, false), crate::analysis::loudstats::Meter::new(nch, &weights, sr));
@@ -135,6 +136,8 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
     let (mut hop_max, mut hop_n, mut most) = (0.0f64, 0usize, 1e-9f64);
     let db = |m: f64| 20.0 * m.max(1e-9).log10();
     let mut series = vec![];
+    // The mastering stage's reduction (dB, ≥ 0: glue and limiter, the target gain taken out) of each 100 ms hop: its deepest.
+    let (mut red_min, mut red_n) = (1.0f64, 0usize);
     let mut take_peaks = |per: Vec<f64>, series: &mut Vec<f64>| {
         for p in per {
             most = most.max(p);
@@ -152,11 +155,22 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
             Some(sp) => sp.read(at, n)?,
             None => gained(at, n)?,
         };
+        if mastered.is_some() {
+            for m in gain.mastering(at, n)? {
+                red_min = red_min.min(m / gain.norm);
+                red_n += 1;
+                if red_n == hop {
+                    mix.reduction_series.push(-db(red_min).min(0.0));
+                    (red_min, red_n) = (1.0, 0);
+                }
+            }
+        }
         for i in 0..n {
             let (mut hot, mut sq, mut top) = (false, 0.0, 0.0f64);
             for (c, ch) in out.iter_mut().enumerate() {
                 let raw = ch[i] as f64;
                 hot |= raw.abs() >= 0.99;
+                mix.safety_clipped += (s.safety_clip && raw.abs() > 0.891) as usize;
                 let a = if s.safety_clip { safety_clip(raw) } else { raw };
                 ch[i] = a as f32;
                 top = top.max(a.abs());
@@ -184,6 +198,9 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
     take_peaks(peaks.finish(), &mut series);
     if hop_n > 0 {
         series.push(db(hop_max));
+    }
+    if red_n > 0 {
+        mix.reduction_series.push(-db(red_min).min(0.0));
     }
     mix.levels = win.finish();
     mix.lufs = lufs.finish();

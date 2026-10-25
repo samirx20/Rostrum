@@ -58,15 +58,21 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 
 ## 4. Stems and the end
 
-- **Stems** is a picker: **Only the mix** (the first choice) or **A stem per track and group**, which also gives a file for every track and every group, named after it. Added together they come to
-  the mix. The master's compression and limiter are not in the stems.
+- **Stems** is a picker: **Only the mix** (the first choice) or **A stem per track and group**, which also gives a file for every track and every group, named after it. Every stem goes through the master just as the mix
+  did: its volume, fades, compression, loudness and limiter, the very same turn-down at the same moment for every stem. So
+  the stems of the tracks in no group, plus the group stems, added together come to the mix, and a stem never clips where
+  the mix doesn't. The master's own effects and reverb can't be split between stems: when the song has them, the result
+  line says "The stems do not add up to the mix exactly" and names them. If any file still came out cut flat at full
+  scale, the result line says which ("Clipped: Piano (120 samples cut flat)"): export as WAV 32-bit float, or turn that
+  track down. While it works, the sheet says what it is doing ("Rendering the mix and its stems", then "Writing
+  song_mix.wav and 4 stems as WAV 24-bit"). The song is rendered once; the stems come from that one render.
 - **Cut the silence at the end** (on at first): the file ends a quarter of a second after the last sound you can hear.
   The mix and stems are cut to the same length. Switch it off to keep the song's full length.
 
 ## 5. Range, and another version
 
 - **Range** (appears when the song has more than the whole song): the **whole song**, the **time range** you have
-  dragged on the ruler, or a **section**. Each end of a range drawn on the ruler goes to a grid line within a few pixels of it, else takes in the whole grid step it is in (Grid ▾ in the header strip); right-click the ruler and turn on the seconds scale to draw it
+  dragged on the ruler, or a **section**. Each end of a range drawn on the ruler goes to the grid line nearest the pointer (Grid ▾ in the header strip sets the step); right-click the ruler and turn on the seconds scale to draw it
   in exact seconds. The row's name shows the two ends to the hundredth ("Time range · 0:02.00–0:06.00"), which is what
   is exported. The file is exactly that stretch (2 s to 6 s is 4.00 s long; any ring-out past the end is cut). Its loudness is the whole song's, matched
   by the master and then cut, so a quiet section stays quieter than a loud one, as it sounds in the song. The silent

@@ -8,6 +8,7 @@ project list (rostrum_core.project) see it. A failed or stopped render removes i
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import time
 from pathlib import Path
@@ -26,21 +27,36 @@ def _file(name: str, meters: dict) -> dict:
             "clipped_at": meters.get("clipped") or []}
 
 
+def _stem(name: str, written: dict | None, track: dict, clipped: int) -> dict:
+    """A stem as the manifest says it: the file's own loudness and peaks (the engine measured it as it wrote it; an
+    older engine's track meters otherwise) and the samples cut flat at full scale in it (a fixed-point file)."""
+    m = written or track
+    return {"file": name, "loudness_lufs": m.get("lufs"), "true_peak_db": m.get("truePeak", m.get("peak")),
+            "sample_peak_db": (written or {}).get("peak"), "clipped_samples": clipped}
+
+
 LIMITER_SLACK_DB = 0.05     # a reduction under this is inaudible and under the files' own rounding
+ADD_UP = 1e-4               # the stems' sum within this of the mix (sample value, -80 dB) adds up to it
 
 
 def stems_rule(r: dict) -> dict:
-    """The one stems rule (docs: guides/mixing-to-delivery.md): stems leave through the master's linear gain
-    (fader, its automation, fades, the gain to the loudness target), never its glue, limiter or master effects.
-    So they add up to the mix wherever none of those acted; this says whether that is everywhere, and by how
-    much they differ where not."""
+    """The one stems rule (docs: guides/mixing-to-delivery.md): stems carry the master's whole gain (fader, its
+    automation, fades, glue, the gain to the loudness target and the limiter, worked out once on the mix and the same
+    on every stem), so they add up to the mix. What the master does that a stem cannot carry (its effects, its reverb,
+    time warps, a loop's wrap, the safety clip) is named in `on_mix_only`; the engine measures how far the sum is from
+    the mix when the stems hold everything that reaches the master."""
     m = r.get("master") or {}
-    glue, limiter = m.get("glueMaxReductionDb", 0.0), m.get("limiterMaxReductionDb", 0.0)
-    inserts = bool(m.get("insertsOnMix"))
-    return {"rule": "stems carry the master's linear gain; its glue, limiter and master effects are on the mix only",
-            "master_gain_db": m.get("gainDb", 0.0), "glue_max_reduction_db": glue, "limiter_max_reduction_db": limiter,
-            "master_effects_on_mix_only": inserts,
-            "stems_add_up": not inserts and glue <= LIMITER_SLACK_DB and limiter <= LIMITER_SLACK_DB}
+    only, diff = m.get("onMixOnly"), m.get("stemsMaxDifference")
+    base = {"master_gain_db": m.get("gainDb", 0.0), "glue_max_reduction_db": m.get("glueMaxReductionDb", 0.0),
+            "limiter_max_reduction_db": m.get("limiterMaxReductionDb", 0.0)}
+    if only is None:            # an engine from before the shared gain: its stems carry the linear gain only
+        return {"rule": "stems carry the master's linear gain only (an older engine): glue, limiter and master effects are on the mix only",
+                **base, "on_mix_only": ["glue", "limiter", "master effects"], "stems_add_up": False}
+    rule = ("stems carry the master's whole gain: fader, fades, glue, loudness gain and limiter, one gain curve worked "
+            "out on the mix and the same on every stem")
+    return {"rule": rule + (f"; on the mix only: {', '.join(only)}" if only else ""), **base, "on_mix_only": only,
+            **({"max_difference": diff, "max_difference_db": round(20 * math.log10(max(diff, 1e-12)), 1)} if diff is not None else {}),
+            "stems_add_up": not only and (diff is None or diff <= ADD_UP)}
 
 
 def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, names: dict | None = None) -> dict:
@@ -50,6 +66,7 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
     buses = {b["id"]: b for b in r.get("buses", [])}
     bus_stems = {bid: Path(p).name for bid, p in r.get("busStems", {}).items()}
     rule = stems_rule(r)
+    clipped = r.get("clippedFiles") or {}
     return {"item": item, "version": version, "kind": "sound", "made_by": who,
             "made_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "source": {"document": doc.item_id, "history_entry": doc.seq}, "engine": ENGINE,
@@ -60,7 +77,7 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
             "seconds": r.get("seconds"), "song_seconds": r.get("songSeconds", r.get("seconds")), "trimmed_silence": r.get("trimmed", False),
             **({"range": r["range"]} if r.get("range") else {}),
             **({"stems_by": r["stemsBy"]} if r.get("stemsBy") else {}), **({"markers_file": MARKERS_FILE} if r.get("markersFile") else {}),
-            "clipped_samples": r.get("clippedSamples", 0), "mastered": master,
+            "clipped_samples": r.get("clippedSamples", 0), "clipped_files": r.get("clippedFiles") or {}, "mastered": master,
             **({"credits": lines} if (lines := packs.credit_lines(r)) else {}),    # CC-BY instruments: credit them where the sound goes
             # Without buses the track stems add up to the mix; with buses, the stems of the tracks in `direct` plus
             # the bus stems do (a track feeding a bus is inside its bus) — under `stems_rule`.
@@ -68,8 +85,10 @@ def manifest(item: str, version: int, r: dict, doc, who: str, master: bool, name
             "direct": r.get("direct", list(stems)),
             "mix": _file(Path(r["file"]).name, r),
             # the id → file mapping: the file is named after the track as the screen shows it, the key is its id
-            "stems": {tid: {**_file(n, tracks.get(tid, {})), "name": names.get(tid, tid)} for tid, n in stems.items()},
-            "bus_stems": {bid: {**_file(n, buses.get(bid, {})), "name": names.get(bid, bid)} for bid, n in bus_stems.items()}}
+            "stems": {tid: {**_stem(n, (r.get("stemMeters") or {}).get(tid), tracks.get(tid, {}), clipped.get(n, 0)),
+                            "name": names.get(tid, tid)} for tid, n in stems.items()},
+            "bus_stems": {bid: {**_stem(n, (r.get("busStemMeters") or {}).get(bid), buses.get(bid, {}), clipped.get(n, 0)),
+                                "name": names.get(bid, bid)} for bid, n in bus_stems.items()}}
 
 
 MARKERS_FILE = "markers.json"
@@ -103,31 +122,50 @@ def silent_stems(r: dict, names: dict) -> list[str]:
     return out
 
 
+def warnings(r: dict) -> list[str]:
+    """What a person must know about the files, in plain words (empty: nothing): a file cut flat at full scale, and
+    stems that do not add up to the mix (what the master did that they cannot carry). Shown by the Export sheet's
+    result line and the render reply, never left to the manifest alone."""
+    out = []
+    clipped = r.get("clippedFiles") or {}
+    if clipped:
+        out.append("Clipped: " + ", ".join(f"{Path(n).stem} ({k:,} samples cut flat)" for n, k in clipped.items())
+                   + ". Export as WAV 32-bit float to keep every peak, or turn those tracks down")
+    rule = stems_rule(r)
+    if (r.get("stems") or r.get("busStems")) and not rule["stems_add_up"]:
+        why = ", ".join(rule["on_mix_only"]) if rule["on_mix_only"] else "the master"
+        out.append(f"The stems do not add up to the mix exactly: {why} {'is' if len(rule['on_mix_only']) == 1 else 'are'} on the mix only")
+    return out
+
+
 def names_of(doc, ids) -> dict:
     """{id: the name the screen shows} for tracks and buses (the id when it has no name)."""
     return {i: (doc.item(i).get("name") or i) if doc.has(i) else i for i in ids}
 
 
 def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True, options: dict | None = None,
-           markers_file: bool = False) -> dict:
+           markers_file: bool = False, say=None) -> dict:
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
     `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure or stop raises, and the
     `.partial` folder is removed (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
     file format, sample rate and trimming the silent end (default: 24-bit WAV at the song's rate, trimmed). The
     files are named after the tracks; the manifest keeps the id → file mapping. `stems`: "all" (a file per track and per group),
     a list of track ids, [] (none) or "groups" (a stem per group and per ungrouped track: stem_groups.py).
-    `markers_file`: also write `markers.json` beside the files (the Editor preset)."""
+    `markers_file`: also write `markers.json` beside the files (the Editor preset). `say(words)`: what it is doing now
+    (the Export sheet shows it)."""
     opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers before any folder is made
     part = begin_render(folder, doc.item_id)
     try:
-        return _render(part, folder, doc, engine, {**schedule, "sampleRate": opts.sample_rate}, who, stems, master, opts, markers_file)
+        return _render(part, folder, doc, engine, {**schedule, "sampleRate": opts.sample_rate}, who, stems, master, opts, markers_file,
+                       say or (lambda _w: None))
     except BaseException:                  # failed, or stopped (a cancel): no `vNNN.partial` is left to look like a render
         shutil.rmtree(part, ignore_errors=True)
         raise
 
 
-def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file) -> dict:
+def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say) -> dict:
     item = doc.item_id
+    say("Rendering the mix and its stems" if stems else "Rendering the mix")
     try:
         rng = {} if opts.start is None else {"from": opts.start, "to": opts.end}       # the engine renders the range itself
         r = engine.request("render", schedule=schedule, out=str(part / deliver.mix_name(item)),
@@ -143,6 +181,9 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
             write_markers(part, doc, folder, None if opts.start is None else (opts.start, opts.end))
             r = {**r, "markersFile": MARKERS_FILE}
         names = names_of(doc, [*r.get("stems", {}), *r.get("busStems", {})])
+        n = len(r.get("stems") or {}) + len(r.get("busStems") or {})
+        say(f"Writing {deliver.mix_name(item, opts.spec['ext'])}" + (f" and {n} stem{'s' * (n != 1)}" if n else "")
+            + f" as {opts.spec['label']}")
         r = deliver.deliver(part, r, names, opts, item)
     except RostrumError:
         raise
@@ -151,6 +192,6 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
     version = int(part.name[1:-len(".partial")])
     done = finish_render(part, manifest(item, version, r, doc, who, master, names))
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
-    return {**r, "silentStems": silent_stems(r, names), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
+    return {**r, "silentStems": silent_stems(r, names), "warnings": warnings(r), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
             "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},
             "version": version, "folder": str(done)}

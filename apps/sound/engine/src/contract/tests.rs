@@ -194,3 +194,36 @@ fn perform_false_plays_as_written_and_performing_is_the_same_every_time() {
     assert!(a.iter().all(|v| v["startIdx"].as_u64().is_some()));
     assert_ne!(voices(json!({ "seed": 7 })), a, "another seed, another performance");
 }
+
+#[test]
+fn stems_carry_the_limiter_so_they_add_up_to_the_mix_and_never_clip() {
+    // Two tracks of the same loud tone, mastered loud: the limiter works. The stems take its gain too (the critic's piano
+    // stem took the master's gain but not its limiter and clipped), so they stay under full scale and add up to the mix.
+    let dir = std::env::temp_dir().join(format!("rostrum-sound-stems-sum-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let tone: Vec<f32> = (0..48000).map(|i| (i as f32 * 220.0 * std::f32::consts::TAU / 48000.0).sin() * 0.6).collect();
+    let take = dir.join("tone.wav");
+    std::fs::write(&take, crate::mix::wavio::write(&[tone.clone(), tone], crate::bed::Layout::Stereo, 48000)).unwrap();
+    let out = dir.join("mix.wav");
+    let a = answer(&json!({ "do": "render", "out": out, "stems": "all", "schedule": { "contract": "rostrum-sound-schedule/1", "length": 1.0,
+        "master": { "loudness": -1, "truePeak": -1 },
+        "tracks": [{ "id": "a", "clips": [{ "media": take, "at": 0 }] }, { "id": "b", "clips": [{ "media": take, "at": 0 }] }] } }));
+    assert_eq!(a["ok"], json!(true), "{a}");
+    let r = &a["result"];
+    assert!(r["master"]["limiterMaxReductionDb"].as_f64().unwrap() > 1.0, "the limiter must work for this test: {}", r["master"]);
+    assert_eq!(r["master"]["onMixOnly"], json!([]), "{}", r["master"]);
+    assert!(r["master"]["stemsMaxDifference"].as_f64().unwrap() < 1e-4, "{}", r["master"]);
+    let read = |p: &str| crate::instruments::sfz::read_wav(std::path::Path::new(p)).unwrap().frames;
+    let mix = read(out.to_str().unwrap());
+    let (sa, sb) = (read(r["stems"]["a"].as_str().unwrap()), read(r["stems"]["b"].as_str().unwrap()));
+    let mut worst = 0.0f32;
+    for i in 0..mix.len() {
+        for c in 0..2 {
+            assert!(sa[i][c].abs() <= 1.0 && sb[i][c].abs() <= 1.0, "a stem past full scale at frame {i}");
+            worst = worst.max((sa[i][c] + sb[i][c] - mix[i][c]).abs());
+        }
+    }
+    assert!(worst < 1e-4, "the stems miss the mix by {worst}");
+    assert_eq!(r["stemMeters"]["a"]["overFullScale"], json!(0), "{}", r["stemMeters"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -12,6 +12,7 @@ its words; `Options.read` checks a request and says in words what is wrong (MP3 
 from __future__ import annotations
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,6 +39,7 @@ AUDIBLE = 1e-4          # -80 dBFS: below this nothing is heard, even a reverb t
 TAIL = 0.25             # seconds kept after the last audible sound
 MIN_SECONDS = 0.5       # never a shorter file than this
 BLOCK = 1 << 18         # frames read and written at a time (2 MB of stereo float)
+WRITERS = 4             # files converted at once (reading, converting and writing a file leave Python's lock free)
 
 
 def rates_for(fmt: str) -> list[dict]:
@@ -179,7 +181,8 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the engine renders
     that part itself, mastered and measured on its own; an older render of the whole song is cut here), `seconds` (the
     delivered length), `songSeconds` (the song's own), `files` (what
-    each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`)."""
+    each id became) and what was written (`format`, `sampleRate`, `trimmedTo`, `clippedSamples`, and `clippedFiles`: {file
+    name: samples cut flat} for each fixed-point file that went past full scale)."""
     sf = _soundfile()
     spec = opts.spec
     mix = Path(mix_name(item)).stem
@@ -189,7 +192,16 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
         jobs.append(("track", tid, Path(p), safe_name(names.get(tid) or tid, taken)))
     for bid, p in (r.get("busStems") or {}).items():
         jobs.append(("bus", bid, Path(p), safe_name(names.get(bid) or bid, taken)))
-    info = {j[2]: last_audible(j[2], sf) for j in jobs}
+    meters = {("track", k): m for k, m in (r.get("stemMeters") or {}).items()} |              {("bus", k): m for k, m in (r.get("busStemMeters") or {}).items()}
+
+    def where_heard(kind, key, src):
+        """(frames, last audible frame, rate): the engine measured each stem as it wrote it; only the mix is read here."""
+        m = meters.get((kind, key))
+        if m is None or m.get("lastAudible") is None:
+            return last_audible(src, sf)
+        i = sf.info(str(src))
+        return i.frames, int(m["lastAudible"]), i.samplerate
+    info = {j[2]: where_heard(*j[:3]) for j in jobs}
     frames, rate = max(i[0] for i in info.values()), next(iter(info.values()))[2]
     if any(i[2] != opts.sample_rate for i in info.values()):
         raise RostrumError(codes.JOB_FAILED, "render", str(folder), f"the engine wrote {rate} Hz, not the {opts.sample_rate} Hz asked for")
@@ -209,15 +221,20 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
         keep = min(frames, int(opts.end * rate)) - first
     elif opts.trim and heard:
         keep = min(frames, max(heard + int(TAIL * rate), int(MIN_SECONDS * rate)))
-    over, files = 0, {}
-    for kind, key, src, stem in jobs:
+    def one(job):
+        kind, key, src, stem = job
         dest = folder / f"{stem}.{spec['ext']}"
         part = dest.with_name(dest.name + ".part")        # the engine's file may have the final name: write beside it, then swap
-        over += write(part, src, keep, rate, spec, sf, first)
+        n = write(part, src, keep, rate, spec, sf, first)
         if dest != src:
             src.unlink()
         part.replace(dest)
-        files[(kind, key)] = dest
+        return dest, n
+    with ThreadPoolExecutor(max_workers=max(1, min(WRITERS, len(jobs)))) as pool:
+        done = list(pool.map(one, jobs))
+    files = {(kind, key): dest for (kind, key, _, _), (dest, _) in zip(jobs, done)}
+    clipped = {dest.name: n for dest, n in done if n}       # samples cut flat at full scale, per file (a fixed-point file only)
+    over = sum(clipped.values())
     mix = files[("mix", None)]
     start = r["range"][0] if ranged else first / rate
     song = (r.get("seconds") or frames / rate) if ranged else frames / rate
@@ -226,4 +243,4 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
             "busStems": {k: str(files[("bus", k)]) for k in (r.get("busStems") or {})},
             "format": opts.describe(), "sampleRate": rate, "trimmed": bool(opts.trim and keep < frames and (ranged or opts.start is None)),
             **({"range": [start, start + keep / rate]} if opts.start is not None else {}),
-            "clippedSamples": over}
+            "clippedSamples": over, "clippedFiles": clipped}

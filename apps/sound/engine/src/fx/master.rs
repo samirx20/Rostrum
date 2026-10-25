@@ -23,14 +23,32 @@ pub struct MasterSpec {
     pub glue: f64,
 }
 
-/// What the mastering stage did, for the stems (render/): `gain_db` is its one linear part (the gain to the
-/// loudness target, the same on every sample, so a stem can carry it); `glue_db` and `limiter_db` are the
-/// largest gain reductions (≥ 0 dB) of its two nonlinear parts, which a stem cannot carry.
+/// What the mastering stage did: `gain_db` is the gain to the loudness target (the same on every sample);
+/// `glue_db` and `limiter_db` are the largest gain reductions (≥ 0 dB) of the glue and the limiter.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MasterReport {
     pub gain_db: f64,
     pub glue_db: f64,
     pub limiter_db: f64,
+}
+
+/// The mastering stage's gain at every frame, as it was applied to the mix (one channel each, spooled like the mix):
+/// the glue's (None without glue) and the limiter pass's (the gain to the target times the limiter's own). Both are
+/// linked across the channels, so the same gain on every stem keeps the stems adding up to the mix (render/stems.rs).
+pub struct Dynamics {
+    pub glue: Option<Spool>,
+    pub limiter: Spool,
+}
+
+impl Dynamics {
+    /// The whole gain (glue × target gain × limiter) at frames `at .. at + n`.
+    pub fn read(&self, at: usize, n: usize) -> Result<Vec<f64>, String> {
+        let mut g: Vec<f64> = self.limiter.read(at, n)?.swap_remove(0).into_iter().map(f64::from).collect();
+        if let Some(glue) = &self.glue {
+            g.iter_mut().zip(glue.read(at, n)?.swap_remove(0)).for_each(|(g, x)| *g *= x as f64);
+        }
+        Ok(g)
+    }
 }
 
 /// A look-ahead limiter on true peaks, linked across the channels: the gain reaches what each peak
@@ -53,12 +71,14 @@ struct Limiter {
     lowest: f64,
     /// The frames waiting for their gain.
     wait: Vec<VecDeque<f32>>,
+    /// The gain each released frame got, until `limited` takes them (Dynamics).
+    given: Vec<f32>,
 }
 
 impl Limiter {
     fn new(nch: usize, ceiling: f64, sr: f64) -> Limiter {
         let la = (sr * 0.0015).round() as usize;
-        Limiter { ceiling, la, rel: 1.0 - (-1.0 / (0.08 * sr)).exp(), peaks: Peaks::new(nch), window: VecDeque::new(), needs: 0, held: 0, g: 1.0, recent: VecDeque::new(), sum: 0.0, lowest: 1.0, wait: vec![VecDeque::new(); nch] }
+        Limiter { ceiling, la, rel: 1.0 - (-1.0 / (0.08 * sr)).exp(), peaks: Peaks::new(nch), window: VecDeque::new(), needs: 0, held: 0, g: 1.0, recent: VecDeque::new(), sum: 0.0, lowest: 1.0, wait: vec![VecDeque::new(); nch], given: vec![] }
     }
 
     fn push(&mut self, block: &[Vec<f32>]) -> Vec<Vec<f32>> {
@@ -114,6 +134,7 @@ impl Limiter {
         }
         let gain = self.sum / (j.min(self.la) + 1) as f64;
         self.lowest = self.lowest.min(gain);
+        self.given.push(gain as f32);
         for (o, w) in out.iter_mut().zip(self.wait.iter_mut()) {
             let x = w.pop_front().expect("a frame per need");
             o.push((x as f64 * gain) as f32);
@@ -140,13 +161,15 @@ struct Glue {
     ms: f64,
     gr: f64,
     deepest: f64,
+    /// The gain each frame got (Dynamics).
+    given: Vec<f32>,
 }
 
 impl Glue {
     fn new(weights: &[f64], amount: f64, program: f64, sr: f64) -> Glue {
         Glue {
             weights: weights.to_vec(), wsum: weights.iter().sum::<f64>().max(1e-9), ratio: 1.0 + 3.0 * amount, threshold: program + 3.0,
-            att: 1.0 - (-1.0 / (0.025 * sr)).exp(), rel: 1.0 - (-1.0 / (0.18 * sr)).exp(), det: 1.0 - (-1.0 / (0.01 * sr)).exp(), ms: 0.0, gr: 0.0, deepest: 0.0,
+            att: 1.0 - (-1.0 / (0.025 * sr)).exp(), rel: 1.0 - (-1.0 / (0.18 * sr)).exp(), det: 1.0 - (-1.0 / (0.01 * sr)).exp(), ms: 0.0, gr: 0.0, deepest: 0.0, given: vec![],
         }
     }
 
@@ -166,6 +189,7 @@ impl Glue {
             self.gr += (if want < self.gr { self.att } else { self.rel }) * (want - self.gr);
             self.deepest = self.deepest.min(self.gr);
             let g = 10f64.powf(self.gr / 20.0);
+            self.given.push(g as f32);
             for c in chs.iter_mut() {
                 c[i] = (c[i] as f64 * g) as f32;
             }
@@ -186,57 +210,73 @@ fn lufs_of(read: Source, nch: usize, total: usize, weights: &[f64], sr: f64) -> 
     Ok(m.finish())
 }
 
-/// The source through `gain` and the limiter into a new spool; with `measure`, the result's loudness too.
-fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f64, sr: f64, on_disk: bool, measure: Option<&[f64]>) -> Result<(Spool, f64, Option<f64>), String> {
+/// One limiter pass: the result, its gain at every frame (the target gain times the limiter's: Dynamics), its deepest
+/// reduction (dB) and, with `measure`, the result's loudness.
+struct Pass {
+    out: Spool,
+    gains: Spool,
+    deepest: f64,
+    lufs: Option<f64>,
+}
+
+/// The source through `gain` and the limiter into a new spool, with the gain each frame got.
+fn limited(read: Source, nch: usize, total: usize, gain: Option<f32>, ceiling: f64, sr: f64, on_disk: bool, measure: Option<&[f64]>) -> Result<Pass, String> {
     let mut lim = Limiter::new(nch, ceiling, sr);
     let mut out = Spool::new(nch, total, on_disk)?;
+    let mut gains = Spool::new(1, total, on_disk)?;
     let mut meter = measure.map(|w| Lufs::new(nch, w, sr));
-    let mut emit = |b: Vec<Vec<f32>>, out: &mut Spool| -> Result<(), String> {
+    let g = gain.unwrap_or(1.0);
+    let mut emit = |b: Vec<Vec<f32>>, given: &mut Vec<f32>, out: &mut Spool, gains: &mut Spool| -> Result<(), String> {
         if b.first().is_some_and(|c| !c.is_empty()) {
             if let Some(m) = &mut meter {
                 m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
             }
             out.push(&b)?;
+            gains.push(&[given.drain(..).map(|x| x * g).collect()])?;
         }
         Ok(())
     };
     for at in (0..total).step_by(BLOCK) {
         let mut b = read(at, BLOCK.min(total - at))?;
-        if let Some(g) = gain {
+        if gain.is_some() {
             b.iter_mut().for_each(|c| c.iter_mut().for_each(|v| *v *= g));
         }
         let o = lim.push(&b);
-        emit(o, &mut out)?;
+        emit(o, &mut lim.given, &mut out, &mut gains)?;
     }
     let o = lim.finish();
-    emit(o, &mut out)?;
-    Ok((out.done()?, lim.deepest(), meter.map(Lufs::finish)))
+    emit(o, &mut lim.given, &mut out, &mut gains)?;
+    Ok(Pass { out: out.done()?, gains: gains.done()?, deepest: lim.deepest(), lufs: meter.map(Lufs::finish) })
 }
 
 /// Masters a signal of `total` frames: glue, then gain to the target (BS.1770 with the layout's channel weights),
 /// then the true-peak limiter (linked: every channel under the ceiling); the gain is corrected and the chain re-run
 /// (from the glued signal) until the result is within 0.2 LU. Block by block: the glued signal and each pass's result
-/// are spooled (`on_disk`: on disk), so a whole song is never in memory. The mastered signal and what it did (MasterReport).
-pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], spec: &MasterSpec, sr: f64, on_disk: bool) -> Result<(Spool, MasterReport), String> {
+/// are spooled (`on_disk`: on disk), so a whole song is never in memory. The mastered signal, what it did (MasterReport)
+/// and its gain at every frame (Dynamics: what the stems carry).
+pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], spec: &MasterSpec, sr: f64, on_disk: bool) -> Result<(Spool, MasterReport, Dynamics), String> {
     let program = lufs_of(read, nch, total, weights, sr)?;
     // A little under the ceiling: encoders (mp3, aac) and other meters read inter-sample peaks a few tenths higher.
     let ceiling = 10f64.powf((spec.true_peak - 0.3) / 20.0);
     if program <= -69.0 {
         // No integrated loudness to read (silence, or under the 400 ms gate: a UI click): the ceiling still holds.
-        let (out, limiter_db, _) = limited(read, nch, total, None, ceiling, sr, on_disk, None)?;
-        return Ok((out, MasterReport { limiter_db, ..Default::default() }));
+        let p = limited(read, nch, total, None, ceiling, sr, on_disk, None)?;
+        return Ok((p.out, MasterReport { limiter_db: p.deepest, ..Default::default() }, Dynamics { glue: None, limiter: p.gains }));
     }
     // The glued signal, spooled (with no glue: the source itself), and its loudness on the way.
     let mut glued = None;
     let mut glue_db = 0.0;
     let mut glued_lufs = None;
+    let mut glue_gains = None;
     if spec.glue > 0.0 {
         let mut g = Glue::new(weights, spec.glue, program, sr);
         let mut sp = Spool::new(nch, total, on_disk)?;
+        let mut gains = Spool::new(1, total, on_disk)?;
         let mut m = spec.loudness.map(|_| Lufs::new(nch, weights, sr));
         for at in (0..total).step_by(BLOCK) {
             let mut b = read(at, BLOCK.min(total - at))?;
             g.block(&mut b);
+            gains.push(&[std::mem::take(&mut g.given)])?;
             if let Some(m) = &mut m {
                 m.push(&b.iter().map(|c| c.as_slice()).collect::<Vec<_>>());
             }
@@ -245,6 +285,7 @@ pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], sp
         glue_db = -g.deepest;
         glued_lufs = m.map(Lufs::finish);
         glued = Some(sp.done()?);
+        glue_gains = Some(gains.done()?);
     }
     let from_glued = |at: usize, n: usize| glued.as_ref().expect("glued").read(at, n);
     let src: Source = if glued.is_some() { &from_glued } else { read };
@@ -257,13 +298,12 @@ pub fn master_blocks(read: Source, nch: usize, total: usize, weights: &[f64], sp
     let mut pass = 0;
     loop {
         let g = 10f64.powf(gain_db / 20.0) as f32;
-        let (out, limiter_db, got) = limited(src, nch, total, Some(g), ceiling, sr, on_disk, spec.loudness.map(|_| weights))?;
-        (report.gain_db, report.limiter_db) = (gain_db, limiter_db);
-        let (Some(target), Some(got)) = (spec.loudness, got) else { return Ok((out, report)) };
-        if (got - target).abs() <= 0.2 || pass == 3 {
-            return Ok((out, report));
+        let p = limited(src, nch, total, Some(g), ceiling, sr, on_disk, spec.loudness.map(|_| weights))?;
+        (report.gain_db, report.limiter_db) = (gain_db, p.deepest);
+        match (spec.loudness, p.lufs) {
+            (Some(target), Some(got)) if (got - target).abs() > 0.2 && pass < 3 => gain_db += target - got,
+            _ => return Ok((p.out, report, Dynamics { glue: glue_gains, limiter: p.gains })),
         }
-        gain_db += target - got;
         pass += 1;
     }
 }
@@ -273,7 +313,7 @@ pub fn master_n(chs: &mut [Vec<f32>], weights: &[f64], spec: &MasterSpec, sr: f6
     let total = chs.iter().map(|c| c.len()).min().unwrap_or(0);
     let src: &[Vec<f32>] = chs;
     let read = |at: usize, n: usize| Ok(src.iter().map(|c| c[at..at + n].to_vec()).collect());
-    let (out, report) = master_blocks(&read, chs.len(), total, weights, spec, sr, false).expect("mastering in memory cannot fail");
+    let (out, report, _) = master_blocks(&read, chs.len(), total, weights, spec, sr, false).expect("mastering in memory cannot fail");
     for (c, o) in chs.iter_mut().zip(out.into_whole().expect("in memory")) {
         c[..total].copy_from_slice(&o);
     }

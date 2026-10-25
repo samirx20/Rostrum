@@ -1,7 +1,11 @@
-//! The master's linear gain at any frame: its fader (or lane) times its fades, and the gain to the loudness
-//! target. One source for the mix (bus.rs) and the stems (render/stems.rs), computed per frame as it is
-//! needed rather than kept as a song-long curve.
+//! The master's gain at any frame: its fader (or lane) times its fades, then the mastering stage's gain as it
+//! was applied to the mix (glue, the gain to the loudness target, the limiter: fx/master.rs Dynamics). One
+//! source for the mix (bus.rs) and the stems (render/stems.rs): every stem takes the very gain the mix took, so
+//! the stems add up to the mix wherever only these stages acted.
 
+use std::sync::Arc;
+
+use crate::fx::master::Dynamics;
 use crate::mix::schedule::Param;
 use crate::mix::schedule::Schedule;
 
@@ -18,12 +22,14 @@ pub struct MasterGain {
     pub total: usize,
     /// The mastering stage's gain to its loudness target (linear; 1 without one).
     pub norm: f64,
+    /// The mastering stage's gain at every frame of the file (it includes `norm`); None without a mastering stage.
+    pub dynamics: Option<Arc<Dynamics>>,
 }
 
 impl MasterGain {
     pub fn new(s: &Schedule) -> MasterGain {
         let (offset, end) = s.range.unwrap_or((0, s.total_samples));
-        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.total_samples, offset, total: end - offset, norm: 1.0 }
+        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.total_samples, offset, total: end - offset, norm: 1.0, dynamics: None }
     }
 
     /// The fades' envelope at song frame `i`.
@@ -46,8 +52,17 @@ impl MasterGain {
         self.fader.at(i as f64 / self.sr) * self.env(i)
     }
 
-    /// The whole linear gain at frame `i` of the file, as the stems carry it.
-    pub fn stem(&self, i: usize) -> f32 {
-        (self.lin(i) * self.norm) as f32
+    /// The mastering stage's gain at frames `at .. at + n` of the file (glue × target gain × limiter; `norm` alone
+    /// without a mastering stage).
+    pub fn mastering(&self, at: usize, n: usize) -> Result<Vec<f64>, String> {
+        match &self.dynamics {
+            Some(d) => d.read(at, n),
+            None => Ok(vec![self.norm; n]),
+        }
+    }
+
+    /// The whole gain at frames `at .. at + n` of the file, as the mix took it and the stems carry it.
+    pub fn stem_block(&self, at: usize, n: usize) -> Result<Vec<f32>, String> {
+        Ok(self.mastering(at, n)?.into_iter().enumerate().map(|(k, m)| (self.lin(at + k) * m) as f32).collect())
     }
 }
