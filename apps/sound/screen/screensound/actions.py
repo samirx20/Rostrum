@@ -88,7 +88,7 @@ ACTIONS = [
         amounts=("timing", "velocity", "length", "seed")),
     act("repeat", "Repeat…", A.repeat_valid, A.repeat_calls, "Ctrl+R", group="time", asks=True,
         amounts=("times", A.UNTIL), fit=A.repeat_fit,
-        needs="Repeat needs notes, drum hits or clips selected, or a time range with something inside"),
+        needs="Repeat needs notes, hits, clips or a time range"),     # short: the top bar shows a message whole or not at all
     # a drum row's Fill row… (its menu sets the target; keys and Ctrl+K only while it is open: drum_step_slots.py)
     act("fill_row", "Fill row…", lambda f: f.fill is not None, A.fill_calls, group="fill", asks=True, panel=False,
         amounts=("every", "offset", "vel", "accentEvery"), fit=A.fill_fit),

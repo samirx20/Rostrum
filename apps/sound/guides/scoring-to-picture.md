@@ -85,7 +85,7 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
   `bar: 13` turned a 96 bpm song into 115.2 bpm (12 bars of 4 beats in 25 s). With a tempo change before that bar, the tempo in force
   at that bar is the one set. Check the result with `look_arrangement` and `look_music` (`what: "beats"`).
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),
-  `section.move` (`by`) moves a section and everything in it.
+  `section.move` (`by`) moves a section and everything in it, except markers: the picture's cut points stay put.
 - Things placed in beats move when the tempo changes; things placed on markers or in seconds stay with the picture.
   Choose per element: music in beats, picture-locked hits on markers.
 

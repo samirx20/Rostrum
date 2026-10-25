@@ -160,7 +160,9 @@ class EditSlots:
                 self._set_snap(caught)
                 return self._drag.preview(moves.drag_calls(self.doc, g, to - g["t"], 0, True, self._grid_now))
             if "primary" not in g:
-                return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now, self.keepInKey))
+                calls = lambda: moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now, self.keepInKey)  # noqa: E731
+                fresh = g["type"] in moves.FRESH     # an amount from the press: worked out and run on the song as it was
+                return self._drag.preview(calls if fresh else calls(), fresh)
             root = self.doc.data
             end = timing.sec(root["length"], root) if root.get("length") is not None else None    # a set length: kept inside it
             calls, caught = moves.many_calls(self.doc, g, dt, dsemi, free, only_time, self._snap_targets(), scale,

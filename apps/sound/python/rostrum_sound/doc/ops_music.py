@@ -66,13 +66,20 @@ BY = V.Value("by", "number", rule=_by, required=True, unit="s", group="Section",
              help='Seconds (2.5, -1) or {"beats": 8}: later is positive.')
 
 
+CARRY = Param.toggle("markers", default=False, group="Section", label="Markers too", shown="script",
+                     help="Also move the song's own markers inside the section. Off: every marker stays where it is "
+                          "(markers are sync points: picture cuts, hits), and times on them keep the marker.")
+
+
 @REGISTRY.operation("section.move", "Move sections and everything that starts inside them (notes, hits, clips, "
-                    "lines, markers, tempo and key changes, automation points) by an amount, as one step.",
-                    target="section", params=[BY], label="Move section")
+                    "lines, tempo and key changes, other sections, automation points) by an amount, as one step. "
+                    "Markers stay (markers: true moves the song's own markers inside too); the song's opening tempo, "
+                    "time signature and key stay.",
+                    target="section", params=[BY, CARRY], label="Move section")
 def section_move(ctx, targets, args):
     plan: dict = {}
     for t in targets:                                 # every new value from the song as it was, then all set
-        for id_, k, v in sections.moves(ctx.doc, ctx.item(t), args["by"]):
+        for id_, k, v in sections.moves(ctx.doc, ctx.item(t), args["by"], bool(args.get("markers"))):
             plan.setdefault((id_, k), v)
     for (id_, k), v in plan.items():
         ctx.set(id_, k, v)

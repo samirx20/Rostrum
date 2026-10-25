@@ -218,10 +218,13 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   a marker at `12.0` stays at 12 s. Write in beats what belongs to the music, in seconds what belongs to the picture.
 - **Moving a section:** `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
   (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, voice
-  lines, markers, tempo and key changes, other sections, automation points) in one undo step. Each
-  time keeps its form; a time on a marker that moves with it follows it. Effect envelopes inside effects don't move.
+  lines, tempo and key changes, other sections, automation points) in one undo step. **Markers stay** (they are
+  sync points: a picture cut, "logo lands"), and so do the song's opening tempo, time signature and key; add
+  `"markers": true` to move the song's own markers inside the section too. Each time keeps its form; a time on a
+  marker that stays keeps the marker with a new offset. Effect envelopes inside effects don't move.
   A time signature change must stay on a bar line, so a section holding one moves by whole bars only (a move that
-  puts it off a bar line is refused and names the nearest bar lines). In the arrangement: drag the section's bar (Ctrl = off the grid).
+  puts it off a bar line is refused and names the nearest bar lines). In the arrangement: drag the section's bar (Ctrl = off the grid);
+  it carries what was inside it when you pressed, never what it passes over, and lets go as one `section.move`.
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on

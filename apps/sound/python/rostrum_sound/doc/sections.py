@@ -1,11 +1,20 @@
 """Song sections (intro, verse, drop): named stretches of the song, and what moving one moves.
 
-`moves(root, section, by)` plans `section.move`: the section and everything that starts inside it (at ≥ its start,
-before its end) — notes, hits, clips, voice lines, markers, tempo and key changes, other sections,
-and automation points — shifted by `by`: seconds (2.5, -1) or `{"beats": n}` (n may be negative). Every time keeps
-its form: beats stay beats (moved by whole beats when `by` is in beats), seconds stay seconds, a time on a marker
-that moves too follows it untouched, one on a marker that stays keeps the marker with a new offset. All new
-values are worked out from the song as it was, then set together (one operation, one undo step).
+`moves(root, section, by, carry_markers=False)` plans `section.move`: the section and everything that starts inside
+it (at ≥ its start, before its end) — notes, hits, clips, voice lines, tempo, time signature and key changes, other
+sections and automation points — shifted by `by`: seconds (2.5, -1) or `{"beats": n}` (n may be negative). Every
+time keeps its form: beats stay beats (moved by whole beats when `by` is in beats), seconds stay seconds, a time on
+a marker keeps the marker with a new offset. All new values are worked out from the song as it was, then set
+together (one operation, one undo step).
+
+What stays (the rule):
+- **Markers stay.** A marker is a sync point (a picture cut, "logo lands"): moving music never moves it. The
+  project's shared markers never move here; the song's own markers move only when asked (`carry_markers`, the
+  operation's `markers: true`), and then only those inside the section.
+- **The song's opening tempo, time signature and key changes (at 0) stay**, so the song never loses its start.
+- **What a section carries is what is inside it in the song it is given.** A drag on the screen plans every step
+  from the song as it was at the press (moves.section_calls, a fresh preview), so whatever the moving section
+  passes over is never picked up, and its one recorded `by` (the whole drag) replays to the same song.
 """
 from __future__ import annotations
 
@@ -17,6 +26,7 @@ from .registry import LISTS
 from .shift import write_like
 
 TIMED = ("note", "hit", "clip", "line", "marker", "tempo", "meter", "key", "section")
+OPENING = ("tempo", "meter", "key")
 
 
 def by_problem(v) -> str | None:
@@ -37,7 +47,7 @@ def _dt(sec: float, by, root) -> float:
     return float(by)
 
 
-def moves(root: dict, section: dict, by) -> list[tuple[str, str, object]]:
+def moves(root: dict, section: dict, by, carry_markers: bool = False) -> list[tuple[str, str, object]]:
     """[(item id, field, new value)] for moving `section` by `by`. Raises when something would land before 0."""
     where = f"section.move {section['id']}"
     lo = times.seconds(section["at"], root, where)
@@ -46,7 +56,12 @@ def moves(root: dict, section: dict, by) -> list[tuple[str, str, object]]:
     def inside(sec):
         return lo - 1e-9 <= sec < hi - 1e-9
 
-    moved_marks = {name for name, sec in markers.all(root, own=True) if inside(sec)}   # project markers stay put
+    moved_marks = {name for name, sec in markers.all(root, own=True) if inside(sec)} if carry_markers else set()
+
+    def carried(t, sec):
+        if t == "marker":
+            return carry_markers
+        return not (t in OPENING and sec < 1e-9)          # the song's opening tempo / time signature / key stays
 
     def follows(value):
         return markers.ref(value) in moved_marks
@@ -61,7 +76,8 @@ def moves(root: dict, section: dict, by) -> list[tuple[str, str, object]]:
     out = []
     for item in walk(root, LISTS):
         t, iid = item.get("type"), item["id"]
-        if t in TIMED and "at" in item and (iid == section["id"] or inside(times.seconds(item["at"], root, iid))):
+        if t in TIMED and "at" in item and (iid == section["id"] or (
+                inside(sec := times.seconds(item["at"], root, iid)) and carried(t, sec))):
             for key in ("at", "end") if t == "section" else ("at",):
                 v, _ = new(item[key], f"{iid}.{key}")
                 if v != item[key]:

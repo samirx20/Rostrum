@@ -79,9 +79,9 @@ Rectangle {
         id: sectionBand
         x: bars.x; width: bars.width; y: band.y + band.height + 2; height: visible ? 18 : 0; ruler: bars
     }
-    SongBand {   // tempo and key changes (when the song has any)
-        id: songBand
-        x: bars.x; width: bars.width; y: sectionBand.y + sectionBand.height + (sectionBand.visible ? 2 : 0)
+    SongBand {   // tempo and key changes (when the song has any); a clear gap under the sections, so a range drawn
+        id: songBand  // on the ruler a little too high never catches a section (each band its own pointer target)
+        x: bars.x; width: bars.width; y: sectionBand.y + sectionBand.height + (sectionBand.visible ? 6 : 0)
         height: visible ? 16 : 0; ruler: bars
     }
     BarRuler {

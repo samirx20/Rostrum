@@ -73,3 +73,45 @@ def test_picture_item_link_follows_the_newest_render(tmp_path):
     video, why = picture.resolve("item:logo", tmp_path)
     assert Path(video).name == "logo-2.mp4" and why == ""
     assert picture.resolve("item:nope", tmp_path)[0] == "" and picture.resolve("item:logo", None)[1]
+
+
+SECTIONS = '''
+tempo(120); beats_per_bar(4)
+key("D minor"); section("a", bar(1), bar(3)); section("b", bar(3), bar(5))
+marker("cut", at=bar(3)); marker("flash", at=13.0)
+bass = track("bass", builtIn="feltPiano")
+for i in range(16):
+    bass.note("D2", at=beat(i * 2), dur=beats(1))
+bass.note("A2", at="#flash+0.5", dur=0.5)
+'''
+
+
+def test_a_section_drag_carries_what_it_held_at_the_press_and_replays_exactly(bridge):  # noqa: F811
+    """A section dragged past notes and markers (many small steps, back and forth): only what was inside it at the
+    press moves, markers stay; one change whose recorded call replays to the same song; undo and redo exact."""
+    from rostrum_core import Document, Who
+    from rostrum_sound import KIND, run_source
+    doc = bridge.doc
+    doc.run_script("song.py", run_source(SECTIONS, "song.py"))
+    start, n = doc.data, len(doc.history.changes)
+    assert bridge.beginDrag("section.b")
+    for i in range(1, 61):                                      # 6 s later (over notes and the flash) in 0.1 s
+        bridge.dragBy(i * 0.1 + (0.37 if i == 20 else 0), 0, False)   # steps, one a little too far and back
+    bridge.endDrag()
+    end = doc.data
+    assert len(doc.history.changes) == n + 1
+    calls = doc.history.changes[-1].calls
+    assert calls == [{"op": "section.move", "target": ["section.b"], "args": {"by": {"beats": 12.0}}}]
+    beats = sorted(x["at"]["beat"] for x in doc.item("bass")["notes"] if isinstance(x["at"], dict))
+    assert beats == [0, 2, 4, 6, 16, 18, 20, 20, 22, 22, 24, 24, 26, 26, 28, 30]    # bars 3-4's notes 12 beats on, no other
+    assert doc.item("bass")["notes"][-1]["at"] == "#flash+0.5"
+    assert {m["name"]: m["at"] for m in end["markers"]} == {m["name"]: m["at"] for m in start["markers"]}  # markers stay
+    assert end["keys"] == start["keys"]                         # the song's opening key stays
+    again = Document.new(KIND)                                  # replay: the same script, then the recorded call
+    again.run_script("song.py", run_source(SECTIONS, "song.py"))
+    again.apply(calls, Who.person())
+    assert again.data == end
+    bridge.undo()
+    assert doc.data == start
+    bridge.redo()
+    assert doc.data == end
