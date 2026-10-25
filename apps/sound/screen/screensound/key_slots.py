@@ -10,9 +10,9 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal, Slot
 
 from . import action_calls as C
-from rostrum_sound.doc import meter
+from rostrum_sound.doc import keys, meter
 
-from . import moves, scale_step, selection, timing
+from . import moves, selection, timing
 
 
 class KeySlots:
@@ -83,13 +83,13 @@ class KeySlots:
             self._refuse("Pitch up or down a scale step works on notes: " +
                          ("select some first" if not self._picks.ids else "no notes are selected"))
             return False
-        key = scale_step.song_key(self.doc.data, self._t)
+        key = keys.key_for(self.doc.data, self._t)
         if not key:
             self._refuse("Pitch by a scale step needs the song's key: set it in the header (the key next to the tempo)")
             return False
-        calls = scale_step.calls(self.doc, notes, key, sign)
         way = "up" if sign > 0 else "down"
-        return bool(calls) and self._act(calls, f"Pitch {way} a scale step in {key} · {C.Facts(self.doc, notes).words()}")
+        call = {"op": "note.transpose", "target": notes, "args": {"steps": 1 if sign > 0 else -1}}   # each note in its own key
+        return self._act([call], f"Pitch {way} a scale step in {key} · {C.Facts(self.doc, notes).words()}")
 
     @Slot(int)
     def playheadStep(self, n):

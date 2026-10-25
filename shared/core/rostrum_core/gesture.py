@@ -27,14 +27,36 @@ class Gesture:
         self.doc._gesture = self
         return self
 
-    def preview(self, calls):
-        """Run the calls on top of the drag so far. A bad step raises and leaves the last good state showing."""
+    def preview(self, calls, fresh=False):
+        """Run the calls on top of the drag so far. A bad step raises and leaves the last good state showing.
+        `fresh`: run them on the state from before the drag instead (an action re-run live with other amounts, the
+        kit's amounts popover: Humanise twice must not loosen twice); `calls` may then be a function, called while the
+        document reads as it was before the drag (calls worked out from the selection see the original items)."""
+        if fresh:
+            return self._fresh(calls)
         work, edits, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = calls          # the last step says where the drag ended
         self._stepped = True
         self.doc._emit(Event("preview", edits=edits))     # what this step changed: listeners redo only that
+
+    def _fresh(self, calls):
+        shown, shown_idx = self.doc.data, self.doc._index()
+        self.doc.data = self.start
+        self.doc._indexed(self.start, self._start_idx)
+        try:
+            calls = calls() if callable(calls) else calls
+            work, _, calls, idx = run.plan_indexed(self.doc.kind, self.start, calls, idx=self._start_idx)
+        finally:
+            self.doc.data = shown
+            self.doc._indexed(shown, shown_idx)
+        edits = diff(shown, work, self.doc.kind.lists, shown_idx, idx)     # from what listeners show now
+        self.doc.data = work
+        self.doc._indexed(work, idx)
+        self._calls = calls
+        self._stepped = True
+        self.doc._emit(Event("preview", edits=edits))
 
     def cancel(self):
         self.cancelled = True

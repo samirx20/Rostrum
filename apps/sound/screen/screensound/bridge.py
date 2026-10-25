@@ -28,7 +28,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import block_patch, cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import block_patch, cleanable, feel_rows, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .drum_rows import DrumRowSlots
@@ -97,7 +97,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self.picksChanged.connect(self._roll_picks)              # the velocity readout's blocks (rows_view)
         self._follow_selection()
         self._rebuild()
-        self.transport = Transport(self._schedule, self._length, self, held=lambda: self._stepping, pointing=pointer_quiet.busy)
+        self.transport = Transport(self._schedule, self._length, self, pointing=pointer_quiet.busy,   # the amounts popover's
+                                   held=lambda: self._stepping and not (hasattr(self, "_hub") and self._hub.amounts.live))   # heard live
         self.transport.playingChanged.connect(self.playingChanged)
         self.transport.renderChanged.connect(self.renderChanged)
         self.transport.stateChanged.connect(self.soundChanged)
@@ -226,7 +227,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
     def _rows(self):
         """The kit's rows, each item's with times in bars.beats and pitches as names (inspect.musical_rows) before
         several are merged: notes of one length read "1/2" together, never "1.154 s" (one note never does)."""
-        each = [inspect.musical_rows(it, self._item_rows(it), self.doc.data) for it in map(self.doc.item, self._kit.selection)]
+        each = [inspect.musical_rows(it, feel_rows.rows(it, self._item_rows(it), self._kit.more), self.doc.data)
+                for it in map(self.doc.item, self._kit.selection)]
         return output_pick.without_none([] if not each else each[0] if len(each) == 1 else many.merge(each))
 
     # ---- screen state -----------------------------------------------------------------------------------------

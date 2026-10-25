@@ -67,7 +67,17 @@ install it with `run_model_install` (`model: "salamander-piano"`, or `all-instru
 licence (the Salamander piano, the Wurlitzer, the rock kit) must be credited: a render that used them returns the credit
 lines and writes them into the export's manifest.
 
-### Played like a person (`perform`)
+### Feel: swing and played like a person (`perform`)
+
+On the screen, a notes or drums track's settings have a **Feel** group. **Swing** makes every second 8th (or 16th)
+come late; 100 % is a full triplet feel. It plays that way without moving the notes, so you can change it any time.
+**Played like a person** adds the instrument's looseness, accents and strum; its amounts show under it. To write a
+swing into the notes instead, use **Quantise ▾ › Swing**. Humanise writes the looseness into the notes, so you can see
+and edit it; the track's Feel plays the notes loosely without changing them. Use one or the other on a part, not both.
+
+Agents: `track.feel {swing: 0.55, swingGrid: 0.25}` changes only the values it names (a person's other settings stay);
+`null` puts one back to the family's default; `{person: false}` turns the family's looseness off while swing still
+plays. `track.set {perform: …}` replaces the whole object (use it only to write every value at once).
 
 Every instrument is played, not just sequenced. It is **on by default**: a track's notes get the timing feel, velocity
 variety, accents, legato (sustained instruments), vibrato on held notes and strum of its family (plucked, mallets, drums,
@@ -76,8 +86,8 @@ render, because it is seeded by the track. The track field `perform` changes it:
 as written (use it for a part whose exact timing you wrote: a tight bass, a hit locked to a click, a MIDI import you want
 as it is); `perform={"timing": 4, "velocity": 0.05}` changes some values over the family's defaults (`timing` ms, `lean` ms
 behind the beat, `swing` 0…1 with `swingGrid`, `velocity` spread, `accent` 0…0.3, `strum` 0…1, `articulation` legato /
-staccato / normal, `vibrato` {rateHz, depthCents} or false, `seed`). On the screen it is **Played like a person** in the
-track's settings. `humanize` and `phrase` in a script are different: they write values into your notes, while `perform`
+staccato / normal, `vibrato` {rateHz, depthCents} or false, `seed`, `person`: false = the family's defaults off, the
+values named beside it still play). `humanize` and `phrase` in a script are different: they write values into your notes, while `perform`
 leaves the notes as written and plays them differently.
 
 ## Notes are data
@@ -145,7 +155,23 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 `run_script` builds tracks and notes in Python. Re-running a script merges: notes a person moved by hand stay where
 they were put and are listed as held back. Helpers write plain values you can edit afterwards, e.g. seeded
 `humanize(seed, timing, velocity)` for small timing and velocity variation (see `script`). The operation for
-notes already written is `note.humanize`, with note ids as its targets (not the track).
+notes already written is `note.humanize`, with note ids as its targets (not the track):
+`{"timing": 15, "velocity": 0.08, "length": 0.1, "seed": 2}` (`length` 0 … 0.5: how much each note's length may vary,
+notes only; the same seed on the same notes gives the same result every time).
+
+## Operations on notes already written
+
+- **Repeat:** `note.duplicate {times: 4}` repeats a bar four times (each copy right after the last; `by` sets another
+  step); `{until: "#chorus"}` fills up to the chorus marker, `{until: {"section": "verse"}}` up to the end of the verse
+  section, `until` a time in seconds or beats as well. The last copy is cut at that point and never crosses it (notes and
+  clips shortened, hits past it left out). The same on `hit.duplicate` and `clip.duplicate`; one call is one undo step.
+- **Transpose:** `note.transpose {semitones: 7}` moves notes up a fifth in half steps; `note.transpose {steps: 2}` moves
+  them two steps of the song's key (a third), each note in the key at its own time, a chord by its lowest note's step.
+  Give one of the two. Without a key, `steps` fails ("The song has no key …"); past the 128 notes it fails and changes
+  nothing.
+- **Quantise with swing:** `hit.quantize {grid: 0.5, swing: 0.6}` writes a swing into the hits: the off-beat grid lines
+  move late (1 = a triplet feel) and the hits snap to them. To swing without moving the notes, use the track's feel
+  (below).
 
 ## Checking the part
 

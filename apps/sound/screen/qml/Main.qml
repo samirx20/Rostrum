@@ -124,15 +124,12 @@ AppShell {
                     below: [LayerRows { }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
                     anchors.fill: parent }
         SongSettings { visible: backend.selected === ""; anchors.fill: parent }
-        // an action that asks first opens beside the panel, below the toolbar (Land a bar here: which bar)
-        AskPopover { id: ask }
+        // the amounts popover (kit): Quantise ▾, Humanise ▾, Transpose ▾ › By…, Repeat…, Start a bar here…; it opens
+        // under the button or menu that asked for it, changes the song live, Enter keeps it as one step, Esc puts it back
+        AmountsPopover { hub: backend.actions }
         Connections {
             target: backend
             function onCleanWanted() { backend.revealField("isolate") }
-            function onAskWanted(key, label, value) {
-                ask.key = key; ask.label = label; ask.value = value
-                const g = side.mapToItem(null, 0, 0); ask.openAtPoint(g.x - ask.width - Theme.gap, g.y + 6 * Theme.field)   // below the toolbar (Grid, Snap), by the panel's fields
-            }
         }
     }
 }

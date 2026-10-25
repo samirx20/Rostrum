@@ -8,8 +8,10 @@ entries move there as they are:
     "edit" = the edit block: keys and the right-click menu, never the panel), menu (the titled row it sits in,
     e.g. "Transpose"), on (the kinds it acts on: in a mixed selection, e.g. Select all, it acts on those items and
     names them, `ACTS_ON`; it is absent only when none are selected), panel (False: keys and Ctrl+K only), do ("copy" / "cut" / "paste" / "inside" / "rename" / "library" / "clean": not a document
-    change by itself), needs (what the message line says when its key is pressed while it doesn't apply), amount
-    ((label, default(Facts)): the action asks one number first, in a small popover; then calls(Facts, number)).
+    change by itself), needs (what the message line says when its key is pressed while it doesn't apply), amounts
+    (its operation's parameter names, or a Param of the screen's own: the kit's amounts popover, rostrum_gui/amounts.py;
+    then calls(Facts, amounts) and fit(Facts, amounts) gives the screen's say on each row: amount_actions.py), asks
+    (every door opens that popover first: Repeat…; else its button runs at once with the last amounts and ▾ opens it).
 
 `LIST` is them on the kit's one action list (rostrum_gui.actions, through action_adapt.from_dicts; keys from keys.py):
 the settings panel's actions (kit ActionsSection), the kit's ONE short right-click menu (rostrum_gui.actions.SHORT_MENU,
@@ -29,6 +31,7 @@ from rostrum_gui.action_adapt import from_dicts
 from rostrum_gui.actions import SHORT_MENU, ActionList
 
 from . import action_calls as C
+from . import amount_actions as A
 from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
@@ -38,10 +41,11 @@ CLIPS = {"note", "hit", "clip", "line"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs="", min_targets=0, release="", panel=True, on=()):
+        promoted_when=None, needs="", min_targets=0, release="", panel=True, on=(), amounts=(), asks=False, fit=None):
     return {"key": key, "label": label, "shortcut": shortcut, "valid_when": valid_when, "importance": importance,
             "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu, "do": do, "needs": needs,
-            "min_targets": min_targets, "release": release, "panel": panel, "on": on}
+            "min_targets": min_targets, "release": release, "panel": panel, "on": on, "amounts": amounts, "asks": asks,
+            "fit": fit}
 
 
 def on(kinds, op, **args):
@@ -92,16 +96,24 @@ ACTIONS = [
         lambda f: [C.call("track.unlock", [it["id"] for it in f.items if it.get("locked")])], "Ctrl+Shift+L",
         group="order"),
     # notes and drum hits
-    act("quantize", "Quantise", *on(NOTE_HIT, "quantize"), "Q", "primary", "time",
-        needs="Quantise needs notes or drum hits selected", on=NOTE_HIT),
+    act("quantize", "Quantise", *A.on(NOTE_HIT, "quantize"), "Q", "primary", "time",
+        needs="Quantise needs notes or drum hits selected", on=NOTE_HIT, amounts=("grid", "strength", "swing", "ends"),
+        fit=A.quantize_fit),
     *[act(f"transpose_{k}", label, *on(NOTE, "transpose", semitones=n), keys, "primary", "pitch", "Transpose", on=NOTE)
       for k, n, label, keys in _STEPS],
-    act("humanize", "Humanise", *on(NOTE_HIT, "humanize"), importance="primary", group="time", on=NOTE_HIT),
+    act("transpose_by", "By…", lambda f: bool(f.by_kind(NOTE)), A.transpose_calls, importance="primary", group="pitch",
+        menu="Transpose", on=NOTE, amounts=("semitones", "steps", A.ALONG), asks=True, fit=A.transpose_fit),
+    act("humanize", "Humanise", *A.on(NOTE_HIT, "humanize"), importance="primary", group="time", on=NOTE_HIT,
+        amounts=("timing", "velocity", "length", "seed")),
+    act("repeat", "Repeat…", A.repeat_valid, A.repeat_calls, "Ctrl+R", group="time", asks=True,
+        amounts=("times", A.UNTIL), fit=A.repeat_fit,
+        needs="Repeat needs notes, drum hits or clips selected, or a time range with something inside"),
     # markers (the song's own, placed in seconds)
     act("place_sound", "Put a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),
-    act("fit_bar", "Start a bar here…", MARKER, importance="primary", group="marker", do="fit",
-        needs="Start a bar here needs one marker selected (placed in seconds)"),       # asks the bar first (a popover)
+    act("fit_bar", "Start a bar here…", MARKER, A.fit_bar_calls, importance="primary", group="marker", asks=True,
+        amounts=("bar",), fit=A.fit_bar_fit,
+        needs="Start a bar here needs one marker selected (placed in seconds)"),       # asks the bar first (the popover)
     act("speak_again", "Speak again", lambda f: f.one == "line", shortcut="T", importance="primary", group="line",
         do="speak", needs="Speak again needs voice lines selected"),
     act("take_prev", "Earlier take", V.take_valid(-1), V.take_calls(-1), group="line"),
@@ -140,6 +152,8 @@ ACTIONS = [
         promoted_when=lambda f: f.on_range),      # first only while the range is what you mean, not an old one under a pick
     act("inside", "Select inside", lambda f: f.on_range, importance="primary", group="range",
         do="inside"),
+    act("repeat_range", "Repeat…", A.repeat_range_valid, A.repeat_calls, "Ctrl+R", "primary", "range", asks=True,
+        amounts=("times", A.UNTIL), fit=A.repeat_fit),
     act("delete_time", "Delete time", lambda f: bool(f.range), C.delete_time, group="range",
         needs="Delete time needs a time range"),
     act("insert_time", "Insert time", lambda f: bool(f.range), C.insert_time, group="range",

@@ -8,9 +8,14 @@ from __future__ import annotations
 FOLD = 2            # a set of more choices than this is one entry with a side menu (right-click and ⋯): 2D, H29
 
 
+def asked(e) -> str:
+    """Its name in a menu or Ctrl+K: an action with amounts ends in "…" (picking it opens the amounts popover)."""
+    return e["label"] + ("…" if e.get("amounts") and not e["label"].endswith("…") else "")
+
+
 def _short(e):
     """One choice in a bar button's menu or under ⋯ (the menus' shape)."""
-    return {"value": e["id"], "label": e["label"], "keys": e["keys"], "group": e["group"]}
+    return {"value": e["id"], "label": asked(e), "keys": e["keys"], "group": e["group"]}
 
 
 def off_rows(entries: list[dict]) -> list[dict]:
@@ -61,7 +66,7 @@ def _fold(entries: list[dict]) -> list[dict]:
         sizes[e["bar"]] = sizes.get(e["bar"], 0) + 1
     out, folded = [], {}
     for e in entries:
-        row = {"value": e["id"], "label": e["label"], "keys": e["keys"], "group": e["group"], "sub": []}
+        row = {"value": e["id"], "label": asked(e), "keys": e["keys"], "group": e["group"], "sub": []}
         if e["bar"] and sizes[e["bar"]] > FOLD:
             if e["bar"] not in folded:
                 folded[e["bar"]] = {"value": "menu:" + e["bar"], "label": e["bar"], "keys": "", "group": e["group"],
@@ -81,9 +86,9 @@ def menu(entries: list[dict], short: tuple | None = None) -> list[dict]:
         order = {job: (b, n) for b, (_, jobs) in enumerate(short) for n, job in enumerate(jobs)}
         block = {job: name for name, jobs in short for job in jobs}
         mine = sorted((e for e in entries if e["job"] in order), key=lambda e: order[e["job"]])
-        return [{"value": e["id"], "label": e["label"], "keys": e["keys"], "group": block[e["job"]], "sub": []} for e in mine]
+        return [{"value": e["id"], "label": asked(e), "keys": e["keys"], "group": block[e["job"]], "sub": []} for e in mine]
     plain = sorted((e for e in entries if not e["edit"]), key=lambda e: e["importance"] != "primary")
-    return _fold(plain) + [{"value": e["id"], "label": e["label"], "keys": e["keys"], "group": "edit", "sub": []}
+    return _fold(plain) + [{"value": e["id"], "label": asked(e), "keys": e["keys"], "group": "edit", "sub": []}
                            for e in entries if e["edit"]]
 
 
@@ -91,7 +96,7 @@ def commands(entries: list[dict], what: str) -> list[dict]:
     """Ctrl+K's "Do" group, in the command box's shape (commands.py) plus the key."""
     out = []
     for e in entries:
-        c = {"key": e["id"], "label": e["label"], "hint": what, "keys": e["keys"],
+        c = {"key": e["id"], "label": asked(e), "hint": what, "keys": e["keys"],
              "words": e["bar"], "lead": e["bar"], "weight": 0 if e["importance"] == "primary" else 1}
         out.append({**c, "calls": e["calls"]} if not e["do"] else {**c, "do": e["do"]})
     return out
@@ -134,7 +139,8 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
             rows.append(by[title])
             by[title]["slot"] = (min(e.get("min_targets", 1), 2), e["rank"])
         by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"],
-                                  "icon": e.get("icon", ""), "full": e["label"]})
+                                  "icon": e.get("icon", ""), "full": e["label"],
+                                  "amounts": bool(e.get("amounts")) and not e.get("asks")})   # its ▾ (asks: the button opens)
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
     rows.sort(key=lambda r: r.pop("slot"))     # fixed slots: one-item actions first, then by rank (stable sort)

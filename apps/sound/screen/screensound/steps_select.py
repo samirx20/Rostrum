@@ -35,7 +35,7 @@ from PySide6.QtTest import QTest
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add",
-         "fit-bar", "ask", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
+         "fit-bar", "ask", "amount", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
 
 
@@ -137,9 +137,14 @@ def do_select_step(bridge, win, word, rest):
     elif word == "marker-add":
         bridge.markerAt(bridge.time)
     elif word == "fit-bar":
-        bridge.landBar("fit_bar", float(rest[0]))
-    elif word == "ask":                       # ask fit_bar: the action that asks a number first, its popover open
+        bridge.actions.ask("fit_bar")         # a set-up step: the amounts popover's session, its bar, kept
+        bridge.actions.amounts.setValue("bar", float(rest[0]))
+        bridge.actions.amounts.keep()
+    elif word == "ask":                       # ask fit_bar / humanize: the action's amounts popover open (as Ctrl+K opens it)
         bridge.run(rest[0])
+    elif word == "amount":                    # amount along 1: a set-up value in the open amounts popover (live)
+        v = rest[1]
+        bridge.actions.amounts.setValue(rest[0], v if not v.replace(".", "").replace("-", "").isdigit() else float(v))
     elif word == "library":
         bridge.workspace.setLibrary(True)
         bridge.libraryWanted.emit(rest[0])

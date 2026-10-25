@@ -138,11 +138,12 @@ def insert_time(f):
     return [call("range.insert", [], at=round(f.range[0], 4), length=round(f.range[1] - f.range[0], 4))]
 
 
-def duplicate(f):
+def duplicate(f, **repeat):
+    """Ctrl+D (one copy); `repeat`: Repeat…'s `times` or `until` (amount_actions.py)."""
     if f.one == "track":
         return [call("track.duplicate", f.ids)]
     by = span_by(f)
-    return [call(f"{k}.duplicate", ids, by=by) for k, ids in f.by_kind().items()]
+    return [call(f"{k}.duplicate", ids, by=by, **repeat) for k, ids in f.by_kind().items()]
 
 
 def delete(f):
@@ -176,10 +177,11 @@ def inside(f):
             if t0 - 1e-6 <= ST.start_of(root, it) < t1 - 1e-6]
 
 
-def range_duplicate(f):
-    """Ctrl+D on a time range: everything inside, copied by the range's length (one change)."""
+def range_duplicate(f, **repeat):
+    """Ctrl+D on a time range: everything inside, copied by the range's length (one change); `repeat`: Repeat…'s
+    `times` or `until`, the same `by` for every kind so the copies stay together."""
     by = round(f.range[1] - f.range[0], 4)
-    return [call(f"{k}.duplicate", ids, by=by) for k, ids in Facts(f.doc, inside(f)).by_kind(TIMED).items()]
+    return [call(f"{k}.duplicate", ids, by=by, **repeat) for k, ids in Facts(f.doc, inside(f)).by_kind(TIMED).items()]
 
 
 def section(f):

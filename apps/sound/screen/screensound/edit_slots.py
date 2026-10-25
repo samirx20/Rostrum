@@ -157,6 +157,10 @@ class EditSlots:
         g = self._grab
 
         def go():
+            if "primary" not in g and g["type"] == "marker":      # the ruler's snap: markers, section edges, grid
+                to, caught = self.ruler_snap(g["t"] + dt, free, False, scale, skip=g["id"])
+                self._set_snap(caught)
+                return self._drag.preview(moves.drag_calls(self.doc, g, to - g["t"], 0, True, self._grid_now))
             if "primary" not in g:
                 return self._drag.preview(moves.drag_calls(self.doc, g, dt, dsemi, free, self._grid_now))
             root = self.doc.data

@@ -170,12 +170,18 @@ def bar_length_beats(root: dict, beat: float) -> float:
     return min(s.bar, nxt[0] - start) if nxt else s.bar
 
 
-def snap(root: dict, beat: float, step: float | None) -> float:
+def snap(root: dict, beat: float, step: float | None, swing: float = 0.0) -> float:
     """`beat` to the nearest grid step counted from the bar it falls in (so the grid stays on the bar lines after
-    an odd bar), or to the nearest bar line when `step` is None (the "bar" grid). Quantise and drags share this."""
+    an odd bar), or to the nearest bar line when `step` is None (the "bar" grid). Quantise and drags share this.
+    `swing` (0 … 1) moves every off-beat (odd) grid line late by swing × step / 3, the engine's swing (perform.rs):
+    1 puts an off-beat 8th on the triplet."""
     if step is None:
         lines = bar_beats(root, beat + 2 * seg_at(root, beat).bar)
         return min(lines, key=lambda b: abs(b - beat))
     s = seg_at(root, beat)
     start = s.start + int((beat - s.start + 1e-9) // s.bar) * s.bar
-    return start + round((beat - start) / step) * step
+    k = round((beat - start) / step)
+    if not swing:
+        return start + k * step
+    lines = [start + j * step + (swing * step / 3 if j % 2 else 0.0) for j in (k - 1, k, k + 1)]
+    return min(lines, key=lambda b: abs(b - beat))

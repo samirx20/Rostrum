@@ -2,13 +2,14 @@
 
 A key is written "D minor", "F# major", "Bb dorian" (a tonic, then a mode). The key map is the song's key changes
 (`keys[]`, type "key": {at, key}); before the first one the key is unknown (None). `scale` gives the key's notes,
-`in_key` says whether a pitch belongs, `snap` moves a pitch to the nearest note of the key, `signature` /
+`in_key` says whether a pitch belongs, `step_in_key` / `steps_in_key` walk along it (transpose by steps), `snap` moves a pitch to the nearest note of the key, `signature` /
 `from_signature` turn a key into a MIDI key signature (sharps or flats, major or minor) and back; `midi` /
 `pitch_name` turn a pitch ("F#3") into a MIDI number (C4 = 60) and back.
 """
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from . import times
 
@@ -46,8 +47,13 @@ FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 def pc_name(k: int, key: str | None = None) -> str:
     """A pitch class's name ("F#"): the one speller for notes, chords and keys. Flats in a flat key ("Bb" in
     D minor), sharps otherwise."""
-    flat = key is not None and parse(key) is not None and signature(key)[0] < 0
-    return (FLATS if flat else NAMES)[k % 12]
+    return (FLATS if key is not None and _flat(key) else NAMES)[k % 12]
+
+
+@lru_cache(maxsize=256)
+def _flat(key) -> bool:
+    """A key spelled with flats (worked out once per key: a screen names every note block with it)."""
+    return parse(key) is not None and signature(key)[0] < 0
 
 
 def pitch_name(k: int, key: str | None = None) -> str:
@@ -62,7 +68,12 @@ def midis(p) -> list[int]:
 
 def parse(key: str) -> tuple[int, str] | None:
     """(tonic pitch class 0 … 11, mode) or None when `key` is not a key."""
-    m = KEY.match(key.strip()) if isinstance(key, str) else None
+    return _parse(key) if isinstance(key, str) else None
+
+
+@lru_cache(maxsize=256)
+def _parse(key: str) -> tuple[int, str] | None:
+    m = KEY.match(key.strip())
     if m is None:
         return None
     pc = (TONICS[m.group(1).upper()] + {"#": 1, "b": -1}.get(m.group(2) or "", 0)) % 12
@@ -94,6 +105,14 @@ def step_in_key(midi: int, key: str, sign: int) -> int:
     return k
 
 
+def steps_in_key(midi: int, key: str, n: int) -> int:
+    """`n` steps of the key up (n > 0) or down from `midi` (the first step from outside the key lands on the key)."""
+    for _ in range(abs(n)):
+        midi = step_in_key(midi, key, n)
+    return midi
+
+
+@lru_cache(maxsize=256)
 def signature(key: str) -> tuple[int, bool]:
     """(sharps, minor) for a MIDI key signature: sharps -7 … 7 (negative = flats). Modes use their major scale's."""
     pc, mode = parse(key)
@@ -107,6 +126,12 @@ def signature(key: str) -> tuple[int, bool]:
 def from_signature(sharps: int, minor: bool) -> str:
     sharps = max(-7, min(7, sharps))
     return f"{(MINORS if minor else SHARPS)[sharps]} {'minor' if minor else 'major'}"
+
+
+def key_for(root: dict, sec: float) -> str | None:
+    """The key a note at `sec` is in: the key playing then, else (before the first key change) the first key; None
+    while the song has no key."""
+    return key_at(root, sec) or next((k["key"] for k in root.get("keys", []) if k.get("key")), None)
 
 
 def key_at(root: dict, sec: float) -> str | None:

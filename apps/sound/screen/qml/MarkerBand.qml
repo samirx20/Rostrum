@@ -4,7 +4,8 @@ import RostrumKit
 // The named markers above the ruler, each a small tag at its time. Click selects the marker and puts the playhead on
 // it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels the renaming);
 // right-click: its menu (Rename, Delete, and what a marker can do); drag moves it
-// (marker.set at, one gesture = one undo step; snapped to a quarter beat, Ctrl = free). The project's shared
+// (marker.set at, one gesture = one undo step; the ruler's snap: other markers, section edges, then the window's grid,
+// with the snap line saying what it caught; Ctrl = free). The project's shared
 // markers show with a dashed edge; dragging one moves only its tag while the mouse is down, and the release is one
 // marker.move in the project's marker list (backend.moveSharedMarker), so it moves for every app.
 // The clicks are taken here in one place, so a drag keeps going while the tags are redrawn.
@@ -14,6 +15,7 @@ Item {
     clip: true
     property string sharedId: ""    // the project marker being dragged (its tag follows the mouse until release)
     property real sharedDx: 0
+    readonly property bool dragging: grab.dragging && grab.pressed && sharedId === ""    // the views show the snap line
     function tagWidth(name) { return metrics.advanceWidth(name) + 14 }
     function markerAt(x) {
         var best = null
@@ -53,6 +55,7 @@ Item {
         }
     }
     MouseArea {
+        id: grab
         anchors.fill: parent
         preventStealing: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -78,7 +81,7 @@ Item {
         onPositionChanged: (m) => {
             if (!(dragging && pressed && (pressedButtons & Qt.LeftButton))) return
             if (band.sharedId !== "") band.sharedDx = m.x - x0
-            else backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0)
+            else backend.dragTo((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0, false, false, band.ruler.perSec)
         }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)

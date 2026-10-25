@@ -18,6 +18,8 @@ Panel {
         return f > 0 ? 1000 / f : 40
     }
     property real lastSeek: 0
+    readonly property real fps: mp.metaData.value(MediaMetaData.VideoFrameRate) || 0
+    onFpsChanged: backend.setPictureFps(fps)        // the ruler's seconds line snaps to the picture's frames
     title: "Picture"
     readonly property bool hasVideo: backend.picture !== ""      // no video yet: just "Choose video…", no empty box over the tracks
     height: Theme.header + well.height + below.height + Theme.gap + bodyPad

@@ -228,7 +228,7 @@ Rectangle {
     Item {   // what a drag snapped to: the kit's snap line (a marker's or the playhead's name in its chip)
         x: bars.x; y: bars.y; width: bars.width; height: list.y + list.height - y
         readonly property var s: backend.snapLine
-        SnapLine { visible: !!parent.s.name && lanes.busy && bars.visibleX(bars.xOf(parent.s.t))
+        SnapLine { visible: !!parent.s.name && (lanes.busy || bars.snapping || band.dragging) && bars.visibleX(bars.xOf(parent.s.t))
                    at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
     }
     ActionMenu { id: menu; onPicked: (v) => backend.menuPick(v) }          // the kit's: keys on rows, dividers

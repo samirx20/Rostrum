@@ -13,7 +13,7 @@ from rostrum_gui.edits import field_call
 from rostrum_sound.doc import fields as FD
 from rostrum_sound.doc import effects, musical, sounds
 
-from . import drum_rows, effect_rows, eq_rows, note_feel, output_pick, pitch_merge, timeline, timing
+from . import drum_rows, effect_rows, eq_rows, feel_rows, note_feel, output_pick, pitch_merge, timeline, timing
 
 
 def _time_kind(item: dict, param: str) -> str:
@@ -72,6 +72,9 @@ def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
 
 def edit_call(doc, item_id, param, value) -> dict:
     item = doc.item(item_id)
+    feel = feel_rows.call(item, param, value)                   # a Feel row: one track.feel (merges into perform)
+    if feel is not None:
+        return feel
     merged = pitch_merge.edit_args(item, param, value)          # Pitch / Keep speed: one or two fields of the clip
     if merged is not None:
         first, *rest = merged

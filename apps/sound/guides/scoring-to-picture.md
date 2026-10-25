@@ -8,7 +8,9 @@ This page covers the tools; what the music should do is yours to decide.
 - **On the screen:** **+ Add › Picture to work to…** (or **+ Add › From a file…** with a video) opens the Picture panel
   at the arrangement's top right, with the video frame at the playhead. It plays along while you play. Pick a project
   item's latest render or a file; an item reference follows the item's newest render. Once a picture is set,
-  **Picture** in the arrangement's header strip shows and hides it.
+  **Picture** in the arrangement's header strip shows and hides it. With a picture set, a click on the ruler's seconds
+  line puts the playhead on the nearest whole frame of the picture (the bars line: the nearest grid line, marker or
+  section edge); hold **Ctrl** to put it exactly where you click. A marker dragged on the ruler snaps the same way.
 - **As an agent:** `look_video` with `video` = the file: `what: "sheet"` for the whole clip at a glance, `"motion"` for
   sudden stops and big moves (impact candidates, with times), `"frames"` around one time to check an event frame by frame.
   Every picture is labelled with time and frame number.

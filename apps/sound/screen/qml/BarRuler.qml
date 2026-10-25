@@ -7,9 +7,16 @@ import RostrumKit
 // Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
 // backend.setRange (each edge on the nearest grid line, as any drag); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
 // markers and piano roll use too, the kit's, following backend.timeView.
+// A click or scrub on the scale (and the press that starts a punch scrub) puts the playhead through the one snap, in
+// Python (backend.setTimeSnapped: markers, section edges, then the grid; the seconds line with a picture: its frames;
+// Ctrl = free). `snapping` is true while that press lasts (the views show the snap line then); its release clears it.
 Item {
     id: r
+    objectName: "barRuler"
     signal menuAt(real t, real x, real y)
+    readonly property bool snapping: kit.scrubbing || punchArea.mode === 0
+    onSnappingChanged: if (!snapping) backend.endTimeSnap()
+    function snapTo(x, y, free) { backend.setTimeSnapped(r.tOf(x), free, kit.onSecondsAt(y), kit.perSec) }
     readonly property int band: kit.bandH
     readonly property var range: backend.timeRange
     readonly property var song: backend.song
@@ -61,11 +68,12 @@ Item {
         duration: r.length; fps: 1000                        // (whole milliseconds: the grid does the snapping)
         value: backend.time; view: backend.timeView; upper: r.barMarks; seconds: workspace.seconds
         rangeBand: true; rangeActive: backend.looping; range: r.range.length === 2 ? { start: r.range[0], end: r.range[1] } : null
-        onScrubbed: (t) => backend.setTime(t)
+        onScrubbed: (t, free) => backend.setTimeSnapped(t, free, kit.onSeconds, kit.perSec)
         onRangeSet: (a, b) => backend.setRange(a, b, workspace.seconds)   // drawn on the seconds scale: exact seconds, no grid
         onRangeCleared: backend.clearRange()
     }
     MouseArea {   // above the kit's: the right-click menu, and the punch range while a take is armed with punch on
+        id: punchArea
         anchors.fill: parent
         preventStealing: true
         property int mode: -1                // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge
@@ -80,13 +88,13 @@ Item {
             var e = r.punchEdge(m.x)
             mode = e ? e + 1 : 0
             if (e) other = r.punch[e === 1 ? 1 : 0]
-            else backend.setTime(r.tOf(m.x))
+            else r.snapTo(m.x, m.y, (m.modifiers & Qt.ControlModifier) !== 0)
         }
         onPositionChanged: (m) => {
             if (!pressed || mode < 0) return
             var free = (m.modifiers & Qt.ControlModifier) !== 0       // Ctrl = no snapping (DESIGN.md §5)
             if (mode === 0 && Math.abs(m.x - x0) > 6) mode = 1
-            if (mode === 0) backend.setTime(r.tOf(m.x))                  // the scale: scrub
+            if (mode === 0) r.snapTo(m.x, m.y, free)                     // the scale: scrub
             else if (mode === 1) takeSetup.setPunch(r.tOf(x0), r.tOf(m.x), free)
             else takeSetup.setPunch(r.tOf(m.x), other, free)
         }

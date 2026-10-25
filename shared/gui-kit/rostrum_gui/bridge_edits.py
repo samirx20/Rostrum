@@ -11,7 +11,7 @@ from PySide6.QtCore import Slot
 from rostrum_core import RostrumError, desk
 
 from . import commands, pairs
-from .edits import Scrub, edit_label
+from .edits import Scrub, edit_label, field_param
 from .parts import SlotMixin
 
 
@@ -26,7 +26,7 @@ class EditSlots(SlotMixin):
                        "The typed value was dropped: the item it was typed for is gone.")
             return False
         return self._guard(lambda: self._apply([self.edit_call(i, param, value) for i in ids],
-                                               self._many(edit_label(self.doc, ids[0], param, value), len(ids))))
+                                               self._many(self._edit_label(ids[0], param, value), len(ids))))
 
     @Slot(str)
     def holdEdit(self, param):
@@ -81,8 +81,23 @@ class EditSlots(SlotMixin):
     def beginScrub(self, param):
         self.endScrub()
         def go():
-            self._kit.scrub = Scrub(self.doc, self.who, list(self._kit.selection), param, self.edit_call)
+            s = Scrub(self.doc, self.who, list(self._kit.selection), param, self.edit_call)
+            s._ctx.label = self._many(self._edit_label(s.item_id, param, None), len(s.items))
+            self._kit.scrub = s
         self._guard(go)
+
+    def _edit_label(self, item_id, param, value):
+        """What the history says for a settings edit (edits.edit_label). A row that is no field of the item's operation
+        (an app's own row: an EQ band, Sound's Feel amounts, edited through its edit_call) says its row's words."""
+        row = None if field_param(self.doc, item_id, param)[1] is not None else next(
+            (r for r in self.model.rows if r.get("row") == "param" and r.get("id") == param), None)
+        if row is None:
+            return edit_label(self.doc, item_id, param, value)
+        if row.get("type") == "toggle":
+            return f"Turn {'on' if value else 'off'} {row['label']}"
+        if row.get("type") == "choice" and value is not None:
+            return f"{row['label']}: " + next((o["label"] for o in row.get("options") or [] if o["value"] == value), str(value))
+        return f"Change {row['label']}"
 
     @Slot(str, "QVariant")
     def scrub(self, param, value):

@@ -13,6 +13,7 @@ SOUND_KEYS = [
     {"job": "pitch_scale_up", "keys": ["Ctrl+Up"], "label": "Pitch up a scale step", "area": "Edit"},
     {"job": "pitch_scale_down", "keys": ["Ctrl+Down"], "label": "Pitch down a scale step", "area": "Edit"},
     {"job": "quantize", "keys": ["Q"], "label": "Quantise", "area": "Edit"},
+    {"job": "repeat", "keys": ["Ctrl+R"], "label": "Repeat…", "area": "Edit"},
     {"job": "next_take", "keys": ["T"], "label": "Next take", "area": "Edit"},
     {"job": "swap_sound", "keys": ["S"], "label": "Swap a sound", "area": "Edit"},
     {"job": "hear_original", "keys": ["H"], "label": "Hear the original (hold)", "area": "Edit",

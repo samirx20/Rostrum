@@ -108,7 +108,9 @@ def test_landing_a_bar_on_a_marker_is_one_undo_step(bridge):
     bridge.setTime(9.0)
     bridge.markerAt(9.0)
     bridge.finishRename(bridge.renaming, "logo")         # M, then the name, Enter
-    assert bridge.landBar("fit_bar", 5)
+    assert bridge.actions.ask("fit_bar")                 # Start a bar here…: its popover's session, bar 5, kept
+    bridge.actions.amounts.setValue("bar", 5)
+    bridge.actions.amounts.keep()
     assert abs(tempo.seconds_at(doc.data, 16) - 9.0) < 1e-6   # bar 5 starts on the marker; beats follow
     assert len(doc.history.changes) == n + 3             # add, rename, land: one step each
     bridge.undo()

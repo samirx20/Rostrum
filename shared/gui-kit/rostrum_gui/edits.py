@@ -39,11 +39,13 @@ class Drag:
         self._ctx = doc.gesture(label, who)
         self._ctx.__enter__()              # a second open drag raises CONFLICT
 
-    def preview(self, calls):
-        self._ctx.preview(calls)
+    def preview(self, calls, fresh=False):
+        """`fresh`: on the state from before the drag, not on top of the last step (Gesture.preview)."""
+        self._ctx.preview(calls, fresh)
 
-    def end(self, cancel=False, calls=None):
-        """Close the drag: one change, or nothing with `cancel`. `calls`: a last preview first (the whole gesture at
+    def end(self, cancel=False, calls=None, label=None):
+        """Close the drag: one change, or nothing with `cancel`; `label`: what the history calls it, decided at the end
+        (the amounts popover's "Humanise · 12 notes · 15 ms, 8 %"). `calls`: a last preview first (the whole gesture at
         once, as a wet stroke gives it); if it is refused the drag still closes, with nothing, and the refusal goes on.
         A drag left open would refuse every later edit ("being dragged by a person")."""
         if calls is not None and not cancel:
@@ -55,6 +57,8 @@ class Drag:
                 raise
         if cancel:
             self._ctx.cancel()
+        if label:
+            self._ctx.label = label
         self._ctx.__exit__(None, None, None)
         return self._ctx.change
 

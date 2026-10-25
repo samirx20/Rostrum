@@ -27,7 +27,8 @@ import "ValueKinds.js" as VK
 // undo step (INTERACTION 1.4). At its default (or with no default, or driven by an expression) there is nothing to
 // reset, so the menu is absent. Mixed values count as not at the default.
 // A number with a `display` kind (model.display; ValueKinds.js) shows in that kind's words ("80 %", "−1.9 dB", "L 30");
-// an amount (VK.slides: pan, a gain, a 0..1 amount) gets the kit Slider with its NumberField beside it.
+// an amount (VK.slides: pan, a gain, a 0..1 amount; or a row with control "slider": the amounts popover's short ranges)
+// gets the kit Slider with its NumberField beside it.
 // The settings grid (Theme.settingsGrid numbers, SPEC 8.0): the label column is Theme.labelColumnFor(width), then ONE field
 // column Theme.fieldFor(width) wide, then the key gutter (always reserved, empty without a key mark), so every field starts
 // and ends alike. Only Position (X | Y) and Size (W | H) share a row (rows.py `half`: "first" / "second"): the second half's
@@ -56,7 +57,7 @@ Item {
     // What decides the widget's kind (amount, noneable) reads on while a made row is parked (not `live`): flipping to
     // false there turned an amount's slider into a plain number and back on every pick (its widget made twice).
     readonly property bool amount: (live || made) && model.type === "number" && model.half !== "first" && !second
-                                   && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
+                                   && (model.control === "slider" || VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9))
     readonly property bool noted: live && model.row === "param" && !!(model.note && model.note.text) && !paired && !tall
     readonly property bool driven: live && model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property var parts: body.item      // the drawn row (null while absent)
@@ -203,7 +204,7 @@ Item {
                        visible: !row.second
                        width: row.labelColumn - Theme.gap - (tag.visible ? tag.width + Theme.grid : 0)
                        anchors.verticalCenter: parent.verticalCenter
-                       height: row.model.type === "toggle" ? parent.height : implicitHeight   // a switch's words: the line's full height to click
+                       height: row.model.type === "toggle" ? Math.max(parent.height, implicitHeight) : implicitHeight   // a switch's words: the line's full height to click; a long one wraps to its second line like any label ("Played like a person")
                        verticalAlignment: Text.AlignVCenter
                        text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"

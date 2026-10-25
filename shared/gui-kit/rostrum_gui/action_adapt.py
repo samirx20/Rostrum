@@ -13,6 +13,7 @@ The dict shape (Sound's `screensound/actions.py`; the older "bar" / "menu" names
     menu | bar          the bar button the action sits under ("Transpose")
     calls, do           kept as they are (calls(facts) -> operation calls; do = an app's own action)
     needs | why         the sentence for a key pressed when it doesn't apply
+    amounts, asks, fit  the amounts popover's (actions.Action): parameter names, "asks first", the app's say on rows
 min_targets: give it in the dict (Layer as one sound: 2) so the kit's one guard holds it; without it the action's
 own `valid` decides alone (0).
 A shortcut that is neither a shared key nor one of the app's own keys is refused at start-up, naming the action.
@@ -47,7 +48,8 @@ def one(d: dict, keymap: KeyMap, rank: int = 100) -> Action:
         importance="primary" if imp in PRIMARY else "secondary", rank=PRIMARY.get(imp, rank),
         promoted=d.get("promoted_when") or d.get("promoted"), job=job, keys=keys, group=d.get("group", ""),
         bar=d.get("menu") or d.get("bar") or "", calls=d.get("calls"), do=d.get("do", ""),
-        why=d.get("needs") or d.get("why") or "")
+        why=d.get("needs") or d.get("why") or "", amounts=tuple(d.get("amounts") or ()), asks=bool(d.get("asks")),
+        fit=d.get("fit"))
 
 
 def from_dicts(dicts, keymap: KeyMap) -> list[Action]:

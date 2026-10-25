@@ -25,7 +25,7 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
-         "grid-menu", "problems-chip")
+         "grid-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -48,6 +48,18 @@ def long_project() -> list[str]:
 
 BEND = ('agent Bend the melody|[{"op":"automation.set","target":["melody"],"args":{"lane":"bend","points":'
         '[[0,0],[1.5,0],[2,0.5],[4,0.5],[4.5,0]]}}]')
+
+
+# Sound pro workflows, workflow 5: a notes or drums track's Feel group (Swing, Played like a person and its amounts, More)
+SWING = 'agent Swing the drums|[{"op":"track.feel","target":["drums"],"args":{"swing":0.55,"swingGrid":0.25}}]'
+
+
+def feel_states() -> list[tuple[str, list[str], list[str]]]:
+    return [
+        ("feel-notes", ["--sample"], ["select melody"]),                                   # person on: Looseness, Velocity spread
+        ("feel-drums-swing", ["--sample"], [SWING, "select drums"]),                      # Swing first, Swing on 16ths
+        ("feel-more", long_project(), [f"select {LONG_TRACK}", "more"]),                  # Lean … Seed behind More, a long name
+    ]
 
 
 def states() -> list[tuple[str, list[str], list[str]]]:
@@ -135,11 +147,22 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("two-tracks-mixed", ["--sample"], ["select-many pad melody"]),               # S49: "Mixed" in a unit field, no unit over it
         ("actions-audio-clip-menu", ["--sample"], ["select-clip door", "menu door/clip"]),     # Split here, Fades, Swap…
         ("actions-range", ["--sample"], ["range 2 4"]),
-        ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),
+        ("actions-marker-ask", ["--sample"], ["marker-add", "ask fit_bar"]),               # Start a bar here…: the kit's amounts popover
+        # the amounts popover (kit base A): Humanise ▾, Quantise ▾ with More open, Transpose ▾ › By… along the key, Repeat…
+        ("amounts-humanize", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
+                                            "ask humanize"]),
+        ("amounts-quantize-more", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200",
+                                                 "ask quantize", "amount swing 0.5"]),
+        ("amounts-transpose-key", ["--sample"], [SONG_FLAGS, "select melody", "dock editor",
+                                                 "select-many melody.n9600 melody.n10200", "ask transpose_by", "amount along 1"]),
+        ("amounts-repeat-range", ["--sample"], ["range 2 4", "ask repeat_range"]),
+        ("amounts-repeat-notes", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200",
+                                                "ask repeat", "amount until #drop"]),
         # P41: the full transport (loop on, a track armed), times in bars.beats, the Mixer with an effect selected
         ("transport-loop-armed", ["--sample"], ["time 9", "loop", "arm door"]),
         ("note-musical-times", ["--sample"], ["dock editor", "select melody.n9600"]),
         ("six-eight-note", ["--sample"], [SONG_FLAGS, SIX_EIGHT, "dock editor", "select melody.n9600"]),
         ("mixer-effect", ["--sample"], ['agent Add a delay|[{"op":"effect.add","target":["drums"],"args":{"effect":"delay"}}]',
                                         "dock mixer", "select drums.delay_1"]),
+        *feel_states(),
     ]
