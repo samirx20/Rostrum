@@ -507,7 +507,8 @@ the agent's `inspect_tools`.
   1. the chips (else each shows only its dot and count);
   2. the message, **whole or not at all**. If it doesn't fit beside "Saved · 14 changes", the count steps back to
      "Saved" (hover says "14 changes"). If it still doesn't fit, the message steps aside: hover on "Saved" says it,
-     and History keeps it;
+     and History keeps it. **A failure never steps aside** (it must be read where it happened): a red message too
+     long for its slot takes Search's room and the name's (Search folds to its icon) until the next message;
   3. Search (else its icon);
   4. the project name beyond its first 160 px (the scene name never shortens).
 - **Never shrunk or hidden:** "Saved" (the door to History), ↶ ↷, Export, ?.

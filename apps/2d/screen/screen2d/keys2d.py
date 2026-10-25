@@ -20,8 +20,8 @@ OWN = [
     {"job": "ellipse_tool", "keys": ["O"], "label": "Ellipse"},
     {"job": "text_tool", "keys": ["T"], "label": "Text"},
     {"job": "pick_frame", "keys": ["C"], "label": "Pick the frame"},
-    {"job": "look_through", "keys": ["Shift+C"], "label": "Look through the frame"},
-    {"job": "fit_everything", "keys": ["Shift+1"], "label": "Fit everything"},
+    {"job": "look_through", "keys": ["Shift+C"], "label": "Look through the frame", "area": "View"},
+    {"job": "fit_everything", "keys": ["Shift+1"], "label": "Fit everything", "area": "View"},
     {"job": "fit", "keys": ["Shift+2"], "label": "Fit the selection"},               # F's second key (Figma habit)
     {"job": "bone_tool", "keys": ["J"], "label": "Bone"},
     {"job": "hand_tool", "keys": ["H"], "label": "Hand"},

@@ -208,7 +208,7 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
             F.remember(self.kind, doc.folder, doc.item_id, self._name())
         self.changed.emit()
         if self._said:
-            self._say("Error: " + self._said)
+            self._refuse(self._said)
             self._said = ""
 
     def _picture(self, bridge, doc):
@@ -233,14 +233,18 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
         if self.host.bridge is not None:
             self.host.bridge.say(line)
 
+    def _refuse(self, sentence):
+        """A refused open / save in the person's words, red in the top bar; the console gets it as an error line."""
+        print("Error: " + sentence, file=sys.stderr)
+        if self.host.bridge is not None:
+            self.host.bridge.refuse(sentence)
+
     def _try(self, fn) -> bool:
         try:
             fn()
             return True
         except (RostrumError, OSError, ValueError) as e:
-            line = "Error: " + F.said(e)
             if self.host.bridge is None:
                 raise
-            self._say(line)
-            print(line, file=sys.stderr)
+            self._refuse(F.said(e))
             return False

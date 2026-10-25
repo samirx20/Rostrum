@@ -99,7 +99,11 @@ Item {
     // box, the chips or Export: the slot is what is left after the command box's own minimum (150), at most 320 px.
     readonly property real messageNeed: bridge && bridge.status && !agentShown
                                         ? message.implicitWidth + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
-    readonly property real messageSlot: Math.max(0, Math.min(320, afterChips - (150 - Theme.button) - sp))
+    // A failure longer than that must still be read where it happened (fail loudly): it takes the command box's room
+    // (the box folds to its button) and the tab's, until the next message.
+    readonly property bool failureWide: bridge && bridge.statusFailed && messageNeed > 320
+    readonly property real messageSlot: Math.max(0, failureWide ? Math.min(messageNeed, afterChips - sp)
+                                                                : Math.min(320, afterChips - (150 - Theme.button) - sp))
     readonly property real countSaving: countShort.text !== "" ? countFull.advanceWidth - countShort.advanceWidth : 0
     readonly property bool messageShown: messageNeed > 0 && messageSlot > 0 && messageNeed <= messageSlot + countSaving
     readonly property bool countShortened: messageShown && messageNeed > messageSlot     // "Saved" alone, for the message
