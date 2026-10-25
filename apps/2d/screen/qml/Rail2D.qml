@@ -17,7 +17,8 @@ ToolRail {
     current: backend.tool
     last: ({ shapes: "rect" })
     panelOpen: !!brushes.item && brushes.item.visible
-    readonly property bool canCue: backend.actions.offered.indexOf("sound_here") >= 0   // allowed now (folded in menus or not)
+    readonly property bool canCue: backend.actions.offered.indexOf("layer:sound_here") >= 0   // allowed now (folded in menus or not); an action's id is always its full form, "layer:<name>"
+    onCanCueChanged: if (canCue) backend.cuePick.warm()       // the first search then needn't load Sound's code
     readonly property var renders3d: backend.adder.entries.filter(e => e.type === "render3d")
 
     iconKinds: ({ shape: shapeIcon, paint: paintIcon })
@@ -48,7 +49,7 @@ ToolRail {
         if (e.tool) backend.setTool(e.tool)
         else if (e.act === "file") rail.addFile()
         else if (e.act === "library") backend.library.setOpen(!backend.library.open)
-        else if (e.act === "cue") backend.run("sound_here")
+        else if (e.act === "cue") backend.run("layer:sound_here")
         else backend.adder.add(e.act)          // image / video ask for their file (fileWanted below); render3d:<item>
     }
     function addFile() { importDialog.open() }       // Ctrl+I and the Add button: the one door for a file

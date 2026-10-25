@@ -13,13 +13,14 @@ SmallPopup {     // Esc: the window's one Esc (OpenPopups); a click outside clos
     padding: Theme.pad
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     Connections { target: pop.cp; function onOpened() { pop.open() } }
+    onOpened: search.input.forceActiveFocus()       // type at once
     contentItem: Column {
         spacing: Theme.gap
         Text { width: parent.width; text: "Add a sound to " + pop.cp.what; color: Theme.fg; font.family: uiFont
                font.pixelSize: Theme.body; font.weight: Font.DemiBold; elide: Text.ElideRight }
-        TextField { width: parent.width; value: pop.cp.words; placeholder: "Search recordings (cello, tap …)"
+        TextField { id: search; objectName: "cueSearch"; width: parent.width; value: pop.cp.words; placeholder: "Search recordings (cello, tap …)"
                     onEdited: (v) => pop.cp.search(v) }
-        Text { visible: pop.cp.sounds.length === 0 || pop.cp.searching; width: parent.width; wrapMode: Text.Wrap
+        Text { objectName: "cueStatus"; visible: pop.cp.searching || pop.cp.sounds.length === 0; width: parent.width; wrapMode: Text.Wrap
                text: pop.cp.searching ? "Searching…" : "No sounds match. Try fewer words, or add a sound folder in RostrumSound."
                color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
         ListView {
