@@ -18,7 +18,7 @@ cell before).
 from __future__ import annotations
 
 from rostrum_sound.doc import keys as K
-from rostrum_sound.doc import meter, tempo, times
+from rostrum_sound.doc import meter, musical, tempo, times
 from rostrum_sound.doc.shift import spb, write_like
 
 SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
@@ -102,6 +102,19 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = 
     else:
         at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
     return max(0.0, round(at, 6))
+
+
+def line_name(t: float, root: dict) -> str:
+    """What the snap line calls a grid line at `t` seconds: "bar 9" on a bar line, else its place ("9.3", "9.3.2")."""
+    pos = musical.position(t, root)
+    bar, beat, *rest = pos.split(".")
+    return f"bar {bar}" if beat == "1" and not rest else pos
+
+
+def frame(t: float, start: float, fps: float) -> tuple[float, int]:
+    """(the picture's nearest whole frame to `t` seconds, its number from the picture's first frame at `start`)."""
+    n = round((t - start) * fps)
+    return max(0.0, round(start + n / fps, 6)), n
 
 
 write_time = write_like   # `t` seconds in the form `old` was written in (doc/shift.py)

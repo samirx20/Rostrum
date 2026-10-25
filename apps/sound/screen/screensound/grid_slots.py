@@ -7,7 +7,9 @@ setRulerWidth), again on every zoom, scroll and window resize.
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum_gui import snap
 
+from . import music_map, timing
 from .timing import Grid
 
 WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "1/4", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
@@ -113,3 +115,43 @@ class GridSlots:
         width = min(self.__dict__.get("_ruler_widths", {}).values(), default=1200.0)     # (no screen: a common width)
         if self._grid_now.follow_zoom(beats, width) and self._grid_now.value == "auto":
             self.gridChanged.emit()
+
+
+    # ---- the ruler: a click or scrub puts the playhead on what it catches ---------------------------------------
+    @Slot(float, bool, bool, float)
+    def setTimeSnapped(self, t, free, seconds_line, scale):
+        """The playhead at `t` seconds as the ruler's click or scrub gives it: `free` (Ctrl) or Snap off = exactly
+        there; else snapped (ruler_snap). `seconds_line`: on the seconds line; `scale`: the ruler's px per second."""
+        at, caught = self.ruler_snap(t, free, seconds_line, scale)
+        self._set_snap(caught)
+        self.setTime(at)
+
+    @Slot()
+    def endTimeSnap(self):
+        """The ruler's press ended: no snap line."""
+        self._set_snap({})
+
+    @Slot(float)
+    def setPictureFps(self, fps):
+        """The picture's frame rate, as its player reads it (PictureCorner): the seconds line snaps to its frames."""
+        self._picture_fps = float(fps or 0)
+
+    def ruler_snap(self, t, free, seconds_line=False, scale=0.0, skip=""):
+        """(where a time on the ruler lands, what it caught: {t, name}; {} when free). Markers and section edges
+        catch first (the kit's 6 px, strongest first; `skip`: a marker being dragged), then the window's grid ("bar 9",
+        "9.3"), or on the seconds line with a picture its nearest whole frame ("frame 120")."""
+        root, grid = self.doc.data, self._grid_now
+        if free or not grid.on:
+            return max(0.0, round(t, 4)), {}
+        marks = [snap.Target("marker", m["name"], m["t"]) for m in self._view["markers"] if m["id"] != skip]
+        for s in music_map.sections(root):
+            marks += [snap.Target("section", s["name"], s["t"]), snap.Target("section", f"{s['name']} end", s["end"])]
+        caught = snap.snap(t, marks, scale) if scale > 0 else None
+        if caught is not None and caught.target is not None:
+            return caught.value, {"t": caught.value, "name": caught.name}
+        fps = self.__dict__.get("_picture_fps", 0.0)
+        if seconds_line and fps > 0 and self.picture:
+            at, n = timing.frame(t, self.pictureStart, fps)
+            return at, {"t": at, "name": f"frame {n}"}
+        at = timing.snap(t, root, False, grid)
+        return at, {"t": at, "name": timing.line_name(at, root)}

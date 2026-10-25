@@ -94,7 +94,7 @@ Panel {
         Item {   // what a drag snapped to: the kit's snap line over the roll
             x: p.keysWidth; width: bars.width; height: well.height
             readonly property var s: backend.snapLine
-            SnapLine { visible: !!parent.s.name && input.busy && bars.visibleX(bars.xOf(parent.s.t))
+            SnapLine { visible: !!parent.s.name && (input.busy || bars.snapping) && bars.visibleX(bars.xOf(parent.s.t))
                        at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
         }
     }

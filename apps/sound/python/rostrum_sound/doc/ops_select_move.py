@@ -1,5 +1,5 @@
 """Move and copy the selected notes, drum hits and clips: `<kind>.move` (nudge, paste at an offset) and
-`<kind>.duplicate` (copies placed `by` an amount, default right after the selection's end). One maker per kind.
+`<kind>.duplicate` (copies placed `by` an amount, default right after the selection's end; `times` / `until`: repeat.py). One maker per kind.
 A layered clip's group moves with it (like `clip.set at`). New ids of a copy: `select_time.inserted(change)`.
 """
 from __future__ import annotations
@@ -8,7 +8,7 @@ import copy
 
 from rostrum_core import codes
 
-from . import ids
+from . import ids, repeat
 from .ops_group import mates
 from .registry import REGISTRY, taken
 from .select_time import BY, BY_REQUIRED, KINDS, end_of, moved, start_of
@@ -54,7 +54,11 @@ def _register(kind):
             ctx.set(t, "at", at)
 
     @REGISTRY.operation(f"{kind}.duplicate", f"Copy {label}s: the copies sit `by` later (default: right after the "
-                        "selection's end), with new ids.", target=kind, params=[BY], label=f"Duplicate {label}")
+                        f"selection's end), with new ids. `times` (1 … 64) makes that many copies in a row; `until` (a time, "
+                        f'"#marker" or {{"section": "verse"}}) copies as many as fit before that point and cuts the last at it '
+                        f"({'notes shortened' if kind == 'note' else 'clips shortened' if kind == 'clip' else 'hits past it left out'}). "
+                        "One call, one undo step.", target=kind, params=[BY, repeat.TIMES, repeat.UNTIL],
+                        label=f"Duplicate {label}")
     def duplicate(ctx, targets, args):
         root = ctx.doc
         items = [ctx.item(t) for t in _with_group(ctx, targets, kind)]
@@ -63,16 +67,21 @@ def _register(kind):
         if "by" not in args and by <= 1e-6:
             ctx.fail(codes.BAD_ARGUMENT, "by", f"can't be worked out: the selected {label}s have no length",
                      hint="Give `by` (seconds or beats).")
+        n, point = repeat.count(ctx, first, by, args)
+        plan = [(item, ctx.idx[item["id"]].parent, moved(ctx, item, repeat.scaled(by, k)), k)   # all from the start state
+                for k in range(1, n + 1) for item in items]
         renamed_groups: dict = {}
-        for item in items:
-            track = ctx.idx[item["id"]].parent
-            at = moved(ctx, item, by)
+        for item, track, at, k in plan:
             new = copy.deepcopy(item)
             new["at"] = at
+            if point is not None:                       # `until`: cut at the point (its end moved with the copy)
+                new = repeat.cut(ctx, kind, new, end_of(root, item) + start_of(root, new) - start_of(root, item), point)
+                if new is None:
+                    continue
             new["id"] = _new_id(kind, track, new, ctx)
             if kind == "clip":
                 if new.get("group"):                    # a copied layer is its own layer, not a member of the old one
-                    new["group"] = renamed_groups.setdefault(new["group"], _free_group(ctx, new["group"]))
+                    new["group"] = renamed_groups.setdefault((new["group"], k), _free_group(ctx, new["group"]))
                 used = taken(ctx) | {new["id"]}
                 for e in new.get("effects", []):
                     e["id"] = ids.effect(new["id"], e.get("effect", "effect"), used)

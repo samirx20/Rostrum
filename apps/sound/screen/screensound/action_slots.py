@@ -12,15 +12,19 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import commands
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.action_views import commands as do_commands
+from rostrum_gui.edits import Drag
 from rostrum_sound.doc import musical
 from rostrum_sound.doc import select_time as ST
 
 from rostrum_sound import main_mix
 
 from . import action_calls as C
+from . import amount_actions as A
 from . import voice_actions as V
 from . import block_menu, clipboard, palette, timing
 from .actions import ACTS_ON, LIST, RANGE
+
+AMOUNTS = {a.id for a in LIST.actions if a.amounts}      # Ctrl+K opens their popover ("Quantise…")
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
 
@@ -34,8 +38,8 @@ MAKES = ("note.duplicate", "hit.duplicate", "clip.duplicate", "clip.split", "sec
 class SoundHub(ActionHub):
     """The kit's hub, plus Sound's shared keys that are not actions (keys.ROUTES → bridge methods)."""
 
-    def __init__(self, bridge, *a):
-        super().__init__(*a, parent=bridge)
+    def __init__(self, bridge, *a, **kw):
+        super().__init__(*a, parent=bridge, **kw)
         self.bridge = bridge
 
     @Property("QVariantList", constant=True)
@@ -66,7 +70,6 @@ class ActionSlots:
     jobWanted = Signal(str)           # Ctrl+K named a job only the window can run (Preferences, Export, files ...): Main.qml runs it
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group (its three fields, once)
-    askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
     mainMixChanged = Signal()         # the main-mix mark moved (the Song panel's mark and button re-read)
     voiceWanted = Signal(str)         # a voice track's lines need their speech made (editor_side starts the job)
 
@@ -77,7 +80,9 @@ class ActionSlots:
         self.say(line)
 
     def _make_actions(self):
-        self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._refuse)
+        self._hub = SoundHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._refuse,
+                             drag_fn=lambda label: Drag(self.doc, self.who, label), kept_fn=self._amounts_kept,
+                             subject_fn=lambda key, f: self._subject(key))
         for sig in (self.picksChanged, self.docChanged):       # picks follow the selected items
             sig.connect(self._refresh_actions)
         later = QTimer(self, singleShot=True, interval=SETTLE_MS, timeout=self._refresh_actions)
@@ -106,6 +111,10 @@ class ActionSlots:
         items selected too (critic r4: "Duplicate · 26 drum hits" duplicated the whole range); an action on some kinds
         the part it takes ("Quantise · 178 notes and 202 drum hits" on Select all); the rest the selection."""
         rng = self._picks.range
+        if key == "repeat_range" and rng:
+            return A.range_words(self._facts())
+        if key == "fit_bar" and len(self._picks.ids) == 1:          # "Start a bar here · marker logo"
+            return f'marker {self.doc.item(self._picks.ids[0]).get("name") or self._picks.ids[0]}'
         if key in RANGE and rng:
             at = [".".join(musical.position(t, self.doc.data).split(".")[:2]) for t in rng]
             return f"time range {at[0]}–{at[1]}"
@@ -116,11 +125,15 @@ class ActionSlots:
     # ---- running ----------------------------------------------------------------------------------------------
     def _act_apply(self, calls, label):
         words = self._subject(self.__dict__.get("_acting", ""))
-        made = any(c["op"] in MAKES for c in calls)
+        made = any(c["op"] in MAKES for c in calls) and not self.__dict__.get("_acting", "").startswith("repeat")
         if self._act(calls, f"{label} · {words}" if words else label, made) and any(c["op"] == "section.add" for c in calls):
             self.clearRange()
             if self._picks.ids:
                 self.startRename(self._picks.ids[0])            # a new section's name field opens in place
+
+    def _amounts_kept(self, change, label):
+        """The amounts popover kept its session (one change, named with its amounts): said in the message line."""
+        self._done(change, f"{label}: already so, nothing changed", said=True)
 
     def _act_do(self, name, entry):
         """Sound's actions that are not operations by themselves."""
@@ -162,8 +175,6 @@ class ActionSlots:
             self._hub.run("before_after")
         elif name == "mainmix":                                 # a mark on the project, not a song edit: no undo step
             self.makeMainMix()
-        elif name == "fit":
-            self.askWanted.emit("fit_bar", "Bar", float(C.bar_near(self._facts())))
         else:
             raise ValueError(f'action {entry["id"]}: RostrumSound has no "{name}" action')
 
@@ -177,15 +188,6 @@ class ActionSlots:
             self._hub.refresh()
             return True
         return self._guard(go)
-
-    @Slot(str, float, result=bool)
-    def landBar(self, _key, bar):
-        """The popover's answer for Start a bar here: `tempo.fit_bar` with that bar (one step)."""
-        f = self._facts()
-        if not (f.one == "marker" and f.count == 1):
-            self._refuse("Start a bar here needs one marker selected (placed in seconds)")
-            return False
-        return self._act(C.fit_bar(f, int(bar)), f"Land bar {int(bar)} on {f.items[0].get('name')}")
 
     @Slot(result="QVariantMap")
     def cleanState(self):
@@ -216,8 +218,11 @@ class ActionSlots:
             self._pick([item_id])
         self._hub.refresh()
         out = self._hub.menu()
-        swap = any(e["id"] == "swap" for e in LIST.available(self._facts()))
-        return out + block_menu.clip_entries(self.doc, item_id, t, swap)
+        offered = {e["id"] for e in LIST.available(self._facts())}
+        if "repeat" in offered:                     # Repeat… right after Duplicate (the short menu keeps the kit's jobs)
+            at = next((n + 1 for n, e in enumerate(out) if e["value"] == "duplicate"), len(out))
+            out.insert(at, {"value": "repeat", "label": "Repeat…", "keys": "Ctrl+R", "group": out[at - 1]["group"] if at else "edit", "sub": []})
+        return out + block_menu.clip_entries(self.doc, item_id, t, "swap" in offered)
 
     @Slot(str, float, result="QVariantList")
     @Slot(str, float, float, result="QVariantList")
@@ -266,7 +271,7 @@ class ActionSlots:
     @Slot(str)
     def menuPick(self, value):
         """Any ActionMenu's choice: an empty-space entry, else the action list's."""
-        self.runAt(value) if value.startswith("at:") else self._hub.run(value)
+        self.runAt(value) if value.startswith("at:") else self._hub.choose(value)
 
     # ---- paste and apply --------------------------------------------------------------------------------------
     def _paste_track(self):
@@ -298,7 +303,7 @@ class ActionSlots:
     def _commands(self):
         """Ctrl+K: the action list first (with keys), then the kit's commands it doesn't repeat."""
         f = self._facts()
-        mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
+        mine = [{**c, "do": lambda k=c["key"]: self._hub.choose(k)} if "do" in c or c["key"] in AMOUNTS else c
                 for c in do_commands(LIST.available(f), self._what(f))]
         mine = [{**c, "hint": self._subject(c["key"]) or c["hint"], "own": True} for c in mine]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
@@ -328,6 +333,6 @@ class ActionSlots:
             return True
         if not any(a.id == key for a in LIST.actions):
             return super().run(key)
-        ok = any(e["id"] == key for e in LIST.available(self._facts()))
-        self._hub.run(key)
+        ok = any(e["id"] == key for e in LIST.available(self._facts(), amounts=self._hub.amounts.memory))
+        self._hub.choose(key)
         return ok

@@ -94,6 +94,16 @@ def end_of(root: dict, item: dict) -> float:
     return start
 
 
+def note_dur(root: dict, item: dict, new_start: float, new_end: float):
+    """The note's `dur` for its new end, written like the old one (seconds or beats); None for a tied length."""
+    dur = item["dur"]
+    if dur == "next" or (isinstance(dur, dict) and "to" in dur):
+        return None
+    if isinstance(dur, dict):
+        return {"beats": round(tempo.beat_at(root, new_end) - tempo.beat_at(root, new_start), 4)}
+    return round(new_end - new_start, 4)
+
+
 def inserted(change) -> list[str]:
     """The ids a change brought in, in order (the screen selects them after a duplicate or a split)."""
     return [e.id for e in change.edits if isinstance(e, E.Insert)]

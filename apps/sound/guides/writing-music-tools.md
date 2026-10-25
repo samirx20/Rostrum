@@ -99,4 +99,7 @@ plain.
 | `accent:X..xo.x.`, `dynamics:0.6>1.0`, `velocity:v` | velocity: accent pattern per 16th, a swell across the line, or one level |
 
 Timing feel (swing, small timing differences, varied velocity) comes from the performance layer, which is on by
-default. You don't need to write it in.
+default. You don't need to write it in. To set a swing on a track: `track.feel {swing: 0.55, swingGrid: 0.25}`
+(0.25 = 16ths, 0.5 = 8ths). `track.feel` changes only what it names, so a person's other feel settings stay;
+`{person: false}` turns the instrument's looseness off and keeps the swing; `{timing: null}` puts one value back to the
+instrument's default.

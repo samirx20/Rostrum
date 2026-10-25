@@ -1249,18 +1249,23 @@ highlight and the in-key movement; fold-to-scale is later.
 **How it works.** All three act on the selection (notes, or hits in the drum grid), from the context bar, right-click,
 Ctrl+K, or a key.
 - **Quantise (Q):** snaps the selected notes' starts to the editor's grid at full strength — the first try just works.
-  The context bar button has a small ▾: **Grid** (defaults to the editor grid), **Strength** (0–100 %; 50 % = halfway,
-  keeps feel), **Ends too** (off). The ▾ choices are remembered for the next Q.
-- **Transpose:** ↑/↓ for one step; context bar "Transpose…" opens an inline field: semitones (±), **In key** tick box.
-- **Loosen (humanise):** context bar › More › "Loosen timing…": Timing (up to ms, default 10), Velocity (spread,
-  default 0.05), **Another take** button (a new seed, so the same settings give a different result; the same seed
-  always gives the same result, so an agent's re-run is stable).
+  The button has a small ▾ (the amounts popover, sound-pro-workflows SPEC § 2, "base A": built from the operation's
+  own parameters, live while it is open, Enter or a click away = one undo step, Esc puts it back): **Grid**,
+  **Strength** (0–100 %; 50 % = halfway, keeps feel), **Swing** (0–100 %: the off-beat grid lines move late and the
+  notes snap to them, written in), **Ends too** under More. The ▾ choices are remembered for the next click (this
+  window, this session).
+- **Transpose:** ↑/↓ for a half step, Ctrl+↑/↓ a step of the key (`note.transpose {steps: ±1}`); Transpose ▾'s last row
+  **By…** is the amounts popover: Semitones (±24) and, only when the song has a key, **Along the key** (then Steps, ±14).
+- **Humanise ▾** (the same popover): Timing (up to ms, default 10), Velocity (spread, default 5 %), Length (notes only,
+  default 0), **Another take** button (a new seed, so the same settings give a different result; the same seed
+  always gives the same result, so an agent's re-run is stable). Clicking **Humanise** itself runs the last amounts.
 
 **Feedback.** Notes slide to their new place (a short animation, 120 ms) and the selection stays selected.
 **Undo and adjust.** One step each; repeat Q after changing Strength only re-quantises from the current positions.
 **Keys.** Q quantise · ↑/↓ transpose.
 **Agent.** `note.quantize` / `hit.quantize {grid, strength, ends}`, `note.transpose {semitones}`,
-`note.humanize` / `hit.humanize {timing, velocity, seed}` (all exist). **(new)** `in_key` on transpose.
+`note.humanize` / `hit.humanize {timing, velocity, seed}` + `length` (notes), `swing` on quantize, `steps` on
+transpose (the song's key at each note's time; exactly one of `semitones` / `steps`).
 **Why this way (3E).** Defaults that are right first time; settings one ▾ away. **Rejected:** a quantise dialog.
 **Studied.** Logic's region quantise (non-destructive) vs Ableton's (destructive with strength). We store the result
 (plain values the person can edit), Ableton-style; the grid in the context bar is Logic's directness.
@@ -1349,25 +1354,30 @@ here, not a hidden generator.
 ("Beat A") → drag its loop corner to the end of the verse, or right-click › **Repeat to section end** (fills up to
 the section's end, one step). Interim (no `part` field yet): the same with a range selection on the drum lane.
 A variation: Ctrl+drag a copy, then edit the copy (it is its own part, "Beat A 2").
-**Agent.** `hit.duplicate {times}` (exists; **(new)** `times`), `part.make` (new, schema). **(new)** `to: "#section"`
-on duplicate = "repeat until this section's end".
+**Agent.** `note|hit|clip.duplicate {by?, times: 1…64, until?}`: `times` copies; `until` (seconds, `"#marker"` or a
+section's end) copies as many as fit and cuts the last at that point. `part.make` (new, schema). On the screen:
+**Repeat…** (Ctrl+R), the amounts popover with Times and Until; primary on a time range.
 **Why this way.** One concept (parts) for melodies and beats. **Rejected:** a separate pattern list (Logic's pattern
 regions, FL Studio's patterns) — a second place for the same hits.
 **Studied.** Logic pattern regions; Ableton loops a clip. We use the same loop corner as melodic parts.
-**Today.** Missing (`hit.duplicate` exists without `times`).
+**Today.** Repeat… and `times` / `until` built (sound-pro-workflows round 1); parts are later.
 
 #### 3.4c Swing
 
 **Goal.** "Make the hats bounce."
-**How it works.** Drum (and instrument) tracks get **Swing** in the settings panel's essentials for drums (Timing group
-for instrument tracks): 0 % (straight) … 100 % (full triplet feel), and **Swing on** 1/8 or 1/16 (folded, default 1/16).
+**How it works.** Notes and drum tracks get the **Feel** group in their settings (where the one switch "Played like a
+person" was): **Swing** 0 % (straight) … 100 % (full triplet feel), **Swing on** 8ths / 16ths (only when Swing > 0),
+then **Played like a person** with its amounts under it while it is on (Looseness, Velocity spread; Lean, Accent,
+Strum, Articulation, Vibrato, Seed under More). On a drum track Swing comes first. Swing works with the switch off.
 Dragging the value is heard on the next render. The hits stay on the grid in the document; swing is applied when the
 song plays, so it can be changed or removed any time, and quantising keeps working.
-**Decision: swing is a track setting, not a move of the hits** (new, schema: `swing`, `swingGrid` on tracks, Team
-Sam; applied in compile, which delays every off-beat by the swing amount; no engine change).
-**Interim:** right-click › "Swing these hits…" moves the selected off-beat hits now (op **(new)** `hit.swing {amount,
-grid}` / `note.swing`), stored as plain times.
-**Agent.** `track.set {swing, swingGrid}` (new, schema).
+**Decision: swing is a track setting, not a move of the hits:** the track's `perform.swing` / `swingGrid`, which the
+engine already plays. `perform.person: false` turns the family's looseness off while swing still applies
+(`perform: false` still turns everything off, for old songs).
+**Written in instead:** Quantise ▾ › Swing (`note|hit.quantize {swing}`), stored as plain times.
+**Agent.** `track.feel {swing: 0.55, swingGrid: 0.25}`: merges into `perform`, changing only what it names (`null`
+removes one), so an agent setting swing never wipes a person's feel. `track.set {perform}` stays for whole-object
+writes.
 **Why this way (3E).** Effective: feel without losing the grid. Easy: one slider on the track.
 **Rejected:** destructive only (can't take it back after editing).
 **Studied.** Logic region swing (non-destructive), Ableton grooves (applied then committed), MPC swing per pattern. We take the non-destructive track setting.
