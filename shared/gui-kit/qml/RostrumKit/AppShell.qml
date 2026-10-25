@@ -42,6 +42,7 @@ QQC.ApplicationWindow {
     // the job chip and "Play · Show in folder" after the message come with it. `exportSettings`: the chosen item's
     // own settings rows, inside the sheet.
     property var exporter: null
+    property string noExportWhy: ""          // said in plain words when Ctrl+E / Ctrl+Shift+E come while there is nothing to export (no `exporter`)
     property alias exportSettings: exportSheet.settings
     property alias exportSummary: exportSheet.summary   // the app's line above the sheet's button (3D: the time estimate)
     readonly property bool exportOpen: !!exporter && exporter.open
@@ -123,7 +124,7 @@ QQC.ApplicationWindow {
         const p = body.mapFromItem(null, x, y)
         if (p.x >= 0 && p.x < railSlot.width && p.y >= 0 && p.y < railSlot.height) { focusArea = "centre"; return }   // the rail works the view
         for (const [name, it] of areas())
-            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; pressedIn(name); return }
+            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; if (name === "centre") centreSlot.forceActiveFocus(); pressedIn(name); return }   // a press on the work gives the keys back from a clicked slider or field (items that take focus on the press do so after this)
     }
     function nextArea() {                       // F6
         const order = areas()
@@ -153,17 +154,39 @@ QQC.ApplicationWindow {
         return !!e
     }
     function openKeys() { keyList.get().open() }
-    Shortcut { sequence: "Ctrl+K"; onActivated: commandBar.open() }
-    Shortcut { sequence: "F1"; onActivated: win.guidesOpen ? win.closeGuides() : win.openGuides() }
-    Shortcut { sequence: "Ctrl+/"; onActivated: keyList.item && keyList.item.opened ? keyList.item.close() : keyList.get().open() }
-    Shortcut { sequence: "F6"; onActivated: win.nextArea() }
-    Shortcut { sequence: "Ctrl+\\"; onActivated: { win.panelsFolded = !win.panelsFolded; if (win.panelsFolded) win.historyOpen = false } }
-    Shortcut { sequence: "Ctrl+H"; onActivated: win.historyOpen ? (win.historyOpen = false) : win.openHistory("") }
+    // The shell's own keys and Ctrl+K's rows for them are ONE thing: runJob(job), by key-map job (an app's palette calls it too).
+    function runJob(job) {
+        switch (job) {
+        case "command_box": commandBar.open(); return true
+        case "guides": win.guidesOpen ? win.closeGuides() : win.openGuides(); return true
+        case "key_list": keyList.item && keyList.item.opened ? keyList.item.close() : keyList.get().open(); return true
+        case "next_area": win.nextArea(); return true
+        case "fold_panels": win.panelsFolded = !win.panelsFolded; if (win.panelsFolded) win.historyOpen = false; return true
+        case "history": win.historyOpen ? (win.historyOpen = false) : win.openHistory(""); return true
+        case "export": if (win.exporter) win.exporter.setOpen(!win.exporter.open); else if (noExportWhy !== "") bridge.say(noExportWhy); return true
+        case "export_again": if (win.exporter) win.exporter.again(); else if (noExportWhy !== "") bridge.say(noExportWhy); return true
+        case "problems": topBar.openProblems(); return true     // the Problems chip's list (job_rows.CONTEXT)
+        case "find_setting": win.bridge.findAsked(); return true     // the settings panel's find box, as Ctrl+F
+        case "agents": win.openConnectAgent(); return true      // the Help menu's entries (job_rows.HELP): Ctrl+K runs them too
+        case "report": win.openReport(); return true
+        case "about": win.openAbout(); return true
+        case "undo": win.bridge.undo(); return true
+        case "redo": win.bridge.redo(); return true
+        }
+        return false
+    }
+    Binding { target: OpenPopups; property: "focused"; value: win.activeFocusItem }   // a focused control's own keys (OpenPopups.takes)
+    Shortcut { sequence: "Ctrl+K"; onActivated: runJob("command_box") }
+    Shortcut { sequence: "F1"; onActivated: runJob("guides") }
+    Shortcut { sequence: "Ctrl+/"; onActivated: runJob("key_list") }
+    Shortcut { sequence: "F6"; onActivated: runJob("next_area") }
+    Shortcut { sequence: "Ctrl+\\"; onActivated: runJob("fold_panels") }
+    Shortcut { sequence: "Ctrl+H"; onActivated: runJob("history") }
     Connections { target: win.bridge ? win.bridge.agent : null; function onHistoryAsked(s) { win.openHistory(s) } }
-    Shortcut { sequence: "Ctrl+E"; enabled: !!win.exporter; onActivated: win.exporter.setOpen(!win.exporter.open) }
-    Shortcut { sequence: "Ctrl+Shift+E"; enabled: !!win.exporter; onActivated: win.exporter.again() }
-    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: win.bridge.undo() }
-    Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: win.bridge.redo() }
+    Shortcut { sequence: "Ctrl+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export") }
+    Shortcut { sequence: "Ctrl+Shift+E"; enabled: !!win.exporter || win.noExportWhy !== ""; onActivated: runJob("export_again") }
+    Shortcut { sequences: [StandardKey.Undo]; enabled: !commandBar.opened; onActivated: runJob("undo") }
+    Shortcut { sequences: ["Ctrl+Shift+Z", "Ctrl+Y"]; enabled: !commandBar.opened; onActivated: runJob("redo") }
 
     TopBar {
         id: topBar

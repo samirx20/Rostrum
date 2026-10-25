@@ -49,7 +49,7 @@ Sounds panel).
 ```
 Steps (`screensound/steps.py`): `dock editor|mixer|none` (old scripts' `page timeline|mix|instruments` still work), `sounds`, `deliver-open`, `select`, `time`, `set`, `drag-note <id> <dt> <dsemitones>`, `drag-clip`,
 `drag-marker`, `add-note`, `delete`, `mute`, `solo`, `undo`, `redo`, `play`, `render`, `wait <s>`, `more`,
-`commands`, `run`, `zoom`, `scroll`, `fit`, `lane`, `lane-point`, `lane-delete`, `picture`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
+`commands`, `run` (a Ctrl+K key; `run job:<key-map job>` runs any job on the Keys list, palette.py), `zoom`, `scroll`, `fit`, `lane`, `lane-point`, `lane-delete`, `picture`. Offscreen: `QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=C:/Windows/Fonts`.
 
 ## Songs as files, Settings (S34: the kit's one file model, shared/gui-kit/FILES.md)
 
@@ -160,6 +160,6 @@ with everything inside. Times keep their written form. Steps: `song <action> [va
 Takes not yet checked against a real microphone for sample-exactness (needs a loopback test), keyboard takes not tried
 with a real keyboard. The library's audition still plays through Qt Multimedia (its files are any format). Bus / master rows have no mute or fader on the Timeline (those are
 on the Mix page).
-Choices show their stored names ("builtIn", "warmPad") until the kit can show labels. A track's / bus' Output is a pick list
+A track's Sound is one pick list for every instrument, the kit and the voices (`doc/sounds.py`; the panel reads it through `bridge.list_choices`, `track.set {sound}` writes it, so the name follows); the form fields behind it (builtIn, kit, model, voice) are never shown. A send's Group and a track's / bus' Output are pick lists naming the groups
 (Master and the buses; `output_pick.py`). Inspector rows have no hover words yet (kit request: show a field's `help` as a HoverTip). `screensound/bridge.py` is ~390 lines: it should be split once the kit allows slots outside the bridge class.
 Voice: see `apps/sound/VOICE.md`.

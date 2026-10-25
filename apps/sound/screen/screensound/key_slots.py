@@ -12,7 +12,7 @@ from PySide6.QtCore import Property, Signal, Slot
 from . import action_calls as C
 from rostrum_sound.doc import meter
 
-from . import moves, selection, timing
+from . import moves, scale_step, selection, timing
 
 
 class KeySlots:
@@ -62,6 +62,19 @@ class KeySlots:
             self.say("No track that can hold them " + ("above" if step < 0 else "below"))
         return False
 
+    @Slot(int, result=bool)
+    def pitchScaleStep(self, sign):
+        """Ctrl+↑ ↓: notes one step up / down the song's key; says why when it can't (no notes, no key)."""
+        if set(self._kinds()) != {"note"}:
+            self._refuse("Pitch up or down a scale step works on notes: select some first")
+            return False
+        key = scale_step.song_key(self.doc.data, self._t)
+        if not key:
+            self._refuse("Pitch by a scale step needs the song's key: set it in the header (the key next to the tempo)")
+            return False
+        calls = scale_step.calls(self.doc, self._picks.ids, key, sign)
+        return bool(calls) and self._act(calls, "Pitch " + ("up" if sign > 0 else "down") + " a scale step in " + key)
+
     @Slot(int)
     def playheadStep(self, n):
         """Ctrl+← →: the playhead `n` grid steps (never a change)."""
@@ -79,6 +92,19 @@ class KeySlots:
         ahead = sorted(t for t in times if (t > self._t + 1e-3 if sign > 0 else t < self._t - 1e-3))
         if ahead:
             self.setTime(ahead[0] if sign > 0 else ahead[-1])
+
+    @Slot(int)
+    def markerJump(self, sign):
+        """Alt+M / Alt+Shift+M: the playhead to the next / previous marker (a clear word when there is none)."""
+        ahead = sorted(m["t"] for m in self._view["markers"] if (m["t"] > self._t + 1e-3 if sign > 0 else m["t"] < self._t - 1e-3))
+        if not ahead:
+            return self.say("No " + ("next" if sign > 0 else "earlier") + " marker")
+        self.setTime(ahead[0] if sign > 0 else ahead[-1])
+
+    @Slot()
+    def toEnd(self):
+        """End: the playhead to the end of the song."""
+        self.setTime(self._length())
 
     @Slot(str)
     def rangeEdge(self, edge):

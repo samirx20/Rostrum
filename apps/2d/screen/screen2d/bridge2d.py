@@ -17,6 +17,7 @@ from . import bounds, colour_feed, outline, picture_change, route, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
+from .key_routes import KeyRoutes
 from .view_commands import ViewCommands
 from .frames import FrameRenderer
 from .group_slots import GroupSlots
@@ -53,7 +54,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, AnchorSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, AnchorSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -191,7 +192,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         placed = self.placed()
         if self._placed_idx is None or self._placed_idx[0] is not placed:
             own = placed is self.comp()
-            self._placed_idx = (placed, self.doc._index() if own else index(placed, self.doc.kind.lists))
+            self._placed_idx = (placed, self.doc.locs() if own else index(placed, self.doc.kind.lists))
         return self._placed_idx
 
     def offset(self, id_: str) -> float:

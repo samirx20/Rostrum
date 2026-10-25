@@ -22,6 +22,7 @@ from dataclasses import replace
 
 from rostrum_sound import main_mix
 from rostrum_sound.doc import select_time as ST
+from rostrum_sound.doc.effects import TYPES as EFFECT_TYPES, WORDS as EFFECT_WORDS
 
 from rostrum_gui.action_adapt import from_dicts
 from rostrum_gui.actions import SHORT_MENU, ActionList
@@ -31,8 +32,7 @@ from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
 
-EFFECTS = ("eq", "compressor", "reverb", "delay", "saturate", "tape", "limiter", "width", "gate", "deess")
-WORDS = {"eq": "EQ", "deess": "De-ess"}
+EFFECTS = [t for t in EFFECT_TYPES if t != "plugin"]      # the words are effects.WORDS (one place)
 CLIPS = {"note", "hit", "clip", "line"}
 
 
@@ -57,7 +57,7 @@ _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "D
           ("up12", 12, "Up an octave", "Shift+Up"), ("down12", -12, "Down an octave", "Shift+Down"))
 TRACK, NOTES, CLIP = (lambda f: f.one == "track"), (lambda f: f.one in ("note", "hit")), (lambda f: f.one == "clip")
 MARKER = lambda f: f.one == "marker" and f.count == 1 and isinstance(f.items[0].get("at"), (int, float))  # noqa: E731
-NAMED = ("track", "marker", "section")
+NAMED = ("track", "bus", "marker", "section")
 
 ACTIONS = [
     # tracks
@@ -69,7 +69,7 @@ ACTIONS = [
         needs="Mute needs tracks selected"),
     act("solo", C.flip("solo", "Solo", "Unsolo"), TRACK, C.toggle_all("solo"), "Shift+S", group="track",
         needs="Solo needs tracks selected"),
-    *[act(f"effect_{e}", f"Add {WORDS.get(e, e)}", lambda f: f.one in ("track", "clip"),
+    *[act(f"effect_{e}", f"Add {EFFECT_WORDS[e]}", lambda f: f.one in ("track", "clip"),
           lambda f, e=e: [C.call("effect.add", f.ids, effect=e)], group="effect", menu="Add effect")
       for e in EFFECTS],
     act("move_up", "Move up", lambda f: TRACK(f) and C.can_move(f, -1), lambda f: [C.call("track.move", f.ids, by=-1)],
@@ -148,7 +148,7 @@ ACTIONS = [
     act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,
         "Ctrl+D", group="edit"),
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",
-        needs="Rename needs one track, marker or section selected"),
+        needs="Rename needs one track, group, marker or section selected"),
     act("cut_range", "Cut out and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="range",
         needs="Cut out and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),

@@ -38,9 +38,6 @@ AppShell {
     rightWidth: 0                       // ... and no settings panel under it (frameAspect is 0 only while it shows)
 
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
-    Shortcut { sequence: "V"; enabled: !shell.typing; onActivated: backend.setTool("move") }
-    Shortcut { sequence: "P"; enabled: !shell.typing; onActivated: backend.setTool(backend.tool === "pen" ? "move" : "pen") }
-    Shortcut { sequence: "B"; enabled: !shell.typing; onActivated: { backend.paintTool.use("brush"); rail.openBrushes() } }   // the brush panel (BrushFlyout.qml)
     // painting: the Brush group's other tools (paint_tool.py), and [ ] size, Shift+[ ] hardness (the brush ring shows it)
     readonly property bool painting: backend.tool === "draw" && !shell.typing
     Shortcut { sequence: "E"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "eraser" ? "brush" : "eraser") }
@@ -52,18 +49,9 @@ AppShell {
     Shortcut { sequence: "]"; enabled: shell.painting; onActivated: shell.brushBy("size", 1.25, 0.5, 2000) }
     Shortcut { sequences: ["Shift+[", "{"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.max(0, Math.round(painter.brushNow.hardness * 10 - 1) / 10)) }
     Shortcut { sequences: ["Shift+]", "}"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.min(1, Math.round(painter.brushNow.hardness * 10 + 1) / 10)) }
-    Shortcut { sequence: "R"; enabled: !shell.typing; onActivated: backend.setTool("rect") }       // creation tools (create.py)
-    Shortcut { sequence: "O"; enabled: !shell.typing; onActivated: backend.setTool("ellipse") }
-    Shortcut { sequence: "T"; enabled: !shell.typing; onActivated: backend.setTool("text") }
-    Shortcut { sequence: "C"; enabled: !shell.typing; onActivated: backend.frameDrag.pick() }      // picks the frame (frame_drag.py)
-    Shortcut { sequence: "H"; enabled: !shell.typing; onActivated: backend.setTool("hand") }       // view tools (Stage.qml)
-    Shortcut { sequence: "Z"; enabled: !shell.typing; onActivated: backend.setTool("zoom") }
-    Shortcut { sequence: "Ctrl+I"; enabled: !shell.typing; onActivated: rail.addFile() }  // the kit's add_file: the file picker
-    Shortcut { sequence: "J"; enabled: !shell.typing && backend.boneTool.available; onActivated: backend.setTool("bone") }   // only with a rig in hand (bone_tool.py)
-    Shortcut { sequence: "A"; enabled: !shell.typing; onActivated: backend.showAnimated() }    // only the animated settings of the selection; again folds them
     // Esc steps back one level at a time, the same whichever way the tool was entered (key, rail or a step): a rail menu closes, then
     // picked strokes are let go, then the tool is Select (the Brush's panel closes with the Brush; it is no step of its own)
-    Shortcut { sequence: "Escape"; enabled: rail.menuOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing))
+    Shortcut { sequence: "Escape"; enabled: !OpenPopups.takes(["Esc"]) && (rail.menuOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing)))
                onActivated: { if (rail.menuOpen) rail.openGroup("")
                               else if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
@@ -78,17 +66,29 @@ AppShell {
     // of the selected layers, or of everything when none is selected (backend.stepEvent, screen2d/key_edits.py)
     // A frame-by-frame layer: its drawings, and held down they flip through at the scene's speed (FlipThrough.qml)
     FlipThrough { id: flip }
-    Shortcut { sequence: ","; enabled: !shell.typing; onActivated: painter.drawingId !== "" ? flip.press(-1) : backend.stepEvent(-1) }
-    Shortcut { sequence: "."; enabled: !shell.typing; onActivated: painter.drawingId !== "" ? flip.press(1) : backend.stepEvent(1) }
-    // Shift+, and Shift+. : the previous / next beat of the project's sound (the key map's prev_beat / next_beat;
-    // "<" and ">" are what a US keyboard sends for them), only while the sound has a tempo (backend.soundtrack)
-    Shortcut { sequences: ["Shift+,", "<"]; enabled: !shell.typing && backend.soundtrack.hasBeats; onActivated: backend.soundtrack.stepBeat(-1) }
-    Shortcut { sequences: ["Shift+.", ">"]; enabled: !shell.typing && backend.soundtrack.hasBeats; onActivated: backend.soundtrack.stepBeat(1) }
-    Shortcut { sequence: "Alt+N"; onActivated: painter.newFrame(false) }
-    Shortcut { sequence: "Alt+Shift+N"; onActivated: painter.newFrame(true) }
-    Shortcut { sequences: ["=", "+"]; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(1) }
-    Shortcut { sequence: "-"; enabled: !shell.typing && painter.drawingId !== ""; onActivated: painter.holdBy(-1) }
-    Shortcut { sequence: "Alt+O"; onActivated: painter.setOnion(!painter.onionOn) }
+    // The jobs of the key map that need the canvas, the rail or the painter (keys2d.WINDOW): the hub emits windowJob(job) and one
+    // map answers it here. Every other key runs in Python (keys2d.ROUTES, the action list) or is bound where it is made (keys2d.SKIP).
+    readonly property var windowJobs: ({
+        paint_tool: () => { backend.paintTool.use("brush"); rail.openBrushes() },          // the brush panel (BrushFlyout.qml)
+        pick_frame: () => backend.frameDrag.pick(),                                          // picks the frame (frame_drag.py)
+        prev_event: () => painter.drawingId !== "" ? flip.press(-1) : backend.stepEvent(-1),  // , and . : the drawings, else the previous / next thing that happens
+        next_event: () => painter.drawingId !== "" ? flip.press(1) : backend.stepEvent(1),
+        prev_beat: () => { if (backend.soundtrack.hasBeats) backend.soundtrack.stepBeat(-1) },   // the project's sound, while it has a tempo
+        next_beat: () => { if (backend.soundtrack.hasBeats) backend.soundtrack.stepBeat(1) },
+        delete: () => { if (backend.strokeSelect.count > 0) backend.strokeSelect.remove(); else backend.layerCommand("delete") },   // picked strokes first
+        library: () => backend.library.setOpen(!backend.library.open),
+        add_file: () => rail.addFile(),                                                      // the kit's add_file: the file picker
+        quit: () => Qt.quit(),
+        new_drawing: () => painter.newFrame(false),
+        copy_drawing: () => painter.newFrame(true),
+        onion: () => painter.setOnion(!painter.onionOn),
+        hold_longer: () => { if (painter.drawingId !== "") painter.holdBy(1) },
+        hold_shorter: () => { if (painter.drawingId !== "") painter.holdBy(-1) },
+        zoom_in: () => viewControls.key("zoom_in"), zoom_out: () => viewControls.key("zoom_out"),
+        fit_all: () => viewControls.key("fit_all"), actual_size: () => viewControls.key("actual_size"),
+        fit: () => viewControls.key("fit"), look_through: () => viewControls.key("look_through")
+    })
+    Connections { target: backend.actions; function onWindowJob(job) { const run = shell.windowJobs[job]; if (run) run(); else shell.runJob(job) } }   // else the kit's (undo, Export, History, Guides, Keys, About ...)
     // select, then act: every action's key comes from the one key map (screen2d/keys2d.py) and runs through the one
     // action list (backend.actions): only when valid now, else the status line says why. Not while typing. Delete is
     // run here: keys picked in the timeline go before layers (backend.layerCommand, key_select.py)
@@ -104,19 +104,15 @@ AppShell {
     KeyMap {
         hub: backend.actions
         enabled: !shell.typing && !startScreen.visible
-        skip: backend.actions.keys.map(k => k.job).filter(j => j === "delete" || backend.actions.jobs.indexOf(j) < 0)   // keys run here
+        skip: backend.actions.skip
     }
-    Shortcut { sequences: ["Delete", "Backspace"]; enabled: !shell.typing
-               onActivated: { if (backend.strokeSelect.count > 0) backend.strokeSelect.remove(); else backend.layerCommand("delete") } }   // picked strokes first
-    Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
-    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && backend.create.canEdit       // the selected text: type in it
+    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.create.canEdit       // the selected text: type in it
                onActivated: backend.create.editText(backend.selected) }
-    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && backend.pen.canEditPoints
+    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.pen.canEditPoints
                onActivated: backend.pen.editPoints(true) }                                               // the selected path: edit its points
-    Shortcut { sequence: "Ctrl+L"; enabled: !shell.typing; onActivated: backend.library.setOpen(!backend.library.open) }   // the kit's "library" job
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {
-        sequence: "Escape"; enabled: shell.canvasKeys
+        sequence: "Escape"; enabled: shell.canvasKeys && !OpenPopups.takes(["Esc"])
         onActivated: {
             const open = shell.guidesOpen || backend.exporter.open || importPanel.shown || fileMenu.menuOpen || rail.flyoutOpen
             if (backend.stepBack({ popover: open }) === "close") {
@@ -125,18 +121,6 @@ AppShell {
             }
         }
     }
-    Shortcut { sequence: "Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-1, 0) }
-    Shortcut { sequence: "Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(1, 0) }
-    Shortcut { sequence: "Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -1) }
-    Shortcut { sequence: "Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 1) }
-    Shortcut { sequence: "Shift+Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-10, 0) }
-    Shortcut { sequence: "Shift+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(10, 0) }
-    Shortcut { sequence: "Shift+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -10) }
-    Shortcut { sequence: "Shift+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 10) }
-    Shortcut { sequence: "Alt+Left"; enabled: shell.canvasKeys; onActivated: backend.nudge(-0.1, 0) }      // the fine step
-    Shortcut { sequence: "Alt+Right"; enabled: shell.canvasKeys; onActivated: backend.nudge(0.1, 0) }
-    Shortcut { sequence: "Alt+Up"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, -0.1) }
-    Shortcut { sequence: "Alt+Down"; enabled: shell.canvasKeys; onActivated: backend.nudge(0, 0.1) }
 
     function setExportOpen(open) { backend.exporter.setOpen(open); if (open) importPanel.shown = false }
     function setImportOpen(open) { importPanel.shown = open; if (open) backend.exporter.setOpen(false) }

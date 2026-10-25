@@ -102,6 +102,17 @@ def marker_follow(ctx, targets, args):
                 ctx.set(item["id"], k, to)
 
 
+@REGISTRY.operation("effect.move", "Reorder an effect inside its chain (the order is the order the sound goes through them): `to` is "
+                    "its place once moved, 0 = first, 1 = second …, past the end = last.", target="effect", label="Move effect",
+                    importance="secondary", params=[Param.number("to", required=True, integer=True, min=0, max=999, label="Place",
+                                                                 group="Order", help="Where it sits afterwards: 0 first, 1 second …")])
+def effect_move(ctx, targets, args):
+    for t in targets:
+        loc = ctx.idx[t]
+        size = len(ctx.item(loc.parent)[loc.key])
+        ctx.move(t, loc.parent, loc.key, min(int(args["to"]), size - 1))
+
+
 def _remover(kind):
     def remove(ctx, targets, args):
         for t in targets:

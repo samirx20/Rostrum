@@ -40,7 +40,7 @@ Item {
                     visible: e.side.isPlugin
                     text: plug.chosen ? "Change plug-in…" : "Choose plug-in…"; kind: "ghost"
                     onClicked: { mixer.plugins.scan(); instMenu.open() }
-                    QQC.Popup {
+                    SmallPopup {
                         id: instMenu
                         y: choose.height + 2; width: 220; padding: Theme.grid
                         background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }

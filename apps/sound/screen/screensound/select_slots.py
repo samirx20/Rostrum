@@ -10,7 +10,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QTimer, Signal, Slot
 from rostrum_gui import pointer_quiet
 
-from . import selection, timing
+from . import clipboard, selection, timing
 
 SETTLE_MS = 40      # a press's outline and first moves are drawn before the settings panel is made (_settle)
 
@@ -24,8 +24,17 @@ class SelectSlots:
     def _picks(self) -> selection.Selection:
         if "_picks_" not in self.__dict__:
             self.__dict__["_picks_"] = selection.Selection()
-            self.__dict__["_board"], self.__dict__["_area"] = {"items": []}, "arrange"
+            self.__dict__["_area"] = "arrange"
         return self.__dict__["_picks_"]
+
+    @property
+    def _board(self) -> dict:
+        """What Ctrl+C kept: one clipboard for the whole app run, so a copy pastes into another song too."""
+        return clipboard.kept()
+
+    @_board.setter
+    def _board(self, board):
+        clipboard.keep(board)
 
     # ---- reads for QML --------------------------------------------------------------------------------------
     @Property("QVariantList", notify=picksChanged)

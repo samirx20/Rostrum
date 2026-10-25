@@ -100,6 +100,7 @@ class Screen:
         reads a freed object (the kit's stop / free order), and never under the click that asked (H43)."""
         name = title(doc.folder, doc.item_id) if doc.folder else self.unnamed
         bridge = SoundBridge(doc, name)            # live when the song has a folder
+        bridge.files = self.files                  # Ctrl+K lists the ≡ menu's rows too
         mixer, recorder, side = MixPage(bridge), Recording(bridge), EditorSide(bridge)
         keys, library = KeysRecording(bridge, recorder), LibraryPanel(bridge)
         context = {"backend": bridge, "workspace": bridge.workspace, "mixer": mixer, "recorder": recorder,

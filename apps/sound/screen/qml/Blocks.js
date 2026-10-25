@@ -14,56 +14,117 @@ function patch(blocks, gone, put) {
     return out
 }
 
-// The ids of a list of blocks, as a set (id -> true): what a lane or the roll holds.
-function ids(blocks) {
-    var out = {}
-    for (var i = 0; i < blocks.length; i++) out[blocks[i].id] = true
+// ---- painting in parts (RollNotes, LaneBlocks, VelocityStrip) -------------------------------------------------------
+// A surface keeps what its picture shows (`kept()`): an entry per block, [block, selected, order, gone], in the order
+// painted, and columns COL px wide (at the zoom and scroll painted) holding the entries over them. After an edit or a
+// new selection, `update` finds what changed by looking at each block once (an edit sends new objects only for the
+// blocks it changed: the very same object is unchanged) and at the selection's difference, and gives the places each
+// changed, added or removed block was and is painted (`rectsOf(block)`: [x, y, w, h] each, margin included). The
+// surface paints each place again on its own (`clear`: clipped to it and cleared; then the entries `over` it, in
+// order; ctx.restore()): the same picture, with a few blocks painted instead of all of them. A whole repaint grew with
+// the track (70 note names ~15 ms a click), and so did comparing every block's state and painting each place over
+// every block (~5 ms a surface a click on a 3-minute song). One place at a time: a clip made of several rectangles
+// leaves out where they overlap (Canvas clips odd-even). Zoom, scroll, size or layout: one whole paint (`rebuild`).
+var COL = 64
+var MANY = 32           // more changes than this: one whole paint is as quick
+
+function kept() { return { whole: true, by: {}, count: 0, sel: {}, cols: {}, next: 0, stamp: 0, width: 0 } }
+
+function _place(k, e, rectsOf) {         // the entry into the columns its places reach (on the surface only)
+    var rs = rectsOf(e[0])
+    for (var i = 0; i < rs.length; i++) {
+        var c0 = Math.max(Math.floor(rs[i][0] / COL), -1), c1 = Math.min(Math.floor((rs[i][0] + rs[i][2]) / COL), Math.ceil(k.width / COL))
+        for (var c = c0; c <= c1; c++) (k.cols[c] || (k.cols[c] = [])).push(e)
+    }
+    return rs
+}
+
+// Everything kept again, for a whole paint `width` px wide: the entries in the blocks' order
+function rebuild(k, blocks, picked, rectsOf, width) {
+    var out = []
+    k.whole = false; k.by = {}; k.sel = {}; k.cols = {}; k.width = width
+    for (var i = 0; i < blocks.length; i++) {
+        var b = blocks[i], e = [b, !!picked[b.id], i, false, 0]
+        k.by[b.id] = e; out.push(e)
+        if (e[1]) k.sel[b.id] = true
+        _place(k, e, rectsOf)
+    }
+    k.count = blocks.length; k.next = blocks.length
     return out
 }
 
-// The selected ids (`picked`: id -> true) among `own`, as one string: a lane or the roll is painted again on a new
-// selection only when this changed (a click on one track's note leaves every other lane's picture as it was).
-function chosen(picked, own) {
-    var out = [], ks = Object.keys(picked)
-    for (var i = 0; i < ks.length; i++) if (own[ks[i]]) out.push(ks[i])
-    return out.sort().join("|")
+// The places to paint again for the blocks and the selection now ([]: none); null: so many that one whole paint is as
+// quick (then `rebuild`). Changed blocks keep their place in the order, new ones come last (as `patch`).
+function update(k, blocks, picked, rectsOf) {
+    var dirty = [], seen = {}, n = 0, changed = 0, i, e, id
+    function mark(rs) {
+        for (var j = 0; j < rs.length; j++) { var key = rs[j].join(","); if (!seen[key]) { seen[key] = true; dirty.push(rs[j]) } }
+    }
+    for (i = 0; i < blocks.length; i++) {
+        var b = blocks[i]
+        e = k.by[b.id]
+        if (e !== undefined && e[0] === b) { n++; continue }
+        if (++changed > MANY) return null
+        var ne = [b, !!picked[b.id], e !== undefined ? e[2] : k.next++, false, 0]
+        if (e !== undefined) { n++; e[3] = true; mark(rectsOf(e[0])) }
+        k.by[b.id] = ne
+        if (ne[1]) k.sel[b.id] = true; else delete k.sel[b.id]
+        mark(_place(k, ne, rectsOf))
+    }
+    if (n < k.count) {                       // some are gone
+        var now = {}
+        for (i = 0; i < blocks.length; i++) now[blocks[i].id] = true
+        for (id in k.by) {
+            if (now[id]) continue
+            if (++changed > MANY) return null
+            e = k.by[id]; e[3] = true; mark(rectsOf(e[0])); delete k.by[id]; delete k.sel[id]
+        }
+    }
+    k.count = blocks.length
+    for (id in k.sel) {                      // the selection's difference
+        if (picked[id]) continue
+        if (++changed > MANY) return null
+        e = k.by[id]; e[1] = false; delete k.sel[id]; mark(rectsOf(e[0]))
+    }
+    for (id in picked) {
+        e = k.by[id]
+        if (e === undefined || e[1]) continue
+        if (++changed > MANY) return null
+        e[1] = true; k.sel[id] = true; mark(rectsOf(e[0]))
+    }
+    return dirty
 }
 
-// ---- painting in parts (RollGrid, LaneBlocks, VelocityStrip) -------------------------------------------------------
-// A surface keeps `drawn` (id -> [block, selected]) as its picture shows it. After an edit or a new selection,
-// `changes` gives the places that changed: where each changed, added or removed block was and is painted
-// (`rectsOf(block)`: [x, y, w, h] each, margin included). The surface paints each place again on its own (`clear`:
-// clipped to it and cleared; then every block over it, `meets`, in its usual order; ctx.restore()): the same
-// picture, with a few blocks painted instead of all of them (a whole repaint grew with the track: 70 note names cost
-// ~15 ms a click). One place at a time: a clip made of several rectangles leaves out where they overlap (Canvas
-// clips odd-even). Zoom, scroll, size or layout: one whole paint.
+// Does the selection `picked` change what the surface shows? (a click on another track's note leaves it as it is)
+function touches(k, picked) {
+    if (k.whole) return true
+    for (var id in k.sel) if (!picked[id]) return true
+    for (id in picked) { var e = k.by[id]; if (e !== undefined && !e[1]) return true }
+    return false
+}
 
-// id -> [block, selected] for the blocks now
-function state(blocks, picked) {
-    var now = {}
-    for (var i = 0; i < blocks.length; i++) now[blocks[i].id] = [blocks[i], !!picked[blocks[i].id]]
-    return now
+// The live entries over the place `d`, in painting order (a column's gone entries are dropped on the way)
+function over(k, d) {
+    var out = [], st = ++k.stamp, c0 = Math.floor(d[0] / COL), c1 = Math.floor((d[0] + d[2]) / COL)
+    for (var c = c0; c <= c1; c++) {
+        var col = k.cols[c]
+        if (!col) continue
+        var live = []
+        for (var i = 0; i < col.length; i++) {
+            var e = col[i]
+            if (e[3]) continue
+            live.push(e)
+            if (e[4] !== st) { e[4] = st; out.push(e) }
+        }
+        if (live.length < col.length) k.cols[c] = live
+    }
+    return out.sort(function (a, b) { return a[2] - b[2] })
 }
 
 // [x, y, w, h] around a painted area, `m` px of margin, on whole pixels
 function box(x, y, w, h, m) {
     var x0 = Math.floor(x - m), y0 = Math.floor(y - m)
     return [x0, y0, Math.ceil(x + w + m) - x0, Math.ceil(y + h + m) - y0]
-}
-
-// The places to paint again since `drawn` (each once); null when so many that one whole paint is as quick.
-function changes(drawn, now, rectsOf) {
-    var dirty = [], seen = {}, id
-    function mark(b) {
-        var rs = rectsOf(b)
-        for (var i = 0; i < rs.length; i++) { var k = rs[i].join(","); if (!seen[k]) { seen[k] = true; dirty.push(rs[i]) } }
-    }
-    for (id in now) {
-        var was = drawn[id], is = now[id]
-        if (!was || was[0] !== is[0] || was[1] !== is[1]) { if (was) mark(was[0]); mark(is[0]) }
-    }
-    for (id in drawn) if (!(id in now)) mark(drawn[id][0])
-    return dirty.length > 32 ? null : dirty
 }
 
 // Does a block painted over `rs` reach the place `d`?

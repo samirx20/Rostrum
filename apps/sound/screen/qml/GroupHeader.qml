@@ -3,13 +3,15 @@ import RostrumKit
 
 // A group's header in the arrangement (DESIGN.md §3.1d): a bus that tracks play into, drawn as a row above them with
 // a fold arrow (click folds the tracks behind this one row, Alt+click folds or unfolds every group), its name (click
-// selects the group: Ctrl+Shift+G ungroups it) and, folded, how many tracks it holds. Folding is the person's own
+// selects the group: Ctrl+Shift+G ungroups it; double-click the name or F2 renames it in place, right-click its actions)
+// and, folded, how many tracks it holds. Folding is the person's own
 // screen state, not the song. A M S at the right: its automation lane, mute the group, solo its tracks. Its fader and effects are in the
 // Mixer; a group inside a group is indented. Dropping a track header on it (Timeline) puts the track into the group.
 Rectangle {
     id: h
     property var track
     property bool showAuto: true
+    signal menuWanted(real x, real y)       // right-click: the host opens the group's actions (backend.itemMenu)
     readonly property bool on: !!backend.picked[track.id]
     readonly property real indent: (track.depth || 0) * 14
     // The name comes first: the track count, then the automation button, give way when the name would be cut (an open
@@ -22,9 +24,11 @@ Rectangle {
     Behavior on color { ColorAnimation { duration: Theme.fast } }
 
     MouseArea {
-        id: area; anchors.fill: parent; hoverEnabled: true
+        id: area; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
         onClicked: (m) => { backend.focusArea("arrange")
-                            backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+                            if (m.button === Qt.RightButton) h.menuWanted(m.x, m.y)
+                            else backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0) }
+        onDoubleClicked: (m) => { if (m.button === Qt.LeftButton && m.x >= nameText.x && m.x <= nameText.x + nameText.width) backend.startRename(h.track.id) }
     }
     Item {   // the fold arrow, drawn: points right when folded, down when open
         id: arrow
@@ -49,6 +53,18 @@ Rectangle {
         x: arrow.x + arrow.width + 2; width: (count.visible ? count.x : autoChip.visible ? autoChip.x : toggles.x) - x - Theme.grid; anchors.verticalCenter: parent.verticalCenter
         text: h.track.name; elide: Text.ElideMiddle; font.pixelSize: Theme.label; font.weight: Font.DemiBold
         color: h.track.mute ? Theme.fg3 : Theme.fg
+        visible: !rename.visible
+    }
+    NameBox {   // F2 / double-click the name: rename in place, the same box a track's name uses
+        id: rename
+        objectName: "groupNameBox"
+        visible: backend.renaming === h.track.id
+        current: h.track.name
+        x: nameText.x - 3; width: nameText.width + 3; anchors.verticalCenter: parent.verticalCenter
+        font.pixelSize: Theme.label
+        onDone: (t) => backend.finishRename(h.track.id, t)
+        onCancelled: backend.finishRename(h.track.id, "")
+        Rectangle { z: -1; anchors.fill: parent; anchors.margins: -2; radius: 3; color: Theme.sunken; border.color: Theme.accent }
     }
     Text {
         id: count

@@ -11,7 +11,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_gui.edits import field_call
 
 from rostrum_sound.doc import fields as FD
-from rostrum_sound.doc import effects, musical
+from rostrum_sound.doc import effects, musical, sounds
 
 from . import eq_rows, output_pick, pitch_merge, timeline, timing
 
@@ -37,6 +37,8 @@ def shown(item: dict, root: dict) -> dict:
     if item["type"] == "track" and not item.get("colour"):          # the colour it is drawn in (timeline.hue)
         i = next((n for n, t in enumerate(root.get("tracks", [])) if t["id"] == item["id"]), 0)
         out["colour"] = timeline.hue(item, i)
+    if item["type"] == "track" and sounds.key_of(item) and sounds.choices(item):            # the one Sound picker reads the track's sound (never stored)
+        out["sound"] = sounds.key_of(item)
     if output_pick.nowhere_else(root, item):                       # only the Master to play to: no Output row
         out.pop(output_pick.FIELD, None)
     if item["type"] == "clip" and item.get("length") is None:      # plays to the file's end: show how long that is

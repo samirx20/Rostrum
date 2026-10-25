@@ -36,6 +36,8 @@ Item {
     signal scrubEnded()
     implicitWidth: 140; implicitHeight: Theme.field
     activeFocusOnTab: true
+    // The keys it steps with while the person has it (a click gives it the keyboard): the window's own shortcuts leave them (OpenPopups.takes)
+    property var ownKeys: ["Left", "Right", "Shift+Left", "Shift+Right", "Alt+Left", "Alt+Right"]
 
     function clamp(n, unit) {                        // a shown number -> the stored value, in range
         const u = unit || showStep
@@ -52,6 +54,8 @@ Item {
         acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => s.nudge((e.angleDelta.y || e.angleDelta.x) / 120, e.modifiers)
     }
+
+    Component.onDestruction: if (drag.pressed) scrubEnded()   // a slider rebuilt under the pointer still closes its gesture
 
     HoverHandler { id: hoverHandler }
     Rectangle {  // track
@@ -89,13 +93,22 @@ Item {
             const v = mode === 1 ? anchorValue + (m.x - anchorX) / span * (hi - lo) / 10 : lo + (hi - lo) * s.ratioAt(m.x)
             s.scrubbed(s.clamp(v, mode === 2 ? s.showStep * 10 : mode === 1 ? s.showStep / 10 : s.showStep))
         }
+        // The second press of a double-click puts the knob back to `defaultValue`: it starts no scrub (a scrub ending after the
+        // reset would write the pointer's value over it). The first press of the pair has already moved the knob; one undo.
+        property real lastUp: 0
+        property real lastX: -100
+        property bool resetting: false
+        readonly property bool hasDefault: s.defaultValue !== null && s.defaultValue !== undefined
         onPressed: (m) => {
-            s.forceActiveFocus(); s.scrubStarted()
+            s.forceActiveFocus()
+            resetting = hasDefault && Date.now() - lastUp < Qt.styleHints.mouseDoubleClickInterval && Math.abs(m.x - lastX) < 5   // same spot, quickly
+            if (resetting) return
+            s.scrubStarted()
             mode = -1; follow(m)              // -1: the first move sets the mode; Alt on press doesn't jump to the pointer
         }
-        onPositionChanged: (m) => follow(m)
-        onDoubleClicked: if (s.defaultValue !== null && s.defaultValue !== undefined) s.edited(Math.max(s.from, Math.min(s.to, Number(s.defaultValue))))
-        onReleased: s.scrubEnded()
-        onCanceled: s.scrubEnded()
+        onPositionChanged: (m) => { if (!resetting) follow(m) }
+        onDoubleClicked: if (hasDefault) s.edited(Math.max(s.from, Math.min(s.to, Number(s.defaultValue))))
+        onReleased: (m) => { lastUp = Date.now(); lastX = m.x; if (resetting) resetting = false; else s.scrubEnded() }
+        onCanceled: { if (resetting) resetting = false; else s.scrubEnded() }
     }
 }

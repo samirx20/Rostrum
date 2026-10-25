@@ -50,6 +50,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     selectedItemsChanged = Signal()         # which items are selected changed (never a mere document edit)
     docChanged = Signal()                   # the document changed for good: an edit, undo, a drag's drop or Escape
     docStepped = Signal()                   # a step of an open drag (a preview): only what the person watches move follows
+    findAsked = Signal()                    # Ctrl+K's "Find a setting" (job find_setting): the settings panel opens its find box
     statusChanged = Signal()
     searchChanged = Signal()
     rowsChanged = Signal()                  # the rows' values or validity changed (nothingFound follows it)

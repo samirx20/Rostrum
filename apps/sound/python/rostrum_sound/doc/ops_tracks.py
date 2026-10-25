@@ -7,12 +7,39 @@ from rostrum_core.edits import MISSING
 from rostrum_core import ids as core_ids
 
 from . import fields as FD
+from . import sounds
 from .registry import REGISTRY, set_fields, taken
 
 REGISTRY.operation("doc.set", "Change the tempo, length, beats per bar or sample rate of the song. Its target is the id [\"root\"] (the target column names item types, not ids).", target="doc",
                    params=FD.params("doc"), label="Edit song", fields=True)(set_fields)
-REGISTRY.operation("track.set", "Change a track's instrument, level, pan, reverb, tone, mute or solo.",
-                   target="track", params=FD.params("track"), label="Edit track", fields=True)(set_fields)
+
+
+def sound_fields(ctx, track_id, key) -> dict:
+    """What `sound: key` sets on that track: the instrument form and its field, and the name when it still follows the
+    sound (the person's own name stays). Never stored itself."""
+    track = ctx.item(track_id)
+    if key not in sounds.KEYS:
+        ctx.fail(codes.BAD_ARGUMENT, f"sound={key!r}", "is not a sound", sounds.KEYS)
+    if key not in sounds.allowed(track):
+        ctx.fail(codes.BAD_ARGUMENT, f"sound={key!r}", f"can't play track {track_id}'s notes, hits or lines",
+                 sounds.allowed(track), "Notes need an instrument, hits the drum kit, lines a voice.")
+    out = sounds.fields(key)
+    if sounds.follows(track):
+        out["name"] = sounds.default_name(key)
+    return out
+
+
+@REGISTRY.operation("track.set", "Change a track's sound (sound: any built-in sound, the synth, a played instrument, the drum "
+                    "kit or a voice, e.g. \"builtIn:warmPad\", \"synth\", \"model:guitar\", \"kit\", \"voice:ryan\"; the notes stay "
+                    "and the name follows unless it was renamed), level, pan, reverb, tone, mute or solo.",
+                    target="track", params=FD.params("track"), label="Edit track", fields=True)
+def track_set(ctx, targets, args):
+    args = dict(args)
+    key = args.pop("sound", None)
+    for t in targets:
+        change = {**sound_fields(ctx, t, key), **args} if key else args
+        for k, v in change.items():
+            ctx.set(t, k, v)
 
 
 @REGISTRY.operation("track.add", "Add a track (choose its instrument in the same call).", label="Add track",

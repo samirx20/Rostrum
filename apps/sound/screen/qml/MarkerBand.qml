@@ -40,15 +40,14 @@ Item {
                      Rectangle { width: 2; height: 2; color: Theme.accent } } }
             Text { id: tag; x: 7; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; visible: !parent.naming
                    color: parent.on ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
-            TextInput {   // the name field, in place
+            NameBox {   // the name field, in place
                 id: field
+                objectName: "markerNameBox"
                 visible: parent.naming; x: 7; width: parent.width - 10; anchors.verticalCenter: parent.verticalCenter
-                font.family: uiFont; font.pixelSize: Theme.label; color: Theme.fg; selectByMouse: true; clip: true
-                selectionColor: Theme.app
-                onVisibleChanged: if (visible) { text = modelData.name; forceActiveFocus(); selectAll() }
-                onAccepted: backend.finishRename(modelData.id, text)
-                Keys.onEscapePressed: backend.finishRename(modelData.id, "")
-                onActiveFocusChanged: if (!activeFocus && visible) backend.finishRename(modelData.id, text)
+                font.pixelSize: Theme.label; selectionColor: Theme.app
+                current: modelData.name; keepOnAway: true
+                onDone: (t) => backend.finishRename(modelData.id, t)
+                onCancelled: backend.finishRename(modelData.id, "")
             }
         }
     }

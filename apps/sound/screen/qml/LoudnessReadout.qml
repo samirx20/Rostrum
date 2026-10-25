@@ -17,8 +17,14 @@ Rectangle {
     readonly property string aim: Math.round(goal) === -14 ? "streaming" : "the target"
     readonly property string said: !measured ? "" : near ? (r.compact ? "Ready" : "Ready for " + aim)
         : lufs < goal ? (r.compact ? "Too quiet" : "Quieter than " + aim + " wants") : (r.compact ? "Too loud" : "Louder than " + aim + " wants")
-    implicitWidth: row.implicitWidth + 2 * Theme.gap; implicitHeight: Theme.button
+    // its place is the widest of its words (and the dot), so a new word never moves the top bar's other items
+    readonly property real slotWidth: Math.ceil(Math.max(w0.advanceWidth, w1.advanceWidth, w2.advanceWidth, w3.advanceWidth)) + 7 + 3 * Theme.gap
+    implicitWidth: slotWidth; implicitHeight: Theme.button
     width: implicitWidth; height: implicitHeight
+    TextMetrics { id: w0; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }; text: r.compact ? "Loudness …" : "Loudness: rendering…" }
+    TextMetrics { id: w1; font: w0.font; text: r.compact ? "Ready" : "Ready for " + r.aim }
+    TextMetrics { id: w2; font: w0.font; text: r.compact ? "Too quiet" : "Quieter than " + r.aim + " wants" }
+    TextMetrics { id: w3; font: w0.font; text: r.compact ? "Too loud" : "Louder than " + r.aim + " wants" }
     radius: Theme.radiusCtl
     color: area.containsMouse ? Theme.hover : "transparent"
     Behavior on color { ColorAnimation { duration: Theme.fast } }

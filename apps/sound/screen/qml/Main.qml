@@ -32,14 +32,31 @@ AppShell {
     // Export: the kit's sheet in the settings panel's place (Ctrl+E; Ctrl+Shift+E again: AppShell), filled with Sound's
     // targets and settings (screensound/export.py, ExportSettings.qml); the job chip comes with it. Problems: the kit chip.
     exporter: shell.hasSound ? mixer.export : null
+    noExportWhy: "Nothing to export yet: add a sound first"
     exportSettings: ExportSettings { }
     problems: mixer.problems
+    // Ctrl+K named a key-map job only the window can run (palette.py): the file jobs, Preferences, Quit, the song's tempo, the grid,
+    // else the kit's own (undo, Export, History, Guides, the Keys list ...: AppShell.runJob, the same call their keys make)
+    function runSoundJob(job) {
+        const files = { new: "new", open: "open", save_version: "version", duplicate_file: "duplicate" }
+        if (files[job]) fileMenu.source.pickLater(files[job])
+        else if (job === "preferences") settingsPanel.open()
+        else if (job === "quit") Qt.quit()
+        else if (job === "add_file") arrangement.addFromFile()
+        else if (job === "record") recorder.toggleRecord()
+        else if (job === "loudness") workspace.setDock("mixer")        // what a click on the loudness chip does
+        else if (job === "sample_rate") settingsPanel.open()           // Preferences: where it is set
+        else if (job === "tempo") openSong()
+        else if (job === "grid") openGrid()
+        else shell.runJob(job)
+    }
+    Connections { target: backend; function onJobWanted(job) { shell.runSoundJob(job) } }
     function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
     // Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S: the kit's FilesMenu makes them (from the key map)
-    Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
-    Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
-    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
-    Shortcut { sequence: "R"; onActivated: recorder.toggleRecord() }
+    Shortcut { sequence: "Ctrl+I"; enabled: !OpenPopups.takes(["Ctrl+I"]); onActivated: arrangement.addFromFile() }
+    Shortcut { sequence: "Ctrl+,"; enabled: !OpenPopups.takes(["Ctrl+,"]); onActivated: settingsPanel.open() }
+    Shortcut { sequence: "Ctrl+Q"; enabled: !OpenPopups.takes(["Ctrl+Q"]); onActivated: Qt.quit() }
+    Shortcut { sequence: "R"; enabled: !OpenPopups.takes(["R"]); onActivated: recorder.toggleRecord() }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
     // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the
@@ -49,7 +66,7 @@ AppShell {
         const f = activeFocusItem
         return !!f && f.cursorPosition !== undefined && f.selectByMouse !== undefined      // a text field has the keys
     }
-    KeyMap { hub: backend.actions; enabled: !shell.typing && !startScreen.visible; skip: backend.actions.skip }
+    KeyMap { hub: backend.actions; enabled: !startScreen.visible; typing: shell.typing; whileTyping: ["library"]; skip: backend.actions.skip }
     // A new selection (a click in the arrangement, the Editor or the Mixer, or a track made from the Library) gives the
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
     // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)
@@ -66,11 +83,17 @@ AppShell {
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
-        LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
-        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
-                 anchors.verticalCenter: parent.verticalCenter
-                 onClicked: mixer.export.setOpen(!mixer.export.open)
-                 HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
+        Item {   // the chip's place is held too (an empty song leaves it empty), as Export's
+            width: loudness.slotWidth; height: Theme.button
+            LoudnessReadout { id: loudness; visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter }
+        },
+        Item {   // Export's place is always held (an empty song leaves it empty), so it showing never moves the bar's other items
+            width: exportButton.implicitWidth; height: Theme.button
+            Button { id: exportButton; visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
+                     anchors.verticalCenter: parent.verticalCenter
+                     onClicked: mixer.export.setOpen(!mixer.export.open)
+                     HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
+        }
     ]
     left: Library { anchors.fill: parent; visible: shell.wide && workspace.library; onUsed: shell.used() }
     centre: [

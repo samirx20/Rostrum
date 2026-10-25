@@ -19,7 +19,7 @@ from rostrum_sound import main_mix
 
 from . import action_calls as C
 from . import voice_actions as V
-from . import block_menu, clipboard, timing
+from . import block_menu, clipboard, palette, timing
 from .actions import LIST, RANGE
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
@@ -62,6 +62,8 @@ class SoundHub(ActionHub):
 
 
 class ActionSlots:
+    files = None                      # the kit's ProjectFiles (main.py sets it): the ≡ menu's rows are Ctrl+K's too
+    jobWanted = Signal(str)           # Ctrl+K named a job only the window can run (Preferences, Export, files ...): Main.qml runs it
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group (its three fields, once)
     askWanted = Signal(str, str, float)   # an action asks one number first (Land a bar: "Bar", the nearest)
@@ -215,8 +217,10 @@ class ActionSlots:
         return out + block_menu.clip_entries(self.doc, item_id, t, swap)
 
     @Slot(str, float, result="QVariantList")
-    def atMenu(self, track_id, t):
-        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time."""
+    @Slot(str, float, float, result="QVariantList")
+    def atMenu(self, track_id, t, px=0.0):
+        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time (`px`: one
+        screen pixel in seconds, so a section starts on a line within a few px, as a range drawn on the ruler does)."""
         t, out = round(t, 4), []
         if track_id:
             out.append({"value": "at:addtrack:0", "label": "Add track…", "keys": "Ctrl+L", "group": "here"})
@@ -226,7 +230,7 @@ class ActionSlots:
         if track_id:
             out.append({"value": f"at:all:{track_id}", "label": "Select all on this track", "keys": "", "group": "select"})
         else:
-            out.append({"value": f"at:section:{t}", "label": "Make a section from here", "keys": "", "group": "here"})
+            out.append({"value": f"at:section:{t}:{px:.6g}", "label": "Make a section from here", "keys": "", "group": "here"})
             out.append({"value": "at:seconds:0", "label": "Hide seconds" if self.workspace.seconds else "Show seconds",
                         "keys": "", "group": "view"})
         return out
@@ -249,10 +253,11 @@ class ActionSlots:
         if what == "seconds":
             self.workspace.toggleSeconds()
             return True
-        t = float(parts[-1])
         if what == "marker":
-            return self.markerAt(t)
-        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, False, self._grid_now), self._length()))
+            return self.markerAt(float(parts[-1]))
+        t, px = float(parts[2]), float(parts[3]) if len(parts) > 3 else 0.0     # a section: starts as a drawn range's start does
+        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, self.workspace.seconds, self._grid_now, "start", px),
+                                       self._length()))
         return self._act(C.section(f), "Make a section")
 
     @Slot(str)
@@ -292,12 +297,14 @@ class ActionSlots:
         f = self._facts()
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
-        mine = [{**c, "hint": self._subject(c["key"]) or c["hint"]} for c in mine]
+        mine = [{**c, "hint": self._subject(c["key"]) or c["hint"], "own": True} for c in mine]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
                               where=self._what(f))
-        return mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
-                       and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
+        return (mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
+                        and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
+                + (self.files.commands() if self.files else []) + palette.rows({LIST.job_of(a) for a in LIST.actions},
+                                                                              {"selected": bool(self._picks.ids), "problems": bool(self.problems.rows)}))
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
@@ -309,6 +316,13 @@ class ActionSlots:
         why), an empty-space entry, else the kit's."""
         if key.startswith("at:"):
             return self.runAt(key)
+        if key.startswith("file:") and self.files:        # the ≡ menu's rows (New, Open, Open recent, Show folder, Start screen ...)
+            self.files.pickLater(key)
+            return True
+        if key.startswith("job:"):                       # a key-map job named in Ctrl+K (palette.py)
+            job = key[4:]
+            self._hub.key(job) if job in ROUTES else self.jobWanted.emit(job)
+            return True
         if not any(a.id == key for a in LIST.actions):
             return super().run(key)
         ok = any(e["id"] == key for e in LIST.available(self._facts()))

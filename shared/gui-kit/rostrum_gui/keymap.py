@@ -63,7 +63,7 @@ SHARED = [
         ("smooth", ["F9"], "Smooth"), ("ease_in", ["Shift+F9"], "Ease in"), ("ease_out", ["Ctrl+Shift+F9"], "Ease out"),
         ("jump", ["Ctrl+Alt+J"], "Jump"), ("marker", ["M"], "Marker at the playhead")]),
     *_area("View", [
-        ("zoom_in", ["Ctrl+="], "Zoom in"), ("zoom_out", ["Ctrl+-"], "Zoom out"), ("fit_all", ["Ctrl+0"], "Fit all"),
+        ("zoom_in", ["Ctrl+=", "Ctrl++"], "Zoom in"), ("zoom_out", ["Ctrl+-"], "Zoom out"), ("fit_all", ["Ctrl+0"], "Fit all"),
         ("actual_size", ["Ctrl+1"], "100 %"), ("fit", ["F"], "Fit the selection"),
         ("fold_panels", ["Ctrl+\\"], "Hide / bring back the side panels"), ("next_area", ["F6"], "Next area")]),
     *_area("Panels", [
@@ -87,6 +87,8 @@ _MODIFIER_KEYS = {"ctrl", "control", "alt", "altgr", "shift", "meta", "super", "
 
 def normal(key: str) -> str:
     """One spelling per key: "ctrl+shift+g" and "Shift+Ctrl+G" are both "Ctrl+Shift+G"; Escape is Esc."""
+    if key.strip() == "+":                      # the Plus key on its own (Qt names it so when it comes up)
+        return "+"
     parts = [p.strip() for p in key.replace("++", "+plus").split("+")]
     mods, rest = set(), []
     for p in parts:

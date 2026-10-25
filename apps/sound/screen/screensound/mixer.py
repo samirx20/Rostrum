@@ -106,8 +106,10 @@ class MixPage(QObject):
 
     @Property("QVariantList", constant=True)
     def effectTypes(self):
-        """The built-in effect types; a plug-in is chosen from the scan (`plugins`), not from this list."""
-        return [t for t in self.doc.kind.registry.get("effect.add").param("effect").options if t != "plugin"]
+        """The built-in effect types, [{value, label}] in the words the chain and the type list use (effects.WORDS, the one
+        place); a plug-in is chosen from the scan (`plugins`), not from this list."""
+        return [{"value": t, "label": strips.effect_name(t)} for t in self.doc.kind.registry.get("effect.add").param("effect").options
+                if t != "plugin"]
 
     @Slot(str, str, result=bool)
     def addEffect(self, item_id, effect_type):
@@ -116,6 +118,14 @@ class MixPage(QObject):
         if not self._call({"op": "effect.add", "target": [item_id], "args": {"effect": effect_type}}, "Add " + strips.effect_name(effect_type)):
             return False
         self.bridge.select(self.doc.item(item_id)["effects"][-1]["id"])
+        return True
+
+    @Slot(str, int, result=bool)
+    def moveEffect(self, effect_id, to):
+        """effect.move: the effect to place `to` in its chain (0 = first), one change (one undo step), then selected."""
+        if not self._call({"op": "effect.move", "target": [effect_id], "args": {"to": to}}, "Move effect"):
+            return False
+        self.bridge.select(effect_id)
         return True
 
     @Slot(result=bool)
@@ -158,12 +168,14 @@ class MixPage(QObject):
 
         def made(i, t):                          # a strip the step did not change: as it is
             return old.get(t["id"]) if only is not None and t["id"] not in only else None
+        # `instant`: a strip that came or went is inserted or removed and every other strip keeps its delegate (a
+        # reset made every strip again: ~200 ms for one track added to a 6-track song).
         self._tracks.update([made(i, t) or strips.strip(t, label(t), strips.meter_of(render, t["id"]),
                                                          {**strips.routing(t, buses, label), **ducks.strip_ducks(t, tracks, label)},
                                                          vendor, timeline.hue(t, i))
-                             for i, t in enumerate(tracks)])
+                             for i, t in enumerate(tracks)], instant=True)
         self._buses.update([made(i, b) or strips.strip(b, label(b), strips.meter_of(render, b["id"]), strips.routing(b, buses, label), vendor)
-                            for i, b in enumerate(buses)])
+                            for i, b in enumerate(buses)], instant=True)
         master = strips.strip(m, "Master", strips.master_meter(render), vendor_of=vendor)
         if master != self._master:                # the Master strip reads a map: only news re-runs its bindings
             self._master = master

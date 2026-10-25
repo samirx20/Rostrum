@@ -120,7 +120,7 @@ class ShownState:
             return self.placed()
         data, times, _ = self._shown
         if self._shown_placed is None or self._shown_placed[0] is not self._shown:
-            comp = (self.doc._index() if data is self.doc.data else index(data, self.doc.kind.lists)).get(self.comp_id)
+            comp = (self.doc.locs() if data is self.doc.data else index(data, self.doc.kind.lists)).get(self.comp_id)
             if comp is None:
                 return self.placed()
             self._shown_placed = (self._shown, retime.timed(comp.item, self.times(), comp.item["fps"]))

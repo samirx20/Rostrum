@@ -46,7 +46,7 @@ def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> 
         hint = where if target else ""     # no scope word for what is the whole document
         missing = [p for p in op.params if p.required and p.default is None]
         found = {"words": op_words(op) + " " + " ".join(field_words(p) for p in op.params),
-                 "weight": IMPORTANCE.index(op.importance)}
+                 "weight": IMPORTANCE.index(op.importance), "makes": makes(op.name)}
         if not missing:
             out.append({**_cmd(op.name, op.label, hint, [_call(op.name, target, {})]), **found})
         elif len(missing) == 1 and missing[0].type == "choice":
@@ -97,20 +97,36 @@ def _cmd(key, label, hint, calls):
     return {"key": key, "label": label, "hint": hint, "calls": calls}
 
 
+def makes(op_name: str) -> bool:
+    """An operation that makes something new (track.add, comp.add, group.make): the command bar never runs one on a loose word."""
+    return op_name.split(".")[-1].startswith(("add", "make", "new", "create"))
+
+
 def search(commands: list[dict], query: str) -> list[dict]:
-    """The commands whose words match the query, best first: every query word starts a word ("move" finds "move it",
-    never "remove"; any order, any case). The label saying it ranks first, then the command's own `words`, then the
-    rest (hint, `context`, operation names); within a rank the most used (`weight`) first. An empty query: every
-    command, most used first."""
-    words = query.lower().split()
-    ranked = sorted((r, c.get("weight", 0), i) for i, c in enumerate(commands) if (r := rank(c, words)) is not None)
-    return [commands[i] for _, _, i in ranked]
+    """The commands whose words match the query, best first. The one rule: a command whose NAME is the query, or starts
+    with it ("split" -> "Split at the playhead"), beats every other; then a name that has every query word starting a
+    word of it ("move" finds "move it", never "remove"; any order, any case); then the command's own `words`, then
+    the rest (hint, `context`, operation names). Within a rank: the app's own actions on the selection (`own`) first,
+    then the most used (`weight`). A command that makes something new (`makes`) is found by its name only, never by a
+    loose word of its summary ("mute" must not add a group). An empty query: every command, most used first."""
+    q = " ".join(query.lower().split())
+    words = q.split()
+    ranked = sorted((r, 0 if c.get("own") else 1, c.get("weight", 0), i) for i, c in enumerate(commands)
+                    if (r := rank(c, words, q)) is not None)
+    return [commands[i] for *_, i in ranked]
 
 
-def rank(c: dict, words: list[str]):
-    """0: the label says it; 1: the label with the menu it sits in (`lead`: "Add effect" for "Add EQ") says it; 2: the
-    command's own words say it; 3: anything else it carries says it; None: no match."""
+def rank(c: dict, words: list[str], q: str = ""):
+    """-2: the name is the query; -1: the name starts with it; 0: the name says it; 1: the name with the menu it sits in
+    (`lead`: "Add effect" for "Add EQ") says it; 2: the command's own words say it; 3: anything else it carries says it;
+    None: no match. A command that makes something new matches by name only (tiers -2 .. 1)."""
+    label = c["label"].lower()
+    if q and label == q:
+        return -2
+    if q and label.startswith(q):
+        return -1
     own = f"{c['label']} {c.get('words', '')}"
     rest = f"{own} {c['hint']} {c.get('context', '')} {' '.join(k['op'] for k in c.get('calls', []))}"
     tiers = (c["label"], f"{c['label']} {c.get('lead', '')}", own, rest)
-    return next((r for r, text in enumerate(tiers) if starts(words, text.lower())), None)
+    r = next((r for r, text in enumerate(tiers) if starts(words, text.lower())), None)
+    return None if r is not None and r > 1 and c.get("makes") else r

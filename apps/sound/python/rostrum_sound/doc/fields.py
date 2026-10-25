@@ -112,8 +112,8 @@ FIELDS = {
           help="True peak ceiling (dBTP): no moment of the mix goes above it, so it never distorts after re-encoding."),
         N("glue", 0, 1, "Master", imp="secondary", label="Smooth the mix", display="percent",
           help="Glue compression: gently squeezes the whole mix so the parts sit together."),
-        Param.choice("reverb", names.SPACES, group="Spaces", importance="secondary", label="Master reverb"),
-        Param.choice("trackReverbSpace", names.SPACES, group="Spaces", importance="secondary",
+        Param.choice("reverb", names.SPACES, labels=names.SPACE_WORDS, group="Spaces", importance="secondary", label="Master reverb"),
+        Param.choice("trackReverbSpace", names.SPACES, labels=names.SPACE_WORDS, group="Spaces", importance="secondary",
                      label="Track reverb space"),
         N("fadeIn", 0, 600, "Fades", "s", "secondary", label="Fade in"),
         N("fadeOut", 0, 600, "Fades", "s", "secondary", label="Fade out"),
@@ -135,6 +135,11 @@ DEFAULTS = {
     "master": dict(volume=1, normalize=False, loudness=-16, truePeak=-1, glue=0, reverb="dry",
                    trackReverbSpace="hall", fadeIn=0, fadeOut=0, safetyClip=True),
 }
+# A number's own default is what a new item stores: the panel's double-click puts the value back to it (the kit's rule).
+for _type, _params in FIELDS.items():
+    FIELDS[_type] = [dataclasses.replace(p, default=DEFAULTS[_type][p.name]) if p.type == "number" and p.default is None
+                     and p.name in DEFAULTS.get(_type, {}) and isinstance(DEFAULTS[_type][p.name], (int, float)) else p
+                     for p in _params]
 # The field that holds each instrument form's value (the form's name).
 INSTRUMENT_FIELD = {k: k for k in names.INSTRUMENTS if k != "none"}
 REQUIRED = {"duck": ["under"], "note": ["pitch", "at", "dur"], "hit": ["drum", "at"], "clip": ["media", "at"], "line": ["text", "at"], "marker": ["name", "at"], **FM.REQUIRED}

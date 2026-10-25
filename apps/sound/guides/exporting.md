@@ -4,7 +4,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 ## Where
 
-- **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound.
+- **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound; before that, Ctrl+E says "Nothing to export yet: add a sound first".
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
   closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type, **+ Another version**, **Stems**, **Cut the silence**, **More**, and the folder with its file name just above **Export**.
   The chosen target shows in the picker. The folder shows as its last two names ("song / v001"); the whole path is on hover.

@@ -13,14 +13,30 @@ def _score(b, t, tol):
     return 0.0 if b["t"] <= t <= b["t"] + max(b["dur"], tol) else None
 
 
-def block_at(blocks: list[dict], t: float, lane: float, tol: float, lane_tol: float = 1.0) -> str:
-    """In an arrangement row: the block at time t, nearest in lane (0 top .. 1 bottom; a block's `lanes`); "" when none."""
+def lanes(b: dict, row: dict) -> list[float] | None:
+    """Where a block sits across its arrangement row (0 top .. 1 bottom), one place per bar it draws: a note's keys
+    in the row's `span`, a hit's drum among the row's `drums`, a stacked clip's own row (`stack`); None: anywhere.
+    A block that says its places (`lanes`: a group header's, from its own track's row) keeps them. LaneBlocks.qml
+    `lanesOf` is the same rule."""
+    if "lanes" in b:
+        return b["lanes"]
+    if b["type"] == "note":
+        lo, hi = row["span"]
+        return [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
+    if b["type"] == "hit":
+        d = row["drums"]
+        return [d.index(b["drum"]) / max(len(d) - 1, 1)]
+    return None
+
+
+def block_at(row: dict, t: float, lane: float, tol: float, lane_tol: float = 1.0) -> str:
+    """In an arrangement row: the block at time t, nearest in lane (0 top .. 1 bottom; `lanes`); "" when none."""
     best, key = "", None
-    for b in blocks:
+    for b in row["blocks"]:
         s = _score(b, t, tol)
         if s is None:
             continue
-        dl = min(abs(x - lane) for x in b.get("lanes", [lane]))
+        dl = min(abs(x - lane) for x in lanes(b, row) or [lane])
         if dl > lane_tol:
             continue
         k = (dl, s, -b["t"])

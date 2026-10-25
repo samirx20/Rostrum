@@ -60,7 +60,7 @@ tests/                  test_bridge.py (one scrub = one change; one edit = one c
 - **Choices show plain words.** A choice row's `options` is `[{value, label}]`: the label is the param's
   `labels={value: words}` if given, else the value in plain words ("warmPad" → "Warm pad"). ChoiceField shows the
   label and sends the value (plain strings still work). A long list (over 8) or a list of fonts (options with `face`:
-  each drawn in its own face) opens with a search line; options with `section` sit under a small heading per run (a font list: "In Rostrum", "On this computer"), and past 12 rows the list scrolls. A field that names one of a list the app knows (a font, an item,
+  each drawn in its own face) opens with a search line; options with `section` sit under a small heading per run (a font list: "In Rostrum", "On this computer"), and the list scrolls only past 20 rows or the window's height. A field that names one of a list the app knows (a font, an item,
   a marker: control "pick", rows.py) is that list, never a text box to type a name or id into.
 - **A group you add is added in one click.** A folded group a toggle switches on (`sections.switch_of`: an Outline, a
   Background) is "+ Outline" in the row of names: the click sets the toggle on (one change) and the group shows open; its

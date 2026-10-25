@@ -22,6 +22,7 @@ from rostrum_gui.touched import Touched
 from rostrum_core import live
 from rostrum_sound import clean_clips, compile as compile_doc
 from rostrum_sound.doc import markers as MK
+from rostrum_sound.doc import sounds
 from rostrum_sound.doc import ops_mix
 
 from . import voice_card
@@ -54,7 +55,9 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
         self.name = name
         self._asked = cleanable.Asked()     # clips whose Cleanup rows were asked for (cleanable.py)
         self._t, self._track = 0.0, ""
-        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.reset(self._rows()))
+        # the dock changed what the inspector leaves out (onpage.py): its rows change in place, each keeping the
+        # delegate that showed the same setting (a reset made every row's control again: ~45 ms per dock switch)
+        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.update(self._rows(), instant=True))
         self._drag = self._grab = None
         self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
@@ -165,7 +168,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def blockAt(self, track_id, t, lane, tol):
         """The note / hit / clip under the pointer in an arrangement row ("" when none)."""
         row = next((r for r in self._view["rows"] if r["id"] == track_id), None)
-        return pick.block_at(row["blocks"], t, lane, tol, 0.3) if row else ""
+        return pick.block_at(row, t, lane, tol, 0.3) if row else ""
 
     @Slot(float, float, float, result=str)
     def rollAt(self, t, row, tol):
@@ -202,8 +205,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
     def _first(self):       # nothing selected at first: the settings panel shows the song (DESIGN.md decision 4)
         return ""
 
-    def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed
-        return output_pick.choices(self.doc, item, self.label_of) if param == output_pick.FIELD else []
+    def list_choices(self, item, param):      # a track's / bus' Output: Master and the buses it may feed; a track's Sound
+        if param == "sound" and item.get("type") == "track":
+            return sounds.choices(item)
+        return output_pick.choices(self.doc, item, self.label_of) if param in (output_pick.FIELD, "bus") else []
 
     def _rows(self):
         """The kit's rows, each item's with times in bars.beats and pitches as names (inspect.musical_rows) before

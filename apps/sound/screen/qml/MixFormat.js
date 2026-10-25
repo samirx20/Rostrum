@@ -23,6 +23,3 @@ function levelTone(db) { return db > 0 ? "danger" : db > -6 ? "warn" : "ok" }
 var SCALE = [6, 0, -6, -12, -24, -48, -Infinity]
 function scaleText(db) { return db === -Infinity ? "−∞" : db > 0 ? "+" + db : num(db, 0) }
 
-// An effect type's name as the strips show it (strips.py effect_name: the same words): "eq" -> "EQ", "delay" -> "Delay".
-var EFFECT_NAMES = { eq: "EQ", deess: "De-ess", dehum: "De-hum" }
-function effectName(kind) { return EFFECT_NAMES[kind] || kind.charAt(0).toUpperCase() + kind.slice(1) }

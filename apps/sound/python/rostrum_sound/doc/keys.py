@@ -85,6 +85,15 @@ def snap(midi: int, key: str) -> int:
     return min((midi + d for d in (0, -1, 1, -2, 2)), key=lambda k: (k % 12 not in notes, abs(k - midi), k))
 
 
+def step_in_key(midi: int, key: str, sign: int) -> int:
+    """The next note of the key above (sign > 0) or below `midi`; a pitch outside the key lands on the nearest one that way."""
+    notes = scale(key)
+    k = midi + (1 if sign > 0 else -1)
+    while k % 12 not in notes and 0 <= k <= 127:
+        k += 1 if sign > 0 else -1
+    return k
+
+
 def signature(key: str) -> tuple[int, bool]:
     """(sharps, minor) for a MIDI key signature: sharps -7 … 7 (negative = flats). Modes use their major scale's."""
     pc, mode = parse(key)

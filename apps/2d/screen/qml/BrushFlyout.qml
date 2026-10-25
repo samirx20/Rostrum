@@ -10,12 +10,12 @@ import RostrumKit
 // project and the person's own library, each once; a small "project" / "library" on the stroke's corner of one kept in just one
 // place; "+ Save this brush" is the last tile; right-click one: Rename, Duplicate, Also keep in / Remove from a place, Delete — the
 // entries that apply, from painter.myBrushes). Hovering a brush shows its stroke larger, at the tile.
-QQC.Popup {
+SmallPopup {
     id: fly
     objectName: "brushFlyout"
     parent: QQC.Overlay.overlay
     padding: 8
-    closePolicy: QQC.Popup.CloseOnPressOutside      // not on Esc: Esc is Main.qml's, one step back from the Brush to Select, closing the panel with it
+    escCloses: false                               // not on Esc: Esc is Main.qml's, one step back from the Brush to Select, closing the panel with it
     focus: true
     background: MenuBackground { radius: Theme.radiusPanel }
     readonly property int tileW: 112

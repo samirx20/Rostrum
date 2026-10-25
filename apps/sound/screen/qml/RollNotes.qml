@@ -12,16 +12,12 @@ Item {
     property var grid                   // the RollGrid: its roll, blocks, ruler, row height
     clip: true
     readonly property var picked: backend.picked        // one read per change
-    property var own: ({})              // the roll's block ids (made when its blocks change)
-    property string chosen: ""          // which of them are selected: a selection elsewhere leaves the picture as it is
     readonly property var blocks: grid.blocks
-    onBlocksChanged: { own = Blocks.ids(blocks); chosen = Blocks.chosen(picked, own) }
-    onPickedChanged: chosen = Blocks.chosen(picked, own)
     Canvas {
         id: c
         anchors.fill: parent
         property bool whole: true
-        property var drawn: ({})            // id -> [block, selected] as the picture shows it
+        readonly property var kept: Blocks.kept()   // what the picture shows (painting in parts)
         property bool stale: false          // asked while hidden (the Mixer shows): painted when shown again
         onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
         function again() { whole = true; requestPaint() }
@@ -35,7 +31,7 @@ Item {
         Connections {
             target: n
             function onBlocksChanged() { c.requestPaint() }
-            function onChosenChanged() { c.requestPaint() }
+            function onPickedChanged() { if (Blocks.touches(c.kept, n.picked)) c.requestPaint() }   // a selection elsewhere: as it is
         }
         Connections {
             target: grid.ruler
@@ -119,20 +115,20 @@ Item {
             if (!visible) { stale = true; return }
             var ctx = getContext("2d"), r = grid.ruler
             var k = { perSec: r.perSec, rowH: grid.rowH, hi: grid.roll.hi, hue: grid.roll.hue, lit: fillOf(true), W: width }
-            var now = Blocks.state(n.blocks, n.picked)
-            var dirty = whole ? null : Blocks.changes(drawn, now, b => rectsOf(b, Math.round(r.xOf(b.t)), k))
-            drawn = now; whole = false
-            if (dirty === null) { ctx.reset(); paintIn(ctx, now, k, null); return }
+            var at = b => rectsOf(b, Math.round(r.xOf(b.t)), k)
+            var dirty = whole ? null : Blocks.update(kept, n.blocks, n.picked, at)
+            whole = false
+            if (dirty === null) { ctx.reset(); paintIn(ctx, Blocks.rebuild(kept, n.blocks, n.picked, at, width), k, null); return }
             for (var i = 0; i < dirty.length; i++) {        // only the changed places, each cleared and painted again
-                Blocks.clear(ctx, dirty[i]); paintIn(ctx, now, k, dirty[i]); ctx.restore()
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(kept, dirty[i]), k, dirty[i]); ctx.restore()
             }
         }
-        function paintIn(ctx, now, k, d) {                  // every block (over the place `d`, when one)
-            var blocks = n.blocks, r = grid.ruler
+        function paintIn(ctx, entries, k, d) {              // these blocks ([block, selected]; over the place `d`, when one)
+            var r = grid.ruler
             ctx.font = nameFont; ctx.textBaseline = "middle"      // the notes' names (a clip sets its own, saved)
             for (var pass = 0; pass < 2; pass++) {          // what is selected is drawn last, on top
-                for (var i = 0; i < blocks.length; i++) {
-                    var b = blocks[i], on = now[b.id][1]
+                for (var i = 0; i < entries.length; i++) {
+                    var b = entries[i][0], on = entries[i][1]
                     if (on !== (pass === 1)) continue
                     var x = Math.round(r.xOf(b.t)), w = b.dur * k.perSec
                     if (x > k.W + 12 || x + w < -12) continue        // off screen
