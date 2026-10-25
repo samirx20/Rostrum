@@ -4,7 +4,7 @@ its own sound (the Video sound row, video_sound.py)."""
 from __future__ import annotations
 
 SONG = '''tempo(120); beats_per_bar(4); length(bar(3))
-d = track("drums", kit="synth")
+d = track("drums", kit="classic")
 for b in range(8):
     d.hit("kick", at=beat(b))
 d.hit("cymbal", at="#drop")
