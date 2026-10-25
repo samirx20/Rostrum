@@ -35,7 +35,7 @@ you close the window and every 20 changes; the change log beside it always has t
 
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
-2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
+2. Type to search ("warm", "bass", "voice"; a family word, **strings**, **brass**, **woodwinds** or **percussion**, finds every section and solo in it; sounds whose name holds the words come first), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
    **Voice**, **My sounds**.
 3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
    sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
@@ -111,7 +111,8 @@ The **Colour** row shows the colour the track is drawn in.
    of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
    **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
    chord on that note; only when the song has a key), In key with 7th, Major, Minor, Sus2, Sus4, Power (5th) or Octave.
-   Each new tone is its own note you can move or delete. When the selection holds a chord (notes that start together),
+   Each new tone is its own note you can move or delete (while nothing else applies, **Chord ▾** shows that list of shapes directly, with no
+   **Make a chord** step in between). When the selection holds a chord (notes that start together),
    the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
    **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
    **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves).

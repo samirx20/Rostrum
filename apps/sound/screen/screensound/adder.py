@@ -109,12 +109,33 @@ def _note(e: dict) -> str:
     return e["what"] if sum(x["what"] == e["what"] for x in ENTRIES) == 1 else ""
 
 
+# the orchestra's family words: a search for the family finds every section and solo in it (critic r7: "strings"
+# missed String section, Violins and Cellos)
+FAMILIES = {"strings": ("strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp",
+                        "classic.analogStrings"),
+            "brass": ("brass", "horn", "trumpet", "trombone", "tuba"),
+            "woodwinds": ("flute", "piccolo", "oboe", "clarinet", "bassoon", "saxophone"),
+            "percussion": ("marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani")}
+FAMILY_OF = {f"builtIn:{k}": fam for fam, keys in FAMILIES.items() for k in keys}
+
+
+def _holds(text: str, word: str) -> bool:
+    """`word` is in `text`, or its singular is ("strings" finds "String section", "basses" finds "bass")."""
+    return any(w and w in text for w in {word, word[:-1] if word.endswith("s") else "",
+                                         word[:-2] if word.endswith(("ses", "xes")) else ""})
+
+
 def find(text: str, kind: str) -> list[dict]:
-    """The entries whose words hold every word typed, of that kind ("" = all)."""
+    """The entries whose words hold every word typed (or its singular, or the entry's family: "strings", "brass",
+    "woodwinds", "percussion"), of that kind ("" = all); those whose name holds them first."""
     words = text.lower().split()
+    found = []
+    for e in ENTRIES:
+        about = f"{e['label']} {e['what']} {e['kind']} {FAMILY_OF.get(e['key'], '')}".lower()
+        if (not kind or e["kind"] == kind) and all(_holds(about, w) for w in words):
+            found.append((not all(_holds(e["label"].lower(), w) for w in words), len(found), e))
     return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e) or LINE_TWO.get(e["kind"], ""), "hearable": e["kind"] not in NO_HEAR,
-             "noHear": NO_HEAR.get(e["kind"], "")} for e in ENTRIES
-            if (not kind or e["kind"] == kind) and all(w in f"{e['label']} {e['what']} {e['kind']}".lower() for w in words)]
+             "noHear": NO_HEAR.get(e["kind"], "")} for *_, e in sorted(found, key=lambda x: x[:2])]
 
 
 def _entry_of(key: str) -> dict | None:
