@@ -131,6 +131,8 @@ def main():
         try:
             fn()
         except Exception as e:  # noqa: BLE001  fail loudly, whatever it was
+            import traceback
+            traceback.print_exc()                # where it failed, not only what
             print(f"FAIL: {e}", file=sys.stderr)
             code[0] = 3
             app.exit(3)

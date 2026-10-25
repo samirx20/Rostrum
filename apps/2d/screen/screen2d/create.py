@@ -183,12 +183,16 @@ class Create(QObject):
 
     @Slot(float, float, result=bool)
     def editAt(self, x, y):
-        """Double-click at (x, y): type in the text painted there. False when it isn't a text."""
+        """Double-click at (x, y): type in the text painted there, or edit the points of the path there. False when it is
+        neither."""
         hit = self.b._multi.target(x, y, "in")
-        if hit and self.b.doc.item(hit)["type"] == "text":
+        kind = hit and self.b.doc.item(hit)["type"]
+        if kind == "text":
             self.editText(hit)
-            return True
-        return False
+        elif kind == "path":
+            self.b.select(hit)
+            self.b._pen.editPoints(True)
+        return kind in ("text", "path")
 
     @Slot(str)
     def typeText(self, body):

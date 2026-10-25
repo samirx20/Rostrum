@@ -111,6 +111,8 @@ AppShell {
     Shortcut { sequence: "Ctrl+A"; enabled: shell.canvasKeys; onActivated: backend.selectAllLayers() }
     Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && backend.create.canEdit       // the selected text: type in it
                onActivated: backend.create.editText(backend.selected) }
+    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && backend.pen.canEditPoints
+               onActivated: backend.pen.editPoints(true) }                                               // the selected path: edit its points
     Shortcut { sequence: "Ctrl+L"; enabled: !shell.typing; onActivated: backend.library.setOpen(!backend.library.open) }   // the kit's "library" job
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
     Shortcut {

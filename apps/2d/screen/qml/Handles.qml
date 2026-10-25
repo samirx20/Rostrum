@@ -46,9 +46,11 @@ Item {
         delegate: Rectangle {
             id: knob
             required property var modelData
+            required property int index
             readonly property int hx: modelData[0]
             readonly property int hy: modelData[1]
             readonly property bool edge: hx === 0 || hy === 0
+            objectName: (h.group ? "groupHandle:" : "handle:") + ["nw", "ne", "se", "sw", "n", "e", "s", "w"][index]   // what a scripted hand drags (dragobj)
             visible: !edge || (hx === 0 ? h.bw : h.bh) > 36          // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo

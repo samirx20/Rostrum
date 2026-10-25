@@ -344,7 +344,7 @@ Rectangle {
                     box: modelData; fit: view.zoom; space: marks
                     visible: !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
-                    editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && modelData.type !== "path" && !backend.pen.on
+                    editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && !(modelData.type === "path" && backend.pen.editing) && !backend.pen.on
                 }
             }
             Handles {   // several layers: one box round them all with the same knobs, acting on all together (group_slots.py)

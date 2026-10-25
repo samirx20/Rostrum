@@ -173,11 +173,13 @@ class ActionSlots(SlotMixin):
     def stepBack(self, state):
         """Esc: the one step the kit's ladder takes now (selection_rules.esc_step). "cancel" and "close" are the
         screen's own (it closes its panel or menu); "clear" clears the selection here."""
-        step = esc_step({**state, "inner": bool(self._keys.count or self._stretch.shown), "selected": bool(self.selected_layers())})
+        editing = self._pen.editing                 # a path's points: Esc goes back to its box, the path stays picked
+        step = esc_step({**state, "inner": bool(self._keys.count or self._stretch.shown or editing), "selected": bool(self.selected_layers())})
         if step == "clear_inner":                   # keys picked in the timeline go first, the layer stays picked
             layer = self.selected_layers()
             self._keys.clear()
             self._stretch.clear()                   # a picked stretch goes back to its layer the same way
+            self._pen.editPoints(False)
             self.selectMany(layer)
         elif step == "clear":
             self.clearSelection()

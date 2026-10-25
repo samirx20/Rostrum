@@ -3,7 +3,7 @@
 Drawing a new path: click = a corner point, press-drag = a smooth point (symmetric handles), click the first point
 = close; Enter or Escape ends. The points live here (screen state) until the path ends; then one gesture adds the
 path layer: `layer.add` (type path) + `path.set` (its d, box and place). A path needs two points or more.
-Editing: with a path layer selected its points show, and the handles of the selected point (click one); dragging one is one gesture of `path.set_point`
+Editing: a picked path shows its resize box; double-clicked (or Enter) its points show instead, and the handles of the selected point (click one); dragging one is one gesture of `path.set_point`
 (handles move together unless Alt breaks the symmetry).
 Coordinates from QML are composition px; a path's points are in its own box px (ops_path.to_parent, its inverse
 here). A path inside a group is not offset by the group yet (as drawing and the selection box).
@@ -55,10 +55,12 @@ class Pen(QObject):
         super().__init__(parent)
         self.b, self._draft, self._press, self._drag, self._grab = bridge, [], None, None, None
         self._pick = ("", -1)         # (path layer, its selected point): only that point shows its handles
+        self._editing = ""            # the path layer whose points are being edited (double-click / Enter); else its box shows
         told = news.relay(self)                             # only news: its points redo on it
         bridge.outlineChanged.connect(told)
         bridge.timeChanged.connect(told)
         bridge.toolChanged.connect(self._tool_changed)
+        bridge.selectedItemsChanged.connect(told)   # canEditPoints follows the selection
         bridge.shownChanged.connect(told)           # the points follow the picture on screen (shown.py)            # on = the bridge's tool is "pen" (one source of truth)
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -69,6 +71,21 @@ class Pen(QObject):
     @Property("QVariantList", notify=changed)
     def draft(self):
         return [_flat(p, i) for i, p in enumerate(self._draft)]
+
+    @Property(bool, notify=changed)
+    def editing(self):
+        """The selected path shows its points (double-clicked or Enter), not its resize box. Esc goes back to the box."""
+        return bool(self._editing) and self._editing == self.b.selectedLayer
+
+    @Property(bool, notify=changed)
+    def canEditPoints(self):
+        """Enter would show the selected path's points: one path picked, its box showing, the pen off."""
+        return not self.on and not self.editing and self._layer() is not None
+
+    @Slot(bool)
+    def editPoints(self, on):
+        self._editing = self.b.selectedLayer if on and self._layer() else ""
+        self.changed.emit()
 
     @Property(int, notify=changed)
     def selected(self):
@@ -91,7 +108,7 @@ class Pen(QObject):
     def points(self):
         """The selected path's points and handles in composition px: [{i, x, y, inX, inY, outX, outY}], as the picture
         on screen shows the path (shown.py)."""
-        live = self._layer()
+        live = self._layer() if self.editing else None
         item = live and self.b.shown_item(live["id"])
         if not item or item.get("type") != "path":
             return []
@@ -229,6 +246,7 @@ def steps_pointdrag(bridge, step, rest):
     """pointdrag <layer> <i> <dx> <dy> [in|out]: drag a point (or its handle) of a path layer, one change."""
     bridge.select(rest[0])
     pen, part = bridge.pen, rest[4] if len(rest) > 4 else "point"
+    pen.editPoints(True)                      # a hand double-clicks the path first
     if not pen.beginPointDrag(int(rest[1]), part):
         raise RuntimeError(f"step {step!r}: {rest[0]} is not a path layer")
     for f in (0.5, 1.0):
@@ -241,4 +259,5 @@ def steps_pointpick(bridge, step, rest):
     bridge.select(rest[0])
     if bridge.pen._layer() is None:
         raise RuntimeError(f"step {step!r}: {rest[0]} is not a path layer")
+    bridge.pen.editPoints(True)
     bridge.pen.selectPoint(int(rest[1]))
