@@ -69,11 +69,11 @@ The **Colour** row shows the colour the track is drawn in.
    takes it away. Steps are the window's **Grid ▾** cells. **Shift+click**: an accent (100 %); **Alt+click**: soft
    (50 %). Click a drum's name to hear it and select all its hits (so Velocity, Humanise and Delete act on "the
    snare"); **right-click** it for **Hear**, **Select all … hits**, **Fill ▸** (Every step, Every 2nd step, Every beat,
-   Off-beats, Downbeats, or **Fill row…** to set Every, Starting on, Velocity and, under More, Accent every), **Clear**
+   Off-beats, Downbeats, or **Fill row…** to set Every and Starting on in grid steps (the Grid ▾ you have set), Velocity and, under More, Accent every), **Clear**
    and **Change drum ▸**. Fill works on the time range if there is one, otherwise on the bar you last pointed at, and
    adds hits only on empty steps; Clear removes that drum's hits in the time range, or all of them.
    **Note ▾** sets how long a new note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
-   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to set its
+   the current one (1/4, a quarter, at first). To draw chords straight away, choose a chord in **Note ▾ › Draw**: Single notes (at first), Chord in key (only when the song has a key), Major, Minor or Power; a Draw click then stamps the whole chord, one **Ctrl+Z** takes it away, and the button reads "Note 1/4 · Chord". With **Draw**, drag on after the click to set its
    length: the note ends on the grid line nearest the pointer (drag two beats, it is two beats long). The click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
    scrolls by itself after an edit: only you move the view. A click on the ruler puts the playhead on the nearest
@@ -108,7 +108,14 @@ The **Colour** row shows the colour the track is drawn in.
    timing in milliseconds, velocity and length, and **Another take** gives a new result with the same amounts.
    **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
    track without moving its notes, use the track's **Feel**). **Transpose ▾ › By…** moves the selected notes any number
-   of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key. The less used ones sit behind **› More** under the
+   of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
+   **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
+   chord on that note; only when the song has a key), In key with 7th, Major, Minor, Sus2, Sus4, Power (5th) or Octave.
+   Each new tone is its own note you can move or delete. When the selection holds a chord (notes that start together),
+   the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
+   **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
+   **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves).
+   Both open the small box of amounts and play live while it is open. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Repeat… (on notes, hits and clips), Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this

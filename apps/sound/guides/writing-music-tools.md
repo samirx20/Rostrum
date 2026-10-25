@@ -64,6 +64,11 @@ Chords (each voiced in `range=("A3", "E5")` unless you give one, restarting at e
 run), `chord` (all notes on each step). `rate` is the step in beats (`0.25` = 16ths, `1/3` = 8th triplets). A 16ths
 `pattern` (`"x.xX-x.x"`) replaces the even rate.
 
+Use `arp(...)` when you write a new part in a script. For chords already written in the song (by a person or an
+earlier script), use the operation `note.arpeggiate {rate, mode, octaves, gate, seed}` on their notes instead: it
+turns each chord into its notes one after another over the chord's own length, by the same rule as `arp` (the same
+modes, without `chord`), and writes plain notes (`inspect_guide 'writing-parts'`).
+
 ## Drums: `drum_grid({drum: steps}, bars=1, fill=None, every=4, fill_beats=1, crash=False, last=True, toms=("tom",))`
 
 One string per drum, one character per 16th (16 = a bar of 4/4), each repeating over its own length: `X` accent, `x`

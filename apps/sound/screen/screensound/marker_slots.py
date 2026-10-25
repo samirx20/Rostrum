@@ -50,14 +50,16 @@ class MarkerSlots:
     def markerMenu(self, marker_id):
         """Right-click on a song marker's tag: it is selected (so its own actions apply to it), then its menu."""
         if list(self._picks.ids) != [marker_id]:
-            self._pick([marker_id])
-        self._hub.refresh()
+            self._pick([marker_id], later=True)      # the outline now; the settings panel and actions once the menu is drawn
+            self._settle()                           # (rebuilding them in the click cost ~10 ms of the menu's opening)
         return MENU.rows(self._marker_facts(marker_id))
 
     @Slot(str, str)
     def markerPick(self, marker_id, value):
         """A row of markerMenu chosen: its operation as one change, or the screen's own job."""
         def go():
+            if self.__dict__.get("_unsettled"):               # chosen before the panel caught up: settle it first
+                self._pick(list(self._picks.ids), self._picks.anchor)
             facts = self._marker_facts(marker_id)
             e = MENU.entry(facts, value)
             if e["do"] == "rename":

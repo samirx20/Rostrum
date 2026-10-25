@@ -43,7 +43,10 @@ SmallPopup {
     }
     function place() {
         if (!at) return
-        const ov = parent, px = at.px, py = at.py, flippedX = at.fx
+        const ov = parent, py = at.py
+        // a side menu goes by its owner menu as it is NOW (the owner settles its own width and place a moment after
+        // opening; a snapshot taken at the hover left the side menu flipped onto the owner's own rows)
+        const px = owner ? owner.x + owner.width : at.px, flippedX = owner ? owner.x : at.fx
         let x0 = px, y0 = py
         if (x0 + width > ov.width - Theme.grid) x0 = (flippedX !== undefined ? flippedX : px) - width
         if (y0 + height > ov.height - Theme.grid)
@@ -92,6 +95,11 @@ SmallPopup {
         function onClosed() { menu.keptShut = menu.highlighted; list.forceActiveFocus() }
     }
     Loader { id: subLoader; active: false; source: "ActionMenu.qml" }
+    Connections {       // this menu moved or resized after its side menu opened: the side menu follows
+        target: subLoader.item && subLoader.item.visible ? menu : null; ignoreUnknownSignals: true
+        function onXChanged() { subLoader.item.place() }
+        function onWidthChanged() { subLoader.item.place() }
+    }
 
     // measure the widest label and key, to size the menu
     // (FontMetrics.advanceWidth(text) reads without writing: a TextMetrics' text set inside a binding loops)

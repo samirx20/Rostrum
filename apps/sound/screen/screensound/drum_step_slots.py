@@ -116,7 +116,9 @@ class DrumStepSlots:
             self._act([D.fill_call(self.doc, self._track, drum, a, b, every=every, offset=offset)],
                       f"Fill {words.lower()} · {self._words_of(a, b)}")
         elif what == "fillrow":
-            self._fill = {"track": self._track, "drum": drum, "from": float(rest[0]), "to": float(rest[1])}
+            a, b = float(rest[0]), float(rest[1])
+            step = self._grid_now.beats(self.doc.data, timing.beat(a, self.doc.data))        # one grid step, in beats
+            self._fill = {"track": self._track, "drum": drum, "from": a, "to": b, "step": step}
             self.fillChanged.emit()
             self._hub.choose("fill_row")
         elif what in ("clear", "change"):

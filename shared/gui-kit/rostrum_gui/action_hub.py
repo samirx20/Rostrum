@@ -174,9 +174,7 @@ class ActionHub(QObject):
         if entry is None or a is None or not a.amounts or self._page is None:
             self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
             return False
-        label, bar = entry["label"].rstrip("…. "), entry["bar"]
-        if bar and not label.lower().startswith(bar.lower()):       # "By…" in Transpose ▾ is "Transpose by"
-            label = f"{bar} {label[:1].lower()}{label[1:]}"
+        label = entry["label"].rstrip("…. ")      # its whole name ("Transpose by"; its menu row shows "By…": action_views._in_row)
         words = self._subject(id_, facts)
         try:
             self._page.open(a, facts, f"{label} · {words}" if words else label)

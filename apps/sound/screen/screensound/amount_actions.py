@@ -6,7 +6,7 @@ themselves come from the operations' own parameters. No Qt.
     Humanise ▾   Timing, Velocity, Length (notes); Another take; More: Seed
     Transpose ▾ › By…    Semitones (−24 … +24), or with "Along the key" (only when the song has a key) Steps (−14 … +14)
     Repeat…      Times (2 … 64) and Until (Just N times · End of <section> · End of the range · Next marker <name>)
-    Fill row…    Every, Starting on, Velocity (beats, 0 … 1); More: Accent every  (a drum row's menu; hit.fill)
+    Fill row…    Every (grid steps), Starting on (step), Velocity; More: Accent every (steps)  (a drum row's menu; hit.fill)
     Start a bar here…    Bar
 """
 from __future__ import annotations
@@ -131,14 +131,21 @@ def repeat_fit(f, a):
 
 # ---- Fill row… (a drum row's menu: hit.fill) ---------------------------------------------------------------------
 def fill_calls(f, a):
+    """The amounts count the window's grid steps (`x["step"]`: one step in beats, set when the row's menu asked); hit.fill
+    itself takes beats. Starting on counts from step 1 (the first step of the range)."""
     x = f.fill
-    return [D.fill_call(f.doc, x["track"], x["drum"], x["from"], x["to"], every=a.get("every", 0.25), offset=a.get("offset", 0),
-                        vel=a.get("vel", 0.85), accentEvery=a.get("accentEvery"))]
+    step = x.get("step", 0.25)
+    return [D.fill_call(f.doc, x["track"], x["drum"], x["from"], x["to"], every=a.get("every", 1) * step,
+                        offset=(a.get("offset", 1) - 1) * step, vel=a.get("vel", 0.85),
+                        accentEvery=(a.get("accentEvery") or 0) * step)]
 
 
 def fill_fit(f, a):
-    return {"every": {"importance": "primary"}, "offset": {"importance": "primary"}, "vel": {"importance": "primary"},
-            "accentEvery": {"importance": "secondary"}}
+    steps = {"min": 1, "max": 64, "step": 1}
+    return {"every": {"importance": "primary", "label": "Every (grid steps)", "default": 1, **steps},
+            "offset": {"importance": "primary", "label": "Starting on (step)", "default": 1, **steps},
+            "vel": {"importance": "primary"},
+            "accentEvery": {"importance": "secondary", "label": "Accent every (steps)", "min": 0, "max": 64, "step": 1}}
 
 
 # ---- Start a bar here… -----------------------------------------------------------------------------------------

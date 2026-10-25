@@ -91,6 +91,10 @@ SmallPopup {
 
     contentItem: Column {
         spacing: Theme.gap
+        // the same Enter as a key press reaching the popover: a background window (app.background()) is never the
+        // active one, so its window Shortcut above never fires there; the key itself still comes to the focused row
+        Keys.onReturnPressed: (e) => { e.accepted = pop.mine && !pop.typing; if (e.accepted) pop.accepted() }
+        Keys.onEnterPressed: (e) => { e.accepted = pop.mine && !pop.typing; if (e.accepted) pop.accepted() }
         NameLabel { visible: pop.title !== ""; text: pop.title; font.weight: Font.DemiBold      // a long title shortens, whole on hover
                     width: Math.min(implicitWidth, 360) }
         Column { id: slot; spacing: Theme.gap }

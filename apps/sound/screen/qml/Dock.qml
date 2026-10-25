@@ -54,6 +54,7 @@ Item {
                                     workspace.setHeight("editor", h); workspace.setHeight("mixer", h) }
     }
     function openInKey() { header.openInKey() }
+    function openNote() { header.openNote() }
     EditorHeader {   // on the same line as the tabs: the Editor has no second header row
         id: header
         visible: d.tool === "editor"

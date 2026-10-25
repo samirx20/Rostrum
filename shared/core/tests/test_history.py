@@ -41,6 +41,16 @@ def test_cancelled_or_failed_drag_records_nothing():
     assert x(doc) == 0 and doc.seq == 0
 
 
+def test_undo_while_a_drag_or_popover_is_open_is_refused_and_changes_nothing():
+    doc = toy.sample()
+    doc.apply(CAM, SAM)
+    with doc.gesture("Strum", SAM) as g:                 # a live amounts popover is a gesture too
+        g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 40}})
+        with pytest.raises(RostrumError, match="Strum"):
+            doc.undo(SAM)                                # stepping the history under the preview would mix both
+    assert x(doc) == 40 and doc.item("cam_1")["dof"] is True and doc.seq == 2
+
+
 def test_a_drag_back_to_the_start_takes_its_steps_back_and_a_click_sends_nothing():
     doc, heard = toy.sample(), []
     doc.subscribe(lambda ev: heard.append(ev.kind))

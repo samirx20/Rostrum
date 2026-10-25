@@ -90,10 +90,10 @@ def in_key(midi: int, key: str) -> bool:
     return midi % 12 in scale(key)
 
 
-def snap(midi: int, key: str) -> int:
-    """The nearest note of the key (ties go down)."""
+def snap(midi: int, key: str, tie: int = -1) -> int:
+    """The nearest note of the key; a tie goes down (`tie` -1, Keep in key's drawing) or up (`tie` 1, Fit to key)."""
     notes = scale(key)
-    return min((midi + d for d in (0, -1, 1, -2, 2)), key=lambda k: (k % 12 not in notes, abs(k - midi), k))
+    return min((midi + d for d in (0, -1, 1, -2, 2)), key=lambda k: (k % 12 not in notes, abs(k - midi), k * -tie))
 
 
 def step_in_key(midi: int, key: str, sign: int) -> int:

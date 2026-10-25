@@ -1,5 +1,5 @@
 """`note.fit_key`: the selected notes that are outside the key move to the nearest note of the key (the key playing at
-each note's own time, or `key` when given). Notes already in the key are never touched, a chord (a list of pitches)
+each note's own time, or `key` when given; halfway between two notes of the key, up). Notes already in the key are never touched, a chord (a list of pitches)
 is fitted tone by tone, and a note keeps the spelling it had. One rule for the screen's Fit to key (Ctrl+K) and agents.
 """
 from __future__ import annotations
@@ -13,18 +13,19 @@ from .select_time import start_of
 
 KEY = Param.text("key", group="Fit", label="Key", help='A key to fit to, e.g. "D minor". Leave out to use the song\'s key at each note.')
 DIRECTION = Param.choice("direction", ["nearest", "down", "up"], group="Fit", label="Which way",
-                         help="nearest: the closest note of the key (a tie goes down); down or up: always that way.")
+                         help="nearest: the closest note of the key (halfway between two, it goes up: C# in D minor becomes D); down or up: always that way.")
 
 
 def _fit(k: int, key: str, way: str) -> int:
     if keys.in_key(k, key):
         return k
     if way == "nearest":
-        return keys.snap(k, key)
+        return keys.snap(k, key, tie=1)
     return keys.step_in_key(k, key, 1 if way == "up" else -1)
 
 
-@REGISTRY.operation("note.fit_key", "Move the selected notes that are outside the key to the nearest note of the key "
+@REGISTRY.operation("note.fit_key", "Move the selected notes that are outside the key to the nearest note of the key (halfway: up, so C# in "
+                    "D minor becomes D) "
                     "(`direction` \"down\" or \"up\" to always go one way). The key is the song's key at each note's time, "
                     "or `key` (\"D minor\"). Notes already in the key are not touched; a chord is fitted tone by tone. "
                     "Fails if there is no key (set one with key.add).", target="note", params=[KEY, DIRECTION], label="Fit to key")

@@ -60,8 +60,9 @@ class EditSlots:
 
         def go():
             before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
-            self._apply([moves.add_note_call(self.doc, self._track, t, key, beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                              grid=self._grid_now, px=px, lock=self.keepInKey)], "Add note")
+            self._apply(moves.add_note_calls(self.doc, self._track, t, key, chord=self.drawChord,
+                                             beats=self._draw_beats(timing.beat(t, self.doc.data)),
+                                             grid=self._grid_now, px=px, lock=self.keepInKey), "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
                 self.select(new[0])
@@ -88,9 +89,10 @@ class EditSlots:
         if not self._track:
             return ""
         grid = self._grid_now
-        call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                   grid=grid, px=px, lock=self.keepInKey)
-        return self._draw_note(call, t)
+        calls = moves.add_note_calls(self.doc, self._track, t, int(round(row)), chord=self.drawChord,
+                                     beats=self._draw_beats(timing.beat(t, self.doc.data)),
+                                     grid=grid, px=px, lock=self.keepInKey)
+        return self._draw_note(calls, t)
 
     @Slot(int)
     def playKey(self, key):

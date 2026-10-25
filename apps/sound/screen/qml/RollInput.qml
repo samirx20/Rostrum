@@ -38,6 +38,7 @@ MouseArea {
     property real y1: 0
     property string hit: ""
     property string handle: ""          // the note end pressed: "length" (right) or "noteStart" (left)
+    property bool drawn: false          // the press drew the note(s) under it (Draw): the release keeps what it selected
     property string mode: ""            // "press" | "hpress" (a note's end) | "drag" | "handle" | "empty" | "box" | "steps" (Draw on a drum row)
     property real lastT: 0              // where the pointer last was over the roll (seconds): the bar a drum row's Fill acts on
     readonly property bool busy: mode === "drag" || mode === "box" || mode === "handle"
@@ -65,10 +66,12 @@ MouseArea {
             return
         }
         var h = endUnder(e)
+        drawn = false
         if (h.id) { hit = h.id; handle = h.handle; mode = "hpress"; return }
         if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
             hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
+            drawn = true
             handle = "length"
             return
         }
@@ -97,7 +100,7 @@ MouseArea {
     onReleased: (e) => {
         if (mode === "steps") { backend.stepEnd(); mode = ""; return }          // the stroke's one step ends here
         if (mode === "hpress") backend.endDrag()          // a note just drawn: its one step ends here
-        if (mode === "press" || mode === "hpress") backend.clickSelect(hit, ctrl(e), shift(e))
+        if (mode === "press" || (mode === "hpress" && !drawn)) backend.clickSelect(hit, ctrl(e), shift(e))   // drawn: it picked what it made (a stamped chord: all of it)
         else if (mode === "empty") { if (!ctrl(e)) backend.pickMany([]) }     // only the ruler moves the playhead
         else if (mode === "drag" || mode === "handle") backend.endDrag()
         else if (mode === "box") backend.endBox()

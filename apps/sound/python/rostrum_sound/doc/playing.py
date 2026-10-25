@@ -119,6 +119,9 @@ NOTE = [
              help='Steady vibrato: {"rate": Hz, "depth": cents, "delay": s}.'),
     V.curve("bend", (0, None), (-2400, 2400), group="Playing", importance="deep",
             help="Pitch bend: [[seconds into the note, cents], …] (a slide, a fall, a scoop)."),
+    N("strum", -200, 200, "Playing", "ms", "deep", label="Strum",
+      help="For a chord written as one note (a list of pitches): its tones one after another, this many ms apart, low to "
+           "high (negative: from the top), each held to the chord's end. note.strum sets it."),
 ]
 NOTE_KEYS = [p.name for p in NOTE]
 # What a new track stores so the instrument cards' conditions read real values.

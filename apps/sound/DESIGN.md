@@ -1096,7 +1096,7 @@ Layout, left to right: a **keyboard** (real white and black keys, a C label on e
 spelled in the song's key; a click plays the key on the track's instrument; S57), the **grid** (rows = pitches, columns = time, the same ruler as the arrangement), and under the grid the
 **velocity strip** (one bar per note; the hovered or selected bar's value written beside it). It opens framed on the track's notes.
 Built (S57): the dock's one top line holds the Editor / Mixer tabs, the track's name, Select / Draw and Note ▾ (the
-length of a new note). Proposed, a thin **toolbar** at the top of the dock, always: tool (Select / Draw), grid
+length of a new note; its Draw section picks Single notes or a chord to stamp, 3.9). Proposed, a thin **toolbar** at the top of the dock, always: tool (Select / Draw), grid
 size, snap on/off, "Show other tracks", "Keep in key", follow playhead, and "Play with keys" (3.5).
 
 #### 3.3a Adding notes: click, draw, play in
@@ -1128,7 +1128,7 @@ Easy: double-click adding works in both tools.
 global mode switch with no visible state — the tool is shown in the toolbar and the pointer (pencil).
 **Studied.** Logic: pencil tool / Cmd-click adds; Ableton: Draw mode (B) and double-click adds; GarageBand:
 Cmd-click. We take Ableton's B + double-click; Logic's chord-from-key idea comes from its Chord Trigger, simplified.
-**Later.** Strumming a chord (spread its notes by a few ms) as an action; scale-locked keyboard rows (hide out-of-key rows).
+**Later.** Nothing here: strumming is Chord ▾ › Strum… (3.3g), the scale-locked rows are In key ▾ (3.3e).
 **Today.** Partial: click adds, drag moves (`PianoRoll.qml`); no Draw tool, no chord tool, no hear-on-place.
 
 #### 3.3b Selecting notes
@@ -1264,6 +1264,13 @@ Ctrl+K, or a key.
 - **Humanise ▾** (the same popover): Timing (up to ms, default 10), Velocity (spread, default 5 %), Length (notes only,
   default 0), **Another take** button (a new seed, so the same settings give a different result; the same seed
   always gives the same result, so an agent's re-run is stable). Clicking **Humanise** itself runs the last amounts.
+- **Chord ▾** (sound-pro-workflows SPEC § 3.9–3.11; present only while notes are selected): **Make a chord ▸** (each
+  selected note a root: In key and In key with 7th only when the song has a key, Major, Minor, Sus2, Sus4, Power,
+  Octave; the new tones are separate notes, `note.chord`), and, only when the selection holds a chord (notes of one
+  track starting within 30 ms, or one note holding several pitches: `doc/chords.py`), **Invert up / down**
+  (Alt+↑ / Alt+↓, `note.invert`), **Strum…** (Gap, Direction; Soften under More: `note.strum`) and **Arpeggio…**
+  (Rate, Pattern, Octaves; Gate and Seed under More: `note.arpeggiate`, on `writing/comp.py`'s arpeggiator). The menu
+  is the kit's: a bar name "Chord › Make a chord" makes the side menu (`action_views._bar_menu`).
 
 **Feedback.** Notes slide to their new place (a short animation, 120 ms) and the selection stays selected.
 **Undo and adjust.** One step each; repeat Q after changing Strength only re-quantises from the current positions.
@@ -1337,7 +1344,7 @@ hat"), time across, the same ruler and velocity strip as the piano roll.
    (built: `drum_steps.py`; one stroke is one gesture). Steps are the window's Grid ▾ cells (timing.py's one snap).
    **Click a drum's name** = hear it (`render_hit`) and select all its hits. **Right-click it** (`drumRowMenu_<drum>`):
    Hear · Select all <Drum> hits · **Fill ▸** (Every step · Every 2nd step · Every beat · Off-beats · Downbeats ·
-   **Fill row…**, the kit's amounts popover on `hit.fill`: Every, Starting on, Velocity; More: Accent every) · Clear
+   **Fill row…**, the kit's amounts popover on `hit.fill`: Every and Starting on in grid steps of Grid ▾, Velocity; More: Accent every (steps)) · Clear
    (that drum's hits in the time range, or all) · Change drum ▸ (`hit.set {drum}` on those hits). Fill acts on the time
    range, else the bar the pointer last was in, and adds hits only on empty steps (`hit.fill`, never doubles). Rows
    show only when they apply. Making it a beat for the verse is Repeat…, never a second pattern system.
