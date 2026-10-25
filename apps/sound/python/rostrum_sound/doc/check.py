@@ -113,23 +113,25 @@ def _refs(value):
             yield from _refs(v)
 
 
+LANE_LISTS = {**LISTS, "doc": ["tracks", "buses", "master"],                 # where effects and lanes live: not in
+              "track": [k for k in LISTS["track"] if k not in ("notes", "hits", "lines")]}   # the song's ~3,000 notes
 _SEEN = {"markers": [], "marks": None}   # the markers the last check saw (their items, so `is` compares them)
 
 
 def _holders(data: dict, items, marks: list) -> tuple[list, list]:
-    """(the items whose marker references need checking, the items whose lanes do). References name markers: only
-    the changed items while the markers are the very same items as the last check saw (a version shares unchanged
-    items: rostrum_core edits.fork), else every item. Lanes hold times: also every one when the tempo or meter
-    changed (a point in seconds and one in beats may swap). A tempo drag re-checked every note's references on each
-    move (~20 ms a move on a 3-minute song) though a tempo moves no name."""
+    """(the items whose marker references need checking, the items whose lanes do). A reference names a marker, so
+    only the changed items need it checked while the markers' names are the same as the last check saw; every item
+    when a name came, went or changed. Lanes hold times: every lane also when a marker moved or the tempo or meter
+    changed (a point on a marker and one in seconds may swap). A tempo drag re-checked every note's references on each
+    move (~20 ms a move on a 3-minute song) though a tempo moves no name; so did a marker drag (~50 ms a move)."""
     own = data.get("markers", [])
-    same = (items is not None and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
-            and all(a is b for a, b in zip(own, _SEEN["markers"])))
+    named = items is not None and marks == _SEEN["marks"]
+    still = len(own) == len(_SEEN["markers"]) and all(a is b for a, b in zip(own, _SEEN["markers"]))
     _SEEN.update(markers=list(own), marks=marks)
-    if same and not any(i.get("type") in ("doc", "tempo", "meter") for i in items):
+    if named and still and not any(i.get("type") in ("doc", "tempo", "meter") for i in items):
         return items, items
-    every = list(walk(data, LISTS))
-    return (items if same else every), [i for i in every if i.get("type") in ("effect", "automation")]
+    lanes = [i for i in walk(data, LANE_LISTS) if i.get("type") in ("effect", "automation")]
+    return (items if named else list(walk(data, LISTS))), lanes
 
 
 def check(data: dict, items=None) -> list[str]:

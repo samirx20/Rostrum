@@ -128,7 +128,7 @@ ACTIONS = [
     act("stems", "Split into parts (stems)", lambda f: CLIP(f) and f.count == 1,
         lambda f: [C.call("clip.split_stems", f.ids)], group="clip"),
     act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
-        importance="primary", group="section"),
+        importance="primary", group="section"),        # (Ctrl+D on a section: the edit block's Duplicate, below)
     act("section_inside", "Select inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
         group="section", do="inside_section"),
     # a time range (a section is made from the range whatever else is selected; the rest when the range is newer)
@@ -149,9 +149,9 @@ ACTIONS = [
         needs="Cut needs notes, hits, clips or lines selected"),
     act("paste", "Paste", lambda f: f.clipboard, shortcut="Ctrl+V", group="edit", do="paste",
         needs="Nothing to paste yet: copy something first"),
-    act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f)),
+    act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f) or f.one == "section"),
         C.duplicate, "Ctrl+D",
-        group="edit", needs="Duplicate needs notes, hits, clips or tracks selected"),
+        group="edit", needs="Duplicate needs notes, hits, clips, tracks or a section"),
     act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,
         "Ctrl+D", group="edit"),
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",

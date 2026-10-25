@@ -17,7 +17,7 @@ from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
 from rostrum_sound.doc import meter, tempo, times
 
-from . import groups, lanes, music_map, pick, timing
+from . import block_clock, groups, lanes, music_map, pick, timing
 from . import block_memo
 from .block_memo import BlockMemo
 from .handles import level_y
@@ -177,14 +177,10 @@ def layered(clips: list[dict]) -> list[dict]:
     return clips
 
 
-OWN = ("tracks", "buses", "master")     # what no other track's block reads (stepped.py: the mix rows are always made)
+OWN = block_clock.OWN
 
 
-def clock(root: dict) -> tuple:
-    """Everything a note's or hit's block reads besides its own item: the song's settings (tempo and its map, meter,
-    keys, markers, sections …) and the project's shared markers (a time may be written on one). Blocks made under an
-    equal clock are still right (block_memo.py)."""
-    return {k: v for k, v in root.items() if k not in OWN}, mk.project_rows()
+clock = block_clock.clock      # what a note's or hit's block reads besides its own item (block_clock.py)
 
 
 def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]:

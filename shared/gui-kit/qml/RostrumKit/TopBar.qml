@@ -10,7 +10,9 @@ import "."
 // other. The room is handed out in this order: 1. the chips at full width (else dot and count: `chipsNarrow`, which an
 // app chip may read too), 2. the message whole (or none of it) in its fixed slot, which never moves anything, 3. the command box (280 px, then 150, then its search
 // icon), 4. the document tab beyond 160 px. A message that is not whole with the full count first drops the count to
-// "Saved" (the count moves into Saved's hover); still too long, it steps aside: Saved's hover says it, History keeps it.
+// "Saved" (the count moves into Saved's hover); a longer one takes the command box's room and the tab's (the box folds to
+// its button) until the next message, and still too long it is said on two lines. Never dropped: only a window too
+// narrow even for two lines leaves it to Saved's hover (and History).
 // While the agent chip shows, the message is not shown: the agent's words are in the chip's dropdown.
 // The change count opens History (historyClicked, and bridge.agent.askHistory, which a kit AppShell listens to).
 Item {
@@ -94,18 +96,25 @@ Item {
     // handed out by priority: the chips first, then the whole message, then the command box, then the tab
     readonly property bool chipsNarrow: room < chipsExtra
     readonly property real afterChips: room - (chipsNarrow ? 0 : chipsExtra)
-    // the message with what follows it (Play · Show in folder after an export), whole or not at all. It has a FIXED slot
-    // (`messageSlot`, there whether or not a message shows), so a message coming or going never moves the command
+    // the message with what follows it (Play · Show in folder after an export), whole, never cut. It has a FIXED slot
+    // (`messageSlot`, there whether or not a message shows), so a usual message coming or going never moves the command
     // box, the chips or Export: the slot is what is left after the command box's own minimum (150), at most 320 px.
-    readonly property real messageNeed: bridge && bridge.status && !agentShown
-                                        ? message.implicitWidth + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
-    // A failure longer than that must still be read where it happened (fail loudly): it takes the command box's room
-    // (the box folds to its button) and the tab's, until the next message.
-    readonly property bool failureWide: bridge && bridge.statusFailed && messageNeed > 320
-    readonly property real messageSlot: Math.max(0, failureWide ? Math.min(messageNeed, afterChips - sp)
+    readonly property string messageText: bridge && bridge.status && !agentShown ? bridge.status : ""
+    TextMetrics { id: messageOneLine; font: message.font; text: bar.messageText }
+    readonly property real messageNeed: messageText ? Math.ceil(messageOneLine.advanceWidth) + (doneLinks ? Theme.gap + links.implicitWidth : 0) : 0
+    // A message longer than that (a refusal, a failure) must still be read where it happened: it takes the command box's
+    // room (the box folds to its button) and the tab's, until the next message.
+    readonly property bool messageWide: messageNeed > 320
+    readonly property real messageSlot: Math.max(0, messageWide ? Math.min(messageNeed, afterChips - sp)
                                                                 : Math.min(320, afterChips - (150 - Theme.button) - sp))
     readonly property real countSaving: countShort.text !== "" ? countFull.advanceWidth - countShort.advanceWidth : 0
-    readonly property bool messageShown: messageNeed > 0 && messageSlot > 0 && messageNeed <= messageSlot + countSaving
+    readonly property bool messageOneFits: messageNeed > 0 && messageSlot > 0 && messageNeed <= messageSlot + countSaving
+    // still too long for one line in that room: two lines (the bar holds two at the label size), whole words
+    readonly property bool messageWraps: messageNeed > 0 && messageSlot > 0 && !messageOneFits && !doneLinks
+                                         && twoLines.lineCount <= 2 && twoLines.implicitHeight <= height - 4
+    Text { id: twoLines; visible: false; width: bar.messageSlot + bar.countSaving; wrapMode: Text.WordWrap
+           text: bar.messageText; font: message.font; lineHeight: message.lineHeight }
+    readonly property bool messageShown: messageOneFits || messageWraps
     readonly property bool countShortened: messageShown && messageNeed > messageSlot     // "Saved" alone, for the message
     readonly property real afterMessage: afterChips - (messageSlot > 0 ? sp + messageSlot : 0)
     readonly property real commandWidth: afterMessage >= 150 - Theme.button ? Math.min(280, Theme.button + afterMessage) : Theme.button
@@ -182,11 +191,13 @@ Item {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.gap
                 visible: bar.messageShown     // (not message.visible: a child's reads its parent's)
-                Text {  // the last thing that happened (or what failed): whole or not at all, never "…"
+                Text {  // the last thing that happened (or what failed): whole on one line or two, never "…"
                     id: message
                     visible: bar.messageShown
                     anchors.verticalCenter: parent.verticalCenter
-                    text: bar.bridge.status || ""
+                    width: bar.messageWraps ? twoLines.width : implicitWidth
+                    wrapMode: bar.messageWraps ? Text.WordWrap : Text.NoWrap; lineHeight: 0.95
+                    text: bar.messageText
                     color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
                     font.family: uiFont; font.pixelSize: Theme.label
                 }

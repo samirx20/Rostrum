@@ -505,10 +505,11 @@ the agent's `inspect_tools`.
 - **When the top bar runs short**, nothing is cut with "…" and nothing slides under anything. The room goes out by
   priority:
   1. the chips (else each shows only its dot and count);
-  2. the message, **whole or not at all**. If it doesn't fit beside "Saved · 14 changes", the count steps back to
-     "Saved" (hover says "14 changes"). If it still doesn't fit, the message steps aside: hover on "Saved" says it,
-     and History keeps it. **A failure never steps aside** (it must be read where it happened): a red message too
-     long for its slot takes Search's room and the name's (Search folds to its icon) until the next message;
+  2. the message, **whole, never cut and never dropped**. If it doesn't fit beside "Saved · 14 changes", the count
+     steps back to "Saved" (hover says "14 changes"). A message too long for its slot (a refusal, a failure: it must be
+     read where it happened) takes Search's room and the name's (Search folds to its icon) until the next message;
+     still too long, it is said on two lines. Only a window too narrow even for that leaves it to the hover on
+     "Saved" (and History);
   3. Search (else its icon);
   4. the project name beyond its first 160 px (the scene name never shortens).
 - **Never shrunk or hidden:** "Saved" (the door to History), ↶ ↷, Export, ?.
