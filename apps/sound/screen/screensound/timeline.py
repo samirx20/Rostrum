@@ -10,13 +10,15 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from rostrum_sound import clean_clips, names, voice_lines
+from rostrum_sound import clean_clips, names, roles, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
 from rostrum_sound.doc import meter
 
 from . import groups, lanes, music_map, pick, timing
+from . import block_memo
+from .block_memo import BlockMemo
 from .handles import level_y
 
 # no blues: blue is the selection (Theme.accent)
@@ -138,11 +140,13 @@ def layered(clips: list[dict]) -> list[dict]:
     return clips
 
 
-def blocks(track: dict, root: dict) -> list[dict]:
+def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]:
+    """A track's blocks: notes, hits, clips, voice lines. `memo`: notes and hits not changed since are not made again
+    (block_memo.py; the blocks are then shared: never changed in place)."""
     clips = layered([{**clip_block(c, root), **({"group": c["group"]} if c.get("group") else {})}
                      for c in track.get("clips", [])])
-    return ([note_block(n, root) for n in track.get("notes", [])]
-            + [hit_block(h, root) for h in track.get("hits", [])]
+    return (block_memo.made(memo, (track["id"], "notes"), track.get("notes", []), lambda n: note_block(n, root))
+            + block_memo.made(memo, (track["id"], "hits"), track.get("hits", []), lambda h: hit_block(h, root))
             + clips
             + [line_block(track, ln, root) for ln in track.get("lines", [])])
 
@@ -192,11 +196,13 @@ def rows(root: dict, open_lanes: dict | None = None, folded=frozenset()) -> list
     return arrange(root, track_rows(root, open_lanes), open_lanes, folded)
 
 
-def track_rows(root: dict, open_lanes: dict | None = None, made: dict | None = None) -> list[dict]:
+def track_rows(root: dict, open_lanes: dict | None = None, made: dict | None = None,
+               memo: BlockMemo | None = None) -> list[dict]:
     """Every track's row in song order. `made` (track id -> row): rows still current, taken as they are (a drag's
-    step makes again only the tracks it changed, stepped.py)."""
+    step makes again only the tracks it changed, stepped.py); `memo`: in a row made again, only its changed notes
+    and hits are (block_memo.py)."""
     made, open_lanes = made or {}, open_lanes or {}
-    return [made.get(t["id"]) or track_row(t, i, root, open_lanes) for i, t in enumerate(root.get("tracks", []))]
+    return [made.get(t["id"]) or track_row(t, i, root, open_lanes, memo) for i, t in enumerate(root.get("tracks", []))]
 
 
 def arrange(root: dict, tracks: list[dict], open_lanes: dict | None, folded) -> list[dict]:
@@ -204,18 +210,20 @@ def arrange(root: dict, tracks: list[dict], open_lanes: dict | None, folded) -> 
     return groups.arrange(root, tracks, lanes.mix_rows(root, open_lanes or {}), folded)
 
 
-def track_row(t: dict, i: int, root: dict, open_lanes: dict) -> dict:
+def track_row(t: dict, i: int, root: dict, open_lanes: dict, memo: BlockMemo | None = None) -> dict:
     """A track's row: name, hue, mute / solo, kind, header icon, and its blocks with lanes 0..1 (top to
     bottom: notes by pitch, one per key of a chord; hits by drum row) so a row reads like a small piano roll."""
-    bl = blocks(t, root)
+    bl = blocks(t, root, memo)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
     lo, hi = (min(ks), max(ks)) if ks else (60, 60)
     drums = drums_of(t)
-    for b in bl:
+
+    def laned(b):                        # a new dict: a block from the memo is shared with the roll
         if b["type"] == "note":
-            b["lanes"] = [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]
-        elif b["type"] == "hit":
-            b["lanes"] = [drums.index(b["drum"]) / max(len(drums) - 1, 1)]
+            return {**b, "lanes": [0.5 if hi == lo else 1 - (k - lo) / (hi - lo) for k in b["keys"]]}
+        return {**b, "lanes": [drums.index(b["drum"]) / max(len(drums) - 1, 1)]}
+    timed = [b for b in bl if b["type"] in ("note", "hit")]       # first in `bl` (blocks): the order stays
+    bl = block_memo.made(memo, (t["id"], "lanes"), timed, laned, (lo, hi, tuple(drums))) + bl[len(timed):]
     pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
     return {"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
             "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
@@ -237,11 +245,8 @@ EMPTY_BARS = 8              # a song always has room for at least this many bars
 SPARE_BARS = 2              # and, once it has sound, this many empty bars after the last sound
 
 
-def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None) -> dict:
-    """The grid and length: what the ruler draws. Without a set length: room to write: the last sound rounded up
-    to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s).
-    `made`: the track rows already made (track_rows: their blocks are these; nothing is made twice); `marks`: the
-    markers already read (`markers`: they read the project's shared markers)."""
+def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None) -> float:
+    """The song's length on the screen (`song`'s): everything else `song` holds follows the tempo, meter and keys."""
     every = [r["blocks"] for r in made] if made is not None else [blocks(t, root) for t in root.get("tracks", [])]
     ends = [b["t"] + b["dur"] for bl in every for b in bl]
     ends += [m["t"] for m in (markers(root) if marks is None else marks)] + [s["end"] for s in music_map.sections(root)]
@@ -250,20 +255,35 @@ def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = 
         length = timing.sec(root["length"], root)
     else:
         length = max(EMPTY_BARS, math.ceil(max(ends, default=0) / bar) + SPARE_BARS) * bar
-    length = max(length, 1.0)
+    return max(length, 1.0)
+
+
+def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None) -> dict:
+    """The grid and length: what the ruler draws. Without a set length: room to write: the last sound rounded up
+    to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s).
+    `made`: the track rows already made (track_rows: their blocks are these; nothing is made twice); `marks`: the
+    markers already read (`markers`: they read the project's shared markers)."""
+    length = song_length(root, made, marks)
     return {"length": length, "spb": timing.spb(root), "beatsPerBar": meter.start_per_bar(root),
             "beatUnit": meter.start_unit(root), "barBeats": meter.start_bar(root),
             "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
 
 
-def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain", keep: tuple | None = None) -> dict:
+def _sounds_best(track: dict) -> list[int]:
+    """An empty track's roll opens on where its sound sounds best (roles.py: Sub bass E1-G3), else around middle C."""
+    r = roles.ROLES.get(roles.key(track) or "")
+    return [K.midi(r.low), K.midi(r.high)] if r and r.low else [60]
+
+
+def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain", keep: tuple | None = None,
+         memo: BlockMemo | None = None) -> dict:
     """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
     or the drum rows, its blocks, and (notes) its playing lane `play_lane` (sustain, expression or bend). `keep` =
     (lo, hi) the keys already shown: the range only grows from it, so an edit never slides the rows under the pointer."""
     if track is None:
         return {"id": "", "name": "", "kind": "none", "blocks": [], "lo": 48, "hi": 72, "rowNames": [], "drums": [], "hue": hue}
-    bl = blocks(track, root)
-    ks = [k for b in bl if b["type"] == "note" for k in b["keys"]] or [60]
+    bl = blocks(track, root, memo)
+    ks = [k for b in bl if b["type"] == "note" for k in b["keys"]] or _sounds_best(track)
     lo, hi = min(ks) - 4, max(ks) + 4
     if keep:                       # the keys already shown stay: the first note drawn in them adds no key row
         lo, hi = min(lo, keep[0]), max(hi, keep[1])

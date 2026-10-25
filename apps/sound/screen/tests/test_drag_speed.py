@@ -11,13 +11,23 @@ def full(b):
     return timeline.rows(root, b._open, b._folded), timeline.song(root)
 
 
+def shown(b):
+    """What the screen holds against a fresh build: the rows, the song, and the roll's blocks (the blocks a step
+    reuses are each note's own, block_memo.py: one left stale would show a note where it no longer is)."""
+    track = b.doc.item(b._track)
+    return ((b._view["rows"], b._view["song"], b._view["roll"]["blocks"])
+            == (*full(b), timeline.blocks(track, b.doc.data)))
+
+
 def test_a_drag_step_shows_what_a_full_rebuild_shows(bridge):  # noqa: F811
     assert bridge.beginDrag(A)
     for dt in (0.4, 1.1, 2.3):
         bridge.dragTo(dt, 2, True, False, False, 0.0)
-        assert (bridge._view["rows"], bridge._view["song"]) == full(bridge)
+        assert shown(bridge)
     bridge.endDrag()
-    assert (bridge._view["rows"], bridge._view["song"]) == full(bridge)
+    assert shown(bridge)
+    bridge.undo()                                    # the note comes back where it was: so does its block
+    assert shown(bridge)
 
 
 def test_no_render_while_dragging_and_one_on_release(bridge):  # noqa: F811

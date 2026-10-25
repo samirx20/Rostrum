@@ -14,6 +14,7 @@ on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
 from __future__ import annotations
 
 from . import block_patch, lanes, stepped, timeline, voice_card, voice_takes
+from .block_memo import BlockMemo
 
 
 MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
@@ -27,6 +28,13 @@ def shape(part: dict) -> dict:
 
 
 class RowsView:
+    @property
+    def _memo(self) -> BlockMemo:
+        """Each note's and hit's block, made once while it stays the same item (block_memo.py)."""
+        if "_memo_" not in self.__dict__:
+            self.__dict__["_memo_"] = BlockMemo()
+        return self.__dict__["_memo_"]
+
     def _send_rows(self, rows, before):
         """The row model's rows (the layout and the blocks as two roles, so a block change signals only `blocks`);
         a small block change goes as a patch instead (block_patch.py). `before`: the rows the screen shows (None:
@@ -55,7 +63,8 @@ class RowsView:
     def _rebuild(self):
         root = self.doc.data
         self._open = self._lanes_now()
-        tracks = timeline.track_rows(root, self._open)
+        self._memo.clear()                        # the song's times or keys may have moved: every block is made again
+        tracks = timeline.track_rows(root, self._open, memo=self._memo)
         rows = timeline.arrange(root, tracks, self._open, self._folded)
         self._marks_on(rows)
         self._made, self._shown = {t["id"]: t for t in tracks}, root
@@ -87,16 +96,15 @@ class RowsView:
         if changed is None or (change and self._lanes_now() != self._open):
             return self._rebuild()
         made = {k: v for k, v in self._made.items() if k not in changed}
-        tracks = timeline.track_rows(root, self._open, made)
+        tracks = timeline.track_rows(root, self._open, made, self._memo)
         rows = timeline.arrange(root, tracks, self._open, self._folded)
         self._marks_on([t for t in tracks if t["id"] in changed])
         self._made, self._shown = {t["id"]: t for t in tracks}, root
         before = self._view["rows"]
         same = rows == before                         # a fader or a pan moves no row: the screen is told nothing
         self._view["rows"] = rows
-        song = timeline.song(root, tracks, self._view["markers"])
-        if song != self._view["song"]:
-            self._view["song"] = song
+        if timeline.song_length(root, tracks, self._view["markers"]) != self._view["song"]["length"]:
+            self._view["song"] = timeline.song(root, tracks, self._view["markers"])   # the rest follows the tempo
             self._tv.setLength(self._length())
             self.songChanged.emit()
         if same:
@@ -137,7 +145,8 @@ class RowsView:
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
         span = self._span
-        roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None)
+        roll = timeline.roll(track, root, hue, self._play_lane, keep=span[1:] if span[0] == self._track else None,
+                             memo=self._memo)
         if roll["kind"] == "notes":
             self._span = (self._track, roll["lo"], roll["hi"])      # the keys shown only grow while the track stays open
         self._marks_on([roll])
