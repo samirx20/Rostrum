@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache
+from operator import itemgetter
 
 from rostrum_sound import clean_clips, names, roles, voice_lines
 from rostrum_sound.doc import keys as K
@@ -80,13 +81,36 @@ def in_beats(item: dict, length=None) -> dict:
     return {"atBeat": b, "endBeat": b + float(length["beats"])} if type(length) is dict and "beats" in length else {}
 
 
-def note_block(n, root):
-    ks = timing.keys(n["pitch"])
+NOTE_OWN = ("id", "type", "keys", "vel")        # what a note's block reads from the note alone (placed_note: the rest)
+
+
+@lru_cache(maxsize=4096)
+def spelled(ks: tuple, key) -> dict:
+    """The names (and label) of the keys `ks` in `key` (Bb in D minor, not A#) and which are out of it. Shared by
+    every block of that chord in that key: a block is never changed in place."""
+    names = [timing.name(k, key) for k in ks]
+    return {"names": names, "label": " ".join(names), "out": [not in_key_then(k, key) for k in ks]}
+
+
+def placed_note(own: dict, n: dict, root: dict) -> dict:
+    """A note's block: `own` (NOTE_OWN) placed on the song: its time in beats, its seconds, the key playing there."""
     t = timing.sec(n["at"], root, n["id"])
-    key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
-    label = " ".join(timing.name(k, key) for k in ks)
-    return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8),
-            "out": [not in_key_then(k, key) for k in ks], **in_beats(n, n["dur"])}
+    return {**own, "t": t, "dur": timing.length_sec(n["dur"], root, t, n),
+            **spelled(tuple(own["keys"]), K.key_at(root, t)), **in_beats(n, n["dur"])}
+
+
+def note_block(n, root):
+    return placed_note({"id": n["id"], "type": "note", "keys": timing.keys(n["pitch"]), "vel": n.get("vel", 0.8)}, n, root)
+
+
+def again(root):
+    """A note's block made before (for this note, or for it before it moved), placed on the song as it is now
+    (block_memo.made's `again`): its pitch is not read again (about a quarter of making it; a hit's block is quicker
+    to make than to copy, so hits are made). Everything the song gives it is read again: it equals note_block's."""
+    return lambda n, b: placed_note(dict(zip(NOTE_OWN, _own(b))), n, root)
+
+
+_own = itemgetter(*NOTE_OWN)
 
 
 def hit_block(h, root):
@@ -170,7 +194,7 @@ def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]
                      for c in track.get("clips", [])])
     notes = track.get("notes", [])
     held = block_memo.Same(notes) if any(n.get("dur") == times.NEXT for n in notes) else None   # reads its neighbours
-    return (block_memo.made(memo, (track["id"], "notes"), notes, lambda n: note_block(n, root), held)
+    return (block_memo.made(memo, (track["id"], "notes"), notes, lambda n: note_block(n, root), held, again(root))
             + block_memo.made(memo, (track["id"], "hits"), track.get("hits", []), lambda h: hit_block(h, root))
             + clips
             + [line_block(track, ln, root) for ln in track.get("lines", [])])

@@ -54,10 +54,11 @@ class Facts:
 
 
 def _items(f):
+    locs = f.doc.locs()
     items = [f.doc.item(i) for i in f.ids]
     kinds = {it["type"] for it in items}
     one = next(iter(kinds)) if len(kinds) == 1 else ""
-    return items, kinds, one, {f.doc.parent_of(i)[0] for i in f.ids if one != "track"}
+    return items, kinds, one, (set() if one == "track" else {locs[i].parent for i in f.ids})
 
 
 def _by_kind(items, kinds) -> dict[str, list[str]]:

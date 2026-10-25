@@ -24,6 +24,24 @@ from . import pointer_quiet
 TICK_MS = 300
 
 
+class Later:
+    """A part of the screen state made on the link's own thread, only when it is written: `key` says when it changed
+    (compared with ==; hold what it names, so an id in it stays that object's), `make()` the value (it reads only
+    what never changes in place: a song's items, its data). Naming 3,000 selected notes on the screen's thread cost
+    ~40-70 ms each time the selection changed."""
+    __slots__ = ("key", "make")
+
+    def __init__(self, key, make):
+        self.key, self.make = key, make
+
+    def __eq__(self, other):
+        return isinstance(other, Later) and other.key == self.key
+
+
+def _write(folder, item, app, state):
+    screen_state.write(folder, item, app, {k: v.make() if isinstance(v, Later) else v for k, v in state.items()})
+
+
 class LiveLink(QObject):
     def __init__(self, bridge, app: str, state_fn, parent=None):
         super().__init__(parent or bridge)
@@ -51,7 +69,7 @@ class LiveLink(QObject):
                 done.result()                     # a failed write raises here, on the screen's thread
             state = self.state_fn(self.bridge)
             if state != self._said:               # written on the link's own thread (a file write on a pick: ~2-4 ms)
-                self._written = self._writer.submit(screen_state.write, doc.folder, doc.item_id, self.app, state)
+                self._written = self._writer.submit(_write, doc.folder, doc.item_id, self.app, state)
                 self._said = state
         except (RostrumError, OSError) as e:      # loud, once per failure, and the window keeps working
             line = e.line() if isinstance(e, RostrumError) else f"Error: what the screen shows could not be written for agents: {e}"

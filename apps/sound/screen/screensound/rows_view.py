@@ -57,16 +57,15 @@ class RowsView(RollView):
         if self.doc.data is not self._shown:      # (the drop or a cancel may have drawn it already)
             self._rebuild()
 
-    def _send_rows(self, rows, before):
+    def _send_rows(self, rows):
         """The row model's rows (the layout and the blocks as two roles, so a block change signals only `blocks`);
-        a small block change goes as a patch instead (block_patch.py). `before`: the rows the screen shows (None:
-        every row whole, as after tracks came, went or moved)."""
-        held, patches, resets = self._held.send(rows, before)
+        a block change goes as a patch instead (block_patch.py; rows that came, went or moved: whole)."""
+        held, patches, resets = self._held.send(rows)
         self._lanes.update([{"id": r["id"], "track": shape(r), "blocks": held[r["id"]]} for r in rows], instant=True)
         for k in resets:
             self.blocksReset.emit(k)
-        for k, gone, put in patches:
-            self.blocksPatched.emit(k, gone, put)
+        for k, p in patches:
+            self.blocksPatched.emit(k, p)
 
     def rows_now(self) -> list[dict]:
         """The arrangement's rows with their blocks, as made (QML's `tracks` is their layout only)."""
@@ -110,7 +109,7 @@ class RowsView(RollView):
         if marks != old.get("markers"):
             self.markersChanged.emit()
         self._place_by(song)
-        self._send_rows(rows, None)                 # after: `tracks` is new for the rows made
+        self._send_rows(rows)                       # after: `tracks` is new for the rows made
         self._send_roll(self._roll(rows))           # its blocks, then its layout, each only when it changed
 
     def _drag_step(self, change=False):
@@ -152,7 +151,7 @@ class RowsView(RollView):
         if laid != self._view["shape"]:
             self._view["shape"] = laid
             self.timelineChanged.emit()
-        self._send_rows(rows, before)
+        self._send_rows(rows)
         if self._track in changed:
             self._send_roll(self._roll(rows))
 

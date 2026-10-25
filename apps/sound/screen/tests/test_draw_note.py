@@ -62,12 +62,12 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
     role = lambda: json.loads(m.data(m.index(row), m._ids["blocks"]))   # noqa: E731  the row model's "blocks" role (JSON text)
     roll = lambda: json.loads(bridge.rollBlocks)                         # noqa: E731
     screen = {"row": role(), "roll": roll()}
-    def patch(k, gone, put):
-        screen[k] = apply(screen[k], gone, put)
+    def patch(k, text):
+        screen[k] = apply(screen[k], json.loads(text))
     m.dataChanged.connect(lambda *_: screen.update(row=role()))
-    bridge.blocksPatched.connect(lambda k, g, p: k == "lead" and patch("row", g, p))
+    bridge.blocksPatched.connect(lambda k, p: k == "lead" and patch("row", p))
     bridge.blocksReset.connect(lambda k: k == "lead" and screen.update(row=role()))
-    bridge.rollPatched.connect(lambda g, p: patch("roll", g, p))
+    bridge.rollPatched.connect(lambda p: patch("roll", p))
     bridge.rollBlocksChanged.connect(lambda: screen.update(roll=roll()))
     for s in ("timelineChanged", "rollChanged"):
         getattr(bridge, s).connect(lambda s=s: heard.append(s))
@@ -77,7 +77,9 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
         truth = next(r for r in bridge.rows_now() if r["id"] == "lead")["blocks"]
         assert key(screen["row"]) == key(truth) and key(screen["roll"]) == key(bridge._view["roll"]["blocks"])
         by = {b["id"]: b for b in screen["roll"]}          # the velocity readout's blocks: the selected ones, as shown
-        assert bridge.rollPicked == [by[i] for i in bridge.selectedIds if i in by]
+        from screensound import velocity           # the velocity readout: the selected ones, as shown
+        want = velocity.readout([{**by[i], "t": bridge._roll_by[i]["t"]} for i in bridge.selectedIds if i in by])
+        assert bridge.rollPicked == want
     nid = bridge.drawAt(1.0, 62)
     bridge.endDrag()
     same()
@@ -90,4 +92,15 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
     same()
     assert nid not in {b["id"] for b in screen["roll"]}
     bridge.redo()
+    same()
+    many = [i["id"] for i in bridge.doc.item("lead")["notes"]]     # every note of the row: one group "moved by"
+    bridge.selectMany(many)
+    assert bridge.nudge("grid", 1)
+    same()
+    bridge.undo()
+    same()
+    with bridge.doc.gesture("Repeat", bridge.who) as g:            # a preview taken back (Esc): its exact inverse
+        g.preview([{"op": "note.duplicate", "target": many, "args": {"times": 3}}])
+        same()
+        g.cancel()
     same()

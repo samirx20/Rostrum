@@ -3,10 +3,16 @@
 The document is never changed in place (rostrum_core.edits.fork): an item an edit did not touch is the very same
 dict afterwards. So a block made from an item stays right for as long as that item is the same object and the
 song's clock stays as it was: everything a block reads besides its own item (the tempo, meter, keys, markers …,
-timeline.clock). `follow(clock)` empties the memo when the clock moved; a change that only adds, removes or reorders
+timeline.clock). When the clock moved (`follow`), nothing held is handed out as it was any more; a change that only adds, removes or reorders
 tracks keeps every other track's blocks (adding a track to a 3-minute song made all ~1,600 again: ~75 ms). Before
 the memo, every click on a 400-note song made all of the track's blocks twice (its row and the Editor's roll), and
 the cost grew with the song.
+
+A block is two parts: what it reads from its item alone (pitch, velocity, drum, its time in beats …) and where the
+song places it (its seconds, the key playing there). `made(..., again=)` lets the second part be worked out again on
+the first: when the clock moved (a tempo dragged and let go), every block held is re-placed, not made from nothing; a
+note moved (the same id, only its `at` changed: a whole-song Right, its undo) is its old block re-placed. `again`
+reads everything the song gives the block again, so the result is the block `make` would give (test_block_memo.py).
 
 A memo holds, per (track id, part), the items it was last asked for and their blocks (the items kept, so an id is
 never reused by another item while it is held). An edit forks only the lists it changed, and in them only the items
@@ -38,9 +44,10 @@ class BlockMemo:
     def __init__(self):
         self._parts: dict = {}
         self._clock = None
+        self._stale: set = set()        # parts held from before the clock moved: re-placed (`again`) or made again
 
     def clear(self):
-        self._parts, self._clock = {}, None
+        self._parts, self._clock, self._stale = {}, None, set()
 
     def keeps(self, clock) -> bool:
         """The blocks held are still right under `clock` (follow would keep them)."""
@@ -48,32 +55,60 @@ class BlockMemo:
 
     def follow(self, clock, tracks) -> bool:
         """Keep the blocks while the song's clock is the same (compared by value: an untouched part is the same
-        object, so this is one pass over the song's top level), else empty the memo; parts of tracks no longer in
-        `tracks` (ids) are dropped. True when the blocks were kept."""
+        object, so this is one pass over the song's top level), else mark every block held stale (re-placed or made
+        again when next asked for); parts of tracks no longer in `tracks` (ids) are dropped. True when the blocks were
+        kept."""
         kept = self.keeps(clock)
-        self._parts = {k: v for k, v in self._parts.items() if k[0] in tracks} if kept else {}
+        self._parts = {k: v for k, v in self._parts.items() if k[0] in tracks}
+        self._stale = self._stale & self._parts.keys() if kept else set(self._parts)
         self._clock = clock
         return kept
 
-    def made(self, part, items, make, key=None) -> list[dict]:
-        """`make(item)` for each item, except those of the last call for `part` that are the same object (and `key`)."""
+    def made(self, part, items, make, key=None, again=None) -> list[dict]:
+        """`make(item)` for each item, except those of the last call for `part` that are the same object (and `key`).
+        `again(item, block)`: `block` (made for this item, or for the same note before it moved) placed on the song
+        as it is now: used for the items held from before the clock moved, and for a moved item."""
         held = self._parts.get(part)
-        if held is None or not held[2] == key:
+        stale = part in self._stale
+        self._stale.discard(part)
+        if held is None or not held[2] == key or (stale and again is None):
             out = [make(x) for x in items]
-        elif held[0] is items:
+        elif held[0] is items and not stale:
             return held[1]
+        elif held[0] is items:
+            out = list(map(again, items, held[1]))
         else:
             was, blocks = held[0], held[1]
             a, b = same_ends(items, was)
-            old = {id(x): bl for x, bl in zip(was[a:len(was) - b], blocks[a:len(blocks) - b])}
-            mid = [old.get(id(x)) or make(x) for x in items[a:len(items) - b]]
-            out = blocks[:a] + mid + blocks[len(blocks) - b:]
+            if stale:
+                head = list(map(again, items[:a], blocks[:a]))
+                tail = list(map(again, items[len(items) - b:], blocks[len(blocks) - b:]))
+            else:
+                head, tail = blocks[:a], blocks[len(blocks) - b:]
+            out = head + self._middle(items[a:len(items) - b], was[a:len(was) - b], blocks[a:len(blocks) - b],
+                                      make, again, stale) + tail
         self._parts[part] = (items, out, key)
+        return out
+
+    @staticmethod
+    def _middle(items, was, blocks, make, again, stale) -> list[dict]:
+        """The blocks of the items between the lists' same ends: an item held as it was keeps its block (re-placed
+        when stale); one moved (same id, only `at` changed) is its old block re-placed; any other is made."""
+        old = {x.get("id"): (x, bl) for x, bl in zip(was, blocks)}
+        out = []
+        for x in items:
+            got = old.get(x.get("id"))
+            if got is None:
+                out.append(make(x))
+            elif got[0] is x:
+                out.append(again(x, got[1]) if stale else got[1])
+            else:
+                out.append(again(x, got[1]) if again is not None and moved(got[0], x) else make(x))
         return out
 
     def tally(self, part, items, key_of) -> Counter:
         """How many of `items` have each `key_of(item)` (a drum track's drums), counted again only for the items
-        the edit changed (the lists' same ends are the same items)."""
+        the edit changed (the lists' same ends are the same items; a count reads no clock)."""
         held = self._parts.get(part)
         if held is not None and held[0] is items:
             return held[1]
@@ -86,12 +121,14 @@ class BlockMemo:
             c.update(map(key_of, items[a:len(items) - b]))
             c = +c                                      # (a key no item has any more is gone)
         self._parts[part] = (items, c)
+        self._stale.discard(part)
         return c
 
     def last_end(self, part, blocks) -> float:
         """Where the last of `blocks` ends (0 for none), worked out again only from the blocks the edit changed
         (all of them only when one that ended last went or moved)."""
-        held = self._parts.get(part)
+        held = None if part in self._stale else self._parts.get(part)
+        self._stale.discard(part)
         if held is not None and held[0] is blocks:
             return held[1]
         end = lambda x: x["t"] + x["dur"]                   # noqa: E731
@@ -104,6 +141,12 @@ class BlockMemo:
         e = max(map(end, blocks), default=0.0)
         self._parts[part] = (blocks, e)
         return e
+
+
+def moved(old: dict, new: dict) -> bool:
+    """`new` is `old` moved: the same id, and nothing but its `at` changed (an edit keeps every other value the very
+    same object)."""
+    return old.get("id") == new.get("id") and {**new, "at": 0} == {**old, "at": 0}     # (in C: values `is` first)
 
 
 class Same:
@@ -120,6 +163,6 @@ class Same:
     __hash__ = None
 
 
-def made(memo: BlockMemo | None, part, items, make, key=None) -> list[dict]:
+def made(memo: BlockMemo | None, part, items, make, key=None, again=None) -> list[dict]:
     """The blocks of `items` (through the memo when there is one)."""
-    return [make(x) for x in items] if memo is None else memo.made(part, items, make, key)
+    return [make(x) for x in items] if memo is None else memo.made(part, items, make, key, again)
