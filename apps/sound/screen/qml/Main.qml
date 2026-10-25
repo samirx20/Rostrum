@@ -66,11 +66,17 @@ AppShell {
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
-        LoudnessReadout { visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter },
-        Button { visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
-                 anchors.verticalCenter: parent.verticalCenter
-                 onClicked: mixer.export.setOpen(!mixer.export.open)
-                 HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
+        Item {   // the chip's place is held too (an empty song leaves it empty), as Export's
+            width: loudness.slotWidth; height: Theme.button
+            LoudnessReadout { id: loudness; visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter }
+        },
+        Item {   // Export's place is always held (an empty song leaves it empty), so it showing never moves the bar's other items
+            width: exportButton.implicitWidth; height: Theme.button
+            Button { id: exportButton; visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open
+                     anchors.verticalCenter: parent.verticalCenter
+                     onClicked: mixer.export.setOpen(!mixer.export.open)
+                     HoverTip { text: "Export the song (Ctrl+E). Ctrl+Shift+E exports again with the last settings"; hovered: parent.hovered } }
+        }
     ]
     left: Library { anchors.fill: parent; visible: shell.wide && workspace.library; onUsed: shell.used() }
     centre: [

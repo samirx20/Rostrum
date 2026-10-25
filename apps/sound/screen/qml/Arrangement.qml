@@ -88,7 +88,7 @@ Rectangle {
             Item { visible: backend.picture !== ""; width: Theme.gap; height: 1 }
             Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
                 id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
-                text: "Grid " + (backend.gridChoices.find(c => c.value === backend.grid) || {label: ""}).label; chevron: true
+                text: "Grid " + backend.gridLabel; chevron: true
                 onClicked: { const p = gridBtn.mapToItem(null, 0, gridBtn.height + 2); gridMenu.openAt(p.x, p.y) }
                 HoverTip { text: "The grid notes, clips and ranges snap to (Auto follows the zoom)"; hovered: parent.hovered && !gridMenu.visible }
                 ActionMenu { id: gridMenu; entries: backend.gridChoices; onPicked: (v) => backend.setGrid(v) }

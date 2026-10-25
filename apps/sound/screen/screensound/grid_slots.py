@@ -29,6 +29,16 @@ class GridSlots:
     def grid(self):
         return self._grid_now.value
 
+    @Property(str, notify=gridChanged)
+    def gridLabel(self):
+        """The Grid button's words: the step chosen; for Auto, the step Auto is on at this zoom ("Auto · 1/8"), read from
+        the same Grid the drawing and snapping use."""
+        g = self._grid_now
+        if g.value != "auto":
+            return WORDS[g.value]
+        name = next((v for v in ("1/32", "1/16", "1/8", "beat", "1/2") if Grid.STEPS[v] == g.auto_beats), "bar")
+        return f"Auto · {WORDS[name]}"
+
     @Property(bool, notify=gridChanged)
     def snapOn(self):
         return self._grid_now.on

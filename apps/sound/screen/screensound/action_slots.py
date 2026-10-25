@@ -215,8 +215,10 @@ class ActionSlots:
         return out + block_menu.clip_entries(self.doc, item_id, t, swap)
 
     @Slot(str, float, result="QVariantList")
-    def atMenu(self, track_id, t):
-        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time."""
+    @Slot(str, float, float, result="QVariantList")
+    def atMenu(self, track_id, t, px=0.0):
+        """Right-click on empty lane space (a track) or on the ruler (""): what can be done at that time (`px`: one
+        screen pixel in seconds, so a section starts on a line within a few px, as a range drawn on the ruler does)."""
         t, out = round(t, 4), []
         if track_id:
             out.append({"value": "at:addtrack:0", "label": "Add track…", "keys": "Ctrl+L", "group": "here"})
@@ -226,7 +228,7 @@ class ActionSlots:
         if track_id:
             out.append({"value": f"at:all:{track_id}", "label": "Select all on this track", "keys": "", "group": "select"})
         else:
-            out.append({"value": f"at:section:{t}", "label": "Make a section from here", "keys": "", "group": "here"})
+            out.append({"value": f"at:section:{t}:{px:.6g}", "label": "Make a section from here", "keys": "", "group": "here"})
             out.append({"value": "at:seconds:0", "label": "Hide seconds" if self.workspace.seconds else "Show seconds",
                         "keys": "", "group": "view"})
         return out
@@ -249,10 +251,11 @@ class ActionSlots:
         if what == "seconds":
             self.workspace.toggleSeconds()
             return True
-        t = float(parts[-1])
         if what == "marker":
-            return self.markerAt(t)
-        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, False, self._grid_now), self._length()))
+            return self.markerAt(float(parts[-1]))
+        t, px = float(parts[2]), float(parts[3]) if len(parts) > 3 else 0.0     # a section: starts as a drawn range's start does
+        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, self.workspace.seconds, self._grid_now, "start", px),
+                                       self._length()))
         return self._act(C.section(f), "Make a section")
 
     @Slot(str)
