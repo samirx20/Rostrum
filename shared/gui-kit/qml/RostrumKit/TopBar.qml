@@ -48,6 +48,7 @@ Item {
     signal historyClicked()
     implicitHeight: Theme.topBar
     function openHelp() { helpMenu.openFrom(help, "right") }
+    function openProblems() { if (problemsChip.n > 0) problemsChip.openList() }       // Ctrl+K's "Problems"
     function openHistory(session) {
         historyFocus = session || ""
         historyClicked()

@@ -95,5 +95,5 @@ Item {
         }
     }
 
-    Shortcut { sequences: ["Return", "Enter", "Escape"]; enabled: ov.pen.on; onActivated: { ov.pen.finish(); ov.pen.setOn(false) } }
+    Shortcut { sequences: ["Return", "Enter", "Escape"]; enabled: ov.pen.on && !OpenPopups.takes(["Enter", "Esc"]); onActivated: { ov.pen.finish(); ov.pen.setOn(false) } }
 }
