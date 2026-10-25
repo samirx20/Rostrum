@@ -150,8 +150,9 @@ The **Colour** row shows the colour the track is drawn in.
 A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never changed to the nearest.
 
 - The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
-  strip, and they show what plays at the playhead. Type the tempo or drag it; pick the beats and the key from their
-  lists. Nothing has to be selected first.
+  strip, and they show what plays at the playhead. Type the tempo or drag it (while you drag, the ruler follows at
+  once and the notes when you pause or let go); pick the beats and the key from their lists. Nothing has to be
+  selected first.
 - With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
   and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the

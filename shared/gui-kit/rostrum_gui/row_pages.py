@@ -11,6 +11,11 @@ Python sees one RowsModel's API (`rows`, `update`, `reset`, `instant`): the show
 as before (model.py), and a selection whose rows have other ids gets (or makes) the page of those ids. QML sees a list
 model of pages (role `page`: a RowsModel) and `shown`, the index of the visible one (Inspector.qml). At most PAGES are
 kept; the page shown longest ago goes first.
+
+A layout only a few rows away from a kept page's (the same kind with a few settings left out because the screen shows
+them elsewhere: the Sound Mixer open, onpage.py) takes that page over: its rows are picked in place (model_pick.py: the
+rows left out are parked, the ones back come from the parked) instead of a new page made whole (~100-120 ms for a
+track's panel the first time the Mixer opened with a track selected).
 """
 from __future__ import annotations
 
@@ -19,6 +24,13 @@ from PySide6.QtCore import Property, QAbstractListModel, QByteArray, QModelIndex
 from .model import RowsModel
 
 PAGES = 12
+NEAR = 8            # at most this many rows left out of the other: the same kind, a few settings shown elsewhere
+
+
+def _near(a: tuple, b: tuple) -> bool:
+    """One layout is the other with a few rows left out (two kinds, each with rows of its own, never are)."""
+    sa, sb = set(a), set(b)
+    return (sa <= sb or sb <= sa) and 0 < len(sa ^ sb) <= NEAR
 
 
 class RowPages(QAbstractListModel):
@@ -83,27 +95,35 @@ class RowPages(QAbstractListModel):
         return p.instant if p is not None else False
 
     def reset(self, rows: list[dict]):
-        self._show(rows, lambda p, new: p.reset(rows))
+        self._show(rows, lambda p, new, near: p.reset(rows))
 
     def update(self, rows: list[dict], instant: bool = False):
         """The shown page's update; rows of another layout show on that layout's page (made the first time, at
         their final state), updated in place at once (`instant`: a page coming back shows as it is now, no easing)."""
-        self._show(rows, lambda p, new: p.reset(rows) if new else p.update(rows, instant or p is not self._page()))
+        self._show(rows, lambda p, new, near: p.reset(rows) if new else p.update(rows, instant or near or p is not self._page()))
 
     def park(self, rows: list[dict], part: list[dict]):
         """Made ahead (bridge_select.make_panels_ahead): the page of `rows`' layout, hidden (made empty the first
         time), with `part` of its rows parked in it, their controls made; the pick that later shows it moves them
         into place (model_pick.py) and only their values change."""
-        at, new = self._page_of(rows)
+        at, new, _ = self._page_of(rows, near_ok=False)
         if new:
             self._pages[at][1].reset([])
         self._pages[at][1].park(part, ready=True)
 
-    def _page_of(self, rows: list[dict]) -> tuple[int, bool]:
-        """The index of the page of `rows`' layout (made, hidden, if there is none) and whether it was made now; it
-        becomes the page used last (the last to go)."""
+    def _page_of(self, rows: list[dict], near_ok: bool = True) -> tuple[int, bool, bool]:
+        """The index of the page of `rows`' layout (made, hidden, if there is none), whether it was made now and whether
+        it is a near layout's page taken over (module note); it becomes the page used last (the last to go)."""
         key = tuple(r.get("id") for r in rows)
         at = next((i for i, (k, _) in enumerate(self._pages) if k == key), -1)
+        near = False
+        if at < 0 and near_ok:                       # the shown page first, then the others (never for a page made ahead)
+            order = ([self._at] if self._at >= 0 else []) + [i for i in range(len(self._pages)) if i != self._at]
+            at = next((i for i in order if _near(self._pages[i][0], key)), -1)
+            if at >= 0:
+                near, old = True, self._pages[at][0]
+                self._pages[at] = (key, self._pages[at][1])
+                self._used[self._used.index(old)] = key
         new = at < 0
         if new:
             self._drop_old()
@@ -114,11 +134,11 @@ class RowPages(QAbstractListModel):
         else:
             self._used.remove(key)
         self._used.append(key)
-        return at, new
+        return at, new, near
 
     def _show(self, rows: list[dict], fill):
-        at, new = self._page_of(rows)
-        fill(self._pages[at][1], new)                    # filled while still hidden, then shown
+        at, new, near = self._page_of(rows)
+        fill(self._pages[at][1], new, near)                    # filled while still hidden, then shown
         if at != self._at:
             self._at = at
             self.shownChanged.emit()

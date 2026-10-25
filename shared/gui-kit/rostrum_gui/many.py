@@ -42,15 +42,17 @@ def own_rules(static: list[dict], op) -> list[dict]:
             if r["row"] == "param" and r["id"] in own else r for r in static]
 
 
-def merge(each: list[list[dict]]) -> list[dict]:
-    """One row list from each item's evaluated rows (all from one static layout; rows an item lacks are dropped)."""
+def merge(each: list[list[dict]], differs=frozenset()) -> list[dict]:
+    """One row list from each item's evaluated rows (all from one static layout; rows an item lacks are dropped).
+    `differs`: ids of rows whose value differs among more items than `each` holds (an app that folds alike items
+    into one, Sound's many_rows): those rows are `mixed` as if every item had been passed."""
     others = [{r["id"]: r for r in rows} for rows in each[1:]]
     out = []
     for r in each[0]:
         alike = [o.get(r["id"]) for o in others]
         if any(a is None for a in alike) or r["id"] in ONE_ONLY:
             continue
-        out.append(_param(r, alike) if r["row"] == "param" else {**r, "mixed": False})
+        out.append(_param(r, alike, r["id"] in differs) if r["row"] == "param" else {**r, "mixed": False})
     holds = {r["id"]: r["holds"] for r in out if r["row"] == "param"}
     for r in out:
         if r["row"] != "param":
@@ -60,9 +62,9 @@ def merge(each: list[list[dict]]) -> list[dict]:
     return _headers(out)
 
 
-def _param(r: dict, alike: list[dict]) -> dict:
+def _param(r: dict, alike: list[dict], differs: bool = False) -> dict:
     rows = [r] + alike                       # this item first, then the others' same row
-    mixed = any(a["value"] != r["value"] for a in alike)
+    mixed = differs or any(a["value"] != r["value"] for a in alike)
     same_only = r["type"] in SAME_ONLY or r.get("control") in SAME_ONLY_CONTROLS
     exprs_differ = any(a["expr"] != r["expr"] for a in alike)
     ok = all(a["holds"] for a in rows) and not exprs_differ and not (mixed and (same_only or r["expr"]))

@@ -159,3 +159,42 @@ def test_select_inside_a_range_works_with_a_track_picked(bridge):
     bridge.actions.run("inside")
     picked = bridge.selectedIds
     assert picked and "lead" not in picked and all(bridge.doc.item(i)["type"] != "track" for i in picked)
+
+
+
+def test_many_notes_fold_to_exactly_the_merge_of_each_notes_rows(bridge):
+    """Many notes picked: the panel evaluates each alike group once and reads the rest's values (many_rows.py). It
+    must show exactly what merging every note's own rows shows: notes on a struck guitar beside a piano's (other
+    rows apply), values that differ, values alike, a field set on some only, a length read across a tempo change,
+    hits and a track with them (mixed kinds)."""
+    from rostrum_core import Who
+    from rostrum_gui import many
+    from screensound import inspect, many_rows, output_pick
+
+    def op(name, target, **args):
+        return {"op": name, "target": target, "args": args}
+    d = bridge.doc
+    calls = [op("track.add", [], id="gtr", instrument="model", model="guitar"), op("tempo.add", [], at={"beat": 12}, bpm=90)]
+    calls += [op("note.add", ["lead"], id=f"lead.x{i}", pitch=["C4", "D4", "E4"][i % 3], at={"beat": 10 + i},
+                 dur={"beats": 2 if i == 6 else 1}, **({"vel": 0.5} if i % 2 else {}), **({"pan": 0.25} if i == 5 else {}))
+              for i in range(8)]
+    calls += [op("note.add", ["gtr"], id=f"gtr.x{i}", pitch="G3", at={"beat": 2 * i}, dur={"beats": 1}, vel=0.5) for i in range(9)]
+    calls += [op("track.add", [], id="kit", instrument="kit", kit="classic")]
+    calls += [op("hit.add", ["kit"], id=f"kit.x{i}", drum="kick" if i % 2 else "snare", at={"beat": i}, vel=0.5) for i in range(4)]
+    d.apply(calls, Who.person())
+    made = [c["args"]["id"] for c in calls if c["op"] == "note.add"]
+    guitar = [i for i in made if i.startswith("gtr.")]
+    hits = [c["args"]["id"] for c in calls if c["op"] == "hit.add"]
+    for picked in ([A, B, C, *made], made[3:], guitar, guitar[:4] + made[:5], hits + made, ["lead", *made, *hits]):
+        bridge.selectMany(picked)
+        items = [d.item(i) for i in bridge._kit.selection]
+        each = [inspect.musical_rows(it, bridge._item_rows(it), d.data) for it in items]
+        folded = many_rows.merged(bridge, items, d.data)
+        assert folded is not None and folded == many.merge(each)
+        assert bridge._rows() == output_pick.without_none(many.merge(each))
+        rows = {r["id"]: r for r in folded if r["row"] == "param"}
+        if picked[0] in hits or picked[0] == "lead":                                    # mixed kinds: what they share
+            assert "dur" not in rows and (picked[0] == "lead" or rows["at"]["mixed"] and rows["vel"]["mixed"])
+            continue
+        assert rows["at"]["mixed"] and rows["dur"]["mixed"] == ("lead.x6" in picked)   # (2 beats; the rest 1)
+        assert rows["position"]["valid"] == (picked == guitar)                          # only while every note is struck

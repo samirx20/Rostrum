@@ -33,7 +33,7 @@ Item {
         model: band.sections
         delegate: Rectangle {
             required property var modelData
-            readonly property bool on: !!backend.picked[modelData.id]
+            readonly property bool on: !!backend.pickedHeads[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1
             width: Math.max(2, Math.round(band.ruler.wOf(modelData.end - modelData.t)) - 1); height: band.height - 2

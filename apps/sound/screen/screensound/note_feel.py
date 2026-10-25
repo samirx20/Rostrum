@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 
 PARAMS = ("dynamics", "vibrato", "bend")
+BY_LENGTH = ("bend",)           # its points sit in seconds into the note: how it reads depends on the note's length
 LABELS = {"dynamics": "Swell", "vibrato": "Vibrato", "bend": "Bend"}
 HELP = {"dynamics": "The note's level across its length (1 = as played): one number for all of it (0.8), start → end "
                     "for a swell or a fade (0.5 → 1.5), or several spread evenly (0.5 → 1.2 → 0.8). 0 … 2.",

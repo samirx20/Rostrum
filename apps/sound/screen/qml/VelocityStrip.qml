@@ -1,6 +1,7 @@
 import QtQuick
 import RostrumKit
 import "Blocks.js" as Blocks
+import "Marks.js" as Marks
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
@@ -91,45 +92,31 @@ Item {
         height: parent.height
         ruler: s.ruler; slot: 1
         // painted whole on a new zoom, scroll or track (a resize: stretched, then whole: ViewCanvas), else only where an edit or a selection changed (Blocks.js)
-        property bool whole: true
-        readonly property var k: Blocks.kept()  // what the picture shows (painting in parts)
-        function again() { whole = true; requestPaint() }
         onWholeWanted: again()
         onHeightChanged: again()
         Connections { target: s; function onRollChanged() { c.again() } function onBlocksChanged() { c.requestPaint() }
-                      function onPickedChanged() { if (Blocks.touches(c.k, s.picked)) c.requestPaint() } }   // a selection elsewhere: as it is
+                      function onPickedChanged() { if (Blocks.touches(c.kept, s.picked)) c.requestPaint() } }   // a selection elsewhere: as it is
         property bool stale: false              // asked while hidden (the Mixer shows): painted when shown again
         onVisibleChanged: if (visible && stale) { stale = false; requestPaint() }
-        function rectsOf(b) {                   // a bar's column (its grip reaches 3 px around it)
-            return b.type === "note" || b.type === "hit" ? [Blocks.box(Math.round(s.ruler.xOf(b.t)) - 3, 0, 7, height, 2)] : []
+        function view() {                       // what every bar of one paint shares, read once per paint (Marks.js)
+            return { x0: s.ruler.xOf(0), perSec: s.ruler.perSec, H: height, W: width, top: s.padTop + s.plotH, plotH: s.plotH,
+                     hue: s.roll.hue, accent: Theme.accent }
         }
         onPaint: {
             if (!visible) { stale = true; return }
             if (waiting) return                                  // the stretched picture stands until its turn
-            var ctx = getContext("2d"), dirty = whole ? null : Blocks.update(k, s.blocks, s.picked, rectsOf)
+            if (height <= 0) { whole = true; return }            // the Editor still opening: painted once it has a size
+            var ctx = getContext("2d"), v = view(), at = Marks.velAt(v)
+            var dirty = whole ? null : Blocks.update(kept, s.blocks, s.picked, at)
             whole = false
-            if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(k, s.blocks, s.picked, rectsOf, width), null); return }
+            if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(kept, s.blocks, s.picked, at, width), v, null); return }
             for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
-                Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(k, dirty[i]), dirty[i]); ctx.restore()
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, Blocks.over(kept, dirty[i]), v, dirty[i]); ctx.restore()
             }
         }
-        function paintIn(ctx, entries, d) {                     // the guide and these bars ([block, selected]; over `d`, when one)
-            ctx.fillStyle = Theme.border; ctx.fillRect(0, s.padTop + s.plotH / 2, width, 1)      // the half-way guide
-            for (var pass = 0; pass < 2; pass++)           // selected bars last, on top
-                for (var i = 0; i < entries.length; i++) {
-                    var b = entries[i][0]
-                    if (b.type !== "note" && b.type !== "hit") continue
-                    if (entries[i][1] !== (pass === 1)) continue
-                    var x = Math.round(s.ruler.xOf(b.t))
-                    if (x < -4 || x > width + 4) continue
-                    if (d !== null && (x + 6 < d[0] || x - 6 > d[0] + d[2])) continue
-                    var h = Math.max(2, b.vel * s.plotH)
-                    ctx.fillStyle = pass === 1 ? Theme.accent : s.roll.hue
-                    ctx.globalAlpha = pass === 1 ? 1 : 0.8
-                    ctx.fillRect(x - 1, s.padTop + s.plotH - h, 3, h)
-                    ctx.beginPath(); ctx.arc(x + 0.5, s.padTop + s.plotH - h, 3, 0, 2 * Math.PI); ctx.fill()   // the grip
-                }
-            ctx.globalAlpha = 1
+        function paintIn(ctx, entries, v, d) {                  // the half-way guide and these bars ([block, selected]; over `d`, when one)
+            ctx.fillStyle = Theme.border; ctx.fillRect(0, s.padTop + s.plotH / 2, width, 1)
+            Marks.velPaint(ctx, entries, v, d)
         }
     }
     }

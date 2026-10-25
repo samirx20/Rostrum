@@ -192,9 +192,10 @@ Rectangle {
         }
     }
     PunchBand { ruler: bars; y: bars.y + bars.height; height: list.y + list.height - y }   // the take's punch range
-    Rectangle {  // the playhead, across every row
+    PlayTime { id: playTime }
+    Rectangle {  // the playhead, across every row (moved every frame while playing: PlayTime)
         visible: bars.visibleX(x - bars.x)
-        x: bars.x + Math.round(bars.xOf(backend.time)); y: bars.y + bars.height
+        x: bars.x + Math.round(bars.xOf(playTime.value)); y: bars.y + bars.height
         width: 1; height: list.y + list.height - y; color: Theme.accent; opacity: 0.9
     }
     Rectangle {   // the header being dragged: its name rides the pointer

@@ -52,7 +52,8 @@ class SoundHub(ActionHub):
         if job in ROUTES:
             name, *args = ROUTES[job]
             getattr(self.bridge, name)(*args)
-            self.refresh()
+            if not self.bridge.__dict__.get("_unsettled"):     # (a pick whose panel follows: its actions come with it)
+                self.refresh()
             return
         super().key(job)
 
@@ -94,7 +95,7 @@ class ActionSlots:
         """The actions follow the selection the panel shows: while a press or a drag has picked and not settled yet
         (select_slots._pick `later`), they wait with the panel and come once with it (making them costs the press
         ~35 ms of redrawn rows)."""
-        if not self.__dict__.get("_unsettled"):
+        if not self.__dict__.get("_unsettled") and "_hub" in self.__dict__:     # (a pick while the screen is made)
             self._hub.refresh()
 
     actions = Property(QObject, lambda self: self._hub, constant=True)
@@ -311,8 +312,9 @@ class ActionSlots:
             change = self.doc.apply(calls, self.who, label=label)
             self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently
             made = [i for i in ST.inserted(change) if self.doc.has(i)] if change and select_made else []
-            if made:
-                self._pick(made)
+            if made:                            # the outlines with the change, the panel once both are drawn
+                self._pick(made, later=True)
+                self._settle()
         return self._guard(go)
 
     # ---- Ctrl+K and scripts -------------------------------------------------------------------------------------

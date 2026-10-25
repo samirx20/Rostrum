@@ -116,14 +116,20 @@ def _refs(value):
 _SEEN = {"markers": [], "marks": None}   # the markers the last check saw (their items, so `is` compares them)
 
 
-def _ref_holders(data: dict, items, marks: list):
-    """The items whose marker references need checking: only the changed ones while the markers are the very same
-    items as the last check saw and no tempo changed (a version shares unchanged items: rostrum_core edits.fork), else every item."""
+def _holders(data: dict, items, marks: list) -> tuple[list, list]:
+    """(the items whose marker references need checking, the items whose lanes do). References name markers: only
+    the changed items while the markers are the very same items as the last check saw (a version shares unchanged
+    items: rostrum_core edits.fork), else every item. Lanes hold times: also every one when the tempo or meter
+    changed (a point in seconds and one in beats may swap). A tempo drag re-checked every note's references on each
+    move (~20 ms a move on a 3-minute song) though a tempo moves no name."""
     own = data.get("markers", [])
-    same = (items is not None and not any(i.get("type") in ("doc", "tempo", "meter") for i in items) and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
+    same = (items is not None and marks == _SEEN["marks"] and len(own) == len(_SEEN["markers"])
             and all(a is b for a, b in zip(own, _SEEN["markers"])))
     _SEEN.update(markers=list(own), marks=marks)
-    return items if same else walk(data, LISTS)
+    if same and not any(i.get("type") in ("doc", "tempo", "meter") for i in items):
+        return items, items
+    every = list(walk(data, LISTS))
+    return (items if same else every), [i for i in every if i.get("type") in ("effect", "automation")]
 
 
 def check(data: dict, items=None) -> list[str]:
@@ -143,12 +149,14 @@ def check(data: dict, items=None) -> list[str]:
         if not TRACK_ID.match(track["id"]):
             out.append(f"track id {track['id']!r} must be 1–64 letters, digits, _ . -")
         out += _instrument(track)
-    for item in _ref_holders(data, items, marks):
+    refs, lanes = _holders(data, items, marks)
+    for item in lanes:
         t = item.get("type")
         if t == "effect":
             out += FX.problems(item) + _lane(item, data)
         elif t == "automation":
             out += _lane(item, data)
+    for item in refs:
         for k, v in item.items():
             for ref in () if k == "colour" else _refs(v):         # a colour ("#4aa3ff") is not a marker
                 if markers.key(markers.ref(ref)) not in marks:

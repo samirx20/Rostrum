@@ -151,3 +151,25 @@ def test_a_player_that_cannot_open_is_loud_and_the_playhead_runs_on(bridge):
     pump(0.3)
     assert "no output device" in bridge.status and bridge.soundState.startswith("No sound output")
     assert bridge.playing and bridge.time > 1.1
+
+
+def test_the_first_render_starts_the_player_once_with_its_set_up(monkeypatch, tmp_path):
+    """The player opens (stopped) after the first render's news, with the tempo Recording gives it: never started bare
+    and then quit and started again on the screen's thread (~400 ms frozen while the person clicks)."""
+    QGuiApplication.instance() or QGuiApplication([])
+    monkeypatch.setattr(playback, "open_engine", FakeEngine)
+    monkeypatch.chdir(tmp_path)
+    doc = Document.new(KIND)
+    doc.run_script("s.py", run_source('tempo(90)\nkeys = track("keys", synth="saw")\n', "s.py"))
+    b = SoundBridge(doc)
+    p = b.transport.player
+    p.program = FAKE
+    r = Recording(b)
+    pump(5, lambda: p._proc is not None)
+    try:
+        assert p._proc is not None and p._gen == 0            # opened once (warm), never reopened
+        assert p._proc.args[p._proc.args.index("--bpm") + 1] == "90.0"
+    finally:
+        r.close()
+        b.close()
+        pump(0.2)                # what the closed song still had waiting for a frame runs now, not in the next test
