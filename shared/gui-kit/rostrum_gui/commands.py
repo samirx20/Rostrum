@@ -17,11 +17,27 @@ command's own field), `context` (a field command's operation) and `weight` (impo
 """
 from __future__ import annotations
 
+import copy
+
+from rostrum_core import run
 from rostrum_core.conditions import holds
 from rostrum_core.params import IMPORTANCE
 
 from . import many
 from .match import starts
+
+
+def runs(doc, calls, check=False) -> bool:
+    """Would these calls change the document right now? (planned, never applied.) One that is refused (an operation that
+    needs a value the bar can't ask for, a fill no colour stops back) or leaves everything as it is (Align centre on
+    what is centred) does nothing visible, so Ctrl+K does not offer it. `check`: also the app's own rules on what changed (a
+    setting's value can break them: a text's fill type Radial with no stops; the value itself passed its control's
+    check already). An operation keeps its own rules; the check was most of the time (~2 ms a plan)."""
+    try:
+        work, edits, _, idx = run.plan_indexed(doc.kind, doc.data, copy.deepcopy(calls), idx=doc._index(), check=False)
+        return bool(edits) and not (check and any(doc.kind.check(work, run.changed_items(edits, idx, doc.kind.lists))))
+    except Exception:
+        return False
 
 
 def field_words(p) -> str:
@@ -48,11 +64,13 @@ def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> 
         found = {"words": op_words(op) + " " + " ".join(field_words(p) for p in op.params),
                  "weight": IMPORTANCE.index(op.importance), "makes": makes(op.name)}
         if not missing:
-            out.append({**_cmd(op.name, op.label, hint, [_call(op.name, target, {})]), **found})
+            call = [_call(op.name, target, {})]
+            if runs(doc, call):
+                out.append({**_cmd(op.name, op.label, hint, call), **found})
         elif len(missing) == 1 and missing[0].type == "choice":
             p = missing[0]
             out += [{**_cmd(f"{op.name}:{o}", f"{op.label}: {p.option_label(o)}", hint, [_call(op.name, target, {p.name: o})]),
-                     **found} for o in p.options]
+                     **found} for o in p.options if runs(doc, [_call(op.name, target, {p.name: o})])]
     for it in doc.items():
         if it["id"] != doc.data["id"] and it["id"] not in selection:
             out.append({"key": "select:" + it["id"], "label": "Select " + name_of(it),
@@ -79,10 +97,11 @@ def _field_commands(doc, selection, where):
         key = f"{ops[0].name}:{p.name}"
         if p.type == "toggle":
             on = not all(now)               # any off: turn all on; all on: turn all off
-            out.append({**_cmd(key, f"{'Turn on' if on else 'Turn off'} {p.label}", where, sets(on)), **found})
+            if runs(doc, sets(on), check=True):
+                out.append({**_cmd(key, f"{'Turn on' if on else 'Turn off'} {p.label}", where, sets(on)), **found})
         else:
             out += [{**_cmd(f"{key}={o}", f"{p.label}: {p.option_label(o)}", where, sets(o)), **found}
-                    for o in p.options if any(v != o for v in now)]
+                    for o in p.options if any(v != o for v in now) and runs(doc, sets(o), check=True)]
     return out
 
 

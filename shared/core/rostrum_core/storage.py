@@ -257,11 +257,11 @@ def _read_doc(cls, folder, item, kind, p):
     trusted = written and _at_step(file, changes)
     data, items = file["doc"], None
     if trusted:                                     # play only the steps after the document file's own
-        from .run import _changed
+        from .run import changed_items
         idx, played = index(data, kind.lists), []
         for c in changes[file["at"]:]:
             played += [E.apply(data, kind.lists, e, f"step {c.seq}", idx) for e in c.edits]
-        items = _changed(played, idx, kind.lists)
+        items = changed_items(played, idx, kind.lists)
     doc = cls(kind, data, folder, item, base=r.base)
     doc.saved_by, doc.notes = file.get("saved_by"), [r.torn] if r.torn else []
     doc.file_at = file.get("at") if trusted else None       # the step the document file shows (live.py folds the rest)

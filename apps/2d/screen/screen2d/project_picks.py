@@ -53,6 +53,26 @@ def warm() -> None:
     threading.Thread(target=make, daemon=True, name="font-list-warm").start()
 
 
+def warm_faces(shown: int = 24, step: int = 6) -> None:
+    """The faces the Font list shows first, loaded into the screen thread's font cache, a few at a time at idle
+    (Qt's font cache is per thread, so the warm-up thread's work doesn't count): the list's first opening drew them
+    all in its own click, ~40 ms of it. Never in a click: a pick's frame comes first (a timer that meets the pointer
+    waits). A list not made yet is tried again a moment later; an engine without fonts has nothing to warm."""
+    from PySide6.QtCore import QTimer
+    from PySide6.QtGui import QFont, QFontMetricsF
+    if _faces is None:
+        return QTimer.singleShot(500, warm_faces)
+    todo = [f for f in _faces if f["face"]][:shown]
+
+    def run():
+        for f in todo[:step]:
+            QFontMetricsF(QFont(f["face"], 10)).horizontalAdvance(f["label"])
+        del todo[:step]
+        if todo:
+            QTimer.singleShot(60, run)
+    run()
+
+
 def _items(folder, kind: str) -> list[dict]:
     return [{"value": it["id"], "label": it["name"]} for it in project.items(folder, kind)] if folder else []
 

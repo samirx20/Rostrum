@@ -15,7 +15,7 @@ CONTEXT = (("problems", "Problems", "warning issue error list top bar chip", "pr
 # what else a key map job answers to
 ALSO = {"guides": "help how to", "key_list": "keys shortcuts", "preferences": "settings speakers audio",
         "export": "render bounce save wav mp3", "snap": "grid", "fit": "zoom", "fit_all": "zoom whole", "history": "versions changes",
-        "library": "sounds instruments add", "play": "stop pause start", "fold_panels": "hide show side panels",
+        "library": "sounds instruments add", "marker": "new place put flag", "play": "stop pause start", "fold_panels": "hide show side panels",
         "next_area": "focus move between", "undo": "back step", "redo": "forward again"}
 
 

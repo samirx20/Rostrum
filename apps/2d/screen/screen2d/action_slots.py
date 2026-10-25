@@ -11,7 +11,7 @@ from rostrum_gui.action_views import commands as do_commands
 from rostrum_gui.parts import SlotMixin
 from rostrum_gui.selection_rules import esc_step
 
-from . import frame_actions
+from . import frame_actions, job_when
 from .action_rules import said
 from .actions import LIST, Facts
 from .key_routes import KeyHub
@@ -124,18 +124,29 @@ class ActionSlots(SlotMixin):
         if f.facts.get("any_locked"):               # a locked pick: only Unlock-like commands; the rest would refuse
             out = [c for c in out if not _needs_unlock(c)]
         mine = [{**({**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c), "own": True}
-                for c in do_commands(LIST.available(f), self._what(f))]
+                for c in do_commands(LIST.available(f), self._what(f)) if c.get("do") or not c.get("calls") or commands.runs(self.doc, c["calls"])]
         taken = {LIST.job_of(a) for a in LIST.actions} | set(HAVE_ROWS) | {"select_all"}    # select_all: the row just below
         jobs = job_rows.rows(KEYS2D, set(ROUTES) | set(WINDOW) | set(SHELL) | {"play"}, taken,
                              state={"selected": bool(self.selected_layers()) and not self._keys.count and not self._stretch.shown,
                                     "problems": bool(self._problems.rows)})
+        jobs = job_when.rows(self, jobs)
         return mine + [{"key": "layer:selectall", "label": "Select all layers", "hint": "Layer", "keys": "Ctrl+A",
                         "do": self.selectAllLayers, "own": True}] + jobs + out
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
-        found = [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands(), query)]
+        found = [{k: c.get(k, "") for k in ("key", "label", "hint", "keys")} for c in commands.search(self._commands_now(), query)]
         return found
+
+    def _commands_now(self):
+        """Ctrl+K's list, worked out once per state: what may run is planned per entry (commands.runs, ~60-90 ms for
+        a layer's ~160), and every keystroke in the box only filters it. An empty query (the box opening) works it out
+        again; so does any change, pick, playhead or tool since."""
+        state = (len(self.doc.history.changes), tuple(self._kit.selection), self._keys.count, self.time, self.tool,
+                 self.painter.drawingId)
+        if getattr(self, "_cmd_cache", (None,))[0] != state:
+            self._cmd_cache = (state, self._commands())
+        return self._cmd_cache[1]
 
     @Slot(str, result=bool)
     def run(self, key):

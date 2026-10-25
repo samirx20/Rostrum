@@ -30,6 +30,7 @@ GUIDES = guides.entries(Path(__file__).resolve().parents[2] / "guides", [     # 
     ("characters-sound-styles.md", "Characters, sound and styles"), ("README.md", "All guides")])
 
 
+AHEAD_MS = 300                       # ms after the window shows: the panels of the piece's kinds start to be made
 SWITCH_S = 0.001                     # s: Python's hand-over between threads (default 5 ms, a third of a frame)
 
 
@@ -49,13 +50,13 @@ def _measure_ahead(bridge):
 
 def _panels_ahead(bridge):
     """A moment after the window is up: the settings panel of each kind in the piece (the scene, the frame, a shape, a
-    text, a group …) made ahead, a few rows a frame (the kit's make_panels_ahead). A kind's first pick, or the first
-    Ctrl+G's group, made its whole panel on the click: ~30-130 ms."""
-    first = {}
-    for it in bridge.doc.items():
-        if it["type"] in F.LAYERS or it["id"] == bridge.comp_id:
-            first.setdefault(it["type"], it["id"])
-    QTimer.singleShot(1000, bridge, lambda: bridge.make_panels_ahead(list(first.values())))
+    text, a group ...) made ahead, a few rows a frame (the kit's make_panels_ahead); after that the kit makes one for
+    each kind that appears later (ready_new_kinds, told after every change). A kind's first pick, or the first Ctrl+G's
+    group, made its whole panel in the frame after the click: ~25-130 ms."""
+    comp = bridge.comp_id
+    bridge._kit.ahead_filter = lambda it: it["type"] in F.LAYERS or it["id"] == comp
+    QTimer.singleShot(AHEAD_MS, bridge, bridge.ready_new_kinds)
+    QTimer.singleShot(2000, bridge, project_picks.warm_faces)       # the Font list's first faces
 
 
 class Session:

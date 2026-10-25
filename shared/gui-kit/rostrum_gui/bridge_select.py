@@ -51,6 +51,25 @@ class SelectSlots(SlotMixin):
             self._panel_later().due = False
             self._show_panel()
 
+    def ready_new_kinds(self):
+        """Every kind in the document that has no panel made ahead yet gets one, at idle: a kind present at open, and a
+        kind that comes later (a person's new shape, a paste, an import, an agent's add). Its first pick found no page
+        and made the whole panel in the frame after the click (~25-50 ms). Told after each document change (a frame
+        later, never in the change's own frame); a kind already ready costs one pass over the items."""
+        k, first = self._kit, {}
+        for it in self.doc.items():
+            kind = it["type"]
+            if kind not in k.ready_kinds and kind not in first and (k.ahead_filter is None or k.ahead_filter(it)):
+                first[kind] = it["id"]
+        if first:
+            k.ready_kinds.update(first)
+            self.make_panels_ahead(list(first.values()))
+
+    def _kinds_later(self) -> AfterFrame:
+        if self._kit.kinds_job is None:
+            self._kit.kinds_job = AfterFrame(self.ready_new_kinds, self, ahead=True)
+        return self._kit.kinds_job
+
     def make_panels_ahead(self, ids):
         """The settings rows of these items' kinds, made ahead after the screen is drawn: each kind's page of the panel
         (row_pages.py), hidden, its rows parked (absent) a few per frame, so a later pick of that kind finds its rows
@@ -204,6 +223,8 @@ class SelectSlots(SlotMixin):
         """After a document change: a selected item that went away (e.g. undo of an add) leaves the selection. `step`:
         a drag's step: the rows follow at most once per screen refresh (news.OnceAFrame), the drag's end in full."""
         sel = self._kit.selection
+        if not step and self._kit.ready_kinds:      # (from the window's own first pass on: session.py)
+            self._kinds_later().ask()
         if any(not self.doc.has(i) for i in sel):
             kept = [i for i in sel if self.doc.has(i)]
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
