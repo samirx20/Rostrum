@@ -10,14 +10,23 @@ blocks. A note or a hit added, moved or undone changes only the blocks: only tha
 sent and painted again; the arrangement's layout (`tracks`), the headers and the Editor's header are told nothing.
 Each read of a QML map or list property copies all of it, so a song's every block re-read by every layout binding
 on each click cost 50-150 ms on a 31-s song (M4, sound-r4).
+
+A drag's step that re-times the whole song (the tempo dragged, a tempo change, a section or a marker moved: the song's
+clock moved, so every block is made again) shows the song's own parts at once (the ruler's grid and tempos, the
+sections, the markers: `_clock_step`), and the rows when the pointer rests (REST_MS without a step) and at the drop,
+never on each move: making and sending every block cost ~400 ms a move on a 3-minute 8-track song, so the tempo
+being dragged stuck.
 """
 from __future__ import annotations
+
+from PySide6.QtCore import QTimer
 
 from . import block_patch, lanes, stepped, timeline, voice_card, voice_takes
 from .block_memo import BlockMemo
 
 
 MIX_FIELDS = frozenset({"volume", "pan", "reverb", "output"})
+REST_MS = 120           # a drag's re-timing steps are drawn once the pointer stays this long (and at the drop)
 
 
 def shape(part: dict) -> dict:
@@ -34,6 +43,21 @@ class RowsView:
         if "_memo_" not in self.__dict__:
             self.__dict__["_memo_"] = BlockMemo()
         return self.__dict__["_memo_"]
+
+    @property
+    def _rest(self) -> QTimer:
+        """Draws a drag's re-timing step once the pointer rests (`_drag_step`)."""
+        if "_rest_" not in self.__dict__:
+            t = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(REST_MS)
+            t.timeout.connect(lambda: self._guard(self._at_rest))
+            self.__dict__["_rest_"] = t
+        return self.__dict__["_rest_"]
+
+    def _at_rest(self):
+        if self.doc.data is not self._shown:      # (the drop or a cancel may have drawn it already)
+            self._rebuild()
 
     def _send_rows(self, rows, before):
         """The row model's rows (the layout and the blocks as two roles, so a block change signals only `blocks`);
@@ -67,6 +91,8 @@ class RowsView:
         taken as it was (as a drag's step does). A rebuild with the document as it was (a lane opened, a take made,
         a line spoken) makes every row again: what they show changed outside the song."""
         root, was, old = self.doc.data, self._open, self._view
+        if "_rest_" in self.__dict__:
+            self._rest.stop()
         self._open = self._lanes_now()
         ids = {t["id"] for t in root.get("tracks", [])}
         kept = self._memo.follow(timeline.clock(root), ids)
@@ -99,7 +125,7 @@ class RowsView:
         the rows of the tracks it changed are made again and sent (the row model signals just those), the roll only
         when its track is one, the song only when its length moved. The layout `tracks` is sent only when a row's
         layout moved (timelineChanged: its settings, or a note dragged past its key span). Anything else (a marker, the tempo, tracks
-        added …): everything (_rebuild)."""
+        added …): everything (_rebuild); a drag's step that re-times every block, once the pointer rests (REST_MS)."""
         root = self.doc.data
         if self._mix_only(root):
             self._shown = root
@@ -109,6 +135,8 @@ class RowsView:
             return
         changed = stepped.changed_tracks(self._shown, root)
         if changed is None or relaid:
+            if self._stepping and not relaid and not self._memo.keeps(timeline.clock(root)):
+                return self._clock_step()         # every block re-timed: the rows when the pointer rests (above)
             return self._rebuild()
         made = {k: v for k, v in self._made.items() if k not in changed}
         tracks = timeline.track_rows(root, self._open, made, self._memo)
@@ -131,6 +159,21 @@ class RowsView:
         self._send_rows(rows, before)
         if self._track in changed:
             self._send_roll(self._roll(rows))
+
+    def _clock_step(self):
+        """A drag's step that moved the song's clock: the ruler (grid, tempos), the sections and the markers follow
+        now; the rows, the roll and the view's length once the pointer rests or at the drop (`_rest`): a view fitted
+        to the song would zoom on every move, painting every row whole again for rows not yet re-timed."""
+        root = self.doc.data
+        marks = timeline.markers(root)
+        song = timeline.song(root, list(self._made.values()), marks, self._memo)
+        if marks != self._view["markers"]:
+            self._view["markers"] = marks
+            self.markersChanged.emit()
+        if song != self._view["song"]:
+            self._view["song"] = song
+            self.songChanged.emit()
+        self._rest.start()
 
     def _send_roll(self, roll):
         """The roll as made: its layout (`roll`) and its blocks (`rollBlocks`) are each sent only when they changed."""

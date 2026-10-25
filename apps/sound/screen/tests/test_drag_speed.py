@@ -58,3 +58,23 @@ def test_a_track_added_keeps_the_others_blocks_and_a_tempo_change_remakes_them(b
     bridge.undo()
     bridge.undo()
     assert shown(bridge)
+
+
+def test_a_tempo_drag_shows_the_song_retimed_at_rest_at_the_drop_and_after_undo(bridge):  # noqa: F811
+    """A tempo drag re-times every block: its steps draw the rows only when the pointer rests (rows_view REST_MS) and
+    at the drop. The rows must never stay on an old tempo after either, nor after undo and redo."""
+    from screensound.song_panel import SongPanel
+    panel = SongPanel(bridge)
+    panel.beginTempo()
+    for bpm in (126, 133, 140):
+        panel.scrubTempo(bpm)
+    assert bridge._view["song"]["tempo"] == 140                       # the ruler follows each step
+    bridge._rest.timeout.emit()                                       # the pointer rests
+    assert shown(bridge)
+    panel.scrubTempo(150)                                             # moved again, let go before resting
+    panel.endScrub()
+    assert bridge.doc.data["tempo"] == 150 and shown(bridge)
+    bridge.undo()
+    assert bridge.doc.data["tempo"] == 120 and shown(bridge)
+    bridge.redo()
+    assert shown(bridge)

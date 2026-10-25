@@ -42,11 +42,15 @@ class BlockMemo:
     def clear(self):
         self._parts, self._clock = {}, None
 
+    def keeps(self, clock) -> bool:
+        """The blocks held are still right under `clock` (follow would keep them)."""
+        return self._clock is not None and clock == self._clock
+
     def follow(self, clock, tracks) -> bool:
         """Keep the blocks while the song's clock is the same (compared by value: an untouched part is the same
         object, so this is one pass over the song's top level), else empty the memo; parts of tracks no longer in
         `tracks` (ids) are dropped. True when the blocks were kept."""
-        kept = self._clock is not None and clock == self._clock
+        kept = self.keeps(clock)
         self._parts = {k: v for k, v in self._parts.items() if k[0] in tracks} if kept else {}
         self._clock = clock
         return kept
