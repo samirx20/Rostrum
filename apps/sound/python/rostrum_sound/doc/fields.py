@@ -28,6 +28,10 @@ FIELDS = {
         N("tempo", 20, 400, "Time", "bpm"),
         V.time("length", group="Time", nullable=True,
                help="How long the mix is (a time); left out or null = the last sound + 2 s."),
+        Param.toggle("endFade", group="Time", importance="secondary", label="Soft end", default=True,
+                     valid_when={"not": IS("length", None)},
+                     help="The song's last tenth of a second fades out, so notes still ringing at its Length stop softly "
+                          "instead of with a click. Off: the sound stops dead at the Length."),
         N("beatsPerBar", 1, 16, "Time", imp="secondary", integer=True, label="Beats per bar"),
         Param.choice("beatUnit", [2, 4, 8, 16], group="Time", importance="secondary", label="Beat unit",
                      help="What one beat of the time signature is (its bottom number): 4 quarters, 8 eighths (6/8)."),

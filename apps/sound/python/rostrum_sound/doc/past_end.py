@@ -30,6 +30,33 @@ def warn(data: dict) -> list[str]:
     return ties(data) + late(data)
 
 
+RINGING_S = 0.5      # a sound still held (or just struck) this close to the end is cut off audibly
+
+
+def hard_end(data: dict) -> str:
+    """The song stops dead on sound: its soft end (`endFade`) is off and a note is still held, or a hit or clip still
+    sounds, in its last half second. "" when not (or when it ends after the last sound: no `length`)."""
+    if data.get("length") is None or data.get("endFade", True):
+        return ""
+    try:
+        end = times.seconds(data["length"], data, "length")
+        for t in data.get("tracks", []):
+            for n in t.get("notes", []):
+                at = times.seconds(n["at"], data, n["id"])
+                if at < end and at + times.length_seconds(n["dur"], data, at, n, n["id"]) > end - RINGING_S:
+                    return n["id"]
+            for h in t.get("hits", []):
+                if end - RINGING_S < times.seconds(h["at"], data, h["id"]) < end:
+                    return h["id"]
+            for c in t.get("clips", []):          # a clip with no length plays to its file's end: taken as still playing
+                at = times.seconds(c["at"], data, c["id"])
+                if at < end and (c.get("length") is None or at + times.length_seconds(c["length"], data, at) > end - RINGING_S):
+                    return c["id"]
+    except RostrumError:
+        return ""                                    # a broken time is the check's to report
+    return ""
+
+
 def late(data: dict) -> list[str]:
     if data.get("length") is None:
         return []
