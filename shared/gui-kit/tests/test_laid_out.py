@@ -2,7 +2,7 @@
 drew no frame in between (laid_out.py; the bug: a check clicked a row's old place in a window that drew nothing)."""
 import os
 
-from PySide6.QtCore import QPoint, Qt, QUrl
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, Qt, QUrl
 from PySide6.QtTest import QTest
 
 QML = b"""import QtQuick; import QtQuick.Layouts
@@ -16,9 +16,7 @@ ColumnLayout { width: 200; height: 300; spacing: 0; property string hit: ""
 
 def test_a_click_after_a_layout_change_lands_on_the_new_layout(tmp_path):
     from PySide6.QtQuick import QQuickView
-    from rostrum_gui.app import qt_app
     from rostrum_gui.laid_out import watch
-    qt_app()
     f = tmp_path / "Rows.qml"
     f.write_bytes(QML)
     v = QQuickView()
@@ -29,5 +27,10 @@ def test_a_click_after_a_layout_change_lands_on_the_new_layout(tmp_path):
     at = QPoint(100, 50)
     QTest.mouseClick(v, Qt.LeftButton, Qt.NoModifier, at)      # hides the first row: the second moves up under `at`
     QTest.mouseClick(v, Qt.LeftButton, Qt.NoModifier, at)      # no frame drawn in between
-    assert v.rootObject().property("hit") == "ab"
+    hit = v.rootObject().property("hit")
     v.close()
+    v.deleteLater()                     # the window and the work it set off are gone before the next test (a panel
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)    # test reads rows a frame's turn would make)
+    from rostrum_gui.pointer import wait
+    wait(100)
+    assert hit == "ab"
