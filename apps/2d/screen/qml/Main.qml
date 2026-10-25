@@ -150,6 +150,7 @@ AppShell {
     SoundCuePopover { x: (shell.width - width) / 2; y: 104 }  // Add a sound here… (sound_cue_pick.py): under the bar
     centre: [
         Stage { id: stage; anchors.fill: parent; typing: shell.typing; coverLeft: shell.overLeft },   // typing: F stays a letter (ViewControls.qml)
+        SnapMarks { stage: stage },     // a drag's equal-gap brackets and gap sizes, over the snap lines (SnapMarks.qml)
         ImportPanel {   // opened by the rail's Media › Import…, on the canvas (opening the Export sheet closes it)
             id: importPanel
             Connections { target: backend.importer; function onWantPanel() { shell.setImportOpen(true) } }
@@ -163,6 +164,7 @@ AppShell {
                     visible: backend.tool !== "draw" && !backend.stretch.shown   // typing: the text's settings (typing_session.py selects it)
                     highlight: backend.keys.props         // the settings whose keys are picked (key_select.py)
                     above: Column { width: parent.width    // the picked keys (KeyPanel.qml), then a rig in hand: its pose library (rig_poses.py)
+                                    GapRow { }             // 3+ layers evenly apart: their Gap (GapRow.qml)
                                     KeyPanel { }
                                     RigPoses { } }
                     below: Column {                       // a frame-by-frame layer: the same drawing tools as in Draw (DrawEachFrame.qml)

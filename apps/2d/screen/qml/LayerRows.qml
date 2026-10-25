@@ -66,6 +66,32 @@ ListView {
         if (dragId !== "" && dropRow !== "") backend.moveLayer(dragId, dropRow, dropWhere)
         dragId = ""; dropRow = ""
     }
+    // press an eye or a lock and drag over more rows: the first row's new state shows on every row the pointer passed,
+    // live (only here, in the list); ONE change on release (backend.setSwitches), so one Ctrl+Z puts them all back
+    property string swipeField: ""      // "locked" | "hidden" while a swipe runs
+    property bool swipeOn: false
+    property var swipeIds: ({})
+    property int swipeFrom: -1
+    property int swipeLast: -1
+    function swipeBegin(id, field, on) {
+        swipeFrom = backend.layers.findIndex(r => r.id === id); swipeLast = swipeFrom
+        swipeField = field; swipeOn = on; const m = {}; m[id] = true; swipeIds = m
+    }
+    function swipeTo(y) {              // y in the list's content px
+        let i = indexAt(labelWidth / 2, y)
+        if (i < 0) i = indexAt(labelWidth / 2, y - 3)
+        if (i < 0) i = y < 0 ? 0 : count - 1
+        if (i === swipeLast) return
+        swipeLast = i
+        const rows = backend.layers, m = {}
+        for (let k = Math.min(i, swipeFrom); k <= Math.max(i, swipeFrom); k++)
+            if (rows[k].row === "layer" && (swipeField === "locked" || !rows[k].frame)) m[rows[k].id] = true
+        swipeIds = m
+    }
+    function swipeEnd() {
+        if (swipeField !== "") backend.setSwitches(Object.keys(swipeIds), swipeField, swipeOn)
+        swipeField = ""; swipeIds = ({}); swipeFrom = -1; swipeLast = -1
+    }
     Rectangle {  // the drop line (between rows), or an outline round a group the layer would go into
         readonly property var target: list.dropRow === "" ? null : list.itemAtIndex(backend.layers.findIndex(r => r.id === list.dropRow))
         visible: target !== null

@@ -92,12 +92,32 @@ Rectangle {
                 id: sw
                 objectName: "layerSwitch:" + name.rowData.id + ":" + modelData.field     // the eye and the lock: a scripted hand finds them
                 required property var modelData
-                readonly property bool on: !!name.rowData[modelData.field]
-                visible: on || hover.containsMouse || swArea.containsMouse
+                readonly property bool swiped: name.rows.swipeField === modelData.field && !!name.rows.swipeIds[name.rowData.id]   // a drag over rows is passing this one
+                readonly property bool on: swiped ? name.rows.swipeOn : !!name.rowData[modelData.field]
+                visible: on || swiped || swArea.pressed || hover.containsMouse || swArea.containsMouse   // pressed: it stays while the pointer is dragged off it
                 width: 18; height: 18
                 LayerSwitchIcon { anchors.centerIn: parent; kind: sw.modelData.field; on: sw.on; hot: swArea.containsMouse }
-                MouseArea { id: swArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.toggleSwitch(name.rowData.id, sw.modelData.field) }
+                MouseArea {  // a click is one change; Alt+click an eye shows only this layer; press and drag over more rows sets them all to its new state
+                    id: swArea
+                    property real pressY: 0
+                    property bool swiping: false
+                    property bool swept: false
+                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
+                    onPressed: (m) => { pressY = m.y; swept = false }
+                    onPositionChanged: (m) => {
+                        if (!pressed) return
+                        if (!swiping && Math.abs(m.y - pressY) > 4) { swiping = true; name.rows.swipeBegin(name.rowData.id, sw.modelData.field, !sw.on) }
+                        if (swiping) name.rows.swipeTo(mapToItem(name.rows.contentItem, m.x, m.y).y)
+                    }
+                    onReleased: { if (swiping) { swiping = false; swept = true; name.rows.swipeEnd() } }
+                    onCanceled: { if (swiping) { swiping = false; name.rows.swipeEnd() } }
+                    onClicked: (m) => {
+                        if (swept) return
+                        if ((m.modifiers & Qt.AltModifier) && sw.modelData.field === "hidden") backend.soloLayer(name.rowData.id)
+                        else backend.toggleSwitch(name.rowData.id, sw.modelData.field)
+                    }
+                }
                 HoverTip { hovered: swArea.containsMouse; pressed: swArea.pressed; text: sw.modelData.tip }
             }
         }
@@ -105,7 +125,7 @@ Rectangle {
     Text {
         id: labelText
         visible: !name.renaming
-        opacity: name.rowData.hidden ? 0.45 : 1
+        opacity: (name.rows.swipeField === "hidden" && name.rows.swipeIds[name.rowData.id] ? name.rows.swipeOn : name.rowData.hidden) ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (pin.visible ? pin.width + 4 : 0)
         anchors.verticalCenter: parent.verticalCenter

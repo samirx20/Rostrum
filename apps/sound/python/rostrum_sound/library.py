@@ -60,8 +60,16 @@ def retired_name(path: str) -> str | None:
 
 def _seconds(p: Path) -> float | None:
     try:
+        return _length(str(p), p.stat().st_mtime_ns)
+    except OSError:
+        return None
+
+
+@lru_cache(maxsize=4096)
+def _length(path: str, modified: int) -> float | None:     # keyed on the file's time: a replaced file is read again
+    try:
         import soundfile as sf
-        return round(sf.info(str(p)).duration, 2)
+        return round(sf.info(path).duration, 2)
     except Exception:  # noqa: BLE001  an mp3 soundfile can't read: the length stays unknown, said as such
         return None
 
@@ -88,15 +96,41 @@ def find(kind: str = "instruments", words: str = "") -> list[Path]:
     if not LIBRARY.is_dir():
         raise FileNotFoundError(f"the sound library is not installed at {LIBRARY}")
     want, ws = KINDS[kind], words.lower().split()
-    out = []
-    for p in sorted(LIBRARY.rglob("*")):
-        if p.suffix.lower() not in want:
-            continue
-        rel = p.relative_to(LIBRARY)
-        row = _known(rel.parts[0]).get(Path(*rel.parts[1:]).as_posix().lower(), {})
-        if row.get("retired"):
-            continue
-        text = " ".join([str(rel), row.get("title", ""), row.get("name", "")]).lower()
-        if all(w in text for w in ws):
-            out.append(p)
-    return out
+    return [p for p, suffix, text in _listing() if suffix in want and all(w in text for w in ws)]
+
+
+_LISTED: tuple = (None, (), [])     # (the library folder, [(folder, modified time)], [(path, suffix, searchable text)]) of the last walk
+
+
+def _folders(root: Path) -> tuple:
+    import os
+    return tuple((d, os.stat(d).st_mtime_ns) for d, _, _ in os.walk(root))
+
+
+def _unchanged(root: Path, folders: tuple) -> bool:
+    """No folder of the last walk was changed: adding, removing or renaming a file or folder changes its folder's
+    modified time, so a changed library is seen by the next search (a stat per folder, a few ms, not a walk)."""
+    import os
+    try:
+        return all(os.stat(d).st_mtime_ns == m for d, m in folders)
+    except OSError:
+        return False
+
+
+def _listing() -> list:
+    """The library's files once (path, suffix, lower-case text of its path and description; retired ones left out),
+    walked again only when a folder changed: one listing, never stale after a sound is added."""
+    global _LISTED
+    if _LISTED[0] != LIBRARY or not _unchanged(LIBRARY, _LISTED[1]):
+        folders = _folders(LIBRARY)         # before the files, so a file added meanwhile shows at the next search
+        _known.cache_clear()
+        rows = []
+        for p in sorted(LIBRARY.rglob("*")):
+            if p.suffix.lower() not in AUDIO | KINDS["instruments"]:
+                continue
+            rel = p.relative_to(LIBRARY)
+            row = _known(rel.parts[0]).get(Path(*rel.parts[1:]).as_posix().lower(), {})
+            if not row.get("retired"):
+                rows.append((p, p.suffix.lower(), " ".join([str(rel), row.get("title", ""), row.get("name", "")]).lower()))
+        _LISTED = (LIBRARY, folders, rows)
+    return _LISTED[2]

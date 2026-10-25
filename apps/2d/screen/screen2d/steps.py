@@ -415,8 +415,11 @@ def do_step(bridge, win, step):
         QGuiApplication.clipboard().setText(" ".join(rest))
         bridge.pasteLayers()
         QCoreApplication.processEvents()
-    elif word == "library":
-        bridge.library.setOpen(rest[0] == "open")
+    elif word == "library":                      # library open | close | find <words>: what the search box holds
+        if rest[0] == "find":
+            bridge.library.setQuery(" ".join(rest[1:]))
+        else:
+            bridge.library.setOpen(rest[0] == "open")
     elif word == "brand":                        # brand <section> <name> <value>: the MCP tool's add (brand_kit.py)
         from rostrum2d import brand_kit, text_styles
         name, given = rest[1].replace("_", " "), rest[2]     # not `value`: that is this module's reader (the set step)

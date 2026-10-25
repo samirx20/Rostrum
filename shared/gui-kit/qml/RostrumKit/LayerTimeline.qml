@@ -19,8 +19,7 @@ Rectangle {
     property bool canResize: true               // false where the app sets the height itself (3D's pages): no grab edge
     property bool canCurves: true               // false where the app has no curve view yet (3D): Keys | Curves is absent
     property string emptyText: ""               // an app with no rows yet words its items here (3D); 2D never has none: the Frame row is always there
-    readonly property bool animated: backend.rowFacts.animated   // something is keyed: only then are there curves to see
-    readonly property bool curvesOn: canCurves && animated && backend.curves.on
+    readonly property bool curvesOn: canCurves && backend.curves.on   // the app's one fact: chosen and something to see
     readonly property bool canPickRows: compact || backend.rowFacts.layerIds.includes(backend.selected)   // the height button: a layer is picked (or it is how back out of the one-row view)
     signal compactAsked(bool on)
     property Flickable rows                     // the app's rows (2D: LayerRows.qml), laid in place under the ruler
@@ -68,7 +67,7 @@ Rectangle {
     Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area
         id: keysCurves
         objectName: "keysCurves"
-        visible: tl.canCurves && tl.animated
+        visible: tl.canCurves && backend.curves.offered    // curves to see (the app's `curves.offered`), else absent
         anchors { right: ruler.left; rightMargin: Theme.pad + 8; verticalCenter: ruler.verticalCenter }   // the names column's right edge
         implicitHeight: 26
         options: [{ value: "keys", label: "Keys" }, { value: "curves", label: "Curves" }]

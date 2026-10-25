@@ -1,7 +1,8 @@
 """Moving and stretching the picked keys in time (UX_SPEC 3.17): a drag moves them all by the pointer's change, Alt+drag
 of the first or last stretches them around the other end (key.scale). The grabbed key snaps (time_snap.py: markers,
 the playhead, other keys and bar ends, beats; else whole frames) and the "+6 f · drop" label follows the pointer.
-One drag = one change. A slot mix-in for key_select.KeySelect (rostrum_gui/parts.py: listed before QObject).
+One drag = one change. ← / → move them a frame (Shift: ten) through the same calls (`shift_calls`), one change per press.
+A slot mix-in for key_select.KeySelect (rostrum_gui/parts.py: listed before QObject).
 """
 from __future__ import annotations
 
@@ -32,6 +33,30 @@ def end_follows(was: dict, latest: dict) -> list[dict]:
     composition seconds). Drag the key back and the end goes back. Absolute, so previews don't pile up."""
     return [{"op": "layer.trim", "target": [lay], "args": {"end": round(max(end, latest[lay]), 6)}}
             for lay, end in was.items() if lay in latest]
+
+
+def shift_calls(b, grab, dt, ends) -> list[dict] | None:
+    """The calls that move the keys of `grab` ([(key id, its placed key at the start)]) by `dt` composition seconds:
+    key.set {t} each (a key timed from a marker stays timed from it), the layers' ends following a key past them.
+    None when a key would land on another key of its setting (it stays)."""
+    moving = {k for k, _ in grab}
+    calls, latest = [], {}
+    for kid, key in grab:
+        owner = b.placed_item(b.doc.parent_of(kid)[0])
+        t = key["t"] + dt
+        if any(o["id"] not in moving and abs(o["t"] - t) < 1e-6 for o in keys_of(owner, key["prop"])):
+            return None
+        to = marked.moved(key["ref"], dt) if "ref" in key else round(t - b.offset(owner["id"]), 6)
+        calls.append({"op": "key.set", "target": [kid], "args": {"t": to}})
+        lay = layer_of(b.doc, kid)
+        latest[lay] = max(latest.get(lay, 0.0), t)
+    return calls + end_follows(ends, latest)
+
+
+def kept_in(dt, grab, duration) -> float:
+    """`dt` held so the moved keys stay inside the composition (0 .. its length)."""
+    first, last = min(k["t"] for _, k in grab), max(k["t"] for _, k in grab)
+    return min(max(dt, -first), duration - last)
 
 
 class KeyMoves:
@@ -94,23 +119,12 @@ class KeyMoves:
             return self._stretch_to(t, within)
         c = self.b.comp()
         to, caught = self._land(t, within)
-        dt = to - self._anchor
-        first = min(k["t"] for _, k in self._grab)
-        last = max(k["t"] for _, k in self._grab)
-        if not -first <= dt <= c["duration"] - last:
-            dt, caught = min(max(dt, -first), c["duration"] - last), None
-        moving = {k for k, _ in self._grab}
-        calls, latest = [], {}
-        for kid, key in self._grab:
-            owner = self.b.placed_item(self.b.doc.parent_of(kid)[0])
-            t = key["t"] + dt
-            if any(o["id"] not in moving and abs(o["t"] - t) < 1e-6 for o in keys_of(owner, key["prop"])):
-                return                                            # another key of that setting is there: stay
-            to = marked.moved(key["ref"], dt) if "ref" in key else t - self.b.offset(owner["id"])
-            calls.append({"op": "key.set", "target": [kid], "args": {"t": to}})
-            lay = layer_of(self.b.doc, kid)
-            latest[lay] = max(latest.get(lay, 0.0), t)
-        calls += end_follows(self._ends, latest)
+        dt = kept_in(to - self._anchor, self._grab, c["duration"])
+        if dt != to - self._anchor:
+            caught = None
+        calls = shift_calls(self.b, self._grab, dt, self._ends)
+        if calls is None:
+            return                                                # another key of that setting is there: stay
         self.b.timeSnap.show(dt, c["fps"], caught, self._anchor + dt, self._row)
         self.b.guard(lambda: self._drag.preview(calls))
 
@@ -120,3 +134,22 @@ class KeyMoves:
         self.b.timeSnap.clear()
         if d is not None:
             self.b.guard(lambda: self.b.done(d.end(), ""))
+
+    @Slot(int, result=bool)
+    def nudgeKeys(self, frames):
+        """← / → with keys picked: they all move `frames` frames later (negative: earlier), one change per press."""
+        if not self._ids:
+            return False
+        c = self.b.comp()
+        grab = [(k, dict(self.b.placed_item(k))) for k in self._ids]
+        dt = kept_in(frames / c["fps"], grab, c["duration"])
+        if abs(dt) < 1e-9:
+            self.b._set_status("The keys are at the " + ("start" if frames < 0 else "end"))
+            return False
+        calls = shift_calls(self.b, grab, dt, ends_of(self.b, {layer_of(self.b.doc, k) for k in self._ids}))
+        if calls is None:
+            self.b._set_status("Another key of that setting is there")
+            return False
+        n = len(grab)
+        label = "Move a key" if n == 1 else f"Move {n} keys"
+        return self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=label, join=False), ""))

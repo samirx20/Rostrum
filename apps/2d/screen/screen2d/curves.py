@@ -49,8 +49,16 @@ class Curves(QObject):
         bridge.outlineChanged.connect(news.relay(self))     # only news (the editor redid its curves on every edit)
 
     @Property(bool, notify=changed)
+    def offered(self):
+        """There are curves to see: the selected layer has an animated number. Else the timeline's Keys | Curves switch
+        is absent (LayerTimeline.qml) and the Keys view shows."""
+        return bool(self._numbers())
+
+    @Property(bool, notify=changed)
     def on(self):
-        return self._on
+        """The curve view shows: the person chose Curves and there is something to see (the last animation gone, or a
+        layer with none picked: back to Keys; the choice is kept for a layer that has some)."""
+        return self._on and self.offered
 
     @Slot(bool)
     def setOn(self, on):
@@ -73,7 +81,7 @@ class Curves(QObject):
     def fields(self):
         """One entry per curve: id, label, colour, range lo..hi, shown, path [[t, v] …], keys, stretches (handles).
         Empty while the editor is off: nothing samples curves no one sees (news.relay reads this on every outline)."""
-        if not self._on:
+        if not self.on:
             return []
         state = (self.b.placed(), tuple(self.b._keys.ids), self.b.selectedLayer, frozenset(self._hidden),
                  tuple(sorted(self._frozen.items())))

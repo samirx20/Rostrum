@@ -80,18 +80,25 @@ def layer_align(ctx, targets, args):
             _put(ctx, i, axis, resolve(items[i], t)[axis] + d, args)
 
 
-@R.operation("layer.distribute", "Space three or more layers evenly along `axis` x (across) or y (up and down): the two "
-             "outermost stay, the gaps between the layers become equal.", target=PLACED, label="Distribute",
-             params=[Param.choice("axis", ["x", "y"], label="Along", required=True), AT])
+@R.operation("layer.distribute", "Space layers along `axis` x (across) or y (up and down). Without `gap`: three or more "
+             "layers, the two outermost stay and the gaps between the layers become equal. With `gap` (px): two or more "
+             "layers, the first (leftmost or topmost) stays and each next one sits `gap` px after the one before.",
+             target=PLACED, label="Distribute",
+             params=[Param.choice("axis", ["x", "y"], label="Along", required=True),
+                     Param.number("gap", label="Gap", min=-100000, max=100000, unit=" px",
+                                  help="The space between neighbours, px; left out: even gaps between the outer two"), AT])
 def layer_distribute(ctx, targets, args):
-    if len(targets) < 3:
-        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", "distributing needs three or more layers")
+    gap = args.get("gap")
+    if len(targets) < (2 if gap is not None else 3):
+        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", "distributing needs three or more layers (two with a gap)")
     _parent(ctx, targets)
     t, axis = args.get("at", 0.0), args["axis"]
     rows = sorted((_span(boxes.box(ctx.item(i), t), axis), i) for i in targets)
-    gap = ((rows[-1][0][1] - rows[0][0][0]) - sum(z - a for (a, z), _ in rows)) / (len(rows) - 1)
+    if gap is None:
+        gap = ((rows[-1][0][1] - rows[0][0][0]) - sum(z - a for (a, z), _ in rows)) / (len(rows) - 1)
+    rest = rows[1:] if args.get("gap") is not None else rows[1:-1]      # a typed gap moves the last one too
     cursor = rows[0][0][1] + gap
-    for (a, z), i in rows[1:-1]:
+    for (a, z), i in rest:
         if abs(cursor - a) > 1e-9:
             _put(ctx, i, axis, resolve(ctx.item(i), t)[axis] + cursor - a, args)
         cursor += (z - a) + gap

@@ -1,15 +1,18 @@
 """The selected layers as the canvas and the layers list use them: the kit's ONE selection (`bridge.selection`,
 `selectMany`; the primary first) read as layers, their boxes for the outlines, and the ways to change it by hand:
 Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubber band, and which piece a click picks
-(picking.py). A QObject part, read in QML as `backend.multi`."""
+(picking.py), and the Gap row (GapRow.qml: the gap of 3+ evenly spaced layers, typed or scrubbed through
+layer.distribute {gap}). A QObject part, read in QML as `backend.multi`."""
 from __future__ import annotations
 
+from rostrum2d import boxes as B
 from rostrum_gui import news
+from rostrum_gui.edits import Drag
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_gui.selection_rules import box, click
 
-from . import bounds, picking
+from . import bounds, picking, snap
 from .handle_kinds import dressed
 from .group_slots import union
 
@@ -23,6 +26,7 @@ class Multi(QObject):
         super().__init__(bridge)
         self.b = bridge
         self._known = None                                  # (selection, document data, its layers)
+        self._even, self._drag = (None, {}), None           # ((selection, data, time), the Gap row); a Gap scrub
         # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
@@ -54,6 +58,62 @@ class Multi(QObject):
             return {}
         what = "Camera" if rider.get("type") == "camera" else rider.get("name") or ids[0]
         return {"id": path, "label": f"{what} rides {self.b.doc.item(path).get('name') or path}"}
+
+    @Property("QVariantMap", notify=boxesChanged)
+    def gap(self):
+        """The Gap row: {axis "x" | "y", gap px} when 3+ picked layers in one place sit equally apart along an axis
+        (base G, snap.even within 0.5 px; across first); {} otherwise, and the row is absent."""
+        ids, key = self.layers(), (tuple(self.b.selection), self.b.doc.data, self.b._t)
+        if self._even[0] != key:
+            self._even = (key, self._gap_of(ids) if len(ids) >= 3 else {})
+        return self._even[1]
+
+    def _gap_of(self, ids):
+        doc = self.b.doc
+        parents = {doc.parent_of(i)[0] for i in ids}
+        if len(parents) > 1 or doc.item(parents.pop()).get("layout", "none") != "none":
+            return {}
+        t = self.b.own_t(ids[0])
+        boxes = [B.box(doc.item(i), t) for i in ids]
+        for axis in ("x", "y"):
+            g = snap.even(boxes, axis)
+            if g is not None:
+                return {"axis": axis, "gap": round(g, 2)}
+        return {}
+
+    def _distribute(self, axis, gap):
+        ids = self.layers()
+        return {"op": "layer.distribute", "target": ids, "args": {"axis": axis, "gap": round(gap, 4), "at": self.b.own_t(ids[0])}}
+
+    @Slot(float)
+    def setGap(self, gap):
+        """A typed gap: the layers re-spaced from the first (leftmost or topmost), one change."""
+        if self.gap:
+            call = self._distribute(self.gap["axis"], gap)
+            self.b.guard(lambda: self.b.done(self.b.doc.apply([call], self.b.who, label="Gap"), ""))
+
+    @Slot()
+    def beginGap(self):
+        self.endGap()
+        if self.gap:
+            self._axis = self.gap["axis"]
+
+            def go():
+                self._drag = Drag(self.b.doc, self.b.who, "Gap")
+            self.b.guard(go)
+
+    @Slot(float)
+    def gapTo(self, gap):
+        """A Gap scrub's step: the preview of the whole scrub (one change at its end)."""
+        if self._drag is not None:
+            call = self._distribute(self._axis, gap)
+            self.b.guard(lambda: self._drag.preview([call]))
+
+    @Slot()
+    def endGap(self):
+        d, self._drag = self._drag, None
+        if d is not None:
+            self.b.guard(lambda: self.b.done(d.end(), ""))
 
     @Property(int, notify=pickedChanged)
     def count(self):

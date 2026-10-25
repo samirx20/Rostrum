@@ -169,10 +169,15 @@ class MotionPath(QObject):
 
     @Slot(str, float, result=bool)
     def beginKey(self, oid: str, t: float) -> bool:
-        """Press on a key square (composition seconds t): its keys are picked and a move starts."""
+        """Press on a key square (composition seconds t): its keys are picked and a move starts. A layer's square at
+        the playhead is where the layer is now, so the press is the layer's: it is picked (not the key) and moves, which
+        writes that key all the same (else the square hid the layer's middle from a click: sweep r3 FINDINGS 9)."""
         k, m = self._key_row(oid, t)
         if k is None or self._owner_ok(oid) is None:
             return False
+        if self.b.doc.item(oid)["type"] != FRAME and abs(t - self.b._t) < 0.5 / self.b.comp()["fps"]:
+            self.b.select(oid) if not self.b._multi.has(oid) else self.b._keys.clear()
+            return self.b.beginMove()
         self.b._keys.click(k["ids"], "", [])
         ids = {self.b.doc.item(i)["prop"]: (i, float(self.b.doc.item(i)["v"])) for i in k["ids"]}
         if not self.b._begin("Move a path key", KeyGrab(oid, ids, m)):
@@ -195,7 +200,9 @@ class MotionPath(QObject):
     def drag(self, dx: float, dy: float, alt: bool):
         """The pointer's total offset from the press, composition px on the canvas; Alt: a handle's opposite stays."""
         g = self.b._grab
-        if self.b._drag is None or not isinstance(g, (KeyGrab, HandleGrab)):
+        if self.b._drag is not None and not isinstance(g, (KeyGrab, HandleGrab)):
+            return self.b.moveBy(dx, dy)                 # the layer's own move (beginKey at the playhead)
+        if self.b._drag is None:
             return
         if isinstance(g, KeyGrab):
             dx, dy = self.b._snap.move(dx, dy)

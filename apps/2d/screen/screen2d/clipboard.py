@@ -3,7 +3,9 @@ so it works between two windows or two projects. Copy puts the selected layers' 
 the clipboard twice: under Rostrum2D's own type and as plain JSON text (an agent or a text editor can read it; paste
 also takes that text back). Copy is not a change. Cut = copy + layer.remove (one change). Paste = layer.paste (one
 change) into the selected layer's group, just above it (nothing selected: the top of the composition shown), then the
-pasted layers are selected. Files copied in a file browser are imported; a Figma link opens Import on that frame.
+pasted layers are selected (Ctrl+Shift+V, `paste_other`, pastes layers the same way, in place; copied keys it pastes
+at their original times: key_edits.py). Files copied in a file browser are imported; a Figma link opens Import on that
+frame (`_paste_outside`: what came from outside Rostrum).
 """
 from __future__ import annotations
 
@@ -45,7 +47,7 @@ class ClipboardSlots(SlotMixin):
         """What the clipboard holds, just above the selected layer (or on top of the composition), then selected."""
         text = self._clip_text()
         if not text:
-            return self._paste_other()
+            return self._paste_outside()
         into, at = self._clip_place()
         before = {layer["id"] for layer in self.doc.item(into).get("layers", [])}
         args = {"layers": text, "into": into, **({} if at is None else {"index": at})}
@@ -55,9 +57,9 @@ class ClipboardSlots(SlotMixin):
         self.selectMany([layer["id"] for layer in self.doc.item(into).get("layers", []) if layer["id"] not in before])
         return True
 
-    def _paste_other(self) -> bool:
-        """Not layers: files copied in Explorer / Finder are imported (as if dropped, centred); a Figma link opens Import
-        on Figma with the file and frame filled in (importer.py). Else nothing to paste, said."""
+    def _paste_outside(self) -> bool:
+        """From outside Rostrum, not layers: files copied in Explorer / Finder are imported (as if dropped, centred); a
+        Figma link opens Import on Figma with the file and frame filled in (importer.py). Else nothing to paste, said."""
         mime = QGuiApplication.clipboard().mimeData()
         if mime is not None and mime.hasUrls() and any(u.isLocalFile() for u in mime.urls()):
             return self._importer.dropFiles([u.toString() for u in mime.urls() if u.isLocalFile()], float("nan"), float("nan"))

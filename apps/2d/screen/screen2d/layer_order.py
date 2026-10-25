@@ -41,11 +41,60 @@ class LayerOrder(SlotMixin):
         """The lock or the eye on a layer's row (which: "locked" | "hidden"): that layer only, one change."""
         item = self.doc.item(layer_id)
         now = bool(item.get(which))
-        call = ({"op": "value.set", "target": [layer_id], "args": {"prop": "locked", "v": not now}} if which == "locked" and item["type"] == "camera"
-                else {"op": "layer.unlock" if now else "layer.lock", "target": [layer_id], "args": {}} if which == "locked"
-                else {"op": "layer.hide", "target": [layer_id], "args": {"on": not now}})
         label = {"locked": ("Lock", "Unlock"), "hidden": ("Hide", "Show")}[which][now]
-        return self._guard(lambda: self._apply([call], f"{label} {self.label_of(item)}"))
+        return self._guard(lambda: self._apply(self._switch_calls([layer_id], which, not now), f"{label} {self.label_of(item)}"))
+
+    def _above(self, layer_id):
+        """The layers a layer sits inside, nearest first."""
+        out, i = [], layer_id
+        while self.doc.has(i) and (p := self.doc.parent_of(i)[0]) is not None and self.doc.has(p) and self.doc.item(p)["type"] in self._layer_types():
+            out.append(p)
+            i = p
+        return out
+
+    def _switch_calls(self, ids, which, on):
+        """The calls that put the lock / eye of every layer of `ids` to `on` (the ones already there change nothing).
+        Locks go innermost first and unlocks outermost first (a layer inside a locked group can't be changed); the eye of
+        a locked layer, or of one inside a locked group, is left as it is (an operation may not change it)."""
+        deep = {i: len(self._above(i)) for i in ids}
+        calls = []
+        for i in sorted(ids, key=lambda i: -deep[i] if (which == "locked" and on) else deep[i]):
+            item = self.doc.item(i)
+            if bool(item.get(which)) == on or (which == "hidden" and (item.get("locked") or any(self.doc.item(a).get("locked") for a in self._above(i)))):
+                continue
+            calls.append({"op": "value.set", "target": [i], "args": {"prop": "locked", "v": on}} if which == "locked" and item["type"] == "camera"
+                         else {"op": ("layer.lock" if on else "layer.unlock"), "target": [i], "args": {}} if which == "locked"
+                         else {"op": "layer.hide", "target": [i], "args": {"on": on}})
+        return calls
+
+    @Slot("QStringList", str, bool, result=bool)
+    def setSwitches(self, ids, which, on):
+        """Press the lock or the eye and drag over more rows (LayerRows.qml): every row passed gets the first row's new
+        state, ONE change on release (one Ctrl+Z puts them all back)."""
+        calls = self._switch_calls(ids, which, on)
+        if not calls:
+            return False
+        noun = {"locked": ("Lock", "Unlock"), "hidden": ("Hide", "Show")}[which][not on]
+        return self._guard(lambda: self._apply(calls, f"{noun} {len(calls)} layers"))
+
+    @Slot(str, result=bool)
+    def soloLayer(self, layer_id):
+        """Alt+click an eye: show only this layer at its level (the others there hidden); Alt+click it again brings back
+        only the ones it hid. One change each. What it hid is kept until those layers are shown again by anything."""
+        doc, hit = self.doc, self.doc.kind.registry.get("layer.hide").targets
+        parent = doc.parent_of(layer_id)[0]
+        others = [c["id"] for c in doc.item(parent)["layers"] if c["id"] != layer_id and c["type"] in hit]
+        back = [i for i in getattr(self, "_soloed", {}).get(layer_id, []) if doc.has(i) and doc.item(i).get("hidden")]
+        if back and not doc.item(layer_id).get("hidden"):
+            calls, label = self._switch_calls(back, "hidden", False), "Show the layers hidden by Show only"
+        else:
+            hid = [i for i in others if not doc.item(i).get("hidden")]
+            calls = self._switch_calls(hid, "hidden", True) + self._switch_calls([layer_id], "hidden", False)
+            label = f"Show only {self.label_of(doc.item(layer_id))}"
+            self._soloed = {layer_id: hid}
+        if not calls:
+            return False
+        return self._guard(lambda: self._apply(calls, label))
 
     # ---- keyboard: select all, clear, nudge ---------------------------------------------------------------------
     @Slot()

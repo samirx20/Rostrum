@@ -113,10 +113,6 @@ Item {
                 }
             }
         }
-        Text {
-            anchors.centerIn: parent; visible: ed.fs.length === 0; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.body
-            text: "Select a layer with animated fields to see its curves"
-        }
         Canvas {
             id: canvas
             anchors.fill: parent
