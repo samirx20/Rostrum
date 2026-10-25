@@ -30,7 +30,7 @@ FieldFrame {
         for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
         return out
     }
-    function open() { query = ""; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.open() }
+    function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: f.opened
@@ -43,7 +43,10 @@ FieldFrame {
 
     // The list is made at the first opening only: a settings panel has a choice on most kinds' rows, and a popup with
     // its search line and list per field made each selection switch ~15 ms slower per choice.
-    Loader { id: pop; active: false; sourceComponent: popup }
+    // A long searchable list (the Font list) is made a moment after its row shows, at idle and spread over frames
+    // (an asynchronous Loader; open() finishes it at once if the click comes first): its first opening was ~50 ms.
+    Loader { id: pop; active: false; asynchronous: true; sourceComponent: popup }
+    Timer { interval: 150; running: f.searchable && f.visible && !pop.active; onTriggered: pop.active = true }
     Component { id: popup
     SmallPopup {
         id: menu
