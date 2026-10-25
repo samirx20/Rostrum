@@ -59,3 +59,18 @@ def test_a_chord_is_checked_note_by_note_never_a_false_wrong_octave(tmp_path):
     assert chords_heard.polyphonic([row([60, 64])])
     got = {r["written"]: r["status"] for r in chords_heard.check(tmp_path / "c.wav", [row([60, 64, 70, 69])])["rows"]}
     assert got == {"C4": "ok", "E4": "ok", "A#4": "wrong_octave", "A4": "missing"}, got
+
+
+def test_ending_check_flags_a_cut_tail_and_passes_a_finished_one():
+    """Guards the ending line of look_sound loudness: a tail still at -33 dBFS that falls off a cliff is a cut; a fade to silence is not."""
+    import numpy as np
+    from rostrum_sound.listen.ending import ending
+    sr = 8000
+    t = np.arange(int(3 * sr)) / sr
+    tone = 0.03 * np.sin(2 * np.pi * 220 * t)
+    cut = tone.copy()
+    cut[-int(0.05 * sr):] *= 0.05                        # the last 50 ms fall 26 dB: a cut
+    assert ending(cut[:, None], sr)["cut"] and not ending(cut[:, None], sr)["finished"]
+    faded = tone * np.clip((3.0 - t) / 1.5, 0, 1) ** 4   # a long fade to silence
+    e = ending(faded[:, None], sr)
+    assert e["finished"] and not e["cut"]

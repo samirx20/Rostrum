@@ -71,6 +71,7 @@ def tempo_line(r: dict, written: float | None, changes: bool) -> str:
     doc = f"{written:g} BPM, the document's" + (" (the tempo it keeps longest; it changes tempo)" if changes else "")
     heard, rel = r["heard_bpm"], relation(r["heard_bpm"], written)
     if fits(r, written):
-        alone = "" if rel == "matches" else f"; heard alone they read {heard:g} BPM ({rel}): the same groove counted another way"
+        alone = "" if rel == "matches" else (f"; the sound alone also reads {heard:g} BPM ({rel} the document's): rolls, fast figures and "
+                                              "repeated hits add beats, so the grid and the offsets below use the document's tempo, which fits")
         return f"{doc}; the audio's beats fit it{alone}; {r['steadiness']}{drift}"
     return f"{doc}; the audio's beats do NOT fit it: they read {r['bpm']} BPM ({rel}), {r['steadiness']}{drift}"

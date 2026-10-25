@@ -14,6 +14,9 @@ SEPARATE_S = 0.5      # worst moments at least this far apart
 WINDOW_S = 0.01       # who drives a moment: the stems' share over ±10 ms around its loudest sample
 MIN_SHARE = 1.0       # a stem under 1 % of the signal (or silent there) is not listed
 TOP_DRIVERS = 6
+DEFAULT_MAX_LIMIT_DB = 2.0   # the master's `maxLimit` default (Most limiting)
+TOP_SPANS = 8
+WORTH_SAYING_DB = 0.5        # a lead track is named only when the limiter works this far over the allowance
 
 
 def drivers(stems, pre, at, sr):
@@ -27,7 +30,34 @@ def drivers(stems, pre, at, sr):
     return sorted(rows, key=lambda r: -(r["share_pct"] or 0))[:TOP_DRIVERS]
 
 
-def limiter(stems, reduction, caveat="", top=5, engine_max_db=None):
+def working_spans(red, top=TOP_SPANS):
+    """The curve as the stretches where the limiter worked: [{from_s, to_s, max_db}], the `top` deepest, in time order.
+    (Never the raw curve: a quiet piece is a few hundred zeros.)"""
+    on = np.concatenate([[False], red >= MIN_DB, [False]])
+    edges = np.flatnonzero(on[1:] != on[:-1])
+    spans = [{"from_s": num(a * HOP_S, 2), "to_s": num(b * HOP_S, 2), "max_db": num(red[a:b].max(), 2)} for a, b in zip(edges[::2], edges[1::2])]
+    return sorted(sorted(spans, key=lambda x: -x["max_db"])[:top], key=lambda x: x["from_s"])
+
+
+def advice(worst, max_db, allowed_db):
+    """Which track sets the limiter and by how many dB to lower it so the limiter stays within `allowed_db` (the master's
+    Most limiting). The driver is the one that leads the most of the worst moments (the deepest decides a tie)."""
+    led: dict = {}
+    for w in worst:
+        if w["drivers"]:
+            led.setdefault(w["drivers"][0]["track"], []).append(w["reduced_db"])
+    if not led or max_db is None:
+        return None
+    track = max(led, key=lambda k: (len(led[k]), max(led[k])))
+    over = max(0.0, max_db - allowed_db)
+    lower = round(over + 0.1, 1) if over >= WORTH_SAYING_DB else 0.0
+    words = (f"{track} sets the limiter ({len(led[track])} of the {len(worst)} worst moments): lower {track} by {lower:g} dB (its volume, "
+             f"track.set volume) to keep the limiter within Most limiting {allowed_db:g} dB." if lower else
+             f"{track} sets the limiter, which works at most {max_db:g} dB: within Most limiting {allowed_db:g} dB, nothing to lower.")
+    return {"track": track, "lower_db": lower, "keep_within_db": allowed_db, "moments_led": len(led[track]), "words": words}
+
+
+def limiter(stems, reduction, caveat="", top=5, engine_max_db=None, max_limit_db=None):
     """stems: {track: wav} (the ones that add up to the mix); reduction: the engine's dB reduced per 100 ms.
     -> curve, worst moments, drivers."""
     red = np.asarray(reduction, dtype=np.float64)
@@ -49,8 +79,10 @@ def limiter(stems, reduction, caveat="", top=5, engine_max_db=None):
                 at = a + int(np.argmax(np.abs(pre[a:a + hop]).max(axis=1)))
                 row["drivers"] = drivers({k: y[:n] for k, (y, _) in data.items()}, pre, at, sr)
             worst.append(row)
-    return {"curve_step_s": HOP_S, "reduction_db": [num(v, 2) for v in red], "max_db": num(red.max() if red.size else 0.0, 2),
+    max_db = num(red.max() if red.size else 0.0, 2)
+    allowed = DEFAULT_MAX_LIMIT_DB if max_limit_db is None else max_limit_db
+    return {"curve_step_s": HOP_S, "max_db": max_db, "working": working_spans(red), "advice": advice(worst, max_db, allowed),
             "engine_max_db": engine_max_db, "seconds_working": num(float((red >= MIN_DB).sum() * HOP_S), 2), "worst": worst,
-            "how": "the engine's own gain on the mix (glue and limiter, the loudness target's gain taken out), the deepest of "
+            "how": "`working`: the deepest stretches where the limiter worked (the whole curve is in the picture); the engine's own gain on the mix (glue and limiter, the loudness target's gain taken out), the deepest of "
                    "each 100 ms; the drivers are each track's share of the signal at that moment" + (f"; {caveat}" if caveat else ""),
             "_curve": red}

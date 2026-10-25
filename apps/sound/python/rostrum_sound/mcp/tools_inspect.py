@@ -7,7 +7,9 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import library, names, packs, roles, userlib
 from . import engine_lists as L
+from ..listen.core import RENDER_BANDS_HZ
 from ..userlib.kinds import OFFERED
+from . import start_level
 
 
 FORMS = ("builtIn", "model", "synth", "sfz", "kit", "kitSfz")
@@ -24,11 +26,16 @@ def _instrument(args) -> dict:
 def register(tools: Tools):
     @tools.tool("inspect_engine", {"properties": {}})
     def inspect_engine(ctx, args):
-        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized."""
+        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized. Where the engine gives it, each instrument's starting level (start_level_db: how loud it is at track volume 1; a track's volume_db in look_sound levels is against it). data.render_bands_hz names the five bands of the render reply (sub 20–60, bass 60–250, lowMid 250–1000, mid 1000–4000, high 4000–16000 Hz)."""
         d = ctx.app.state.engine.request("describe")
         made = L.made_by(d)
         effects, master = L.effect_rows(), L.master_rows()
         said = "; ".join(roles.line(k, made[k], short=True) for k in roles.ROLES)
+        rows = roles.rows(made)
+        for row in rows:                      # the starting level, once the engine gives it (mcp/start_level.py)
+            lv = start_level.table(d).get(row["sound"])
+            if lv is not None:
+                row["start_level_db"] = round(lv, 1)
         return Reply(f"Engine {d['engine']}, contract {d['contract']}: {len(d['builtIns'])} built-in instruments, "
                      f"{len(effects)} effect types, {len(d['spaces'])} reverb spaces. "
                      f"Reverb spaces: {', '.join(d['spaces'])}. Tones: {', '.join(d['tones'])}. EQ shapes: {', '.join(d['eqShapes'])}. "
@@ -36,7 +43,7 @@ def register(tools: Tools):
                      + " | ".join(L.effect_line(t, r) for t, r in effects.items()) + ". "
                      f"{L.master_line(master)}. "
                      f"Instruments, each marked recorded or synthesized, with the parts it suits ({roles.parts_words()}), where it sounds best and what it is: {said}.",
-                     {**d, "effects": effects, "master": master, "roles": roles.rows(made)})
+                     {**d, "effects": effects, "master": master, "roles": rows, "render_bands_hz": RENDER_BANDS_HZ})
 
     @tools.tool("inspect_instrument", {"properties": {
         "builtIn": {"type": "string", "description": "A plain instrument name (piano, marimba, warmPad …): the names inspect_engine lists without a prefix."},
