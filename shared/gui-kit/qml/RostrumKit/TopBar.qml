@@ -87,7 +87,7 @@ Item {
     readonly property bool doneLinks: !!job && job.state === "done" && !job.open && job.doneMessage !== "" && bridge.status === job.doneMessage
     readonly property real fixedWidth: edgeLeft + slot(menuSlot) + wordmark.implicitWidth + slot(leadingSlot)
                                      + (tabFloor ? sp + tabFloor : 0) + (crumbSlot.children.length ? crumbSlot.implicitWidth : 0)
-                                     + sp + countFull.advanceWidth + slot(toolsSlot)
+                                     + sp + countRoom + slot(toolsSlot)
                                      + (chipsNarrowWidth ? sp + chipsNarrowWidth : 0) + (undoWidth ? sp + undoWidth : 0)
                                      + sp + Theme.button + slot(actionsSlot) + sp + help.width + edgeRight
     readonly property real room: width - fixedWidth                            // what may still be handed out
@@ -111,6 +111,10 @@ Item {
     readonly property int changes: agentShown || !bridge ? 0 : bridge.historyCount   // (the agent chip counts its own)
     readonly property string changesWord: changes > 0 ? changes + (changes === 1 ? " change" : " changes") : ""
     TextMetrics { id: countFull; font: count.font; text: [bar.saveWord, bar.changesWord].filter(w => w).join(" · ") }
+    // The count's room is held at its widest ("Saved · 999 changes"), so the count growing with each edit never moves the
+    // command box or anything right of it (at 1280 px the box slid and shrank with every new change, as Export appeared)
+    TextMetrics { id: countWidest; font: count.font; text: [bar.saveWord, "999 changes"].filter(w => w).join(" · ") }
+    readonly property real countRoom: Math.max(countWidest.advanceWidth, countFull.advanceWidth)
     TextMetrics { id: countShort; font: count.font; text: bar.saveWord && bar.changesWord ? bar.saveWord : "" }
 
     Row {  // left group: ≡ (the app's menu button), wordmark, leading buttons, the document tab, the crumb
@@ -169,7 +173,7 @@ Item {
             id: messageSlotItem
             anchors.verticalCenter: parent.verticalCenter
             visible: bar.messageSlot > 0
-            width: bar.messageSlot + (bar.countShortened ? bar.countSaving : 0); height: Theme.button
+            width: bar.messageSlot + Math.max(0, bar.countRoom - count.implicitWidth); height: Theme.button   // + what the count leaves of its room
             Row {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 spacing: Theme.gap
@@ -197,8 +201,7 @@ Item {
             id: count   // to History. While the agent chip shows, the count is the chip's ("Claude · 6 changes"): "Saved" alone
             anchors.verticalCenter: parent.verticalCenter
             height: Math.max(implicitHeight, 16); verticalAlignment: Text.AlignVCenter     // a click target of at least 16 px
-            text: bar.countShortened ? countShort.text : countFull.text
-            visible: text !== ""
+            text: bar.countShortened ? countShort.text : countFull.text     // (always in the row, empty or not: its room is held)
             color: countHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
             HoverHandler { id: countHover; cursorShape: Qt.PointingHandCursor }
             TapHandler { onTapped: bar.openHistory("") }
