@@ -16,12 +16,14 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from rostrum_core import RostrumError, Who
-from rostrum_core import live
+from rostrum_core import filestamps, live
 from rostrum_core.markers import current, edit, listing, open_markers, refresh, times, version, watch
 
 from . import marker_menu
 
 POLL_MS = 500          # another process (an agent, Sound) may move a marker: look at the file this often (cheap)
+# The poll is also the screen's file tick (rostrum_core.filestamps): between two polls a document change asks the disk
+# nothing about project files (the marker file, the joint file, project.json); this process's own writes forget theirs.
 
 
 class MarkerWatch(QObject):
@@ -33,6 +35,7 @@ class MarkerWatch(QObject):
         self._fail = fail or (lambda line: print(line, file=sys.stderr))
         self._stamp, self.times, self._rows, self._last, self._empty = None, {}, [], None, None
         self._unwatch = watch(folder) if folder is not None else (lambda: None)     # the marker document: read on our poll
+        self._unfiles = filestamps.watching() if folder is not None else (lambda: None)   # file looks: once per poll
         self._read()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
@@ -40,6 +43,7 @@ class MarkerWatch(QObject):
             self._timer.start(POLL_MS)
 
     def refresh(self):
+        filestamps.tick()                               # what the files showed may be old now: each is looked at once again
         if self._read():
             self.changed.emit()
 
@@ -55,6 +59,7 @@ class MarkerWatch(QObject):
     def close(self):
         self._timer.stop()
         self._unwatch()
+        self._unfiles()
 
     # ---- one history with the screen's document (DocBridge.join_history) ------------------------------------
     def history_doc(self):

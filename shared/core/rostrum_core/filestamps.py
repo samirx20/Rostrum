@@ -15,13 +15,16 @@ _on = [0]               # screens that tick; 0 = nobody does, every ask goes to 
 
 
 def watching():
-    """A screen takes over the ticking; call the returned function when it closes."""
+    """A screen takes over the ticking; call the returned function when it closes (a second call does nothing)."""
     _on[0] += 1
+    live = [True]
 
     def stop():
-        _on[0] -= 1
-        if not _on[0]:
-            _kept.clear()
+        if live[0]:
+            live[0] = False
+            _on[0] -= 1
+            if not _on[0]:
+                _kept.clear()
     return stop
 
 

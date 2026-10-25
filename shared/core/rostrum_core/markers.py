@@ -160,8 +160,12 @@ def open_markers(folder) -> Document:
 def open_to_change(folder) -> Document:
     """The marker document, live (live.keep): a change locks the file, takes in what other programs saved, and saves."""
     from .live import keep
-    doc = current(folder) or open_markers(folder)
-    keep(doc)
+    doc = current(folder)
+    if doc is not None:
+        keep(doc)
+        return doc
+    keep(doc := open_markers(folder))       # the first marker (saved now): this copy is the project's from now on
+    _DOCS[str(folder)] = (version(folder), doc)
     return doc
 
 
@@ -186,17 +190,15 @@ def watch(folder):
 
 def current(folder) -> Document | None:
     """The project's marker document as this process holds it (None: no markers yet). Unwatched, the file's stamp is
-    looked at on each call (one stat); watched, never: `refresh` does it on the screen's poll."""
+    looked at on each call (one stat); watched, never, "no markers yet" included: `refresh` does it on the screen's
+    poll (a screen asked it up to 12 times per change, each a look at a file that isn't there)."""
     if folder is None:
         return None
     key = str(folder)
     got = _DOCS.get(key)
     if got is not None and (key in _WATCHED or got[0] == version(folder)):
         return got[1]
-    if not _exists(folder):
-        _DOCS.pop(key, None)
-        return None
-    doc = open_markers(folder)
+    doc = open_markers(folder) if _exists(folder) else None
     _DOCS[key] = (version(folder), doc)
     return doc
 
@@ -209,7 +211,7 @@ def refresh(folder) -> None:
     stamp = version(folder)
     if got is None or got[0] == stamp:
         return
-    if got[1].live is not None:
+    if got[1] is not None and got[1].live is not None:
         got[1].live.catch_up()
         _DOCS[key] = (stamp, got[1])
     else:
