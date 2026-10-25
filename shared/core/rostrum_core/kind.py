@@ -47,6 +47,10 @@ class DocKind:
     # retired design). Unlike `check`, they never stop a file opening or a call; they are never silent either: the
     # agent's replies carry them (mcp/server.py), inspect lists them, screens show them on the Problems chip.
     warn: Callable[[dict], list[str]] = _no_problems
+    # The app's advice: advise(data) -> plain sentences about a state that is valid but probably not what was meant (2D:
+    # a set of several drawings that shows only the first). `edit_document` and `run_script` replies carry the sentences
+    # a call made new, as warnings (mcp/shared_edit.py); a state that was already there is not repeated.
+    advise: Callable[[dict], list[str]] = _no_problems
     # elsewhere(id) -> a plain hint, or None: what to say when a target id isn't in this document but names something
     # that lives outside it (Sound: a project marker, changed with edit_markers).
     elsewhere: Callable[[str], str | None] | None = None
@@ -131,6 +135,13 @@ class DocKind:
             return list(self.warn(data))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]
+
+    def advice(self, data: dict) -> list[str]:
+        """What the document holds that is valid but probably not meant (`advise`), in words."""
+        try:
+            return list(self.advise(data))
+        except SHAPE_ERRORS:
+            return []
 
     def view(self, doc) -> View:
         """A View of `doc`; a Document lends the index it keeps (finding an item's parent walked the whole song on
