@@ -753,7 +753,7 @@ the agent's `inspect_tools`.
 | | K | Key the selection at the playhead | shared |
 | | A | Show / hide the selection's animated rows / automation lanes | shared |
 | | F9 · Shift+F9 · Ctrl+Shift+F9 · Ctrl+Alt+J | Smooth · ease in · ease out · jump | shared (2D now; Sound when curves land) |
-| | M | Marker at the playhead (name it at once) | shared |
+| | M | Add a marker at the playhead (name it at once) | shared |
 | **View** | Ctrl+wheel · pinch | Zoom at the pointer | shared |
 | | Shift+wheel · wheel | Scroll sideways / up and down | shared |
 | | Alt+wheel | Row height (timelines) | shared |

@@ -18,14 +18,15 @@ QQC.Popup {
     background: Rectangle { color: Theme.raised; radius: Theme.radiusPanel; border.color: Theme.popupEdge }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
 
-    function query(q) { search.input.text = q; refilter() }
-    function refilter() { shown = bridge.commands(search.input.text); list.currentIndex = 0 }
+    // the field's value is what was typed, so Enter (which lets the caret go) never empties the box
+    function query(q) { search.text = q; search.input.text = q; refilter() }
+    function refilter() { search.text = search.input.text; shown = bridge.commands(search.input.text); list.currentIndex = 0 }
     function runCurrent() {
         var c = shown[list.currentIndex]
-        if (!c) return
+        if (!c) { search.input.forceActiveFocus(); return }    // nothing matches: the words stay, the caret back in to fix them
         close(); bridge.run(c.key)
     }
-    onAboutToShow: { search.input.text = ""; refilter(); search.input.forceActiveFocus() }
+    onAboutToShow: { query(""); search.input.forceActiveFocus() }
 
     Column {
         anchors.fill: parent

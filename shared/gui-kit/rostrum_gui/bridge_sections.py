@@ -71,7 +71,11 @@ class SectionSlots(SlotMixin):
         if self._kit.search.strip() and not row["valid"]:
             self.setSearch("")
             row = self._param(name)
-        if row.get("in"):
+        fold = next((r for r in self.model.rows if row.get("in") and r.get("fold") == row["in"]), None)
+        if fold and fold.get("switch") and not fold.get("open"):    # a group a switch turns on is added, as its "+ name" does
+            self.toggleGroup(row["in"])                             # (motion blur on at 180°: one change, then its row shows)
+            self._panel_now()
+        elif row.get("in"):
             self._kit.open_groups[row["in"]] = True
             self._refresh()
         elif "in" not in row and not row["valid"]:      # behind the More row

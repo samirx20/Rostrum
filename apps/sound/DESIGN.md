@@ -3638,7 +3638,7 @@ that don't touch, the velocity strip without notes, Loop without a range. The da
 | **Automation** | ◇ in the settings panel | Start automating / remove the key here | shared |
 | | K | A key at the playhead on every open lane of the selected tracks | shared · changed (was the click) |
 | | A | Show / hide the automation lanes of the selected tracks | shared |
-| **Markers** | M | Marker at the playhead (name it at once; Shared switch) | shared |
+| **Markers** | M | Add a marker at the playhead (name it at once; Shared switch) | shared |
 | **Panels and view** | E · X | Editor · Mixer | Sound |
 | | Ctrl+L | Library (instruments and sounds) | shared · changed (was L) |
 | | Ctrl+H | History | shared |
