@@ -4,6 +4,7 @@ Served by `inspect_guide` and as MCP resources `rostrum://guide/<topic>`.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..errors import RostrumError
@@ -23,7 +24,14 @@ START_HERE = """# Start here: how every Rostrum server answers
 - Long work comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 """
 
-TOOLS_POINTER = "\n\n*Every tool of this server, by verb, with its arguments: call `inspect_tools`.*\n"
+CAP = 8000      # characters of a guide one inspect_guide reply carries before it lists the remaining sections
+
+
+def _head(part: str) -> str:
+    return part.splitlines()[0].lstrip("# ").strip()
+
+
+TOOLS_POINTER ="\n\n*Every tool of this server, by verb, with its arguments: call `inspect_tools`.*\n"
 
 
 class Guides:
@@ -50,6 +58,27 @@ class Guides:
         if topic == "start-here" and "inspect_tools" not in text:     # every app's start-here points to the tool list
             text = text.rstrip() + TOOLS_POINTER
         return text
+
+    def part(self, topic: str, section: str | None = None, cap: int = CAP) -> str:
+        """The guide cut to fit a reply: `section` (words of a `## ` heading; "all" = whole) gives that section; with
+        none, start-here whole and any other guide's sections up to `cap` characters, then the rest's headings."""
+        text = self.get(topic)
+        parts = re.split(r"(?m)^(?=## )", text)
+        if section == "all" or (section is None and (topic == "start-here" or len(text) <= cap)):
+            return text
+        if section is not None:
+            want = section.lower().lstrip("# ").strip()
+            hits = [p for p in parts[1:] if want in p.splitlines()[0].lower()]
+            if not hits:
+                raise RostrumError.not_found("inspect_guide", "section", section, [_head(p) for p in parts[1:]], f'the guide "{topic}"')
+            return "".join(hits)
+        out, n = [], 0
+        while n < len(parts) and (not out or sum(map(len, out)) + len(parts[n]) <= cap):
+            out.append(parts[n])
+            n += 1
+        rest = [_head(p) for p in parts[n:]]
+        return "".join(out).rstrip() + (f"\n\n*{len(rest)} more section{'s' * (len(rest) != 1)}: " + "; ".join(rest) +
+                                        '. Ask with `section` (words of its heading), or section: "all".*\n' if rest else "")
 
     def title(self, topic: str) -> str:
         first = self._topics[topic].lstrip().splitlines()[0] if self._topics[topic].strip() else topic

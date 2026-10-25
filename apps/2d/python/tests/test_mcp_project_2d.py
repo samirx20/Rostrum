@@ -43,8 +43,16 @@ def test_no_options_opens_the_newest_recent_project_and_run_open_project_switche
     assert reply["ok"], reply
     reply, _ = rt.call("inspect_project", {}, AGENT)
     assert reply["data"]["folder"] == b and [d["item"] for d in reply["data"]["open"]] == ["main"]
-    reply, _ = rt.call("run_open_project", {"folder": a, "item": "nope"}, AGENT)
-    assert not reply["ok"] and reply["error"]["code"] == "NOT_FOUND" and reply["error"]["accepted"] == ["intro"]
+    reply, _ = rt.call("run_open_project", {"folder": a, "item": "teaser"}, AGENT)    # a new name starts a new document,
+    assert reply["ok"] and "intro" in reply["summary"] and list(app.documents) == ["teaser"]   # saying what else is there
+
+
+def test_run_open_project_makes_a_new_folder_and_a_refused_call_makes_nothing(tmp_path, monkeypatch):
+    app, rt = start(tmp_path, monkeypatch, [])
+    reply, _ = rt.call("run_open_project", {"folder": str(tmp_path / "x" / "bad"), "item": "a b"}, AGENT)
+    assert not reply["ok"] and not (tmp_path / "x").exists()
+    reply, _ = rt.call("run_open_project", {"folder": str(tmp_path / "new" / "piece")}, AGENT)
+    assert reply["ok"] and (tmp_path / "new" / "piece" / "docs" / "main.mtn").is_file()
 
 
 def test_with_no_recent_project_nothing_is_open_and_nothing_is_created(tmp_path, monkeypatch):

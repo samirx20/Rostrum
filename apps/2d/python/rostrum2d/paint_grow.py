@@ -124,3 +124,42 @@ def _move_masks(ctx, item: dict, dx: int, dy: int) -> None:
                 ctx.set(m["id"], prop, m.get(prop, F.defaults("mask").get(prop, 0.0)) + d)
                 for k in keys_of(m, prop):
                     ctx.set(k["id"], "v", k["v"] + d)
+
+
+class _Tree:
+    """`grow`'s ctx over a tree being built (a script's output, never shared): item by id, set in place."""
+
+    def __init__(self, drawing: dict):
+        from rostrum_core.tree import walk
+        from .kind import LISTS
+        self.items = {i["id"]: i for i in walk(drawing, LISTS)}
+
+    def item(self, id_: str) -> dict:
+        return self.items[id_]
+
+    def set(self, id_: str, prop: str, value) -> None:
+        self.items[id_][prop] = value
+
+
+def _outline(points) -> tuple[float, float, float, float]:
+    """A fill's box: its outline exactly (it is sharp; a fill up to the edge needs no more canvas)."""
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def hold_strokes(drawing: dict) -> None:
+    """A drawing a script built grown to hold every stroke and fill it was given, as `paint.stroke` grows it (the same `grow`):
+    a script's stroke past the canvas's edge is never clipped. Erasing strokes never grow it. Past MOST px a side it
+    fails loudly, naming the drawing (a script splits it into two drawings itself)."""
+    boxes = [reach(s["points"], s) if s["type"] == "stroke" else _outline(s["points"]) for f in drawing.get("frames", [])
+             for p in f.get("paints", []) for s in p.get("strokes", []) if s.get("points") and s.get("mode") != "erase"]
+    if not boxes:
+        return
+    box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+    w, h = int(drawing.get("w", 1920)), int(drawing.get("h", 1080))
+    if not fits(w, h, box):
+        left, top, right, bottom = need(w, h, box)
+        raise ValueError(f'drawing "{drawing["id"]}": its strokes reach {w + left + right} × {h + top + bottom} canvas px '
+                         f"(from {round(box[0])}, {round(box[1])} to {round(box[2])}, {round(box[3])}); a drawing is at most "
+                         f"{MOST} px a side. Split it into two drawing layers, or keep the strokes closer together")
+    grow(_Tree(drawing), drawing["id"], box)

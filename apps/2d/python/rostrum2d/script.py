@@ -36,7 +36,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, pathdata, script_frame, script_words as W
+from . import fields as F, fontlist, paint_grow, pathdata, script_frame, script_words as W
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -46,9 +46,13 @@ from .rig import script as rig_script
 from .swap import child_index
 from .lipsync import script as lipsync_script
 
+# Python's plain built-ins a script may use (start-here.md lists them; keep the two the same). No print (the MCP
+# server talks over stdout), no open / eval / exec / getattr / type: a script only builds the document.
+BUILTINS = ("range", "len", "min", "max", "abs", "round", "sum", "divmod", "pow", "enumerate", "zip", "map", "filter",
+            "sorted", "reversed", "any", "all", "list", "dict", "tuple", "set", "frozenset", "float", "int", "str", "bool",
+            "isinstance", "chr", "ord", "ValueError", "KeyError", "IndexError", "TypeError", "ZeroDivisionError")
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
-        for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
-                  "str", "sorted", "reversed", "sum", "isinstance", "ValueError")}
+        for n in BUILTINS}
 
 
 class Item:
@@ -156,6 +160,13 @@ class Item:
         self._need("paint", "stroke")
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
 
+    def fill(self, points, id: str | None = None, **values) -> "Item":
+        """A filled polygon on this paint layer, sharp-edged, in painting order (the kit's fill: what paint.fill makes
+        from a click): `ink.fill([(x, y), …], color="#2a2340")` for a ridge or a silhouette; [x, y, ring] for holes."""
+        self._need("paint", "fill")
+        return self._b.add_kit("fill", id, {"points": [[*p[:2], p[2] if len(p) > 2 else 0] for p in points], **values},
+                               self.node["strokes"])
+
     def _ink(self) -> "Item":
         frames = self.node["frames"]
         frame = Item(self._b, frames[0]) if frames else self.frame(0)
@@ -222,10 +233,12 @@ class Build:
     def __init__(self, reserved=()):
         self.root, self.holders, self.reserved, self.taken = KIND.blank(), [], set(reserved), set()
         self.sized = set()          # groups whose script gave a size (w or h): never refitted
+        self.counts: dict[str, int] = {}     # type -> the last counted N (new_id)
 
     def new_id(self, type_, id_):
-        if id_ is None:
-            id_ = ids.counted(self.taken, type_, self.reserved)
+        if id_ is None:         # ids only get taken, so the next free N per type is never below the last one given
+            id_ = ids.counted(self.taken, type_, self.reserved, start=self.counts.get(type_, 1))
+            self.counts[type_] = int(id_.rsplit("_", 1)[1])
         if not ids.is_valid(id_):
             raise ValueError(f'"{id_}" is not a usable id (letters, digits, _ . -; not starting with a digit)')
         if id_ in self.taken and type_ == "paint":
@@ -337,6 +350,14 @@ def _check_links(root: dict, made: set[str]) -> None:
         walk(c)
 
 
+def _grow_drawings(root: dict) -> None:
+    """Every drawing grown to hold its strokes, as a painted stroke grows it (paint_grow.hold_strokes)."""
+    from rostrum_core.tree import walk
+    for item in walk(root, KIND.lists):
+        if item.get("type") == "drawing":
+            paint_grow.hold_strokes(item)
+
+
 def _reserved(source: str) -> set[str]:
     try:
         return {n.value for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
@@ -350,8 +371,7 @@ def _importer(rnd):
         if name in ("math", "random"):
             return math if name == "math" else rnd
         raise ImportError(f"scripts can't import {name!r}; math and random (seeded: the same numbers every run, "
-                          "random(7) for your own seed) are already there, and range, len, min, max, abs, round, "
-                          "enumerate, zip, sorted, sum …")
+                          "random(7) for your own seed) are already there, and these built-ins: " + ", ".join(BUILTINS))
     return _import
 
 
@@ -378,6 +398,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
              **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
+        _grow_drawings(b.root)
         _check_links(b.root, b.taken)
     except Exception as e:
         raise _failed(e, name, scope) from e
@@ -390,7 +411,7 @@ API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)"
        "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
        "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
-       "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)",
+       "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
        "shape / path(id, fill=painted(painting, fit=, scale=, offset=(x, y), rotation=, drift=(x, y), under=, blend=, opacity=))"]
 

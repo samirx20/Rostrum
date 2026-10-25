@@ -3,6 +3,16 @@
 Rostrum2D makes motion graphics: type, shapes, images, UI animation. You and a person edit **the same document**, so
 whatever you build stays editable by hand, and whatever they move stays moved.
 
+## Open or make a project
+
+The server starts on the person's last project. To work somewhere else, or to start a new piece:
+
+- `run_open_project {"folder": "C:/Users/me/Videos/launch"}`: the folder is an absolute path. If it doesn't exist yet it
+  is made (with any folders above it), with an empty document `main` in it; an existing project opens as it is.
+- `item` names the document: `{"folder": "...", "item": "teaser"}` opens `teaser`, or starts it empty beside the others.
+- `run_open_project {"what": "recent"}` lists the person's recent projects.
+- A refused call (a path that isn't absolute, a file instead of a folder, a document name with spaces) makes nothing.
+
 ## The document
 
 ```
@@ -57,6 +67,8 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
     t.key("opacity", {0.0: 0, 0.4: 1})                     # 0.0 = the moment of the marker
 ```
 
+- Inside a timed group, `start`, `end` and key times are **seconds from the marker**: `end=4.0` is 4 s after it, not
+  at 4 s of the comp.
 - A layer inside a timed group with its own `marker` counts from its own marker.
 - **Ends at marker** (`endMarker="reveal"`) ends a layer on another marker: the phone shot is gone exactly when the
   reveal starts, wherever either marker moves.
@@ -75,23 +87,36 @@ with group("reveal_shot", marker="reveal", end=4.0):     # visible from the mark
 - `look_motion`, `look_frame` and the export all read the times as they play (marker + time). `inspect_item`
   shows the times as written, from the marker.
 - A marker the project doesn't have stops the render with a message, and `inspect_diagnose` lists it.
+- Move a marker with `edit_markers` and `marker.move`; its target may be the marker's name or its id:
+  `{"op": "marker.move", "target": ["drop"], "args": {"at": 5.5}}`.
 
 ## Scripts (`run_script`)
 
-Write Python with the script API (below). The script builds the whole document tree; the server **merges** it in. Run it
-again after editing it and:
+Write Python with the script API (below). The script builds the whole document tree; the server **merges** it in.
+Save the script as a file and pass its path, or pass the text itself:
+
+```
+run_script {"path": "C:/work/promo.py"}                       the file; its name (promo.py) is the script's name
+run_script {"source": "comp(\"main\", ...)", "name": "promo.py"}   the text, under a name
+```
+
+Run it again after editing it and:
 
 - what the script says changes; what you did not change stays;
-- **what a person moved by hand stays where they put it**, and the reply lists it as held back with a warning. Pass `force`
-  (a list of the held keys, or `true`) only when you really mean to overwrite their work;
+- **your own earlier output updates**: a value, a key's new time, a layer you dropped. Only someone else's work holds
+  a value back;
+- **what a person moved by hand stays where they put it** (and what another agent or script changed), and the reply
+  lists it as held back, naming the key and who changed it. Pass `force` with those keys (`"force": ["title.x"]`, or
+  `true` for all) only when you really mean to overwrite their work;
 - ids are what match old to new. Give your layers **explicit ids** (`text("title", ...)`) so a re-run finds the same layer.
   Left out, ids are counted per type (`text_1`, `text_2`) and skip any word quoted in the script.
-- Keys have ids made from layer, field and time, so a key at the same time is the same key on re-run.
+- Keys have ids made from layer, field and time, so a key at the same time is the same key on re-run; a key you move to
+  another time in the script is a new key in place of the old one (a person's retimed key keeps its id and stays).
 - A script starts with `comp("id", ...)`: a layer line before it is refused ("make a composition first"). The scene arrives with its own frame; when the project already has a frame called `frame`, the new scene's is called `<scene id>-frame`. Ids the project already holds (a person's, another scene's) are never taken by a counted id.
 
 **Replace or add depends on the script's `name`.** Run under the **same `name`**, a script replaces and merges what it made before (a person's edits stay). Run under a **new `name`**, it adds a second copy beside the first, and the reply warns that it did. To change something an earlier script made, run under that script's name. When a check fails because two scripts made the same things (for instance "drawings must be at different frames, in order"), the refusal names the earlier script: run under its name to replace them.
 
-**Scripts cannot `import` anything but `math` and `random`, and cannot define classes.** `numpy`, `os` and the rest are refused. `math` and `random` are already there (`import math`, `import random` are fine), and so are Python's plain built-ins: `range`, `len`, `min`, `max`, `abs`, `round`, `enumerate`, `zip`, `sorted`, `sum`. `random` is **seeded**: it gives the same numbers on every run, so a re-run gives the same piece. `random.uniform(a, b)`, `random.randint(a, b)`, `random.choice(seq)`, `random.random()` use the script's own generator; `r = random(7)` makes another with its own seed (`r.uniform(...)`, `r.randint(...)`, `r.choice(...)`), handy to give each item in a loop its own: `random(100 + i)`. A `class` is refused ("classes aren't allowed in scripts; use functions and dicts").
+**Scripts cannot `import` anything but `math` and `random`, and cannot define classes.** `numpy`, `os` and the rest are refused. `math` and `random` are already there (`import math`, `import random` are fine), and so are these plain built-ins (and no others): `range`, `len`, `min`, `max`, `abs`, `round`, `sum`, `divmod`, `pow`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `any`, `all`, `list`, `dict`, `tuple`, `set`, `frozenset`, `float`, `int`, `str`, `bool`, `isinstance`, `chr`, `ord`, and the errors `ValueError`, `KeyError`, `IndexError`, `TypeError`, `ZeroDivisionError`. There is no `print` (look at what the script made with `inspect_item`, `look_motion`, `look_frame`). `random` is **seeded**: it gives the same numbers on every run, so a re-run gives the same piece. `random.uniform(a, b)`, `random.randint(a, b)`, `random.choice(seq)`, `random.random()` use the script's own generator; `r = random(7)` makes another with its own seed (`r.uniform(...)`, `r.randint(...)`, `r.choice(...)`), handy to give each item in a loop its own: `random(100 + i)`. A `class` is refused ("classes aren't allowed in scripts; use functions and dicts").
 
 ```python
 comp("main", width=1920, height=1080, fps=30, duration=4, background="#101014")
@@ -118,7 +143,8 @@ write instead.
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
 
 Effects: `item.effect("shadow", dx=, dy=, radius=, color=, strength=)`, `"glow"`, `"blur"`, `"gradient"` (`color1`,
-`color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
+`color2`, `angle`: 90 = color1 left to color2 right, 180 = top to bottom; it arrives as the layer's **gradient fill**,
+so `inspect_item` shows `fillType` and colour stops, not an effect, and a re-run keeps it that way), `"backdrop"` (frosted glass), `"grain"`, `"trail"`, `"smear"`. A mask: `item.mask(x=, y=, w=, h=)`.
 
 The words you may know from CSS, SVG or other tools work too, and become the field above: `#fff` (= `#ffffff`),
 `width`/`height` on a layer (= `w`/`h`), `text=` (= `body`), `fontSize`, `fontWeight`, `borderRadius`, `rotate`,
@@ -139,6 +165,17 @@ Things that surprise people the first time:
 - **Inside a group, `x`, `y` are in the group's box** (its top-left is 0, 0). Give the group `w`, `h` and place the
   children in it (`w / 2`, `h / 2` is its middle); a group made without a size is fitted to what is inside it when the
   `with` block ends, and its layers keep their place on screen.
+- **A group made without `w`, `h` is as big as the comp while you fill it.** Leave its `x`, `y` out and its children
+  are placed in comp px. Give it `x=300, y=300` and that comp-sized box is *centred* there (anchor 0.5), so a child at
+  (100, 100) lands far up and left, off screen. To place a group by a point, give it `w`, `h` (then `x`, `y` is its
+  centre, and its children sit in its box), or `anchorX=0, anchorY=0` as well (then `x`, `y` is its top-left).
+- **Text sits on its anchor too:** a script's text is centred on `x`, `y` (anchor 0.5, `align="center"`). For a
+  left-aligned column write `anchorX=0, align="left"`: `x` is then the left edge. `boxWidth` wraps the words into a box
+  that wide, centred on the anchor like any box; `align` places each line inside that box.
+- **A rounded clip:** `clip=True` cuts to the group's rectangle. For rounded corners (a phone screen) give the group a
+  mask with a radius: `screen.mask("round", x=0, y=0, w=390, h=844, radius=56)`.
+- **`trimEnd` draws along the path in the order its points are written**, from the first point; on a closed path the
+  closing segment (back to the start) comes last. To draw the other way round, write the points in the other order.
 - **A path's points:** with no `x`, `y`, `w`, `h`, `d` is read as SVG reads it, in comp px (or the group's box): a line
   through (360, 600) passes through (360, 600). With any of them, `d` is in the path's own box (0, 0 = its top-left).
   A path is filled light grey by default; a line wants `fill="none"` (or `filled=False`) and a stroke.
@@ -153,8 +190,8 @@ You can't judge motion from the script. Look.
 
 | Tool | Use it to |
 |---|---|
-| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Short by default (a line a layer); pass `full` (with `layers`) for every move. Run it after every script. |
-| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: N frames over a time range in one labelled image. |
+| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Short by default: a line a moving layer, at most 30 layers and 30 findings (rare kinds first), then how many more; pass `layers` for just those, `limit` for more, `full` (with `layers`) for every move. Run it after every script. |
+| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1280, the whole sheet), `cols` tiles a row. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
@@ -164,10 +201,24 @@ You can't judge motion from the script. Look.
 Look pictures go to the project's `looks` folder (`<project folder>\looks\`; with no project open, to Rostrum's look cache); every reply gives the full path in `files`. `look_frame` and `look_frame` (`what: "sheet"`) use the
 same engine as export, so what you see is what the file will be.
 
+## Music and sound
+
+Sound is made in **RostrumSound**, never in 2D: its own MCP server (`rostrum-sound`) opened on the **same project
+folder** (its `run_open_project`). Read its guides `start-here` and `scoring-motion` there. What it makes plays here
+with the picture and goes under an mp4 export (`render_video`, `sound`, on by default when the project has sound).
+Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), never copied times. From 2D:
+
+- `inspect_sounds` lists what you can tie to a layer: a note or hit on the song's own instruments, the person's
+  recordings, RostrumSound's library; `edit_sound_cue {layer, sound}` ties one to the layer's start (Sound mixes it).
+- `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
+  suggests notes and hits for each landing).
+- Guide `timing-to-music`: hearing the song, its beats, snapping and tying layers to its markers.
+
 ## Reading errors
 
 A failed call says `ok: false` and the one line `Error: <where>: <subject> <what is wrong>. Accepted: … <hint>`. Read **Accepted**:
-it lists what would have worked. Edits are all or nothing, so nothing changed.
+it lists what would have worked; a wrong argument name also says which one you meant (`from` → "Did you mean start?").
+Edits are all or nothing, so nothing changed.
 
 ## The guides (one line each: when to read it)
 
@@ -186,5 +237,6 @@ it lists what would have worked. Edits are all or nothing, so nothing changed.
 | `easing-and-overlap` | you choose how a move travels (ease curves) and check that moves overlap as you meant |
 | `text-on-a-path`, `curve-editor`, `expressions` | text follows a curve; you shape the easing by hand; you drive a value from a formula |
 
-Each guide says what exists today, with the tool, operation or field name. Where something is planned but missing, it says
+`inspect_guide {"topic": ...}` gives a long guide's first sections and the headings of the rest; ask for one with
+`section` (words of its heading) or `"section": "all"`. Each guide says what exists today, with the tool, operation or field name. Where something is planned but missing, it says
 "not yet".

@@ -109,3 +109,26 @@ fn a_clip_off_the_pixel_grid_keeps_its_soft_edge() {
     assert_eq!(g(69, 30), 0, "outside the grid clip");
     assert_eq!(g(70, 30), 255, "the grid clip's first column");
 }
+
+/// Item 7 (2D agent pieces): a gradient on a box with a border is drawn in tiles from the padding box. Under a scale
+/// the tiles' offsets were added on screen, unscaled: the next tile restarted the gradient inside the shape, a hard
+/// edge where the unscaled box would end. Across a scaled box a left-to-right ramp only ever gets lighter.
+#[test]
+fn a_scaled_gradient_box_has_no_seam() {
+    let (w, h) = (200usize, 120usize);
+    let html = "<!DOCTYPE html><html><head></head><body style=\"margin:0;background:#000\"><div id=\"rostrum-stage\">\
+        <div style=\"position:absolute;left:10px;top:10px;width:100px;height:60px;box-sizing:border-box;border:2px solid #000;\
+        background:linear-gradient(90deg, #000, #fff);transform:scale(1.5);transform-origin:0 0\"></div></div></body></html>";
+    let mut doc = HtmlDocument::from_html(html, DocumentConfig { viewport: Some(Viewport::new(w as u32, h as u32, 1.0, ColorScheme::Light)), ..Default::default() });
+    doc.resolve(0.0);
+    let mut painter = crate::painter::Painter::cpu(w as u32, h as u32, None).unwrap();
+    painter.paint(false, |scene| blitz_paint::paint_scene(scene, &mut doc, 1.0, w as u32, h as u32, 0, 0)).unwrap();
+    let mut px = vec![];
+    crate::color::output(&crate::color::Spec::default(), &painter.read().unwrap(), w as u32, false, false, 0, &mut px);
+    let g = |x: usize| px[(55 * w + x) * 4 + 1] as i32;
+    // The box covers screen x 10..160; its border 3 px.
+    for x in 15..155 {
+        assert!(g(x + 1) >= g(x) - 2, "the ramp drops from {} to {} at x {}: a seam", g(x), g(x + 1), x + 1);
+    }
+    assert!(g(150) > 200, "the ramp reaches the scaled box's right side: {}", g(150));
+}

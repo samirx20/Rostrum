@@ -64,6 +64,14 @@ def frame_of(ctx, drawing, n):
     return frame
 
 
+def which(drawing, frame, n) -> str:
+    """Which drawing shows, in words: its place in the layer, where it starts, and its id (a counted name, not a frame)."""
+    shown = D.shown_frames(drawing)
+    k = next((i for i, f in enumerate(shown) if f is frame), 0) + 1
+    again = " (the cycle repeating)" if frame["at"] < n and D.cycle(drawing) and n >= sum(D.cycle(drawing)) else ""
+    return f'its drawing {k} of {len(shown)}, which starts at frame {frame["at"]}{again} (id {frame["id"]}: ids are counted names, not frame numbers)'
+
+
 def stroke_count(frame):
     return sum(len(p.get("strokes", [])) for p in frame.get("paints", []))
 
@@ -124,7 +132,7 @@ def look_drawing(ctx, args):
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom", "width" or "sampling"', str(e)) from e
     dest = look_path(f'{doc.item_id or "doc"}_{drawing["id"]}_f{n}', project=doc.folder)
     pic.save(dest)
-    return Reply(f'{drawing["id"]} at frame {n} shows drawing {frame["id"]} (at {frame["at"]}): {stroke_count(frame)} strokes on {len(frame.get("paints", []))} paint layer(s), canvas {w}×{h}.',
+    return Reply(f'{drawing["id"]} at frame {n} shows {which(drawing, frame, n)}: {stroke_count(frame)} strokes on {len(frame.get("paints", []))} paint layer(s), canvas {w}×{h}.',
                  {"drawing": drawing["id"], "frame_item": frame["id"], "at": frame["at"], "strokes": stroke_count(frame), "canvas": [w, h],
                   "zoom": args.get("zoom"), "picture": [pic.width, pic.height], "stamper": canvas.STAMPER}, [dest], [dest],
                  warnings=[n for n in [canvas.slow_note()] if n])

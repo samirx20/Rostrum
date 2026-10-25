@@ -35,7 +35,7 @@ from . import filestamps
 from .errors import RostrumError, codes
 from .kind import SHAPE_ERRORS
 from .tree import index
-from .who import Who
+from .who import UPGRADE, Who
 
 VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"   # <root>/shared/core/rostrum_core/storage.py
 
@@ -227,7 +227,7 @@ def _upgrade(doc, kind, path) -> bool:
     if not labels:
         return False
     from .diff import diff
-    doc.commit(data, diff(doc.data, data, kind.lists), Who.outside("Rostrum (older file)"), "; ".join(labels))
+    doc.commit(data, diff(doc.data, data, kind.lists), UPGRADE, "; ".join(labels))
     return True
 
 

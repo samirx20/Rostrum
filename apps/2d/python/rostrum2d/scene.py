@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from . import drawing, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
 from rostrum_core import RostrumError
 from rostrum_core.errors import codes
@@ -31,7 +31,7 @@ def python_only(kind: str) -> frozenset[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
     already on the text: text_styles.py). Fixed per type: worked out once (a scene asks for it per field)."""
-    return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop"} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
+    return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop", *drawing_loop.FIELDS} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES | fill_fields.NAMES)
 
 
@@ -93,6 +93,7 @@ def _node(item: dict, fps: float = 30, baked: dict | None = None, where: dict | 
         node["rig"] = [make(c, fps, baked, where, step, None) for key in ("bones", "iks", "binds") for c in item.get(key, [])]
     if item["type"] == "drawing":       # the painting kit makes each drawing's picture once; the engine only reads it
         node["frames"] = _pictures(item, fps, where)
+        drawing_loop.step(node, item, drawing.cycle(item), drawing.canvas_size(item), fps, until)   # a cycle's steps
     elif item.get("frames"):            # paint on an element: drawn over it, stretched over its box (paint_fields.py)
         node["paint"] = {"frames": _pictures(item, fps, where), "inside": item.get("paintInside", True)}
     if item["type"] == "video":         # decoded once (video.py); the engine picks the frame by the time
@@ -123,15 +124,21 @@ def _font_stand_in(node: dict, item: dict, font: str, where: dict) -> dict:
     return missing_font.stand_in(node, font, _engine_props)
 
 
+SPARE = 2       # frames either side of a span whose drawings are sent too (a motion blur's samples reach past the frame)
+
+
 def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
     """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture; a looping drawing's
     run repeated to the layer's end (or the composition's). A drawing layer's pictures are cropped to their ink; paint
     on an element covers its whole box."""
     until = min(item.get("end", retime.END_OF_COMP), (where or {}).get("until", 0.0) or 60.0)
-    later = (where or {}).get("later")
+    later, span = (where or {}).get("later"), (where or {}).get("span")
+    run = drawing.repeats(item, math.ceil(until * fps))
+    if span is not None:                # a look or a part: only the drawings showing then (motion blur's reach spared)
+        run = drawing.within(run, math.floor(span[0] * fps) - SPARE, math.ceil(span[1] * fps) + SPARE) or run[:1]
     if item["type"] == "drawing":       # a drawing's picture holds only its ink, with where it goes (`crop`)
-        return [{"at": n, **drawing.inked(item, f, later)} for n, f in drawing.repeats(item, math.ceil(until * fps))]
-    return [{"at": n, "src": str(drawing.picture(item, f, later))} for n, f in drawing.repeats(item, math.ceil(until * fps))]
+        return [{"at": n, **drawing.inked(item, f, later)} for n, f in run]
+    return [{"at": n, "src": str(drawing.picture(item, f, later))} for n, f in run]
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
@@ -182,6 +189,13 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     pictures not made yet are listed there instead of made (drawing.picture), with stand-ins in the scene; the screen
     makes them off its thread, then describes again and draws: the same pictures export makes at once. The screen
     describes through scene_keep.Keeper: the same description, reusing the nodes a change didn't touch."""
+    if later is None:       # the paint pictures not made yet are made first, side by side (drawing.make_all)
+        jobs: list = []
+        comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, jobs)
+        node = _node(comp, fps, baked, where)
+        if not jobs:        # every picture was made already: that description is the final one
+            return finish(node, where)
+        drawing.make_all(jobs)
     comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, later)
     return finish(_node(comp, fps, baked, where), where)
 

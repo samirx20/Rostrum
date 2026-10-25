@@ -56,5 +56,12 @@ Only the settings that apply to the chosen format are shown.
 2. What makes an export slow is work repeated in every frame: **motion blur** draws each frame several times (its **Samples**), and big blurs, glows and depth of field over the whole picture cost the most. A 28-second film full of glowing, blurred flowers with 4 samples takes several minutes.
 3. The export never lowers quality to go faster: the file shows exactly what the canvas shows.
 4. Agents: the result of `render_video` lists where the time went (`timing`: drawing, layout, encoding) and how many workers drew (`workers`).
+5. An export never waits forever. If one frame takes over 2 minutes (the drawing engine stuck), the export stops, the
+   engine is ended, and the error names the frame, such as "stuck at frame 183 (6.10 s)". Look at that moment with
+   `look_frame`. Drawing a single picture has the same limit.
+6. Agents: `inspect_job` shows frames done of total and how long since the last one (`last_step_s_ago`), so a slow frame
+   is visible while it runs. `run_stop` stops a render at once, even mid-frame, and works on a render another session
+   or server started (that program stops it within a few seconds); `inspect_job` with no id lists those too. The app
+   holds no lock between programs: a render that ended or was stopped leaves nothing that blocks the next one.
 
 Next: [first-animation.md](first-animation.md), [files.md](files.md).

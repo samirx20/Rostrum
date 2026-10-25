@@ -309,6 +309,12 @@ FIELDS: dict[str, list[Param]] = {
           help="Grows by itself when a stroke reaches past the edge (paint.stroke); at most 8192"),
         CH("loop", looping.MODES, "Loop", "Timing", "off", S, labels=looping.WORDS,
            help="Repeat the drawings for the layer's length: Loop starts again, Ping-pong goes back and forth (Off holds the last drawing)"),
+        N("loopTimes", "Times", "Timing", 0, 9999, 1, "", S, when={"not": IS("loop", "off")}, integer=True, default=0,
+          help="How many times the drawings play, then the last one shown holds; 0 = until the layer ends"),
+        N("loopStepX", "Step across", "Timing", -8192, 8192, 1, "px", S, when=IS("loop", "loop"),
+          help="How far each repeat sits from the one before, in the drawing's px: a walk drawn travelling moves on one stride a repeat"),
+        N("loopStepY", "Step down", "Timing", -8192, 8192, 1, "px", S, when=IS("loop", "loop"),
+          help="How far down each repeat sits from the one before, in the drawing's px (up is negative)"),
     ] + TRANSFORM + GRADED,
     # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
@@ -444,7 +450,7 @@ FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project c
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
 FIXED = {**_frame.FIXED}     # fields no <type>.set takes: the document writes them itself (the frame's home)
-STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h"}, "path": {"w", "h"},
+STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h", "loopTimes", "loopStepX", "loopStepY"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},

@@ -16,7 +16,7 @@ tools = Tools()
 
 @tools.tool("inspect_sounds", {"properties": {
     **ITEM_COMP,
-    "words": {"type": "string", "description": "Words that must all appear in a recording's name, description or folders, e.g. \"cello pizzicato\". Empty: the song's instruments first (a note or hit on the moment), then the person's recordings."},
+    "words": {"type": "string", "description": "Words that must all appear in a recording's name, description or folders, e.g. \"cello pizzicato\". Empty: everything there is, the song's instruments first (a note or hit on the moment), then the person's recordings, then RostrumSound's library."},
     "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}}})
 def inspect_sounds(ctx, args):
     """What to tie to a layer with edit_sound_cue, music first: with no words, a note or a hit on the song's own
@@ -27,7 +27,14 @@ def inspect_sounds(ctx, args):
     rows = sound_cues.choices(args.get("words", ""), int(args.get("limit", 20)), doc.folder, comp.get("soundtrack", ""))
     lines = [f'{r["about"]} ({r["seconds"]:g} s, {r["where"]}): {r["path"]}' if r.get("seconds") else
              f'{r["about"]} ({r["where"]}): {r["path"]}' for r in rows]
-    return Reply(f"{len(rows)} sounds" + (":\n" + "\n".join(lines) if lines else ". Try fewer words."), {"sounds": rows})
+    if lines:
+        return Reply(f"{len(rows)} sounds:\n" + "\n".join(lines), {"sounds": rows})
+    words = args.get("words", "").strip()
+    why = (f'No sound matches "{words}". Try fewer words, or none to list what there is.' if words else
+           "No sounds yet: this project has no RostrumSound song (its instruments give notes and hits), you have no "
+           "recordings, and RostrumSound's sound library isn't installed. Make the music in RostrumSound (its own "
+           "server, rostrum-sound), then tie notes to layers here.")
+    return Reply(why, {"sounds": rows})
 
 
 @tools.tool("edit_sound_cue", {"required": ["layer", "sound"], "properties": {

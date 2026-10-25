@@ -81,7 +81,7 @@ def _layers(node):
 
 def upgrade(data: dict, lists: dict, folder=None):
     """Older projects' absolute picture / video paths made relative: (new data, label) or None when nothing changes."""
-    if folder is None:
+    if folder is None or not any(True for _ in _layers(data)):     # no picture or video: no copy of a big document
         return None
     new, n = copy.deepcopy(data), 0
     for layer in _layers(new):

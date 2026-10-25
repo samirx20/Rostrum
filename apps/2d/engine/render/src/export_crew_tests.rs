@@ -53,3 +53,29 @@ fn the_pictures_are_the_same_whatever_the_number_of_workers() {
     assert!(err.contains("export frame"), "{err}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// p1 (2026-10-25): a radial gradient of no size (centred on its box's edge) inside a tilted, flipped group had no Skia
+/// shader; the unwrap panicked on the export's own drawing thread and the export waited forever. It now draws as its
+/// edge colour and the export finishes.
+#[test]
+fn a_gradient_of_no_size_in_a_tilted_flipped_group_exports() {
+    let mut grad = item("g", "gradient", json!({ "style": "radial", "cx": 0.5, "cy": 1.0, "color1": "#ff6a24", "color2": "#0d0605" }));
+    grad["props"]["span"] = json!("box");
+    let mut screen = item("screen", "shape", json!({ "x": 60.0, "y": 80.0, "w": 100.0, "h": 150.0, "fill": "#1a0c08" }));
+    screen["effects"] = json!([grad]);
+    let mut flip = item("flip", "group", json!({ "x": 120.0, "y": 120.0, "w": 120.0, "h": 160.0, "scaleX": 0.02 }));
+    flip["anim"] = json!({ "scaleX": [{ "t": 0.0, "v": 0.0 }, { "t": 0.2, "v": 1.0 }] });
+    flip["layers"] = json!([screen]);
+    let mut tilt = item("tilt", "group", json!({ "x": 160.0, "y": 120.0, "w": 240.0, "h": 200.0, "tiltY": -4.0 }));
+    tilt["layers"] = json!([flip]);
+    let mut comp = item("main", "comp", json!({ "width": 320.0, "height": 240.0, "fps": 30.0, "duration": 0.2, "background": "#101418" }));
+    comp["layers"] = json!([tilt]);
+    let (mut held, mut session) = (Held::default(), None);
+    load(&mut held, &mut session, &mut None, &json!({ "scene": { "format": FORMAT, "version": VERSION, "comp": comp }, "cpu": true })).unwrap();
+    let dir = std::env::temp_dir().join(format!("rostrum-flat-grad-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let images = dir.join("f-{frame}.png").to_string_lossy().into_owned();
+    let reply = crate::scene_export::export(&held, session.as_mut().unwrap(), &json!({ "images": images, "workers": 2 }), &mut |_| {});
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(reply.unwrap()["frames"].as_u64(), Some(6));
+}

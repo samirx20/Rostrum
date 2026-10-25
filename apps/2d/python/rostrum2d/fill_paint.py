@@ -159,9 +159,17 @@ _TARGET = {"color1": ("stop", "color"), "color2": ("stop", "color"), "color3": (
            "angle": ("layer", "gradAngle"), "cx": ("layer", "gradX"), "cy": ("layer", "gradY")}
 
 
+def _gradient(layer: dict):
+    """The layer's shown gradient effect that can move into its fill, or None."""
+    fx = next((e for e in layer.get("effects", []) if e.get("type") == "gradient" and not e.get("hidden")), None)
+    return fx if fx is not None and _movable(layer, fx) else None
+
+
 def upgrade(data: dict, lists: dict):
     """(new data, label) with every layer's gradient effect moved into its fill, or None when there is none."""
     from rostrum_core.tree import index, walk
+    if not any(_gradient(layer) for layer in walk(data, lists)):     # nothing to move: no copy of a big document
+        return None
     work = copy.deepcopy(data)
     ids = set(index(work, lists))
     moved = 0
@@ -173,8 +181,8 @@ def upgrade(data: dict, lists: dict):
         ids.add(f"{type_}_{n}")
         return f"{type_}_{n}"
     for layer in list(walk(work, lists)):
-        fx = next((e for e in layer.get("effects", []) if e.get("type") == "gradient" and not e.get("hidden")), None)
-        if fx is not None and _movable(layer, fx):
+        fx = _gradient(layer)
+        if fx is not None:
             _move(layer, fx, new_id)
             moved += 1
     return (work, f"Gradient effect{'s' * (moved > 1)} moved into the fill") if moved else None

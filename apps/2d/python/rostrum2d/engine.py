@@ -35,6 +35,8 @@ from . import scene_change, settings
 LOG_DIR = settings.logs_dir()
 RETRY = {"frame", "bones", "outline", "measure", "shapes", "scene", "change", "place"}   # short requests that are safe to send again
 QUICK_S = 30.0                                                  # dying again this soon after a restart: give up
+# The longest one frame may take, in a still or an export. Over it the engine counts as stuck: it is ended and the error names the frame; never a silent wait (p1, 2026-10-25).
+FRAME_LIMIT_S = float(os.environ.get("ROSTRUM2D_FRAME_LIMIT_S") or 120.0)
 # Short, so the top bar's status line shows them whole; the log line says the rest (exit code, the old log).
 RESTARTED = "The drawing engine restarted. Nothing was lost."
 GAVE_UP = "Drawing stopped twice. Save, then reopen."
@@ -46,6 +48,10 @@ class EngineError(RuntimeError):
 
 class _Died(EngineError):
     pass
+
+
+class Stuck(EngineError):
+    """The engine drew nothing within FRAME_LIMIT_S and was ended. Not sent again: it would only get stuck again."""
 
 
 def _gave_up() -> EngineError:
@@ -142,36 +148,41 @@ class Engine:
                 return self._restart()               # this soon: gives up, loudly
         self.notice = RESTARTED
 
-    def _request(self, req: dict, timeout_s: float = 60.0, progress=None) -> dict:
+    def _request(self, req: dict, timeout_s: float = 60.0, progress=None, stuck=None) -> dict:
         if self.proc.poll() is not None:             # it died between requests
             self._restart()
         try:
-            return self._send(req, timeout_s, progress)
+            return self._send(req, timeout_s, progress, stuck)
         except _Died:
             if next(iter(req)) not in RETRY:
                 raise
             self._restart()
-            return self._send(req, timeout_s, progress)
+            return self._send(req, timeout_s, progress, stuck)
 
-    def _send(self, req: dict, timeout_s: float, progress) -> dict:
-        t0 = time.perf_counter()
+    def _send(self, req: dict, timeout_s: float, progress, stuck=None) -> dict:
+        """`timeout_s`: the longest wait for the next line (each export progress line starts it again). `stuck(seen)`
+        (`seen`: the last progress line or None): words naming what got stuck; with it a wait that runs out raises Stuck
+        (never sent again), without it _Died (a short request is sent once more to a fresh engine)."""
+        t0 = last = time.perf_counter()
+        seen = None
         try:
             self.proc.stdin.write((json.dumps(req) + "\n").encode("utf-8"))
             self.proc.stdin.flush()
             while True:
                 try:
-                    line = self._lines.get(timeout=max(0.0, t0 + timeout_s - time.perf_counter()))
+                    line = self._lines.get(timeout=max(0.0, last + timeout_s - time.perf_counter()))
                 except queue.Empty:
-                    self.proc.kill()                     # stuck: ended, so the next request starts a fresh one
-                    _log_line(f"the 2D drawing engine (pid {self.pid}) gave no answer to {next(iter(req))} in "
-                              f"{timeout_s:.0f} s and was ended; its log: {self.log_path}")
-                    raise _Died(f"2D engine (pid {self.pid}) gave no answer to {next(iter(req))} in {timeout_s:.0f} s; "
-                                f"log {self.log_path}") from None
+                    self.proc.kill()                     # stuck: ended (an export's encoder ends with its pipe); the next request starts a fresh one
+                    what = stuck(seen) if stuck else f"gave no answer to {next(iter(req))}"
+                    _log_line(f"the 2D drawing engine (pid {self.pid}) {what} in {timeout_s:.0f} s and was ended; its log: {self.log_path}")
+                    raise (Stuck if stuck else _Died)(f"2D engine (pid {self.pid}) {what} in {timeout_s:.0f} s and was stopped; "
+                                                      f"log {self.log_path}") from None
                 if line is None:
                     raise _Died(f"2D engine (pid {self.pid}) ended without a reply; log {self.log_path}")
                 out = json.loads(line)
                 if "progress" not in out or "ok" in out:     # export's per-frame progress lines
                     break
+                seen, last = out, time.perf_counter()
                 if progress:
                     _progress(progress, out)
         except OSError as e:
@@ -206,7 +217,9 @@ class Engine:
         self._props()
         png = Path(png)
         png.parent.mkdir(parents=True, exist_ok=True)
-        out = self._request({"frame": {"t": t, "image": str(png)}})
+        fps = self._props()["fps"]
+        out = self._request({"frame": {"t": t, "image": str(png)}}, FRAME_LIMIT_S,
+                            stuck=lambda _: f"drew nothing for frame {round(t * fps)} ({t:.3f} s)")
         if not png.is_file():
             raise EngineError(f"2D engine said done but wrote no file: {png}")
         return out
@@ -289,11 +302,10 @@ class Engine:
         mp4, f = Path(mp4), formats.get("mp4")
         mp4.parent.mkdir(parents=True, exist_ok=True)
         encode = f.build(str(mp4), w, h, fps, 8, 0, formats.rate(f, w, h, fps, quality, bitrate))
-        req = {"start": start, "end": end, "file": str(mp4), "progress": progress is not None, "encode": encode}
+        req = {"start": start, "end": end, "file": str(mp4), "encode": encode}
         if timing_csv is not None:
             req["timingCsv"] = str(timing_csv)
-        out = self._request({"export": req},
-                            timeout_s=3600.0, progress=progress)
+        out = self.export(req, progress)
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise EngineError(f"export wrote no video: {mp4}; log {self.log_path}")
         if out.get("warning"):
@@ -301,6 +313,20 @@ class Engine:
         return {"file": str(mp4), "frames": out["frames"], "fps": fps, "timing": out["timing"], "adapter": out.get("adapter"),
                 "gpu": out.get("gpu"), "warning": out.get("warning"), "workers": out.get("workers"),
                 **(encoded(out["encoder"]) if out.get("encoder") else {})}
+
+    def export(self, req: dict, progress=None) -> dict:
+        """The engine's `export` request, watched: the engine sends a line per frame, and when none comes for
+        FRAME_LIMIT_S it is ended and Stuck names where it stopped.
+        No limit on the whole: a long film is fine while frames keep coming."""
+        fps, start = self._props()["fps"], req.get("start", 0.0)
+
+        def stuck(seen):
+            done = seen["progress"] if seen else 0
+            at = round(start * fps) + done
+            if seen is None:
+                return f"drew no frame of the export, not even its first (frame {at}, {start:.2f} s)"
+            return f"drew nothing after {done} of {seen['of']} frames: stuck at frame {at} ({at / fps:.2f} s) or one just after"
+        return self._request({"export": {**req, "progress": True}}, FRAME_LIMIT_S, progress, stuck)
 
     def kill(self):
         """End the process on purpose (Cancel): it is never restarted, and a request after this fails."""

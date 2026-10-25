@@ -38,7 +38,8 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder), with the project saved beside it as <name>.project/ so other apps can open the film. Default: only the project's renders folder."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
-    ask with inspect_job (wait_s up to 25). With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
+    ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
+    fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder."""
     doc, comp = doc_and_comp(ctx, args)
@@ -64,7 +65,7 @@ def render_video(ctx, args):
     def job_fn(job):
         partial = project.begin_render(folder, item) if folder and item else None
         target = partial / f'{item}_{comp["id"]}.mp4' if partial else out
-        info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"])
+        info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"], job.on_cancel)
         exporting.with_sound(ctx.tool, info, target, s, folder or doc.folder)      # before it is finished or copied
         files = [target]
         if partial:
