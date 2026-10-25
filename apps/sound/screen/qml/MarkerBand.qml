@@ -28,7 +28,7 @@ Item {
         model: backend.markers
         delegate: Rectangle {
             required property var modelData
-            readonly property bool on: !!backend.picked[modelData.id]
+            readonly property bool on: !!backend.pickedHeads[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0)); y: 1
             visible: !modelData.named && x + width > 0 && x < band.width

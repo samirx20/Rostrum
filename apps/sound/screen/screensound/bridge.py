@@ -28,7 +28,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import say as say_error
-from . import block_patch, cleanable, inspect, onpage, output_pick, picture, pick, screen_seen, timeline
+from . import block_patch, cleanable, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .edit_slots import EditSlots
@@ -224,8 +224,13 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Edit
 
     def _rows(self):
         """The kit's rows, each item's with times in bars.beats and pitches as names (inspect.musical_rows) before
-        several are merged: notes of one length read "1/2" together, never "1.154 s" (one note never does)."""
-        each = [inspect.musical_rows(it, self._item_rows(it), self.doc.data) for it in map(self.doc.item, self._kit.selection)]
+        several are merged: notes of one length read "1/2" together, never "1.154 s" (one note never does). Many notes
+        or hits: each alike group evaluated once, the rest only their values (many_rows.py)."""
+        items, root = [self.doc.item(i) for i in self._kit.selection], self.doc.data
+        folded = many_rows.merged(self, items, root)
+        if folded is not None:
+            return output_pick.without_none(folded)
+        each = [inspect.musical_rows(it, self._item_rows(it), root) for it in items]
         return output_pick.without_none([] if not each else each[0] if len(each) == 1 else many.merge(each))
 
     # ---- screen state -----------------------------------------------------------------------------------------

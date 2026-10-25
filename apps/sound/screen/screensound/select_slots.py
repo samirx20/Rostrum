@@ -8,10 +8,12 @@ person's undo / redo, what that step touched is selected again (read from the ch
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QTimer, Signal, Slot
+from PySide6.QtQml import qjsEngine
 from rostrum_gui import pointer_quiet
 
 from . import clipboard, selection, timing
 
+BLOCKS = ("note", "hit", "clip")     # drawn on the lanes and in the roll (`picked`), never as a control of their own
 SETTLE_MS = 40      # a press's outline and first moves are drawn before the settings panel is made (_settle)
 
 
@@ -41,10 +43,28 @@ class SelectSlots:
     def selectedIds(self):
         return list(self._picks.ids)
 
-    @Property("QVariantMap", notify=picksChanged)
+    @Property("QVariant", notify=picksChanged)
     def picked(self):
-        """id -> true for every selected id (what the lanes and the roll draw with the accent outline)."""
-        return {i: True for i in self._picks.ids}
+        """id -> true for every selected id (what the lanes and the roll draw with the accent outline). Made into one
+        script object once per selection, which every reader shares: a plain map was made again for each reader
+        (~5 ms each with 3,352 picked; ten surfaces read it). Headers read the small `pickedHeads`."""
+        return self._picked_maps()[1]
+
+    @Property("QVariantMap", notify=picksChanged)
+    def pickedHeads(self):
+        """`picked` without notes, hits and clips: what a track's header, a marker, a section or a line reads (a few
+        ids: ~30 headers each reading 3,352 picks cost ~100 ms of Ctrl+A)."""
+        return self._picked_maps()[2]
+
+    def _picked_maps(self):
+        """(ids, picked, pickedHeads), made once per selection (each is read by many bindings per change)."""
+        ids = tuple(self._picks.ids)
+        kept = self.__dict__.get("_picked_maps_")
+        if kept is None or kept[0] != ids:
+            js, plain = qjsEngine(self), dict.fromkeys(ids, True)
+            heads = {i: True for i in ids if self.doc.has(i) and self.doc.item(i)["type"] not in BLOCKS}
+            kept = self.__dict__["_picked_maps_"] = (ids, js.toScriptValue(plain) if js is not None else plain, heads)
+        return kept
 
     @Property(str, notify=picksChanged)
     def selectionWords(self):
@@ -87,6 +107,7 @@ class SelectSlots:
         gone = [i for i in ids if not self.doc.has(i)]
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
+        was = list(self._picks.ids)
         self._picks.set(ids, anchor)
         if ids:
             self.__dict__["_range_newer"] = False        # items picked after the range: actions mean them (Facts)
@@ -95,7 +116,11 @@ class SelectSlots:
         else:
             self.__dict__["_unsettled"] = False
             self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
-        self.picksChanged.emit()
+        if self._picks.ids != was:
+            self.picksChanged.emit()
+        elif not self.__dict__["_unsettled"] and "_hub" in self.__dict__:      # the same items settling: the outlines
+            self._hub.refresh_later()       # are drawn; the actions follow a frame after the panel (a second picksChanged
+                                            # converted and compared 3,352 outlines in every lane for nothing)
 
     def _settle(self):
         """A press or a drag that picked has ended: the kit's selection (the settings panel, the Editor's track)
@@ -191,11 +216,15 @@ class SelectSlots:
 
     @Slot()
     def selectAll(self):
+        """Ctrl+A: the outlines at once, the settings panel and the actions once they are drawn (`_settle`)."""
         if self._area == "roll":
-            return self._pick([b["id"] for b in self._view["roll"]["blocks"]])
-        tracks = [i for i in self._picks.ids if self.doc.item(i)["type"] == "track"] or \
-            [r["id"] for r in self._view["rows"]]
-        self._pick([b["id"] for r in self._view["rows"] if r["id"] in tracks for b in r["blocks"]])
+            ids = [b["id"] for b in self._view["roll"]["blocks"]]
+        else:
+            tracks = [i for i in self._picks.ids if self.doc.item(i)["type"] == "track"] or \
+                [r["id"] for r in self._view["rows"]]
+            ids = [b["id"] for r in self._view["rows"] if r["id"] in tracks for b in r["blocks"]]
+        self._pick(ids, later=True)
+        self._settle()
 
     @Slot(result=bool)
     def clearSelection(self):

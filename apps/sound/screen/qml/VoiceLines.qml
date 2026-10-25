@@ -21,7 +21,7 @@ Column {
             required property var modelData
             width: v.width; height: Theme.rowDense + 6
             radius: Theme.radiusCtl
-            color: !!backend.picked[modelData.id] ? Theme.accentSoft : area.containsMouse ? Theme.hover : Theme.raised
+            color: !!backend.pickedHeads[modelData.id] ? Theme.accentSoft : area.containsMouse ? Theme.hover : Theme.raised
             MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onPressed: { backend.focusArea("arrange"); backend.select(modelData.id) } }
             Rectangle { id: dot; width: 6; height: 6; radius: 3; x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                         color: modelData.making ? Theme.accent : modelData.made ? Theme.ok : Theme.warn

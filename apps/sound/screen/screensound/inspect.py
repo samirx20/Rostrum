@@ -16,10 +16,15 @@ from rostrum_sound.doc import effects, musical, sounds
 from . import eq_rows, output_pick, pitch_merge, timeline, timing
 
 
-def _time_kind(item: dict, param: str) -> str:
+def time_kind(item: dict, param: str) -> str:
     """"time", "length" or "" for a field of an item: what its Param says it holds (values.py `form`)."""
-    p = next((p for p in FD.FIELDS.get(item["type"], ()) if p.name == param), None)
-    return getattr(p, "form", "")
+    forms = _FORMS.get(item["type"])
+    if forms is None:               # each kind's table, read once (a scan of its fields per row cost ~10 % of a big pick)
+        forms = _FORMS[item["type"]] = {p.name: getattr(p, "form", "") for p in reversed(FD.FIELDS.get(item["type"], ()))}
+    return forms.get(param, "")
+
+
+_FORMS: dict = {}
 
 
 def _start(item: dict, root: dict) -> float:
@@ -30,10 +35,7 @@ def _start(item: dict, root: dict) -> float:
 def shown(item: dict, root: dict) -> dict:
     out = dict(item)
     for k, v in item.items():
-        kind = _time_kind(item, k)
-        if kind and v is not None and not isinstance(v, (int, float)):      # (None: left out, e.g. the song's length)
-            out[k] = round(timing.sec(v, root, item["id"]) if kind == "time" else
-                           timing.length_sec(v, root, _start(item, root), item), 3)
+        out[k] = shown_field(item, k, root)
     if item["type"] == "track" and not item.get("colour"):          # the colour it is drawn in (timeline.hue)
         i = next((n for n, t in enumerate(root.get("tracks", [])) if t["id"] == item["id"]), 0)
         out["colour"] = timeline.hue(item, i)
@@ -46,25 +48,41 @@ def shown(item: dict, root: dict) -> dict:
     return out
 
 
-def musical_rows(item: dict, rows: list[dict], root: dict) -> list[dict]:
+def shown_field(item: dict, k: str, root: dict):
+    """One field as `shown` has it, as written but for a time or length in a form other than seconds, made
+    seconds (`shown` adds a few more for tracks and clips: their colour, sound, Output and a clip's length)."""
+    v = item.get(k)
+    kind = time_kind(item, k)
+    if kind and v is not None and not isinstance(v, (int, float)):      # (None: left out, e.g. the song's length)
+        return round(timing.sec(v, root, item["id"]) if kind == "time" else
+                     timing.length_sec(v, root, _start(item, root), item), 3)
+    return v
+
+
+def musical_rows(item: dict, rows: list[dict], root: dict, sh: dict | None = None) -> list[dict]:
     """The evaluated rows with each time / length as a text field in bars.beats (its seconds in the hover help) and
-    a note's pitch as a name. The one place; every panel's time fields come through here."""
-    sh, out = shown(item, root), []
-    for r in rows:
-        kind = _time_kind(item, r["id"]) if r["row"] == "param" else ""
-        if kind and isinstance(sh.get(r["id"]), (int, float)) and not isinstance(sh[r["id"]], bool):
-            sec = float(sh[r["id"]])
-            text = (musical.position(sec, root) if kind == "time" else
-                    f"{sec:.2f} s" if item["type"] == "clip" else musical.note_length(sec, root, _start(item, root)))   # a sound's length is in seconds
-            help_ = f"{r['help']} " if r["help"] else ""
-            r = {**r, "type": "text", "value": text, "unit": "", "display": "", "control": "",
-                 "help": f"{help_}Now {sec:.2f} s. Type " + ("a note value (1/8), " if kind == "length" and item["type"] != "clip" else "") + "bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
-        elif r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
-            r = {**r, "value": musical.note_name(r["value"])}
-        elif r["row"] == "param" and item["type"] == "hit" and r["id"] == "drum" and isinstance(r["value"], str):
-            r = {**r, "value": drum_words(r["value"])}          # as the roll's rows say it ("Open hat"); typing it back is understood
-        out.append(r)
+    a note's pitch as a name. The one place; every panel's time fields come through here. (`sh`: shown(item, root),
+    when the caller has it.)"""
+    sh = shown(item, root) if sh is None else sh
+    out = [musical_row(item, sh, r, root) for r in rows]
     return pitch_merge.merge_rows(item, eq_rows.band_rows(item, out))
+
+
+def musical_row(item: dict, sh: dict, r: dict, root: dict) -> dict:
+    """One evaluated row as musical_rows shows it (`sh`: shown(item, root))."""
+    kind = time_kind(item, r["id"]) if r["row"] == "param" else ""
+    if kind and isinstance(sh.get(r["id"]), (int, float)) and not isinstance(sh[r["id"]], bool):
+        sec = float(sh[r["id"]])
+        text = (musical.position(sec, root) if kind == "time" else
+                f"{sec:.2f} s" if item["type"] == "clip" else musical.note_length(sec, root, _start(item, root)))   # a sound's length is in seconds
+        help_ = f"{r['help']} " if r["help"] else ""
+        return {**r, "type": "text", "value": text, "unit": "", "display": "", "control": "",
+                "help": f"{help_}Now {sec:.2f} s. Type " + ("a note value (1/8), " if kind == "length" and item["type"] != "clip" else "") + "bars.beats (5.3), seconds (9.6 s) or a clock (0:09.6)."}
+    if r["row"] == "param" and item["type"] == "note" and r["id"] == "pitch" and r["value"] is not None:
+        return {**r, "value": musical.note_name(r["value"])}
+    if r["row"] == "param" and item["type"] == "hit" and r["id"] == "drum" and isinstance(r["value"], str):
+        return {**r, "value": drum_words(r["value"])}          # as the roll's rows say it ("Open hat"); typing it back is understood
+    return r
 
 
 def edit_call(doc, item_id, param, value) -> dict:
@@ -78,7 +96,7 @@ def edit_call(doc, item_id, param, value) -> dict:
     bands = eq_rows.edit_args(item, param, value)               # an EQ band's row: the whole bands list is written
     if bands is not None:
         return field_call(doc, item_id, "bands", bands["bands"])
-    kind = _time_kind(item, param)
+    kind = time_kind(item, param)
     if kind and isinstance(value, str):             # typed words: bars.beats or seconds, as seconds
         start = _start(item, doc.data)
         try:
