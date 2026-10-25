@@ -19,7 +19,8 @@ def summary(r: dict) -> str:
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
-            + f".{q}" + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else ""))
+            + f".{q}" + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
+            + "".join(f" {w}." for w in r.get("warnings") or []))
 
 
 def register(tools: Tools):
@@ -28,7 +29,9 @@ def register(tools: Tools):
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},
         "master": {"type": "boolean", "default": True, "description": "False: the mix before mastering (no loudness target, glue or master effects)."},
         "stems": {"enum": [True, False, "all", "groups"], "default": True,
-                  "description": "true / \"all\": a file per track (named after the track) and per group (named after the group). \"groups\": a file per group (a bus tracks play into) and per track that is in no group, nothing twice. false: only the mix."},
+                  "description": "true / \"all\": a file per track (named after the track) and per group (named after the group). \"groups\": a file per group (a bus tracks play into) and per track that is in no group, nothing twice. false: only the mix. "
+                                 "Stems carry the master's whole gain (fader, fades, glue, loudness target, limiter: one gain worked out on the mix), so the ungrouped tracks' stems plus the group stems add up to the mix; "
+                                 "master effects, master reverb and the safety clip are on the mix only, and the reply's warnings say so (and name any file cut flat at full scale)."},
         "preset": {"enum": list(presets.PRESETS), "description": "; ".join(f"{k}: {v['label']} — {v['detail']}" for k, v in presets.PRESETS.items())
                    + ". Sets format, sampleRate, trim and stems (and writes markers.json) unless you give them."},
         "format": {"type": "string", "enum": [f["id"] for f in deliver.FORMATS], "default": deliver.DEFAULT_FORMAT,
@@ -73,6 +76,6 @@ def register(tools: Tools):
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             return Reply(summary(r), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
-                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy") if k in r}}, files)
+                              **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
 
         return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options)))}")

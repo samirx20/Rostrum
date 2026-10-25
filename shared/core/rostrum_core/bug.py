@@ -4,7 +4,8 @@
 about, and the error itself, e.g. "OSError: [Errno 22] Invalid argument, on file C:\\...\\canvas.png, in
 rostrum_paint/canvas.py line 332 (png)". `log(text)` keeps the whole traceback in the day's log and returns its path.
 `internal(where, subject, e)` is the INTERNAL RostrumError an operation, a tool or a job answers with (never a quiet
-success, never a bare "OSError" with no step or file). `note(text)` is a developer's line on stderr that can never
+success, never a bare "OSError" with no step or file); a screen shows its `person()` sentence, never the raw
+"StopIteration: ." (the step and the traceback stay in line() and the log). `note(text)` is a developer's line on stderr that can never
 fail the work it reports on.
 """
 from __future__ import annotations
@@ -64,4 +65,6 @@ def internal(where: str, subject: str, e: BaseException) -> RostrumError:
     """The INTERNAL error for a bug: what failed (step, file), the traceback logged, the log named."""
     path = log("".join(traceback.format_exception(e)))
     return RostrumError(codes.INTERNAL, where, subject, f"failed: {said(e)}",
-                        hint=f"A fault in Rostrum, not in the request. Full details: {path}")
+                        hint=f"A fault in Rostrum, not in the request. Full details: {path}",
+                        plain=f"Something went wrong inside Rostrum, so that didn't happen (not your mistake). "
+                              f"The details are in {path}")

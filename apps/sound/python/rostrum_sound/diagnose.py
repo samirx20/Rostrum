@@ -11,7 +11,8 @@ from .doc import media, past_end
 
 # every kind of problem and its name on the chip: ONE list (the chip never looks a kind up anywhere else)
 LABELS = {"missing-file": "Missing file", "outside-project": "File outside the song", "pending-take": "Cleaned take not made",
-          "broken-tie": "Note ends before it starts", "after-the-end": "Sounds after the end", "no-longer-made": "No longer made"}
+          "broken-tie": "Note ends before it starts", "after-the-end": "Sounds after the end", "no-longer-made": "No longer made",
+          "hard-end": "Stops dead at the end"}
 KINDS = tuple(LABELS)
 
 
@@ -49,4 +50,7 @@ def problems(doc) -> list[dict]:
         fix = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "Move them earlier or make the song longer",
                "no-longer-made": "Remove it or replace it with an instrument"}[kind]
         out.append({"kind": kind, "item": w.split(":", 1)[0] if ":" in w and kind != "after-the-end" else "", "message": w, "fix": fix})
+    if cut := past_end.hard_end(doc.data):
+        out.append({"kind": "hard-end", "item": cut, "message": "Soft end is off and sound is still playing at the song's Length, "
+                    "so the file ends with a click", "fix": "Turn Soft end back on (doc.set endFade true), or end the music before the Length"})
     return out

@@ -95,12 +95,15 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 
 `render_mix` with `stems: true` writes one WAV per track and per bus (`<group name>.wav`) beside the mix in
 `renders/<item>/vNNN/`. On the screen: the Export sheet (Ctrl+E) with **Stems** on, then **Export**.
-**The rule, in plain words:** a stem leaves through the master's *volume* (master fader and its automation, the
-fades, and the gain that brings the mix to its loudness target) but not through the master's *glue compressor,
-limiter or master effects* (those can't be split between stems). So the stems add up to the mix exactly wherever
-none of those acted. The manifest (`manifest.json`, `stems_rule`) says how far they can differ:
-`limiter_max_reduction_db` and `glue_max_reduction_db` (the most the limiter / glue turned the mix down, dB),
-`master_effects_on_mix_only` (true if the master has effects, reverb or time warps), `master_gain_db` (already in
-the stems), and `stems_add_up` (true only when all of these are nothing). A limiter reduction of 0.5 dB means the
-stems sum up to 0.5 dB louder than the mix at the worst moment.
+**The rule, in plain words:** a stem leaves through the master's whole *gain*: master fader and its automation,
+the fades, the glue compressor, the gain that brings the mix to its loudness target and the limiter. The engine
+works that gain out once, on the mix, and gives every stem the same turn-down at the same moment, so the stems
+(the ungrouped tracks' plus the group stems) add up to the mix and a stem does not clip where the mix doesn't.
+What can't be split between stems, the master's effects, its reverb, time warps and the safety clip, is on the
+mix only. The manifest (`manifest.json`, `stems_rule`) says it: `on_mix_only` (those, by name; empty normally),
+`max_difference` (the most the stems' sum and the mix differ, as a sample value, measured when the stems hold
+everything that reaches the master), `stems_add_up`, and the master's `master_gain_db`,
+`glue_max_reduction_db` and `limiter_max_reduction_db` (all already in the stems). Each stem's `loudness_lufs`,
+`true_peak_db`, `sample_peak_db` and `clipped_samples` are measured on the file written. The render reply's
+`warnings` (and the Export sheet's result line) say in words when a file was cut flat or the stems don't add up.
 `render_mix` with `master: false` gives the mix before mastering, for someone else to master.

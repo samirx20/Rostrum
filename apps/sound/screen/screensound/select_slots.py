@@ -214,18 +214,17 @@ class SelectSlots:
         return list(self._picks.range) if self._picks.range else []
 
     @Slot(float, float, bool)
-    @Slot(float, float, bool, float)
-    def setRange(self, t0, t1, free, px=0.0):
-        """A drag on the ruler: a time range, its edges on the grid unless free (Ctrl): each takes a line within a few
-        px, else it covers the grid cell it is in (`px`: one screen pixel in seconds, timing.snap)."""
-        self._set_range(t0, t1, free, True, px)
+    def setRange(self, t0, t1, free):
+        """A drag on the ruler: a time range, each edge on the nearest grid line unless free (Ctrl), as any drag
+        (timing.snap)."""
+        self._set_range(t0, t1, free, True)
 
-    def _set_range(self, t0, t1, free, drawn, px=0.0):
+    def _set_range(self, t0, t1, free, drawn):
         """`drawn`: a person drew it, so Ctrl+D etc. mean the range. The loop button's own range (drawn False) is only where
         the loop plays: the selected items' actions stay first in the panel."""
         t0, t1 = sorted((t0, t1))
         root, grid = self.doc.data, self._grid_now
-        a, b = timing.snap(t0, root, free, grid, "start", px), timing.snap(t1, root, free, grid, "end", px)
+        a, b = timing.snap(t0, root, free, grid), timing.snap(t1, root, free, grid)
         self._picks.range = (a, b) if b - a > 1e-3 else None
         if drawn:
             self.__dict__["_range_newer"] = True         # a range drawn after the items: Ctrl+D etc. mean the range

@@ -16,11 +16,15 @@ pub struct Mix {
     /// Each channel's sample sum (DC offset).
     pub sums: Vec<f64>,
     pub clipped: usize,
+    /// Samples the safety clip changed (over −1 dBFS before it): the mix differs from its stems there.
+    pub safety_clipped: usize,
     /// Integrated loudness (LUFS, BS.1770 channel weights) and true peak (dBTP) of the file.
     pub lufs: f64,
     pub true_peak: f64,
     /// True peak (dBTP) of each 100 ms hop of the file (analysis/loudness.rs sample_peaks), the series behind `true_peak`.
     pub true_peak_series: Vec<f64>,
+    /// The mastering stage's deepest reduction (dB ≥ 0: glue and limiter) in each 100 ms hop; empty without one.
+    pub reduction_series: Vec<f64>,
     pub ducks: Vec<(String, Vec<duck::DuckSpan>)>,
     pub tracks: Vec<TrackStats>,
     /// Each bus as it leaves (buses.rs), in schedule order; empty without buses.
@@ -31,8 +35,12 @@ pub struct Mix {
     /// Each bus as it leaves (after its effects and fader), kept when any stem is: with the direct tracks' stems
     /// these add up to what reaches the master.
     pub bus_stems: Vec<(String, Arc<Tape>)>,
-    /// The master's linear gain (fader, lane, fades, loudness gain): the one gain the stems carry (bus.rs sets it).
+    /// The master's gain at every frame (fader, lane, fades, glue, loudness gain, limiter): the one gain the mix took
+    /// and the stems carry (bus.rs sets it).
     pub gain: Option<MasterGain>,
+    /// What reaches the master bus, by name, in the order it is summed: the direct tracks, then the buses that play
+    /// to the master (`true`). The stems of these add up to the mix.
+    pub inputs: Vec<(bool, String)>,
     /// What the mastering stage did (fx/master.rs): its gain, and the largest reductions of its glue and limiter.
     pub master: crate::fx::master::MasterReport,
     /// Energy per band of the file (balance.rs BANDS, dB; a surround bed's stereo fold-down): its tonal balance.

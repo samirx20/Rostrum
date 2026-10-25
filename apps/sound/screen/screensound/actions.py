@@ -6,7 +6,8 @@ entries move there as they are:
     importance ("primary" = a button in the settings panel's actions, "secondary" = its More menu), promoted_when(Facts)
     (a selection that makes a secondary one primary), calls(Facts) -> operation calls, group (a divider in menus;
     "edit" = the edit block: keys and the right-click menu, never the panel), menu (the titled row it sits in,
-    e.g. "Transpose"), panel (False: keys and Ctrl+K only), do ("copy" / "cut" / "paste" / "inside" / "rename" / "library" / "clean": not a document
+    e.g. "Transpose"), on (the kinds it acts on: in a mixed selection, e.g. Select all, it acts on those items and
+    names them, `ACTS_ON`; it is absent only when none are selected), panel (False: keys and Ctrl+K only), do ("copy" / "cut" / "paste" / "inside" / "rename" / "library" / "clean": not a document
     change by itself), needs (what the message line says when its key is pressed while it doesn't apply), amount
     ((label, default(Facts)): the action asks one number first, in a small popover; then calls(Facts, number)).
 
@@ -37,10 +38,17 @@ CLIPS = {"note", "hit", "clip", "line"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs="", min_targets=0, release="", panel=True):
+        promoted_when=None, needs="", min_targets=0, release="", panel=True, on=()):
     return {"key": key, "label": label, "shortcut": shortcut, "valid_when": valid_when, "importance": importance,
             "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu, "do": do, "needs": needs,
-            "min_targets": min_targets, "release": release, "panel": panel}
+            "min_targets": min_targets, "release": release, "panel": panel, "on": on}
+
+
+def on(kinds, op, **args):
+    """(valid_when, calls) of an action on the selected items of `kinds`, whatever else is selected: one call per
+    kind, e.g. Quantise on Select all = note.quantize on its notes + hit.quantize on its hits."""
+    return (lambda f: bool(f.by_kind(kinds)),
+            lambda f: [C.call(f"{k}.{op}", ids, **args) for k, ids in f.by_kind(kinds).items()])
 
 
 def _inside_clip(f):
@@ -55,7 +63,8 @@ def _can_make_main(f):
 
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),
           ("up12", 12, "Up an octave", "Shift+Up"), ("down12", -12, "Down an octave", "Shift+Down"))
-TRACK, NOTES, CLIP = (lambda f: f.one == "track"), (lambda f: f.one in ("note", "hit")), (lambda f: f.one == "clip")
+TRACK, CLIP = (lambda f: f.one == "track"), (lambda f: f.one == "clip")
+NOTE_HIT, NOTE = ("note", "hit"), ("note",)
 MARKER = lambda f: f.one == "marker" and f.count == 1 and isinstance(f.items[0].get("at"), (int, float))  # noqa: E731
 NAMED = ("track", "bus", "marker", "section")
 
@@ -83,11 +92,11 @@ ACTIONS = [
         lambda f: [C.call("track.unlock", [it["id"] for it in f.items if it.get("locked")])], "Ctrl+Shift+L",
         group="order"),
     # notes and drum hits
-    act("quantize", "Quantise", NOTES, lambda f: [C.call(f"{f.one}.quantize", f.ids)], "Q", "primary", "time",
-        needs="Quantise needs notes or drum hits selected"),
-    *[act(f"transpose_{k}", label, lambda f: f.one == "note", lambda f, n=n: [C.call("note.transpose", f.ids, semitones=n)],
-          keys, "primary", "pitch", "Transpose") for k, n, label, keys in _STEPS],
-    act("humanize", "Humanise", NOTES, lambda f: [C.call(f"{f.one}.humanize", f.ids)], importance="primary", group="time"),
+    act("quantize", "Quantise", *on(NOTE_HIT, "quantize"), "Q", "primary", "time",
+        needs="Quantise needs notes or drum hits selected", on=NOTE_HIT),
+    *[act(f"transpose_{k}", label, *on(NOTE, "transpose", semitones=n), keys, "primary", "pitch", "Transpose", on=NOTE)
+      for k, n, label, keys in _STEPS],
+    act("humanize", "Humanise", *on(NOTE_HIT, "humanize"), importance="primary", group="time", on=NOTE_HIT),
     # markers (the song's own, placed in seconds)
     act("place_sound", "Put a sound here", lambda f: f.one == "marker" and f.count == 1, importance="primary",
         group="marker", do="library"),
@@ -153,6 +162,7 @@ ACTIONS = [
         needs="Cut out and close the gap needs a time range over a clip"),
     act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),
 ]
+ACTS_ON = {a["key"]: a["on"] for a in ACTIONS if a["on"]}      # what each names in its step ("Quantise · 178 notes and 202 drum hits")
 RANGE = frozenset(a["key"] for a in ACTIONS if a["group"] == "range") | {"range_duplicate"}   # they act on the time range
 # the kit's adapter doesn't read `release` or `panel` yet (kit request in the P30 report): put them on the Actions here
 LIST = ActionList([replace(a, release=d["release"], panel=d["panel"]) for a, d in zip(from_dicts(ACTIONS, KEYMAP), ACTIONS)],

@@ -63,8 +63,8 @@ The **Colour** row shows the colour the track is drawn in.
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
    grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
    **Note ▾** sets how long a new note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
-   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to make a
-   longer note: the click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
+   the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to set its
+   length: the note ends on the grid line nearest the pointer (drag two beats, it is two beats long). The click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
    scrolls by itself after an edit: only you move the view.
    Drag a note to move it in time and pitch, or its right end to make it longer or shorter (the pointer shows ↔ over
@@ -78,23 +78,27 @@ The **Colour** row shows the colour the track is drawn in.
    - Hold **Shift** to move it only in time.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all, **Esc** clears.
+   A key on a mixed selection acts on the part it can: after Ctrl+A, **Q** quantises the notes and drum hits, ↑ / ↓
+   and Ctrl+↑ / Ctrl+↓ move the notes, and the step in History names them ("Quantise · 178 notes and 202 drum hits").
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
    as **Quantise** and **Transpose**, each always in the same place. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
-   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line under the pointer when one is within 3 pixels, else in the grid step it is in, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
+   track; on the ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
    name, and every key on the Keys list (Ctrl+/): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid. The same keys
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 5. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
-   - **A time range:** drag on the ruler's thin top band. The settings panel offers **Make a section** and **Select
+   - **A time range:** drag on the ruler's thin top band. Each end goes to the grid line nearest the pointer. The settings panel offers **Make a section** and **Select
      inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
      copies just those notes. **Shift+Delete** (**Cut out and close the gap**) cuts the range out of the clips under it and closes the gap.
-   - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave).
+   - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave). The selection moves as one block: when
+     ← would take its earliest note before the start of the song, it stops at the start, and once there the message
+     line says "Already at the start of the song".
    - **Q** quantises. **Ctrl+T** splits a clip at the playhead and **Ctrl+J** joins clips.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.
@@ -137,7 +141,9 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
   and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the
   last sound**, the default, or a number of bars: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
-  room to write in) and **More**. Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
+  room to write in) and **More**. With a number of bars, **Soft end** (under **More**, on at first) fades the last tenth of a
+  second, so a chord still ringing at the end stops softly instead of with a click; switch it off for a dead stop
+  (agents: `doc.set` `endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
   playhead jumps there and the change is selected, so the panel shows its settings (Delete removes it). A time
   signature change has its own picker in its row: pick 6/8 there and it changes in one step (one Ctrl+Z takes it back).
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**

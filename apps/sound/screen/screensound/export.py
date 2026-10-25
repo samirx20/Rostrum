@@ -44,8 +44,9 @@ def summary(r: dict) -> str:
     if r.get("silentStems"):
         stems += " (silent: " + ", ".join(r["silentStems"]) + ")"
     cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
+    warn = "".join(f" · {w}" for w in r.get("warnings") or [])        # a clipped file, stems that don't add up: said here
     return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
-            f"{r['seconds']:.1f} s{cut} · {stems}")
+            f"{r['seconds']:.1f} s{cut} · {stems}{warn}")
 
 
 def option(c: dict) -> dict:
@@ -56,11 +57,13 @@ def option(c: dict) -> dict:
 class RenderExport(ExportSheet):
     CHOICES_PICKER = True                             # What for is one picker (Streaming … MIDI file), the numbers under each name
     own = Signal()                                    # = changed, for this class's own properties
+    _said = Signal(str)                               # the running export's own words ("Writing song_mix.wav and 4 stems")
 
     def __init__(self, bridge, loudness=None, open_engine=playback.open_engine, parent=None):
         super().__init__(bridge, parent)
         self._loud, self._open_engine = loudness, open_engine
         self.changed.connect(self.own)                # (a subclass's property can't notify on the kit's signal: PySide6 crashes)
+        self._said.connect(self._say)
         self._stems, self._format, self._rate, self._trim = "off", deliver.DEFAULT_FORMAT, 0, True   # rate 0: the song's own
         self._markers = False                         # markers.json beside the files
         self._choice = self._target_key()
@@ -170,15 +173,23 @@ class RenderExport(ExportSheet):
                              "options": {**base, "format": r["format"], "sampleRate": rate or doc.data.get("sampleRate", 48000)}})
         return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out}
 
+    def _say(self, words):
+        """What the running export is doing, in the sheet's line and the top bar (the kit's line says only the file)."""
+        if self._state == "running":
+            self._note = words
+            self.bridge._set_status(words + "…")
+            self.changed.emit()
+
     def work(self, p, progress):
         if "midi" in p:
             return self._write_midi(p)
         progress(-1.0)                                     # the engine can't say how far it is
-        eng, made = self._open_engine(), []
+        eng, made, n = self._open_engine(), [], len(p["versions"])
         try:
-            for v in p["versions"]:
+            for i, v in enumerate(p["versions"]):
+                of = f"Version {i + 1} of {n}: " if n > 1 else ""
                 made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"],
-                                           markers_file=v["markers"]))
+                                           markers_file=v["markers"], say=lambda w, of=of: self._said.emit(of + w)))
         finally:
             eng.close()
         for m in made:

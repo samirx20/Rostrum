@@ -11,13 +11,13 @@ order to use them in when checking a whole mix; the table of every tool and what
 ## A pass from the outside in
 
 1. **Overall:** `look_sound` (`what: "loudness"`). Integrated loudness and true peak against the delivery target; the short-term curve
-   shows whether the loud and quiet parts are where the piece needs them; clipped moments are listed with times. On a render's mix it also draws where the master limiter turned the sound down
-   (a curve, the worst moments with the dB reduced) and names the tracks that drove each moment. That part is measured from
-   the stems, so it is a close estimate, not the engine's exact curve: lower those tracks where it works.
+   shows whether the loud and quiet parts are where the piece needs them; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
+   (the engine's own gain curve, the worst moments with the dB reduced) and, with stems, names the tracks that drove each
+   moment: lower those tracks where it works.
 2. **Balance:** `look_sound` (`what: "levels"`). Which track is far under or over the rest. A track you meant to be quiet is not a problem;
    one you meant to lead and is buried is. Each stem's `db_vs_mix` and the track's `volume_db` are side by side: to
    move a track N dB against the other tracks, set its volume to `volume_db` + N (`track.set` `{"volume": {"db": …}}`); the
-   master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is fine in the file (it only clips if someone converts
+   master's loudness target and limiter turn every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is fine in the file (it only clips if someone converts
    it to a 16 or 24-bit file); only a stem marked "clips" is cut flat.
 3. **Fights:** `look_sound` (`what: "clash"`). Where one track buries another: both loud in the same frequency band at the same time, one
    standing at least 3 dB over the other (`min_over_db`). Spans come back ranked by how far one is buried (`buried_track`,

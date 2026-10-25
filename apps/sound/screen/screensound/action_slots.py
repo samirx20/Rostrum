@@ -20,7 +20,7 @@ from rostrum_sound import main_mix
 from . import action_calls as C
 from . import voice_actions as V
 from . import block_menu, clipboard, palette, timing
-from .actions import LIST, RANGE
+from .actions import ACTS_ON, LIST, RANGE
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
 
@@ -103,11 +103,14 @@ class ActionSlots:
 
     def _subject(self, key) -> str:
         """What action `key` acts on, in words: a time range action names the range ("time range 5.1–9.1"), even with
-        items selected too (critic r4: "Duplicate · 26 drum hits" duplicated the whole range); the rest the selection."""
+        items selected too (critic r4: "Duplicate · 26 drum hits" duplicated the whole range); an action on some kinds
+        the part it takes ("Quantise · 178 notes and 202 drum hits" on Select all); the rest the selection."""
         rng = self._picks.range
         if key in RANGE and rng:
             at = [".".join(musical.position(t, self.doc.data).split(".")[:2]) for t in rng]
             return f"time range {at[0]}–{at[1]}"
+        if key in ACTS_ON:
+            return C.Facts(self.doc, self._picks.ids).words(ACTS_ON[key]) or self.selectionWords
         return self.selectionWords
 
     # ---- running ----------------------------------------------------------------------------------------------
@@ -255,8 +258,8 @@ class ActionSlots:
             return True
         if what == "marker":
             return self.markerAt(float(parts[-1]))
-        t, px = float(parts[2]), float(parts[3]) if len(parts) > 3 else 0.0     # a section: starts as a drawn range's start does
-        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, self.workspace.seconds, self._grid_now, "start", px),
+        t = float(parts[2])                                    # a section: starts as a drawn range's start does
+        f = C.Facts(self.doc, [], rng=(timing.snap(t, self.doc.data, self.workspace.seconds, self._grid_now),
                                        self._length()))
         return self._act(C.section(f), "Make a section")
 
@@ -285,7 +288,7 @@ class ActionSlots:
     def _act(self, calls, label, select_made=False):
         def go():
             change = self.doc.apply(calls, self.who, label=label)
-            self._done(change, "")
+            self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently
             made = [i for i in ST.inserted(change) if self.doc.has(i)] if change and select_made else []
             if made:
                 self._pick(made)

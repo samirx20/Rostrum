@@ -8,11 +8,12 @@ A `Grid` is a window's grid setting (Grid ▾ and Snap in the arrangement's head
 bridge holds one and passes it to every snap (drags, ends, the ruler's range, Draw, nudges); without one, the
 default (Auto, Snap on) is used. Auto follows the zoom: the finest step at least MIN_PX wide on screen.
 
-One snap, three ways (`snap(..., how=)`): a drag or a nudge goes to the NEAREST line; a click that makes something
-(a Draw note, a drum hit, a double-click, an automation point) takes the CELL under the pointer, the line at or
-before it; a time range's edges ("start" / "end") take a line within NEAR_PX, else the cell's start / end. `px` is
-one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a pointer on that pixel is on
-the line (a press exactly on a drawn line gives that line's time, a pixel before it the cell before).
+One snap, two ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
+NEAREST line (a range released a few pixels past the bar line ends on it: critic r6 M3); a click that makes
+something (a Draw note, a drum hit, a double-click, an automation point) takes the CELL under the pointer, the line
+at or before it. `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
+pointer on that pixel is on the line (a press exactly on a drawn line gives that line's time, a pixel before it the
+cell before).
 """
 from __future__ import annotations
 
@@ -22,7 +23,6 @@ from rostrum_sound.doc.shift import spb, write_like
 
 SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
 MIN_PX = 8.0               # Auto: no step narrower than this on screen
-NEAR_PX = 3.0              # a range edge this close to a line takes the line
 EPS = 1e-6                 # beats: a time written as a line's seconds is on that line
 
 
@@ -91,8 +91,8 @@ def lines_around(t: float, root: dict, grid: Grid | None = None) -> tuple[float,
 
 def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = "nearest", px: float = 0.0) -> float:
     """`t` seconds onto `grid` (the window's; through the tempo map), unless free or its Snap is off. `how`:
-    "nearest" (drags, ends, nudges), "cell" (a click that makes something: the cell under the pointer), "start" /
-    "end" (a time range's edges). `px`: one screen pixel in seconds (0: not from the screen)."""
+    "nearest" (drags, ends, nudges, a range's edges), "cell" (a click that makes something: the cell under the
+    pointer). `px`: one screen pixel in seconds (0: not from the screen)."""
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
@@ -100,14 +100,7 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = 
         lo, hi = lines_around(t, root, grid)
         at = hi if hi - t < t - lo else lo
     else:
-        lo, hi = lines_around(t + px / 2, root, grid)        # the pointer's pixel holds the line drawn on it
-        near = min(NEAR_PX * px, (hi - lo) / 3)                 # (never so far that a small cell is skipped)
-        if how == "start":
-            at = hi if hi - t <= near else lo
-        elif how == "end":
-            at = lo if t - lo <= near else hi
-        else:
-            at = lo
+        at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
     return max(0.0, round(at, 6))
 
 

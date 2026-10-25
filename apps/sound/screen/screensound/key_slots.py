@@ -36,44 +36,55 @@ class KeySlots:
     @Slot(str, int, result=bool)
     def nudge(self, how, sign):
         beats = {"grid": timing.step_beats(self.doc.data, self._grid_now), "bar": meter.bar_length_beats(self.doc.data, timing.beat(self._t, self.doc.data)), "fine": 1 / 32}[how]
-        by = C.Facts(self.doc, self._picks.ids).by_kind()
-        if not by:
+        f = C.Facts(self.doc, self._picks.ids)
+        if not f.by_kind():
             return False
-        return self._act([{"op": f"{k}.move", "target": ids, "args": {"by": {"beats": sign * beats}}}
-                          for k, ids in by.items()], "Nudge " + self.selectionWords)
+        calls = C.nudge(f, sign * beats)
+        if not calls:
+            self._refuse("Already at the start of the song: it can't move earlier")
+            return False
+        return self._act(calls, "Nudge " + f.words())
 
     @Slot(int, result=bool)
     def pitchStep(self, semis):
-        """↑ ↓: notes by `semis`; clips to the next track up (semis > 0) or down that holds them."""
-        kinds = set(self._kinds())
-        if kinds == {"note"}:
-            return self._act([{"op": "note.transpose", "target": self._picks.ids, "args": {"semitones": semis}}],
-                             "Transpose " + self.selectionWords)
-        if kinds == {"clip"}:
-            order = [t["id"] for t in self.doc.data.get("tracks", [])]
-            here = order.index(self.doc.parent_of(self._picks.ids[0])[0])
-            step = -1 if semis > 0 else 1
-            g = {"items": [{"id": i, "type": k} for i, k in zip(self._picks.ids, self._kinds())]}
-            for j in range(here + step, -1 if step < 0 else len(order), step):
-                calls = moves.track_calls(self.doc, g, order[j])
-                if calls:
-                    name = self.doc.item(order[j]).get("name") or order[j]
-                    return self._act(calls, f"Move {self.selectionWords} to {name}")
-            self.say("No track that can hold them " + ("above" if step < 0 else "below"))
+        """↑ ↓: the selected notes by `semis` (in a mixed selection, its notes: Facts.words); a selection of only
+        clips to the next track up (semis > 0) or down that holds them; anything else says so."""
+        f = C.Facts(self.doc, self._picks.ids)
+        notes = f.by_kind(("note",)).get("note")
+        if notes:
+            return self._act([{"op": "note.transpose", "target": notes, "args": {"semitones": semis}}],
+                             "Transpose " + f.words(("note",)))
+        if f.kinds != {"clip"}:
+            self._refuse("↑ / ↓ move notes a half step, or clips to another track: " +
+                         ("select some first" if not f.count else "no notes or clips are selected"))
+            return False
+        order = [t["id"] for t in self.doc.data.get("tracks", [])]
+        here = order.index(self.doc.parent_of(self._picks.ids[0])[0])
+        step = -1 if semis > 0 else 1
+        g = {"items": [{"id": i, "type": k} for i, k in zip(self._picks.ids, self._kinds())]}
+        for j in range(here + step, -1 if step < 0 else len(order), step):
+            calls = moves.track_calls(self.doc, g, order[j])
+            if calls:
+                name = self.doc.item(order[j]).get("name") or order[j]
+                return self._act(calls, f"Move {self.selectionWords} to {name}")
+        self.say("No track that can hold them " + ("above" if step < 0 else "below"))
         return False
 
     @Slot(int, result=bool)
     def pitchScaleStep(self, sign):
         """Ctrl+↑ ↓: notes one step up / down the song's key; says why when it can't (no notes, no key)."""
-        if set(self._kinds()) != {"note"}:
-            self._refuse("Pitch up or down a scale step works on notes: select some first")
+        notes = C.Facts(self.doc, self._picks.ids).by_kind(("note",)).get("note")
+        if not notes:
+            self._refuse("Pitch up or down a scale step works on notes: " +
+                         ("select some first" if not self._picks.ids else "no notes are selected"))
             return False
         key = scale_step.song_key(self.doc.data, self._t)
         if not key:
             self._refuse("Pitch by a scale step needs the song's key: set it in the header (the key next to the tempo)")
             return False
-        calls = scale_step.calls(self.doc, self._picks.ids, key, sign)
-        return bool(calls) and self._act(calls, "Pitch " + ("up" if sign > 0 else "down") + " a scale step in " + key)
+        calls = scale_step.calls(self.doc, notes, key, sign)
+        way = "up" if sign > 0 else "down"
+        return bool(calls) and self._act(calls, f"Pitch {way} a scale step in {key} · {C.Facts(self.doc, notes).words()}")
 
     @Slot(int)
     def playheadStep(self, n):

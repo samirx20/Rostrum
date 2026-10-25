@@ -10,7 +10,6 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import listen
 from ..doc.times import seconds
-from ..handoff import LIMITER_SLACK_DB
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 WAV = {"wav": {"type": "string", "description": "A WAV to read instead of the last render's mix (absolute path)."}}
@@ -29,20 +28,21 @@ def _source(ctx, args, where):
 
 
 def _limiter_inputs(ctx, doc):
-    """What the limiter look needs from the last render: the stems that add up to the mix (the tracks that feed
-    it directly, plus its bus stems), and a caveat when the glue or master effects also changed the mix."""
+    """What the limiter look needs from the last render: the engine's reduction curve, and the stems that add up to the
+    mix (the tracks that feed it directly, plus its bus stems) to name who drove it."""
     try:
         r = ctx.app.state.last_render(doc.item_id, "look_sound (what: loudness)")
     except RostrumError:
         return None
-    direct = r.get("direct") or list(r["stems"])
-    stems = {k: r["stems"][k] for k in direct if k in r["stems"]} | dict(r.get("busStems") or {})
-    m = r.get("master") or {}
-    if not stems:
+    reduction = (r.get("series") or {}).get("reductionDb")
+    if not reduction:                    # no mastering stage, or a render from an older engine
         return None
-    caveat = ("the glue compressor or master effects also acted, so this includes their change"
-              if m.get("glueMaxReductionDb", 0) > LIMITER_SLACK_DB or m.get("insertsOnMix") else "")
-    return {"stems": stems, "caveat": caveat, "engine_max_db": m.get("limiterMaxReductionDb")}
+    direct = r.get("direct") or list(r.get("stems") or {})
+    stems = {k: r["stems"][k] for k in direct if k in (r.get("stems") or {})} | dict(r.get("busStems") or {})
+    m = r.get("master") or {}
+    only = m.get("onMixOnly") or []
+    caveat = f"the drivers are the tracks as they reach the master, before its {', '.join(only)}" if only else ""
+    return {"stems": stems, "reduction": reduction, "caveat": caveat, "engine_max_db": m.get("limiterMaxReductionDb")}
 
 
 def _resolve(doc, t, where):
@@ -53,7 +53,7 @@ def _resolve(doc, t, where):
 def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV}})
     def look_loudness(ctx, args):
-        """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master limiter turned the sound down (a curve in the picture, the worst moments with the dB reduced) and which tracks drove each moment, measured from the stems (an estimate, close to the engine's own gain)."""
+        """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
@@ -63,12 +63,12 @@ def register(tools: Tools):
         if "limiter" in r:
             w = r["limiter"]["worst"]
             said += (f" Limiter: up to {r['limiter']['max_db']:.1f} dB down for {r['limiter']['seconds_working']:.1f} s"
-                     + (f"; worst at {w[0]['time_s']:.2f} s, driven by {', '.join(d['track'] for d in w[0]['drivers'][:3])}." if w else "."))
+                     + (f"; worst at {w[0]['time_s']:.2f} s" + (f", driven by {', '.join(d['track'] for d in w[0]['drivers'][:3])}" if w[0]["drivers"] else "") + "." if w else "."))
         return Reply(said, r, [r["png"]], [r["png"]])
 
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
-        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB (volume_db); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
+        """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB (volume_db); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target and limiter turn every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
         doc, wav, stems = _source(ctx, args, "look_sound (what: levels)")
         if not stems:
             raise RostrumError(codes.NOT_FOUND, "look_sound (what: levels)", "stems", "were not rendered", hint="render_mix with stems: true.")

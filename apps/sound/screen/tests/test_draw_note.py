@@ -17,6 +17,19 @@ def test_draw_then_drag_longer_is_one_step_and_selected(bridge):  # noqa: F811
     assert not doc.has(nid)                           # one undo takes the whole note away
 
 
+def test_a_drawn_note_dragged_two_beats_is_two_beats_long(bridge):  # noqa: F811
+    """The drag sets the end from where the press was, not from the Note ▾ length on top (critic r6 M2: 2 beats → 3)."""
+    from screensound import timing
+    root = bridge.doc.data
+    t0 = timing.snap(4.0, root, False, None)            # a line (120 bpm: 0.5 s a beat)
+    nid = bridge.drawAt(t0 + 0.01, 62)                    # pressed a pixel or so past the line
+    assert bridge.beginHandle(nid, "length")
+    bridge.handleTo(1.0 + 0.02, 0, False)                # two beats on, released just past the line
+    bridge.endDrag()
+    b = next(x for x in bridge._view["roll"]["blocks"] if x["id"] == nid)
+    assert abs(b["t"] - t0) < 1e-6 and abs(b["dur"] - 1.0) < 1e-3
+
+
 def test_plain_click_draw_is_one_step_after_release(bridge):  # noqa: F811
     doc, before = bridge.doc, len(bridge.doc.history.changes)
     nid = bridge.drawAt(1.0, 62)

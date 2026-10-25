@@ -75,8 +75,14 @@ pub fn run(job: Job) -> Result<Value, Error> {
     // straight to the master the bus stems add up to what reaches the master (`direct` lists those tracks).
     let named = |list: &[(String, std::sync::Arc<crate::mix::tape::Tape>)], ext: &str| -> Vec<(String, PathBuf)> { list.iter().map(|(id, _)| (id.clone(), stems_dir.join(format!("{id}{ext}")))).collect() };
     let (stem_paths, bus_paths) = (named(&mix.stems, ".wav"), named(&mix.bus_stems, ".bus.wav"));
-    let files: Vec<(&crate::mix::tape::Tape, PathBuf)> = mix.stems.iter().chain(&mix.bus_stems).zip(stem_paths.iter().chain(&bus_paths)).map(|((_, t), (_, p))| (&**t, p.clone())).collect();
-    render::stems::write(&mix, &files, sr).map_err(Error::render)?;
+    let files: Vec<render::stems::StemFile> = mix.stems.iter().map(|s| (false, s)).chain(mix.bus_stems.iter().map(|s| (true, s))).zip(stem_paths.iter().chain(&bus_paths))
+        .map(|((bus, (name, t)), (_, p))| render::stems::StemFile { bus, name: name.clone(), tape: &**t, path: p.clone() }).collect();
+    let written = render::stems::write(&mix, &files, sr).map_err(Error::render)?;
+    // Each stem file's own figures (measured as written), by id: tracks and buses apart.
+    let meters = |bus: bool| -> serde_json::Map<String, Value> {
+        files.iter().zip(&written.meters).filter(|(f, _)| f.bus == bus).map(|(f, m)| (f.name.clone(), json!({
+            "lufs": m.lufs, "truePeak": m.true_peak, "peak": 20.0 * m.peak.max(1e-9).log10(), "overFullScale": m.over, "lastAudible": m.last_audible }))).collect()
+    };
     // The strips' live meters beside the mix (levels.rs): what `rostrum-sound play` shows while it plays this file.
     render::levels::Levels::of(&mix, sr as f64, s.range.map_or(0, |r| r.0)).write(&out).map_err(Error::render)?;
     let as_map = |paths: &[(String, PathBuf)]| -> serde_json::Map<String, Value> { paths.iter().map(|(id, p)| (id.clone(), json!(p.to_string_lossy()))).collect() };
@@ -94,13 +100,39 @@ pub fn run(job: Job) -> Result<Value, Error> {
             "momentary": loud.momentary.iter().map(|&v| (v * 1000.0).round() / 1000.0).collect::<Vec<_>>(),
             "shortTerm": loud.short_term.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "truePeak": mix.true_peak_series.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
+            "reductionDb": mix.reduction_series.iter().map(|&v| r2(v)).collect::<Vec<_>>(),
             "correlation": loud.correlation.iter().map(|v| v.map(|c| (c * 1000.0).round() / 1000.0)).collect::<Vec<_>>() },
         "tracks": tracks, "stems": stem_files, "busStems": bus_files, "direct": direct,
-        // What the stems took of the master: its linear gain (they carry it), and what they cannot carry.
+        "stemMeters": meters(false), "busStemMeters": meters(true),
+        // The stems carry the master's whole gain (fader, fades, glue, loudness gain, limiter: one curve, worked out on
+        // the mix); what they cannot carry is listed by name, and how far their sum is from the mix, when measured.
         "master": { "gainDb": r2(mix.master.gain_db), "glueMaxReductionDb": r2(mix.master.glue_db),
                     "limiterMaxReductionDb": r2(mix.master.limiter_db),
-                    "insertsOnMix": !s.effects.is_empty() || s.master_reverb != "dry" || !s.time_warps.is_empty() },
+                    "insertsOnMix": !s.effects.is_empty() || s.master_reverb != "dry" || !s.time_warps.is_empty(),
+                    "onMixOnly": on_mix_only(&s, mix.safety_clipped),
+                    "stemsMaxDifference": written.max_difference },
         "buses": mix.buses.iter().map(|t| json!({ "id": t.name, "peak": t.peak, "rms": t.rms, "lufs": t.lufs })).collect::<Vec<_>>(),
         "ducks": mix.ducks.iter().map(|(t, spans)| json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect::<Vec<_>>(),
     }))
+}
+
+/// What the master did to the mix that its stems do not carry, in words (empty: the stems add up to the mix).
+fn on_mix_only(s: &Schedule, safety_clipped: usize) -> Vec<&'static str> {
+    let mut out = vec![];
+    if !s.effects.is_empty() {
+        out.push("master effects");
+    }
+    if s.master_reverb != "dry" {
+        out.push("master reverb");
+    }
+    if !s.time_warps.is_empty() {
+        out.push("time warps");
+    }
+    if s.tail_samples > 0 {
+        out.push("the loop's wrap-around");
+    }
+    if safety_clipped > 0 {
+        out.push("the safety clip");
+    }
+    out
 }

@@ -27,7 +27,7 @@ import checkout_paths  # noqa: E402  (this checkout's code first, before any Ros
 
 checkout_paths.use_this_checkout()
 
-from PySide6.QtCore import Q_ARG, QMetaObject, QTimer
+from PySide6.QtCore import Q_ARG, QCoreApplication, QEvent, QMetaObject, QTimer
 
 from rostrum_core import Document, RostrumError
 from rostrum_core import userhome
@@ -122,7 +122,11 @@ class Screen:
 
     @staticmethod
     def _close(parts):
-        """A song's parts closed (engines, watchers, clocks), then freed: the window reading them is already gone."""
+        """A song's parts closed (engines, watchers, clocks), then freed, once nothing on screen reads them: the items
+        the swap released (a Repeater's rows for the old song's lists, what their Loaders made) are deleted first.
+        Qt deletes those when it gets to them; until then their bindings still run and read what the old song gave
+        them, so they must be gone before it is (critic r6 M1)."""
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         for k in ("keys", "recorder", "library", "side", "mixer", "bridge"):
             parts[k].close()
         ctx = parts["context"]

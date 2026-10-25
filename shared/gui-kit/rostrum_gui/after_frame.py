@@ -9,6 +9,7 @@ then its piano roll, then the sound's compile): run together they made one long 
 """
 from __future__ import annotations
 
+import shiboken6
 from PySide6.QtCore import QObject, Qt, QTimer
 from PySide6.QtGui import QGuiApplication
 
@@ -71,8 +72,8 @@ class _Turns(QObject):
         if not self._armed or gen != self._gen:     # the frame and the timer both came, or an older wait
             return
         self._armed = False
-        while self._jobs and not self._jobs[0].due:
-            self._jobs.pop(0)
+        while self._jobs and not (self._jobs[0].due and shiboken6.isValid(self._jobs[0])):
+            self._jobs.pop(0)                       # done, or its owner freed (a closed song's job never runs)
         try:
             if self._jobs:
                 self._jobs[0].flush()               # (it leaves the list)
