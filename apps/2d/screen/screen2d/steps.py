@@ -38,7 +38,7 @@
   Paint (paint_steps.py): preset <id> | painttool <tool> | brushedit on|off | keytap <key> [mods] | fill <x> <y> | fillmode on|off | gap <size> | paintpick|paintremove <paint> | paintset <paint> <field> <v> |
     paintmove <paint> <row> | painttoggle <field> on|off
   Paintings (painting_steps.py): paintingop <op> <target|-> [<json>] | paintingsay
-    | paintingopen <id> | paintingclose | paintinguse <layer> (open_steps.py: a painting opened on its own)
+    | paintingopen <id> | paintingclose | paintinguse <layer> | opentime <id> [n] [profile] (open_steps.py: a painting opened on its own)
   Strokes (stroke_steps.py): altpick <x> <y> [click] | altoff | lasso <x,y> … [open] | selectstrokes on|off | strokesmove <dx> <dy> |
     strokesturn <deg> [scale] | strokesdelete | strokescopy | strokespaste | strokesclear | clickarea canvas|timeline|settings
   Sound (soundtrack_steps.py): sound wait | mute on|off | beats on|off | beat prev|next | scrub <s> | play <s> |
@@ -46,7 +46,7 @@
   Hover preview (H63): hoverobj <objectName> [ms] (click_steps.py: rest on a control) | canvasreport (the canvas's fingerprint + history length)
   Frame (frame_steps.py): frame pick | frame drag <dx> <dy> | frame corner <dx> | frame turn <deg> | frametime drag|zoom|turn [n]
   Drag cost (drag_steps.py): dragtime bar|trim|key|layer|frame|scrub [n] [profile]
-  Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n]
+  Edit cost (edit_steps.py): edittime field|dragend|key|pin|undo [n] [layer=<id>] [profile]
   Stroke cost (stroke_time.py): painttime <layer> <x0> <y0> <x1> <y1> [n] | painthold <x> <y> <x> <y> … (the pen left down)
   Selection cost (rostrum_gui/select_steps.py, any app): selecttime <id> <id> … [n]
   View (view_steps.py): zoom <percent|fit> [x y] | pan <dx> <dy> | fitsel | viewmenu | lookthrough on|off | draghold <layer> <dx> <dy> [ctrl] [shift]

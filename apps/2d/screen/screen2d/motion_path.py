@@ -18,6 +18,8 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
+from rostrum_core.keys import keys_of
+
 from . import motion_geo as G
 from rostrum2d.frame import TYPE as FRAME, view as frame_view
 
@@ -47,6 +49,7 @@ class MotionPath(QObject):
         self.b, self._frame_path = bridge, True
         self._tracks = None            # (doc.data, selection, frame path on, [(owner id, faint, track, frame keys)])
         self._view = None              # (tracks, t, the canvas paths)
+        self._by_owner = {}            # {owner id: (what it is made of, (track, frame outlines) or None)}: _track_of
         for sig in (bridge.selectedItemsChanged, bridge.timeChanged, bridge.markersChanged):
             sig.connect(self.changed)
         for sig in (bridge.docChanged, bridge.docStepped):      # a change or drag step elsewhere leaves the paths be
@@ -76,15 +79,29 @@ class MotionPath(QObject):
     def _read(self):
         key = (id(self.b.placed()), self.b.selectedLayer, self._frame_path, self.b.placed())   # the last keeps the id alive
         if self._tracks is None or self._tracks[0][:3] != key[:3]:
-            comp, rows = self.b.placed(), []
+            rows = []
             for oid, faint in self._owners():
-                owner = self.b.placed_item(oid)
-                if owner.get("ridePath"):
-                    continue
-                frames = [G.frame_at(comp, kt) for kt in G.frame_keys(owner)] if owner["type"] == FRAME else []
-                rows.append((oid, faint, G.track(owner, self.b.comp()["fps"]), frames))
+                got = self._track_of(oid)
+                if got is not None:
+                    rows.append((oid, faint, *got))
             self._tracks = (key, rows)
         return self._tracks
+
+    def _track_of(self, oid: str):
+        """(track, frame outlines) of one owner, worked out again only when what it is made of changed: a layer's position
+        (its x and y keys and values: motion_geo.track reads nothing else) and ride, the frame itself (its outlines read
+        all of it), the scene's rate and size, the markers. An edit of anything else (a colour, the scale, another
+        layer, the frame's other fields) reuses it (each was ~800 samples, redone on every change)."""
+        c, item = self.b.comp(), self.b.placed_item(oid)        # (keys in scene seconds: a retimed layer's move too)
+        own = item if item["type"] == FRAME else tuple((keys_of(item, p), item.get(p)) for p in ("x", "y")) + (item.get("ridePath"),)
+        key = (own, c["fps"], c.get("width"), c.get("height"), self.b.marks.times if self.b.marks else None)
+        got = self._by_owner.get(oid)
+        if got is None or not all(a is b or a == b for a, b in zip(got[0], key)):
+            comp, owner = self.b.placed(), self.b.placed_item(oid)
+            got = self._by_owner[oid] = (key, None if owner.get("ridePath") else (
+                G.track(owner, c["fps"]),
+                [G.frame_at(comp, kt) for kt in G.frame_keys(owner)] if owner["type"] == FRAME else []))
+        return got[1]
 
     @Property("QVariantList", notify=changed)
     def paths(self):

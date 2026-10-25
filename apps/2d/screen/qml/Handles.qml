@@ -22,10 +22,11 @@ Item {
     HaloLine { anchors.fill: parent; anchors.margins: -1 }
     // the turn zones sit under the knobs
     Repeater {
-        model: h.editable && h.kit.turn ? [[-1, -1], [1, -1], [1, 1], [-1, 1]] : []
+        model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]        // always made, shown while editable and the kit turns: a pick remakes nothing
         delegate: Item {
             id: zone
             required property var modelData
+            visible: h.editable && h.kit.turn === true
             width: 28; height: 28
             x: (modelData[0] + 1) / 2 * h.bw + modelData[0] * 11 - 14
             y: (modelData[1] + 1) / 2 * h.bh + modelData[1] * 11 - 14
@@ -42,16 +43,18 @@ Item {
             }
         }
     }
-    Repeater {
-        model: h.editable ? h.kit.knobs : []
+    KeptRepeater {      // the kit's knobs, kept: a pick (or the frame, and back) remakes none
+        id: knobs
+        needed: h.editable ? h.kit.knobs.length : 0
         delegate: Rectangle {
             id: knob
-            required property var modelData
-            readonly property int hx: modelData.hx
-            readonly property int hy: modelData.hy
+            required property int index
+            readonly property var info: h.kit.knobs[index] || ({})
+            readonly property int hx: info.hx || 0
+            readonly property int hy: info.hy || 0
             readonly property bool edge: hx === 0 || hy === 0
-            objectName: (h.group ? "groupHandle:" : "handle:") + modelData.name   // what a scripted hand drags (dragobj)
-            visible: !edge || modelData.always || (hx === 0 ? h.bw : h.bh) > 36          // a small box keeps only its corners
+            objectName: (h.group ? "groupHandle:" : "handle:") + (info.name || "")   // what a scripted hand drags (dragobj)
+            visible: index < knobs.needed && (!edge || info.always === true || (hx === 0 ? h.bw : h.bh) > 36)   // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
             x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2

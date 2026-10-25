@@ -10,7 +10,7 @@ Item {
     id: ed
     property Item ruler
     property int labelWidth: 236
-    readonly property var fs: backend.curves.fields
+    readonly property var fs: visible ? backend.curves.fields : []    // hidden (Curves off): reads nothing, makes nothing
     readonly property var shown: fs.filter(f => f.shown)
     readonly property real padY: 14
     readonly property real plotH: plot.height - 2 * padY

@@ -26,6 +26,7 @@ class BrushPanel(QObject):
     (what the pen paints on) and `self.through()` (the element it paints through into its painted fill)."""
     brushChanged = Signal()
     toolChanged = Signal()
+    headerChanged = Signal()        # what the pen paints on changed (the header): not the brush, so not brushChanged
 
     @Property(QObject, constant=True)
     def rows(self):
@@ -49,9 +50,13 @@ class BrushPanel(QObject):
     def toolSwitched(self):
         """A paint tool went on or off (paint_tool.py): the quick rows are that tool's, and a tool without a brush
         leaves Edit brush ›. Not `brushChanged`: the paint tool listens to that one."""
-        if self.brush.editing and not TOOL_PARTS[self._tool()]["brush"]:
+        tool = self._tool()
+        if tool == getattr(self, "_switched", None):     # the paint tool says it changed for a part that isn't the tool
+            return                                       # (one use() sends it up to five times): nothing to redo
+        self._switched = tool
+        if self.brush.editing and not TOOL_PARTS[tool]["brush"]:
             self.brush.editing = False
-        self.model.update(self.brush.rows(bool(self.b.doc.folder), self._tool()))
+        self.model.update(self.brush.rows(bool(self.b.doc.folder), tool))
         self.toolChanged.emit()
 
     @Property("QVariantList", constant=True)
@@ -102,7 +107,7 @@ class BrushPanel(QObject):
               "drop": lambda: brushes.drop(self.b.doc.folder, bid, place)}[verb]
         return self.b.guard(lambda: (do(), self._read_mine()))
 
-    @Property("QVariantMap", notify=brushChanged)
+    @Property("QVariantMap", notify=headerChanged)
     def selectedItem(self):
         if self.brush.editing:
             return {"id": "brush", "label": self.brush.label(), "kind": "brush", "subtitle": ""}   # its first group says "Brush"

@@ -2,7 +2,8 @@
 - the agent's steps arrive live: every TICK_MS the window takes in what an agent's server saved (rostrum_core.live),
   as ordinary change events, so the bridge, History and the agent chip see them and nothing on screen moves;
 - the agent sees what the person sees: the app's `state_fn(bridge)` (selection, playhead, range, scene, focus, view,
-  dragging) is written for `inspect_screen` whenever it differs (rostrum_core.screen_state). Screen state, not a change.
+  dragging) is written for `inspect_screen` whenever it differs (rostrum_core.screen_state), on the link's own thread
+  (`settle()` waits for it). Screen state, not a change.
 
     link = LiveLink(bridge, "2d", screen_seen.state)      # after live.keep(doc); link.close() when the window closes
 
@@ -11,6 +12,7 @@ A document outside a project folder has no link (nothing else can open it).
 from __future__ import annotations
 
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from PySide6.QtCore import QObject, QTimer
 from rostrum_core import RostrumError, screen_state
@@ -24,6 +26,8 @@ class LiveLink(QObject):
     def __init__(self, bridge, app: str, state_fn, parent=None):
         super().__init__(parent or bridge)
         self.bridge, self.app, self.state_fn, self._said = bridge, app, state_fn, None
+        self._writer = ThreadPoolExecutor(1, thread_name_prefix=f"screen-state-{app}")   # the file, off the screen's thread
+        self._written = None                      # the last write's future: its failure is said at the next tick
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.tick)
         if bridge.doc.folder is not None:
@@ -36,12 +40,15 @@ class LiveLink(QObject):
         try:
             if doc.live is not None:
                 doc.live.catch_up()
+            if self._written is not None and self._written.done():
+                done, self._written = self._written, None
+                done.result()                     # a failed write raises here, on the screen's thread
             state = self.state_fn(self.bridge)
-            if state != self._said:
-                screen_state.write(doc.folder, doc.item_id, self.app, state)
+            if state != self._said:               # written on the link's own thread (a file write on a pick: ~2-4 ms)
+                self._written = self._writer.submit(screen_state.write, doc.folder, doc.item_id, self.app, state)
                 self._said = state
-        except RostrumError as e:                 # loud, once per failure, and the window keeps working
-            line = e.line()
+        except (RostrumError, OSError) as e:      # loud, once per failure, and the window keeps working
+            line = e.line() if isinstance(e, RostrumError) else f"Error: what the screen shows could not be written for agents: {e}"
             if line != getattr(self, "_failed", None):
                 self._failed = line
                 print(line, file=sys.stderr)
@@ -49,8 +56,14 @@ class LiveLink(QObject):
                 if fail:
                     fail(line)
 
+    def settle(self):
+        """Wait for the last write of what the screen shows (a script that reads it right after a tick)."""
+        if self._written is not None:
+            self._written.result()
+
     def close(self):
         self._timer.stop()
+        self._writer.shutdown(wait=True)          # the last write lands before the file is cleared
         if self.bridge.doc.live is not None:
             self.bridge.doc.save()                # fold the history into the document file: readers of the file alone see the end
         if self.bridge.doc.folder is not None:

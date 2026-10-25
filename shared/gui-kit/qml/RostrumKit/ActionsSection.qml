@@ -38,36 +38,42 @@ Item {
         id: runs
         width: section.width
         spacing: 3 * Theme.grid
-        Repeater {      // by count, here and in each run: another selection with as many actions moves the same
-                        // buttons to its actions instead of remaking them (and their tips) on every pick
-            model: section.units.length
+        KeptRepeater {  // kept delegates, here and in each run: another selection moves the same buttons to its
+                        // actions instead of remaking them (and their tips) on every pick
+            id: unitsKept
+            needed: section.units.length
             delegate: Row {
                 id: run
                 required property int index
+                visible: index < unitsKept.needed
                 readonly property var modelData: section.units[index] || ({ items: [], icons: false, title: "" })
                 readonly property bool icons: modelData.icons
                 readonly property bool folded: modelData.title !== ""
                 spacing: icons ? 2 : Theme.grid
-                Repeater {      // an icon run
-                    model: run.icons ? run.modelData.items.length : 0
+                KeptRepeater {  // an icon run
+                    id: iconsKept
+                    needed: run.icons ? run.modelData.items.length : 0
                     delegate: IconButton {
                         required property int index
+                        visible: index < iconsKept.needed
                         readonly property var modelData: run.modelData.items[index] || ({})
                         objectName: "action:" + modelData.id
                         width: section.size; height: section.size
-                        icon: modelData.icon; kind: "ghost"; tip: modelData.full || modelData.label
+                        icon: modelData.icon || ""; kind: "ghost"; tip: modelData.full || modelData.label || ""
                         help: modelData.keys ? "Key: " + modelData.keys : ""
                         onHoveredChanged: hovered ? section.rest(modelData.id) : section.leave()
                         onClicked: { delay.stop(); section.hub.run(modelData.id) }
                     }
                 }
-                Repeater {      // the untitled actions: small buttons
-                    model: run.icons || run.folded ? 0 : run.modelData.items.length
+                KeptRepeater {  // the untitled actions: small buttons
+                    id: buttonsKept
+                    needed: run.icons || run.folded ? 0 : run.modelData.items.length
                     delegate: Button {
                         required property int index
+                        visible: index < buttonsKept.needed
                         readonly property var modelData: run.modelData.items[index] || ({})
                         objectName: "action:" + modelData.id
-                        implicitHeight: section.size; text: modelData.label; tip: modelData.label
+                        implicitHeight: section.size; text: modelData.label || ""; tip: modelData.label || ""
                         help: modelData.keys ? modelData.label + " (" + modelData.keys + ")" : ""
                         onHoveredChanged: hovered ? section.rest(modelData.id) : section.leave()
                         onClicked: { delay.stop(); section.hub.run(modelData.id) }

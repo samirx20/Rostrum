@@ -56,6 +56,7 @@ def proof(app, folder, rt, bridge, edit, lock, locked_edits, select, shown):
     link._timer.stop()
     bridge.link._timer.stop()
     link.tick()
+    link.settle()
     reply, _ = rt.call("inspect_screen", {}, AGENT)
     say(f"(c) inspect_screen -> {line(reply)}")
     say(f"    selection data: {reply['data']['windows'][0]['selection']}")

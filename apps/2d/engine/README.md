@@ -58,6 +58,7 @@ the scene once. Code: `render/src/scene/` and `render/src/scene_serve.rs`.
 | `scene_export.rs` | `export`: a worker thread builds the next frames' stage markup (up to 2 ahead, in order, each checked) while the main thread lays out and paints the current one; any failure stops the export, and the encoder must have taken every frame once, in order (E7) |
 | `still_runs.rs` | motion blur: the runs of top-level pieces that are the same in every shutter sample (and blend plainly) painted once and laid over each sample (E2) |
 | `render_costs.rs` | the export's `timing.layers`: each top-level layer painted alone on 1 frame in 30 and timed; the 10 costliest, with their effects (E2) |
+| `program_cache.rs`, `warmup.rs` | first-use GPU programs: Skia's compiled programs kept on disk as the driver's binaries (the context asks for OpenGL 4.1, which they need; 3.3 where the driver has no 4.1) (`~/.rostrum/cache/2d-programs/<build>-<gpu>`, 64 MB at most, other builds' folders pruned after 14 days unused); after a whole scene load, when nothing is asked for 150 ms, the page is painted turned and tilted into a scratch surface (plus a motion-blur sum and a turned lay-in) so the first turned or blurred frame does not wait for the driver's compiler |
 
 | Request | Does | Reply |
 |---|---|---|

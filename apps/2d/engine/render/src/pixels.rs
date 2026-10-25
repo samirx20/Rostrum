@@ -28,6 +28,10 @@ pub fn bands<F>(px: usize, f: F, out: &mut [u8], bpp: usize)
 where
     F: Fn(Range<usize>, &mut [u8]) + Sync,
 {
+    // A small piece (the few pixels of a frame the GPU's output step leaves to the CPU) is not worth the threads.
+    if px < 1 << 14 {
+        return f(0..px, out);
+    }
     let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).min(8);
     let band = px.div_ceil(threads).max(1);
     std::thread::scope(|s| {

@@ -53,6 +53,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     statusChanged = Signal()
     searchChanged = Signal()
     rowsChanged = Signal()                  # the rows' values or validity changed (nothingFound follows it)
+    panelShown = Signal()                   # a new selection's panel is shown (a pointer's pick: the frame after its
+                                            # highlight); what only the panel and the context bar show follows this
     fieldRevealed = Signal(str)             # revealField: the Inspector scrolls to the row and focuses it
     countChanged = Signal()                 # historyCount moved (sent with docChanged, only then: _history_check)
     historyChanged = Signal()               # ↶ ↷ labels or versions changed (the same)

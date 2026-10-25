@@ -27,7 +27,7 @@ class LibraryView(QObject):
         self._logos, self._told = [], None
         self._paintings = PaintingLibrary(bridge, self)      # its Paintings section (painting_library.py)
         bridge.docChanged.connect(self._check)
-        bridge.selectedItemsChanged.connect(self._check)
+        bridge.panelShown.connect(self._check)               # what the selection can take: not the pick's own frame
 
     def _check(self):
         """An edit or a selection: announced only when this document's styles or what the selection can take changed

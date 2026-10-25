@@ -12,7 +12,8 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 
 - A **drawing layer** has a canvas `w × h` px. Untransformed and placed at its default spot, canvas px = composition px.
   The canvas **grows with the strokes, in any direction**: `paint.stroke` past an edge makes it bigger (in 256 px
-  steps) in the same undo step. Growing left or up moves every stroke, fill and paint mask of every drawing by the same
+  steps) in the same undo step (an erasing stroke, `mode: "erase"`, never grows it: past the edge there is nothing to
+  take away). Growing left or up moves every stroke, fill and paint mask of every drawing by the same
   amount in canvas px and moves the anchor with them, so nothing moves on screen (re-read canvas px after a stroke that
   grew it: `inspect_drawing_at`, `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
   nothing.

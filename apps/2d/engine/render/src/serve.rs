@@ -740,8 +740,33 @@ pub fn run() {
     let mut held = crate::scene_serve::Held::default();
     // A frame drawn ahead while playing (serve_ahead.rs).
     let mut ahead: Option<crate::serve_ahead::Ahead> = None;
-    for line in stdin.lock().lines() {
-        let Ok(line) = line else { break };
+    // The GPU programs the page's next frames need, built while nothing is asked (warmup.rs): requests are read on a
+    // thread of their own so the loop can tell a quiet moment.
+    let mut warm_up = crate::warmup::Warm::default();
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        for line in stdin.lock().lines() {
+            let Ok(line) = line else { break };
+            if tx.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    loop {
+        let quiet = warm_up.wait().filter(|_| ahead.is_none() && session.is_some());
+        let line = match quiet.map(|w| rx.recv_timeout(w)) {
+            Some(Err(std::sync::mpsc::RecvTimeoutError::Timeout)) => {
+                warm_up.step(session.as_mut().unwrap());
+                continue;
+            }
+            Some(Err(std::sync::mpsc::RecvTimeoutError::Disconnected)) => break,
+            Some(Ok(line)) => line,
+            None => match rx.recv() {
+                Ok(line) => line,
+                Err(_) => break,
+            },
+        };
+        warm_up.asked();
         if line.trim().is_empty() {
             continue;
         }
@@ -766,7 +791,12 @@ pub fn run() {
         }
         if req.get("scene").is_some() || req.get("change").is_some() {
             match crate::scene_serve::load(&mut held, &mut session, &mut warm, &req) {
-                Ok(r) => reply(&mut out, &r),
+                Ok(r) => {
+                    if req.get("scene").is_some() {
+                        warm_up.page_loaded();
+                    }
+                    reply(&mut out, &r)
+                }
                 Err(e) => reply(&mut out, &json!({ "error": e })),
             }
         } else if let Some(e) = req.get("edit") {

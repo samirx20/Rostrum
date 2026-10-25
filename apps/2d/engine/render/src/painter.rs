@@ -15,7 +15,7 @@ use std::num::{NonZeroIsize, NonZeroU32};
 
 use anyrender_skia::{SkiaSceneCache, SkiaScenePainter};
 use glutin::config::ConfigTemplateBuilder;
-use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
+use glutin::context::{ContextApi, ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext, Version};
 use glutin::display::{Display, DisplayApiPreference, GlDisplay};
 use glutin::surface::{Surface as GlSurface, SurfaceAttributesBuilder, WindowSurface};
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle};
@@ -251,7 +251,13 @@ pub fn gl_context() -> Result<Gl, String> {
     let raw_window = RawWindowHandle::Win32(wh);
     let display = unsafe { Display::new(RawDisplayHandle::Windows(WindowsDisplayHandle::new()), DisplayApiPreference::Wgl(Some(raw_window))) }.map_err(|e| format!("WGL display: {e}"))?;
     let config = unsafe { display.find_configs(ConfigTemplateBuilder::new().build()) }.map_err(|e| format!("GL configs: {e}"))?.next().ok_or("no GL config")?;
-    let ctx = unsafe { display.create_context(&config, &ContextAttributesBuilder::new().build(Some(raw_window))) }.map_err(|e| format!("GL context: {e}"))?;
+    // OpenGL 4.1 or later where the driver has it: Skia keeps compiled programs (program_cache.rs) as the driver's own
+    // binaries only from 4.1 (glProgramBinary); on 3.3 it can keep only their source, compiled again each run. The
+    // driver's default context is 3.3; one that can't make 4.1 gets that.
+    let v41 = ContextAttributesBuilder::new().with_context_api(ContextApi::OpenGl(Some(Version::new(4, 1)))).build(Some(raw_window));
+    let ctx = unsafe { display.create_context(&config, &v41) }
+        .or_else(|_| unsafe { display.create_context(&config, &ContextAttributesBuilder::new().build(Some(raw_window))) })
+        .map_err(|e| format!("GL context: {e}"))?;
     let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(raw_window, NonZeroU32::new(64).unwrap(), NonZeroU32::new(64).unwrap());
     let gl_surface = unsafe { display.create_window_surface(&config, &attrs) }.map_err(|e| format!("GL surface: {e}"))?;
     let ctx = ctx.make_current(&gl_surface).map_err(|e| format!("make current: {e}"))?;
@@ -284,6 +290,9 @@ pub fn gl_context() -> Result<Gl, String> {
     // own thread to catch up, ~314 of them a paint took 69 % of its time (E5). One check at each frame's read
     // (`gpu_failed`) still fails the frame when a GL call failed or the card ran out of memory (AGENTS.md rule 6).
     opts.skip_gl_error_checks = skia_safe::gpu::ganesh::context_options::Enable::Yes;
+    // Programs built in earlier runs are loaded instead of compiled again (program_cache.rs): a first turned, blurred or
+    // blended frame no longer waits for the driver's compiler.
+    crate::program_cache::attach(&mut opts, &renderer);
     let mut gr = direct_contexts::make_gl(interface, Some(&opts)).ok_or("Skia GL context failed")?;
     let readback = Readback::new(|name| display.get_proc_address(name));
     let exact = crate::gpu_output::GpuOutput::new(|name| display.get_proc_address(name));
@@ -531,14 +540,7 @@ impl Painter {
     /// Draws `image` over the last picture inside the device px polygon `clip`, through `m` (image px → device px):
     /// the frame's export laid into its quad in the world picture.
     pub fn draw_over(&mut self, image: &skia_safe::Image, m: &skia_safe::Matrix, clip: &skia_safe::Path) {
-        let canvas = self.last_surface().canvas();
-        canvas.save();
-        canvas.reset_matrix();
-        canvas.clip_path(clip, skia_safe::ClipOp::Intersect, false);     // hard-edged: see paint's clip_out
-        canvas.concat(m);
-        let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
-        canvas.draw_image_with_sampling_options(image, (0, 0), sampling, None);
-        canvas.restore();
+        lay_in(self.last_surface().canvas(), image, m, clip);
     }
 
     /// Waits until the GPU has drawn everything submitted (timing one layer's paint, scene_export.rs).
@@ -569,17 +571,62 @@ impl Painter {
         if first {
             canvas.clear(Color::TRANSPARENT);
         }
-        let mut paint = Paint::default();
-        paint.set_blend_mode(BlendMode::Plus);
-        // The weight scales alpha in a float colour matrix (unpremultiplied, so premultiplied colours scale with
-        // it): a paint alpha is quantized to 8 bits on the GPU (1/14 → 18/255), and the sum came to 0.988.
-        #[rustfmt::skip]
-        let m = skia_safe::ColorMatrix::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, weight, 0.0);
-        paint.set_color_filter(skia_safe::color_filters::matrix(&m, None));
-        canvas.draw_image(&frame, (0, 0), Some(&paint));
+        add_weighted(canvas, &frame, weight);
         self.last = Last::Sum;
         Ok(())
     }
+
+    /// Builds ahead the GPU programs the next frames will need (warmup.rs): `draw` paints the page through `base` (a turned
+    /// or tilted view) into a scratch surface `w` × `h` with a cache of its own (nothing the frames keep is touched, no
+    /// tap is written), then that picture is summed as a motion-blur sub-frame is and laid into a turned quad as the world
+    /// picture lays the export in. Nothing on the CPU.
+    pub fn warm(&mut self, base: skia_safe::M44, (w, h): (u32, u32), draw: impl FnOnce(&mut SkiaScenePainter<'_>)) -> Result<(), String> {
+        let Some(gl) = self.gl.as_mut() else { return Ok(()) };
+        let mut page = new_surface(Some(gl), w, h, &self.space)?;
+        let mut sum = new_surface(Some(gl), w, h, &self.space)?;
+        let mut cache = SkiaSceneCache::default();
+        anyrender_skia::working_space::set(self.space.clone());
+        cache.set_root_matrix(base);
+        page.canvas().clear(Color::TRANSPARENT);
+        draw(&mut SkiaScenePainter::new(page.canvas(), &mut cache));
+        let image = page.image_snapshot();
+        sum.canvas().clear(Color::TRANSPARENT);
+        add_weighted(sum.canvas(), &image, 0.5);
+        let (cx, cy) = (w as f32 / 2.0, h as f32 / 2.0);
+        let m = skia_safe::Matrix::rotate_deg_pivot(23.0, (cx, cy));
+        let quad: Vec<skia_safe::Point> = [(0.0, 0.0), (w as f32, 0.0), (w as f32, h as f32), (0.0, h as f32)].into_iter().map(|p| m.map_point(p)).collect();
+        let quad = skia_safe::Path::polygon(&quad, true, None, None);
+        lay_in(sum.canvas(), &image, &m, &quad);
+        drop((image, page, sum, cache));
+        self.gl.as_mut().unwrap().gr.flush_and_submit();
+        Ok(())
+    }
+}
+
+/// Adds `frame` to a motion-blur sum on `canvas` with `weight` (`accumulate`).
+fn add_weighted(canvas: &skia_safe::Canvas, frame: &skia_safe::Image, weight: f32) {
+    let mut paint = Paint::default();
+    paint.set_blend_mode(BlendMode::Plus);
+    // The weight scales alpha in a float colour matrix (unpremultiplied, so premultiplied colours scale with
+    // it): a paint alpha is quantized to 8 bits on the GPU (1/14 → 18/255), and the sum came to 0.988.
+    #[rustfmt::skip]
+    let m = skia_safe::ColorMatrix::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, weight, 0.0);
+    paint.set_color_filter(skia_safe::color_filters::matrix(&m, None));
+    canvas.draw_image(frame, (0, 0), Some(&paint));
+}
+
+/// Draws `image` on `canvas` inside the device px polygon `clip`, through `m` (image px → device px) (`draw_over`).
+fn lay_in(canvas: &skia_safe::Canvas, image: &skia_safe::Image, m: &skia_safe::Matrix, clip: &skia_safe::Path) {
+    canvas.save();
+    canvas.reset_matrix();
+    canvas.clip_path(clip, skia_safe::ClipOp::Intersect, false);     // hard-edged: see paint's clip_out
+    canvas.concat(m);
+    let sampling = skia_safe::SamplingOptions::new(skia_safe::FilterMode::Linear, skia_safe::MipmapMode::None);
+    canvas.draw_image_with_sampling_options(image, (0, 0), sampling, None);
+    canvas.restore();
+}
+
+impl Painter {
 
     /// The surface holding the last picture.
     fn last_surface(&mut self) -> &mut Surface {
@@ -706,10 +753,10 @@ impl Painter {
     }
 
     /// The output started by `output_start`, into `out`: waits for the GPU (`last_gpu_ms`), reads back the rows that
-    /// changed (their count returned) and redoes on the CPU the rows the GPU can't answer exactly (`last_convert_ms`).
+    /// changed (their count returned) and redoes on the CPU the pixels the GPU can't answer exactly (`last_convert_ms`).
     pub fn output_finish(&mut self, spec: &crate::color::Spec, out: &mut [u8]) -> Result<u32, String> {
         let (deep, screen) = self.out_pending.take().ok_or("output_finish without output_start")?;
-        let (w, h) = (self.width, self.height);
+        let w = self.width;
         let t0 = std::time::Instant::now();
         let gl = self.gl.as_mut().ok_or("no GPU")?;
         let done = gl.exact.as_mut().map_err(|e| e.clone())?.finish(out).and_then(|r| gpu_failed(gl).map(|_| r));
@@ -717,27 +764,20 @@ impl Painter {
         self.last_gpu_ms = t0.elapsed().as_secs_f64() * 1000.0;
         self.last_read_ms = self.last_gpu_ms;
         let done = done?;
-        // Rows the table can't answer, in runs: read as stored and converted as `output` would.
+        // The blocks the table can't answer, in rectangles (read as stored with the marks): converted as `output` would.
         let t1 = std::time::Instant::now();
         let bpp = if deep { 8 } else { 4 };
-        let mut y = 0;
-        while y < h as usize {
-            if !done.cpu_rows[y] {
-                y += 1;
-                continue;
-            }
-            let n = done.cpu_rows[y..].iter().take_while(|&&r| r).count();
-            let src = info(w, n as u32, self.space.clone());
-            let mut raw = vec![0u8; src.min_row_bytes() * n];
-            if !self.last_surface().read_pixels(&src, &mut raw, src.min_row_bytes(), (0, y as i32)) {
-                return Err("frame readback (rows for the output step) failed".into());
-            }
-            let rows = &mut out[y * w as usize * bpp..(y + n) * w as usize * bpp];
-            crate::color::output_rows(spec, &raw, w, y as u32, deep, false, rows);
+        for ([x0, y0, x1, _], raw) in &done.cpu {
+            let rw = x1 - x0;
+            let mut px = vec![0u8; raw.len() / 8 * bpp];
+            crate::color::output_rect(spec, raw, rw, (*x0, *y0), deep, false, &mut px);
             if screen {
-                crate::pixels::to_screen(rows);
+                crate::pixels::to_screen(&mut px);
             }
-            y += n;
+            for (k, row) in px.chunks_exact(rw as usize * bpp).enumerate() {
+                let at = ((*y0 as usize + k) * w as usize + *x0 as usize) * bpp;
+                out[at..at + row.len()].copy_from_slice(row);
+            }
         }
         self.last_convert_ms = t1.elapsed().as_secs_f64() * 1000.0;
         Ok(done.rows_read)

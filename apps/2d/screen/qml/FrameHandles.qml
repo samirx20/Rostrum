@@ -82,10 +82,11 @@ Item {
             onCanceled: { if (going) backend.frameDrag.end(); going = false }
         }
         Repeater {      // the turn zones, under the squares
-            model: fh.picked ? [[-1, -1], [1, -1], [1, 1], [-1, 1]] : []
+            model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]      // always made, shown while picked: a pick remakes nothing
             delegate: CornerDrag {
                 required property var modelData
                 required property int index
+                visible: fh.picked
                 kind: "turn"; corner: index
                 width: 28; height: 28
                 x: (modelData[0] + 1) / 2 * box.width + modelData[0] * 11 - 14
@@ -94,11 +95,12 @@ Item {
             }
         }
         Repeater {      // the corner squares
-            model: fh.picked ? [[-1, -1], [1, -1], [1, 1], [-1, 1]] : []
+            model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]
             delegate: Rectangle {
                 id: knob
                 required property var modelData
                 required property int index
+                visible: fh.picked
                 width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
                 x: (modelData[0] + 1) / 2 * box.width - width / 2; y: (modelData[1] + 1) / 2 * box.height - height / 2
                 Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo

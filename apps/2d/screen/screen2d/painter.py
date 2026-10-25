@@ -51,6 +51,7 @@ class Painter(BrushPanel):
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
         self._told = None                               # what QML last heard (_refresh)
+        self.ahead = None                               # the eraser's reveal drawn ahead (reveal_ahead.py; the bridge's)
         self.model = RowsModel(rows.ROLES, self)
         self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
         self.refreshBrushes()
@@ -58,7 +59,9 @@ class Painter(BrushPanel):
         bridge.docStepped.connect(self._doc_changed)       # a drag's step moves what the onion shows too
         bridge.outlineChanged.connect(self._refresh)
         bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead
-        self.changed.connect(self.brushChanged)         # the header names what the pen paints on
+        self.changed.connect(self.headerChanged)        # the header names what the pen paints on (not brushChanged: a
+                                                        # pick re-ran the brush list, the paint tool and its rows)
+        self.brushChanged.connect(self.headerChanged)   # ... and the brush being edited
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
     def target(self) -> dict | None:
@@ -289,10 +292,13 @@ class Painter(BrushPanel):
     wet = Property(QObject, lambda self: self._wet, constant=True)
 
     def _ask_reveal(self, ink, layer_id, x, y, fill=False):
-        """The eraser's ink shows the world the canvas shows without the layer it erases: asked of the canvas's engine
-        now, off this thread (a frame's time); its ink shows once it comes (wet.py)."""
+        """The eraser's ink shows the world the canvas shows without the layer it erases: the one drawn ahead when it
+        is still right, else asked of the canvas's engine now, off this thread; its ink shows once it comes (wet.py)."""
         if self.b.opened.on:                # opened on its own: under the painting is the empty canvas
             return self._wet.reveal(ink, *wet_through.bare(self.b.world.visible(), x, y))
+        kept = self.ahead and self.ahead.ready(layer_id, fill, x, y)   # drawn before the press (reveal_ahead.py)
+        if kept is not None:
+            return self._wet.reveal(ink, *kept)
         scene = without_paint(self.b._scene, layer_id, fill) if self.b._scene else None
         if scene is None:
             raise RuntimeError("the canvas can't be drawn right now, so there is nothing to erase (see the status line)")

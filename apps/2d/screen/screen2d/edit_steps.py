@@ -1,13 +1,15 @@
 """`edittime`: what one edit costs, per edit kind, through the same bridge slots a click, a typed field, a drag or a key uses.
 
-    edittime field|dragend|key|pin|undo [n]
-        n repetitions (default 20), each a real change (alternating), on the layer "card" (any document with it):
+    edittime field|dragend|key|pin|undo [n] [layer=<id>] [profile]
+        n repetitions (default 20), each a real change (alternating), on the layer "card" (any document with it; else
+        layer=<id>):
         field: its x typed in the inspector | dragend: a canvas drag, only the release timed | key: a key at the playhead
         (the key mark's toggle) added, then removed next round | pin: Pin to frame / Unpin from frame | undo: one undo of
         an edit made just before (only the undo timed).
         Per repetition: the screen thread's busy ms until it is idle again, and the ms until the picture asked after the
         change arrived; the stages (describe, load, pixels, engine split) are each repetition's sum. Medians and worst
-        on one line. Everything done is undone after.
+        on one line. Everything done is undone after. `profile`: the 40 most costly functions of the timed parts
+        (rostrum_gui/select_steps.py's print_profile).
 """
 from __future__ import annotations
 
@@ -97,10 +99,14 @@ def _spread(v):
     return f"median {_med(v)} worst {max(v):.1f}"
 
 
-def edit_time(bridge, kind, n=20):
+def edit_time(bridge, kind, n=20, layer="card", profile=False):
     setup, action, undos = _kind(bridge, kind)
-    bridge.select("card")
-    start = repr(bridge.placed_item("card"))
+    bridge.select(layer)
+    start = repr(bridge.placed_item(layer))
+    prof = None
+    if profile:
+        import cProfile
+        prof = cProfile.Profile()
     _wait(300)
     STATS.on = True
     pics, busy = _Pictures(bridge), Busy()
@@ -114,9 +120,13 @@ def edit_time(bridge, kind, n=20):
             STATS.reset()
             pics.arm()
             b0, t0 = busy.now(), time.perf_counter()
+            if prof:
+                prof.enable()
             action(i)
             QCoreApplication.processEvents()
             _settle(pics, kind)
+            if prof:
+                prof.disable()
             gui.append(busy.now() - b0)
             pic.append((pics.last_ready - t0) * 1000)
             for k, v in STATS.ms.items():
@@ -124,23 +134,30 @@ def edit_time(bridge, kind, n=20):
             if kind != "undo":
                 done += undos
             pics.armed = False
-        for _ in range(done):                    # the document as it was
+        for _ in range(done):                    # the document as it was (edits of one field may be one step: never
+            if repr(bridge.placed_item(layer)) == start:     # undo past where it started)
+                break
             bridge.undo()
             _wait(IDLE_MS)
     finally:
         pics.close()
         busy.close()
         STATS.on = STATS.log
-    if repr(bridge.placed_item("card")) != start:
+    if repr(bridge.placed_item(layer)) != start:
         raise RuntimeError(f"edittime {kind}: the document did not come back as it started")
     eng = " ".join(f"{k[4:]} {_med(v)}" for k, v in stages.items() if k.startswith("eng."))
     rest = " ".join(f"{k.replace(chr(0x2192), '-')} {_med(v)}" for k, v in stages.items() if not k.startswith("eng.") and k not in ("describe", "load", "pixels"))
     print(f"edittime {kind}: n={n}; gui {_spread(gui)} ms; picture {_spread(pic)} ms; describe {_med(stages.get('describe', []))}; "
           f"load {_med(stages.get('load', []))}; pixels {_med(stages.get('pixels', []))}" + (f"; eng {eng}" if eng else "")
           + (f"\n  stages: {rest}" if rest else ""))
+    if prof:
+        from rostrum_gui.select_steps import print_profile
+        print_profile(prof)
 
 
 def do_edit_step(bridge, word, rest, step):
     if not rest:
         raise ValueError(f"step {step!r}: edittime {' | '.join(KINDS)} [n]")
-    edit_time(bridge, rest[0], int(rest[1]) if rest[1:] else 20)
+    n = next((int(a) for a in rest[1:] if a.isdigit()), 20)
+    layer = next((a.split("=", 1)[1] for a in rest[1:] if a.startswith("layer=")), "card")
+    edit_time(bridge, rest[0], n, layer, "profile" in rest)

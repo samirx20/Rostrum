@@ -37,7 +37,7 @@ class PaintingLibrary(QObject):
         super().__init__(parent or bridge)
         self.b, self._open, self._told, self._busy, self._rows = bridge, False, None, False, []
         bridge.docChanged.connect(self._check)
-        bridge.selectedItemsChanged.connect(self._check)
+        bridge.panelShown.connect(self._check)
         self._made.connect(self._after_picture)
 
     # ---- what is shown ---------------------------------------------------------------------------------------------

@@ -93,8 +93,11 @@ def paint_stroke(ctx, targets, args):
 
 def _fit(ctx, t: str, pts, brush: dict) -> tuple[str, list]:
     """(the drawing the stroke goes on, its points there): `t` grown to hold it (paint_grow.py), or a new drawing beside
-    it when `t` can't grow that far (paint_overflow.py)."""
+    it when `t` can't grow that far (paint_overflow.py). An eraser never grows it: past the edge there is nothing to
+    take away (it grew the box and moved the anchor for nothing)."""
     item = ctx.item(t)
+    if brush.get("mode") == "erase":
+        return t, pts
     box = paint_grow.reach(pts, brush)
     if paint_grow.fits(int(item.get("w", 1920)), int(item.get("h", 1080)), box):
         dx, dy = paint_grow.grow(ctx, t, box)

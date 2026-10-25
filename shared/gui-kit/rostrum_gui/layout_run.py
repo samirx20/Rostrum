@@ -41,7 +41,8 @@ def kit_step(bridge, step: str) -> bool:
       gives them with the hook `agent_demo_calls(n) -> [calls, ...]` (n lists of operation calls, harmless ones).
     `agent-say <words>`: the agent chip and the message line show these words.
     `history open`: the History sheet opens (bridge.agent.historyAsked).
-    `selecttime <id> <id> … [n]`: the cost of switching the selection (select_steps.py).
+    `selecttime <id> <id> … [n] [profile]`: the cost of switching the selection (select_steps.py).
+    `clicktime <x>,<y> <x>,<y> … [n] [profile]`: the same for real mouse clicks at those window points (select_steps.py).
     `guides open [file]`, `guides find <words>`, `keylist open`, `panels fold`, `area <name>`: shell_steps.py."""
     from . import export_steps, select_steps, shell_steps   # (Qt only here: the check's own process never imports them)
     word, _, rest = step.partition(" ")
@@ -59,6 +60,8 @@ def kit_step(bridge, step: str) -> bool:
         bridge._set_status(rest)
     elif word == "selecttime":
         select_steps.do(bridge, rest.split())
+    elif word == "clicktime":
+        select_steps.clicks(shell_steps.window(), rest.split())
     elif step == "history open":
         bridge.agent.askHistory("")
     elif word in shell_steps.WORDS:
