@@ -7,7 +7,7 @@ import RostrumKit
 // (after) line under their cell. Sits in a track whose x is the ruler's x - 8, like the key diamonds.
 // Click a cell: the playhead goes to it (it is the drawing painted into). Drag it: it moves to another frame (Alt: a
 // copy goes there). Drag its right edge (a cell wide enough to grab it): it is held longer or shorter. Right-click: Delete. Each is one change (painter).
-// The layer's key diamonds lie over the cells (barless, LayerTrack.qml): every click area here steps around them (`free`),
+// The layer's key diamonds and its trim handles lie over the cells (barless, LayerTrack.qml): every click area here steps around them (`free`),
 // and one with under 16 px left has none (zoom in), so a cell and a key never take the same click at any zoom.
 Item {
     id: m
@@ -25,14 +25,21 @@ Item {
     property bool drawing: false          // a drawing layer's row (its frames may be none yet)
     property var keys: []                 // the row's keys ({t}): each diamond's 16 px, centred on its time
     function keyX(k) { return 8 + Math.round(m.timeRuler.xOf(k.t)) }
-    // The widest stretch of [x0, x1] no diamond covers, as [a, b]; null when under 16 px is left.
+    // The layer's two trim handles (the Repeater at the end), as [a, b]: inside the first cell and the last.
+    readonly property var trimSpans: {
+        if (!m.trims || !m.frames.length) return []
+        const s = 8 + Math.round(m.timeRuler.xOf(m.frames[0].t0)), e = 8 + Math.round(m.timeRuler.xOf(m.frames[m.frames.length - 1].t1))
+        return [[s, s + 16], [e - 17, e - 1]]
+    }
+    // The widest stretch of [x0, x1] no diamond or trim handle covers, as [a, b]; null when under 16 px is left.
     function free(x0, x1) {
         let best = null, a = x0
-        const cuts = m.keys.map(k => m.keyX(k)).filter(c => c + 8 > x0 && c - 8 < x1).sort((p, q) => p - q)
-        for (const c of [...cuts, x1 + 8]) {
-            const b = Math.min(x1, c - 8)
+        const cuts = m.keys.map(k => [m.keyX(k) - 8, m.keyX(k) + 8]).concat(m.trimSpans)
+                      .filter(c => c[1] > x0 && c[0] < x1).sort((p, q) => p[0] - q[0])
+        for (const c of [...cuts, [x1, x1]]) {
+            const b = Math.min(x1, c[0])
             if (b - a >= 16 && (!best || b - a > best[1] - best[0])) best = [a, b]
-            a = Math.max(a, c + 8)
+            a = Math.max(a, c[1])
         }
         return best
     }
@@ -198,8 +205,7 @@ Item {
             objectName: "cellEnd:" + m.owner + ":" + modelData
             property string held: ""
             readonly property bool atStart: modelData === "start"
-            readonly property real edge: 8 + Math.round(m.timeRuler.xOf(atStart ? m.frames[0].t0 : m.frames[m.frames.length - 1].t1))
-            x: atStart ? edge : edge - width - 1; width: 16; y: Math.round((m.height - 16) / 2); height: 16
+            x: m.trimSpans[atStart ? 0 : 1][0]; width: 16; y: Math.round((m.height - 16) / 2); height: 16
             hoverEnabled: true; preventStealing: true; cursorShape: Qt.SizeHorCursor
             z: 3
             HoverTip { hovered: grab.containsMouse && !grab.held; text: grab.atStart ? "Drag to start the layer later or earlier" : "Drag to end the layer sooner or later" }
