@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "MixFormat.js" as F
 
 // The automation lane under a track's row (volume, pan, a send's level …): at the left a picker naming what the lane draws
 // ("Volume ▾": the lanes on offer for this track) and a close mark; across the time axis the points joined by
@@ -23,7 +24,9 @@ Item {
     readonly property int sel: backend.point.track === rowv.id && backend.point.item === auto.target
                                && backend.point.lane === auto.lane ? backend.point.index : -1
     function yOf(v) { return pad + (1 - (v - auto.lo) / (auto.hi - auto.lo)) * plotH }
-    function show(v) { return (auto.lo < 0 && v > 0 ? "+" : "") + Number(v).toFixed(2) }
+    // A volume or level lane is stored as gain and read in dB like the Mixer (F.faderText); other lanes keep their own units
+    function show(v) { return auto.gain ? F.faderText(v) : (auto.lo < 0 && v > 0 ? "+" : "") + Number(v).toFixed(2) }
+    function scaleLabel(v) { return auto.gain ? (v <= 0 ? "−∞ dB" : F.faderText(v)) : v }
 
     Rectangle {   // what the lane draws: "Volume ▾", the lanes this row can have
         id: pick
@@ -59,7 +62,7 @@ Item {
             model: [a.auto.hi, a.auto.lo]
             delegate: Text { required property real modelData
                 x: 4; y: modelData === a.auto.hi ? 2 : parent.height - height - 2
-                text: modelData; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label - 2
+                text: a.scaleLabel(modelData); color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label - 2
                 font.features: { "tnum": 1 } }
         }
         Rectangle { visible: a.auto.base !== null && a.auto.points.length === 0   // the track's own setting
@@ -102,7 +105,7 @@ Item {
         function yFrac(y) { return Math.max(0, Math.min(1, (y - a.pad) / a.plotH)) }
         onPressed: (e) => { backend.focusArea("roll")
             backend.laneBegin(a.rowv.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y), 7 / a.ruler.perSec,
-                              7 / a.plotH, (e.modifiers & Qt.ShiftModifier) !== 0) }
+                              7 / a.plotH, (e.modifiers & Qt.ShiftModifier) !== 0, 1 / a.ruler.perSec) }
         onPositionChanged: (e) => { if (pressed) backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
         onReleased: backend.endDrag()
     }

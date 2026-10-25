@@ -112,22 +112,23 @@ def section_calls(doc, g: dict, dt: float, free: bool = False, grid=None) -> lis
     return [{"op": "section.move", "target": [g["id"]], "args": {"by": by}}]
 
 
-def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False, grid=None) -> dict:
-    """A drum hit on `drum` at `t` (snapped), written in the form the track's hits already use (beats by default)."""
+def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False, grid=None, px: float = 0.0) -> dict:
+    """A drum hit on `drum` in the grid cell at `t` (`px`: one screen pixel in seconds, timing.snap), written in the form the track's hits already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("hits", [])), None)
-    at = timing.snap(t, root, free, grid)
+    at = timing.snap(t, root, free, grid, "cell", px)
     when = round(at, 4) if first is not None and isinstance(first["at"], (int, float)) else         {"beat": round(timing.beat(at, root), 4)}
     return {"op": "hit.add", "target": [track_id], "args": {"drum": drum, "at": when}}
 
 
-def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0, grid=None) -> dict:
-    """A note `beats` long (one beat, or the grid's step when drawn) at `t` on `key`, written in the form the track's
+def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0, grid=None,
+                  px: float = 0.0) -> dict:
+    """A note `beats` long on `key` in the grid cell at `t` (`px`: one screen pixel in seconds, timing.snap), written in the form the track's
     notes already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("notes", [])), None)
     secs = first is not None and isinstance(first["at"], (int, float))
-    at = timing.snap(t, root, free, grid)
+    at = timing.snap(t, root, free, grid, "cell", px)
     pitch = key if first is not None and isinstance(first["pitch"], int) else timing.name(key)
     if secs:
         args = {"at": round(at, 4), "dur": round(timing.spb(root, at) * beats, 4)}
