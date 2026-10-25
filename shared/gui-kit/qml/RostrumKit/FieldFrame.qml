@@ -17,6 +17,7 @@ FocusScope {
     property bool editable: false       // typing allowed: a click puts the caret in
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
     property string problem: ""         // a refused entry, said in a sentence: the field shows red until the next edit
+    onProblemChanged: if (problem !== "" && typeof backend !== "undefined" && backend && backend.refuse) backend.refuse(problem)
     readonly property bool active: engaged || input.activeFocus
     readonly property bool hovered: hoverHandler.hovered
     property alias input: input

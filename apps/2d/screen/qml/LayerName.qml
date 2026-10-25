@@ -29,7 +29,9 @@ Rectangle {
     property bool renaming: false
     function beginRename() { if (isLayer && !isFrame) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
-    Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }
+    // the menu or Ctrl+K that asked has not given the keyboard back yet: it does as it closes and would end the rename at once
+    Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) askLater.restart() } }
+    Timer { id: askLater; interval: 120; onTriggered: name.beginRename() }
 
     MouseArea {
         id: hover

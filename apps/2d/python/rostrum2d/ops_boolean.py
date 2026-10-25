@@ -66,6 +66,10 @@ def commands_of(p: pathops.Path) -> list[tuple]:
         cur = out[-1][-2:]
     return out
 
+NOTHING_LEFT = {"intersect": "These shapes don't overlap, so there is nothing to keep. Move them over each other first.",
+                "subtract": "The shape in front covers all of the other, so nothing would be left.",
+                "exclude": "These shapes are the same, so nothing would be left."}
+
 
 @R.operation("path.boolean", "Combine two or more path or shape layers into one new path: union, subtract (the "
              "first minus the others), intersect or exclude. They must be in the same group or composition. The "
@@ -105,7 +109,8 @@ def combine(ctx, targets, mode, args):
     except (ValueError, pathops.PathOpsError) as e:
         ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"can't be combined: {e}")
     if not cmds:
-        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"{mode} leaves nothing")
+        ctx.fail(codes.BAD_ARGUMENT, f"target {targets}", f"{mode} leaves nothing",
+                 plain=NOTHING_LEFT.get(mode, "Nothing would be left, so nothing was combined."))
     first, parent, key = items[0], idx[targets[0]].parent, idx[targets[0]].key
     place = min(idx[t].index for t in targets)
     moved, (x0, y0, w, h) = PD.fit(cmds)

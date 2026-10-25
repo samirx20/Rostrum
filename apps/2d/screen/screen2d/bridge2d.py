@@ -17,6 +17,7 @@ from . import bounds, colour_feed, outline, picture_change, route, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
+from .view_commands import ViewCommands
 from .frames import FrameRenderer
 from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
@@ -49,7 +50,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -64,6 +65,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
     _asked_from = None                                      # (placed, index) the last picture was asked for
     markersChanged = Signal()
+    viewRequested = Signal(str)                             # Ctrl+K's view commands: the view menu's step (view_commands.py)
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
 

@@ -17,6 +17,15 @@ from .bar_drag import PARTS, BarGrab
 class DragSlots(SlotMixin):
     @Slot(result=bool)
     def beginMove(self):
+        return self._begin_move(False)
+
+    @Slot(result=bool)
+    def beginCopyMove(self):
+        """Alt+drag on the canvas: the picked layers stay, copies of them (just above, as Ctrl+D makes) are picked and
+        dragged. The copy and the move are one gesture, so one undo step takes both back."""
+        return self._begin_move(True)
+
+    def _begin_move(self, copy: bool) -> bool:
         layer = bounds.layer_of(self.doc, self._sel) if self._sel else ""
         if not layer:
             return False
@@ -30,12 +39,32 @@ class DragSlots(SlotMixin):
             return False
         more = self._multi.extras()
         p = resolve(self.placed_item(layer), self._t)          # keys on a marker placed
-        ok = self._begin_many([layer] + more) if more else self._begin(label, (layer, p["x"], p["y"]))
+        ok = self._begin_many([layer] + more, copy) if more else self._begin(label if not copy else f"Copy {label[5:]}", (layer, p["x"], p["y"]))
+        if ok and copy:
+            ok = self._copy_in_drag([layer] + more)
         if ok:
-            self._snap.begin([layer] + more)            # what the drag may snap to (snapper.py)
+            self._snap.begin(self._grabbed())           # what the drag may snap to (snapper.py)
         return ok
 
-    def _begin_many(self, layers) -> bool:
+    def _grabbed(self) -> list:
+        """The layers this drag moves."""
+        return [g[0] for g in self._grab] if isinstance(self._grab, list) else [self._grab[0]]
+
+    def _copy_in_drag(self, layers) -> bool:
+        """First step of an Alt+drag: copy the layers inside the open gesture, then move the copies from where the
+        originals were (each copy sits just after its original in its parent's list)."""
+        calls = [{"op": "layer.duplicate", "target": list(layers), "args": {}}]
+        if not self._guard(lambda: self._drag.preview(calls)):
+            self.endDrag()
+            return False
+        copies = [self.doc.item(parent)[k][at + 1]["id"] for parent, k, at in (self.doc.parent_of(i) for i in layers)]
+        was = {lay: (x, y) for lay, x, y in (self._grab if isinstance(self._grab, list) else [self._grab])}
+        grab = [(c, *was[o]) for c, o in zip(copies, layers)]
+        self._grab = grab if len(grab) > 1 else grab[0]
+        self.selectMany(copies)
+        return True
+
+    def _begin_many(self, layers, copy=False) -> bool:
         """Several selected layers move together: one gesture, one undo step."""
         grab = []
         for lay in layers:
@@ -45,7 +74,7 @@ class DragSlots(SlotMixin):
                 return False
             p = resolve(self.placed_item(lay), self._t)
             grab.append((lay, p["x"], p["y"]))
-        return self._begin(f"Move {len(layers)} layers", grab)
+        return self._begin(f"{'Copy' if copy else 'Move'} {len(layers)} layers", grab)
 
     @Slot(float, float)
     def moveBy(self, dx, dy):

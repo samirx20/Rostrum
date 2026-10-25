@@ -130,7 +130,7 @@ Column {
             visible: p.showAlpha; editable: true; width: 56
             text: String(Math.round(p.a * 100)); suffix: "%"
             function put(n) { p.a = M.clamp01(n / 100); p.send() }
-            onCommitted: (t) => { const n = parseFloat(t); if (isNaN(n)) input.text = text; else put(n) }
+            onCommitted: (t) => { const n = parseFloat(t); if (isNaN(n)) { problem = "“" + t + "” is not a number: type 0 to 100"; input.text = text } else put(n) }
             onArrow: (d, big) => put(Math.round(p.a * 100) + d * (big ? 10 : 1))
         }
     }
@@ -142,7 +142,7 @@ Column {
         FieldFrame {
             objectName: "stopAtField"; editable: true; width: 80
             text: p.extra; suffix: "%"
-            onCommitted: (t) => { if (isNaN(parseFloat(t))) input.text = text; else p.extraEdited(t) }
+            onCommitted: (t) => { if (isNaN(parseFloat(t))) { problem = "“" + t + "” is not a number"; input.text = text } else p.extraEdited(t) }
         }
     }
 
