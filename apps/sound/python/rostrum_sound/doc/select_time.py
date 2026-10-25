@@ -37,7 +37,8 @@ def moved(ctx, item: dict, by, where: str | None = None):
     to = sec + delta(ctx.doc, sec, by)
     if to < -1e-9:
         ctx.fail(codes.BAD_ARGUMENT, f'"{item["id"]}"', f"would start before the start of the song ({to:.3f} s)",
-                 hint="Move it later, or move the whole selection less.")
+                 hint="Move it later, or move the whole selection less.",
+                 plain="That would put it before the start of the song.")
     return write_like(item["at"], max(0.0, to), ctx.doc)
 
 

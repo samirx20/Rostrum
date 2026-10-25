@@ -78,6 +78,8 @@ The **Colour** row shows the colour the track is drawn in.
    - Hold **Shift** to move it only in time.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
    empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all, **Esc** clears.
+   A key on a mixed selection acts on the part it can: after Ctrl+A, **Q** quantises the notes and drum hits, ↑ / ↓
+   and Ctrl+↑ / Ctrl+↓ move the notes, and the step in History names them ("Quantise · 178 notes and 202 drum hits").
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
    as **Quantise** and **Transpose**, each always in the same place. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
@@ -94,7 +96,9 @@ The **Colour** row shows the colour the track is drawn in.
      inside**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
      copies just those notes. **Shift+Delete** (**Cut out and close the gap**) cuts the range out of the clips under it and closes the gap.
-   - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave).
+   - Arrows nudge in time; ↑ / ↓ move notes a half step (Shift: an octave). The selection moves as one block: when
+     ← would take its earliest note before the start of the song, it stops at the start, and once there the message
+     line says "Already at the start of the song".
    - **Q** quantises. **Ctrl+T** splits a clip at the playhead and **Ctrl+J** joins clips.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.

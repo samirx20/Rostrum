@@ -14,6 +14,7 @@ from .moves import remove_calls
 
 TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
 REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
+_NAMES = {"note": "note", "hit": "drum hit", "clip": "clip"}
 
 
 class Facts:
@@ -36,6 +37,12 @@ class Facts:
             if it["type"] in kinds:
                 out.setdefault(it["type"], []).append(it["id"])
         return out
+
+    def words(self, kinds=TIMED) -> str:
+        """The part of the selection an action on `kinds` takes, in words: "178 notes and 202 drum hits". The one
+        rule for a mixed selection (Select all): an action acts on the items it can take and names them."""
+        parts = [f"{len(ids)} {_NAMES.get(k, k)}{'' if len(ids) == 1 else 's'}" for k, ids in self.by_kind(kinds).items()]
+        return " and ".join([", ".join(parts[:-1]), parts[-1]] if len(parts) > 1 else parts)
 
 
 def call(op, target, /, **args):
@@ -66,6 +73,19 @@ def span_by(f):
         beat = max(ST.delta(root, start, {"beats": 1}), 1e-6)
         return {"beats": max(1, math.ceil((end - start) / beat - 1e-6))}
     return round(max(end - start, 0.01), 4)
+
+
+def nudge(f, beats) -> list[dict]:
+    """← →: the selection's notes, hits and clips move as one block by `beats`. A step that would put the earliest
+    before the song's start moves the block to the start (the spacing kept); already there: [] (the key refuses)."""
+    by = f.by_kind()
+    if beats < 0 and by:
+        root = f.doc.data
+        first = ST.tempo.beat_at(root, min(ST.start_of(root, f.doc.item(i)) for ids in by.values() for i in ids))
+        if first < 1e-6:
+            return []
+        beats = max(beats, -first)
+    return [call(f"{k}.move", ids, by={"beats": beats}) for k, ids in by.items()]
 
 
 def can_move(f, step) -> bool:

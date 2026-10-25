@@ -74,11 +74,13 @@ def segments(root: dict) -> list[tuple[float, float, float, float, float]]:
 
 
 def _by_beat(segs, beat: float):
-    return next(s for s in reversed(segs) if s[0] <= beat + 1e-12)
+    """The stretch `beat` is in; before the song's start, the first (its tempo reaches back, so "a beat before
+    0" is a time a check can name instead of a crash)."""
+    return next((s for s in reversed(segs) if s[0] <= beat + 1e-12), segs[0])
 
 
 def _by_sec(segs, sec: float):
-    return next(s for s in reversed(segs) if s[2] <= sec + 1e-12)
+    return next((s for s in reversed(segs) if s[2] <= sec + 1e-12), segs[0])
 
 
 def seconds_at(root: dict, beat: float) -> float:
