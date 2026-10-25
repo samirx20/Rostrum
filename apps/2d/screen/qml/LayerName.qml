@@ -89,6 +89,7 @@ Rectangle {
                                 : [{ field: "locked", tip: "Locked: it can't be picked or moved" }, { field: "hidden", tip: "Hidden: not drawn, not exported" }]
             delegate: Item {
                 id: sw
+                objectName: "layerSwitch:" + name.rowData.id + ":" + modelData.field     // the eye and the lock: a scripted hand finds them
                 required property var modelData
                 readonly property bool on: !!name.rowData[modelData.field]
                 visible: on || hover.containsMouse || swArea.containsMouse

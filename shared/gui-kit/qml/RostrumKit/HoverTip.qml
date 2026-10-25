@@ -22,7 +22,7 @@ Item {
     property real atY: NaN
     readonly property bool shown: line.item !== null && line.item.visible
     visible: false; width: 0; height: 0
-    property var spot: null              // the layer over the parent, which knows where the pointer is on it
+    property var spot: null              // the layer over the parent, which hears a press on it
     property bool held: false            // the screen moved under a still pointer: no tip until the pointer moves
     property bool clicked: false         // this control was pressed: no tip until the pointer has left and come back
     function open() { line.active = true; if (line.item) line.item.open() }
@@ -30,7 +30,7 @@ Item {
     function pressedNow(at) { TipGate.pressAt = at; clicked = true; rest.stop(); tip.close() }
     function waited() {
         if (text === "" || !parent || !parent.visible) return
-        if (spot && TipGate.near(spot.point.scenePosition)) { held = true; return }   // the screen moved under a still pointer
+        if (spot && TipGate.near(TipGate.at)) { held = true; return }   // the screen moved under a still pointer
         held = false; open()
     }
     Loader { id: line; active: false; sourceComponent: HoverTipLine { owner: tip; parent: tip.parent } }
@@ -39,12 +39,12 @@ Item {
     Component { id: layer
         Item {
             z: 10000; anchors.fill: parent
-            property alias point: where.point
             PointHandler { acceptedButtons: Qt.AllButtons; onActiveChanged: if (active) tip.pressedNow(point.scenePosition) }
-            HoverHandler { id: where; onPointChanged: if (tip.held && !tip.clicked && tip.hovered && !TipGate.near(point.scenePosition)) rest.restart() }
-        } }
+        } }                  // no hover handler in here: an item that takes hover hides the control's own MouseArea from it (TipGate tracks the pointer)
+    Connections { target: tip.spot ? TipGate : null
+        function onAtChanged() { if (tip.held && !tip.clicked && tip.hovered && !TipGate.near(TipGate.at)) rest.restart() } }
     Timer { id: rest; interval: 500; onTriggered: tip.waited() }
-    function watch() { if (!spot && parent) spot = layer.createObject(parent) }   // a press anywhere on the control ends the tip, whoever wired `pressed`
+    function watch() { if (!spot && parent) { TipGate.track(tip.Window.window); spot = layer.createObject(parent) } }   // a press anywhere on the control ends the tip, whoever wired `pressed`
     onHoveredChanged: {
         if (hovered) watch()
         if (hovered && !pressed && !clicked) rest.restart()

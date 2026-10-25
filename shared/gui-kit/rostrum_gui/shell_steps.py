@@ -69,14 +69,13 @@ def do(step: str) -> bool:
 
 
 def _hover(win, name):
-    from PySide6.QtCore import QPoint, QPointF
-    from PySide6.QtTest import QTest
+    from PySide6.QtCore import QPointF
+    from .pointer import hover
     it = win.findChild(QObject, name)
     if it is None:
         raise ValueError(f"hover: no control named {name!r} in this window")
     p = it.mapToScene(QPointF(it.width() / 2, it.height() / 2))
-    for dx in (-3, 0):          # two moves: hover needs a move, not just a position
-        QTest.mouseMove(win, QPoint(int(p.x()) + dx, int(p.y())))
+    hover(win, p)
 
 
 def _click(win, words):

@@ -46,8 +46,8 @@ def do_click_step(win, word, rest, step):
         q = item.mapToScene(QPointF(float(fx) * item.property("width"), float(fy) * item.property("height")))
         return QPoint(round(q.x()), round(q.y()))
     if word == "hoverobj":
-        QTest.mouseMove(win, at(0.5, 0.5))
-        QTest.qWait(int(rest[1]) if rest[1:] else 700)
+        from rostrum_gui.pointer import hover
+        hover(win, at(0.5, 0.5), int(rest[1]) if rest[1:] else 700)
         return
     if word == "clickobj":
         right = rest[-1] == "right"
