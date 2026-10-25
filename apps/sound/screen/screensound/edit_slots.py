@@ -90,7 +90,7 @@ class EditSlots:
         grid = self._grid_now
         call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
                                    grid=grid, px=px)
-        return self._draw_note(call)
+        return self._draw_note(call, t)
 
     @Slot(int)
     def playKey(self, key):

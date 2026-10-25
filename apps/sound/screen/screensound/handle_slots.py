@@ -46,20 +46,24 @@ class HandleSlots:
             self.select(item_id)
 
         def go():
-            self._grab = {"handle": handle, "grabs": handles.grab(self.doc, self.selectedIds, handle), "drawn": drawn}
+            grabs = handles.grab(self.doc, self.selectedIds, handle)
+            if drawn and "press" in self._grab:            # the new note's end follows the pointer from the press
+                grabs = handles.drawn(grabs, self._grab["press"], self.doc.data, self._grid_now)
+            self._grab = {"handle": handle, "grabs": grabs, "drawn": drawn}
             if not drawn:
                 self._drag = Drag(self.doc, self.who, handles.NAMES[handle])
         return self._guard(go)
 
-    def _draw_note(self, call):
+    def _draw_note(self, call, press):
         """The Draw tool's press on a key: the new note, selected, inside one open gesture "Draw note" that stays open
-        until the release (`endDrag`), so dragging on to set its length is the same one undo step. Returns its id."""
+        until the release (`endDrag`), so dragging on to set its length is the same one undo step (`press`: the pointer's
+        time, where that drag is measured from). Returns its id."""
         self.endDrag()
         before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
 
         def go():
             self._drag = Drag(self.doc, self.who, "Draw note")
-            self._grab = {"drawn": True}
+            self._grab = {"drawn": True, "press": press}
             self._drag.preview([call])
         if not self._guard(go):
             self.cancelDrag()

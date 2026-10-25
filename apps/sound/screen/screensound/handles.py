@@ -56,7 +56,8 @@ def at(block: dict, t: float, y: float, tol: float) -> str:
 
 
 def grab(doc, ids, handle) -> list[dict]:
-    """What each selected item starts from (only the kind the handle belongs to)."""
+    """What each selected item starts from (only the kind the handle belongs to). A drag goes from the item's end:
+    `drawn` turns that into a drag from the press (a note just drawn)."""
     root, kind = doc.data, "note" if handle == "length" else "clip"
     out = []
     for i in ids:
@@ -71,12 +72,22 @@ def grab(doc, ids, handle) -> list[dict]:
     return out
 
 
+def drawn(grabs, press: float, root: dict, grid=None) -> list[dict]:
+    """The Draw tool's press on empty space, dragged on: the new note's end follows the pointer from where the press
+    was (not from the note's starting length, Note ▾: that counted it twice, critic r6 M2), at least one grid step."""
+    for g in grabs:
+        lo, hi = timing.lines_around(g["s"], root, grid)
+        g.update(dur=max(0.0, press - g["s"]), least=max(MIN_S, hi - lo))
+    return grabs
+
+
 def calls(doc, grabs, handle, dt, dy, free, grid=None) -> list[dict]:
     root, out = doc.data, []
     for g in grabs:
         it, s, dur = g["it"], g["s"], g["dur"]
-        if handle == "length":
-            end = s + max(MIN_S, dur + dt) if free else max(s + MIN_S, timing.snap(s + dur + dt, root, False, grid))
+        if handle == "length":                                 # (a note just drawn: `dur` is from its start to the press)
+            least = g.get("least", MIN_S)
+            end = s + max(least, dur + dt) if free else max(s + least, timing.snap(s + dur + dt, root, False, grid))
             args = {"dur": timing.write_length(it["dur"], end - s, root, s)}
             out.append({"op": "note.set", "target": [g["id"]], "args": args})
             continue
