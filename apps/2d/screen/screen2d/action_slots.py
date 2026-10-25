@@ -6,8 +6,7 @@ step) and what it made is selected after. A slot mix-in for Bridge2D (layer_orde
 from __future__ import annotations
 
 from PySide6.QtCore import Slot
-from rostrum_gui import commands
-from rostrum_gui.action_hub import ActionHub
+from rostrum_gui import commands, job_rows
 from rostrum_gui.action_views import commands as do_commands
 from rostrum_gui.parts import SlotMixin
 from rostrum_gui.selection_rules import esc_step
@@ -15,6 +14,8 @@ from rostrum_gui.selection_rules import esc_step
 from . import frame_actions
 from .action_rules import said
 from .actions import LIST, Facts
+from .key_routes import KeyHub
+from .keys2d import HAVE_ROWS, KEYS2D, ROUTES, SHELL, WINDOW
 
 # What actions.py covers, as the kit's operation commands would list it again in Ctrl+K.
 COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release", "shape.boolean", "path.boolean",
@@ -30,8 +31,8 @@ class ActionSlots(SlotMixin):
 
     def _make_actions(self):
         """The one ActionHub, fresh on every selection and document change."""
-        self._hub = ActionHub(LIST, self._facts, self._what, self._act_apply, self._act_do, self._set_status, self,
-                              preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
+        self._hub = KeyHub(self, LIST, self._facts, self._what, self._act_apply, self._act_do, self._set_status,
+                          preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
         self.panelShown.connect(self._hub.refresh)          # the panel's actions and the context bar come with the panel
         self.docChanged.connect(self._hub.refresh)
         self._keys.changed.connect(self._hub.refresh)       # Ease's keys (F9 …) follow the keys picked
@@ -111,10 +112,14 @@ class ActionSlots(SlotMixin):
         repeat."""
         out = [c for c in super()._commands() if not any(c["key"] == o or c["key"].startswith(o + ":") for o in COVERED)]
         f = self._facts()
-        mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
+        mine = [{**({**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c), "own": True}
                 for c in do_commands(LIST.available(f), self._what(f))]
+        taken = {LIST.job_of(a) for a in LIST.actions} | set(HAVE_ROWS) | {"select_all"}    # select_all: the row just below
+        jobs = job_rows.rows(KEYS2D, set(ROUTES) | set(WINDOW) | set(SHELL) | {"play"}, taken,
+                             state={"selected": bool(self.selected_layers()) and not self._keys.count and not self._stretch.shown,
+                                    "problems": bool(self._problems.rows)})
         return mine + [{"key": "layer:selectall", "label": "Select all layers", "hint": "Layer", "keys": "Ctrl+A",
-                        "do": self.selectAllLayers}] + out
+                        "do": self.selectAllLayers, "own": True}] + jobs + out
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
@@ -124,6 +129,9 @@ class ActionSlots(SlotMixin):
     @Slot(str, result=bool)
     def run(self, key):
         """Ctrl+K, a menu or a script: an action of the list through the hub (one change), else the kit's."""
+        if key.startswith("job:"):                      # a key-map job named in Ctrl+K (job_rows.py)
+            self._hub.ask(key[4:])
+            return True
         if not LIST.owns(key):
             return super().run(key)
         if key == "layer:delete" and (self._keys.count or self._stretch.shown):   # the short menu's Delete on picked keys

@@ -1,7 +1,9 @@
 """Rostrum2D's own keys, as data on top of the shared key map (rostrum_gui/keymap.py; INTERACTION.md Part 2, the
 [2D] rows that 2D uses today). The kit refuses at start-up any of these that would take a shared key. The actions
-(actions.py) take their keys from here through `job`; tools and frame-by-frame keys are listed so Ctrl+/ shows them
-(Main.qml still runs those itself).
+(actions.py) take their keys from here through `job`. Every job here and in the shared map runs something: an action,
+a ROUTE (a bridge method: key_routes.py), a WINDOW job (Main.qml `windowJobs`) or a SKIP job (bound by the kit's AppShell
+and FilesMenu, or by a Shortcut that needs screen state). A shared job 2D has nothing behind is in NOT_HERE: no key, not
+on the Keys sheet. tests/test_keys_wired.py keeps this honest.
 """
 from __future__ import annotations
 
@@ -12,7 +14,7 @@ OWN = [
     {"job": "new_drawing", "keys": ["Alt+N"], "label": "New drawing"},
     {"job": "copy_drawing", "keys": ["Alt+Shift+N"], "label": "Copy of this drawing"},
     {"job": "onion", "keys": ["Alt+O"], "label": "Onion skin"},
-    {"job": "hold_longer", "keys": ["="], "label": "Hold this drawing longer"},
+    {"job": "hold_longer", "keys": ["=", "+"], "label": "Hold this drawing longer"},
     {"job": "hold_shorter", "keys": ["-"], "label": "Hold this drawing shorter"},
     {"job": "rect_tool", "keys": ["R"], "label": "Rectangle"},
     {"job": "ellipse_tool", "keys": ["O"], "label": "Ellipse"},
@@ -37,4 +39,36 @@ OWN = [
     {"job": "make_painted_fill", "keys": [], "label": "Make painted fill"},          # no key: the right-click's Make block
 ]
 
-KEYS2D = KeyMap("Rostrum2D", OWN, drop=("preferences",))     # no setting of 2D is a person's to change: Ctrl+, would open an empty window
+NOT_HERE = ("preferences",          # no setting of 2D is a person's to change: Ctrl+, would open an empty window
+            "play_from_selection", "go_out", "next_item", "prev_item", "find_item", "paste_other", "delete_close_gap",
+            "split", "join", "trim_start", "trim_end", "loop", "range_start", "range_end", "notes_tool")
+KEYS2D = KeyMap("Rostrum2D", OWN, drop=NOT_HERE)
+
+NUDGE = [f"{d}{s}" for d in ("left", "right", "up", "down") for s in ("", "_big", "_fine")]
+ROUTES = {
+    "to_start": ("setTime", 0.0), "to_end": ("toEnd",),
+    "frame_back": ("stepFrames", -1), "frame_on": ("stepFrames", 1),
+    "frame_back_ten": ("stepFrames", -10), "frame_on_ten": ("stepFrames", 10),
+    "marker": ("markerHere",), "next_marker": ("markerJump", 1), "prev_marker": ("markerJump", -1),
+    "select_all": ("selectAllKey",), "animated_rows": ("showAnimated",),
+    **{f"nudge_{n}": ("nudgeKey", n) for n in NUDGE},
+    "move_tool": ("toolKey", "move"), "pen_tool": ("toolKey", "pen"), "rect_tool": ("toolKey", "rect"),
+    "ellipse_tool": ("toolKey", "ellipse"), "text_tool": ("toolKey", "text"), "hand_tool": ("toolKey", "hand"),
+    "zoom_tool": ("toolKey", "zoom"), "bone_tool": ("toolKey", "bone"),
+}
+# the window's own (Main.qml `windowJobs`): they need the canvas, the rail or the painter
+WINDOW = ("paint_tool", "pick_frame", "prev_event", "next_event", "prev_beat", "next_beat", "delete", "library", "add_file", "quit",
+          "new_drawing", "copy_drawing", "onion", "hold_longer", "hold_shorter",
+          "zoom_in", "zoom_out", "fit_all", "actual_size", "fit", "look_through")
+# bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the
+# Inspector), the kit's FilesMenu (files), Space (spacekey.py: a tap plays, held it pans), Esc and Enter (Main.qml: they
+# step by what is open)
+SKIP = ["play", "step_back", "go_in", "undo", "redo", "command_box", "guides", "key_list", "history", "export", "export_again",
+        "fold_panels", "next_area", "find_setting", "new", "open", "save_version", "duplicate_file"]
+# Ctrl+K runs these jobs too: ROUTES, WINDOW and the kit's shell jobs (AppShell.runJob); Space plays through spacekey.py, so its row calls
+# the bridge itself. The ≡ menu's rows (New, Open, Save a version ...) and Add from a file are already rows of their own.
+ASKED = {"play": ("togglePlay",)}
+SHELL = ("undo", "redo", "history", "export", "export_again", "guides", "key_list", "fold_panels", "next_area",
+         "find_setting", "problems")
+HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "add_file",
+           "zoom_in", "zoom_out", "fit_all", "actual_size", "fit", "look_through")   # the view menu's rows are in Ctrl+K already (view_commands.py)

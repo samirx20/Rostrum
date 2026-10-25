@@ -6,8 +6,9 @@ import "MenuPlace.js" as Place
 // A small popup list of actions under whatever it sits in (a button's Add menu). `entries`: [{value, label, keys, checked}];
 // choosing one closes it and sends picked(value). Up / Down move, Enter picks, Esc closes. When any entry has
 // `checked`, a fixed left column shows ✓ on the chosen one; `keys` sit right-aligned.
-QQC.Popup {
+SmallPopup {
     id: menu
+    ownKeys: ["Up", "Down", "Enter"]          // the window's shortcuts for these wait while it is open (OpenPopups)
     property var entries: []
     property int highlighted: 0
     readonly property bool checks: entries.some(e => e.checked !== undefined)

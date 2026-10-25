@@ -63,7 +63,7 @@ SHARED = [
         ("smooth", ["F9"], "Smooth"), ("ease_in", ["Shift+F9"], "Ease in"), ("ease_out", ["Ctrl+Shift+F9"], "Ease out"),
         ("jump", ["Ctrl+Alt+J"], "Jump"), ("marker", ["M"], "Marker at the playhead")]),
     *_area("View", [
-        ("zoom_in", ["Ctrl+="], "Zoom in"), ("zoom_out", ["Ctrl+-"], "Zoom out"), ("fit_all", ["Ctrl+0"], "Fit all"),
+        ("zoom_in", ["Ctrl+=", "Ctrl++"], "Zoom in"), ("zoom_out", ["Ctrl+-"], "Zoom out"), ("fit_all", ["Ctrl+0"], "Fit all"),
         ("actual_size", ["Ctrl+1"], "100 %"), ("fit", ["F"], "Fit the selection"),
         ("fold_panels", ["Ctrl+\\"], "Hide / bring back the side panels"), ("next_area", ["F6"], "Next area")]),
     *_area("Panels", [

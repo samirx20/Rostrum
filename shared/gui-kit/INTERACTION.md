@@ -163,7 +163,7 @@ Every pattern below follows the same layout:
 
 - **Esc**, one level per press:
   1. cancel the drag or the typing in progress;
-  2. close the open popover, menu or sheet;
+  2. close the open popover, menu, dropdown, panel or sheet (the one opened last first);
   3. clear the innermost selection (keys or points, then items);
   4. leave the entered group;
   5. nothing.
@@ -300,7 +300,7 @@ cards.
    - Ctrl+wheel zooms time around the pointer.
    - Shift+wheel scrolls in time; the wheel scrolls the rows.
    - Alt+wheel makes rows taller or shorter.
-   - Ctrl+= / Ctrl+− zoom in steps. **Ctrl+0** fits the main thing (in 2D, the frame). **Shift+1** fits everything [2D]. **F** fits the selection. **Shift+C** looks through the frame [2D].
+   - Ctrl+= (or Ctrl++) / Ctrl+− zoom in steps. **Ctrl+0** fits the main thing (in 2D, the frame). **Shift+1** fits everything [2D]. **F** fits the selection. **Shift+C** looks through the frame [2D].
    - Space+drag or a middle-drag pans.
 7. **Heights:** drag the timeline's top edge, or press ⊟ (full ↔ compact). Each tool remembers its own height.
    Compact shows the header, ruler, the sound row and the selected row. Under 800 px tall it starts compact.
@@ -464,7 +464,7 @@ else.
 | Ctrl+wheel · pinch | Zoom **around the pointer** |
 | Wheel / Shift+wheel | Scroll up and down / sideways (in a timeline, sideways is time) |
 | Space+drag · middle-drag | Pan (tapping Space plays; holding it while dragging pans) |
-| Ctrl+= / Ctrl+− | Zoom in / out a step |
+| Ctrl+= (Ctrl++) / Ctrl+− | Zoom in / out a step |
 | **Ctrl+0** | Fit the main thing (the frame, the song, the cut) |
 | **F** | Fit the selection (nothing selected: everything). Shift+2 also works in 2D, for Figma habits. |
 | Ctrl+1 | 100 % (pictures only) |
@@ -690,6 +690,9 @@ the agent's `inspect_tools`.
 - **Fields:** a text field takes every key until Enter, Tab or Esc. Space types a space; it does not play. Esc in a
   field returns focus to the main view.
 - **Letter keys work only when no field has focus,** so typing a name never switches tools.
+- **An open menu, dropdown or small panel never stops the window's keys:** Ctrl+Z, Space and the rest work while it is
+  open; it keeps only the keys it uses itself (a menu's ↑ ↓ Enter, its Esc). A clicked slider keeps ← → for itself.
+  Only a dialog with a dimmed window behind it (Preferences, Report a problem) holds the keys until it closes.
 - **Arrows, Delete, Ctrl+A, Ctrl+C / V / D** act on the focused area's selection.
 - **Pen and touch:**
   - pressure and tilt from any pen; the pen's back end erases;

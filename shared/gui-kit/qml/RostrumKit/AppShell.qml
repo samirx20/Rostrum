@@ -124,7 +124,7 @@ QQC.ApplicationWindow {
         const p = body.mapFromItem(null, x, y)
         if (p.x >= 0 && p.x < railSlot.width && p.y >= 0 && p.y < railSlot.height) { focusArea = "centre"; return }   // the rail works the view
         for (const [name, it] of areas())
-            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; pressedIn(name); return }
+            if (p.x >= it.x && p.x < it.x + it.width && p.y >= it.y && p.y < it.y + it.height) { focusByKeys = false; focusArea = name; if (name === "centre") centreSlot.forceActiveFocus(); pressedIn(name); return }   // a press on the work gives the keys back from a clicked slider or field (items that take focus on the press do so after this)
     }
     function nextArea() {                       // F6
         const order = areas()
@@ -165,11 +165,17 @@ QQC.ApplicationWindow {
         case "history": win.historyOpen ? (win.historyOpen = false) : win.openHistory(""); return true
         case "export": if (win.exporter) win.exporter.setOpen(!win.exporter.open); else if (noExportWhy !== "") bridge.say(noExportWhy); return true
         case "export_again": if (win.exporter) win.exporter.again(); else if (noExportWhy !== "") bridge.say(noExportWhy); return true
+        case "problems": topBar.openProblems(); return true     // the Problems chip's list (job_rows.CONTEXT)
+        case "find_setting": win.bridge.findAsked(); return true     // the settings panel's find box, as Ctrl+F
+        case "agents": win.openConnectAgent(); return true      // the Help menu's entries (job_rows.HELP): Ctrl+K runs them too
+        case "report": win.openReport(); return true
+        case "about": win.openAbout(); return true
         case "undo": win.bridge.undo(); return true
         case "redo": win.bridge.redo(); return true
         }
         return false
     }
+    Binding { target: OpenPopups; property: "focused"; value: win.activeFocusItem }   // a focused control's own keys (OpenPopups.takes)
     Shortcut { sequence: "Ctrl+K"; onActivated: runJob("command_box") }
     Shortcut { sequence: "F1"; onActivated: runJob("guides") }
     Shortcut { sequence: "Ctrl+/"; onActivated: runJob("key_list") }

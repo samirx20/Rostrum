@@ -36,6 +36,8 @@ Item {
     signal scrubEnded()
     implicitWidth: 140; implicitHeight: Theme.field
     activeFocusOnTab: true
+    // The keys it steps with while the person has it (a click gives it the keyboard): the window's own shortcuts leave them (OpenPopups.takes)
+    property var ownKeys: ["Left", "Right", "Shift+Left", "Shift+Right", "Alt+Left", "Alt+Right"]
 
     function clamp(n, unit) {                        // a shown number -> the stored value, in range
         const u = unit || showStep

@@ -44,9 +44,9 @@ Rectangle {
                 Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, s.low ? 72 : 94)
                 chips: s.model.effects; ownerId: s.model.id
             }
-            Loader {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls when many
+            Loader {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls only when the dock has no room for all
                 active: !s.low && s.routed; visible: active      // made only where shown: most laptops' docks are low
-                Layout.fillWidth: true; Layout.preferredHeight: item ? Math.min(item.contentHeight, 80) : 0
+                Layout.fillWidth: true; Layout.preferredHeight: item ? Math.min(item.contentHeight, Math.max(80, s.height - 340)) : 0   // the content's own height; only a very full strip scrolls (340 = the strip's other parts at their least)
                 sourceComponent: Flickable {
                     contentHeight: routes.height; clip: true; boundsBehavior: Flickable.StopAtBounds; interactive: contentHeight > height
                     MixRoutes { id: routes; width: parent.width; strip: s }

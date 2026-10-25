@@ -6,7 +6,7 @@ import "."
 // "Marker 3" selected, Enter keeps it (one accepted(name, shared)), Esc or a click away cancels. The Shared switch
 // is there only when the document is in a project (`canShare`), and then starts on. The kit only asks: the app's
 // marker operation does the work.
-QQC.Popup {
+SmallPopup {
     id: p
     property bool canShare: false
     property bool shared: true
@@ -15,7 +15,6 @@ QQC.Popup {
     onOpened: { field.forceActiveFocus(); field.selectAll() }
     padding: Theme.gap
     focus: true
-    closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     background: Rectangle { color: Theme.raised; radius: Theme.radiusCtl; border.color: Theme.popupEdge }
     contentItem: Row {
         spacing: Theme.gap

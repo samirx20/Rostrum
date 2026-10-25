@@ -59,8 +59,13 @@ Panel {
         Connections { target: find.input; function onActiveFocusChanged() { if (!find.input.activeFocus && find.input.text === "") find.open = false } }
         trailing: KeyHint { text: "Ctrl F"; visible: find.input.text === "" && !find.input.activeFocus }
     }
+    function openFind() { find.open = true; find.input.forceActiveFocus(); find.input.selectAll() }
     Shortcut { sequences: [StandardKey.Find]; enabled: panel.finds && panel.bridge.selected !== "" && panel.visible
-               onActivated: { find.open = true; find.input.forceActiveFocus(); find.input.selectAll() } }
+               onActivated: panel.openFind() }
+    Connections {   // Ctrl+K's "Find a setting": the same as Ctrl+F
+        target: panel.bridge; ignoreUnknownSignals: true
+        function onFindAsked() { if (panel.finds && panel.bridge.selected !== "" && panel.visible) Qt.callLater(panel.openFind) }   // after the command bar has given the focus back
+    }
     Flickable {      // a long inspector scrolls (wheel or touch, thin bar in the panel's margin); a short one never moves
         id: scroller
         objectName: "inspectorScroll"    // scripted steps scroll it (an app's `inspectorscroll` step)

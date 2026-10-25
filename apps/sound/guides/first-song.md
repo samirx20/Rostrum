@@ -4,7 +4,7 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## The screen in one look
 
-- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K), the **loudness chip** (in words with a dot:
+- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
   "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber; rest the pointer
   on it for the number, click it to open the Mixer, which shows the same with its curve) and **Export** (both once the
   song makes a sound), and **?** (help).

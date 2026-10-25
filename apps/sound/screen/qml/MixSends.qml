@@ -24,7 +24,7 @@ Column {
         }
         Slider {
             width: parent.width; implicitWidth: 10; height: 18
-            from: 0; to: 1; step: 0.01; value: c.reverb || 0
+            from: 0; to: 1; step: 0.01; value: c.reverb || 0; defaultValue: 0
             onScrubStarted: { c.pick(); backend.beginScrub("reverb") }
             onScrubbed: (v) => backend.scrub("reverb", v)
             onScrubEnded: backend.endScrub()
@@ -46,7 +46,7 @@ Column {
             }
             Slider {
                 width: parent.width; implicitWidth: 10; height: 18
-                from: 0; to: 2; step: 0.01; value: modelData.level
+                from: 0; to: 2; step: 0.01; value: modelData.level; defaultValue: 0.3      // a new send's own level (send.add)
                 onScrubStarted: backend.beginScrubOn(modelData.id, "level")      // the send at once, the panel after the release
                 onScrubbed: (v) => backend.scrub("level", v)
                 onScrubEnded: backend.endScrubOn()

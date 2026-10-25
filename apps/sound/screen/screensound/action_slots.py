@@ -62,6 +62,7 @@ class SoundHub(ActionHub):
 
 
 class ActionSlots:
+    files = None                      # the kit's ProjectFiles (main.py sets it): the ≡ menu's rows are Ctrl+K's too
     jobWanted = Signal(str)           # Ctrl+K named a job only the window can run (Preferences, Export, files ...): Main.qml runs it
     libraryWanted = Signal(str)       # "Place a sound": the Library opens on this chip
     cleanWanted = Signal()            # "Clean up…": the host opens the Cleanup group (its three fields, once)
@@ -296,13 +297,14 @@ class ActionSlots:
         f = self._facts()
         mine = [{**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c
                 for c in do_commands(LIST.available(f), self._what(f))]
-        mine = [{**c, "hint": self._subject(c["key"]) or c["hint"]} for c in mine]
+        mine = [{**c, "hint": self._subject(c["key"]) or c["hint"], "own": True} for c in mine]
         ops = {x["op"] for c in mine for x in c.get("calls", [])}
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
                               where=self._what(f))
         return (mine + [c for c in rest if not any(x["op"] in ops for x in c.get("calls", []))
                         and ("select" not in c or self.doc.item(c["select"])["type"] in KINDS)]
-                + palette.rows({LIST.job_of(a) for a in LIST.actions}))
+                + (self.files.commands() if self.files else []) + palette.rows({LIST.job_of(a) for a in LIST.actions},
+                                                                              {"selected": bool(self._picks.ids), "problems": bool(self.problems.rows)}))
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
@@ -314,6 +316,9 @@ class ActionSlots:
         why), an empty-space entry, else the kit's."""
         if key.startswith("at:"):
             return self.runAt(key)
+        if key.startswith("file:") and self.files:        # the ≡ menu's rows (New, Open, Open recent, Show folder, Start screen ...)
+            self.files.pickLater(key)
+            return True
         if key.startswith("job:"):                       # a key-map job named in Ctrl+K (palette.py)
             job = key[4:]
             self._hub.key(job) if job in ROUTES else self.jobWanted.emit(job)

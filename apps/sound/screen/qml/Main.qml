@@ -43,6 +43,9 @@ AppShell {
         else if (job === "preferences") settingsPanel.open()
         else if (job === "quit") Qt.quit()
         else if (job === "add_file") arrangement.addFromFile()
+        else if (job === "record") recorder.toggleRecord()
+        else if (job === "loudness") workspace.setDock("mixer")        // what a click on the loudness chip does
+        else if (job === "sample_rate") settingsPanel.open()           // Preferences: where it is set
         else if (job === "tempo") openSong()
         else if (job === "grid") openGrid()
         else shell.runJob(job)
@@ -50,10 +53,10 @@ AppShell {
     Connections { target: backend; function onJobWanted(job) { shell.runSoundJob(job) } }
     function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
     // Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S: the kit's FilesMenu makes them (from the key map)
-    Shortcut { sequence: "Ctrl+I"; onActivated: arrangement.addFromFile() }
-    Shortcut { sequence: "Ctrl+,"; onActivated: settingsPanel.open() }
-    Shortcut { sequence: "Ctrl+Q"; onActivated: Qt.quit() }
-    Shortcut { sequence: "R"; onActivated: recorder.toggleRecord() }
+    Shortcut { sequence: "Ctrl+I"; enabled: !OpenPopups.takes(["Ctrl+I"]); onActivated: arrangement.addFromFile() }
+    Shortcut { sequence: "Ctrl+,"; enabled: !OpenPopups.takes(["Ctrl+,"]); onActivated: settingsPanel.open() }
+    Shortcut { sequence: "Ctrl+Q"; enabled: !OpenPopups.takes(["Ctrl+Q"]); onActivated: Qt.quit() }
+    Shortcut { sequence: "R"; enabled: !OpenPopups.takes(["R"]); onActivated: recorder.toggleRecord() }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
     // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the

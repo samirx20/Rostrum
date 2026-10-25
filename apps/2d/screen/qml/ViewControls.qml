@@ -58,11 +58,16 @@ Item {
     }
     ActionMenu { id: menu; onPicked: (key) => vc.act(key) }
 
-    Shortcut { sequence: "Ctrl+0"; onActivated: vc.fitFrame() }
-    Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing; onActivated: vc.fitEverything() }
-    Shortcut { sequence: "Ctrl+1"; onActivated: vc.view.show(1) }
-    Shortcut { sequence: "Shift+C"; enabled: !vc.typing; onActivated: vc.look.toggle() }
-    Shortcut { sequences: ["F", "Shift+2", "@"]; enabled: !vc.typing; onActivated: vc.fitSelection() }
-    Shortcut { sequences: ["Ctrl+=", "Ctrl++", StandardKey.ZoomIn]; onActivated: vc.view.step(1) }
-    Shortcut { sequence: "Ctrl+-"; onActivated: vc.view.step(-1) }
+    // The keys of the key map (Ctrl+0, Ctrl+1, F, Shift+C, Ctrl+= / Ctrl+-) come through the one KeyMap (Main.qml windowJobs → key(job));
+    // only the extra spellings of two of them live here
+    function key(job) {
+        if (job === "fit_all") fitFrame()
+        else if (job === "actual_size") view.show(1)
+        else if (job === "fit") fitSelection()
+        else if (job === "look_through") look.toggle()
+        else if (job === "zoom_in") view.step(1)
+        else if (job === "zoom_out") view.step(-1)
+    }
+    Shortcut { sequences: ["Shift+1", "!"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+1"]); onActivated: vc.fitEverything() }
+    Shortcut { sequences: ["Shift+2", "@"]; enabled: !vc.typing && !OpenPopups.takes(["Shift+2"]); onActivated: vc.fitSelection() }
 }

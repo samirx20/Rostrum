@@ -81,12 +81,11 @@ IconButton {
         onAccepted: root.source.duplicate(selectedFile.toString())
     }
 
-    QQC.Popup {     // after Duplicate: the window stays on the original; the copy is one click away
+    SmallPopup {     // after Duplicate: the window stays on the original; the copy is one click away
         id: notice
         parent: root
         y: root.height + Theme.grid
         padding: Theme.gap
-        closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
         background: MenuBackground { }
         onOpened: noticeTimer.restart()
         Timer { id: noticeTimer; interval: 10000; onTriggered: notice.close() }

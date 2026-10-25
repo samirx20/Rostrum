@@ -51,7 +51,7 @@ Rectangle {
     TapHandler { onTapped: pop.opened ? pop.close() : pop.open() }
     HoverTip { text: chip.narrow ? chip.words : ""; hovered: hover.hovered && !pop.opened }
 
-    QQC.Popup {
+    SmallPopup {
         id: pop
         objectName: "problemsPopup"
         y: chip.height + Theme.grid

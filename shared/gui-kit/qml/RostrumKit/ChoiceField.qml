@@ -6,7 +6,8 @@ import "."
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
 // A long list (more than 15) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
 // opens with a search line on top: what is typed keeps only the options whose label holds it. Options carrying `section`
-// are shown under a small heading per run ("In Rostrum", "On this computer"); past 12 rows the list scrolls.
+// are shown under a small heading per run ("In Rostrum", "On this computer"); the list scrolls only past 20 rows or the window's height
+// (a 13-key list shows whole).
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
@@ -44,8 +45,9 @@ FieldFrame {
     // its search line and list per field made each selection switch ~15 ms slower per choice.
     Loader { id: pop; active: false; sourceComponent: popup }
     Component { id: popup
-    QQC.Popup {
+    SmallPopup {
         id: menu
+        ownKeys: ["Up", "Down", "Enter"]
         property int highlighted: 0
         y: f.height + 2
         width: f.width
@@ -95,7 +97,8 @@ FieldFrame {
                 id: optionList
                 objectName: "choiceList"
                 width: menu.availableWidth
-                height: Math.min(contentHeight, Theme.popupRow * 12)
+                readonly property real room: (QQC.Overlay.overlay ? QQC.Overlay.overlay.height : 600) - 2 * (menu.margins + menu.padding) - y
+                height: Math.min(contentHeight, Theme.popupRow * 20, Math.max(Theme.popupRow * 4, room))
                 clip: true; boundsBehavior: Flickable.StopAtBounds
                 model: f.shown
                 currentIndex: menu.highlighted

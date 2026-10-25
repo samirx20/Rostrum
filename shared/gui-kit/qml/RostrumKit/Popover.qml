@@ -10,28 +10,27 @@ import "."
 //   pop.openAtPoint(x, y)         // at a point in window coordinates
 //   pop.openBy(["action:layer:stagger", "actionsMore"], x, y)   // under the first of these (objectNames) on screen: the button
 //                                 // or menu that opened it; at (x, y) when none is shown (a key or a script opened it)
-// Closes on Esc (first `escaped()`, so an app can take the change back; typing in a field is dropped with it)
-// and on a click outside. A `modal` popover
+// Built on SmallPopup (the window's keys keep working). Closes on Esc (first `escaped()`, so an app can take the change back;
+// typing in a field is dropped with it) and on a click outside. A `modal` popover
 // swallows the click that closes it (and never dims the window: `dim` is off). `accepted()` is Enter pressed anywhere in it that no field used (the app decides
 // whether that closes it: pop.close()). The popover stays inside the window, whatever the size. Keyboard focus goes
 // into `focusItem` (else the popover itself) on opening and goes back to what had it when it closes.
-QQC.Popup {
+SmallPopup {
     id: pop
     property string title: ""
     property Item focusItem: null                 // takes the keys on opening
     default property alias content: slot.data
-    signal escaped()
     signal accepted()
 
     property var anchor: null                     // what openAt placed it by: placed again when its size settles
     property point point: Qt.point(0, 0)          // or the point openAtPoint was given
     property Item before: null                    // what had the keys before it opened
+    ownKeys: ["Enter"]                            // its `accepted()`: the window's Enter waits while it is open
 
     parent: QQC.Overlay.overlay
     padding: Theme.pad
     focus: true
     dim: false                                      // a small popover is light: even a modal one never dims the window
-    closePolicy: QQC.Popup.CloseOnPressOutside      // Esc: the Shortcut below (not while a list opened from inside has the keys)
     background: MenuBackground { radius: Theme.radiusPanel }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
@@ -88,7 +87,6 @@ QQC.Popup {
     onAboutToShow: before = focused
     onOpened: (focusItem ? focusItem : pop).forceActiveFocus()
     onClosed: { if (before && before.visible) before.forceActiveFocus(); before = null }
-    Shortcut { sequence: "Escape"; enabled: pop.opened && pop.mine; onActivated: { pop.escaped(); pop.close() } }
     Shortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
 
     contentItem: Column {

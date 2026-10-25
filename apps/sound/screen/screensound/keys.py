@@ -34,8 +34,9 @@ WORDS = {
 NOT_HERE = ("prev_beat", "next_beat", "go_in", "go_out", "find_item",     # Sound is the beat grid: no beat keys of its own; nothing behind Go in / Go out / Find an item
             "play_from_selection", "next_item", "prev_item", "nudge_up_fine", "nudge_down_fine", "front", "back", "hide",
             "trim_start", "trim_end", "copy_style", "paste_style", "key_here", "animated_rows", "smooth", "ease_in",
-            "ease_out", "jump", "actual_size", "notes_tool", "paste_other")
-SHELL = ("history", "key_list", "fold_panels", "next_area", "find_setting")      # bound by the kit's AppShell / Inspector
+            "ease_out", "jump", "actual_size", "notes_tool", "paste_other",
+            "find_setting")                # Sound's settings panel has no find box (the kit's needs `sections = True`: 2D has it)
+SHELL = ("history", "key_list", "fold_panels", "next_area")      # bound by the kit's AppShell / Inspector
 KEYMAP = KeyMap("RostrumSound", SOUND_KEYS, drop=NOT_HERE, words=WORDS)
 
 _NUDGE = {"": "grid", "_big": "bar", "_fine": "fine"}
@@ -60,3 +61,6 @@ ROUTES = {
 }
 SKIP = ["new", "open", "save_version", "duplicate_file", "add_file", "preferences", "quit", "export", "export_again",
         "undo", "redo", "command_box", "guides", "record"]
+SHELL_RUN = ("undo", "redo", "export", "export_again", "history", "guides", "key_list", "fold_panels", "next_area", "preferences", "quit",
+             "add_file", "record", "problems", "loudness", "sample_rate")       # the window runs these (Main.qml › runSoundJob, the kit's AppShell.runJob)
+FILE_JOBS = ("new", "open", "save_version", "duplicate_file")   # the ≡ menu's rows are in Ctrl+K from the project files (file:*)

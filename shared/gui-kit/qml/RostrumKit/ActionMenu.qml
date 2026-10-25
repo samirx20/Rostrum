@@ -13,8 +13,9 @@ import "."
 //    label on every row ("After the last key" over Stay, Repeat …; F5, audit 44/45);
 //  - every row is named "menu:" + its value, so a scripted walk clicks it (clickobj), as in Menu.qml;
 // Long labels shorten with "…" and show whole on hover. Width fits the longest label + key (180 to 320).
-QQC.Popup {
+SmallPopup {
     id: menu
+    ownKeys: ["Up", "Down", "Enter", "Left", "Right"]   // the window's shortcuts for these wait while it is open (OpenPopups)
     property var entries: []
     property int highlighted: 0
     property var owner: null                 // the menu this one is a side menu of
@@ -28,7 +29,6 @@ QQC.Popup {
     parent: QQC.Overlay.overlay
     padding: Theme.grid
     focus: true
-    closePolicy: QQC.Popup.CloseOnEscape | QQC.Popup.CloseOnPressOutside
     width: Math.max(180, Math.min(320, Math.ceil(widest.labelW + widest.keysW + menu.checkW + Theme.gap + Theme.pad + 2 * padding + 16)))
     height: list.implicitHeight + 2 * padding
     background: MenuBackground { }        // the one menu look: edge + soft shadow

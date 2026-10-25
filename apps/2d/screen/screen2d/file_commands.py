@@ -19,5 +19,6 @@ class FileCommands(SlotMixin):
     @Slot(str, result=bool)
     def run(self, key):
         if self.files and key.startswith("file:"):
-            return self.files.pick(key)
+            self.files.pickLater(key)           # New, Open, Open recent swap the whole screen: after the bar's own handler ends
+            return True
         return super().run(key)

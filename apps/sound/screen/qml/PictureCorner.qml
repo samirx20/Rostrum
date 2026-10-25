@@ -91,7 +91,7 @@ Panel {
         Text { visible: !pc.hasVideo && backend.pictureProblem !== ""; width: parent.width; wrapMode: Text.Wrap
                color: Theme.fg4; text: backend.pictureProblem; font.family: uiFont; font.pixelSize: Theme.label }
     }
-    QQC.Popup {     // the project's 2D items: picking one links its newest render
+    SmallPopup {     // the project's 2D items: picking one links its newest render
         id: items
         parent: fromProject
         y: -height - 2
