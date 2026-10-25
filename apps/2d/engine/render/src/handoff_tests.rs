@@ -70,3 +70,50 @@ fn a_slot_written_again_holds_the_new_frame_exactly() {
         }
     }
 }
+
+/// A picture whose edge falls between pixels (any canvas size: the comp drawn at 0.583 × is 1120.0 × 630.0 wide, at a
+/// hair more 1121 × 631 with a half-covered last column and row) keeps the GPU's output step: the CPU redoes only the
+/// edge's blocks, never whole rows (once every row of such a frame went to the CPU: 25-40 ms a frame), and every size
+/// gives the CPU's bytes exactly.
+#[test]
+fn an_edge_between_pixels_costs_the_cpu_only_its_blocks() {
+    let spec = crate::color::Spec::parse(&serde_json::json!({})).unwrap();
+    for (w, h) in [(1120u32, 630u32), (1121, 631), (1, 1), (33, 2), (1920, 1080)] {
+        let mut px = frame(w, h, 0x2545_F491 ^ w, 0..h, &[]);
+        for y in 0..h {
+            for x in 0..w {
+                // Opaque inside; the last column and row half covered (no row 7 gap, no scattered see-through pixels).
+                let a = if x + 1 == w && w > 1120 || y + 1 == h && h > 630 { 0.5 } else { 1.0 };
+                let o = ((y * w + x) * 8 + 6) as usize;
+                px[o..o + 2].copy_from_slice(&half::f16::from_f32(a).to_le_bytes());
+            }
+        }
+        let mut p = Painter::gpu(w, h, spec.surface_space()).expect("GPU");
+        draw(&mut p, &px, &spec);
+        let raw = p.read().unwrap();
+        let mut want = vec![];
+        crate::color::output(&spec, &raw, w, false, false, 0, &mut want);
+        let mut got = vec![0u8; want.len()];
+        p.output_into(&spec, false, false, &mut got).expect("the GPU step").expect("output");
+        let off = got.iter().zip(&want).position(|(x, y)| x != y);
+        assert!(off.is_none(), "{w}×{h}: first different byte {off:?}");
+    }
+    // The blocks a 1121 × 631 frame's edge marks: the last block of every row, and the whole last row.
+    let fw = 1121usize.div_ceil(crate::gpu_output::BLOCK as usize);
+    let mut flags = vec![0u8; fw * 631];
+    for y in 0..631 {
+        flags[y * fw + fw - 1] = 1;
+    }
+    flags[630 * fw..].fill(1);
+    let rects = crate::gpu_output::cpu_rects(&flags, fw, 1121);
+    let px: u32 = rects.iter().map(|[x0, y0, x1, y1]| (x1 - x0) * (y1 - y0)).sum();
+    assert!(rects.len() <= 3 && px <= 32 * 631 + 8 * 1121, "{rects:?}: {px} px for the CPU");
+    // A slanting edge (a turned frame's): a few blocks per band, never the row between its two sides.
+    let mut flags = vec![0u8; fw * 631];
+    for y in 0..631 {
+        flags[y * fw + y / 40] = 1;
+        flags[y * fw + fw - 1 - y / 40] = 1;
+    }
+    let px: u32 = crate::gpu_output::cpu_rects(&flags, fw, 1121).iter().map(|[x0, y0, x1, y1]| (x1 - x0) * (y1 - y0)).sum();
+    assert!(px <= 2 * 2 * 32 * 631, "{px} px for the CPU");
+}

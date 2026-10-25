@@ -147,6 +147,14 @@ impl SkiaSceneCache {
         }
     }
 
+    /// Rostrum patch (warm-up): any matrix as the view under every draw of the next paint (a turned or tilted one), so
+    /// the page's draw kinds are built on the GPU ahead of the frames that first need them (render warmup.rs). Taps are
+    /// not written under it, as under `set_root_view`.
+    pub fn set_root_matrix(&mut self, m: skia_safe::M44) {
+        self.base_3d.clear();
+        self.base_3d.push(m);
+    }
+
     /// Increment the generation on the caches. Should be called once per frame.
     pub fn next_gen(&mut self) {
         self.typeface.next_gen();

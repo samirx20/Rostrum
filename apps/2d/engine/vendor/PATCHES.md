@@ -303,3 +303,9 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | blitz-dom | `layout/mod.rs` `set_final_layout`: a box whose rounded size or offset changed gets `RECALCULATE_OVERFLOW`, and so does every box up its positioning chain (`mark_overflow_stale`, through `containing_block`) | Boxes are rounded in page px, so a box nothing restyled rounds to another size when an ancestor moves by a fraction of a pixel (Lull's 26.4 px phone texts: 26 or 27 px). `resolve_transforms` keeps a box's transform and overflow unless it carries that damage, so its `translate(-50%)` stayed the one worked out from an earlier frame's size: the live canvas drew the text half a pixel off (up to 52/255) depending on which frames came before, and incremental layout differed from a fresh one even on its first frame. Now an incremental export equals a whole-layout one byte for byte (Lull 6.4–7.1 s; test `incremental_tests::a_box_rounded_to_another_size_…`) |
+
+## Speed round (first-use GPU programs built ahead; 2026-10-25)
+
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender_skia | `SkiaSceneCache::set_root_matrix(M44)`: any matrix (turned, tilted) as the root view under every draw of the next paint, like `set_root_view`'s scale and offset; taps are not written under it | the engine paints the page turned and tilted into a scratch surface while nothing is asked (render `warmup.rs`), so the GPU programs those draw kinds need are built before the first turned frame (86 ms, 444 ms under load, on the frame's first turn) |

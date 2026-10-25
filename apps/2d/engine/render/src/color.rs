@@ -263,11 +263,12 @@ pub fn output(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, frame
 
 /// `output` into a buffer of exactly the frame's size (a shared-memory slot, shm.rs); every byte is written.
 pub fn output_into(spec: &Spec, src: &[u8], width: u32, deep: bool, fast: bool, _frame: u32, out: &mut [u8]) {
-    output_rows(spec, src, width, 0, deep, fast, out);
+    output_rect(spec, src, width, (0, 0), deep, fast, out);
 }
 
-/// `output_into` for rows of a frame starting at row `y0` (the dither is placed by the pixel's place in the whole frame).
-pub fn output_rows(spec: &Spec, src: &[u8], width: u32, y0: u32, deep: bool, fast: bool, out: &mut [u8]) {
+/// `output_into` for a rectangle of a frame, `width` px wide, its top-left at `(x0, y0)` in the frame (the dither is
+/// placed by the pixel's place in the whole frame): `src` and `out` hold only the rectangle's pixels, row by row.
+pub fn output_rect(spec: &Spec, src: &[u8], width: u32, (x0, y0): (u32, u32), deep: bool, fast: bool, out: &mut [u8]) {
     let table = crate::pixels::halves();
     let chan = channel_table(spec);
     let lut = if fast && !deep && chan.is_none() { output_lut(spec) } else { None };
@@ -280,7 +281,7 @@ pub fn output_rows(spec: &Spec, src: &[u8], width: u32, y0: u32, deep: bool, fas
         // The place in the frame by counting along (a division per pixel was the slowest step of an export).
         let (mut x, mut y) = (range.start as u32 % width, y0 + range.start as u32 / width);
         for (p, o) in src[range.start * 8..range.end * 8].chunks_exact(8).zip(dst.chunks_exact_mut(bpp)) {
-            let (px_x, px_y) = (x, y);
+            let (px_x, px_y) = (x0 + x, y);
             x += 1;
             if x == width {
                 (x, y) = (0, y + 1);

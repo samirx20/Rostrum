@@ -5,7 +5,9 @@
 //! output step itself (color.rs `gpu_codes`), and the dither is the same integer hash. That covers every opaque pixel
 //! with finite channels (and transparent ones), which is every pixel of a frame with a background. A pixel the table
 //! can't answer exactly (partly transparent: its colour is divided by its alpha; or a channel not finite) is marked,
-//! and a second pass reports which rows hold one, in blocks of `BLOCK` pixels; the painter redoes those rows on the CPU.
+//! and a second pass reports which blocks of `BLOCK` pixels along a row hold one; the painter redoes only those blocks on
+//! the CPU, in a few rectangles (`cpu_rects`): a picture whose edge falls between pixels (a comp drawn at any scale) or
+//! whose background is see-through costs the CPU its edge pixels, never its whole rows.
 //!
 //! The hand-off to the canvas's shared memory (shm.rs) reads back only what changed: the output of the frame last
 //! written into each of the memory's slots is kept on the GPU, and the second pass also marks the blocks that differ
@@ -75,6 +77,8 @@ pub type Holds = (u64, usize, u32, u32, bool, bool);
 /// The output of a frame started and not finished: where it goes and the fence after its marks' readback.
 struct Pending {
     fence: *const c_void,
+    /// The frame's texture (read again where the CPU redoes pixels).
+    src: u32,
     holds: Option<Holds>,
     compare: bool,
     w: u32,
@@ -82,10 +86,52 @@ struct Pending {
     deep: bool,
 }
 
-/// A finished output: rows the CPU must redo, and how many rows were read back from the GPU.
+/// A finished output: the rectangles the CPU must redo (x0, y0, x1, y1 px) with the frame's halves there as stored
+/// (premultiplied RGBA16F, top row first), and how many rows were read back from the GPU.
 pub struct Done {
-    pub cpu_rows: Vec<bool>,
+    pub cpu: Vec<([u32; 4], Vec<u8>)>,
     pub rows_read: u32,
+}
+
+/// Rows per band of `cpu_rects`: a marked block's rectangle is at least this tall (fewer, larger reads).
+const BAND: usize = 8;
+
+/// The marked blocks (`flags`: `fw` per row, bit 0) as rectangles of px (x0, y0, x1, y1) in a frame `w` px wide: in
+/// bands of BAND rows, each run of blocks marked in any of the band's rows; a run the band before had too grows down
+/// (a straight edge is one tall rectangle, a slanting one a few blocks per band).
+pub fn cpu_rects(flags: &[u8], fw: usize, w: u32) -> Vec<[u32; 4]> {
+    let h = flags.len() / fw;
+    let px = |b: usize| (b as u32 * BLOCK).min(w);
+    let (mut done, mut open) = (vec![], Vec::<[u32; 4]>::new());
+    let mut band = vec![false; fw];
+    for y0 in (0..h).step_by(BAND) {
+        let y1 = (y0 + BAND).min(h);
+        band.fill(false);
+        for row in flags[y0 * fw..y1 * fw].chunks(fw) {
+            for (b, m) in band.iter_mut().zip(row) {
+                *b |= m & 1 != 0;
+            }
+        }
+        let mut next = vec![];
+        let mut b = 0;
+        while b < fw {
+            if !band[b] {
+                b += 1;
+                continue;
+            }
+            let e = b + band[b..].iter().take_while(|&&m| m).count();
+            let (x0, x1) = (px(b), px(e));
+            match open.iter().position(|r| r[0] == x0 && r[2] == x1) {
+                Some(i) => next.push([x0, open.swap_remove(i)[1], x1, y1 as u32]),
+                None => next.push([x0, y0 as u32, x1, y1 as u32]),
+            }
+            b = e;
+        }
+        done.append(&mut open);
+        open = next;
+    }
+    done.append(&mut open);
+    done
 }
 
 pub struct GpuOutput {
@@ -100,6 +146,8 @@ pub struct GpuOutput {
     /// Per slot of the canvas's memory: the output it holds, and what it is (`Holds`).
     kept: [Option<(Target, Holds)>; 2],
     flags: Option<Target>,
+    /// A framebuffer the frame's texture is attached to while the CPU's pixels are read from it.
+    src_fbo: u32,
     pbo: (u32, usize),
     pending: Option<Pending>,
 }
@@ -109,11 +157,12 @@ impl GpuOutput {
     pub fn new(load: impl Fn(&CString) -> *const c_void) -> Result<GpuOutput, String> {
         let f = Fns::load(&load).ok_or("the GPU output step needs OpenGL 3.3")?;
         let programs = [program(&f, "")?, program(&f, &format!("#define FLAGS\n#define BLOCK {BLOCK}\n"))?];
-        let (mut vao, mut codes, mut pbo) = (0, 0, 0);
+        let (mut vao, mut codes, mut pbo, mut src_fbo) = (0, 0, 0, 0);
         (f.GenVertexArrays)(1, &mut vao);
+        (f.GenFramebuffers)(1, &mut src_fbo);
         (f.GenTextures)(1, &mut codes);
         (f.GenBuffers)(1, &mut pbo);
-        Ok(GpuOutput { f, programs, vao, codes, codes_key: 0, cur: None, kept: [None, None], flags: None, pbo: (pbo, 0), pending: None })
+        Ok(GpuOutput { f, programs, vao, codes, codes_key: 0, cur: None, kept: [None, None], flags: None, src_fbo, pbo: (pbo, 0), pending: None })
     }
 
     /// Queues the output of texture `src` (the frame, RGBA16F, w × h, top row first) with `codes` (color.rs `gpu_codes`):
@@ -193,7 +242,7 @@ impl GpuOutput {
         let fence = (f.FenceSync)(0x9117, 0); // SYNC_GPU_COMMANDS_COMPLETE
         match (f.GetError)() {
             0 => {
-                self.pending = Some(Pending { fence, holds, compare: prev.is_some(), w, h, deep });
+                self.pending = Some(Pending { fence, src, holds, compare: prev.is_some(), w, h, deep });
                 Ok(())
             }
             e => {
@@ -204,7 +253,7 @@ impl GpuOutput {
     }
 
     /// The started output into `out` (exactly its size): waits for the GPU, then reads the rows that changed (all of
-    /// them without a slot or when the slot held something else) and are not the CPU's; returns the CPU's rows. With a
+    /// them without a slot or when the slot held something else) and are not all the CPU's; returns the CPU's rectangles. With a
     /// slot, `out` must be that slot's bytes, as last written (rows not read are left as they are).
     pub fn finish(&mut self, out: &mut [u8]) -> Result<Done, String> {
         let p = self.pending.take().ok_or("the GPU output step: nothing started")?;
@@ -223,14 +272,20 @@ impl GpuOutput {
             (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
             return Err("the GPU output step: mapping its marks failed".into());
         }
-        let marks: Vec<u8> = unsafe { std::slice::from_raw_parts(ptr, fw * h) }.chunks(fw).map(|r| r.iter().fold(0, |a, b| a | b)).collect();
+        let flags = unsafe { std::slice::from_raw_parts(ptr, fw * h) };
+        let rects = cpu_rects(flags, fw, p.w);
+        // Per row: bit 1, it changed; bit 2, every block is the CPU's (nothing of it to read from the GPU).
+        let marks: Vec<u8> = flags.chunks(fw).map(|r| r.iter().fold(0, |a, b| a | b) | if r.iter().all(|m| m & 1 != 0) { 4 } else { 0 }).collect();
         (f.UnmapBuffer)(PIXEL_PACK_BUFFER);
         (f.BindBuffer)(PIXEL_PACK_BUFFER, 0);
-        let read = |m: u8| m & 1 == 0 && (!p.compare || m & 2 != 0);
+        // A row's blocks the CPU redoes are written over what is read (or kept) there: the CPU's blocks are not compared.
+        let read = |m: u8| m & 4 == 0 && (!p.compare || m & 2 != 0);
         let ty = if p.deep { 0x1403 } else { 0x1401 };
         let cur = self.cur.as_ref().ok_or("the GPU output step: no output")?;
         (f.BindFramebuffer)(FRAMEBUFFER, cur.fbo);
-        (f.PixelStorei)(0x0D05, 1);
+        for (k, v) in [(0x0D05, 1), (0x0D02, 0), (0x0D03, 0), (0x0D04, 0)] {
+            (f.PixelStorei)(k, v); // PACK_ALIGNMENT, ROW_LENGTH, SKIP_ROWS, SKIP_PIXELS: Skia may have set them since `start`
+        }
         let (mut y, mut rows_read) = (0, 0);
         while y < h {
             if !read(marks[y]) {
@@ -241,6 +296,18 @@ impl GpuOutput {
             (f.ReadPixels)(0, y as i32, w as i32, n as i32, RGBA_INTEGER, ty, out[y * w * bpp..].as_mut_ptr() as *mut c_void);
             rows_read += n as u32;
             y += n;
+        }
+        // The halves where the CPU redoes pixels, from the frame itself (the GPU has finished it: nothing waits).
+        let mut cpu = Vec::with_capacity(rects.len());
+        if !rects.is_empty() {
+            (f.BindFramebuffer)(FRAMEBUFFER, self.src_fbo);
+            (f.FramebufferTexture2D)(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, p.src, 0);
+            for r @ [x0, y0, x1, y1] in rects {
+                let mut raw = vec![0u8; ((x1 - x0) * (y1 - y0) * 8) as usize];
+                (f.ReadPixels)(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, 0x1908, 0x140B, raw.as_mut_ptr() as *mut c_void); // RGBA, HALF_FLOAT
+                cpu.push((r, raw));
+            }
+            (f.FramebufferTexture2D)(FRAMEBUFFER, COLOR_ATTACHMENT0, TEXTURE_2D, 0, 0);
         }
         (f.BindFramebuffer)(FRAMEBUFFER, 0);
         if let Some(e) = Some((f.GetError)()).filter(|&e| e != 0) {
@@ -253,7 +320,7 @@ impl GpuOutput {
             self.kept[holds.1] = Some((self.cur.take().unwrap(), holds));
             self.cur = old;
         }
-        Ok(Done { cpu_rows: marks.iter().map(|m| m & 1 != 0).collect(), rows_read })
+        Ok(Done { cpu, rows_read })
     }
 
     /// Drops an output started and not finished (the slot it was for keeps what it holds).
