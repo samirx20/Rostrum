@@ -54,7 +54,7 @@ def export(eng: Engine, fmt: str, out, alpha: bool | None = None, depth: int | N
     else:
         count = reply["frames"]
     facts = readback.check(fmt, target, count, w, h, alpha, depth, seconds=(end - start) if shape else None)
-    return {"file": target, "frames": count, "fps": fps, "alpha": alpha, "depth": depth, "checked": facts,
+    return {"file": target, "frames": count, "fps": fps, **({"seconds": end - start} if shape else {}), "alpha": alpha, "depth": depth, "checked": facts,
             **({"kbps": rate.kbps} if rate.kbps and rate.quality is None else {}),
             **({"quality": quality or formats.DEFAULT_QUALITY} if rate.quality is not None else {}),
             **(encoded(reply["encoder"]) if reply.get("encoder") else {})}
