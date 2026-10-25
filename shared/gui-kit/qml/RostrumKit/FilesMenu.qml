@@ -56,7 +56,7 @@ IconButton {
             required property var modelData
             sequence: modelData[1]
             context: Qt.WindowShortcut
-            enabled: root.keysOn && (root.source.hasProject || modelData[0] === "new" || modelData[0] === "open")
+            enabled: root.keysOn && (modelData[0] === "new" || modelData[0] === "open" || (root.source.hasProject && !OpenPopups.covered))   // the start screen's own keys: New, Open
             onActivated: root.source.pickLater(modelData[0])      // later: New swaps the screen this key belongs to
         }
     }
@@ -65,7 +65,7 @@ IconButton {
         id: openDialog
         title: "Open a " + (root.source ? root.source.noun : "project") + ": choose its folder"
         currentFolder: root.source ? root.source.projectsUrl : ""
-        onAccepted: root.source.openPath(selectedFolder.toString())
+        onAccepted: root.source.pickLater("path:" + selectedFolder.toString())
     }
     FolderDialog {
         id: findDialog

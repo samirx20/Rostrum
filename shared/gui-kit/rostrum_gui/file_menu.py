@@ -1,6 +1,6 @@
 """The ≡ menu's rows and Ctrl+K's file commands, from what applies now (absent, never greyed; INTERACTION.md 1.19):
 New, Open…, Open recent ▸, Duplicate…, Save a version, Show folder, Start screen…, then the app's own rows (QML adds
-those). A slot mix-in for ProjectFiles; QML calls `menu()` when it opens and `pick(value)` with what was chosen."""
+those). A slot mix-in for ProjectFiles; QML calls `menu()` when it opens and `pickLater(value)` with what was chosen."""
 from __future__ import annotations
 
 from PySide6.QtCore import QTimer, Slot
@@ -41,21 +41,25 @@ class FileMenuSlots:
                 out.append({"key": f"file:{row['value']}", "label": label, "hint": hint})
         return [c for c in out if c["key"] != "file:recent"]
 
-    @Slot(str, result=bool)
     def pick(self, value):
-        """A row chosen (the menu, Ctrl+K as "file:<value>", a key). What needs the window goes back as `wanted`."""
+        """A row chosen (the menu, Ctrl+K as "file:<value>", a key, a start-screen card, the name box: "recent:<i>",
+        "rename:<name>", "path:<folder>"). What needs the window goes back as `wanted`. Not a slot: QML calls pickLater."""
         value = value.removeprefix("file:")
         if value in ASKS:
             self.wanted.emit(value)
             return True
-        if value.startswith("recent:"):
-            return self.openRecent(int(value.split(":")[1]))
+        word, _, rest = value.partition(":")
+        if word in ("recent", "rename", "path") and rest:
+            return {"recent": lambda: self.openRecent(int(rest)), "rename": lambda: self.rename(rest),
+                    "path": lambda: self.openPath(rest)}[word]()
         go = {"rescue": self.openRescued, "new": self.newProject, "sample": self.openSample, "copy": self.openCopy,
               "folder": lambda: self.showFolder() or True, "start": lambda: self.setStart(True) or True}.get(value)
         return bool(go and go())
 
     @Slot(str)
     def pickLater(self, value):
-        """`pick` for a handler in QML (a key, a button, a menu row): it runs once that handler has finished. New, Open and
-        Start screen swap the whole screen, so the item whose handler is running would be deleted under it."""
+        """`pick` for a handler in QML (a key, a button, a card, a menu row, the name box): it runs once that handler has
+        finished. Opening, New and Rename swap the whole screen, and the old screen's rows (the start screen's cards, the
+        menu) are rebuilt or deleted at once, under the handler still running (a Qt fault that ends the app). The only
+        door QML has to them, so no handler can call one directly."""
         QTimer.singleShot(0, lambda: self.pick(value))

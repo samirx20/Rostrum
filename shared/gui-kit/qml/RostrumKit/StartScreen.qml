@@ -18,7 +18,8 @@ Rectangle {
     visible: !!source && source.startShown
     color: Theme.app
     focus: visible
-    EscCloses { when: start.visible && !!start.source && start.source.hasProject; area: start; onAsked: start.source.setStart(false) }   // Esc: back to the project (the window's one Esc)
+    EscCloses { when: start.visible; covers: true; escCloses: !!start.source && start.source.hasProject; area: start
+                onAsked: start.source.setStart(false) }   // over the work: its keys wait (OpenPopups.covered); Esc: back to the project
     MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.AllButtons }   // nothing under it is reached
 
     readonly property var rows: source ? source.recent : []
@@ -82,7 +83,7 @@ Rectangle {
                 kind: "primary"
                 width: Math.min(implicitWidth, parent.width - 200)
                 text: start.launching ? "Continue " + start.rows[0].name : ""
-                onClicked: start.source.openRecent(0)
+                onClicked: start.source.pickLater("recent:0")
                 HoverTip { text: cont.text; help: start.launching ? start.rows[0].folder : ""; hovered: cont.hovered }
             }
         }
@@ -114,7 +115,7 @@ Rectangle {
                        wrapMode: Text.Wrap; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
                 Row {
                     spacing: Theme.gap
-                    Button { text: "Open the last version that works"; kind: "primary"; onClicked: start.source.openRescued() }
+                    Button { text: "Open the last version that works"; kind: "primary"; onClicked: start.source.pickLater("rescue") }
                     Button { text: "Not now"; onClicked: start.source.dismissRescue() }
                 }
             }
@@ -129,7 +130,7 @@ Rectangle {
             Way { label: "Open…"; hint: start.source ? start.source.keys.open : ""; onPicked: start.source.pickLater("open")
                   HoverTip { text: "Open a project folder"; hovered: parent.hovered } }
             Way { visible: !!start.source && start.source.hasSample; label: "Open the sample"
-                  onPicked: start.source.openSample()
+                  onPicked: start.source.pickLater("sample")
                   HoverTip { text: "Open the sample"; help: "Your own copy: the original never changes"; hovered: parent.hovered } }
         }
 
@@ -163,7 +164,7 @@ Rectangle {
                         Text { x: Theme.pad; y: cardName.y + 20; width: parent.width - 2 * Theme.pad; text: card.modelData.when
                                elide: Text.ElideRight; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
                         HoverHandler { id: cardHover; cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: start.source.openRecent(start.launching ? card.index + 1 : card.index) }
+                        TapHandler { onTapped: start.source.pickLater("recent:" + (start.launching ? card.index + 1 : card.index)) }
                         HoverTip { text: card.modelData.name; help: card.modelData.folder; hovered: cardHover.hovered }
                     }
                 }
