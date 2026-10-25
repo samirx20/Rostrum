@@ -7,7 +7,8 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 - **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet, every setting of what is selected and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
   "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber, or "… the
   target …" when the loudness target is not streaming's −14 LUFS ("Quieter than the target wants"); rest the pointer
-  on it for the number, click it to open the Mixer, which shows the same with its curve) and **Export** (both once the
+  on it for the number, click it to open the Mixer, which shows the same with its curve; while the newest render is
+  refused it says so in red, "Can't play: fix the notes", and a click selects the track to fix) and **Export** (both once the
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then

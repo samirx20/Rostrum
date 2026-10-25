@@ -78,7 +78,7 @@ Row {
     }
     Text { visible: text !== "" && (ro.room < 0 || width > 0); text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
            elide: Text.ElideRight; width: ro.room < 0 ? implicitWidth : Math.max(0, Math.min(implicitWidth, ro.room - x))
-           color: /^Render failed/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+           color: /^Can't make the sound/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
            MouseArea { id: stateHover; anchors.fill: parent; hoverEnabled: true }
            HoverTip { text: parent.truncated ? backend.soundState : ""; hovered: stateHover.containsMouse } }
 }

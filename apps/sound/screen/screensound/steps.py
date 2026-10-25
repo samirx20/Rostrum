@@ -61,7 +61,7 @@ def wait_render(bridge):
             raise RuntimeError(f"render: nothing after {RENDER_WAIT_S} s")
         QCoreApplication.processEvents()
         time.sleep(0.02)
-    if bridge.soundState.startswith("Render failed"):
+    if bridge.soundState.startswith("Can't make the sound"):
         raise RuntimeError(f"render failed: {bridge.status}")
 
 

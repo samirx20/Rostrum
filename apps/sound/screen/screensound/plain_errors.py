@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import re
 
+from rostrum_sound.doc import keys
+
 from .inspect import EFFECT_WORDS
 
 _AT = re.compile(r"schedule\.(tracks|buses)\[(\d+)\](?:\.effects\[(\d+)\])?[\w.\[\]]*:\s*")
@@ -40,6 +42,7 @@ def say(line: str, root: dict | None = None) -> str:
     return f"{what} cannot play: {reason}. The last good sound plays until it is fixed."
 
 
+_KEY = re.compile(r"\(key (\d+)\)")
 _RANGE = re.compile(r"no sample for (\S+).*?plays (\S+)\s*[–-]\s*(\S+?)[.;]?$", re.S)
 
 
@@ -55,11 +58,44 @@ def say_preview(label: str, line: str) -> str:
     return f"No preview of {label}: {reason}."
 
 
+def refusal(line: str, root: dict | None = None) -> dict:
+    """A failed render as what the screen shows of it besides the status line (the Problems list's row, the loudness
+    chip's words): `kind` ("out-of-range", else "render"), `item` (the track or group to jump to, "" when unknown),
+    `message` (say()), `short` (the chip's few words)."""
+    root = root or {}
+    text = _LEAD.sub("", line.strip(), count=1)
+    m = _AT.search(text)
+    if _RANGE.search(text) and not m:
+        t = _range_track(root, text)
+        return {"kind": "out-of-range", "item": t["id"] if t else "", "message": say(line, root),
+                "short": "Can't play: fix the notes"}
+    items = root.get(m.group(1), []) if m else []
+    i = int(m.group(2)) if m else -1
+    return {"kind": "render", "item": items[i]["id"] if 0 <= i < len(items) else "", "message": say(line, root),
+            "short": "Can't make the sound"}
+
+
+def _range_track(root: dict, text: str) -> dict | None:
+    """Which track: a recorded-sound track whose sound's name is in the instrument file's name (the engine names the file)
+    and that has a note on the refused key. The file name alone is not enough: "strings" is in
+    ".../vsco2-strings/ViolinEnsSusVib.sfz", the Violins' file."""
+    file, k = text.lower(), _KEY.search(text)
+    sounding = [t for t in root.get("tracks", []) if t.get("instrument") == "builtIn" and t.get("builtIn")]
+    if k:
+        sounding = [t for t in sounding if any(int(k.group(1)) in _midis(n) for n in t.get("notes", []))]
+    found = [t for t in sounding if str(t["builtIn"]).lower() in file] or sounding
+    return found[0] if len(found) == 1 else None
+
+
+def _midis(note: dict) -> list[int]:
+    try:
+        return keys.midis(note["pitch"])
+    except Exception:  # noqa: BLE001  a pitch the render would refuse on its own: not this note
+        return []
+
+
 def _out_of_range(root: dict, text: str, note: str, lo: str, hi: str) -> str:
-    """Which track: a track whose sound's name is in the instrument file's name (the engine names the file)."""
-    file = text.lower()
-    names = [t.get("name") or t["id"] for t in root.get("tracks", [])
-             if t.get("instrument") == "builtIn" and str(t.get("builtIn", "")).lower() in file and t.get("builtIn")]
-    who = f"“{names[0]}”" if len(names) == 1 else "A track"
+    t = _range_track(root, text)
+    who = f"“{t.get('name') or t['id']}”" if t else "A track"
     return (f"{who} can't play {note}: its sound plays {lo}–{hi}. Move those notes into that range or pick another "
             "sound. The last good sound plays until it is fixed.")
