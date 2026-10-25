@@ -58,6 +58,7 @@ def test_note_length_in_note_values():
     """A note's length reads as a note value when it is one (0.1 read as nothing); the same words type back."""
     root = {"tempo": 120, "meter": "4/4"}
     from rostrum_sound.doc import musical as M
-    for words, sec in (("1/4", 0.5), ("1/8", 0.25), ("1/16", 0.125), ("dotted 1/4", 0.75), ("1/1", 2.0)):
+    for words, sec in (("1/4", 0.5), ("1/8", 0.25), ("1/16", 0.125), ("dotted 1/4", 0.75), ("1 bar", 2.0)):
         assert M.note_length(sec, root) == words and abs(M.parse(words, root, True) - sec) < 1e-6
+    assert abs(M.parse("1/1", root, True) - 2.0) < 1e-6                              # a whole note still types
     assert M.note_length(0.3, root) == M.length(0.3, root) == "2 sixteenths"       # not a note value: words
