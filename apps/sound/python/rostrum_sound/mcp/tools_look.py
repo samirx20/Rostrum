@@ -10,6 +10,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from .. import listen
 from ..doc.times import seconds
+from ..listen.loudness import loudest_line
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 WAV = {"wav": {"type": "string", "description": "A WAV to read instead of the last render's mix (absolute path)."}}
@@ -53,13 +54,14 @@ def _resolve(doc, t, where):
 def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV}})
     def look_loudness(ctx, args):
-        """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment."""
+        """Integrated loudness (LUFS), true peak, loudness range, the loudest moment and its time (the loudest 3 s and 0.4 s windows, where they start and end, and the highest sample with its time: data.loudest), the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master's glue and limiter turned the sound down (the engine's own gain curve in the picture, the worst moments with the dB reduced) and, with stems, which tracks drove each moment."""
         doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
         r = listen.loudness(wav, out_png=str(png), limiter=lim)
         clips = r.get("clip_moments", [])
-        said = f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments."
+        said = f"{r['integrated_lufs']:.1f} LUFS, true peak {r['true_peak_dbtp']:.1f} dBTP, range {r['lra_lu']:.1f} LU, {len(clips)} clipped moments. "
+        said += loudest_line(r["loudest"])
         if "limiter" in r:
             w = r["limiter"]["worst"]
             said += (f" Limiter: up to {r['limiter']['max_db']:.1f} dB down for {r['limiter']['seconds_working']:.1f} s"

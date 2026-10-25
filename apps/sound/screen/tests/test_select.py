@@ -12,6 +12,7 @@ from rostrum_core import Document  # noqa: E402
 from rostrum_sound import KIND, run_source  # noqa: E402
 from screensound import playback  # noqa: E402
 from screensound.bridge import SoundBridge  # noqa: E402
+from test_screen import FakeEngine  # noqa: E402
 
 SRC = '''
 tempo(120); beats_per_bar(4)
@@ -21,21 +22,6 @@ lead.note("E4", at=beat(6), dur=beats(1))
 lead.note("G4", at=beat(8), dur=beats(1))
 '''
 A, B, C = "lead.n2000", "lead.n3000", "lead.n4000"
-
-
-class FakeEngine:
-    def request(self, do, schedule=None, out=None, **kw):
-        Path(out).write_bytes(b"")
-        return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
-
-    def take_restarted(self):
-        return ""
-
-    def close(self):
-        pass
-
-    def abort(self):
-        pass
 
 
 @pytest.fixture

@@ -105,15 +105,30 @@ def key(instrument: dict) -> str | None:
     return None
 
 
-def line(k: str) -> str:
-    """'subBass: bass (the low line); E1-G3; a round, deep synth bass'."""
+def label(k: str) -> str:
+    """The name as an agent writes it: a plain name as it is (`piano`), any other form with its argument (`model:marimba`,
+    `kit:studio`), so a name held by two forms (marimba as a builtIn and as a model) is two different lines."""
+    form, name = k.split(":", 1)
+    return name if form == "builtIn" else k
+
+
+def line(k: str, made: str | None = None, short: bool = False) -> str:
+    """'subBass (synthesized): bass (the low line); sounds best E1-G3; a round, deep synth bass'. `short`: the parts
+    by name only ('bass'), for a list that explains them once."""
     r = ROLES[k]
-    parts = ", ".join(f"{p} ({PARTS[p]})" for p in r.parts)
+    parts = ", ".join(p if short else f"{p} ({PARTS[p]})" for p in r.parts)
     span = f"; sounds best {r.low}-{r.high}" if r.low else ""
-    return f"{k.split(':', 1)[1]}: {parts}{span}; {r.sounds}"
+    return f"{label(k)}{f' ({made})' if made else ''}: {parts}{span}; {r.sounds}"
 
 
-def rows() -> list[dict]:
-    """Every built-in sound: {sound, parts, low, high, sounds, line}."""
-    return [{"sound": k, "parts": list(r.parts), "low": r.low, "high": r.high, "sounds": r.sounds, "line": line(k)}
-            for k, r in ROLES.items()]
+def rows(made: dict[str, str] | None = None) -> list[dict]:
+    """Every built-in sound: {sound, name, made, parts, low, high, sounds, line}. `made` = {key: "recorded" | "synthesized"}
+    (mcp/engine_lists.made_by reads it from the engine's instrument data)."""
+    made = made or {}
+    return [{"sound": k, "name": label(k), **({"made": made[k]} if k in made else {}), "parts": list(r.parts), "low": r.low,
+             "high": r.high, "sounds": r.sounds, "line": line(k, made.get(k))} for k, r in ROLES.items()]
+
+
+def parts_words() -> str:
+    """'comp = chords that keep time, bass = the low line, …': the words the short lines lean on."""
+    return ", ".join(f"{p} = {w}" for p, w in PARTS.items())

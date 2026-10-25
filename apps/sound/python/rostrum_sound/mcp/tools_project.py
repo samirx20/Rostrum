@@ -41,13 +41,18 @@ def with_no_project_sentence(runtime) -> None:
 
 EDIT_DOCUMENT = (
     "Apply a list of operations, all or nothing, as one change in the history. Read inspect_guide 'start-here' and "
-    "'writing-parts' first; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
+    "'writing-parts' first; the argument is `ops`, a list of {op, target?, args?}; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
     "(the song itself is \"root\"). A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
     "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\"). A volume is gain 0 … 4 as a bare number, or in dB as "
-    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
+    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), and start at a rough-mix level (kits and bass a few dB under, brass no louder than strings), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
     "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter.")
-RUN_SCRIPT = ("Before composing, read inspect_guide 'writing-music'. Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
+RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name adds a second copy. "
+              "Example: {\"name\": \"cue\", \"source\": \"tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))\"}. "
+              "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces. Effect settings are plain numbers "
+              "(compressor threshold in dB, attack and release in seconds); every effect's and the master's settings: inspect_engine. "
+              "To end cleanly: a later length(), master(fadeOut=seconds) (inspect_guide 'script', Ending a song). "
+              "Before composing, read inspect_guide 'writing-music'. Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
               "bar(n) is where bar n starts, so length(bar(9)) is an 8-bar song: for N bars write length(bar(N+1)). The "
               "reply ends with the song's length in bars and seconds.")
 ERROR_HINT = "Check inspect_operations (name=<op>) for the arguments, and inspect_guide 'start-here' for how replies work."

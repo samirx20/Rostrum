@@ -4,12 +4,17 @@ over stdio, in one session, and prints each reply. Only MCP goes over the wire; 
     python devtools/mcp_session.py --folder <project folder> calls.json [--item cue] [--client my-agent]
 
 calls.json: [{"tool": "run_script", "arguments": {...}}, ...]. A reply that is a job (data.job_id) is followed by
-inspect_job until the job ends. Pictures the server sends are listed by their file paths in each reply.
+inspect_job until the job ends. Each reply is printed in full. Pictures the server sends are listed by their file paths in each reply.
+
+The list stops at the first failed reply (ok=false): the later calls are NOT run (a render must never run on a
+document the failed step did not change), the output names the failed step and the steps left unrun, and the
+exit code is 1.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -18,9 +23,16 @@ from mcp import Client, StdioServerParameters
 from mcp_types import Implementation
 
 
+def stop_message(failed_n: int, tools: list[str]) -> str:
+    """Plain words for a stopped list: which step failed and which were not run."""
+    left = [f"{i}. {t}" for i, t in enumerate(tools[failed_n:], failed_n + 1)]
+    text = f"*** STOPPED: step {failed_n} ({tools[failed_n - 1]}) failed."
+    return text + (f" NOT run: {', '.join(left)}." if left else " It was the last step.")
+
+
 async def session(folder: str, items: list[str], calls: list[dict], client: str):
     args = ["-m", "rostrum_sound.mcp.server", "--folder", folder] + [a for i in items for a in ("--item", i)]
-    params = StdioServerParameters(command=sys.executable, args=args)
+    params = StdioServerParameters(command=sys.executable, args=args, env=dict(os.environ))     # the server sees the caller's PYTHONPATH
     failed = 0
     async with Client(params, client_info=Implementation(name=client, version="1")) as c:
         for n, call in enumerate(calls, 1):
@@ -29,7 +41,10 @@ async def session(folder: str, items: list[str], calls: list[dict], client: str)
             while job and reply.get("data", {}).get("status") in ("queued", "running"):
                 reply = json.loads((await c.call_tool("inspect_job", {"job_id": job, "wait_s": 20})).content[0].text)
             failed += not reply.get("ok")
-            print(f"--- {n}. {call['tool']}\n{json.dumps(reply, indent=1, ensure_ascii=False)[:6000]}", flush=True)
+            print(f"--- {n}. {call['tool']}\n{json.dumps(reply, indent=1, ensure_ascii=False)}", flush=True)
+            if not reply.get("ok"):
+                print(stop_message(n, [c["tool"] for c in calls]), flush=True)
+                break
     return failed
 
 

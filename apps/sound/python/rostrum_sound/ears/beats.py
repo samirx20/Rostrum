@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..doc import tempo
 from ..listen.core import num
 from ..listen.onsets import file_onsets
 
@@ -36,3 +37,40 @@ def grid_offsets(onsets, to_position, to_time, div: int = 4, limit_ms: float = 4
 
 def stem_onsets(wav) -> list[float]:
     return file_onsets(wav)
+
+
+def written_bpm(root: dict, seconds: float) -> float:
+    """The document's tempo to check the audio against: its tempo, or with tempo changes the one it keeps longest
+    (the commonest whole bpm, read every half second; a ritardando's passing tempos don't count against it)."""
+    if len(tempo.segments(root)) == 1:
+        return tempo.start_bpm(root)
+    held, counts = np.unique([round(tempo.bpm_at(root, t)) for t in np.arange(0.0, max(seconds, 0.5), 0.5)], return_counts=True)
+    return float(held[np.argmax(counts)])
+
+
+def relation(heard, written: float) -> str:
+    """How a tempo heard relates to the written one: matches, double, half, two thirds, one and a half, or differs."""
+    ratio = (heard or 0) / written
+    named = [(1.0, "matches"), (2.0, "double"), (0.5, "half"), (2 / 3, "two thirds"), (1.5, "one and a half times")]
+    return next((w for k, w in named if abs(ratio / k - 1) < 0.03), "differs")
+
+
+def fits(r: dict, written: float) -> bool:
+    """Whether the audio's beats fit the written tempo: the engine's answer, or (an engine without `--expect-bpm`)
+    its own reading matching it."""
+    e = r.get("expected")
+    return bool(e["fits"]) if e else relation(r["bpm"], written) == "matches"
+
+
+def tempo_line(r: dict, written: float | None, changes: bool) -> str:
+    """The tempo in plain words: the document's, checked against the audio's beats when there is a document."""
+    drift = f" ({r['bpm_start']} → {r['bpm_end']})" if r.get("steadiness") == "drifting" else ""
+    if written is None:
+        close = f" (or {r['tempo_unsure']:g} BPM: a close call, the same groove counted another way)" if r.get("tempo_unsure") else ""
+        return f"{r['bpm']} BPM, {r['steadiness']}{drift}{close}"
+    doc = f"{written:g} BPM, the document's" + (" (the tempo it keeps longest; it changes tempo)" if changes else "")
+    heard, rel = r["heard_bpm"], relation(r["heard_bpm"], written)
+    if fits(r, written):
+        alone = "" if rel == "matches" else f"; heard alone they read {heard:g} BPM ({rel}): the same groove counted another way"
+        return f"{doc}; the audio's beats fit it{alone}; {r['steadiness']}{drift}"
+    return f"{doc}; the audio's beats do NOT fit it: they read {r['bpm']} BPM ({rel}), {r['steadiness']}{drift}"

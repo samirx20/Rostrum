@@ -54,6 +54,8 @@ pub struct Ask {
     pub pitch_only: bool,
     pub range: (f64, f64),
     pub per_bar: usize,
+    /// The tempo the score says (`--expect-bpm`), weighed against what the sound repeats at (tempo.rs 3b).
+    pub expect: Option<f64>,
 }
 
 impl Ask {
@@ -70,6 +72,7 @@ impl Ask {
             pitch_only: flag("--pitch-only"),
             range: (num("--range", 0)?.unwrap_or(40.0), num("--range", 1)?.unwrap_or(2000.0)),
             per_bar: num("--beats-per-bar", 0)?.unwrap_or(4.0).max(1.0) as usize,
+            expect: num("--expect-bpm", 0)?,
         })
     }
 }
@@ -86,7 +89,7 @@ fn pitch_json(x: &[f32], sr: f64, range: (f64, f64)) -> (serde_json::Value, serd
 /// The whole analysis with the defaults (the tests' way in).
 #[cfg(test)]
 pub fn analyze(x: &[f32], sr: f64, with_notes: bool) -> serde_json::Value {
-    analyze_asked(x, sr, &Ask { notes: with_notes, pitch_only: false, range: (40.0, 2000.0), per_bar: 4 })
+    analyze_asked(x, sr, &Ask { notes: with_notes, pitch_only: false, range: (40.0, 2000.0), per_bar: 4, expect: None })
 }
 
 pub fn analyze_asked(x: &[f32], sr: f64, ask: &Ask) -> serde_json::Value {
@@ -104,7 +107,7 @@ pub fn analyze_asked(x: &[f32], sr: f64, ask: &Ask) -> serde_json::Value {
     // (measured on a click train: beats read 63 ms early without it).
     let lead = n1 - (1.2 * h1 as f64) as usize;
     let led: Vec<f32> = std::iter::repeat(0.0).take(lead).chain(x.iter().cloned()).collect();
-    let Tempo { bpm, first, clarity, beats, alternatives, unsure, downbeat } = tempo(&stft(&led, n1, h1), sr / h1 as f64, sr / n1 as f64, ask.per_bar);
+    let Tempo { bpm, first, clarity, beats, alternatives, unsure, downbeat, heard, expected } = tempo(&stft(&led, n1, h1), sr / h1 as f64, sr / n1 as f64, ask.per_bar, ask.expect);
     let chromas: Vec<[f64; 12]> = long.iter().map(|m| chroma(m, sr, n2)).collect();
     // Chords from the register they are voiced in (from A2 up): a loud bass note would read a triad as its root and fifth.
     let voiced: Vec<[f64; 12]> = long.iter().map(|m| chroma_in(m, sr, n2, 110.0, 2000.0)).collect();
@@ -170,7 +173,8 @@ pub fn analyze_asked(x: &[f32], sr: f64, ask: &Ask) -> serde_json::Value {
     let speech_in_mix = !speech_alone && crate::stretch::psola::speech_in_mix(&crate::stretch::psola::speech_features([x, x], sr));
     let mut out = serde_json::json!({
         "seconds": r(x.len() as f64 / sr, 2),
-        "tempo": { "bpm": r(bpm, 1), "firstBeat": r(first, 2), "clarity": r(clarity, 2), "halfAndDouble": [r(bpm / 2.0, 1), r(bpm * 2.0, 1)], "alternatives": alternatives.iter().map(|(b, s)| serde_json::json!([r(*b, 1), r(*s, 2)])).collect::<Vec<_>>(), "unsure": unsure.map(|u| r(u, 1)) },
+        "tempo": { "bpm": r(bpm, 1), "firstBeat": r(first, 2), "clarity": r(clarity, 2), "halfAndDouble": [r(bpm / 2.0, 1), r(bpm * 2.0, 1)], "alternatives": alternatives.iter().map(|(b, s)| serde_json::json!([r(*b, 1), r(*s, 2)])).collect::<Vec<_>>(), "unsure": unsure.map(|u| r(u, 1)), "heard": r(heard, 1),
+                   "expected": expected.map(|(b, fit)| serde_json::json!({ "bpm": r(b, 1), "support": r(fit, 2), "fits": fit >= crate::analysis::meter::FIT })) },
         "beats": beats.iter().map(|b| r(*b, 3)).collect::<Vec<_>>(),
         "downbeats": beats.iter().skip(downbeat.0).step_by(ask.per_bar).map(|b| r(*b, 3)).collect::<Vec<_>>(),
         "downbeatConfidence": r(downbeat.1, 2),

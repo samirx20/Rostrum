@@ -8,11 +8,13 @@ your call; the tools tell you where you are.
 track (instrument, notes / clips) → its effect chain → its fader and pan → sends to buses → bus chains → master
 (glue, reverb, master effects) → master volume → loudness normalize → true-peak limiter → file.
 
-- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a plain-named instrument or a drum kit start roughly balanced at the same volume for the part each suits (inspect_engine), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_sound` (`what: "levels"`): a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
+- **Tracks:** `track.set` for volume (gain 0 … 4, or in dB: `{"db": -6}`; tracks with a plain-named instrument or a drum kit start roughly balanced at the same volume for the part each suits (inspect_engine; kits and bass a few dB under, brass no louder than strings), so move a track for what the music needs (a lead 3 dB up, a pad 6 dB down) and check with `look_sound` (`what: "levels"`): a sound played outside its part (one loud chord on a glockenspiel) can be several dB off), pan, mute. **Buses:** `bus.add` (named "Group 1", "Group 2" … unless you give `name`; the id such as `bus_1` is internal) / `bus.set` (`output` routes a bus into another
   bus or the master). **Sends:** `send.add` on a track (`bus`, `level`, `pre` = before the fader).
 - **Effects:** `effect.add` on a track, bus or master (`effect` names the kind; every new effect starts valid and playable with its default settings: an EQ starts with one flat band (peak, 1000 Hz, 0 dB, q 1) that changes nothing until you move it, and settings depend on the kind: an EQ has `bands`,
   a compressor `threshold`, `ratio`, `attack`, `release`, `makeup`, `knee`, a reverb `space`, `mix`, `decay`).
-  `effect.set` changes one, `bypass` switches it off without losing settings. On screen an effect's amounts (mix,
+  `effect.set` changes one, `bypass` switches it off without losing settings. Every effect's settings with units and ranges
+  (compressor `threshold` dB as a plain number, `attack` / `release` in seconds, the reverb spaces, the master's `loudness`, `truePeak`, `fadeOut` …):
+  `inspect_engine`, and the table in `inspect_guide 'script'` ("Effects and the master"). On screen an effect's amounts (mix,
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_engine (what "plugins")).
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
@@ -85,7 +87,7 @@ ceiling, the mix is denser than the target allows: turn the loud parts down at t
 ## Checking (agents)
 
 1. `render_mix` (stems on). Its reply already has integrated LUFS, true peak and each track's level.
-2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the short-term curve as a picture, clipped moments.
+2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments.
 3. `look_sound` (`what: "levels"`): each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
 4. `look_sound` (`what: "clash"`): which two tracks fight in which frequency band, and when.
 5. `look_sound` (`what: "low_end"`): each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_sound` (`what: "stereo"`): balance and mono safety.
@@ -106,4 +108,6 @@ everything that reaches the master), `stems_add_up`, and the master's `master_ga
 `glue_max_reduction_db` and `limiter_max_reduction_db` (all already in the stems). Each stem's `loudness_lufs`,
 `true_peak_db`, `sample_peak_db` and `clipped_samples` are measured on the file written. The render reply's
 `warnings` (and the Export sheet's result line) say in words when a file was cut flat or the stems don't add up.
+**Ending a file:** a held note and its reverb stop at the song's `length`; `master(fadeOut=...)`, a later `length` and the `trim` option are in
+`inspect_guide 'script'` ("Ending a song"). `trim` only cuts below -80 dBFS and says `trimmed: false` when sound is still above that at the end.
 `render_mix` with `master: false` gives the mix before mastering, for someone else to master.

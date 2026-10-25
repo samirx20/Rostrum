@@ -6,7 +6,7 @@ track volumes sound balanced (a piano used to come out 10 dB under the drums at 
     preset_level.scaled(points, g)    # an automation lane's [[time, value], …] with every value times g (at most `cap`)
 
 The table is `library_data/preset_levels.json`, made by `devtools/level_match.py` (equal integrated loudness for one
-reference phrase per preset). It is part of the file format: songs saved before it hold their volumes offset by it
+reference phrase per preset) and moved by `mix_offsets.json` (drums and bass sit under, brass not over strings). It is part of the file format: songs saved before it hold their volumes offset by it
 (doc/migrations.py), so a changed number needs a new format step, never just a new table.
 """
 from __future__ import annotations
@@ -20,6 +20,8 @@ from .. import names
 DATA = Path(__file__).resolve().parents[1] / "library_data"
 TABLE = DATA / "preset_levels.json"
 FORMAT2 = DATA / "preset_levels_format2.json"      # the table songs of file format 2 were offset by (frozen: doc/migrations.py)
+FORMAT3 = DATA / "preset_levels_format3.json"      # the table songs of file format 3 were offset by (frozen: doc/migrations.py)
+OFFSETS = DATA / "mix_offsets.json"                 # starting-balance dB per preset, applied on top of the measurement
 FORMS = ("builtIn", "model", "synth", "kit")        # the instrument forms whose value names a preset
 
 

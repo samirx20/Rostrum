@@ -6,6 +6,7 @@ from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import library, names, packs, roles, userlib
+from . import engine_lists as L
 from ..userlib.kinds import OFFERED
 
 
@@ -23,26 +24,37 @@ def _instrument(args) -> dict:
 def register(tools: Tools):
     @tools.tool("inspect_engine", {"properties": {}})
     def inspect_engine(ctx, args):
-        """Every name the sound engine accepts: tones, reverb spaces, EQ shapes, the plain instrument names (recorded instruments, synth presets, classic.<name> synthesized voices), drum kits (drums, studio, classic) and names, drum names, effects with their fields and defaults; and which plain instrument suits which part (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`)."""
+        """Every name the sound engine accepts and every effect's settings, from the one list the checks use: reverb spaces, tones, EQ shapes, each effect's settings with default, range and unit (a compressor's threshold is a plain number in dB, attack and release are in seconds), the master's settings (loudness, truePeak, glue, fadeIn, fadeOut …), drum kits (drums, studio, classic) and drum names, and every instrument marked "recorded" (a sample recording) or "synthesized" (made by the engine: warmPad, subBass, pluck, choirPad, classic.*, the `model` instruments and the `synth` waves), with which part it suits (comp, bass, lead, pad, groove), where it sounds best and what it sounds like (`roles`). A name two forms share is two lines: `marimba` is the recording, `model:marimba` the modelled bar. There is no recorded pad; `warmPad` is synthesized."""
         d = ctx.app.state.engine.request("describe")
-        said = "; ".join(r["line"] for r in roles.rows())
+        made = L.made_by(d)
+        effects, master = L.effect_rows(), L.master_rows()
+        said = "; ".join(roles.line(k, made[k], short=True) for k in roles.ROLES)
         return Reply(f"Engine {d['engine']}, contract {d['contract']}: {len(d['builtIns'])} built-in instruments, "
-                     f"{len(d['effects'])} effect types, {len(d['spaces'])} reverb spaces. Which sound for which part: {said}.",
-                     {**d, "roles": roles.rows()})
+                     f"{len(effects)} effect types, {len(d['spaces'])} reverb spaces. "
+                     f"Reverb spaces: {', '.join(d['spaces'])}. Tones: {', '.join(d['tones'])}. EQ shapes: {', '.join(d['eqShapes'])}. "
+                     f"Effects, each setting as default (range) in its unit; a setting marked ~ also takes a list of [time, value] points: "
+                     + " | ".join(L.effect_line(t, r) for t, r in effects.items()) + ". "
+                     f"{L.master_line(master)}. "
+                     f"Instruments, each marked recorded or synthesized, with the parts it suits ({roles.parts_words()}), where it sounds best and what it is: {said}.",
+                     {**d, "effects": effects, "master": master, "roles": roles.rows(made)})
 
     @tools.tool("inspect_instrument", {"properties": {
-        "builtIn": {"type": "string"}, "model": {"type": "string"}, "synth": {"type": "string"},
+        "builtIn": {"type": "string", "description": "A plain instrument name (piano, marimba, warmPad …): the names inspect_engine lists without a prefix."},
+        "model": {"type": "string", "description": "A modelled instrument (guitar, nylonGuitar, marimba, vibraphone, glockenspiel, tubularBell, violin): synthesized."},
+        "synth": {"type": "string", "description": "A synth wave: saw, square, triangle or sine."},
         "sfz": {"type": "string", "description": "Absolute path to an .sfz file."},
-        "kit": {"type": "string", "enum": names.KITS}, "kitSfz": {"type": "string"}}})
+        "kit": {"type": "string", "enum": names.KITS, "description": "A drum kit: drums, studio or classic."},
+        "kitSfz": {"type": "string", "description": "Absolute path to an SFZ drum kit."}}})
     def inspect_instrument(ctx, args):
-        """What an instrument can play before you write for it: its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step."""
+        """What one instrument can play before you write for it: pass exactly ONE of builtIn, model, synth, sfz, kit, kitSfz (the argument is the form, its value the name: `builtIn: "marimba"`, `kit: "studio"`; there is no `name` argument). Gives its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step."""
         inst = _instrument(args)
         r = ctx.app.state.engine.request("range", instrument=inst)
         k = roles.key(inst)
-        said = f" {roles.line(k)}." if k in roles.ROLES else ""
+        made = L.made_by(ctx.app.state.engine.request("describe")).get(k)
+        said = f" {roles.line(k, made)}." if k in roles.ROLES else ""
         if k in roles.ROLES:
-            r = {**r, "role": roles.ROLES[k]._asdict()}
-        if r.get("low") and said and (inst.get("synth") or inst.get("builtIn") in names.SYNTHESIZED):
+            r = {**r, "role": roles.ROLES[k]._asdict(), "made": made}
+        if r.get("low") and made == "synthesized":
             return Reply(f"Synthesized: plays any key.{said}", r)
         if r.get("low"):
             gaps = f", {len(r['gaps'])} gaps" if r.get("gaps") else ""

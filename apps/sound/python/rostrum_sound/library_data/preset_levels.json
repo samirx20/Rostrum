@@ -1,5 +1,5 @@
 {
- "about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's loudness: equal track volumes sound balanced. Measured, not tuned by ear.",
+ "about": "Gain that brings each preset's reference phrase (devtools/level_match.py) to the median preset's loudness: equal track volumes sound balanced. Measured, then moved by mix_offsets.json (mixDb) to a sensible starting balance.",
  "referenceLufs": -20.44,
  "presets": {
   "builtIn:acousticGuitar": {
@@ -10,7 +10,8 @@
   "builtIn:bass": {
    "role": "bass",
    "lufs": -21.95,
-   "gain": 1.1893
+   "gain": 0.9447,
+   "mixDb": -2
   },
   "builtIn:basses": {
    "role": "bass",
@@ -25,7 +26,8 @@
   "builtIn:brass": {
    "role": "pad",
    "lufs": -24.26,
-   "gain": 1.553
+   "gain": 0.6183,
+   "mixDb": -8
   },
   "builtIn:cello": {
    "role": "lead",
@@ -125,7 +127,8 @@
   "builtIn:horn": {
    "role": "pad",
    "lufs": -20.99,
-   "gain": 1.0657
+   "gain": 0.7545,
+   "mixDb": -3
   },
   "builtIn:marimba": {
    "role": "lead",
@@ -175,7 +178,8 @@
   "builtIn:strings": {
    "role": "pad",
    "lufs": -19.26,
-   "gain": 0.8728
+   "gain": 1.2329,
+   "mixDb": 3
   },
   "builtIn:subBass": {
    "role": "bass",
@@ -190,12 +194,14 @@
   "builtIn:trombone": {
    "role": "pad",
    "lufs": -25.74,
-   "gain": 1.8409
+   "gain": 1.0352,
+   "mixDb": -5
   },
   "builtIn:trumpet": {
    "role": "lead",
    "lufs": -13.02,
-   "gain": 0.4256
+   "gain": 0.3013,
+   "mixDb": -3
   },
   "builtIn:tuba": {
    "role": "bass",
@@ -250,12 +256,14 @@
   "kit:drums": {
    "role": "groove",
    "lufs": -19.54,
-   "gain": 0.9016
+   "gain": 0.6383,
+   "mixDb": -3
   },
   "kit:studio": {
    "role": "groove",
    "lufs": -22.72,
-   "gain": 1.3
+   "gain": 0.7744,
+   "mixDb": -4.5
   },
   "model:glockenspiel": {
    "role": "lead",

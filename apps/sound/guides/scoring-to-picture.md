@@ -72,8 +72,11 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
   screen, select nothing: the settings panel lists every tempo, time signature and key change; **+ Time signature
   change** adds one on the bar line nearest the playhead (a change always starts a whole bar: `meter.add` / `meter.set`
   off a bar line is refused, naming the nearest bar lines) and its panel has **Beats per bar** and **Beat unit**.
-- To make a downbeat fall on a moment, work out the tempo from the gap: beats between two moments ÷ seconds between
-  them × 60 = bpm. Check it with `look_music` (`what: "beats"`) (below) rather than trusting the arithmetic.
+- **To make a bar line fall on a marker, use `tempo.fit_bar`** (`edit_document`): `{"op": "tempo.fit_bar", "args": {"marker": "logo lands", "bar": 13}}`
+  sets the tempo so bar 13 starts exactly on the marker "logo lands" (everything written in beats follows). The marker must be
+  placed in seconds (the picture's, or one from 2D; a marker on a beat is refused), and `bar` is 2 or more. Checked: a marker at 25.0 s with
+  `bar: 13` turned a 96 bpm song into 115.2 bpm (12 bars of 4 beats in 25 s). With a tempo change before that bar, the tempo in force
+  at that bar is the one set. Check the result with `look_arrangement` and `look_music` (`what: "beats"`).
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),
   `section.move` (`by`) moves a section and everything in it.
 - Things placed in beats move when the tempo changes; things placed on markers or in seconds stay with the picture.
@@ -88,7 +91,7 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
    when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,
    and the mix's own nearest onset.
-4. `look_music` (`what: "beats"`) shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
+4. `look_music` (`what: "beats"`) says whether the audio's beats fit the document's tempo, and shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
 5. `look_sound` (`what: "spectrum"`) with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 
 Read onset times as measurements: a soft sound reads 10–30 ms late. Whether a sound *fits* the image is decided by a

@@ -19,6 +19,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
   leading, bass motion, melody and motif, groove, arranging by register, dynamics, the performance layer, and checking
   without ears. Its tools (chords from numerals, voicings, comping, bass lines, arpeggios, drum patterns and fills,
   developing a line) are in [writing-music-tools.md](writing-music-tools.md).
+- **[start-here](start-here.md): the order of work, the exact `run_script` call, naming rules and units.** What `inspect_guide 'start-here'` reads.
 - [writing-parts.md](writing-parts.md): writing notes and parts.
 - [scoring-to-picture.md](scoring-to-picture.md): scoring against a picture and shared markers.
 - [scoring-motion.md](scoring-motion.md): answering movement in the picture with instruments.

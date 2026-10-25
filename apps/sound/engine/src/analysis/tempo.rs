@@ -22,6 +22,11 @@ pub struct Tempo {
     pub unsure: Option<f64>,
     /// Which beat (0 … per_bar−1) the bars start on, and how much stronger it lands than the average (1 = no lead).
     pub downbeat: (usize, f64),
+    /// The tempo read from the sound alone, before any expected tempo was weighed (= `bpm` without one).
+    pub heard: f64,
+    /// The tempo the score says, when asked (`--expect-bpm`): (that bpm, how clearly the sound repeats at it
+    /// against the reading heard alone, 1 = as clearly). At `meter::FIT` or more the beats follow it.
+    pub expected: Option<(f64, f64)>,
 }
 
 /// Spectral flux of the frames (bins `lo .. hi`): the onset strength. The first frame counts from silence.
@@ -116,7 +121,7 @@ impl Onsets {
 
     /// The period that lines a grid up best with the onsets over the whole recording, within ±3 %
     /// of `period` (the autocorrelation reads it to a frame; forty beats pin it to a hundredth).
-    fn refine(&self, period: f64) -> f64 {
+    pub fn refine(&self, period: f64) -> f64 {
         let at = |t: f64| {
             let (i, f) = (t.floor() as usize, t.fract());
             let v = |j: usize| self.o.get(j).copied().unwrap_or(0.0) + 2.0 * self.low.get(j).copied().unwrap_or(0.0);
@@ -138,8 +143,9 @@ impl Onsets {
     }
 }
 
-/// Tempo from the fine spectra (`frame_rate` frames a second, `bin_hz` per bin).
-pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64, per_bar: usize) -> Tempo {
+/// Tempo from the fine spectra (`frame_rate` frames a second, `bin_hz` per bin). `expect`: the tempo the score
+/// says (the song's tempo map), weighed against the reading heard alone (meter::expected).
+pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64, per_bar: usize, expect: Option<f64>) -> Tempo {
     let on = Onsets::new(spec, frame_rate, bin_hz);
     let zero = on.o.iter().map(|v| v * v).sum::<f64>().max(1e-12);
     let pref = |bpm: f64| if (70.0..=180.0).contains(&bpm) { 1.0 } else { (-0.5 * ((bpm / bpm.clamp(70.0, 180.0)).log2() / 0.35).powi(2)).exp() };
@@ -157,7 +163,13 @@ pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64, per_bar: usize) ->
     // 2. Pinned by the grid over the whole piece.
     let period = on.refine(best.0);
     // 3. The metrical level.
-    let Choice { period, unsure } = meter::choose(&on, period);
+    let Choice { period: heard, unsure } = meter::choose(&on, period);
+    // 3b. The score's tempo, when given and the sound keeps it: the beats follow it, not a related level.
+    let expected = expect.filter(|x| (40.0..=240.0).contains(x)).map(|x| (x, meter::expected(&on, heard, x)));
+    let (period, unsure) = match expected {
+        Some((_, (p, fit))) if fit >= meter::FIT => (p, None),
+        _ => (heard, unsure),
+    };
     let bpm = on.bpm(period);
     let mut alternatives: Vec<(f64, f64)> = [0.5, 2.0, 2.0 / 3.0, 1.5, 0.75, 4.0 / 3.0]
         .iter()
@@ -211,7 +223,8 @@ pub fn tempo(spec: &[Vec<f64>], frame_rate: f64, bin_hz: f64, per_bar: usize) ->
     let mean = |k: usize| { let v: Vec<f64> = hit.iter().skip(k).step_by(per_bar).cloned().collect(); v.iter().sum::<f64>() / v.len().max(1) as f64 };
     let best = (0..per_bar.min(beats.len().max(1))).max_by(|&a, &b| mean(a).total_cmp(&mean(b))).unwrap_or(0);
     let all = (0..per_bar).map(mean).sum::<f64>() / per_bar as f64;
-    Tempo { bpm, first: phase / frame_rate, clarity: (on.ac(period) / zero).clamp(0.0, 1.0), beats, alternatives, unsure, downbeat: (best, mean(best) / all.max(1e-12)) }
+    Tempo { bpm, first: phase / frame_rate, clarity: (on.ac(period) / zero).clamp(0.0, 1.0), beats, alternatives, unsure, downbeat: (best, mean(best) / all.max(1e-12)),
+            heard: on.bpm(heard), expected: expected.map(|(x, (_, fit))| (x, fit)) }
 }
 
 #[cfg(test)]

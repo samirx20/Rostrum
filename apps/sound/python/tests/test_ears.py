@@ -45,3 +45,17 @@ def test_over_full_scale_clips_only_in_a_fixed_point_file(tmp_path):
     flags = {f["stem"]: f for f in listen.levels({"f": str(tmp_path / "f.wav"), "i": str(tmp_path / "i.wav")})["flags"]}
     assert flags["f"]["flag"] == "over full scale" and flags["f"]["clips"] is False
     assert flags["i"]["flag"] == "clips" and flags["i"]["clips"] is True
+
+
+def test_a_chord_is_checked_note_by_note_never_a_false_wrong_octave(tmp_path):
+    """Guard: on a part playing chords each written note is looked for on its own: a right chord reads all ok (the
+    pitch line named one note and called the rest wrong octaves), a note not played reads missing, one played an
+    octave up reads wrong_octave."""
+    from rostrum_sound.ears import chords_heard
+    t = np.arange(int(2.0 * SR)) / SR
+    tone = lambda m: sum(0.1 / h * np.sin(2 * np.pi * h * 440 * 2 ** ((m - 69) / 12) * t) for h in (1, 2, 3))  # noqa: E731
+    sf.write(tmp_path / "c.wav", (tone(60) + tone(64) + tone(82)).astype("float32"), SR)   # C4 E4 and Bb5 (Bb4 an octave up)
+    row = lambda midis: {"id": "n", "start": 0.0, "end": 2.0, "midis": midis}  # noqa: E731
+    assert chords_heard.polyphonic([row([60, 64])])
+    got = {r["written"]: r["status"] for r in chords_heard.check(tmp_path / "c.wav", [row([60, 64, 70, 69])])["rows"]}
+    assert got == {"C4": "ok", "E4": "ok", "A#4": "wrong_octave", "A4": "missing"}, got
