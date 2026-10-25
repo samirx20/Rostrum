@@ -53,7 +53,7 @@ Panel {
                 grid: grid; bars: bars; flick: view; kind: p.kind; trackId: p.roll.id
                 onMenuAt: (entries, px, py) => { rollMenu.entries = entries; var q = input.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
             }
-            Component.onCompleted: centre()
+            Component.onCompleted: frameLater()
             // The keys shown follow the notes (the top key = the highest note + 4), so an edit that moves that edge
             // would slide every row under the pointer. Only the person moves the view: the top key's shift is
             // taken out of the scroll, so every row stays where it was.
@@ -65,6 +65,10 @@ Panel {
                     contentY = Math.max(0, Math.min((p.roll.hi - p.roll.lo + 1) * grid.rowH - height, contentY + (topKey - seenHi) * grid.rowH))
                 seenHi = topKey
             }
+            // Framed once every binding has caught up with the change: another track reaches this view and the grid
+            // (its rows, its row height) in no set order, and framing in between read the last track's rows (after the
+            // drums, the piano opened on the drums' rows: empty keys). Several reasons in one change frame it once.
+            function frameLater() { Qt.callLater(centre) }
             function centre() {   // framed on the notes: the rows fit them all (grid.frame), the view centred on them
                 seenHi = p.roll.hi; seenShown = shown
                 var ks = [], b = p.blocks
@@ -78,9 +82,9 @@ Panel {
                 grid.frame(grid.rowOf(lo) - grid.rowOf(hi) + 1)
                 contentY = Math.max(0, Math.min(contentHeight - height, ((grid.rowOf(hi) + grid.rowOf(lo)) / 2 + 0.5) * grid.rowH - height / 2))
             }
-            onHeightChanged: centre()
+            onHeightChanged: frameLater()
             readonly property string shown: p.roll.id + "/" + p.kind + (grid.shownKeys ? "/rows" : "")      // another track (or kind): framed again
-            onShownChanged: centre()
+            onShownChanged: frameLater()
         }
         Repeater {   // marker lines; by count: a tempo drag moves them without making them again
             model: p.marks.length
