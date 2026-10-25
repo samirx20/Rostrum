@@ -93,7 +93,7 @@ def _param_row(p) -> dict:
 
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
-             opened=(), query: str = "", elsewhere=frozenset(), starts=None) -> list[dict]:
+             opened=(), query: str = "", elsewhere=frozenset(), starts=None, step: bool = False) -> list[dict]:
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is.
@@ -101,8 +101,12 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     group with no choice is open when a value in it differs from its default and from `starts` (the values this kind
     may start with instead, bridge.starts: a text placed by the Text tool starts at its top-left). A non-blank `query` keeps only matches.
     `elsewhere`: params the screen shows in another place (bridge.on_page); here they count as not applying, so a
-    group is never opened or named for them alone."""
+    group is never opened or named for them alone. `step`: a drag's step, whose rows keep what shows and what is open
+    as at the press (bridge_select._step_rows): only the values are worked out (the rest of a busy panel cost a
+    canvas drag ~2 ms on every pointer move)."""
     picks = {r["id"]: choices(r["id"]) if choices else [] for r in static if r.get("control") == "pick"}
+    if step:
+        return [_values(dict(r), item, anim, expr, choices, picks) for r in static]
     ok = {r["id"]: holds(r["valid_when"], item, facts) and _shown(r, item) and (r["id"] not in picks or bool(picks[r["id"]])
                                                                                 or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
@@ -117,24 +121,39 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
             r["names"] = [{"group": f["fold"], "label": f["label"], "changed": f["fold"] in opened.changed,
                            "switch": f.get("switch", "")} for f in static
                           if "fold" in f and f["fold"] not in opened and any(ok[m] for m in f["members"])]
+        _values(r, item, anim, expr, choices, picks)
         if r["row"] == "param":
-            r["value"] = item.get(r["id"], r["default"])
-            r["anim"] = anim(r["id"]) if anim else ""
-            r["expr"] = expr(r["id"]) if expr else ""
-            if r["type"] == "list" and r["item"] != "choice":
-                r["options"] = choices(r["id"]) if choices else []
-            if r["id"] in picks:
-                r["type"], r["control"] = "choice", ""
-                none = [{"value": "", "label": next((w["label"] for w in r["words"] if w["value"] == ""), "None")}]
-                r["options"] = (none if r["default"] == "" else []) + picks[r["id"]]
             r["holds"] = ok[r["id"]]
             r["valid"] = ok[r["id"]] and _open(r, more_open, opened, query) and "switches" not in r
         else:
-            r["value"], r["anim"], r["expr"] = None, "", ""
             r["holds"] = any(ok[m] for m in r["members"])
         out.append(r)
     pair_valid(out, item)
     return _headers(out)
+
+
+def _values(r: dict, item: dict, anim, expr, choices, picks) -> dict:
+    """A row's value, key state, expression and choices (what a drag's step changes). Shown and open read as at the
+    press until the caller puts back what it held (a fold "open", the folds row's names: empty, the row there)."""
+    if r["row"] == "param":
+        r["value"] = item.get(r["id"], r["default"])
+        r["anim"] = anim(r["id"]) if anim else ""
+        r["expr"] = expr(r["id"]) if expr else ""
+        if r["type"] == "list" and r["item"] != "choice":
+            r["options"] = choices(r["id"]) if choices else []
+        if r["id"] in picks:
+            r["type"], r["control"] = "choice", ""
+            none = [{"value": "", "label": next((w["label"] for w in r["words"] if w["value"] == ""), "None")}]
+            r["options"] = (none if r["default"] == "" else []) + picks[r["id"]]
+    else:
+        r["value"], r["anim"], r["expr"] = None, "", ""
+    r.setdefault("holds", True)
+    r.setdefault("valid", True)
+    if "fold" in r:
+        r.setdefault("open", None)
+    if r["row"] == "folds":
+        r.setdefault("names", [])
+    return r
 
 
 def _shown(r: dict, item: dict) -> bool:

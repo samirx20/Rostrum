@@ -5,7 +5,7 @@ keys of one setting, clicked on an item's line. Its item is the selection; the s
 `backend.stretch`.
 
 What differs per app is a small subclass (2D: screen2d/stretch_select.py; 3D: screen3d/stretch3d.py):
-`animations(owner_id)` (in the app's names and time), `key(id)` (a key as placed in that time), `own_t(owner_id, t)`
+`animations(owner_id)` (in the app's names and time), `state()` (what they are worked out from), `key(id)` (a key as placed in that time), `own_t(owner_id, t)`
 (a time back in the owner's own seconds), `fps()`, `owner_label(item)`, `param(type, prop)`, `picked_items()` (the
 items selected now) and `let_keys_go()` (picked keys let go when a stretch is picked).
 The changes themselves (ease, start, length, values, reverse, delete, curve handles) are in stretch_edits.py.
@@ -16,7 +16,8 @@ from PySide6.QtCore import Property, Signal, Slot
 from rostrum_core.keys import ease as ease_at, springs
 from rostrum_core.keys.anims import PRESET_LABELS, PRESETS
 
-from . import eases
+from . import eases, news
+from .per_state import PerState
 from .stretch_edits import StretchEdits
 
 
@@ -26,6 +27,10 @@ class StretchSelect(StretchEdits):
     # ---- the app's part (override) ------------------------------------------------------------------------------
     def animations(self, owner_id: str) -> list[dict]:
         raise NotImplementedError
+
+    def state(self):
+        """What `animations` are worked out from: a new object whenever they may differ (the document's data)."""
+        return self.b.doc.data
 
     def key(self, key_id: str) -> dict:
         return self.b.doc.item(key_id)
@@ -51,15 +56,20 @@ class StretchSelect(StretchEdits):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._owner, self._ids, self._own, self._drag = bridge, "", [], False, None
+        self._kept = PerState()
         bridge.selectedItemsChanged.connect(self._followed)
+        told = news.relay(self)          # only news: every timeline key re-read `picked` on every step of any drag
         for sig in (bridge.docChanged, bridge.docStepped):     # the curve follows its handle's drag live
-            sig.connect(self.changed)
+            sig.connect(told)
 
     # ---- what is picked -----------------------------------------------------------------------------------------
     def _found(self):
-        """(animation, stretch) picked now, from the app's animations of the item; None if gone."""
+        """(animation, stretch) picked now, from the app's animations of the item; None if gone. Once per state."""
         if not self._ids or not self.b.doc.has(self._owner):
             return None
+        return self._kept.read((self.state(), self._owner, tuple(self._ids)), "found", self._look)
+
+    def _look(self):
         for a in self.animations(self._owner):
             for s in a["stretches"]:
                 if set(s["ids"]) & set(self._ids):
@@ -82,6 +92,9 @@ class StretchSelect(StretchEdits):
         f = self._found()
         if not f:
             return {}
+        return self._kept.read((self.state(), self._owner, tuple(self._ids)), "info", lambda: self._info(f))
+
+    def _info(self, f):
         a, s = f
         owner = self.b.doc.item(self._owner)
         key = self.key(s["ids"][0])

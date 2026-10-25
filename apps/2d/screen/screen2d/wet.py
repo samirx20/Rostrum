@@ -108,7 +108,7 @@ class WetView(QObject):
                 self.provider.put("dry", got[0])
                 self._dry_serial, self._dry_box = self._dry_serial + 1, got[1]
         got = self._ink.tip()
-        if got is not None:
+        if got is not None and got[0] is not self.provider.picture("tip"):     # (unchanged: the same picture)
             self.provider.put("tip", got[0])
             self._serial, self._box = self._serial + 1, got[1]
         if self._copies_of is not None:

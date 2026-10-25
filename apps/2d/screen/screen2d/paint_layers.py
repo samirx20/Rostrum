@@ -33,15 +33,22 @@ class PaintLayers(QObject):
         self.b, self._picked, self._drag = bridge, "", None
         self.fresh_each = False                           # Draw each frame, asked for before the first stroke makes the drawing
         self.thumbs = ThumbProvider()                     # image://paintthumbs (session.py)
-        self.thumbs.notes.ready.connect(self.changed)      # a thumbnail drawn off the GUI thread: the list shows it
-        for sig in (bridge.docChanged, bridge.outlineChanged, bridge.toolChanged, bridge.frameChanged):
-            sig.connect(self.changed)
+        self.thumbs.notes.ready.connect(self._tell)        # a thumbnail drawn off the GUI thread: the list shows it
+        for sig in (bridge.docChanged, bridge.outlineChanged, bridge.frameChanged):
+            sig.connect(self._tell)
+        bridge.toolChanged.connect(self.changed)           # Draw on: the panel reads it all afresh
         bridge.painter.changed.connect(self._painter_changed)
+
+    def _tell(self):
+        """Told only while Draw is on: the panel is shown only then (a layer dragged with Move re-ran its rows at each
+        move); Draw coming on tells it once (toolChanged)."""
+        if self.b.tool == "draw":
+            self.changed.emit()
 
     def _painter_changed(self):
         if self.b.painter.newLayerNext:                   # + Paint layer: the new layer (on top) takes the next strokes
             self._picked = ""
-        self.changed.emit()
+        self._tell()
 
     # ---- what is painted on ---------------------------------------------------------------------------------------
     def _item(self) -> dict | None:

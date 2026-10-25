@@ -27,17 +27,27 @@ def check(brush, params):
     pictures.tip(params.get("texture", "none"))     # an unknown or missing picture fails here, naming itself
 
 
-def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, **params):
+def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=None, paper=None, lay=None, carry=None,
+                 **params):
     """Paint one stroke into `layer` (HxWx4 premultiplied float32, changed in place).
 
     points: (x, y[, pressure[, tilt x°, tilt y°]]) in layer pixels. mask: HxW 0..1 or None. under: HxWx3
     composite below this layer, needed for `sample_all=True`. lay: what lays the dabs (`dabs`, or the native
-    stamper's). Returns Coverage (or None if the stroke is entirely off the layer)."""
+    stamper's). carry: HxW float32, the coverage the stroke already laid (a stroke drawn in pieces, as the wet ink
+    does: each piece goes on where the last left off, so where they overlap nothing is laid twice); updated in place.
+    Returns Coverage (or None if the stroke is entirely off the layer)."""
     check(brush, params)
     if params.get("sample_all") and under is None:
         raise ValueError("sample_all=True needs the composite below the layer (under=...)")
     P = plan(layer.shape[:2], points, color, size, brush, paper, params)
-    return None if P is None else (lay or dabs)(layer, P, mask, under)
+    if P is None:
+        return None
+    if carry is None:
+        return (lay or dabs)(layer, P, mask, under)
+    bx0, by0, bx1, by1 = P.bbox
+    got = (lay or dabs)(layer, P, mask, under, np.ascontiguousarray(carry[by0:by1, bx0:bx1], np.float32))
+    carry[by0:by1, bx0:bx1] = got.a
+    return got
 
 
 def plan(shape, points, color, size, tip, paper, params):
@@ -57,11 +67,7 @@ def plan(shape, points, color, size, tip, paper, params):
     if p["even"] and tip not in ("line", "block"):   # a soft edge shows the dabs as ridges unless they come closer
         r0 = size / 2
         step = min(step, max(0.5, EVEN * math.sqrt(r0 * max(1.0, (1 - p["hardness"]) * r0))))
-    t = [0.0]
-    while t[-1] < L[-1]:
-        pr = np.interp(t[-1], L, pts[:, 2])
-        t.append(t[-1] + max(0.3, step * (1 - sp * (1 - pr)) * shaping.step_scale(t[-1], L[-1], size, p)))
-    t = np.minimum(np.array(t), L[-1])
+    t = np.minimum(np.array(_spacing(L, pts[:, 2], step, sp, size, p)), L[-1])
     X, Y, Pr = (np.interp(t, L, pts[:, k]) if L[-1] > 0 else pts[:1, k] for k in range(3))
     S = t / L[-1] if L[-1] > 0 else np.zeros(1)
     n = len(t)
@@ -132,6 +138,25 @@ def plan(shape, points, color, size, tip, paper, params):
                            again=again)
 
 
+def _spacing(L, pressure, step, sp, size, p) -> list:
+    """Where the dabs go along the path (px from its start): one each `step`, closer where the pressure thins the tip
+    (size_pressure `sp`) and where the taper does. One walk along the path, a dab at a time in plain floats: the
+    pressure there is read as np.interp would, without its cost per dab (a long stroke has thousands)."""
+    Ls, ps, total = L.tolist(), pressure.tolist(), float(L[-1])
+    last, flat, j = len(Ls) - 1, all(v == ps[0] for v in ps), 0
+    t = [0.0]
+    while t[-1] < total:
+        x = t[-1]
+        if flat:
+            pr = ps[0]
+        else:
+            while j < last and Ls[j + 1] <= x:
+                j += 1
+            pr = ps[j] if j == last or Ls[j] == x else (ps[j + 1] - ps[j]) / (Ls[j + 1] - Ls[j]) * (x - Ls[j]) + ps[j]
+        t.append(x + max(0.3, step * (1 - sp * (1 - pr)) * shaping.step_scale(x, total, size, p)))
+    return t
+
+
 def _hsv_to_rgb(h, s, v):
     """colorsys.hsv_to_rgb over arrays, step for step (the same numbers)."""
     i = np.trunc(h * 6.0)
@@ -154,13 +179,15 @@ def _texture(T, u, v):
             + (T[y0 + 1, x0] * (1 - gx) + T[y0 + 1, x0 + 1] * gx) * gy)
 
 
-def dabs(layer, P, mask=None, under=None):
-    """Lays a planned stroke's dabs into `layer` (numpy); its Coverage."""
+def dabs(layer, P, mask=None, under=None, cov=None):
+    """Lays a planned stroke's dabs into `layer` (numpy); its Coverage. `cov`: the stroke's coverage so far over its
+    bbox (stamp_stroke's `carry`), else none yet."""
     H, W = layer.shape[:2]
     tip, wet, cj, soft, G, F, R, t, S = P.tip, P.wet, P.cj, P.soft, P.G, P.F, P.R, P.t, P.S
     prof, start, end, streak, Kr = P.prof, P.start, P.end, P.streak, P.Kr
     bx0, by0, bx1, by1 = P.bbox
-    cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)  # max coverage so far in this stroke
+    if cov is None:
+        cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)  # max coverage so far in this stroke
     D, res = P.D, None
     under0 = layer[by0:by1, bx0:bx1].copy() if P.mode in UNDER else None   # what was under the stroke
     for i in range(P.n):
