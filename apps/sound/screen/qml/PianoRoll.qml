@@ -12,7 +12,8 @@ Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
     readonly property var marks: backend.markers            // one read per change (each read copies the list)
-    readonly property var blocks: patched || Blocks.parse(backend.rollBlocks)    // its notes / hits / clips, sent alone (an edit on them)
+    readonly property var sent: patched || Blocks.parse(backend.rollBlocks)      // its notes / hits / clips, sent alone (an edit on them)
+    readonly property var blocks: Blocks.timed(sent, bars.placing)        // in seconds (a tempo change: here only)
     property var patched: null                              // a few of them changed since (backend.rollPatched)
     Connections {
         target: backend

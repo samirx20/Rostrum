@@ -3,6 +3,8 @@ its layout (`roll`) and its blocks (`rollBlocks`, JSON text: block_patch.py) eac
 changed blocks as a patch (`rollPatched`), the selected ones (`rollPicked`), the playing lane (`rollPlayed`)."""
 from __future__ import annotations
 
+from PySide6.QtCore import Property, Signal
+
 from . import block_patch, drum_rows, key_lock, lanes, timeline
 
 
@@ -12,6 +14,20 @@ def shape(part: dict) -> dict:
 
 
 class RollView:
+    blocksTempoChanged = Signal()
+
+    @Property("QVariantList", notify=blocksTempoChanged)
+    def blocksTempo(self):
+        """The tempo map the rows' and the roll's blocks placed in beats are shown by (Blocks.js `timed`): the song's,
+        except during a drag's steps, when the ruler follows at once and the blocks once the pointer rests or at the
+        drop (re-timing and painting every block on each move cost ~200 ms a move)."""
+        return self.__dict__.get("_placing", [])
+
+    def _place_by(self, song: dict):
+        if song["tempoMap"] != self.__dict__.get("_placing"):
+            self.__dict__["_placing"] = song["tempoMap"]
+            self.blocksTempoChanged.emit()
+
     def _show_roll(self):
         """The Editor shows another track: only the roll is made again, the arrangement's rows stay (rebuilding every
         row on a click cost ~250 ms on a 16-track song, S59)."""

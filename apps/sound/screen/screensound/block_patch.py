@@ -43,9 +43,19 @@ def apply(blocks: list, gone: list, put: list) -> list:
     return out + [b for b in put if b["id"] in by]
 
 
+def seen(b: dict) -> dict:
+    """A block as the screen receives it: one placed in beats (timeline.in_beats: "atBeat", "endBeat") without its seconds,
+    which the screen works out from the song's tempo map (Blocks.js `timed`), so a tempo change leaves its text as
+    it was and its row is not sent again."""
+    if "atBeat" not in b:
+        return b
+    drop = ("t", "dur") if "endBeat" in b else ("t",)
+    return {k: v for k, v in b.items() if k not in drop}
+
+
 def text(blocks: list) -> str:
     """A whole list of blocks as the screen receives it (JSON; fails loudly on anything that is not plain data)."""
-    return json.dumps(blocks, separators=(",", ":"), allow_nan=False)
+    return json.dumps([seen(b) for b in blocks], separators=(",", ":"), allow_nan=False)
 
 
 class Texts:

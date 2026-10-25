@@ -14,7 +14,7 @@ from rostrum_sound import clean_clips, names, roles, voice_lines
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
-from rostrum_sound.doc import meter, times
+from rostrum_sound.doc import meter, tempo, times
 
 from . import groups, lanes, music_map, pick, timing
 from . import block_memo
@@ -67,18 +67,31 @@ def in_key_then(k: int, key) -> bool:
     return key is None or K.parse(key) is None or K.in_key(k, key)
 
 
+def in_beats(item: dict, length=None) -> dict:
+    """Where an item placed in beats is, in beats: {"atBeat": start} (and "endBeat": its end, when its `length` is in beats too).
+    The screen places these through the tempo map itself (Tempo.js): a tempo change re-times them there, and their
+    rows are not sent again (block_patch.text). Anything else ({}): its seconds."""
+    at = item.get("at")
+    if type(at) is not dict or "beat" not in at:
+        return {}
+    b = float(at["beat"])
+    if length is None:
+        return {"atBeat": b}
+    return {"atBeat": b, "endBeat": b + float(length["beats"])} if type(length) is dict and "beats" in length else {}
+
+
 def note_block(n, root):
     ks = timing.keys(n["pitch"])
     t = timing.sec(n["at"], root, n["id"])
     key = K.key_at(root, t)                     # spelled in the key playing there (Bb in D minor, not A#)
     label = " ".join(timing.name(k, key) for k in ks)
     return {"id": n["id"], "type": "note", "t": t, "dur": timing.length_sec(n["dur"], root, t, n), "keys": ks, "names": [timing.name(k, key) for k in ks], "label": label, "vel": n.get("vel", 0.8),
-            "out": [not in_key_then(k, key) for k in ks]}
+            "out": [not in_key_then(k, key) for k in ks], **in_beats(n, n["dur"])}
 
 
 def hit_block(h, root):
     return {"id": h["id"], "type": "hit", "t": timing.sec(h["at"], root, h["id"]), "dur": HIT_SECONDS,
-            "drum": str(h["drum"]), "label": str(h["drum"]), "vel": h.get("vel", 0.85)}
+            "drum": str(h["drum"]), "label": str(h["drum"]), "vel": h.get("vel", 0.85), **in_beats(h)}
 
 
 def tie_of(item: dict) -> dict | None:
@@ -282,7 +295,8 @@ def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = 
     length = song_length(root, made, marks, memo)
     return {"length": length, "spb": timing.spb(root), "beatsPerBar": meter.start_per_bar(root),
             "beatUnit": meter.start_unit(root), "barBeats": meter.start_bar(root),
-            "tempo": float(root.get("tempo", 120)), **music_map.grid(root, length)}
+            "tempo": float(root.get("tempo", 120)), "tempoMap": [list(s) for s in tempo.segments(root)],   # (Tempo.js)
+            **music_map.grid(root, length)}
 
 
 def _sounds_best(track: dict) -> list[int]:

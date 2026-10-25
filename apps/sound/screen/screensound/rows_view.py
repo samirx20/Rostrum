@@ -16,6 +16,10 @@ clock moved, so every block is made again) shows the song's own parts at once (t
 sections, the markers: `_clock_step`), and the rows when the pointer rests (REST_MS without a step) and at the drop,
 never on each move: making and sending every block cost ~400 ms a move on a 3-minute 8-track song, so the tempo
 being dragged stuck.
+The blocks placed in beats go to the screen in beats (block_patch.seen) and are re-timed there from the tempo map
+the rows were made under (`blocksTempo`, Blocks.js `timed`, Tempo.js): a change of the tempo makes the rows here
+again (every reader of `rows_now` needs their seconds) but sends only the rows whose text changed (clips in seconds),
+and the screen re-times and paints the rest itself (sending every row again cost ~150-250 ms).
 """
 from __future__ import annotations
 
@@ -105,6 +109,7 @@ class RowsView(RollView):
             self.pictureChanged.emit()
         if marks != old.get("markers"):
             self.markersChanged.emit()
+        self._place_by(song)
         self._send_rows(rows, None)                 # after: `tracks` is new for the rows made
         self._send_roll(self._roll(rows))           # its blocks, then its layout, each only when it changed
 
@@ -138,6 +143,7 @@ class RowsView(RollView):
             self._view["song"] = timeline.song(root, tracks, self._view["markers"], self._memo)   # the rest follows the tempo
             self._tv.setLength(self._length())
             self.songChanged.emit()
+            self._place_by(self._view["song"])
         if same:            # (the rows draw nothing of it, but the Editor's playing lane may: a point added or dragged)
             if self._track in changed:
                 self._played_again(root)
