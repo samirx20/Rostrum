@@ -11,6 +11,7 @@ Item {
     id: tr
     objectName: "timeBox"
     property bool typing: false
+    z: typing ? 2 : 0                   // the open box draws over the buttons beside it
     implicitWidth: label.implicitWidth + 2 * Theme.grid
     implicitHeight: Math.max(label.implicitHeight, Theme.field)
     function ask() { typing = true; box.input.forceActiveFocus(); box.input.selectAll() }
@@ -27,7 +28,9 @@ Item {
     FieldFrame {
         id: box
         objectName: "timeField"
-        anchors.fill: parent; visible: tr.typing
+        height: parent.height; visible: tr.typing; z: 1     // grows over its neighbours while a longer time or a marker's name is typed
+        width: Math.min(220, Math.max(parent.width, typed.advanceWidth(box.input.text) + box.input.x + 2 * Theme.gap + 4))   // the caret and the right edge too
+        FontMetrics { id: typed; font: box.input.font }     // read, not laid out: the width never feeds back into itself
         text: label.text; editable: true; keepOnRefusal: true
         onCommitted: (t) => {
             const r = VK.read("time", t, { t: backend.time, fps: backend.frameInfo.fps || 30, duration: backend.frameInfo.duration || 0,

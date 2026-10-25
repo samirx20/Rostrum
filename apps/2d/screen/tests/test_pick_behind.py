@@ -15,6 +15,7 @@ shape("bottom", w=300, h=300, x=400, y=300, anchorX=0, anchorY=0, fill="#445566"
 shape("middle", w=300, h=300, x=450, y=350, anchorX=0, anchorY=0, fill="#667788")
 shape("top", w=300, h=300, x=500, y=400, anchorX=0, anchorY=0, fill="#8899aa")
 shape("alone", w=100, h=100, x=1200, y=300, anchorX=0, anchorY=0, fill="#aa6644")
+shape("ledge", w=50, h=50, x=1600, y=329, anchorX=0, anchorY=0, fill="#556644")   # an edge a copy started 24 px off would snap to
 '''
 
 
@@ -81,6 +82,7 @@ def test_alt_drag_makes_one_copy_and_leaves_the_original(screen):
         assert b.doc.item("alone")["x"] == 1200            # the original stays where it was
         copy = b.multi.ids[0]
         assert copy != "alone" and abs(b.doc.item(copy)["x"] - 1400) < 2
+        assert abs(b.doc.item(copy)["y"] - 300) < 0.5           # a straight drag keeps its line (the copy starts on the original)
         b.undo()
         QTest.qWait(50)
         assert len(b.comp()["layers"]) == n

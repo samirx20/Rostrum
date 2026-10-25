@@ -3,6 +3,8 @@ the generated `<type>.set` operations (kind.py); keys are in ops_keys.py.
 """
 from __future__ import annotations
 
+import re
+
 from rostrum_core import Param
 from rostrum_core.errors import codes
 
@@ -141,7 +143,7 @@ def layer_duplicate(ctx, targets, args):
         idx = _all_ids(ctx)
         loc = idx[t]
         first = steps_for(ctx.item(loc.parent).get(loc.key, []), [loc.item])
-        taken, at, name = set(idx), loc.index + 1, f"{display_name(loc.item)} copy"
+        taken, at, name = set(idx), loc.index + 1, re.sub(r" copy( \d+)?$", "", display_name(loc.item)) + " copy"   # a copy's copy: "copy 2", never "copy copy"
         for n in range(1, args.get("times", 1) + 1):
             step = (n * dx, n * dy, n * turn, ratio ** n) if given else first + n - 1
             copy = put(loc.item, loc.parent, loc.key, at, taken, step)

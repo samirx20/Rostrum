@@ -60,9 +60,10 @@ Rectangle {
     Row {
         id: playCell
         x: Theme.gap; y: tl.headY; height: tl.headH; spacing: Theme.gap
+        z: readout.typing ? 1 : 0          // a long time being typed draws over Keys | Curves
         PlayButton { objectName: "timelinePlay"; anchors.verticalCenter: parent.verticalCenter; implicitHeight: 24; implicitWidth: 24
                      playing: backend.playing; onClicked: backend.togglePlay() }
-        TimeReadout { anchors.verticalCenter: parent.verticalCenter }
+        TimeReadout { id: readout; anchors.verticalCenter: parent.verticalCenter }
         AddMarker { anchors.verticalCenter: parent.verticalCenter }
     }
     Segmented {   // Keys: the rows' diamonds; Curves: the value curves inside this same area

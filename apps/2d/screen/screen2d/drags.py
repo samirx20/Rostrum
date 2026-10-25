@@ -53,7 +53,7 @@ class DragSlots(SlotMixin):
     def _copy_in_drag(self, layers) -> bool:
         """First step of an Alt+drag: copy the layers inside the open gesture, then move the copies from where the
         originals were (each copy sits just after its original in its parent's list)."""
-        calls = [{"op": "layer.duplicate", "target": list(layers), "args": {}}]
+        calls = [{"op": "layer.duplicate", "target": list(layers), "args": {"by_x": 0}}]   # on the original: the drag and its snapping start there
         if not self._guard(lambda: self._drag.preview(calls)):
             self.endDrag()
             return False
