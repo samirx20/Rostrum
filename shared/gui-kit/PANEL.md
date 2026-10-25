@@ -109,9 +109,18 @@ plain Rectangle with `color: "#ff2fd0"`, which shadows the kit's `SnapLine`). So
 when there is no room, always inside the window) or `pop.openAtPoint(x, y)` (window px). Closes on Esc (`escaped()` first,
 so an app can take the change back; typing is dropped with it) and on a click outside; `modal: true` makes the closing
 click do nothing else. `accepted()` is Enter pressed where no field used it (the app decides: `pop.close()`). Focus goes into
-`focusItem` (else the popover) and back to whatever had it. It is a `QQC.Popup` (`opened`, `open()`, `close()`, `onClosed`
+`focusItem` (else the popover) and back to whatever had it. It is a `SmallPopup` (`opened`, `open()`, `close()`, `onClosed`
 work as usual; the app's `onClosed` runs beside the popover's own). The optional `title` shortens with … and shows whole on hover.
-Esc does not close it while a list opened from inside (a ChoiceField's) has the keys; that list takes the Esc.
+Esc does not close it while a list opened from inside (a ChoiceField's) is open; that list takes the Esc.
+
+## SmallPopup: the kit's one popup
+Every menu, dropdown, flyout and small panel is a `SmallPopup` (Menu, ActionMenu, ChoiceField's list, Popover, SidePopup,
+ToolFlyout, MarkerNamer, the job and problems chips, the Record panel …). A plain `QQC.Popup` that closes on Esc stops
+EVERY window shortcut while it is open (Qt's rule), so SmallPopup closes on a click outside and on Esc through its own
+Shortcut (only the popup opened last), and the window's Ctrl+Z, Space … keep working. List the keys a popup uses itself in
+`ownKeys` (a menu: `["Up", "Down", "Enter"]`); a control does the same while it has the keyboard (Slider: ← →). Every
+window shortcut asks `OpenPopups.takes(keys)` first (the kit's KeyMap does it for you). `escCloses: false` leaves Esc to the
+app (2D's brush panel). Only a dialog with a scrim is a plain `modal: true` popup. `tests/test_popups_keep_keys.py` keeps it so.
 
 ### Adoption: Team Hem, 2D `StaggerPopover.qml` (opened by `backend.stagger`; Esc takes back, a click away keeps)
 Replace `QQC.Popup { … }` with the kit's and keep the content rows:

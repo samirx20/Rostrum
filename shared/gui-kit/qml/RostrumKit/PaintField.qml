@@ -73,8 +73,7 @@ SwatchHex {
         id: picker
         readonly property alias stopSel: body.sel
         readonly property bool banked: typeof colourBank !== "undefined"
-        closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.CloseOnEscape
-                                                                   : QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
+        closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.NoAutoClose : QQC.Popup.CloseOnPressOutside   // Esc: SmallPopup's
         onOpened: PaintSession.field = f
         onClosed: { f.settle(); body.browsing = false; if (PaintSession.field === f) PaintSession.field = null }
         PaintPicker {

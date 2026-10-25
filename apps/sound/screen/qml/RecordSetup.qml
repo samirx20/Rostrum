@@ -6,7 +6,7 @@ import RostrumKit
 // (record_setup.py), each there only while it can be used: count-in bars only with count-in on, the punch range
 // (dragged on the ruler) only with punch on, "Hear input" only while the microphone is open, the keyboard chooser
 // and quantize only on a notes or drum track.
-QQC.Popup {
+SmallPopup {
     id: pop
     width: 280; padding: Theme.pad
     visible: takeSetup.open

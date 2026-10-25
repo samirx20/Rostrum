@@ -7,13 +7,12 @@ import "."
 // on its right when there is no room on the left; when neither fits it is clamped into the window. Elsewhere it opens
 // beside the field itself. It stays inside the window. Used by the colour and fill fields.
 //   pop.openBeside(field)
-QQC.Popup {
+SmallPopup {
     id: pop
     property Item anchorItem: null
     parent: QQC.Overlay.overlay
     padding: Theme.pad
     focus: true
-    closePolicy: QQC.Popup.CloseOnPressOutside | QQC.Popup.CloseOnEscape
     background: MenuBackground { radius: Theme.radiusPanel }
     enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
     exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }

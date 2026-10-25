@@ -50,7 +50,7 @@ Rectangle {
     TapHandler { onTapped: pop.opened ? pop.close() : pop.open() }
     HoverTip { text: chip.narrow ? chip.words : ""; hovered: hover.hovered && !pop.opened }
 
-    QQC.Popup {     // the job: what it is doing or why it failed, and what can be done
+    SmallPopup {     // the job: what it is doing or why it failed, and what can be done
         id: pop
         objectName: "jobPopup"
         y: chip.height + Theme.grid
