@@ -60,8 +60,9 @@ The **Colour** row shows the colour the track is drawn in.
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
-   **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. **Note ▾** sets how long a new
-   note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
+   **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
+   grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
+   **Note ▾** sets how long a new note is. Its menu, headed "Note length", lists One grid step, Bar, 1/2, 1/4, 1/8, 1/16 and 1/32, with a tick on
    the current one (1/4, a quarter, at first). With **Draw**, drag on after the click to make a
    longer note: the click and the drag are one step ("Draw note"), one **Ctrl+Z** takes it away. A new note is selected,
    so the settings panel shows it. Clicks in the roll never move the playhead (the ruler does), and the roll never
@@ -69,13 +70,14 @@ The **Colour** row shows the colour the track is drawn in.
    Drag a note to move it in time and pitch, or its right end to make it longer or shorter (the pointer shows ↔ over
    the note's last few pixels; every selected note changes by the same amount). A click just past a note's end is
    empty space, so with **Draw** you can write notes on one key back to back.
-   - It snaps to the grid. **Grid ▾** in the arrangement's header strip sets the step (Auto follows the zoom; Bar,
-     1/2, 1/4, 1/8, 1/16, 1/32, triplets; the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
+   - It snaps to the nearest grid line. **Grid ▾** in the arrangement's header strip sets the step: **Auto**, ticked
+     at first, follows the zoom, never a step narrower than 8 pixels on screen (beats or bars when zoomed out, finer as
+     you zoom in); or Bar, 1/2, 1/4, 1/8, 1/16, 1/32, triplets (the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
      without snapping once.
    - Hold **Alt** to drag a copy.
    - Hold **Shift** to move it only in time.
 3. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
-   empty space draws a box. **Ctrl+A** selects all, **Esc** clears.
+   empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all, **Esc** clears.
 4. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
    as **Quantise** and **Transpose**, each always in the same place. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
@@ -113,7 +115,7 @@ The **Colour** row shows the colour the track is drawn in.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
   microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
-  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting).
+  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,
   amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by

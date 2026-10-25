@@ -46,8 +46,8 @@ Rectangle {
     property Item rows                  // the rows it lies in (2D: LayerRows.qml): a box dragged here picks keys on every row it touches
     // Right-click anywhere on the row (its empty part, its bar, a stretch, a key): the one short menu (actions.SHORT_MENU)
     function openMenu(item, x, y) { const p = item.mapToItem(rows, x, y); rows.openMenu(rowData.owner, p.x, p.y) }
-    MouseArea {   // the row's empty part: a click selects its layer, a drag draws a box that picks keys
-        anchors.fill: parent
+    MouseArea {   // the row's empty part, and the gap under it: a click selects its layer, a drag draws a box that picks keys
+        anchors { fill: parent; bottomMargin: rows ? -rows.spacing : 0 }      // the gap between rows is the row above's, so a box can start there too
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         property point from
         property bool boxing: false

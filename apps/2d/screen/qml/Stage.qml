@@ -291,7 +291,7 @@ Rectangle {
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (Mods.shift(m)) backend.multi.toggle(hit)                   // Shift+click: add / remove
                 else if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
-                moving = backend.multi.has(hit) && backend.beginMove()
+                moving = backend.multi.has(hit) && (Mods.alt(m) ? backend.beginCopyMove() : backend.beginMove())   // Alt: drag copies
             }
             onDoubleClicked: (m) => { var p = comp(m); if (hidden(m)) return; if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
             onPositionChanged: (m) => {

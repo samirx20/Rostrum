@@ -38,7 +38,8 @@ def analyse(comp: dict, only: list[str] | None = None) -> dict:
     return {"time": {"duration": r(duration, 3), "fps": fps}, "layers": facts, "findings": findings}
 
 
-def describe(a: dict) -> str:
+def describe(a: dict, full: bool = True) -> str:
+    """The text. Not `full`: one line a layer (when it moves, which fields, its path, holds), each move left to `full`."""
     lines = []
     for f in a["layers"]:
         if not f["moves"]:
@@ -48,7 +49,7 @@ def describe(a: dict) -> str:
         if f["path"]:
             p = f["path"]
             head += f' Path ({p["start"]}–{p["end"]} s): {p["from"]} → {p["to"]} px, peak {p["peak_speed_px_s"]} px/s at {p["peak_at"]} s.'
-        for m in f["moves"]:
+        for m in f["moves"] if full else ():
             if "jumps_at" in m:
                 head += f' {m["field"]} jumps {m["from"]} → {m["to"]} at {m["end"]} s.'
             else:
@@ -62,15 +63,19 @@ def describe(a: dict) -> str:
     return "\n".join(lines)
 
 
-@tools.tool("look_motion", {"properties": {**ITEM_COMP, "layers": {"type": "array", "items": {"type": "string"}, "description": "Only these layer ids."}}})
+@tools.tool("look_motion", {"properties": {**ITEM_COMP, "layers": {"type": "array", "items": {"type": "string"}, "description": "Only these layer ids."},
+    "full": {"type": "boolean", "description": "Every move of every layer (from, to, ease, peak speed) and the full data. Default false: one line a "
+                                              "layer, which is enough to judge a whole piece; ask `full` with `layers` for the few you are tuning."}}})
 def look_motion(ctx, args):
     """What moves and how, from the document's keys (no rendering): per layer when it moves, its path's start and end, peak speed,
     which fields animate, ease and overshoot, holds; plus facts: entrances that overlap, stretches where nothing moves,
-    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores."""
+    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Short by default (a line a layer); `full` gives every move and the full data."""
     comp = doc_and_comp(ctx, args)[1]                 # times as they play (pick.py)
     a = analyse(comp, args.get("layers"))
-    n = len(a["findings"])
-    return Reply(f'{len(a["layers"])} layers, {n} finding{"s" * (n != 1)}.\n{describe(a)}', a)
+    n, full = len(a["findings"]), bool(args.get("full"))
+    data = a if full else {**a, "layers": [{k: f[k] for k in ("id", "animated_fields", "moving", "holds") if k in f} for f in a["layers"]]}
+    more = "" if full or not a["layers"] else "\n(Short form: ask `full` for every move, with `layers` for just the ones you are tuning.)"
+    return Reply(f'{len(a["layers"])} layers, {n} finding{"s" * (n != 1)}.\n{describe(a, full)}{more}', data)
 
 
 def _all_layers(layers: list[dict]):

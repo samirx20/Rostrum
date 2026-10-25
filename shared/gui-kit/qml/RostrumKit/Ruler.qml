@@ -74,7 +74,7 @@ Item {
         if (!markerSource) return
         const sec = frames ? value / fps : value
         mm.flag = flag; mm.marker = marker; mm.sec = sec
-        mm.entries = markerSource.menu(marker.id, sec, marker.shared !== false)
+        mm.entries = markerSource.menu(marker.id, sec, marker.shared !== false).filter(e => canShare || e.value !== "share")   // "Shared / Only here" only where the app flips it
         if (mm.entries.length) mm.openAt(x, y)
     }
     function newMarker() { namer.x = Math.max(0, Math.min(xOf(value) - 8, width - namer.width))

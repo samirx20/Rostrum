@@ -13,6 +13,7 @@ Item {
     property Item space
     property bool editable: false
     property bool group: false          // the one box round several selected layers: its drags act on all of them (group_slots.py)
+    readonly property var kit: backend.handleKit(box.handles || "box")      // which knobs and turn zones it shows (handle_kinds.py)
     readonly property real bw: (box.w || 0) * fit
     readonly property real bh: (box.h || 0) * fit
     x: (box.x || 0) * fit; y: (box.y || 0) * fit; width: bw; height: bh
@@ -21,11 +22,11 @@ Item {
     HaloLine { anchors.fill: parent; anchors.margins: -1 }
     // the turn zones sit under the knobs
     Repeater {
-        model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]        // always made, shown while editable: a pick remakes nothing
+        model: [[-1, -1], [1, -1], [1, 1], [-1, 1]]        // always made, shown while editable and the kit turns: a pick remakes nothing
         delegate: Item {
             id: zone
             required property var modelData
-            visible: h.editable
+            visible: h.editable && h.kit.turn === true
             width: 28; height: 28
             x: (modelData[0] + 1) / 2 * h.bw + modelData[0] * 11 - 14
             y: (modelData[1] + 1) / 2 * h.bh + modelData[1] * 11 - 14
@@ -42,17 +43,18 @@ Item {
             }
         }
     }
-    Repeater {
-        model: [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -1], [1, 0], [0, 1], [-1, 0]]
+    KeptRepeater {      // the kit's knobs, kept: a pick (or the frame, and back) remakes none
+        id: knobs
+        needed: h.editable ? h.kit.knobs.length : 0
         delegate: Rectangle {
             id: knob
-            required property var modelData
             required property int index
-            readonly property int hx: modelData[0]
-            readonly property int hy: modelData[1]
+            readonly property var info: h.kit.knobs[index] || ({})
+            readonly property int hx: info.hx || 0
+            readonly property int hy: info.hy || 0
             readonly property bool edge: hx === 0 || hy === 0
-            objectName: (h.group ? "groupHandle:" : "handle:") + ["nw", "ne", "se", "sw", "n", "e", "s", "w"][index]   // what a scripted hand drags (dragobj)
-            visible: h.editable && (!edge || (hx === 0 ? h.bw : h.bh) > 36)    // a small box keeps only its corners
+            objectName: (h.group ? "groupHandle:" : "handle:") + (info.name || "")   // what a scripted hand drags (dragobj)
+            visible: index < knobs.needed && (!edge || info.always === true || (hx === 0 ? h.bw : h.bh) > 36)   // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
             x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2
@@ -76,6 +78,28 @@ Item {
                 onReleased: { if (on) backend.endDrag(); on = false }
                 onCanceled: { if (on) backend.endDrag(); on = false }
             }
+        }
+    }
+    // the anchor: a ring round the point the layer turns and scales about, only while the settings panel's Anchor group is open
+    // (anchor_slots.py: the layer stays where it shows, one drag = one undo step). Over the knobs: one sitting on a knob would be unreachable under it.
+    Rectangle {
+        id: anchorRing
+        objectName: "anchorPoint"
+        visible: h.editable && !h.group && h.kit.anchor === true && backend.anchorOpen
+        width: 19; height: 19; radius: 10; color: "transparent"; border.width: 2; border.color: Theme.accent
+        x: (h.box.ax || 0) * h.bw - width / 2; y: (h.box.ay || 0) * h.bh - height / 2
+        Rectangle { anchors.centerIn: parent; width: 3; height: 3; radius: 2; color: Theme.accent }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            preventStealing: true
+            property bool on: false
+            property point p0
+            function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
+            onPressed: (m) => { on = backend.beginAnchor(); p0 = at(m) }
+            onPositionChanged: (m) => { if (on) { var q = at(m); backend.anchorBy(q.x - p0.x, q.y - p0.y, (m.modifiers & Qt.ControlModifier) !== 0) } }
+            onReleased: { if (on) backend.endDrag(); on = false }
+            onCanceled: { if (on) backend.endDrag(); on = false }
         }
     }
     // the fill's gradient handles, over the box while the Fill row's picker is open on a gradient (one drag = one change)

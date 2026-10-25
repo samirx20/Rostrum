@@ -141,6 +141,7 @@ AppShell {
     function setExportOpen(open) { backend.exporter.setOpen(open); if (open) importPanel.shown = false }
     function setImportOpen(open) { importPanel.shown = open; if (open) backend.exporter.setOpen(false) }
     function setFileMenuOpen(open) { if (open) fileMenu.openMenu(); else fileMenu.closeMenu() }
+    function openSceneMenu() { sceneCrumb.open() }       // (the scripted `scenemenu open` step)
     function openLayerMenu(id) { timeline.openMenu(id) }
     function openCanvasMenu() { stage.openMenu() }
     function openFlyout(group) { return rail.openGroup(group) }    // a rail group's flyout ("": close it)
@@ -171,6 +172,7 @@ AppShell {
             anchors { right: parent.right; rightMargin: Theme.gap; top: parent.top; topMargin: Theme.gap }
         }
     ]
+    crumb: SceneCrumb { id: sceneCrumb }   // › Main ▾: the scene shown; its list switches scene or makes a New scene (scenes.py)
     menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true; actions: backend.actions

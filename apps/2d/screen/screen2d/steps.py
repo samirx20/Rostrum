@@ -31,7 +31,7 @@
     exportcancel [format] (start one, then Cancel it) | exportto <folder> [replace|both|cancel] | exportshow | exportsize | exportarea frame|items|world (export_steps.py);
     the kit's own: exportsheet, exportwhere, exportnow, job-show, job-failed (rostrum_gui/export_steps.py)
   Files (file_steps.py): new [name] | openproject <path> | startscreen open|close | version [name] | duplicateproject <name> |
-    filemenu open|close
+    filemenu open|close | scenemenu open|new|<scene id> (the › Scene ▾ crumb)
   Keys (key_steps.py): keypick | keybox | keydrag2 | keystretch | keydelete | showanim | ease | easekey | easecurve |
     spring | keytime | keyvalue | easemenu | keyhere (K) | keycopy | keypaste | stagger <f> [order] [open] | event prev|next
   Creation tools (create_steps.py): shape <rect|ellipse> x0 y0 x1 y1 [shift] [alt] | text <x> <y> <words> | textbox x0 y0 x1 y1 <words> | edittext <layer> <words>

@@ -59,7 +59,11 @@ Panel {
                 seenHi = p.roll.hi; seenShown = shown
                 var ks = [], b = p.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
-                if (!ks.length || p.kind !== "notes") { grid.frame(0); contentY = 0; return }
+                if (!ks.length || p.kind !== "notes") {
+                    grid.frame(0)   // an empty notes track opens on the middle of its range (its sound's best keys), else the top
+                    contentY = p.kind === "notes" ? Math.max(0, Math.min(contentHeight - height, (p.roll.hi - p.roll.lo + 1) / 2 * grid.rowH - height / 2)) : 0
+                    return
+                }
                 var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
                 grid.frame(hi - lo + 1)
                 contentY = Math.max(0, Math.min(contentHeight - height, (p.roll.hi - (hi + lo) / 2 + 0.5) * grid.rowH - height / 2))

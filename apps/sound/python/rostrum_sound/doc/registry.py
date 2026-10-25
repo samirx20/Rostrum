@@ -25,6 +25,9 @@ def set_fields(ctx, targets, args):
             ctx.set(t, k, v)
 
 
-def taken(ctx) -> set:
-    """Every id in the working document (new ids must not collide)."""
-    return set(index(ctx.doc, LISTS))
+def taken(ctx):
+    """Every id in the working document (new ids must not collide): the call's own index (rostrum_core.run.Context,
+    kept up to date by every edit of the call). Indexing the song again walked all of it for each note or hit added
+    (~3 ms a drum hit on the critic's song, growing with it)."""
+    idx = getattr(ctx, "idx", None)
+    return idx.keys() if idx is not None else set(index(ctx.doc, LISTS))

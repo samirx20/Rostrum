@@ -65,10 +65,11 @@ Column {
         }
     }
     Text {   // the live check: the sound that plays now against the target (only once both exist)
+        readonly property var check: root.job.check      // one read per change (each read measures it again)
         width: root.width; wrapMode: Text.WordWrap
-        visible: root.target.shown && !!root.job.check && !!root.job.check.text
-        text: root.job.check && root.job.check.text ? (root.job.check.ok ? "✓ " : "") + root.job.check.text : ""
-        color: root.job.check && root.job.check.ok ? Theme.ok : Theme.warn
+        visible: root.target.shown && !!check && !!check.text
+        text: check && check.text ? (check.ok ? "✓ " : "") + check.text : ""
+        color: check && check.ok ? Theme.ok : Theme.warn
         font.family: uiFont; font.pixelSize: Theme.body
     }
     Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click

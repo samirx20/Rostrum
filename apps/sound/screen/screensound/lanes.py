@@ -2,8 +2,8 @@
 
 Every edit is the document's `automation.set` with the whole new point list. Points keep the form their time was
 written in (beats stay beats, `"#drop+0.5"` stays on its marker); a new point is written in seconds, or in beats
-when the lane's points are. A moved point never passes its neighbours (the list stays in time order), snaps to a
-quarter beat unless free, and stays inside the lane's range.
+when the lane's points are. A new point goes in the grid cell under the pointer; a moved point never passes its neighbours (the list
+stays in time order), snaps to the nearest grid line unless free, and stays inside the lane's range.
 """
 from __future__ import annotations
 
@@ -82,6 +82,7 @@ def lane_data(track: dict, root: dict, target: str, lane: str) -> dict:
     raw = raw_points(owner, lane)
     lo, hi = display_range(owner, lane, raw)
     return {"target": target, "lane": lane, "label": choice_label(track, root, target, lane), "lo": lo, "hi": hi,
+            "gain": lane in GAIN_LANES,           # stored as gain, shown in dB (qml/MixFormat.js)
             "points": [{"t": timing.sec(t, root), "v": float(v)} for t, v in raw],
             "base": LN.base(owner, lane),
             "choices": [{"target": tg, "lane": ln, "label": choice_label(track, root, tg, ln),
@@ -126,14 +127,15 @@ class PointEdit:
         self.beats = bool(raw) and all(isinstance(t, dict) for t, _ in raw)
         self.index = -1
 
-    def press(self, t: float, v: float, tol_t: float, tol_v: float, free: bool) -> dict:
-        """Grab the nearest point within tolerance, else insert one at (t, v). Returns the call (or {} for a plain grab)."""
+    def press(self, t: float, v: float, tol_t: float, tol_v: float, free: bool, px: float = 0.0) -> dict:
+        """Grab the nearest point within tolerance, else insert one at (t, v), in the grid cell under the pointer (`px`:
+        one screen pixel in seconds, timing.snap). Returns the call (or {} for a plain grab)."""
         near = [(((p[2] - t) / tol_t) ** 2 + ((p[1] - v) / tol_v) ** 2, i) for i, p in enumerate(self.pts)]
         d, i = min(near, default=(2.0, -1))
         if d <= 1.0:
             self.index = i
             return {}
-        at = timing.snap(t, self.root, free, self.grid)
+        at = timing.snap(t, self.root, free, self.grid, "cell", px)
         raw = {"beat": round(timing.beat(at, self.root), 4)} if self.beats else round(at, 4)
         i = sum(1 for p in self.pts if p[2] <= at)
         self.pts.insert(i, [raw, self._v(v), at])

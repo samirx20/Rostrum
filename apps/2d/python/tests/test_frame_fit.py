@@ -71,3 +71,20 @@ def test_framing_a_view_the_frame_already_shows_keys_nothing():
     with pytest.raises(Exception, match="already framed"):
         d.apply(call, SAM)
     assert not d.item("frame").get("keys")
+
+
+def test_the_cameras_tools_write_no_keys_that_do_nothing():
+    """A cut or Frame home keys only what changes (x, y, zoom); a turn nobody asked for is never keyed, so Problems has
+    nothing to blame on the person (and never names `frame.rotation`)."""
+    from rostrum2d import diagnose
+    d = scene()
+    d.apply({"op": "frame.cut", "target": "frame", "args": {"at": 2, "to": "rect", "rect": [3200, 0, 1920, 1080]}}, SAM)
+    d.apply({"op": "frame.cut", "target": "frame", "args": {"at": 4}}, SAM)
+    d.apply({"op": "frame.home", "target": "frame", "args": {"at": 5}}, SAM)
+    assert {k["prop"] for k in d.item("frame")["keys"]} == {"x", "y", "zoom"}
+    assert not [p for p in diagnose.problems(d.item("film")) if p["kind"] == "unused-keys"]
+    # a field that does hold one value is still said in words (the layer's name, the field's label), never `frame.rotation`
+    d.apply({"op": "key.add", "target": "far", "args": {"prop": "opacity", "t": 0, "v": 1}}, SAM)
+    d.apply({"op": "key.add", "target": "far", "args": {"prop": "opacity", "t": 1, "v": 1}}, SAM)
+    said = [p["message"] for p in diagnose.problems(d.item("film")) if p["kind"] == "unused-keys"]
+    assert said and "far.opacity" not in said[0] and "opacity" in said[0]

@@ -86,3 +86,14 @@ def test_group_resize_and_turn_are_one_undo_step_and_leave_unselected_layers_alo
     bridge.undo()
     bridge.undo()
     assert {i: dict(doc.item(i)) for i in before} == before             # both gone, nothing else touched
+
+
+def test_dragging_a_line_end_moves_that_end_only_and_alt_keeps_the_middle():
+    from math import hypot
+    from screen2d.line_ends import drag_end
+    g = {"x": 500, "y": 300, "w": 200, "h": 4, "ax": 0.5, "ay": 0.5, "rot": 0}      # a flat line from (400, 300) to (600, 300)
+    r = drag_end(g, 1, 30, 40)                                                     # the right end goes to (630, 340)
+    start = (r["x"] - r["w"] / 2 * cos(radians(r["rot"])), r["y"] - r["w"] / 2 * sin(radians(r["rot"])))
+    assert hypot(start[0] - 400, start[1] - 300) < 1e-6 and round(r["w"], 3) == round(hypot(230, 40), 3)
+    m = drag_end(g, -1, -30, 10, alt=True)                                         # Alt: the middle stays at (500, 300)
+    assert (round(m["x"], 6), round(m["y"], 6)) == (500, 300) and round(m["w"], 3) == round(hypot(260, 20), 3)

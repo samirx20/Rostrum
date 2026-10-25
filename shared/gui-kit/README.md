@@ -98,7 +98,7 @@ sh shared/gui-kit/demo/make_shots.sh [folder]                           # all sc
 ```
 Steps: `select <id>`, `set <param> <value>`, `scrub <param> <v> <v> …`, `undo`, `redo`, `more`,
 `commands [text]`, `run <command key>`. Screenshots render offscreen with `QT_QPA_FONTDIR=C:/Windows/Fonts`
-(without it the offscreen platform has no fonts); the controls sheet uses a real window because hover needs a pointer.
+(without it the offscreen platform has no fonts); hover works offscreen too: a script rests the pointer with `rostrum_gui/pointer.py` › `hover(win, point, ms)` (the `hover` / `hoverobj` steps and the agents' harness use it). Never put a HoverHandler in an item over a control: an item that takes hover hides the MouseArea under it (HoverTip's pointer position comes from TipGate's one handler per window).
 
 ## Bridge pieces from other modules (parts.py)
 

@@ -25,6 +25,10 @@ Item {
     readonly property int pad: 3
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
     readonly property var picked: backend.picked                           // one read per change
+    property var own: ({})              // this row's block ids (made when its blocks change)
+    property string chosen: ""          // which of them are selected: a new selection repaints only rows it reached
+    onShownChanged: { own = Blocks.ids(shown); chosen = Blocks.chosen(picked, own) }
+    onPickedChanged: chosen = Blocks.chosen(picked, own)
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 
@@ -37,22 +41,29 @@ Item {
                    && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
                return b ? b.label : "" } } } }
 
-    Canvas {
+    Canvas {   // painted whole on a new zoom, scroll, size or row look, else only where an edit or a selection changed (Blocks.js)
         id: c
         anchors.fill: parent
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
+        property bool whole: true
+        property var drawn: ({})            // id -> [block, selected] as the picture shows it
+        function again() { whole = true; requestPaint() }
+        onWidthChanged: again()
+        onHeightChanged: again()
         Connections {
             target: lane
-            function onTrackChanged() { c.requestPaint() }
+            function onTrackChanged() { c.again() }
             function onShownChanged() { c.requestPaint() }
-            function onPickedChanged() { c.requestPaint() }
-            function onCleaningChanged() { c.requestPaint() }
+            function onChosenChanged() { c.requestPaint() }
+            function onCleaningChanged() { c.again() }
         }
         Connections {
             target: lane.ruler
-            function onStartChanged() { c.requestPaint() }
-            function onPerSecChanged() { c.requestPaint() }
+            function onStartChanged() { c.again() }
+            function onPerSecChanged() { c.again() }
+        }
+        function widthOf(b, on) { return b.type === "hit" ? (on ? 3 : 2) : Math.max(2, lane.ruler.wOf(b.dur) - 1) }
+        function rectsOf(b) {               // a block's column of the row (its bars, or its clip and the clip's handles)
+            return [Blocks.box(Math.round(lane.ruler.xOf(b.t)), 0, widthOf(b, true), lane.height, 2)]
         }
 
         function bar(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h) }
@@ -129,16 +140,25 @@ Item {
         }
 
         onPaint: {
-            var ctx = getContext("2d"); ctx.reset()
-            var blocks = lane.shown, picked = lane.picked, r = lane.ruler
+            var ctx = getContext("2d"), now = Blocks.state(lane.shown, lane.picked)
+            var dirty = whole ? null : Blocks.changes(drawn, now, rectsOf)
+            drawn = now; whole = false
+            if (dirty === null) { ctx.reset(); paintIn(ctx, now, null); return }
+            for (var i = 0; i < dirty.length; i++) {            // only the changed places, each cleared and painted again
+                Blocks.clear(ctx, dirty[i]); paintIn(ctx, now, dirty[i]); ctx.restore()
+            }
+        }
+        function paintIn(ctx, now, d) {                         // every block (over the place `d`, when one)
+            var blocks = lane.shown, r = lane.ruler
             var h = lane.height - 2 * lane.pad, n = blocks.length
             for (var pass = 0; pass < 3; pass++) {            // clips under, then the rest, then what is selected
                 for (var i = 0; i < n; i++) {
-                    var b = blocks[i], on = !!picked[b.id], isClip = b.type === "clip" || b.type === "line"
+                    var b = blocks[i], on = now[b.id][1], isClip = b.type === "clip" || b.type === "line"
                     if ((pass === 0 ? !isClip || on : pass === 1 ? isClip || on : !on)) continue
                     var x = Math.round(r.xOf(b.t))
-                    var w = b.type === "hit" ? (on ? 3 : 2) : Math.max(2, r.wOf(b.dur) - 1)
+                    var w = widthOf(b, on)
                     if (x > width || x + w < 0) continue          // off screen
+                    if (d !== null && (x - 4 > d[0] + d[2] || x + w + 4 < d[0] || !Blocks.meets(rectsOf(b), d))) continue
                     if (isClip) {
                         var rows = b.rows || 1, rh = rows > 1 ? (h - (rows - 1)) / rows : h   // stacked: its own row
                         paintClip(ctx, b, on, x, w, lane.pad + (b.row || 0) * (rh + 1), rh)
@@ -155,7 +175,7 @@ Item {
     }
 
     Repeater {   // what an agent just changed here: the 1-second outline (only the flashed blocks get an item)
-        model: lane.shown.filter(b => backend.agent.flash.indexOf(b.id) >= 0)
+        model: { const f = backend.agent.flash; return f.length ? lane.shown.filter(b => f.indexOf(b.id) >= 0) : [] }   // one read, not one a block
         ChangeOutline {
             required property var modelData
             x: Math.round(lane.ruler.xOf(modelData.t)); y: lane.pad; height: lane.height - 2 * lane.pad

@@ -74,8 +74,7 @@ ListView {
     function boxStart(p) { keyBox.start(p) }
     function boxTo(p) { keyBox.to(p) }
     function boxEnd(how) { keyBox.end(how) }
-    KeyBox { id: keyBox; list: list; ruler: list.ruler }
-
+    KeyBox { id: keyBox; objectName: "keyBox"; list: list; ruler: list.ruler }
     footer: SoundRow {   // the project's sound, the last row (only when there is sound; kept in compact)
         width: ListView.view.width; ruler: list.ruler; labelWidth: list.labelWidth
         y: list.spacing
@@ -103,6 +102,7 @@ ListView {
             cells: Component { FrameMarks {   // a drawing's cells
                 frames: row.modelData.frames || []; again: row.modelData.again || []; keys: row.modelData.keys || []
                 drawing: row.modelData.row === "layer" && (row.modelData.kind === "drawing" || (row.modelData.frames || []).length > 0)
+                trims: row.modelData.trim === true; layerStart: row.modelData.start || 0; layerEnd: row.modelData.end === undefined ? 1e9 : row.modelData.end
                 timeRuler: list.ruler; owner: row.modelData.owner } }
         }
         Loader {   // the video's own sound, tied to the bar above (screen2d/video_sound.py)

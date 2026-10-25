@@ -26,6 +26,7 @@ Item {
     Rectangle { y: ru.flagTop; width: 1; height: parent.height - y; color: mk.tint; opacity: mk.shared ? 1 : 0.7 }
     Rectangle {
         id: flag
+        objectName: "markerFlag:" + modelData.id        // the flag itself (not its 1 px line): what a scripted hand hovers and drags
         x: 1; y: ru.flagTop; height: 16; radius: 2
         color: mk.shared ? mk.tint : hit.containsMouse || crossHit.containsMouse ? Theme.raised : Theme.panel
         border.color: mk.tint
@@ -69,6 +70,7 @@ Item {
                    hovered: hit.containsMouse; pressed: hit.pressed || mk.naming }
         Text {      // delete, on hover
             id: cross
+            objectName: "markerCross:" + modelData.id
             visible: ru.editMarkers && (hit.containsMouse || crossHit.containsMouse) && !mk.naming
             anchors.right: parent.right; anchors.rightMargin: 4; anchors.verticalCenter: parent.verticalCenter
             text: "×"; color: crossHit.containsMouse ? Theme.danger : mk.shared ? Theme.app : Theme.fg3

@@ -50,7 +50,7 @@ def rows(root: dict) -> dict:
     glide = {1: " ↗", -1: " ↘", 0: ""}
     return {"tempo": [row(c, _bpm(c["bpm"]) + glide[c["ramp"]]) for c in music_map.tempo_marks(root)],
             "meter": [row(c, f"{c['per']}/{c['unit']}") for c in music_map.meter_marks(root)],
-            "key": [row(k, k["key"] or song_edit.NO_KEY) for k in music_map.key_changes(root)],
+            "key": [row(k, k["key"] or song_edit.NO_KEY) for k in music_map.key_changes(root) if k["t"] > 1e-9],   # the first key (at the start) is the header's picker
             "sections": [{"id": s["id"], "t": s["t"], "place": s["name"], "value": span(root, s["t"], s["end"]),
                           "pick": True} for s in secs],
             "markers": [{"id": m["id"], "t": m["t"], "place": m["name"], "pick": not m["shared"],

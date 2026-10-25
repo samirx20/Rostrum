@@ -15,6 +15,7 @@ from rostrum_core.tree import bare, child_keys, index, walk
 from . import fields as F
 from .kind import REGISTRY as R
 from .ops_items import LAYER_HOLDERS
+from .ops_nudge import for_child, steps_for, stepped
 
 LAYER_LINKS = ("matte", "pathLayer", "ridePath")      # fields naming another layer by id (fields.py); kept only within the paste
 
@@ -30,7 +31,8 @@ def copied(data: dict, lists: dict, ids_: list[str]) -> list[dict]:
 
 @R.operation("layer.paste", "Paste layers as Copy put them: the layers' data (JSON, bottom of the stack first), into a "
              "group or composition (the first composition when left out), on top unless index is given. Names and "
-             "settings stay; every id is new; links to layers that didn't come along are dropped.",
+             "settings stay; every id is new; links to layers that didn't come along are dropped. Where a layer already "
+             "sits at the same place the copy steps 24 px right and down (further for each more), like Duplicate.",
              label="Paste", importance="secondary",
              params=[Param.text("layers", label="Layers", required=True, help="The copied layers, as JSON"),
                      Param.id("into", label="Into", help="A group or composition"),
@@ -57,21 +59,23 @@ def layer_paste(ctx, targets, args):
         new[d["id"]] = ids.counted(taken, d["type"])
         taken.add(new[d["id"]])
     at = args.get("index")
+    step = steps_for(holder.get("layers", []), layers)       # one step count for the whole paste: its layers keep their places
     for n, layer in enumerate(layers):
-        _put(ctx, lists, layer, into, "layers", None if at is None else at + n, new)
+        _put(ctx, lists, layer, into, "layers", None if at is None else at + n, new, step)
 
 
-def _put(ctx, lists, item, parent, key, at, new):
+def _put(ctx, lists, item, parent, key, at, new, step=0):
     words = _words(item["type"])
     out = {k: v if k in words else _relink(v, new) for k, v in bare(item, lists).items()}
     out["id"] = new[item["id"]]
+    stepped(out, step)          # where something already sits, the copy steps aside (ops_nudge.py: one rule with duplicate)
     for k in LAYER_LINKS:
         if out.get(k) and out[k] not in new.values():
             out[k] = ""
     ctx.insert(parent, key, out, at)
     for k in child_keys(item, lists):
         for child in item.get(k, []):
-            _put(ctx, lists, child, out["id"], k, None, new)
+            _put(ctx, lists, child, out["id"], k, None, new, for_child(child, step))
 
 
 def _words(type_) -> set[str]:

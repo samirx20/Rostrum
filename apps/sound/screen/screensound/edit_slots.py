@@ -51,41 +51,45 @@ class EditSlots:
             self._apply([call], label)
         self._guard(go)
 
-    @Slot(float, int)
-    def addNote(self, t, key):
+    @Slot(float, int, float)
+    def addNote(self, t, key, px=0.0):
+        """Double-click on an empty key: a note there, in the grid cell under the pointer (`px`: one screen pixel in
+        seconds, timing.snap), one step, selected."""
         if not self._track:
             return
 
         def go():
             before = {n["id"] for n in self.doc.item(self._track).get("notes", [])}
             self._apply([moves.add_note_call(self.doc, self._track, t, key, beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                              grid=self._grid_now)], "Add note")
+                                              grid=self._grid_now, px=px)], "Add note")
             new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
             if new:
                 self.select(new[0])
         self._guard(go)
 
-    @Slot(float, float, result=str)
-    def addHit(self, t, row):
-        """Double-click on an empty drum row (or a click with Draw): a hit on that drum at the snapped time, one
-        step, selected. Returns its id ("" when none)."""
+    @Slot(float, float, float, result=str)
+    def addHit(self, t, row, px=0.0):
+        """Double-click on an empty drum row (or a click with Draw): a hit on that drum in the grid cell under the
+        pointer, one step, selected. Returns its id ("" when none)."""
         drums = self._view["roll"].get("drums") or []
         i = int(round(row))
         if not self._track or not 0 <= i < len(drums):
             return ""
-        return self._add_one("hits", moves.add_hit_call(self.doc, self._track, t, drums[i], grid=self._grid_now), "Add drum hit")
+        return self._add_one("hits", moves.add_hit_call(self.doc, self._track, t, drums[i], grid=self._grid_now, px=px),
+                             "Add drum hit")
 
-    @Slot(float, float, result=str)
-    def drawAt(self, t, row):
-        """The Draw tool's click on empty space in the Editor: a note Note ▾ long (the grid step by default) on that key, or a hit on
-        that drum row; one step, selected. Returns the new id (a drag on then sets the note's length)."""
+    @Slot(float, float, float, result=str)
+    def drawAt(self, t, row, px=0.0):
+        """The Draw tool's click on empty space in the Editor: a note Note ▾ long on that key, or a hit on that drum row,
+        in the grid cell under the pointer (`px`: one screen pixel in seconds); one step, selected. Returns the new id
+        (a drag on then sets the note's length)."""
         if self._view["roll"].get("kind") == "drums":
-            return self.addHit(t, row)
+            return self.addHit(t, row, px)
         if not self._track:
             return ""
         grid = self._grid_now
         call = moves.add_note_call(self.doc, self._track, t, int(round(row)), beats=self._draw_beats(timing.beat(t, self.doc.data)),
-                                   grid=grid)
+                                   grid=grid, px=px)
         return self._draw_note(call)
 
     @Slot(int)

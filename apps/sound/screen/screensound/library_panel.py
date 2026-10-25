@@ -63,9 +63,14 @@ class LibraryPanel(QObject):
             self._index(self._folders)
 
     def _doc(self):
-        """Only a change that adds, removes or renames something moves what the panel shows (its rows name tracks)."""
-        t = self.bridge.touched()
-        if t is None or t.structural:
+        """Of the song, the panel shows only which clip a result may take the place of (`swapTarget`): a change is
+        news here only when that moved (every note drawn re-ran every row's bindings)."""
+        self._follow_target()
+
+    def _follow_target(self):
+        now = self.swapTarget
+        if now != self.__dict__.get("_target_shown"):
+            self._target_shown = now
             self.changed.emit()
 
     # ---- reads for QML ----------------------------------------------------------------------------------------
@@ -266,7 +271,8 @@ class LibraryPanel(QObject):
     def _picked(self):
         if self._trial.active and self.swapTarget != self._trial.clip:
             self._trial.back()                  # another pick: the original goes back, nothing recorded
-        self.changed.emit()
+            self.changed.emit()
+        self._follow_target()                   # a pick elsewhere (a note) is not news here
 
     def close(self):
         self._trial.back()

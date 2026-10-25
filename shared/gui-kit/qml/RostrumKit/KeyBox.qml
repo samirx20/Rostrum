@@ -2,7 +2,7 @@ import QtQuick
 import RostrumKit
 
 // The box that picks keys on a timeline's rows (INTERACTION 1.3: a box picks what it touches), drawn from an empty
-// part of a track (LayerTrack.qml calls the rows' boxStart / boxTo / boxEnd, which hand on to this). On release every
+// part of a track or the gap under it (LayerTrack.qml calls the rows' boxStart / boxTo / boxEnd, which hand on to this). On release every
 // key whose diamond lies inside it, on every row it crosses, is picked (backend.keys.box; Ctrl / Shift: added).
 // Lies in the rows' ListView (its content px, as the rows); `ruler`: the timeline's.
 Rectangle {
@@ -17,11 +17,11 @@ Rectangle {
     function end(how) {
         boxing = false
         if (how === "cancel") return
-        const groups = [], rows = list.model
-        for (let i = 0; i < rows.length; i++) {
+        const groups = []
+        for (let i = 0; i < list.count; i++) {            // the rows as shown (the list's model may be a list model, not an array)
             const item = list.itemAtIndex(i)
             if (!item || item.y + item.height < box.y || item.y > box.y + box.height) continue
-            for (const k of rows[i].keys) {
+            for (const k of item.modelData.keys) {
                 const x = ruler.x + ruler.xOf(k.t)
                 if (x >= box.x - 4 && x <= box.x + box.width + 4) groups.push(k.ids || [k.id])
             }

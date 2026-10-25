@@ -276,6 +276,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         "what just happened" goes; a line starting "Error" shows red."""
         self._set_status(text)
 
+    @Slot(str)
+    def refuse(self, why):
+        """A typed entry that was refused (FieldFrame's `problem`: "“zzz” is not a colour …"): said in the top bar in
+        red as well as in the box, since a hover tip never shows to someone who has just clicked the box."""
+        self._set_status(why, True)
+
     def _set_status(self, text, failed=None):
         self._kit.status = text
         self._failed = text.startswith("Error") if failed is None else failed

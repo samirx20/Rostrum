@@ -70,7 +70,7 @@ only Unlock. **Frame the view** on a view the frame already shows keys nothing a
   squares, bend its handles, ease it in the key bar.
 - **A cut:** put the playhead where the cut happens and click **Cut here** ("Cut at 2.40 s. Move the frame to the next
   shot."). Then drag the frame to the next shot, or pan there and **Frame the view**: either sets the key at the
-  playhead. Faster: pan to the next shot and **Ctrl+K › Cut to the view**, or pick layers and **⋯ › Cut to these**.
+  playhead. A cut keys only what changes (position and zoom; the turn only when it changes), so no key sits there doing nothing. Faster: pan to the next shot and **Ctrl+K › Cut to the view**, or pick layers and **⋯ › Cut to these**.
   The cut shows as an orange tick on the Frame row and a dashed path on the canvas. Any frame key can also be made a
   cut by hand: pick it on the timeline and choose **Jump** in the key bar's **Ease** (or press **Ctrl+Alt+J**).
 - **On a marker:** with the playhead on a marker (**Alt+M** goes to the next one), Frame the view and Cut here tie their keys to

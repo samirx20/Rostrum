@@ -66,7 +66,7 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 ## 5. Range, and another version
 
 - **Range** (appears when the song has more than the whole song): the **whole song**, the **time range** you have
-  dragged on the ruler, or a **section**. A range drawn on the ruler snaps to the Grid step (set in the header strip); right-click the ruler and turn on the seconds scale to draw it
+  dragged on the ruler, or a **section**. Each end of a range drawn on the ruler goes to a grid line within a few pixels of it, else takes in the whole grid step it is in (Grid ▾ in the header strip); right-click the ruler and turn on the seconds scale to draw it
   in exact seconds. The row's name shows the two ends to the hundredth ("Time range · 0:02.00–0:06.00"), which is what
   is exported. The file is exactly that stretch (2 s to 6 s is 4.00 s long; any ring-out past the end is cut). Its loudness is the whole song's, matched
   by the master and then cut, so a quiet section stays quieter than a loud one, as it sounds in the song. The silent

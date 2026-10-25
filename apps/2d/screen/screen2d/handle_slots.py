@@ -2,8 +2,8 @@
 step, made of the same value.set calls an agent makes (route.value_call: an animated field gets a key at the playhead,
 a still one changes). The maths is transform.py. A slot mix-in for Bridge2D (see rostrum_gui/parts.py).
 
-What a resize changes, per layer type: shapes, images and groups change Width / Height (their own size); every other
-type (text, video, drawing, path, ...) changes Scale (a corner) or Stretch X / Y (an edge). X / Y follow so the opposite
+What a resize changes, per layer type: shapes and images change Width / Height (their own size); every other
+type (group, text, video, drawing, path, ...) changes Scale (a corner) or Stretch X / Y (an edge). X / Y follow so the opposite
 side stays put (Alt: the centre does), except in an auto layout, where the layout places the layer.
 """
 from __future__ import annotations
@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum2d.evaluate import resolve
 
-from . import bounds, exprs, layout_drag, route, transform as T
+from . import bounds, exprs, handle_kinds, layout_drag, line_ends, route, transform as T
 
-OWN_SIZE = ("shape", "image", "group")        # types whose Width / Height can be keyed (fields.py)
+OWN_SIZE = ("shape", "image")                 # types whose Width / Height can be keyed (fields.py); a group is resized by Scale, so what is in it grows with it
 
 
 @dataclass
@@ -28,6 +28,7 @@ class Grab:
     placed: bool = False                       # an auto layout places it: no X / Y
     last: float | None = None                  # rotate: the pointer's last angle
     turned: float = 0.0
+    kit: str = "box"                           # which handles it has (handle_kinds.py)
 
 
 class HandleSlots:
@@ -46,6 +47,11 @@ class HandleSlots:
         """The arrow a resize knob shows on a layer turned `rot` degrees (transform.resize_cursor)."""
         return T.resize_cursor(hx, hy, rot)
 
+    @Slot(str, result="QVariantMap")
+    def handleKit(self, name):
+        """The knobs and turn zones a layer shows (handle_kinds.KITS); the box's `handles` names the kit."""
+        return handle_kinds.KITS.get(name, handle_kinds.KITS["box"])
+
     def _handle_grab(self, label, fields_of):
         layer = self.selectedLayer
         if not layer:
@@ -57,7 +63,7 @@ class HandleSlots:
             return None
         placed = layout_drag.begin(self.doc, self.placed(), layer, self._t) is not None
         p = resolve(item, self.own_t(layer))
-        g = Grab(layer, p, box, placed=placed)
+        g = Grab(layer, p, box, placed=placed, kit=box.get("handles", "box"))
         for prop in fields_of(g, item):
             if exprs.drives(item, prop):
                 self._fail(f"Error: {label}: {prop} is driven by an expression; clear it first (the cross on its row).")
@@ -74,10 +80,10 @@ class HandleSlots:
     @Slot(int, int, result=bool)
     def beginResize(self, hx, hy):
         def fields_of(g, item):
-            size = ("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
+            size = ("w", "rotation") if g.kit == "ends" else ("w", "h") if item["type"] in OWN_SIZE else ("scale", "scaleX", "scaleY")
             return size + (() if g.placed else ("x", "y"))
         ok = self._handle_begin("Resize", hx, hy, fields_of)
-        if ok:                                          # the dragged edge snaps (snapper.py); not on a turned box
+        if ok and self._grab.kit != "ends":             # the dragged edge snaps (snapper.py); not on a turned box
             self._snap.begin_edge(self._grab.layer, abs(self._grab.box["rot"]) > 1e-6)
         return ok
 
@@ -88,6 +94,8 @@ class HandleSlots:
         if self._drag is None or not isinstance(g, Grab):
             return
         item, p, b = self.doc.item(g.layer), g.p, g.box
+        if g.kit == "ends":
+            return self._end_by(g, item, dx, dy, shift, alt)
         dx, dy = self._snap.edge(g.hx, g.hy, dx, dy)
         scaled = item["type"] not in OWN_SIZE
         dx, dy = bounds.parent_delta(b, dx, dy)                 # the drag in the layer's parent's px (a turned group)
@@ -101,6 +109,17 @@ class HandleSlots:
         else:
             sets.update({"w": p["w"] * r["w"] / b["lw"]} if g.hx else {})
             sets.update({"h": p["h"] * r["h"] / b["lh"]} if g.hy else {})
+        if not g.placed:
+            sets.update({"x": r["x"], "y": r["y"]})
+        self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()]))
+
+    def _end_by(self, g, item, dx, dy, shift, alt):
+        """A line's or arrow's end dragged: the end follows the pointer (line_ends.py); length and turn come with it."""
+        p, b = g.p, g.box
+        dx, dy = bounds.parent_delta(b, dx, dy)
+        r = line_ends.drag_end({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": b["ax"], "ay": b["ay"],
+                                "rot": b["lrot"]}, g.hx, dx, dy, shift, alt)
+        sets = {"w": p["w"] * r["w"] / b["lw"], "rotation": r["rot"]}
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
         self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()]))

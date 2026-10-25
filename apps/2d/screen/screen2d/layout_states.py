@@ -40,7 +40,7 @@ TWELVE = ["select card"] + [f"set {'xy'[n % 2]} {500 + n}" for n in range(12)]  
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen), in
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
-QUICK = ("export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
+QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
          "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
@@ -180,6 +180,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("long-rows-open", long(), [*busy, "open card"]),
         ("long-draw", long(), [*busy, "tool draw"]),
         ("file-menu", long(), [*busy, "filemenu open"]),
+        ("scene-menu", ["--sample"], ["scenemenu new", "scenemenu open"]),        # › Scene ▾ open: two scenes and New scene
+        ("scene-menu-long", ["--sample"], ["scenemenu new", 'paintingop item.rename comp_1 {"name":"' + LONG_LAYER + '"}', "scenemenu open"]),   # a long scene name in the crumb and the list
         ("file-menu-sample", ["--sample"], ["filemenu open"]),                 # File > Open sample
         ("long-status-line", ["--sample"], [f"say {LONG_ERROR}"]),
         ("import-report", ["--sample"], [f"import {psd_with_masks()}", "importpanel open"]),   # notes (kept hidden) above the list               # elided with the whole text on hover
@@ -287,6 +289,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # the gradient's canvas handles with the picker open
         ("shape-star", ["--sample"], ["shape star 700 300 1000 600"]),
         ("shape-arrow", ["--sample"], ["shape arrow 600 700 1100 500"]),
+        ("anchor-ring", ["--sample"], ["select card", "group Anchor"]),             # the anchor ring on the canvas while the Anchor group is open
+        ("anchor-ring-arrow", ["--sample"], ["shape arrow 600 700 1100 500", "group Anchor"]),   # an arrow's two end squares plus the ring
         ("fill-picture-picker", ["--sample"], ["shape star 700 300 1000 600", "clickobj swatch", "clickobj fillType:picture",
                                                f"picturefile {PICTURE}", "clickobj paintFit 0.55 0.5"]),
         # painted fill P3: the picker's Painted (a new painting in two clicks; the paintings to choose from; Tile with every
@@ -305,7 +309,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # painted fill P6: the Library's Paintings (long name, seamless four repeats, uses), two layers picked; its right-click menu
         ("library-paintings", ["--sample"], LIBRARY_PAINTINGS),
         ("library-paintings-menu", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj paintingRow:painting_2 0.5 0.5 right"]),
-        ("library-paintings-open", "path-points", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj openPainting:painting_2"]),   # the row's Open button: the painting alone, nothing used
+        ("library-paintings-open", ["--sample"], [*LIBRARY_PAINTINGS, "clickobj openPainting:painting_2"]),   # the row's Open button: the painting alone, nothing used
         # P6: a painting opened on its own (its repeats round it, the path chip, Size and Used by); it boiling, three
         # drawings as cells with the onion skin; Select strokes on a painted fill painted in place
         ("painting-opened", ["--sample"], OPENED),

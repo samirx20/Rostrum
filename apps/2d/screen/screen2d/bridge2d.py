@@ -17,8 +17,10 @@ from . import bounds, colour_feed, outline, picture_change, route, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
+from .view_commands import ViewCommands
 from .frames import FrameRenderer
 from .group_slots import GroupSlots
+from .anchor_slots import AnchorSlots
 from .handle_slots import HandleSlots
 from .hooks import Hooks2D
 from .action_slots import ActionSlots
@@ -35,6 +37,7 @@ from .reveal_ahead import RevealAhead
 from .playback import Playback, size_offered
 from .playstats import STATS
 from .clipboard import ClipboardSlots
+from .scenes import SceneSlots
 from .key_edits import KeyEdits
 from .render3d_watch import Render3DWatch
 from .shown import ShownState
@@ -50,7 +53,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, CommandWords, DragSlots, HandleSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, AnchorSlots, GroupSlots, ToolSlots, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()
@@ -65,6 +68,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
     _comp_at = _placed_idx = None                           # comp() and placed_item()'s, kept per document state
     _asked_from = None                                      # (placed, index) the last picture was asked for
     markersChanged = Signal()
+    viewRequested = Signal(str)                             # Ctrl+K's view commands: the view menu's step (view_commands.py)
     renameRequested = Signal(str)                           # F2 / Ctrl+K "Rename layer": the layer row's name box
     sections = True                                         # settings panel: essentials, folded groups, search (kit)
 
@@ -125,6 +129,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
         self._cuepick = CuePick(self, self)                 # Add a sound here… (sound_cue_pick.py)
         self.selectedItemsChanged.connect(self.outlineChanged)
         self.selectedItemsChanged.connect(self.shownChanged)
+        self.rowsChanged.connect(self.anchorOpenChanged)       # the Anchor group opened or folded (anchor_slots.py)
         self.link = None
         if doc.folder and doc.item_id:                     # live: one door for every save, shared with agents' servers
             live.keep(doc)
@@ -423,6 +428,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Un
 
     def _on_doc(self, event):
         self._note_change()
+        self.scene_still_there()                            # Undo of New scene while it is shown: the first scene shows
         with STATS.stage("doc.kit"):
             super()._on_doc(event)
         with STATS.stage("doc.outline"):

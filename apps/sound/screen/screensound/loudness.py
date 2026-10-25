@@ -75,7 +75,7 @@ class LoudnessMeter(QObject):
 
     def _doc(self):
         """Only a change that reached the master moves its target, goal or verdict (a track's fader never does)."""
-        if self.bridge.reached([strips.MASTER]):
+        if self.bridge.reached_here([strips.MASTER]):       # a note drawn elsewhere is not news here
             self.changed.emit()
 
     # ---- reads -----------------------------------------------------------------------------------------------

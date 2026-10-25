@@ -67,7 +67,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 ## 7. Key many layers at once, and retime
 
 1. Pick the layers, put the playhead where the pose should be, and press **K**. Each picked layer gets a key for its position, scale, rotation and opacity, as one step. The message line says what it did ("Keyed 4 settings on 3 layers").
-2. To pick several keys: **Ctrl+click** diamonds, **Shift+click** for the run between two, or drag a box over the diamonds on empty rows (it can cross several layers).
+2. To pick several keys: **Ctrl+click** diamonds, **Shift+click** for the run between two, or drag a box over the diamonds, starting on an empty part of a row or in the thin gap between two rows (it can cross several layers; a drag that starts on a bar moves the layer instead).
 3. Drag a picked diamond to move them all. Hold **Alt** and drag the first or the last picked diamond to stretch or squeeze them all in time.
 4. **Ctrl+C** copies the picked keys. Pick other layers, move the playhead and press **Ctrl+V**: the keys land on the same settings of those layers, starting at the playhead and keeping their spacing.
 5. **,** and **.** jump the playhead to the previous or next thing that happens: a key, a marker, a drawing, or where a layer starts or ends. With layers picked, only theirs.
@@ -89,7 +89,7 @@ The top of the **settings panel** shows only what applies to them: **Combine** (
 ## 10. Undo a mistake
 
 1. Press **Ctrl+Z** to take back the last change. **Ctrl+Shift+Z** (or **Ctrl+Y**) brings it back.
-2. The undo and redo arrows near the top do the same. They appear only when there is something to undo or redo. Point at one to read what it would take back.
+2. The undo and redo arrows near the top do the same. They appear only when there is something to undo or redo; undo is always the right-hand one, so clicking it twice takes back two steps. Point at one to read what it would take back.
 3. The line next to them says what you did last, and how many changes you have made since you opened the project.
 
 Next: [the-screen.md](the-screen.md) for every part of the window, [drawing.md](drawing.md) to draw by hand, and [exporting.md](exporting.md) to get a video file out.

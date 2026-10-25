@@ -1,7 +1,8 @@
 """Grid ▾ and Snap in the arrangement's header, and Note ▾ in the Editor's (the length a drawn or double-clicked note gets:
 a quarter at first, a length of its own, or the grid step) (a slot mix-in for SoundBridge): screen state, never an undo step,
-held here per window (`_grid_now`) and passed to the one snapping code (timing.snap). Auto follows the zoom (the finest
-step at least 16 px wide).
+held here per window (`_grid_now`) and passed to the one snapping code (timing.snap). Auto (the default) follows the
+zoom: the finest step at least timing.MIN_PX wide on the narrowest time ruler on screen (each BarRuler reports its width,
+setRulerWidth), again on every zoom, scroll and window resize.
 """
 from __future__ import annotations
 
@@ -85,7 +86,20 @@ class GridSlots:
     def toggleSnap(self):
         self.setSnap(not self._grid_now.on)
 
+    @Slot(str, float)
+    def setRulerWidth(self, key, width):
+        """A time ruler's width on screen (`key`: which ruler; 0: it is gone or hidden): Auto keeps its steps wide
+        enough on the narrowest one."""
+        widths = self.__dict__.setdefault("_ruler_widths", {})
+        if width > 0:
+            widths[key] = float(width)
+        else:
+            widths.pop(key, None)
+        self._follow_zoom()
+
     def _follow_zoom(self):
         span = self.viewSpan
         beats = span / max(self._view["song"]["spb"], 1e-6) if self._view else 16.0
-        self._grid_now.follow_zoom(beats)
+        width = min(self.__dict__.get("_ruler_widths", {}).values(), default=1200.0)     # (no screen: a common width)
+        if self._grid_now.follow_zoom(beats, width) and self._grid_now.value == "auto":
+            self.gridChanged.emit()

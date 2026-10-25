@@ -29,7 +29,7 @@ Rectangle {
     property bool renaming: false
     function beginRename() { if (isLayer && !isFrame) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
-    Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }
+    Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }   // menus run a choice once closed (ActionMenu)
 
     MouseArea {
         id: hover
@@ -89,6 +89,7 @@ Rectangle {
                                 : [{ field: "locked", tip: "Locked: it can't be picked or moved" }, { field: "hidden", tip: "Hidden: not drawn, not exported" }]
             delegate: Item {
                 id: sw
+                objectName: "layerSwitch:" + name.rowData.id + ":" + modelData.field     // the eye and the lock: a scripted hand finds them
                 required property var modelData
                 readonly property bool on: !!name.rowData[modelData.field]
                 visible: on || hover.containsMouse || swArea.containsMouse

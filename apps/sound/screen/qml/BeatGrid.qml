@@ -2,7 +2,8 @@ import QtQuick
 import RostrumKit
 
 // Vertical grid lines behind blocks: bars clear, beats faint (only when far enough apart to read).
-// `ruler` gives the mapping (a BarRuler of the same width).
+// `ruler` gives the mapping (a BarRuler of the same width, at the same x as the item that takes the clicks): a line is
+// painted on the whole pixel nearest ruler.xOf(t), and a click on that pixel is on the line (timing.snap's `px`).
 // One painted surface, not an item per beat: a song's beats are many (a 6-minute song has ~800, and every row has
 // a grid), so items per beat grew with rows x beats and every read of `backend.song` copied the whole map. The grid
 // reads the song once per change and paints only the beats that are on screen.
