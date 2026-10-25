@@ -15,7 +15,7 @@ use std::num::{NonZeroIsize, NonZeroU32};
 
 use anyrender_skia::{SkiaSceneCache, SkiaScenePainter};
 use glutin::config::ConfigTemplateBuilder;
-use glutin::context::{ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext};
+use glutin::context::{ContextApi, ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext, Version};
 use glutin::display::{Display, DisplayApiPreference, GlDisplay};
 use glutin::surface::{Surface as GlSurface, SurfaceAttributesBuilder, WindowSurface};
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle};
@@ -251,7 +251,13 @@ pub fn gl_context() -> Result<Gl, String> {
     let raw_window = RawWindowHandle::Win32(wh);
     let display = unsafe { Display::new(RawDisplayHandle::Windows(WindowsDisplayHandle::new()), DisplayApiPreference::Wgl(Some(raw_window))) }.map_err(|e| format!("WGL display: {e}"))?;
     let config = unsafe { display.find_configs(ConfigTemplateBuilder::new().build()) }.map_err(|e| format!("GL configs: {e}"))?.next().ok_or("no GL config")?;
-    let ctx = unsafe { display.create_context(&config, &ContextAttributesBuilder::new().build(Some(raw_window))) }.map_err(|e| format!("GL context: {e}"))?;
+    // OpenGL 4.1 or later where the driver has it: Skia keeps compiled programs (program_cache.rs) as the driver's own
+    // binaries only from 4.1 (glProgramBinary); on 3.3 it can keep only their source, compiled again each run. The
+    // driver's default context is 3.3; one that can't make 4.1 gets that.
+    let v41 = ContextAttributesBuilder::new().with_context_api(ContextApi::OpenGl(Some(Version::new(4, 1)))).build(Some(raw_window));
+    let ctx = unsafe { display.create_context(&config, &v41) }
+        .or_else(|_| unsafe { display.create_context(&config, &ContextAttributesBuilder::new().build(Some(raw_window))) })
+        .map_err(|e| format!("GL context: {e}"))?;
     let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(raw_window, NonZeroU32::new(64).unwrap(), NonZeroU32::new(64).unwrap());
     let gl_surface = unsafe { display.create_window_surface(&config, &attrs) }.map_err(|e| format!("GL surface: {e}"))?;
     let ctx = ctx.make_current(&gl_surface).map_err(|e| format!("make current: {e}"))?;

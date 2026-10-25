@@ -61,7 +61,9 @@ impl Warm {
         };
         let base = M44::concat(&base, &M44::scale(SCALE, SCALE, 1.0));
         let doc = &mut s.doc;
+        let t0 = Instant::now();
         let done = s.painter.warm(base, size, |scene| blitz_paint::paint_scene(scene, doc, 1.0, w, h, 0, 0));
+        eprintln!("2D engine: warm-up {} of {VIEWS} in {:.1} ms{}", self.view + 1, t0.elapsed().as_secs_f64() * 1000.0, done.as_ref().err().map_or(String::new(), |e| format!(": {e}")));
         self.view += 1;
         self.due = (done.is_ok() && self.view < VIEWS && s.painter.is_gpu()).then(Instant::now);
     }
