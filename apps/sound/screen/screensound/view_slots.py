@@ -15,8 +15,9 @@ class ViewSlots:
     @Slot(float, "QVariant", result=str)
     def positionText(self, t, _song=None):
         """A time as people read it: bars.beats, then the clock ("5.3  0:09.60"), from the one formatter (musical.py)
-        that every field and agent report uses; the ticks are left off here. QML passes `backend.song` so the text
-        follows a tempo or time signature edit, not only the playhead."""
+        that every field and agent report uses; the ticks are left off here. QML passes something of `backend.song` (its
+        length: not the whole map, which would be converted on every tempo step) so the text follows a tempo or time
+        signature edit, not only the playhead."""
         return ".".join(musical.position(t, self.doc.data).split(".")[:2]) + "  " + musical.clock(t)
 
     @Slot(str, result=str)

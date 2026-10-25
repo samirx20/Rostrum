@@ -56,23 +56,24 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
     block_patch.py), always equals the song: a missed patch would be a note missing from the screen, or one that
     stays after its undo. The layouts (`tracks`, `roll`) say nothing for a note's edit (critic r4 M4)."""
     import json
-    from screensound.block_patch import apply
+    from screensound.block_patch import apply, seen
     m, heard = bridge.trackRows, []
     row = next(i for i in range(m.rowCount()) if m.rows[i]["id"] == "lead")
-    role = lambda: m.data(m.index(row), m._ids["blocks"])        # noqa: E731  the row model's "blocks" role
-    screen = {"row": role(), "roll": bridge.rollBlocks}
+    role = lambda: json.loads(m.data(m.index(row), m._ids["blocks"]))   # noqa: E731  the row model's "blocks" role (JSON text)
+    roll = lambda: json.loads(bridge.rollBlocks)                         # noqa: E731
+    screen = {"row": role(), "roll": roll()}
     def patch(k, gone, put):
         screen[k] = apply(screen[k], gone, put)
     m.dataChanged.connect(lambda *_: screen.update(row=role()))
     bridge.blocksPatched.connect(lambda k, g, p: k == "lead" and patch("row", g, p))
     bridge.blocksReset.connect(lambda k: k == "lead" and screen.update(row=role()))
     bridge.rollPatched.connect(lambda g, p: patch("roll", g, p))
-    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=bridge.rollBlocks))
+    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=roll()))
     for s in ("timelineChanged", "rollChanged"):
         getattr(bridge, s).connect(lambda s=s: heard.append(s))
 
     def same():
-        key = lambda bl: sorted(json.dumps(b, sort_keys=True) for b in bl)       # noqa: E731
+        key = lambda bl: sorted(json.dumps(seen(b), sort_keys=True) for b in bl)   # noqa: E731  (as sent: in beats)
         truth = next(r for r in bridge.rows_now() if r["id"] == "lead")["blocks"]
         assert key(screen["row"]) == key(truth) and key(screen["roll"]) == key(bridge._view["roll"]["blocks"])
         by = {b["id"]: b for b in screen["roll"]}          # the velocity readout's blocks: the selected ones, as shown

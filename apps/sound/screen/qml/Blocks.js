@@ -1,4 +1,5 @@
 .pragma library
+.import "Tempo.js" as Tempo
 // A patch of a row's or the roll's blocks (screensound/block_patch.py `apply`, the same rule): the blocks whose ids
 // are gone are left out, changed ones take their place, new ones go at the end. The list made remembers the patch
 // (`__patch`: the list it came from, what it put and took), so a surface that painted that list looks only at those
@@ -38,6 +39,37 @@ function _at(list) {                     // id -> index (made once per list a pa
         list.__at = m
     }
     return list.__at
+}
+
+// The blocks placed in beats (`atBeat`, `endBeat`: timeline.in_beats) with their seconds (`t`, `dur`) from the song's
+// tempo map (Tempo.js; backend.song.tempoMap), the others as they are. A block already timed under an equal map is
+// the very same object (a patch re-times only what it put, so the painters see only those change); a tempo change
+// makes every block placed in beats again, here only: Python sends no row for it (block_patch.seen). A patch's
+// record (`__patch`, `__at`) goes with the list, its blocks re-timed the same way.
+function timed(list, map) {
+    if (!map || !map.length) return list
+    var key = Tempo.key(map), out = null, made = null
+    for (var i = 0; i < list.length; i++) {
+        var x = list[i]
+        if (x.atBeat === undefined || x.__tempo === key) continue
+        if (out === null) { out = list.slice(); made = new Map() }
+        var o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)   // (a re-timed one: from its own block, never a layer more); its fields read through (a copy of each cost ~30 ms a tempo step)
+        o.t = Tempo.seconds(map, x.atBeat)
+        if (x.endBeat !== undefined) o.dur = Tempo.seconds(map, x.endBeat) - o.t
+        o.__tempo = key
+        out[i] = o; made.set(x, o)
+    }
+    if (out === null) return list
+    var p = list.__patch
+    if (p !== undefined) out.__patch = { from: p.from, gone: p.gone, put: p.put.map(function (b) { return made.get(b) || b }) }
+    if (list.__at !== undefined) out.__at = list.__at
+    return out
+}
+
+// A list as sent whole from Python: JSON text (an arrangement row's role, backend.rollBlocks: block_patch.py `text`),
+// parsed once into plain blocks; a list (anything else) as `own`.
+function parse(sent) {
+    return typeof sent === "string" ? (sent === "" ? [] : JSON.parse(sent)) : own(sent || [])
 }
 
 // A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list

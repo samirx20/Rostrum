@@ -182,10 +182,12 @@ Rectangle {
             onMenuAt: (entries, px, py) => tl.openMenu(entries, lanes.mapToItem(tl, px, py))
         }
     }
-    Repeater {   // marker lines through the rows
-        model: backend.markers
+    readonly property var marks: backend.markers   // one read per change (each read copies the list)
+    Repeater {   // marker lines through the rows; by count: a tempo drag moves them without making them again
+        model: tl.marks.length
         delegate: Rectangle {
-            required property var modelData
+            required property int index
+            readonly property var modelData: tl.marks[index]
             x: bars.x + Math.round(bars.xOf(modelData.t)); y: bars.y + bars.height
             visible: bars.visibleX(x - bars.x)
             width: 1; height: list.y + list.height - y; color: Theme.fg4; opacity: 0.6

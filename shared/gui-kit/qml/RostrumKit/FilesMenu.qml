@@ -52,10 +52,9 @@ IconButton {
     Instantiator {      // the file keys, from the key map
         model: root.source ? [["new", root.source.keys.new], ["open", root.source.keys.open],
                               ["duplicate", root.source.keys.duplicate], ["version", root.source.keys.version]] : []
-        delegate: Shortcut {
+        delegate: KeyShortcut {
             required property var modelData
             sequence: modelData[1]
-            context: Qt.WindowShortcut
             enabled: root.keysOn && (modelData[0] === "new" || modelData[0] === "open" || (root.source.hasProject && !OpenPopups.covered))   // the start screen's own keys: New, Open
             onActivated: root.source.pickLater(modelData[0])      // later: New swaps the screen this key belongs to
         }

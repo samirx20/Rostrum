@@ -87,7 +87,7 @@ SmallPopup {
     onAboutToShow: before = focused
     onOpened: (focusItem ? focusItem : pop).forceActiveFocus()
     onClosed: { if (before && before.visible) before.forceActiveFocus(); before = null }
-    Shortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
+    KeyShortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
 
     contentItem: Column {
         spacing: Theme.gap

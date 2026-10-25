@@ -59,7 +59,7 @@ A swell (`dynamics`, the `swell` toggle) is drawn across the note's length, so i
 where the note ends. A tie that would end at or before its note's start (a marker moved past it) is a warning in every
 reply and the Problems list, naming the note, and the render refuses it; it is never played as a silent note, and the
 song still opens. `look_arrangement` still draws the song: such notes are drawn short and listed under `broken_notes`;
-`inspect_diagnose` labels them `broken-tie` (a part starting after the song's end: `after-the-end`). Typing a length in the settings panel sets a fixed one
+`inspect_diagnose` labels them `broken-tie` (a part starting after the song's end: `after-the-end`; one still held at it: `held-past-end`). Typing a length in the settings panel sets a fixed one
 (the tie is the agent's or the person's choice, kept until someone types over it).
 
 ## 3. Make the grid serve the picture

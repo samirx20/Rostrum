@@ -19,7 +19,8 @@ Item {
     function snapTo(x, y, free) { backend.setTimeSnapped(r.tOf(x), free, kit.onSecondsAt(y), kit.perSec) }
     readonly property int band: kit.bandH
     readonly property var range: backend.timeRange
-    readonly property var song: backend.song
+    readonly property var song: backend.song       // the one read per change: the grids and bands over this ruler share it
+    readonly property var placing: backend.blocksTempo   // the tempo map the blocks over this ruler are placed by (Blocks.timed)
     readonly property real length: song.length
     readonly property real barSec: song.spb * song.barBeats
     readonly property real start: backend.viewStart

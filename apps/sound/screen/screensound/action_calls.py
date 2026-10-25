@@ -11,40 +11,10 @@ from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
 
 from . import song_edit
+from .facts import TIMED, Facts  # noqa: F401  (Facts is read here by every action file: C.Facts)
 from .moves import remove_calls
 
-TIMED = ("note", "hit", "clip")                       # what has `<kind>.duplicate` / `.move`
 REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
-_NAMES = {"note": "note", "hit": "drum hit", "clip": "clip"}
-
-
-class Facts:
-    """What the selection is: ids in pick order, their items and kinds, their tracks, the playhead, the range."""
-
-    def __init__(self, doc, ids, playhead=0.0, rng=None, clipboard=False, track="", range_newer=False, fill=None):
-        self.doc, self.ids, self.count = doc, list(ids), len(ids)
-        self.items = [doc.item(i) for i in self.ids]
-        self.kinds = {it["type"] for it in self.items}
-        self.one = next(iter(self.kinds)) if len(self.kinds) == 1 else ""
-        self.parents = {doc.parent_of(i)[0] for i in self.ids if self.one != "track"}
-        self.playhead, self.range, self.clipboard, self.track = playhead, rng, clipboard, track
-        self.fill = fill                  # a drum row's Fill row… being asked: {track, drum, from, to} (drum_step_slots.py)
-        # what Ctrl+D and "Select what's inside" act on when both a time range and items are selected: the one made
-        # last (a range drawn after picking items is the newer intent; picking items after a range means them)
-        self.on_range = bool(rng) and (not self.count or range_newer)
-
-    def by_kind(self, kinds=TIMED):
-        out: dict[str, list[str]] = {}
-        for it in self.items:
-            if it["type"] in kinds:
-                out.setdefault(it["type"], []).append(it["id"])
-        return out
-
-    def words(self, kinds=TIMED) -> str:
-        """The part of the selection an action on `kinds` takes, in words: "178 notes and 202 drum hits". The one
-        rule for a mixed selection (Select all): an action acts on the items it can take and names them."""
-        parts = [f"{len(ids)} {_NAMES.get(k, k)}{'' if len(ids) == 1 else 's'}" for k, ids in self.by_kind(kinds).items()]
-        return " and ".join([", ".join(parts[:-1]), parts[-1]] if len(parts) > 1 else parts)
 
 
 def call(op, target, /, **args):
@@ -64,18 +34,11 @@ def clips_one_track(f):
     return f.one == "clip" and f.count >= 2 and len(f.parents) == 1
 
 
-_SPAN: list = [None, None, None]                    # [song, ids, span]: the last one asked (a refresh asks 2-5 times)
-
-
 def span_by(f):
     """How far a copy sits after the original: the selection's span; notes and hits round up to whole beats (a hit
     has no length, and the groove stays on the beat). Kept for the same song and selection (every item's start and
     end in seconds: ~15 ms a time for 3,000 notes, and the action list asks on every change)."""
-    root, ids = f.doc.data, tuple(f.ids)
-    if _SPAN[0] is root and _SPAN[1] == ids:
-        return _SPAN[2]
-    _SPAN[:] = root, ids, _span(f)
-    return _SPAN[2]
+    return f.once("span", _span)
 
 
 def _span(f):

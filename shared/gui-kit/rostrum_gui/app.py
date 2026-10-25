@@ -93,7 +93,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx = engine.rootContext()
     ctx.setContextProperty("uiFont", pick(UI_FONTS))
     ctx.setContextProperty("monoFont", pick(MONO_FONTS))
-    ctx.setContextProperty("backgroundWindow", background())    # AppShell opens behind the person's work
+    ctx.setContextProperty("backgroundWindow", background())    # AppShell opens behind the person's work; KeyShortcut answers there
     from rostrum_gui.notices import Notices           # the Help → About and licences screen (every app has one)
     ctx.setContextProperty("notices", Notices(app_id(main_qml), engine))
     if app_id(main_qml) in ("2d", "sound"):           # Help → Connect an AI agent (apps with an agent server to add)
@@ -116,8 +116,6 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     win.resize(*size)
     if background():
         show_behind(win)
-        from .background_keys import watch as watch_keys     # its shortcuts answer though it is never the active window
-        watch_keys(app, win)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
     return app, engine, win

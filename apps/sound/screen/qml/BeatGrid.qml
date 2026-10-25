@@ -11,7 +11,7 @@ Item {
     id: g
     property var ruler
     clip: true
-    readonly property var song: backend.song        // one read per change (each read of the property copies the map)
+    readonly property var song: ruler.song          // the ruler's (one read of backend.song per ruler, shared: each read copies the map)
     readonly property real from: ruler.start        // the stretch on screen: the lines are painted from these
     readonly property real perSec: ruler.perSec
     property int slot: 0                            // its row: after a resize, rows paint again in turn (ViewCanvas)

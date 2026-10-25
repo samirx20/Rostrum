@@ -56,6 +56,11 @@ def forms(length=False, tied=False) -> list[str]:
 
 def seconds(value, root: dict, where: str, seen=()) -> float:
     """Any time as seconds (beats through the tempo map); marker references go through `markers.py`."""
+    t = type(value)
+    if t is dict:                                   # the usual note's time first (~100,000 reads per whole-song action)
+        return tempo.seconds_at(root, float(value["beat"]))
+    if t is float or t is int:
+        return float(value)
     value = markers.resolve(root, value, where, seen)
     if isinstance(value, dict):
         return tempo.seconds_at(root, float(value["beat"]))

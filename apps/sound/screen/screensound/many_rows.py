@@ -43,8 +43,7 @@ def merged(bridge, items: list[dict], root: dict) -> list[dict] | None:
     plain = sorted(plain)
     groups: dict = {}             # key -> ({plain row id: the first item's evaluated row}, its finished rows)
     first, todo, differs, lengths = None, [], set(), set()
-    for n, it in enumerate(items):
-        key = _key(bridge, it, struct, plain) if it["type"] in FOLDED else n
+    for n, (it, key) in enumerate(zip(items, _keys(bridge, items, struct, plain))):
         g = groups.get(key)
         if g is None:
             rows = bridge.sound_rows(it)
@@ -55,6 +54,8 @@ def merged(bridge, items: list[dict], root: dict) -> list[dict] | None:
                 todo, kind = list(first), it["type"]
                 lengths = {i for i in todo if inspect.by_length(it, i)}
             continue                            # (a group's own first item: many.merge compares it)
+        if not todo:                            # every plain row already known to differ: nothing left to read
+            continue
         for i in [i for i in todo if i in g[0]]:
             raw, was = it.get(i, _NONE), first[i]
             if type(raw) is type(was[0]) and raw == was[0] and it["type"] == kind and i not in lengths:
@@ -85,12 +86,42 @@ def _plain(static: list[dict], named: set) -> set | None:
     return {r["id"] for r in params if r["id"] not in named and r.get("shown", "") != "changed" and r["id"] != "ridePath"}
 
 
-def _key(bridge, it: dict, struct: list, plain: list) -> tuple:
+_KEYS: dict = {}                            # item id -> (item, its parent, its page, its key): kept between merges
+_LAYOUT: list = [None]                      # the layout those keys were made for (struct, plain)
+
+
+def _keys(bridge, items: list[dict], struct: list, plain: list) -> list:
+    """Each item's group key (`_key`; an item of another kind: its place, a group of its own). A key is kept while
+    the item and its parent are the very same objects (a change writes new ones: rostrum_core/edits.py), its page
+    shows the same and the layout is the same: a note's facts are its track's (doc/kind.py facts), so a tempo drag or
+    a pick of the same notes again makes no key twice (6,600 a move, ~40 µs each, before)."""
+    layout = (tuple(struct), tuple(plain))
+    if _LAYOUT[0] != layout or len(_KEYS) > 100_000:
+        _KEYS.clear()
+        _LAYOUT[0] = layout
+    idx, out, pages = bridge.doc.locs(), [], {}
+    for n, it in enumerate(items):
+        if it["type"] not in FOLDED:
+            out.append(n)
+            continue
+        loc = idx.get(it["id"])
+        parent = idx[loc.parent].item if loc is not None and loc.parent in idx else None
+        page = pages.get(it["type"])        # a note's or a hit's page is its kind's (onpage.py; only a clip's is its own)
+        if page is None:
+            page = pages[it["type"]] = frozenset(bridge.on_page(it))
+        kept = _KEYS.get(it["id"])
+        if kept is None or kept[0] is not it or kept[1] is not parent or kept[2] != page:
+            kept = _KEYS[it["id"]] = (it, parent, page, _key(bridge, it, struct, plain, page))
+        out.append(kept[3])
+    return out
+
+
+def _key(bridge, it: dict, struct: list, plain: list, page: frozenset) -> tuple:
     """What the item's rows are made of but for their values: its facts, what its page shows elsewhere, its fields
     that decide which rows apply, and the type each plain value is written in (a time written in beats is shown as
     bars.beats). Written values, not shown ones: the same written value is always shown the same (but a length)."""
     facts = bridge.facts_of(it)
-    return (it["type"], tuple(sorted(facts.items())), frozenset(bridge.on_page(it)),
+    return (it["type"], tuple(sorted(facts.items())), page,
             tuple(_frozen(it.get(n)) for n in struct), tuple(type(it.get(n)) for n in plain))
 
 

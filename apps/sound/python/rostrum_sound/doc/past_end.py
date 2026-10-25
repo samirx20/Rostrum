@@ -8,13 +8,60 @@ One rule, the engine's (engine/src/contract/ending.rs): the render says the same
 """
 from __future__ import annotations
 
+import threading
+from contextlib import contextmanager
+
 from rostrum_core import RostrumError
 
-from . import times
+from . import item_times, times
 
 SHOWN = 3
+_HERE = threading.local()        # inside `same_song()`, per thread: (check, song) -> its words (a render thread's checks
+                                 # never read the screen thread's block)
 
 
+def _scope() -> list[dict]:
+    if not hasattr(_HERE, "scope"):
+        _HERE.scope = []
+    return _HERE.scope
+
+
+@contextmanager
+def same_song():
+    """Inside it each check runs once per song tree (the Problems list reads `ties` and `late` again to name the
+    warnings `warn` gave): one read of the song, never kept past the block."""
+    _scope().append({})
+    try:
+        yield
+    finally:
+        _scope().pop()
+
+
+def _once(fn):
+    def check(data: dict) -> list[str]:
+        scope = _scope()
+        if not scope:
+            return fn(data)
+        kept, key = scope[-1], (fn.__name__, id(data))
+        if key not in kept:
+            kept[key] = (data, fn(data))             # the song held, so its id is never another's inside the block
+        return kept[key][1]
+    check.__doc__ = fn.__doc__
+    return check
+
+
+def _start(data: dict, i: dict) -> float:
+    kept = item_times.span(data, i)                 # kept per item (item_times): most items are unchanged since last time
+    return kept[0] if kept is not None else times.seconds(i["at"], data, i["id"])
+
+
+def _end(data: dict, n: dict, at: float) -> float:
+    """A note's end seconds (it starts at `at`); a tie that ends before its start is a loud RostrumError."""
+    kept = item_times.span(data, n)
+    return kept[1] if kept is not None else at + times.length_seconds(n["dur"], data, at, n, n["id"])
+
+
+@_once
 def ties(data: dict) -> list[str]:
     out = []
     for t in data.get("tracks", []):
@@ -44,11 +91,11 @@ def hard_end(data: dict) -> str:
         end = times.seconds(data["length"], data, "length")
         for t in data.get("tracks", []):
             for n in t.get("notes", []):
-                at = times.seconds(n["at"], data, n["id"])
-                if at < end and at + times.length_seconds(n["dur"], data, at, n, n["id"]) > end - RINGING_S:
+                at = _start(data, n)
+                if at < end and _end(data, n, at) > end - RINGING_S:
                     return n["id"]
             for h in t.get("hits", []):
-                if end - RINGING_S < times.seconds(h["at"], data, h["id"]) < end:
+                if end - RINGING_S < _start(data, h) < end:
                     return h["id"]
             for c in t.get("clips", []):          # a clip with no length plays to its file's end: taken as still playing
                 at = times.seconds(c["at"], data, c["id"])
@@ -59,13 +106,14 @@ def hard_end(data: dict) -> str:
     return ""
 
 
+@_once
 def late(data: dict) -> list[str]:
     if data.get("length") is None:
         return []
     try:
         end = times.seconds(data["length"], data, "length")
         late = [(i["id"], s) for t in data.get("tracks", []) for k in ("notes", "hits", "clips")
-                for i in t.get(k, []) if (s := times.seconds(i["at"], data, i["id"])) >= end - 1e-6]
+                for i in t.get(k, []) if (s := _start(data, i)) >= end - 1e-6]
     except RostrumError:
         return []                                    # a broken time is the check's to report
     if not late:
@@ -75,6 +123,7 @@ def late(data: dict) -> list[str]:
             "Move them earlier or make the song longer (length)."]
 
 
+@_once
 def held(data: dict) -> list[str]:
     if data.get("length") is None:
         return []
@@ -83,8 +132,8 @@ def held(data: dict) -> list[str]:
         over = []
         for t in data.get("tracks", []):
             for n in t.get("notes", []):
-                at = times.seconds(n["at"], data, n["id"])
-                if at < end - 1e-6 and at + times.length_seconds(n["dur"], data, at, n, n["id"]) > end + 1e-6:
+                at = _start(data, n)
+                if at < end - 1e-6 and _end(data, n, at) > end + 1e-6:
                     over.append((n["id"], at))
             for c in t.get("clips", []):
                 at = times.seconds(c["at"], data, c["id"])

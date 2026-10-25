@@ -14,8 +14,10 @@ seconds = 60/k·ln(bpm/bpm0) and back, beat = bpm0/k·(e^(k·seconds/60) − 1) 
 from __future__ import annotations
 
 import math
+from bisect import bisect_right
 
 INF = float("inf")
+_MAPS: dict = {}          # the tempo data's own values -> (segments, their start beats, their start seconds)
 
 
 def start_bpm(root: dict) -> float:
@@ -45,10 +47,43 @@ def _span(bpm0: float, bpm1: float, secs: float) -> float:
     return secs * bpm0 / 60.0 if bpm1 == bpm0 else secs * (bpm1 - bpm0) / (60.0 * math.log(bpm1 / bpm0))
 
 
-def segments(root: dict) -> list[tuple[float, float, float, float, float]]:
+def key(root: dict):
+    """The tempo data as plain values (the song's tempo, each change's at / bpm / ramp): a map is made once per tempo
+    data and found again by these values, never by the tree's identity, so an edit, an undo, a preview or a plan's
+    in-place work tree can never read a stale map (a song's few changes: ~1 µs to read)."""
+    cs = root.get("tempos")
+    if not cs:
+        return root.get("tempo", 120)
+    return (root.get("tempo", 120), *((("b", at.get("beat")) if isinstance(at := c.get("at"), dict) else at,
+                                       c.get("bpm"), bool(c.get("ramp"))) for c in cs))
+
+
+def _map(root: dict):
+    try:
+        key_ = key(root)
+        got = _MAPS.get(key_)
+    except TypeError:                          # a value that isn't plain (a broken song being checked): made each time
+        return _made(root)
+    if got is None:
+        if len(_MAPS) > 64:
+            _MAPS.clear()
+        got = _MAPS[key_] = _made(root)
+    return got
+
+
+def _made(root: dict):
+    segs = _segments(root)
+    return segs, [s[0] for s in segs], [s[2] for s in segs]
+
+
+def segments(root: dict) -> tuple[tuple[float, float, float, float, float], ...]:
     """(start beat, bpm, start seconds, bpm at its end, end beat) per stretch, the first at beat 0, the last
     ending at infinity. A held stretch ends at its own bpm. A change in seconds is placed after every change before
-    it (the earliest still unplaced goes next), so mixed forms agree."""
+    it (the earliest still unplaced goes next), so mixed forms agree. Made once per tempo data (`key`)."""
+    return _map(root)[0]
+
+
+def _segments(root: dict) -> tuple:
     open_ = [0.0, start_bpm(root), 0.0, False]           # the last placed stretch: beat, bpm, seconds, ramps
     done = []
     todo = [c for c in root.get("tempos", []) if "at" in c and "bpm" in c]
@@ -70,30 +105,34 @@ def segments(root: dict) -> list[tuple[float, float, float, float, float]]:
         done.append(seg)
         open_ = [b, bpm, _sec_in(seg, b), bool(c.get("ramp"))]
     b0, bpm0, s0, _ = open_
-    return done + [(b0, bpm0, s0, bpm0, INF)]
+    return tuple(done) + ((b0, bpm0, s0, bpm0, INF),)
 
 
-def _by_beat(segs, beat: float):
+def _by_beat(m, beat: float):
     """The stretch `beat` is in; before the song's start, the first (its tempo reaches back, so "a beat before
     0" is a time a check can name instead of a crash)."""
-    return next((s for s in reversed(segs) if s[0] <= beat + 1e-12), segs[0])
+    return m[0][max(0, bisect_right(m[1], beat + 1e-12) - 1)]
 
 
-def _by_sec(segs, sec: float):
-    return next((s for s in reversed(segs) if s[2] <= sec + 1e-12), segs[0])
+def _by_sec(m, sec: float):
+    return m[0][max(0, bisect_right(m[2], sec + 1e-12) - 1)]
 
 
 def seconds_at(root: dict, beat: float) -> float:
-    return _sec_in(_by_beat(segments(root), beat), beat)
+    if not root.get("tempos"):                 # one tempo all song (the usual song): the one stretch, no map to find
+        return beat * 60.0 / float(root.get("tempo", 120))
+    return _sec_in(_by_beat(_map(root), beat), beat)
 
 
 def beat_at(root: dict, sec: float) -> float:
-    return _beat_in_seg(_by_sec(segments(root), sec), sec)
+    if not root.get("tempos"):
+        return sec * float(root.get("tempo", 120)) / 60.0
+    return _beat_in_seg(_by_sec(_map(root), sec), sec)
 
 
 def bpm_at(root: dict, sec: float) -> float:
     """The tempo playing at `sec` seconds (inside a ramp, the tempo at that instant)."""
-    seg = _by_sec(segments(root), sec)
+    seg = _by_sec(_map(root), sec)
     return seg[1] + _slope(seg) * (_beat_in_seg(seg, sec) - seg[0])
 
 

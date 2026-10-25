@@ -99,7 +99,7 @@ Rectangle {
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 
-    Shortcut { sequence: "Esc"; enabled: backend.adder.armed !== ""; onActivated: backend.adder.disarm() }
+    KeyShortcut { sequence: "Esc"; enabled: backend.adder.armed !== ""; onActivated: backend.adder.disarm() }
     HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
     // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc

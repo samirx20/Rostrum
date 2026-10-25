@@ -2,6 +2,7 @@ module RostrumKit
 singleton Theme 1.0 Theme.qml
 singleton PaintSession 1.0 PaintSession.qml
 singleton TipGate 1.0 TipGate.qml
+KeyShortcut 1.0 KeyShortcut.qml
 FieldFrame 1.0 FieldFrame.qml
 ListField 1.0 ListField.qml
 Chevron 1.0 Chevron.qml

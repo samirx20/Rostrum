@@ -40,25 +40,25 @@ AppShell {
     // the tools: V move, P pen, B draw, Esc back to move (screen state, backend.setTool)
     // painting: the Brush group's other tools (paint_tool.py), and [ ] size, Shift+[ ] hardness (the brush ring shows it)
     readonly property bool painting: backend.tool === "draw" && !shell.typing && !OpenPopups.covered
-    Shortcut { sequence: "E"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "eraser" ? "brush" : "eraser") }
-    Shortcut { sequence: "G"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "fill" ? "brush" : "fill") }
-    Shortcut { sequence: "I"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "pick" ? "brush" : "pick") }
-    Shortcut { sequence: "S"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "select" ? "brush" : "select") }
+    KeyShortcut { sequence: "E"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "eraser" ? "brush" : "eraser") }
+    KeyShortcut { sequence: "G"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "fill" ? "brush" : "fill") }
+    KeyShortcut { sequence: "I"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "pick" ? "brush" : "pick") }
+    KeyShortcut { sequence: "S"; enabled: shell.painting; onActivated: backend.paintTool.use(backend.paintTool.now === "select" ? "brush" : "select") }
     function brushBy(name, f, lo, hi) { painter.setValue(name, Math.max(lo, Math.min(hi, Math.round(painter.brushNow[name] * f * 100) / 100))) }
-    Shortcut { sequence: "["; enabled: shell.painting; onActivated: shell.brushBy("size", 1 / 1.25, 0.5, 2000) }
-    Shortcut { sequence: "]"; enabled: shell.painting; onActivated: shell.brushBy("size", 1.25, 0.5, 2000) }
-    Shortcut { sequences: ["Shift+[", "{"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.max(0, Math.round(painter.brushNow.hardness * 10 - 1) / 10)) }
-    Shortcut { sequences: ["Shift+]", "}"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.min(1, Math.round(painter.brushNow.hardness * 10 + 1) / 10)) }
+    KeyShortcut { sequence: "["; enabled: shell.painting; onActivated: shell.brushBy("size", 1 / 1.25, 0.5, 2000) }
+    KeyShortcut { sequence: "]"; enabled: shell.painting; onActivated: shell.brushBy("size", 1.25, 0.5, 2000) }
+    KeyShortcut { sequences: ["Shift+[", "{"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.max(0, Math.round(painter.brushNow.hardness * 10 - 1) / 10)) }
+    KeyShortcut { sequences: ["Shift+]", "}"]; enabled: shell.painting; onActivated: painter.setValue("hardness", Math.min(1, Math.round(painter.brushNow.hardness * 10 + 1) / 10)) }
     // Esc steps back one level at a time, the same whichever way the tool was entered (key, rail or a step): a rail menu closes, then
     // picked strokes are let go, then the tool is Select (the Brush's panel closes with the Brush; it is no step of its own)
-    Shortcut { sequence: "Escape"; enabled: !OpenPopups.takes(["Esc"]) && (rail.menuOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing)))
+    KeyShortcut { sequence: "Escape"; enabled: !OpenPopups.takes(["Esc"]) && (rail.menuOpen || (backend.tool !== "move" && backend.tool !== "pen" && !(backend.tool === "text" && backend.create.typing)))
                onActivated: { if (rail.menuOpen) rail.openGroup("")
                               else if (backend.strokeSelect.count > 0 || backend.strokeSelect.armed) backend.strokeSelect.clear()   // picked strokes first
                               else if (backend.tool === "bone" && backend.boneTool.end()) {}     // the bone chain ends first
                               else { rail.openGroup(""); backend.setTool("move") } } }
     // painting: 1 … 9 = 10 … 90 % brush opacity, 0 = 100 % (as in Photoshop)
     Repeater { model: 10; delegate: Item { required property int index
-        Shortcut { sequence: String(index); enabled: shell.painting; onActivated: painter.setValue("opacity", index === 0 ? 1 : index / 10) } } }
+        KeyShortcut { sequence: String(index); enabled: shell.painting; onActivated: painter.setValue("opacity", index === 0 ? 1 : index / 10) } } }
 
     Connections { target: spaceKey; function onTapped() { if (!OpenPopups.covered) backend.togglePlay() } }   // a tap of Space plays; held, it pans (spacekey.py)
     // frame by frame, on the selected drawing (INTERACTION Part 2: , and . step drawings, = and − hold; Alt+arrows nudge)
@@ -106,12 +106,12 @@ AppShell {
         enabled: !shell.typing
         skip: backend.actions.skip
     }
-    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.create.canEdit       // the selected text: type in it
+    KeyShortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.create.canEdit       // the selected text: type in it
                onActivated: backend.create.editText(backend.selected) }
-    Shortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.pen.canEditPoints
+    KeyShortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.pen.canEditPoints
                onActivated: backend.pen.editPoints(true) }                                               // the selected path: edit its points
     // Esc steps back one level (the kit's ladder, selection_rules.esc_step): close an open panel, else clear
-    Shortcut {
+    KeyShortcut {
         sequence: "Escape"; enabled: shell.canvasKeys && !OpenPopups.takes(["Esc"])
         onActivated: {
             const open = shell.guidesOpen || backend.exporter.open || importPanel.shown || fileMenu.menuOpen || rail.flyoutOpen

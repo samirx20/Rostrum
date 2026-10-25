@@ -13,9 +13,10 @@ import "Marks.js" as Marks
 Item {
     id: lane
     property var track          // the row's layout: hue, mute, group
-    property var blocks: []     // its notes / hits / clips (the row model's own role: an edit on them sends only these)
+    property var blocks: ""     // its notes / hits / clips as JSON text (the row model's own role: an edit on them sends only these)
     property var patched: null  // a few of them changed since (backend.blocksPatched): the list as patched
-    readonly property var shown: patched || Blocks.own(blocks)     // (read once: Blocks.own)
+    readonly property var sent: patched || Blocks.parse(blocks)    // (parsed once: Blocks.parse)
+    readonly property var shown: Blocks.timed(sent, ruler ? ruler.placing : null)   // in seconds (a tempo change: here only)
     onBlocksChanged: patched = null
     Connections {
         target: backend

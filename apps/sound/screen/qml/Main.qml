@@ -55,10 +55,10 @@ AppShell {
     Connections { target: backend; function onJobWanted(job) { shell.runSoundJob(job) } }
     function used() { if (!shell.wide) workspace.setLibrary(false) }   // a narrow window's Library closes after use
     // Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S: the kit's FilesMenu makes them (from the key map)
-    Shortcut { sequence: "Ctrl+I"; enabled: !OpenPopups.takes(["Ctrl+I"]); onActivated: arrangement.addFromFile() }
-    Shortcut { sequence: "Ctrl+,"; enabled: !OpenPopups.takes(["Ctrl+,"]); onActivated: settingsPanel.open() }
-    Shortcut { sequence: "Ctrl+Q"; enabled: !OpenPopups.takes(["Ctrl+Q"]); onActivated: Qt.quit() }
-    Shortcut { sequence: "R"; enabled: !OpenPopups.takes(["R"]); onActivated: recorder.toggleRecord() }
+    KeyShortcut { sequence: "Ctrl+I"; enabled: !OpenPopups.takes(["Ctrl+I"]); onActivated: arrangement.addFromFile() }
+    KeyShortcut { sequence: "Ctrl+,"; enabled: !OpenPopups.takes(["Ctrl+,"]); onActivated: settingsPanel.open() }
+    KeyShortcut { sequence: "Ctrl+Q"; enabled: !OpenPopups.takes(["Ctrl+Q"]); onActivated: Qt.quit() }
+    KeyShortcut { sequence: "R"; enabled: !OpenPopups.takes(["R"]); onActivated: recorder.toggleRecord() }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
     // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the

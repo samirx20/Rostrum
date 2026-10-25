@@ -84,6 +84,8 @@ It lists, in one place:
 - **Cleaned take not made**: a clip is set to a cleaned take that is not made yet; until it is, the original plays.
   Select the clip and press Make cleaned take. While it is being made it is work in progress, not a problem: the Clean up
   bar shows it and the chip does not count it.
+- **Held past the end**: notes or clips still held at the song's Length. They are let go there (cut off, or ringing out
+  with Ring out on); shorten them or make the song longer if they should be heard whole.
 - **No longer made**: a designed sound an older song still holds (see *scoring-motion*).
 - **Clipping** (red): the newest mix goes over full scale.
 

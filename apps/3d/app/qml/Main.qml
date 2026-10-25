@@ -44,57 +44,57 @@ AppShell {
         viewMenu.openFrom(viewChip, "right")
     }
 
-    Shortcut { sequence: "Space"; onActivated: backend.togglePlay() }
-    Shortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
-    Shortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
-    Shortcut { sequence: "F12"   // the render sheet; on the Render page, the shown shot's Render (next in the queue)
+    KeyShortcut { sequence: "Space"; onActivated: backend.togglePlay() }
+    KeyShortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
+    KeyShortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
+    KeyShortcut { sequence: "F12"   // the render sheet; on the Render page, the shown shot's Render (next in the queue)
                onActivated: backend.page === "render" ? backend.renderQueue.renderNext(backend.shotInfo.id) : backend.exporter.openFor() }
-    Shortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
-    Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
+    KeyShortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
+    KeyShortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
                onActivated: backend.renderJob.dismiss() }
-    Shortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
-    Shortcut { sequence: "Escape"; enabled: backend.renderQueue.shown.state === "done"; onActivated: backend.renderQueue.shown.dismiss() }
+    KeyShortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
+    KeyShortcut { sequence: "Escape"; enabled: backend.renderQueue.shown.state === "done"; onActivated: backend.renderQueue.shown.dismiss() }
     readonly property bool renderIdle: (backend.renderJob.state === "idle" || backend.renderJob.state === "") && backend.renderQueue.shown.state === ""
-    Shortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
-    Shortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.keys.clear() }
-    Shortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
+    KeyShortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
+    KeyShortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.keys.clear() }
+    KeyShortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
                enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.bones.on && !startScreen.visible && shell.renderIdle
                onActivated: backend.select("") }
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
     // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
-    Shortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
+    KeyShortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
                onActivated: meshEdit.toggle() }
     // Paint (paint_mode_qt.py): B in and out on the selected mesh (Esc leaves too)
-    Shortcut { sequence: "B"; enabled: !startScreen.visible && (paintMode.on || paintMode.can) && !typing; onActivated: paintMode.toggle() }
-    Shortcut { sequence: "Escape"; enabled: paintMode.on; onActivated: paintMode.leave() }
-    Shortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
-    Shortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
-    Shortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
-    Shortcut { sequence: "Return"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
-    Shortcut { sequence: "Enter"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
-    Shortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
-    Shortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
-    Shortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
-    Shortcut { sequence: "`"; enabled: viewport.hasShot && !startScreen.visible   // shot camera <-> free camera
+    KeyShortcut { sequence: "B"; enabled: !startScreen.visible && (paintMode.on || paintMode.can) && !typing; onActivated: paintMode.toggle() }
+    KeyShortcut { sequence: "Escape"; enabled: paintMode.on; onActivated: paintMode.leave() }
+    KeyShortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
+    KeyShortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
+    KeyShortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
+    KeyShortcut { sequence: "Return"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
+    KeyShortcut { sequence: "Enter"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
+    KeyShortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
+    KeyShortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
+    KeyShortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
+    KeyShortcut { sequence: "`"; enabled: viewport.hasShot && !startScreen.visible   // shot camera <-> free camera
                onActivated: viewport.setMode(viewport.mode === "shot" ? "free" : "shot") }
-    Shortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
-    Shortcut { sequence: "Ctrl+D"; enabled: backend.adder.canDuplicate; onActivated: backend.adder.duplicate() }
-    Shortcut { sequence: "Ctrl+1"; onActivated: backend.setPage("build") }
-    Shortcut { sequence: "Ctrl+2"; onActivated: backend.setPage("animate") }
-    Shortcut { sequence: "Ctrl+3"; onActivated: backend.setPage("render") }
-    Shortcut { sequence: "R"; enabled: !startScreen.visible; onActivated: rail.openGroup("shapes") }
-    Shortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
-    Shortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
-    Shortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
-    Shortcut { sequence: "P"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: rail.openPanel("poses") }
-    Shortcut { sequence: "O"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: viewport.onionSkin.toggle() }
+    KeyShortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
+    KeyShortcut { sequence: "Ctrl+D"; enabled: backend.adder.canDuplicate; onActivated: backend.adder.duplicate() }
+    KeyShortcut { sequence: "Ctrl+1"; onActivated: backend.setPage("build") }
+    KeyShortcut { sequence: "Ctrl+2"; onActivated: backend.setPage("animate") }
+    KeyShortcut { sequence: "Ctrl+3"; onActivated: backend.setPage("render") }
+    KeyShortcut { sequence: "R"; enabled: !startScreen.visible; onActivated: rail.openGroup("shapes") }
+    KeyShortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
+    KeyShortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
+    KeyShortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
+    KeyShortcut { sequence: "P"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: rail.openPanel("poses") }
+    KeyShortcut { sequence: "O"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: viewport.onionSkin.toggle() }
     // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot
-    Shortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
-    Shortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
-    Shortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
-    Shortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
-    Shortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== "" && !meshEdit.on; onActivated: gizmo.keyMoved() }
+    KeyShortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
+    KeyShortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
+    KeyShortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
+    KeyShortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
+    KeyShortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== "" && !meshEdit.on; onActivated: gizmo.keyMoved() }
 
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu

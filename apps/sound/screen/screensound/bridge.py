@@ -163,10 +163,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         """The piano roll of the selection's track (or the last one picked): its layout; the blocks are `rollBlocks`."""
         return self._view["rollShape"]
 
-    @Property("QVariantList", notify=S.rollBlocksChanged)
+    @Property(str, notify=S.rollBlocksChanged)
     def rollBlocks(self):
-        """The roll's notes / hits / clips (sent alone: an edit on them leaves the roll's layout as it was)."""
-        return self._view["roll"].get("blocks", [])
+        """The roll's notes / hits / clips as JSON text (sent alone: an edit on them leaves the roll's layout as it
+        was; text, not a list: block_patch.py)."""
+        return self._roll_text()
 
     @Property("QVariantMap", notify=S.renderChanged)
     def lastRender(self):

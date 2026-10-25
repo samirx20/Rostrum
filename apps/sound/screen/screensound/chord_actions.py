@@ -37,7 +37,7 @@ def has_notes(f) -> bool:
 
 def has_chord(f) -> bool:
     """A chord of two or more tones among the selected notes (the operations' own grouping)."""
-    return has_notes(f) and any(len(g["tones"]) > 1 for g in chords.of_selection(f.doc.data, notes(f)))
+    return has_notes(f) and f.once("has_chord", lambda f: chords.any_chord(f.doc.data, notes(f)))
 
 
 def shape_valid(needs_key: bool):
