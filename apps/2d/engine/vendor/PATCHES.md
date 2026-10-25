@@ -309,3 +309,15 @@ Not crates (`render/src`): `depth_tests.rs` — a parent's `perspective: 800px` 
 | Crate | Patch | Why |
 |---|---|---|
 | anyrender_skia | `SkiaSceneCache::set_root_matrix(M44)`: any matrix (turned, tilted) as the root view under every draw of the next paint, like `set_root_view`'s scale and offset; taps are not written under it | the engine paints the page turned and tilted into a scratch surface while nothing is asked (render `warmup.rs`), so the GPU programs those draw kinds need are built before the first turned frame (86 ms, 444 ms under load, on the frame's first turn) |
+
+## Hang fix (agent pieces, 2026-10-25)
+
+| Crate | Patch | Why |
+|---|---|---|
+| anyrender_skia | `shader_from_gradient` returns `Option`; a gradient Skia can make no shader for (no size: a radial `closest-side` centred on its box's edge, e.g. a key moving `cy` to 1.0) draws as one colour, its edge colour by CSS's rule (`degenerate_colour`: the last stop when padded, the stops' mean when repeating); `set_solid` is the one way a solid colour is set (the working-space rule) | it unwrapped: the panic on an export's drawing thread left the other workers waiting for its frame and the export hung with no word (p1's flip at 6.1 s and its motion-blurred 6–9 s) |
+
+## Scaled gradient seam (agent pieces item 7, 2026-10-25)
+
+| Crate | Patch | Why |
+|---|---|---|
+| blitz-paint | An offset inside an element (background tiles and their stride, a raster background's place, a box shadow's offset, scrolled contents, an SVG image's or custom widget's place) is applied in the element's own space (`pre_translate`), not after its transform (`then_translate`, on screen). Guard: `render/src/seam_tests.rs` › `a_scaled_gradient_box_has_no_seam` | under a scale (a layer's `scale`, the frame's zoom) the offsets stayed unscaled: a gradient on a shape with an outline is drawn in tiles from inside the outline, the tiles overlapped and the next one restarted the gradient at the unscaled box's edge, a hard seam inside the shape; a shadow's offset did not grow with its layer |
