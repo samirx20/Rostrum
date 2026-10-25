@@ -10,6 +10,7 @@ Item {
     id: h
     readonly property var roll: backend.roll
     readonly property string kind: roll.kind
+    function openNote() { note.openMenu() }       // (the scripted `note-open` step)
     function openInKey() { inKey.openMenu() }     // (the scripted `inkey-open` step)
     function toolHint(tool) {   // what the Select / Draw tool does here, said on hover (not as a line on the screen)
         var free = "Ctrl drags freely"
@@ -77,16 +78,19 @@ Item {
         }
         Rectangle {   // Note ▾
             id: note
+            objectName: "noteMenu"
             visible: h.kind === "notes"
             anchors.verticalCenter: parent.verticalCenter
             width: nt.implicitWidth + 2 * Theme.gap; height: 24; radius: 4
             color: na.containsMouse ? Theme.hover : Theme.raised; border.color: Theme.popupEdge
             Text { id: nt; anchors.centerIn: parent; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label
-                   text: "Note " + (backend.noteLength === "grid" ? "= grid" : backend.noteLength === "beat" ? "1/4" : backend.noteLength === "bar" ? "1 bar" : backend.noteLength) + "  ▾" }
+                   text: backend.noteLabel + "  ▾" }
             MouseArea { id: na; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: { var q = note.mapToItem(null, 0, note.height + 2); lenMenu.openAt(q.x, q.y) } }
-            HoverTip { text: "How long a note is when you draw it (Draw, or a double-click)"; hovered: na.containsMouse; pressed: na.pressed }
-            ActionMenu { id: lenMenu; entries: backend.noteLengthChoices; onPicked: (v) => backend.setNoteLength(v) }
+                        onClicked: note.openMenu() }
+            function openMenu() { var q = note.mapToItem(null, 0, note.height + 2); lenMenu.openAt(q.x, q.y) }
+            HoverTip { text: "How long a note is when you draw it, and whether it is a single note or a chord"; hovered: na.containsMouse; pressed: na.pressed }
+            ActionMenu { id: lenMenu; objectName: "noteMenuList"; entries: backend.noteLengthChoices
+                         onPicked: (v) => v.indexOf("draw:") === 0 ? backend.setDrawChord(v.slice(5)) : backend.setNoteLength(v) }
         }
     }
 }

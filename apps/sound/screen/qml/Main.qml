@@ -27,6 +27,7 @@ AppShell {
     function openSong() { backend.clearSelection() }   // (`song-open`: the song in the settings panel; the header's tempo does the same)
     function openLibrary() { workspace.setLibrary(true) }   // (`library`)
     function openInKey() { dock.openInKey() }                // (`inkey-open`: the In key menu, open)
+    function openNote() { dock.openNote() }                  // (`note-open`: the Note menu, open)
     function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
     function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)
     function openExport() { if (shell.hasSound) mixer.export.setOpen(true) }

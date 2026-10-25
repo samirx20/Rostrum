@@ -7,6 +7,7 @@ the grabbed item's start is within the kit's 6 px of one, else to the grid. Seve
 from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
+from rostrum_sound.doc import ids as note_ids
 from rostrum_gui import snap
 
 from . import key_lock, song_edit, timing
@@ -156,6 +157,28 @@ def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: 
     else:
         args = {"at": {"beat": round(timing.beat(at, root), 4)}, "dur": {"beats": beats}}
     return {"op": "note.add", "target": [track_id], "args": {"pitch": pitch, **args}}
+
+
+class _Taken:
+    """The document's ids, asked one at a time (no walk of the whole song for one click)."""
+
+    def __init__(self, doc):
+        self.doc = doc
+
+    def __contains__(self, item_id):
+        return self.doc.has(item_id)
+
+
+def add_note_calls(doc, track_id, t: float, key: int, chord: str = "", **kw) -> list[dict]:
+    """What a Draw click applies: the note (`add_note_call`) and, with a chord chosen in Note ▾ › Draw (`chord`: "key",
+    "major", "minor", "power"), a `note.chord` on it that adds the other tones: one apply, so one undo step. The
+    note gets its own id first so the chord call can name it."""
+    call = add_note_call(doc, track_id, t, key, **kw)
+    if not chord:
+        return [call]
+    nid = note_ids.note(track_id, call["args"]["at"], doc.data, _Taken(doc))      # the id note.add would give it
+    call["args"]["id"] = nid
+    return [call, {"op": "note.chord", "target": [nid], "args": {"shape": chord}}]
 
 
 def remove_calls(doc, kind, ids) -> list[dict]:

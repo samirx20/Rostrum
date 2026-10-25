@@ -89,24 +89,40 @@ def arp(source, key=None, mode="up", rate=0.5, pattern=None, octaves=1, gate=0.9
     else:
         sets = [[midi(n, where) for n in v] for v in voice(source, key, where=where, **{"range": ("A3", "E5"), **voicing})]
         total = per * len(sets)
-    sets = [[m + 12 * o for o in range(octaves) for m in s] for s in sets]
+    sets = [stack(s, octaves) for s in sets]
     if pattern is not None:
         steps = [(a, ln, 0.88 if c == "X" else 0.72) for a, ln, c in grid(pattern, int(round(total * 4)), "xX", where)]
     else:
         if not (isinstance(rate, (int, float)) and rate > 0):
             refuse(where, f"rate={rate!r}", "is the step in beats", ["0.5 (8ths)", "0.25 (16ths)", "1/3 (8th triplets)"])
-        n = int(total / rate + 1e-6)
-        steps = [(i * rate, rate, 0.84 if i % 4 == 0 else 0.7) for i in range(n)]
+        steps = even_steps(total, rate)
+    played = play(steps, sets, per, mode, lambda idx: f"{where}:{idx}", min(gate / 0.9, 1.2) if pattern is not None else gate)
+    return [{"pitch": name(tones[0], key) if len(tones) == 1 else [name(m, key) for m in tones], "at": at,
+             "dur": dur, "vel": round(vel * v / 0.8, 3)} for at, dur, tones, v in played]
+
+
+def stack(tones: list[int], octaves: int) -> list[int]:
+    """The tones, then the same an octave up, … for `octaves` octaves."""
+    return [m + 12 * o for o in range(octaves) for m in tones]
+
+
+def even_steps(total: float, rate: float) -> list[tuple[float, float, float]]:
+    """(at, length, accent) every `rate` beats over `total` beats; every 4th step leads."""
+    return [(i * rate, rate, 0.84 if i % 4 == 0 else 0.7) for i in range(int(total / rate + 1e-6))]
+
+
+def play(steps, sets, per, mode, seed, gate) -> list[tuple[float, float, list[int], float]]:
+    """The arpeggio: (at, length, tones, accent) for each step, stepping through the tone set playing then (a set lasts
+    `per` beats) in `mode`'s order, each step held `gate` of its length. `seed(set index)` seeds "random". The one
+    arpeggio rule for the script's arp(...) and the document's note.arpeggiate."""
     out, current, k, seq = [], -1, 0, []
     for at, ln, v in steps:
         idx = min(len(sets) - 1, int(at / per + 1e-9))
         if idx != current:
-            current, k, seq = idx, 0, _order(sets[idx], mode, f"{where}:{idx}")
+            current, k, seq = idx, 0, _order(sets[idx], mode, seed(idx))
         tones = seq[k % len(seq)]
         k += 1
-        dur = ln * (min(gate / 0.9, 1.2) if pattern is not None else gate)
-        out.append({"pitch": name(tones[0], key) if len(tones) == 1 else [name(m, key) for m in tones], "at": at,
-                    "dur": dur, "vel": round(vel * v / 0.8, 3)})
+        out.append((at, ln * gate, tones, v))
     return out
 
 

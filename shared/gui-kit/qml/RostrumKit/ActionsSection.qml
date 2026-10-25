@@ -22,7 +22,7 @@ Item {
     // instead of running under the ⋯)
     readonly property var units: rows.reduce((all, r) => all.concat(
         r.items.every(i => !!i.icon) ? [{ items: r.items, icons: true, title: "" }]
-        : r.title !== "" ? [{ items: r.items, icons: false, title: r.title }]
+        : r.title !== "" ? [{ items: r.items, icons: false, title: r.title, menu: r.menu || [] }]
         : r.items.map(i => ({ items: [i], icons: false, title: "" }))), [])
     readonly property int size: Theme.field
     visible: rows.length > 0
@@ -98,8 +98,7 @@ Item {
                     visible: run.folded
                     objectName: "actionBar:" + run.modelData.title
                     implicitHeight: section.size; text: run.modelData.title; chevron: true
-                    onClicked: section.openMenu(barButton, run.modelData.items.map(i => ({ value: i.id, label: i.label,
-                                                                                             keys: i.keys, group: "", sub: [] })))
+                    onClicked: section.openMenu(barButton, run.modelData.menu)   // dividers by group, side menus (action_views._bar_menu)
                 }
                 IconButton {    // "⋯" is part of the last unit, so it can never wrap onto a row of its own
                     id: moreButton
@@ -112,5 +111,5 @@ Item {
             }
         }
     }
-    ActionMenu { id: menu; onPicked: (v) => { delay.stop(); section.hub.choose(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }
+    ActionMenu { id: menu; objectName: "actionsMenu"; onPicked: (v) => { delay.stop(); section.hub.choose(v) }; onRested: (v) => v === "" ? section.leave() : section.rest(v) }
 }

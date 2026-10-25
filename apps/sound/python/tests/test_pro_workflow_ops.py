@@ -113,15 +113,15 @@ def test_hit_fill_never_doubles_a_step_that_has_the_drum_and_is_one_undo_step():
 
 def test_fit_key_moves_only_notes_outside_the_key_in_one_undo_step():
     d = _doc(_op("key.add", [], at=0, key="D minor"),
-             _op("note.add", ["t"], id="cs", pitch="C#4", at={"beat": 0}, dur=0.5),    # outside: C4 and D4 are both a half step away, a tie goes down
+             _op("note.add", ["t"], id="cs", pitch="C#4", at={"beat": 0}, dur=0.5),    # outside: C4 and D4 are both a half step away, a tie goes up
              _op("note.add", ["t"], id="ok", pitch="F4", at={"beat": 1}, dur=0.5),
              _op("note.add", ["t"], id="ch", pitch=["D4", "F#4"], at={"beat": 2}, dur=0.5))
     d.apply(_op("note.fit_key", ["cs", "ok", "ch"]), P)
-    assert (d.item("ok")["pitch"], d.item("ch")["pitch"]) == ("F4", ["D4", "F4"])       # F# -> F (tie goes down)
-    assert d.item("cs")["pitch"] == "C4"
+    assert (d.item("ok")["pitch"], d.item("ch")["pitch"]) == ("F4", ["D4", "G4"])       # F# -> G (tie goes up)
+    assert d.item("cs")["pitch"] == "D4"
     d.undo(P)
     assert d.item("cs")["pitch"] == "C#4" and d.item("ch")["pitch"] == ["D4", "F#4"]    # one step
-    d.apply(_op("note.fit_key", ["cs"], direction="up"), P)       # up: D4
-    assert d.item("cs")["pitch"] == "D4"
+    d.apply(_op("note.fit_key", ["cs"], direction="down"), P)     # down: C4
+    assert d.item("cs")["pitch"] == "C4"
     with pytest.raises(RostrumError, match="not a key"):
         d.apply(_op("note.fit_key", ["cs"], key="blue"), P)

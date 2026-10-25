@@ -25,7 +25,7 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
-         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu")
+         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -36,6 +36,8 @@ SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","t
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
 
 DKEY = 'agent A key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]'
+CHORD = ('agent A chord|[' + ",".join('{"op":"note.add","target":["melody"],"args":{"id":"%s","pitch":"%s","at":{"beat":16},"dur":{"beats":4}}}'
+                                       % (i, p) for i, p in (("c1", "D4"), ("c2", "F4"), ("c3", "A4"))) + "]")
 SIX_EIGHT = 'agent Song in 6/8|[{"op":"doc.set","target":["root"],"args":{"beatsPerBar":6,"beatUnit":8}}]'
 
 
@@ -108,6 +110,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("in-key-menu", ["--sample"], [DKEY, "select melody", "dock editor", "inkey keep", "inkey-open"]),
         ("fit-to-key", ["--sample"], [DKEY, 'agent A note outside the key|[{"op":"note.add","target":["melody"],"args":{"id":"out","pitch":"C#4","at":{"beat":0},"dur":{"beats":1}}}]',
                                        "select out", "dock editor"]),         # Fit to key leads the panel's actions
+        ("note-draw-menu", ["--sample"], [DKEY, "select melody", "dock editor", "note-open"]),      # Note ▾: length, then Draw (Chord in key present)
         ("in-key-rows", ["--sample"], [DKEY, "select melody", "dock editor", "inkey rows"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),
         ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
@@ -163,6 +166,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                                                  "ask quantize", "amount swing 0.5"]),
         ("amounts-transpose-key", ["--sample"], [SONG_FLAGS, "select melody", "dock editor",
                                                  "select-many melody.n9600 melody.n10200", "ask transpose_by", "amount along 1"]),
+        # Chord ▾ (SPEC 3.9–3.11) on three notes of a chord in a song with a key: its menu with Make a chord ▸ open; Strum…, Arpeggio…
+        ("chord-menu", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "bar-menu Chord Make_a_chord"]),
+        ("amounts-strum", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask strum"]),
+        ("amounts-arpeggio", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask arpeggio"]),
         # a drum row's name menu (SPEC 3.8): Hear, Select all, Fill ▸ (open), Clear, Change drum ▸; Fill row… in the amounts popover
         ("drum-row-menu", ["--sample"], ["dock editor", "select drums", "drum-menu hat"]),
         ("drum-row-fill-menu", ["--sample"], ["dock editor", "select drums", "drum-fill-menu hat"]),

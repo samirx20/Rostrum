@@ -77,3 +77,11 @@ def test_a_drag_along_the_hat_row_paints_one_hit_per_step_and_one_undo_removes_t
     finally:
         screen.close()
         QTest.qWait(50)
+
+
+def test_fill_row_counts_grid_steps_and_hit_fill_gets_beats():
+    from screensound import amount_actions as A
+    from types import SimpleNamespace as NS
+    f = NS(doc=NS(data={"tempo": 120, "beatsPerBar": 4}), fill={"track": "kit", "drum": "hat", "from": 0.0, "to": 2.0, "step": 0.5})
+    args = A.fill_calls(f, {"every": 2, "offset": 2, "vel": 0.8, "accentEvery": 4})[0]["args"]
+    assert (args["every"], args["offset"], args["accentEvery"]) == (1.0, 0.5, 2.0), args       # 1/8 grid: a step is half a beat

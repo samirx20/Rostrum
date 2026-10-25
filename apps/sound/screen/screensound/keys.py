@@ -12,6 +12,8 @@ SOUND_KEYS = [
     {"job": "click", "keys": ["Shift+K"], "label": "Click (metronome) on / off", "area": "Play"},
     {"job": "pitch_scale_up", "keys": ["Ctrl+Up"], "label": "Pitch up a scale step", "area": "Edit"},
     {"job": "pitch_scale_down", "keys": ["Ctrl+Down"], "label": "Pitch down a scale step", "area": "Edit"},
+    {"job": "invert_up", "keys": ["Alt+Up"], "label": "Invert the chord up", "area": "Edit"},
+    {"job": "invert_down", "keys": ["Alt+Down"], "label": "Invert the chord down", "area": "Edit"},
     {"job": "quantize", "keys": ["Q"], "label": "Quantise", "area": "Edit"},
     {"job": "repeat", "keys": ["Ctrl+R"], "label": "Repeat…", "area": "Edit"},
     {"job": "next_take", "keys": ["T"], "label": "Next take", "area": "Edit"},

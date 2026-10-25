@@ -120,6 +120,26 @@ def _in_row(label: str, title: str) -> str:
     return label
 
 
+SUB = " › "         # a bar name "Chord › Make a chord": the Chord ▾ button, its "Make a chord" entry a side menu
+
+
+def _bar_menu(items: list[dict]) -> list[dict]:
+    """A titled row's button menu: its actions in order, a divider where `group` changes, the ones sharing a side-menu
+    name (the bar name after " › ") one entry whose `sub` holds them (shown where the first of them ranks)."""
+    out, subs = [], {}
+    for i in items:
+        row = {"value": i["id"], "label": i["label"], "keys": i["keys"],
+               "group": i["group"], "sub": []}
+        if not i["sub"]:
+            out.append(row)
+        elif i["sub"] in subs:
+            subs[i["sub"]]["sub"].append(row)
+        else:
+            subs[i["sub"]] = {"value": "menu:" + i["sub"], "label": i["sub"], "keys": "", "group": i["group"], "sub": [row]}
+            out.append(subs[i["sub"]])
+    return out
+
+
 def panel(entries: list[dict], short: tuple | None = None) -> dict:
     """The settings panel's actions, first (SPEC 2d-design-v2 §8.3): every valid action but the short menu's and the
     ones marked `panel: False`. The primary ones are buttons, in order; actions sharing a `bar` are one titled row
@@ -133,15 +153,16 @@ def panel(entries: list[dict], short: tuple | None = None) -> dict:
     mine = [e for e in off_rows(entries) if not e["edit"] and e["job"] not in menu_jobs and e.get("panel", True)]
     rows, by = [], {}
     for e in (e for e in mine if e["importance"] == "primary"):
-        title = e["bar"]
+        title, _, sub = e["bar"].partition(SUB)
         if title not in by:
             by[title] = {"title": title, "items": []}
             rows.append(by[title])
             by[title]["slot"] = (min(e.get("min_targets", 1), 2), e["rank"])
-        by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], title), "keys": e["keys"],
-                                  "icon": e.get("icon", ""), "full": e["label"],
+        by[title]["items"].append({"id": e["id"], "label": _in_row(e["label"], sub or title), "keys": e["keys"],
+                                  "icon": e.get("icon", ""), "full": e["label"], "group": e["group"], "sub": sub,
                                   "amounts": bool(e.get("amounts")) and not e.get("asks")})   # its ▾ (asks: the button opens)
     for r in rows:
         r["cols"] = _cols([i["label"] for i in r["items"]])
+        r["menu"] = _bar_menu(r["items"])
     rows.sort(key=lambda r: r.pop("slot"))     # fixed slots: one-item actions first, then by rank (stable sort)
     return {"rows": rows, "more": _fold([e for e in mine if e["importance"] != "primary"]) if rows else []}

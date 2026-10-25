@@ -9,7 +9,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui import snap
 
-from . import music_map, timing
+from . import key_lock, music_map, timing
 from .timing import Grid
 
 WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "1/4", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
@@ -17,6 +17,7 @@ WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "1/4", "1/8": "1/8"
 
 
 NOTE_CHOICES = ["grid", "bar", "1/2", "beat", "1/8", "1/16", "1/32"]
+DRAW_CHOICES = [("", "Single notes"), ("key", "Chord in key"), ("major", "Major"), ("minor", "Minor"), ("power", "Power")]
 
 
 class GridSlots:
@@ -68,10 +69,37 @@ class GridSlots:
 
     @Property("QVariantList", notify=gridChanged)
     def noteLengthChoices(self):
-        """Note ▾'s menu, headed "Note length", the current length ticked ("One grid step" follows the Grid)."""
-        return [{"value": v, "label": "One grid step" if v == "grid" else WORDS[v], "keys": "",
-                 "group": "grid" if v == "grid" else "steps", "checked": v == self.noteLength,
-                 **({"heading": "Note length"} if i == 0 else {})} for i, v in enumerate(NOTE_CHOICES)]
+        """Note ▾'s menu: "Note length" (the current one ticked; "One grid step" follows the Grid), then "Draw": what a
+        Draw click stamps (Single notes, or a chord: "Chord in key" only while the song has a key)."""
+        lengths = [{"value": v, "label": "One grid step" if v == "grid" else WORDS[v], "keys": "",
+                    "group": "grid" if v == "grid" else "steps", "checked": v == self.noteLength,
+                    **({"heading": "Note length"} if i == 0 else {})} for i, v in enumerate(NOTE_CHOICES)]
+        now = self.drawChord
+        draw = [{"value": f"draw:{v or 'single'}", "label": label, "keys": "", "group": "draw", "checked": v == now,
+                 **({"heading": "Draw"} if i == 0 else {})}
+                for i, (v, label) in enumerate(c for c in DRAW_CHOICES if c[0] != "key" or key_lock.has_key(self.doc.data))]
+        return lengths + draw
+
+    @Property(str, notify=gridChanged)
+    def drawChord(self):
+        """What a Draw click stamps: "" (a single note, at first) or a chord shape ("key", "major", "minor", "power");
+        screen state per window. "key" counts only while the song has a key."""
+        v = self.__dict__.get("_draw_chord", "")
+        return "" if v == "key" and not key_lock.has_key(self.doc.data) else v
+
+    @Property(str, notify=gridChanged)
+    def noteLabel(self):
+        """Note ▾'s words: "Note 1/4", and "Note 1/4 · Chord" when a chord is chosen."""
+        n = {"grid": "= grid", "beat": "1/4", "bar": "1 bar"}.get(self.noteLength, self.noteLength)
+        return f"Note {n}" + (" · Chord" if self.drawChord else "")
+
+    @Slot(str)
+    def setDrawChord(self, value):
+        v = "" if value == "single" else value
+        if v not in {c[0] for c in DRAW_CHOICES}:
+            return self._fail(f'Error: draw: "{value}" is not a Draw choice (single, key, major, minor, power).')
+        self._draw_chord = v
+        self.gridChanged.emit()
 
     @Slot(str)
     def setNoteLength(self, value):

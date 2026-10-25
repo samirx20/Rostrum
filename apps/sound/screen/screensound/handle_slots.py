@@ -69,14 +69,15 @@ class HandleSlots:
         def go():
             self._drag = Drag(self.doc, self.who, "Draw note")
             self._grab = {"drawn": True, "press": press}
-            self._drag.preview([call])
+            self._drag.preview(call if isinstance(call, list) else [call])     # (a chord: the note and its `note.chord`)
         if not self._guard(go):
             self.cancelDrag()
             return ""
         new = [n["id"] for n in self.doc.item(self._track)["notes"] if n["id"] not in before]
         if new:
-            self.select(new[0])
-        return new[0] if new else ""
+            self._pick(new if len(new) > 1 else new[:1])      # a chord: all its notes, so the drag on sets them all
+        root = call[0]["args"].get("id") if isinstance(call, list) else None      # the clicked note, not another tone
+        return root if root in new else new[0] if new else ""
 
     @Slot(float, float, bool)
     def handleTo(self, dt, dy, free):

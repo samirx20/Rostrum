@@ -106,7 +106,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 - **Editor** (the dock under the arrangement, E; the selected track): it opens tall (about three quarters of the room under the arrangement) and framed on the track's notes (keys never smaller than 9 px; the view scrolls if the part is wider), beside a
   piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
-  is). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+  is, and under Draw whether a click stamps a single note or a chord). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag its right end to lengthen or shorten it, its left end to move its start (the end
   stays; neither makes it shorter than one grid step), Delete removes. A note dragged towards the end of a song of a set
   length stops on the last grid line before the end. Each drag
@@ -170,9 +170,32 @@ notes only; the same seed on the same notes gives the same result every time).
   Give one of the two. Without a key, `steps` fails ("The song has no key …"); past the 128 notes it fails and changes
   nothing.
 - **Fit to key:** `note.fit_key {}` moves the notes that are outside the key to the nearest note of the key (the song's
-  key at each note's own time; `key: "D minor"` to name one; `direction: "down"` or `"up"` to always go one way, a tie
-  in "nearest" goes down). Notes already in the key are not touched, a chord is fitted tone by tone, and it is one
-  undo step. Without a key (and no `key` given) it fails. Find the wrong notes first with `inspect_harmony`.
+  key at each note's own time; `key: "D minor"` to name one; `direction: "down"` or `"up"` to always go one way; with
+  "nearest", a note halfway between two notes of the key goes up: C#4 in D minor becomes D4). Notes already in the key
+  are not touched, a chord is fitted tone by tone, and it is one undo step. Without a key (and no `key` given) it
+  fails. Find the wrong notes first with `inspect_harmony`.
+- **Which notes are a chord** (for invert, strum and arpeggiate): selected notes on one track that start within 30 ms
+  of each other, or a strummed chord (each note starting at most 200 ms after the one before and ending where another
+  note of the chord ends, within 10 ms); a note whose pitch is a list is a chord on its own.
+- **Make a chord:** `note.chord {shape: "key"}` builds a chord on each selected note by adding its other tones as
+  separate notes (same start, length and velocity), so each can be edited. `"key"` is the key's own chord on that
+  note (D in C major gives D–F–A, B gives B–D–F), `"key7"` adds its 7th; both need the song's key and a note that is in
+  it. Named shapes: `"major"`, `"minor"`, `"sus2"`, `"sus4"`, `"power"` (root and 5th), `"octave"`. `inversion: 1`
+  (2, 3) puts the chord's 3rd (5th, 7th) lowest; the selected note stays where it is. Tones already sounding there are
+  not added twice. One undo removes the added tones only. For finer voicings (drop 2, spread, voice leading) write
+  the chords in a script with `voice(...)` (`inspect_guide 'writing-music-tools'`).
+- **Invert:** `note.invert {by: 1}` moves each chord's lowest note up an octave (`-1`: the top note down; `±2`, `±3`
+  repeat it). A list chord turns inside its list. Past the 128 notes it fails and changes nothing.
+- **Strum:** `note.strum {gap: 30, soften: 0.1}` makes each note of a chord start `gap` ms after the one below it
+  (`gap: -30`: from the top note, an up-strum) and keeps each note's end, so the later notes get shorter. `soften`
+  makes the last note that much softer than the first (0.1 = 10 %), the ones between in steps. Strumming a strummed
+  chord re-spaces it from its earliest start, so it never stacks; `gap: 0` lines the chord up again. A list chord gets
+  its own `strum` field instead. It fails if a note would start at or after its end (a shorter gap, or longer notes).
+- **Arpeggiate:** `note.arpeggiate {rate: 0.25, mode: "up", octaves: 1, gate: 0.9, seed: 1}` replaces each chord with
+  its notes one after another over the chord's own length: a step every `rate` beats (1/32 … 1), in `mode` order
+  (`up`, `down`, `upDown`, `downUp`, `converge`, `diverge`, `order` = as written, `random` = the same every time for
+  one `seed`), over `octaves` octaves (1 … 4), each note holding `gate` of its step. Every new note lies inside the
+  chord's span and copies the velocity of the chord note it plays; one undo brings the chord back.
 - **Fill a drum row:** `hit.fill {track, drum: "hat", every: 0.5, offset: 0, from: {"beat": 0}, to: {"beat": 4}, vel: 0.85}`
   adds hits of one drum every `every` beats (1/32 … 32) from `from` up to (not including) `to`, the first one `offset`
   beats after `from`; `accentEvery: 2, accentVel: 1` makes every second beat an accent. It adds only where that drum has no

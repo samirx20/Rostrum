@@ -250,6 +250,9 @@ class Document:
         return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
     def _replay(self, edits, who, label, **kw) -> Change:
+        if self._gesture is not None:           # undo / redo under a live drag or popover would step the history under
+            raise RostrumError(codes.CONFLICT, "undo", "the document",            # what it shows (its end then mixes both)
+                               f'has "{self._gesture.label}" open right now', hint="Finish it first: Enter keeps it, Esc puts it back.")
         work, idx = E.fork(self.data, self.kind.lists, self._index())
         done = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
         return self.commit(work, done, who, label, idx=idx, **kw)

@@ -15,7 +15,7 @@ bridge call a click, a box, a key or a menu makes.
     rename-open <id> (its name field, open) | rename <new name> (Enter in the open field) | open <id> (double-click: select + Editor)
     jump next|prev (`,` / `.`) | playhead-step <n> (Ctrl+arrows) | fit-selection (F)
     marker-add (M: a marker at the playhead, its name field open) | marker-menu <name> (its right-click menu, open) | fit-bar <bar> (Land a bar on the selected
-      marker) | ask <action key> (its number field, open: for a picture) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group, open) |
+      marker) | bar-menu <title> [<side menu>] (a click on the panel's "<title> ▾" button: Chord; Make_a_chord open) | ask <action key> (its number field, open: for a picture) | library <chip> (the Library open on a chip) | clean-open (Clean up…: the Cleanup group, open) |
       clean <voice 0|1> <noise 0|1> <echo 0|1> (Clean: the steps on the selected clips, then their cleaned takes)
     tool select|draw (the Editor's tool) | add-hit <t s> <drum row> (a double-click on an empty drum row) |
       draw <t s> <key or drum row> (a click with the Draw tool)
@@ -35,7 +35,7 @@ from PySide6.QtTest import QTest
 WORDS = ("select-many", "select-add", "select-run", "select-all", "box", "range", "range-clear", "action",
          "actions", "menu", "menu-roll", "key", "copy", "cut", "paste", "drag-many", "handle", "lock", "loop",
          "range-edge", "rename-open", "rename", "open", "jump", "playhead-step", "fit-selection", "marker-add", "marker-menu", "drum-menu", "drum-fill-menu", "drum-fill-row",
-         "fit-bar", "ask", "amount", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
+         "fit-bar", "ask", "amount", "bar-menu", "library", "clean-open", "clean", "tool", "add-hit", "draw", "line-type",
          "speak-again", "line-box", "select-clip", "grid", "snap", "velocity-line", "velocity-bar", "audition", "clean-line")
 
 
@@ -45,6 +45,19 @@ def _find(item, prop):
         return item
     for child in item.childItems():
         found = _find(child, prop)
+        if found is not None:
+            return found
+    return None
+
+
+def _shown(item, name):
+    """The visible item called `name` under `item` (kept-but-hidden delegates are skipped)."""
+    if not item.isVisible():
+        return None
+    if item.objectName() == name and item.width() > 0:
+        return item
+    for child in item.childItems():
+        found = _shown(child, name)
         if found is not None:
             return found
     return None
@@ -152,6 +165,36 @@ def do_select_step(bridge, win, word, rest):
         bridge.actions.amounts.keep()
     elif word == "ask":                       # ask fit_bar / humanize: the action's amounts popover open (as Ctrl+K opens it)
         bridge.run(rest[0])
+    elif word == "bar-menu":                  # bar-menu Chord [Make_a_chord]: a real click on the panel's Chord ▾, a side menu open
+        from PySide6.QtCore import QPoint, Qt
+        button = None
+        for _ in range(40):                   # the panel settles once the pointer is quiet (select_slots._settle)
+            button = _shown(win.contentItem(), "actionBar:" + rest[0])
+            if button is not None:
+                break
+            QTest.qWait(25)
+        if button is None:
+            raise RuntimeError(f"bar-menu: no {rest[0]} ▾ in the settings panel for this selection")
+        QTest.qWait(100)                      # its row placed (the panel lays out the frame after)
+        at = button.mapToScene(button.boundingRect().center())
+        at = QPoint(int(at.x()), int(at.y()))
+        QTest.mouseMove(win, at)
+        QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
+        if len(rest) > 1:                     # the pointer rests on the side menu's row (it opens on hover)
+            QTest.qWait(150)
+            row = _shown(win.contentItem(), "menu:menu:" + rest[1].replace("_", " "))
+            if row is None:
+                names = []
+                def walk(it):
+                    if it.objectName().startswith(("menu", "action")) and it.isVisible():
+                        names.append(it.objectName())
+                    for c in it.childItems():
+                        walk(c)
+                walk(win.contentItem())
+                raise RuntimeError(f"bar-menu: no {rest[1]} row in the {rest[0]} menu {names} {bridge.selectedIds}")
+            at = row.mapToScene(row.boundingRect().center())
+            QTest.mouseMove(win, QPoint(int(at.x()), int(at.y())))
+            QTest.qWait(300)
     elif word == "amount":                    # amount along 1: a set-up value in the open amounts popover (live)
         v = rest[1]
         bridge.actions.amounts.setValue(rest[0], v if not v.replace(".", "").replace("-", "").isdigit() else float(v))
