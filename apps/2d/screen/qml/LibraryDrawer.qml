@@ -36,7 +36,7 @@ Rectangle {
         visible: drawer.lib.searchShown
         anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: Theme.pad; rightMargin: Theme.pad; topMargin: Theme.header }
         value: drawer.lib.query; placeholder: "Search the Library"
-        onEntered: drawer.lib.useTop()
+        onEntered: { drawer.lib.useTop(); Qt.callLater(drawer.takeKeys) }   // the box keeps the keys: type on, or Esc
         onEscaped: drawer.lib.setQuery("")
         Connections { target: search.input; function onTextChanged() { if (search.input.activeFocus) drawer.lib.setQuery(search.input.text) } }
     }

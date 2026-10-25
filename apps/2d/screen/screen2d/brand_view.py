@@ -137,12 +137,18 @@ class LibraryView(QObject):
     def use(self, section, name):
         """A kit colour or text style on the selection: one change."""
         ids = self.b.selected_layers()
+        takes = self.picked == "texts" if section == "textStyles" else bool(self.picked)     # what the pick can take
+        if not takes:
+            return self.b._set_status(f"Pick a {'text' if section == 'textStyles' else 'shape, path or text'} first, "
+                                      f"then use {name} on it")
         self.b.guard(lambda: self.b._apply(B.use_calls(self.b.doc, section, B.entry(self._folder(), section, name), ids),
                                            f"Use {name}"))
 
     @Slot(str)
     def useDocStyle(self, style_id):
         ids = [i for i in self.b.selected_layers() if self.b.doc.item(i)["type"] == "text"]
+        if not ids:
+            return self.b._set_status("Pick a text first, then use the style on it")
         self.b.guard(lambda: self.b._apply([{"op": "style.use", "target": ids, "args": {"style": style_id}}], "Use style"))
 
     @Slot(str)
