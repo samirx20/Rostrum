@@ -17,7 +17,7 @@ Item {
     Flickable {
         id: list
         anchors { left: parent.left; right: parent.right; top: parent.top }
-        height: Math.max(0, chain.height - plus.height - 2)
+        height: Math.min(flow.height, Math.max(0, chain.height - plus.height - 2))   // the room the strip keeps (MixStrip) may be more
         contentHeight: flow.height; clip: true; boundsBehavior: Flickable.StopAtBounds
         interactive: !dragging
         property bool dragging: false
@@ -81,7 +81,7 @@ Item {
         id: plus
         objectName: "addEffect"
         text: "+ Effect"; row: true; flat: true; width: chain.width
-        anchors.bottom: parent.bottom
+        y: list.height + (chain.chips.length ? 2 : 0)      // right under the lines
         tip: menu.item && menu.item.opened ? "" : chain.ownerId === "master" ? "Add an effect to the master" : "Add an effect to this track"
         onClicked: { menu.active = true; menu.item.showPlugins = false; mixer.plugins.scan(); menu.item.open() }
     }

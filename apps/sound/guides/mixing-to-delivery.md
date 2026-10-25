@@ -43,7 +43,8 @@ under its effects (a new group plays into the master). Each strip, top to bottom
 - its effects, one line each in the order they play (click one to edit it in the settings panel; a switched-off one
   is dim; **drag a line up or down** to change the order (right-click a line for **Remove**, as the Delete key does), a line shows where it will land, one Undo puts it back;
   an agent calls `effect.move {to}`), and **+ Effect** under them on every strip: it stays in view under the lines even
-  when there are more effects than fit (the lines scroll above it). The menu and the chain say the same names (Saturation, Stereo width, De-esser …);
+  when there are more effects than fit (the lines scroll above it). Every strip keeps the room for its effect lines
+  whether they are used or not, so adding an effect never moves a pan or a fader. The menu and the chain say the same names (Saturation, Stereo width, De-esser …);
 - its sends: **Reverb send** (how much goes to the master's reverb, in dB like every send; the same setting as Reverb in the
   settings panel), one row per group it feeds (drag the slider; right-click a group send for **Remove**), **+ Send** while there is a group it doesn't feed yet,
   and its dips with **+ Dip under…**;
@@ -71,8 +72,8 @@ the master's too: a new track starts at 0 dB (gain 1), and headroom is the main 
 ## The Mixer's loudness panel
 
 The strips sit side by side from the left, the Master right after the last one; with many tracks they scroll sideways
-and the Master stays in place. The rest of the width is the loudness panel: its title names the target ("Loudness ·
-target −14 LUFS (Streaming)"), then three numbers, **Whole song** (how loud the whole mix is; "So far" while playing),
+and the Master stays in place. The rest of the width is the loudness panel: its title names the target ("Loudness
+target −14 LUFS (Streaming)", on a second line when the panel is narrow), then three numbers, **Whole song** (how loud the whole mix is; "So far" while playing),
 **Now** (the 3 seconds before the playhead; before the first 3 seconds, or when stopped at the start, it shows the last value in grey, and is absent until the song has had one) and **Loudest peak** ("Loudest so far" while playing), and under them
 the short-term loudness over the song, with the target as a dashed line and the playhead. Whole song is green within
 1 of the target and amber outside; Loudest peak is amber only over the ceiling. The Master strip's meter number, when
