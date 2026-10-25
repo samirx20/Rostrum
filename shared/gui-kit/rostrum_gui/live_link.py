@@ -5,7 +5,9 @@
   dragging) is written for `inspect_screen` whenever it differs (rostrum_core.screen_state), on the link's own thread
   (`settle()` waits for it). Screen state, not a change;
 - the whole document file is written here, between pointer actions, once the person pauses (live.Live.fold_if_quiet),
-  never inside a click or a drag: each change only appends its line to the history file.
+  never inside a click or a drag, its text made a slice of ~3 ms at a time between events and written on a thread of
+  its own (a key pressed meanwhile never waits; a failed write is said in the top bar): each change only appends its
+  line to the history file.
 
     link = LiveLink(bridge, "2d", screen_seen.state)      # after live.keep(doc); link.close() when the window closes
 
@@ -63,7 +65,8 @@ class LiveLink(QObject):
             if doc.live is not None:
                 doc.live.windowed()               # (the bridge may hold another document now)
                 doc.live.catch_up()
-                doc.live.fold_if_quiet()
+                if doc.live.fold_if_quiet():
+                    self._fold_work()             # its text a slice at a time, between events
             if self._written is not None and self._written.done():
                 done, self._written = self._written, None
                 done.result()                     # a failed write raises here, on the screen's thread
@@ -78,12 +81,20 @@ class LiveLink(QObject):
                 print(line, file=sys.stderr)
                 fail = getattr(self.bridge, "_fail", None)
                 if fail:
-                    fail(line)
+                    fail(line, e.person() if isinstance(e, RostrumError) else None)
+
+    def _fold_work(self):
+        live = self.bridge.doc.live
+        if live is not None and live.fold_work():
+            QTimer.singleShot(0, self._fold_work)
 
     def settle(self):
-        """Wait for the last write of what the screen shows (a script that reads it right after a tick)."""
+        """Wait for the last write of what the screen shows and of the document file (a script that reads them right
+        after a tick)."""
         if self._written is not None:
             self._written.result()
+        if self.bridge.doc.live is not None:
+            self.bridge.doc.live.settle()
 
     def close(self):
         self._timer.stop()

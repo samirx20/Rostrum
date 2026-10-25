@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, QTimer, Signal, Slot
 from PySide6.QtQml import qjsEngine
+from rostrum_core import edits as E
 from rostrum_gui import pointer_quiet
 
 from . import clipboard, selection, timing
@@ -288,7 +289,7 @@ class SelectSlots:
         if change is None or change.who != self.who or not (change.undoes or change.redoes):
             return
         kinds = ("note", "hit", "clip", "line", "track", "marker", "section")
-        touched = list(dict.fromkeys(e.id for e in change.edits))
+        touched = list(dict.fromkeys(i for e in change.edits for i in E.ids(e)))
         # what the original step acted on, when its calls name it (a track moved down also shifts the one it passed:
         # only the moved one is selected again, as before the move)
         h = self.doc.history

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from rostrum_core import edits as E
+
 from .rows import _headers
 
 SAME_ONLY = ("list",)                       # types shown only when every item has the same value
@@ -111,7 +113,7 @@ def _by_item(h) -> dict:
     index = got[2]
     for c in h.changes[got[1]:]:
         if c.original:
-            for i in dict.fromkeys(getattr(e, "id", None) for e in c.edits):
+            for i in dict.fromkeys(i for e in c.edits for i in E.ids(e)):
                 if i is not None:
                     index.setdefault(i, []).append(c)
     got[1] = len(h.changes)

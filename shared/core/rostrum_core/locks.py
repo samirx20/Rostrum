@@ -24,6 +24,8 @@ def _holder(idx, id_):
 
 def _held(e, idx, lists):
     """(the locked item that holds this edit's change, the item changed), or (None, None)."""
+    if isinstance(e, E.Shift):                          # (never the `locked` field: edits.Shift refuses it)
+        return next(((h, i) for i in e.ids if (h := _holder(idx, i)) is not None), (None, None))
     if isinstance(e, E.Set):
         if e.path and e.path[0] == "locked":            # locking / unlocking the item itself: ask its parents only
             return _holder(idx, idx[e.id].parent if e.id in idx else None), e.id

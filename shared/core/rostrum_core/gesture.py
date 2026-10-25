@@ -8,8 +8,9 @@ document back (None: can't tell), so listeners redo only what the drag had touch
 """
 from __future__ import annotations
 
+from . import edits as E
 from . import run
-from .diff import diff
+from .diff import diff, touched
 from .document import Event
 from .errors import RostrumError, codes
 
@@ -19,6 +20,8 @@ class Gesture:
         self.doc, self.label, self.who = doc, label, who
         self.change, self.cancelled, self._calls = None, False, []
         self._stepped = False        # a step was shown: listeners saw a state that the end must take back or keep
+        self._near = set()           # the ids the shown state differs on from the start: compares look only there
+        self._made = None            # a fresh step's edits from the start (the shown state is exactly start + these)
 
     def __enter__(self):
         if self.doc._gesture is not None:
@@ -36,6 +39,8 @@ class Gesture:
         if fresh:
             return self._fresh(calls)
         work, edits, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
+        self._near |= touched(edits, self.doc.kind.lists)
+        self._made = None
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = calls          # the last step says where the drag ended
@@ -48,11 +53,13 @@ class Gesture:
         self.doc._indexed(self.start, self._start_idx)
         try:
             calls = calls() if callable(calls) else calls
-            work, _, calls, idx = run.plan_indexed(self.doc.kind, self.start, calls, idx=self._start_idx)
+            work, made, calls, idx = run.plan_indexed(self.doc.kind, self.start, calls, idx=self._start_idx)
         finally:
             self.doc.data = shown
             self.doc._indexed(shown, shown_idx)
-        edits = diff(shown, work, self.doc.kind.lists, shown_idx, idx)     # from what listeners show now
+        near = touched(made, self.doc.kind.lists)
+        edits = diff(shown, work, self.doc.kind.lists, shown_idx, idx, self._near | near)   # from what listeners show now
+        self._near, self._made = near, made
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = calls
@@ -72,7 +79,8 @@ class Gesture:
         if exc_type or self.cancelled:          # taken back: listeners hear what that undid on what they show, so
             self._reset(end, end_idx)           # they redo only that (Esc in a popover redrew every row: 34-64 ms)
             return False
-        edits = diff(self.start, end, self.doc.kind.lists, self._start_idx, end_idx)
+        edits = self._made if self._made is not None else diff(
+            self.start, end, self.doc.kind.lists, self._start_idx, end_idx, self._near)   # (a Shift stays one edit)
         if edits:
             self.change = self.doc.commit(end, edits, self.who, self.label, self._calls, idx=end_idx)
         else:
@@ -80,8 +88,11 @@ class Gesture:
         return False
 
     def _reset(self, end, end_idx):
+        if self._made is not None:              # start + made is what shows: its exact reverse, nothing to compare
+            self.doc._emit(Event("reset", edits=[E.reverse(e) for e in reversed(self._made)]))
+            return
         try:
-            back = diff(end, self.start, self.doc.kind.lists, end_idx, self._start_idx)
+            back = diff(end, self.start, self.doc.kind.lists, end_idx, self._start_idx, self._near)
         except Exception:  # noqa: BLE001  a step that broke the tree can't be compared: everyone redoes all
             back = None
         self.doc._emit(Event("reset", edits=back))

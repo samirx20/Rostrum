@@ -53,6 +53,38 @@ def canonical(data) -> str:
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+_CHUNK = 64
+
+
+def canonical_pieces(data):
+    """canonical(data) as pieces (a generator) that join to exactly the same text, each made by one short call: a
+    window makes a big document's text a few milliseconds at a time between the person's events (doc_write.py).
+    Items holding child items are opened up; a long list is written 64 entries at a time."""
+    if _parent(data):
+        for n, k in enumerate(sorted(data)):
+            yield ("{" if not n else ",") + json.dumps(k, ensure_ascii=False) + ":"
+            yield from canonical_pieces(data[k])
+        yield "}"
+    elif type(data) is list and (len(data) > _CHUNK or any(map(_parent, data))):
+        yield "["
+        for n in range(0, len(data), _CHUNK):
+            part = data[n:n + _CHUNK]
+            if any(map(_parent, part)):
+                for m, x in enumerate(part):
+                    if n or m:
+                        yield ","
+                    yield from canonical_pieces(x)
+            else:
+                yield ("," if n else "") + canonical(part)[1:-1]
+        yield "]"
+    else:
+        yield canonical(data)
+
+
+def _parent(v) -> bool:
+    return type(v) is dict and any(type(x) is list and x and type(x[0]) is dict for x in v.values())
+
+
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -140,11 +172,18 @@ def save(doc, document=True, p=None):
         if fh is not None:
             fh.close()
     if document:
-        saved_by = app_version()
-        top = json.dumps({"format": kind.format, "version": kind.version, "saved_by": saved_by, "at": doc.seq,
-                          "t": ch[-1].t if ch else 0.0, "hash": h}, ensure_ascii=False, separators=(",", ":"))
-        write_atomic(p["doc"], f'{top[:-1]},"doc":{body}}}')
-        doc.saved_by = saved_by
+        doc.saved_by = write_document(p["doc"], kind.format, kind.version, doc.seq, ch[-1].t if ch else 0.0, body, h)[1]
+
+
+def write_document(path, format_, version, at, t, body, h=None) -> tuple[str, str]:
+    """Write the document file: `body` its canonical text, `h` its hash when known. (hash, saved_by). Made only of
+    plain values, so it may run on another thread (doc_write.py: hashing and writing let the screen's thread run)."""
+    h = h or _sha(body)
+    saved_by = app_version()
+    top = json.dumps({"format": format_, "version": version, "saved_by": saved_by, "at": at, "t": t, "hash": h},
+                     ensure_ascii=False, separators=(",", ":"))
+    write_atomic(path, f'{top[:-1]},"doc":{body}}}')
+    return h, saved_by
 
 
 def _append_to(w, hist, n):

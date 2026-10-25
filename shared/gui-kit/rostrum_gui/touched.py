@@ -59,5 +59,5 @@ def of(doc, event) -> Touched | None:
         return None
     lists = doc.kind.lists
     keys = set().union(*(E.keys(e, lists) for e in edits))
-    structural = any(not isinstance(e, E.Set) for e in edits) or any(len(k) > 1 and k[1] in NAMES for k in keys)
+    structural = any(not isinstance(e, (E.Set, E.Shift)) for e in edits) or any(len(k) > 1 and k[1] in NAMES for k in keys)
     return Touched(keys, structural)

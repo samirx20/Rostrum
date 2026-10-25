@@ -46,6 +46,13 @@ class Context:
             node = node[k]
         return type(node) is type(value) and node == value
 
+    def shift(self, ids_, path, by, places=None):
+        """The number at `path` of every item in `ids_` moved by `by` (rounded to `places`): one edit for them all
+        (edits.Shift), so a whole-song nudge is one history entry, applied and undone exactly."""
+        ids_ = list(dict.fromkeys(ids_))
+        if ids_ and by:
+            self._do(E.Shift(ids_, [path] if isinstance(path, str) else list(path), by, places))
+
     def insert(self, parent, key, item, index=None):
         self._do(E.Insert(item["id"], parent, key, 10**9 if index is None else index, item))
 
@@ -138,8 +145,8 @@ def _check_valid_when(kind, op, items, args, view, where):
 
 def changed_items(edits, idx, lists) -> list[dict]:
     """The items whose own values these edits set or brought in (still in the document)."""
-    ids = dict.fromkeys(i for e in edits if isinstance(e, (E.Set, E.Insert))
-                        for i in ([e.id] if isinstance(e, E.Set) else subtree_ids(e.item, lists)))
+    ids = dict.fromkeys(i for e in edits if isinstance(e, (E.Set, E.Insert, E.Shift))
+                        for i in (subtree_ids(e.item, lists) if isinstance(e, E.Insert) else E.ids(e)))
     return [idx[i].item for i in ids if i in idx]
 
 
@@ -148,7 +155,10 @@ def set_fields(edits) -> dict:
     changed, is checked whole). A field nobody set holds what passed the check before."""
     out, whole = {}, set()
     for e in edits:
-        if isinstance(e, E.Set) and e.path[0] != "type":
+        if isinstance(e, E.Shift):
+            for i in e.ids:
+                out.setdefault(i, set()).add(e.path[0])
+        elif isinstance(e, E.Set) and e.path[0] != "type":
             out.setdefault(e.id, set()).add(e.path[0])
         elif isinstance(e, (E.Insert, E.Set)):
             whole.add(e.id)
