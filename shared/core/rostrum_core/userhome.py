@@ -58,6 +58,10 @@ def scripted() -> str | None:
         return "pytest"
     if _screen and not _person:
         return "a screen opened by a script, not a person's launch"
+    if os.environ.get("QT_QPA_PLATFORM") == "offscreen" or os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1":
+        return "a window no person sees (offscreen, or kept behind for a check)"    # a person's launch sets neither
+    if "PySide6.QtTest" in sys.modules:
+        return "a scripted hand (QtTest) drives this run"            # a harness that called person_start() itself (sweep, 2026-10-25)
     here = str(Path(__file__).resolve()).lower()
     if "\\.t3\\worktrees\\" in here or "/.t3/worktrees/" in here:
         return "running from a team worktree"
