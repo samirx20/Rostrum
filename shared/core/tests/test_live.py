@@ -59,6 +59,7 @@ def test_a_window_writes_the_whole_file_only_when_quiet_and_never_loses_a_step(t
             server.apply({"op": "layer.rename", "target": ["title"], "args": {"name": "Hi"}}, AGENT)
     assert json.loads(file.read_text(encoding="utf-8"))["at"] == at          # nothing whole written in a change
     assert window.live.fold_if_quiet() is True                              # 20 steps behind: folds even mid-work
+    window.live.settle()                                                     # (the link makes it between events)
     window.undo(SAM)
     assert window.live.fold_if_quiet() is False                             # just changed: waits for a pause
     crashed = Document.open(tmp_path, "itm", toy.KIND)                       # the window died before folding
@@ -76,14 +77,15 @@ def _held_write(monkeypatch, fail=False):
     """The window's document-file write, held on its thread until the test lets it go (a slow or failing disk)."""
     import threading
     go = threading.Event()
-    real = live.write_document
+    from rostrum_core import doc_write
+    real = doc_write.write_document
 
     def slow(*a, **kw):
         assert go.wait(10), "the write was never let go"
         if fail:
             raise OSError("disk full")
         return real(*a, **kw)
-    monkeypatch.setattr(live, "write_document", slow)
+    monkeypatch.setattr(doc_write, "write_document", slow)
     monkeypatch.setattr(live, "FOLD_QUIET_S", 0.0)
     return go
 
@@ -98,7 +100,9 @@ def test_a_key_never_waits_for_the_document_file_being_written(tmp_path, monkeyp
     live.keep(window).windowed()
     window.apply(move(1), SAM, join=False)
     go = _held_write(monkeypatch)
-    assert window.live.fold_if_quiet() is True                     # the write starts, and is held
+    assert window.live.fold_if_quiet() is True                     # the write starts (its text made between events),
+    while window.live.fold_work():                                 # and the file write is held
+        pass
     t = time.perf_counter()
     window.apply(move(2), SAM, join=False)                         # a key while the file is being written
     assert window.live.fold_if_quiet() is False                    # the next tick doesn't wait either
@@ -118,6 +122,8 @@ def test_a_failed_document_write_is_said_and_tried_again(tmp_path, monkeypatch):
     window.apply(move(1), SAM, join=False)
     go = _held_write(monkeypatch, fail=True)
     assert window.live.fold_if_quiet() is True
+    while window.live.fold_work():
+        pass
     go.set()
     with pytest.raises(RostrumError) as e:                         # the link's next tick: loud, in the top bar
         window.live.settle()

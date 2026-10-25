@@ -56,39 +56,33 @@ def canonical(data) -> str:
 _CHUNK = 64
 
 
-def canonical_pieces(data) -> list[str]:
-    """canonical(data) as pieces that join to exactly the same text, each made by one short call: a background write
-    of a big document never holds Python's lock long enough to delay a key on the screen's thread. Items holding
-    child items are opened up; a long list is written 64 entries at a time."""
-    out = []
-    _pieces(data, out)
-    return out
+def canonical_pieces(data):
+    """canonical(data) as pieces (a generator) that join to exactly the same text, each made by one short call: a
+    window makes a big document's text a few milliseconds at a time between the person's events (doc_write.py).
+    Items holding child items are opened up; a long list is written 64 entries at a time."""
+    if _parent(data):
+        for n, k in enumerate(sorted(data)):
+            yield ("{" if not n else ",") + json.dumps(k, ensure_ascii=False) + ":"
+            yield from canonical_pieces(data[k])
+        yield "}"
+    elif type(data) is list and (len(data) > _CHUNK or any(map(_parent, data))):
+        yield "["
+        for n in range(0, len(data), _CHUNK):
+            part = data[n:n + _CHUNK]
+            if any(map(_parent, part)):
+                for m, x in enumerate(part):
+                    if n or m:
+                        yield ","
+                    yield from canonical_pieces(x)
+            else:
+                yield ("," if n else "") + canonical(part)[1:-1]
+        yield "]"
+    else:
+        yield canonical(data)
 
 
 def _parent(v) -> bool:
     return type(v) is dict and any(type(x) is list and x and type(x[0]) is dict for x in v.values())
-
-
-def _pieces(v, out):
-    if _parent(v):
-        out.append("{")
-        for n, k in enumerate(sorted(v)):
-            out.append(("," if n else "") + json.dumps(k, ensure_ascii=False) + ":")
-            _pieces(v[k], out)
-        out.append("}")
-    elif type(v) is list and (len(v) > _CHUNK or any(map(_parent, v))):
-        out.append("[")
-        for n in range(0, len(v), _CHUNK):
-            part = v[n:n + _CHUNK]
-            if any(map(_parent, part)):
-                for m, x in enumerate(part):
-                    out.append("," if n or m else "")
-                    _pieces(x, out)
-            else:
-                out.append(("," if n else "") + canonical(part)[1:-1])
-        out.append("]")
-    else:
-        out.append(canonical(v))
 
 
 def _sha(text: str) -> str:
@@ -182,11 +176,8 @@ def save(doc, document=True, p=None):
 
 
 def write_document(path, format_, version, at, t, body, h=None) -> tuple[str, str]:
-    """Write the document file: `body` its canonical text (or a list of pieces of it: canonical_pieces), `h` its hash
-    when known. (hash, saved_by). Made only of values that never change in place, so it may run on another thread
-    (live.Live writes a window's document file in the background)."""
-    if not isinstance(body, str):
-        body = "".join(body)
+    """Write the document file: `body` its canonical text, `h` its hash when known. (hash, saved_by). Made only of
+    plain values, so it may run on another thread (doc_write.py: hashing and writing let the screen's thread run)."""
     h = h or _sha(body)
     saved_by = app_version()
     top = json.dumps({"format": format_, "version": version, "saved_by": saved_by, "at": at, "t": t, "hash": h},
