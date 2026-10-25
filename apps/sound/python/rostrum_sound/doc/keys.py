@@ -9,6 +9,7 @@ A key is written "D minor", "F# major", "Bb dorian" (a tonic, then a mode). The 
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from . import times
 
@@ -46,8 +47,13 @@ FLATS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
 def pc_name(k: int, key: str | None = None) -> str:
     """A pitch class's name ("F#"): the one speller for notes, chords and keys. Flats in a flat key ("Bb" in
     D minor), sharps otherwise."""
-    flat = key is not None and parse(key) is not None and signature(key)[0] < 0
-    return (FLATS if flat else NAMES)[k % 12]
+    return (FLATS if key is not None and _flat(key) else NAMES)[k % 12]
+
+
+@lru_cache(maxsize=256)
+def _flat(key) -> bool:
+    """A key spelled with flats (worked out once per key: a screen names every note block with it)."""
+    return parse(key) is not None and signature(key)[0] < 0
 
 
 def pitch_name(k: int, key: str | None = None) -> str:
@@ -62,7 +68,12 @@ def midis(p) -> list[int]:
 
 def parse(key: str) -> tuple[int, str] | None:
     """(tonic pitch class 0 … 11, mode) or None when `key` is not a key."""
-    m = KEY.match(key.strip()) if isinstance(key, str) else None
+    return _parse(key) if isinstance(key, str) else None
+
+
+@lru_cache(maxsize=256)
+def _parse(key: str) -> tuple[int, str] | None:
+    m = KEY.match(key.strip())
     if m is None:
         return None
     pc = (TONICS[m.group(1).upper()] + {"#": 1, "b": -1}.get(m.group(2) or "", 0)) % 12
@@ -101,6 +112,7 @@ def steps_in_key(midi: int, key: str, n: int) -> int:
     return midi
 
 
+@lru_cache(maxsize=256)
 def signature(key: str) -> tuple[int, bool]:
     """(sharps, minor) for a MIDI key signature: sharps -7 … 7 (negative = flats). Modes use their major scale's."""
     pc, mode = parse(key)

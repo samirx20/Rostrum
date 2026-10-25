@@ -79,8 +79,8 @@ class AmountsPage(QObject):
         self._static = A.layout(self._found)
         self._vals = A.values(self._found, mine, fit)
         self._drag = self._drag_fn(title)
-        self._refresh(reset=True, preview=False)     # the popover shows at once; the action runs the frame after
-        self._later.ask()
+        self._refresh(preview=False, instant=True)   # at once, on the delegates made before (RowsModel keeps them per
+        self._later.ask()                            # setting, parked between uses); the action runs the frame after
 
     @Slot()
     def keep(self):
@@ -159,11 +159,11 @@ class AmountsPage(QObject):
         pass
 
     # ---- inside ------------------------------------------------------------------------------------------------
-    def _refresh(self, reset=False, preview=True):
+    def _refresh(self, preview=True, instant=False):
         a, f = self._action, self._facts
         fit = a.fit(f, self._vals) if a.fit else {}
         self._rows = A.evaluate(self._static, self._vals, fit, self._more)
-        (self.model.reset if reset else self.model.update)(self._rows)
+        self.model.update(self._rows, instant)
         self.changed.emit()
         if preview and self._drag is not None:
             now = A.shown(self._rows)
