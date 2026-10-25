@@ -2,8 +2,10 @@
 
 A script describes the whole song; `run_script` merges it into the document. Run the same script again after a
 change and only what the script changed moves: anything a person changed by hand is kept and listed as held back,
-saying who got there first ("already changed by agent:mcp (\"Run map.py\")"; pass `force` with the ids to take over;
-keep one script name per song). A script error names the script and line; an unknown track method lists what a track
+saying who got there first ("already changed by agent:mcp (\"Run map.py\")"; pass `force` with the ids to take over).
+**The script's `name` decides replace or add:** the same name replaces and merges what that script made; a new name adds
+a second copy beside it (the reply warns). Keep one script name per song, and to change what an earlier script made, run
+under its name; a check that fails because two scripts made the same things names the earlier script. A script error names the script and line; an unknown track method lists what a track
 can do, an unknown name lists the script's names.
 
 ```python
@@ -83,7 +85,7 @@ synth = track("lead", instrument="plugin", plugin={"format": "vst3", "path": r"C
   balance a layer inside its group. `clip.remove` and every other field stay per clip. One call = one undo step.
 - A plug-in is one `plugin` record: `{format: "clap"|"vst3", path, id, name?, params?, state?}`. `params` holds the
   settings you changed, `{param id: number or [[time, value], …]}`; a list is that setting's automation lane
-  (`param:<id>`). `inspect_plugins` lists what is installed with each setting's id, range and default. `state` is
+  (`param:<id>`). `inspect_engine` (`what: "plugins"`) lists what is installed with each setting's id, range and default. `state` is
   what the plug-in's own window saved (the Mixer's "Open window" writes it). We bundle no plug-ins.
 
 ## The song's map: tempo changes, key, sections, MIDI
@@ -117,7 +119,7 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
 - **Keys** are for you and the screen (the readout shows the key at the playhead): `doc/keys.py` has `scale`,
   `in_key`, `snap` (nearest note of the key). They change nothing in the sound.
 - **MIDI:** `edit_import_midi` `{path, song_map}` imports a .mid as one undo step (channel 10 becomes drum hits on
-  the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_midi`
+  the synth kit; other channels a built-in instrument from the GM program family, to change after); `render_mix` (`what: "midi"`)
   writes the document's notes, hits, sustain / expression / mod wheel / bend lanes (CC 64, CC 11, CC 1, the pitch
   wheel, bend range as RPN 0; import reads them back), tempo map, time signature, keys, markers and sections (as
   cue points) to `renders/<item>/midi/<item>.mid` (the screen: Export › What for › MIDI file). What MIDI can't carry comes back as a warning. Clips and
@@ -152,13 +154,15 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   `enumerate`, `zip`, `list`, `dict`, `tuple`, `set`, `int`, `float`, `str`, `bool`, `isinstance`, `hasattr`, `any`,
   `all`, `map`, `filter`, `divmod`, `pow`, and the modules `math` and `random` (`import` them or just use them; no
   other imports). `random` starts from the same seed every run, so running the script again writes the same notes;
-  `random.seed(n)` gives another draw. `print(...)` lines come back in the reply's warnings, "print: …".
+  `random.seed(n)` gives another draw, and `r = random(7)` makes a second generator with its own seed
+  (`r.uniform(a, b)`, `r.randint(a, b)`, `r.choice(seq)`). A `class` is refused ("classes aren't allowed in
+  scripts; use functions and dicts"). `print(...)` lines come back in the reply's warnings, "print: …".
 - **Before the render:** every reply warns, naming them, about a held note that ends at or before its start
   (`dur={"to": …}` that a moved marker pushed past; render_mix refuses it) and about notes, hits or clips that start at or
   after the song's `length` (never heard). Warnings, not refusals: a marker moved in another app never locks the song.
 - Pitches: `"C4"` = MIDI 60, `"F#3"`, `"Bb2"`, or a MIDI number.
 - Names (tones, reverb spaces, EQ shapes, built-in instruments, drums, effect types and fields): `inspect_engine`.
-- Instruments installed on this machine: `inspect_library` (`find: "cello"`). What one can play: `inspect_instrument`
+- Instruments installed on this machine: `inspect_library` (`find: "cello"`). What one can play: `inspect_engine` (`what: "instrument"`)
   (a note outside a sampled instrument's range fails the render and names the range).
 - Ids: tracks are named by you; notes get ids from their track and start time (`strings.n1500`), so editing one note
   never renumbers the others.

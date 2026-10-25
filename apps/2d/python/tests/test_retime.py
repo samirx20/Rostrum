@@ -53,3 +53,18 @@ def test_diagnose_lists_every_missing_marker_instead_of_failing():
     comp["layers"][1]["keys"].append({"id": "bg.x.k_logo_m150", "prop": "x", "t": "#logo-0.15", "v": 3})
     found = [p["item"] for p in diagnose.problems(comp, None, {"reveal": 1.0}) if p["kind"] == "missing-marker"]
     assert sorted(found) == ["bg.x.k_logo_m150", "own"]
+
+
+def test_a_lead_in_group_shows_its_children_before_the_marker():
+    """agents-first-time fix 1: a group timed on "beat" with start=-0.5 showed nothing before the marker, while
+    look_motion said its card moves from 0.5 s early. The one start rule (retime._start) now shows the child with the group."""
+    from rostrum2d.mcp.geometry import flatten
+    card = {"id": "card", "type": "shape", "start": 0.0, "keys": [{"prop": "x", "t": -0.5, "v": 600}, {"prop": "x", "t": 0.0, "v": 320}]}
+    late = {"id": "late", "type": "shape", "start": 0.2}
+    comp = {"id": "main", "type": "comp", "fps": 30, "width": 640, "height": 360, "duration": 3,
+            "layers": [{"id": "g", "type": "group", "marker": "beat", "start": -0.5, "end": 1.5, "layers": [card, late]}]}
+    out = retime.timed(comp, {"beat": 1.5}, 30)
+    moves = [k["t"] for k in out["layers"][0]["layers"][0]["keys"]]         # what look_motion reads: 1.0–1.5 s
+    shown = lambda t: {n["id"] for n in flatten(out, t) if n["in_time"]}
+    assert moves == [1.0, 1.5] and "card" in shown(1.0) and "card" in shown(1.2) and "card" not in shown(0.9)
+    assert "late" not in shown(1.6) and "late" in shown(1.7)               # a child's own start still counts from the marker

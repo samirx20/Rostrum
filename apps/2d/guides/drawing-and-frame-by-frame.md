@@ -15,7 +15,7 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   steps) in the same undo step (an erasing stroke, `mode: "erase"`, never grows it: past the edge there is nothing to
   take away). Growing left or up moves every stroke, fill and paint mask of every drawing by the same
   amount in canvas px and moves the anchor with them, so nothing moves on screen (re-read canvas px after a stroke that
-  grew it: `inspect_drawing_at`, `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
+  grew it: `look_drawing` (`what: "at"`), `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
   nothing.
 - At most **8192 px a side**. A stroke that would grow a drawing past that goes into a **new drawing layer** just above
   it (same parent, depth, pin, position, scale, turn and keys; named "<name> 2", "<name> 3" …), in the same undo step;
@@ -37,6 +37,25 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 - Or `run_script`: `d = drawing("fx", w=800, h=1000)`, `f = d.frame(0)`, `ink = f.paint("ink")`,
   `ink.stroke([(x, y, p), …], color="#rrggbb", size=24, brush="bristle")`. Ids you write (`"ink"`) stay put; a re-run
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
+- **Several drawings from a script:** every id is one in the whole document, but the drawings share their paint layers.
+  So in each drawing write `f.paint()` (no id: it joins the layer made in the first drawing, at the same place), or
+  `f.paint(f"ink{i}", layer="ink")` to name it (the same `layer="ink"` in every drawing). `f.paint("ink")` in a second
+  drawing is refused (id used twice). The drawings also need `eachFrame=True` on the drawing layer, or only drawing 1 shows
+  (the reply warns when a set of drawings shows only the first). A re-run under the same script `name` replaces them; under
+  a new name it adds a second set at the same frames, which is refused.
+
+  ```python
+  c = comp("title", width=1280, height=720, fps=24, duration=2, background="#14121f")
+  blob = drawing("blob", w=1280, h=720, x=640, y=360, eachFrame=True)
+  for i in range(8):                                    # N drawings in a loop, one every 6 frames
+      f = blob.frame(i * 6)
+      ink = f.paint(f"ink{i}", layer="ink")             # the same layer="ink" in every drawing
+      r = 60 + 40 * i
+      ink.stroke([(640 - r, 360), (640, 360 - r, 0.8), (640 + r, 360), (640, 360 + r, 0.8), (640 - r, 360)],
+                 color="#ffb040", size=30, brush="round")
+  ```
+  `look_frame` (`what: "sheet"`) then shows the drawing changing from frame to frame; `look_drawing layer=blob frame=N` shows one drawing.
+  A refusal "drawing … must have the same paint layers" means a drawing's paint lacks that shared `layer="…"`.
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
   `eachFrame` (the screen's "Draw each frame") on. `set <element> eachFrame true` works on an element that has no paint yet
@@ -97,11 +116,32 @@ does. Every saved brush is its own brush, even with the same settings as another
 - `look_drawing layer=… frame=N`: the drawing shown at frame N, in canvas px with a labelled grid (`grid`, `zoom`
   `[x0, y0, x1, y1]` for detail, `paint` for one paint layer, `onion=true` for 2 drawings before (red) and after
   (green), or `onion={before, after}` with 0 – 5 each way, as the screen's onion skin).
-- `look_drawing_change`: before / after of the last change to that drawing, with the changed box.
-- `inspect_drawing_at x y`: the colour there, each paint layer's colour, the top stroke and who drew it.
-- `inspect_stroke_landed stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with
+- `look_drawing layer=… crop=[x, y]` (and `look_painting painting=… crop=[x, y]`): the part around that canvas px at
+  100 %, one canvas px to one picture px on flat grey (`width`, default 480). Judge paper grain, chalk and edges here:
+  a small or zoomed picture smooths them away or enlarges them.
+- `look_drawing` (`what: "change"`): before / after of the last change to that drawing, with the changed box.
+- `look_drawing (what "at") x y`: the colour there, each paint layer's colour, the top stroke and who drew it.
+- `look_drawing (what "landed") stroke=…`: did the paint land on the path (mean / worst px off); give `path` to compare with
   where you meant it to go.
-- `look_frame`, `look_sheet`, `render_video`: the whole composition, drawn by the engine exactly as it exports.
+- `look_frame`, `look_frame` (`what: "sheet"`), `render_video`: the whole composition, drawn by the engine exactly as it exports.
+
+## Painting on a shape, text or other element
+
+`paint.stroke` / `paint.fill` on a shape, text, image or path (not only a drawing layer) paints on that element's own
+canvas. Two spaces say where the points are:
+
+- `space: "comp"` (the default): points are composition px, where you see the spot in the picture. The server finds where
+  the engine draws the element and turns them into its canvas px. An element that is moved, scaled, turned, inside a
+  group or under the frame's camera is still hit where you pointed.
+- `space: "canvas"`: points are the element's **own box px**: (0, 0) is the top-left of its `w × h` box, so a 300 × 380
+  card takes 0..300 across and 0..380 down, whatever it is doing in the scene.
+- `frame` does two jobs: it picks **which drawing** (when the element draws each frame) and it is **the time** the comp
+  points are placed at. An element faded in from opacity 0, off its time range or hidden has no place at that frame: the
+  refusal names the first frame where it shows ("paint at a frame where the layer shows: pass frame=60"). Pass that
+  frame, or use `space: "canvas"`, which doesn't depend on where the element is.
+
+In a script, `painting(...)` and `drawing(...)` take points in their own px; to paint on an element write
+`edit_document` with `paint.stroke` (target the element id, points, `frame`, optional `space`).
 
 ## Stepped timing
 
@@ -123,7 +163,7 @@ does. Every saved brush is its own brush, even with the same settings as another
 
 ## Frame-by-frame working method
 
-1. Block the motion first: a few key drawings (the extremes), checked with `look_sheet`.
+1. Block the motion first: a few key drawings (the extremes), checked with `look_frame` (`what: "sheet"`).
 2. Fill the in-betweens with `onion=true`, so each drawing sits between its neighbours.
 3. Check the loop: the last drawing must lead into the first. `render_video` and watch it.
 

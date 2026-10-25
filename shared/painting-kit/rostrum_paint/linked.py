@@ -50,7 +50,10 @@ def problems(owner_id: str, canvases: list[dict]) -> list[str]:
         got = [(key(p), {k: p.get(k) for k in SHARED}) for p in c.get("paints", [])]
         if got != want:
             out.append(f'{owner_id}: drawing {c["id"]} must have the same paint layers as {canvases[0]["id"]} '
-                       f"(same order and settings): {_names(c)} vs {_names(canvases[0])}")
+                       f"(same order and settings): {_names(c)} vs {_names(canvases[0])}. Give every drawing's paint the same "
+                       f'layer="…" (in a script paint(f"ink{{i}}", layer="ink") in each drawing; in an edit pass layer: "ink" '
+                       f"to paint.stroke), and the same number of paint layers in the same order")
+            break                      # one is enough to act on; the others differ the same way
     return out
 
 

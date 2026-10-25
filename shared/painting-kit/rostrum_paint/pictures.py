@@ -61,21 +61,43 @@ def _tip(name):
 def _paper(name):
     rng, n = np.random.default_rng(PAPERS.index(name) + 21), PAPER_N
     y, x = np.mgrid[0:n, 0:n]
-    if name == "canvas":            # a plain weave of fine threads: each crossing a raised grain, gaps between threads
-        p = 4
-        fx, fy = (x % p + 0.5) / p, (y % p + 0.5) / p
-        over = ((x // p + y // p) % 2).astype(bool)
-        row, col = rng.uniform(0.7, 1, n // p)[y // p], rng.uniform(0.7, 1, n // p)[x // p]   # uneven yarn
-        across, along = np.sin(math.pi * fy) ** 0.6, np.sin(math.pi * fx) ** 0.6
-        bump = np.where(over, row * across * (0.5 + 0.5 * along), col * along * (0.5 + 0.5 * across))
-        return _norm(0.75 * bump + 0.15 * _periodic(n, 1, rng) + 0.1 * _periodic(n, 24, rng))
+    if name == "canvas":            # a plain weave of uneven yarn: threads that wander, thicken and thin, crossings raised
+        return _weave(n, rng)
     if name == "cold press":        # watercolour paper: soft round hills and dimples
         return _norm(_periodic(n, 6, rng) ** 1.4 + 0.6 * _periodic(n, 18, rng) + 0.2 * _periodic(n, 1.5, rng))
-    if name == "laid":              # fine laid lines, chain lines across them
-        lines = 0.5 + 0.5 * np.cos(2 * math.pi * y / 4)
+    if name == "laid":              # fine laid lines (each wavering and fading a little, as wires leave them), chain lines across
+        lines = (0.5 + 0.5 * np.cos(2 * math.pi * (y + 1.2 * (_periodic(n, 16, rng) - 0.5)) / 4)) * (0.5 + 0.5 * _periodic(n, 8, rng))
         chain = _ss((np.abs((x % 32) - 16) - 14.5) / 1.5)
         return _norm(0.6 * lines * (1 - 0.5 * chain) + 0.4 * _periodic(n, 3, rng))
     return _norm(_periodic(n, 2, rng) + 0.8 * _periodic(n, 9, rng))   # rough: coarse, deep tooth
+
+
+def _yarns(n, threads, rng):
+    """Where each pixel lies across the yarns, 0..threads: yarns of uneven width (no two gaps alike), so the weave
+    has no fixed pitch to read as a grid; whole yarns over the tile, so it still tiles seamlessly."""
+    edges = np.concatenate([[0.0], np.cumsum(rng.uniform(0.6, 1.4, threads))])
+    return np.interp(np.arange(n + 1), edges * n / edges[-1], np.arange(threads + 1.0))[:n]
+
+
+def _weave(n, rng, threads=36):
+    """Canvas: `threads` yarns each way over the tile (about 7 px apart), never a lattice at 100 %: yarns of uneven
+    width that wander off their line (a smooth warp of a few px), thicken and thin along their length, rise where they
+    pass over; fine fibres and a soft mottle lie over the whole."""
+    y, x = np.mgrid[0:n, 0:n]
+    wx, wy = 3.0 * (_periodic(n, 20, rng) - 0.5), 3.0 * (_periodic(n, 20, rng) - 0.5)     # the wander, in px
+    across, down = _yarns(n, threads, rng), _yarns(n, threads, rng)
+    u = np.interp((x + wx) % n, np.arange(n), across, period=n)
+    v = np.interp((y + wy) % n, np.arange(n), down, period=n)
+    i, j = np.floor(u).astype(int) % threads, np.floor(v).astype(int) % threads
+    fu, fv = u - np.floor(u), v - np.floor(v)
+    slub = 0.65 + 0.35 * _periodic(n, 4, rng)                           # thicker and thinner along each yarn
+    col = _ss((rng.uniform(0.5, 0.95, threads)[i] * slub / 2 - np.abs(fu - 0.5)) / 0.22)
+    row = _ss((rng.uniform(0.5, 0.95, threads)[j] * slub / 2 - np.abs(fv - 0.5)) / 0.22)
+    over = ((i + j) % 2).astype(bool)
+    rise_c, rise_r = np.sin(math.pi * fv) ** 0.7, np.sin(math.pi * fu) ** 0.7   # the yarn on top bulges mid-crossing
+    weave = np.where(over, np.maximum(col * (0.5 + 0.5 * rise_c), 0.55 * row), np.maximum(row * (0.5 + 0.5 * rise_r), 0.55 * col))
+    fibre, mottle = _periodic(n, 1.2, rng), _periodic(n, 10, rng)
+    return _norm(0.24 * weave * (0.3 + 0.7 * mottle) + 0.46 * fibre + 0.3 * mottle)   # the weave fades in and out
 
 
 def tip(name: str):

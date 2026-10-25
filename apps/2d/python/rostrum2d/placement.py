@@ -128,6 +128,25 @@ def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
     return _places(doc_data, layer_id, (t, t), [(t, [layer_id])])[0][layer_id]
 
 
+def first_shown(doc_data: dict, layer_id: str) -> int | None:
+    """The first frame (of the layer's composition) where the layer is drawn, looked for a tenth of a second apart,
+    or None when it shows nowhere. For the refusal of painting where the layer can't be seen."""
+    comp = next(c for c in doc_data["comps"] if c["id"] == _comp_of(doc_data, layer_id))
+    fps, step = comp.get("fps", 30), max(1, round(comp.get("fps", 30) / 10))
+    frames = range(0, max(1, round(comp.get("duration", 1) * fps)), step)
+    from .engine import EngineError
+    from .scene import describe
+    host = _host or Host()
+    scene = describe(doc_data, comp["id"], host.markers(), host.folder(), (0, comp.get("duration", 1)))
+    for n in frames:
+        try:
+            host.place(scene, n / fps, [layer_id])
+            return n
+        except (KeyError, ValueError, EngineError):      # not drawn at this time: look on
+            continue
+    return None
+
+
 def centres_at(doc_data: dict, when: dict[str, float]) -> dict[str, tuple[float, float]]:
     """Each layer's box centre in composition px, each at its own composition time (`when`: {id: seconds}), through
     its groups, the camera and tilt (the engine's `place`): one scene load for them all. layer.stagger's spatial

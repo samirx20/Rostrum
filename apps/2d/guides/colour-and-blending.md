@@ -103,7 +103,7 @@ shot.key("exposure", {0.0: -3, 1.0: 0})             # a fade up from dark, in li
 
 ## Checking it
 
-Look at the result with `look_frame` (one time) and `look_sheet` (several); compare a frame with the effect on and off
+Look at the result with `look_frame` (one time) and `look_frame` (`what: "sheet"`) (several); compare a frame with the effect on and off
 by setting `adjust` / `levels` / `curves` to false or `lut` to "" and looking again. Errors are loud and name the layer
 and field: a curve that isn't valid points (`shot.curve: point 2 "0.5" is not x,y …`), `inWhite` not above `inBlack`,
 or a LUT that is missing, relative, or malformed (`shot.lut: …look.cube: .cube line 12: …`).

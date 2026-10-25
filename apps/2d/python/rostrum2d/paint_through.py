@@ -30,7 +30,7 @@ def stroke(ctx, painting_id: str, args: dict, brush: dict, fps: float, place) ->
     layer = ctx.item(lid)
     if layer.get("fillType") != "painted" or layer.get("fillPainting") != painting_id:
         ctx.fail(codes.BAD_ARGUMENT, f'through "{lid}"', f'has no painted fill of "{painting.get("name", painting_id)}"',
-                 hint="Pass a layer whose fill is this painting (inspect_painting lists its uses).")
+                 hint="Pass a layer whose fill is this painting (look_painting (what: facts) lists its uses).")
     n = args.get("frame", 0)
     props = resolve(layer, n / fps)
     space, pts = args.get("space", "comp"), args["points"]

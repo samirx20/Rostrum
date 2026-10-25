@@ -70,7 +70,7 @@ placed by the person at rest; its bind makes it follow its bone's motion **from 
 "iks": {"<id>": {"targetX", "targetY", "gap"}}, "frame": [a, b, c, d, e, f]}}}`: posed pivots, tips and angles in
 **screen px** (through the rig's and its parents' 2D transforms and the scene's frame, FRAME.md; tilt ignored; with the
 frame at home, screen px are comp px), and each IK's (held) target and the distance its tip misses it by. `frame` is the
-matrix the frame added (screen = frame · comp px); `inspect_rig_motion` undoes it, so a pinned foot is measured where
+matrix the frame added (screen = frame · comp px); `look_motion` (`what: "rig"`) undoes it, so a pinned foot is measured where
 it stands in the comp, not where a moving frame shows it.
 
 ## Scene description (ENGINE_CONTRACT.md § 2, same version)
@@ -116,7 +116,7 @@ Operations (`rostrum2d/ops_swap.py`):
   children, the slot's `show` is keyed (one key per change of mouth) instead of each layer's opacity (LIPSYNC.md).
 - Script: `slot = group("mouth", swap=True)`, children inside `with slot:`, then `slot.show({0: "open", 1.2: "closed"})`
   (a child, its id or its place; hold keys), or `slot.key("show", {t: n}, ease="hold")`.
-- MCP: `inspect_swaps {time}` lists each set's children (place, id, name) and the one showing then. No rendering.
+- MCP: `inspect_layout (what "swaps") {time}` lists each set's children (place, id, name) and the one showing then. No rendering.
 
 ## Long IK chains (engine, `engine/render/src/rig/fabrik.rs`; P16, native since H18)
 
@@ -133,7 +133,7 @@ check refuses a `chain` the rig cannot give (fewer bones from the lower one up).
   straight (under 2 degrees) at that frame is pushed 2 % of the bone above it sideways this way before solving (a
   straight chain has no way to fold otherwise); a bent chain keeps the way it bends.
 - **Agents' eyes.** The engine's `bones` answer reports every chain in `iks` (target, gap, and its `bones`, top
-  first), so `look_rig` and `inspect_rig_motion` cover long chains as they do two-bone ones.
+  first), so `look_frame` (`what: "rig"`) and `look_motion` (`what: "rig"`) cover long chains as they do two-bone ones.
 
 ## Poses (Python, `rostrum2d/rig/poses.py`, P16)
 

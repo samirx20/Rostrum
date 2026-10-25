@@ -1,4 +1,4 @@
-"""Which of the project's sound plays with a scene: the one answer for the screen's Sound row, inspect_soundtrack, the
+"""Which of the project's sound plays with a scene: the one answer for the screen's Sound row, inspect_sounds (what: soundtrack), the
 inspector's Soundtrack choice and an MP4 export's sound (AGENTS.md rule 9; the sound itself is RostrumSound's).
 
 The scene's `soundtrack` field names a Sound item; empty = the project's main mix (rostrum_core.project.main: the

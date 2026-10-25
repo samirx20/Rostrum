@@ -82,7 +82,7 @@ def _runtime(where: str):
         raise RostrumError(codes.MODEL_MISSING, where, "sherpa-onnx (the program that runs the speech model)",
                            "is not installed in the Python this app runs on",
                            hint=f'Install it with: "{sys.executable}" -m pip install sherpa-onnx==1.13.8 (Apache-2.0), '
-                                "then call render_voice_words again.") from e
+                                "then call render_voice (what: words) again.") from e
     return sherpa_onnx
 
 
@@ -161,6 +161,6 @@ def read(doc, ids=None) -> list[dict]:
         words = _stored(take) if take else None
         if words is None:
             raise RostrumError(codes.NOT_FOUND, f"voice line {ln['id']}", f'words of "{ln["id"]}"', "are not stored yet",
-                               hint="Run the render_voice_words tool (it hears the made take once and keeps the words).")
+                               hint="Run the render_voice (what: words) tool (it hears the made take once and keeps the words).")
         out.append(_line_row(root, t, ln, words, heard=False))
     return out

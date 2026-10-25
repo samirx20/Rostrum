@@ -1,5 +1,5 @@
 """The engine's listening (`rostrum-sound analyze`, engine/src/analysis/analyze.rs): tempo, beats, downbeats, key,
-chords, and the pitch and notes of a single line — the one source for all of them (`look_beats`, `look_pitch` and the
+chords, and the pitch and notes of a single line — the one source for all of them (`look_music` (what: beats), `look_music` (what: pitch) and the
 key of audio read it; there is no second beat tracker or pitch finder in Python).
 
 Measured 2026-10-21 on three rendered songs (100 bpm D minor, 128 bpm Eb major, 84 bpm E minor): the engine named

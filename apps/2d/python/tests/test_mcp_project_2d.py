@@ -35,8 +35,10 @@ def test_no_options_opens_the_newest_recent_project_and_run_open_project_switche
     a, b = project(tmp_path / "a", "intro"), project(tmp_path / "b")
     app, rt = start(tmp_path, monkeypatch, [{"folder": str(tmp_path / "gone"), "item": "main"}, {"folder": a, "item": "intro"}, {"folder": b, "item": "main"}])
     assert app.folder == a and list(app.documents) == ["intro"]            # the missing newest row is skipped
-    reply, _ = rt.call("inspect_recent_projects", {}, AGENT)
+    reply, _ = rt.call("run_open_project", {"what": "recent"}, AGENT)
     assert [r["folder"] for r in reply["data"]["recent"]] == [a, b]
+    reply, _ = rt.call("inspect_recent_projects", {}, AGENT)             # an old name never silently works: it names the new call
+    assert not reply["ok"] and reply["error"]["code"] == "UNKNOWN_TOOL" and 'run_open_project with what: "recent"' in reply["summary"]
     reply, _ = rt.call("run_open_project", {"folder": b}, AGENT)
     assert reply["ok"], reply
     reply, _ = rt.call("inspect_project", {}, AGENT)

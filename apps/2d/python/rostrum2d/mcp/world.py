@@ -1,6 +1,6 @@
-"""look_world and look_in_frame: the agent's eyes on the whole canvas. look_world draws the world the way the world view does
+"""look_frame (what: world) and look_frame (what: in_frame): the agent's eyes on the whole canvas. look_frame (what: world) draws the world the way the world view does
 (the engine's world picture, so layers beside the frame show where they are) and marks the frame on it: its outline now, its
-path, an outline at each key, the part outside veiled. look_in_frame says in numbers what is in, partly in or out of the
+path, an outline at each key, the part outside veiled. look_frame (what: in_frame) says in numbers what is in, partly in or out of the
 frame at a moment or over a span (camera spec § 6)."""
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def look_world(ctx, args):
     t, frame = time_of(ctx, comp, args)
     rect = area_rect(ctx.tool, comp, args.get("area", "all"), t)
     scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", 1280)
-    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_world_f{frame}')
+    dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_world_f{frame}', project=doc.folder)
     path = args.get("path", True)
 
     def job_fn(job):
@@ -54,7 +54,7 @@ def look_world(ctx, args):
         return Reply(say, {"time": t, "frame": frame, "world": shown, "frame_corners": [[round(x, 1), round(y, 1)] for x, y in q],
                            "keys": wf.key_times(comp), "width": w, "height": h}, [dest], [dest], scene.get("warnings", []))
 
-    return ctx.long(f'look_world {comp["id"]} f{frame}', job_fn)
+    return ctx.long(f'look_frame (what: world) {comp["id"]} f{frame}', job_fn)
 
 
 def _spans(times: list[float], flags: list[bool], step: float) -> list[dict]:

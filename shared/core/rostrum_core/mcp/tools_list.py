@@ -32,6 +32,8 @@ def register(tools: Tools):
         mine = {t.name: t for t in ctx.tools.all()}
         if "name" in args:
             if args["name"] not in mine:
+                if args["name"] in ctx.tools._renamed:
+                    ctx.tools.get(args["name"])            # an old name: the error names the new tool and its argument
                 raise RostrumError.not_found("", "tool", args["name"], mine, "this server")
             t = mine[args["name"]]
             names = ", ".join(a["name"] + ("*" if a["required"] else "") for a in _args(t)) or "none"

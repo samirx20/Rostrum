@@ -1,5 +1,5 @@
 """Long IK chains are the engine's (rig/fabrik.rs): the scene sends the ik with its `chain`, and the engine's `bones`
-answer reports the chain reaching its target, so look_rig and inspect_rig_motion see it. Poses: save, apply and blend
+answer reports the chain reaching its target, so look_frame and look_motion (what "rig") see it. Poses: save, apply and blend
 keys the rig in one step."""
 
 import pytest

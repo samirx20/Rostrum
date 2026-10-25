@@ -34,6 +34,7 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes, did_you_mean
 from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
+from rostrum_core.seeded import SeededRandom, no_classes
 
 from . import fields as F, fontlist, pathdata, script_frame, script_words as W
 from .expr import ExprError, parse
@@ -84,7 +85,8 @@ class Item:
                 if e != SHAPE_EASE[name]:
                     raise ValueError(f'{self.id}.{prop} at {t} s: "{name}" only applies to a {SHAPE_EASE[name]} ease, this key is {e}')
                 k[name] = F.param("key", name).check(x, f"{self.id}.{prop} at {t} s {name}")
-            self.node["keys"].append(k)
+            # a key at a time this field already has a key (an earlier key() or f.cut / f.fit) replaces it: the later call wins
+            self.node["keys"] = [o for o in self.node["keys"] if o["id"] != k["id"]] + [k]
         return self
 
     def show(self, choices: dict) -> "Item":
@@ -125,13 +127,24 @@ class Item:
                 "paints": [], "paintmasks": []}
         frames = self.node["frames"]
         if any(f["at"] == node["at"] for f in frames):
-            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}")
+            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}: call {self.id}.frame({node['at']}) once, "
+                             f"keep what it returns (f = {self.id}.frame({node['at']})) and paint more on f, or use another frame")
         frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
-        return Item(self._b, node)
+        item = Item(self._b, node)
+        item.drawings = frames
+        return item
 
     def paint(self, id: str | None = None, **values) -> "Item":
+        """A paint layer on this drawing. Drawings of one layer share their paint layers: one made without `layer=` joins
+        the layer at the same place in the layer's other drawings, so the same call in every drawing is the same paint layer."""
         self._need("frame", "paint")
-        return self._b.add_kit("paint", id, values, self.node["paints"])
+        paints = self.node["paints"]
+        if "layer" not in values:
+            ref = next((f["paints"][len(paints)] for f in getattr(self, "drawings", []) if f is not self.node
+                        and len(f["paints"]) > len(paints)), None)
+            if ref is not None:
+                values["layer"] = ref.get("layer") or ref["id"]
+        return self._b.add_kit("paint", id, values, paints)
 
     def paintmask(self, points, id: str | None = None, **values) -> "Item":
         self._need("frame", "paintmask")
@@ -215,6 +228,10 @@ class Build:
             id_ = ids.counted(self.taken, type_, self.reserved)
         if not ids.is_valid(id_):
             raise ValueError(f'"{id_}" is not a usable id (letters, digits, _ . -; not starting with a digit)')
+        if id_ in self.taken and type_ == "paint":
+            raise ValueError(f'paint layer id "{id_}" is used twice: drawings share their paint layers, but each paint layer '
+                             f'has its own id. In a loop over drawings write f.paint() (it joins the layer made in the first drawing) '
+                             f'or f.paint(f"{id_}{{i}}", layer="{id_}")')
         if id_ in self.taken:
             raise ValueError(f'id "{id_}" is used twice in the script: every id (layers, effects, masks) '
                              f'is one in the whole document. Give each its own (f"{id_}{{i}}" in a loop), or leave the id '
@@ -327,12 +344,15 @@ def _reserved(source: str) -> set[str]:
         return set()
 
 
-def _import(name, *args, **kw):
-    """Scripts can't import; `import math` just gives the math that is already there."""
-    if name == "math":
-        return math
-    raise ImportError(f"scripts can't import {name!r}; math, range, len, min, max, abs, round, enumerate, zip, "
-                      "sorted, sum … are already there")
+def _importer(rnd):
+    """Scripts can't import; `import math` / `import random` just give what is already there (random is seeded)."""
+    def _import(name, *args, **kw):
+        if name in ("math", "random"):
+            return math if name == "math" else rnd
+        raise ImportError(f"scripts can't import {name!r}; math and random (seeded: the same numbers every run, "
+                          "random(7) for your own seed) are already there, and range, len, min, max, abs, round, "
+                          "enumerate, zip, sorted, sum …")
+    return _import
 
 
 def _held_ids(doc, name: str) -> set[str]:
@@ -349,7 +369,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
     """Python source -> the document tree it builds. Any error is a loud BAD_ARGUMENT naming the line; nothing is merged.
     `doc`: the document it will be merged into (run_script passes it), so the ids it already holds are left alone."""
     b = Build(_reserved(source) | _held_ids(doc, name))
-    scope = {"__builtins__": {**SAFE, "__import__": _import}, "math": math, "comp": b.comp,
+    rnd = SeededRandom(1)
+    scope = {"__builtins__": {**SAFE, "__import__": _importer(rnd), "__build_class__": no_classes}, "math": math, "random": rnd, "comp": b.comp,
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),

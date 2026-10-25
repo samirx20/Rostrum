@@ -24,7 +24,7 @@ def _key_at(owner: dict, prop: str, t: float) -> dict | None:
              "is the handle leaving the key and `in` the one arriving at it, each [dx, dy] in px from the key's "
              "place (null removes it: a third of the way to the neighbouring key, so a straight line when both "
              "ends have none). The x key gets dx and the y key dy. Give x and y keys the same ease for a true curve; "
-             "speed along the curve follows the ease, not the distance. look_path shows the path.",
+             "speed along the curve follows the ease, not the distance. look_motion (what: path) shows the path.",
              target=F.LAYERS, label="Path handles", importance="secondary",
              params=[Param.number("t", label="Time", required=True, unit="s", min=-36000, max=36000,
                                   help="The time of the x and y keys (the layer's own seconds)"),

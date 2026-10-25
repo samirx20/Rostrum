@@ -17,7 +17,7 @@ import re
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, widthprofile
+from . import advice, exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, widthprofile
 from .frame import make as frame_make, rules as frame_rules
 from .rig import model as rig_model
 
@@ -207,7 +207,7 @@ def upgrade(data: dict, lists: dict, folder=None):
     return (data, "; ".join(labels)) if labels else None
 
 
-KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=upgrade,
+KIND = DocKind("2d", ".mtn", REGISTRY, lists=LISTS, check=check, facts=facts, upgrade=upgrade, advise=advice.advise,
                version=migrations.FORMAT, migrations=migrations.STEPS,
                new=lambda: {"id": "root", "type": "doc", "comps": [], "paintings": []})
 

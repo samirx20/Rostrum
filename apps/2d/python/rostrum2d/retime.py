@@ -5,7 +5,8 @@ keys, and those of everything inside it (effects, masks, child layers, a gradien
 frames). Move the
 marker in any app and the whole layer moves with it (AGENTS.md rule 8: cross-app timing by named markers, never
 copied numbers). A layer inside a timed group with a `marker` of its own counts from its own marker. `endMarker` ends a layer on
-another marker ("the phone shot ends on reveal"); `start` may be below 0 (a lead-in before its marker).
+another marker ("the phone shot ends on reveal"); `start` may be below 0 (a lead-in before its marker). A child left at
+Starts at 0 starts with its group, so a group's lead-in shows its children too (`_start`: the one rule).
 
 A key may be timed on a marker of its own (`"t": "#drop+0.2"`, rostrum_core.keys.marked): it lands at that moment
 of the project, whatever its layer counts from, before the layer's start too (a pre-roll); `offset_of` says where
@@ -50,10 +51,24 @@ def _offset(item: dict, inherited: float, markers: dict | None) -> float:
     return _at(item, FIELD, markers) if item.get(FIELD) else inherited
 
 
-def _shifted(item: dict, off: float, fps: float, markers: dict | None) -> dict:
+def _start(item: dict, off: float, lead: float | None) -> float:
+    """When a layer starts, in composition seconds: its own `start` counted from its time 0 (`off`). A child left at
+    0 (the default: "from the start") that has no marker of its own starts with its parent (`lead`, the parent's
+    start in composition seconds) when the parent starts earlier: a group's lead-in before its marker shows its
+    children too, as look_motion, look_frame and the export all read it."""
+    own = float(item.get("start", 0.0))
+    if lead is not None and own == 0.0 and not item.get(FIELD) and lead < off:
+        return lead
+    return own + off
+
+
+def _shifted(item: dict, off: float, fps: float, markers: dict | None, lead: float | None = None) -> dict:
     """The item with its times in composition seconds: the item itself when none of them changes, else a copy of just
-    what changes (copy on write: what a layer timed from a marker doesn't touch stays the document's own object)."""
-    kids = {key: [_shifted(c, _offset(c, off, markers), fps, markers) for c in item[key]] for key in CHILDREN if item.get(key)}
+    what changes (copy on write: what a layer timed from a marker doesn't touch stays the document's own object).
+    `lead`: the parent's start in composition seconds (None at the top or when the parent isn't shifted)."""
+    layer = F.param(item["type"], "start") is not None      # layers (effects, masks and bones have no start)
+    start = _start(item, off, lead) if off and layer else None
+    kids = {key: [_shifted(c, _offset(c, off, markers), fps, markers, start) for c in item[key]] for key in CHILDREN if item.get(key)}
     kids = {key: new for key, new in kids.items() if any(a is not b for a, b in zip(new, item[key]))}
     keys = item.get("keys", [])
     marks = any(marked.marked(k) for k in keys)
@@ -67,8 +82,8 @@ def _shifted(item: dict, off: float, fps: float, markers: dict | None) -> dict:
         marked.resolve(out, markers)   # (on the copies)
     if not off:
         return out
-    if F.param(item["type"], "start") is not None:     # layers (effects, masks and bones have no start)
-        out["start"] = item.get("start", 0.0) + off
+    if start is not None:
+        out["start"] = start
     if out.get("end", END_OF_COMP) < END_OF_COMP:
         out["end"] = out["end"] + off
     if item.get("frames"):             # a drawing's frames are composition frame numbers
@@ -125,6 +140,24 @@ def _offset_walk(doc_data: dict, item_id: str, markers: dict | None) -> float:
                     return found
         return None
     return next((o for c in doc_data.get("comps", []) if (o := walk(c, 0.0)) is not None), 0.0)
+
+
+def as_played(doc_data: dict, item_id: str, markers: dict | None) -> tuple[dict, dict] | None:
+    """(the item with its times in composition seconds, its composition), or None when no composition holds it:
+    the same `_shifted` the render reads (only the top layer holding it), so a link can't disagree with the frames."""
+    def find(node: dict):
+        for key in CHILDREN:
+            for child in node.get(key, []):
+                got = child if child.get("id") == item_id else find(child)
+                if got is not None:
+                    return got
+        return None
+    for comp in doc_data.get("comps", []):
+        for top in comp.get("layers", []):
+            if find({"layers": [top]}) is not None:
+                fps = comp.get("fps", F.defaults("comp")["fps"])
+                return find({"layers": [_shifted(top, _offset(top, 0.0, markers), fps, markers)]}), comp
+    return None
 
 
 def placed(comp: dict, markers: dict | None) -> dict:

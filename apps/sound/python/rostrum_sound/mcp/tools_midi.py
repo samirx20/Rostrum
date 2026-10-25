@@ -1,4 +1,4 @@
-"""MIDI files: edit_import_midi puts a .mid into the document (one change, one undo step); render_midi writes the
+"""MIDI files: edit_import_midi puts a .mid into the document (one change, one undo step); render_mix (what: midi) writes the
 document's notes, hits, sustain / expression / bend lanes, tempo map, keys, markers and sections as `renders/<item>/midi/<item>.mid` (a job, as every
 render_* tool). What MIDI can't carry (a drum key the synth kit lacks, a drum with no GM key) comes back as a
 warning, never dropped quietly."""

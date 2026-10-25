@@ -1,5 +1,5 @@
-"""The picture of the world for look_world and Export › Picture › Area: which world rectangle, the engine's world picture of
-it (the same one the canvas draws), and the marks of look_world on top (veil, outline, path, key outlines, ruler)."""
+"""The picture of the world for look_frame (what: world) and Export › Picture › Area: which world rectangle, the engine's world picture of
+it (the same one the canvas draws), and the marks of look_frame (what: world) on top (veil, outline, path, key outlines, ruler)."""
 from __future__ import annotations
 
 import math
@@ -77,7 +77,7 @@ def _step(span: float, px: float) -> float:
 
 
 def draw_overlay(src: Path, dest: Path, comp: dict, t: float, shown: dict, path: bool) -> tuple[int, int]:
-    """The marks of look_world on the world picture `src`, written to `dest`: the part outside the frame veiled, the frame's outline
+    """The marks of look_frame (what: world) on the world picture `src`, written to `dest`: the part outside the frame veiled, the frame's outline
     at t, with `path` its path (a dot per frame, cuts dashed) and a faint outline at each key, and a ruler of world px."""
     from rostrum2d.frame import view
     img = Image.open(src).convert("RGB")

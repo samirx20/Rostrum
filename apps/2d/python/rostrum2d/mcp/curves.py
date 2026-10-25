@@ -1,4 +1,4 @@
-"""inspect_curve: a number field's value curve over time, with its keys and Bézier handles (no rendering); inspect_animations
+"""look_motion (what: curve): a number field's value curve over time, with its keys and Bézier handles (no rendering); look_motion (what: keys)
 (anim.list): a layer's animations, stretches and lines."""
 from __future__ import annotations
 

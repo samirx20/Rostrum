@@ -32,7 +32,7 @@ def _limiter_inputs(ctx, doc):
     """What the limiter look needs from the last render: the stems that add up to the mix (the tracks that feed
     it directly, plus its bus stems), and a caveat when the glue or master effects also changed the mix."""
     try:
-        r = ctx.app.state.last_render(doc.item_id, "look_loudness")
+        r = ctx.app.state.last_render(doc.item_id, "look_sound (what: loudness)")
     except RostrumError:
         return None
     direct = r.get("direct") or list(r["stems"])
@@ -54,7 +54,7 @@ def register(tools: Tools):
     @tools.tool("look_loudness", {"properties": {**ITEM, **WAV}})
     def look_loudness(ctx, args):
         """Integrated loudness (LUFS), true peak, loudness range, the short-term loudness curve and every clipped moment, with a curve picture. On a render's mix it also shows where the master limiter turned the sound down (a curve in the picture, the worst moments with the dB reduced) and which tracks drove each moment, measured from the stems (an estimate, close to the engine's own gain)."""
-        doc, wav, _ = _source(ctx, args, "look_loudness")
+        doc, wav, _ = _source(ctx, args, "look_sound (what: loudness)")
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-loudness.png"
         lim = None if args.get("wav") else _limiter_inputs(ctx, doc)
         r = listen.loudness(wav, out_png=str(png), limiter=lim)
@@ -69,9 +69,9 @@ def register(tools: Tools):
     @tools.tool("look_levels", {"properties": {**ITEM}})
     def look_levels(ctx, args):
         """Each track's level from its stem (last render): LUFS, peak, file format, how far under the loudest and the mix (db_vs_mix), and the track's volume now in dB (volume_db); flags buried tracks. To move a track N dB against the other tracks, set its volume to volume_db + N ({"db": …}): the master's loudness target turns every stem up or down together, so the gaps between tracks you set stay. A float stem above 0 dBFS is held, not clipped (flag "over full scale", clips false); only a fixed-point stem at full scale "clips"."""
-        doc, wav, stems = _source(ctx, args, "look_levels")
+        doc, wav, stems = _source(ctx, args, "look_sound (what: levels)")
         if not stems:
-            raise RostrumError(codes.NOT_FOUND, "look_levels", "stems", "were not rendered", hint="render_mix with stems: true.")
+            raise RostrumError(codes.NOT_FOUND, "look_sound (what: levels)", "stems", "were not rendered", hint="render_mix with stems: true.")
         r = listen.levels(stems, mix=wav)
         gains = {t["id"]: t.get("volume", 1) for t in doc.data.get("tracks", [])}
         for k, row in r["stems"].items():
@@ -87,14 +87,14 @@ def register(tools: Tools):
         "detail": {"type": "string", "enum": ["short", "full"], "default": "short", "description": "short lists the first 40 onsets; full lists all."}}})
     def look_events(ctx, args):
         """Where sounds start (onsets). With expect, each expected time's nearest onset, how early or late, pass or fail. With expect and by_stem, which track hits each time (all stems of the last render, plus the mix's nearest onset)."""
-        doc, wav, stems = _source(ctx, args, "look_events")
+        doc, wav, stems = _source(ctx, args, "look_music (what: events)")
         if args.get("by_stem"):
             if not args.get("expect"):
-                raise RostrumError(codes.BAD_ARGUMENT, "look_events", "by_stem", "needs expect", hint="Give expect: times or #markers.")
+                raise RostrumError(codes.BAD_ARGUMENT, "look_music (what: events)", "by_stem", "needs expect", hint="Give expect: times or #markers.")
             if not stems:
-                raise RostrumError(codes.NOT_FOUND, "look_events", "stems", "were not rendered", hint="render_mix with stems: true.")
+                raise RostrumError(codes.NOT_FOUND, "look_music (what: events)", "stems", "were not rendered", hint="render_mix with stems: true.")
             tol = args.get("tolerance", 0.04)
-            expect = [_resolve(doc, t, f"look_events › expect[{i}]") for i, t in enumerate(args["expect"])]
+            expect = [_resolve(doc, t, f"look_music (what: events) › expect[{i}]") for i, t in enumerate(args["expect"])]
             r = listen.which_stem(wav, stems, expect, tol)
             for row, name in zip(r["expected"], args["expect"]):
                 row["at"] = name
@@ -105,7 +105,7 @@ def register(tools: Tools):
             if args["track"] not in stems:
                 raise RostrumError.not_found("look_events", "stem", args["track"], stems, "the last render's stems")
             wav = stems[args["track"]]
-        expect = [_resolve(doc, t, f"look_events › expect[{i}]") for i, t in enumerate(args.get("expect") or [])] or None
+        expect = [_resolve(doc, t, f"look_music (what: events) › expect[{i}]") for i, t in enumerate(args.get("expect") or [])] or None
         r = listen.onsets(wav, expect=expect, tolerance=args.get("tolerance", 0.04))
         if args.get("detail", "short") == "short" and len(r["onsets_s"]) > 40:
             r = {**r, "onsets_s": r["onsets_s"][:40], "onsets_total": len(r["onsets_s"])}
@@ -122,10 +122,10 @@ def register(tools: Tools):
         "start": {"type": "number"}, "end": {"type": "number"}}})
     def look_spectrum(ctx, args):
         """A spectrogram picture (time and frequency labelled, marks drawn), the steady tones in it (held notes, with their note names) and which of those are hum (flat level, on two or more multiples of 50 or 60 Hz together: a lone held note is never hum)."""
-        doc, wav, stems = _source(ctx, args, "look_spectrum")
+        doc, wav, stems = _source(ctx, args, "look_sound (what: spectrum)")
         if args.get("track"):
             wav = stems.get(args["track"]) or wav
-        marks = {k: _resolve(doc, v, f"look_spectrum › marks.{k}") for k, v in (args.get("marks") or {}).items()} or None
+        marks = {k: _resolve(doc, v, f"look_sound (what: spectrum) › marks.{k}") for k, v in (args.get("marks") or {}).items()} or None
         rng = (args["start"], args["end"]) if "start" in args and "end" in args else None
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(wav).stem}-spectrum.png"
         r = listen.spectrogram(wav, str(png), marks=marks, range=rng)
@@ -138,14 +138,14 @@ def register(tools: Tools):
     @tools.tool("look_stereo", {"properties": {**ITEM, **WAV, "section": {"type": "number", "default": 5}}})
     def look_stereo(ctx, args):
         """Left/right balance and stereo correlation per section, with mono-compatibility warnings."""
-        _, wav, _ = _source(ctx, args, "look_stereo")
+        _, wav, _ = _source(ctx, args, "look_sound (what: stereo)")
         r = listen.stereo(wav, sections_s=args.get("section", 5))
         return Reply(f"{len(r.get('mono_warnings', []))} mono warnings over {len(r.get('sections', []))} sections.", r)
 
     @tools.tool("look_low_end", {"properties": {**ITEM}})
     def look_low_end(ctx, args):
         """Each track's share of energy under 150 Hz and 60 Hz and in the low mids (150–500 Hz, where parts piling up sound muddy), from the last render's stems, and the same for the whole mix; flags boomy tracks."""
-        _, wav, stems = _source(ctx, args, "look_low_end")
+        _, wav, stems = _source(ctx, args, "look_sound (what: low_end)")
         r = listen.low_end(stems or wav, mix=wav if stems else None)
         each = ", ".join(f"{k} {v['low_end_pct']:.0f}% / {v['low_mid_pct']:.0f}%" for k, v in r["tracks"].items())
         flags = "; ".join(f["detail"] + f" ({f['track']})" for f in r["flags"]) or "none"

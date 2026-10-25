@@ -20,7 +20,7 @@ to edit its words, time, take number, level and fades in the inspector.
 3. `render_voice` (MCP tool; optional `ids` = line ids). Makes every missing take, one at a time, and answers per line:
    id, file, seconds, `generated` or from the cache, `start` and `end` in seconds, so the next line can be timed
    to follow it. Python: `rostrum_sound.voice_lines.make_lines(doc, ids)`.
-4. `render_mix`, then listen with the look tools (`look_events` with `expect`, `look_loudness`, `look_levels`).
+4. `render_mix`, then listen with the look tools (`look_music` (`what: "events"`) with `expect`, `look_sound` (`what: "loudness"`), `look_sound` (`what: "levels"`)).
 
 Rendering or playing a document with a line whose audio is not made fails loudly: `voice line "vo.line_2" is not made
 yet` plus how to make it. A line is never skipped silently. Changing a line's words, the track's voice, style or
@@ -46,7 +46,7 @@ cache** (`~/.rostrum/cache/voice-words/<key>/words.json`; key = hash of the take
 so asking again reads them and a re-render never runs the model. Models: `~/.rostrum/models/parakeet-tdt-0.6b-v3`
 (`ROSTRUM_ASR_DIR` to move it).
 
-- **Agent:** `render_voice` first (the take must be made), then the MCP tool `render_voice_words {item?, ids?, read_only?}`
+- **Agent:** `render_voice` first (the take must be made), then the MCP tool `render_voice (what "words") {item?, ids?, read_only?}`
   (a job). `read_only: true` only reads what is stored and fails loudly for a line not heard yet. Answer per line:
   `id, track, text, start, end, words: [{word, start, end}], heard_now`. Times are **song seconds** (the line's start
   added, markers resolved), the same clock as `render_voice`'s `start` / `end`.

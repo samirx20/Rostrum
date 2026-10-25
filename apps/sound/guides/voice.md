@@ -28,6 +28,6 @@ tools. Rendering with an unmade line fails and names the line. Words, voice, sty
 
 The voice model is not installed with the app (about 1.9 GB). When it is missing, `render_voice` says so and names the
 step: the `run_model_install` tool with model `voice` (a job; `inspect_job` shows how far it is). Two of its three files
-are not published yet: until they are, the tool fails at once and names the files and the folder to copy them into. `render_voice_words`
+are not published yet: until they are, the tool fails at once and names the files and the folder to copy them into. `render_voice` (`what: "words"`)
 (each spoken word's start and end, for captions or placing a hit on a word) needs the speech model: model `speech`
 (about 670 MB).

@@ -24,13 +24,18 @@ def _problems(doc) -> set[str]:
     return {json.dumps(p, sort_keys=True, default=str) for p in check(doc.data)} if check else set()
 
 
+def _new_advice(doc, before: set) -> list[str]:
+    """The app's advice a call made new (a valid state that is probably not what was meant), as reply warnings."""
+    return [a for a in doc.kind.advice(doc.data) if a not in before]
+
+
 def register(tools: Tools):
     @tools.tool("edit_document", {"required": ["ops"], "properties": {
         **_ITEM, "ops": {"type": "array", "minItems": 1, "items": _CALL}, "label": {"type": "string"}, **_GROUP}})
     def edit_document(ctx, args):
         """Apply a list of operations, all or nothing, as one change in the history."""
         doc = ctx.document(args.get("item"))
-        before = _problems(doc)
+        before, advised = _problems(doc), set(doc.kind.advice(doc.data))
         group = ctx.group if "group" not in args else args["group"]
         change = ctx.apply(doc, args["ops"], args.get("label"), group)
         names = [c["op"] for c in args["ops"]]
@@ -38,27 +43,29 @@ def register(tools: Tools):
             return Reply(f"Nothing changed: {', '.join(names)} left every value as it was; no history step recorded.", {"seq": doc.seq})
         new = [json.loads(p) for p in sorted(_problems(doc) - before)]
         changed = {"seq": change.seq, "ops": names, "group": group, "new_check_failures": new}
-        warn = [f"This change broke a check: {p}" for p in new] + doc.kind.registry.alias_notes(args["ops"])
+        warn = [f"This change broke a check: {p}" for p in new] + doc.kind.registry.alias_notes(args["ops"]) + _new_advice(doc, advised)
         return Reply(f"Applied {len(names)} operation{'s' * (len(names) != 1)} ({', '.join(names)}) as change {change.seq}, group {group}.",
                      {"seq": change.seq}, warnings=warn, changed=changed)
 
     @tools.tool("run_script", {"required": ["source"], "properties": {
         **_ITEM, "source": {"type": "string", "description": "Python source for this app's script layer."},
-        "name": {"type": "string", "default": "agent_script.py", "description": "The script's name; a script run again under the same name merges."},
+        "name": {"type": "string", "default": "agent_script.py", "description": "The script's name. SAME name = replaces and merges what that script made before (a person's edits stay); a NEW name = adds a second copy beside it. To change something an earlier script made, run under its name."},
         "force": {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {"type": "string"}}],
                   "description": "Overwrite what a person changed: true for all held-back values, or a list of their keys."},
         "detail": {"type": "boolean", "default": False, "description": "List every removed item in the reply's data (else counts and the first few)."}}})
     def run_script(ctx, args):
-        """Run a Python script that builds the document tree and merge it in. What a person moved by hand stays; held-back values are listed."""
+        """Run a Python script that builds the document tree and merge it in. What a person moved by hand stays; held-back values are listed.
+        Run again under the same `name` it replaces what it made; under a new name it adds a second copy."""
         if ctx.app.run_source is None:
             raise RostrumError(codes.BAD_ARGUMENT, "", "this app", "has no script layer wired to the server")
         doc, name = ctx.document(args.get("item")), args.get("name", "agent_script.py")
         run = ctx.app.run_source
         tree = run(args["source"], name, doc) if getattr(run, "wants_doc", False) else run(args["source"], name)
+        advised = set(doc.kind.advice(doc.data))
         report = ctx.run_script(doc, name, tree, args.get("force", False))
         held = [dict(h) for h in report.held]
         changed = {"seq": report.change.seq, "ops": [c["op"] for c in report.change.calls], "group": report.change.session} if report.change else None
-        return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings(), changed=changed)
+        return Reply(report.summary(), {"held": held, "removed": report.removed if args.get("detail") else {"count": len(report.removed), "first": report.removed[:5]}, "seq": doc.seq}, warnings=report.warnings() + _new_advice(doc, advised), changed=changed)
 
     @tools.tool("inspect_job", {"properties": {
         "job_id": {"type": "string", "description": "The job. Without it: every job in the queue's order (running, waiting, then ended)."},

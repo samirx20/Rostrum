@@ -73,7 +73,7 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
   change** adds one on the bar line nearest the playhead (a change always starts a whole bar: `meter.add` / `meter.set`
   off a bar line is refused, naming the nearest bar lines) and its panel has **Beats per bar** and **Beat unit**.
 - To make a downbeat fall on a moment, work out the tempo from the gap: beats between two moments ÷ seconds between
-  them × 60 = bpm. Check it with `look_beats` (below) rather than trusting the arithmetic.
+  them × 60 = bpm. Check it with `look_music` (`what: "beats"`) (below) rather than trusting the arithmetic.
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),
   `section.move` (`by`) moves a section and everything in it.
 - Things placed in beats move when the tempo changes; things placed on markers or in seconds stay with the picture.
@@ -84,12 +84,12 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
 1. Before rendering, `look_arrangement`: per marker, which tracks start on it (within 10 ms) and how far off the
    others are, in ms and beats, with a picture of every part against the markers.
 2. `render_mix` (stems on), then `inspect_job` until done.
-3. `look_events` with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
+3. `look_music` (`what: "events"`) with `expect` = the markers that should have a sound (`["#logo", "#door"]`) and `tolerance` (0.04 s =
    one frame at 25 fps). It answers each expected time's nearest onset and how many ms off. Use `track` to read one stem
    when the mix is busy, or `by_stem: true` to get, for every marker at once, which stem starts nearest it, how far off,
    and the mix's own nearest onset.
-4. `look_beats` shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
-5. `look_spectrum` with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
+4. `look_music` (`what: "beats"`) shows whether the music's own beats sit on the document's grid (per onset, ms from the nearest grid line).
+5. `look_sound` (`what: "spectrum"`) with `marks` (`{"logo": "#logo"}`) draws the moments on the spectrogram, so a late or missing hit shows.
 
 Read onset times as measurements: a soft sound reads 10–30 ms late. Whether a sound *fits* the image is decided by a
 person watching and listening; say so in your report.

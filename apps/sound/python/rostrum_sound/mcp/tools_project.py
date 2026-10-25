@@ -1,6 +1,6 @@
 """Which project the Sound server works on: the person's last song at start-up, and switching while it runs.
 
-    inspect_recent_projects {}                         the person's recent songs (folder, item, name, last changed)
+    run_open_project (what: recent) {}                         the person's recent songs (folder, item, name, last changed)
     run_open_project {folder, item?}                   close the open songs and open another project, as start-up does
 
 Start-up (server.py) and run_open_project both go through `app.open_project`: the one engine process stays, the shared
@@ -44,7 +44,7 @@ EDIT_DOCUMENT = (
     "'writing-parts' first; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
     "(the song itself is \"root\"). A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
     "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\"). A volume is gain 0 … 4 as a bare number, or in dB as "
-    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), so equal volumes are roughly balanced: check with look_levels. A note can end on a "
+    "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
     "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter.")
 RUN_SCRIPT = ("Read inspect_guide 'script' first: the Python names (track, note, chord, hit, bar, beats, marker, ...). "
@@ -93,14 +93,14 @@ def register(tools: Tools):
                      {"recent": rows, "open": now})
 
     @tools.tool("run_open_project", {"required": ["folder"], "properties": {
-        "folder": {"type": "string", "description": "The project folder (absolute path; one from inspect_recent_projects, or any folder with docs/<item>.trk)."},
+        "folder": {"type": "string", "description": "The project folder (absolute path; one from run_open_project (what: recent), or any folder with docs/<item>.trk)."},
         "item": {"type": "string", "description": "The song to open. Default: the one its recent row names, else the only / newest in the folder."}}})
     def run_open_project(ctx, args):
-        """Switch to another project: closes the open songs and opens this folder's (every change is saved at once, so nothing is lost); the engine keeps running, and all other tools work on the new project. Use inspect_recent_projects to see what the person has."""
+        """Switch to another project: closes the open songs and opens this folder's (every change is saved at once, so nothing is lost); the engine keeps running, and all other tools work on the new project. Use run_open_project (what: recent) to see what the person has."""
         folder = Path(args["folder"])
         if not folder.is_dir():
             raise RostrumError(codes.NOT_FOUND, "run_open_project", f'"{folder}"', "is not a project folder",
-                               list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from inspect_recent_projects.")
+                               list(dict.fromkeys(r["folder"] for r in last.recent_rows())), "Pass a folder from run_open_project (what: recent).")
         found = last.docs_in(folder)
         item = args.get("item") or last.default_item(folder, explicit=True)
         if item not in found and found:

@@ -46,7 +46,7 @@ Motion blur never crosses a cut.
 | `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
 | `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. |
 
-In a script: `f.fit(["hills", "tree"], at=4)`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`.
+In a script: `f.fit(["hills", "tree"], at=4)`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
 
 **On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
 (**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
@@ -210,14 +210,14 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 ## Seeing and checking
 
-- `look_frame` at the fastest moments shows the blur, smear and echoes; `look_sheet` over the move shows how they grow and settle.
-- `look_world time=3`: the **whole canvas** as the world view draws it, with the frame outlined at that time, the part outside it veiled, its **path** (a dot per frame, a faint outline and a time label at each key, a cut as a dashed line) and a ruler of world px along the top and left. `area` is `all` (every layer and the whole path), `frame`, or `{x, y, w, h}` in world px; `path=false` leaves the path off. The reply gives the frame's corners in world px and the rectangle shown. Use it to find layers beside the frame, to see where the frame goes, and to read world px for `look_at` and Export › Area.
-- `look_in_frame time=3`: what is **in** the frame (all of its box in the picture), **partly** in (with the share in %) or **out**, per top-level layer, whether it shows at all (`why_not_showing`: opacity 0, outside its times, a matte), and its box in picture px and in world px. With `from` and `to` (and `step`): per layer the time spans it is in the frame, when it enters and leaves; it looks at the frame's keys and each layer's start and end as well as a regular step. Boxes only: `look_frame` shows the real picture.
+- `look_frame` at the fastest moments shows the blur, smear and echoes; `look_frame` (`what: "sheet"`) over the move shows how they grow and settle.
+- `look_frame (what "world") time=3`: the **whole canvas** as the world view draws it, with the frame outlined at that time, the part outside it veiled, its **path** (a dot per frame, a faint outline and a time label at each key, a cut as a dashed line) and a ruler of world px along the top and left. `area` is `all` (every layer and the whole path), `frame`, or `{x, y, w, h}` in world px; `path=false` leaves the path off. The reply gives the frame's corners in world px and the rectangle shown. Use it to find layers beside the frame, to see where the frame goes, and to read world px for `look_at` and Export › Area.
+- `look_frame (what "in_frame") time=3`: what is **in** the frame (all of its box in the picture), **partly** in (with the share in %) or **out**, per top-level layer, whether it shows at all (`why_not_showing`: opacity 0, outside its times, a matte), and its box in picture px and in world px. With `from` and `to` (and `step`): per layer the time spans it is in the frame, when it enters and leaves; it looks at the frame's keys and each layer's start and end as well as a regular step. Boxes only: `look_frame` shows the real picture.
 - `look_at x y time`: boxes are where the layer shows **in the picture**, through the frame (the reply gives the frame's `x`, `y`, `zoom`, `rotation` as `frame_at`). `space=world` reads x, y as world px instead, with boxes where the world view draws each layer, and says whether the point is inside the frame then.
-- `look_path layer=frame` (or any layer): the path it travels, sample by sample: its own x / y and where it shows on
+- `look_motion (what "path") layer=frame` (or any layer): the path it travels, sample by sample: its own x / y and where it shows on
   screen, its keys with their handles, the path's length and its top speed.
 - `look_motion`: facts from each layer's own keys, the frame's included; it does not add the frame's motion to other layers.
-- `look_rig`, `inspect_rig_motion`: skeletons are drawn where the character shows; the foot-slide check undoes the frame so a
+- `look_frame` (`what: "rig"`), `look_motion` (`what: "rig"`): skeletons are drawn where the character shows; the foot-slide check undoes the frame so a
   moving frame is not read as a slide.
 
 ## Not yet

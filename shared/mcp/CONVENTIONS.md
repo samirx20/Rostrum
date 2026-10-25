@@ -19,7 +19,7 @@ Every tool starts with one of five verbs. The verb tells the agent what the tool
 | **inspect** | Reads facts: the project, an item, markers, history, the operation list, guides, a job | never | `inspect_project`, `inspect_item`, `inspect_job` |
 | **edit** | Applies operations (the same ones the GUI uses) | yes, through operations | `edit_document` |
 | **render** | Makes files: exports and hand-offs. Always a job | no (writes files) | `render_video`, `render_layers`, `render_stems` |
-| **look** | Lets the agent see or hear the result: frames, sheets, motion, "what's here", loudness, spectrum | never | `look_frame`, `look_at`, `look_loudness` |
+| **look** | Lets the agent see or hear the result: frames, sheets, motion, "what's here", loudness, spectrum | never | `look_frame`, `look_at`, `look_sound` |
 
 "Look" covers hearing too: a sound check is a look at the sound.
 
@@ -27,8 +27,9 @@ Every tool starts with one of five verbs. The verb tells the agent what the tool
 
 - **`<verb>_<thing>`**, lower case with underscores: `look_frame`, `inspect_markers`, `render_stems`.
 - **Few tools, each clear.** Aim for 10–25 per app. The experiment taught both sides of this. With hundreds of tools, agents can't find the right one. With four tools that each took 38 "targets", agents guessed target names. So one tool does one job, and its arguments pick the details.
-- **Same name, same meaning in every app.** `look_frame` returns one picture in 2D, 3D and the Editor. A tool that only makes sense in one app (for example `look_spectrum` in Sound) still uses the verb rules.
-- **Renames:** an old name answers for one minor version with an error that names the new tool. It never silently works.
+- **Related questions are one tool with `what`.** Tools that answer the same kind of question (one frame, a contact sheet, the whole world) are one tool, and a `what` argument picks the question: `look_frame {what: "sheet"}`. Each part stays its own small function; `rostrum_core.mcp.combine` joins them, so the tool's arguments are every part's, its description lists each choice in the part's own words (when to use which), and a call is checked against the chosen part's own arguments. The app lists its groups in one file (`tool_groups.py`).
+- **Same name, same meaning in every app.** `look_frame` returns one picture in 2D, 3D and the Editor. A tool that only makes sense in one app (for example `look_sound` in Sound) still uses the verb rules.
+- **Renames:** an old name answers for one minor version with an error that names the new tool and the argument to pass (`"look_sheet" was renamed. Use look_frame with what: "sheet".`). It never silently works.
 
 ### Tools every server has (from `rostrum_core`)
 
@@ -70,14 +71,14 @@ Every reply has the same shape:
   "ok": true,
   "summary": "Frame 48 (2.0 s) of intro, 960×540. 6 items visible.",
   "data": { "frame": 48, "time": 2.0, "visible": ["title_3", "bg_1"] },
-  "files": ["C:\\Users\\Sam\\.rostrum\\cache\\look\\intro_f48.png"],
+  "files": ["C:\\Users\\Sam\\Videos\\launch\\looks\\intro_f48.png"],
   "warnings": []
 }
 ```
 
 - `summary`: plain sentences the agent reads first.
 - `data`: small structured facts. Time results always carry both `time` (seconds) and `frame`.
-- `files`: absolute paths of anything written.
+- `files`: absolute paths of anything written. Look pictures go to the project's `looks/` folder (`rostrum_core.mcp.files.look_folder`), so they travel with it; with no project open, to the look cache.
 - Pictures also come back as MCP image content, so the agent sees them at once.
 - **Edits** add `changed`: the history entry id, the operation ids, and any **new** check failures this change caused. A change that breaks something says so in its own reply.
 
@@ -151,7 +152,7 @@ Every `look_*` tool draws through the **same render path as export** (preview �
 | Tool | Returns |
 |---|---|
 | `look_frame` | One picture at a time or marker. Optional `overlays`: item ids, bounding boxes, a coordinate grid, safe areas. Optional `region` to zoom in |
-| `look_sheet` | A contact sheet: several frames over a range in one image, each tile labelled with its time and frame |
+| `look_frame` `what: "sheet"` | A contact sheet: several frames over a range in one image, each tile labelled with its time and frame |
 | `look_motion` | What moves and how: each move's start, landing, ease and speed; pacing findings; optional curve chart or motion sheet (ghosts of earlier frames and arrows showing where things go next) |
 | `look_at` | "What's here": given `x, y` (pixels) and a time, the items under that point, top first, with ids and bounds |
 | `look_compare` | Two pictures side by side with a difference view: a version against an earlier one, or our shot against a private reference |
@@ -166,10 +167,10 @@ Agents can't listen directly, so sound is turned into things they can check.
 
 | Tool | Returns |
 |---|---|
-| `look_loudness` | Integrated loudness (LUFS), a short-term loudness curve, true peak, and every clipped or near-clipping moment with its time |
-| `look_spectrum` | A spectrogram picture, with time and frequency labelled, for the whole piece or a range |
+| `look_sound` `what: "loudness"` | Integrated loudness (LUFS), a short-term loudness curve, true peak, and every clipped or near-clipping moment with its time. Other `what`s: `levels`, `spectrum`, `stereo`, `low_end`, `clash`, `cleanup` |
+| `look_sound` `what: "spectrum"` | A spectrogram picture, with time and frequency labelled, for the whole piece or a range |
 | `look_waveform` | A waveform picture with peaks marked, per track or for the mix |
-| `look_events` | Onsets, beats, bars and the tempo map, as times, usable as markers |
+| `look_music` `what: "events"` / `"beats"` | Onsets, beats, bars and the tempo map, as times, usable as markers (also `pitch` and `harmony`) |
 | `look_clip` | A short preview WAV (up to about 10 seconds) for clients that can play sound, plus its path |
 | `look_describe` | A written description of a stretch of sound from a vetted local AI audio model (loaded on demand) |
 

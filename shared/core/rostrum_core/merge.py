@@ -68,12 +68,16 @@ class MergeReport:
     applied: int = 0
     held: list = field(default_factory=list)    # {"key", "script", "kept", "who", "label"}
     removed: list = field(default_factory=list) # {"id", "type"}: the items the run took out (topmost ones)
+    others: list = field(default_factory=list)  # first run under this name: the names of the scripts that already made things
 
     def warnings(self) -> list:
-        """One line per thing a caller must not miss: each held-back value, and what the run took out."""
+        """One line per thing a caller must not miss: each held-back value, what the run took out, and that a new
+        script name adds beside what earlier scripts made instead of replacing it."""
         held = [f'Held back {held_words(h)}. Pass force: ["{h["key"]}"] to take over.' for h in self.held]
         gone = [f"Removed {removed_text(self.removed)}: the script no longer makes them."] if self.removed else []
-        return held + gone
+        new = [f'"{self.script}" is a new script name, so it ADDED its items beside what {", ".join(self.others)} made. '
+               f"To change those instead, run again under their name (a script re-run under the same name replaces what it made)."] if self.others else []
+        return held + gone + new
 
     def summary(self) -> str:
         text = f"Script {self.script}: {self.applied} change(s) applied"
@@ -142,6 +146,19 @@ def check_kinds(base: dict, output: dict, lists, where: str):
                                hint="Use a new id for the new kind (or remove the old one first).")
 
 
+def twin_hint(doc, name: str, output: dict) -> str:
+    """When a merge fails: the other scripts that already made some of these ids (a script under a new name adds a second
+    copy instead of replacing the first), and what to do."""
+    ids = {i["id"] for i in walk(output, doc.kind.lists)}
+    twins = [n for n, b in doc.script_bases.items() if n != name and ids & {i["id"] for i in walk(b, doc.kind.lists)}]
+    if not twins:
+        return ""
+    names = ", ".join(f'"{n}"' for n in twins)
+    return (f"script {names} already made some of these items. A script run again under the same name replaces what it "
+            f'made, a new name ("{name}") adds a second copy. Run it under {names if len(twins) == 1 else "that script\'s"} '
+            f"name to replace them, or give these items other ids. The check says: ")
+
+
 def merge_script(doc, name, output: dict, who, force=False, session=None) -> MergeReport:
     lists = doc.kind.lists
     base = doc.script_bases.get(name) or doc.kind.blank()
@@ -177,9 +194,12 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
     problems = doc.kind.check(work)
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
-                           "would break its check: " + "; ".join(problems))
+                           "would break its check: " + twin_hint(doc, name, output) + "; ".join(problems))
+    first_run = name not in doc.script_bases
     doc.script_bases[name] = new_base
     report.applied = len(applied)
+    if first_run and applied:
+        report.others = [n for n in doc.script_bases if n != name]
     report.removed = [{"id": a.id, "type": a.item.get("type", "item")} for a in applied if isinstance(a, E.Remove)]
     if applied:
         call = {"op": "run_script", "target": [], "args": {"script": name, "force": force}}

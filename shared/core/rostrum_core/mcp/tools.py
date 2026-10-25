@@ -74,7 +74,7 @@ class Tools:
 
     def __init__(self):
         self._tools: dict[str, Tool] = {}
-        self._renamed: dict[str, str] = {}
+        self._renamed: dict[str, tuple[str, str | None]] = {}   # old name -> (new tool, the argument to pass)
 
     def add(self, name: str, fn: Callable, schema=None, description: str | None = None) -> Tool:
         if not _NAME.match(name):
@@ -95,15 +95,22 @@ class Tools:
             return fn
         return register
 
-    def renamed(self, old: str, new: str):
-        """An old name answers with an error that names the new tool (CONVENTIONS § 2)."""
-        self._renamed[old] = new
+    def renamed(self, old: str, new: str, how: str | None = None):
+        """An old name answers with an error that names the new tool, and `how` its argument (CONVENTIONS § 2):
+        it never silently works."""
+        self._renamed[old] = (new, how)
+
+    def take(self, name: str) -> Tool:
+        """Remove a registered tool and return it (combine.py builds one tool from several)."""
+        return self._tools.pop(name)
 
     def get(self, name: str) -> Tool:
         if name in self._tools:
             return self._tools[name]
         if name in self._renamed:
-            raise RostrumError(codes.UNKNOWN_TOOL, name, f'"{name}"', "was renamed", [self._renamed[name]], f"Use {self._renamed[name]}.")
+            new, how = self._renamed[name]
+            raise RostrumError(codes.UNKNOWN_TOOL, name, f'"{name}"', "was renamed", [new],
+                               f"Use {new}" + (f" with {how}" if how else "") + ".")
         raise RostrumError(codes.UNKNOWN_TOOL, name, f'"{name}"', "is not a tool of this server", sorted(self._tools), did_you_mean(name, self._tools))
 
     def described(self, name: str, more: str):

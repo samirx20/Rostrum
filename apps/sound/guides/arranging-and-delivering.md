@@ -1,7 +1,7 @@
 # Groups, versions and delivery
 
-Keep many tracks tidy, try another sound, hear what a clean-up did, make
-spoken lines again, and hand the song on.
+Keep many tracks tidy, repeat a section and change the repeat, try another sound, hear what a clean-up did,
+make spoken lines again, and hand the song on.
 
 ## 1. Groups of tracks
 
@@ -88,3 +88,28 @@ It lists, in one place:
 - **Clipping** (red): the newest mix goes over full scale.
 
 Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix).
+
+## 9. Duplicate a section, then vary it
+
+A second verse or a "B" that answers "A": copy the section with everything in it, then change the copy.
+
+1. **Copy it.** On the screen, click the section's band on the ruler and choose **Duplicate section** at the top of
+   the settings panel. An agent calls `edit_document` with
+   `{"op": "section.duplicate", "target": ["section.A"]}`. Every note, drum hit and clip that **starts** inside the
+   section is copied to right after it, and the copy is a new section named like the first with a number (`A_2`, id
+   `section.A_2`). Nothing after the section moves: the copy sits on top of what is already there, so set the song's
+   length (`doc.set`) if it should now run longer. One undo step.
+2. **List the copy's ids.** A copied note, hit or clip gets a new id made from its track and where it now starts, in
+   milliseconds: `<track>.n<ms>` for a note (`melody.n22222` starts at 22.222 s), `<track>.<drum><ms>` for a hit
+   (`drums.kick22222`), so you cannot guess them before the copy exists. Ask for them afterwards:
+   - `inspect_item {"id": "section.A_2"}` gives the copy's `at` and `end`;
+   - `inspect_item {"id": "melody", "detail": "full"}` lists every note on that track with its id and values (`at`,
+     `pitch`, `dur`); keep the ones that start between the copy's `at` and `end`.
+   - `look_arrangement` shows both sections side by side, to check the copy landed where you meant.
+3. **Vary it.** Change the copy with ordinary operations on those ids, in one `edit_document` call (all or nothing,
+   one step): `note.set` (`pitch`, `vel`, `dur`; a chord takes a list of pitches), `note.transpose`, `note.remove`,
+   `hit.add` / `hit.remove` for a busier or sparser groove, `track.set` to change a sound only for the whole track.
+   On the screen, **Select inside** on the copy's section selects everything in it to move or change at once.
+
+Writing the song with `run_script` instead? A script can also just write the second section itself (a loop over the
+first one's notes with changes); `section.duplicate` is for a section you or a person already have in the document.

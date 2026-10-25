@@ -1,4 +1,4 @@
-"""inspect_swaps: which child each swap set shows at a time (no rendering), from the one rule (swap.py)."""
+"""inspect_layout (what: swaps): which child each swap set shows at a time (no rendering), from the one rule (swap.py)."""
 from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools

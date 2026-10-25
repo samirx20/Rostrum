@@ -15,7 +15,7 @@ def inspect_diagnose(ctx, args):
     """Everything wrong in a composition, each with the item, what is wrong in words and how to fix it: the engine refusing
     the scene, missing fonts and files, files outside the project folder, broken links (text path, track matte, marker),
     bad expressions, layers never seen (opacity 0, no size, outside their times; a layer beside the frame is not a problem) and keys that do nothing.
-    Read-only; an empty list = nothing found. It does not judge the look (look_frame, look_sheet, look_motion do)."""
+    Read-only; an empty list = nothing found. It does not judge the look (look_frame, look_frame (what: sheet), look_motion do)."""
     from .. import diagnose, diagnose_engine      # here: diagnose reads mcp/geometry.py, which this package imports
     doc, comp = doc_and_comp(ctx, args, as_written=True)   # diagnose times it itself and reports a missing marker
     times = markers.times(doc.folder) if doc.folder else None

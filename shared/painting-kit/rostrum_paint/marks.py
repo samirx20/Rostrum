@@ -85,11 +85,14 @@ class Paper:
 
     def fields(self):
         """(grain, chalk fibre) HxW. On a seamless canvas (`wrap`) both repeat every w and h px, so the tooth meets
-        itself across the joined edges, a hair bigger or smaller to fit a whole number of times."""
+        itself across the joined edges, a hair bigger or smaller to fit a whole number of times. On a picture paper the
+        chalk's fibre is the picture with fine loose fibres through it: chalk catching on the picture alone broke
+        into the picture's own pattern, a dot grid on canvas."""
         if self._g is None and self.picture != "tooth":
             from .pictures import paper_tile, tiled
             g = tiled(paper_tile(self.picture), self.h, self.w, self.scale, self.origin, self.wrap)
-            self._g = (g, g)
+            fibre = _noise(self.h, self.w, 1.5 * self.scale, self.seed, 2, self.origin, self.wrap)
+            self._g = (g, np.ascontiguousarray(0.55 * g + 0.45 * fibre, np.float32))
         if self._g is None:
             s, o, h, w, r = self.size, self.origin, self.h, self.w, self.wrap
             g = 0.6 * _noise(h, w, s, self.seed, 0, o, r) + 0.4 * _noise(h, w, s * 4, self.seed, 1, o, r)

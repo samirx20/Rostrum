@@ -14,19 +14,12 @@ def time_of(folder, item_id: str, part: str, use: str, times: dict, doc=None) ->
         from rostrum_core import Document
         from .kind import KIND
         doc = Document.open(folder, item_id, KIND)
-    if not doc.has(part):
+    played = retime.as_played(doc.data, part, times)     # the times the frames play: one rule (retime._start)
+    if played is None:
         return None
-    layer, off = doc.item(part), retime.offset_of(doc.data, part, times)
-    if use == "end":
-        if layer.get(retime.END):
-            return float(retime._at(layer, retime.END, times))
-        end = float(layer.get("end", retime.END_OF_COMP))
-        if end >= retime.END_OF_COMP:                  # "End of comp": its composition's length
-            comp = next(c for c in doc.data.get("comps", []) if _holds(c, part))
-            return float(comp.get("duration", F.defaults("comp")["duration"]))
-        return round(off + end, 6)
-    return round(off + float(layer.get("start", 0.0)), 6)
+    layer, comp = played
+    end = float(layer.get("end", retime.END_OF_COMP))
+    if use == "end" and end >= retime.END_OF_COMP:     # "End of comp": its composition's length
+        return float(comp.get("duration", F.defaults("comp")["duration"]))
+    return round(end if use == "end" else float(layer.get("start", 0.0)), 6)
 
-
-def _holds(node: dict, id_: str) -> bool:
-    return any(c.get("id") == id_ or _holds(c, id_) for key in retime.CHILDREN for c in node.get(key, []))

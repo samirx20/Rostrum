@@ -1,6 +1,6 @@
 """Where things are in the world, from the document's values (no drawing): the frame's quad at a time and over its path,
 each top-level layer's box in the world and in the picture, and how much of it the frame holds. The facts behind
-look_world, look_in_frame, look_at {space: world} and Export › Picture › Area."""
+look_frame (what: world), look_frame (what: in_frame), look_at {space: world} and Export › Picture › Area."""
 from __future__ import annotations
 
 from rostrum2d.frame import view

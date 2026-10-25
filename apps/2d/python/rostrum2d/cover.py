@@ -1,7 +1,7 @@
 """Covering the frame: the one place for the maths that makes a layer's box cover what the frame shows of it, and for
 where it falls short. `layer.fill_frame` (the frame where it is at one time) and `background.fit` (Cover the frame's
 move: everything the frame shows over the whole piece) size and place with `scale_to_cover` and `anchor_at`; the
-warning band on the canvas (screen2d/cover_band.py) and inspect_background read `edges`.
+warning band on the canvas (screen2d/cover_band.py) and look_drawing (what: depths) read `edges`.
 
 The frame rule is apps/2d/FRAME.md › The maths (frame/view.py): with s = 1 / (1 + depth) a layer at `depth` shows its
 world px P + R(roll) · (q − O) / zoom**s for each output px q, P = H + s · (F − H). A layer's own box is boxes.matrix.

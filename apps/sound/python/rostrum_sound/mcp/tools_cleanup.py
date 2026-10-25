@@ -1,4 +1,4 @@
-"""render_cleanup (a job: makes the missing cleaned takes of a document's clips) and look_cleanup (the agent's ears on a
+"""render_cleanup (a job: makes the missing cleaned takes of a document's clips) and look_sound (what: cleanup) (the agent's ears on a
 cleanup: before vs after, and the stems). The document holds the settings; the takes live in the cache, so making
 them never edits the document. Guide: inspect_guide 'cleanup' (apps/sound/CLEANUP.md)."""
 from __future__ import annotations
@@ -30,7 +30,7 @@ def _dB(x):
 def _made(media, recipe, clip_id, what):
     f = cleanup.cached(media, recipe)
     if f is None:
-        raise RostrumError(codes.NOT_FOUND, "look_cleanup", f'clip "{clip_id}"\'s {what}', "is not made yet",
+        raise RostrumError(codes.NOT_FOUND, "look_sound (what: cleanup)", f'clip "{clip_id}"\'s {what}', "is not made yet",
                            hint="Run the render_cleanup tool first.")
     return f
 
@@ -40,7 +40,7 @@ def _from_clip(doc, clip_id):
     plays a stem or all four are already made."""
     c = doc.item(clip_id)
     if c.get("type") != "clip":
-        raise RostrumError(codes.BAD_ARGUMENT, "look_cleanup", f'"{clip_id}"', "is not a clip")
+        raise RostrumError(codes.BAD_ARGUMENT, "look_sound (what: cleanup)", f'"{clip_id}"', "is not a clip")
     with media_of.of(doc):
         media = media_of.file(c["media"])
     recipe = cleanup.recipe_of(c)
@@ -50,7 +50,7 @@ def _from_clip(doc, clip_id):
     if recipe.get("stem") or all(found.values()):
         stems = {s: _made(media, {"stem": s}, clip_id, f"{s} stem") for s in cleanup.STEMS}
     if after is None and stems is None:
-        raise RostrumError(codes.BAD_ARGUMENT, "look_cleanup", f'clip "{clip_id}"', "has no cleanup step set and no stems made",
+        raise RostrumError(codes.BAD_ARGUMENT, "look_sound (what: cleanup)", f'clip "{clip_id}"', "has no cleanup step set and no stems made",
                            hint="Set stem, isolate, denoise or dereverb (clip.set), run render_cleanup, then look.")
     return media, after, stems
 
@@ -59,7 +59,7 @@ def register(tools: Tools):
     @tools.tool("render_cleanup", {"properties": {**ITEM, "ids": {"type": "array", "items": {"type": "string"},
         "description": "Only these clip ids; left out = every clip that plays a cleaned take."}}})
     def render_cleanup(ctx, args):
-        """Make the missing cleaned takes of the document's clips (their stem / isolate / denoise / dereverb settings; each step's model loads for it and is released). Answers per clip: id, media (the original), file (the cleaned take), generated or cached, steps. Then look_cleanup to hear the difference, and render_mix."""
+        """Make the missing cleaned takes of the document's clips (their stem / isolate / denoise / dereverb settings; each step's model loads for it and is released). Answers per clip: id, media (the original), file (the cleaned take), generated or cached, steps. Then look_sound (what: cleanup) to hear the difference, and render_mix."""
         doc = ctx.document(args.get("item"))
         ids = args.get("ids") or None
 
@@ -75,7 +75,7 @@ def register(tools: Tools):
         "enum": list(fetch.BUNDLES), "description": "The model to download: " + "; ".join(
             f"{n} ({what}, {fetch.size_said(n)})" for n, (what, _) in fetch.BUNDLES.items()) + "."}}})
     def run_model_install(ctx, args):
-        """Download a model a tool needs (models are not installed with the app): deepfilternet3 and umxhq for render_cleanup, voice for render_voice, speech for render_voice_words. Every "not installed" error names the model to pass here. Each file is checked by its fingerprint; files already there are left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
+        """Download a model a tool needs (models are not installed with the app): deepfilternet3 and umxhq for render_cleanup, voice for render_voice, speech for render_voice (what: words). Every "not installed" error names the model to pass here. Each file is checked by its fingerprint; files already there are left alone. Same as the command line `python -m rostrum_sound.cleanup.fetch <model>`."""
         name = args["model"]
         if name not in fetch.BUNDLES:
             raise RostrumError.not_found("run_model_install", "model", name, list(fetch.BUNDLES), in_="the models")
@@ -101,7 +101,7 @@ def register(tools: Tools):
     def look_cleanup(ctx, args):
         """Hear a cleanup. Before vs after: noise floor (quiet 10th percentile of 50 ms frames), speech level (90th), their gap and the reverb tail (how far the level falls in the 200 ms after speech stops), with stacked before / after spectrograms marking floor and level. Stems: each one's level, leakage (correlation of every pair's level envelopes) and, with reference stems, SDR in dB, with a level-over-time picture."""
         doc = ctx.document(args.get("item"))
-        where, look = "look_cleanup", ctx.app.state.look_dir(doc.item_id)
+        where, look = "look_sound (what: cleanup)", ctx.app.state.look_dir(doc.item_id)
         before, after, stems = args.get("before"), args.get("after"), args.get("stems")
         if args.get("clip"):
             before, after, clip_stems = _from_clip(doc, args["clip"])

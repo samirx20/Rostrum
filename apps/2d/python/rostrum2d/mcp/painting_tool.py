@@ -1,9 +1,9 @@
 """Paintings for agents (paintings.py): see one and read what it is and where it is used.
 
-    look_painting {painting, repeats?, frame?, zoom?, grid?, sampling?, paint?, width?}   alone in its own px, or 3 × 3
-    inspect_painting {painting}                                    size, Seamless, layers, drawings, every use, seam check
+    look_painting {painting, repeats?, frame?, zoom?, crop?, grid?, sampling?, paint?, width?}   alone in its own px (crop: at 100 %), or 3 × 3
+    look_painting (what: facts) {painting}                                    size, Seamless, layers, drawings, every use, seam check
 
-`look_drawing`, `inspect_drawing_at`, `inspect_stroke_landed` and `look_drawing_change` also take a painting's id (its px
+`look_drawing`, `look_drawing` (what: at), `look_drawing` (what: landed) and `look_drawing` (what: change) also take a painting's id (its px
 are the canvas's). Making and changing one: painting.add / painting.set / painting.duplicate / painting.remove, strokes
 with paint.stroke or stroke.add on its drawings, using it with layer.fill {type: "painted"}. Painting it where a layer
 shows it: paint.stroke {target: the painting, through: the layer, space: "layer" or "comp"}; look_at says where a point
@@ -21,7 +21,7 @@ from rostrum2d import drawing as D, paintings
 from . import draw
 
 tools = Tools()
-PAINTING = {"painting": {"type": "string", "description": "A painting's id (inspect_painting lists them)."}}
+PAINTING = {"painting": {"type": "string", "description": "A painting's id (look_painting (what: facts) lists them)."}}
 
 
 def _painting(ctx, doc, painting: str) -> dict:
@@ -33,7 +33,7 @@ def _painting(ctx, doc, painting: str) -> dict:
 
 
 @tools.tool("look_painting", {"required": ["painting"], "properties": {
-    **draw.ITEM, **PAINTING, "frame": draw.FRAME["frame"], **draw.ZOOM, **draw.GRID, **draw.SAMPLING,
+    **draw.ITEM, **PAINTING, "frame": draw.FRAME["frame"], **draw.ZOOM, **draw.CROP, **draw.GRID, **draw.SAMPLING,
     "paint": {"type": "string", "description": "Show only this paint layer of the drawing (its id). Default: all together."},
     "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 1200, "description": "Picture width in px."},
     "repeats": {"type": "integer", "enum": [0, 1], "default": 0,
@@ -42,10 +42,11 @@ def _painting(ctx, doc, painting: str) -> dict:
 def look_painting(ctx, args):
     """A painting, in its own pixels: the drawing shown at a frame number (a painting that draws each frame loops), optionally zoomed,
     with a labelled pixel grid or one paint layer alone; or with `repeats` 1 its repeats all round, to see seams. Transparent
-    paper shows as a checkerboard."""
+    paper shows as a checkerboard. `crop` [x, y]: that part at 100 % (one painting px = one picture px) on flat grey, to
+    judge paper grain, chalk and edges as they really are."""
     doc = ctx.document(args.get("item"))
     p = _painting(ctx, doc, args["painting"])
-    if not args.get("repeats"):
+    if not args.get("repeats") or args.get("crop"):
         return draw.look_drawing(ctx, {**{k: v for k, v in args.items() if k != "painting"}, "layer": args["painting"]})
     n = args.get("frame", 0)
     frame = draw.frame_of(ctx, p, n)
@@ -61,7 +62,7 @@ def look_painting(ctx, args):
                        sampling=args.get("sampling", "auto"))
     except ValueError as e:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"zoom", "width" or "sampling"', str(e)) from e
-    dest = look_path(f'{doc.item_id or "doc"}_{p["id"]}_f{n}_repeats')
+    dest = look_path(f'{doc.item_id or "doc"}_{p["id"]}_f{n}_repeats', project=doc.folder)
     pic.save(dest)
     said = "; ".join(paintings.seams(one))
     return Reply(f'{p["id"]} at frame {n} with its repeats all round ({w}×{h} each): {said}.',

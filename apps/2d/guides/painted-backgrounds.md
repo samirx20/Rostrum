@@ -70,14 +70,14 @@ depth just above it ("'Far' is at its largest; this stroke started 'Far 2'"), on
 
 | Tool | Shows |
 |---|---|
-| `look_background layer` | The whole canvas cut into labelled tiles (A1, B1 … about one frame each, or `tiles: [cols, rows]`), with the frame drawn on it: solid = first frame, dashed = last frame, thin = everything it shows over the shot. |
-| `look_background layer tile: "B2"` | One tile close, with a canvas-pixel grid to place strokes (`grid: 0` to judge texture). The reply gives the tile's box in canvas px. |
-| `inspect_background` | Every drawing layer by depth: how much it moves, its canvas, and whether it covers the frame's move, in words ("312 px short on the right from 1.7 s"). |
-| `look_drawing` (`zoom`, `paint`, `sampling`) | Any box of a layer, or one paint layer alone. `inspect_drawing_at` / `inspect_stroke_landed` as for any drawing. |
-| `look_frame`, `look_sheet` | The layers together, through the frame, rendered by the engine: what the film shows. Check the first and last frame of the move. |
+| `look_drawing (what "tiles") layer` | The whole canvas cut into labelled tiles (A1, B1 … about one frame each, or `tiles: [cols, rows]`), with the frame drawn on it: solid = first frame, dashed = last frame, thin = everything it shows over the shot. |
+| `look_drawing (what "tiles") layer tile: "B2"` | One tile close, with a canvas-pixel grid to place strokes (`grid: 0` to judge texture). The reply gives the tile's box in canvas px. |
+| `look_drawing` (`what: "depths"`) | Every drawing layer by depth: how much it moves, its canvas, and whether it covers the frame's move, in words ("312 px short on the right from 1.7 s"). |
+| `look_drawing` (`zoom`, `crop`, `paint`, `sampling`) | Any box of a layer, a part at 100 % (`crop: [x, y]`, to judge grain), or one paint layer alone. `look_drawing` (`what: "at"`) / `look_drawing` (`what: "landed"`) as for any drawing. |
+| `look_frame`, `look_frame` (`what: "sheet"`) | The layers together, through the frame, rendered by the engine: what the film shows. Check the first and last frame of the move. |
 
 Coordinates in strokes are the layer's own canvas px. With scale 1 (what `background.add` sets), canvas px =
-composition px minus the canvas's top-left; the reply of `look_background` and the layer's `x`, `y`, `w`, `h` give it.
+composition px minus the canvas's top-left; the reply of `look_drawing` (`what: "tiles"`) and the layer's `x`, `y`, `w`, `h` give it.
 
 ## The brushes for this work
 
@@ -95,7 +95,7 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
 
 ## Ways of working (techniques, not rules)
 
-- **Plan the move first.** Key the frame, then `background.add`; check with `look_background` which parts each layer
+- **Plan the move first.** Key the frame, then `background.add`; check with `look_drawing` (`what: "tiles"`) which parts each layer
   shows at the start and end. Detail goes where the frame sees.
 - **Block in big shapes** with large opaque strokes before any detail; a base that covers the whole shape stops sky
   showing through gaps between texture strokes later. Clip a shape with a paint mask for a clean silhouette and let
@@ -115,7 +115,7 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
 - **Splitting for parallax.** Paint straight into the right depth layer, or paint flat and then `background.move` each
   paint layer (or a set of strokes) into its depth. What sits in front of something else must not be cut off where
   the layer behind was never painted: paint the far layer on under where the nearer ones will be, because the frame
-  slides them apart as it moves. `inspect_background` says if a layer stops short.
+  slides them apart as it moves. `look_drawing` (`what: "depths"`) says if a layer stops short.
 
 ## A repeating painted ground
 
@@ -130,7 +130,7 @@ it repeat, rather than painting a huge canvas:
   the tiles meet is how a repeat gives itself away.
 - **Break the grid.** Big shapes the size of the painting repeat visibly; keep marks well under its size, vary their
   angle, size and spacing, and spread them across the corners as well as the middle.
-- **Judge the repeat**, not the piece: `look_painting {painting, repeats: 1}` shows it 3 × 3; `inspect_painting` says
+- **Judge the repeat**, not the piece: `look_painting {painting, repeats: 1}` shows it 3 × 3; `look_painting` (`what: "facts"`) says
   whether the edges meet. Then `look_frame` at the size it will be seen.
 - **Let it move.** `driftX` / `driftY` (px per second) slide the tiles for ever (rain, clouds, a scrolling grain);
   `rotation` turns the whole tiling. These belong to the layer's painted fill, so set them with `layer.fill` (`layer.fill {driftX: 30}` on the shape), never `painting.set`, which refuses them; on the screen they are **Drift** and **Rotation** under the fill's Tile fit.

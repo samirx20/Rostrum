@@ -66,7 +66,7 @@ the picture comes out black. webm and ProRes go through FFmpeg; PNG and EXR are 
 
 ## Seeing and checking an export
 
-- Before: `look_sheet` over the whole time range, `look_frame` at the first and last frame.
+- Before: `look_frame` (`what: "sheet"`) over the whole time range, `look_frame` at the first and last frame.
 - After: the facts the export reads back (frames, size, alpha, depth) come with its reply; open the file and compare a frame with
   `look_frame` at the same time. They are drawn by one path, so they should match.
 - A video layer's source frames are decoded once at the composition's fps (`ffmpeg` needed).

@@ -127,7 +127,7 @@ over both.
 
 1. `run_script` (same `name`, explicit ids).
 2. `look_motion`: moves, overlaps, holds, layers not on screen at the end, keys that do nothing.
-3. `look_sheet` over the whole thing; `look_frame` at the landing times and at a hold (`width=1920` for type edges).
+3. `look_frame` (`what: "sheet"`) over the whole thing; `look_frame` at the landing times and at a hold (`width=1920` for type edges).
 4. `look_at x y time`: which layers cover a point, top first (boxes are approximate; text width is estimated).
 5. Then `render_video`.
 

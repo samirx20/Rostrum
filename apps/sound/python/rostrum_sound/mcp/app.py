@@ -2,7 +2,8 @@
 the one engine process, and where renders and looks are written.
 
 Renders are the item's versions, `<project folder>/renders/<item>/vNNN/` (mix, stems, manifest: handoff.py); a solo /
-mute listening check goes to `.../check/`, look pictures to `.../look/`. The last render of each item is remembered
+mute listening check goes to `.../check/`; look pictures go to `<project folder>/looks/<item>/` (rostrum_core's
+`look_folder`, the one place every app's look pictures go). The last render of each item is remembered
 (`renders/<item>/last.json`, so it survives a restart), and look tools default to it.
 """
 from __future__ import annotations
@@ -14,6 +15,7 @@ from pathlib import Path
 
 from rostrum_core import Document, RostrumError, codes, live
 from rostrum_core.mcp import App, Guides
+from rostrum_core.mcp.files import look_folder
 
 from .. import opening
 from ..doc import KIND, markers
@@ -25,9 +27,9 @@ INSTRUCTIONS = ("rostrum-sound makes music, effects and mixes. A Sound document 
                 "drum hits, recorded clips), effects, automation, markers and the master. Write with run_script (the "
                 "Python script API in inspect_guide 'script'), check what you wrote with look_arrangement (a picture, and "
                 "which tracks start on each marker), adjust with edit_document, render with render_mix, then listen "
-                "with the look_* tools. A voice track speaks lines: add them with line.add, make their audio "
-                "with render_voice, then render. The server opens the person's last song; inspect_recent_projects and "
-                "run_open_project switch.")
+                "with look_sound (loudness, levels, spectrum, stereo, low end, clashes) and look_music (onsets, beats, pitch, harmony). A voice track speaks lines: add them with line.add, make their audio "
+                "with render_voice, then render. The server opens the person's last song; run_open_project lists the recent ones "
+                "(what \"recent\") and switches.")
 
 
 NO_PROJECT = "No project is open. Open one in RostrumSound, or call run_open_project with a folder."
@@ -42,9 +44,7 @@ class SoundState:
         return self.folder / "renders" / item
 
     def look_dir(self, item: str) -> Path:
-        d = self.renders(item) / "look"
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+        return look_folder(self.folder, item)
 
     def remember(self, item: str, result: dict):
         (self.renders(item) / "last.json").write_text(json.dumps(result), encoding="utf-8")

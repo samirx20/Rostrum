@@ -110,8 +110,18 @@ def _place(ctx, id_: str, n: int) -> dict:
     try:
         return placement.place_at(ctx.doc, id_, n / _fps(ctx, id_))
     except (KeyError, ValueError, EngineError) as e:
-        ctx.fail(codes.BAD_ARGUMENT, f'"{id_}" at frame {n}', f"has no place to paint in composition px: {e}",
-                 hint='Pass points in the paint canvas px (space "canvas").')
+        shown = _first_shown(ctx.doc, id_)
+        ctx.fail(codes.BAD_ARGUMENT, f'"{id_}" at frame {n}', f"can't be painted: it isn't drawn at that frame ({e})",
+                 hint=(f'Paint at a frame where the layer shows: pass frame={shown} (the first one where it is drawn); '
+                       f'`frame` is both the drawing and the time its points are placed at.' if shown is not None else
+                       "No frame was found where the layer is drawn (it may be hidden, out of its time or fully see-through): make it show first."))
+
+
+def _first_shown(doc, id_: str):
+    try:
+        return placement.first_shown(doc, id_)
+    except Exception:
+        return None
 
 
 def _fps(ctx, id_) -> float:

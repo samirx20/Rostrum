@@ -12,6 +12,7 @@ import traceback
 import uuid
 from typing import Callable, Protocol
 
+from .. import bug
 from ..errors import RostrumError, codes
 from .reply import Reply
 
@@ -119,7 +120,7 @@ class InProcessJobs:
                 job.status, job.reason = "failed", e.line()
             else:                                         # a bug in the job: say so, keep the traceback
                 where = self._log(traceback.format_exc()) if self._log else "no log"
-                job.status, job.reason = "failed", f"unexpected {type(e).__name__}: {e} (log: {where})"
+                job.status, job.reason = "failed", f"unexpected {bug.said(e)} (log: {where})"
         finally:
             job.ended = time.monotonic()
             job.finished.set()

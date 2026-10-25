@@ -12,7 +12,7 @@ import dataclasses
 
 from rostrum_core import RostrumError
 
-from ..doc import meter, musical, tempo, times
+from ..doc import meter, musical, times
 
 
 def length_words(root: dict) -> str:
@@ -23,11 +23,13 @@ def length_words(root: dict) -> str:
         sec = times.seconds(root["length"], root, "length")
     except RostrumError as e:
         return f"length {root['length']!r} can't be worked out ({e.problem})"
-    bars = meter.bar_at(root, tempo.beat_at(root, sec))
+    bars = meter.bars_long(root, sec)
     if abs(bars - round(bars)) < 1e-6:
         n = round(bars)
         return f"{n} bar{'s' * (n != 1)} long (ends where bar {n + 1} starts, {sec:.1f} s)"
-    return f"ends at {musical.position(sec, root)}, {musical.length(sec, root)} long ({sec:.1f} s)"
+    at = musical.position(sec, root).split(".")          # bars.beats(.sixteenth): said in words, never a bare 13.3
+    where = f"bar {at[0]} beat {at[1]}" + (f" sixteenth {at[2]}" if len(at) > 2 else "")
+    return f"ends at {where}, {musical.length(sec, root)} long ({sec:.1f} s)"
 
 
 def song_line(root: dict) -> str:

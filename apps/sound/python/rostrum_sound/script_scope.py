@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import builtins
 import math
-import random as _random
 import threading
+
+from rostrum_core.seeded import SeededRandom, no_classes
 
 NAMES = ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "tuple", "set", "float",
          "int", "str", "bool", "sorted", "sum", "reversed", "isinstance", "hasattr", "any", "all", "map", "filter",
@@ -37,11 +38,11 @@ def _print(*args, sep=" ", end="", **kw):
 
 def scope() -> dict:
     """A fresh scope for one run: builtins, math, random seeded at 1, and an empty print list (read with `printed`)."""
-    rnd = _random.Random(1)
+    rnd = SeededRandom(1)
     _printed.lines = []
     _printed.modules = {**MODULES, "random": rnd}
     safe = {n: getattr(builtins, n) for n in NAMES}
-    return {"__builtins__": {**safe, "__import__": _import, "print": _print}, "math": math, "random": rnd}
+    return {"__builtins__": {**safe, "__import__": _import, "print": _print, "__build_class__": no_classes}, "math": math, "random": rnd}
 
 
 def forget_printed():

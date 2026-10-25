@@ -37,12 +37,12 @@ _rule, _schema = V.fields_of(_FIELDS, "plug-in")
 def record(when) -> V.Value:
     """The `plugin` field of an effect or a track, present only while `when` holds (rule of individuality)."""
     return V.Value("plugin", "text", rule=_rule, schema=_schema, group=GROUP, valid_when=when, importance="deep",
-                   help="The plug-in: {format, path, id, name?, params?, state?}; inspect_plugins lists what is installed.")
+                   help="The plug-in: {format, path, id, name?, params?, state?}; inspect_engine (what: plugins) lists what is installed.")
 
 
 def problems(item: dict, what: str) -> list[str]:
     """A plug-in effect or instrument must name its plug-in."""
-    return [] if item.get("plugin") else [f"{what}: needs its plugin ({{format, path, id}}); inspect_plugins lists them"]
+    return [] if item.get("plugin") else [f"{what}: needs its plugin ({{format, path, id}}); inspect_engine (what: plugins) lists them"]
 
 
 def engine_form(spec: dict, env=lambda v, where: v, where="plugin") -> dict:

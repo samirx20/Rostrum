@@ -18,7 +18,7 @@ Write them with `inspect_guide 'writing-parts'`.
 
 Sync with **named markers** ("logo lands", "drop"), never copied times. Put a note's start on the marker
 (`at="#logo lands"`), and a rise's end on it (`dur={"to": "#logo lands"}`), so the sound stays on its moment when 2D
-re-times. Check the timing with `look_events` and listen with the picture (`look_video`).
+re-times. Check the timing with `look_music` (`what: "events"`) and listen with the picture (`look_video`).
 
 ```python
 bell = track("bell", model="tubularBell")
@@ -66,7 +66,7 @@ left out of the mix. Replace it with an instrument*. It stays in the file, unpla
 
 ## Check it
 
-- `look_events` with the sharp events' times (`expect`): hits and taps should sit within a frame. Check them on
+- `look_music` (`what: "events"`) with the sharp events' times (`expect`): hits and taps should sit within a frame. Check them on
   their own tracks (`render_mix` with `solo`), since a swell can hide a hit's start from the onset tool.
 - A rise should peak on its marker, and a hit's onset sit on it (the events answer `peak_at`).
 - Listen with the picture: `look_video` and the muxed preview.

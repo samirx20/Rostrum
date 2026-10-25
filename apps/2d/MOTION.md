@@ -86,7 +86,7 @@ Notes:
 
 ## Seeing it (agents)
 
-`look_frame` at the fastest moments shows the smear, the echoes and the blur; `look_sheet` over the move shows how
+`look_frame` at the fastest moments shows the smear, the echoes and the blur; `look_frame` (`what: "sheet"`) over the move shows how
 they grow and settle. A smear frame should read as one stretched shape; if the steps of motion blur show, raise
 `shutterSamples`.
 

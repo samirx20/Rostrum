@@ -21,7 +21,7 @@ from rostrum_core import RostrumError, Who, codes, joint, links, markers
 from rostrum_core import edits as E
 
 from . import fields as F
-from . import project_sound, retime, sound_cue_music
+from . import links2d, project_sound, retime, sound_cue_music
 from .names import display_name
 
 TRACK, TRACK_NAME = "cues_2d", "Cues from 2D"
@@ -33,9 +33,8 @@ def marker_id(item: str, layer: str) -> str:
 
 
 def layer_start(folder, doc, layer_id: str) -> float:
-    """The layer's start in scene seconds (its marker's or parent's offset plus its own start)."""
-    off = retime.offset_of(doc.data, layer_id, markers.times(folder))
-    return round(off + float(doc.item(layer_id).get("start", 0.0)), 6)
+    """The layer's start in scene seconds, as the frames play it (links2d.time_of: retime's one start rule)."""
+    return links2d.time_of(folder, doc.item_id, layer_id, "start", markers.times(folder), doc)
 
 
 def _marker(folder, doc, layer_id: str, who) -> str:

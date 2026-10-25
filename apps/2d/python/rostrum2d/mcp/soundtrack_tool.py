@@ -1,4 +1,4 @@
-"""inspect_soundtrack: what plays with a scene (UX_SPEC 3.28). The sound itself is RostrumSound's: its engine renders
+"""inspect_sounds (what: soundtrack): what plays with a scene (UX_SPEC 3.28). The sound itself is RostrumSound's: its engine renders
 the mix (AGENTS.md rule 9); 2D only says which Sound item plays (the scene's `soundtrack` field, set with comp.set)
 and reads its facts through rostrum_sound.soundtrack. Listening is Sound's tools (its MCP server's look / ears)."""
 from __future__ import annotations

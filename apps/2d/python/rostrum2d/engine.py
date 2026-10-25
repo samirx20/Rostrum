@@ -24,10 +24,11 @@ import mmap
 import os
 import queue
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
+
+from rostrum_core import bug
 
 from . import scene_change, settings
 
@@ -54,7 +55,7 @@ def _gave_up() -> EngineError:
 
 
 def _log_line(text: str):
-    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {text}", file=sys.stderr, flush=True)
+    bug.note(text)                      # never fails the request it reports on (a closed stderr pipe on Windows)
 
 
 def find_exe() -> Path:
@@ -93,7 +94,7 @@ class Engine:
         if not self.exe.exists():
             raise EngineError(f"2D engine not found: {self.exe} (set ROSTRUM2D_ENGINE)")
         self.scene, self._shm = None, None           # _shm: (name, mmap) of the engine's frame memory (pixels)
-        self.loaded: dict = {}                       # the last load: {"sent": "scene" | "change", "kept", "timing", "ms"}
+        self.loaded: dict = {}                       # the last load: {"sent": "scene" | "change", "kept", "timing", "ms", "why" (sent whole)}
         self.placed: dict = {}                       # the last pixels frame's `place` reply
         self.timing: dict = {}                       # the last pixels frame's own split (its reply's `timing`)
         # Why it paints on the processor, in plain words (no working graphics driver; ROSTRUM2D_NO_GPU=1), or None on the GPU.
@@ -185,14 +186,16 @@ class Engine:
         scene and the new one shares nodes with it (the same objects: scene_keep.py), only the change goes
         (scene_change.py), else the whole scene, with a log line saying why. `self.scene` is always the whole
         description now held; a restarted engine gets it whole. With no working graphics driver the engine draws
-        the same frames on the processor and `fallback` says so."""
+        the same frames on the processor and `fallback` says so. Why it went whole is a developer's fact, not a
+        warning: kept in `loaded["why"]`, and logged only with ROSTRUM2D_LOG_SCENE=1 (stderr reaches agents)."""
         req, why = scene_change.request(self.scene, scene)
-        if why:
+        if why and os.environ.get("ROSTRUM2D_LOG_SCENE") == "1":
             _log_line(f"2D scene sent whole: {why}")
         out = self._request(req)
         self.fallback = out.get("fallback")
         self.scene = scene
-        self.loaded = {"sent": next(iter(req)), "kept": out.get("kept", 0), "timing": out.get("timing") or {}, "ms": out["ms"]}
+        self.loaded = {"sent": next(iter(req)), "kept": out.get("kept", 0), "timing": out.get("timing") or {}, "ms": out["ms"],
+                       "why": why or ""}
 
     def _props(self) -> dict:
         if self.scene is None:
