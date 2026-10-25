@@ -37,6 +37,7 @@ class SectionSlots(SlotMixin):
         """Fold or open a group (from its heading or its name in the row of names); the choice outlives the selection.
         A group a switch turns on (rows.py `switch`) is added or removed instead: its switch set to its `on` / `off`
         value (a toggle True / False, motion blur 180° / Off), one change."""
+        self._panel_now()
         row = next((r for r in self.model.rows if r.get("fold") == group), None)
         if row and row.get("own"):          # the kind's own group is always open
             return
@@ -79,4 +80,5 @@ class SectionSlots(SlotMixin):
         return True
 
     def _param(self, name):
+        self._panel_now()
         return next((r for r in self.model.rows if r["row"] == "param" and r["id"] == name), None)

@@ -53,7 +53,7 @@ class EffectsPart(QObject):
         self._told = None                            # (shown, found, count) as QML last heard them
         for sig in (bridge.docChanged, bridge.docStepped):     # an effect's values follow a drag live; a change
             sig.connect(lambda: self.bridge.reached(self.bridge._kit.selection) and self._sync())   # elsewhere: nothing
-        bridge.selectedItemsChanged.connect(self._sync)
+        bridge.panelShown.connect(self._sync)          # the panel's own section: with the panel (a pick: the frame after)
         bridge.searchChanged.connect(self.changed)
         self._sync()
 

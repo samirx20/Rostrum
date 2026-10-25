@@ -96,14 +96,21 @@ def cost(acts: list, n: int, profile: bool = False) -> dict:
     if profile:
         import cProfile
         prof = cProfile.Profile()
-    out = {label: {"ms": [], "cpu": [], "held": [], "first": []} for label, _ in acts}
+    from . import after_frame
+    out = {label: {"ms": [], "cpu": [], "held": [], "first": [], "own": []} for label, _ in acts}
     _wait(300)
-    busy, clock = _Busy(), _Cpu()
+    busy, clock, mark = _Busy(), _Cpu(), [None]
+
+    def heard():                                         # the part put off to the frame after starts: what came before
+        if mark[0] is None:                              # it is the action's own frame
+            mark[0] = busy.now()
+    after_frame.HEARD.append(heard)
     try:
         for r in range(n + 1):
             for label, fn in acts:
                 _wait(IDLE_MS)
                 b0, c0, _ = busy.now(), clock.now(), busy.stretch()
+                mark[0] = None
                 if prof and (r or not n):
                     prof.enable()
                 fn()
@@ -116,9 +123,11 @@ def cost(acts: list, n: int, profile: bool = False) -> dict:
                     got["ms"].append(busy.now() - b0)
                     got["cpu"].append(clock.now() - c0)
                     got["held"].append(busy.stretch())
+                    got["own"].append((mark[0] if mark[0] is not None else busy.now()) - b0)
                 else:
                     got["first"].append(busy.now() - b0)
     finally:
+        after_frame.HEARD.remove(heard)
         busy.close()
     if prof:
         out["profile"] = prof
@@ -134,7 +143,9 @@ def said(name: str, got: dict) -> str:
         return f"{name}: first round only: {first} ms"
     return (f"{name}: {len(ms)} times; screen thread median {m(ms):.1f}, worst {max(ms):.1f} ms; its own processor time "
             f"median {m(cpu):.1f}, worst {max(cpu):.1f} ms; longest stretch without a wait median {m(held):.1f}, "
-            f"worst {max(held):.1f} ms; first round {first} ms")
+            f"worst {max(held):.1f} ms; first round {first} ms"
+            + (f"; before the part put off to the next frame median {m(got['own']):.1f}, worst {max(got['own']):.1f} ms"
+               if got.get("own") and got["own"] != ms else ""))
 
 
 def print_profile(prof) -> None:
@@ -150,7 +161,8 @@ def print_profile(prof) -> None:
 
 def clicks(win, args: list[str]) -> None:
     """`clicktime <x>,<y> … [n] [profile]`: real left clicks (press, release: QTest, the mouse's own path) at those
-    window points in turn, each measured as a selection switch is (a layer row, a layer on the canvas)."""
+    window points in turn, each measured as a selection switch is (a layer row, a layer on the canvas), and apart the
+    busy ms before the part a pick puts off to the frame after (after_frame.py): the click's own frame."""
     from PySide6.QtCore import QPoint, Qt
     from PySide6.QtTest import QTest
     pts = [a for a in args if "," in a]
@@ -163,8 +175,11 @@ def clicks(win, args: list[str]) -> None:
         QTest.mouseMove(win, at)
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
     got = cost([(p, lambda p=p: click(p)) for p in pts], n, "profile" in args)
-    every = {k: [v for p in pts for v in got[p][k]] for k in ("ms", "cpu", "held", "first")}
+    every = {k: [v for p in pts for v in got[p][k]] for k in ("ms", "cpu", "held", "first", "own")}
     print(said(f"clicktime {' '.join(pts)}", every).replace(" times;", " clicks;"))
+    print("  each point (busy / its own frame, median-worst): " + "; ".join(
+        f"{p} {statistics.median(got[p]['ms']):.0f}-{max(got[p]['ms']):.0f} / {statistics.median(got[p]['own']):.0f}-{max(got[p]['own']):.0f}"
+        for p in pts if got[p]["ms"]))
     if "profile" in got:
         print_profile(got["profile"])
 

@@ -8,7 +8,8 @@ import time
 
 from PySide6.QtCore import Slot
 
-from . import commands, many, rows
+from . import commands, many, pointer_quiet, rows
+from .after_frame import AfterFrame
 from .history_rows import who_name
 from .pending import finish_typing
 from .parts import SlotMixin
@@ -38,12 +39,30 @@ class SelectSlots(SlotMixin):
         k.op_kind = (many.shared_op([reg.field_op(t) for t in kinds]) if ids else None,
                      kinds[0] if len(set(kinds)) == 1 else "")
         k.static = self._layout()
-        self.model.update(self._rows(), instant=True)    # in place and at once: no reveal animation, and only the
-                                                        # rows another kind adds or drops are made or freed
-        self.rowsChanged.emit()
         if moved:
             self.selectedItemsChanged.emit()
+        if pointer_quiet.busy():            # a pointer's pick: its highlight and outline (selectedItemsChanged) are
+            self._panel_later().ask()       # drawn first, the panel in the frame after (after_frame.py)
+        else:
+            self._panel_later().due = False
+            self._show_panel()
+
+    def _panel_later(self) -> AfterFrame:
+        if self._kit.panel is None:
+            self._kit.panel = AfterFrame(self._show_panel, self)
+        return self._kit.panel
+
+    def _show_panel(self):
+        """The selection's panel: its rows in place and at once (no reveal animation, and only the rows another kind
+        adds or drops are made or freed), its name, then what follows the panel (panelShown: its actions, effects)."""
+        self.model.update(self._rows(), instant=True)
+        self.rowsChanged.emit()
         self._announce(force=True)
+        self.panelShown.emit()
+
+    def _panel_now(self):
+        """A reader of the rows (or a change to them) right after a pointer's pick: the pick's panel first."""
+        self._panel_later().flush()
 
     def _announce(self, force=False):
         """selectionChanged, when what the selection shows changed (or `force`): a document edit that leaves the
@@ -86,6 +105,7 @@ class SelectSlots(SlotMixin):
 
     def shown(self):
         """(on screen, behind More): param names for the selection, in screen order."""
+        self._panel_now()
         return rows.shown(self.model.rows)
 
     def _items(self):
@@ -114,6 +134,8 @@ class SelectSlots(SlotMixin):
 
     def _refresh(self):
         """The same rows with new values or validity: changed in place, so each row animates its own reveal."""
+        if self._panel_later().due:         # a pick's panel not shown yet: shown now, as a pick shows it
+            return self._panel_later().flush()
         self.model.update(self._rows())
         self.rowsChanged.emit()
 
@@ -122,6 +144,7 @@ class SelectSlots(SlotMixin):
     def _step_rows(self):
         """A drag's step: the shown rows' values follow it; which rows show and which groups are open stay as at the
         press until the drop (a row appearing mid-drag makes its control then: tens of ms in one pointer move)."""
+        self._panel_now()
         new, old = self._rows(), self.model.rows
         if [r["id"] for r in new] == [r["id"] for r in old]:
             self.model.update([{**n, **{k: o[k] for k in self.HELD if k in o}} for n, o in zip(new, old)])

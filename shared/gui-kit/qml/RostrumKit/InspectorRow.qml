@@ -52,7 +52,10 @@ Item {
     readonly property bool live: here && (model.valid || reveal > 0)
     readonly property bool paired: live && (model.half === "first" || second)
     readonly property int labelColumn: live ? Theme.labelColumnFor(width) : 0
-    readonly property bool amount: live && model.type === "number" && !paired && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
+    // What decides the widget's kind (amount, noneable) reads on while a made row is parked (not `live`): flipping to
+    // false there turned an amount's slider into a plain number and back on every pick (its widget made twice).
+    readonly property bool amount: (live || made) && model.type === "number" && model.half !== "first" && !second
+                                   && VK.slides(model.display || "", model.min ?? 0, model.max ?? 1e9)
     readonly property bool noted: live && model.row === "param" && !!(model.note && model.note.text) && !paired && !tall
     readonly property bool driven: live && model.row === "param" && !!model.expr      // an expression decides (model.expr)
     readonly property var parts: body.item      // the drawn row (null while absent)
@@ -65,7 +68,7 @@ Item {
                               : model.control === "curve" ? Theme.curveBox + Theme.row - Theme.field
                               : tall && parts && parts.widgetItem ? Math.max(Theme.row, parts.widgetItem.implicitHeight + Theme.row - Theme.field)
                               : Math.max(Theme.row, (parts ? parts.labelHeight : 0) + 2 * Theme.grid) + (noted && parts ? parts.noteHeight : 0)    // a long label wraps
-    readonly property bool noneable: live && model.type === "color" && !!model.options && model.options.start !== undefined
+    readonly property bool noneable: (live || made) && model.type === "color" && !!model.options && model.options.start !== undefined
     readonly property bool canReset: live && model.row === "param" && !driven && model.default !== undefined && (model.default !== null || noneable)
         && (!!model.mixed || JSON.stringify(model.value) !== JSON.stringify(model.default))
     property real reveal: here && model.valid ? 1 : 0
