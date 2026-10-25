@@ -6,6 +6,7 @@ field edit or whole drag is ONE change (key.set, key.handles: the operations an 
 from __future__ import annotations
 
 from rostrum_gui import news
+from rostrum_gui.per_state import PerState
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core.keys import after as last_key, ease as ease_at, keys_of, springs
@@ -16,25 +17,49 @@ from rostrum2d import fields as F
 from . import beat_words, eases
 
 
+def kept(fn):
+    """A read worked out once per state (the placed document and the picked keys): news.relay reads every property
+    to tell whether anything differs, then QML reads what it binds; each read worked it all out again (per_state.py)."""
+    def read(self):
+        return self._kept.read(self._state(), fn.__name__, lambda: fn(self))
+    read.__name__ = fn.__name__
+    return read
+
+
 class KeyBar(QObject):
     changed = Signal()
+    easeChanged = Signal()                  # the ease, its curve and handles: a key dragged in time leaves them be
     menuAsked = Signal(float, float)        # a key's right-click: the Ease list at this window point (LayerTimeline.qml)
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
-        self.b, self._drag, self._grab = bridge, None, None
-        told = news.relay(self)                             # only news (the bar redid itself on every edit)
-        bridge._keys.changed.connect(told)
-        bridge.selectedItemsChanged.connect(told)
-        bridge.outlineChanged.connect(told)
+        self.b, self._drag, self._grab, self._kept, self._drawn = bridge, None, None, PerState(), (None, [])
+        told, eased = news.relay(self), news.relay(self, "easeChanged")   # only news (the bar redid itself on every edit)
+
+        def tell():
+            told()
+            eased()
+        bridge._keys.changed.connect(tell)
+        bridge.selectedItemsChanged.connect(tell)
+        bridge.outlineChanged.connect(tell)
+
+    def _state(self) -> tuple:
+        """What every read depends on: the document as placed (a new object per change, drag step, marker move or scene
+        shown: bridge2d.placed) and the keys picked."""
+        ids = self.b._keys.ids
+        return (self.b.placed(), tuple(ids)) if isinstance(ids, list) else (None, ())
 
     def picked(self) -> list[str]:
         """The keys it acts on: those picked in the timeline or the curve editor (key_select.py)."""
-        ids = self.b._keys.ids
-        if not isinstance(ids, list):       # the screen is closing: the bridge's key list is already gone (the property object, not a list)
+        if not isinstance(self.b._keys.ids, list):   # the screen is closing: the bridge's key list is already gone (the property object, not a list)
             return []
-        return [k for k in ids if self.b.doc.has(k) and "prop" in self.b.doc.item(k)]    # keys only, never a layer id
+        return list(self._picked())
 
+    @kept
+    def _picked(self) -> list[str]:
+        return [k for k in self.b._keys.ids if self.b.doc.has(k) and "prop" in self.b.doc.item(k)]    # keys only, never a layer id
+
+    @kept
     def _first(self) -> dict:
         ids = self.picked()
         return self.b.placed_item(ids[0]) if ids else {}
@@ -44,17 +69,20 @@ class KeyBar(QObject):
     def shown(self):
         return bool(self.picked())
 
+    @kept
     def _moments(self) -> set:
         """(layer, time) of the picked keys: a Position key is its X and Y keys at one time, ONE key on screen."""
         return {(self.b.doc.parent_of(k)[0], round(self.b.doc.item(k)["t"], 6)) for k in self.picked()
                 if isinstance(self.b.doc.item(k).get("t"), (int, float))}
 
     @Property(int, notify=changed)
+    @kept
     def count(self):
         """How many keys the panel says ("Key" / "3 keys"): moments of a layer, the halves of a pair counted once."""
         return len(self._moments()) or len(self.picked())
 
-    @Property(str, notify=changed)
+    @Property(str, notify=easeChanged)
+    @kept
     def ease(self):
         """The first key's ease ("" when the picked keys differ: the field then reads Mixed)."""
         ids = self.picked()
@@ -65,7 +93,8 @@ class KeyBar(QObject):
     def eases(self):
         return [{"value": e["value"], "label": e["label"]} for e in eases.EASES]
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=easeChanged)
+    @kept
     def options(self):
         """The Ease ▾ list, plus the key's own ease when it is one of the document's others (Snappy …) or Mixed."""
         out, now = self.eases, self.ease
@@ -73,24 +102,32 @@ class KeyBar(QObject):
             return [{"value": "", "label": "Mixed"}, *out]
         return out if any(e["value"] == now for e in out) else [{"value": now, "label": eases.label_of(now)}, *out]
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=easeChanged)
+    @kept
     def handles(self):
         """[x1, y1, x2, y2] of the small curve; [] where the curve is not a cubic (spring, jump, bounce)."""
         k = self._first()
         return eases.handles(k) if k and k.get("ease", "smooth") in ("linear", "custom", *eases.BEZIERS) else []
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=easeChanged)
     def curve(self):
         """The first key's ease as 61 points [x, y] (0..1, y may leave it: a spring's wobbles show): what the small curve draws."""
         k = self._first()
-        return [[i / 60, ease_at(k, i / 60)] for i in range(61)] if k else []
+        if not k:
+            return []
+        how = repr(sorted((n, v) for n, v in k.items() if n not in ("t", "v", "id", "ref")))     # the key's ease, whatever its words
+        if self._drawn[0] != how:          # kept while the ease stays (a key dragged in time, its value typed)
+            self._drawn = (how, [[i / 60, ease_at(k, i / 60)] for i in range(61)])
+        return self._drawn[1]
 
     @Property(bool, notify=changed)
+    @kept
     def one(self):
         """One key on screen (one key, or a pair's two at one time): its Time shows."""
         return len(self.picked()) == 1 or (bool(self.picked()) and len(self._moments()) == 1)
 
     @Property(float, notify=changed)
+    @kept
     def time(self):
         return float(self._first().get("t", 0.0))
 
@@ -101,10 +138,12 @@ class KeyBar(QObject):
         return beat_words.say(self.b, k["t"]) if self.one and isinstance(k.get("t"), (int, float)) else ""
 
     @Property(bool, notify=changed)
+    @kept
     def hasValue(self):
         return len(self.picked()) == 1 and "v" in self._first()
 
     @Property("QVariantMap", notify=changed)
+    @kept
     def valueField(self):
         """How the one key's Value shows: its setting's own step, unit and display ("1039 px", not "1039.32")."""
         ids = self.picked()
@@ -112,10 +151,12 @@ class KeyBar(QObject):
         return {"step": p.step or 0.01, "unit": p.unit, "display": p.display} if p else {"step": 0.01, "unit": "", "display": ""}
 
     @Property(float, notify=changed)
+    @kept
     def value(self):
         return float(self._first().get("v", 0.0))
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=easeChanged)
+    @kept
     def feel(self):
         """[bounce, speed] of the first key's spring."""
         return list(springs.feel_of(self._first())) if self.ease == "spring" else []
@@ -151,6 +192,7 @@ class KeyBar(QObject):
         return True
 
     # ---- the ⋯ menu: After the last key (UX_SPEC 3.18), for the picked keys that are their field's last ---------
+    @kept
     def _lasts(self) -> list[str]:
         out = []
         for kid in self.picked():
@@ -161,11 +203,13 @@ class KeyBar(QObject):
         return out
 
     @Property("QVariantList", notify=changed)
+    @kept
     def afters(self):
         """After the last key's choices, [] unless a picked key is its field's last (then the ⋯ menu shows them)."""
         return [{"value": a, "label": last_key.WORDS[a]} for a in last_key.AFTER] if self._lasts() else []
 
     @Property(str, notify=changed)
+    @kept
     def after(self):
         found = {self.b.doc.item(k).get("after", "stay") for k in self._lasts()}
         return found.pop() if len(found) == 1 else ""

@@ -147,7 +147,7 @@ def mapping(comp: dict, owner: dict, t: float):
     if owner["type"] == FRAME:
         return fview.ID
     cam = fview.shot(comp, t)
-    every = {e["id"]: e for e in flatten(comp, t)}
+    every = {e["id"]: e for e in flatten(comp, t, only=_chain(comp.get("layers", []), owner["id"]))}
     e = every.get(owner["id"])
     if e is None:
         return fview.ID
@@ -156,6 +156,16 @@ def mapping(comp: dict, owner: dict, t: float):
     top = every[e["within"][0]]["props"]            # a group's matrix is the export's: swap the top's export matrix for its world one
     swap = _mul(fview.world_matrix(comp, cam, top), _invert(fview.layer_matrix(comp, cam, top)) or fview.ID)
     return _mul(swap, every[e["within"][-1]]["matrix"])
+
+
+def _chain(layers: list, lid: str) -> set:
+    """The layer and the groups it sits in: all the mapping reads (a busy scene's other layers are never worked out)."""
+    for layer in layers:
+        if layer["id"] == lid:
+            return {lid}
+        if inner := _chain(layer.get("layers", []), lid):
+            return inner | {layer["id"]}
+    return set()
 
 
 def frame_at(comp: dict, t: float) -> list[list[float]]:

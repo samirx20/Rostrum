@@ -12,6 +12,9 @@ class StretchSelect(KitStretchSelect):
     def animations(self, owner_id):
         return animations(self.b.placed_item(owner_id))
 
+    def state(self):
+        return self.b.placed()          # the document as placed: markers moved retime its keys
+
     def key(self, key_id):
         return self.b.placed_item(key_id)
 

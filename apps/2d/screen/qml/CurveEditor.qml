@@ -6,12 +6,15 @@ import RostrumKit
 // show / hide). Drag a key: time and value (key.set). Drag a round handle: the key's Bézier ease (key.handles; a named
 // ease becomes custom). Handles show only for the selected key's stretches and only where the ease has them.
 // One MouseArea does the hit-testing, so a drag survives the screen redrawing from its own changes.
+// The Repeaters count (curves, keys, handles) and each delegate reads its entry: over the lists themselves every drag
+// step made a new list, so every legend row, key and label was destroyed and made again (milliseconds per pointer move).
 Item {
     id: ed
     property Item ruler
     property int labelWidth: 236
     readonly property var fs: visible ? backend.curves.fields : []    // hidden (Curves off): reads nothing, makes nothing
     readonly property var shown: fs.filter(f => f.shown)
+    readonly property var keyed: shown.filter(f => f.keys.length)
     readonly property real padY: 14
     readonly property real plotH: plot.height - 2 * padY
     function px(t) { return 8 + ruler.xOf(t) }
@@ -19,6 +22,8 @@ Item {
     function tOf(x) { return ruler.tOf(x - 8) }
     function vOf(f, y) { return f.hi - (y - padY) / plotH * (f.hi - f.lo) }
     function near(x, y, t, v, f, r) { return Math.hypot(x - px(t), y - py(f, v)) <= r }
+    readonly property var none: ({ id: "", label: "", color: "transparent", shown: false, selected: false, lo: 0, hi: 1,
+                                   path: [], keys: [], stretches: [] })     // a delegate past the end of a shorter list
     function handlesOf(f) {
         const out = []
         for (const s of f.stretches) out.push({ h: s.h1 }, { h: s.h2 })
@@ -39,10 +44,11 @@ Item {
     Column {   // the legend: in the name column, on the layer rows' own grid (top, height, spacing, text x: LayerName)
         x: Theme.gap; y: 0; width: ed.labelWidth - Theme.gap; spacing: 2
         Repeater {
-            model: ed.fs
+            model: ed.fs.length
             delegate: Item {
                 id: entry
-                required property var modelData
+                required property int index
+                readonly property var modelData: ed.fs[index] || ed.none
                 width: parent.width; height: Theme.row
                 opacity: modelData.shown ? 1 : 0.4
                 Rectangle { x: Theme.gap + 3; anchors.verticalCenter: parent.verticalCenter; width: 12; height: 3; radius: 1.5
@@ -88,16 +94,17 @@ Item {
                                   x: 0; width: plot.width; y: ed.padY + index * ed.plotH / 2; height: 1; color: Theme.border }
         }
         Repeater {   // each curve's lowest and highest key value at the right edge, in the curve's own colour
-            model: ed.shown.filter(f => f.keys.length)
+            model: ed.keyed.length
             delegate: Item {
                 id: axis
-                required property var modelData
                 required property int index       // each curve's labels stand one step further left: two curves' values at one height never overprint
+                readonly property var modelData: ed.keyed[index] || ed.none
                 readonly property var vs: modelData.keys.map(k => k.v)
                 Repeater {
-                    model: [Math.max(...axis.vs), Math.min(...axis.vs)]
+                    model: 2
                     delegate: Text {
-                        required property real modelData
+                        required property int index
+                        readonly property real modelData: index === 0 ? Math.max(...axis.vs) : Math.min(...axis.vs)
                         y: ed.py(axis.modelData, modelData) - height - 3
                         x: plot.clearOfKeys(plot.width - width - 10 - axis.index * 36, y, width, height)   // at the right edge, never on a key
                         text: Math.round(modelData * 100) / 100; font.family: uiFont; font.pixelSize: Theme.label
@@ -142,22 +149,26 @@ Item {
             }
         }
         Repeater {
-            model: ed.shown
+            model: ed.shown.length
             delegate: Item {
                 id: fld
-                required property var modelData
+                required property int index
+                readonly property var modelData: ed.shown[index] || ed.none
+                readonly property var handles: ed.handlesOf(modelData)
                 Repeater {   // the handles
-                    model: ed.handlesOf(fld.modelData)
+                    model: fld.handles.length
                     delegate: Rectangle {
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: fld.handles[index] || ({ h: [0, 0] })
                         x: ed.px(modelData.h[0]) - 5; y: ed.py(fld.modelData, modelData.h[1]) - 5; width: 10; height: 10; radius: 5
                         color: Theme.sunken; border { width: 2; color: fld.modelData.color }
                     }
                 }
                 Repeater {   // the keys
-                    model: fld.modelData.keys
+                    model: fld.modelData.keys.length
                     delegate: Item {
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: fld.modelData.keys[index] || ({ t: 0, v: 0, sel: false, marker: "" })
                         x: ed.px(modelData.t) - 5; y: ed.py(fld.modelData, modelData.v) - 5; width: 10; height: 10
                         Rectangle {
                             anchors.fill: parent; rotation: 45

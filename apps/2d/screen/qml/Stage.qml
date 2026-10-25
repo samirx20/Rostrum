@@ -398,10 +398,13 @@ Rectangle {
                 width: Math.abs(canvas.b1.x - canvas.b0.x) * view.zoom; height: Math.abs(canvas.b1.y - canvas.b0.y) * view.zoom
                 fillOpacity: 0.12
             }
-            Repeater {  // what a drag snapped to: thin magenta lines, gone on release (backend.snap.lines, composition px)
-                model: backend.snap.lines
+            KeptRepeater {  // what a drag snapped to: thin magenta lines, gone on release (backend.snap.lines, composition px);
+                id: snapLines   // kept: a drag's every move updates the lines in place, never remakes them
+                needed: backend.snap.lines.length
                 delegate: SnapLine {            // the snap magenta (SnapLine.qml)
-                    required property var modelData
+                    required property int index
+                    readonly property var modelData: backend.snap.lines[index] || ({ axis: "x", at: 0, from: 0, to: 0 })
+                    visible: index < snapLines.needed
                     readonly property bool vertical: modelData.axis === "x"
                     x: vertical ? Math.round(modelData.at * view.zoom) : modelData.from * view.zoom
                     y: vertical ? modelData.from * view.zoom : Math.round(modelData.at * view.zoom)

@@ -86,8 +86,14 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     n = len(bridge.doc.history.changes)
     assert bridge.beginMove()
     bridge.snap.keys(True, False)                         # Ctrl held: placed freely, no snapping (snap.py has its own test)
+    shown = lambda: {r["id"]: r for r in bridge.model.rows if r["row"] == "param"}     # noqa: E731
+    held = {k: v for k, v in shown()["x"].items() if k in ("valid", "holds")}
     for dx in (5, 10, 20):
         bridge.moveBy(dx, 4)
+        if dx == 5:     # a step's rows (values only, rows.evaluate step): exact, keyed, what shows as at the press
+            assert (shown()["x"]["value"], shown()["y"]["value"]) == (205, 94)
+            assert shown()["x"]["anim"] == bridge.anim_state(bridge.doc.item("box"), "x")
+            assert {k: shown()["x"][k] for k in held} == held
     bridge.endDrag()
     box = bridge.doc.item("box")
     assert len(bridge.doc.history.changes) == n + 1
@@ -135,9 +141,10 @@ def test_key_drag_is_one_step_and_keeps_the_key(bridge):
     assert bridge.beginKeyDrag(key)
     for t in (1.1, 1.26, 1.5):
         bridge.keyDragTo(t)
+        assert bridge.keyBar.time == bridge.placed_item(key)["t"]   # the Key block's reads, kept per state, follow each step
     bridge.endDrag()
     assert len(bridge.doc.history.changes) == n + 1
-    assert bridge.doc.item(key)["t"] == 1.5 and bridge.keys.ids == [key]
+    assert bridge.doc.item(key)["t"] == 1.5 and bridge.keys.ids == [key] and bridge.keyBar.time == 1.5
     assert bridge.selected == "title"               # keys never enter the selection: the panel keeps the layer
 
 

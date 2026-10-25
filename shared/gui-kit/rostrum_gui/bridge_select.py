@@ -198,7 +198,7 @@ class SelectSlots(SlotMixin):
         evaluated = rows.evaluate(static, self.shown_values(it), self.facts_of(it), k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
                                   lambda name: self.list_choices(it, name), k.open_groups, k.search, self.on_page(it),
-                                  self.starts(it))
+                                  self.starts(it), step=k.stepping)
         return rows.omit(evaluated, self.on_page(it))
 
     def _refresh(self):
@@ -215,7 +215,12 @@ class SelectSlots(SlotMixin):
         """A drag's step: the shown rows' values follow it; which rows show and which groups are open stay as at the
         press until the drop (a row appearing mid-drag makes its control then: tens of ms in one pointer move)."""
         self._panel_now()
-        new, old = self._rows(), self.model.rows
+        old = self.model.rows
+        self._kit.stepping = True           # values only: the rows' HELD keys come from the press (rows.evaluate step)
+        try:
+            new = self._rows()
+        finally:
+            self._kit.stepping = False
         if [r["id"] for r in new] == [r["id"] for r in old]:
             self.model.update([{**n, **{k: o[k] for k in self.HELD if k in o}} for n, o in zip(new, old)])
 

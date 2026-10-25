@@ -37,11 +37,12 @@ def _invert(m):
     return (d / det, -b / det, -c / det, a / det, (c * f - d * e) / det, (b * e - a * f) / det)
 
 
-def flatten(comp: dict, t: float, world: bool = False) -> list[dict]:
+def flatten(comp: dict, t: float, world: bool = False, only: set | None = None) -> list[dict]:
     """Every layer of a composition at time t, bottom of the stack first. `world`: corners and matrices in world px, where the
     world view draws each layer (frame/view.py `world_matrix`), instead of in the picture. Each: id, type, name, props (evaluated),
     opacity (with its groups' opacity), in_time, corners (4 points in the comp), matrix, box (w, h own size), paint (the
-    part of the box it paints itself, own px, or None: boxes.painted)."""
+    part of the box it paints itself, own px, or None: boxes.painted). `only`: just these layers (a layer's groups
+    included by the caller): one layer's matrix on a busy scene without working out every other layer."""
     out: list[dict] = []
     cam = camera.shot(comp, t)
     placed = solve(comp, t)                 # where auto layouts put their layers (rostrum2d/layout.py)
@@ -49,7 +50,7 @@ def flatten(comp: dict, t: float, world: bool = False) -> list[dict]:
     def walk(layers, parent_m, parent_opacity, parent_in_time, path):
         mattes = _mattes(layers)
         for layer in layers:
-            if layer["type"] == "camera":
+            if layer["type"] == "camera" or (only is not None and layer["id"] not in only):
                 continue
             p = {**resolve(layer, t), **placed.get(layer["id"], {})}
             w, h = own_size(layer["type"], p)

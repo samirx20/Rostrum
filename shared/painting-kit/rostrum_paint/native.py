@@ -89,8 +89,8 @@ def _f32(a, shape):
     return a
 
 
-def lay(layer, P, mask=None, under=None):
-    """`brush.dabs`, native: lays P's dabs into `layer` (in place); its Coverage."""
+def lay(layer, P, mask=None, under=None, cov=None):
+    """`brush.dabs`, native: lays P's dabs into `layer` (in place); its Coverage (`cov`: as `brush.dabs`'s)."""
     H, W = layer.shape[:2]
     _f32(layer, (H, W, 4))
     if not layer.flags.writeable:
@@ -108,7 +108,7 @@ def lay(layer, P, mask=None, under=None):
                                            col(np.zeros(P.n) if P.again is None else P.again)]))
     assert rows.shape == (P.n, DAB)
     prof = np.ascontiguousarray(np.stack([P.prof, P.start, P.end, P.streak]), np.float64)
-    cov = np.zeros((by1 - by0, bx1 - bx0), np.float32)
+    cov = np.zeros((by1 - by0, bx1 - bx0), np.float32) if cov is None else _f32(cov, (by1 - by0, bx1 - bx0))
     under_row = 0
     if P.sample_all:
         if under is None or under.dtype != np.float32 or under.strides[1:] != (16, 4) or under.shape != (H, W, 3):

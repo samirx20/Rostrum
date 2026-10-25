@@ -9,6 +9,7 @@ Times and values from QML are seconds and field values; the view's value range i
 from __future__ import annotations
 
 from rostrum_gui import news
+from rostrum_gui.per_state import PerState
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
@@ -44,6 +45,7 @@ class Curves(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent)
         self.b, self._on, self._hidden, self._drag, self._grab, self._frozen = bridge, False, set(), None, None, {}
+        self._kept = PerState()          # the curves, once per state (news.relay reads them, then QML: twice per step)
         bridge.outlineChanged.connect(news.relay(self))     # only news (the editor redid its curves on every edit)
 
     @Property(bool, notify=changed)
@@ -73,6 +75,11 @@ class Curves(QObject):
         Empty while the editor is off: nothing samples curves no one sees (news.relay reads this on every outline)."""
         if not self._on:
             return []
+        state = (self.b.placed(), tuple(self.b._keys.ids), self.b.selectedLayer, frozenset(self._hidden),
+                 tuple(sorted(self._frozen.items())))
+        return self._kept.read(state, "fields", self._curves)
+
+    def _curves(self):
         picked = self.b._keys.ids
         out, sel, layer = [], picked[0] if picked else "", self.b.selectedLayer
         for n, (owner, prop) in enumerate(self._numbers()):
