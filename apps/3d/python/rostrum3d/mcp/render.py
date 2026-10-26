@@ -1,12 +1,13 @@
 """render_still and render_video: pictures for the Editor and the world, always jobs (CONVENTIONS § 7).
 
 A render is a project version `renders/<item>/vNNN/` (the files and a manifest.json, kind "pictures"); a failed one stays in
-`vNNN.partial/` and is never listed. Without a project folder it goes to the render cache. The engine writes each picture to
+`vNNN.partial/` and is never listed; a stopped one (cancelled on purpose) leaves nothing (`kept_unless_stopped`). Without a project folder it goes to the render cache. The engine writes each picture to
 `<name>.partial` and renames it, so every file is whole; the video is encoded by the `ffmpeg` program (a separate process,
 like 2D's) from the PNG frames and written whole or not at all.
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import re
 import shutil
@@ -90,6 +91,18 @@ def _folder(folder, doc, info) -> tuple[Path, bool]:
     return render_cache_folder(f'{doc.item_id or "doc"}_{info["id"]}'), False
 
 
+@contextlib.contextmanager
+def kept_unless_stopped(partial: Path, stopped=None):
+    """Around a render into `partial`: when it raises because it was stopped on purpose (`stopped()` true: a cancel),
+    the half-made folder goes, since nobody wants it; a real failure keeps it (the error names it) to look at."""
+    try:
+        yield
+    except BaseException:
+        if stopped is not None and stopped():
+            shutil.rmtree(partial, ignore_errors=True)
+        raise
+
+
 def _finish(partial: Path, is_version: bool, manifest: dict) -> Path:
     if is_version:
         return project.finish_render(partial, manifest)
@@ -106,17 +119,19 @@ def _renumber(folder: Path, name: str, ext: str, start: int, first_file: int):
 
 
 def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer: str, size: tuple[int, int], formats: list[str],
-          exposure: float = 0, settings: dict | None = None, folder=None, passes: list[str] | None = None) -> tuple[Path, list[Path], dict]:
+          exposure: float = 0, settings: dict | None = None, folder=None, passes: list[str] | None = None, stopped=None) -> tuple[Path, list[Path], dict]:
     """One picture of a shot frame through its camera, as a whole project render version (or in the render cache without a
     project folder). The one code path of the render_still tool and the 3D screen's Render button. Blocking: call it from a job.
-    Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial."""
+    Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial
+    (`stopped()`: the caller cancelled it, so not even that)."""
     doc = DocView.of(doc)
     partial, is_version = _folder(folder, doc, info)
     item, (w, h) = doc.item_id, size
     name = f'{item or "doc"}_{info["id"]}_f{frame:04d}'
     req = {f: str(partial / f"{name}.{f}") for f in formats}
-    out = draw.render(where, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                      width=w, height=h, exposure=exposure, **req, **(settings or {}), **({"passes": passes} if passes else {}))
+    with kept_unless_stopped(partial, stopped):
+        out = draw.render(where, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
+                          width=w, height=h, exposure=exposure, **req, **(settings or {}), **({"passes": passes} if passes else {}))
     done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST,
                                                   out.get("channels")))
     return done, [done / Path(p).name for p in req.values()], out
@@ -201,17 +216,18 @@ def video_job(ctx, args):
         pngs = partial / "_png"
         pngs.mkdir()
         req = {"png": str(pngs / f"{name}.{{frame}}.png"), **({"exr": str(partial / f"{name}.{{frame}}.exr")} if keep_exr else {})}
-        out = draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene,
-                          progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
-                          camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
-                          timeoutS=3600, **req, **_cycles(args, renderer, s), **({"passes": passes} if passes else {}))
-        made = sorted(pngs.glob("*.png"))
-        if len(made) != count or any(p.stat().st_size == 0 for p in made):        # fail loudly: the .partial stays, nothing is finished
-            raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the frames of {info['id']}", f"are {len(made)} pictures, expected {count}", hint=f"Left in {partial}.")
-        _encode(ctx.tool, pngs, name, f0, fps, mp4, partial)
-        if keep_exr:
-            _renumber(partial, name, "exr", f0, FIRST)
-        shutil.rmtree(pngs)
+        with kept_unless_stopped(partial, job.cancel_requested.is_set):     # stopped: no half-made folder left
+            out = draw.render(ctx.tool, f"frames {f0}–{f1} of {info['id']}", engine, scene,
+                              progress=lambda i, n, _=None: job.progress(i, n, f"frames {i} of {n}; {note}"),
+                              camera=info["camera"], renderer=renderer, frames=[f0, f1], width=w, height=h, exposure=args.get("exposure", 0),
+                              timeoutS=3600, **req, **_cycles(args, renderer, s), **({"passes": passes} if passes else {}))
+            made = sorted(pngs.glob("*.png"))
+            if len(made) != count or any(p.stat().st_size == 0 for p in made):        # fail loudly: the .partial stays, nothing is finished
+                raise RostrumError(codes.RENDER_FAILED, ctx.tool, f"the frames of {info['id']}", f"are {len(made)} pictures, expected {count}", hint=f"Left in {partial}.")
+            _encode(ctx.tool, pngs, name, f0, fps, mp4, partial)
+            if keep_exr:
+                _renumber(partial, name, "exr", f0, FIRST)
+            shutil.rmtree(pngs)
         files = [mp4.name, *(sorted(p.name for p in partial.glob("*.exr")))]
         done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), list(range(f0, f1 + 1)), files, FIRST,
                                                       out.get("channels")))

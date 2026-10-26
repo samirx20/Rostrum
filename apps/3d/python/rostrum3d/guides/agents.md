@@ -27,7 +27,7 @@ scene from the document each time you look. Imported USD files stay untouched; y
    Before a long render, ask `render_estimate` (see "Render settings and the time estimate" below).
    Another job on the same graphics card can make every frame many times slower, and a probe taken then shows it.
    Jobs run one heavy job at a time, the rest waiting in order: `inspect_job` without `job_id` lists them (running, waiting,
-   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled render leaves only `vNNN.partial`.
+   ended); `run_stop job_id=…` cancels one, ending its own engine process; a cancelled render leaves nothing on disk (a failed one keeps its `vNNN.partial` to look at).
    The person's Render page queue (render.queue.add / move / cancel) is the same kind of queue.
 
 6. **Hand it on.** `render_send_shot shot=<id> scene=<2D item>/<scene id>` puts the shot into a 2D scene as a 3D render layer
@@ -130,6 +130,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   `key.scale` stretches or squeezes keys in time around a moment; `key.paste` copies keys onto the same fields of other
   items; `key.stagger` starts several items' keys one after another. Each is one change, one undo step, the same a
   person makes by clicking a stretch on the Animate page and picking "Out". Check the result with `look_sheet`.
+  **Show and hide** by keying `visible`: `key.add` with `v` 1 (shown) or 0 (hidden), or `item.key("visible", {0: False,
+  1.2: True})` in a script. It switches at the key and stays until the next one, never part way, whatever the ease
+  (an item hidden this way is gone from the picture, not shrunk; its Scale is left alone).
 - **Stepped timing.** `timing` on an animated item or group: `smooth` (default), `on2`, `on3` (`mesh.set timing=on2`,
   or `mesh("bud", timing="on2")` in a script): every value then holds for 2 or 3 frames, counted from the shot's
   start, in the viewport and the render alike. A group's timing steps everything inside it; a child's own `on2` /
@@ -169,10 +172,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   from RostrumSound (`<song>/<line id>`, the words, where each starts, whether its voice is made) and the mouths it
   finds in the scene. `lipsync.make` (target: the mouth group; `line`; or `file` + `text` + `at` for a WAV that is not
   a project line) hears the line once (the phone model; a few seconds to a minute, then cached), turns it into mouth
-  shapes in time (the same timing as 2D) and keys every child's Scale X Y Z, held: its own Scale while its shape
-  shows, almost nothing (0.0001) while another does, so one shape shows at a time. One undo step; the keys are
-  ordinary keys, move or delete them on the timeline like any other. A second run adds keys only where there is
-  none at that time. Keep a shape's own Scale for its size and let the group carry the placement. The person does
+  shapes in time (the same timing as 2D) and keys every child's **Visible**: on while its shape shows, off while
+  another does, so one shape shows at a time (its Scale is left alone). One undo step; the keys are ordinary keys,
+  move or delete them on the timeline like any other. A second run adds keys only where there is none at that time.
+  The person does
   the same: right-click the mouth group › **Lip sync…**, click a voice line, check the shape for each row, Apply.
   Check with `look_sheet` over the line's seconds.
 - **Memory.** `look_frame` replies carry the video memory the render used; a 4 GB card holds a modest scene at 1080p. If a

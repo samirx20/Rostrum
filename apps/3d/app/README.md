@@ -51,7 +51,7 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   drop-down of those items by name. The field says so itself (`kind` on its param in `fields.py`); `Bridge3D._rows`
   turns such a text row into a choice, the write is still the field's own operation with the id.
 - **Cancel** (in Render's place while a render runs, or Esc): ends the render's own engine process by its handle, the screen goes back
-  to idle and says "Render cancelled". No picture, nothing red; the half-made render folder stays `.partial` (never listed).
+  to idle and says "Render cancelled". No picture, nothing red; nothing of it is left on disk (its half-made `.partial` folder is removed).
 
 ## Rules it keeps
 
