@@ -4,20 +4,15 @@ import RostrumKit
 // The settings panel while Edit mesh is on (SPEC §4.3; screen3d/mesh_edit_qt.py, mesh_actions.py). A shape that isn't
 // an editable mesh yet: one line and Edit (one undo step). Then Points | Edges | Faces (1 2 3), what is picked
 // ("1 face"), the actions that fit it (faces: Extrude, Inset, Material; edges: Bevel, Loop cut, Sharp, Not sharp; each
-// runs at once), and the last action's numbers, which run it again as the same one step. Knife (K) and X-ray (Alt+Z)
-// are tools of the mode. Only what applies now is shown. Tab or Esc leaves.
+// runs at once), and the last action's numbers, which run it again as the same one step. Knife (Shift+K) and X-ray
+// (Alt+Z) are tools of the mode; their keys show on hover (the key map, keys3d.py). Only what applies now is shown.
+// Esc or Shift+Enter leaves.
 Item {
     Column {
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.pad }
         spacing: Theme.gap
 
-        Row {   // what this is, and how to leave
-            width: parent.width; spacing: Theme.grid
-            Text { text: "Edit mesh"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold
-                   anchors.verticalCenter: parent.verticalCenter }
-            Text { text: "Tab to leave"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
-                   anchors.verticalCenter: parent.verticalCenter }
-        }
+        Text { text: "Edit mesh"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
 
         Column {   // not an editable mesh yet
             visible: meshEdit.needsEdit
@@ -37,8 +32,8 @@ Item {
             }
             Row {
                 spacing: Theme.grid
-                Button { objectName: "meshKnife"; text: "Knife  K"; kind: meshEdit.knifing ? "primary" : "normal"; onClicked: meshEdit.toggleKnife() }
-                Button { objectName: "meshXray"; text: "X-ray  Alt+Z"; kind: meshEdit.xray ? "primary" : "normal"; onClicked: meshEdit.toggleXray() }
+                Button { objectName: "meshKnife"; text: "Knife"; job: "mesh_knife"; kind: meshEdit.knifing ? "primary" : "normal"; onClicked: meshEdit.toggleKnife() }
+                Button { objectName: "meshXray"; text: "X-ray"; job: "mesh_xray"; kind: meshEdit.xray ? "primary" : "normal"; onClicked: meshEdit.toggleXray() }
             }
             Text { text: meshEdit.count; color: meshEdit.picked ? Theme.fg : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body }
             Text { visible: meshEdit.picked === 0; width: parent.width; wrapMode: Text.Wrap

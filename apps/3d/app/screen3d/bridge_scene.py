@@ -1,5 +1,5 @@
 """The scene list and the selection for Bridge3D (a slot mix-in): the rows with their keys, which item the selection
-belongs to, Ctrl / Shift picking in the list, and the right-click menu."""
+belongs to, Ctrl / Shift picking in the list."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Slot
@@ -56,14 +56,6 @@ class SceneMixin:
         here = self.selected if self.selected in order else item_id
         run = click(self.selection, here, item_id, {"shift"}, "list", order)[0]
         self.selectMany([here] + [i for i in run if i != here] if here in run else run)
-
-    @Slot(str, result="QVariantList")
-    def contextEntries(self, item_id):
-        return self.ctx.entries(item_id)
-
-    @Slot(str, str)
-    def contextRun(self, item_id, value):
-        self._guard(lambda: self.ctx.run(item_id, value))
 
     @Slot(str)
     def toggleFold(self, item_id):

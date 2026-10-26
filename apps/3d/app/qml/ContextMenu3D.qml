@@ -1,23 +1,24 @@
 import QtQuick
 import RostrumKit
 
-// The right-click menu (SPEC §3.5): six entries at most, only those that apply now, from one Python list
-// (screen3d/context_menu.py). openAt(source, x, y, id): id is the item under the pointer, "" for empty space.
+// The right-click menu (SPEC §3.5): the action hub's own list (backend.actions.menu(): screen3d/actions3d.py), so it
+// holds exactly what the settings panel, Ctrl+K and the keys run, only what applies now, with the keys the key map
+// gives them; six entries at most. openAt(source, x, y, id): id is the item under the pointer ("" for empty space).
+// An item outside the selection is selected alone first (as 2D's layers); one inside it keeps the selection.
+// The kit's ActionMenu runs the choice once it has closed (`choose`: an action with amounts opens its popover).
 Item {
     id: ctx
-    property string itemId: ""
     function openAt(source, x, y, id) {
-        const list = backend.contextEntries(id)
+        if (id === "" ? backend.selection.length > 0 : backend.selection.indexOf(id) < 0) backend.select(id)
+        const list = backend.actions.menu()
         if (list.length === 0) return
-        itemId = id
-        spot.parent = source; spot.x = x; spot.y = y
+        const g = source.mapToItem(null, x, y)
         menu.entries = list
-        menu.openFrom(spot, "left")
+        menu.openAt(g.x, g.y)
     }
-    Item { id: spot; width: 1; height: 1 }
-    Menu {
+    ActionMenu {
         id: menu
-        width: 216
-        onPicked: (v) => backend.contextRun(ctx.itemId, v)
+        objectName: "contextMenu3d"
+        onPicked: (v) => backend.actions.choose(v)
     }
 }

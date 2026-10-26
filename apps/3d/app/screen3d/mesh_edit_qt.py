@@ -1,4 +1,5 @@
-"""Edit mesh on screen, for QML as `meshEdit` (SPEC §4.3, §14): Tab enters and leaves on the selected mesh or combine
+"""Edit mesh on screen, for QML as `meshEdit` (SPEC §4.3, §14): Enter goes in on the selected mesh or combine, Esc or
+Shift+Enter comes out (the shared Go in / Go out keys: keys3d.py)
 (one that isn't an editable mesh yet first offers "Turns the box into an editable mesh · Edit": `mesh.edit`, one undo
 step); 1 / 2 / 3 pick points / edges / faces; a click picks what is under the pointer (Shift adds or takes away), a
 drag on empty space draws a box. The selection is screen state; operations get it as selector text (mesh_edit.py).
