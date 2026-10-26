@@ -16,6 +16,7 @@ from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
 from rostrum_gui.frames import ImageProvider
 from rostrum_gui.model import RowsModel
+from rostrum_gui.select_soon import SelectSoon
 
 from rostrum2d import painted_fill, paintings
 
@@ -46,6 +47,7 @@ class Painter(BrushPanel):
         self._reach = {"before": 2, "after": 1}         # onion skin: how many drawings each way (screen state)
         self.provider = ImageProvider()                  # image://onion: the newest onion picture
         self._wet = WetView(bridge.frameChanged, self)     # the stroke being drawn, shown at once (wet.py)
+        self._select_made = SelectSoon(bridge, self)        # the drawing a first stroke made: picked the frame after
         bridge.opened.landed.connect(self._wet.landed)     # ... on a painting opened on its own, until its picture lands
         self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
@@ -268,7 +270,7 @@ class Painter(BrushPanel):
             if make:
                 self._fresh = None
                 self.b._paint_layers.fresh_each = False       # its Draw each frame is on the layer now
-                self.b.select(d["id"])
+                self._select_made.ask(d["id"])  # the ink first; the layer picked (panels, rows) the frame after
         return self.b.guard(go)
 
     @Slot(float, float, float)
@@ -323,9 +325,9 @@ class Painter(BrushPanel):
 
     @Slot()
     def endStroke(self):
+        self._select_made.flush()                   # a release before the press's frame came: the made layer picked first
         s, self._stroke = self._stroke, None
         if s is not None:
-
             saved = self.b.guard(lambda: self._saved(s.end()))
             if s.wet:
                 self._wet.lift(saved)
