@@ -133,6 +133,7 @@ class Memo:
         e.fields, e.near, e.shown = differ, False, shown
         if not self._patched(e, item, redo) or not _own_choices(e, chosen, choices):
             return None
+        e.shown, e.starts = shown, starts           # (the item's own, read just now: it may lend in turn)
         self.entries[item_id] = e
         self.donors[key] = item_id
         return e
@@ -149,8 +150,12 @@ class Memo:
         ids |= {h for i in ids if i in pair for h in pair[i]}
         folds = {id(f): f for i in fields for f in folds_of.get(i, ())}
         if not ids and not folds:
+            if fields:
+                e.shown = None                      # (what it showed was compared at put: it lends no more)
             return True
         new, shown, starts, anim, gone = redo(item, [e.rows[at[i]] for i in ids])
+        if e.shown is not None:
+            e.shown, e.starts = shown, starts       # a lender is compared by what it shows now, never what it showed
         if gone != e.gone:
             return False                            # (the page shows another field itself now: whole)
         if any(R.changed(f, params, shown, holds, starts, anim) != (f["fold"] in e.changed) for f in folds.values()):
