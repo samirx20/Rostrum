@@ -16,6 +16,7 @@ import RostrumKit
 Rectangle {
     id: tl
     property bool slim: false
+    readonly property real rowsBottom: list.y + Math.min(list.height, column.height - list.contentY)   // where the rows end (PictureCorner sits under them)
     property real slack: 0                  // height the rows leave free for a folded dock (Arrangement.dockSlack)
     property int headerWidth: 224
     signal addTrack()

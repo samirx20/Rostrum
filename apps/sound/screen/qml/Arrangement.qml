@@ -147,6 +147,11 @@ Rectangle {
         id: corner
         visible: backend.pictureOpen
         width: Math.min(340, a.width * 0.4); z: 5
-        anchors { top: parent.top; topMargin: strip.height + timeline.rulerBottom + Theme.grid; right: parent.right; rightMargin: Theme.gap }
+        // under the last row when it fits there (the empty space a folded dock leaves), else at the top right: it
+        // covered bars of every track at each open, the flash and the ending too (critic r9 + r10)
+        readonly property real atTop: strip.height + timeline.rulerBottom + Theme.grid
+        readonly property real under: timeline.y + timeline.rowsBottom + Theme.grid
+        y: under + height + Theme.gap <= a.height ? under : atTop
+        anchors { right: parent.right; rightMargin: Theme.gap }
     }
 }
