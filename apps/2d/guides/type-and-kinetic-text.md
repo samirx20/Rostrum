@@ -85,7 +85,8 @@ Other effects work on text too: `glow`, `blur`, `shadow`, `backdrop` (see `ui-an
 ## Reveal with a mask
 
 A mask is the part of the layer that shows, in the layer's own pixels from its top-left (`mask.add`, or `t.mask(...)` in
-a script): `shape` rect / ellipse, `x`, `y`, `w`, `h`, `radius`, `feather`, `invert`, `angle`. All numbers animate.
+a script): `shape` rect / ellipse, `x`, `y`, `w`, `h`, `radius`, `feather`, `invert`, `angle`. All numbers animate. A
+mask of `w` or `h` 0 shows nothing of the layer (inverted, all of it), so a wipe keyed from `w` 0 starts hidden.
 
 ```python
 t.mask("reveal", x=0, y=0, w=0, h=300).key("w", {0.3: 0, 1.0: 1400})

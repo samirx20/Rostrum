@@ -103,7 +103,7 @@ Every layer also has the transform (`x`, `y`, `scale`, `scaleX`, `scaleY`, `rota
 
 A mask is the part of the layer that shows, in the layer's own px from its top-left. `mask.add` (or `item.mask(id, ...)`
 in a script): `shape` rect / ellipse, `x`, `y`, `w`, `h`, `radius`, `feather` (soft edge, px), `invert`, `angle`.
-Several masks on one layer intersect. A feathered rectangle turned by `angle` and moved across is a soft diagonal wipe.
+A `w` or `h` of 0 shows nothing (inverted: all). Several masks on one layer intersect. A feathered rectangle turned by `angle` and moved across is a soft diagonal wipe.
 
 ```python
 panel.mask("open", x=0, y=0, w=0, h=300, radius=24).key("w", {0.2: 0, 0.9: 640}, ease="easeOut")
