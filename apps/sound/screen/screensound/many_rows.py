@@ -33,10 +33,27 @@ PER_ITEM = ("anim_state", "expr_state", "starts")      # hooks that would make r
 
 
 def merged(bridge, items: list[dict], root: dict) -> list[dict] | None:
-    """The merged rows of `items` (the bridge's panel state), or None when they are not ones to fold."""
+    """The merged rows of `items` (the bridge's panel state), or None when they are not ones to fold. A song version
+    seen a moment ago is answered from `_LAST`: Esc on a popover's preview puts back the very version shown before it
+    (gesture.py: the start's own data), so its panel is the one merged then (Humanise ▾ Esc on 457 notes: ~58 ms)."""
     k = bridge._kit
     if len(items) < LEAST or any(getattr(type(bridge), h) is not getattr(DocBridge, h) for h in PER_ITEM):
         return None
+    key = (id(root), tuple(it["id"] for it in items), id(k.static),     # what the kit's own row memo reads (bridge_select)
+           repr((k.more, k.search, k.open_groups, bridge.rows_context())))
+    hit = next((e for e in _LAST if e[0] == key and e[1] is root), None)
+    if hit is not None:
+        return hit[2]
+    out = _merged(bridge, items, root)
+    _LAST[:] = [(key, root, out)] + _LAST[:1]      # (the root is kept, so its id is never another version's)
+    return out
+
+
+_LAST: list = []                            # the last two merges: (key, the song version, rows)
+
+
+def _merged(bridge, items: list[dict], root: dict) -> list[dict] | None:
+    k = bridge._kit
     reg = bridge.doc.kind.registry
     rules = [r["valid_when"] for r in k.static if r["row"] == "param"]
     rules += [p.valid_when for t in {it["type"] for it in items} & set(FOLDED) for p in reg.field_op(t).params]

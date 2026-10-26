@@ -103,6 +103,7 @@ AppShell {
                       bottomMargin: dock.visible ? Theme.gap : 0 }
             headerWidth: shell.width >= 1920 ? 200 : shell.width >= 1646 ? 180 : shell.width >= 1366 ? 160 : 140
             compact: shell.width < 1366
+            dockSlack: dock.visible ? Math.max(0, dock.shared - dock.height) : 0   // the rows' height is the open dock's
             onAddTrack: workspace.setLibrary(true)
         },
         Dock {

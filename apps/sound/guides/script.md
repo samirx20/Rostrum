@@ -224,7 +224,9 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   a marker at `12.0` stays at 12 s. Write in beats what belongs to the music, in seconds what belongs to the picture.
 - **Moving a section:** `edit_document` `{"op": "section.move", "target": ["section.drop"], "args": {"by": {"beats": 8}}}`
   (or `"by": -2.5` seconds) moves the section and everything that starts inside it (notes, hits, clips, voice
-  lines, tempo and key changes, other sections, automation points) in one undo step. **Markers stay** (they are
+  lines, tempo and key changes, other sections, automation points) in one undo step. A note, hit, clip or line
+  nudged up to a 1/32 note before the section's line counts as inside (one that close to its end belongs to the
+  next section), so humanised drums go along. **Markers stay** (they are
   sync points: a picture cut, "logo lands"), and so do the song's opening tempo, time signature and key; add
   `"markers": true` to move the song's own markers inside the section too. Each time keeps its form; a time on a
   marker that stays keeps the marker with a new offset. Effect envelopes inside effects don't move.

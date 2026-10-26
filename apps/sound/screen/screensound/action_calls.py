@@ -4,8 +4,6 @@ checks decide whether it can run (`tries`: a dry run, so Join and Crossfade are 
 """
 from __future__ import annotations
 
-import math
-
 from rostrum_core import PLUGIN_ITEM, RostrumError, run
 from rostrum_core.registry import Kinds
 from rostrum_sound.doc.registry import REGISTRY
@@ -38,8 +36,9 @@ def clips_one_track(f):
 
 
 def span_by(f):
-    """How far a copy sits after the original: the selection's span; notes and hits round up to whole beats (a hit
-    has no length, and the groove stays on the beat). Kept for the same song and selection (every item's start and
+    """How far a copy sits after the original (Ctrl+D, and each step of Repeat…): the selection's span; notes and hits
+    round up to whole bars from the bar line at or before the first (meter.whole_bars: four chords on bars 1–4 repeat
+    from bar 5, a one-bar groove every bar, a 2.5-bar phrase every 3 bars). Kept for the same song and selection (every item's start and
     end in seconds: ~15 ms a time for 3,000 notes, and the action list asks on every change)."""
     return f.once("span", _span)
 
@@ -50,8 +49,7 @@ def _span(f):
     start = min(ST.start_of(root, i) for i in items)
     end = max(ST.end_of(root, i) for i in items)
     if f.kinds <= {"note", "hit"}:
-        beat = max(ST.delta(root, start, {"beats": 1}), 1e-6)
-        return {"beats": max(1, math.ceil((end - start) / beat - 1e-6))}
+        return {"beats": round(meter.whole_bars(root, start, end), 6)}
     return round(max(end - start, 0.01), 4)
 
 

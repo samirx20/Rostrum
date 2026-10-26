@@ -10,6 +10,16 @@ Row {
     property bool compact: false
     property real room: -1                            // the strip's width left of the right-hand buttons: the state text steps aside (elides) to fit
     property bool tight: false                        // a squeezed strip (a drawer open on a small window): the key fields step aside
+    // The room decides too, not only the window's width: with the Library open the strip is short at any window size,
+    // and the key's Minor box ran under the Picture button (critic r9 + r10). Full while everything fits, then short
+    // (bar.beat only, "Min"), then the key fields step aside.
+    readonly property real tonicW: key !== "" ? 56 : 84
+    function needs(short) { return (short ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4 + Theme.gap
+                                   + 76 + 56 + tonicW + 2 * Theme.grid + (key !== "" ? (short ? 64 : 92) + Theme.grid : 0) }
+    readonly property bool isCompact: compact || (room >= 0 && room < needs(false))
+    readonly property bool isTight: tight || (room >= 0 && room < needs(true))
+    TextMetrics { id: measureFull; font: place.input.font; text: "999.9  0:00.00" }
+    TextMetrics { id: measureShort; font: place.input.font; text: "999.9" }
     spacing: Theme.gap
     readonly property var song: backend.song
     function ask() { place.input.forceActiveFocus(); place.input.selectAll() }       // Alt+Shift+J (the kit's go_to_time)
@@ -37,13 +47,12 @@ Row {
         objectName: "songPosition"
         readonly property string full: backend.positionText(backend.time, ro.song.length)   // (the length: a dependency on the song, not the whole map sent)
         readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
-        text: ro.compact ? parts[0] : full
+        text: ro.isCompact ? parts[0] : full
         editable: true
-        width: Math.ceil(measure.width) + 2 * Theme.gap + 4
+        width: Math.ceil(ro.isCompact ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4
         anchors.verticalCenter: parent.verticalCenter
-        TextMetrics { id: measure; font: place.input.font; text: ro.compact ? "999.9" : "999.9  0:00.00" }
-        onCommitted: (t) => { const why = backend.jumpTo(t); if (why !== "") place.problem = why }
-        HoverTip { text: place.problem === "" ? (ro.compact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump; Alt+Shift+J") : ""
+                onCommitted: (t) => { const why = backend.jumpTo(t); if (why !== "") place.problem = why }
+        HoverTip { text: place.problem === "" ? (ro.isCompact ? place.parts[1] + " · type a bar.beat or seconds to jump" : "Type a bar.beat (5.3) or seconds (9.6 s) to jump; Alt+Shift+J") : ""
                    hovered: place.hovered && !place.active }
     }
     Row {   // tempo, time signature and key: the tempo and key edit what plays at the playhead (song_panel.py)
@@ -65,14 +74,14 @@ Row {
             HoverTip { text: "Time signature: beats in a bar / what a beat is"; hovered: parent.hovered && !parent.opened }
         }
         ChoiceField {   // the key playing here: tonic (or "No key" until one is chosen), then the mode
-            visible: !ro.tight; width: ro.key !== "" ? 56 : 84; current: ro.tonic
+            visible: !ro.isTight; width: ro.key !== "" ? 56 : 84; current: ro.tonic
             options: (ro.key !== "" ? [] : [{ value: "", label: songPanel.noKey }]).concat(songPanel.tonics)
             onPicked: (v) => { if (v !== "") songPanel.setKey(v, ro.mode) }
         }
         ChoiceField {
-            visible: ro.key !== "" && !ro.tight; width: ro.compact ? 64 : 92; current: ro.mode
+            visible: ro.key !== "" && !ro.isTight; width: ro.isCompact ? 64 : 92; current: ro.mode
             options: ["major", "minor", "dorian", "phrygian", "lydian", "mixolydian", "locrian"]
-                .map(m => ({ value: m, label: ro.compact ? m.charAt(0).toUpperCase() + m.slice(1, 3) : m.charAt(0).toUpperCase() + m.slice(1) }))
+                .map(m => ({ value: m, label: ro.isCompact ? m.charAt(0).toUpperCase() + m.slice(1, 3) : m.charAt(0).toUpperCase() + m.slice(1) }))
             onPicked: (v) => songPanel.setKey(ro.tonic, v)
         }
     }

@@ -76,7 +76,8 @@ def register(tools: Tools):
             outline = [{"id": it["id"], "type": it.get("type")} for it in doc.items()]
             warn = doc.kind.warnings(doc.data)
             return Reply(f"{len(outline)} items in {_kind_name(doc)} document, history step {doc.seq}."
-                         + (f" {len(warn)} things it holds are no longer made (see warnings)." if warn else ""),
+                         + (f" {len(warn)} {'thing it holds is' if len(warn) == 1 else 'things it holds are'} no longer made: "
+                            + "; ".join(warn) + "." if warn else ""),          # named, not "see warnings" (critic r10)
                          {"seq": doc.seq, "items": outline, "no_longer_made": warn})
         part = doc.item(args["id"])
         lists = {k for ks in getattr(doc.kind, "lists", {}).values() for k in ks}

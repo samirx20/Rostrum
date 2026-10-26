@@ -25,6 +25,8 @@ from . import block_menu, clipboard, inspect, palette, timing
 from .actions import ACTS_ON, LIST, RANGE
 
 AMOUNTS = {a.id for a in LIST.actions if a.amounts}      # Ctrl+K opens their popover ("Quantise…")
+ASKED_OPS = {"note.strum", "note.arpeggiate"}     # what Strum… / Arpeggio… run: their calls wait for the popover, so the
+# kit's own "Strum" / "Arpeggiate" rows are left out by name (each was a whole plan of the selection on every Ctrl+K)
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
 
@@ -317,11 +319,16 @@ class ActionSlots:
 
     def _act(self, calls, label, select_made=False):
         def go():
+            picked = list(self._picks.ids)      # (the change drops what it removed from the selection)
             change = self.doc.apply(calls, self.who, label=label)
             self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently
-            made = [i for i in ST.inserted(change) if self.doc.has(i)] if change and select_made else []
+            new = [i for i in ST.inserted(change) if self.doc.has(i)] if change else []
+            made = new if select_made else []
             made = [i for i in made if self.doc.item(i)["type"] == "section"] or made   # a new section stands for what
             # it holds: it alone is selected, so its own actions show (Duplicate section, Ctrl+D again)
+            kept = [i for i in picked if self.doc.has(i)]
+            if not made and new and len(kept) < len(picked):
+                made = kept + new               # one rule: what replaced selected items is selected (Arpeggio, then Humanise)
             if made:                            # the outlines with the change, the panel once both are drawn
                 self._pick(made, later=True)
                 self._settle()
@@ -335,9 +342,9 @@ class ActionSlots:
         mine = [{**c, "do": lambda k=c["key"]: self._hub.choose(k)} if "do" in c or c["key"] in AMOUNTS else c
                 for c in do_commands(LIST.available(f), self._what(f))]
         mine = [{**c, "hint": self._subject(c["key"]) or c["hint"], "own": True} for c in mine]
-        ops = {x["op"] for c in mine for x in c.get("calls", [])}
+        ops = {x["op"] for c in mine for x in c.get("calls", [])} | ASKED_OPS
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
-                              where=self._what(f))
+                              where=self._what(f), skip=ops)
         picked = self._picks.ids
         own = commands.field_rows(self.doc, picked[0], self.label_of) if len(picked) == 1 else []     # "velocity", "volume"
         own += palette.lane_rows(self.doc, self._paste_track(), self.openLane, self.openPlayLane)      # "automation", "sustain"

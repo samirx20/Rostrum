@@ -99,20 +99,26 @@ class BlockMemo:
     def _middle(self, part, items, was, blocks, make, again, stale) -> list[dict]:
         """The blocks of the items between the lists' same ends: an item held as it was keeps its block (re-placed
         when stale), as does one equal to it; one moved (same id, only `at` changed) is its old block re-placed; one equal to an item the last
-        change took away is that item's block again; any other is made. What this change took away is kept."""
+        change took away or changed is that item's block again; any other is made. What this change took away or
+        changed is kept (Esc on a Humanise preview of 457 notes puts back the notes it changed: their blocks were
+        all made again, ~12 ms)."""
         old = {x.get("id"): (x, bl) for x, bl in zip(was, blocks)}
         back = self._gone.get(part, {}) if not stale else {}
-        out = []
+        out, changed = [], {}
         for x in items:
-            got = old.pop(x.get("id"), None)
+            i = x.get("id")
+            got = old.pop(i, None)
             if got is None:
-                got = back.get(x.get("id"))
+                got = back.get(i)
                 out.append(got[1] if got is not None and (got[0] is x or got[0] == x) else make(x))
             elif got[0] is x or got[0] == x:
                 out.append(again(x, got[1]) if stale else got[1])
             else:
-                out.append(again(x, got[1]) if again is not None and moved(got[0], x) else make(x))
-        self._gone[part] = old
+                changed[i] = got
+                prev = back.get(i)
+                out.append(prev[1] if prev is not None and (prev[0] is x or prev[0] == x) else
+                           again(x, got[1]) if again is not None and moved(got[0], x) else make(x))
+        self._gone[part] = {**changed, **old}
         return out
 
     def tally(self, part, items, key_of) -> Counter:

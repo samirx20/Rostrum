@@ -8,6 +8,7 @@ nothing, when a tone would go past the 128 MIDI keys (0 to 127).
 from __future__ import annotations
 
 import copy
+from bisect import bisect_left, bisect_right
 
 from rostrum_core import Param, codes
 
@@ -46,7 +47,7 @@ def _voiced(root_midi: int, shape: str, key, inversion: int) -> list[int]:
                     target="note", params=[SHAPE, INVERSION], label="Make a chord", importance="secondary")
 def chord(ctx, targets, args):
     shape, inversion, root = args["shape"], args.get("inversion", 0), ctx.doc
-    plan = []
+    plan, starts = [], {}             # {track: (its notes' starts sorted, their keys)}: read once, not per target note
     for t in targets:
         n = ctx.item(t)
         sec = start_of(root, n)
@@ -59,8 +60,12 @@ def chord(ctx, targets, args):
         if not all(0 <= m <= 127 for m in tones):
             ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "would have tones outside the 128 MIDI keys (0 to 127)", hint="Use a lower inversion or another note.")
         track = ctx.idx[t].parent
-        sounding = {m for o in ctx.item(track)["notes"] if abs(start_of(root, o) - sec) <= chords.TOGETHER
-                    for m in keys.midis(o["pitch"])}
+        if track not in starts:
+            timed = sorted((start_of(root, o), keys.midis(o["pitch"])) for o in ctx.item(track)["notes"])
+            starts[track] = ([s for s, _ in timed], [m for _, m in timed])
+        at, midis = starts[track]
+        sounding = {m for i in range(bisect_left(at, sec - chords.TOGETHER), bisect_right(at, sec + chords.TOGETHER))
+                    for m in midis[i]}
         plan += [(track, n, m, key) for m in tones if m not in sounding]
     for track, n, m, key in plan:                        # all checked first: a failure changes nothing
         new = {k: copy.deepcopy(v) for k, v in n.items() if k not in ("id", "pitch")}
