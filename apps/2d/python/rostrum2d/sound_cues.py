@@ -145,7 +145,7 @@ TIMED = frozenset({retime.FIELD, retime.END, "start", "end", "timing", "speed", 
 
 def moves_sound(change) -> bool:
     """Can this change move a cue marker or a video's sound? (No for a look edit, a key, a stroke: most edits.)"""
-    for e in change.edits:
+    for e in E.flat(change.edits):
         if isinstance(e, E.Set):
             if e.path and e.path[0] in TIMED:
                 return True

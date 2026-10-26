@@ -21,6 +21,7 @@ class Written:
     versions: dict
     script: dict
     hashed: tuple = ()          # (seq, t, hash) of the last hash line written: a fold with nothing new adds none
+    layout: int = histfile.LAYOUT   # an older layout is read (and its end known) but never appended to: rewritten whole
 
 
 def save(doc, document=True, p=None):
@@ -90,7 +91,7 @@ def write_document(path, format_, version, at, t, body, h=None, uses=None) -> tu
 def _append_to(w, hist, n):
     """The history file opened to append, when it is still the one we wrote last (same file, not shorter), else None
     (it is written whole). Asked through the handle: separate stats of the path cost a millisecond each per change."""
-    if w is None or w.n > n:
+    if w is None or w.n > n or w.layout != histfile.LAYOUT:
         return None
     try:
         fh = open(hist, "ab")
@@ -103,10 +104,11 @@ def _append_to(w, hist, n):
     return None
 
 
-def _wrote(doc, hist, end=None, st=None, hashed=()):
-    """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line).
+def _wrote(doc, hist, end=None, st=None, hashed=(), layout=histfile.LAYOUT):
+    """Note where the history file ends now (after writing it; after reading it: `end`, before a cut-off line, and
+    the `layout` read), so a look that finds it unchanged reads nothing, whoever's write it was.
     The script bases are copied shallow: a run replaces its base, never changes it in place (merge.py), so that tells
     a new one apart; a deep copy of every base cost milliseconds on every change."""
     st, ch = st or hist.stat(), doc.history.changes
     doc._written = Written(st.st_ino, st.st_size if end is None else end, len(ch), ch[-1].t if ch else 0.0,
-                           dict(doc.history.versions), dict(doc.script_bases), hashed)
+                           dict(doc.history.versions), dict(doc.script_bases), hashed, layout)

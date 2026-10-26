@@ -65,8 +65,7 @@ def register(type_, key, many=False):
     @REGISTRY.operation(f"{type_}.remove", f"Delete {label}s.", target=type_, label=f"Delete {label}",
                         importance="secondary")
     def remove(ctx, targets, args):
-        for t in targets:
-            ctx.remove(t)
+        ctx.remove_many(targets)                        # one edit for them all (a whole-song Delete: one entry)
 
 
 register("note", "notes", many=True)

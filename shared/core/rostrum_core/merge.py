@@ -79,7 +79,7 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
     report.applied = len(applied)
     if first_run and applied:
         report.others = [n for n in doc.script_bases if n != name]
-    report.removed = [{"id": a.id, "type": a.item.get("type", "item")} for a in applied if isinstance(a, E.Remove)]
+    report.removed = [{"id": a.id, "type": a.item.get("type", "item")} for a in E.flat(applied) if isinstance(a, E.Remove)]
     if applied:
         call = {"op": "run_script", "target": [], "args": {"script": name, "force": force}}
         report.change = doc.commit(work, applied, who, f"Run {name}", [call], session)

@@ -150,11 +150,10 @@ def _read_doc(cls, folder, item, kind, p):
     last = changes[-1].hash_after if changes else ""
     if last and (not trusted or file["at"] < doc.seq) and doc_hash(replayed) != last:
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["history"]), "doesn't add up to its own last step")
-    if r.layout == histfile.LAYOUT:
-        _wrote(doc, p["history"], r.end)
-        if lost:                                    # the step standing for the lost ones is not in the file yet
-            ch = doc.history.changes
-            doc._written = dataclasses.replace(doc._written, n=len(ch) - 1, last_t=ch[-2].t if len(ch) > 1 else 0.0)
+    _wrote(doc, p["history"], r.end, layout=r.layout)   # (an old layout: the next save writes it whole, new layout)
+    if lost:                                    # the step standing for the lost ones is not in the file yet
+        ch = doc.history.changes
+        doc._written = dataclasses.replace(doc._written, n=len(ch) - 1, last_t=ch[-2].t if len(ch) > 1 else 0.0)
     if not written and doc_hash(replayed) != doc_hash(file["doc"]):
         _record_outside(doc, replayed, file["doc"], formats.after(doc.file_version, changes))
     else:

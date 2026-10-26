@@ -11,7 +11,7 @@ from rostrum_core import edits as E
 def _keys(doc, change) -> list[tuple[str, str]]:
     """(owner id, prop) of every key the change added or gave a new value."""
     out = []
-    for e in change.edits:
+    for e in E.flat(change.edits):
         if isinstance(e, E.Insert) and e.item.get("type") == "key":
             out.append((e.parent, e.item.get("prop", "")))
         elif isinstance(e, E.Set) and doc.has(e.id) and doc.item(e.id).get("type") == "key" and e.path[:1] != ["ease"]:

@@ -52,8 +52,8 @@ def test_a_note_drawn_where_the_last_one_ends_is_kept(bridge):  # noqa: F811
 
 
 def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
-    """What the screen shows for the lead row and the roll, kept as the QML does (whole lists, patches, resets,
-    block_patch.py), always equals the song: a missed patch would be a note missing from the screen, or one that
+    """What the screen shows for the lead row and the roll, kept as the QML does (whole lists, patches, resets, swaps
+    back to the list before: block_patch.py), always equals the song: a missed patch would be a note missing from the screen, or one that
     stays after its undo. The layouts (`tracks`, `roll`) say nothing for a note's edit (critic r4 M4)."""
     import json
     from screensound.block_patch import apply, seen
@@ -62,13 +62,15 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
     role = lambda: json.loads(m.data(m.index(row), m._ids["blocks"]))   # noqa: E731  the row model's "blocks" role (JSON text)
     roll = lambda: json.loads(bridge.rollBlocks)                         # noqa: E731
     screen = {"row": role(), "roll": roll()}
-    def patch(k, text):
-        screen[k] = apply(screen[k], json.loads(text))
-    m.dataChanged.connect(lambda *_: screen.update(row=role()))
-    bridge.blocksPatched.connect(lambda k, p: k == "lead" and patch("row", p))
-    bridge.blocksReset.connect(lambda k: k == "lead" and screen.update(row=role()))
-    bridge.rollPatched.connect(lambda p: patch("roll", p))
-    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=roll()))
+    def show(k, blocks):                              # the list shown now is kept as the one before (`was`)
+        screen[k + "_was"], screen[k] = screen[k], blocks
+    m.dataChanged.connect(lambda *_: screen.update(row=role(), row_was=None))
+    bridge.blocksPatched.connect(lambda k, p: k == "lead" and show("row", apply(screen["row"], json.loads(p))))
+    bridge.blocksReset.connect(lambda k: k == "lead" and show("row", role()))
+    bridge.blocksBack.connect(lambda k: k == "lead" and show("row", screen["row_was"]))
+    bridge.rollPatched.connect(lambda p: show("roll", apply(screen["roll"], json.loads(p))))
+    bridge.rollBack.connect(lambda: show("roll", screen["roll_was"]))
+    bridge.rollBlocksChanged.connect(lambda: screen.update(roll=roll(), roll_was=None))
     for s in ("timelineChanged", "rollChanged"):
         getattr(bridge, s).connect(lambda s=s: heard.append(s))
 

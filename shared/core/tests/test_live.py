@@ -134,3 +134,35 @@ def test_a_failed_document_write_is_said_and_tried_again(tmp_path, monkeypatch):
     assert window.live.fold_if_quiet() is True                     # tried again
     window.live.settle()
     assert not window.live.behind()
+
+
+def test_a_window_reads_an_unchanged_history_file_once_whatever_its_layout(tmp_path, monkeypatch):
+    """The window's timer reads nothing while the history file is as it left it: after its own steps, and after
+    opening a file saved before S39 (layout 1: once re-read in whole on every tick until the person changed something).
+    Another program's step is still taken in, and the next save writes the new layout."""
+    import json
+    doc = toy.sample(tmp_path, "itm")
+    doc.apply(move(5), SAM)
+    kind, hist = toy.KIND, tmp_path / ".rostrum" / "itm.history.jsonl"
+    lines = [json.dumps({"format": kind.format, "version": kind.version, "base": doc.base})]
+    hist.parent.mkdir()
+    hist.write_text("\n".join(lines + [json.dumps(c.to_dict()) for c in doc.history.changes]) + "\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / f"itm{kind.ext}").write_text(json.dumps(
+        {"format": kind.format, "version": kind.version, "saved_by": "0.1.2", "doc": doc.data}), encoding="utf-8")
+    reads, read = [], live.read_history
+    monkeypatch.setattr(live, "read_history", lambda *a, **k: reads.append(a[2:3]) or read(*a, **k))
+    window = Document.open(tmp_path, "itm", kind)
+    live.keep(window).windowed()
+    for _ in range(3):
+        window.live.catch_up()
+    assert reads == []
+    server = Document.open(tmp_path, "itm", kind)
+    live.keep(server)
+    server.apply(move(9), AGENT)                                     # rewrites the old file whole, new layout
+    assert [c.who for c in window.live.catch_up()] == [AGENT] and window.data == server.data
+    window.apply({"op": "layer.rename", "target": ["title"], "args": {"name": "Hi"}}, SAM)
+    reads.clear()
+    window.live.catch_up(), server.live.catch_up(), window.live.catch_up()
+    assert len(reads) == 1 and reads[0] != (0,) and server.data == window.data   # the server read only the new line
+    assert '"layout":2' in hist.read_text(encoding="utf-8").split("\n")[0]

@@ -1,6 +1,7 @@
 """The edits (OPERATIONS.md § 3), each addressed by id, each carrying what was there before so it can be
 reversed without an old copy of the document. Four are per item; `Shift` is one edit for a uniform change of many
-items (a whole-song nudge: ids + one amount), so it costs one history entry, not one per item.
+items (a whole-song nudge: ids + one amount), so it costs one history entry, not one per item; `Many` is many Inserts
+or many Removes as one edit (a whole-song Ctrl+D or Delete), each list rebuilt once (edit_many.py).
 
 `apply(data, lists, edit)` changes `data` in place and returns the edit as it really happened (actual
 before-values and positions), which is what history stores. Positions use `after` (the sibling it follows)
@@ -19,11 +20,11 @@ This module is the one door: the pieces live in edit_types, edit_fork, edit_appl
 """
 from __future__ import annotations
 
-from .edit_types import (KINDS, MISSING, NO_AFTER, Insert, Move, Remove, Set, Shift, from_dict, ids, reverse,
-                         to_dict)
+from .edit_types import (KINDS, MISSING, NO_AFTER, Insert, Many, Move, Remove, Set, Shift, flat, from_dict, ids,
+                         reverse, to_dict)
 from .edit_fork import Fork, clone, fork
 from .edit_apply import apply
 from .edit_keys import heads, key_text, keys, overlap
 
-__all__ = ["KINDS", "MISSING", "NO_AFTER", "Insert", "Move", "Remove", "Set", "Shift", "from_dict", "ids", "reverse",
+__all__ = ["KINDS", "MISSING", "NO_AFTER", "Insert", "Many", "Move", "Remove", "Set", "Shift", "flat", "from_dict", "ids", "reverse",
            "to_dict", "Fork", "clone", "fork", "apply", "heads", "key_text", "keys", "overlap"]

@@ -16,10 +16,13 @@ Panel {
     readonly property var sent: patched || parsed
     readonly property var blocks: Blocks.timed(sent, bars.placing)        // in seconds (a tempo change: here only)
     property var patched: null                              // a few of them changed since (backend.rollPatched)
+    property var was: null                                  // the list shown a step before (null: `parsed`; backend.rollBack)
+    function show(list) { var now = patched; patched = list; was = now }     // the list shown now is kept as the one before
     Connections {
         target: backend
-        function onRollPatched(text) { p.patched = Blocks.patch(p.blocks, text, bars.placing) }
-        function onRollBlocksChanged() { p.patched = null }
+        function onRollPatched(text) { p.show(Blocks.patch(p.blocks, text, bars.placing)) }
+        function onRollBack() { p.show(p.was) }
+        function onRollBlocksChanged() { p.patched = null; p.was = null }
     }
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
