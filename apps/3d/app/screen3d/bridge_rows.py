@@ -31,6 +31,11 @@ class RowsMixin:
         setting valid only while animating shows only on the Animate page."""
         return {**self.doc.kind.facts(item, self.doc), "animating": self._page == "animate"}
 
+    def rows_context(self):
+        """What the rows read that no document change announces (the kit's kept rows are worked out again when it
+        differs): the page (`animating`), the shot shown and the playhead (values are shown at the playhead)."""
+        return self._page, getattr(self, "shot_id", None), getattr(self, "_frame", None)
+
     def on_page(self, item):
         """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""
         return {"material"} if item.get("type") in USERS else set()
