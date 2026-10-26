@@ -4,7 +4,8 @@ import QtQuick.Dialogs
 import RostrumKit
 
 // 3D's tool rail (SPEC §2): the kit's ToolRail filled from today's add operations (backend.adder.rail, adding.py).
-// Select, then Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C);
+// Select, then Clay (Q: Lump and the brushes; its choices live in its settings panel, ClayPanel.qml, so it has no flyout),
+// Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C);
 // on the Animate page Select, Poses (P), Onion skin (O), Bones (Shift+B, while a mesh is selected: bones_qt.py), Lights, Camera.
 // Logo from SVG asks for the file first, From a 2D drawing for the 2D item and its path layer (one list, two levels);
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
@@ -13,7 +14,7 @@ import RostrumKit
 // painting. The groups that aren't built yet (Simulate, Import) are absent until they work (rule of individuality).
 ToolRail {
     id: rail
-    current: paintMode.on ? "paint" : "select"
+    current: paintMode.on ? "paint" : viewport.clay.on ? "clay" : "select"
     iconKinds: ({ shape3d: icon3d })
     Component { id: icon3d; Icon3D { } }
     // `job` on an entry or a group: the key map job whose key its hover shows (keys3d.py: V, P, O, B; R T L C open the
@@ -34,6 +35,8 @@ ToolRail {
         { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
     ] : [
         rail.selectGroup,
+        { id: "clay", items: [{ name: "Clay", icon: "clay", kind: "shape3d", tool: "clay", job: "clay_tool",
+                                help: "Make clay with Lump, then sculpt it: Add, Carve, Smooth." }] },
         { id: "shapes", name: "Shapes", job: "shapes_menu", items: rail.entries(backend.adder.rail.shapes) },
         { id: "type", name: "Type & logo", job: "type_menu", items: rail.entries(backend.adder.rail.type) },
         { sep: true },
@@ -65,6 +68,8 @@ ToolRail {
     }
     // a shape waits for a click in the viewport (it lands on the surface there); lights and cameras are added at once
     onPicked: (e) => {
+        if (e.tool === "clay") { if (paintMode.on) paintMode.leave(); return viewport.clay.toggle() }
+        if (viewport.clay.on && (e.tool === "select" || e.tool === "paint")) viewport.clay.leave()
         if (e.tool === "paint" || (e.tool === "select" && paintMode.on)) return paintMode.toggle()
         if (e.act === "bones") viewport.bones.start()
         else if (e.act === "mesh:svg") svgDialog.open()

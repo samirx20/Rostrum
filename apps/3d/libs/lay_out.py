@@ -1,6 +1,6 @@
 """Lay out Rostrum3D's one runtime library folder from the libraries already downloaded for the proofs.
 
-    python -I apps\\3d\\libs\\lay_out.py [--dest DIR] [--bundle DIR] [--cycles DIR] [--stylized DIR] [--check]
+    python -I apps\\3d\\libs\\lay_out.py [--dest DIR] [--bundle DIR] [--cycles DIR] [--stylized DIR] [--openvdb DIR] [--check]
 
 Nothing is downloaded. Files are copied only when missing or different (size / time), so a re-run takes seconds.
 `--check` lists what would be copied and the size, and copies nothing. Any missing file or folder stops with exit 1.
@@ -36,6 +36,9 @@ DEFAULT_DEST = Path.home() / ".rostrum" / "libs" / "3d" / VERSION
 DEFAULT_BUNDLE = REPO / "proofs" / "3d-product" / ".build" / "cycles" / "lib" / "windows_x64"
 DEFAULT_CYCLES = REPO / "proofs" / "3d-product" / ".build" / "cycles"
 DEFAULT_STYLIZED = REPO / "proofs" / "3d-stylized" / ".build" / "install"
+# OpenVDB 13.0's headers and import library (the clay volume, core/src/clay_*), from the same Blender lib-windows_x64
+# bundle (v5.2.2, 60d6e96) whose openvdb.dll is in LOADED below (byte-identical); the main bundle has only the DLL.
+DEFAULT_OPENVDB = Path.home() / ".rostrum" / "downloads" / "blender-lib-v5.2.2-openvdb" / "repo" / "openvdb"
 
 # DLLs measured as loaded by rostrum3d-core (Storm, Cycles on OptiX, stylized, pick): "bundle folder\bin" -> names.
 LOADED = {
@@ -94,7 +97,7 @@ def walk(src: Path, dst: Path, skip_dirs=(), skip_suffix=()):
                 yield p, dst / p.relative_to(src)
 
 
-def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path) -> list[tuple[Path, Path]]:
+def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path, openvdb: Path = DEFAULT_OPENVDB) -> list[tuple[Path, Path]]:
     jobs: list[tuple[Path, Path]] = []
     rt, install = dest / "runtime", cycles / CYCLES_INSTALL
     for folder, names in LOADED.items():
@@ -117,6 +120,8 @@ def plan(bundle: Path, cycles: Path, stylized: Path, dest: Path) -> list[tuple[P
     for d in SDK_DIRS:
         jobs += walk(bundle / d, dest / "sdk" / d)
     jobs += [(need(bundle / f), dest / "sdk" / f) for f in SDK_FILES]
+    jobs += walk(openvdb / "include", dest / "sdk" / "openvdb" / "include")
+    jobs.append((need(openvdb / "lib" / "openvdb.lib"), dest / "sdk" / "openvdb" / "lib" / "openvdb.lib"))
     return jobs
 
 
@@ -181,10 +186,11 @@ def main() -> int:
     ap.add_argument("--bundle", type=Path, default=DEFAULT_BUNDLE, help="Blender lib\\windows_x64 folder")
     ap.add_argument("--cycles", type=Path, default=DEFAULT_CYCLES, help="Cycles folder that has install\\")
     ap.add_argument("--stylized", type=Path, default=DEFAULT_STYLIZED, help="our stylized plug-in install folder")
+    ap.add_argument("--openvdb", type=Path, default=DEFAULT_OPENVDB, help="Blender lib-windows_x64's openvdb folder (include, lib)")
     ap.add_argument("--check", action="store_true", help="list what would be copied, copy nothing")
     a = ap.parse_args()
     try:
-        jobs = plan(a.bundle, a.cycles, a.stylized, a.dest)
+        jobs = plan(a.bundle, a.cycles, a.stylized, a.dest, a.openvdb)
     except Missing as e:
         print(f"lay_out: {e}", file=sys.stderr)
         return 1

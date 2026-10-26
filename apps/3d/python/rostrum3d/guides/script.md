@@ -29,6 +29,9 @@ Each helper returns a handle. Pass a handle (or its id as text) wherever a field
 | `rig(id, rig=, **fields)` | a camera rig: `orbit crane dolly` (a holder: `with rig(...):`) |
 | `import_usd(id, file=, parts=[…], **fields)` | a USD file by reference (also a holder) |
 | `combine(id, op=, **fields)` | a live boolean: `union subtract intersect` of the meshes made inside `with combine(...):`, the first the base (guide `modelling`) |
+| `clay(id, **fields)` | a clay: a lump to sculpt, its shape built from its steps in order (guide `sculpting`) |
+| `clay.lump(at, radius, to=, mode=, blend=, symmetry=, name=)` | a piece: a sphere at `at`, a capsule to `to`; `mode="carve"` cuts it out (the clay's own space) |
+| `clay.stroke(path=, dir=, brush=, size=, strength=, symmetry=, accumulate=, name=)` | a brush stroke: each dab where a ray from a `path` point along `dir` meets the clay |
 | `material(id, **fields)` | a material (lists at the top level, not in a group) |
 | `shot(id, camera=, fps=, start=, end=, width=, height=, background=)` | a shot |
 
@@ -48,6 +51,7 @@ The fields, by item (all items also take `x y z rx ry rz sx sy sz px py pz visib
 - **camera** `focalLength sensorWidth dof fStop focusDistance focusItem near far` (`focusItem`: an item id kept sharp as it moves).
 - **rig** `rig radius height angle armLength lift swing travel pan tilt handheld shake shakeFrequency shakeMove seed`.
 - **material** `baseColor baseColorTexture metallic roughness roughnessTexture transmission ior coat coatRoughness anisotropy anisotropyRotation bumpTexture bumpStrength emissionColor emissionStrength thinFilm`.
+- **clay** `brush brushSize brushStrength symmetry accumulate detail material` (the brush settings are the next stroke's; `detail` is the smallest grain, metres).
 - **import** `file prim material`; **part** `path material visible`.
 - **shot** `camera fps start end width height background`; its render settings `renderQuality renderSamples renderDenoise renderSize renderRange renderStart renderEnd motionBlur shutter` (motion blur: camera-rigs.md)
   (`inspect_guide` `agents`, "Render settings and the time estimate").

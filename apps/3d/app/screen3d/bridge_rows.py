@@ -28,13 +28,20 @@ class RowsMixin:
 
     def facts_of(self, item: dict) -> dict:
         """The kind's facts and what only the screen knows (the same names agents' facts carry): `animating`, so a
-        setting valid only while animating shows only on the Animate page."""
-        return {**self.doc.kind.facts(item, self.doc), "animating": self._page == "animate"}
+        setting valid only while animating shows only on the Animate page; `sculpting`, so a clay's Brush group shows
+        only while the Clay tool is on."""
+        return {**self.doc.kind.facts(item, self.doc), "animating": self._page == "animate",
+                "sculpting": self._sculpting()}
+
+    def _sculpting(self) -> bool:
+        tool = getattr(getattr(self, "viewport", None), "clay_tool", None)
+        return bool(tool is not None and tool.on)
 
     def rows_context(self):
         """What the rows read that no document change announces (the kit's kept rows are worked out again when it
-        differs): the page (`animating`), the shot shown and the playhead (values are shown at the playhead)."""
-        return self._page, getattr(self, "shot_id", None), getattr(self, "_frame", None)
+        differs): the page (`animating`), the Clay tool (`sculpting`), the shot shown and the playhead (values are
+        shown at the playhead)."""
+        return self._page, self._sculpting(), getattr(self, "shot_id", None), getattr(self, "_frame", None)
 
     def on_page(self, item):
         """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""

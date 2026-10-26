@@ -181,6 +181,22 @@ Hydra::Engine& Hydra::engine(const std::string& renderer, bool viewport) {
   const std::string key = (viewport ? "view:" : "") + renderer;
   auto it = engines_.find(key);
   if (it != engines_.end()) return *it->second;
+  return *(engines_[key] = make_engine(renderer));
+}
+
+// The selection mask's own Storm engine (CL1b). Drawn by the viewport's engine with the selected prim as its root,
+// the mask flipped that engine's draw list between the whole scene and the selection twice a picture, and every
+// changed clay block was processed twice: the outline doubled the picture's time (22 -> 48 ms after a dab). Its own
+// engine keeps one root until the selection changes, and never shows the sky.
+Hydra::Engine& Hydra::mask_engine() {
+  auto it = engines_.find("mask:storm");
+  if (it != engines_.end()) return *it->second;
+  auto e = make_engine("storm");
+  e->show_sky(false);
+  return *(engines_["mask:storm"] = std::move(e));
+}
+
+std::unique_ptr<Hydra::Engine> Hydra::make_engine(const std::string& renderer) {
   const TfToken id = plugin_for(renderer);
   const auto have = available();
   if (std::find(have.begin(), have.end(), renderer) == have.end())
@@ -194,7 +210,7 @@ Hydra::Engine& Hydra::engine(const std::string& renderer, bool viewport) {
   // (hdx/skydomeTask.cpp: no colour AOV -> it only clears), so without this the dome lights the scene but is never seen.
   if (!e->SetRendererAov(HdAovTokens->color)) throw Error("render.renderer: " + id.GetString() + " has no colour output");
   e->SetEnablePresentation(true);
-  return *(engines_[key] = std::move(e));
+  return e;
 }
 
 Framebuffer& Hydra::framebuffer(int w, int h) {
@@ -301,10 +317,13 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   if (!look.selected.empty()) {
     UsdImagingGLRenderParams solo = params;
     solo.enableLighting = false;
-    e.show_sky(false);  // the mask is the selection alone: no sky behind it
+    auto& m = mask_engine();  // its own engine, no sky (see mask_engine)
+    m.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
+    m.SetRenderBufferSize(GfVec2i(w, h));
+    m.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
     auto& mf = mask_framebuffer(w, h);
     mf.bind_and_clear();
-    for (const auto& path : look.selected) e.Render(stage_->GetPrimAtPath(path), solo);
+    for (const auto& path : look.selected) m.Render(stage_->GetPrimAtPath(path), solo);
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
   }

@@ -10,7 +10,7 @@
     type <words …> (real keys into a 3D text just placed: live, one undo step) | typeend (Esc ends the typing)
     (a click in the viewport by real input: the kit's `mouseclick <x> <y>`, window pixels)
     drawings (From a 2D drawing's list of 2D items) | drawing <doc2d> (its path layers: the list's second level)
-    wait <ms> | snap <png path> (a screenshot now, the run goes on)
+    wait <ms> | settled (until the newest picture is in and the engine idle) | snap <png path> (a screenshot now, the run goes on)
     rail <shapes|type|lights|camera> (opens that flyout) | page build|animate|render | materials | shots | view (open the
     header's menus) | picker (the selected item's material picker) | startfrom <start> | split (Make its own) | assign <material id> | mouse <x> <y> (a click on the window) | renderstart | cancelrender (both don't wait)
     render (Cycles, the playhead frame; waits for the job, up to 10 min) | closerender
@@ -188,6 +188,15 @@ def do_step(bridge, win, step):
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(rest[0]), int(rest[1])))
     elif word == "wait":
         QTest.qWait(int(rest[0]))
+    elif word == "settled":                        # until the newest picture is in and the engine is idle (a key sent
+        v = bridge.viewport                        # to a window that has drawn nothing yet is lost; a new clay takes
+        QTest.qWait(50)                            # its build before it shows; a key's action runs a frame later),
+        for _ in range(1500):                      # at most 30 s, else loudly
+            if v.serial > 0 and v._r.idle() and not v._next.isActive():
+                break
+            QTest.qWait(20)
+        else:
+            raise RuntimeError(f"step {step!r}: the viewport did not settle within 30 s ({v.status or 'no status'})")
     elif word == "snap":
         v = bridge.viewport
         save_snap(win, rest[0], may_move=bool((v and v.final.on) or getattr(bridge, "playing", False)),            # the shared snap: waits for the newest picture

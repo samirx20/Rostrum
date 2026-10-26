@@ -170,3 +170,27 @@ def test_timing_shows_only_on_the_animate_page(bridge):
     assert "timing" in names()
     bridge.setPage("build")
     assert "timing" not in names()
+
+
+def test_clay_brush_rows_show_while_the_clay_tool_is_on(bridge):
+    """Size, Strength and Mirror (the Clay panel's rows) are valid only while sculpting: they must read the screen's
+    facts, where the Clay tool being on says so (CL1b: they read none and vanished)."""
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QObject
+    from screen3d.clay_brush_qt import ClayBrush
+    from rostrum_core import Who
+    bridge.doc.apply([{"op": "clay.add", "args": {"id": "lump", "at": [0, 0, 0], "radius": 0.1}}], Who.person())
+
+    class Tool(QObject):
+        b, clayId, on = bridge, "lump", True
+
+        def _item(self):
+            return bridge.doc.item("lump")
+    tool = Tool()
+    bridge.viewport = SimpleNamespace(clay_tool=tool)      # what bridge_rows reads for `sculpting`
+    brush = ClayBrush(tool)
+    assert brush.model.rowCount() == 3
+    tool.on = False
+    brush.refresh()
+    assert brush.model.rowCount() == 0

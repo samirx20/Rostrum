@@ -52,6 +52,7 @@ AppShell {
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
     KeyMap { hub: backend.actions; typing: shell.typing; skip: backend.actions.skip }
     readonly property var windowJobs: ({
+        clay_tool: () => viewport.clay.toggle(),
         shapes_menu: () => rail.openGroup("shapes"), type_menu: () => rail.openGroup("type"),
         lights_menu: () => rail.openGroup("lights"), camera_menu: () => rail.openGroup("camera"),
         poses_panel: () => { if (backend.page === "animate") rail.openPanel("poses") },
@@ -133,7 +134,7 @@ AppShell {
     ]
     right: Item {   anchors.fill: parent   // the selection's settings, or the Scene (the shot's view, sky and values) with nothing selected
         Inspector {
-            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !backend.stretch.shown
+            anchors.fill: parent; bridge: backend; keyMarks: true; actions: backend.actions; visible: backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.clay.on && !backend.stretch.shown
             below: Column {     // the item's material (SPEC §6.1): its row with the picker, then the material's own settings inline
                 width: parent ? parent.width : 0
                 MaterialRow { id: materialRow; width: parent.width }
@@ -143,12 +144,13 @@ AppShell {
                 }
             }
         }
-        ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" }
+        ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" && !viewport.clay.on }
         RenderSettings { anchors.fill: parent; visible: backend.selected === "" && backend.page === "render" }   // the shot's render settings
         MeshEditPanel { anchors.fill: parent; visible: meshEdit.on }   // Edit mesh: points / edges / faces and their actions
         PaintPanel { anchors.fill: parent; visible: paintMode.on }     // Paint: Brush, then Paint layers (mockup 06)
+        ClayPanel { anchors.fill: parent; visible: viewport.clay.on }  // Clay: Make, Brush, Size, Strength, Mirror (DESIGN mockup 2)
         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
-        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
+        AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on && !viewport.clay.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: [
         SceneList { anchors.fill: parent; visible: backend.page !== "render" },

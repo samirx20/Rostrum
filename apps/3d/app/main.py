@@ -41,7 +41,7 @@ GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      
     ("window.md", "The Rostrum3D window"), ("rendering.md", "Rendering"),
     ("agents.md", "Working with an AI agent"), ("script.md", "Building a scene with a script"), ("materials.md", "Materials"),
     ("lighting.md", "Lighting"), ("camera-rigs.md", "Camera rigs"),
-    ("painting.md", "Painting on a model")])
+    ("painting.md", "Painting on a model"), ("sculpting.md", "Sculpting with clay")])
 
 
 def load_doc(args) -> tuple[Document, bool]:

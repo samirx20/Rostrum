@@ -119,6 +119,16 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (`"top"`, `"faces facing +y"`, `"faces 3"`) — never guessed numbers; `mesh.set subdivide=2` smooths it. Modelling
   guide, "Editable mesh".
   Guide `modelling` has the whole technique and its errors.
+- **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` (`at`, `radius`) makes a lump; its shape is its
+  list of steps, applied in order. `clay.lump` joins a sphere (or a capsule, with `to`) or carves one out (`mode: "carve"`),
+  `blend` = how softly it joins; `clay.shape` is the same with every setting spelled out. `clay.stroke` sculpts:
+  `path` (points `[x, y, z]`) and `dir` (the way the rays point): each dab lands where a ray from a point along `dir` meets
+  the clay, `brush` add, carve, smooth, pull, flatten or crease, `size` (radius, metres), `strength` 0..1. Left out, they
+  are the clay's brush settings (`clay.set brush brushSize brushStrength symmetry accumulate`). Positions are in the clay's
+  own space; `symmetry: "x"` (the default) mirrors across its X = 0. Each step is one undo step; `claystep.remove` takes
+  one out, `claystep.set` renames it (`name`) or changes its numbers. `detail` (`clay.set`) is the smallest grain: finer is
+  slower and uses more memory. A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
+  keeps them. Look with `look_frame` from two sides after each few steps. The person's side: guide `sculpting`.
 - **Paint on a model.** `mesh.unfold` once, then `paint.add` (`channel`: colour, roughness, height, metal, glow) and
   `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the `uv` under a pixel.
   Guide `painting`.

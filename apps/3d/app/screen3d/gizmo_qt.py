@@ -33,6 +33,7 @@ class Gizmo(QObject):
         bridge.selectionChanged.connect(self._refresh)
         viewport.mesh_edit.changed.connect(self._refresh)      # Edit mesh: the gizmo stands on the selection
         viewport.paint.changed.connect(self._refresh)          # Paint: no gizmo (a drag paints; it would hide the strokes)
+        viewport.clay_tool.changed.connect(self._refresh)      # Clay: no gizmo either (a drag sculpts)
         bridge.pageChanged.connect(self._refresh)              # a bone's rings show where its chain is drawn (Animate)
         self._hold = HoldD(self) if isinstance(QGuiApplication.instance(), QGuiApplication) else None
 
@@ -65,7 +66,7 @@ class Gizmo(QObject):
 
     def _setup(self):
         it, vp = self._item(), self.vp
-        if it is None or vp._size is None or vp.paint.on:
+        if it is None or vp._size is None or vp.paint.on or vp.clay_tool.on:
             return None
         scene, cam = vp.sent()
         w, h = vp._size

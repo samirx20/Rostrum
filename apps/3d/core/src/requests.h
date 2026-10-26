@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 
+#include "clay_store.h"
 #include "gpu_mem.h"
 #include "hydra.h"
 #include "image_out.h"
@@ -26,6 +27,9 @@ class Core {
   PXR_NS::JsObject geometry(const PXR_NS::JsObject& a);  // geometry_request.cpp
   PXR_NS::JsObject unfold(const PXR_NS::JsObject& a);    // geometry_request.cpp (unfold.h)
   PXR_NS::JsObject save(const PXR_NS::JsObject& a);
+  PXR_NS::JsObject sculpt(const PXR_NS::JsObject& a);     // clay_requests.cpp
+  PXR_NS::JsObject clay_info(const PXR_NS::JsObject& a);  // clay_requests.cpp
+  PXR_NS::JsObject clay_bench(const PXR_NS::JsObject& a); // clay_requests.cpp (a check: the replay bench)
   PXR_NS::JsObject info();
 
  private:
@@ -45,6 +49,7 @@ class Core {
   PXR_NS::JsObject scene_;  // the loaded scene as sent (geometry names combine inputs from it)
   std::unique_ptr<Shm> shm_;  // the live viewport's pictures
   std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
+  std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
 };
 
 }  // namespace r3d

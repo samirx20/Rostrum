@@ -54,7 +54,7 @@ void background(const UsdStageRefPtr& stage, float rgb[3]) {
 }
 }  // namespace
 
-Core::Core() : stage_(UsdStage::CreateInMemory()) {}
+Core::Core() : stage_(UsdStage::CreateInMemory()) { clay_ = std::make_unique<clay::Store>(stage_); }
 
 Hydra& Core::hydra() {
   if (!hydra_) hydra_ = std::make_unique<Hydra>(stage_);
@@ -87,9 +87,13 @@ JsObject Core::scene(const JsObject& a) {
   scene_ = a;
   announce_light_extras();
   loaded_ = true;
+  const double build_ms = ms_since(t0);
+  const auto tc = Clock::now();
+  clay_->sync(built_.clays);  // the clays brought to their steps (clay_store.h)
+  built_.clays.clear();
   return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},
                   {"frames", JsValue(JsArray{JsValue(built_.start), JsValue(built_.end)})},
-                  {"timing", JsValue(JsObject{{"buildMs", JsValue(r1(ms_since(t0)))}})}};
+                  {"timing", JsValue(JsObject{{"buildMs", JsValue(r1(build_ms))}, {"clayMs", JsValue(r1(ms_since(tc)))}})}};
 }
 
 JsObject Core::render(const JsObject& o, const std::function<void(const JsObject&)>& progress) {
