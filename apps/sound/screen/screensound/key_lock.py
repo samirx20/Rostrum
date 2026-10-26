@@ -44,6 +44,19 @@ def outside(root: dict, note: dict, t: float) -> bool:
     return bool(key and K.parse(key)) and any(not K.in_key(k, key) for k in K.midis(note["pitch"]))
 
 
+def any_outside(root: dict, notes, start_of) -> bool:
+    """Does any of `notes` have a tone outside the key playing at its start (`start_of(note)`: seconds)? A song in one
+    key (the usual case) is one look at each pitch: no note's time is worked out (a whole-song selection asked this
+    on every change: 3,600 notes, ~140 ms)."""
+    named = {k["key"] for k in root.get("keys", []) if k.get("key")}
+    if not any(K.parse(k) for k in named):
+        return False
+    if len(named) == 1:
+        tones = set(K.scale(next(iter(named))))
+        return any(m % 12 not in tones for n in notes for m in K.midis(n["pitch"]))
+    return any(outside(root, n, start_of(n)) for n in notes)
+
+
 def fold(roll: dict, root: dict) -> dict:
     """The roll with only the key's rows (every key the song has in the range) and the rows its notes sit on: `rows`
     (the keys shown, top first) and `rowNames` cut to match. The roll as it was when the song has no key."""
