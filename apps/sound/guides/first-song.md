@@ -99,7 +99,7 @@ The **Colour** row shows the colour the track is drawn in.
    **Fit to key** (on a selection with notes outside the key; it leads the settings panel's actions then, and is in
    **Ctrl+K** otherwise) moves them to the nearest note of the key. A note outside the key has a small dot.
 4. **Select several:** Ctrl+click adds or removes one, Shift+click takes everything between, and dragging across
-   empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all, **Esc** clears.
+   empty space draws a box (in the arrangement it takes what it touches on every track it crosses). **Ctrl+A** selects all of where you last clicked: in the Editor (its notes, its buttons, its header) every note or hit of the Editor's track, in the arrangement everything on the selected tracks (every track when none is). The Editor stays on its track while you work: a selection that still holds something of it never switches it to another track. **Esc** clears.
    A key on a mixed selection acts on the part it can: after Ctrl+A, **Q** quantises the notes and drum hits, ↑ / ↓
    and Ctrl+↑ / Ctrl+↓ move the notes, and the step in History names them ("Quantise · 178 notes and 202 drum hits").
 5. **The settings panel** on the right names the selection ("5 notes") and shows its actions first, as buttons, such
@@ -130,7 +130,7 @@ The **Colour** row shows the colour the track is drawn in.
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 6. **Keys on the selection:**
-   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
+   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Selected notes and hits step by whole bars, counted from the bar line at or before the first: four chords on bars 1–4 repeat from bar 5, a one-bar groove every bar, a 2½-bar phrase every 3 bars (Ctrl+D places its copy the same way). Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
    - **A time range:** drag on the ruler's thin top band. Each end goes to a bar or beat line when you let go within a few pixels of it (so letting go just past a bar line ends on that bar), otherwise to the grid line nearest the pointer. The settings panel offers **Make a section**, **Select
      inside** and **Repeat…**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
@@ -143,7 +143,7 @@ The **Colour** row shows the colour the track is drawn in.
    - **Ctrl+G** puts the selected tracks into a group. **Ctrl+]** and **Ctrl+[** move the selected tracks up and
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
-   - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and opens its name instead of adding a second. **Right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it (only the rows that make sense for that marker show). Paste here and Add marker here land on the grid line under the pointer while Snap is on.
+   - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and opens its name instead of adding a second. Single keys like M, R and Space are commands only when pressed on their own: a word typed with no box focused ("drums") runs nothing after its first letter. **Right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it (only the rows that make sense for that marker show). Paste here and Add marker here land on the grid line under the pointer while Snap is on.
 7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
    edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
    (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.
@@ -164,7 +164,7 @@ The **Colour** row shows the colour the track is drawn in.
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
   track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The buttons sit at the same place in every row, tall or short, and a soloed track fills its **S** in green. While any track or group is soloed the top bar shows a green **Solo on: Strings ×**: click it and every solo goes off (a solo holds the other tracks back from the export too). The same is the operation `mix.hear_all` (`what`: `solo`, `mute` or `both`). The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,
-  amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
+  amber near 0 dB, red over). When rows are short the header is one line. Rows are as tall with the Editor or Mixer open as folded (they fit the room the open dock leaves), so opening the Editor never moves a name or a button. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by
   its name. A track's volume is set in its settings panel or the Mixer, not on the header.
   An item from a plugin this Rostrum doesn't have (a file made with another tool's parts) shows as a plain row named after
@@ -179,7 +179,7 @@ The **Colour** row shows the colour the track is drawn in.
 A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never changed to the nearest.
 
 - The song's **tempo**, **beats per bar** (4/4, 3/4 …) and **key** are the three fields in the arrangement's header
-  strip, and they show what plays at the playhead. Type the tempo or drag it (while you drag, the ruler follows at
+  strip, and they show what plays at the playhead (when the strip is short, the Library open, the position shows bar.beat only and the key's mode a short name, "Min"; shorter still, the key is in the Song panel only). Type the tempo or drag it (while you drag, the ruler follows at
   once and the notes when you pause or let go); pick the beats and the key from their lists. Nothing has to be
   selected first.
 - With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first

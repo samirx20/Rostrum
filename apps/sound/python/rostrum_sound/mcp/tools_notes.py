@@ -14,7 +14,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
-from ..doc import meter, tempo, times
+from ..doc import meter, sections, tempo, times
 from ..doc.select_time import end_of, start_of
 from . import range_target as RT
 
@@ -43,7 +43,7 @@ def _bounds(root, args) -> tuple[float, float]:
         got = [s for s in root.get("sections", []) if s.get("name") == args["section"]]
         if not got:
             raise RostrumError.not_found("inspect_notes", "section", args["section"], [s.get("name") for s in root.get("sections", [])])
-        return start_of(root, got[0]), times.seconds(got[0]["end"], root, "inspect_notes")
+        return sections.window(root, start_of(root, got[0]), times.seconds(got[0]["end"], root, "inspect_notes"))
     return RT.bounds(root, {k: args[k] for k in ("from", "to") if k in args}, "inspect_notes")
 
 
@@ -52,7 +52,7 @@ def register(tools: Tools):
         "track": {"type": "string", "description": "The track's id."},
         "from": {"description": 'Where to start (included): a bar {"bar": 5}, seconds, {"beat": 8} or a marker "#drop". Left out = the start.'},
         "to": {"description": "Where to stop (not included), same forms. Left out = the end."},
-        "section": {"type": "string", "description": "A section's name: its start to its end (instead of from / to)."},
+        "section": {"type": "string", "description": "A section's name: the notes it owns, its start to its end (a hit nudged up to a 1/32 note before a line counts with the section it opens), instead of from / to."},
         "limit": {"type": "integer", "default": LIMIT, "minimum": 1, "maximum": 500},
         "item": {"type": "string", "description": "The song's item id. Optional when only one is open."}}})
     def inspect_notes(ctx, args):

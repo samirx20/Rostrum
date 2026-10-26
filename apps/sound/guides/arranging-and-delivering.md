@@ -104,7 +104,8 @@ A second verse or a "B" that answers "A": copy the section with everything in it
    the settings panel (or press **Ctrl+D**). The copy's section is then selected on its own, so Ctrl+D again copies it
    once more. An agent calls `edit_document` with
    `{"op": "section.duplicate", "target": ["section.A"]}`. Every note, drum hit and clip that **starts** inside the
-   section is copied to right after it, and the copy is a new section named like the first with the next free
+   section is copied to right after it (a hit Humanise or Feel nudged up to a 1/32 note before the section's line
+   counts as inside; one that close to its end belongs to the next section), and the copy is a new section named like the first with the next free
    number (`A-2`, id `section.A-2`; a copy of `A-2` is `A-3`). Nothing after the section moves, so the bars right
    after it must be free: when they already hold notes, hits, clips or another section, the copy is refused and
    says what is there (move what follows later first with `section.move`). Set the song's length (`doc.set`) if it
