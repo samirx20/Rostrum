@@ -55,6 +55,8 @@ class Drag:
         (the amounts popover's "Humanise · 12 notes · 15 ms, 8 %"). `calls`: a last preview first (the whole gesture at
         once, as a wet stroke gives it); if it is refused the drag still closes, with nothing, and the refusal goes on.
         A drag left open would refuse every later edit ("being dragged by a person")."""
+        if self._ctx._ended:               # cancelled already (Document.drop_gesture: the window closed)
+            return None
         if calls is not None and not cancel:
             try:
                 self._ctx.preview(calls)

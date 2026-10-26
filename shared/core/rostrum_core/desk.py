@@ -67,7 +67,7 @@ def _partners(docs, first, c, who, done: bool, open_item):
 
 def _whole(parts, act, newest_first: bool):
     for d, cs in parts:                         # refuse before changing anything
-        d.history.blockers(cs, max(d.history.at[x.seq] for x in cs))
+        d.history.blockers(cs)
     parts = sorted(parts, key=lambda p: max(x.t for x in p[1]), reverse=newest_first)
     with joint.replay(), joint.step():
         return [(d, act(d, cs)) for d, cs in parts]

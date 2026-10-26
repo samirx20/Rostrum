@@ -99,6 +99,7 @@ class LiveLink(QObject):
     def close(self):
         self._timer.stop()
         self._writer.shutdown(wait=True)          # the last write lands before the file is cleared
+        self.bridge.doc.drop_gesture()            # an open drag or preview box is cancelled, never saved as if kept
         if self.bridge.doc.live is not None:
             self.bridge.doc.live.fold(always=False)   # the document file up to date: readers of the file alone see the end
         if self.bridge.doc.folder is not None:

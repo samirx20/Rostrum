@@ -39,17 +39,9 @@ def _folds(c) -> bool:
 
 
 def blocked(doc) -> set[int]:
-    """The steps whose Undo this would be refused: a later live change touched what they changed (the core's
-    history.blockers rule, worked out for every step in one pass, newest first). Their row shows no Undo this."""
-    h, out = doc.history, set()
-    later, inside = set(), set()                # keys changed later, and every leading part of them
-    for c in sorted((c for c in h.changes if c.original and h.done[c.seq]), key=lambda c: -h.at[c.seq]):
-        keys = h.keys(c)
-        if any(k in inside or any(k[:n] in later for n in range(1, len(k) + 1)) for k in keys):
-            out.add(c.seq)
-        later |= keys
-        inside |= {k[:n] for k in keys for n in range(1, len(k) + 1)}
-    return out
+    """The steps whose Undo this would be refused (the core's history.blockers rule, for every step in one pass:
+    History.stuck). Their row shows no Undo this."""
+    return doc.history.stuck()
 
 
 def _step(i, doc, c, me, stuck=frozenset()) -> dict:

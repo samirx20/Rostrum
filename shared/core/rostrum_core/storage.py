@@ -140,9 +140,10 @@ def save(doc, document=True, p=None):
     w, hist = doc._written, p["history"]
     body = h = None
     if document:
-        body = canonical(doc.data)
+        kept = doc.kept                            # never an open preview's picture (Document.kept)
+        body = canonical(kept)
         h = _sha(body)
-        if ch and (ch[-1]._after is doc.data or ch[-1]._hash == h):
+        if ch and (ch[-1]._after is kept or ch[-1]._hash == h):
             ch[-1].hash_after = h                  # the last step's hash, known for free
     fh = _append_to(w, hist, len(ch))           # one handle: checked, cut, appended to and measured through it
     try:

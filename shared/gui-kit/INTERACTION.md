@@ -377,8 +377,9 @@ cards.
    - The message line then says **"Undid: Move title"**, and the changed things flash once.
 3. **Your undo is yours.**
    - Ctrl+Z takes back your own last step, never an agent's or a script's.
-   - If someone else has since changed the same thing, undo changes nothing and says so: "Can't undo 'Move chorus':
-     Claude changed those notes since. Undo that first, in History."
+   - If someone else has since changed the same thing, undo changes nothing and says so: "'Move chorus' can't be
+     taken back: Claude changed some of the same things since ('Add 12 notes')", hint "Take back 'Add 12 notes' first,
+     in History." Undo several steps, then Redo them in order, is never refused.
 4. **An agent run is one group:**
    - **Undo all** takes it back in one step.
    - **Undo this** takes back one step in it.

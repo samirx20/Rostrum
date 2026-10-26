@@ -97,7 +97,7 @@ class Live:
                     save(self.doc, document=whole, p=self.p)
                     self._doc_there = True                  # (asked of the disk once, not on every change)
                     if whole:
-                        self._filed, self._filed_data = self.doc.seq, self.doc.data
+                        self._filed, self._filed_data = self.doc.seq, self.doc.kept
                     self._changed_at = time.monotonic()
                 self._started = True
             finally:
@@ -110,7 +110,7 @@ class Live:
 
     def behind(self) -> bool:
         """The document file lacks something this program holds (a step of its own, or one taken in)."""
-        return self.doc.data is not self._filed_data
+        return self.doc.kept is not self._filed_data
 
     def fold(self, always=True):
         """Write the document file now, through the door (lock, catch up): Save and close (`always`), or only when
@@ -121,7 +121,7 @@ class Live:
         with self.door():
             if always or self.behind():
                 save(self.doc, p=self.p)
-                self._filed, self._filed_data, self._doc_there = self.doc.seq, self.doc.data, True
+                self._filed, self._filed_data, self._doc_there = self.doc.seq, self.doc.kept, True
 
     def fold_if_quiet(self) -> bool:
         """A window's timer, between pointer actions: fold once the person has paused FOLD_QUIET_S, or at once when
@@ -136,7 +136,7 @@ class Live:
             if not self.behind():
                 return False
             ch = self.doc.history.changes
-            self._writing = DocWrite(self.p["doc"], self.doc.kind, self.doc.data, self.doc.seq, ch[-1] if ch else None,
+            self._writing = DocWrite(self.p["doc"], self.doc.kind, self.doc.kept, self.doc.seq, ch[-1] if ch else None,
                                      self.doc.uses)
         return True
 

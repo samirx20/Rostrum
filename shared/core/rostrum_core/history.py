@@ -5,6 +5,10 @@ that re-toggle an earlier one, per author. This module keeps the list and answer
 An *original* change is anything that isn't an undo or a redo. Each original is either done or undone; `at`
 is the step that last did or undid it. Undo picks the author's latest done original; redo the latest one they
 undid, as long as they haven't made a new change since.
+
+Taking a step back or bringing it back is refused only when something it touched now stands otherwise than when the
+step was made: another original on the same things is done now but wasn't then, or the reverse (`blockers`). So undo
+N then redo N in order always goes through, whoever redid what in between.
 """
 from __future__ import annotations
 
@@ -84,6 +88,8 @@ class History:
         self._asked: dict = {}                      # (question, who) -> answer, until the next step (add)
         self._tallies: dict = {}                    # id(mark) -> [mark, steps counted, count, {seq: done}]
         self._steps: dict = {}                      # step id (joint.py) -> its changes here
+        self._acts: dict = {}                       # original seq -> [(step, done)] oldest first: made, undone, redone
+        self._keys: dict = {}                       # seq -> (its edits list, the keys they touch): asked again and again
 
     @property
     def seq(self) -> int:
@@ -117,12 +123,18 @@ class History:
         self._asked.clear()
         if c.step:
             self._steps.setdefault(c.step, []).append(c)
-        if c.original:
-            self.done[c.seq], self.at[c.seq] = True, c.seq
-        for s in c.undoes:
-            self.done[s], self.at[s] = False, c.seq
-        for s in c.redoes:
-            self.done[s], self.at[s] = True, c.seq
+        for s, v in ([(c.seq, True)] if c.original else []) + [(s, False) for s in c.undoes] + [(s, True) for s in c.redoes]:
+            self.done[s], self.at[s] = v, c.seq
+            self._acts.setdefault(s, []).append((c.seq, v))
+
+    def done_before(self, s, seq) -> bool:
+        """Was original `s` done just before step `seq` (False: not made yet)."""
+        v = False
+        for step, d in self._acts.get(s, ()):
+            if step >= seq:
+                break
+            v = d
+        return v
 
     def acted(self, c: Change) -> float:
         """Clock time of the step that last did or undid original `c` (desk.py orders undo across documents by it)."""
@@ -136,7 +148,11 @@ class History:
         return self.changes[seq - 1]
 
     def keys(self, c: Change) -> set:
-        return set().union(*(E.keys(e, self.lists) for e in c.edits)) if c.edits else set()
+        """What change `c` touched (kept per change; a nudge merged into it gives it a new edits list)."""
+        got = self._keys.get(c.seq)
+        if got is None or got[0] is not c.edits:
+            got = self._keys[c.seq] = (c.edits, set().union(*(E.keys(e, self.lists) for e in c.edits)) if c.edits else set())
+        return got[1]
 
     # Undo / redo picks: read from the newest step back, stopping at the answer, and kept until the next step (the
     # screen's labels ask on every change; a look over the whole history grew with it).
@@ -169,20 +185,53 @@ class History:
                 return self.get(min(hit))           # one step that acted on several: the oldest, as before
         return None
 
-    def blockers(self, targets: list[Change], since: int):
-        """Refuse to toggle `targets` when a later live change touched the same things. Only originals acted on
-        after step `since` can (their `at` is later): read from the steps after it, not the whole history."""
+    def blockers(self, targets: list[Change]):
+        """Refuse to take back or bring back `targets` when something they touched now stands otherwise than when they
+        were made: another original on the same things that is done now and wasn't then (made, or brought back, since),
+        or the reverse. Only originals acted on from the oldest target on can differ: read from there, not the whole
+        history. Undo N then redo N in order never differs, so it is never refused."""
         mine = {c.seq for c in targets}
-        touched = set().union(*(self.keys(c) for c in targets))
-        later = {s for x in self.changes[since:] for s in ([x.seq] if x.original else [*x.undoes, *x.redoes])}
-        for c in (self.get(s) for s in sorted(later)):
-            if c.original and c.seq not in mine and self.done[c.seq] and self.at[c.seq] > since:
-                hit = E.overlap(self.keys(c), touched)
-                if hit:
-                    k = E.key_text(sorted(hit)[0])
-                    raise RostrumError(codes.CONFLICT, "undo", f'"{targets[-1].label}"',
-                                       f"can't be taken back or brought back: {c.who.words()} changed {k} since "
-                                       f"(\"{c.label}\", step {c.seq})", hint="Undo that first, in History.")
+        first = min(mine)
+        acted = {s for x in self.changes[first - 1:] for s in ([x.seq] if x.original else [*x.undoes, *x.redoes])} - mine
+        for s in sorted(acted, reverse=True):       # the newest change first: the one to deal with first
+            c = self.get(s)
+            moved = [t for t in targets if self.done[s] != self.done_before(s, t.seq)]
+            if moved and E.overlap(self.keys(c), set().union(*(self.keys(t) for t in moved))):
+                verb = "taken back" if self.done[targets[-1].seq] else "brought back"
+                fix = "Take back" if self.done[s] else "Bring back"
+                raise RostrumError(codes.CONFLICT, "undo", f'"{targets[-1].label}"',
+                                   f"can't be {verb}: {c.who.words()} changed some of the same things since "
+                                   f"(\"{c.label}\")", hint=f"{fix} \"{c.label}\" first, in History.")
+
+    def stuck(self) -> set[int]:
+        """The done originals whose undo `blockers` would refuse, worked out for all of them in one pass from the
+        newest step back (the History list asks for every row)."""
+        out, state, odd = set(), {}, {}             # state: each original's done-ness just before the step reached
+        whole, inside = {}, {}                      # counts of the keys of originals that stand otherwise there
+
+        def count(s, n):
+            for k in self.keys(self.get(s)):
+                whole[k] = whole.get(k, 0) + n
+                for h in E.heads(k):
+                    inside[h] = inside.get(h, 0) + n
+
+        def put(s, v):
+            was, now = odd.get(s, False), v != self.done[s]
+            if was != now:
+                odd[s] = now
+                count(s, 1 if now else -1)
+            state[s] = v
+        for x in reversed(self.changes):
+            if x.original and self.done[x.seq]:
+                if any(inside.get(k) or any(whole.get(h) for h in E.heads(k)) for k in self.keys(x)):
+                    out.add(x.seq)                  # (x itself stands as it did right after it was made: not odd)
+            for s in ([x.seq] if x.original else []):
+                put(s, False)                       # before it was made
+            for s in x.undoes:
+                put(s, True)
+            for s in x.redoes:
+                put(s, False)
+        return out
 
     def who_changed(self, id_, field_=None) -> Change | None:
         want = (id_,) if field_ is None else (id_, field_)
