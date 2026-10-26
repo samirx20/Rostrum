@@ -56,15 +56,15 @@ _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$
 
 DATA = [
     _a("group", "Group", rank=10, importance="primary", importance_one="secondary", group="make", job="group",
-       when=FACT("groupable"), calls=_op("group.make", "stack", id="$new:group", **{"as": "group"})),
+       when=FACT("groupable"), calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "group"})),
     _a("ungroup", "Ungroup", rank=10, importance="primary", group="make", job="ungroup", when=FACT("releasable"),
        calls=_op("group.release", "ids")),
     _a("clip", "Crop to a box", rank=60, group="make", bar="Make", when=FACT("groupable"),
-       calls=_op("group.make", "stack", id="$new:group", **{"as": "clip"})),
+       calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "clip"})),
     _a("layout", "Auto layout (a row)", rank=60, group="make", bar="Make", job="auto_layout", min_targets=2, when=FACT("groupable"),
-       calls=_op("group.make", "stack", id="$new:group", **{"as": "layout"})),
+       calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "layout"})),
     _a("swap", "Make swap set", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
-       calls=_op("group.make", "stack", id="$new:group", **{"as": "swap"})),
+       calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "swap"})),
     _a("rig", "Make rig", rank=60, group="make", bar="Make", when=ALL("groupable", "rigable"), promoted="body_parts",
        calls=_op("rig.make", "stack", id="$new:rig")),
     # a character (UX_SPEC 3.23): a rig with no bones named like a body; a mouth or an eyes swap set
