@@ -25,7 +25,7 @@ Panel {
                 id: chip
                 anchors.left: parent.left; anchors.leftMargin: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                 width: 20; height: 20; radius: 4
-                color: item.selected ? Theme.accent : Theme.active
+                color: item.selected ? Theme.accentFill : Theme.active
                 Text { anchors.centerIn: parent; text: item.modelData.kind.slice(0, 2).replace(/^./, c => c.toUpperCase())
                        color: item.selected ? "white" : Theme.fg2; font.family: uiFont; font.pixelSize: 10; font.weight: Font.DemiBold }
             }

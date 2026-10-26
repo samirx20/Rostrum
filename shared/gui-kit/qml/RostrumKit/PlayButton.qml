@@ -9,7 +9,7 @@ Rectangle {
     signal clicked()
     implicitWidth: Theme.button; implicitHeight: Theme.button
     radius: Theme.radiusCtl
-    color: b.primary ? (area.pressed || area.containsMouse ? Theme.accentHover : Theme.accent)
+    color: b.primary ? (area.pressed || area.containsMouse ? Theme.accentFillHover : Theme.accentFill)
          : area.pressed ? Theme.active : area.containsMouse ? Theme.hover : Theme.raised
     Behavior on color { ColorAnimation { duration: Theme.fast } }
     activeFocusOnTab: true

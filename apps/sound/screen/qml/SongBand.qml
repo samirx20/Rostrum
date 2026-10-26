@@ -41,13 +41,13 @@ Item {
             x: Math.round(band.ruler.xOf(modelData.t) + modelData.dx); y: 1
             visible: x + width > 0 && x < band.width
             width: band.flagWidth(modelData.text, modelData.arrow) - 4; height: band.height - 2
-            radius: 3; color: on ? Theme.accent : Theme.raised
+            radius: 3; color: on ? Theme.accentFill : Theme.raised
             Rectangle { width: 2; height: parent.height; radius: 1; color: parent.on ? Theme.fg : modelData.tempo ? Theme.fg3 : Theme.fg4 }
             Text { id: flagText; x: 8; anchors.verticalCenter: parent.verticalCenter; text: modelData.text
-                   color: parent.on ? Theme.fg : Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
+                   color: parent.on ? "white" : Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
                    font.features: { "tnum": 1 } }
             Text { visible: !!modelData.arrow; x: flagText.x + flagText.width + 4; anchors.verticalCenter: parent.verticalCenter
-                   text: modelData.arrow || ""; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
+                   text: modelData.arrow || ""; color: parent.on ? "white" : Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
         }
     }
     MouseArea {

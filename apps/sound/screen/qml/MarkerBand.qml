@@ -45,14 +45,14 @@ Item {
             x: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0)); y: 1
             visible: !modelData.named && x + width > 0 && x < band.width
             width: (naming ? Math.max(90, field.contentWidth + 10) : tag.implicitWidth) + 12; height: band.height - 2
-            radius: 3; color: on ? Theme.accent : Theme.raised
+            radius: 3; color: on ? Theme.accentFill : Theme.raised
             Rectangle { width: modelData.colour ? 3 : 2; height: parent.height; radius: 1
                         color: modelData.colour ? modelData.colour : parent.on ? Theme.fg : Theme.fg3
                         visible: !modelData.shared }
             Column { visible: modelData.shared; spacing: 2; Repeater { model: Math.ceil(band.height / 4)
                      Rectangle { width: 2; height: 2; color: Theme.accent } } }
             Text { id: tag; x: 7; anchors.verticalCenter: parent.verticalCenter; text: modelData.name; visible: !parent.naming
-                   color: parent.on ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
+                   color: parent.on ? "white" : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }
             NameBox {   // the name field, in place
                 id: field
                 objectName: "markerNameBox"

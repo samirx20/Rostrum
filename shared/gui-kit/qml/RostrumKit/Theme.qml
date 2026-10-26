@@ -16,11 +16,13 @@ QtObject {
     readonly property color line: "#3a3a3a"         // field underline at rest
     readonly property color lineHover: "#5a5a5a"
     readonly property color fg: "#ececec"
-    readonly property color fg2: "#a3a3a3"
-    readonly property color fg3: "#8a8a8a"
-    readonly property color fg4: "#5c5c5c"          // hints on dark wells
-    readonly property color accent: "#4c8dff"
+    readonly property color fg2: "#b0b0b0"          // text steps all read at 4.5:1 or more on panel / raised / sunken
+    readonly property color fg3: "#9c9c9c"
+    readonly property color fg4: "#8f8f8f"          // hints on dark wells
+    readonly property color accent: "#4c8dff"       // outlines, highlights, links, bars: on the dark, never behind text
     readonly property color accentHover: "#6aa0ff"
+    readonly property color accentFill: "#3570dc"   // a fill with text on it (filled buttons, selected chips): white on it is 4.7:1
+    readonly property color accentFillHover: "#2f6bd8"
     readonly property color accentSoft: Qt.rgba(76 / 255, 141 / 255, 1, 0.16)
     readonly property color danger: "#ff6b6b"
     readonly property color ok: "#4cc38a"
