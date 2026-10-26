@@ -10,8 +10,8 @@ from .history import Change
 from .kind import DocKind
 from .merge import MergeReport
 from .params import Param
-from .registry import Operation, Registry
+from .registry import PLUGIN_ITEM, Operation, Registry
 from .who import Who
 
-__all__ = ["Change", "DocKind", "Document", "Event", "MergeReport", "Operation", "Param", "Registry",
+__all__ = ["PLUGIN_ITEM", "Change", "DocKind", "Document", "Event", "MergeReport", "Operation", "Param", "Registry",
            "RostrumError", "Who", "codes", "did_you_mean"]

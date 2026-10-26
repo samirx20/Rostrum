@@ -30,6 +30,9 @@ class Operation:
     min_targets: int = 1                  # how many targets it needs at least (a boolean: 2); offered only then
     origin: str = "builtin"               # "builtin" / "builtin:<app>", or a plugin's id ("hiremylens.wiggle")
 
+    def __post_init__(self):
+        self.targets = _kinds(self.targets)
+
     def param(self, name) -> Param | None:
         return next((p for p in self.params if p.name == name), None)
 
@@ -163,7 +166,19 @@ class Registry:
         return out
 
 
+class Kinds(tuple):
+    """An operation's target kinds. `PLUGIN_ITEM` among them takes any plugin's item ("wiggle:generator"), so the
+    operations that need nothing inside an item (delete, order, lock, hide) work on one this Rostrum can't read, the
+    same way as on its own kinds: every `kind in op.targets` check (the run, the command bar, a screen) asks here."""
+
+    def __contains__(self, kind):
+        return tuple.__contains__(self, kind) or (tuple.__contains__(self, PLUGIN_ITEM) and is_plugin(kind))
+
+
+PLUGIN_ITEM = "plugin:*"           # a target kind: any plugin's item (plugin_parts.is_plugin), kept as it is inside
+
+
 def _kinds(target):
     if target is None:
         return None
-    return (target,) if isinstance(target, str) else tuple(target)
+    return target if isinstance(target, Kinds) else Kinds((target,) if isinstance(target, str) else target)
