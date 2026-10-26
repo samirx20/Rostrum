@@ -6,7 +6,7 @@ import "."
 // Export (INTERACTION.md 1.19 item 8): a sheet in the right column, in the settings panel's place, so the work stays in
 // sight. One heading (Export), then what for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
 // fills it with kit rows) · range (only when the document has more than everything) · where (the project's Renders
-// folder; Browse) · the file's name · Export. A file already there is never replaced without asking: Replace / Keep
+// folder; Browse) · the file's name (a field) · Export. A file already there is never replaced without asking: Replace / Keep
 // both / Cancel, the one blocking question. The export runs in the background (the top bar's job chip); done, the
 // message line says "Exported Main.mp4 · Play · Show in folder". A failure is red, in words; the old file stays.
 // `model`: the app's rostrum_gui.export_sheet.ExportSheet. Esc or × closes it.
@@ -93,7 +93,15 @@ Panel {
             Item { width: 1; height: Theme.grid }
             Column {        // where: the file's name, its folder, Browse (they say it; no heading)
                 width: parent.width; spacing: Theme.grid
-                Line { text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
+                Line { visible: !(sheet.model && sheet.model.nameable); text: sheet.model ? sheet.model.fileName : ""; objectName: "exportFileName" }
+                FieldFrame {     // the file's name: typed here, written as typed (the type stays after it)
+                    objectName: "exportFileName"
+                    visible: !!sheet.model && sheet.model.nameable
+                    width: parent.width; editable: !sheet.running
+                    text: sheet.model ? sheet.model.nameStem : ""
+                    suffix: sheet.model ? sheet.model.nameExt : ""
+                    onCommitted: (t) => sheet.model.setNameStem(t)
+                }
                 Text {   // the folder: one line, the middle left out when it is long (the whole path on hover), never broken mid-word
                     id: whereText
                     width: parent.width; elide: Text.ElideMiddle; maximumLineCount: 1

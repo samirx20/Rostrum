@@ -12,6 +12,8 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum_core import project
+from rostrum_core.errors import RostrumError
 from rostrum2d import fields as F, project_sound, retime
 from rostrum2d.io import formats as table, gif_size
 from rostrum2d.mcp import export_area, export_name, exporting
@@ -62,10 +64,20 @@ class Exporter(ExportSheet):
         return out
 
     def default_folder(self):
-        return str(exporting.default_folder(self.bridge.doc.folder, self.bridge.doc.item_id))
+        """The exact folder the file lands in: the next version folder (renders/<item>/v001), else the Videos folder."""
+        doc = self.bridge.doc
+        try:
+            return str(project.next_render(doc.folder, doc.item_id)) if exporting.project_renders(doc.folder, doc.item_id) else str(exporting.default_folder(doc.folder, doc.item_id))
+        except RostrumError:  # an item id a folder can't be named by (project.next_render refuses it): the plain folder
+            return str(exporting.default_folder(doc.folder, doc.item_id))
 
-    def file_name(self):
-        return self._stem() + ("" if self._row()["sequence"] else self._row()["ext"])
+    NAMEABLE = True
+
+    def default_stem(self):
+        return self._stem()
+
+    def file_ext(self):
+        return "" if self._row()["sequence"] else self._row()["ext"]
 
     def replaceable(self):
         return not self._row()["sequence"]           # a folder of frames is never replaced (exporting.run)
@@ -110,7 +122,7 @@ class Exporter(ExportSheet):
         timed = retime.timed(comp, self.bridge.marks.times if doc.folder else None, comp.get("fps", 30))
         s["area"] = export_area.chosen("export", self._choice, timed, span[0], self._area(), self._picked() if self._area() == "items" else None)
         return {"scene": exporting.snapshot(doc, self._comp_id, self._choice), "fmt": self._choice, "s": s,
-                "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self._stem(), "out": out,
+                "folder": doc.folder, "item": doc.item_id, "seq": doc.seq, "name": self.stem(), "out": out,
                 "overwrite": overwrite}
 
     def work(self, p, progress):

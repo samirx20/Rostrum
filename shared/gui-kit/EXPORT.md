@@ -41,7 +41,9 @@ class MyExport(ExportSheet):
     def choices_list(self):      return [{"value": "mp4", "label": "Video to share", "type": ".mp4"}]
     def ranges_list(self):       return [{"value": "all", "label": "Everything · 6 s", "start": 0, "end": 6}]   # [] = no range row
     def default_folder(self):    return r"…\renders\main (a new version folder)"
-    def file_name(self):         return "Main.mp4"
+    NAMEABLE = True                                            # the name is a field; needs default_stem + file_ext
+    def default_stem(self):      return "Main"                 # (an app whose name is fixed overrides file_name() instead)
+    def file_ext(self):          return ".mp4"                 # "" for a sequence; self.stem() = the typed name or the default
     def replaceable(self):       return True                   # False: a folder of frames (Keep both / Cancel only)
     def chose(self):             ...                           # reset the new choice's own settings
     def begin(self, out, overwrite):                           # GUI thread: snapshot; raise with a sentence to refuse
