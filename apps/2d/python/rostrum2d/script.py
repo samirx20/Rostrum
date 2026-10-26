@@ -36,7 +36,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, paint_grow, pathdata, script_frame, script_words as W
+from . import fields as F, fontlist, paint_grow, pathdata, script_frame, script_words as W, text_anchor
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -258,7 +258,8 @@ class Build:
         params = F.FIELDS[node["type"]]
         known = [p.name for p in params]
         kinds = {p.name: p.type for p in params}
-        for k, v in W.resolve(node["type"], values, known, kinds.get).items():
+        given, before = W.resolve(node["type"], values, known, kinds.get), dict(node)
+        for k, v in given.items():
             if k == "name":
                 node["name"] = str(v)
                 continue
@@ -269,6 +270,8 @@ class Build:
             node[k] = F.param(node["type"], k).check(v, f'{node["id"]}.{k}')
             if node["type"] == "group" and k in ("w", "h"):
                 self.sized.add(node["id"])
+        if node["type"] == "text":                   # Align moves a point text's anchor with it (text_anchor.py)
+            node.update(text_anchor.follow(before, node, given))
         if node["type"] in ("text", "textstyle") and {"font", "italic"} & set(node) and (
                 why := fontlist.setting_refusal(node["id"], node["font"], node.get("italic", False))):
             raise ValueError(why)                       # a font that isn't here is never swapped for another

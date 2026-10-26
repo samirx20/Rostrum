@@ -51,6 +51,7 @@ class StrokeDrag:
     def __init__(self, doc, who, layer_id: str, t: float, fps: float, brush: dict, x: float, y: float, placer, pressure=1.0,
                  make=None, layer: str = "", lean=None, wet: bool = False, fill: dict | None = None):
         self.doc, self.who, self.sid, self.points, self._waiting, self.wet = doc, who, random_id("stroke"), [], False, wet
+        self._made = layer_id if make else None      # a drawing this stroke starts: its turning point ends in its middle
         self._drag = Drag(doc, who, "Paint") if make or not wet else None
         try:
             if make:
@@ -116,12 +117,15 @@ class StrokeDrag:
 
     def end(self):
         """The one change, or None if the stroke was refused."""
+        centre = [{"op": "drawing.centre", "target": [self._made]}] if self._made else []
         if self._drag is None:
             return self.doc.apply([self._call], self.who, label="Paint")
         if self.wet:
-            return self._drag.end(calls=[self._call])
+            return self._drag.end(calls=[self._call, *centre])
         try:
             self.show()
+            if centre:
+                self._drag.preview(centre)
         except BaseException:
             self.cancel()
             raise

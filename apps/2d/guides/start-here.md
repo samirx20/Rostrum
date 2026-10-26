@@ -169,9 +169,13 @@ Things that surprise people the first time:
   are placed in comp px. Give it `x=300, y=300` and that comp-sized box is *centred* there (anchor 0.5), so a child at
   (100, 100) lands far up and left, off screen. To place a group by a point, give it `w`, `h` (then `x`, `y` is its
   centre, and its children sit in its box), or `anchorX=0, anchorY=0` as well (then `x`, `y` is its top-left).
-- **Text sits on its anchor too:** a script's text is centred on `x`, `y` (anchor 0.5, `align="center"`). For a
-  left-aligned column write `anchorX=0, align="left"`: `x` is then the left edge. `boxWidth` wraps the words into a box
-  that wide, centred on the anchor like any box; `align` places each line inside that box.
+- **Text sits on its anchor too, and its anchor follows its alignment:** every text, made by a script, an operation
+  or a person's Text tool, starts centred on `x`, `y` (anchor 0.5, `align="center"`). Without a `boxWidth`, changing
+  `align` moves the across anchor with it, as After Effects' point text: `align="left"` makes `x` the left edge (anchor
+  0), `"right"` the right edge (anchor 1), so a left-aligned column is just `align="left"` and its lines all start at
+  `x`; changing the alignment later keeps `x` and the words re-flow around it. An anchor you set yourself (`anchorX`
+  given with it, moved, keyed) is kept. `boxWidth` wraps the words into a box that wide, placed by its anchor like any
+  box; there `align` only places each line inside the box, which stays put.
 - **A rounded clip:** `clip=True` cuts to the group's rectangle. For rounded corners (a phone screen) give the group a
   mask with a radius: `screen.mask("round", x=0, y=0, w=390, h=844, radius=56)`.
 - **`trimEnd` draws along the path in the order its points are written**, from the first point; on a closed path the

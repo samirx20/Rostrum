@@ -65,6 +65,12 @@ class KeyBar(QObject):
         ids = self.picked()
         return self.b.placed_item(ids[0]) if ids else {}
 
+    @kept
+    def _easing(self) -> dict:
+        """The first key whose ease the picker shows and sets (a last key: the one before it, see _eased)."""
+        ids = self._eased()
+        return self.b.placed_item(ids[0]) if ids else {}
+
     # ---- reads ------------------------------------------------------------------------------------------------
     @Property(bool, notify=changed)
     def shown(self):
@@ -86,7 +92,7 @@ class KeyBar(QObject):
     @kept
     def ease(self):
         """The first key's ease id ("" when the picked keys differ: the picker then reads Mixed; "custom" after a drag)."""
-        ids = self.picked()
+        ids = self._eased()
         found = {self.b.doc.item(i).get("ease", "smooth") for i in ids}
         return found.pop() if len(found) == 1 else ""
 
@@ -99,13 +105,13 @@ class KeyBar(QObject):
     @kept
     def handles(self):
         """[x1, y1, x2, y2] of the small curve; [] where the curve is not a cubic (spring, jump, bounce)."""
-        k = self._first()
+        k = self._easing()
         return eases.handles(k) if k and k.get("ease", "smooth") in ("linear", "custom", *eases.BEZIERS) else []
 
     @Property("QVariantList", notify=easeChanged)
     def curve(self):
         """The first key's ease as 61 points [x, y] (0..1, y may leave it: a spring's wobbles show): what the small curve draws."""
-        k = self._first()
+        k = self._easing()
         if not k:
             return []
         how = repr(sorted((n, v) for n, v in k.items() if n not in ("t", "v", "id", "ref")))     # the key's ease, whatever its words
@@ -152,7 +158,7 @@ class KeyBar(QObject):
     @kept
     def feel(self):
         """[bounce, speed] of the first key's spring."""
-        return list(springs.feel_of(self._first())) if self.ease == "spring" else []
+        return list(springs.feel_of(self._easing())) if self.ease == "spring" else []
 
     easeOnKey = Property(bool, lambda self: True, constant=True)    # a key's right-click is the Ease list (the kit's KeyDot.qml), as the guides say
 
@@ -172,21 +178,35 @@ class KeyBar(QObject):
     def _apply(self, calls, label):
         return self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=label), ""))
 
+    @kept
+    def _eased(self) -> list[str]:
+        """The keys an ease lands on. An ease belongs to the move AFTER a key, so a field's last key has none of its own:
+        what is picked there eases the move INTO it (the key before), as easing the key you land on does elsewhere."""
+        out = []
+        for kid in self.picked():
+            row = keys_of(self.b.placed_item(self.b.doc.parent_of(kid)[0]), self.b.doc.item(kid)["prop"])
+            at = next((i for i, k in enumerate(row) if k["id"] == kid), 0)
+            out.append(row[at - 1]["id"] if len(row) > 1 and at == len(row) - 1 else kid)
+        return list(dict.fromkeys(out))
+
     @Slot(str, result=bool)
     def setEase(self, value):
-        """The Ease picker, a key's right-click or F9 …: every picked key. Custom starts from the curve shown now."""
+        """The Ease picker, a key's right-click or F9 …: every picked key (a last key: the move into it, see _eased).
+        Custom starts from the curve shown now."""
         if not self.picked() or not value:
             return False
+        ids = self._eased()
+        first = self.b.placed_item(ids[0])
         n = len(self.picked())
         label = f"Ease {n} keys: {eases.label_of(value)}" if n > 1 else f"Ease: {eases.label_of(value)}"
         if value == "custom":
-            x1, y1, x2, y2 = eases.handles(self._first())
-            return self._apply([{"op": "key.handles", "target": self.picked(), "args": dict(x1=x1, y1=y1, x2=x2, y2=y2)}], label)
-        words = dict(zip(("bounce", "speed"), springs.feel_of(self._first()))) if value == "spring" else {}
-        return self._apply(self._all({"ease": value, **words}), label) and self._played()   # a spring in words (spring.py)
+            x1, y1, x2, y2 = eases.handles(first)
+            return self._apply([{"op": "key.handles", "target": ids, "args": dict(x1=x1, y1=y1, x2=x2, y2=y2)}], label)
+        words = dict(zip(("bounce", "speed"), springs.feel_of(first))) if value == "spring" else {}
+        return self._apply([{"op": "key.set", "target": ids, "args": {"ease": value, **words}}], label) and self._played(ids)   # a spring in words (spring.py)
 
-    def _played(self) -> bool:
-        self.b._ease_play.play(self.picked())         # the stretch plays once on the canvas (ease_play.py)
+    def _played(self, ids) -> bool:
+        self.b._ease_play.play(ids)         # the stretch plays once on the canvas (ease_play.py)
         return True
 
     # ---- the ⋯ menu: After the last key (UX_SPEC 3.18), for the picked keys that are their field's last ---------

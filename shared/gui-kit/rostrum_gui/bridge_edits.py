@@ -69,23 +69,39 @@ class EditSlots(SlotMixin):
 
     @Slot(str)
     def toggleAnimate(self, param):
-        """The key mark's toggle on a row: the app's animate_calls, as one change. A pair's half (X of Position, W of
-        Size: pairs.py) is the whole pair: both halves are keyed or stopped together, labelled by the pair. Several
-        items or halves: start animating the ones that aren't yet; when all are, stop them all."""
+        """A click on a row's key mark: the app's animate_calls (route.py's key mark), as one change. A pair's half (X of
+        Position, W of Size: pairs.py) is the whole pair, labelled by the pair. Several items or halves: those without a
+        key at the playhead get one; when all have one, those keys go. A deleted key is said in the top bar: a click never
+        takes animation away unseen."""
         def go():
             names = pairs.partner_of(self._kit.static, param)
             states = {(i, n): self.anim_state(self.doc.item(i), n) for i in self._kit.selection for n in names}
-            todo = [k for k, s in states.items() if s == "still"] or [k for k, s in states.items() if s] or list(states)
-            made = [self.animate_calls(i, n) for i, n in todo]
-            label = made[0][1]
-            if len({n for _, n in todo}) > 1:            # both halves: "Animate Position", never "Animate X"
-                op = self._kit.op_kind[0]
-                own = next(p.label for p in op.params if p.name == names[0])
-                pair = next(r["label"] for r in self._kit.static if r.get("half") == "first" and r["id"] == names[0])
-                label = label.replace(own, pair)
-            ids = list(dict.fromkeys(i for i, _ in todo))
-            self._apply([c for calls, _ in made for c in calls], self._many(label, len(ids)))
+            todo = [k for k, s in states.items() if s in ("still", "keyed")] or [k for k, s in states.items() if s] or list(states)
+            self._animate(param, names, todo, [self.animate_calls(i, n) for i, n in todo])
         self._guard(go)
+
+    @Slot(str)
+    def stopAnimating(self, param):
+        """The key mark's right-click › Stop animating: every key of the field goes, keeping the value at the playhead."""
+        def go():
+            names = pairs.partner_of(self._kit.static, param)
+            todo = [(i, n) for i in self._kit.selection for n in names if self.anim_state(self.doc.item(i), n) in ("keyed", "onkey")]
+            if todo:
+                self._animate(param, names, todo, [self.animate_calls(i, n, stop=True) for i, n in todo])
+        self._guard(go)
+
+    def _animate(self, param, names, todo, made):
+        label = made[0][1]
+        if len({n for _, n in todo}) > 1:            # both halves: "Animate Position", never "Animate X"
+            op = self._kit.op_kind[0]
+            own = next(p.label for p in op.params if p.name == names[0])
+            pair = next(r["label"] for r in self._kit.static if r.get("half") == "first" and r["id"] == names[0])
+            label = label.replace(own, pair)
+        ids = list(dict.fromkeys(i for i, _ in todo))
+        calls = [c for calls, _ in made for c in calls]
+        change = self.doc.apply(calls, self.who, label=self._many(label, len(ids)))
+        gone = any(c["op"] in ("key.remove", "key.clear") for c in calls)
+        self._done(change, "", said=gone)            # "Delete Zoom key at 6.00 s" / "Stop animating Zoom" stays in view
 
     @Slot(str)
     def clearExpression(self, param):

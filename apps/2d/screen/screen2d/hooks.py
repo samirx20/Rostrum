@@ -1,7 +1,7 @@
 """Rostrum2D's hooks into the kit's DocBridge: the 2D animation model (route.py, exprs.py). A mix-in for Bridge2D."""
 from __future__ import annotations
 
-from rostrum2d import fields as F, fill_fields, stepped
+from rostrum2d import fields as F, fill_fields, stepped, text_anchor
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
@@ -67,8 +67,8 @@ class Hooks2D:
         painted = fill_rows.HIDDEN if item.get("type") in fill_fields.OWNERS else set()   # the Fill row's picker has them
         return ON_PAGE.get(item.get("type"), set()) | painted | _open_line(item) | super().on_page(item)
 
-    def starts(self, item):              # the Text tool's top-left start isn't a change (a group opens only for one)
-        return F.STARTS.get(item.get("type"), {})
+    def starts(self, item):              # a text's anchor at its alignment's point isn't a change (a group opens only for one)
+        return text_anchor.starts(item) if item.get("type") == "text" else {}
 
     def relative_call(self, item_id, param, by, factor):   # +20 / *2: value.set {by} from this layer's own value now
         item = self.doc.item(item_id)
@@ -113,10 +113,11 @@ class Hooks2D:
             return fill_rows.anim_state(item, self.own_t(item["id"]), self.comp()["fps"])
         return route.anim_state(self.placed_item(item["id"]), param, self._t, self.comp()["fps"])
 
-    def animate_calls(self, item_id, param):
+    def animate_calls(self, item_id, param, stop=False):
+        fps = self.comp()["fps"]
         if param == fill_rows.ROW:
-            return fill_rows.animate_calls(self.doc.item(item_id), self.own_t(item_id))
-        calls, label = route.animate_calls(self.placed_item(item_id), param, self._t)      # built in composition seconds
+            return fill_rows.animate_calls(self.doc.item(item_id), self.own_t(item_id), fps, stop)
+        calls, label = route.animate_calls(self.placed_item(item_id), param, self._t, fps, stop)      # built in composition seconds
         off = self.offset(item_id)
         for c in calls:                                  # the document writes the layer's own seconds
             for k in ("at", "t"):

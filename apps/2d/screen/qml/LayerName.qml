@@ -31,6 +31,7 @@ Rectangle {
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
     Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }   // menus run a choice once closed (ActionMenu)
 
+    HoverHandler { id: rowHover }   // passive: stays on while a child area (the lock, the eye) has the pointer, so a switch never blinks out under it and loses the first click
     MouseArea {
         id: hover
         property real pressY: 0
@@ -94,7 +95,7 @@ Rectangle {
                 required property var modelData
                 readonly property bool swiped: name.rows.swipeField === modelData.field && !!name.rows.swipeIds[name.rowData.id]   // a drag over rows is passing this one
                 readonly property bool on: swiped ? name.rows.swipeOn : !!name.rowData[modelData.field]
-                visible: on || swiped || swArea.pressed || hover.containsMouse || swArea.containsMouse   // pressed: it stays while the pointer is dragged off it
+                visible: on || swiped || swArea.pressed || rowHover.hovered   // pressed: it stays while the pointer is dragged off it
                 width: 18; height: 18
                 LayerSwitchIcon { anchors.centerIn: parent; kind: sw.modelData.field; on: sw.on; hot: swArea.containsMouse }
                 MouseArea {  // a click is one change; Alt+click an eye shows only this layer; press and drag over more rows sets them all to its new state

@@ -124,7 +124,9 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
         if not keyed:
             ctx.fail(codes.BAD_ARGUMENT, f'fields "{args["fields"]}"', "has nothing these items can key now",
                      hint="Their fields may be driven by an expression or an auto layout, or every field already "
-                     "holds this value.")
+                     "holds this value.",
+                     plain="Nothing new to key here: it is already keyed at this moment, or its settings are driven by "
+                     "an expression or an auto layout.")
 
     @registry.operation("key.remove", "Delete keys. A field whose last key goes keeps that key's value as its still value.",
                         target="key", label="Delete key", importance="secondary")

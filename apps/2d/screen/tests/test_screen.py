@@ -105,7 +105,7 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     bridge.undo()
     box = bridge.doc.item("box")
     assert [(k["t"], k["v"]) for k in keys_of(box, "x")] == [(0.3, 200)] and [(k["t"], k["v"]) for k in keys_of(box, "y")] == [(0.3, 90)]
-    bridge.toggleAnimate("y")                                                         # key mark: stop animating (both)
+    bridge.toggleAnimate("y")                                                         # key mark on the key: deletes it (the last: still)
     box = bridge.doc.item("box")
     assert not keys_of(box, "x") and not keys_of(box, "y") and (box["x"], box["y"]) == (200, 90)
 

@@ -45,7 +45,7 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "f.cut(at=6, to=\"rect\", rect=(3200, 0, 1920, 1080)) or f.cut(at=\"#logo lands\") jumps it, f.home(at=8); "
                "the same as the operations frame.fit, frame.cut, frame.home (target \"frame\"). "
                "Fields: x, y (the anchor, default the centre), w, h, scale, rotation, opacity 0-1; shape: shape=\"rect\" | "
-               "\"ellipse\" …, fill, radius, filled, stroke=\"#fff\", strokeWidth; text: body, size, weight, color; "
+               "\"ellipse\" …, fill, radius, filled, stroke=\"#fff\", strokeWidth; text: body, size, weight, color, align (a text's x is its left edge, middle or right edge as align says); "
                "path: d (SVG; with no x, y, w, h its points are comp px), fill=\"none\". Colours \"#rrggbb\" or \"#rgb\". "
                "Drawings: d = drawing(id, w=, h=, eachFrame=True); f = d.frame(at); f.paint(); p.stroke(points, **brush) "
                "(every drawing's paint joins the layer's one set of paint layers). "

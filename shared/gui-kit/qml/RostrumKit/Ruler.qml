@@ -62,7 +62,8 @@ Item {
                                          : major / (major === 1 || major === 2 ? 4 : 5)
     readonly property int tick0: Math.ceil(origin / minor - 1e-6)
     function xOf(v) { return (v - origin) * perUnit }
-    function tOf(x) { const v = origin + x / perUnit; return frames ? v : Math.max(0, Math.min(duration, v)) }
+    // (seconds: the last 3 px of the whole-length scale are the end, as End goes there; a pixel can be finer than a frame)
+    function tOf(x) { const v = origin + x / perUnit; return frames ? v : !view && x >= width - 3 ? duration : Math.max(0, Math.min(duration, v)) }
     function fOf(x) { return tOf(x) }
     function xOfSec(s) { return xOf(frames ? s * fps : s) }           // a time in seconds (markers), either unit
     function nextX(at) {   // where the next marker after `at` stands (a flag's name stops before it)

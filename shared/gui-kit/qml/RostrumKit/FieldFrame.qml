@@ -18,7 +18,13 @@ FocusScope {
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
     property bool keepOnRefusal: false  // a refused entry keeps the caret and the typed text, to be fixed (Esc puts the value back)
     property string problem: ""         // a refused entry, said in a sentence: the field shows red until the next edit
-    onProblemChanged: if (problem !== "" && typeof backend !== "undefined" && backend && backend.refuse) backend.refuse(problem)
+    property string _said: ""           // what this box put in the top bar; taken back when the entry is put right
+    onProblemChanged: {
+        if (typeof backend === "undefined" || !backend) return
+        if (problem !== "" && backend.refuse) backend.refuse(problem)
+        else if (problem === "" && _said !== "" && backend.unrefuse) backend.unrefuse(_said)
+        _said = problem
+    }
     readonly property bool active: engaged || input.activeFocus
     readonly property bool hovered: hoverHandler.hovered
     property alias input: input

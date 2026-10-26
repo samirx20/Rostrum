@@ -6,8 +6,10 @@ differences (`drives`, `value_at`, `shown_values`, whether an expression decides
   changes; an animated one gets (or changes) a key there. Never the still value of an animated field.
 - Everything else (text, choices, toggles, a key's own time / value / ease) is the item's `<type>.set`.
 - The inspector shows values at the playhead (`shown_values`, the app's own).
-- The key mark: no keys -> `key.add` at the playhead with the value shown; keys -> `key.clear` (stop animating,
-  keeping the value at the playhead).
+- The key mark (After Effects' stopwatch-and-diamond in one): no keys -> `key.add` at the playhead with the value shown
+  (start animating); keys but none at the playhead -> `key.add` there (a key at a new moment); a key at the playhead ->
+  `key.remove` of that key only. Stopping all of a field's animation is its own named action (`stop=True`: `key.clear`,
+  keeping the value at the playhead), never a side effect of a click.
 """
 from __future__ import annotations
 
@@ -59,14 +61,21 @@ class KeyRoute:
         keys = self._keys(item, prop)
         if not keys:
             return "still"
-        return "onkey" if any(abs(k["t"] - t) < 0.5 / fps for k in keys) else "keyed"
+        return "onkey" if key_at(keys, t, fps) else "keyed"
 
-    def animate_calls(self, item: dict, prop: str, t: float) -> tuple[list[dict], str]:
-        """(calls, history label) for the key mark's toggle."""
-        label = self.F.param(item["type"], prop).label
-        if keys_of(item, prop):
-            return [{"op": "key.clear", "target": [item["id"]], "args": {"prop": prop, "at": t}}], f"Stop animating {label}"
+    def animate_calls(self, item: dict, prop: str, t: float, fps: float, stop: bool = False) -> tuple[list[dict], str]:
+        """(calls, history label) for a click on the key mark (module doc), or with `stop` for Stop animating."""
+        label, keys = self.F.param(item["type"], prop).label, keys_of(item, prop)
+        if stop:
+            return ([{"op": "key.clear", "target": [item["id"]], "args": {"prop": prop, "at": t}}] if keys else []),                 f"Stop animating {label}"
+        if here := key_at(keys, t, fps):
+            return [{"op": "key.remove", "target": [here["id"]], "args": {}}], f"Delete {label} key at {t:.2f} s"
         call = self.value_call(item, prop, self.value_at(item, prop, t), t)
         call["op"] = "key.add"
         call["args"]["t"] = call["args"].pop("at")
-        return [call], f"Animate {label}"
+        return [call], f"Key {label} at {t:.2f} s" if keys else f"Animate {label}"
+
+
+def key_at(keys: list[dict], t: float, fps: float) -> dict | None:
+    """The key at the playhead: within half a frame of t (what the key mark shows filled)."""
+    return next((k for k in keys if abs(k["t"] - t) < 0.5 / fps), None)

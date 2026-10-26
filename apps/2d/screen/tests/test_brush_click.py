@@ -17,7 +17,7 @@ def _child(folder):
     sys.path[:0] = [str(ROOT), str(SCREEN)]
     import checkout_paths
     checkout_paths.use_this_checkout()
-    from PySide6.QtCore import QObject
+    from PySide6.QtCore import QObject, Qt
     from rostrum_gui.app import qt_app
     from screen2d.click_steps import do_click_step
     from screen2d.files2d import blank
@@ -30,6 +30,21 @@ def _child(folder):
     do_click_step(session.win, "clickobj", ["rail_brush"], "clickobj rail_brush")   # a real press and release
     fly = session.win.findChild(QObject, "brushFlyout")
     print("panel:", "open" if fly is not None and fly.property("opened") else "closed", "tool:", b.tool, flush=True)
+    # a stroke begun at the picture's left edge (where the panel once lay) closes the panel and paints, in that one press
+    from PySide6.QtCore import QPoint, QPointF
+    from PySide6.QtTest import QTest
+    st = session.win.findChild(QObject, "stage")
+    o, k = st.property("compOrigin"), st.property("compScale")
+    q = st.mapToScene(QPointF(o.x() + 100 * k, o.y() + 400 * k))
+    a = QPoint(round(q.x()), round(q.y()))
+    QTest.mousePress(session.win, Qt.LeftButton, Qt.NoModifier, a)
+    for i in range(1, 8):
+        QTest.mouseMove(session.win, a + QPoint(20 * i, 5 * i))
+        QTest.qWait(20)
+    QTest.mouseRelease(session.win, Qt.LeftButton, Qt.NoModifier, a + QPoint(140, 35))
+    QTest.qWait(300)
+    print("panel then:", "open" if fly.property("opened") else "closed", "painted:", any(
+        l["type"] == "drawing" for l in b.comp()["layers"]), flush=True)
     app.processEvents()
     session.close()
 
@@ -50,6 +65,7 @@ def test_a_new_piece_picks_nothing_and_a_real_brush_click_opens_the_panel(tmp_pa
         pytest.fail("the Brush click froze the app (no answer in 60 s)")
     assert "picked: scene" in out, out
     assert "panel: open tool: draw" in out, out
+    assert "panel then: closed painted: True" in out, out      # no dead zone: the press that closes the panel paints
 
 
 if __name__ == "__main__":

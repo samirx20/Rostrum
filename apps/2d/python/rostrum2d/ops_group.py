@@ -109,7 +109,9 @@ def _rebind(ctx, rig: dict, ids: list[str], group: str) -> None:
 
 
 @R.operation("group.make", "Select layers, then wrap them in a new group (they must be in the same group or composition). "
-             "The group is sized to their combined box and every layer stays exactly where it is, on screen and in time; "
+             "The group is sized to their combined box at `at` (its centre is the group's turning point; the screen measures at the "
+             "playhead, as Figma frames and After Effects' centre-of-selection do: give the time the layers are fully in view, "
+             "or animated layers may stick out) and every layer stays exactly where it is, on screen and in time; "
              "the group takes the place of the topmost one in the stack. `as`: group (plain), clip (hides what is outside "
              "its box), layout (arranges its layers in a row) or swap (shows one layer at a time).",
              target=F.PLACED, label="Group",
