@@ -18,6 +18,7 @@ class Frames:
 
     def __init__(self, data: dict, frames: range, fps: float, folder=None):
         self.frames, self.fps, self.items, self.parent, self.folder = frames, fps, {}, {}, folder
+        self.data = data                                       # the document (clay_detail reads its shots)
         stack = [(i, None) for i in data.get("items", [])]
         while stack:
             item, parent = stack.pop()

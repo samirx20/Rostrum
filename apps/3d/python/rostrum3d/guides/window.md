@@ -67,9 +67,11 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 
 - **Select**: click a thing in the viewport or in the scene list.
 - **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Lump: a click drops a ball of clay, on a
-  clay it joins) and, with a clay selected, **Brush** (Add, Carve, Smooth), Size, Strength and Mirror. A drag on the
-  clay sculpts (Ctrl: the opposite brush, Shift: Smooth), one undo step per stroke; a drag on empty space turns the
-  view. Q again, V or Esc goes back to Select. The guide `sculpting` has it all.
+  clay it joins) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull, Flatten, Crease, and Mask on its own
+  row), then Size, Strength, Mirror, Falloff, Spacing and Front faces only. A drag on the clay sculpts (Ctrl: the
+  opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; a drag on empty space turns
+  the view; F held and the pointer moved left or right sizes the brush. Q again, V or Esc goes back to Select. The
+  guide `sculpting` has it all.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
   along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
@@ -211,6 +213,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | Key | Does |
 |---|---|
 | Q | Clay: make clay and sculpt it (Q again: Select) |
+| F (held) | Clay: move the pointer left or right to size the brush; let go to keep it |
 | R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
 | P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
 | W · E · S | The gizmo's move, turn or scale handles only (V: all) |

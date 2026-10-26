@@ -1,8 +1,13 @@
-"""Dab files: a stroke's dabs exactly as applied, kept beside the document (CONTRACT CL1 § 2; the core reads and
+"""Dab files: a stroke's dabs exactly as applied, kept beside the document (CONTRACT CL1 § 2, CL2; the core reads and
 writes the same format, core/src/clay_dabs.*).
 
-    <project folder>/clay/<hash>.dabs     little-endian: b"CLD1", uint32 n, then n × 9 float32
+    <project folder>/clay/<hash>.dabs     little-endian: b"CLD2", uint32 n, then n × 11 float32
                                           a.xyz n.xyz b.xyz (surface point, normal, pull / crease direction)
+                                          radiusScale strengthScale (pen pressure; 1 1 without a pen)
+                                          or the CL1 form: b"CLD1", uint32 n, n × 9 float32 (scales 1)
+
+A row is 9 numbers (no pen: scales 1) or 11. Dabs that are all 9 numbers are written as CLD1, so the dabs CL1 wrote
+keep their file names and their steps their keys; any 11-number row makes the file CLD2.
 
 `<hash>` = the first 32 hex of the whole file's sha256: content-addressed, so a file is never rewritten and never
 deleted by undo (the step that names it may come back). A stroke's step stores the reference "clay/<hash>.dabs".
@@ -15,24 +20,29 @@ import struct
 import uuid
 from pathlib import Path
 
-MAGIC, FOLDER, SUFFIX = b"CLD1", "clay", ".dabs"
+FOLDER, SUFFIX = "clay", ".dabs"
+WIDTH = {b"CLD1": 9, b"CLD2": 11}               # numbers per dab
 HEADER = struct.Struct("<4sI")
 
 
 def pack(rows) -> bytes:
-    """The file's bytes for [[ax, ay, az, nx, ny, nz, bx, by, bz], …]."""
-    flat = [float(v) for r in rows for v in r]
-    if len(flat) != 9 * len(rows):
-        raise ValueError("a dab is 9 numbers: a.xyz n.xyz b.xyz")
-    return HEADER.pack(MAGIC, len(rows)) + struct.pack(f"<{len(flat)}f", *flat)
+    """The file's bytes for [[ax, ay, az, nx, ny, nz, bx, by, bz, (radiusScale, strengthScale)], …]."""
+    if any(len(r) not in (9, 11) for r in rows):
+        raise ValueError("a dab is 9 numbers (a.xyz n.xyz b.xyz) or 11 (+ radiusScale strengthScale)")
+    wide = any(len(r) == 11 for r in rows)
+    magic = b"CLD2" if wide else b"CLD1"
+    flat = [float(v) for r in rows for v in (list(r) + [1.0, 1.0] if wide and len(r) == 9 else r)]
+    return HEADER.pack(magic, len(rows)) + struct.pack(f"<{len(flat)}f", *flat)
 
 
 def unpack(data: bytes) -> list[list[float]]:
+    """The rows as stored: 9 numbers each from a CLD1 file (scales 1), 11 from a CLD2 one."""
     magic, n = HEADER.unpack_from(data)
-    if magic != MAGIC or len(data) != HEADER.size + 36 * n:
+    w = WIDTH.get(magic)
+    if w is None or len(data) != HEADER.size + 4 * w * n:
         raise ValueError(f"not a dabs file (magic {magic!r}, {len(data)} bytes for {n} dabs)")
-    flat = struct.unpack_from(f"<{9 * n}f", data, HEADER.size)
-    return [list(flat[i:i + 9]) for i in range(0, 9 * n, 9)]
+    flat = struct.unpack_from(f"<{w * n}f", data, HEADER.size)
+    return [list(flat[i:i + w]) for i in range(0, w * n, w)]
 
 
 def name_of(data: bytes) -> str:

@@ -12,11 +12,13 @@ from pathlib import Path
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import clay_dabs
-from .clay_fields import CLAY
+from . import clay_dabs, clay_detail
+from .clay_fields import CLAY, STEP as CLAYSTEP
 
-VERSION = "rostrum3d-clay@2"          # bump when the core builds the same steps differently (the cache key holds it)
+VERSION = "rostrum3d-clay@3"          # bump when the core builds the same steps differently (the cache key holds it)
 BRUSH = {p.name for p in CLAY if p.group == "Brush"}          # the next stroke's settings: never sent
+STROKE = ("falloff", "spacing", "frontOnly", "invert")       # CL2's stroke settings (a CL1 step has the defaults)
+_DEFAULT = {p.name: p.default for p in CLAYSTEP if p.name in STROKE}
 
 
 def _v(xs) -> list[float]:
@@ -32,7 +34,9 @@ def _step(s: dict) -> dict:
         return {"kind": "piece", "op": s["mode"], "a": at, "b": to, "radius": float(s["radius"]),
                 "blend": float(s["blend"]), "mirror": mirror}
     out = {"kind": "stroke", "op": s["brush"], "radius": float(s["size"]), "strength": float(s["strength"]),
-           "mirror": mirror, "accumulate": bool(s["accumulate"])}
+           "mirror": mirror, "accumulate": bool(s["accumulate"]),
+           "falloff": float(s.get("falloff", _DEFAULT["falloff"])), "spacing": float(s.get("spacing", _DEFAULT["spacing"])),
+           "frontOnly": bool(s.get("frontOnly", _DEFAULT["frontOnly"])), "invert": bool(s.get("invert", _DEFAULT["invert"]))}
     if s.get("dabs"):
         out["dabs"] = s["dabs"]
     elif s.get("dabList"):
@@ -60,11 +64,13 @@ def cache_file(last_key: str, detail: float) -> Path:
     return CACHE.path("clay", cache_key("clay.volume", VERSION, [last_key], {"detail": detail})) / "clay.vdb"
 
 
-def finish(node: dict, item: dict, folder=None):
-    """Turn a compiled clay node into the contract's: no brush settings, smooth normals, its keyed steps (a dabs file
-    as its absolute path in the project, inline dabs as `dabList`), and its cache file."""
-    for name in BRUSH:
+def finish(node: dict, item: dict, folder=None, data: dict | None = None):
+    """Turn a compiled clay node into the contract's: no brush settings, `detail` the number to build at (worked out
+    from `data`'s shots when it follows the camera, clay_detail.py), smooth normals, its keyed steps (a dabs file as
+    its absolute path in the project, inline dabs as `dabList`), and its cache file."""
+    for name in BRUSH | {"detailMode"}:
         node["props"].pop(name, None)
+    node["props"]["detail"] = clay_detail.detail(data or {}, item, folder)
     node["props"]["smooth"] = True
     steps = chain(item.get("steps", []))
     for s in steps:

@@ -13,7 +13,7 @@ person moved stays where they put it).
     with import_usd("phone", file=r"C:/assets/phone.usdc") as phone:
         phone.part("Body/Screen", material="glass")
     shot("hero", camera=cam, fps=24, start=0, end=2)
-    head = clay("head", y=1.6, detail=0.001)                 # a clay: its shape is its steps, in order (ops_clay.py)
+    head = clay("head", y=1.6)                 # a clay: its shape is its steps, in order (ops_clay.py)
     head.lump((0, 0, 0), 0.1).lump((0, -0.02, 0.09), 0.03, name="nose")          # pieces: spheres, capsules (to=)
     head.stroke(path=[(0.03, 0.02, 0.2), (0.05, 0.02, 0.2)], dir=(0, 0, -1), brush="carve", size=0.01)
 

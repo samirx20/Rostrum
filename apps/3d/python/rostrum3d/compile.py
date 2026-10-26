@@ -127,7 +127,7 @@ def _node(item: dict, fr: _Frames) -> dict:
     if type_ == "mesh" and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]))):
         node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "clay":
-        clay_scene.finish(node, item, fr.folder)               # its steps, keyed, and its cache (clay_scene.py)
+        clay_scene.finish(node, item, fr.folder, fr.data)      # its steps, keyed, and its cache (clay_scene.py)
     if type_ == "import":
         node["props"]["parts"] = [{"path": pt["path"], "material": pt["material"], "visible": pt["visible"]}
                                   for pt in item.get("parts", [])]

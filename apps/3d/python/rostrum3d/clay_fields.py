@@ -11,15 +11,20 @@ from rostrum_core import Param
 
 from .field_kit import CH, D, IS, N, S, SCULPTING, T, TRANSFORM, X
 
-BRUSHES = ["add", "carve", "smooth", "pull", "flatten", "crease"]     # the core has all six; CL1's screen shows three
+BRUSHES = ["add", "carve", "smooth", "pull", "flatten", "crease", "mask"]
 SYMMETRY = ["off", "x"]
 _MIRROR = {"off": "Off", "x": "Left–right"}
+DETAIL_MODES = ["auto", "fixed"]
 PIECE, STROKE = IS("step", "piece"), IS("step", "stroke")
+FIXED = IS("detailMode", "fixed")
+_INVERT = ("Ctrl's opposite: Flatten puffs out, Crease pinches to a ridge, Mask takes the mask away (Add and Carve "
+           "swap the brush instead)")
 
 CLAY = [
     CH("brush", BRUSHES, "Brush", "Brush", "add", when=SCULPTING,
        help="Add builds clay up, Carve digs in, Smooth evens bumps out; Pull drags the surface along the stroke, "
-            "Flatten presses it to a plane, Crease cuts a sharp fold"),
+            "Flatten presses it to a plane, Crease cuts a sharp fold; Mask paints a mask that protects the clay "
+            "from every other brush"),
     N("brushSize", "Size", "Brush", 0.0005, 10, 0.001, "m", when=SCULPTING, default=0.03, help="The brush's radius"),
     dataclasses.replace(N("brushStrength", "Strength", "Brush", 0, 1, 0.01, "", when=SCULPTING, default=0.5),
                         display="percent"),
@@ -29,8 +34,21 @@ CLAY = [
     T("accumulate", "Build up", "Brush", False, S, SCULPTING,
       help="On: going over the same place keeps adding. Off: one stroke adds at most its strength, however often "
            "it passes"),
-    N("detail", "Detail", "Clay", 0.0002, 0.05, 0.0001, "m", D, default=0.002,
-      help="How fine the clay is: the size of its smallest grain. Smaller = finer, slower and more memory"),
+    N("brushFalloff", "Falloff", "Brush", 0, 1, 0.01, "", S, SCULPTING, default=0.5,
+      help="How the brush fades to its edge: 0 = soft, 1 = a hard edge"),
+    dataclasses.replace(N("brushSpacing", "Spacing", "Brush", 0.05, 1, 0.01, "", S, SCULPTING, default=0.3,
+                          help="How far apart the dabs of a stroke are, as a share of the brush's radius"),
+                        display="percent"),
+    T("frontOnly", "Front faces only", "Brush", True, S, SCULPTING,
+      help="On: a dab never reaches through a thin part to the clay's far side (it skips a surface facing away "
+           "from the camera)"),
+    dataclasses.replace(CH("detailMode", DETAIL_MODES, "Detail", "Clay", "auto", D,
+                           help="Auto: worked out from the shot cameras that see the clay, about one grain per "
+                                "1.5 pixels at the closest one (clay_detail.py). Fixed: the Detail size you type"),
+                        labels={"auto": "Follows the camera", "fixed": "Fixed"}),
+    N("detail", "Detail size", "Clay", 0.0002, 0.05, 0.0001, "m", D, FIXED, default=0.002,
+      help="How fine the clay is when Detail is Fixed: the size of its smallest grain. Smaller = finer, slower and "
+           "more memory"),
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
 ] + TRANSFORM
 
@@ -55,12 +73,18 @@ STEP = [
     N("size", "Size", "Stroke", 0.0005, 10, 0.001, "m", when=STROKE, default=0.03, help="The brush's radius"),
     dataclasses.replace(N("strength", "Strength", "Stroke", 0, 1, 0.01, "", when=STROKE, default=0.5), display="percent"),
     T("accumulate", "Build up", "Stroke", False, S, STROKE),
+    N("falloff", "Falloff", "Stroke", 0, 1, 0.01, "", S, STROKE, default=0.5, help="0 = soft edge, 1 = hard edge"),
+    dataclasses.replace(N("spacing", "Spacing", "Stroke", 0.05, 1, 0.01, "", S, STROKE, default=0.3,
+                          help="Dab spacing, as a share of the radius"), display="percent"),
+    T("frontOnly", "Front faces only", "Stroke", True, S, STROKE),
+    T("invert", "Opposite", "Stroke", False, S, STROKE, help=_INVERT),
     X("dabs", "Dabs", "Step data", "", D, STROKE,
       help='The dabs exactly as applied: a file in the project, "clay/<hash>.dabs" (clay_dabs.py)'),
-    Param.points("dabList", label="Dabs (inline)", group="Step data", importance=D, valid_when=STROKE, min=9, max=9,
+    Param.points("dabList", label="Dabs (inline)", group="Step data", importance=D, valid_when=STROKE, min=9, max=11,
                  default=None, nullable=True, shown="script",
                  help="The dabs written out: [ax, ay, az, nx, ny, nz, bx, by, bz] each (surface point, its normal, the "
-                      "pull or crease direction). Saved into a dabs file when the project has a folder"),
+                      "pull or crease direction), optionally + [radiusScale, strengthScale] (pen pressure; 1 1 "
+                      "without). Saved into a dabs file when the project has a folder"),
     Param.points("path", label="Path", group="Step data", importance=D, valid_when=STROKE, min=3, max=3,
                  default=None, nullable=True, shown="script",
                  help="An agent's stroke: points [x, y, z]; each dab lands where a ray along `dir` from the point "
