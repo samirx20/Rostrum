@@ -123,6 +123,16 @@ def _places(doc_data: dict, layer_id: str, span: tuple[float, float], asks: list
     return [host.place(scene, t, ids) for t, ids in asks]
 
 
+def asker(doc_data: dict, comp_id: str, span: tuple[float, float]):
+    """`ask(t, ids) -> {id: place}` for one composition: its scene described once (a scan of many times and layers
+    loads it once; the engine takes a scene it already holds back at once), asked through the same host as `place_at`.
+    An undrawn layer among the ids fails the whole ask (EngineError naming it)."""
+    from .scene import describe
+    host = _host or Host()
+    scene = describe(doc_data, comp_id, host.markers(), host.folder(), span)
+    return lambda t, ids: host.place(scene, t, ids)
+
+
 def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
     """The layer's place at composition time `t`, from the document as it is."""
     return _places(doc_data, layer_id, (t, t), [(t, [layer_id])])[0][layer_id]
