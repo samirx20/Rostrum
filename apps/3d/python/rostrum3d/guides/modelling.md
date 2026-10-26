@@ -93,7 +93,7 @@ back).
 
 ### On the screen
 
-1. Select the item and press **Tab** (or **Edit mesh** in the settings panel). The first time, the panel says "Turns the
+1. Select the item and press **Enter** (or **Edit mesh** in the settings panel, or right-click it › Edit mesh). The first time, the panel says "Turns the
    box into an editable mesh · Edit": click **Edit**. The box's Width / Height fields go; the mesh is now points and
    faces.
 2. Pick what to select at the top of the settings panel, or press **1** points, **2** edges, **3** faces.
@@ -109,12 +109,12 @@ back).
    own" takes it back).
    With edges selected, the panel shows **Bevel** (Width, Segments), **Loop cut** (Cuts, Slide) and **Sharp** / **Not
    sharp**. Bevel and Loop cut work as above: numbers below, typed again as the same one step. After Bevel an arrow
-   stands on the edges: drag it and the width follows live. **Knife** (button, or **K**): click points across the faces,
+   stands on the edges: drag it and the width follows live. **Knife** (button, or **Shift+K**): click points across the faces,
    a line is drawn as you go, **Enter** cuts along it (one undo step), **Esc** drops it. **Smooth surface** (0 to 3) is in
    the Shape group of the settings once the mesh is editable.
 5. Otherwise the gizmo sits on the selection: drag it to move, turn (E) or scale (S) the selected points, edges or faces;
    each drag is one undo step.
-6. Middle-drag turns the view while you edit. **Tab** or **Esc** (with no Knife line) leaves editing, and so does picking another item.
+6. Middle-drag turns the view while you edit. **Esc** (with no Knife line) or **Shift+Enter** leaves editing, and so does picking another item.
 
 ### For agents
 

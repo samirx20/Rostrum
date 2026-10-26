@@ -9,7 +9,7 @@ import RostrumKit
 // animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
 // same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
 // nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
-// The Render page (Ctrl+3): the shots and the render queue at the bottom (RenderPage), the shot's render settings on
+// The Render page (Alt+3): the shots and the render queue at the bottom (RenderPage), the shot's render settings on
 // the right (RenderSettings), no header Render (a control never shows twice).
 AppShell {
     id: shell
@@ -44,57 +44,20 @@ AppShell {
         viewMenu.openFrom(viewChip, "right")
     }
 
-    KeyShortcut { sequence: "Space"; onActivated: backend.togglePlay() }
-    KeyShortcut { sequence: "Left"; onActivated: backend.setFrame(backend.frame - 1) }
-    KeyShortcut { sequence: "Right"; onActivated: backend.setFrame(backend.frame + 1) }
-    KeyShortcut { sequence: "F12"   // the render sheet; on the Render page, the shown shot's Render (next in the queue)
-               onActivated: backend.page === "render" ? backend.renderQueue.renderNext(backend.shotInfo.id) : backend.exporter.openFor() }
-    KeyShortcut { sequence: "Shift+F"; onActivated: viewport.toggleLook() }   // Look: Quick <-> Final
-    KeyShortcut { sequence: "Escape"; enabled: backend.renderJob.state === "done" || backend.renderJob.state === "failed"
-               onActivated: backend.renderJob.dismiss() }
-    KeyShortcut { sequence: "Escape"; enabled: backend.renderJob.state === "running"; onActivated: backend.renderJob.cancel() }
-    KeyShortcut { sequence: "Escape"; enabled: backend.renderQueue.shown.state === "done"; onActivated: backend.renderQueue.shown.dismiss() }
-    readonly property bool renderIdle: (backend.renderJob.state === "idle" || backend.renderJob.state === "") && backend.renderQueue.shown.state === ""
-    KeyShortcut { sequence: "Escape"; enabled: backend.stretch.shown && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.stretch.clear() }   // back to the item
-    KeyShortcut { sequence: "Escape"; enabled: !backend.stretch.shown && backend.keys.count > 1 && !meshEdit.on && !paintMode.on && shell.renderIdle; onActivated: backend.keys.clear() }
-    KeyShortcut { sequence: "Escape"   // nothing else wants it: let go of the selection (the Scene panel shows)
-               enabled: !backend.stretch.shown && backend.keys.count <= 1 && backend.selected !== "" && !meshEdit.on && !paintMode.on && !viewport.bones.on && !startScreen.visible && shell.renderIdle
-               onActivated: backend.select("") }
+    // Every key comes from the one key map (screen3d/keys3d.py: the shared keys mean what they mean in 2D and Sound, 3D's
+    // own on keys no shared job uses), the same list as the Keys sheet (Ctrl+/) and Ctrl+K. A pressed key goes to the hub
+    // (key_routes3d.KeyHub3D): a mode under way first (the Knife's Enter, the bones being placed), then a route, an
+    // action, or one of the window's own jobs below. Esc: the kit's one Esc closes the newest popup or sheet first (its
+    // KeyMap shortcut waits meanwhile), then the hub takes one step of 3D's written order (screen3d/esc3d.py).
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
-    // Edit mesh (mesh_edit_qt.py): Tab in and out (Esc leaves too), 1 points, 2 edges, 3 faces
-    // not while typing in a field: there Tab goes to the next field (Width, Tab, Height)
-    KeyShortcut { sequence: "Tab"; enabled: !startScreen.visible && (meshEdit.on || backend.selected !== "") && !typing
-               onActivated: meshEdit.toggle() }
-    // Paint (paint_mode_qt.py): B in and out on the selected mesh (Esc leaves too)
-    KeyShortcut { sequence: "B"; enabled: !startScreen.visible && (paintMode.on || paintMode.can) && !typing; onActivated: paintMode.toggle() }
-    KeyShortcut { sequence: "Escape"; enabled: paintMode.on; onActivated: paintMode.leave() }
-    KeyShortcut { sequence: "Escape"; enabled: meshEdit.on; onActivated: meshEdit.escape() }   // the Knife drops its line first
-    KeyShortcut { sequence: "Alt+Z"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.toggleXray() }   // X-ray
-    KeyShortcut { sequence: "K"; enabled: meshEdit.on && !meshEdit.needsEdit && !typing; onActivated: meshEdit.toggleKnife() }
-    KeyShortcut { sequence: "Return"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
-    KeyShortcut { sequence: "Enter"; enabled: meshEdit.knifing; onActivated: meshEdit.knifeApply() }
-    KeyShortcut { sequence: "1"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("points") }
-    KeyShortcut { sequence: "2"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("edges") }
-    KeyShortcut { sequence: "3"; enabled: meshEdit.on && !meshEdit.needsEdit; onActivated: meshEdit.setKind("faces") }
-    KeyShortcut { sequence: "`"; enabled: viewport.hasShot && !startScreen.visible   // shot camera <-> free camera
-               onActivated: viewport.setMode(viewport.mode === "shot" ? "free" : "shot") }
-    KeyShortcut { sequence: "Delete"; enabled: backend.adder.canDelete; onActivated: backend.adder.remove() }
-    KeyShortcut { sequence: "Ctrl+D"; enabled: backend.adder.canDuplicate; onActivated: backend.adder.duplicate() }
-    KeyShortcut { sequence: "Ctrl+1"; onActivated: backend.setPage("build") }
-    KeyShortcut { sequence: "Ctrl+2"; onActivated: backend.setPage("animate") }
-    KeyShortcut { sequence: "Ctrl+3"; onActivated: backend.setPage("render") }
-    KeyShortcut { sequence: "R"; enabled: !startScreen.visible; onActivated: rail.openGroup("shapes") }
-    KeyShortcut { sequence: "T"; enabled: !startScreen.visible; onActivated: rail.openGroup("type") }
-    KeyShortcut { sequence: "L"; enabled: !startScreen.visible; onActivated: rail.openGroup("lights") }
-    KeyShortcut { sequence: "C"; enabled: !startScreen.visible; onActivated: rail.openGroup("camera") }
-    KeyShortcut { sequence: "P"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: rail.openPanel("poses") }
-    KeyShortcut { sequence: "O"; enabled: !startScreen.visible && backend.page === "animate" && !typing; onActivated: viewport.onionSkin.toggle() }
-    // the gizmo (gizmo_qt.py): V all handles, W move, E turn, S scale; K keys what it moved; D held: the pivot
-    KeyShortcut { sequence: "V"; enabled: !startScreen.visible; onActivated: gizmo.setShow("all") }
-    KeyShortcut { sequence: "W"; enabled: !startScreen.visible; onActivated: gizmo.setShow("move") }
-    KeyShortcut { sequence: "E"; enabled: !startScreen.visible; onActivated: gizmo.setShow("turn") }
-    KeyShortcut { sequence: "S"; enabled: !startScreen.visible; onActivated: gizmo.setShow("scale") }
-    KeyShortcut { sequence: "K"; enabled: !startScreen.visible && backend.selected !== "" && !meshEdit.on; onActivated: gizmo.keyMoved() }
+    KeyMap { hub: backend.actions; typing: shell.typing; skip: backend.actions.skip }
+    readonly property var windowJobs: ({
+        shapes_menu: () => rail.openGroup("shapes"), type_menu: () => rail.openGroup("type"),
+        lights_menu: () => rail.openGroup("lights"), camera_menu: () => rail.openGroup("camera"),
+        poses_panel: () => { if (backend.page === "animate") rail.openPanel("poses") },
+        quit: () => Qt.quit()
+    })
+    Connections { target: backend.actions; function onWindowJob(job) { const run = shell.windowJobs[job]; if (run) run(); else shell.runJob(job) } }   // else the kit's (undo, Export, History, Guides, Keys …)
 
     menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu
@@ -123,7 +86,7 @@ AppShell {
             onPicked: (v) => v === "+view" ? backend.newShotFromView() : v === "+shot" ? backend.showShot(backend.adder.add("shot")) : backend.showShot(v)
         }
     }
-    tools: Segmented {   // the pages (Ctrl+1 / 2 / 3)
+    tools: Segmented {   // the pages (Alt+1 / 2 / 3)
         anchors.verticalCenter: parent ? parent.verticalCenter : undefined
         options: [{ value: "build", label: "Build" }, { value: "animate", label: "Animate" }, { value: "render", label: "Render" }]
         current: backend.page

@@ -83,7 +83,7 @@ Nothing fits by one setting alone? Shorten the frames on the shot.
 
 ## The Render page and its queue
 
-Click **Render** among the pages (Ctrl+3). The top bar's Render button is not there on this page: the settings panel
+Click **Render** among the pages (Alt+3). The top bar's Render button is not there on this page: the settings panel
 has its own.
 
 - **Settings panel** (nothing selected): the shown shot's render settings, the same rows as the sheet (Quality, Size,

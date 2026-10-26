@@ -1,5 +1,6 @@
-"""The screen's side of Rostrum3D's action list (actions3d.py): one kit ActionHub (read in QML as `backend.actions`)
-feeds the settings panel's actions, and hover preview. A slot mix-in for Bridge3D.
+"""The screen's side of Rostrum3D's action list (actions3d.py): one kit ActionHub (read in QML as `backend.actions`, with
+the key map's jobs: key_routes3d.KeyHub3D) feeds the settings panel's actions, right-click (`menu()`), Ctrl+K's Do rows,
+the keys, and hover preview. A slot mix-in for Bridge3D.
 
 Hover preview (2D's ActionPreview, same idea): while the pointer rests on Combine's Union, Subtract or Intersect (or a lens), the
 viewport shows the result. The action's calls run on a scratch copy of the document (`run.plan`: pure, the live document
@@ -13,9 +14,9 @@ from __future__ import annotations
 from rostrum3d.compile import describe
 from rostrum_core import run
 from rostrum_core.errors import RostrumError
-from rostrum_gui.action_hub import ActionHub
 
 from .actions3d import LIST, Facts, bevel_fits
+from .key_routes3d import KeyHub3D
 
 PREVIEWABLE = {"combine.make", "camera.set"}     # a lens rested on shows through the camera
 
@@ -25,12 +26,19 @@ class ActionPreview3D:
 
     def _make_actions(self):
         self._fits = {}                  # the engine's last bevel refusal: {item: largest bevel that fits} (actions3d.py)
-        self._hub = ActionHub(LIST, lambda: Facts(self.doc, list(self.selection), self._fits), lambda f: self.selection_label(f.ids),
-                              self._act_apply, self._act_do, self._set_status, self,
-                              preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
+        self._copied = ""                # the material Copy material took (screen state; Paste material makes the change)
+        self._hub = KeyHub3D(self, LIST, self._facts3d, lambda f: self.selection_label(f.ids),
+                             self._act_apply, self._act_do, self._set_status,
+                             preview_fn=self._preview_calls, unpreview_fn=self._preview_end)
         self.selectedItemsChanged.connect(self._hub.refresh)
         self.docChanged.connect(self._hub.refresh)
         self._hub.refresh()
+
+    def _facts3d(self) -> Facts:
+        vp = getattr(self, "viewport", None)
+        screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
+                  "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False}
+        return Facts(self.doc, list(self.selection), self._fits, screen)
 
     def engine_said(self, line: str) -> None:
         """The viewport's last engine answer ("" = a picture came): a bevel refusal offers the largest that fits."""
@@ -55,6 +63,27 @@ class ActionPreview3D:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
         if name == "send-2d":
             return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
+        if name in ("duplicate", "delete"):
+            return self.add.duplicate() if name == "duplicate" else self.add.remove()    # adding.py: one change, the copy picked
+        if name == "copy-material":
+            self._copied = self.doc.item(self.selected)["material"]
+            self._hub.refresh()
+            return self._set_status(f"Copied the material {self.label_of(self.doc.item(self._copied))}")
+        if name == "paste-material":
+            sel = self.selected
+            return self._guard(lambda: self._done(self.doc.apply([self.edit_call(sel, "material", self._copied)], self.who,
+                                                                 label="Paste material"), ""))
+        if name == "lipsync":
+            return self.open_lipsync(self.selected)
+        vp = getattr(self, "viewport", None)
+        if vp is not None and name == "look-through":
+            return vp.setMode("light")
+        if vp is not None and name == "link-lights":
+            return vp.place.start("link", self.selected)
+        if vp is not None and name == "shot-view":
+            return vp.setMode("shot")
+        if name == "new-shot":
+            return self.newShotFromView()
         raise ValueError(f'action {entry["id"]}: Rostrum3D has no "{name}" action')
 
     def _preview_calls(self, calls) -> None:

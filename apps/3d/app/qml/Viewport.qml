@@ -49,6 +49,7 @@ Rectangle {
     ContextMenu3D { id: ctx }
     function openContext(id) { ctx.openAt(vp, width / 2, height / 2, id) }   // (the scripted `context` step)
     MouseArea {      // right-click: pick what is under the pointer, then the menu for it (the pick answers later)
+        id: rightArea
         anchors.fill: parent
         acceptedButtons: Qt.RightButton
         property real px: 0
@@ -61,9 +62,9 @@ Rectangle {
         Connections {
             target: viewport
             function onPicked(id) {
-                if (!parent.pending) return
-                parent.pending = false
-                ctx.openAt(vp, parent.px, parent.py, id)
+                if (!rightArea.pending) return
+                rightArea.pending = false
+                ctx.openAt(vp, rightArea.px, rightArea.py, id)
             }
         }
     }
@@ -99,7 +100,6 @@ Rectangle {
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 
-    KeyShortcut { sequence: "Esc"; enabled: backend.adder.armed !== ""; onActivated: backend.adder.disarm() }
     HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
     // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc
