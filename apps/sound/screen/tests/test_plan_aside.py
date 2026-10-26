@@ -1,5 +1,5 @@
 """A big amounts step planned on a worker thread (rostrum_gui/plan_aside.py: Repeat x4 on a whole song) keeps exactly
-what the same step planned at once keeps; a newer step makes an older one void; Esc's drop leaves the song as before."""
+what the same step planned at once keeps; a newer step makes an older one void, the same one asked again keeps its plan; Esc's drop leaves the song as before."""
 import copy
 import time
 
@@ -54,6 +54,9 @@ def test_planned_aside_keeps_what_planned_at_once_keeps():
     d = Drag(aside_doc, P, "Repeat")
     aside.start(d, d.fresh_calls(_calls(aside_doc, 2)), said.append)
     aside.start(d, d.fresh_calls(_calls(aside_doc, 4)), said.append)      # newer: the first is void
+    gen = aside._gen
+    aside.start(d, d.fresh_calls(_calls(aside_doc, 4)), said.append)      # the same asked again: that plan goes on
+    assert aside._gen == gen
     _land(aside)
     assert said == [None]
     d.end()

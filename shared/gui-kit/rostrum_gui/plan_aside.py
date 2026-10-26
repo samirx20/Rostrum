@@ -42,7 +42,10 @@ class PlanAside(QObject):
 
     def start(self, drag, calls, done):
         """Plan `calls` (worked out already: Drag.fresh_calls) for `drag` aside; then show them and call `done(error)`
-        (None, or the RostrumError the plan raised: the last good state stays shown)."""
+        (None, or the RostrumError the plan raised: the last good state stays shown). The same calls asked again while
+        they are being planned keep that plan (a re-ask each frame voided it and nothing ever landed)."""
+        if self._busy is not None and self._busy[2] is drag and self._busy[3] == calls:
+            return None
         self._gen += 1
         gen = self._gen
         fut = _pool().submit(drag.plan, calls)
