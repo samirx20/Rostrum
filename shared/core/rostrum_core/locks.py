@@ -13,28 +13,34 @@ from .errors import RostrumError, codes
 from .tree import walk
 
 
-def _holder(idx, id_):
-    """The item itself or the nearest parent that is locked, else None."""
-    while id_ is not None and id_ in idx:
-        if idx[id_].item.get("locked"):
-            return idx[id_].item
-        id_ = idx[id_].parent
-    return None
+def _holder(idx, id_, known=None):
+    """The item itself or the nearest parent that is locked, else None. `known`: parent id -> its answer, kept by the
+    caller across many items (a whole-song Shift asks each track once, not once per note)."""
+    loc = idx.get(id_) if id_ is not None else None
+    if loc is None:
+        return None
+    if loc.item.get("locked"):
+        return loc.item
+    if known is None:
+        return _holder(idx, loc.parent)
+    if loc.parent not in known:
+        known[loc.parent] = _holder(idx, loc.parent, known)
+    return known[loc.parent]
 
 
-def _held(e, idx, lists):
-    """(the locked item that holds this edit's change, the item changed), or (None, None)."""
+def _held(e, idx, lists, known):
+    """(the locked item that holds this edit's change, the item changed), or (None, None). `known`: see _holder."""
     if isinstance(e, E.Shift):                          # (never the `locked` field: edits.Shift refuses it)
-        return next(((h, i) for i in e.ids if (h := _holder(idx, i)) is not None), (None, None))
+        return next(((h, i) for i in e.ids if (h := _holder(idx, i, known)) is not None), (None, None))
     if isinstance(e, E.Set):
         if e.path and e.path[0] == "locked":            # locking / unlocking the item itself: ask its parents only
             return _holder(idx, idx[e.id].parent if e.id in idx else None), e.id
-        return _holder(idx, e.id), e.id
+        return _holder(idx, e.id, known), e.id
     if isinstance(e, E.Remove):
         inner = next((i for i in walk(e.item, lists) if i.get("locked")), None)
-        return (inner, e.id) if inner is not None else (_holder(idx, e.parent), e.id)
+        return (inner, e.id) if inner is not None else (_holder(idx, e.parent, known), e.id)
     if isinstance(e, E.Insert):
-        return _holder(idx, e.parent), e.id
+        return _holder(idx, e.parent, known), e.id
     places = [e.id] + [p[0] for p in (e.from_, e.to) if p]
     return next(((h, e.id) for p in places if (h := _holder(idx, p)) is not None), (None, None))
 
@@ -55,9 +61,10 @@ def _agent_unlock(e, idx, who, locked_by) -> None:
 def check(edits, idx, lists, where, locked_by=None, who=None) -> None:
     """Refuse (raise) when any of these edits changes a locked item or something inside one, or when an agent (`who`)
     unlocks what a person locked. `locked_by(id)`: the Who that last set the item's lock, or None."""
+    known = {}                                          # parent id -> its holder: all edits see the same state
     for e in edits:
         _agent_unlock(e, idx, who, locked_by)
-        held, changed = _held(e, idx, lists)
+        held, changed = _held(e, idx, lists, known)
         if held is None:
             continue
         by = locked_by(held["id"]) if locked_by else None

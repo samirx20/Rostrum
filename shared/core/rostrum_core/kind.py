@@ -14,6 +14,23 @@ from .tree import View, fields, walk
 SHAPE_ERRORS = (KeyError, TypeError, ValueError, AttributeError, IndexError)   # an app check reading a wrong shape
 
 
+_PLAIN = (str, int, float, bool)
+
+
+def _seen_key(kind, name, value):
+    """What a passed value is remembered by in bad_values (None: not remembered): a plain value with its type, or a
+    one-key dict of a plain value (a time {"beat": 8.0}: a whole-song move checks ~1,800 distinct of 3,352), types
+    kept so 1 and 1.0 are told apart. Checks are pure: the same value of the same field passes the same way."""
+    t = type(value)
+    if t in _PLAIN:
+        return kind, name, t, value
+    if t is dict and len(value) == 1:
+        for k, v in value.items():
+            if type(v) in _PLAIN:
+                return kind, name, k, type(v), v
+    return None
+
+
 def _no_problems(data) -> list[str]:
     return []
 
@@ -116,7 +133,7 @@ class DocKind:
                 p = params[kind, name] if (kind, name) in params else params.setdefault((kind, name), op.param(name))
                 if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
                     continue
-                seen = (kind, name, type(value), value) if type(value) in (str, int, float, bool) else None
+                seen = _seen_key(kind, name, value)
                 if seen in passed:
                     continue
                 where = f'{item.get("type")} "{item.get("id")}"'

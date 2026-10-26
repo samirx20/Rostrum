@@ -151,15 +151,15 @@ def changed_items(edits, idx, lists) -> list[dict]:
 
 
 def set_fields(edits) -> dict:
-    """item id -> the top-level fields these edits set, for items only Set (an inserted item, or one whose kind
+    """item id -> the top-level fields these edits set (a frozenset), for items only Set (an inserted item, or one whose kind
     changed, is checked whole). A field nobody set holds what passed the check before."""
     out, whole = {}, set()
     for e in edits:
-        if isinstance(e, E.Shift):
-            for i in e.ids:
-                out.setdefault(i, set()).add(e.path[0])
-        elif isinstance(e, E.Set) and e.path[0] != "type":
-            out.setdefault(e.id, set()).add(e.path[0])
+        if isinstance(e, (E.Shift, E.Set)) and e.path[0] != "type":   # (a Shift never moves "type": edits refuses it)
+            one = frozenset(e.path[:1])             # one set shared by a Shift's 3,352 notes; joined, never changed
+            for i in E.ids(e):
+                have = out.get(i)
+                out[i] = one if have is None else have | one
         elif isinstance(e, (E.Insert, E.Set)):
             whole.add(e.id)
     for i in whole:

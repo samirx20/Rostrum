@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)                   # many thousands are made per whole-song edit: no per-object dict
 class Loc:
     item: dict
     parent: str | None     # parent item id (None for the root)
