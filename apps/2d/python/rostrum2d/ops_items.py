@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-from rostrum_core import Param
+from rostrum_core import PLUGIN_ITEM, Param
 from rostrum_core.errors import codes
 
 from . import fields as F
@@ -94,7 +94,7 @@ def layer_add(ctx, targets, args):
             ctx.insert(item["id"], "frames", starter_frame(ctx, args.get("frame", 0)))
 
 
-@R.operation("layer.remove", "Delete layers (with their effects, masks and keys). Never a scene's frame.", target=F.LAYERS,
+@R.operation("layer.remove", "Delete layers (with their effects, masks and keys). Never a scene's frame.", target=(*F.LAYERS, PLUGIN_ITEM),
              label="Delete", importance="secondary")    # the frame is a target so screens can pick it (layer_order.py)
 def layer_remove(ctx, targets, args):
     from .rig.ops import drop_binds
@@ -170,7 +170,7 @@ def item_rename(ctx, targets, args):
         ctx.set(t, "name", args["name"])
 
 
-@R.operation("layer.arrange", "Move a layer in the stack, or into another group or composition.", target=F.PLACED,
+@R.operation("layer.arrange", "Move a layer in the stack, or into another group or composition.", target=(*F.PLACED, PLUGIN_ITEM),
              label="Arrange", importance="secondary",
              params=[Param.id("into", label="Into", help="A group or composition; the layer's own when left out"),
                      Param.number("index", label="Position", min=0, max=100000, integer=True, required=True,

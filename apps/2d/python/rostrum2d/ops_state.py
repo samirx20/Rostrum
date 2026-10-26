@@ -3,22 +3,22 @@
 `hidden`; fields.py STATE), these are the one-step ways to change several at once."""
 from __future__ import annotations
 
-from rostrum_core import Param
+from rostrum_core import PLUGIN_ITEM, Param
 
 from . import fields as F
 from .kind import REGISTRY as R
 
-LAYERS = F.PLACED          # hide: never the frame (it is what is exported); lock: the frame too (its Locked switch)
+LAYERS = (*F.PLACED, PLUGIN_ITEM)          # hide: never the frame (it is what is exported); lock: the frame too (its Locked switch)
 
 
 @R.operation("layer.lock", "Lock layers: they can't be picked or dragged on the screen and operations refuse them until "
-             "layer.unlock.", target=F.LAYERS, label="Lock", importance="secondary")
+             "layer.unlock.", target=(*F.LAYERS, PLUGIN_ITEM), label="Lock", importance="secondary")
 def layer_lock(ctx, targets, args):
     for t in targets:
         ctx.set(t, "locked", True)
 
 
-@R.operation("layer.unlock", "Unlock layers.", target=F.LAYERS, label="Unlock", importance="secondary")
+@R.operation("layer.unlock", "Unlock layers.", target=(*F.LAYERS, PLUGIN_ITEM), label="Unlock", importance="secondary")
 def layer_unlock(ctx, targets, args):
     for t in targets:
         ctx.set(t, "locked", False)
