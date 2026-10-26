@@ -19,6 +19,7 @@
 #include "cycles_lights.h"
 #include "light_extras.h"
 #include "passes.h"
+#include "perf_counters.h"
 #include "surface_spot.h"
 #include "view_camera.h"
 
@@ -282,13 +283,15 @@ JsObject Core::view(const JsObject& o) {
   const GpuMem now = mem_.sample();
   JsArray missing;  // product lighting the quick view can't show (light_extras.h): said, never faked
   for (const std::string& note : light_extras().stormNotes) missing.push_back(JsValue(note));
-  return JsObject{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
+  JsObject reply{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
                   {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun}, {"cameraDof", JsValue(bool(lens))},
                   {"notInQuickView", JsValue(missing)}, {"final", final},
                   {"vram", JsValue(JsObject{{"processMb", JsValue(r1(now.processMb))},
                                             {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
                                             {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
                   {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
+  if (perf_on()) reply["perf"] = JsValue(perf_moved());  // ROSTRUM3D_PERF=1: Storm's counters that moved
+  return reply;
 }
 
 JsObject Core::pick(const JsObject& o) {

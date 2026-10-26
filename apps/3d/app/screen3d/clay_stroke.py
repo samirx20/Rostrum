@@ -18,6 +18,7 @@ import time
 from PySide6.QtCore import Slot
 
 from . import clay_ring as R
+from . import dab_trace
 
 WORDS = {"add": "Add", "carve": "Carve", "smooth": "Smooth", "pull": "Pull", "flatten": "Flatten", "crease": "Crease",
          "mask": "Mask"}
@@ -62,6 +63,8 @@ class ClayStroke:
         self._shift_ring(x, y)
         if self._phase == "orbit":
             return self.v.orbit(dx, dy)
+        if not self._pending:
+            self._t_first = dab_trace.now()                 # the oldest move a request carries (dab_trace.py)
         self._pending.append(self._px(x, y, pressure))
         if self._phase == "sculpt" and not self._busy:
             self._send("dab", self._take())
@@ -109,20 +112,35 @@ class ClayStroke:
         # next pointer event; the Final look (Cycles) keeps its own progressive pictures
         view = self.v._request() if phase in ("begin", "dab") and not self.v.final.on else None
         worker = self.v._r
+        rec = {"tMove": getattr(self, "_t_first", dab_trace.now()), "tSend": dab_trace.now(), "phase": phase,
+               "brush": self._stroke["brush"], "points": len(points)} if dab_trace.on() and view is not None else None
 
         def job(eng):
             t0 = time.perf_counter()
             try:
+                if rec is not None:
+                    rec["tJob"] = dab_trace.now()
                 eng.ensure_scene(scene)
                 t1 = time.perf_counter()
                 if view is None:
                     out = _sculpt(eng, req)
                 else:
+                    if rec is not None:
+                        rec["tEng0"] = dab_trace.now()
                     out, pic = eng.sculpt_view(view, **req)
+                    if rec is not None:
+                        rec["tEng1"] = dab_trace.now()
+                        rec.update({k: out.get(k) for k in ("dabMs", "dabs", "applyMs", "meshMs", "usdMs", "blocks")})
+                        if pic is not None:
+                            t = pic[4].get("timing", {})
+                            rec.update(drawMs=t.get("drawMs"), totalMs=t.get("totalMs"), perf=pic[4].get("perf"))
                     if pic is not None:
-                        worker.show(*pic)
+                        serial = worker.show(*pic, trace=rec)
                         out["pictured"] = True
                         del pic
+                        if rec is not None and dab_trace.RECORDS is not None:
+                            rec["serial"] = serial
+                            dab_trace.RECORDS.append(rec)
                 if isinstance(out, dict):
                     out["ensureMs"], out["askMs"] = (t1 - t0) * 1000, (time.perf_counter() - t1) * 1000
             except Exception as e:  # noqa: BLE001  said on the status line, never a silent miss

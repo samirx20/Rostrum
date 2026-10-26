@@ -18,7 +18,7 @@ from PySide6.QtGui import QGuiApplication
 
 from rostrum3d import aim, ops_mesh, through
 
-from . import placing, shot_frame
+from . import dab_trace, placing, shot_frame
 from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
@@ -365,6 +365,7 @@ class Viewport(QObject):
     # --- answers from the worker
     def _on_ready(self, serial, ms, dome, cam_dof=False, extra=None):
         self._serial, self._ms = serial, ms
+        dab_trace.ready(serial)                          # (nothing unless tools/clay_hops.py traces dabs)
         if self.final.on and (extra or {}).get("final") is not None:
             step = self.final.take(extra)
             if step == "leave":

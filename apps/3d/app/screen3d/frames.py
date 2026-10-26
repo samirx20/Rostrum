@@ -90,14 +90,22 @@ class ViewRenderer(PictureWorker):
         for line in eng.take_notices():
             self.notice.emit(line)
 
-    def show(self, view, width, height, stride, reply):
-        """A picture the engine drew (a view, or the one a sculpt event drew with its dab) as the newest one."""
+    def show(self, view, width, height, stride, reply, trace=None) -> int:
+        """A picture the engine drew (a view, or the one a sculpt event drew with its dab) as the newest one; its
+        serial. `trace`: a dab_trace record, given the copy's times."""
+        from . import dab_trace
+        if trace is not None:
+            trace["tCopy0"] = dab_trace.now()
         image = image_from_pixels(view, width, height, stride)
         if image.isNull():
             raise RuntimeError("the engine's picture could not be read from its shared memory")
-        self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
+        serial = self.publish(image)
+        if trace is not None:
+            trace["tCopy1"] = dab_trace.now()
+        self.ready.emit(serial, float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
                         bool(reply.get("cameraDof", False)),
                         {"final": reply.get("final"), "vram": reply.get("vram")})
+        return serial
 
     def describe(self, job, error):
         return f"Error: viewport {job[0]} at frame {job[2].get('frame')}: {error}"
