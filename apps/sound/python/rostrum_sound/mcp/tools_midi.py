@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
-from .. import midi
+from .. import deliver, midi
 from ..doc import markers
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
@@ -35,14 +35,15 @@ def register(tools: Tools):
                      {"tracks": new, "seq": doc.seq}, warnings=skipped, changed=changed)
 
     @tools.tool("render_midi", {"properties": {**ITEM,
-        "path": {"type": "string", "description": "Where to write the .mid; left out = renders/<item>/midi/<item>.mid."}}})
+        "path": {"type": "string", "description": "Where to write the .mid; left out = renders/<item>/midi/<item>.mid."},
+        "name": {"type": "string", "description": "The file's name without .mid, as the Export sheet's name field (in the default folder). Default: the item's id. Ignored when `path` is given."}}})
     def render_midi(ctx, args):
         """Write the document as a MIDI file (format 1): every track's notes and drum hits (channel 10), its sustain,
         dynamics, vibrato and bend lanes (CC 64, CC 11, CC 1, the pitch wheel; bendRange as RPN 0), the tempo
         map, time signature, key changes, markers, and sections as cue points. Returns a job."""
         doc = ctx.document(args.get("item"))
         item, root = doc.item_id, doc.data
-        out = args.get("path") or str(ctx.app.state.renders(item) / "midi" / f"{item}.mid")
+        out = args.get("path") or str(ctx.app.state.renders(item) / "midi" / f"{deliver.safe_name(args['name'], set(), item) if args.get('name') else item}.mid")
 
         def work(job):
             skipped = midi.export(root, out)

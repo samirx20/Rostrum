@@ -64,7 +64,8 @@ def register(tools: Tools):
                        "description": "Hz: 44100 (music), 48000 (video), 96000 (high resolution; not for mp3). Default: the document's rate."},
         "trim": {"type": "boolean", "default": True, "description": "Trim the silent end: the mix and every stem stop at the music's last audible sound (above -80 dBFS) plus a short tail, all the same length. False: the song's full length."},
         "from": {"description": "Only a part of the song: where the file starts (seconds, a beat or a marker, like any time). Needs `to`. The engine renders the part itself, mastered and measured on its own, so the loudness is the part's; the silent end is trimmed only if `trim` is on."},
-        "to": {"description": "Where the part ends (a time). Needs `from`."}}})
+        "to": {"description": "Where the part ends (a time). Needs `from`."},
+        "name": {"type": "string", "description": "The mix file's name without its type (\"Launch theme\" -> Launch theme.wav), as the Export sheet's name field. Default: <item>_mix. Characters a file name can't hold are replaced; stems keep their track names. Not for a listening check (solo / mute)."}}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them. Returns a job."""
@@ -97,11 +98,11 @@ def register(tools: Tools):
                                          stemsDir=str(out.parent / "stems"))
             else:
                 r = handoff.render(state.folder, doc, state.engine, schedule, who, stems=stems, master=master, options=options,
-                                   markers_file=bool(args.get("markers")))
+                                   markers_file=bool(args.get("markers")), name=args.get("name") or "")
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
             return Reply(summary(r, goal), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
 
-        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options)))}")
+        return ctx.job(f"render {item}", work, key=f"render:{item}:{hash(str((schedule, options, args.get('name'))))}")

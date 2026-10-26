@@ -6,13 +6,15 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 - **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound; before that, Ctrl+E says "Nothing to export yet: add a sound first".
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
-  closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type, **+ Another version**, **Stems**, **Cut the silence**, **More**, and the folder with its file name just above **Export**.
-  The chosen target shows in the picker. The folder shows as its last two names ("song / v001"); the whole path is on hover.
+  closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type, **+ Another version**, **Stems**, **Cut the silence**, **More**, and the file's name (a box, the file type after it) with the folder under it, just above **Export**.
+  The chosen target shows in the picker. The folder line shows exactly where the file will land, the new version folder included (`…\renders\song\v001`); a long path leaves its middle out, the whole of it on hover.
+enders\song001`).
+enders\song001`).
 - **Ctrl+Shift+E** exports again with the last settings, without opening the sheet.
 
 ## 1. What for
 
-What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button. The sheet opens with the choices the song's last export was made with (file type, trimming, stems, markers file), so a new window doesn't quietly drop the stems. Every choice on the sheet keeps its value when you change another (changing the target leaves Stems as you set it), and the sheet never moves under the pointer: the range picker's place at the top stays empty until the song has a section or a time range.
+What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's name sits just above the **Export** button: click the box and type the name you want (the file type stays after it); the line under it shows the exact folder the file lands in. The sheet opens with the choices the song's last export was made with (file type, trimming, stems, markers file), so a new window doesn't quietly drop the stems. Every choice on the sheet keeps its value when you change another (changing the target leaves Stems as you set it), and the sheet never moves under the pointer: the range picker's place at the top stays empty until the song has a section or a time range.
 
 Pick where it is going. The list starts with **As the mix plays now** (it says "No loudness target": nothing is changed; it is there while the song's loudness matches no choice, and it goes once you pick one), then **Streaming**, **Apple Music**, **Broadcast**, **US TV**, **Podcast** and **MIDI file**. Each target choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
 
@@ -94,7 +96,8 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 Each export goes into its own numbered folder in the song's folder, `renders\<song>\v001`, then `v002` and so on.
 Nothing is overwritten.
 
-- The mix: `<song>_mix` in the chosen format (agents get the same file from `render_mix`: `renders/<song>/vNNN/<song>_mix.wav`, absolute path in the reply's `file`). The sheet shows this exact name and the next version folder before you
+- The mix: `<song>_mix` in the chosen format unless you name it (the name box; agents give `name` on `render_mix`, and on `render_midi` for the MIDI file). Characters a file name can't hold are replaced, and
+  emptying the box goes back to `<song>_mix`. Agents get the same file from `render_mix`: `renders/<song>/vNNN/<song>_mix.wav`, absolute path in the reply's `file`. The sheet shows this exact name and the next version folder before you
   export; **Browse** copies the mix into your folder under the same name.
 - With stems: one file per track (named after it) and one per group. A track with nothing in it still gets its file, silent; the
   result line names it ("silent: Recording").
