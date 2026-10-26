@@ -106,11 +106,15 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
             return self.history.changes[-1]
         return self.commit(work, edits, who, label, calls, session, idx=idx)
 
-    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=(), idx=None, format=None) -> Change:
+    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=(), idx=None, format=None,
+               intent=None) -> Change:
         """Record an already-checked new tree as one change (used by apply, undo, merge, gestures). Live (live.py): if
         the door took in another program's steps first, `work` is an older picture, so the edits go on top of now.
-        `idx`: work's index, when known. `format`: [from, to], an upgrade's file formats (formats.py)."""
+        `idx`: work's index, when known. `format`: [from, to], an upgrade's file formats (formats.py). `intent`: how
+        to make this step again from the state before it (pending.py: a gesture whose calls rebuild its end)."""
         with self._door() as caught:
+            if intent is not None:
+                self._intent = intent
             if caught:
                 work, idx = E.fork(self.data, self.kind.lists, self._index())
                 edits = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]

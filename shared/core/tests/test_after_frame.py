@@ -73,3 +73,14 @@ def test_undo_right_after_a_change_works_and_both_are_kept(tmp_path):
     doc.live.flush()
     reopened = Document.open(tmp_path, "itm", toy.KIND)
     assert reopened.seq == 2 and reopened.item("card")["x"] == 0 and not reopened.notes
+
+
+def test_a_crash_right_after_a_live_box_is_kept_still_has_it(tmp_path):
+    """Stagger…'s and the amounts popover's box (a fresh gesture): Enter keeps it, and a crash before its line keeps
+    it too."""
+    toy.sample(tmp_path, "itm").save()
+    _killed_after(tmp_path, ["with doc.gesture('Move', SAM) as g:",
+                             "    g.preview([move(10)], fresh=True)",
+                             "    g.preview([move(55)], fresh=True)"])
+    doc = Document.open(tmp_path, "itm", toy.KIND)
+    assert doc.item("card")["x"] == 55 and doc.seq == 1

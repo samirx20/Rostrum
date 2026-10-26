@@ -9,7 +9,7 @@ document back (None: can't tell), so listeners redo only what the drag had touch
 from __future__ import annotations
 
 from . import edits as E
-from . import run
+from . import pending, run
 from .diff import diff, touched
 from .document import Event
 from .errors import RostrumError, codes
@@ -115,7 +115,9 @@ class Gesture:
         edits = self._made if self._made is not None else diff(
             self.start, end, self.doc.kind.lists, self._start_idx, end_idx, self._near)   # (a Shift stays one edit)
         if edits:
-            self.change = self.doc.commit(end, edits, self.who, self.label, self._calls, idx=end_idx)
+            again = pending.intent("apply", self.who, self.label, self._calls) if self._made is not None else None
+            self.change = self.doc.commit(end, edits, self.who, self.label, self._calls, idx=end_idx,
+                                          intent=again)    # (a fresh step: start + its calls is exactly the end)
         else:
             self.doc._emit(Event("reset", edits=[]))
         return False
