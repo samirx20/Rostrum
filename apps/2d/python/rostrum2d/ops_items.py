@@ -115,19 +115,30 @@ def _by(name, label, unit, **kw):
              "with its keys, effects, masks and layers inside it copied under new ids. Without `by_x` / `by_y` / `by_turn` / "
              "`by_scale` it is nudged 24 px right and down (further for each more copy, so none sits exactly on another). "
              "With them, `times` copies (1 to 200) each take that step from the one before, as one change: "
-             "{by_x: 240, times: 7} makes a row of eight. `by_scale` is a factor (1.1 = a tenth bigger each).",
+             "{by_x: 240, times: 7} makes a row of eight. `by_scale` is a factor (1.1 = a tenth bigger each). `copy_ids` names "
+             "the copies: \"icon_{n}\" gives icon_1, icon_2 … (n counts from 1, up the stack from the original), as id and name.",
              target=F.PLACED, label="Duplicate", importance="secondary",
              params=[_by("by_x", "Step across", "px"), _by("by_y", "Step down", "px"), _by("by_turn", "Step turn", "°"),
                      Param.number("by_scale", label="Step scale", unit="×", min=0.01, max=100, importance="secondary"),
                      Param.number("times", label="Copies", min=1, max=200, integer=True, default=1, importance="secondary",
-                                  help="How many copies, each one step on from the last")])
+                                  help="How many copies, each one step on from the last"),
+                     Param.text("copy_ids", label="Copy ids", importance="deep",
+                                help='Ids for the copies, {n} the number of each: "icon_{n}"')])
 def layer_duplicate(ctx, targets, args):
     from rostrum_core import ids
     from rostrum_core.tree import bare, child_keys
     lists = ctx.kind.lists
 
-    def put(item, parent, key, at, taken, step=0):
-        new = stepped({**bare(item, lists), "id": ids.counted(taken, item["type"])}, step)
+    pattern = args.get("copy_ids")
+    if pattern is not None and ("{n}" not in pattern or len(targets) > 1):
+        ctx.fail(codes.BAD_ARGUMENT, "copy_ids", f'"{pattern}" names the copies of one layer and holds {{n}}, the number of each copy',
+                 ['"icon_{n}"'], hint="Duplicate one layer at a time to name its copies.")
+
+    def put(item, parent, key, at, taken, step=0, id_=None):
+        if id_ is not None and (id_ in taken or not ids.is_valid(id_)):
+            ctx.fail(codes.BAD_ARGUMENT, "copy_ids", f'"{id_}" is already in the document or not a usable id (letters, digits, '
+                     "_ . -; not starting with a digit)", hint="Pick another pattern, e.g. a word no layer uses yet.")
+        new = stepped({**bare(item, lists), "id": id_ or ids.counted(taken, item["type"])}, step)
         taken.add(new["id"])
         ctx.insert(parent, key, new, at)
         for k in child_keys(item, lists):
@@ -146,8 +157,8 @@ def layer_duplicate(ctx, targets, args):
         taken, at, name = set(idx), loc.index + 1, re.sub(r" copy( \d+)?$", "", display_name(loc.item)) + " copy"   # a copy's copy: "copy 2", never "copy copy"
         for n in range(1, args.get("times", 1) + 1):
             step = (n * dx, n * dy, n * turn, ratio ** n) if given else first + n - 1
-            copy = put(loc.item, loc.parent, loc.key, at, taken, step)
-            ctx.set(copy, "name", unique_name(_names(ctx), name))
+            copy = put(loc.item, loc.parent, loc.key, at, taken, step, pattern and pattern.replace("{n}", str(n)))
+            ctx.set(copy, "name", copy if pattern else unique_name(_names(ctx), name))
             at += 1
 
 

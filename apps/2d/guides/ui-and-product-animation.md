@@ -57,7 +57,35 @@ rounded corners (a phone's screen) give the group a mask with a radius instead, 
 `screen.mask("screen_round", x=0, y=0, w=390, h=844, radius=56)` (see Masks below). `layer.arrange` moves a layer in the
 stack or into another group; `inspect_item` with no `id` lists the tree.
 
-`layer.duplicate {ids: ["card"], by_x: 240, times: 7}` makes a row of eight in one change: each copy takes the step (`by_x`, `by_y` px, `by_turn` degrees, `by_scale` as a factor) from the one before, so a ring is `by_turn: 30, times: 11` (put the anchor at the ring's centre first).
+`layer.duplicate target=["card"] args={by_x: 240, times: 7}` makes a row of eight in one change: each copy takes the step (`by_x`, `by_y` px, `by_turn` degrees, `by_scale` as a factor) from the one before, so a ring is `by_turn: 30, times: 11` (put the anchor at the ring's centre first).
+
+### A grid of copies you can find again
+
+Copies are only useful if you know which is which. Two ways, by who makes them:
+
+- **In a script** (re-runnable: a re-run rebuilds the grid and keeps what a person moved): write one function that
+  builds one item, and call it in a loop with an id made from its place. Row and column are in the id, so `icon_r1_c2`
+  is always the second row's third icon.
+
+  ```python
+  def icon(id, x, y, hue):
+      with group(id, x=x, y=y, adjust=True, hue=hue) as g:
+          shape(f"{id}_bg", w=160, h=160, radius=36, fill="#1f2937")
+          ...                                          # the icon's own layers
+      return g
+
+  for r in range(3):
+      for c in range(3):
+          icon(f"icon_r{r}_c{c}", x=300 + c * 200, y=700 + r * 200, hue=c * 40)
+  ```
+
+- **With `layer.duplicate`** (one change on the document): `copy_ids` names the copies, `{n}` counting from 1 in the
+  order they are made (each one step on from the last, up the stack): `layer.duplicate target=["icon"]
+  args={by_x: 200, times: 2, copy_ids: "icon_c{n}"}` gives `icon_c1`, `icon_c2` to the right of `icon`. For a grid,
+  duplicate the row's group down the same way (`by_y`, `copy_ids: "row_{n}"`). An id that is already used is refused.
+
+Then stagger them in a reading order: `layer.stagger` with `order: "left_to_right"`, `"top_to_bottom"` or `"centre"`
+orders by where each is seen (one that fades or scales in from 0 counts where it is first seen).
 
 ## Boxes, images, video
 
@@ -136,6 +164,30 @@ moves are in `frame-parallax-motion-blur`.
 
 Boxes the look tools report (`look_at`) leave tilt out, so a tilted layer's box is approximate: judge a tilt with
 `look_frame`.
+
+### A card flip
+
+A card with a front and a back is two groups in one, each turned edge-on in turn with `tiltY` (perspective), so the
+back never shows mirrored. At 90° a face is edge-on and invisible, so the swap at that moment can't be seen:
+
+```python
+with group("card", x=960, y=540):
+    with group("front") as front:
+        shape("front_bg", w=360, h=480, radius=24, fill="#f4efe6")
+        ...                                            # the front's layers
+    with group("back") as back:
+        shape("back_bg", w=360, h=480, radius=24, fill="#e0563b")
+        ...                                            # the back's layers
+front.key("tiltY", {0.5: 0, 0.8: (90, "easeIn")})      # turns away until edge-on
+back.key("tiltY", {0.8: -90, 1.1: (0, "easeOut")})     # turns in from edge-on
+front.end = 0.8                                        # the front is gone once edge-on ...
+back.start = 0.8                                       # ... and the back is there from that moment
+```
+
+`tiltX` flips top over bottom the same way. For a flat flip without perspective, key the card's `scaleX` through 0
+instead (Stretch X: 100 % → −100 %), swap the faces where it passes 0 (`end` / `start` as above), and give the back
+`scaleX=-1` so it reads the right way round. Check the turn on a
+sheet over the flip (`look_frame` with `what: "sheet"`).
 
 ## Seeing and checking
 

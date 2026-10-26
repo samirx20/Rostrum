@@ -166,6 +166,15 @@ for i in range(8):                                   # 8 drawings on twos: a 16-
     ...                                              # the pose of drawing i, travelling right across the canvas
 ```
 
+**The walk's numbers.** One cycle is two steps (left, right). Call S the stride: how far the body travels in one
+cycle; that is `loopStepX`. With N drawings in the cycle, drawing i's hip sits `S · i / N` further on than drawing 0's.
+Each foot is planted for half the cycle (it doesn't move on the canvas while planted) and swings forward by S in the
+other half; the second foot does the same half a cycle later and **half a stride (S / 2) further on**. At a contact
+pose the front foot is S / 4 ahead of the hip and the back foot S / 4 behind. The last drawing's planted foot then
+lands exactly where the next repeat's first drawing has it (the repeat sits S on), so nothing slides. Forgetting the
+second foot's S / 2 leaves its leg stretched back in every repeat after the first; check two repeats on a sheet
+(`look_frame` `what: "sheet"` across two cycles).
+
 On the screen they are the drawing layer's **Loop**, **Times** and **Step across / Step down** (Timing); agents
 `set walk loop "loop"`, `set walk loopTimes 6`. A layer moving at a steady speed (a key on `x`) with a walk drawn in
 place is the other way; the step suits a walk drawn with the feet planted. `look_drawing frame=N` says which drawing
