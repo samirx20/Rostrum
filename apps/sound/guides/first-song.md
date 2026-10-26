@@ -162,7 +162,7 @@ The **Colour** row shows the colour the track is drawn in.
 - Click the ruler to move the playhead there. A click on empty space in the arrangement clears the selection and
   makes that track the Editor's, but never moves the playhead; only the ruler (and Play) does.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
-  microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
+  microphone: voice) and its name (one click selects the track and opens the Editor on it when the dock is folded; double-click the name to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
   track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The buttons sit at the same place in every row, tall or short, and a soloed track fills its **S** in green. While any track or group is soloed the top bar shows a green **Solo on: Strings ×**: click it and every solo goes off (a solo holds the other tracks back from the export too). The same is the operation `mix.hear_all` (`what`: `solo`, `mute` or `both`). The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,

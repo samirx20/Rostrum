@@ -50,7 +50,11 @@ Rectangle {
             if (moved) { moved = false; return }
             backend.focusArea("arrange")
             if (m.button === Qt.RightButton) h.menuWanted(m.x, m.y)
-            else backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0)
+            else {
+                const one = !(m.modifiers & (Qt.ControlModifier | Qt.ShiftModifier))
+                backend.clickSelect(h.track.id, (m.modifiers & Qt.ControlModifier) !== 0, (m.modifiers & Qt.ShiftModifier) !== 0)
+                if (one && workspace.dock === "") workspace.setDock("editor")   // one click opens a folded Editor on it (the Mixer, if open, stays)
+            }
         }
         onDoubleClicked: (m) => {
             var nx = nameText.mapToItem(h, 0, 0).x
