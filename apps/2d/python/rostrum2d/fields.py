@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from rostrum_core import Param, plugin_parts
+from rostrum_core import PLUGIN_ITEM, Param, plugin_parts
+from rostrum_core.registry import Kinds as _Kinds
 from rostrum_core.keys import KEY_FIELDS
 
 from . import painting_fields as _painting, blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
@@ -451,6 +452,9 @@ LAYERS = ("shape", "text", "image", "video", "render3d", "group", "drawing", "pa
 # The layers a person or agent adds, deletes, copies, renames and stacks: every one but the frame (type "camera",
 # frame/), which every scene holds exactly one of, made with the scene (frame/rules.py).
 PLACED = tuple(t for t in LAYERS if t != "camera")
+# Whatever the layers list can hold and a person selects, locks, hides, moves and deletes: the layers, and any plugin's
+# item (a kind holding a colon, kept as it is; rostrum_core.plugin_parts). `kind in ROWS` is the one question a screen asks.
+ROWS = _Kinds((*LAYERS, PLUGIN_ITEM))
 # Whether a layer can be picked or changed (locked) and whether it is drawn at all (hidden: not in the preview, not in an
 # export; scene.py leaves it out). Document-only: the engine never sees them (scene.python_only). The frame can be
 # locked (frame/fields.py), never hidden.

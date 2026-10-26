@@ -6,15 +6,18 @@ from __future__ import annotations
 
 import math
 
-from rostrum_core import RostrumError, run
+from rostrum_core import PLUGIN_ITEM, RostrumError, run
+from rostrum_core.registry import Kinds
+from rostrum_sound.doc.registry import REGISTRY
 from rostrum_sound.doc import meter
 from rostrum_sound.doc import select_time as ST
 
 from . import song_edit
 from .facts import TIMED, Facts  # noqa: F401  (Facts is read here by every action file: C.Facts)
+from .plugin_items import known
 from .moves import remove_calls
 
-REMOVABLE = ("note", "hit", "clip", "line", "track", "marker", "section")
+REMOVABLE = Kinds(("note", "hit", "clip", "line", "track", "marker", "section", PLUGIN_ITEM))
 
 
 def call(op, target, /, **args):
@@ -79,9 +82,9 @@ def range_clips(f) -> list[str]:
     if f.one == "clip" and not f.on_range:
         clips = f.items
     elif f.one == "track":
-        clips = [c for t in f.items for c in t.get("clips", [])]
+        clips = [c for t in f.items for c in known(t.get("clips", []))]
     else:
-        clips = f.doc.item(f.track).get("clips", []) if f.track and f.doc.has(f.track) else []
+        clips = known(f.doc.item(f.track).get("clips", [])) if f.track and f.doc.has(f.track) else []
     return [c["id"] for c in clips if ST.start_of(root, c) < b - 1e-6 and ST.end_of(root, c) > a + 1e-6]
 
 
@@ -129,9 +132,13 @@ def delete(f):
 
 
 def toggle_all(field):
+    """Mute / Solo on the selection: each item through the operation that sets its fields (a track's, a plugin item's)."""
     def calls(f):
         on = not all(it.get(field) for it in f.items)
-        return [call("track.set", f.ids, **{field: on})]
+        by_op: dict[str, list[str]] = {}
+        for it in f.items:
+            by_op.setdefault(REGISTRY.field_op(it["type"]).name, []).append(it["id"])
+        return [call(op, ids, **{field: on}) for op, ids in by_op.items()]
     return calls
 
 
@@ -140,7 +147,7 @@ def flip(field, on_word, off_word):
 
 
 def layer_name(f):
-    have = {c.get("group") for t in f.doc.data.get("tracks", []) for c in t.get("clips", [])}
+    have = {c.get("group") for t in f.doc.data.get("tracks", []) for c in known(t.get("clips", []))}
     n = 1
     while f"Layer {n}" in have:
         n += 1
@@ -151,7 +158,7 @@ def inside(f):
     """The ids of notes, hits and clips that start inside the range (any track)."""
     t0, t1 = f.range
     root = f.doc.data
-    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips") for it in t.get(k, [])
+    return [it["id"] for t in root.get("tracks", []) for k in ("notes", "hits", "clips") for it in known(t.get(k, []))
             if t0 - 1e-6 <= ST.start_of(root, it) < t1 - 1e-6]
 
 

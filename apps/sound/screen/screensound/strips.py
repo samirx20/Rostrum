@@ -11,6 +11,7 @@ import math
 from rostrum_sound.doc import effects
 
 from . import plugin_rows
+from .plugin_items import known
 
 MASTER = "master"
 EFFECT_NAMES = effects.WORDS
@@ -35,7 +36,7 @@ def chip_label(e: dict, vendor_of=None) -> str:
 def chain(item: dict, vendor_of=None) -> list[dict]:
     """The inserts left to right in insert order; a bypassed one is dim (state), not a disabled control."""
     return [{"id": e["id"], "label": chip_label(e, vendor_of), "bypass": bool(e.get("bypass"))}
-            for e in item.get("effects", [])]
+            for e in known(item.get("effects", []))]
 
 
 def meter_of(render: dict, track_id: str) -> dict:

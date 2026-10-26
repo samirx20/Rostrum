@@ -1,6 +1,8 @@
 //! A float WAV written block by block (the mix and its stems): the header first (its length known), then
 //! each block of frames as it is made, into `<file>.partial`; `finish` checks the file holds every frame and
-//! only then renames it into place, so a failed write never leaves a file under the real name.
+//! only then renames it into place (one rename, replacing any older file: the real name never points at a part
+//! file, nor at nothing), so a failed write never leaves a file under the real name. `finish_with` first writes
+//! what belongs beside it (the mix's levels), so whoever sees the file finds it complete.
 
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -50,6 +52,11 @@ impl WavWriter {
 
     /// Every frame written: flushed, its size checked, renamed into place.
     pub fn finish(self) -> Result<(), String> {
+        self.finish_with(|_| Ok(()))
+    }
+
+    /// `finish`, running `beside(whole file)` after the check and before the rename (its sidecars, keyed to the file).
+    pub fn finish_with(self, beside: impl FnOnce(&Path) -> Result<(), String>) -> Result<(), String> {
         let WavWriter { out, partial, path, nch, frames, written, .. } = self;
         if written != frames {
             return Err(format!("{}: {written} of {frames} frames written; kept for inspection", partial.display()));
@@ -59,19 +66,19 @@ impl WavWriter {
         if std::fs::metadata(&partial).map(|m| m.len()).unwrap_or(0) != want {
             return Err(format!("{} was not written whole; kept for inspection", partial.display()));
         }
-        let _ = std::fs::remove_file(&path);
+        beside(&partial)?;
         std::fs::rename(&partial, &path).map_err(|e| format!("{} → {}: {e}", partial.display(), path.display()))
     }
 }
 
-/// The finished mix written from its tape, block by block.
-pub fn write_mix(path: &Path, mix: &crate::mix::render::stats::Mix, sr: u32) -> Result<(), String> {
+/// The finished mix written from its tape, block by block; `beside` as in `finish_with`.
+pub fn write_mix(path: &Path, mix: &crate::mix::render::stats::Mix, sr: u32, beside: impl FnOnce(&Path) -> Result<(), String>) -> Result<(), String> {
     let frames = mix.frames();
     let mut w = WavWriter::create(path, mix.layout.channels(), frames, mix.layout, sr)?;
     for at in (0..frames).step_by(crate::mix::tape::BLOCK) {
         w.write(&mix.read(at, crate::mix::tape::BLOCK.min(frames - at))?)?;
     }
-    w.finish()
+    w.finish_with(beside)
 }
 
 /// A whole bed in memory written through the writer.

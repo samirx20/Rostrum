@@ -6,7 +6,9 @@ the grabbed item's start is within the kit's 6 px of one, else to the grid. Seve
 """
 from __future__ import annotations
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import PLUGIN_ITEM, RostrumError, codes
+from rostrum_core.registry import Kinds
+from rostrum_sound.doc.registry import REGISTRY
 from rostrum_gui import snap
 
 from . import key_lock, song_edit, timing
@@ -16,8 +18,8 @@ from .timeline import kind_of, roll_drums
 MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
 FRESH = ("section",)                            # drags whose call is an amount from the press: previewed from it
 MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "meter", "key")
-REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
-             "tempo", "meter", "key", "section")
+REMOVABLE = Kinds(("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
+                   "tempo", "meter", "key", "section", PLUGIN_ITEM))
 LABELS = {"note": "Move note", "hit": "Move drum hit", "clip": "Move clip", "line": "Move line", "marker": "Move marker",
           "section": "Move section", "tempo": "Move tempo change", "meter": "Move time signature change", "key": "Move key change",
           "edge": "Resize section"}
@@ -136,6 +138,12 @@ def section_calls(doc, g: dict, dt: float, free: bool = False, grid=None) -> lis
     return [{"op": "section.move", "target": [g["id"]], "args": {"by": by}}]
 
 
+def remove_op(kind) -> str:
+    """The operation that deletes items of this kind: the "….remove" one that takes the kind (a plugin's item is
+    deleted by the one that takes any plugin's item, so no kind is named here)."""
+    return next(o.name for o in REGISTRY.ops() if o.name.endswith(".remove") and o.targets and kind in o.targets)
+
+
 def remove_calls(doc, kind, ids) -> list[dict]:
     """The calls that delete items of one kind (the one place, for the Delete key and the Delete action). A group
     that tracks play to or send to goes the way Ungroup does: its tracks keep playing where the group played to and
@@ -143,7 +151,7 @@ def remove_calls(doc, kind, ids) -> list[dict]:
     if kind not in REMOVABLE:
         raise RostrumError(codes.BAD_ARGUMENT, "delete", f'"{ids[0]}"', "can't be deleted", list(REMOVABLE))
     if kind != "bus":
-        return [{"op": f"{kind}.remove", "target": list(ids), "args": {}}]
+        return [{"op": remove_op(kind), "target": list(ids), "args": {}}]
     sends = [s["id"] for t in doc.data.get("tracks", []) for s in t.get("sends", []) if s.get("bus") in ids]
     return ([{"op": "send.remove", "target": sends, "args": {}}] if sends else []) +            [{"op": "bus.ungroup", "target": list(ids), "args": {}}]
 

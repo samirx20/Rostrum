@@ -82,7 +82,8 @@ class Auditioner(QObject):
             return self.failed.emit(err)
         if self._player is None:
             self._player = LivePlay(self)
-            self._player.program = self.program
+            if self.program:                   # a stand-in player (steps); else the one every LivePlay uses
+                self._player.program = self.program
             self._player.ended.connect(lambda _t: self._ended())
             self._player.problem.connect(self._problem)
         self._player.load(file)

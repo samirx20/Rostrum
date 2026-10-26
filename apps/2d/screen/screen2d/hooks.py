@@ -59,7 +59,7 @@ class Hooks2D:
         return f"What the export shows · {round(comp.get('width', d['width']))} × {round(comp.get('height', d['height']))}"
 
     def selection_label(self, ids):      # several selected: "2 layers" (any other mix: the kit's "N items")
-        if len(ids) > 1 and all(self.doc.item(i)["type"] in F.LAYERS for i in ids):
+        if len(ids) > 1 and all(self.doc.item(i)["type"] in F.ROWS for i in ids):
             return f"{len(ids)} layers"
         return super().selection_label(ids)
 

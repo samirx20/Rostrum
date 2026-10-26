@@ -22,9 +22,13 @@ Row {
             onClicked: recorder.arm(r.track.id)
         }
     }
-    HeaderButton { letter: "M"; lit: !!r.track.mute; litColor: Theme.warn; tip: lit ? "Muted: click to hear it again" : "Mute this track"
+    HeaderButton { objectName: "trackMute"; letter: "M"; lit: !!r.track.mute; litColor: Theme.warn; tip: lit ? "Muted: click to hear it again" : "Mute this track"
                    onClicked: backend.toggleTrack(r.track.id, "mute") }
-    HeaderButton { letter: "S"; lit: !!r.track.solo; litColor: Theme.ok; tip: lit ? "Soloed: click to hear every track" : "Solo: hear only this track (and other soloed ones)"
-                   onClicked: backend.toggleTrack(r.track.id, "solo") }
-    LaneToggle { visible: r.showAuto; track: r.track }
+    Item {
+        width: 22; height: 22
+        HeaderButton { visible: !!r.track.canSolo   // absent for an item that has no solo (a plugin's), its place stays
+                       letter: "S"; lit: !!r.track.solo; litColor: Theme.ok; tip: lit ? "Soloed: click to hear every track" : "Solo: hear only this track (and other soloed ones)"
+                       onClicked: backend.toggleTrack(r.track.id, "solo") }
+    }
+    LaneToggle { visible: r.showAuto && !!r.track.canLane; track: r.track }
 }

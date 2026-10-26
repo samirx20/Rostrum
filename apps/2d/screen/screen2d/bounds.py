@@ -18,6 +18,7 @@ import math
 from rostrum2d import boxes as BX, fields as F
 from rostrum2d.frame import view as camera
 from rostrum2d.drawing import frame_number
+from rostrum_core.plugin_parts import is_plugin
 from rostrum2d.evaluate import resolve
 from rostrum2d.layout import solve
 from rostrum2d.sizes import own_size
@@ -64,7 +65,7 @@ def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
     def walk(layers, m, n, locked=False, up=(), seen=1.0):
         mattes = {lay.get("matte") for lay in layers if lay.get("matte")}
         for lay in layers:
-            if lay["type"] == "camera" or lay.get("hidden") or not wanted(lay):     # not drawn: no box (and no scale)
+            if lay["type"] == "camera" or is_plugin(lay["type"]) or lay.get("hidden") or not wanted(lay):   # not drawn (a plugin's item never is): no box (and no scale)
                 continue
             own = lay.get(STEPS, "group")
             ln = n if own == "group" else int(own)
@@ -228,7 +229,7 @@ def _layers(comp: dict):
 
 def layer_of(doc, item_id: str) -> str:
     """The layer an effect, mask or key belongs to (itself for a layer); "" for a composition."""
-    while item_id and doc.item(item_id)["type"] not in F.LAYERS:
+    while item_id and doc.item(item_id)["type"] not in F.ROWS:
         if doc.item(item_id)["type"] == "comp":
             return ""
         item_id = doc.parent_of(item_id)[0]

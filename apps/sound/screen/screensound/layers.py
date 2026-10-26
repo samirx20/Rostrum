@@ -4,6 +4,7 @@ returned) unless one clip is selected, it has a group, and that group has anothe
 from __future__ import annotations
 
 from . import timing
+from .plugin_items import known
 
 
 def of(doc, ids: list[str]) -> dict:
@@ -14,7 +15,7 @@ def of(doc, ids: list[str]) -> dict:
     if item["type"] != "clip" or not item.get("group"):
         return {}
     track = doc.item(doc.parent_of(ids[0])[0])
-    others = [c for c in track.get("clips", [])
+    others = [c for c in known(track.get("clips", []))
               if c.get("group") == item["group"] and c["id"] != item["id"]]
     if not others:
         return {}

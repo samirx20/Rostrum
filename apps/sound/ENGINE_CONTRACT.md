@@ -256,7 +256,7 @@ Two ways in, the same requests and answers:
 - **One shot:** `rostrum-sound request <request.json>` answers one request and exits; `rostrum-sound render <schedule.json> <out.wav>` is short for a render request.
 - Engine work only: `rostrum-sound render-job <job.json> <out.wav>` renders the internal job (`engine/src/mix/schedule/`) the contract compiles to. `play` (the live transport) still takes the internal job; it moves to the contract with the Sound screen.
 
-Every answer is `{"id": …, "ok": true, "result": {…}}` or `{"id": …, "ok": false, "error": {…}}`. A failed render writes nothing under its output name (it renders to `<name>.partial` first).
+Every answer is `{"id": …, "ok": true, "result": {…}}` or `{"id": …, "ok": false, "error": {…}}`. A failed render writes nothing under its output name (it renders to `<name>.partial` first). A render's files are whole once the mix has its name: its levels file is put beside it first (written to `.partial` and renamed too), and the mix takes its name last, in one rename that replaces an older file (the name never points at nothing). The answer is the announcement: read a render's path from the answer, never by waiting for the file to appear.
 
 | `do` | Fields | Answer |
 |---|---|---|

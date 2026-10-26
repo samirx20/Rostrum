@@ -3,7 +3,10 @@ GUI thread, newest request wins. The render file is what the engine's live trans
 
 `Renderer`: one worker thread owns one long-lived engine process (rostrum_sound.engine.Engine, which reuses each
 unchanged track's render, so a re-render after a small edit is quick); each render goes to a new numbered file
-(the player may still hold the last one open). No stems: the Mix page's meters are the answer's per-track and
+(the player may still hold the last one open). A render is announced (`rendered`) only once it is whole (the engine
+writes it under a part name, its levels beside it, then renames it); the screen says which one it gave the player
+(`taken`), and only renders older than the one the player had before that are deleted: never one announced and not
+yet taken (a quick edit's render lands while the screen is still busy with the last news), never the one playing. No stems: the Mix page's meters are the answer's per-track and
 per-group measures and the levels file beside the mix (written by every render); writing a stem per track took
 3-4 s of each re-render on a 3-minute song, for files nothing read (export makes its own). A failed
 render is reported (`failed`), never passed off as the new sound; the last good render stays playable.
@@ -29,7 +32,6 @@ from .wholewav import require_whole_wav
 
 SCRATCH = settings.cache_dir() / "screensound" / str(os.getpid())
 _EACH = itertools.count(1)   # each song's renderer has its own folder: a closed one's sweep never takes a new one's renders
-KEEP = 2                     # renders kept on disk: the newest and the one that may still be playing
 
 
 def open_engine():
@@ -46,6 +48,7 @@ class Renderer(QObject):
         super().__init__(parent)
         self._cv = threading.Condition()
         self._pending, self._busy, self._stop, self._serial = None, False, False, 0
+        self._taken = (0, 0)             # the serials of the render the player has and of the one it had before
         self._eng = None                 # the worker's engine (close() aborts a render still running on it)
         self._dir = SCRATCH / f"renders-{next(_EACH)}"
         self._dir.mkdir(parents=True, exist_ok=True)
@@ -57,6 +60,13 @@ class Renderer(QObject):
         with self._cv:
             self._pending = schedule
             self._cv.notify()
+
+    def taken(self, file: str):
+        """The screen gave the player this render (an announced one): from now on the one before it may go."""
+        n = _serial(Path(file))
+        with self._cv:
+            if n is not None and n > self._taken[0]:
+                self._taken = (n, self._taken[0])
 
     def idle(self) -> bool:
         with self._cv:
@@ -103,10 +113,13 @@ class Renderer(QObject):
                 _sweep(self._dir)
 
     def _tidy(self):
-        """Delete renders older than the last KEEP (files and their stems folders)."""
+        """Delete the renders (and what lies beside them) older than the one the player had before its newest: one
+        still on its way to the player, or still playing, stays."""
+        with self._cv:
+            before = self._taken[1]
         for p in self._dir.glob("play-*"):
-            n = p.name.split("-", 1)[1].split(".", 1)[0]
-            if n.isdigit() and int(n) <= self._serial - KEEP:
+            n = _serial(p)
+            if n is not None and n < before:
                 shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
 
     def close(self):
@@ -119,6 +132,12 @@ class Renderer(QObject):
         if running is not None:
             running.abort()
         atexit.register(self._thread.join, 30)        # the app's exit waits for the engine to end
+
+
+def _serial(p: Path) -> int | None:
+    """A render's number: play-<n>.wav, play-<n>.levels.json … (None: not one of the renders)."""
+    n = p.name.split("-", 1)[-1].split(".", 1)[0]
+    return int(n) if p.name.startswith("play-") and n.isdigit() else None
 
 
 def _sweep(folder: Path):

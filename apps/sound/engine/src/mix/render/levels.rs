@@ -82,13 +82,16 @@ impl Levels {
         Levels { hop: 1.0 / PER_SECOND, strips }
     }
 
-    /// Written beside the mix file (after it), keyed to it.
-    pub fn write(&self, mix: &Path) -> Result<(), String> {
-        let (bytes, modified) = key(mix)?;
+    /// Written beside `mix` (its final name), keyed to `whole`: the mix's file as written, before its rename (a rename
+    /// keeps its size and time). Written to `.partial` and renamed, so it is never seen half written.
+    pub fn write(&self, whole: &Path, mix: &Path) -> Result<(), String> {
+        let (bytes, modified) = key(whole)?;
         let strips: serde_json::Map<String, Value> = self.strips.iter().map(|(id, w)| (id.clone(), json!(w.iter().flat_map(|p| [(p[0] * 10.0) as i32, (p[1] * 10.0) as i32]).collect::<Vec<_>>()))).collect();
         let v = json!({ "contract": CONTRACT, "mix": { "bytes": bytes, "modified": modified }, "hop": self.hop, "unit": "dB/10, [peak, rms] per window", "strips": strips });
         let out = path_of(mix);
-        std::fs::write(&out, v.to_string()).map_err(|e| format!("{}: {e}", out.display()))
+        let part = PathBuf::from(format!("{}.partial", out.display()));
+        std::fs::write(&part, v.to_string()).map_err(|e| format!("{}: {e}", part.display()))?;
+        std::fs::rename(&part, &out).map_err(|e| format!("{} → {}: {e}", part.display(), out.display()))
     }
 
     /// The levels written beside `mix`, or why there are none (missing, unreadable, or for another render of it).

@@ -1,6 +1,7 @@
 //! The `render` request: the schedule compiled, the mix rendered (tracks read back from the render cache
 //! when unchanged), the mix and any stems written block by block, whole or not at all (`.partial`, then
-//! renamed), the strips' live meters beside it (`<mix>.levels.json`, levels.rs), and the meters answered in the same reply.
+//! renamed), the strips' live meters beside it (`<mix>.levels.json`, levels.rs: in place before the mix is), and the
+//! meters answered in the same reply.
 
 use super::error::Error;
 use super::read::Obj;
@@ -76,7 +77,10 @@ pub fn run(job: Job) -> Result<Value, Error> {
         _ => None,
     };
     let seconds = ending.as_ref().map_or(c.seconds, |e| e.end);
-    crate::mix::wavwriter::write_mix(&out, &mix, sr).map_err(Error::render)?;
+    // The strips' live meters (levels.rs: what `rostrum-sound play` shows while it plays this file), written beside the
+    // mix before the mix takes its name: a mix anyone can see has its levels.
+    let levels = render::levels::Levels::of(&mix, sr as f64, s.range.map_or(0, |r| r.0));
+    crate::mix::wavwriter::write_mix(&out, &mix, sr, |whole| levels.write(whole, &out)).map_err(Error::render)?;
     // The stems, `<track>.wav`, and the bus stems beside them, `<bus>.bus.wav`: with the stems of the tracks that play
     // straight to the master the bus stems add up to what reaches the master (`direct` lists those tracks).
     let named = |list: &[(String, std::sync::Arc<crate::mix::tape::Tape>)], ext: &str| -> Vec<(String, PathBuf)> { list.iter().map(|(id, _)| (id.clone(), stems_dir.join(format!("{id}{ext}")))).collect() };
@@ -89,8 +93,6 @@ pub fn run(job: Job) -> Result<Value, Error> {
         files.iter().zip(&written.meters).filter(|(f, _)| f.bus == bus).map(|(f, m)| (f.name.clone(), json!({
             "lufs": m.lufs, "truePeak": m.true_peak, "peak": 20.0 * m.peak.max(1e-9).log10(), "overFullScale": m.over, "lastAudible": m.last_audible }))).collect()
     };
-    // The strips' live meters beside the mix (levels.rs): what `rostrum-sound play` shows while it plays this file.
-    render::levels::Levels::of(&mix, sr as f64, s.range.map_or(0, |r| r.0)).write(&out).map_err(Error::render)?;
     let as_map = |paths: &[(String, PathBuf)]| -> serde_json::Map<String, Value> { paths.iter().map(|(id, p)| (id.clone(), json!(p.to_string_lossy()))).collect() };
     let (stem_files, bus_files) = (as_map(&stem_paths), as_map(&bus_paths));
     let direct: Vec<&str> = s.tracks.iter().filter(|t| t.into.is_none() && crate::mix::buses::direct(&s, t)).map(|t| t.name.as_str()).collect();

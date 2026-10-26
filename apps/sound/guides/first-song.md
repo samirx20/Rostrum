@@ -167,6 +167,10 @@ The **Colour** row shows the colour the track is drawn in.
   amber near 0 dB, red over). When rows are short the header is one line. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by
   its name. A track's volume is set in its settings panel or the Mixer, not on the header.
+  An item from a plugin this Rostrum doesn't have (a file made with another tool's parts) shows as a plain row named after
+  the plugin ("Wiggle item (needs its plugin)" until it has its own name) with only M: it is never played, and every
+  field the plugin wrote is kept exactly as it was. You can select, Lock, Mute, move (drag the header, Ctrl+] / Ctrl+[) and
+  Delete it like a track; agents use the same `track.lock`, `track.unlock`, `track.move`, `track.remove` and `plugin.set` (mute).
   **Drag a header** up or down to move the track: a line shows where it will land, above or below the row under the pointer. Dropped on a group's header, the track joins that group; dropped between tracks it takes the group of the track it lands beside, or leaves its own group when that one has none. The selected tracks go together; one Undo undoes the drop. A **group's header** works like a track's: double-click its name or press **F2** to rename it in place, right-click for its menu (Rename, Ungroup …).
 - After an edit the sound is prepared again in a moment, so playback follows what you changed.
 

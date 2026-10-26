@@ -21,6 +21,7 @@ from rostrum_sound.cleanup import fetch
 from . import inspect, voice_actions as V
 from .clean_measure import Measures
 from .clean_process import CleanProcess
+from .plugin_items import known
 from .model_fetch import ModelFetch
 
 
@@ -269,7 +270,7 @@ class CleanedTake(QObject):
             if was_all is None:                             # every clip's last clean-up (a clip may change track)
                 was_all = {i: k for _, rs in self._recipes.values() for i, k in rs.items()}
             rs = {}
-            for c in t.get("clips", []):
+            for c in known(t.get("clips", [])):
                 r = cleanup.recipe_of(c)
                 rs[c["id"]] = key = str(sorted(r.items()))
                 if r and c["id"] in was_all and was_all[c["id"]] != key and c["id"] in self.bridge._picks.ids:

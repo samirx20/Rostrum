@@ -37,7 +37,7 @@ from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
 
 from .action_defs import (CLIP, CLIPS, EFFECTS, MARKER, NAMED, NOTE, NOTE_HIT, TRACK, _STEPS, _can_make_main,
-                          _inside_clip, _outside_key, act, on)
+                          _inside_clip, _outside_key, act, on, settable, takes)
 
 ACTIONS = [
     # tracks
@@ -45,21 +45,21 @@ ACTIONS = [
         "Ctrl+G", "primary", "make", needs="Group needs two or more tracks selected", min_targets=2),
     act("ungroup", "Ungroup", lambda f: bool(C.group_buses(f)) and C.tries(f, [C.call("bus.ungroup", C.group_buses(f))]),
         lambda f: [C.call("bus.ungroup", C.group_buses(f))], "Ctrl+Shift+G", "primary", "make"),
-    act("mute", C.flip("mute", "Mute", "Unmute"), TRACK, C.toggle_all("mute"), "Shift+M", group="track",
+    act("mute", C.flip("mute", "Mute", "Unmute"), lambda f: takes("track.lock")(f) and settable("mute")(f), C.toggle_all("mute"), "Shift+M", group="track",
         needs="Mute needs tracks selected"),
     act("solo", C.flip("solo", "Solo", "Unsolo"), TRACK, C.toggle_all("solo"), "Shift+S", group="track",
         needs="Solo needs tracks selected"),
     *[act(f"effect_{e}", f"Add {EFFECT_WORDS[e]}", lambda f: f.one in ("track", "clip"),
           lambda f, e=e: [C.call("effect.add", f.ids, effect=e)], group="effect", menu="Add effect")
       for e in EFFECTS],
-    act("move_up", "Move up", lambda f: TRACK(f) and C.can_move(f, -1), lambda f: [C.call("track.move", f.ids, by=-1)],
+    act("move_up", "Move up", lambda f: takes("track.move")(f) and C.can_move(f, -1), lambda f: [C.call("track.move", f.ids, by=-1)],
         "Ctrl+]", group="order", needs="Move up needs tracks selected that aren't already at the top"),
-    act("move_down", "Move down", lambda f: TRACK(f) and C.can_move(f, 1), lambda f: [C.call("track.move", f.ids, by=1)],
+    act("move_down", "Move down", lambda f: takes("track.move")(f) and C.can_move(f, 1), lambda f: [C.call("track.move", f.ids, by=1)],
         "Ctrl+[", group="order", needs="Move down needs tracks selected that aren't already at the bottom"),
-    act("lock", "Lock", lambda f: TRACK(f) and not all(it.get("locked") for it in f.items),
+    act("lock", "Lock", lambda f: takes("track.lock")(f) and not all(it.get("locked") for it in f.items),
         lambda f: [C.call("track.lock", [it["id"] for it in f.items if not it.get("locked")])], "Ctrl+Shift+L",
         group="order", needs="Lock needs tracks selected"),
-    act("unlock", "Unlock", lambda f: TRACK(f) and any(it.get("locked") for it in f.items),
+    act("unlock", "Unlock", lambda f: takes("track.unlock")(f) and any(it.get("locked") for it in f.items),
         lambda f: [C.call("track.unlock", [it["id"] for it in f.items if it.get("locked")])], "Ctrl+Shift+L",
         group="order"),
     # notes and drum hits
@@ -158,7 +158,7 @@ ACTIONS = [
         needs="Rename needs one track, group, marker or section selected"),
     act("cut_range", "Cut out and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="range",
         needs="Cut out and close the gap needs a time range over a clip"),
-    act("delete", "Delete", lambda f: f.count and f.kinds <= set(REMOVABLE), C.delete, "Delete", group="edit"),
+    act("delete", "Delete", lambda f: f.count and all(k in REMOVABLE for k in f.kinds), C.delete, "Delete", group="edit"),
 ]
 ACTS_ON = {a["key"]: a["on"] for a in ACTIONS if a["on"]}      # what each names in its step ("Quantise · 178 notes and 202 drum hits")
 RANGE = frozenset(a["key"] for a in ACTIONS if a["group"] == "range") | {"range_duplicate"}   # they act on the time range

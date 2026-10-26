@@ -13,6 +13,7 @@ from rostrum_gui.model import RowsModel
 
 from . import ducks, moves, playback, problems, strips, timeline
 from .cleaning import CleanedTake
+from .plugin_items import known
 from .export import RenderExport
 from .loudness import LoudnessMeter
 from .plugins import PluginHub
@@ -171,7 +172,7 @@ class MixPage(QObject):
         """Make the strips again. `only` (a set of ids): a drag's step, only those strips; the rest keep theirs."""
         render, root = dict(self.bridge.lastRender or {}), self.doc.data
         label = self.bridge.label_of
-        buses, vendor, tracks = self._bus_items(), self._plugins.vendor_of, list(root.get("tracks", []))
+        buses, vendor, tracks = self._bus_items(), self._plugins.vendor_of, known(root.get("tracks", []))
         m = self.doc.item(strips.MASTER)
         self._seen = {i["id"]: i for i in [*tracks, *buses, m]}
         old = {r["id"]: r for r in [*self._tracks.rows, *self._buses.rows]} if only is not None else {}
@@ -215,7 +216,7 @@ class MixPage(QObject):
         if self._hidden():
             return
         root = self.doc.data
-        now = [*root.get("tracks", []), *root.get("buses", []), self.doc.item(strips.MASTER)]
+        now = [*known(root.get("tracks", [])), *root.get("buses", []), self.doc.item(strips.MASTER)]
         if [i["id"] for i in now] != list(self._seen):
             return self._refresh()
         changed = [(self._seen[i["id"]], i) for i in now if self._seen[i["id"]] is not i]

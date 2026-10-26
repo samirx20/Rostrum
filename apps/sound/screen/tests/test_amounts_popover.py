@@ -10,6 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtCore import QPoint, Qt  # noqa: E402
+import shiboken6  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_gui.pointer import wait_until  # noqa: E402
 from screensound import playback  # noqa: E402
@@ -32,11 +33,16 @@ def items(win):
     return out
 
 
-def shown(win, name):
-    for it in items(win):
-        if it.objectName() == name and it.isVisible() and it.width() > 0:
-            return it
-    raise AssertionError(f"{name} is not on screen")
+def shown(win, name, timeout_ms=5000):
+    """The visible item named `name`, once it is there (a popover opening after a click: waited for, never looked at
+    once after a fixed pause); loud at the deadline."""
+    found = []
+
+    def there():
+        found[:] = [it for it in items(win) if it.objectName() == name and it.isVisible() and it.width() > 0][:1]
+        return bool(found)
+    wait_until(there, f"{name} on screen", timeout_ms)
+    return found[0]
 
 
 def centre(it, fx=0.5):
@@ -45,10 +51,14 @@ def centre(it, fx=0.5):
 
 
 def click(win, it):
-    at = centre(it)
+    """A real click on `it`. A menu's row: until the menu has closed, since the choice runs only once its fade is done
+    (Menu.qml); a fixed wait read the result before it on a busy machine."""
+    at, row = centre(it), it.objectName().startswith("menu:")
     QTest.mouseMove(win, at)
     QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
     QTest.qWait(150)
+    if row:
+        wait_until(lambda: not shiboken6.isValid(it) or not it.isVisible(), "the menu to close")
 
 
 def drag_slider(win, row):
