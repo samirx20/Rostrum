@@ -96,6 +96,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self.selectedItemsChanged.connect(self._follow_kit)      # Sound's list follows the kit's (select_slots)
         self.selectedItemsChanged.connect(self._follow_selection)
         self.docChanged.connect(self._follow_selection)          # the roll's track may have gone (it falls back)
+        self.docChanged.connect(self.listeningChanged)           # the "Solo on" chip and the Export sheet's solo / mute line
         self.docChanged.connect(heap.after_edit)                 # what an edit leaves is set aside from the collector
         self.selectedItemsChanged.connect(self._drop_point)
         for s in (self.docChanged, self.rollChanged):      # the In key chip: it comes and goes with the song's key and the track's kind

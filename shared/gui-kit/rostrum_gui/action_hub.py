@@ -174,6 +174,8 @@ class ActionHub(QObject):
     @Slot(str, result=bool)
     def ask(self, id_):
         """Its ▾ (or a "…" door): start the amounts session, live, and ask the app's popover to open by its button."""
+        if self._page is not None and self._page.live:
+            self._page.cancel()          # one still open: taken back first, so the facts below are the original items
         facts, entry = self._one(id_)
         a = self.list.find(id_)
         if entry is None or a is None or not a.amounts or self._page is None:

@@ -42,7 +42,8 @@ def _can_make_main(f):
 
 def _outside_key(f):
     """The selection holds a note with a tone outside the key playing at its start (Fit to key leads then)."""
-    return any(key_lock.outside(f.doc.data, n, ST.start_of(f.doc.data, n)) for n in f.items if n["type"] == "note")
+    data = f.doc.data
+    return key_lock.any_outside(data, (n for n in f.items if n["type"] == "note"), lambda n: ST.start_of(data, n))
 
 
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),

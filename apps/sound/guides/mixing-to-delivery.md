@@ -77,7 +77,7 @@ under its effects (a new group plays into the master). Each strip, top to bottom
   render that plays; a group reads higher than its tracks when sends, reverb or its own effects add to what the tracks
   put in. Green below −6 dB, amber from −6 to 0 and red over
   0, on every strip, group and the master. Rest the pointer on it for the track's loudness;
-- **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R;
+- **M** (mute, amber), **S** (solo, green) and **R** (arm for recording, red), tracks only for S and R; a solo shows in the top bar too ("Solo on: …", click to turn every solo off; `mix.hear_all` for an agent) and the Export sheet warns about any solo or mute;
 - its volume in dB: click it and type (−6, 1.5, −inf; −60, the fader's floor, also reads −∞); a value outside −60 … +12 dB is refused with that range. The
   fader's knob drags; the mouse wheel over the fader nudges it (1 dB a notch, Shift 3 dB, Alt 0.1 dB); Alt-click on the
   fader sets 0 dB; double-click the fader to type. While the Mixer is open the track's settings panel does not repeat the volume: it keeps Name, Colour, Sound and Tone filter. In the settings panel a number goes back to its default when you double-click its box or slider (or right-click it and choose Reset).

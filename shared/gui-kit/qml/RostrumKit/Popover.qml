@@ -90,6 +90,7 @@ SmallPopup {
     KeyShortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
 
     contentItem: Column {
+        readonly property var popover: pop           // a choice list inside finds its popover by this (ChoiceField.handKeysBack)
         spacing: Theme.gap
         // the same Enter as a key press reaching the popover: a background window (app.background()) is never the
         // active one, so its window Shortcut above never fires there; the key itself still comes to the focused row

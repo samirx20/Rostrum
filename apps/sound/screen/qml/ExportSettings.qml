@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Listening.js" as L
 
 // Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for picker lists the delivery targets,
 // screensound/export.py; picking one sets the master's loudness and the sheet says so): the live check of the sound that plays now against the target (pass / miss), the file type,
@@ -43,6 +44,21 @@ Column {
 
     visible: !job.isMidi
     height: visible ? implicitHeight : 0      // a hidden column keeps its height, which was the hole under the list for MIDI
+    Column {   // a solo or mute that is on changes what the file holds: said first, with the one click that fixes it
+        objectName: "exportListening"
+        readonly property var heard: backend.listening
+        readonly property bool any: heard.solo.length > 0 || heard.mute.length > 0
+        visible: any
+        width: root.width; spacing: Theme.grid
+        Text { width: parent.width; wrapMode: Text.WordWrap; visible: parent.heard.solo.length > 0; text: L.soloLine(parent.heard)
+               color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.body }
+        Text { width: parent.width; wrapMode: Text.WordWrap; visible: parent.heard.mute.length > 0; text: L.muteLine(parent.heard)
+               color: Theme.warn; font.family: uiFont; font.pixelSize: Theme.body }
+        Action { objectName: "exportHearAll"; text: parent.heard.solo.length > 0 && parent.heard.mute.length > 0 ? "Turn off solo and mute"
+                                                   : parent.heard.solo.length > 0 ? "Turn off solo" : "Turn off mute"
+                 onClicked: backend.hearAll(parent.heard.solo.length > 0 && parent.heard.mute.length > 0 ? "both"
+                                            : parent.heard.solo.length > 0 ? "solo" : "mute") }
+    }
     Repeater {   // delivery presets: a labelled switch, on while the sheet's choices equal the preset, off puts them back
         model: root.job.presets
         delegate: Item {

@@ -12,6 +12,8 @@ enders\song001`).
 enders\song001`).
 - **Ctrl+Shift+E** exports again with the last settings, without opening the sheet.
 
+A solo or a mute that is on changes what the file holds, so the sheet says so first, in words ("Strings is soloed: the export holds only Strings", "Drums is muted: it is left out of the export"), with **Turn off solo** / **Turn off mute** under it: one click and the whole song is back. An agent does the same with `mix.hear_all`.
+
 ## 1. What for
 
 What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's name sits just above the **Export** button: click the box and type the name you want (the file type stays after it); the line under it shows the exact folder the file lands in. The sheet opens with the choices the song's last export was made with (file type, trimming, stems, markers file), so a new window doesn't quietly drop the stems. Every choice on the sheet keeps its value when you change another (changing the target leaves Stems as you set it), and the sheet never moves under the pointer: the range picker's place at the top stays empty until the song has a section or a time range.

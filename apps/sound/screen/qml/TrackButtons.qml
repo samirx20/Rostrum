@@ -15,6 +15,7 @@ Row {
     Item {
         width: 22; height: 22
         HeaderButton {
+            objectName: "arm_" + r.track.id
             visible: !!r.track.canRecord
             letter: "R"; lit: recorder.armed === r.track.id; litColor: Theme.danger
             tip: lit ? "Armed: press Record (R) to record on this track. Click to disarm."
@@ -26,7 +27,7 @@ Row {
                    onClicked: backend.toggleTrack(r.track.id, "mute") }
     Item {
         width: 22; height: 22
-        HeaderButton { visible: !!r.track.canSolo   // absent for an item that has no solo (a plugin's), its place stays
+        HeaderButton { objectName: "trackSolo"; visible: !!r.track.canSolo   // absent for an item that has no solo (a plugin's), its place stays
                        letter: "S"; lit: !!r.track.solo; litColor: Theme.ok; tip: lit ? "Soloed: click to hear every track" : "Solo: hear only this track (and other soloed ones)"
                        onClicked: backend.toggleTrack(r.track.id, "solo") }
     }

@@ -4,9 +4,9 @@ import RostrumKit
 // A track's header in the arrangement, laid out like a desk channel's head (Logic, Ableton, Bitwig):
 // line 1 its colour, a small picture of what it holds (TrackIcon), its name (click selects the track; Ctrl / Shift
 // add; right-click its actions; double-click the name or F2 renames it in place, double-click elsewhere opens the
-// Editor) and a small padlock when the track is locked; line 2 its buttons in fixed places whatever the selection
-// (TrackButtons: R M S A); line 3 a thin level bar, live while the song plays (TrackMeter). A short row folds to one
-// line: the name and the buttons, the bar left out. Selection only tints the row; nothing moves.
+// Editor) and a small padlock when the track is locked; line 2 its buttons at one fixed x whatever the row's height or the selection
+// (TrackButtons: R M S A; a short row puts them first and the name after them); line 3 a thin level bar, live while the song plays (TrackMeter). A short row folds to one
+// line: the buttons and the name, the bar left out. Selection only tints the row; nothing moves.
 Rectangle {
     id: h
     objectName: "trackHeader"
@@ -20,7 +20,8 @@ Rectangle {
     readonly property bool tall: height >= 45                 // room for the buttons on a line of their own
     readonly property bool metered: height >= 51              // and for the level bar under them
     // too narrow for the buttons beside a name of 80 px on one line: the picture goes, the name keeps its room
-    readonly property bool cramped: width - Theme.gap - 11 - Theme.grid < buttons.fullWidth + (tall ? 0 : 100)
+    readonly property real edge: Theme.gap + 11               // where the buttons sit in EVERY layout (tall, short, any selection)
+    readonly property bool cramped: width - edge - Theme.grid < buttons.fullWidth + (tall ? 0 : 100)
     readonly property real lineTop: tall ? Math.round((height - (metered ? 47 : 39)) / 2) : 0
     radius: Theme.radiusCtl
     color: on ? Theme.accentSoft : area.containsMouse ? Theme.raised : "transparent"
@@ -60,8 +61,8 @@ Rectangle {
                 height: h.tall ? parent.height - 10 : Math.min(parent.height - 8, 18); color: h.track.hue }
     Item {   // line 1: picture, name, volume (one line high; centred in a short row)
         id: line1
-        x: Theme.gap + 11; y: h.tall ? h.lineTop : (h.height - height) / 2
-        width: (h.tall ? h.width - Theme.grid : buttons.x - Theme.gap) - x; height: 16
+        x: h.tall ? h.edge : h.edge + buttons.fullWidth + Theme.gap; y: h.tall ? h.lineTop : (h.height - height) / 2
+        width: h.width - Theme.grid - x; height: 16
         TrackIcon { id: icon; anchors.verticalCenter: parent.verticalCenter; icon: h.track.icon || "empty"
                     visible: !(h.cramped && !h.tall)   // a short, narrow row: the name keeps the room, R M S stay
                     ink: h.track.mute ? Theme.fg4 : Theme.fg2 }
@@ -92,12 +93,12 @@ Rectangle {
             Rectangle { z: -1; anchors.fill: parent; anchors.margins: -2; radius: 3; color: Theme.sunken; border.color: Theme.accent }
         }
     }
-    TrackButtons {   // line 2 (a short row: at the right of line 1)
+    TrackButtons {   // always at h.edge; line 2 in a tall row, the row's one line in a short row (the name follows them)
         id: buttons
-        x: h.tall ? line1.x : h.width - buttons.fullWidth - Theme.grid
-        y: h.tall ? line1.y + line1.height + 3 : (h.height - height) / 2
+        x: h.edge
+        y: h.tall ? h.lineTop + line1.height + 3 : (h.height - height) / 2
         track: h.track; showAuto: h.showAuto
     }
-    TrackMeter { visible: h.metered; x: line1.x; y: buttons.y + buttons.height + 5; width: h.width - Theme.grid - x
+    TrackMeter { visible: h.metered; x: h.edge; y: buttons.y + buttons.height + 5; width: h.width - Theme.grid - x
                  trackId: h.track.id }
 }
