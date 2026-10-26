@@ -4,8 +4,8 @@ blocks only moved, as "these ids moved by d" (`by`).
 Each read of a QML list copies all of it, so sending a drum row's 300 hits again for one hit added cost a few ms per
 list and grew with the song (3,000 blocks: ~27 ms, M4). Any change of a list the screen has goes as a patch (`diff`,
 one JSON text), which the screen applies to the list it shows (qml/Blocks.js, the same rule as `apply` here): a
-whole-song Right is one group of ids and a number per row (~70 KB for 3,352 notes, against ~1 MB of rows parsed and
-re-timed again: 0.3-0.5 s of a whole-song Right, its undo, Esc of a Repeat preview). A block counts as moved only when
+whole-song Right is a number per row ("every block moved by d": no ids, which the screen looked up one by one), against
+~1 MB of rows parsed and re-timed again: 0.3-0.5 s of a whole-song Right, its undo, Esc of a Repeat preview. A block counts as moved only when
 it is the old block with its place shifted by exactly `d` and everything else equal (the screen adds the same `d` in
 the same floating point; anything else goes whole in `put`). The arrangement's row model keeps the last whole list
 sent for each row (`held`): a patched row leaves the model's value as it was. When a row comes back to that very list
@@ -31,15 +31,16 @@ class Patch:
     {(field, d): [ids]} (moved only: "beats" adds d to atBeat and endBeat, "secs" to t), `changed` (the new blocks
     of `put` and `by`: what the roll looks the selection up in)."""
 
-    def __init__(self, gone, put, by, changed):
+    def __init__(self, gone, put, by, changed, every=False):
         self.gone, self.put, self.by, self.changed = gone, put, by, changed
+        self.every = every          # every block of the list moved by the one (field, d) in `by`: sent without ids
 
     def __bool__(self):
         return bool(self.gone or self.changed)
 
     def text(self) -> str:
         return json.dumps({"gone": self.gone, "put": [seen(b) for b in self.put],
-                           "by": [[f, d, ids] for (f, d), ids in self.by.items()]},
+                           "by": [[f, d, None if self.every else ids] for (f, d), ids in self.by.items()]},
                           separators=(",", ":"), allow_nan=False)
 
 
@@ -87,7 +88,8 @@ def diff(old: list | None, new: list) -> Patch | None:
         elif m[1] != 0:
             by.setdefault(m, []).append(x["id"])
             changed.append(x)
-    return Patch(gone, put, by, changed)
+    every = not gone and not put and len(by) == 1 and len(changed) == len(new) == len(old)
+    return Patch(gone, put, by, changed, every)
 
 
 def apply(blocks: list, p: dict) -> list:
@@ -96,7 +98,7 @@ def apply(blocks: list, p: dict) -> list:
     at = {b["id"]: b for b in blocks}
     put = list(p["put"])
     for field, d, ids in p["by"]:
-        for i in ids:
+        for i in ids if ids is not None else list(at):
             o = dict(at[i])
             if field == "beats":
                 o["atBeat"] += d

@@ -21,16 +21,18 @@ function patch(blocks, text, map) {
         if (one) moved(put[i], blocks[at[put[i].id]])
     }
     for (i = 0; i < p.by.length; i++) {
-        var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2]
-        for (j = 0; j < ids.length; j++) {
-            var k = at[ids[j]]
-            if (k === undefined || k >= blocks.length || blocks[k].id !== ids[j]) throw new Error("Blocks.patch: no block " + ids[j] + " to move")
+        var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2], all = ids === null    // (null: every block, in order)
+        for (j = 0; j < (all ? blocks.length : ids.length); j++) {
+            var k = all ? j : at[ids[j]]
+            if (!all && (k === undefined || k >= blocks.length || blocks[k].id !== ids[j])) throw new Error("Blocks.patch: no block " + ids[j] + " to move")
             put.push(_moved(blocks[k], field, d, tm))
             if (one) moved(put[put.length - 1], blocks[k], typeof put[put.length - 1].t === "number"
                            && Math.abs((put[put.length - 1].dur || 0) - (blocks[k].dur || 0)) < 1e-9)
         }
     }
-    if (gone.length === 0) {
+    if (put.length === blocks.length && p.by.length === 1 && p.by[0][2] === null) {
+        out = put; out.__at = at                     // every block moved, in its place
+    } else if (gone.length === 0) {
         out = blocks.slice()
         for (i = 0; i < put.length; i++) {
             j = at[put[i].id]
@@ -51,7 +53,9 @@ function patch(blocks, text, map) {
         for (i = 0; i < put.length; i++) if (by[put[i].id]) out.push(put[i])
     }
     out.__patch = { from: blocks, put: put, gone: gone, dt: one && n === blocks.length && isFinite(dt) ? dt : undefined }
-    return out
+    var was = blocks.__patch                 // the list patched is never painted from now on: what it came from is let go
+    if (was !== undefined) { was.from = null; was.put = []; was.gone = [] }    // (else every list since the last whole
+    return out                               // send stayed alive: each whole-song Right ~5-10 ms slower than the last)
 }
 
 // A block shown, its place moved by d: one placed in beats, timed at once under the map shown (`tm`: [map, its key],
