@@ -63,7 +63,7 @@ def register(tools: Tools):
             source, tracks = score.script(chosen, args.get("key", "C major"), samples["width"], lib)
         except ValueError as e:
             raise RostrumError(codes.BAD_ARGUMENT, "edit_sounds_from_motion", f'key "{args.get("key")}"', str(e)) from None
-        report = ctx.run_script(doc, "sounds-from-motion.py", run_source(source, "sounds-from-motion.py"))
+        report = ctx.run_script(doc, "sounds-from-motion.py", run_source(source, "sounds-from-motion.py", doc))
         if args.get("glue", True):
             ops = score.glue_ops(doc.data, tracks)
             if ops:

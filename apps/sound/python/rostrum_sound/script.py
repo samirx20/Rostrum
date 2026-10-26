@@ -28,7 +28,7 @@ from rostrum_core.merge import check_output
 
 from . import expression as EX
 from .builder import Song, Track
-from .doc import KIND, meter
+from .doc import KIND, meter, times
 from . import script_scope, writing
 from .script_time import Beat, Beats, plain, until
 
@@ -49,7 +49,7 @@ def scope(song: Song) -> dict:
         """f(time) -> the velocity a phrase curve gives at that time (for accents on top of a phrase)."""
         ph = EX.phrase(start, end, points, "vel_curve")
 
-        return lambda t: ph.velocity(t, {**song.root, "markers": song.markers}, "vel_curve", hold=True)
+        return lambda t: ph.velocity(t, {**song.root, "markers": song.marks()}, "vel_curve", hold=True)
     return {
         "tempo": lambda bpm: song.set(tempo=bpm),
         "length": lambda t: song.set(length=t),
@@ -98,9 +98,25 @@ def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:
     return RostrumError(codes.BAD_ARGUMENT, where, "the script", "stopped: " + detail.get(type(e), str(e) or "it failed without a reason"))
 
 
-def run_source(source: str, name: str) -> dict:
-    """Run a Sound script; the tree it makes (checked like operation arguments, ready for Document.run_script)."""
+def _broken_ties(root: dict) -> list[str]:
+    """A note the script writes tied to an end before its start. In the document that is a warning (a marker moved in
+    another app never locks the song); a script that writes one is refused, so nothing of it merges."""
+    out = []
+    for tr in root["tracks"]:
+        for n in tr.get("notes", []):
+            if n.get("dur") == times.NEXT or isinstance(n.get("dur"), dict) and "to" in n["dur"]:
+                try:
+                    times.length_seconds(n["dur"], root, times.seconds(n["at"], root, n["id"]), n, n["id"])
+                except RostrumError as e:
+                    out.append(f"note {n['id']}: {e.subject} {e.problem}" + (f". {e.hint}" if e.hint else ""))
+    return out
+
+
+def run_source(source: str, name: str, doc=None) -> dict:
+    """Run a Sound script; the tree it makes (checked like operation arguments, ready for Document.run_script).
+    `doc`: the open document the tree merges into: its own markers (marker.add) are the script's to name too."""
     song = Song()
+    song.known = list(doc.data.get("markers", [])) if doc is not None else []
     try:
         exec(compile(source, name, "exec"), {**script_scope.scope(), **scope(song)})
         tree = plain(song.tree())          # the document holds plain values only
@@ -109,7 +125,10 @@ def run_source(source: str, name: str) -> dict:
     except Exception as e:
         raise _failure(e, name, sorted(scope(song))) from e
     check_output(KIND, tree, f"script {name}")
-    problems = KIND.check(tree)
+    problems = KIND.check({**tree, "markers": song.marks()}) + _broken_ties({**tree, "markers": song.marks()})
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f'script "{name}"', "the song", "; ".join(problems))
     return tree
+
+
+run_source.wants_doc = True          # the MCP server's run_script passes the open document (rostrum_core/mcp/shared_edit.py)
