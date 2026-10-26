@@ -94,7 +94,7 @@ def _param_row(p) -> dict:
 
 def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=None, expr=None, choices=None,
              opened=(), query: str = "", elsewhere=frozenset(), starts=None, step: bool = False,
-             kept=None) -> list[dict]:
+             kept=None, seen: dict | None = None) -> list[dict]:
     """The rows with `valid`, `value`, `anim` and `expr` filled in for these values (`item`: the item's values as
     the screen shows them, e.g. at the playhead). `anim(name)` gives a param's key state; none: no keys.
     `expr(name)` gives {"text", "note"} for a param driven by an expression or binding; none: no param is.
@@ -107,7 +107,8 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
     canvas drag ~2 ms on every pointer move). `kept` (with `step`): {row id: the row as last worked out} for the param
     rows whose fields the steps since then left alone (touched.fields_of): that row itself is given again, nothing read
     (three layers moved by x and y: the other ~120 rows of each were read on every pointer move). A row given out is
-    never changed in place: it is copied to be changed (what a step holds as at the press goes on a copy)."""
+    never changed in place: it is copied to be changed (what a step holds as at the press goes on a copy).
+    `seen` (a dict): told the groups whose values count as changed (`changed`), for row_memo's patches."""
     kept = kept or {}
     picks = {r["id"]: choices(r["id"]) if choices else [] for r in static
              if r.get("control") == "pick" and r["id"] not in kept}
@@ -118,6 +119,8 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
           for r in static if r["row"] == "param"}
     ok.update(dict.fromkeys(set(elsewhere) & ok.keys(), False))
     opened = _open_groups(static, item, ok, opened, starts or {}, anim)
+    if seen is not None:
+        seen["changed"] = frozenset(opened.changed)
     out = []
     for r in static:
         r = dict(r)
@@ -181,15 +184,21 @@ def _open_groups(static, item, ok, choice, starts, anim=None) -> _Opened:
     out = _Opened()
     out.changed = set()
     for f in (r for r in static if "fold" in r):
-        if any(ok[m] and params[m]["default"] is not None
-               and (item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
-                    or (anim and anim(m) in ("keyed", "onkey")))
-               for m in f["members"]):
+        if changed(f, params, item, ok, starts, anim):
             out.changed.add(f["fold"])
         sw = f.get("switch")
         if (item.get(sw, params[sw]["default"]) != f["off"] and ok[sw]) if sw else f.get("own") or choice.get(f["fold"], f["fold"] in out.changed):
             out.add(f["fold"])
     return out
+
+
+def changed(fold: dict, params: dict, item: dict, ok: dict, starts: dict, anim=None) -> bool:
+    """A fold's group counts as changed: a value in it that applies is at neither its default nor the kind's own
+    start, or a field in it has keys (it is animated, whatever it reads at this moment)."""
+    return any(ok.get(m, False) and params[m]["default"] is not None
+               and (item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
+                    or (anim and anim(m) in ("keyed", "onkey")))
+               for m in fold["members"])
 
 
 def _open(r: dict, more_open: bool, opened, query: str) -> bool:

@@ -65,6 +65,9 @@ class Action:
     # `sure`: its own checks (`valid` and the rest above) are its whole guard, its calls never empty then: the list as
     # shown (`listed`, on every change) doesn't make them; a door that runs or previews it does (`available`).
     sure: bool = False
+    # `any_calls(facts) -> bool`: whether its calls would be any, told without making them all (the list as shown only
+    # asks that: K's "would it key anything" stops at the first layer that would take a key, not one call per layer).
+    any_calls: Callable | None = None
 
     def __post_init__(self):
         if self.importance not in ("primary", "secondary"):
@@ -142,6 +145,8 @@ class ActionList:
             return "invalid", []
         if a.asks or (a.sure and self._listing):   # asks: every door opens its popover, which makes the calls with the
             return None, []  # amounts chosen (a whole-song Repeat's calls cost ~70-110 ms on every change just to list it)
+        if a.any_calls and self._listing:
+            return (None, []) if a.any_calls(facts) else ("nothing", [])
         calls = self.calls_for(a, facts, amounts)
         if a.calls and not calls:
             return "nothing", []

@@ -14,6 +14,8 @@ PAIRS = {("x", "y"): "Position", ("w", "h"): "Size", ("width", "height"): "Size"
          ("scaleX", "scaleY"): "Stretch", ("tiltX", "tiltY"): "Tilt",
          ("fillOffsetX", "fillOffsetY"): "Offset", ("fillDriftX", "fillDriftY"): "Drift"}
 SAME = ("group", "importance", "valid_when", "in", "type", "unit")
+READS = ("ridePath",)               # the item's fields pair_valid reads besides the pair's own (row_memo: a change to one
+                                    # works the rows out whole)
 
 
 def pair_up(rows: list[dict]) -> list[dict]:

@@ -105,6 +105,9 @@ class Hooks2D:
         rows = _home_reset(project_picks.with_file_names(corner_rows.rows(rows, item), item, self.doc.folder), item)
         return stepped.option_words(rows, not item or self.doc.item(self.doc.parent_of(item["id"])[0]).get("type") == "group")   # File: "pic.png", not the store's copy
 
+    def rows_context(self):               # rows read at the playhead, timed by the markers, in the scene shown
+        return self._t, self.marks.times if self.marks else None, self.comp_id
+
     def shown_values(self, item):
         return route.shown_values(self.placed_item(item["id"]), self._t)     # keys on a marker read as seconds
 

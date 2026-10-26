@@ -238,6 +238,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         ("Claude: Moved title"); the agent watch counts an agent's (doc: where it was made; None = this document)."""
         if doc is not None and doc is not self.doc:
             self._kit.touched = None                       # another document's change: this one's parts can't tell
+            self._kit.memo.clear()
         if change is not None and change.who != self.who:
             self._set_status(f"{who_name(change.who, self.who)}: {change.label}")
         self._kit.agent.heard(doc or self.doc, change)
@@ -252,6 +253,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         k.stepped = (None if event.kind != "preview" else (k.seen, k.touched) if k.stepped is None
                      else (k.stepped[0], k.stepped[1] and k.touched and k.stepped[1].joined(k.touched)))
         k.seen = self.doc.data
+        k.memo.heard(self.doc, k.touched)
         self._before_followers(event)
         self._follow_doc(event.kind == "preview")
         if event.kind == "preview":

@@ -18,7 +18,7 @@ from __future__ import annotations
 from rostrum2d import fields as F
 from rostrum_gui.actions import SHORT_MENU, Action, ActionList
 
-from . import cover_move, frame_actions, pin_depth
+from . import action_rules, cover_move, frame_actions, pin_depth
 from .action_rules import SHAPES, Facts, calls_of
 from .eases import EASE_LIST
 from .keys2d import KEYS2D
@@ -161,10 +161,11 @@ def _action(d: dict) -> Action:
     rules = ([] if d["locked_ok"] else [_UNLOCKED]) + ([] if d["frame_ok"] else [_NO_FRAME]) + ([d["when"]] if d["when"] else [])
     when = {"all": rules} if len(rules) > 1 else rules[0] if rules else None
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
+    any_calls = action_rules.ANY.get((d["calls"] or {}).get("rule"))
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], importance_one=d["importance_one"], rank=d["rank"], job=d["job"],
                   group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"], panel=d["panel"],
-                  promoted=_promoted(d["promoted"]), icon=d["icon"])
+                  promoted=_promoted(d["promoted"]), icon=d["icon"], any_calls=any_calls)
 
 
 def _promoted(p):

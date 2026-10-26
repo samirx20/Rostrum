@@ -151,7 +151,7 @@ def names_of(doc, ids) -> dict:
 
 
 def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True, options: dict | None = None,
-           markers_file: bool = False, say=None) -> dict:
+           markers_file: bool = False, say=None, name: str = "") -> dict:
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
     `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure or stop raises, and the
     `.partial` folder is removed (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
@@ -159,18 +159,18 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     files are named after the tracks; the manifest keeps the id → file mapping. `stems`: "all" (a file per track and per group),
     a list of track ids, [] (none) or "groups" (a stem per group and per ungrouped track: stem_groups.py).
     `markers_file`: also write `markers.json` beside the files (the Editor preset). `say(words)`: what it is doing now
-    (the Export sheet shows it)."""
+    (the Export sheet shows it). `name`: the mix's file name without its type (default "<item>_mix"); stems keep the tracks' names."""
     opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers before any folder is made
     part = begin_render(folder, doc.item_id)
     try:
         return _render(part, folder, doc, engine, {**schedule, "sampleRate": opts.sample_rate}, who, stems, master, opts, markers_file,
-                       say or (lambda _w: None))
+                       say or (lambda _w: None), name)
     except BaseException:                  # failed, or stopped (a cancel): no `vNNN.partial` is left to look like a render
         shutil.rmtree(part, ignore_errors=True)
         raise
 
 
-def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say) -> dict:
+def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say, name="") -> dict:
     item = doc.item_id
     say("Rendering the mix and its stems" if stems else "Rendering the mix")
     try:
@@ -189,9 +189,9 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
             r = {**r, "markersFile": MARKERS_FILE}
         names = names_of(doc, [*r.get("stems", {}), *r.get("busStems", {})])
         n = len(r.get("stems") or {}) + len(r.get("busStems") or {})
-        say(f"Writing {deliver.mix_name(item, opts.spec['ext'])}" + (f" and {n} stem{'s' * (n != 1)}" if n else "")
+        say(f"Writing {deliver.mix_name(item, opts.spec['ext'], name)}" + (f" and {n} stem{'s' * (n != 1)}" if n else "")
             + f" as {opts.spec['label']}")
-        r = deliver.deliver(part, r, names, opts, item)
+        r = deliver.deliver(part, r, names, opts, item, name)
     except RostrumError:
         raise
     except Exception as e:

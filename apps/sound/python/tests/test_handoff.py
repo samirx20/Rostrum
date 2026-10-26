@@ -76,3 +76,13 @@ def test_a_manifest_without_stems_says_nothing_about_stems(tmp_path):
     doc = Document.new(KIND, folder=tmp_path, item="song")
     m = handoff.manifest("song", 1, {"file": str(tmp_path / "song_mix.wav")}, doc, "agent:test", True)
     assert not {"stems", "bus_stems", "direct", "stems_rule", "stems_add_up"} & set(m)
+
+
+def test_a_given_name_is_the_mixs_file_name_and_never_a_stems(tmp_path):
+    """The Export sheet's name field and render_mix's `name` land as the mix's file name; a track called the same keeps its own stem."""
+    doc = Document.new(KIND, folder=tmp_path, item="song")
+    doc.save()
+    r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test", name='Launch: "theme"')
+    assert Path(r["file"]).name == "Launch_ _theme_.wav"
+    r = handoff.render(tmp_path, doc, FakeEngine(), {}, "agent:test", name="drums")
+    assert Path(r["file"]).name == "drums 2.wav" and Path(r["stems"]["drums"]).name == "drums.wav"

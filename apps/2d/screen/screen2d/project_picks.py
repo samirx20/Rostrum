@@ -122,9 +122,8 @@ def with_file_names(rows: list[dict], item: dict | None, folder) -> list[dict]:
     """The File row of a picture or video says the file's own name at rest (its `words` for its value)."""
     if not item or item.get("type") not in ("image", "video"):
         return rows
-    for r in rows:
-        if r.get("row") == "param" and r.get("id") == "src" and r.get("value"):
-            name = file_name(folder, r["value"])
-            if name:
-                r["words"] = [{"value": r["value"], "label": name}]
-    return rows
+    out = []
+    for r in rows:                                  # (a row given out is never changed in place: kept rows, row_memo)
+        name = file_name(folder, r["value"]) if r.get("row") == "param" and r.get("id") == "src" and r.get("value") else ""
+        out.append({**r, "words": [{"value": r["value"], "label": name}]} if name else r)
+    return out

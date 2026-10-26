@@ -170,12 +170,18 @@ def write(path: Path, src: Path, keep: int, rate: int, spec: dict, sf, offset: i
     return over
 
 
-def mix_name(item: str, ext: str = "wav") -> str:
+def mix_stem(item: str, name: str = "", taken=()) -> str:
+    """The mix's name without its type: the one the person or agent gave (made safe for a file name), else "<item>_mix".
+    `taken`: names the engine's own stem files already hold in the folder (a track called like the mix gets " 2")."""
+    return safe_name(name, {t.lower() for t in taken}, f"{item}_mix") if name else f"{item}_mix"
+
+
+def mix_name(item: str, ext: str = "wav", name: str = "") -> str:
     """The mix's file name in a render's version folder: the one name the writer uses and the Export sheet shows."""
-    return f"{item}_mix.{ext}"
+    return f"{mix_stem(item, name)}.{ext}"
 
 
-def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dict:
+def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str, name: str = "") -> dict:
     """Turn the engine's float files in `folder` into the delivered ones. `r` is the engine's answer (`file`,
     `stems` {track id: path}, `busStems` {bus id: path}); `names` maps a track or bus id to the name the screen shows.
     Returns `r` with the new paths (`range` [from, to] when only a part of the song was asked for: the engine renders
@@ -185,7 +191,7 @@ def deliver(folder: Path, r: dict, names: dict, opts: Options, item: str) -> dic
     name: samples cut flat} for each fixed-point file that went past full scale)."""
     sf = _soundfile()
     spec = opts.spec
-    mix = Path(mix_name(item)).stem
+    mix = mix_stem(item, name, [Path(p).stem for p in (*(r.get("stems") or {}).values(), *(r.get("busStems") or {}).values())])
     jobs = [("mix", None, Path(r["file"]), mix)]
     taken = {mix.lower()}
     for tid, p in (r.get("stems") or {}).items():

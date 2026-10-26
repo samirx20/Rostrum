@@ -58,6 +58,12 @@ class ActionHub(QObject):
         facts = self._facts()
         return facts, (self.list.listed if shown else self.list.available)(facts, **self._kept())
 
+    def _one(self, id_):
+        """(facts, the entry of this action now | None): only its own rule runs (a click on Stagger… made every action's
+        calls, K's for each of 200 layers, to find its one entry)."""
+        facts = self._facts()
+        return facts, next(iter(self.list.available(facts, among={id_}, **self._kept())), None)
+
     def _kept(self) -> dict:
         """The amounts last kept, for an app with amounts (an app's own list may override `available` without them)."""
         return {"amounts": self._page.memory} if self._page else {}
@@ -153,8 +159,7 @@ class ActionHub(QObject):
     @Slot(str)
     def run(self, id_):
         """A click on its button: at once (an action with amounts: with the last kept; one that `asks`: its popover)."""
-        facts, entries = self._now()
-        entry = next((e for e in entries if e["id"] == id_), None)
+        facts, entry = self._one(id_)
         if entry is None:
             self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
             return
@@ -169,8 +174,7 @@ class ActionHub(QObject):
     @Slot(str, result=bool)
     def ask(self, id_):
         """Its ▾ (or a "…" door): start the amounts session, live, and ask the app's popover to open by its button."""
-        facts, entries = self._now()
-        entry = next((e for e in entries if e["id"] == id_), None)
+        facts, entry = self._one(id_)
         a = self.list.find(id_)
         if entry is None or a is None or not a.amounts or self._page is None:
             self._say(self.list.why_not(facts, id_) or f'"{id_}" can\'t run now.')
@@ -190,7 +194,7 @@ class ActionHub(QObject):
     def previewStart(self, id_):
         """The pointer rests on an action: the app shows its would-be result, recording nothing (`preview_fn(calls)`).
         An action not valid now, one that is not a plain change (copy, rename) or an app with no preview: nothing."""
-        entry = next((e for e in self._now()[1] if e["id"] == id_), None) if self._preview else None
+        entry = self._one(id_)[1] if self._preview else None
         calls = (self.list.calls_for(self.list.find(id_), self._facts(), self._kept().get("amounts")) if entry and entry["asks"]
                  else entry["calls"] if entry else [])                # one that asks: its calls made only for this hover
         if entry and not entry["do"] and calls:

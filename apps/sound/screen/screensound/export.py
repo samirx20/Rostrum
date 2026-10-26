@@ -32,9 +32,9 @@ MIDI = "midi"     # the What for choice that writes a MIDI file, not a mix
 WAITING = "Measuring the new mix against the target…"   # the check line while the render after a change is on its way
 
 
-def midi_file(doc) -> Path:
+def midi_file(doc, stem="") -> Path:
     """Where the MIDI file goes (the agents' render_midi place): shown by the sheet and written by `work`."""
-    return Path(doc.folder) / "renders" / doc.item_id / "midi" / f"{doc.item_id}.mid"
+    return Path(doc.folder) / "renders" / doc.item_id / "midi" / f"{stem or doc.item_id}.mid"
 
 
 def summary(r: dict) -> str:
@@ -129,10 +129,6 @@ class RenderExport(ExportSheet):
             self.changed.emit()
 
     # ---- the kit's questions --------------------------------------------------------------------------------
-    def short_where(self, where):
-        """The folder as its last two names ("song / v001"): the whole path shows on hover."""
-        return " / ".join(Path(where).parts[-2:]) if where and Path(where).is_absolute() else where
-
     def choices_list(self):
         """The picker's options. While the master matches no target the first one says so ("As the mix plays now"):
         it is how the field reads then, and it goes as soon as a target is picked."""
@@ -159,19 +155,21 @@ class RenderExport(ExportSheet):
             return "Nowhere yet: save the song into a project first"
         return str(midi_file(doc).parent if self._choice == MIDI else project.next_render(doc.folder, doc.item_id))
 
-    def file_name(self):
-        """The exact name `work` writes (and Browse copies under): the one rule the writer names it by."""
+    NAMEABLE = True                                   # the file's name is a field (the kit's); the type after it follows the format
+
+    def default_stem(self):
         item = self.bridge.doc.item_id or "song"
-        if self._choice == MIDI:
-            return f"{item}.mid"
-        return deliver.mix_name(item, deliver.BY_FORMAT[self._format]["ext"])
+        return item if self._choice == MIDI else deliver.mix_stem(item)
+
+    def file_ext(self):
+        return ".mid" if self._choice == MIDI else "." + deliver.BY_FORMAT[self._format]["ext"]
 
     def begin(self, out, overwrite):
         doc = self.bridge.doc
         if not doc.folder or not doc.item_id:
             raise RuntimeError("save the song into a project first (open it with a project folder), so the render has a place to go")
         if self._choice == MIDI:            # the agents' render_midi path and file
-            return {"midi": midi_file(doc),
+            return {"midi": midi_file(doc, self.stem()),
                     "root": copy.deepcopy(doc.data), "out": out}
         # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
         master = presets.PRESETS.get(self.preset, {}).get("master", True)
@@ -190,7 +188,8 @@ class RenderExport(ExportSheet):
             rate = r["rate"] if r["rate"] in [x["id"] for x in deliver.rates_for(r["format"])] else 0
             versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [], "markers": False,
                              "options": {**base, "format": r["format"], "sampleRate": rate or doc.data.get("sampleRate", 48000)}})
-        return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out}
+        return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out,
+                "name": "" if self.stem() == self.default_stem() else self.stem()}
 
     def _say(self, words):
         """What the running export is doing, in the sheet's line and the top bar (the kit's line says only the file)."""
@@ -208,7 +207,7 @@ class RenderExport(ExportSheet):
             for i, v in enumerate(p["versions"]):
                 of = f"Version {i + 1} of {n}: " if n > 1 else ""
                 made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"],
-                                           markers_file=v["markers"], say=lambda w, of=of: self._said.emit(of + w)))
+                                           markers_file=v["markers"], name=p["name"], say=lambda w, of=of: self._said.emit(of + w)))
         finally:
             eng.close()
         for m in made:
