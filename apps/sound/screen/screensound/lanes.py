@@ -11,6 +11,7 @@ from rostrum_sound.doc import effects
 from rostrum_sound.doc import lanes as LN
 
 from . import timing
+from .plugin_items import known
 
 LABELS = {"volume": "Volume", "pan": "Pan", "dynamics": "Expression", "vibrato": "Vibrato", "sustain": "Sustain",
           "bend": "Bend", "level": "Send level"}
@@ -37,7 +38,7 @@ def raw_points(owner: dict, lane: str) -> list[list]:
 
 def owner_of(track: dict, target: str) -> dict:
     """The row's item itself (a track, a bus or the master), one of its sends, or one of its effects, by id."""
-    return next((s for s in [*track.get("sends", []), *track.get("effects", [])] if s["id"] == target), track)
+    return next((s for s in [*track.get("sends", []), *known(track.get("effects", []))] if s["id"] == target), track)
 
 
 def applicable(track: dict, root: dict) -> list[tuple[str, str]]:
@@ -49,7 +50,7 @@ def applicable(track: dict, root: dict) -> list[tuple[str, str]]:
     out = [(track["id"], ln) for ln in LN.offered(track)
            if ln in LN.MIX_RANGE and (ln not in MELODIC_ONLY or notes or raw_points(track, ln))]
     out += [(s["id"], "level") for s in track.get("sends", [])]
-    return out + [(fx["id"], ln) for fx in track.get("effects", []) for ln in LN.offered(fx)]
+    return out + [(fx["id"], ln) for fx in known(track.get("effects", [])) for ln in LN.offered(fx)]
 
 
 def choice_label(track: dict, root: dict, target: str, lane: str) -> str:
@@ -112,7 +113,7 @@ def mix_rows(root: dict, open_lanes: dict) -> list[dict]:
 
 
 def used(track: dict) -> bool:
-    return any(LN.points(o, ln) for o in [track, *track.get("sends", []), *track.get("effects", [])]
+    return any(LN.points(o, ln) for o in [track, *track.get("sends", []), *known(track.get("effects", []))]
                for ln in LN.offered(o))
 
 

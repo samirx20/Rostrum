@@ -3,6 +3,7 @@ selected items of some kinds), the selection tests, and the kind groups. Data an
 from __future__ import annotations
 
 from rostrum_sound import main_mix
+from rostrum_sound.doc.registry import REGISTRY
 from rostrum_sound.doc import select_time as ST
 from rostrum_sound.doc.effects import TYPES as EFFECT_TYPES
 
@@ -46,6 +47,20 @@ def _outside_key(f):
 
 _STEPS = (("up", 1, "Up a half step", "Up"), ("down", -1, "Down a half step", "Down"),
           ("up12", 12, "Up an octave", "Shift+Up"), ("down12", -12, "Down an octave", "Shift+Down"))
+
+
+def takes(op_name):
+    """The selection is something the operation takes (its own target kinds answer, plugin items included): the one test
+    behind Lock, Unlock, Move up / down and Mute, so a plugin's item in the track list gets them as a track does."""
+    targets = REGISTRY.get(op_name).targets
+    return lambda f: bool(f.kinds) and all(k in targets for k in f.kinds)
+
+
+def settable(field):
+    """Every selected item has `field` among the fields its own set operation takes (Mute: tracks and plugin items)."""
+    return lambda f: bool(f.kinds) and all((op := REGISTRY.field_op(k)) is not None and op.param(field) is not None for k in f.kinds)
+
+
 TRACK, CLIP = (lambda f: f.one == "track"), (lambda f: f.one == "clip")
 NOTE_HIT, NOTE = ("note", "hit"), ("note",)
 MARKER = lambda f: f.one == "marker" and f.count == 1 and isinstance(f.items[0].get("at"), (int, float))  # noqa: E731

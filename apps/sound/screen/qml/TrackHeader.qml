@@ -9,6 +9,7 @@ import RostrumKit
 // line: the name and the buttons, the bar left out. Selection only tints the row; nothing moves.
 Rectangle {
     id: h
+    objectName: "trackHeader"
     property var track
     property bool showAuto: true            // off while the arrangement is slim (its lanes cannot open there)
     readonly property bool on: !!backend.pickedHeads[track.id]

@@ -18,7 +18,7 @@ from rostrum_sound.doc import markers as mk
 from rostrum_sound.doc import meter, tempo, times
 
 from . import block_clock, groups, lanes, music_map, pick, timing
-from . import block_memo
+from . import block_memo, plugin_items
 from .block_memo import BlockMemo
 from .handles import level_y
 
@@ -187,13 +187,13 @@ def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]
     """A track's blocks: notes, hits, clips, voice lines. `memo`: notes and hits not changed since are not made again
     (block_memo.py; the blocks are then shared: never changed in place)."""
     clips = layered([{**clip_block(c, root), **({"group": c["group"]} if c.get("group") else {})}
-                     for c in track.get("clips", [])])
-    notes = track.get("notes", [])
+                     for c in plugin_items.known(track.get("clips", []))])
+    notes = plugin_items.known(track.get("notes", []))
     held = block_memo.Same(notes) if any(n.get("dur") == times.NEXT for n in notes) else None   # reads its neighbours
     return (block_memo.made(memo, (track["id"], "notes"), notes, lambda n: note_block(n, root), held, again(root))
-            + block_memo.made(memo, (track["id"], "hits"), track.get("hits", []), lambda h: hit_block(h, root))
+            + block_memo.made(memo, (track["id"], "hits"), plugin_items.known(track.get("hits", [])), lambda h: hit_block(h, root))
             + clips
-            + [line_block(track, ln, root) for ln in track.get("lines", [])])
+            + [line_block(track, ln, root) for ln in plugin_items.known(track.get("lines", []))])
 
 
 def drums_of(track: dict, memo: BlockMemo | None = None) -> list[str]:
@@ -264,13 +264,15 @@ def track_row(t: dict, i: int, root: dict, open_lanes: dict, memo: BlockMemo | N
     order; pick.lanes). The blocks are the roll's own (shared, never changed in place): a note above the span or a
     first hit on a new drum changes the row's layout only, never every block (that sent a drum row's 850 hits again
     on the first hit, ~40-70 ms on a 3-minute song)."""
+    if plugin_items.is_plugin(t["type"]):
+        return plugin_items.row(t, i, hue(t, i))
     bl = blocks(t, root, memo)
     ks = [k for b in bl if b["type"] == "note" for k in b["keys"]]
     pick.stack(bl)                       # overlapping clips / sounds share the lane in rows
     return {"id": t["id"], "name": t.get("name") or t["id"], "hue": hue(t, i),
             "span": [min(ks), max(ks)] if ks else [60, 60], "drums": drums_of(t, memo),
             "mute": bool(t.get("mute")), "solo": bool(t.get("solo")), "locked": bool(t.get("locked")), "kind": kind_of(t), "blocks": bl,
-            "icon": icon_of(t), "canRecord": can_record(t),
+            "icon": icon_of(t), "canRecord": can_record(t), "canSolo": True, "canLane": True,
             "autoUsed": lanes.used(t),
             "auto": lanes.lane_data(t, root, *open_lanes[t["id"]]) if t["id"] in open_lanes else None}
 

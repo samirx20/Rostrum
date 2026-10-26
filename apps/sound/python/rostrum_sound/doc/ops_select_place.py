@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import copy
 
-from rostrum_core import Param, codes
+from rostrum_core import PLUGIN_ITEM, Param, codes
 
 from . import ids, times
 from . import values as V
@@ -29,8 +29,8 @@ TIMED = ("notes", "hits", "clips", "lines")
 
 
 @REGISTRY.operation("track.move", "Move tracks in the track list: up or down by a number of places (by), or right under another "
-                    "track (after). Their order among themselves stays.",
-                    target="track", params=[STEPS, AFTER], label="Move track")
+                    "track (after). Their order among themselves stays (also an item of a plugin this Rostrum doesn't have).",
+                    target=("track", PLUGIN_ITEM), params=[STEPS, AFTER], label="Move track")
 def track_move(ctx, targets, args):
     order = [t["id"] for t in ctx.doc.get("tracks", [])]
     picked = set(targets)

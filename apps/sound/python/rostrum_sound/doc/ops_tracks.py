@@ -2,7 +2,7 @@
 (`locked`) refuses every change to it and its items (rostrum_core/locks.py: one lock check for every app)."""
 from __future__ import annotations
 
-from rostrum_core import Param, codes
+from rostrum_core import PLUGIN_ITEM, Param, codes
 from rostrum_core.edits import MISSING
 from rostrum_core import ids as core_ids
 
@@ -54,7 +54,8 @@ def track_add(ctx, targets, args):
                                   **FD.DEFAULTS["track"], **args})
 
 
-@REGISTRY.operation("track.remove", "Delete tracks and everything on them.", target="track", label="Delete track",
+@REGISTRY.operation("track.remove", "Delete tracks and everything on them (also an item of a plugin this Rostrum doesn't have).",
+                    target=("track", PLUGIN_ITEM), label="Delete track",
                     importance="secondary")
 def track_remove(ctx, targets, args):
     for t in targets:
@@ -62,14 +63,15 @@ def track_remove(ctx, targets, args):
 
 
 @REGISTRY.operation("track.lock", "Lock tracks: nobody can change them or anything on them (people, agents, scripts) "
-                    "until they are unlocked.", target="track", label="Lock track",
+                    "until they are unlocked (also an item of a plugin this Rostrum doesn't have).",
+                    target=("track", PLUGIN_ITEM), label="Lock track",
                     valid_when={"not": {"is": ["locked", True]}})
 def track_lock(ctx, targets, args):
     for t in targets:
         ctx.set(t, "locked", True)
 
 
-@REGISTRY.operation("track.unlock", "Unlock tracks so they can be changed again.", target="track",
+@REGISTRY.operation("track.unlock", "Unlock tracks so they can be changed again.", target=("track", PLUGIN_ITEM),
                     label="Unlock track", valid_when={"is": ["locked", True]})
 def track_unlock(ctx, targets, args):
     for t in targets:

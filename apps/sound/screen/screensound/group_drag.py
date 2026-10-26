@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from rostrum_sound import names
 
+from .plugin_items import is_plugin
+
 
 def _tracks(root: dict) -> dict[str, dict]:
     return {t["id"]: t for t in root.get("tracks", [])}
@@ -49,7 +51,7 @@ def drop_calls(root: dict, rows: list[dict], dragged: list[str], over: str, belo
     what, bus = target
     calls: list[dict] = []
     if what == "join":
-        moving = [t for t in mine if tracks[t].get("output", names.MASTER_OUT) != bus]
+        moving = [t for t in mine if not is_plugin(tracks[t]["type"]) and tracks[t].get("output", names.MASTER_OUT) != bus]   # (a plugin's item plays nowhere)
         calls = [{"op": "bus.add_track", "target": [bus], "args": {"tracks": moving}}] if moving else []
     else:
         out: dict[str, list[str]] = {}
