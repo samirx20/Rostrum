@@ -6,7 +6,7 @@ from __future__ import annotations
 from rostrum_core.mcp.combine import combine
 
 GROUPS = [
-    ("look_frame", "See the composition as it renders: one frame (default), a contact sheet of many, the whole world with "
+    ("look_frame", "See the composition as it renders: one frame (default; or `times: [0.5, 1.2, 3.0]` for one sheet of exactly those moments), a contact sheet of a range, the whole world with "
      "the frame's path, the rig's bones over a frame, or which layers are in or out of the frame. Use \"frame\" to check "
      "a moment, \"sheet\" to check timing across a range, \"world\" when the frame moves over a big canvas.",
      {"frame": "look_frame", "sheet": "look_sheet", "world": "look_world", "in_frame": "look_in_frame", "rig": "look_rig"}, "frame"),

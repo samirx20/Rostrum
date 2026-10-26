@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,7 +31,8 @@ from rostrum_core.cache import CACHE, cache_key
 from . import brush, compose, fill, marks, native, shape
 
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
-CHECKPOINT = 24                  # during a long replay, keep a state every N strokes
+CHECKPOINT = 24                  # during a long replay, keep a state at least every N strokes ...
+CHECKPOINT_COST = 8              # ... and not before the strokes since the last one took CHECKPOINT_COST times a copy of the canvas
 _HERE = Path(__file__).resolve().parent
 _LOCK = threading.RLock()        # the kept states, the memos and the paper: shared by a screen's threads
 ENGINE_VERSION = hashlib.sha1(b"".join((_HERE / f).read_bytes() for f in ("marks.py", "brush.py", "canvas.py",
@@ -176,14 +178,22 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
         return got[0], got[1], keys[n]
     px = got[0].copy() if got else np.zeros((h, w, 4), np.float32)
     top = got[1].copy() if got else np.full((h, w), -1, np.int32)
+    last, copy_s, spent = start, 0.0, 0.0       # the stroke a state was last kept at; what a copy of this canvas costs; stamping since
     for i in range(start, n):
         s = paint["strokes"][i]
+        t0 = time.perf_counter()
         cov = stamp(px, s, w, h, masks, under_fn() if s.get("smudge") and s.get("pickup") else None, at)
         if cov is not None:
             x0, y0, x1, y1 = cov.bbox
             top[y0:y1, x0:x1][cov.a > 1 / 255] = i
-        if (i + 1) % CHECKPOINT == 0 and i + 1 < n:
+        spent += time.perf_counter() - t0
+        # A kept state is a copy of the whole canvas, so on a big canvas a copy every 24 strokes cost more than the strokes
+        # (a 5200 x 1300 grass layer: 25 s of a 68 s first look) and the memory budget held only the last few anyway.
+        # So one is kept when the strokes since the last cost CHECKPOINT_COST copies, which undo / redo then replay at most.
+        if i + 1 - last >= CHECKPOINT and i + 1 < n and spent >= CHECKPOINT_COST * copy_s:
+            t0 = time.perf_counter()
             KEPT.put(keys[i + 1], px.copy(), top.copy())
+            copy_s, spent, last = time.perf_counter() - t0, 0.0, i + 1
     KEPT.put(keys[n], px, top)
     return px, top, keys[n]
 

@@ -2,12 +2,16 @@
 Every engine failure becomes RENDER_FAILED naming what was being drawn; nothing is reported as done unless the file exists."""
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from rostrum_core import markers
 from rostrum_core.errors import RostrumError, codes
 
 from rostrum2d.scene import describe
+
+
+SLOW_PICTURES_S = 5.0
 
 
 def _fail(where: str, what: str, e: Exception) -> RostrumError:
@@ -21,7 +25,13 @@ def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None) -> dict
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
-    return describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span)
+    t0 = time.perf_counter()
+    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span)
+    spent = time.perf_counter() - t0
+    if spent >= SLOW_PICTURES_S:        # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
+        scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "
+                             "them, not when a script adds them. They are kept, so the next look at the same paint is quick."]
+    return scene
 
 
 def stills(where: str, scene: dict, items: list[tuple[float, Path]], progress=None) -> None:
