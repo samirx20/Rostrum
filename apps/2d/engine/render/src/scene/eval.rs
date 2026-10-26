@@ -109,14 +109,18 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     Some(item)
 }
 
-/// A node's own field values at time `t` (its still values, keyed fields decided by their keys). While a
-/// motion-blurred frame's sub-frames are built (`shutter_at`), each field is read on its own side of a jump.
+/// A node's own field values at time `t` (its still values, keyed fields decided by their keys; a counting text's
+/// shown text in `body`). While a motion-blurred frame's sub-frames are built (`shutter_at`), each field is read on
+/// its own side of a jump.
 pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
     let mut props = node.props.clone();
     let centre = CENTRE.with(|c| c.get());
     for (field, keys) in &node.anim {
         let at = centre.map_or(t, |c| near_side(keys, c, t));
         props.insert(field.clone(), track_value(keys, at));
+    }
+    if node.kind == "text" {
+        super::counter::apply(&mut props);      // a counting text shows its number now (counter.rs)
     }
     props
 }

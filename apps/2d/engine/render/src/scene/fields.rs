@@ -86,6 +86,9 @@ const TEXT: &[Field] = &[
     ("pathOverflow", Choice(&["hide", "straight"])),
     ("letterDelay", Number), ("letterOrder", Choice(&["forward", "backward", "center", "random"])), ("letterSeed", Number),
     ("letterSplit", Choice(&["letters", "words"])),
+    // A text that counts (super::counter): the number, its decimals, least digits and thousands mark, the words around it.
+    ("counter", Toggle), ("count", Number), ("countDecimals", Number), ("countDigits", Number), ("countSeparator", Choice(super::counter::SEPARATORS)),
+    ("countPrefix", Text), ("countSuffix", Text),
 ];
 pub const FIGURES: &[&str] = &["default", "proportional lining", "tabular lining", "proportional old-style", "tabular old-style"];
 const IMAGE: &[Field] = &[("src", Text), ("w", Number), ("h", Number), ("fit", Choice(&["cover", "contain", "stretch"])), ("radius", Number)];
@@ -173,7 +176,7 @@ pub const TYPES: &[&str] = &["comp", "shape", "text", "image", "video", "group",
 pub fn animatable(kind: &str, field: &Field) -> bool {
     (matches!(field.1, Number | Color) || (kind == "path" && matches!(field.0, "d" | "widthProfile"))) && kind != "comp" && !matches!(field.0, "start" | "end" | "boxWidth" | "fillDriftX" | "fillDriftY")
         && !(matches!(kind, "drawing" | "path") && matches!(field.0, "w" | "h"))
-        && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed"))
+        && !(kind == "text" && matches!(field.0, "letterDelay" | "letterSeed" | "countDecimals" | "countDigits"))
         && !(kind == "video" && matches!(field.0, "w" | "h" | "offset" | "speed"))
         && crate::rig::fields::animatable(kind, field.0)
         && crate::motion::animatable(kind, field.0)

@@ -23,6 +23,8 @@ fn plain() -> Map<String, Value> {
         ("slant", json!(0.0)), ("grade", json!(0.0)), ("axes", json!("")), ("path", json!("")), ("pathOffset", json!(0.0)),
         ("pathAlign", json!("start")), ("pathOverflow", json!("hide")), ("letterDelay", json!(0.0)),
         ("letterSplit", json!("letters")), ("letterOrder", json!("forward")), ("letterSeed", json!(0.0)),
+        ("counter", json!(false)), ("count", json!(0.0)), ("countDecimals", json!(0.0)), ("countDigits", json!(1.0)), ("countSeparator", json!("comma")),
+        ("countPrefix", json!("")), ("countSuffix", json!("")),
     ] {
         m.insert(f.into(), v);
     }

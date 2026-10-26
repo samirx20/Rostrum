@@ -176,6 +176,24 @@ TYPE = [
     CH("letterSplit", ["letters", "words"], "Split by", "Letters", "letters", S, BY_LETTER),
 ]
 
+# A text that counts (engine: scene/counter.rs, per frame): with Counts a number on, the text shows prefix, `count` (keyable:
+# from → to by its keys and eases) written with `countDecimals` places, at least `countDigits` digits and the thousands mark, then suffix; its `body` is
+# not shown. Tabular figures (`figures`) keep the width steady while it counts. text.counter sets it all in one change.
+COUNTING = IS("counter", True)
+SEPARATORS = ["comma", "period", "space", "none"]   # the thousands mark; the decimal mark is "." (with period: ",")
+COUNTER = [
+    T("counter", "Counts a number", "Counter", False, S, help="The text shows a number that can count (its keys), "
+      "between a prefix and a suffix, in place of its words"),
+    N("count", "Number", "Counter", -1e12, 1e12, 1, "", S, COUNTING, help="The number shown; key it to count"),
+    N("countDecimals", "Decimals", "Counter", 0, 6, 1, "", S, COUNTING, integer=True, help="Places after the decimal mark"),
+    N("countDigits", "Least digits", "Counter", 1, 15, 1, "", D, COUNTING, integer=True, default=1.0,
+      help="Zeros in front up to this many digits (3: 007), as a scoreboard or an odometer"),
+    CH("countSeparator", SEPARATORS, "Thousands", "Counter", "comma", S, COUNTING,
+       labels={"comma": "1,284.5", "period": "1.284,5", "space": "1 284.5", "none": "1284.5"}),
+    X("countPrefix", "Before", "Counter", "", S, when=COUNTING, help='Shown before the number, e.g. "$"'),
+    X("countSuffix", "After", "Counter", "", S, when=COUNTING, help='Shown after the number, e.g. " GWh" or "%"'),
+]
+
 from .rig import fields as _rig  # noqa: E402  (rigs: the table is in rig/fields.py, merged below)
 from .frame import fields as _frame  # noqa: E402  (the frame, the scene's camera: frame/fields.py, merged below)
 from .motion import fields as _motion  # noqa: E402  (shutter, trails, smears: motion/fields.py, merged below)
@@ -256,7 +274,7 @@ FIELDS: dict[str, list[Param]] = {
         T("stroke", "Outline", "Outline", False, D),
         C("strokeColor", "Outline colour", "Outline", "#ffffff", D, STROKE),
         N("strokeWidth", "Outline width", "Outline", 0, 100, 0.5, "px", D, STROKE, default=1.0),
-    ] + TYPE + [_unless_following(p) for p in TRANSFORM] + _grade.colour(_fill.PICTURE[0].valid_when),   # letters take no picture: never
+    ] + TYPE + COUNTER + [_unless_following(p) for p in TRANSFORM] + _grade.colour(_fill.PICTURE[0].valid_when),   # letters take no picture: never
     "image": [
         X("src", "File", "Image", "", help="Absolute path, or relative to the project folder", control="file",
           filters=["Pictures (*.png *.jpg *.jpeg *.webp *.tif *.tiff *.exr)"]),
@@ -455,7 +473,7 @@ STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},
-         "text": {"letterDelay", "letterSeed"},
+         "text": {"letterDelay", "letterSeed", "countDecimals", "countDigits"},
          **_rig.STILL, **_frame.STILL, **_motion.STILL, "*": {"start", "end", "boxWidth", "locked", "hidden", "paintW", "paintH", "fillPhase", "fillDriftX", "fillDriftY"}}
 LABELS = {"comp": "Scene", "shape": "Shape", "text": "Text", "image": "Image", "video": "Video", "render3d": "3D render", "group": "Group", "drawing": "Drawing", "path": "Path", "frame": "Drawing frame", "painting": "Painting",
           "blur": "Blur", "glow": "Glow", "gradient": "Gradient", "backdrop": "Frosted glass", "shadow": "Shadow", "grain": "Grain", "mask": "Mask", "key": "Key", "stop": "Gradient stop", "swatch": "Project colour",

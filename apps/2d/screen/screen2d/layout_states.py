@@ -43,7 +43,7 @@ IGNORE = ()
 QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "canvas-menu-select-layer", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "time_box_typing", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
-         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "text-counter", "scene-1080x1920", "long-status-line", "import-report")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -143,6 +143,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # batch 6: the split icon on Corner radius (and its way back), an open path's panel (no Outline switch), a picture's
         # one Fit (the rest folded), the fill picker with the kind's name under its buttons
         ("rect-each-corner", ["--sample"], ["select card", "set eachCorner true"]),
+        # C1: a text that counts ("+ Counter" turns it on): its Counter rows (Number, Decimals, Thousands, Before, After), a long After
+        ("text-counter", ["--sample"], ["select title", "group Counter", "set countSuffix _GWh_used_through_the_whole_night", "time 2"]),
         ("open-path-picked", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move"]),
         ("path-points", ["--sample"], ["tool pen", "pen 300,300 900,500 1500,300", "tool move", "canvasclick 600 400 double"]),   # its points, not its box
         ("picture-picked", ["--sample"], [f"drop {picture()} 900 500", "select image_1"]),
