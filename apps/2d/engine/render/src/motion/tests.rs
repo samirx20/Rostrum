@@ -134,6 +134,30 @@ fn shutter_samples_keep_what_is_drawn() {
     assert!(xs.windows(2).all(|w| w[1] > w[0]), "its place still blurs: {xs:?}");
 }
 
+/// A layer showing in a frame shows in all its sub-frames, also those before 0 s or before its start (critic 2d-r11:
+/// with motion blur on, frame 0 drew every layer at half strength); one that doesn't show in the frame shows in none.
+#[test]
+fn shutter_samples_keep_who_shows() {
+    let mut late = item("late", "shape", json!({ "w": 100.0, "h": 50.0, "start": 0.5 }));
+    late["anim"] = json!({ "x": [{ "t": 0.0, "v": 0.0, "ease": "linear" }, { "t": 1.0, "v": 900.0, "ease": "linear" }] });
+    let mut comp = item("c", "comp", json!({}));
+    comp["layers"] = json!([item("first", "shape", json!({ "w": 100.0, "h": 50.0 })), late]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let ids = |centre: f64, ts: f64| -> Vec<String> {
+        eval::shutter_at(centre, ts, || eval::at(&scene.comp, ts)).unwrap().layers.iter().map(|l| l.id.to_string()).collect()
+    };
+    for ts in super::sample_times(0.0, 30.0, 180.0, 8) {
+        assert_eq!(ids(0.0, ts), ["first"], "frame 0, sub-frame at {ts}");
+    }
+    for ts in super::sample_times(0.5, 30.0, 180.0, 8) {
+        assert_eq!(ids(0.5, ts), ["first", "late"], "the late layer's first frame, sub-frame at {ts}");
+    }
+    let before = 0.5 - 1.0 / 30.0;
+    for ts in super::sample_times(before, 30.0, 360.0, 8) {
+        assert_eq!(ids(before, ts), ["first"], "the frame before its start, sub-frame at {ts}");
+    }
+}
+
 #[test]
 fn blur_steps_follow_the_move_on_screen() {
     let blur = item("tr", "trail", json!({ "copies": 1.0, "spacing": 1.0, "fade": 0.5 }));

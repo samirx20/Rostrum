@@ -106,7 +106,10 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
         crate::rig::pose(&mut item);
     }
     // A layer outside start ≤ t < end is left out; the frame (a `camera`) has no start or end: it always shows.
-    if !all && node.role == Role::Layer && node.kind != "camera" && !(item.num("start") <= t && t < item.num("end")) {
+    // Whether it shows decides what is drawn, so a motion-blur sub-frame asks at its frame's own time (`tc`): a layer
+    // showing in a frame is in every one of its sub-frames, even those before 0 s or its start (critic 2d-r11: frame 0
+    // came out at half strength), as After Effects.
+    if !all && node.role == Role::Layer && node.kind != "camera" && !(item.num("start") <= tc && tc < item.num("end")) {
         return None;
     }
     Some(item)
