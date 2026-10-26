@@ -8,6 +8,7 @@ from .errors import RostrumError, codes, did_you_mean
 
 TIME_UNITS = ("seconds", "beats", "marker")     # a time value is {"seconds": 1.5}, {"beats": 4} or {"marker": "drop"}
 _LOOSE = re.compile(r"[\s_\-]+")
+INF = float("inf")
 
 
 class CheckMixin:
@@ -64,6 +65,19 @@ class CheckMixin:
             if not isinstance(value, str) or (t == "id" and not value):
                 bad("must be text" if t == "text" else "must be an id")
         return value
+
+    def shift_bounds(self, sub: tuple):
+        """(lo, hi): where the number at `sub` inside a stored value (() for the value itself) may be moved by a Shift
+        (edits.Shift) and still pass `check` unchanged; None: the moved value is checked whole. A Shift only moves a
+        number, so a value that passed keeps its form and only its range can fail: a whole-song move asks 3,607 numbers
+        two comparisons instead of 3,607 full checks (DocKind.bad_values). Outside, or NaN: checked whole, same words."""
+        if self.type == "number" and sub == () and not self.integer:
+            return (-INF if self.min is None else self.min, INF if self.max is None else self.max)
+        if self.type == "time" and sub == ("beats",):
+            return (0, INF)
+        if self.type == "time" and sub == ("seconds",):
+            return (max(0, self.min or 0), INF if self.max is None else self.max)
+        return None
 
     def _same_choice(self, value):
         """The one option `value` names when written another common way ("ease-out" / "EaseOut" for easeOut, 3 for

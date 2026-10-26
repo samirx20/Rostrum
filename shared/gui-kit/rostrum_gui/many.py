@@ -90,9 +90,18 @@ def by_kind(kinds: list[tuple[str, str]]) -> list[dict]:
 def last_change(doc, ids):
     """The newest change still in force that touched any of these items (an Insert, Set, Move or Remove of one), or
     None: the panel's "Last changed by" line. An undo or redo step isn't one; the step it acted on is.
-    Asked on every pick: each item's own steps (`_by_item`), not the whole history back to the item's last change."""
+    Asked on every pick and after every change: first the newest steps in force (after a whole-song Right on the
+    selection it is the very first: asking each of 3,607 items for its own last step cost ~7 ms of every whole-song
+    edit), then each item's own steps (`_by_item`), not the whole history back to the item's last change."""
     h, best = doc.history, None
-    by_item = _by_item(h)
+    by_item, by_step, seen = _by_item(h), _indexed[id(h)][3], 0
+    for c in reversed(h.changes):
+        if c.original and h.done[c.seq]:
+            if not by_step.get(c.seq, frozenset()).isdisjoint(ids):
+                return c
+            seen += 1
+            if seen == NEWEST:
+                break
     for i in dict.fromkeys(ids):
         c = next((c for c in reversed(by_item.get(i, ())) if h.done[c.seq]), None)
         if c is not None and (best is None or c.seq > best.seq):
@@ -100,7 +109,9 @@ def last_change(doc, ids):
     return best
 
 
-_indexed: dict = {}         # id(history) -> (history, steps read, {item id: its original steps, oldest first})
+NEWEST = 4                  # the newest steps in force looked at first (last_change)
+_indexed: dict = {}         # id(history) -> [history, steps read, {item id: its original steps, oldest first},
+                            #                 {step: the items it touched}]
 
 
 def _by_item(h) -> dict:
@@ -109,13 +120,14 @@ def _by_item(h) -> dict:
     if got is None or got[0] is not h or got[1] > len(h.changes):
         if len(_indexed) > 8:
             _indexed.clear()
-        got = _indexed[id(h)] = [h, 0, {}]
+        got = _indexed[id(h)] = [h, 0, {}, {}]
     index = got[2]
     for c in h.changes[got[1]:]:
         if c.original:
-            for i in dict.fromkeys(i for e in c.edits for i in E.ids(e)):
-                if i is not None:
-                    index.setdefault(i, []).append(c)
+            touched = dict.fromkeys(i for e in c.edits for i in E.ids(e) if i is not None)
+            got[3][c.seq] = frozenset(touched)
+            for i in touched:
+                index.setdefault(i, []).append(c)
     got[1] = len(h.changes)
     return index
 

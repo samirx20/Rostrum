@@ -8,22 +8,32 @@
 // that list looks only at those blocks (`update`), and where each block sits (`__at`, id -> index, shared while no
 // block goes): a hit drawn on a track of 3,000 costs what one block costs, not a walk over all of them on each surface.
 function patch(blocks, text, map) {
-    var p = JSON.parse(text), put = p.put, gone = p.gone, out, at, i, j
+    var p = JSON.parse(text), put = p.put, gone = p.gone, out, at = _at(blocks), i, j
     var tm = map && map.length && (p.by.length || put.length) ? [_plainMap(map), Tempo.key(map)] : null
-    if (tm !== null) for (i = 0; i < put.length; i++) if (put[i].atBeat !== undefined) put[i] = _moved(put[i], "beats", 0, tm)
-    if (p.by.length) {
-        at = _at(blocks)
-        for (i = 0; i < p.by.length; i++) {
-            var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2]
-            for (j = 0; j < ids.length; j++) {
-                var k = at[ids[j]]
-                if (k === undefined || k >= blocks.length || blocks[k].id !== ids[j]) throw new Error("Blocks.patch: no block " + ids[j] + " to move")
-                put.push(_moved(blocks[k], field, d, tm))
-            }
+    var dt = null, one = gone.length === 0, n = 0                     // every block moved by one time (Slide.js)
+    function moved(o, x, plain) {                                   // (plain: moved here, so nothing else changed)
+        var s = plain ? o.t - x.t : _shift(o, x)
+        if (one) { if (dt === null) dt = s; one = Math.abs(s - dt) < 1e-9 }
+        n++
+    }
+    for (i = 0; i < put.length; i++) {
+        if (tm !== null && put[i].atBeat !== undefined) put[i] = _moved(put[i], "beats", 0, tm)
+        if (one) moved(put[i], blocks[at[put[i].id]])
+    }
+    for (i = 0; i < p.by.length; i++) {
+        var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2], all = ids === null    // (null: every block, in order)
+        for (j = 0; j < (all ? blocks.length : ids.length); j++) {
+            var k = all ? j : at[ids[j]]
+            if (!all && (k === undefined || k >= blocks.length || blocks[k].id !== ids[j])) throw new Error("Blocks.patch: no block " + ids[j] + " to move")
+            put.push(_moved(blocks[k], field, d, tm))
+            if (one) moved(put[put.length - 1], blocks[k], typeof put[put.length - 1].t === "number"
+                           && Math.abs((put[put.length - 1].dur || 0) - (blocks[k].dur || 0)) < 1e-9)
         }
     }
-    if (gone.length === 0) {
-        out = blocks.slice(); at = _at(blocks)
+    if (put.length === blocks.length && p.by.length === 1 && p.by[0][2] === null) {
+        out = put; out.__at = at                     // every block moved, in its place
+    } else if (gone.length === 0) {
+        out = blocks.slice()
         for (i = 0; i < put.length; i++) {
             j = at[put[i].id]
             if (j !== undefined && j < blocks.length && blocks[j].id === put[i].id) out[j] = put[i]
@@ -42,8 +52,10 @@ function patch(blocks, text, map) {
         }
         for (i = 0; i < put.length; i++) if (by[put[i].id]) out.push(put[i])
     }
-    out.__patch = { from: blocks, put: put, gone: gone }
-    return out
+    out.__patch = { from: blocks, put: put, gone: gone, dt: one && n === blocks.length && isFinite(dt) ? dt : undefined }
+    var was = blocks.__patch                 // the list patched is never painted from now on: what it came from is let go
+    if (was !== undefined) { was.from = null; was.put = []; was.gone = [] }    // (else every list since the last whole
+    return out                               // send stayed alive: each whole-song Right ~5-10 ms slower than the last)
 }
 
 // A block shown, its place moved by d: one placed in beats, timed at once under the map shown (`tm`: [map, its key],
@@ -65,6 +77,22 @@ function _moved(x, field, d, tm) {
     if (field === "beats") { o.atBeat = x.atBeat + d; if (x.endBeat !== undefined) o.endBeat = x.endBeat + d }
     else o.t = x.t + d
     return o
+}
+
+// The seconds block `o` is `x` moved by (NaN: `x` is none, or anything else changed: what it shows, its length).
+// An undo sends a few blocks whole whose new place is not the old one plus the move in floating point (the song's
+// times are rounded): those count as moved here, where only the picture is decided.
+var PLACE = { t: true, dur: true, atBeat: true, endBeat: true, __tempo: true }
+function _shift(o, x) {
+    if (x === undefined || typeof o.t !== "number" || Math.abs((o.dur || 0) - (x.dur || 0)) > 1e-9) return NaN
+    for (var key in o) {
+        if (PLACE[key]) continue
+        var a = o[key], b = x[key]
+        if (a === b) continue
+        if (a === null || b === null || typeof a !== "object" || typeof b !== "object" || a.length === undefined || a.length !== b.length) return NaN
+        for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return NaN
+    }
+    return o.t - x.t
 }
 
 function _at(list) {                     // id -> index (made once per list a patch starts from)
@@ -172,7 +200,7 @@ function _plain(b) {                     // its lists too (keys, names, peaks â€
 var COL = 64
 var MANY = 32           // more changes than this: one whole paint is as quick
 
-function kept() { return { whole: true, by: {}, count: 0, sel: {}, cols: {}, entries: null, next: 0, stamp: 0, width: 0 } }
+function kept() { return { whole: true, by: {}, count: 0, sel: {}, cols: {}, entries: null, next: 0, stamp: 0, width: 0, picked: null } }
 
 function _place(k, e, rectsOf) {         // the entry into the columns its places reach (on the surface only)
     var rs = rectsOf(e[0])
@@ -188,13 +216,13 @@ function _place(k, e, rectsOf) {         // the entry into the columns its place
 // frames running (the Editor opening, a new drum's row) never makes them each time.
 function rebuild(k, blocks, picked, rectsOf, width) {
     var out = []
-    k.whole = false; k.by = {}; k.sel = {}; k.cols = null; k.width = width; k.rectsOf = rectsOf
+    k.whole = false; k.by = {}; k.sel = {}; k.cols = null; k.width = width; k.rectsOf = rectsOf; k.slid = 0
     for (var i = 0; i < blocks.length; i++) {
         var b = blocks[i], e = [b, !!picked[b.id], i, false, 0]
         k.by[b.id] = e; out.push(e)
         if (e[1]) k.sel[b.id] = true
     }
-    k.count = blocks.length; k.next = blocks.length; k.list = blocks; k.entries = out
+    k.count = blocks.length; k.next = blocks.length; k.list = blocks; k.entries = out; k.picked = picked
     return out
 }
 
@@ -261,12 +289,14 @@ function update(k, blocks, picked, rectsOf) {
         if (++changed > MANY) return null
         e[1] = true; k.sel[id] = true; mark(rectsOf(e[0]))
     }
+    k.picked = picked
     return dirty
 }
 
 // Does the selection `picked` change what the surface shows? (a click on another track's note leaves it as it is)
 function touches(k, picked) {
     if (k.whole) return true
+    if (k.picked === picked) return false        // the very selection painted (one shared object a selection)
     for (var id in k.sel) if (!picked[id]) return true
     for (id in picked) { var e = k.by[id]; if (e !== undefined && !e[1]) return true }
     return false

@@ -151,9 +151,9 @@ ACTIONS = [
         needs="Nothing to paste yet: copy something first"),
     act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f) or f.one == "section"),
         C.duplicate, "Ctrl+D",
-        group="edit", needs="Duplicate needs notes, hits, clips, tracks or a section"),
-    act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,
-        "Ctrl+D", group="edit"),
+        group="edit", needs="Duplicate needs notes, hits, clips, tracks or a section", sure=True),   # (sure: its copy
+    act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,   # distance is
+        "Ctrl+D", group="edit", sure=True),                                     # read only when it runs: actions.Action)
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",
         needs="Rename needs one track, group, marker or section selected"),
     act("cut_range", "Cut out and close the gap", lambda f: bool(f.range), C.cut_range, "Shift+Delete", group="range",

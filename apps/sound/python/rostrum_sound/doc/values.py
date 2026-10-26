@@ -29,6 +29,9 @@ PITCH_ONE = {"anyOf": [{"type": "string", "pattern": NOTE.pattern}, {"type": "in
                                                                     "maximum": 127}]}
 
 
+BEAT_KEY = {"time": "beat", "length": "beats"}    # times.problem: a time in beats is {"beat": n}, a length {"beats": n}
+
+
 def _bad(p, value, where, problem, accepted=(), hint=None):
     raise RostrumError(codes.BAD_ARGUMENT, where, f"{p.name}={value!r}", problem, accepted, hint)
 
@@ -51,6 +54,11 @@ class Value(Param):
 
     def check(self, value, where):
         return value if value is None and self.nullable else self.rule(self, value, where)
+
+    def shift_bounds(self, sub):
+        """A time or length moved by a Shift (a nudge) keeps its form (seconds stay seconds, {"beat": n} stays one), so
+        only n ≥ 0 can fail (times.problem); any other Value is checked whole (its rule may ask more than a range)."""
+        return (0, math.inf) if self.form and sub in ((), (BEAT_KEY[self.form],)) else None
 
     def json_schema(self):
         schema = {"anyOf": [*self.schema["anyOf"], {"type": "null"}]} if self.nullable else self.schema

@@ -1,6 +1,7 @@
 import QtQuick
 import RostrumKit
 import "Blocks.js" as Blocks
+import "Slide.js" as Slide
 import "Marks.js" as Marks
 
 // The piano roll's notes, hits and clips (RollGrid's plot, right of the keys), painted on one surface, not four items
@@ -74,10 +75,14 @@ Item {
             if (waiting) return                                  // the stretched picture stands until its turn
             if (height <= 0) { whole = true; return }            // the Editor still opening: painted once it has a size
             var ctx = getContext("2d"), k = view(), at = Marks.rollAt(k)
-            var dirty = whole ? null : Blocks.update(kept, n.blocks, n.picked, at)
+            var slid = whole ? null : Slide.slide(kept, ctx, n.blocks, n.picked, k.x0, k.perSec, width, height)
+            var dirty = whole ? null : slid !== null ? [] : Blocks.update(kept, n.blocks, n.picked, at)
             whole = false
             if (dirty === null) { markPainted(); ctx.reset() }
             ctx.font = nameFont; ctx.textBaseline = "middle"      // the notes' names (a clip sets its own, saved)
+            for (var s = 0; slid !== null && s < slid.length; s++) {    // every block moved as one: the picture moved
+                Blocks.clear(ctx, slid[s][0]); Marks.rollPaint(ctx, slid[s][1], k, slid[s][0]); ctx.restore()
+            }
             if (dirty === null) { Marks.rollPaint(ctx, Blocks.rebuild(kept, n.blocks, n.picked, at, width), k, null); return }
             for (var i = 0; i < dirty.length; i++) {        // only the changed places, each cleared and painted again
                 Blocks.clear(ctx, dirty[i]); Marks.rollPaint(ctx, Blocks.over(kept, dirty[i]), k, dirty[i]); ctx.restore()

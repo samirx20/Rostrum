@@ -14,11 +14,12 @@ CLIPS = {"note", "hit", "clip", "line"}
 
 
 def act(key, label, valid_when, calls=None, shortcut="", importance="secondary", group="", menu="", do="",
-        promoted_when=None, needs="", min_targets=0, release="", panel=True, on=(), amounts=(), asks=False, fit=None):
+        promoted_when=None, needs="", min_targets=0, release="", panel=True, on=(), amounts=(), asks=False, fit=None,
+        sure=False):
     return {"key": key, "label": label, "shortcut": shortcut, "valid_when": valid_when, "importance": importance,
             "promoted_when": promoted_when, "calls": calls, "group": group, "menu": menu, "do": do, "needs": needs,
             "min_targets": min_targets, "release": release, "panel": panel, "on": on, "amounts": amounts, "asks": asks,
-            "fit": fit}
+            "fit": fit, "sure": sure}
 
 
 def on(kinds, op, **args):

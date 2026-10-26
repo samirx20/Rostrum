@@ -7,28 +7,11 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Callable
 
-from .errors import RostrumError, codes
+from . import field_values
 from .registry import Registry
-from .tree import View, fields, walk
+from .tree import View, walk
 
 SHAPE_ERRORS = (KeyError, TypeError, ValueError, AttributeError, IndexError)   # an app check reading a wrong shape
-
-
-_PLAIN = (str, int, float, bool)
-
-
-def _seen_key(kind, name, value):
-    """What a passed value is remembered by in bad_values (None: not remembered): a plain value with its type, or a
-    one-key dict of a plain value (a time {"beat": 8.0}: a whole-song move checks ~1,800 distinct of 3,352), types
-    kept so 1 and 1.0 are told apart. Checks are pure: the same value of the same field passes the same way."""
-    t = type(value)
-    if t in _PLAIN:
-        return kind, name, t, value
-    if t is dict and len(value) == 1:
-        for k, v in value.items():
-            if type(v) in _PLAIN:
-                return kind, name, k, type(v), v
-    return None
 
 
 def _no_problems(data) -> list[str]:
@@ -54,7 +37,9 @@ class DocKind:
     # have its step: raising `version` without one is refused here, so a format change can't ship without it.
     migrations: dict[int, Callable[[dict, dict], tuple[dict, str]]] = field(default_factory=dict)
     # The app's check, run after every call: check(data), or check(data, items=None) to be handed the items a call
-    # changed (None: look at everything, as on open) so a big document isn't walked whole per change.
+    # changed (None: look at everything, as on open) so a big document isn't walked whole per change, or
+    # check(data, items=None, only=None) also told which of their fields it changed (run.set_fields: a field only a
+    # Shift moved holds a number moved, so a rule about its form or its references needn't ask it again).
     check: Callable[..., list[str]] = _no_problems
     # Facts about an item, for valid_when {"fact": …}: the app writes facts(item, doc), where doc is a View
     # (doc.parent(item), doc.item(id)), so a child can be valid by its parent (a note by its track's instrument).
@@ -87,8 +72,10 @@ class DocKind:
             raise ValueError(f"DocKind {self.name!r}: format {self.version} needs an upgrade step (migrations) for "
                              f"format {', '.join(map(str, missing))}")
         app_check = self.check
-        if len(inspect.signature(app_check).parameters) < 2:
-            self.check = lambda data, items=None: app_check(data)
+        n = len(inspect.signature(app_check).parameters)
+        if n < 3:
+            self.check = ((lambda data, items=None, only=None: app_check(data)) if n < 2 else
+                          (lambda data, items=None, only=None: app_check(data, items)))
         app_facts = self.facts
         takes_doc = len(inspect.signature(app_facts).parameters) >= 2
 
@@ -118,34 +105,8 @@ class DocKind:
         return data, labels
 
     def bad_values(self, items, only=None):
-        """Each stored field value its kind's own field op refuses (range, kind of value, choices): the same rule
-        operation arguments obey, so no field of any kind can hold what its control could never set (a frame rate
-        of 0). `only`: item id -> the field names to check (a call's Sets; an item not in it: all its fields). Yields
-        RostrumErrors."""
-        ops, params, passed = {}, {}, set()         # per kind / (kind, field): asked once, not per item; plain
-                                                    # values that passed (3,000 notes share a few pitches)
-        for item in items:
-            kind = item.get("type")
-            op = ops[kind] if kind in ops else ops.setdefault(kind, self.registry.field_op(kind))
-            names = only.get(item.get("id")) if only else None
-            values = fields(item, self.lists) if names is None else {n: item[n] for n in names if n in item}
-            for name, value in (values.items() if op else ()):
-                p = params[kind, name] if (kind, name) in params else params.setdefault((kind, name), op.param(name))
-                if p is None or value in getattr(p, "kept", ()):   # a kept choice: an old file's, still read
-                    continue
-                seen = _seen_key(kind, name, value)
-                if seen in passed:
-                    continue
-                where = f'{item.get("type")} "{item.get("id")}"'
-                try:
-                    stored = p.check(value, where)
-                except RostrumError as e:
-                    yield e
-                    continue
-                if stored != value:     # checks take forms people write ("#fff"); a file holds only the stored one
-                    yield RostrumError(codes.BAD_ARGUMENT, where, f"{name}={value!r}", "is not written as stored", [repr(stored)])
-                elif seen is not None:
-                    passed.add(seen)
+        """Each stored field value its kind's own field op refuses (field_values.bad_values). Yields RostrumErrors."""
+        return field_values.bad_values(self.registry, self.lists, items, only)
 
     def problems(self, data: dict, items=None, only=None) -> list[str]:
         """The whole-document check: every field value (or only `items`', the ones a call changed; `only`: of those,
@@ -154,7 +115,7 @@ class DocKind:
         try:
             out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
                    for e in self.bad_values(walk(data, self.lists) if items is None else items, only)]
-            return out + list(self.check(data, items))
+            return out + list(self.check(data, items, only if items is not None else None))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]
 

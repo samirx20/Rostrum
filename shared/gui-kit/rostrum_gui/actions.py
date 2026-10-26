@@ -62,6 +62,9 @@ class Action:
     amounts: tuple = ()
     asks: bool = False
     fit: Callable | None = None
+    # `sure`: its own checks (`valid` and the rest above) are its whole guard, its calls never empty then: the list as
+    # shown (`listed`, on every change) doesn't make them; a door that runs or previews it does (`available`).
+    sure: bool = False
 
     def __post_init__(self):
         if self.importance not in ("primary", "secondary"):
@@ -99,6 +102,8 @@ def plural(kind: str) -> str:
 
 
 class ActionList:
+    _listing = False                          # inside `listed`: a `sure` action's calls are not made
+
     def __init__(self, actions, keymap, noun: str = "item", short_menu: tuple | None = None):
         """`short_menu`: right-click lists only those jobs (SHORT_MENU); None = every valid action (not moved yet)."""
         self.actions, self.keymap, self.noun, self.short_menu = list(actions), keymap, noun, short_menu
@@ -135,8 +140,8 @@ class ActionList:
             return "invalid", []
         if a.valid and not a.valid(facts):
             return "invalid", []
-        if a.asks:          # every door opens its popover, which makes the calls with the amounts chosen: its `valid` is the
-            return None, []  # whole guard (a whole-song Repeat's calls cost ~70-110 ms on every change just to list it)
+        if a.asks or (a.sure and self._listing):   # asks: every door opens its popover, which makes the calls with the
+            return None, []  # amounts chosen (a whole-song Repeat's calls cost ~70-110 ms on every change just to list it)
         calls = self.calls_for(a, facts, amounts)
         if a.calls and not calls:
             return "nothing", []
@@ -165,6 +170,16 @@ class ActionList:
                     "row": a.row, "row_label": a.row_label(facts) if callable(a.row_label) else a.row_label,
                     "min_targets": a.min_targets, "amounts": bool(a.amounts), "asks": a.asks}))
         return [e for _, e in sorted(out, key=lambda x: x[0])]
+
+    def listed(self, facts, **kw) -> list[dict]:
+        """`available` for showing the list (the bar, the panel, right-click: the hub's refresh after every change),
+        where an entry's calls are never read: a `sure` action's are not made ("calls" is []). A whole-song Duplicate's
+        copy distance read every note's start and end: 45-130 ms profiled on each change of 3,600 notes."""
+        self._listing = True
+        try:
+            return self.available(facts, **kw)
+        finally:
+            self._listing = False
 
     def why_not(self, facts, typed: str) -> str:
         """One plain sentence for an action asked for (a label typed, or an id) that isn't offered; "" if it is."""

@@ -47,11 +47,11 @@ def _uniform(ctx, every, by):
     beats moved by beats, one in seconds moved by seconds), so the move is one `Shift`; the rest are set one by one."""
     beats = isinstance(by, dict)
     path, d = (["at", "beat"], float(by["beats"])) if beats else (["at"], float(by))
-    even = []
+    even, idx = [], ctx.idx                 # (targets and their group mates: checked, all in the index)
     for t in every:
-        at = ctx.item(t)["at"]
+        at = idx[t].item["at"]
         v = at.get("beat") if beats and type(at) is dict and len(at) == 1 else at if not beats else None
-        if type(v) in (int, float) and v + d >= 0:
+        if (type(v) is float or type(v) is int) and v + d >= 0:
             even.append(t)
     return even, path, d
 

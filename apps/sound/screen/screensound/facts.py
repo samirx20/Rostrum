@@ -43,8 +43,10 @@ class Facts:
         return m[name]
 
     def by_kind(self, kinds=TIMED):
-        """{kind: ids} of the selected items of `kinds`, in pick order (shared: read only)."""
-        return self.once(("by_kind", kinds), lambda f: _by_kind(f.items, kinds))
+        """{kind: ids} of the selected items of `kinds`, in pick order (shared: read only). From one pass over the
+        selection for every kind (each kinds asked walked all 3,600 items of Select all again: ~4 ms a refresh)."""
+        return self.once(("by_kind", kinds), lambda f: {k: ids for k, ids in f.once("by_type", _by_type).items()
+                                                        if k in kinds})
 
     def words(self, kinds=TIMED) -> str:
         """The part of the selection an action on `kinds` takes, in words: "178 notes and 202 drum hits". The one
@@ -61,9 +63,8 @@ def _items(f):
     return items, kinds, one, (set() if one == "track" else {locs[i].parent for i in f.ids})
 
 
-def _by_kind(items, kinds) -> dict[str, list[str]]:
+def _by_type(f) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
-    for it in items:
-        if it["type"] in kinds:
-            out.setdefault(it["type"], []).append(it["id"])
+    for it in f.items:
+        out.setdefault(it["type"], []).append(it["id"])
     return out
