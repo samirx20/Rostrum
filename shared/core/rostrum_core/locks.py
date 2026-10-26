@@ -62,7 +62,7 @@ def check(edits, idx, lists, where, locked_by=None, who=None) -> None:
     """Refuse (raise) when any of these edits changes a locked item or something inside one, or when an agent (`who`)
     unlocks what a person locked. `locked_by(id)`: the Who that last set the item's lock, or None."""
     known = {}                                          # parent id -> its holder: all edits see the same state
-    for e in edits:
+    for e in E.flat(edits):
         _agent_unlock(e, idx, who, locked_by)
         held, changed = _held(e, idx, lists, known)
         if held is None:

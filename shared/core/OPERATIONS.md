@@ -33,6 +33,18 @@ Remove(id="card_2", parent="screen_1", key="layers", index=1, item={...})
 Move(id="card_3", from_=("screen_1", "layers", 2), to=("screen_2", "layers", 0))
 ```
 
+Two more carry many items as one edit, so a whole-song change is one history entry and each list is touched once:
+
+```python
+Shift(ids=[...], path=["at", "beat"], by=0.25, places=4)   # the same amount added to a number of many items (a nudge)
+Many(edits=[Insert(...), Insert(...), ...])                # many items in (only Inserts) or out (only Removes): a
+                                                           # whole-song Ctrl+D, Repeat or Delete; the same as its edits
+                                                           # one by one, its reverse theirs in reverse order
+```
+
+Code that reads items one by one reads `edits.flat(change.edits)`. Operations make them with `ctx.shift`,
+`ctx.insert_many` and `ctx.remove_many`.
+
 Each edit carries what was there before, so it can be reversed without an old copy of the document. Because edits name ids, changes from different people commute unless they touch the same field.
 
 Edits are grouped into a **change** — one step in the history, one undo:

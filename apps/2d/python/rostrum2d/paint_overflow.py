@@ -56,7 +56,7 @@ def note(change, doc) -> str | None:
     document after the change (anything with `item(id)`)."""
     from rostrum_core import edits as E
     targets = [t for c in getattr(change, "calls", []) or [] if c.get("op") == "paint.stroke" for t in c.get("target", [])]
-    made = [e.item for e in getattr(change, "edits", []) or []
+    made = [e.item for e in E.flat(getattr(change, "edits", []) or [])
             if isinstance(e, E.Insert) and e.key == "layers" and e.item.get("type") == "drawing" and e.id not in targets]
     if not targets or not made:
         return None

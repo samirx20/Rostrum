@@ -8,7 +8,7 @@ copy: a shape just drawn, a text, a paste or an import is inserted after the lay
 by_turn, by_scale). Anything else changed since, or another pick, and there is no step: Ctrl+D is the plain 24 px one."""
 from __future__ import annotations
 
-from rostrum_core.edits import Insert, Set
+from rostrum_core.edits import Insert, Set, flat
 
 TRANSFORM = ("x", "y", "rotation", "scale")
 
@@ -19,10 +19,10 @@ def step(doc, ids: list[str]) -> dict:
     for c in reversed(h.changes):
         if not c.original or not h.done.get(c.seq):
             continue                                            # an undo or redo record, or a change taken back
-        inserts = [e for e in c.edits if isinstance(e, Insert)]
+        inserts = [e for e in flat(c.edits) if isinstance(e, Insert)]
         if inserts:
             return _between(doc, c, inserts, ids)
-        if not all(isinstance(e, Set) and e.id in mine and e.path[0] in TRANSFORM for e in c.edits):
+        if not all(isinstance(e, Set) and e.id in mine and e.path[0] in TRANSFORM for e in flat(c.edits)):
             return {}                                           # something else changed since
     return {}
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .tree import child_keys, subtree_ids
-from .edit_types import Insert, Move, Remove, Set, Shift
+from .edit_types import Insert, Many, Move, Remove, Set, Shift
 
 
 def keys(e, lists: dict) -> set[tuple]:
@@ -17,6 +17,8 @@ def keys(e, lists: dict) -> set[tuple]:
         return {(e.id, "@place")}
     if isinstance(e, Shift):
         return {(i, *e.path) for i in e.ids}
+    if isinstance(e, Many):
+        return set().union(*(keys(x, lists) for x in e.edits)) if e.edits else set()
     raise TypeError(f"not an edit: {e!r}")
 
 
