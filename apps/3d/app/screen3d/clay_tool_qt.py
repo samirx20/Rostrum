@@ -2,30 +2,76 @@
 Q (or the rail's Clay button) turns it on; Q again, V or Esc goes back to Select. It is a tool, like Paint: the panel,
 the timeline and every other control stay where they are; only the settings panel shows the Clay group (ClayPanel.qml).
 
-What a drag does is one choice of tiles: Make (Lump; Draw and Spin come in CL2) or a Brush (Add, Carve, Smooth; the
-rest come later). The brush is the selected clay's `brush` field (the next stroke's settings live on the clay, so an
-agent reads and sets them too); Lump is screen state.
+What a drag does is one choice of tiles: Make (Lump; Draw and Spin come later) or a Brush (the six that shape: Add,
+Carve, Smooth, Pull, Flatten, Crease; then Mask, which protects). The brush is the selected clay's `brush` field (the
+next stroke's settings live on the clay, so an agent reads and sets them too); Lump is screen state.
 - Lump: a click on empty ground or on any other thing makes a new clay there (`clay.add`, the ball the size of the
   brush); a click on a clay joins a ball to it (`clay.lump`). A drag turns the view.
 - A brush, a clay selected: a drag on the clay sculpts it (clay_stroke.py), one undo step per stroke; Ctrl held = the
-  opposite (Add ↔ Carve), Shift held = Smooth. A drag on empty space turns the view; a click on another thing selects it.
+  opposite (Add ↔ Carve; Flatten puffs out, Crease pinches to a ridge, Mask unmasks: `invert`), Shift held = Smooth.
+  A pen's pressure goes with each point. A drag on empty space turns the view; a click on another thing selects it.
+- F held (the key map's clay_size, a hold key) and the pointer moved left or right: the ring under the pointer grows or
+  shrinks live, nothing else is drawn; letting F go is one `clay.set` of brushSize (one undo step).
 The brush shows as a ring lying on the surface under the pointer (`ring`, parts of the viewport), from a pick per
 hover move (newest only); during a stroke it follows the pointer with the shape it had.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QEvent, QObject, Qt, Signal, Slot
+from PySide6.QtGui import QGuiApplication, QKeySequence
+from rostrum3d import fields as F
+from rostrum_gui.gui_filter import GuiFilter
 
 from . import clay_ring as R
 from .clay_brush_qt import ClayBrush
 from .clay_stroke import WORDS, ClayStroke
 
-# The tiles, in panel order: (value, name, one line of what it does). Make, then Brush.
+# The tiles, in panel order: (value, name, one line of what it does). Make, then Brush (the six that shape), then Mask.
 NEW_CLAY = 0.1                  # a new clay's radius (m): hand-sized; its brush starts at a quarter of it (clay.add)
 MAKE = [("lump", "Lump", "Click on a clay to join a ball the size of the brush; elsewhere it starts a new clay.")]
 BRUSHES = [("add", "Add", "Builds clay up under the brush. Hold Ctrl to carve."),
            ("carve", "Carve", "Takes clay away. Hold Ctrl to add."),
-           ("smooth", "Smooth", "Evens bumps out. Hold Shift with any brush to smooth.")]
+           ("smooth", "Smooth", "Evens bumps out. Hold Shift with any brush to smooth."),
+           ("pull", "Pull", "Grabs the clay under the brush and drags it along: a nose, a chin, an ear tip."),
+           ("flatten", "Flatten", "Planes the clay towards its average surface. Hold Ctrl to puff it out."),
+           ("crease", "Crease", "Pinches a sharp line or valley: lips, eyelids, folds. Hold Ctrl for a ridge.")]
+MASKS = [("mask", "Mask", "Paints a mask: no brush changes masked clay. Hold Ctrl to take the mask away.")]
+SIZE_KEY = "clay_size"          # keys3d.py: F, a hold key this tool watches itself (KeyMap skips it, so no shortcut eats it)
+
+
+class SizeKey(GuiFilter):
+    """F down and up for the size drag, while Clay is on, from the window's own key events (a shortcut sees no release).
+    A text box that has the keys keeps its F."""
+
+    def __init__(self, tool):
+        super().__init__(tool)
+        self.t = tool
+
+    def _ours(self, event, plain=True) -> bool:
+        """F (or the person's own key for it); `plain`: with no Ctrl / Shift / Alt (Shift+F is Look). Its release counts
+        whatever is held then."""
+        if plain and event.modifiers() not in (Qt.KeyboardModifier.NoModifier, Qt.KeyboardModifier.KeypadModifier):
+            return False
+        km = getattr(getattr(getattr(self.t.b, "actions", None), "list", None), "keymap", None)
+        if km is None:
+            from .keys3d import KEYS3D as km
+        return SIZE_KEY in km.held(QKeySequence(event.key()).toString())
+
+    def on_event(self, obj, event) -> bool:
+        kind = event.type()
+        if kind not in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease) or not self.t._on:
+            return False
+        if kind == QEvent.Type.KeyRelease:
+            if self.t._sizing and not event.isAutoRepeat() and self._ours(event, plain=False):
+                self.t.sizeEnd()
+                return True
+            return False
+        focus = QGuiApplication.focusObject()
+        if focus is not None and (focus.inherits("QQuickTextInput") or focus.inherits("QQuickTextEdit")):
+            return False
+        if event.isAutoRepeat():
+            return self.t._sizing and self._ours(event, plain=False)     # F still held: its repeats are swallowed
+        return self._ours(event) and self.t.sizeBegin()
 
 
 class ClayTool(ClayStroke, QObject):
@@ -35,12 +81,15 @@ class ClayTool(ClayStroke, QObject):
     sculpted = Signal(object)        # (drag number, phase, answer or error line, wall ms, points) from the engine thread
     hovered = Signal(object)         # (hover number, pick answer or error line)
     lumped = Signal(object)          # (pick answer or error line, scene, request) for a Lump click
+    sizingChanged = Signal()
 
     def __init__(self, bridge, viewport):
         super().__init__(viewport)
         self.b, self.v = bridge, viewport
         self._on, self._make, self._drag, self._hover, self._hover_busy, self._hover_next = False, "", 0, 0, False, None
-        self._ring, self._ring_c = [], None
+        self._ring, self._ring_c, self._hit = [], None, None      # _hit: the last hover's (req, scene, point, normal)
+        self._sizing, self._size0, self._ring0, self._size_x, self._size_now = False, 0.0, 0.0, None, 0.0
+        self._keys = SizeKey(self)
         self._stroke_reset()
         self.brush = ClayBrush(self)
         self.sculpted.connect(self._on_sculpted)
@@ -54,9 +103,12 @@ class ClayTool(ClayStroke, QObject):
     on = Property(bool, lambda s: s._on, notify=changed)
     clayId = Property(str, lambda s: s._clay_id(), notify=changed)
     itemName = Property(str, lambda s: s.b.label_of(s._item()) if s._item() else "", notify=changed)
-    tool = Property(str, lambda s: s._tool(), notify=changed)           # "lump" | "add" | "carve" | "smooth"
+    tool = Property(str, lambda s: s._tool(), notify=changed)           # "lump" | a brush (clay_fields BRUSHES)
     make = Property("QVariantList", lambda s: s._tiles(MAKE), notify=changed)
     brushes = Property("QVariantList", lambda s: s._tiles(BRUSHES) if s._item() else [], notify=changed)
+    masks = Property("QVariantList", lambda s: s._tiles(MASKS) if s._item() else [], notify=changed)
+    # F held: the pointer's moves size the brush (ClayStrokes sends them to sizeMove) and no stroke starts
+    sizing = Property(bool, lambda s: s._sizing, notify=sizingChanged)
     brushObj = Property(QObject, lambda s: s.brush, constant=True)
     # a left drag on the viewport goes to the brush (else it falls through: Lump's click, the view's turn)
     sculpts = Property(bool, lambda s: s._on and s._make == "" and s._item() is not None, notify=changed)
@@ -105,6 +157,7 @@ class ClayTool(ClayStroke, QObject):
         self.v.mesh_edit.leave()
         self.b.add.disarm()
         self._on = True
+        self._keys.watch_windows(QGuiApplication.instance())     # F for the size drag (each window once)
         self._make = "" if self._item() is not None else "lump"      # nothing to sculpt yet: make one first
         self._rows_again()
         self._refresh()
@@ -113,6 +166,7 @@ class ClayTool(ClayStroke, QObject):
     @Slot()
     def leave(self):
         if self._on:
+            self.sizeCancel()
             self.cancel()
             self._on, self._ring = False, []
             self._rows_again()
@@ -133,7 +187,7 @@ class ClayTool(ClayStroke, QObject):
             self.ringChanged.emit()
             return self.changed.emit()
         it = self._item()
-        if it is None or value not in {v for v, *_ in BRUSHES}:
+        if it is None or value not in {v for v, *_ in BRUSHES + MASKS}:
             return
         self._make = ""
         if it.get("brush") != value:
@@ -198,7 +252,7 @@ class ClayTool(ClayStroke, QObject):
     # --- the ring: a pick per hover move, newest only
     @Slot(float, float, float)
     def hover(self, x, y, dpr):
-        if not self.sculpts or self._phase or self.v._size is None:
+        if not self.sculpts or self._phase or self._sizing or self.v._size is None:
             return
         self._dpr = dpr
         if self._hover_busy:
@@ -220,18 +274,19 @@ class ClayTool(ClayStroke, QObject):
     @Slot()
     def unhover(self):
         self._hover += 1
-        if self._ring and not self._phase:
+        if self._ring and not self._phase and not self._sizing:
             self._ring = []
             self.ringChanged.emit()
 
     def _on_hover(self, answer):
         n, r, scene, req = answer
         self._hover_busy = False
-        if n == self._hover and not self._phase and not isinstance(r, str):
+        if n == self._hover and not self._phase and not self._sizing and not isinstance(r, str):
             it, ring = self._item(), []
             if it is not None and r.get("hit") and r.get("item") == it["id"]:
                 rad = R.world_radius(scene, it["id"], req["frame"], it.get("brushSize", 0.03))
                 ring = R.ring(req, scene, req["frame"], r["point"], r["normal"], rad)
+                self._hit = (req, scene, r["point"], r["normal"])
             self._ring = ring
             self._ring_c = [req["x"] / req["width"], req["y"] / req["height"]] if ring else None
             self.ringChanged.emit()
@@ -248,3 +303,54 @@ class ClayTool(ClayStroke, QObject):
         dx, dy = c[0] - self._ring_c[0], c[1] - self._ring_c[1]
         self._ring, self._ring_c = [[p[0] + dx, p[1] + dy] for p in self._ring], c
         self.ringChanged.emit()
+
+    # --- F + drag: the brush size (the ring is the only thing drawn; one clay.set when F comes up)
+    def sizeBegin(self) -> bool:
+        """F went down: taken (True) while a clay is sculpted. It sizes the ring on the clay under the pointer; with no
+        ring there the status line says where to point."""
+        it = self._item()
+        if self._sizing or not self.sculpts or self._phase or it is None or self.v._size is None:
+            return self._sizing
+        if not self._ring or self._hit is None:
+            self.b.say("Size: rest the pointer on the clay, then hold F and move left or right")
+            return True
+        w, h = self.v._size
+        self._sizing, self._size0, self._size_x = True, float(it.get("brushSize", 0.03)), None
+        self._size_now = self._size0
+        self._ring0 = R.ring_px(self._ring, self._ring_c, w, h) / (self._dpr * self.v._scale)    # logical px
+        self.sizingChanged.emit()
+        return True
+
+    @Slot(float, float)
+    def sizeMove(self, x, y):
+        """The pointer moved with F held (logical px): the first move is the start; to the right the ring grows."""
+        if not self._sizing:
+            return
+        if self._size_x is None:
+            self._size_x = x
+            return
+        p, it = F.param("clay", "brushSize"), self._item()
+        if it is None:
+            return self.sizeCancel()
+        self._size_now = R.sized(self._size0, self._ring0, x - self._size_x, p.min, p.max)
+        req, scene, point, normal = self._hit
+        rad = R.world_radius(scene, it["id"], req["frame"], self._size_now)
+        self._ring = R.ring(req, scene, req["frame"], point, normal, rad) or self._ring
+        self.ringChanged.emit()
+
+    @Slot()
+    def sizeEnd(self):
+        """F came up: one clay.set of the new size (one undo step); nothing when it did not change."""
+        if not self._sizing:
+            return
+        self._sizing, it, size = False, self._item(), self._size_now
+        self.sizingChanged.emit()
+        if it is not None and abs(size - self._size0) > 1e-9:
+            self.b._guard(lambda: self.b._apply([{"op": "clay.set", "target": [it["id"]], "args": {"brushSize": size}}],
+                                                f"Brush size on {self.b.label_of(it)}"))
+
+    def sizeCancel(self):
+        """Left with F still down (the tool left, the clay gone): the size stays as it was."""
+        if self._sizing:
+            self._sizing = False
+            self.sizingChanged.emit()

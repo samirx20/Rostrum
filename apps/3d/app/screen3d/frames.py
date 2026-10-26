@@ -86,15 +86,18 @@ class ViewRenderer(PictureWorker):
             out = eng.pick(**req)
             self.picked.emit(out.get("item", "") if out.get("hit") else "", out)
         else:
-            *pixels, reply = eng.view(**req)
-            image = image_from_pixels(*pixels)
-            if image.isNull():
-                raise RuntimeError("the engine's picture could not be read from its shared memory")
-            self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
-                            bool(reply.get("cameraDof", False)),
-                            {"final": reply.get("final"), "vram": reply.get("vram")})
+            self.show(*eng.view(**req))
         for line in eng.take_notices():
             self.notice.emit(line)
+
+    def show(self, view, width, height, stride, reply):
+        """A picture the engine drew (a view, or the one a sculpt event drew with its dab) as the newest one."""
+        image = image_from_pixels(view, width, height, stride)
+        if image.isNull():
+            raise RuntimeError("the engine's picture could not be read from its shared memory")
+        self.ready.emit(self.publish(image), float(reply.get("ms", 0.0)), bool(reply.get("sceneDome", False)),
+                        bool(reply.get("cameraDof", False)),
+                        {"final": reply.get("final"), "vram": reply.get("vram")})
 
     def describe(self, job, error):
         return f"Error: viewport {job[0]} at frame {job[2].get('frame')}: {error}"
