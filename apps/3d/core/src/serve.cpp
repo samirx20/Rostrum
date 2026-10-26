@@ -70,6 +70,8 @@ int serve(std::FILE* in, std::FILE* out) {
       {"unfold", [&](const JsObject& a) { return core.unfold(a); }},
       {"inspect_usd", [&](const JsObject& a) { return inspect_usd(Args(a, "inspect_usd", {"file"}).str("file")); }},
       {"save", [&](const JsObject& a) { return core.save(a); }},
+      {"sculpt", [&](const JsObject& a) { return core.sculpt(a); }},
+      {"clay_info", [&](const JsObject& a) { return core.clay_info(a); }},
       {"info", [&](const JsObject&) { return core.info(); }},
   };
   for (bool eof = false; !eof;) {

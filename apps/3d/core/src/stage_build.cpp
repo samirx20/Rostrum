@@ -75,6 +75,7 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   result.start = start;
   result.end = end;
   result.fps = fps;
+  result.clays = std::move(ctx.clays);
   publish_light_extras(built);  // what the Hydra filters hand the renderers (light_extras.h); same paths once moved
   stage->GetRootLayer()->TransferContent(layer);
   return result;

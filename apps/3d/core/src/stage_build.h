@@ -3,6 +3,10 @@
 #include <pxr/base/js/value.h>
 #include <pxr/usd/usd/stage.h>
 
+#include <vector>
+
+#include "clay_scene.h"
+
 namespace r3d {
 
 struct BuildResult {
@@ -10,6 +14,7 @@ struct BuildResult {
   int prims = 0;      // prims authored in the root layer
   int start = 0, end = 0;
   double fps = 24;
+  std::vector<clay::Node> clays;  // clay items: their surfaces are the clay store's (Core::scene syncs it)
 };
 
 // Replaces the content of stage's root layer with the scene. Checked whole: on any problem it throws
