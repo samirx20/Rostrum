@@ -162,7 +162,9 @@ class Mouse {
       }
     }
     out.push_back({path.back().x + nx, path.back().y + ny});
-    dabs_ += S_.stroke_screen(b, out, c, w_, h_);
+    Brush hand = b;  // a person drags with Accumulate off (the default in sculpting apps): passes don't pile up
+    hand.accumulate = false;
+    dabs_ += S_.stroke_screen(hand, out, c, w_, h_);
     ++strokes_;
   }
 

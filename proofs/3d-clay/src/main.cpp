@@ -1,7 +1,7 @@
 // P-Clay proof: sculpt with steps, time a dab to its picture, rebuild the whole surface, replay 2,000 strokes with a
 // stable hash, memory; Storm pictures and Cycles Finals. Throwaway proof code.
 //
-//   clay_proof.exe <out folder> bench   [--samples 256] [--no-final] [--strokes 2000] [--budget 8]
+//   clay_proof.exe <out folder> bench   [--samples 256] [--no-final] [--strokes 2000] [--budget 2]
 //   clay_proof.exe <out folder> look    [--samples 256]   close-ups: smoothness, a Crease line, joins
 //   clay_proof.exe <out folder> compare [--samples 256]   the agent's head and character, the mouse head
 //   clay_proof.exe <out folder> check                     every head step must leave a closed surface
@@ -168,7 +168,7 @@ std::vector<Step> read_steps(const std::string& path) {
 struct Live {
   Clay* clay;
   View* view;
-  size_t budget = 8;
+  size_t budget = 2;
   std::set<BlockKey> pending;
   struct Frame {
     double meshMs = 0, usdMs = 0, renderMs = 0;
@@ -274,6 +274,7 @@ const Camera kHeadCam = cam_of({0.2f, 0.035f, 0.4f}, {0, -0.015f, 0.02f}, 30);
 int bench(const std::string& out, float voxel, int samples, bool final, int nstrokes, size_t budget, Json& J) {
   std::vector<Step> headSteps;
   uint64_t headHash = 0;
+  std::unique_ptr<BlockMesh> headWhole, strokesWhole;  // the surfaces the Finals render, at the end
   View view(1280, 720);
   {
     // 1. the head, sculpted by script (strokes go through the live path: dabs shown, then the stroke as one unit)
@@ -308,7 +309,11 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
     for (int i = 0; i < 10; ++i) st.push_back(view.render_storm());
     J.num("storm_static_frame_p50_ms", pct(st, 0.5));
     view.save_storm_png(out + "/head_storm.png");
-    if (final) J.num("final_seconds", view.render_cycles(whole, samples, out + "/head_final.png"));
+    J.num("ws_before_head_final_mb", now_ws() / 1048576.0);
+    // the Finals come at the end: Cycles keeps its scene (~0.5 GB here) for as long as the engine lives
+    if (final) headWhole = std::make_unique<BlockMesh>(whole);
+    J.num("ws_after_head_final_mb", now_ws() / 1048576.0);
+    J.num("peak_after_head_final_mb", peak_ws() / 1048576.0);
 
     Live live{&S.clay, &view, budget};
     const float ext = 0.331f;  // the clay's largest extent (part 1: measured from the surface)
@@ -325,7 +330,7 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
       for (const auto& op : ops)
         for (int mirror = 0; mirror < 2; ++mirror) {
           if (mirror && sz.r < 0.01f) continue;
-          std::vector<double> total, apply, mesh, usd, render, settle, endMs, frames, cpu;
+          std::vector<double> total, apply, mesh, usd, render, settle, endMs, frames, cpu, prep, fill, workv, wr;
           const int N = 24;
           for (int i = 0; i < N; ++i) {
             // dabs around the cranium, aimed at its centre, each its own stroke
@@ -348,8 +353,9 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
             const double c0 = process_cpu_ms();
             const auto a0 = Clock::now();
             S.clay.begin_stroke();
-            S.clay.dab(s);
+            const StepTiming st = S.clay.dab(s);
             const double ta = ms_since(a0);
+            prep.push_back(st.prepMs), fill.push_back(st.fillMs), workv.push_back(st.workMs), wr.push_back(st.writeMs);
             const Live::Frame f = live.frame(on);
             total.push_back(ms_since(a0));
             cpu.push_back(process_cpu_ms() - c0);
@@ -380,6 +386,12 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
           J.num(key + "_usd_p50_ms", pct(usd, 0.5));
           J.num(key + "_render_p50_ms", pct(render, 0.5));
           J.num(key + "_cpu_p50_ms", pct(cpu, 0.5));
+          J.num(key + "_step_find_p50_ms", pct(prep, 0.5));
+          J.num(key + "_step_fill_p50_ms", pct(fill, 0.5));
+          J.num(key + "_step_work_p50_ms", pct(workv, 0.5));
+          J.num(key + "_step_write_p50_ms", pct(wr, 0.5));
+          std::printf("   step: find %.1f fill %.1f work %.1f write %.1f ms\n", pct(prep, 0.5), pct(fill, 0.5),
+                      pct(workv, 0.5), pct(wr, 0.5));
           J.num(key + "_stroke_end_p50_ms", pct(endMs, 0.5));
           J.num(key + "_all_shown_p50_ms", pct(settle, 0.5));
           J.num(key + "_frames_p50", pct(frames, 0.5));
@@ -413,6 +425,7 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
     J.num("strokes_dabs", double(R.steps.size() - headSteps.size()));
     J.num("strokes_live_ms", ms_since(t0));
     live = R.clay.hash();
+    J.num("peak_after_strokes_live_mb", peak_ws() / 1048576.0);
     all = R.steps;
     if (!write_steps(out + "/strokes_steps.txt", all)) throw std::runtime_error("could not write strokes_steps.txt");
   }
@@ -441,10 +454,16 @@ int bench(const std::string& out, float voxel, int samples, bool final, int nstr
     J.num("replay_cache_ms", ms_since(t0));
     J.num("replay_cache_same_hash", cached.hash() == replayed ? 1 : 0);
     J.num("strokes_grid_mb", c.memory_bytes() / 1048576.0);
-    if (final) {
-      view.set_camera(kHeadCam);
-      view.render_cycles(whole_of(c), samples, out + "/strokes2000_final.png");
-    }
+    J.num("peak_after_replay_mb", peak_ws() / 1048576.0);
+    J.num("ws_before_strokes_final_mb", now_ws() / 1048576.0);
+    if (final) strokesWhole = std::make_unique<BlockMesh>(whole_of(c));
+  }
+  J.num("peak_before_finals_mb", peak_ws() / 1048576.0);
+  if (final) {  // every clay is gone now; only the two surfaces are kept
+    view.set_camera(kHeadCam);
+    J.num("final_seconds", view.render_cycles(*headWhole, samples, out + "/head_final.png"));
+    headWhole.reset();
+    view.render_cycles(*strokesWhole, samples, out + "/strokes2000_final.png");
   }
   return 0;
 }
@@ -558,7 +577,7 @@ int main(int argc, char** argv) {
   const std::string out = argv[1], mode = argv[2];
   float voxel = 0.000625f;
   int samples = 256, nstrokes = 2000;
-  size_t budget = 8;
+  size_t budget = 2;
   bool final = true;
   for (int i = 3; i < argc; ++i) {
     const std::string a = argv[i];
@@ -595,7 +614,9 @@ int main(int argc, char** argv) {
       const double tp = ms_since(t0);
       t0 = Clock::now();
       const double c0 = process_cpu_ms();
+      const std::string before = profile_text();
       replay(c, strokes);
+      std::printf("before strokes: %s\nafter strokes:  %s\n", before.c_str(), profile_text().c_str());
       std::printf("pieces %zu: %.0f ms; dabs %zu: %.0f ms wall, %.0f ms cpu (%.2f ms a dab)\n", pieces.size(), tp,
                   strokes.size(), ms_since(t0), process_cpu_ms() - c0, ms_since(t0) / std::max<size_t>(1, strokes.size()));
       return 0;

@@ -54,6 +54,7 @@ struct Brush {
   float radius = 0.01f;   // world
   float strength = 0.5f;  // 0..1
   bool mirror = false;
+  bool accumulate = true;  // off: repeated passes of one stroke don't pile up (Nomad's Accumulate)
 };
 
 struct Session {
@@ -127,6 +128,7 @@ struct Session {
       s.strength = b.strength;
       s.mirror = b.mirror;
       s.stroke = id;
+      s.accumulate = b.accumulate;
       // Pull: the pull vector (along the drag, in the surface); Crease: the line's direction
       const V3 along = havePrev ? sub(on, prev) : V3{0, 0, 0};
       const V3 tang = sub(along, mul(nrm, dot(along, nrm)));
