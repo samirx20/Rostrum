@@ -50,7 +50,8 @@ class Item:
 
     def key(self, prop: str, keys: dict, ease: str = "smooth", **curve) -> "Item":
         """{seconds: value}, {seconds: (value, ease)} or {seconds: {"v": value, "ease": "spring", "stiffness": 240}};
-        curve settings given here (x1 y1 x2 y2 for ease="custom", stiffness damping for "spring") go on every key."""
+        curve settings given here (x1 y1 x2 y2 for ease="custom", stiffness damping for "spring") go on every key.
+        "visible" takes True / False (1 / 0): shown or hidden from that key to the next, never in between."""
         allowed = F.animatable(self.node["type"])
         if prop not in allowed:
             raise ValueError(f'{self.id}: "{prop}" can\'t be animated on a {self.node["type"]}; animatable: '
@@ -66,8 +67,14 @@ class Item:
             if value is None:
                 raise ValueError(f'{where}: a key given as a dict needs its value as "v"')
             e = F.param("key", "ease").check(e, where)
+            if F.is_toggle(self.node["type"], prop):       # visible: on / off, held to the next key (fields.toggle_at)
+                if value not in (0, 1):
+                    raise ValueError(f"{where}: {prop} is on / off; a key's value is True / 1 or False / 0")
+                value = 1.0 if value else 0.0
+            else:
+                value = p.check(value, where)
             k = {"id": key_id(self.id, prop, t), "type": "key", "prop": prop, "t": float(t),
-                 ("c" if p.type == "color" else "v"): p.check(value, where), "ease": e}
+                 ("c" if p.type == "color" else "v"): value, "ease": e}
             if set(own) - set(CURVE):
                 raise ValueError(f'{where}: {", ".join(sorted(set(own) - set(CURVE)))} is not a key setting; '
                                  f'a key takes v, ease and {", ".join(CURVE)}')

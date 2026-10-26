@@ -159,7 +159,7 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (mesh › `<mesh>_bone1` › `_bone2` …), and binds the mesh (`skinned`), in one undo step; a chain the mesh had is
   replaced. A bone's own +Y runs along it from its head; its fields are `rx ry rz` (Turn, keyable) and `length`; its
   head `x y z` is data the chain wrote. Bend it by keying Turn: `key.add` (target the bone, `prop` rx / ry / rz, `v` =
-  its rest turn plus the bend, in degrees); poses and `anim.ease` work on bones too. The core weights the mesh to the
+  its rest turn plus the bend, in degrees; the window's bone rings write the same `key.add`); poses and `anim.ease` work on bones too. The core weights the mesh to the
   bones itself. `bone.bind` (`off: true`) stops the bending and keeps the bones; `mesh.set skinned` is the same. The mesh
   bends only where it has points along its length: the ready shapes have none along their straight part (`segments`
   go around), so use an editable mesh (`mesh.add shape="poly"` with your own `points` / `faceCounts` / `faceIndices`,

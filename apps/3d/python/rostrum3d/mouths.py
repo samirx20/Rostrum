@@ -9,13 +9,12 @@ from rostrum_core.lipsync import mouths as M
 
 from . import fields as F
 
-SHOWS = ("sx", "sy", "sz")                  # a shape shows at its own Scale and is hidden by scaling it to nothing (HIDDEN)
-HIDDEN = 1e-4                               # not 0: a zero matrix has no normals to light; 0.1 mm at 1 m can't be seen
+SHOWS = "visible"                           # a shape shows and hides by Visible keys (on / off, held: fields.toggle_at)
 
 
 def kids(item: dict) -> list[dict]:
-    """The children that can be shown and hidden by Scale (a mesh, group, combine, import, rig)."""
-    return [c for c in item.get("children", []) if c.get("type") in F.ITEMS and {*SHOWS} <= set(F.animatable(c["type"]))]
+    """The children that can be shown and hidden by keying Visible (a mesh, group, combine, import, rig)."""
+    return [c for c in item.get("children", []) if c.get("type") in F.ITEMS and SHOWS in F.animatable(c["type"])]
 
 
 def shape_of_child(child: dict) -> str:
