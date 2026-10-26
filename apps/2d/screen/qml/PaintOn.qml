@@ -116,16 +116,15 @@ Column {
                 onCanceled: { moving = false; dy = 0 }
             }
             HoverTip { hovered: rowArea.containsMouse && !rowArea.moving && nameText.truncated; text: lr.modelData.name }
-            TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+            NameBox {     // rename in place (the kit's box): Enter keeps it, Esc or a click elsewhere leaves the name as it was
                 id: nameEdit
                 visible: lr.renaming
+                current: lr.modelData.name
                 anchors.left: nameText.left; anchors.right: nameText.right; anchors.verticalCenter: parent.verticalCenter
-                color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.body; font.family: uiFont
-                onAccepted: { lr.renaming = false; if (text.trim() && text !== lr.modelData.name) po.pl.setLayer(lr.modelData.id, "name", text.trim()) }
-                Keys.onEscapePressed: lr.renaming = false
-                onActiveFocusChanged: if (!activeFocus) lr.renaming = false
+                onDone: (t) => { lr.renaming = false; if (t.trim() && t !== lr.modelData.name) po.pl.setLayer(lr.modelData.id, "name", t.trim()) }
+                onCancelled: lr.renaming = false
             }
-            function startRename() { nameEdit.text = modelData.name; renaming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() }
+            function startRename() { renaming = true }
             transform: Translate { y: rowArea.moving ? rowArea.dy : 0 }
             Menu { id: rowMenu; y: lr.height
                    entries: [{ value: "visible", label: lr.modelData.visible ? "Hide" : "Show" },

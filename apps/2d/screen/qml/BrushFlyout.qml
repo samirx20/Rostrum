@@ -91,15 +91,15 @@ SmallPopup {
         }
         HoverTip { hovered: tile.hovered && !tile.renaming && (tileName.truncated || markText.visible)
                    text: markText.visible ? tile.modelData.name + " · " + tile.modelData.markTip : tile.modelData.name }
-        TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+        NameBox {     // rename in place (the kit's box): Enter keeps it, Esc or a click elsewhere leaves the name as it was
             id: nameEdit
             objectName: "brushName_" + tile.index
             visible: tile.renaming
+            current: tile.modelData.name
             anchors { left: tileName.left; right: tileName.right; verticalCenter: tileName.verticalCenter }
-            clip: true; color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.label; font.family: uiFont
-            onAccepted: { tile.renaming = false; if (text.trim() && text !== tile.modelData.name) painter.renameBrush(tile.modelData.id, text.trim()) }
-            Keys.onEscapePressed: tile.renaming = false
-            onActiveFocusChanged: if (!activeFocus) tile.renaming = false
+            font.pixelSize: Theme.label
+            onDone: (t) => { tile.renaming = false; if (t.trim() && t !== tile.modelData.name) painter.renameBrush(tile.modelData.id, t.trim()) }
+            onCancelled: tile.renaming = false
         }
         MouseArea {
             id: tileTap; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -111,8 +111,7 @@ SmallPopup {
                property bool rename: false     // Rename starts once the menu has closed (it hands focus back as it goes)
                entries: tile.mine ? tile.modelData.menu : []
                onPicked: (v) => v === "rename" ? (rename = true) : painter.brushAction(tile.modelData.id, v)
-               onClosed: if (rename) { rename = false; nameEdit.text = tile.modelData.name; tile.renaming = true
-                                       nameEdit.forceActiveFocus(); nameEdit.selectAll() } }
+               onClosed: if (rename) { rename = false; tile.renaming = true } }
     }
     function pickTool(id) { backend.paintTool.use(id); close() }
 
