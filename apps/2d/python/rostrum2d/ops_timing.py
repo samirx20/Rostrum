@@ -50,8 +50,10 @@ def _marker(ctx, ref: str, what: str) -> tuple[str, float]:
     return parts[0], at
 
 
-def _comp_fps(ctx, layer_id: str) -> float:
-    idx = index(ctx.doc, ctx.kind.lists)
+def _comp_fps(ctx, layer_id: str, idx=None) -> float:
+    """The frame rate of the composition holding the layer. `idx`: the document's index when the caller asks for many
+    layers (building it once, not once per layer: a Stagger of 48 layers built it 48 times)."""
+    idx = idx or index(ctx.doc, ctx.kind.lists)
     loc = idx[layer_id]
     while loc.parent is not None and idx[loc.parent].item["type"] != "comp":
         loc = idx[loc.parent]

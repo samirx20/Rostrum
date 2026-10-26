@@ -29,12 +29,27 @@ class RowsModel(QAbstractListModel):
                 self.beginRemoveRows(QModelIndex(), i, i)
                 del self._rows[i]
                 self.endRemoveRows()
+        run = [-1, -1]                       # the rows changed in place side by side: one announcement for the run (Qt and
+                                             # QML take one dataChanged per run, not one per row: 48 staggered layers)
+
+        def flush():
+            if run[0] >= 0:
+                self.dataChanged.emit(self.index(run[0]), self.index(run[1]))
+                run[0] = run[1] = -1
+
+        def changed(i):
+            if run[0] >= 0 and i == run[1] + 1:
+                run[1] = i
+            else:
+                flush()
+                run[0] = run[1] = i
         for i, row in enumerate(rows):
             if i < len(self._rows) and self._rows[i]["id"] == row["id"]:
                 if self._rows[i] != row:
                     self._rows[i] = row
-                    self.dataChanged.emit(self.index(i), self.index(i))
+                    changed(i)
                 continue
+            flush()
             at = next((j for j in range(i + 1, len(self._rows)) if self._rows[j]["id"] == row["id"]), -1)
             if at < 0:
                 self.beginInsertRows(QModelIndex(), i, i)
@@ -46,4 +61,5 @@ class RowsModel(QAbstractListModel):
             self.endMoveRows()
             if self._rows[i] != row:
                 self._rows[i] = row
-                self.dataChanged.emit(self.index(i), self.index(i))
+                changed(i)
+        flush()

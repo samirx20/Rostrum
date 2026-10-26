@@ -9,6 +9,7 @@ opacity or scale 0) counts where it sits (its own scale and opacity taken as ful
 from __future__ import annotations
 
 from rostrum_core import Param
+from rostrum_core.tree import index
 from rostrum_core.errors import codes
 from rostrum_core.keys.stagger import WORDS as CORE_WORDS, Orders, cascade, order_param, ranks  # noqa: F401  (ranks: tests)
 
@@ -51,8 +52,9 @@ def layer_stagger(ctx, targets, args):
         if layer.get("locked"):
             ctx.fail(codes.CONFLICT, t, "is locked", hint="Unlock it to move it in time.")
         items.append({"id": t, "start": offset_of(ctx.doc, t, times) + float(layer.get("start", 0.0))})
+    idx = index(ctx.doc, ctx.kind.lists)           # (the layers stay where they are: one index for every layer's rate)
     for it, delta in cascade(ctx, items, args, CASCADE):
-        _rebase(ctx, ctx.item(it["id"]), delta, _comp_fps(ctx, it["id"]))
+        _rebase(ctx, ctx.item(it["id"]), delta, _comp_fps(ctx, it["id"], idx))
 
 
 def _places(ctx, items: list[dict]) -> dict:

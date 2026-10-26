@@ -72,6 +72,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self._history_check()                              # the count and ↶ ↷ as the window opens
         self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
+        self._kit.seen = doc.data                          # the first drag step's rows start from the data they were worked out on
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.faultSeen.connect(self._fault_said)           # queued from a worker thread: shown on the screen's thread
         qt_faults.tell(self._fault_heard)                  # an error in the app is said in the top bar, never only logged
@@ -302,6 +303,11 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """A typed entry that was refused (FieldFrame's `problem`: "“zzz” is not a colour …"): said in the top bar in
         red as well as in the box, since a hover tip never shows to someone who has just clicked the box."""
         self._set_status(why, True)
+
+    @Slot(str)
+    def tell(self, words):
+        """A plain word for the top bar from a screen control (a value typed again as it already is: nothing changed)."""
+        self._set_status(words, False)
 
     @Slot(str)
     def unrefuse(self, why):
