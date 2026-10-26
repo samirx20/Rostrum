@@ -5,7 +5,7 @@ import RostrumKit
 
 // 3D's tool rail (SPEC §2): the kit's ToolRail filled from today's add operations (backend.adder.rail, adding.py).
 // Select, then Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C);
-// on the Animate page Select, Poses (P), Onion skin (O), Bones (while a mesh is selected: bones_qt.py), Lights, Camera.
+// on the Animate page Select, Poses (P), Onion skin (O), Bones (Shift+B, while a mesh is selected: bones_qt.py), Lights, Camera.
 // Logo from SVG asks for the file first, From a 2D drawing for the 2D item and its path layer (one list, two levels);
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
@@ -27,7 +27,7 @@ ToolRail {
           help: "Save the selected items' pose; click a saved one to key it at the playhead." }] },
         { id: "onion", name: "Onion skin", panel: true, items: [{ name: "Onion skin", icon: "onion", kind: "shape3d", job: "onion",
           help: "Ghosts of the selected item before (red) and after (green), to time its arc by eye." }] },
-        { id: "bones", name: "Bones", items: viewport.bones.meshSelected ? [{ name: "Bones", icon: "bone", kind: "shape3d", act: "bones",
+        { id: "bones", name: "Bones", items: viewport.bones.meshSelected ? [{ name: "Bones", icon: "bone", kind: "shape3d", act: "bones", job: "bones_tool",
           help: "Click points along the selected mesh, root first, then Enter: a bone chain it bends with." }] : [] },   // only with a mesh selected
         { sep: true },
         { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },

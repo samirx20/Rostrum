@@ -5,16 +5,18 @@
   Backspace takes the last point back, Esc (or selecting something else) cancels.
 - **Seeing the bones:** on the Animate page, the selected mesh's chain (or the chain of the selected bone) is drawn
   over the picture as thin diamonds from head to tail, posed at the playhead (skin.py's numbers, the ones the core
-  bends the mesh with), projected through the same view as the gizmo (gizmo.View).
+  bends the mesh with), projected through the same view as the gizmo (gizmo.View). A click near a drawn bone picks it
+  before the mesh behind (`bone_at`, asked by the viewport's click); a selected bone gets turn rings (gizmo_bone.py).
 Screen state only: the points being placed are not in the document until Enter.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtGui import QGuiApplication
 
 from rostrum3d import aim, skin, through
 
-from .gizmo import View
+from .gizmo import HIT, View, _seg_dist
 
 HINT = "Click along the mesh, root first  ·  Enter makes the chain  ·  Backspace takes a point back  ·  Esc cancels"
 
@@ -30,6 +32,9 @@ class Bones(QObject):
         self.answered.connect(self._apply)
         self.b.selectionChanged.connect(self._on_selection)
         viewport.serialChanged.connect(self._refresh)       # a new picture: a new frame, view or document
+        self.b.docChanged.connect(self._refresh)            # a bone turned changes no picture on a mesh that can't bend
+        self.b.docStepped.connect(self._refresh)            # (and follows a ring drag move by move)
+        self.b.frameChanged.connect(self._refresh)
         self.b.pageChanged.connect(self._refresh)
 
     on = Property(bool, lambda s: bool(s.mesh), notify=changed)
@@ -103,6 +108,17 @@ class Bones(QObject):
         self.points.append(aim.point(aim.invert(world), hit["point"]))
         self.b.say(f"{len(self.points)} point{'s' if len(self.points) > 1 else ''}  ·  " + HINT)
         self._refresh()
+
+    def bone_at(self, x: float, y: float) -> str:
+        """The drawn bone a click at (x, y) device px is on: the nearest within the gizmo's reach (HIT screen px), else ""."""
+        if self.mesh or not self._lines or self.v._size is None:
+            return ""
+        screen = QGuiApplication.primaryScreen()
+        reach = HIT * (screen.devicePixelRatio() if screen else 1.0)
+        w, h = (n / self.v._scale for n in self.v._size)      # the lines are in parts of the picture; the click in device px
+        near = min(((_seg_dist([x, y], [ln["a"][0] * w, ln["a"][1] * h], [ln["b"][0] * w, ln["b"][1] * h]), ln["id"])
+                    for ln in self._lines), default=(reach + 1, ""))
+        return near[1] if near[0] <= reach else ""
 
     def _on_selection(self, *_):
         if self.mesh and self.b.selected != self.mesh:

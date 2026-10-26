@@ -37,7 +37,7 @@ def item_drag(g, c, now, free, targets):
         deg = G.turned_by(c["view"], g["handle"], c["origin"], c["axes"], g["start"], now)
         deg, caught = G.snapped(deg, G.angle_targets(deg), G.ARM * 0.8 * 3.14159 / 180, free)
         m = aim._mul(G.turn_matrix(G.AXES[int(g["handle"][-1])], deg), c["turn"])   # around the parent's axis
-        out = dict(zip(TURN, aim._euler(m)))
+        out = dict(zip(TURN, aim.euler(m)))
         label = f"Turn {deg:.1f}°"
     else:
         f = G.scaled_by(g["line"], g["start"], now)

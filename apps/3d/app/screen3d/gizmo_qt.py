@@ -2,7 +2,8 @@
 W move, E turn, S scale; D held moves the pivot instead), each drag one doc.gesture = one undo step, written through
 the bridge's own edit_call (an animated field gets its key at the playhead), so the settings panel follows live. K keys
 what the gizmo moved on the item at the playhead. Agents do the same with the same operations (`value.set`,
-`key.add` on x y z, rx ry rz, sx sy sz, px py pz). The maths is gizmo.py's.
+`key.add` on x y z, rx ry rz, sx sy sz, px py pz). A selected bone whose chain is drawn (Animate) gets turn rings on its
+head, each drag keying its Turn at the playhead (gizmo_bone.py). The maths is gizmo.py's.
 """
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ from rostrum_gui.edits import Drag
 from rostrum_gui.snap import Target
 from rostrum3d import aim, fields as F, resolve
 
-from . import gizmo as G, route
+from . import gizmo as G, gizmo_bone, route
 from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
 from .gizmo_hold import HoldD
 from .viewport import scene_ids
@@ -32,6 +33,7 @@ class Gizmo(QObject):
         bridge.selectionChanged.connect(self._refresh)
         viewport.mesh_edit.changed.connect(self._refresh)      # Edit mesh: the gizmo stands on the selection
         viewport.paint.changed.connect(self._refresh)          # Paint: no gizmo (a drag paints; it would hide the strokes)
+        bridge.pageChanged.connect(self._refresh)              # a bone's rings show where its chain is drawn (Animate)
         self._hold = HoldD(self) if isinstance(QGuiApplication.instance(), QGuiApplication) else None
 
     show = Property(str, lambda s: s._show, notify=changed)
@@ -45,6 +47,8 @@ class Gizmo(QObject):
         if not sel or not self.bridge.doc.has(sel):
             return None
         it = self.bridge.doc.item(sel)
+        if it["type"] == "bone":                    # turned where its chain is drawn, not while Bones places one
+            return it if self.vp.bone_tool._shown_mesh() and not self.vp.bone_tool.on else None
         if it["type"] not in F.ITEMS or "x" not in {p.name for p in F.FIELDS[it["type"]]}:
             return None
         if it["type"] == "light" and it.get("kind") == "dome":
@@ -67,6 +71,12 @@ class Gizmo(QObject):
         w, h = vp._size
         view = G.View.of(cam, scene, self.bridge.frame, w, h)
         v = self._values(it)
+        screen = QGuiApplication.primaryScreen()
+        px = vp._scale * (screen.devicePixelRatio() if screen else 1.0)
+        if it["type"] == "bone":        # on its head, posed at the playhead; the rings around its parent's axes
+            pw, origin, turn = gizmo_bone.frame(self.bridge.doc, it, v, scene, self.bridge.frame, self.bridge.time)
+            return {"it": it, "v": v, "view": view, "pw": pw, "origin": origin, "turn": turn, "axes": G.columns(pw[0]),
+                    "own": G.columns(aim._mul(pw[0], turn)), "px": px, "scene": scene, "parent": None, "mesh": False}
         parent = self.bridge.doc.parent_of(it["id"])[0]
         parent = parent if parent in scene_ids(scene) else None        # a top-level item's parent is the document
         shot = self.bridge.shot_info()
@@ -79,8 +89,6 @@ class Gizmo(QObject):
             if spot is None:
                 return None
             origin, axes, own = spot["origin"], spot["own"], spot["own"]
-        screen = QGuiApplication.primaryScreen()
-        px = vp._scale * (screen.devicePixelRatio() if screen else 1.0)
         return {"it": it, "v": v, "view": view, "pw": pw, "origin": origin, "turn": turn, "axes": axes, "own": own, "px": px,
                 "scene": scene, "parent": parent, "mesh": me.on}
 
@@ -94,7 +102,8 @@ class Gizmo(QObject):
 
     def _place(self):
         c = getattr(self, "_ctx", None)
-        hs = [] if c is None else G.handles(c["view"], c["origin"], c["axes"], c["own"], "move" if self._pivot else self._show,
+        show = "turn" if c and c["it"]["type"] == "bone" else "move" if self._pivot else self._show    # a bone only turns
+        hs = [] if c is None else G.handles(c["view"], c["origin"], c["axes"], c["own"], show,
                                             c["v"].get("aim", "none") != "none", c["px"])
         w, h = self.vp._size or (1, 1)
         frac = lambda p: [p[0] / w, p[1] / h]          # noqa: E731
@@ -130,7 +139,8 @@ class Gizmo(QObject):
         c = getattr(self, "_ctx", None)
         if c is None or not handle:
             return False
-        kind = "pivot" if self._pivot else next(h["kind"] for h in self._raw if h["id"] == handle)
+        kind = next(h["kind"] for h in self._raw if h["id"] == handle)
+        kind = "pivot" if self._pivot and kind == "move" else kind       # (a bone's rings stay rings with D held)
         words = {"move": "Move", "turn": "Turn", "scale": "Scale", "pivot": "Move pivot"}[kind]
 
         def go():
@@ -151,6 +161,9 @@ class Gizmo(QObject):
         has = {p.name for p in F.FIELDS[c["it"]["type"]]}
         out = {k: x for k, x in out.items() if k in has}
         calls = [self.bridge.edit_call(c["it"]["id"], k, x) for k, x in out.items() if abs(x - v[k]) > 1e-9]
+        if c["it"]["type"] == "bone":   # keys on its Turn, every field moved so far in this drag (gizmo_bone.py)
+            g.setdefault("moved", set()).update(k for k in out if abs(out[k] - v[k]) > 1e-9)
+            calls = gizmo_bone.calls(c["it"]["id"], {k: out[k] for k in g["moved"]}, self.bridge.time)
         self._moved.setdefault(c["it"]["id"], set()).update(k for k in out if abs(out[k] - v[k]) > 1e-9)
         self.bridge._guard(lambda: self._drag.preview(calls))
         self.changed.emit()
@@ -166,6 +179,13 @@ class Gizmo(QObject):
         others = [i for i in self.bridge.doc.items() if i.get("type") in F.ITEMS and i["id"] != c["it"]["id"]
                   and "x" in {p.name for p in F.FIELDS[i["type"]]}]
         return [Target("edge", "0", 0.0)] + [Target("centre", self.bridge.label_of(i), float(i.get(k, 0.0))) for i in others]
+
+    @Slot(float, float)
+    def tap(self, fx, fy):
+        """A click on a handle that never dragged: a bone drawn there is picked (bones_qt.bone_at, in device px)."""
+        bone = self.vp.bone_tool.bone_at(*(p / self.vp._scale for p in self._pt(fx, fy)))
+        if bone:
+            self.vp._on_picked(bone)
 
     @Slot()
     def end(self):
