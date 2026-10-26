@@ -25,8 +25,9 @@ from __future__ import annotations
 
 import time
 
-from PySide6.QtCore import Property, QObject, Qt, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from .frame_clock import FrameClock
 from .playstats import STATS
 
 SIZES = {"full": 1.0, "half": 0.5, "quarter": 0.25}   # Preview size → the engine's `scale`
@@ -47,8 +48,7 @@ class Playback(QObject):
         super().__init__(bridge)
         self.b, self._clock, self._blur, self._size = bridge, (0.0, 0.0), False, "full"
         self._once = None                                   # (until, back to): playing a stretch once (once())
-        self._timer = QTimer(self)
-        self._timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._timer = FrameClock(self)                      # ticks on time where a Qt timer can't (frame_clock.py)
         self._timer.timeout.connect(self._tick)
         self.scrubbing, self._moved_at = False, 0.0         # the playhead moved by hand, and when last
         self._settle = QTimer(self)
