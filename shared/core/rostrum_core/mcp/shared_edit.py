@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from ..errors import RostrumError, codes
+from .edit_summary import sentence, summarize
 from .jobs import MAX_WAIT_S, outcome
 from .reply import Reply
 from .tools import Tools
@@ -57,9 +58,10 @@ def register(tools: Tools):
         if change is None:
             return Reply(f"Nothing changed: {', '.join(names)} left every value as it was; no history step recorded.", {"seq": doc.seq})
         new = [json.loads(p) for p in sorted(_problems(doc) - before)]
-        changed = {"seq": change.seq, "ops": names, "group": group, "new_check_failures": new}
+        items = summarize(doc, change)
+        changed = {"seq": change.seq, "ops": names, "group": group, "new_check_failures": new, "items": items}
         warn = [f"This change broke a check: {p}" for p in new] + doc.kind.registry.alias_notes(args["ops"]) + _new_advice(doc, advised)
-        return Reply(f"Applied {len(names)} operation{'s' * (len(names) != 1)} ({', '.join(names)}) as change {change.seq}, group {group}.",
+        return Reply(f"Applied {len(names)} operation{'s' * (len(names) != 1)} ({', '.join(names)}) as change {change.seq}, group {group}. {sentence(items)}".rstrip(),
                      {"seq": change.seq}, warnings=warn, changed=changed)
 
     @tools.tool("run_script", {"properties": {

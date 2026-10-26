@@ -14,13 +14,16 @@
 - The song you work on is the item `cue` unless the project has another; `inspect_project` says.
 - Your changes carry your client name and are grouped per turn, so a person can review or undo them together.
 - `run_script` merges what the script makes into the document. Anything a person moved by hand stays where they put it
-  and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite.
+  and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite. Changing only
+  the tempo and running again keeps every note (and a person's edits to them): nothing is removed and re-made.
 - Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 
 ## Writing parts from scratch, or changing what is there
 
 - **A new part, written in a script: the script helpers** (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
-- **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.transpose`, `note.fit_key`, `note.duplicate`, `hit.fill`, through `edit_document`. They change the notes in place; a script would rewrite them.
+- **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.transpose`, `note.fit_key`, `note.duplicate`, `note.humanize`, `hit.humanize`, `hit.fill`, and `track.feel` (swing and looseness, one track's playing, notes untouched), through `edit_document`. They change the notes in place; a script would rewrite them. `note.humanize` / `hit.humanize` add on top of whatever looseness the notes already have (a script's own `humanize` included), and a second run with the same seed adds the same amount again: to redo it, undo first or use another seed.
+- **Finding the notes to edit: `inspect_notes {track, from?, to?, section?, limit?}`**: one line per note (or drum hit) of the track, `id  time (s, bar.beat)  pitch  length  vel`, for a stretch given in bars `{"bar": 5}`, seconds, beats or a marker (`"#drop"`), or a section's name; capped, then "… N more, narrow the range". Use its ids as targets. A note's id is made from where it started when it was made (`harp.n8438` began at 8.438 s) and stays when the note moves or the tempo changes, so read a note's time from this list, never from its id. `inspect_item` with `detail: "full"` lists every note with its raw values and is long: prefer `inspect_notes`.
+- **Making the file: `render_mix`** (a job; `inspect_job` with `wait_s` until done). The mix lands in the project at `renders/<item>/vNNN/<item>_mix.wav` (`.flac` / `.mp3` by `format`; `<item>` is the song's id, `cue` unless the project has another), the next free `vNNN` each time, never overwriting; stems beside it with `stems: true`. The reply's `file` and `files` hold the absolute paths: copy from there. A listening check with `solo` / `mute` goes to `renders/<item>/check/` instead and is not a version. `render_mix` with `what: "midi"` writes the notes as a `.mid` in `renders/<item>/midi/`. Delivery targets, the silent end and ranges: `inspect_guide 'exporting'`.
 - The arpeggio steps, orders and octaves are one rule in both. The script's `voice` goes further (drop 2, spread, voice leading); `note.chord` stacks plain tones. Pick by what you start from.
 
 ## `edit_document`: whole calls that work

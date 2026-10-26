@@ -66,6 +66,7 @@ class Read:
     end: int = 0
     torn: str = ""                   # plain words about a cut-off last line, "" when there was none
     layout: int = LAYOUT
+    version: int = 1                 # the file format the head names (the base's, when history began)
     _base: object = None
 
     def base(self):
@@ -115,6 +116,7 @@ def _head(r, lines, path, kind, app_version, lenient) -> int:
         h = json.loads(lines[0])
         if kind is not None:
             check_format(kind, h, path, app_version)
+        r.version = h.get("version", 1)
         if "base" in h:
             r.layout, r._base = 1, h["base"]
             return 2

@@ -13,7 +13,7 @@ from __future__ import annotations
 from rostrum_core import DocKind
 
 from .. import names
-from . import dropped, markers, media, migrations, past_end
+from . import describe, dropped, markers, media, migrations, past_end
 from . import fields as FD
 from ..modules import OPS
 from .check import check
@@ -53,4 +53,4 @@ def elsewhere(id_: str) -> str | None:
                      f'edit_markers (marker.move / marker.rename), so 2D and the Editor see it too.')
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, upgraded=migrations.upgraded, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, upgraded=migrations.upgraded, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, describe=describe.describe, upgrade=media.upgrade, tidy=media.tidy)

@@ -91,7 +91,9 @@ class Live:
                 before = self._mine()
                 yield caught
                 first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
-                if self._mine() != before or first:     # a first look at a saved document writes nothing
+                w = self.doc._written                   # steps made before the door (an upgrade on open) go first:
+                lacks = w is not None and w.n < len(self.doc.history.changes)   # no document file may count a step
+                if self._mine() != before or first or lacks:    # the history file lacks; a plain first look writes nothing
                     behind = not self._windowed and self.doc.seq - self._filed >= FOLD_STEPS
                     whole = first or behind or not self._doc_there and not self.p["doc"].exists()
                     save(self.doc, document=whole, p=self.p)

@@ -11,11 +11,13 @@ what was applied, so a held-back change is reported again next run.
 Only another author's work holds a value back. A difference between B and C whose last change was this script's own
 run, the same agent's or script's (re-running its script; a person's hand edits always count) or an older file brought up to date (who.UPGRADE) is nobody
 else's, and the script's new value goes in. The output is brought up to date the same way first (the app's `upgrade`),
-so a run never writes what the next open would rewrite.
+so a run never writes what the next open would rewrite. An item the script makes again under a new id only (Sound: a
+note's id is its start in ms, so a new tempo renames it) keeps its old id (merge_ids.py), so edits to it carry over.
 """
 from __future__ import annotations
 
 from . import edits as E
+from . import merge_ids
 from .diff import diff
 from .errors import RostrumError, codes
 from .tree import bare
@@ -27,7 +29,7 @@ from .merge_checks import (_current, _forced, _other_author, _record, _script_va
 def merge_script(doc, name, output: dict, who, force=False, session=None) -> MergeReport:
     lists = doc.kind.lists
     base = doc.script_bases.get(name) or doc.kind.blank()
-    output = _up_to_date(doc, output)
+    output = merge_ids.carried(base, _up_to_date(doc, output), lists)     # an item only renamed is the same item
     check_output(doc.kind, output, f"run_script {name}")
     check_kinds(base, output, lists, f"run_script {name}")
     others = diff(base, doc.data, lists)

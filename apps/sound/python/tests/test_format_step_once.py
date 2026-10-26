@@ -95,3 +95,48 @@ def test_a_song_moved_twice_by_the_old_bug_is_put_back(tmp_path):
     doc = Document.open(folder, "s", KIND)
     assert _bass(doc) == NOW and doc.notes and doc.notes[0].startswith("Repaired")
     assert _bass(Document.open(folder, "s", KIND)) == NOW
+
+
+def _window_session(folder):
+    """A window's open and close with no edit: live, windowed, its quiet fold, then the fold on close."""
+    doc = Document.open(folder, "s", KIND)
+    lv = live.keep(doc)
+    lv.windowed()
+    lv.fold_if_quiet()
+    while lv.fold_work():
+        pass
+    lv.settle()
+    lv.fold(always=False)               # the window's close (live_link.py)
+    return doc
+
+
+def _agrees(folder):
+    """The song file's step is in its history, and the history replayed from its start gives the same song."""
+    p = paths(folder, "s", KIND.ext)
+    f = json.loads(p["doc"].read_text(encoding="utf-8"))
+    on_disk = sum('"seq"' in line for line in p["history"].read_text(encoding="utf-8").splitlines())
+    assert f["at"] <= on_disk                       # on disk, before any open could put it right
+    doc = Document.open(folder, "s", KIND)
+    assert doc.at_step(doc.seq) == doc.data
+    return doc
+
+
+def test_open_and_close_in_a_window_with_no_edit_keeps_the_sound(tmp_path):
+    folder = _format6_song(tmp_path)
+    for _ in range(3):                  # critic r9: the file counted the upgrade, the history never got it: +12 on reopen
+        _window_session(folder)
+        assert _bass(_agrees(folder)) == NOW
+
+
+def test_a_file_that_counts_a_step_its_history_lacks_is_kept_and_the_step_recorded(tmp_path):
+    from rostrum_core.storage import canonical, doc_hash, write_document
+    folder = _format6_song(tmp_path)
+    doc = Document.open(folder, "s", KIND)          # as builds before the fix left it: the file written, the history not
+    body = canonical(doc.data)
+    write_document(paths(folder, "s", KIND.ext)["doc"], KIND.format, KIND.version, doc.seq, doc.history.changes[-1].t,
+                   body, doc_hash(doc.data))
+    doc = Document.open(folder, "s", KIND)
+    assert _bass(doc) == NOW and "lacked" in doc.notes[-1]
+    _window_session(folder)
+    for _ in range(2):
+        assert _bass(_agrees(folder)) == NOW

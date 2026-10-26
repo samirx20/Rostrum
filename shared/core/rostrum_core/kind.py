@@ -56,6 +56,10 @@ class DocKind:
     # a set of several drawings that shows only the first). `edit_document` and `run_script` replies carry the sentences
     # a call made new, as warnings (mcp/shared_edit.py); a state that was already there is not repeated.
     advise: Callable[[dict], list[str]] = _no_problems
+    # describe(item, data) -> a short phrase for an item (Sound: "n8438 at 8.44 s E2 0.5 beat"), or None for the id alone.
+    # `edit_document` replies list what a change added, changed and removed, each item through it (mcp/edit_summary.py);
+    # `data` is the document after the change (the tempo and keys an item's times need).
+    describe: Callable[[dict, dict], str | None] | None = None
     # elsewhere(id) -> a plain hint, or None: what to say when a target id isn't in this document but names something
     # that lives outside it (Sound: a project marker, changed with edit_markers).
     elsewhere: Callable[[str], str | None] | None = None

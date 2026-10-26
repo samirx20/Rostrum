@@ -26,6 +26,7 @@ module stays the one door: every public name is importable from it.
 from __future__ import annotations
 
 import copy
+import dataclasses
 from pathlib import Path
 
 from . import edits as E
@@ -121,6 +122,10 @@ def _read_doc(cls, folder, item, kind, p):
         return doc, None
     r, changes, versions = read_history(p["history"], kind)
     written = _as_written(text, file)
+    lost = None
+    if written and isinstance(file.get("at"), int) and file["at"] > len(changes):
+        lost = _lost_steps(kind, r, changes, file)
+        file = {**file, "at": len(changes)}
     trusted = written and _at_step(file, changes)
     data, items = file["doc"], None
     if trusted:                                     # play only the steps after the document file's own
@@ -131,6 +136,8 @@ def _read_doc(cls, folder, item, kind, p):
         items = changed_items(played, idx, kind.lists)
     doc = cls(kind, data, folder, item, base=r.base)
     doc.saved_by, doc.notes = file.get("saved_by"), [r.torn] if r.torn else []
+    if lost:
+        doc.notes.append(lost)
     doc.file_at = file.get("at") if trusted else None       # the step the document file shows (live.py folds the rest)
     doc.file_version = file.get("version", 1)
     doc.uses = _uses(file, p["doc"])
@@ -145,6 +152,9 @@ def _read_doc(cls, folder, item, kind, p):
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["history"]), "doesn't add up to its own last step")
     if r.layout == histfile.LAYOUT:
         _wrote(doc, p["history"], r.end)
+        if lost:                                    # the step standing for the lost ones is not in the file yet
+            ch = doc.history.changes
+            doc._written = dataclasses.replace(doc._written, n=len(ch) - 1, last_t=ch[-2].t if len(ch) > 1 else 0.0)
     if not written and doc_hash(replayed) != doc_hash(file["doc"]):
         _record_outside(doc, replayed, file["doc"], formats.after(doc.file_version, changes))
     else:
@@ -152,6 +162,32 @@ def _read_doc(cls, folder, item, kind, p):
         if not trusted:
             doc.data = replayed                   # Rostrum's own file, behind a step replaced since
     return doc, items
+
+
+def _lost_steps(kind, r, changes, file) -> str:
+    """The document file is as Rostrum wrote it but counts steps its history never got (before 2026-10-26 a window
+    folded the upgrade made on open without writing it to the history). The file is the truth: one step by Rostrum
+    standing for the missing ones is added to `changes` (the history file gets it with the next save), carrying the
+    difference from the history's end when the history replays, so the file is never replayed over. Plain words."""
+    from .diff import diff
+    from .history import Change
+    from .doc_door import _now
+    data, why = copy.deepcopy(r.base()), ""
+    try:
+        idx = index(data, kind.lists)
+        for c in changes:
+            for e in c.edits:
+                E.apply(data, kind.lists, e, f"step {c.seq}", idx)
+        edits = diff(data, file["doc"], kind.lists)
+    except (*SHAPE_ERRORS, RostrumError) as e:
+        edits, why = [], f" (its history doesn't replay from the start: {e})"
+    v0, v1 = formats.after(r.version, changes), file.get("version", 1)
+    n = len(changes)
+    c = Change(n + 1, n, UPGRADE, f"Taken from the document file: {file['at'] - n} step{'s' * (file['at'] - n != 1)} its "
+               "history lacked", _now(), edits, t=file.get("t", 0.0), format=[v0, v1] if v0 != v1 else None)
+    c.hash_after = file["hash"]
+    changes.append(c)
+    return f"The history lacked the file's last {file['at'] - n} step(s); the file was kept as it is{why}."
 
 
 def _uses(file, path) -> dict:
