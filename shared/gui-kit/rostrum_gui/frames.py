@@ -2,7 +2,9 @@
 process, jobs run off the GUI thread, and the newest picture is served to QML as image://<provider>/<serial>.
 
 Newest request wins: `post_latest` replaces a job still waiting (stale pictures are never queued). `post_ordered`
-jobs (picks) keep their order and run before the next picture. A failure is reported (`failed`, and on stderr),
+jobs (picks) keep their order and run before the next picture. Inside `asking()` a picture asked waits until the
+block ends, so a question the same action asks right after its change (where the new layer sits) goes to the engine
+first instead of queueing behind that picture. A failure is reported (`failed`, and on stderr),
 never shown as if it worked; the next job tries again. `close` ends the engine.
 
 An app subclasses `PictureWorker` and gives only its differences: `open_engine` (the engine to start), `handle`
@@ -13,6 +15,7 @@ from __future__ import annotations
 import sys
 import threading
 from collections import deque
+from contextlib import contextmanager
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
@@ -82,6 +85,7 @@ class PictureWorker(QObject):
         self.serial = 0
         self._cv = threading.Condition()
         self._latest, self._ordered, self._busy, self._stop = None, deque(), False, False
+        self._asking = 0                         # inside asking(): pictures wait, questions go
         self._thread = threading.Thread(target=self._run, name=thread_name, daemon=True)
 
     def start(self):
@@ -108,6 +112,20 @@ class PictureWorker(QObject):
             self._ordered.append(job)
             self._cv.notify()
 
+    @contextmanager
+    def asking(self):
+        """Questions first: a picture asked inside waits until the block ends (the newest one is then drawn); the
+        ordered jobs (place, ask) asked inside reach the engine at once. For an action that changes the document and
+        then asks about the change: the change's picture would otherwise hold the engine while the question waits."""
+        with self._cv:
+            self._asking += 1
+        try:
+            yield
+        finally:
+            with self._cv:
+                self._asking -= 1
+                self._cv.notify()
+
     def idle(self) -> bool:
         with self._cv:
             return self._latest is None and not self._ordered and not self._busy
@@ -121,7 +139,7 @@ class PictureWorker(QObject):
     # -- the thread --------------------------------------------------------------------------------------
     def _next(self):
         with self._cv:
-            while self._latest is None and not self._ordered and not self._stop:
+            while not self._ordered and (self._latest is None or self._asking) and not self._stop:
                 self._cv.wait()
             if self._stop:
                 return None
