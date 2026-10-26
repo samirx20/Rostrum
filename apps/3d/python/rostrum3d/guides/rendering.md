@@ -14,8 +14,8 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 | Row | What it does |
 |---|---|
 | **What** | **This frame**: one picture at the playhead. **Hero 01 · 120 frames**: every frame of the shot, as numbered pictures. The count follows the frames set on the shot (the whole shot, or a stretch of it: the shot's Render group, Frames) |
-| **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The line under it says the numbers. Custom numbers are set on the shot (select the shot, then its Render group) |
-| **Size** | The shot's own size, **½** or **× 2**. The line under it says the size in pixels when it isn't the shot's own |
+| **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The numbers (samples, noise clean-up) are on the same line, at the right. Custom numbers are set on the shot (select the shot, then its Render group) |
+| **Size** | The shot's own size, **½** or **× 2**. The size in pixels shows at the right of its name when it isn't the shot's own |
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
 | **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |
 | **The time** | How long it will take, measured on this computer (below) |
@@ -60,10 +60,11 @@ The time is **measured, never guessed**. When the sheet opens, the row says **Me
 the background: the shot's middle frame (or the playhead's frame, for This frame) through the same engine and settings
 as the real render, at a quarter of the size and once at the real size with few samples. Then it says, for example:
 
-> **About 6 min · 120 frames · 3.0 s a frame**
-> from a test frame just rendered on this computer
+> **About 6 min**
+> 120 frames · 3.0 s a frame
 
-The small picture beside it is the test frame: what you are about to render.
+The small picture beside it is the test frame: what you are about to render. Rest the pointer on the box to see how it
+was measured ("from a test frame just rendered on this computer", or "kept" when the scene's earlier test is reused).
 
 - **Changing Quality, Size or the frames** changes the number at once. No new test is needed.
 - **Changing the scene** (moving, adding or re-lighting something) tests again, 0.4 s after the last change.
@@ -97,8 +98,8 @@ has its own.
   later. **✕** cancels a waiting or running render. Finished renders stay below with the time taken and their
   folder: click one to see its last frame over the viewport (Close or Esc puts it away).
 
-**Cancel** ends that render's own engine at once. The half-made folder stays as `vNNN.partial` and is never listed as a
-render version; the row says **Render cancelled** in red. A render that fails says why in red, and nothing is called
+**Cancel** ends that render's own engine at once. Nothing of it is left on disk (its half-made
+folder is removed); the row says **Render cancelled** in red. A render that fails says why in red, and nothing is called
 finished. Each render uses the shot's settings as they were when you added it; changes made while it waits or runs
 are not in it. While a queued render runs, the render sheet waits for it (one render on the graphics card at a time).
 

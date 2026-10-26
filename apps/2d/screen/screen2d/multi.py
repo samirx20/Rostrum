@@ -9,6 +9,7 @@ import math
 
 from rostrum2d import boxes as B
 from rostrum_gui import news
+from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.edits import Drag
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
@@ -23,6 +24,7 @@ class Multi(QObject):
     boxesChanged = Signal()                                 # the outlines and handles on the canvas (boxes, groupBox)
     pickedChanged = Signal()                                # which layers (count, ids, lit: the list's rows)
     rideChanged = Signal()
+    gapChanged = Signal()                                   # the Gap row (in the settings panel)
 
     def __init__(self, bridge):
         super().__init__(bridge)
@@ -33,8 +35,11 @@ class Multi(QObject):
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
         self._boxes = self._group = (None, None)            # (what they were made from, the boxes): see `_made`
-        for name in ("boxesChanged", "pickedChanged", "rideChanged"):
-            told = news.relay(self, name)
+        self._path = (None, None, "")                       # (the boxes, skip, outlinePath's path)
+        # the Gap row is the settings panel's and lands with it, the frame after (it reads every picked layer's box:
+        # 200 layers ~5-10 ms inside the pick's own frame)
+        gap = AfterFrame(news.relay(self, "gapChanged"), self)
+        for told in [news.relay(self, n) for n in ("boxesChanged", "pickedChanged", "rideChanged")] + [gap.ask]:
             for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
                 s.connect(told)
 
@@ -48,20 +53,32 @@ class Multi(QObject):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
         shows them (shown.py; a layer newer than the picture has none yet). Made once per change and kept: each outline
         reads the whole list (`backend.multi.boxes[index]`), so remaking it per read made a pick of n layers n x n boxes
-        (48 layers: 2,500 boxes, ~100 ms)."""
+        (48 layers: 2,500 boxes, ~100 ms). Only one layer's box draws knobs, so only then is it dressed (its knobs:
+        handle_kinds.dressed): QML copies the whole list on every read, and 200 dressed boxes cost ~3x plain ones."""
         made = self._made()
         if not _same(self._boxes[0], made):
-            self._boxes = (made, [dressed(b) for b in self.b.shown_boxes(self.layers())])   # with their knobs (handle_kinds.dressed)
+            got = self.b.shown_boxes(self.layers())
+            self._boxes = (made, [dressed(b) for b in got] if len(got) == 1 else got)
         return self._boxes[1]
+
+    @Property("QVariantList", notify=boxesChanged)
+    def knobBoxes(self):
+        """`boxes` while at most one layer is picked (its outline item with knobs), else []: several draw as one shape
+        (outlinePath), so the canvas's outline items never copy the whole list (QML copies a list on every read: 200
+        boxes were ~ms a reader, on every pick and every box change)."""
+        return self.boxes if len(self.layers()) <= 1 else []
 
     @Slot(str, result=str)
     def outlinePath(self, skip):
         """With several layers picked, every one's turned outline as ONE svg path (composition px): the canvas draws
         them as one shape, not an item with knobs each (48 layers: ~250 ms of items -> a string). `skip`: the layer
-        whose outline something else is drawing now (painting its true edge, typing). Read `boxes` in the binding so
-        it runs again when they change."""
+        whose outline something else is drawing now (painting its true edge, typing). Read `groupBox` (same news, a
+        small map) in the binding so it runs again when they change; `boxes` there copied all of them into QML."""
+        boxes = self.boxes                                  # (made once per change: `_made`)
+        if self._path[0] is boxes and self._path[1] == skip:   # both news (picked, boxes) re-read it: built once
+            return self._path[2]
         out = []
-        for b in self.boxes:
+        for b in boxes:
             if b.get("id") == skip or b.get("w") is None:
                 continue
             x, y, w, h = b["x"], b["y"], b["w"], b["h"]
@@ -70,7 +87,8 @@ class Multi(QObject):
             pts = [(ax + (px - ax) * c - (py - ay) * s, ay + (px - ax) * s + (py - ay) * c)
                    for px, py in ((x, y), (x + w, y), (x + w, y + h), (x, y + h))]
             out.append("M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z")
-        return " ".join(out)
+        self._path = (boxes, skip, " ".join(out))
+        return self._path[2]
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
@@ -93,7 +111,7 @@ class Multi(QObject):
         what = "Camera" if rider.get("type") == "camera" else rider.get("name") or ids[0]
         return {"id": path, "label": f"{what} rides {self.b.doc.item(path).get('name') or path}"}
 
-    @Property("QVariantMap", notify=boxesChanged)
+    @Property("QVariantMap", notify=gapChanged)
     def gap(self):
         """The Gap row: {axis "x" | "y", gap px} when 3+ picked layers in one place sit equally apart along an axis
         (base G, snap.even within 0.5 px; across first); {} otherwise, and the row is absent."""
@@ -202,9 +220,9 @@ class Multi(QObject):
     @Slot(str)
     def selectRange(self, layer_id):
         """Shift+click in the layers list: every layer row from the primary to this one, as the list shows them."""
-        rows = [r["id"] for r in self.b.layers if r["row"] == "layer"]
-        here = self.layers()[0] if self.layers() else layer_id
-        run = click(self.layers(), here, layer_id, {"shift"}, "list", rows)[0]      # the kit's rule (INTERACTION 1.3)
+        rows, picked = [r["id"] for r in self.b.layer_rows() if r["row"] == "layer"], self.layers()
+        here = picked[0] if picked else layer_id
+        run = click(picked, here, layer_id, {"shift"}, "list", rows)[0]      # the kit's rule (INTERACTION 1.3)
         self._set([here] + [i for i in run if i != here] if here in run else run)     # the primary stays first
 
     @Slot(float, float, str, result=str)

@@ -243,6 +243,18 @@ class KeyRoutes3D(SlotMixin):
         if vp is not None and self._page == "animate":
             vp.onion.toggle()
 
+    @Slot()
+    def bonesKey(self):
+        """Shift+B: Bones on the selected mesh (the Animate page, where bones are drawn), or out of it when placing."""
+        vp = _vp(self)
+        if vp is None:
+            return
+        if vp.bone_tool.on:
+            return vp.bone_tool.cancel()
+        if self._page != "animate" and vp.bone_tool.meshSelected:
+            self.setPage("animate")
+        vp.bone_tool.start()
+
     @Slot(str)
     def gizmoKey(self, show):
         vp = _vp(self)

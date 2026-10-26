@@ -1,8 +1,8 @@
 """lipsync.make(mouth, line): key a mouth group's shapes to a voice line from RostrumSound (SPEC §9 Lip sync from Sound).
 
 A mouth is a group whose children are the mouth shapes (mouths.py). The phones of the line are heard once (cached),
-become mouth shapes in time (rostrum_core.lipsync: the same timing as 2D), and every child gets Scale keys, held:
-its own Scale while its shape shows, nearly nothing (mouths.HIDDEN) while another does. One shows at a time. It is
+become mouth shapes in time (rostrum_core.lipsync: the same timing as 2D), and every child gets Visible keys (on / off,
+held to the next key): on while its shape shows, off while another does. One shows at a time. It is
 one change (one undo); the keys are ordinary keys on the timeline, so a person moves or deletes them afterwards, and
 a second run only adds keys where there is none at that time (a key already there is left as it is).
 """
@@ -63,7 +63,7 @@ def _shapes(ctx, mouth: dict, args) -> dict:
     own = {c["id"] for c in mouths.kids(mouth)}
     outside = sorted(c for c in shapes.values() if c not in own)
     if outside:
-        ctx.fail(codes.BAD_ARGUMENT, "mouth shapes", f"{outside} are not children of {mouth['id']} that can be scaled",
+        ctx.fail(codes.BAD_ARGUMENT, "mouth shapes", f"{outside} are not children of {mouth['id']} that can be shown and hidden",
                  sorted(own))
     if not shapes:
         ctx.fail(codes.BAD_ARGUMENT, "mouth", f'"{mouth["id"]}" has no children named as mouth shapes',
@@ -73,7 +73,7 @@ def _shapes(ctx, mouth: dict, args) -> dict:
 
 @R.operation("lipsync.make", "Key a mouth (a group whose children are the mouth shapes, one per shape X rest, A closed, "
              "B slightly open, C open, D wide open, E rounded, F puckered, G teeth on lip, H tongue up) to a voice line "
-             "from RostrumSound: Scale keys, held, show one shape at a time (the others sit at almost nothing). Shapes "
+             "from RostrumSound: Visible keys (on / off, held) show one shape at a time and hide the others. Shapes "
              "are read from the children's names or given as shapeX … shapeH; a missing shape shows the nearest one "
              "given. One undo step; adds keys only, keys already there stay.",
              target=("group",), label="Lip sync", params=PARAMS)
@@ -90,8 +90,6 @@ def lipsync_make(ctx, targets, args):
         for child, plan in job["keys"].items():
             node = ctx.item(child)
             for at, on in plan.items():
-                for prop in mouths.SHOWS:
-                    if any(same_time(k["t"], at) for k in keys_of(node, prop)):
-                        continue
-                    put_key(ctx, child, prop, at, {"v": float(node.get(prop, 1.0)) if on else mouths.HIDDEN,
-                                                   "ease": "hold", "from": "lip sync"})
+                if any(same_time(k["t"], at) for k in keys_of(node, mouths.SHOWS)):
+                    continue
+                put_key(ctx, child, mouths.SHOWS, at, {"v": 1.0 if on else 0.0, "ease": "hold", "from": "lip sync"})

@@ -3,7 +3,8 @@ the compiler's defaults all read it (ENGINE_CONTRACT.md § 2: the core has no de
 carries `valid_when` and `importance` (rule of individuality: a control that doesn't apply right now is absent).
 
 Units: metres, degrees, seconds. Colours are #rrggbb (sRGB) here; the compiler makes them linear.
-Animatable = every number and colour field, except those in STILL.
+Animatable = every number and colour field, except those in STILL, and the toggles in KEYED_TOGGLES (Visible): a
+toggle key holds v = 1 (on) or 0 (off) and always holds until the next key, whatever its ease (toggle_at).
 """
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import dataclasses
 
 from rostrum_core import Param
 from rostrum_core.conditions import holds
+from rostrum_core.keys import track_value
 
 # The pieces, by job (this module stays the one import everyone uses):
 from .field_kit import (ANIMATED, ANIMATING, ANY, C, CH, D, DOF, FOLLOWS, IS, N, NO_AIM, NOT, P, POLY, S, STEPS,  # noqa: F401
@@ -38,6 +40,7 @@ STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint"
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
           "bone": "Bone"}
+KEYED_TOGGLES = {"visible"}                    # toggles keys may drive: on / off at each key, nothing in between
 
 
 def param(kind: str, name: str) -> Param | None:
@@ -55,7 +58,25 @@ def animatable(kind: str) -> list[str]:
     if kind not in KEYED:
         return []
     still = STILL.get(kind, set()) | STILL["*"]
-    return [p.name for p in FIELDS[kind] if p.type in ("number", "color") and p.name not in still]
+    return [p.name for p in FIELDS[kind] if (p.type in ("number", "color") or p.name in KEYED_TOGGLES and p.type == "toggle")
+            and p.name not in still]
+
+
+def is_toggle(kind: str, name: str) -> bool:
+    """A keyable on / off field (Visible): its keys hold v 1 or 0 and its value is True or False."""
+    return name in KEYED_TOGGLES and (p := param(kind, name)) is not None and p.type == "toggle"
+
+
+def toggle_at(keys: list[dict], t: float) -> bool:
+    """A toggle's value at t from its sorted keys: the last key's at or before t (the first key's before it), never
+    in between, whatever ease a key carries; a key's v of 0.5 or more is on. A key counts from its frame: key times
+    are kept to 0.0001 s (lip sync's 1.5417 is frame 37 at 24 fps, 1.541666… s), so it is read 0.0001 s late."""
+    return float(track_value([{**k, "ease": "hold"} for k in keys], t + 1e-4)) >= 0.5
+
+
+def key_value_at(kind: str, name: str, keys: list[dict], t: float):
+    """A keyed field's value at t: a toggle's on / off (toggle_at), else the shared evaluator's."""
+    return toggle_at(keys, t) if is_toggle(kind, name) else track_value(keys, t)
 
 
 def unconditional(kind: str) -> list[Param]:

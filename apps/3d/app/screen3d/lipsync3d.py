@@ -1,6 +1,6 @@
 """Lip sync… in 3D (SPEC §9): right-click a mouth group › Lip sync…. The sheet is the kit's (rostrum_gui.lipsync_sheet,
 qml/RostrumKit/LipSyncSheet.qml, shared with 2D); this is 3D's side: the mouth group the menu was opened on, its
-children by name (rostrum3d.mouths), and Apply = one `lipsync.make` change (Scale keys on the shapes, held).
+children by name (rostrum3d.mouths), and Apply = one `lipsync.make` change (Visible keys on the shapes: on / off, held).
 """
 from __future__ import annotations
 

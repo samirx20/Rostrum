@@ -39,7 +39,8 @@ sits on top of it.
 ### The gizmo
 
 The selected item shows its handles: **arrows** move it along X (red), Y (green) and Z (blue), the **square** in the
-middle moves it across the view, the **rings** turn it, and the small **cubes** scale it.
+middle moves it across the view, the **rings** turn it, and the small **cubes** scale it. A selected bone (Animate
+page) shows only rings, on its head: a drag keys its Turn at the playhead (see Bones below).
 
 | Key | Does |
 |---|---|
@@ -57,6 +58,8 @@ middle moves it across the view, the **rings** turn it, and the small **cubes** 
 - An animated setting gets its key at the playhead as you drag.
 - Agents do the same with the same operations: `value.set` and `key.add` on `x y z`, `rx ry rz`, `sx sy sz` and the
   pivot `px py pz`.
+- **Visible** has a key mark too: key it to show or hide an item at a moment. It switches at each
+  key and holds until the next (lip sync shows its mouth shapes this way). Agents: `key.add` `visible` with `v` 1 or 0.
 
 ## The tool rail (left edge)
 
@@ -84,7 +87,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   settings panel becomes Brush and Paint layers; a drag on the mesh paints, one undo step per stroke; B or Esc leaves.
   The guide `painting` has it all.
 
-**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (while a mesh is selected), Lights and Camera:
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (Shift+B, while a mesh is selected), Lights and Camera:
 
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
   and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
@@ -94,12 +97,15 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
   time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
   each way. The quick look only: Final shows no ghosts. It never changes the scene.
-- **Bones** (shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
+- **Bones** (Shift+B; shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
   points along the mesh, root first: dots and a line show them; **Backspace** or **Delete** takes the last one back. **Enter** makes the
-  chain (one undo step), **Esc** cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
-  Select a bone and key its **Turn X / Y / Z** (the Turn it has plus the bend you want): the mesh bends with it and the
-  bones after it, in the viewport and the render alike. On this page the selected mesh's bones are drawn over the picture
-  as thin diamonds, posed at the playhead (the selected bone in blue). The mesh's **Bend with bones** turns the bending off
+  chain (one undo step), **Esc** or Shift+B again cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
+  On this page the selected mesh's bones are drawn over the picture as thin diamonds, posed at the playhead (the
+  selected bone in blue). **Click a bone** in the viewport to select it (a click near its line picks the bone, not the
+  mesh behind). A selected bone shows **turn rings** on its head: drag one to bend it (Ctrl frees the 15° steps); each
+  drag is one undo step and keys the bone's **Turn X / Y / Z** at the playhead, so the mesh bends with it and the bones
+  after it, in the viewport and the render alike. You can also type its Turn in the settings panel (the Turn it has plus
+  the bend you want). The mesh's **Bend with bones** turns the bending off
   and on. A mesh bends only where it has points along its length: the ready shapes have none along their straight part (a
   capsule's or cylinder's Segments go around it), so make it an editable mesh (Enter) and cut across it with the Knife
   (Shift+K) every few centimetres first.
@@ -201,7 +207,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | Key | Does |
 |---|---|
 | R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
-| P · O | Poses, Onion skin (Animate page) |
+| P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
 | W · E · S | The gizmo's move, turn or scale handles only (V: all) |
 | 1 · 2 · 3 | Edit mesh: points, edges, faces |
 | Shift+K · Alt+Z | Edit mesh: Knife, X-ray |

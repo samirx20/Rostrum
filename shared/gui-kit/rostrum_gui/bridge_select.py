@@ -30,6 +30,7 @@ class SelectSlots(SlotMixin):
     def selectMany(self, ids):
         """Several items, the primary first (its name and order lead the panel); [] = none."""
         k = self._kit
+        person = pointer_quiet.busy()       # asked first: the pick's own work below (200 outlines) outlasts QUIET_S
         ids, idx = list(dict.fromkeys(str(i) for i in ids)), self.doc.locs()
         gone = [i for i in ids if i not in idx]            # (one look per id: a whole song is thousands)
         if gone:
@@ -46,7 +47,7 @@ class SelectSlots(SlotMixin):
         k.static = self._layout()
         if moved:
             self.selectedItemsChanged.emit()
-        if pointer_quiet.busy():            # a person's pick (pointer or key): its highlight and outline are drawn
+        if person:                          # a person's pick (pointer or key): its highlight and outline are drawn
             self._panel_later().ask(first=True)   # first, the panel in the frame after (after_frame.py); a reader of the rows
         else:                               # makes it now. A script's or an agent's: at once
             self._panel_later().due = False

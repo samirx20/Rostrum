@@ -347,10 +347,10 @@ Rectangle {
             }
             KeptRepeater {  // kept: picking another layer (or the frame, and back) moves the same outline and knobs
                 id: outlines    // to it, never remakes them
-                needed: backend.multi.count > 1 ? 0 : backend.multi.boxes.length   // several: one light shape below, no knobs made
+                needed: backend.multi.knobBoxes.length   // several: none (one light shape below, no knobs made)
                 delegate: Handles {
                     required property int index
-                    readonly property var modelData: backend.multi.boxes[index] || ({})
+                    readonly property var modelData: backend.multi.knobBoxes[index] || ({})
                     box: modelData; fit: view.zoom; space: marks
                     visible: index < outlines.needed && !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
@@ -361,7 +361,9 @@ Rectangle {
                 id: multiOutline
                 visible: backend.multi.count > 1
                 scale: view.zoom; transformOrigin: Item.TopLeft
-                readonly property string d: backend.multi.boxes.length >= 0 ? backend.multi.outlinePath(
+                asynchronous: true    // its 200 quads, twice, are laid into triangles off the screen thread
+                // groupBox: read for its news only (the boxes moved), a small map; reading `boxes` copied all of them
+                readonly property string d: backend.multi.count > 1 && backend.multi.groupBox ? backend.multi.outlinePath(
                     well.drawing ? backend.paintEdge.layer : (backend.create.typing ? backend.selected : "")) : ""
                 ShapePath { strokeWidth: 3 / view.zoom; strokeColor: Qt.rgba(0, 0, 0, 0.6); fillColor: "transparent"; joinStyle: ShapePath.MiterJoin; capStyle: ShapePath.RoundCap
                             PathSvg { path: multiOutline.d } }

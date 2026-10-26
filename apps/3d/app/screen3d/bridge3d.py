@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Slot
 from rostrum3d.compile import describe, shot_info
-from rostrum_gui import DocBridge, sections
+from rostrum_gui import DocBridge, commands as command_search, sections
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.time_snap import TimeSnap
 
@@ -125,6 +125,12 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         """Ctrl K: the actions (the same list as the panel, right-click and the keys), the key map's jobs that would do
         something now (job_when3d.py), then the render queue's operations (queue.commands)."""
         return job_when3d.commands(self) + self.queue.commands()
+
+    @Slot(str, result="QVariantList")
+    def commands(self, query):
+        """Ctrl+K's rows with their key ("Ctrl+D"): the kit's own slot hands the bar the key, label and hint only, so a
+        row never shows its key. (KIT GAP: when DocBridge.commands passes `keys` on, this override goes.)"""
+        return [{k: c[k] for k in ("key", "label", "hint", "keys") if k in c} for c in command_search.search(self._commands(), query)]
 
     # ---- the kit's hooks: the 3D animation model (route.py) ----------------------------------------------------
     def label_of(self, item):

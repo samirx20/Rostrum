@@ -232,7 +232,7 @@ class Export3D(ExportSheet):
         try:
             if halt.is_set():
                 raise RuntimeError("Export cancelled")
-            done, files = (self._sequence if plan["shot"] else self._frame)(plan, engine, progress)
+            done, files = (self._sequence if plan["shot"] else self._frame)(plan, engine, progress, halt.is_set)
             if plan["out"] is not None:
                 files = self._copy(plan, files)
             first = files[0]
@@ -243,15 +243,15 @@ class Export3D(ExportSheet):
             engine.close()
 
     @staticmethod
-    def _frame(plan, engine, progress):
+    def _frame(plan, engine, progress, stopped):
         done, files, _ = still("export", plan["doc"], plan["info"], plan["scene"], engine, plan["frame"], "cycles",
-                               plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"], plan["passes"])
+                               plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"], plan["passes"], stopped)
         return done, files
 
     @staticmethod
-    def _sequence(plan, engine, progress):
+    def _sequence(plan, engine, progress, stopped):
         return sequence("export", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
-                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"])
+                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"], stopped)
 
     @staticmethod
     def _copy(plan, files):
