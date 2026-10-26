@@ -158,6 +158,42 @@ def stroke(screen, win, name, at, radius, mods, core):
     return {"stroke": name, "moves": moves, "timings": tool.timings, "viewMs": views}
 
 
+def lump_on_object(screen, win, vp_item, item_id):
+    """CL1b's bug, checked: a Lump click on another thing (not the ground) makes a clay that shows in the picture, and
+    how long that takes from the click (a new clay is built before it can be drawn)."""
+    v, doc = screen.bridge.viewport, screen.bridge.doc
+    lump = find(win.contentItem(), "clayMakeLump")
+    check(lump is not None, "the Lump tile is on the panel")
+    click(win, lump)
+    scene, cam = v.sent()
+    view = View.of(cam, scene, screen.bridge.frame, cam["width"], cam["height"])
+    from rostrum3d import aim, through
+    x, y, _ = view.project(aim.point(through.find_item(scene, item_id, screen.bridge.frame)[0], [0.0, 0.0, 0.0]))
+    to_win = 1.0 / (v._scale * vp_item.window().devicePixelRatio())
+    top = vp_item.mapToScene(QPointF(0, 0))
+    at = QPointF(top.x() + x * to_win, top.y() + y * to_win).toPoint()
+    before_ids, before = set(c["id"] for c in doc.data["items"] if c["type"] == "clay"), win.grabWindow()
+    t0 = time.perf_counter()
+    QTest.mouseMove(win, at)
+    QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, at)
+    pump(20, lambda: any(c["type"] == "clay" and c["id"] not in before_ids for c in doc.data["items"]), "the new clay")
+    new = next((c["id"] for c in doc.data["items"] if c["type"] == "clay" and c["id"] not in before_ids), "")
+    pump(30, lambda: v._r.idle() and not v._next.isActive() and not v.status.startswith("Error"), "the new clay's picture")
+    pump(0.1)
+    ms = (time.perf_counter() - t0) * 1000
+    after = win.grabWindow()
+    win.grabWindow().save(str(OUT / "clay-walk-on-box.png"))
+    if not new:
+        return check(False, f"a Lump click on {item_id} made a clay")
+    c, r = clay_on_screen(screen, new, vp_item)
+    changed = sum(1 for dx in range(-3, 4) for dy in range(-3, 4)
+                  if before.pixelColor(int(c.x()) + dx * int(r / 4), int(c.y()) + dy * int(r / 4)) !=
+                  after.pixelColor(int(c.x()) + dx * int(r / 4), int(c.y()) + dy * int(r / 4)))
+    check(changed > 30, f"a Lump click on {item_id} made {new} and it is drawn ({changed} of 49 pixels over it changed)")
+    check(ms < 2000, f"the new clay is in the picture {ms:.0f} ms after the click (under 2 s)")
+    return round(ms)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     project = Path(tempfile.mkdtemp(prefix="rostrum-claywalk-"))
@@ -206,6 +242,7 @@ def main():
         for name, mods in (("Add", Qt.NoModifier), ("Carve (Ctrl)", Qt.ControlModifier), ("Smooth (Shift)", Qt.ShiftModifier)):
             report["strokes"].append(stroke(screen, win, name, at, radius, mods, core))
         info1 = v._r.wait_for(lambda e: e.clay_info(clay_id))
+        report["lumpOnBoxMs"] = lump_on_object(screen, win, vp_item, "block")
         check(info1.get("hash") != info0.get("hash"), f"the clay's shape changed ({info0.get('hash')} -> {info1.get('hash')})")
         report["clayInfo"] = {"before": info0, "after": info1}
         K32.CloseHandle(ct.c_void_p(core))

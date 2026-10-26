@@ -154,9 +154,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
                              "paint-drag 0.42 0.5 0.58 0.55", "wait 1500"]),            # a roughness stroke, its layer
         # Clay (Q, clay_tool_qt.py): Make only, nothing to sculpt yet; then a real Lump click on the ground makes a clay
         # (clay.add: the core's clay must be built), its Brush tiles and rows; then Carve picked by a real click
-        ("clay-tool", s, ["press Q"]),
-        ("clay-made", s, ["press Q", "mouseclick 640 560", "wait 2500"]),
-        ("clay-brush", s, ["press Q", "mouseclick 640 560", "wait 2500", "click Carve", "wait 300"]),
+        # (`settled` before and after Q: Q's action runs a frame later, and a click in the same instant met Select; after the click: the picture
+        # with the new clay in it, not the one before — CL1b's "clay on the box not drawn" was that picture)
+        ("clay-tool", s, ["settled", "press Q"]),
+        ("clay-made", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled"]),
+        ("clay-brush", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled", "wait 300", "click Carve", "settled"]),
         ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),

@@ -61,6 +61,8 @@ Volume::Volume(float voxel) : voxel_(voxel) {
   grid_->setName("clay");
 }
 
+void Volume::own_buffers() { bufs_ = std::make_unique<Buffers>(); }
+
 StepTiming Volume::apply(const Step& s) { return run(&s, 1); }
 
 StepTiming Volume::apply_stroke(const std::vector<Step>& dabs) {
@@ -146,7 +148,7 @@ std::set<BlockKey> Volume::take_dirty() {
 
 StepTiming Volume::run(const Step* steps, size_t n) {
   const auto t0 = std::chrono::steady_clock::now();
-  Buffers& S = buffers();
+  Buffers& S = bufs_ ? *bufs_ : buffers();
   const float iv = 1.0f / voxel_;
   auto vox = [&](V3 p) { return V3{p.x * iv, p.y * iv, p.z * iv}; };
   const bool piece = steps[0].kind == Kind::Piece;  // a piece is always alone (n == 1)
@@ -161,7 +163,10 @@ StepTiming Volume::run(const Step* steps, size_t n) {
     const float r = s0.radius * iv;
     pieceShapes.push_back({vox(s0.a), vox(s0.b), r});
     if (s0.mirror) pieceShapes.push_back({vox(mirror_x(s0.a)), vox(mirror_x(s0.b)), r});
-    k = s0.blend * iv;
+    // a blend joins the piece to clay already there; on an empty clay (a new clay's first ball) there is nothing to
+    // join, so none: the ball is its exact size, and only its thin shell is worked (CL1b: with the blend, a new 10 cm
+    // clay widened and re-levelled a 30-million-voxel box and took 5 s to appear)
+    k = grid_->tree().empty() ? 0.0f : s0.blend * iv;
   } else {
     for (size_t j = 0; j < n; ++j) {
       const Step& s = steps[j];

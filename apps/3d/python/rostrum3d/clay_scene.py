@@ -15,7 +15,7 @@ from rostrum_core.cache import CACHE, cache_key
 from . import clay_dabs
 from .clay_fields import CLAY
 
-VERSION = "rostrum3d-clay@1"          # bump when the core builds the same steps differently (the cache key holds it)
+VERSION = "rostrum3d-clay@2"          # bump when the core builds the same steps differently (the cache key holds it)
 BRUSH = {p.name for p in CLAY if p.group == "Brush"}          # the next stroke's settings: never sent
 
 

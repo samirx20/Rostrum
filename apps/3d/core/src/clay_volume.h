@@ -24,6 +24,10 @@
 
 namespace r3d::clay {
 
+namespace detail {
+struct Buffers;  // clay_box.h
+}
+
 struct StepTiming {
   double ms = 0;       // the whole step
   size_t voxels = 0;   // voxels written back
@@ -85,6 +89,11 @@ class Volume {
   bool cast(const V3& origin, const V3& dir, float maxDist, V3& on, V3& normal) const;
   float sample(const V3& p) const;  // clay-space point -> distance in voxels (trilinear)
 
+  // A private volume of a parallel replay (clay_replay.cpp): step buffers of its own instead of the ones every clay
+  // shares, so several volumes can run steps at the same time on different threads.
+  void own_buffers();
+  const openvdb::FloatTree& tree() const { return grid_->tree(); }
+
   uint64_t hash() const;     // leaves (origin, values, active masks), in tree order
   size_t memory_bytes() const;
   size_t active_voxels() const;
@@ -98,6 +107,7 @@ class Volume {
   std::set<BlockKey> dirty_;
   ChunkRecord live_;            // a live stroke's put-back
   ChunkRecord* record_ = nullptr;  // the undo record being filled, if any
+  std::unique_ptr<detail::Buffers> bufs_;  // own step buffers (own_buffers), or null: the shared ones
   StepTiming run(const Step* steps, size_t n);  // one piece, or dabs as one unit (clay_volume.cpp)
   void keep(const openvdb::Coord& o);           // before writing chunk o: into the live put-back and the record
   void put_back(const ChunkRecord& rec);        // write a record's chunks into the grid
