@@ -55,15 +55,38 @@ class Gesture:
         self.doc._emit(Event("preview", edits=edits))     # what this step changed: listeners redo only that
 
     def _fresh(self, calls):
+        self.show_planned(self.plan(self.fresh_calls(calls)))
+
+    # A fresh preview in three parts, so a big one (Repeat x4 on a whole song: ~1.7 s of planning) can be planned on
+    # another thread while the window goes on: `fresh_calls` and `show_planned` on the document's thread, `plan` anywhere.
+    def fresh_calls(self, calls) -> list:
+        """The calls of a fresh step, worked out while the document reads as it was before the drag (on its thread)."""
+        if self._ended:
+            raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"', "is closed already (cancelled when the "
+                               "window closed)", hint="Start it again.")
+        if not callable(calls):
+            return calls
         shown, shown_idx = self.doc.data, self.doc._index()
         self.doc.data = self.start
         self.doc._indexed(self.start, self._start_idx)
         try:
-            calls = calls() if callable(calls) else calls
-            work, made, calls, idx = run.plan_indexed(self.doc.kind, self.start, calls, idx=self._start_idx)
+            return calls()
         finally:
             self.doc.data = shown
             self.doc._indexed(shown, shown_idx)
+
+    def plan(self, calls) -> tuple:
+        """The calls planned on the state from before the drag: pure (the start and its index are never changed), so
+        any thread may run it. Raises what the calls would raise."""
+        return run.plan_indexed(self.doc.kind, self.start, calls, idx=self._start_idx)
+
+    def show_planned(self, planned):
+        """A fresh step's plan (`plan`) shown: the document is the start plus it, listeners told what differs from
+        what they show (on the document's thread)."""
+        if self._ended:
+            raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"', "is closed already", hint="Start it again.")
+        work, made, calls, idx = planned
+        shown, shown_idx = self.doc.data, self.doc._index()
         near = touched(made, self.doc.kind.lists)
         edits = made if shown is self.start else diff(                  # from what listeners show now (the first
             shown, work, self.doc.kind.lists, shown_idx, idx, self._near | near)   # step: start + made, a Many stays one)
