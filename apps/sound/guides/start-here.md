@@ -17,11 +17,45 @@
   and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite.
 - Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 
+## Writing parts from scratch, or changing what is there
+
+- **A new part, written in a script: the script helpers** (`voice`, `comp`, `arp`, `bass_line`, `drum_grid`; `inspect_guide 'writing-music-tools'`), then `run_script`.
+- **Notes that already exist (a person's, or a finished script's): the operations** `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`, `note.transpose`, `note.fit_key`, `note.duplicate`, `hit.fill`, through `edit_document`. They change the notes in place; a script would rewrite them.
+- The arpeggio steps, orders and octaves are one rule in both. The script's `voice` goes further (drop 2, spread, voice leading); `note.chord` stacks plain tones. Pick by what you start from.
+
+## `edit_document`: whole calls that work
+
+The argument is `ops` (not `operations`): a list of `{op, target, args}`. A track's target is its id (`"drums"`, not `"track.drums"`).
+A note or hit operation takes note / hit ids, or a **range target** that names them without ids:
+`{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}` is every note on that track that starts from bar 1 up to, not including,
+bar 9 (bars count from 1; `from` / `to` left out = the start / the end; a time can also be seconds, `{"beat": 8}` or `"#drop"`).
+An empty range fails and says where the track's notes are. Bars are for range targets only: everywhere else a time is seconds
+or `{"beat": n}`, a length `{"beats": n}`. Each line below is the complete `arguments` of one `edit_document` call:
+
+- Make a chord on every note of bar 1-8 of a track (a range target: from included, to not; bars count from 1):
+  `{"ops": [{"op": "note.chord", "target": [{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}], "args": {"shape": "minor"}}]}`
+- Transpose up a fifth, notes of bars 1-8:
+  `{"ops": [{"op": "note.transpose", "target": [{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}], "args": {"semitones": 7}}]}`
+- Strum the chords of a whole track (no from / to = all of it):
+  `{"ops": [{"op": "note.strum", "target": [{"track": "guitar"}], "args": {"gap": 30, "soften": 0.1}}]}`
+- Repeat bars 1-4 once, 16 beats later; notes you name by id work too:
+  `{"ops": [{"op": "note.duplicate", "target": [{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 5}}], "args": {"by": {"beats": 16}, "times": 1}}]}`
+- Fill a hi-hat row (the TRACK is the target; from and to are beats here, not bars):
+  `{"ops": [{"op": "hit.fill", "target": ["drums"], "args": {"drum": "hat", "every": 0.5, "from": {"beat": 0}, "to": {"beat": 32}, "vel": 0.8}}]}`
+- Repeat the drum hits of bars 1-4 three times:
+  `{"ops": [{"op": "hit.duplicate", "target": [{"track": "drums", "from": {"bar": 1}, "to": {"bar": 5}}], "args": {"by": {"beats": 16}, "times": 3}}]}`
+- Add a section (at / end, not start) and a marker:
+  `{"ops": [{"op": "section.add", "args": {"name": "verse", "at": {"beat": 0}, "end": {"beat": 32}}}, {"op": "marker.add", "args": {"name": "drop", "at": {"beat": 32}}}]}`
+- Set a track's volume in dB:
+  `{"ops": [{"op": "track.set", "target": ["drums"], "args": {"volume": {"db": -4}}}]}`
+
+The range is read as the song was before the call. Operations' own arguments: `inspect_operations` with `name`.
+
 ## The order of work
 
 1. **Read** `inspect_guide` with `topic: "writing-music"` (the craft), then `topic: "script"` (the names a script knows). Scoring to a picture:
    `scoring-to-picture`.
-2. **Pick the sounds.** `inspect_engine` lists every instrument marked *recorded* or *synthesized*, the part each suits and
+2. **Pick the sounds.** `inspect_engine` (`what: "names"`, the default; there is no `instruments`) lists every instrument marked *recorded* or *synthesized*, the part each suits and
    where it sounds best, plus every effect's settings with units. `inspect_engine` with `what: "instrument"` and ONE of
    `builtIn`, `model`, `synth`, `sfz`, `kit`, `kitSfz` (for example `builtIn: "marimba"`) gives one instrument's range.
 3. **Write the song** with `run_script`. The argument is `source` (the Python text); `name` is optional (see below):

@@ -161,8 +161,13 @@ notes only; the same seed on the same notes gives the same result every time).
 
 ## Operations on notes already written
 
+These edit notes that exist (a person's, or an earlier script's); to write a new part, use the script helpers (`writing-music-tools`). Every one runs
+through `edit_document` (`ops`, a list of `{op, target, args}`; whole calls to copy are in `start-here`). Name the notes by id, or with a range
+target `{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}`: every note of that track starting from bar 1 up to (not including) bar 9; the
+same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpose", "target": [{"track": "guitar", "from": {"bar": 1}, "to": {"bar": 9}}], "args": {"semitones": 7}}]}`.
+
 - **Repeat:** `note.duplicate {times: 4}` repeats a bar four times (each copy right after the last; `by` sets another
-  step); `{until: "#chorus"}` fills up to the chorus marker, `{until: {"section": "verse"}}` up to the end of the verse
+  step, `{"beats": 32}` for 32 beats); `{until: "#chorus"}` fills up to the chorus marker, `{until: {"section": "verse"}}` up to the end of the verse
   section, `until` a time in seconds or beats as well. The last copy is cut at that point and never crosses it (notes and
   clips shortened, hits past it left out). The same on `hit.duplicate` and `clip.duplicate`; one call is one undo step.
 - **Transpose:** `note.transpose {semitones: 7}` moves notes up a fifth in half steps; `note.transpose {steps: 2}` moves
@@ -196,7 +201,7 @@ notes only; the same seed on the same notes gives the same result every time).
   (`up`, `down`, `upDown`, `downUp`, `converge`, `diverge`, `order` = as written, `random` = the same every time for
   one `seed`), over `octaves` octaves (1 … 4), each note holding `gate` of its step. Every new note lies inside the
   chord's span and copies the velocity of the chord note it plays; one undo brings the chord back.
-- **Fill a drum row:** `hit.fill {track, drum: "hat", every: 0.5, offset: 0, from: {"beat": 0}, to: {"beat": 4}, vel: 0.85}`
+- **Fill a drum row:** `hit.fill` on the drum TRACK as the target (`"target": ["drums"]`), args `{drum: "hat", every: 0.5, offset: 0, from: {"beat": 0}, to: {"beat": 4}, vel: 0.85}`
   adds hits of one drum every `every` beats (1/32 … 32) from `from` up to (not including) `to`, the first one `offset`
   beats after `from`; `accentEvery: 2, accentVel: 1` makes every second beat an accent. It adds only where that drum has no
   hit within 10 ms, so it never doubles a hit and never moves one, and it is one undo step. The drum must be one the
