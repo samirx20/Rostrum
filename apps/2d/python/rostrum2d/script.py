@@ -22,7 +22,8 @@ rostrum_core merges that tree in (`run_script`), so a re-run never wipes what so
     shape("card", w=300, h=380, fill=painted(grain, fit="tile", scale=0.78, drift=(12, 0)))   # many layers may use one
 
 Ids: the first argument; left out, they are counted per type (text_1, text_2 …), skipping every quoted word in
-the script, so adding one item never renames another. Unknown fields and bad values fail loudly.
+the script, so adding one item never renames another. Unknown fields and bad values fail loudly; `title.end = 4` is
+`title.set(end=4)` and `title.end` reads it back, so no write is ever dropped.
 """
 from __future__ import annotations
 
@@ -55,12 +56,42 @@ SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__buil
         for n in BUILTINS}
 
 
+class NoField(AttributeError):
+    """Reading a field an item doesn't have: an AttributeError (so getattr(item, name, default) still works), told as
+    plainly as a wrong write."""
+
+
 class Item:
-    """A handle on one item the script made."""
+    """A handle on one item the script made. Its fields read and write as attributes through the one field check:
+    `title.end = 4` is `title.set(end=4)` and `title.end` reads it back; a name that is not a field fails loudly, so no
+    write is ever dropped."""
+    _OWN = ("_b", "node", "id", "d_shift", "drawings")      # the handle's own attributes, not the item's fields
 
     def __init__(self, build: "Build", node: dict):
-        self._b, self.node, self.id = build, node, node["id"]
+        object.__setattr__(self, "_b", build)
+        object.__setattr__(self, "node", node)
+        object.__setattr__(self, "id", node["id"])
         self.d_shift = None         # a path placed from its own points: its d keys move with it (pathdata.for_script)
+
+    def __setattr__(self, name, value):
+        if name == "id":
+            raise ValueError(f'{self.id}.id = …: an id is given when the item is made ({self.node["type"]}("{value}", …)); '
+                             "it can't change after")
+        if name in Item._OWN:
+            object.__setattr__(self, name, value)
+        elif callable(getattr(type(self), name, None)):
+            raise ValueError(f"{self.id}.{name} = …: {name} is a call, not a field; write {self.id}.{name}(…)")
+        else:
+            self.set(**{name: value})
+
+    def __getattr__(self, name):          # only names that aren't the handle's own: the item's fields
+        node = self.__dict__.get("node")
+        if node is None or name.startswith("__"):
+            raise AttributeError(name)
+        known = [p.name for p in F.FIELDS.get(node["type"], [])]
+        if name in known or name == "name":
+            return node.get(name, F.defaults(node["type"]).get(name))
+        raise NoField(f'{node["id"]}.{name}: a {node["type"]} has no field "{name}".{_hint(name, known)} Its fields: {", ".join(known)}')
 
     def set(self, **values) -> "Item":
         self._b.fill(self.node, values)
@@ -208,6 +239,12 @@ class Painted:
                 if not isinstance(xy, (tuple, list)) or len(xy) != 2:
                     raise ValueError(f"painted({word}=…) is a pair: ({word}=(x, y))")
                 self.values[prop + "X"], self.values[prop + "Y"] = xy
+
+    def __setattr__(self, name, value):
+        if name in ("id", "values") and name not in self.__dict__:
+            return object.__setattr__(self, name, value)
+        raise ValueError(f"painted(…).{name} = …: a painted fill is set when made; give it there, "
+                         f"painted(painting, {name}=…), and pass that to fill=")
 
     def fields(self) -> dict:
         return {"filled": True, "fillType": "painted", "fillPainting": self.id, **self.values}
@@ -409,7 +446,7 @@ run_source.wants_doc = True            # rostrum_core's run_script tool then pas
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
        "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields)",
+       "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",
@@ -423,7 +460,7 @@ def _failed(e: Exception, name: str, scope: dict) -> RostrumError:
     where = f'script "{name}"' + (f" line {line}" if line else "")
     if isinstance(e, RostrumError):
         return RostrumError(e.code, f"{where} › {e.where}" if e.where else where, e.subject, e.problem, e.accepted, e.hint)
-    if isinstance(e, (ValueError, KeyError)):
+    if isinstance(e, (ValueError, KeyError, NoField)):
         return RostrumError(codes.BAD_ARGUMENT, where, "", str(e.args[0]) if e.args else str(e))
     hint = None
     if isinstance(e, NameError) and getattr(e, "name", None):

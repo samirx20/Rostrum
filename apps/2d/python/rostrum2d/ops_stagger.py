@@ -3,7 +3,8 @@ moves in time (with its keys, effects, drawings: layer.shift's way) so it starts
 counting from the earliest start among them. Staggering again re-spreads from there, so it can be changed at will.
 key.stagger (rostrum_core.keys.stagger, registered in ops_anim.py) does the same with picked keys, through this file's
 CASCADE. The spatial orders compare where each layer is seen, in composition px (placement.centres_at: through
-its groups and the camera), so layers in different groups line up as they look.
+its groups and the camera), so layers in different groups line up as they look; a layer that enters unseen (from
+opacity or scale 0) counts where it is first seen.
 """
 from __future__ import annotations
 
@@ -58,4 +59,7 @@ def _places(ctx, items: list[dict]) -> dict:
     """Where each layer is seen at its start ({id: (x, y)}, composition px through its groups and the camera)."""
     when = {it["id"]: max(0.0, offset_of(ctx.doc, it["id"], _times(ctx)) + float(ctx.item(it["id"]).get("start", 0.0)))
             for it in items}
-    return placement.centres_at(ctx.doc, when)
+    try:
+        return placement.centres_at(ctx.doc, when)
+    except ValueError as e:
+        ctx.fail(codes.BAD_ARGUMENT, "order", str(e))

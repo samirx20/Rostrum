@@ -124,12 +124,14 @@ t = text("headline", body="Words", size=160, x=960, y=520)
 t.key("opacity", {0.0: 0, 0.6: 1}, ease="easeOut")          # {time: value} or {time: (value, ease)}
 t.effect("shadow", dy=24, radius=60)
 t.mask("reveal", w=0).key("w", {0.0: 0, 0.8: 1400})
-with group("cluster", x=960, y=800):                          # layers made inside go into the group
+with group("cluster", x=960, y=800) as cluster:               # layers made inside go into the group
     shape("dot", shape="ellipse", w=24, h=24)
+cluster.end = 4                                               # a field as an attribute is .set(end=4); t.x reads it back
 ```
 
 Unknown fields, bad values, and animating something that cannot be animated fail loudly, naming the line and what to
-write instead.
+write instead. A field written as an attribute (`t.end = 4`) goes through the same check as `.set(end=4)`: it is set or
+refused, never dropped.
 
 ### What to write (the fields agents reach for)
 

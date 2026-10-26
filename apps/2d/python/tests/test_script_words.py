@@ -40,3 +40,11 @@ def test_what_is_not_clear_fails_saying_what_to_write(src, says):
     with pytest.raises(RostrumError) as e:
         run_source(HEAD + src, "t.py")
     assert says in str(e.value)
+
+
+def test_a_field_written_as_an_attribute_is_set_or_refused_never_dropped():
+    t = layer('t = text("t", body="Hi")\nt.end = 3\nt.start = 1\nt.x = t.x + 10')
+    assert (t["start"], t["end"], t["x"]) == (1, 3, 970)
+    for bad in ('t.ned = 3', 't.key = 3', 'y = t.ned', 'p = painted("g")\np.scale = 2'):
+        with pytest.raises(RostrumError):
+            layer('t = text("t")\n' + bad)
