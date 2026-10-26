@@ -34,7 +34,7 @@ order to use them in when checking a whole mix; the table of every tool and what
 5. **Width:** `look_sound` (`what: "stereo"`). Balance per section and mono warnings (parts that cancel when summed to mono).
 6. **Timing:** `look_music` (`what: "beats"`) (whether the audio's beats fit the document's tempo, steadiness, onsets against the grid) and `look_music` (`what: "events"`) with `expect` for hits that must land
    on markers. Add `by_stem: true` to learn which track hits each marker, in one call.
-7. **Notes:** `look_music` (`what: "harmony"`) for key, chords and written-note facts (it reads the notes: run it before rendering too); `look_music` (`what: "pitch"`) with `track` for wrong or out-of-tune notes in a one-voice part, and for a chord part, whether every written note of each chord is there.
+7. **Notes:** `look_music` (`what: "harmony"`) for key, chords and written-note facts (it reads the notes: run it before rendering too); `look_music` (`what: "pitch"`) with `track` for whether every written note is there and in its octave (judged on each note's attack, so ringing parts read right; the first line says the track's register), and on a one-voice part, late, out-of-tune or wrong notes.
 8. **Problems in a recording:** `look_sound` (`what: "spectrum"`) (hum lines, steady tones with note names, marks at times),
    `look_sound` (`what: "cleanup"`) for before / after of a cleaned clip.
 

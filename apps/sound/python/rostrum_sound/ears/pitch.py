@@ -1,12 +1,13 @@
 """Notes of one melodic line, described: cents off, vibrato and drift from the pitch curve, the line's tuning, and
-a comparison with the notes the document wrote. The pitch curve and the notes come from the engine (one pitch finder:
-ears/engine_ears.py `pitch`); this file only reads them."""
+the written notes' statuses (each judged on its attack in attack.py; timing and tuning from the line). The pitch
+curve and the notes come from the engine (one pitch finder: ears/engine_ears.py `pitch`); this file only reads them."""
 from __future__ import annotations
 
 import numpy as np
 
 from ..doc.keys import pitch_name
 from ..listen.core import num
+from .attack import register
 
 
 def describe_notes(t, midi, frame_s: float, found) -> list[dict]:
@@ -43,35 +44,44 @@ def _describe(start, end, k, seg, frame_s):
     return out
 
 
-def compare(written: list[dict], heard: list[dict], cents_tol: float = 25, time_tol: float = 0.06) -> dict:
-    """Each written note against the heard note that overlaps it most: status ok / wrong_note / wrong_octave /
-    late / early / out_of_tune / missing. Late and early are the start's offset in ms; out_of_tune is cents off
-    the written pitch (a pitch bend or vibrato you wrote is not subtracted: read it with that in mind)."""
-    rows = []
-    for w in written:
-        best = max(heard, key=lambda h: min(w["end"], h["end"]) - max(w["start"], h["start"]), default=None)
-        over = 0 if best is None else min(w["end"], best["end"]) - max(w["start"], best["start"])
-        label = "/".join(map(str, w["midis"]))
-        row = {"id": w["id"], "written": label, "start_s": num(w["start"], 3), "target": w["midis"][0]}
-        if best is None or over <= 0.02:
-            rows.append({**row, "status": "missing"})
-            continue
-        target = min(w["midis"], key=lambda k: abs(k - best["midi"]))
-        cents = (best["midi"] - target) * 100 + best["cents"]
-        row |= {"target": target, "heard": best["note"], "start_off_ms": num((best["start"] - w["start"]) * 1000, 0), "cents_off": num(cents, 0)}
-        if abs(best["midi"] - target) >= 1 and (best["midi"] - target) % 12 == 0:
+def compare(track: str, rows: list[dict], heard: list[dict] | None, onset_ms: dict | None = None, cents_tol: float = 25,
+            time_tol: float = 0.06) -> dict:
+    """Statuses for the written notes judged on their attacks (attack.check): ok / wrong_octave / missing. On a
+    one-voice part: late / early from the sound's own onset nearest each written start (`onset_ms`: start -> ms
+    off, listen.onsets), and out_of_tune / wrong_note from the pitch line's note sounding through the attack (`heard`;
+    a bend or vibrato you wrote is not taken off). Heard notes no written note starts in (ringing tails) never count."""
+    reach = max(2 * time_tol, 0.12) * 1000                 # an onset further off is another note's, not this one's
+    onset = {round(k, 3): v for k, v in (onset_ms or {}).items() if v is not None and abs(v) <= reach}
+    out = []
+    for r in rows:
+        r = dict(r)
+        octave = r.pop("octave")
+        h = _through(heard, r["start_s"]) if heard else None
+        other = h is not None and (h["midi"] - r["target"]) % 12 != 0
+        off = onset.get(round(r["start_s"], 3))
+        if octave is None or (octave and other):
+            status = "wrong_note" if other else "missing"
+            r["heard"] = h["note"] if other else None
+        elif octave:
             status = "wrong_octave"
-        elif abs(best["midi"] - target) >= 1:
-            status = "wrong_note"
-        elif abs(row["start_off_ms"]) > time_tol * 1000:
-            status = "late" if row["start_off_ms"] > 0 else "early"
-        elif abs(best["cents"]) > cents_tol:
-            status = "out_of_tune"
         else:
             status = "ok"
-        rows.append({**row, "status": status})
-    counts = {s: sum(r["status"] == s for r in rows) for s in sorted({r["status"] for r in rows})}
-    return {"rows": rows, "counts": counts, "cents_tolerance": cents_tol, "time_tolerance_ms": time_tol * 1000}
+            r |= {"start_off_ms": off, "cents_off": None if h is None else h["cents"]}
+            if off is not None and abs(off) > time_tol * 1000:
+                status = "late" if off > 0 else "early"
+            elif h is not None and abs(h["cents"]) > cents_tol:
+                status = "out_of_tune"
+        out.append({**r, "status": status})
+    counts = {s: sum(r["status"] == s for r in out) for s in sorted({r["status"] for r in out})}
+    return {"rows": out, "counts": counts, "register": register(track, rows), "cents_tolerance": cents_tol,
+            "time_tolerance_ms": time_tol * 1000, "judged": "each written note on its attack (what is new just after "
+            "it starts)" + ("; timing from the sound's onsets, tuning from the pitch line" if heard is not None else
+                            "; timing and tuning only on one-voice parts")}
+
+
+def _through(heard: list[dict], start: float, at: float = 0.08) -> dict | None:
+    """The pitch line's note sounding `at` seconds after `start` (inside the attack window), if any."""
+    return next((h for h in heard if h["start"] <= start + at < h["end"]), None)
 
 
 def tuning_offset(heard: list[dict]) -> float | None:

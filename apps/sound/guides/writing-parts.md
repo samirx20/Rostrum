@@ -218,9 +218,10 @@ same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpo
 - `look_music` (`what: "harmony"`) (`track` optional): the key, the chord per bar or beat, and plain facts about the written notes:
   notes outside the instrument's range, voices crossing, close intervals low down, notes out of key. Chord and note names
   are spelled for the key (flats in flat keys).
-- `look_music` (`what: "pitch"`) with `track` after a render: the notes heard against the notes written (wrong note, wrong octave, early,
-  late, out of tune, missing). A part that plays chords is checked note by note: each written note of each chord is
-  looked for in the sound (ok, missing, wrong octave).
+- `look_music` (`what: "pitch"`) with `track` after a render: every written note (each note of a chord too) judged on
+  its attack, so ringing notes, pedal and reverb never count against it: ok, wrong octave, missing; on a one-voice part
+  also late, early, out of tune, wrong note. The first line says the track's register in plain words ("bass sounds
+  where written", or "sounds one octave lower than written on N of M notes: the instrument's samples, or your octave").
 - `look_music` (`what: "beats"`): whether the played notes sit on the grid, per onset in ms.
 
 These report facts; whether a line is musical is decided by listening.

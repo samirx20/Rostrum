@@ -11,7 +11,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from ..doc import tempo
 from ..ears import beats as B
-from ..ears import chords_heard as CH
+from ..ears import attack as A
 from ..ears import clash as C
 from ..ears import engine_ears
 from ..ears import harmony as H
@@ -23,6 +23,7 @@ from ..ears.draw_clash import clash_picture
 from .. import note_ranges
 from ..ears.written import written_notes
 from ..listen.core import load
+from ..listen.onsets import onsets
 from .tools_look import ITEM, WAV, _source
 
 TOP_CLASHES = 3      # the clashes the summary names; every one is in the data, ranked
@@ -111,7 +112,7 @@ def register(tools: Tools):
         "cents_tolerance": {"type": "number", "default": 25, "description": "Cents a note may be off before it is out of tune."},
         "timing_tolerance": {"type": "number", "default": 0.06, "description": "Seconds a note may start early or late."}}})
     def look_pitch(ctx, args):
-        """The pitch of one melodic line as notes with times and cents off (vibrato, drift, tuning); with a track, each written note checked for wrong note, wrong octave, late, out of tune or missing. A track that plays several notes at once (chords, a melody over its chords) is checked note by note instead: each written note of each chord looked for in the sound (ok, missing, or wrong octave when only the octave above is there); timing and tuning are judged only on one-voice parts. A picture of the curve over a note grid with the written notes as bars and a dot per written note."""
+        """With a track: every written note (each note of a chord too) judged on its attack, what is new in the sound just after it starts, so ringing earlier notes, pedal and reverb tails never count: ok, wrong octave (heard one octave lower or higher; only called when the partials clearly say so), or missing; and one plain line on the track's register ("bass sounds where written", or "sounds one octave lower than written on N of M notes: the instrument's samples, or your octave"). On a one-voice part the pitch line also gives late / early, out of tune and wrong note. Plus the pitch line's notes with cents off, vibrato, drift and tuning (on a ringing part it holds more notes than were written: those are tails, not counted). A picture of the curve over a note grid with the written notes as bars and a dot per written note."""
         doc, wav, stems = _source(ctx, args, "look_music (what: pitch)")
         tid = args.get("track")
         src = _pick(stems, tid, "look_music (what: pitch)") if tid else wav
@@ -127,23 +128,23 @@ def register(tools: Tools):
              "drifting_notes": [f"{n['note']}@{n['start']} ({n['drift_cents']:+g} cents)" for n in heard if n["drift_cents"] and abs(n["drift_cents"]) >= 25],
              "range_hz": [round(fmin), round(fmax)]}
         rows = None
-        chords = bool(written) and CH.polyphonic(written)
         if written:
-            cmp = CH.check(src, written) if chords else P.compare(written, heard, args.get("cents_tolerance", 25), args.get("timing_tolerance", 0.06))
+            one_voice = not A.polyphonic(written)
+            ons = {e["expected_s"]: e["offset_ms"] for e in onsets(src, expect=sorted({w["start"] for w in written}))["expected"]} if one_voice else None
+            cmp = P.compare(tid, A.check(src, written), heard if one_voice else None, ons, args.get("cents_tolerance", 25), args.get("timing_tolerance", 0.06))
             rows = cmp["rows"]
             r["comparison"] = {**cmp, "rows": rows if args.get("detail") == "full" else [x for x in rows if x["status"] != "ok"][:60]}
         png = ctx.app.state.look_dir(doc.item_id) / f"{Path(src).stem}-pitch.png"
         pitch_picture(png, t, midi, written, rows)
         said = f"{len(heard)} notes heard" + (f"; the line sits {r['tuning_offset_cents']:+g} cents from equal temperament" if heard else "")
         said += f"; vibrato on {len(r['vibrato_notes'])}, drift on {len(r['drifting_notes'])}"
-        if chords:
-            said = (f"{tid} plays chords: each of its {len(rows)} written notes looked for in the sound: "
-                    + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in r["comparison"]["counts"].items())
+        if rows is not None:
+            said = (f"{cmp['register']}. Each of the {len(rows)} written notes judged on its attack: "
+                    + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in cmp["counts"].items())
                     + "".join([f"; {x['status'].replace('_', ' ')}: {x['written']} at {x['start_s']:g} s" + (f" (heard {x['heard']})" if x.get("heard") else "")
                                for x in rows if x["status"] != "ok"][:8])
-                    + ". Timing and tuning are judged only on one-voice parts (the pitch line follows the loudest note)")
-        elif rows is not None:
-            said += f". Against {len(written)} written notes: " + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in r["comparison"]["counts"].items())
+                    + (f". The pitch line: {said} (notes still ringing count there, not against the written ones)" if one_voice
+                       else ". Timing and tuning are judged only on one-voice parts"))
         elif not tid:
             said += ". No track given, so nothing to compare with (pitch of the mix follows its loudest line)"
         return Reply(said + ".", r, [str(png)], [str(png)])

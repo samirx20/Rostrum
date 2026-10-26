@@ -47,18 +47,25 @@ def test_over_full_scale_clips_only_in_a_fixed_point_file(tmp_path):
     assert flags["i"]["flag"] == "clips" and flags["i"]["clips"] is True
 
 
-def test_a_chord_is_checked_note_by_note_never_a_false_wrong_octave(tmp_path):
-    """Guard: on a part playing chords each written note is looked for on its own: a right chord reads all ok (the
-    pitch line named one note and called the rest wrong octaves), a note not played reads missing, one played an
-    octave up reads wrong_octave."""
-    from rostrum_sound.ears import chords_heard
+def test_each_note_is_judged_on_its_attack_never_a_ringing_one_nor_a_false_octave(tmp_path):
+    """Guard: every written note is judged on what is new just after it starts. A right chord reads all ok, a note not
+    played reads missing, one played an octave up reads wrong_octave (heard Bb5); a note still ringing from before is
+    not this note (missing), and a part playing an octave under what was written says so in plain words."""
+    from rostrum_sound.ears import attack, pitch
     t = np.arange(int(2.0 * SR)) / SR
-    tone = lambda m: sum(0.1 / h * np.sin(2 * np.pi * h * 440 * 2 ** ((m - 69) / 12) * t) for h in (1, 2, 3))  # noqa: E731
+    tone = lambda m, a=0.0: sum(0.1 / h * np.sin(2 * np.pi * h * 440 * 2 ** ((m - 69) / 12) * t) for h in (1, 2, 3, 4)) * (t >= a)  # noqa: E731
     sf.write(tmp_path / "c.wav", (tone(60) + tone(64) + tone(82)).astype("float32"), SR)   # C4 E4 and Bb5 (Bb4 an octave up)
-    row = lambda midis: {"id": "n", "start": 0.0, "end": 2.0, "midis": midis}  # noqa: E731
-    assert chords_heard.polyphonic([row([60, 64])])
-    got = {r["written"]: r["status"] for r in chords_heard.check(tmp_path / "c.wav", [row([60, 64, 70, 69])])["rows"]}
+    row = lambda midis, start=0.0, i="n", end=2.0: {"id": i, "start": start, "end": end, "midis": midis}  # noqa: E731
+    assert attack.polyphonic([row([60, 64])])
+    got = {r["written"]: r["status"] for r in pitch.compare("keys", attack.check(tmp_path / "c.wav", [row([60, 64, 70, 69])]), None)["rows"]}
     assert got == {"C4": "ok", "E4": "ok", "A#4": "wrong_octave", "A4": "missing"}, got
+    sf.write(tmp_path / "r.wav", (tone(57) + tone(62, 1.0)).astype("float32"), SR)        # A3 rings on, D4 starts at 1 s
+    rows = attack.check(tmp_path / "r.wav", [row([57], 0.0, "a"), row([57], 1.0, "b"), row([62], 1.0, "c")])
+    assert [r["octave"] for r in rows] == [0, None, 0], rows                                # the ringing A3 is not struck at 1 s
+    low = [row([m + 12], i * 0.25, str(i), i * 0.25 + 0.25) for i, m in enumerate((40, 43, 45, 47))]
+    sf.write(tmp_path / "b.wav", sum(tone(m, i * 0.25) * (t < i * 0.25 + 0.25) for i, m in enumerate((40, 43, 45, 47))).astype("float32"), SR)
+    said = attack.register("bass", attack.check(tmp_path / "b.wav", low))
+    assert said.startswith("bass sounds one octave lower than written on 4 of 4"), said
 
 
 def test_ending_check_flags_a_cut_tail_and_passes_a_finished_one():

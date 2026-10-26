@@ -44,8 +44,15 @@ A line is a list of dicts, so you can read it, filter it and join lines with ord
 | `"shell"` | root, third and seventh (or sixth) |
 
   `voices` (2 … 6): with too many tones the fifth is dropped first, then the root; with too few, the root and then the
-  fifth are doubled. `rootless=True` leaves the root to the bass. `bass=True` adds the bass note (the slash note) an
-  octave or more below.
+  fifth are doubled. `rootless=True` leaves the root to the bass. `bass=True` adds the bass note (the slash note)
+  12 to 23 semitones under the voicing's lowest note, so as low as 23 semitones under `range`'s low note (G#1 for the
+  default G3), never under E1.
+
+  Every voicing's notes stay inside `range`. A fixed voicing (close, drop, spread, shell) keeps its shape and moves by
+  whole octaves; when the inversion you asked for cannot fit that way, the next inversion that can is used, and only
+  when none can do the voices still outside fold in by an octave. A shape wider than the range is an error that names
+  both ("spans 23 semitones … wider than the range G3–D5 (19 semitones)"): a four-voice `"spread"` or `"drop3"` needs
+  about two octaves, so give it `range=("C3", "D5")` or similar.
 
 ## Comping: `comp(chords, rhythm="hold", per=<a bar>, push=0, vel=0.7, **voicing)`
 
