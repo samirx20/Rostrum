@@ -87,3 +87,20 @@ def test_change_message_expands_to_the_full_scene():
     assert "a" in layers and "k2" in group["layers"]           # kept nodes go as their ids, at any depth
     assert scene_change.expand(req["change"], held) == new
     assert scene_change.request(held, describe(d.data, None, MARKS, None, (0.0, 2.0), []))[0].keys() == {"scene"}
+
+
+def test_a_layer_moved_to_another_group_goes_as_its_id():
+    """A structural edit (a layer moved into a group, Ctrl+G's new group) sends the engine a change keeping every
+    unchanged node by id wherever it now sits, never the moved layers whole (a 48-layer group resent them all)."""
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source(SRC, "s.py"))
+    keep = Keeper()
+    held = keep.describe(d.data, None, MARKS, None, (0.0, 2.0), [])
+    d.apply({"op": "layer.arrange", "target": "c", "args": {"into": "g", "index": 0}}, SAM)
+    new = keep.describe(d.data, None, MARKS, None, (0.0, 2.0), [])
+    req, why = scene_change.request(held, new)
+    assert why is None and "change" in req
+    group = next(n for n in req["change"]["comp"]["layers"] if isinstance(n, dict) and n["id"] == "g")
+    made = [k["id"] for k in group["layers"] if isinstance(k, dict)]
+    assert "c" in group["layers"] and made == ["g.background"]     # moved and kept: an id (only the box it widens is new)
+    assert scene_change.expand(req["change"], held) == new
