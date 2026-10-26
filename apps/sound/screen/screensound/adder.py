@@ -8,6 +8,7 @@ sounds". Exposed to QML as `adder`.
 """
 from __future__ import annotations
 
+import difflib
 import re
 
 from PySide6.QtCore import Property, QObject, Slot
@@ -27,6 +28,7 @@ KINDS = [("", "All"), ("instrument", "Instruments"), ("drums", "Drums"), ("recor
 SAID = {"marimba": "Wooden bars, round and warm", "vibraphone": "Metal bars, soft shimmer",
         "glockenspiel": "Small metal bars, bright and high", "tubularBell": "Long, ringing bell tones",
         "drums": "Rock kit: kick, snare, hats, toms, crash, ride", "studio": "Close-miked, rusty and dry",
+        "jazz": "Brushes on the snare, ride cymbal, soft hats and toms",
         "classic": "Synthesized: kick, snare, clap, hats, tom, cymbal, rim"}
 
 
@@ -113,10 +115,14 @@ def _note(e: dict) -> str:
 # missed String section, Violins and Cellos)
 FAMILIES = {"strings": ("strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp",
                         "classic.analogStrings"),
-            "brass": ("brass", "horn", "trumpet", "trombone", "tuba"),
+            "brass": ("brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba"),
             "woodwinds": ("flute", "piccolo", "oboe", "clarinet", "bassoon", "saxophone"),
             "percussion": ("marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani")}
 FAMILY_OF = {f"builtIn:{k}": fam for fam, keys in FAMILIES.items() for k in keys}
+# Other words people search a sound by (found, never shown).
+ALSO = {"builtIn:vibraphone": "vibes", "model:vibraphone": "vibes", "builtIn:saxophone": "tenor sax",
+        "builtIn:electricPiano": "wurlitzer", "builtIn:piano": "grand", "builtIn:uprightBass": "double jazz",
+        "kit:jazz": "brush swing"}
 
 
 def _holds(text: str, word: str) -> bool:
@@ -131,11 +137,29 @@ def find(text: str, kind: str) -> list[dict]:
     words = text.lower().split()
     found = []
     for e in ENTRIES:
-        about = f"{e['label']} {e['what']} {e['kind']} {FAMILY_OF.get(e['key'], '')}".lower()
+        about = f"{e['label']} {e['what']} {e['kind']} {FAMILY_OF.get(e['key'], '')} {ALSO.get(e['key'], '')}".lower()
         if (not kind or e["kind"] == kind) and all(_holds(about, w) for w in words):
             found.append((not all(_holds(e["label"].lower(), w) for w in words), len(found), e))
     return [{**{k: v for k, v in e.items() if k != "fields"}, "note": _note(e) or LINE_TWO.get(e["kind"], ""), "hearable": e["kind"] not in NO_HEAR,
              "noHear": NO_HEAR.get(e["kind"], "")} for *_, e in sorted(found, key=lambda x: x[:2])]
+
+
+def missed(text: str, kind: str) -> dict:
+    """What to say when `find(text, kind)` is empty: {say, chip}. A kind chip that hides the matches names where they
+    are ("Show “brass” in Instruments", a button to that chip); else the closest names to what was typed ("No “clr” here.
+    Closest: Clarinet")."""
+    if kind and (there := find(text, "")):
+        where = there[0]["kind"]
+        return {"say": f"Show “{text}” in {dict(KINDS)[where]}", "chip": where}
+    words: dict[str, list[str]] = {}
+    for e in ENTRIES:
+        for w in re.findall(r"\w+", f"{e['label']} {ALSO.get(e['key'], '')}".lower()):
+            words.setdefault(w, []).append(e["label"])
+    score = {w: max(difflib.SequenceMatcher(None, t, w).ratio() for t in text.lower().split()) for w in words}
+    best = max(score.values(), default=0)          # the nearest words only: a far third guess is noise
+    near = list(dict.fromkeys(n for w in sorted(score, key=score.get, reverse=True)
+                              if score[w] >= max(0.5, best - 0.1) for n in words[w]))[:3]
+    return {"say": f"No “{text}” here." + (f" Closest: {', '.join(near)}" if near else ""), "chip": ""}
 
 
 def _entry_of(key: str) -> dict | None:
@@ -156,6 +180,10 @@ class Adder(QObject):
     @Slot(str, str, result="QVariantList")
     def find(self, text, kind):
         return find(text, kind)
+
+    @Slot(str, str, result="QVariantMap")
+    def missed(self, text, kind):
+        return missed(text, kind)
 
     @Slot(str, result=bool)
     def add(self, key):

@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // A voice track's lines (text + when) and Make voice (beside the Editor), which shows only while a line has no audio yet.
 // Clicking a line selects it, so the inspector shows its fields (words, time, take, level, fades). "Type a line":
@@ -21,7 +22,7 @@ Column {
             required property var modelData
             width: v.width; height: Theme.rowDense + 6
             radius: Theme.radiusCtl
-            color: !!backend.pickedHeads[modelData.id] ? Theme.accentSoft : area.containsMouse ? Theme.hover : Theme.raised
+            color: !!Picks.heads(backend, backend.pickStamp)[modelData.id] ? Theme.accentSoft : area.containsMouse ? Theme.hover : Theme.raised
             MouseArea { id: area; anchors.fill: parent; hoverEnabled: true; onPressed: { backend.focusArea("arrange"); backend.select(modelData.id) } }
             Rectangle { id: dot; width: 6; height: 6; radius: 3; x: Theme.gap; anchors.verticalCenter: parent.verticalCenter
                         color: modelData.making ? Theme.accent : modelData.made ? Theme.ok : Theme.warn

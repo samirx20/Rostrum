@@ -36,13 +36,38 @@ def held(r: dict, goal=None) -> str:
             f"the mix {under}: {way}.")
 
 
-def summary(r: dict, goal=None) -> str:
+def loudness(r: dict, master: dict | None, before: dict) -> dict:
+    """The reply's loudness facts: what the last render predicted (fit_loudness.landing, the Export sheet's sentence), what
+    this one measured, and the limiting it took. `before`: landing() of the previous render ({} with none)."""
+    m = r.get("master") or {}
+    after = fit.landing(master or {}, r)
+    out = {"measured_lufs": round(r["lufs"], 2), "limiting_db": round(m.get("limiterMaxReductionDb") or 0, 2)}
+    if before:
+        out["predicted_lufs"] = before["lufs"]
+    if after:
+        out |= {"target": after["target"], "need_db": after["need_db"], "max_limit": after["limit"], "reaches": after["reaches"],
+                **({"push_max_limit": after["push"]["max_limit_db"]} if after.get("push") else {}), "words": after["words"]}
+    return out
+
+
+def loud_words(l: dict) -> str:
+    said = (f" Loudness: predicted {l['predicted_lufs']:.1f} LUFS, measured {l['measured_lufs']:.1f}" if "predicted_lufs" in l
+            else f" Loudness: measured {l['measured_lufs']:.1f} LUFS") + f", with {l['limiting_db']:.1f} dB of limiting."
+    if "target" in l and not l["reaches"]:
+        said += f" {l['words']}" + (f" To reach it: master maxLimit {l['push_max_limit']:g} (edit_loudness keep_balance), or "
+                                                f"edit_loudness tame_peaks to keep acoustic drums and piano open." if "push_max_limit" in l else "")
+    elif l["limiting_db"] > fit.LOT_DB:
+        said += fit.a_lot(l["limiting_db"])
+    return said
+
+
+def summary(r: dict, goal=None, loud: dict | None = None) -> str:
     credits = packs.credit_lines(r)
     quiet = sorted(r["tracks"], key=lambda t: t["lufs"])[:1]
     q = f" Quietest track: {quiet[0]['id']} at {quiet[0]['lufs']:.1f} LUFS." if quiet else ""
     return (f"Rendered {r['seconds']:.1f} s in {r['renderSeconds']:.1f} s: {r['lufs']:.1f} LUFS, true peak {r['truePeak']:.1f} dBTP, "
             f"{len(r['tracks'])} tracks, {len(r['stems'])} stems" + (f" + {len(r['busStems'])} bus stems" if r.get("busStems") else "")
-            + f".{q}" + held(r, goal) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
+            + f".{q}" + (loud_words(loud) if loud else held(r, goal)) + (f" Credit these instruments where the sound goes: {'; '.join(credits)}." if credits else "")
             + "".join(f" {w.rstrip('.')}." for w in r.get("warnings") or []))
 
 
@@ -68,7 +93,8 @@ def register(tools: Tools):
         "name": {"type": "string", "description": "The mix file's name without its type (\"Launch theme\" -> Launch theme.wav), as the Export sheet's name field. Default: <item>_mix. Characters a file name can't hold are replaced; stems keep their track names. Not for a listening check (solo / mute)."}}})
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
-        peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them. Returns a job."""
+        peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them.
+        Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. Returns a job."""
         doc = ctx.document(args.get("item"))
         args = presets.expand(args, args.get("preset"))             # a wrong preset answers now
         item = doc.item_id
@@ -89,6 +115,11 @@ def register(tools: Tools):
         deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers now, not after the render
 
         goal = (schedule.get("master") or {}).get("loudness")       # the target the engine was given (None: no target)
+        master_now = (doc.data.get("master") or [{}])[0] if master else {}
+        try:                                                         # what the last render predicts for this one (the Export sheet's sentence)
+            before = fit.landing(master_now, state.last_render(item, "render_mix")) if master else {}
+        except Exception:  # noqa: BLE001  no render yet: nothing to predict
+            before = {}
 
         def work(job):
             job.progress(note="rendering")
@@ -101,7 +132,8 @@ def register(tools: Tools):
                                    markers_file=bool(args.get("markers")), name=args.get("name") or "")
             state.remember(item, r)
             files = [r["file"], *r["stems"].values(), *r.get("busStems", {}).values()]
-            return Reply(summary(r, goal), {**{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
+            loud = loudness(r, master_now, before) if master and not partial else None
+            return Reply(summary(r, goal, loud), {**({"loudness": loud} if loud else {}), **{k: r[k] for k in ("version", "folder") if k in r}, **{k: r[k] for k in ("file", "seconds", "renderSeconds", "lufs", "truePeak", "peak", "lra", "clipped", "tracks", "stems", "busStems", "direct", "ducks")},
                               **({"credits": packs.credit_lines(r)} if packs.credit_lines(r) else {}),
                               **{k: r[k] for k in ("format", "sampleRate", "songSeconds", "trimmed", "range", "stemsBy", "warnings", "clippedFiles") if k in r}}, files)
 

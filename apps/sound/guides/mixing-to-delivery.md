@@ -12,7 +12,11 @@ track (instrument, notes / clips) → its effect chain → its fader and pan →
 down by at most `maxLimit`. A mix that would need more (piano chords or drum hits whose peaks stand far above the
 song's loudness) is turned down as a whole instead, one gain for the whole song, so the balance between tracks stays
 and the master stays clean; the song then lands under its loudness target, and the `render_mix` reply says by how
-much and what to do ("… landed 1.9 dB under the -14 LUFS target: call edit_loudness first"). `maxLimit` is in dB, 0 to 12 in the
+much and what to do. Every mastered `render_mix` reply has `data.loudness`: what the previous render predicted
+(`predicted_lufs`), what this one measured (`measured_lufs`) and the limiting it took (`limiting_db`); under the target
+it adds the sentence the Export sheet shows ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting") and
+`push_max_limit`, the `maxLimit` that reaches it. How much is a lot: over ~3 dB of limiting starts to flatten acoustic
+drums and piano, so for acoustic music tame the peaks (`edit_loudness tame_peaks`) rather than push the limiter. `maxLimit` is in dB, 0 to 12 in the
 document (`master.set`; the screen's **Most limiting**).
 
 **Reaching the target, first step: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target
@@ -109,9 +113,10 @@ An open effect's settings or a duck sit at the right end while they are open.
 ## Setting the target
 
 `master.set` with `normalize` on, `loudness` (LUFS) and `truePeak` (dBTP ceiling). On the screen, the Export sheet
-(Ctrl+E) has a "What for" picker with published targets (Streaming, Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
+(Ctrl+E) has a "What for" picker with published targets (Streaming: Spotify, YouTube, Tidal; Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
 row cites its source in `screensound/delivery.py`) that sets both in one step (and says so on the sheet), and a "Right for the target" / "Misses the target" line from the sound
-that plays now. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
+that plays now; when the master can't reach the target it says where the file will land and offers **Push to −14** (the default: Export raises
+Most limiting, one undo step) or **Keep it dynamic** (the file stays at the level it reaches, and the sheet says so). The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
 target allows comes out under the target (the reply says how far; `edit_loudness` gives the exact edit) rather than squeezed; with it off the limiter works

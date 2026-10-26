@@ -37,19 +37,23 @@ def clips_one_track(f):
 
 def span_by(f):
     """How far a copy sits after the original (Ctrl+D, and each step of Repeat…): the selection's span; notes and hits
-    round up to whole bars from the bar line at or before the first (meter.whole_bars: four chords on bars 1–4 repeat
-    from bar 5, a one-bar groove every bar, a 2.5-bar phrase every 3 bars). Kept for the same song and selection (every item's start and
-    end in seconds: ~15 ms a time for 3,000 notes, and the action list asks on every change)."""
-    return f.once("span", _span)
+    by meter.copy_step, counted from the first one's start (four chords on bars 1–4 repeat from bar 5, a phrase from
+    mid-bar right after itself, one note or a short fill by its own length on the grid, so Ctrl+D builds a run). Kept
+    for the same song, selection and grid (every item's start and end in seconds: ~15 ms a time for 3,000 notes, and
+    the action list asks on every change)."""
+    return f.once(("span", f.grid), _span)
 
 
 def _span(f):
     root = f.doc.data
     items = [it for it in f.items if it["type"] in TIMED]
     start = min(ST.start_of(root, i) for i in items)
-    end = max(ST.end_of(root, i) for i in items)
     if f.kinds <= {"note", "hit"}:
-        return {"beats": round(meter.whole_bars(root, start, end), 6)}
+        tm = ST.tempo                                       # a hit fills one grid cell
+        end = max(ST.end_of(root, i) if i["type"] == "note" else
+                  tm.seconds_at(root, tm.beat_at(root, ST.start_of(root, i)) + f.grid) for i in items)
+        return {"beats": round(meter.copy_step(root, start, end, f.grid, len(items) == 1), 6)}
+    end = max(ST.end_of(root, i) for i in items)
     return round(max(end - start, 0.01), 4)
 
 

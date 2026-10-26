@@ -50,7 +50,7 @@ def register(tools: Tools):
         "model": {"type": "string", "description": "A modelled instrument (guitar, nylonGuitar, marimba, vibraphone, glockenspiel, tubularBell, violin): synthesized."},
         "synth": {"type": "string", "description": "A synth wave: saw, square, triangle or sine."},
         "sfz": {"type": "string", "description": "Absolute path to an .sfz file."},
-        "kit": {"type": "string", "enum": names.KITS, "description": "A drum kit: drums, studio or classic."},
+        "kit": {"type": "string", "enum": names.KITS, "description": "A drum kit: drums (rock), studio, jazz (brushes and ride) or classic."},
         "kitSfz": {"type": "string", "description": "Absolute path to an SFZ drum kit."}}})
     def inspect_instrument(ctx, args):
         """What one instrument can play before you write for it: pass exactly ONE of builtIn, model, synth, sfz, kit, kitSfz (the argument is the form, its value the name: `builtIn: "marimba"`, `kit: "studio"`; there is no `name` argument). Gives its lowest and highest note, gaps, velocity layers, or a kit's drum names; for a built-in sound also which part it suits and where it sounds best (`role`). A recorded instrument reports the range it was recorded over; a missing sample pack is a loud error naming the install step. A recorded instrument also gives attackMs {typical, most}: how long its samples take to speak (ms at velocity 100); the engine starts each note that much early, so a note written at a marker is heard at the marker."""

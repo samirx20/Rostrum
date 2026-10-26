@@ -8,7 +8,8 @@ import "Listening.js" as L
 // file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
 // A delivery preset ("For the Editor", presets.py) is a labelled switch that sets file, quality, trimming, stems and markers; it
 // is on while the choices still equal it, and turning it off puts them back to the usual. Picking a target says what it set
-// on the master, with Undo beside it while that is still the newest step. Stems: only the mix / every track and group / one per group (only offered
+// on the master, with Undo beside it while that is still the newest step. When the master cannot reach the target as set, the
+// sheet says where the file will land and offers "Push to −14" (the default: Export raises Most limiting) or "Keep it dynamic". Stems: only the mix / every track and group / one per group (only offered
 // when the song has a group). "Write the markers beside the files" only when the song has a marker or section.
 // What for = MIDI file: a .mid, not a mix, so none of these show (job.isMidi).
 Column {
@@ -83,7 +84,10 @@ Column {
     }
     Column {   // the verdict and what the target set: its room is kept, so picking a target never moves File, Stems or Export under the pointer
         width: root.width; spacing: Theme.gap
-        height: Math.max(implicitHeight, 62)       // the two lines of the check + the line saying what was set (measured: 2 + 1 lines)
+        height: Math.max(implicitHeight, 62, root.job.loudnessWay.shown ? tallest : 0)   // the two lines of the check + the line saying what was set (measured: 2 + 1 lines)
+        // while Push / Keep it dynamic shows, the room stays at its tallest: switching between them never moves File or Export
+        property real tallest: 0
+        onImplicitHeightChanged: tallest = root.job.loudnessWay.shown ? Math.max(tallest, implicitHeight) : 0
         Text {   // the live check: the sound that plays now against the target (only once both exist)
             readonly property var check: root.job.check      // one read per change (each read measures it again)
             width: root.width; wrapMode: Text.WordWrap
@@ -91,6 +95,16 @@ Column {
             text: check && check.text ? (check.ok ? "✓ " : "") + check.text : ""
             color: check && check.ok ? Theme.ok : Theme.warn
             font.family: uiFont; font.pixelSize: Theme.body
+        }
+        Column {   // the target can't be reached as the master is set: push to it (the default) or keep the mix dynamic, one click
+            objectName: "exportLoudnessWay"
+            readonly property var way: root.job.loudnessWay
+            visible: root.target.shown && way.shown
+            width: root.width; spacing: Theme.grid
+            Segmented { objectName: "exportLoudnessWayPick"; options: parent.way.options || []; current: parent.way.current || ""
+                        onPicked: (v) => root.job.setLoudnessWay(v) }
+            Text { width: parent.width; wrapMode: Text.WordWrap; visible: !!parent.way.said; text: parent.way.said || ""
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }
         Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click
             width: root.width; spacing: Theme.gap; visible: root.job.loudnessSaid !== ""

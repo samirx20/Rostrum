@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // The song's sections (intro, verse, drop) under the markers: each a bar from its start to its end with its name.
 // Click selects the section (the inspector edits its name, start and end); double-click or F2 renames it in place;
@@ -35,7 +36,7 @@ Item {
         delegate: Rectangle {
             required property int index
             readonly property var modelData: band.sections[index]
-            readonly property bool on: !!backend.pickedHeads[modelData.id]
+            readonly property bool on: !!Picks.heads(backend, backend.pickStamp)[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t)); y: 1
             width: Math.max(2, Math.round(band.ruler.wOf(modelData.end - modelData.t)) - 1); height: band.height - 2

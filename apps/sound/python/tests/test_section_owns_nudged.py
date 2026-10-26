@@ -54,13 +54,21 @@ def test_move_takes_the_nudged_hits_along_and_nothing_of_the_next_section():
     assert _hits(d) == [0, 15.99, 15.99, 20, 20]                            # 7.99 and 12 went; the tail's 15.99 stayed
 
 
-@pytest.mark.parametrize("end_beat, step", [(13, 16), (3.75, 4), (10, 12), (4, 4)])
-def test_repeat_steps_by_whole_bars(end_beat, step):
-    """Four quarter chords on bars 1–4 (ends 4.2) → 4 bars; a one-bar groove → 1 bar; 2.5 bars → 3; exactly 1 → 1."""
-    root = {"tempo": 120}
-    assert meter.whole_bars(root, 0.0, end_beat / 2) == pytest.approx(step)
-    assert meter.whole_bars(root, 31.99 / 2, (32 + end_beat) / 2) == pytest.approx(step)   # nudged first: its bar line
+@pytest.mark.parametrize("start, end, single, step", [
+    (0, 13, False, 16),          # four quarter chords on bars 1–4: the copy starts at bar 5
+    (6, 14, False, 8),           # an 8-beat phrase from bar 2 beat 3: right after itself, same beat (no one-bar hole)
+    (4, 6.25, False, 4),         # two claps on bar 2 beats 1 and 3 (the second fills one grid cell): the next bar
+    (24, 26, False, 4),          # a 2-beat phrase on bar 7 beats 1–2: bar 8 beats 1–2
+    (5, 6, True, 1),             # one quarter note: the next beat (a run)
+    (18, 19, False, 1),          # a 1-beat fill (two 8ths): the next beat
+    (4, 4.25, True, 0.25),       # one drum hit: the next grid cell
+    (0, 3, True, 3),             # one 3-beat note: its own length
+    (31.99, 45, False, 16),      # humanised first chord: still 4 bars
+])
+def test_copy_step_counts_from_the_first_note(start, end, single, step):
+    """Critic r11 must-fix 3: Ctrl+D's step (beats; 120 bpm, so seconds = beats / 2)."""
+    assert meter.copy_step({"tempo": 120}, start / 2, end / 2, 0.25, single) == pytest.approx(step)
 
 
-def test_repeat_step_reads_the_time_signature():
-    assert meter.whole_bars({"tempo": 120, "beatsPerBar": 3}, 0.0, 4 / 2) == pytest.approx(6)
+def test_copy_step_reads_the_time_signature():
+    assert meter.copy_step({"tempo": 120, "beatsPerBar": 3}, 0.0, 4 / 2) == pytest.approx(6)

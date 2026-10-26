@@ -190,7 +190,7 @@ def register(tools: Tools):
         "key": {"type": "string", "description": "Check notes against this key (\"D minor\") instead of the document's key map or the estimate."},
         "checks": {"type": "boolean", "default": True, "description": "Voicing checks on the written notes: range, low close intervals, crossings, wide spacing, out of key."}}})
     def inspect_harmony(ctx, args):
-        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart inside one track's own chord, notes out of key. With written notes the chord is named from the chord part (the tracks that play chords, and a bass line under them) and the melody over it is listed apart per bar (`melody`), so a tune note never turns a chord into a slash chord. Reads the written notes when there are any, so it works before any render (check the harmony, then render); only `source: "audio"`, a `wav`, or a song with no notes reads a render (the voicing checks need notes)."""
+        """Key (from the document's key map, its notes or the audio), the chord per bar or beat, and voicing checks as plain facts: notes outside the instrument's range, close intervals too low, voices crossing, upper voices over an octave apart inside one track's own chord, notes out of key. Each bar is judged against the key in force there (the document's key list: key.add; `key` overrides it for the whole song), each chord row says its `key`, and a note of the next key in the bar just before a key change (the new key's dominant, say) is listed under checks.leads_into_key, not as out of key. With written notes the chord is named from the chord part (the tracks that play chords, and a bass line under them) and the melody over it is listed apart per bar (`melody`), so a tune note never turns a chord into a slash chord. Reads the written notes when there are any, so it works before any render (check the harmony, then render); only `source: "audio"`, a `wav`, or a song with no notes reads a render (the voicing checks need notes)."""
         doc = ctx.document(args.get("item"))
         tid = args.get("track")
         notes = written_notes(doc.data, [tid] if tid else None)
@@ -221,23 +221,39 @@ def register(tools: Tools):
         r["key_estimate"], r["chords"] = est, rows
         declared = H.declared_key(doc.data, args.get("key"))      # the key asked for, else the song's own: never second-guessed by the notes
         used = declared or est["key"] or None
+        changes = [] if args.get("key") else V.key_changes(doc.data)
         r["key_declared"], r["key_used_for_checks"] = declared, used
+        if len(changes) > 1:      # each bar is judged against the key in force there (the document's key list)
+            for x in rows:
+                x["key"] = H.speller(doc.data, None, est)(x["start_s"] + 1e-6)
+            r["keys_used_for_checks"] = [{"key": k, "from_s": round(t, 2), "bar": next((x["bar"] for x in rows if x["start_s"] >= t - 1e-3), None)}
+                                         for t, k in changes]
         if use_notes and args.get("checks", True):
             ranges, unchecked = note_ranges.ranges(doc.data, ctx.app.state.engine, {n["track"] for n in notes})
             warnings += [f"range of {t} not checked: {why}" for t, why in unchecked.items() if why.startswith("engine")]
             found = [*V.range_problems(notes, ranges), *V.stack_problems(notes), *V.crossings(notes), *V.out_of_key(notes, {**doc.data, "keys": []} if args.get("key") else doc.data, used)]
             found.sort(key=lambda e: e["at_s"])
-            r["checks"] = {"problems": _cap(found, {**args, "detail": args.get("detail")}, 40), "total": len(found),
+            leads = [e for e in found if e["kind"] == "leads_into_key"]       # the new key's notes in the bar before it: not a problem
+            found = [e for e in found if e["kind"] != "leads_into_key"]
+            r["checks"] = {"leads_into_key": leads, "problems": _cap(found, {**args, "detail": args.get("detail")}, 40), "total": len(found),
                            "counts": {k: sum(e["kind"] == k for e in found) for k in sorted({e["kind"] for e in found})},
                            "range_unchecked": unchecked, "low_interval_limits": "common orchestration chart, simplified (ears/theory.py LOW_LIMIT)"}
         bars = [x for x in rows if x["beat"] == 1] if per == "beat" else rows
         r["progression"] = " | ".join(x["chord"] for x in bars[:32]) + (" …" if len(bars) > 32 else "")
         said = ("Read from the written notes (no render needed). " if use_notes else "Read from the audio of the last render. " if not args.get("wav") else "Read from the audio file. ")
-        said += f"Key {H.key_line(est, r['source'], declared, bool(args.get('key')))}" + (f", checked against {used}" if use_notes else "")
+        said += f"Key {H.key_line(est, r['source'], declared, bool(args.get('key')))}"
+        if use_notes and r.get("keys_used_for_checks"):
+            said += ", each bar checked against the key in force there: " + ", ".join(
+                k["key"] + (f" from bar {k['bar']}" if k["bar"] and k["bar"] > 1 else "") for k in r["keys_used_for_checks"])
+        elif use_notes:
+            said += f", checked against {used}"
         said += f". Chords: {r['progression']}."
         if "checks" in r:
             c = r["checks"]["counts"]
             said += " Checks: " + (", ".join(f"{n} {k.replace('_', ' ')}" for k, n in c.items()) if c else "no problems found") + "."
             said += _out_of_key_line(found)
+            if r["checks"]["leads_into_key"]:
+                said += " Leading into a key change (not out of key): " + "; ".join(
+                    f"{e['tracks'][0]} {e['notes'][0]} at {e['at_s']:.1f} s into {e['into']}" for e in r["checks"]["leads_into_key"][:6]) + "."
         return Reply(said, r, warnings=warnings)
 

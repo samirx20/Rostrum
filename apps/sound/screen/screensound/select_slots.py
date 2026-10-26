@@ -7,6 +7,8 @@ person's undo / redo, what that step touched is selected again (read from the ch
 """
 from __future__ import annotations
 
+import itertools
+
 from PySide6.QtCore import Property, QTimer, Signal, Slot
 from PySide6.QtQml import qjsEngine
 from rostrum_core import edits as E
@@ -16,11 +18,13 @@ from . import clipboard, selection, timing
 
 BLOCKS = ("note", "hit", "clip")     # drawn on the lanes and in the roll (`picked`), never as a control of their own
 SETTLE_MS = 40      # a press's outline and first moves are drawn before the settings panel is made (_settle)
+_STAMPS = itertools.count(1)    # pickStamp: one count for every bridge (Picks.js keeps its maps across a reopen)
 
 
 class SelectSlots:
     rangeChanged = Signal()
     picksChanged = Signal()
+    pickRowsChanged = Signal()
     areaChanged = Signal()
 
     @property
@@ -46,10 +50,14 @@ class SelectSlots:
 
     @Property("QVariant", notify=picksChanged)
     def picked(self):
-        """id -> true for every selected id (what the lanes and the roll draw with the accent outline). Made into one
-        script object once per selection, which every reader shares: a plain map was made again for each reader
-        (~5 ms each with 3,352 picked; ten surfaces read it). Headers read the small `pickedHeads`."""
-        return self._picked_maps()[1]
+        """id -> true for every selected id. Made into one script object once per selection, but each QML reader still
+        gets a copy of it (~2.5 ms each with 3,607 picked): the painted surfaces read Picks.js instead (`pickStamp`,
+        `pickRows`: one shared object per row). Headers read the small `pickedHeads`."""
+        kept = self._picked_maps()
+        if kept[1] is None:                 # made on the first read (the Editor's roll): no other surface reads it
+            js, plain = qjsEngine(self), dict.fromkeys(kept[0], True)
+            kept[1] = js.toScriptValue(plain) if js is not None else plain
+        return kept[1]
 
     @Property("QVariantMap", notify=picksChanged)
     def pickedHeads(self):
@@ -58,18 +66,69 @@ class SelectSlots:
         return self._picked_maps()[2]
 
     def _picked_maps(self):
-        """(ids, picked, pickedHeads), made once per selection (each is read by many bindings per change). The list
-        is known by itself first (Selection makes a new one on every change, never edits one in place): ~55 readers
-        each copying and comparing 3,607 ids cost ~10 ms of every whole-song pick."""
+        """[ids, picked, pickedHeads], made once per selection (`picked` on its first read: `picked`). The list is
+        known by itself first (Selection makes a new one on every change, never edits one in place): ~55 readers each
+        copying and comparing 3,607 ids cost ~10 ms of every whole-song pick."""
         ids = self._picks.ids
         kept = self.__dict__.get("_picked_maps_")
         if kept is not None and kept[0] is not ids and kept[0] == ids:
-            kept = self.__dict__["_picked_maps_"] = (ids, *kept[1:])     # the same ids again: the same shared object
+            kept[0] = ids                   # the same ids again: the same shared objects
         if kept is None or kept[0] is not ids:
-            js, plain, idx = qjsEngine(self), dict.fromkeys(ids, True), self.doc.locs()
+            idx = self.doc.locs()
             heads = {i: True for i in ids if i in idx and idx[i].item["type"] not in BLOCKS}
-            kept = self.__dict__["_picked_maps_"] = (ids, js.toScriptValue(plain) if js is not None else plain, heads)
+            kept = self.__dict__["_picked_maps_"] = [ids, None, heads]
         return kept
+
+    @Property(int, notify=pickRowsChanged)
+    def pickStamp(self):
+        """A new number whenever the selection, or which row holds which pick, changes: the lanes' and the velocity
+        strip's bindings name it and read their picks from Picks.js (one shared script object per row)."""
+        return self.__dict__.get("_pick_stamp", 0)
+
+    @Slot(result="QVariantMap")
+    def pickRows(self):
+        """The selection by arrangement row: {row id: [ids drawn in that row]} (Picks.js, once per pickStamp)."""
+        return self._pick_rows()[2]
+
+    def _pick_rows(self):
+        """(ids, rows, by row), made once per selection and rows. A block is in each row that draws it (a folded
+        group's header and its track)."""
+        ids, rows = self._picks.ids, (self._view or {}).get("rows") or []
+        kept = self.__dict__.get("_pick_rows_")
+        if kept is not None and kept[0] is ids and kept[1] is rows:
+            return kept
+        index = self.__dict__.get("_row_index_")
+        if index is None or index[0] is not rows:
+            at: dict = {}
+            for r in rows:
+                for b in r.get("blocks", ()):
+                    at.setdefault(b["id"], []).append(r["id"])
+            index = self.__dict__["_row_index_"] = (rows, at)
+        by: dict = {}
+        at = index[1]
+        for i in ids:
+            for r in at.get(i, ()):
+                by.setdefault(r, []).append(i)
+        kept = self.__dict__["_pick_rows_"] = (ids, rows, by)
+        return kept
+
+    def _picks_changed(self):
+        """Every reader of the selection told: the stamp first (the lanes read their rows' picks by it)."""
+        self.__dict__["_pick_stamp"] = next(_STAMPS)
+        self.pickRowsChanged.emit()
+        self.picksChanged.emit()
+
+    def _rows_sent(self):
+        """New rows went to the screen (rows_view._send_rows): when they hold the selected blocks in other rows than
+        before (Ctrl+Up moved the notes to the track above, a block added that is selected), the lanes read their picks
+        again. The selection itself is the same: nothing else is told."""
+        if not self._picks.ids:
+            return
+        was = self.__dict__.get("_pick_rows_")
+        if was is not None and was[0] is self._picks.ids and self._pick_rows()[2] == was[2]:
+            return
+        self.__dict__["_pick_stamp"] = next(_STAMPS)
+        self.pickRowsChanged.emit()
 
     @Property(str, notify=picksChanged)
     def selectionWords(self):
@@ -126,7 +185,7 @@ class SelectSlots:
             self.__dict__["_unsettled"] = False
             self.selectMany(self._picks.ids)          # the kit: the settings panel + selectionChanged
         if self._picks.ids != was:
-            self.picksChanged.emit()
+            self._picks_changed()
         elif not self.__dict__["_unsettled"] and "_hub" in self.__dict__:      # the same items settling: the outlines
             self._hub.refresh_later()       # are drawn; the actions follow a frame after the panel (a second picksChanged
                                             # converted and compared 3,352 outlines in every lane for nothing)
@@ -290,7 +349,7 @@ class SelectSlots:
         ids = list(self.selection)
         if ids != self._picks.ids:
             self._picks.set(ids, self._picks.anchor if self._picks.anchor in ids else None)
-            self.picksChanged.emit()
+            self._picks_changed()
 
     def _restore(self, change):
         """The person's undo / redo selects what the step touched again (so the next action is on the same things)."""

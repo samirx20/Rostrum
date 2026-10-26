@@ -8,7 +8,7 @@ import copy
 
 from rostrum_core import codes
 
-from . import ids, repeat
+from . import ids, item_times, repeat
 from .ops_group import mates
 from .registry import REGISTRY, taken
 from .select_time import BY, BY_REQUIRED, KINDS, end_of, moved, start_of
@@ -99,24 +99,29 @@ def _register(kind):
                         "One call, one undo step.", target=kind, params=[BY, repeat.TIMES, repeat.UNTIL],
                         label=f"Duplicate {label}")
     def duplicate(ctx, targets, args):
-        root = ctx.doc
-        items = [ctx.item(t) for t in _with_group(ctx, targets, kind)]
-        starts = [start_of(root, i) for i in items]     # once each (a whole-song Repeat asks for every copy)
+        """One pass over the selection for its places and times (each item's start, and its end when needed, worked
+        out once), then the copies, all from the start state: a whole-song Ctrl+D is 3,607 items."""
+        root, idx = ctx.doc, ctx.idx
+        locs = [idx[t] for t in _with_group(ctx, targets, kind)]       # (targets checked; group mates from the index)
+        items, parents = [loc.item for loc in locs], [loc.parent for loc in locs]
+        spans = [item_times.span(root, i) for i in items]               # (None: a time that reads other items)
+        starts = [s[0] if s is not None else start_of(root, i) for s, i in zip(spans, items)]
         first = min(starts)
-        by = args["by"] if "by" in args else max(end_of(root, i) for i in items) - first
+        by = args["by"] if "by" in args else max(
+            s[1] if s is not None else end_of(root, i) for s, i in zip(spans, items)) - first
         if "by" not in args and by <= 1e-6:
             ctx.fail(codes.BAD_ARGUMENT, "by", f"can't be worked out: the selected {label}s have no length",
                      hint="Give `by` (seconds or beats).")
         n, point = repeat.count(ctx, first, by, args)
-        parents = [ctx.idx[item["id"]].parent for item in items]
-        plan = [(item, track, moved(ctx, item, repeat.scaled(by, k), sec=sec), k)   # all from the start state
-                for k in range(1, n + 1) for item, track, sec in zip(items, parents, starts)]
+        plan = [(item, track, moved(ctx, item, step, sec=sec), k, sec)
+                for k in range(1, n + 1) for step in [repeat.scaled(by, k)]
+                for item, track, sec in zip(items, parents, starts)]
         renamed_groups, have, adds = {}, Taken(ctx), []
-        for item, track, at, k in plan:
+        for item, track, at, k, sec in plan:
             new = copy.deepcopy(item) if kind == "clip" else dict(item)   # the insert copies it whole; a clip: effects renamed below
             new["at"] = at
             if point is not None:                       # `until`: cut at the point (its end moved with the copy)
-                new = repeat.cut(ctx, kind, new, end_of(root, item) + start_of(root, new) - start_of(root, item), point)
+                new = repeat.cut(ctx, kind, new, end_of(root, item) + start_of(root, new) - sec, point)
                 if new is None:
                     continue
             new["id"] = _new_id(kind, track, new, ctx, have)

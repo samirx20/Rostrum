@@ -8,7 +8,8 @@ song would sound like (one audio engine). Nothing in the person's document chang
     render_audition(engine, entry, doc=doc.data, track="pad")    # -> {"file", "seconds", "cached", "what"}
 
 An instrument plays the track's own notes (`track` given and it has some: the first `bars` bars from `start`), else
-a short neutral phrase across its range; a kit plays a one-bar pattern. A file is trimmed to MAX_S. The WAV is kept
+a short neutral phrase; either is moved by octaves into the instrument's range (roles.py), so a clarinet or a
+flute is heard, never refused for a note it can't play; a kit plays a one-bar pattern. A file is trimmed to MAX_S. The WAV is kept
 by content in the engine's share of the one cache (`sound/auditions/`, under the cache cap): the same audition
 again is the same file, found at once.
 """
@@ -21,10 +22,10 @@ from pathlib import Path
 from rostrum_core import RostrumError, codes
 from rostrum_core.cache import LEVELS, put_file
 
-from . import settings
+from . import roles, settings
 from .builder import Song
 from .compile import compile as compile_doc
-from .doc import meter, times
+from .doc import keys, meter, times
 
 MAX_S = 6.0
 BARS = 4
@@ -74,6 +75,28 @@ def _own_notes(doc: dict, track: str, start: float, bars: int) -> list[dict]:
     return sorted(out, key=lambda r: r["at"])
 
 
+def _in_range(entry: dict, rows: list[dict]) -> list[dict]:
+    """The notes moved into the instrument's range (roles.py low / high): the whole phrase by the fewest octaves that
+    fit it, else each note on its own. Unchanged for a sound with no range (a synth, an SFZ file)."""
+    role = roles.ROLES.get(roles.key(entry) or "")
+    if not role or not role.low:
+        return rows
+    lo, hi = keys.midi(role.low), keys.midi(role.high)
+    every = [m for r in rows for m in keys.midis(r["pitch"])]
+    shift = next((k for k in (0, 12, -12, 24, -24, 36, -36) if every and lo <= min(every) + k and max(every) + k <= hi), None)
+
+    def fit(m: int) -> int:
+        if shift is not None:
+            return m + shift
+        while m < lo:
+            m += 12
+        while m > hi and m - 12 >= lo:
+            m -= 12
+        return m
+    return [{**r, "pitch": [fit(m) for m in keys.midis(r["pitch"])] if isinstance(r["pitch"], list) else fit(keys.midi(r["pitch"]))}
+            for r in rows]
+
+
 def _song(entry: dict, kind: str, notes: list[dict], doc: dict | None) -> Song:
     s = Song()
     if doc:
@@ -101,7 +124,7 @@ def _song(entry: dict, kind: str, notes: list[dict], doc: dict | None) -> Song:
             pitches = PHRASE_LOW if any(w in json.dumps(entry).lower() for w in LOW) else PHRASE
             rows = [{"pitch": p, "at": round(i * STEP, 4), "dur": STEP * 0.9, "vel": 0.7} for i, p in enumerate(pitches)]
             rows.append({"pitch": pitches[:3], "at": round(len(pitches) * STEP, 4), "dur": 1.2, "vel": 0.6})
-        for r in rows:
+        for r in _in_range(fields, rows):
             t.note(**r)
     return s
 

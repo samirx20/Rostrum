@@ -297,6 +297,16 @@
     "bytes": 165026479,
     "extract": "(\\.sfz|\\.flac|\\.wav|\\.txt)$"
    }
+  },
+  {
+   "id": "swirly-kit",
+   "title": "Jazz drum kit: Karoryfer Swirly Drums, played with brushes (snare stirs, ride, hats, toms; dry close mics)",
+   "author": "Karoryfer Samples (Swirly Drums)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sfzinstruments/karoryfer.swirly-drums",
+   "files": true,
+   "generated": true
   }
  ]
 }

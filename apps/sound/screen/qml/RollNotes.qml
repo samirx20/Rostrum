@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
@@ -13,7 +14,7 @@ Item {
     id: n
     property var grid                   // the RollGrid: its roll, blocks, ruler, row height
     clip: true
-    readonly property var picked: backend.picked        // one read per change
+    readonly property var picked: Picks.all(backend, backend.pickStamp)     // one shared object a selection
     readonly property var blocks: grid.blocks
     ViewCanvas {   // a resize: the picture stretched, then painted whole (ViewCanvas)
         id: c

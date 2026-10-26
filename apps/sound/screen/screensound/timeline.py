@@ -216,10 +216,10 @@ def drums_of(track: dict, memo: BlockMemo | None = None) -> list[str]:
 
 
 def roll_drums(track: dict, memo: BlockMemo | None = None) -> list[str]:
-    """The rows of a drum track's piano roll: a synth drum kit shows all its drums (so the area is the kit, not three
-    thin rows), then any other drum the track has hit."""
+    """The rows of a drum track's piano roll: a kit shows the drums it starts with (names.kit_rows: the jazz kit its
+    brushes and ride; so the area is the kit, not three thin rows), then any other drum the track has hit."""
     used = drums_of(track, memo)
-    return list(dict.fromkeys([*names.SYNTH_DRUMS, *used])) if track.get("instrument") == "kit" else used
+    return list(dict.fromkeys([*names.kit_rows(track.get("kit")), *used])) if track.get("instrument") == "kit" else used
 
 
 def kind_of(track: dict) -> str:
@@ -342,7 +342,8 @@ def _sounds_best(track: dict) -> list[int]:
 
 def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "sustain", keep: tuple | None = None,
          memo: BlockMemo | None = None) -> dict:
-    """The piano roll of one track: its kind, the key range (notes: at least two octaves around what's there)
+    """The piano roll of one track: its kind, the key range (notes: at least four octaves around what's there, more
+    than the Editor shows, so its rows keep one height: RollGrid.keyRow)
     or the drum rows, its blocks, and (notes) its playing lane `play_lane` (sustain, expression or bend). `keep` =
     (lo, hi) the keys already shown: the range only grows from it, so an edit never slides the rows under the pointer."""
     if track is None:
@@ -352,9 +353,10 @@ def roll(track: dict | None, root: dict, hue: str = HUES[0], play_lane: str = "s
     lo, hi = min(ks) - 4, max(ks) + 4
     if keep:                       # the keys already shown stay: the first note drawn in them adds no key row
         lo, hi = min(lo, keep[0]), max(hi, keep[1])
-    if hi - lo < 24:
+    if hi - lo < 48:
         mid = (lo + hi) // 2
-        lo, hi = mid - 12, mid + 12
+        lo, hi = mid - 24, mid + 24
+        lo, hi = (0, 48) if lo < 0 else (79, 127) if hi > 127 else (lo, hi)
     # Whole octaves (C up to B): a note drawn a key past the edge rarely changes the range, and a range that changes
     # makes every key row on screen again (~18 ms of one press).
     lo, hi = max(0, lo // 12 * 12), min(127, -(-(hi + 1) // 12) * 12 - 1)

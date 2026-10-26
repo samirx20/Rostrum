@@ -29,7 +29,7 @@ from rostrum_sound.engine import Engine  # noqa: E402
 from rostrum_sound.listen.bs1770 import integrated, k_weight  # noqa: E402
 
 TABLE = Path(__file__).resolve().parents[2] / "engine" / "data" / "kit_levels.json"
-KITS = ("drums", "studio")
+KITS = ("drums", "studio", "jazz")
 PLACE = {"kick": 0, "kick2": 0, "snare": 0, "snare2": 0, "clap": 0, "lowTom": 0, "floorTom": 0, "tomLow": 0, "tom": 0,
          "midTom": 0, "tomHigh": 0, "highTom": 0, "rim": -6, "hat": -9, "pedalHat": -9, "openHat": -6, "crash": -4,
          "cymbal": -4, "crash2": -4, "china": -4, "splash": -4, "ride": -8, "ride2": -8, "rideBell": -8, "shaker": -12}

@@ -7,7 +7,8 @@ import "Blocks.js" as Blocks
 // waveforms. Select first, then act (RollInput): click, Ctrl / Shift+click, a box; a drag moves every selected one
 // (one undo step; Ctrl = no snapping, Shift = only in time, Alt = a copy). The keyboard at the left is a real one
 // (RollGrid: a click plays the key). Its header (the track, Select / Draw, Note ▾) is on the dock's line (EditorHeader).
-// It opens framed on the track's notes: the rows fit every note in view, centred on them.
+// Its rows have one height (RollGrid.keyRow). A track opens centred on its notes the first time; after that each track
+// comes back where the person left it (the key at the view's middle, kept per track), through opening, folding, undo.
 Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
@@ -68,21 +69,30 @@ Panel {
                     contentY = Math.max(0, Math.min((p.roll.hi - p.roll.lo + 1) * grid.rowH - height, contentY + (topKey - seenHi) * grid.rowH))
                 seenHi = topKey
             }
-            // Framed once every binding has caught up with the change: another track reaches this view and the grid
-            // (its rows, its row height) in no set order, and framing in between read the last track's rows (after the
-            // drums, the piano opened on the drums' rows: empty keys). Several reasons in one change frame it once.
+            // Placed once every binding has caught up with the change: another track reaches this view and the grid
+            // (its rows) in no set order, and placing in between read the last track's rows (after the drums, the
+            // piano opened on the drums' rows: empty keys). Several reasons in one change place it once.
             function frameLater() { Qt.callLater(centre) }
-            function centre() {   // framed on the notes: the rows fit them all (grid.frame), the view centred on them
-                seenHi = p.roll.hi; seenShown = shown
+            property var kept: ({})      // track id -> [the key at the view's middle, how far into its row], as the person left it
+            property real placedH: -1    // the height it was last placed at: a scroll Qt makes while the height changes is not the person's
+            // read from the roll itself: while another track arrives, `shown` may not have caught up yet, and the
+            // last track's place was written under the new one's name
+            onContentYChanged: if (p.roll.id + "/" + p.roll.kind + (p.roll.rows ? "/rows" : "") === seenShown
+                                   && p.roll.kind === "notes" && height === placedH)
+                                   kept[seenShown] = [grid.keyAtRow(Math.floor((contentY + height / 2) / grid.rowH)),
+                                                      (contentY + height / 2) % grid.rowH]
+            function toKey(key, into) { contentY = Math.max(0, Math.min(contentHeight - height, grid.rowOf(key) * grid.rowH + (into === undefined ? grid.rowH / 2 : into) - height / 2)) }
+            function centre() {   // where the person left this track, else centred on its notes
+                seenHi = p.roll.hi; seenShown = shown; placedH = -1
+                Qt.callLater(() => placedH = height)
+                if (p.kind !== "notes") { contentY = 0; return }
+                var left = kept[shown]
+                if (left !== undefined && grid.shows(left[0])) return toKey(left[0], left[1])
                 var ks = [], b = p.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
-                if (!ks.length || p.kind !== "notes") {
-                    grid.frame(0)   // an empty notes track opens on the middle of its range (its sound's best keys), else the top
-                    contentY = p.kind === "notes" ? Math.max(0, Math.min(contentHeight - height, grid.count / 2 * grid.rowH - height / 2)) : 0
-                    return
-                }
+                if (!ks.length)   // an empty notes track opens on the middle of its range (its sound's best keys)
+                    return toKey(grid.keyAtRow(Math.floor(grid.count / 2)))
                 var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
-                grid.frame(grid.rowOf(lo) - grid.rowOf(hi) + 1)
                 contentY = Math.max(0, Math.min(contentHeight - height, ((grid.rowOf(hi) + grid.rowOf(lo)) / 2 + 0.5) * grid.rowH - height / 2))
             }
             onHeightChanged: frameLater()

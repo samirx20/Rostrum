@@ -37,9 +37,11 @@ you close the window and every 20 changes; the change log beside it always has t
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
 2. Type to search ("warm", "bass", "voice"; a family word, **strings**, **brass**, **woodwinds** or **percussion**, finds every section and solo in it; sounds whose name holds the words come first), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
-   **Voice**, **My sounds**.
+   **Voice**, **My sounds**. The Library always opens on **All**. A word that finds nothing names the closest sounds ("No “clr”
+   here. Closest: Clarinet, Cello"); when the lit chip hides what you typed, one button takes you there (**Show “brass” in
+   Instruments**).
 3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
-   sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
+   sound appears, selected, the preview stops and the **Editor** opens under the arrangement. The Library stays open on the same search, so the next sound is one click away.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
      type a line, then press Play. Voice rows have no preview.
@@ -48,7 +50,7 @@ you close the window and every 20 changes; the change log beside it always has t
      move the folder, and nothing is raised under **Problems**.
    - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel: it lists every sound the track's content can use (a notes track: the recorded instruments first, then the synth presets, the synth, the modelled instruments and, last, the classic synthesized voices; an empty track: any sound, a voice or a kit too; a drum track: the three kits, Rock, Studio and Classic). The notes stay, and the track's name follows the new sound unless you renamed it. An agent does the same with `track.set {sound: "builtIn:warmPad"}` (also `"builtIn:piano"`, `"synth"`, `"model:guitar"`, `"kit:studio"`, `"voice:ryan"`). A plain instrument is a recorded one and plays like a person would by default (the track's **Feel** group: **Played like a person** off plays every note exactly as written; **Swing** makes
    every second 8th or 16th come late without moving the notes; see `writing-parts`). If its sample pack is not installed yet, playing says which one and how to install it (Library: `inspect_library (kind: packs)` and `run_model_install` for agents).
-4. The Library closes after each use. Close it any time with ×, Ctrl+L or Esc (while a preview plays, the first Esc stops it).
+4. Close the Library with ×, Ctrl+L or Esc (while a preview plays, the first Esc stops it). In a narrow window it floats over the arrangement and closes after each use.
 
 ## 3. Shape the sound
 
@@ -58,7 +60,7 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 4. Write notes
 
-1. With the track selected, the **Editor** shows its notes beside a piano keyboard, framed so every note is in view
+1. With the track selected, the **Editor** shows its notes beside a piano keyboard, centred on them (each track then stays where you scrolled it)
    (drums: a row per drum; recordings: their waveform). Each octave's C is labelled (C4 is middle C); **click a key
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
@@ -130,7 +132,7 @@ The **Colour** row shows the colour the track is drawn in.
    work from the keyboard: **End** moves the playhead to the end of the song, **Alt+M** / **Alt+Shift+M** to the next / previous marker, **Ctrl+↑ / Ctrl+↓** move
    selected notes one step along the song's key (the message line says so if the song has no key yet).
 6. **Keys on the selection:**
-   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Selected notes and hits step by whole bars, counted from the bar line at or before the first: four chords on bars 1–4 repeat from bar 5, a one-bar groove every bar, a 2½-bar phrase every 3 bars (Ctrl+D places its copy the same way). Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
+   - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Selected notes and hits step by whole bars, counted from the first one's start: four chords on bars 1–4 repeat from bar 5, a one-bar groove every bar, a 2½-bar phrase every 3 bars, a phrase that starts mid-bar right after itself on the same beat. One note, or a figure a beat long or less, steps by its own length on the grid (one quarter note the next beat, one drum hit the next grid step), so pressing Ctrl+D again builds a run. Ctrl+D places its copy the same way. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
    - **A time range:** drag on the ruler's thin top band. Each end goes to a bar or beat line when you let go within a few pixels of it (so letting go just past a bar line ends on that bar), otherwise to the grid line nearest the pointer. The settings panel offers **Make a section**, **Select
      inside** and **Repeat…**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
@@ -160,7 +162,7 @@ The **Colour** row shows the colour the track is drawn in.
 - Click the ruler to move the playhead there. A click on empty space in the arrangement clears the selection and
   makes that track the Editor's, but never moves the playhead; only the ruler (and Play) does.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
-  microphone: voice) and its name (double-click it to rename; hover it to see a long name in full), then four
+  microphone: voice) and its name (one click selects the track and opens the Editor on it when the dock is folded; double-click the name to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
   track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The buttons sit at the same place in every row, tall or short, and a soloed track fills its **S** in green. While any track or group is soloed the top bar shows a green **Solo on: Strings ×**: click it and every solo goes off (a solo holds the other tracks back from the export too). The same is the operation `mix.hear_all` (`what`: `solo`, `mute` or `both`). The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,

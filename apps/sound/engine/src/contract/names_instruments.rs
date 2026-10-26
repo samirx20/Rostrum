@@ -91,7 +91,7 @@ pub const PLAIN: &[(&str, Plays)] = &[
     ("strings", Rec("strings", None)), ("analogStrings", Rec("strings", None)), ("spiccatoStrings", Rec("strings", Some("spiccato"))),
     ("violins", Rec("violins", None)), ("violas", Rec("violas", None)), ("cellos", Rec("cellos", None)), ("basses", Rec("basses", None)),
     ("violin", Rec("violin", None)), ("harp", Rec("harp", None)), ("cello", Rec("cello", None)),
-    ("horn", Rec("horn", None)), ("brass", Rec("brass", None)), ("cinematicBrass", Rec("brass", None)), ("trumpet", Rec("trumpet", None)), ("trombone", Rec("trombone", None)), ("tuba", Rec("tuba", None)),
+    ("horn", Rec("horn", None)), ("brass", Rec("brass", None)), ("cinematicBrass", Rec("brass", None)), ("trumpet", Rec("trumpet", None)), ("mutedTrumpet", Rec("trumpet", Some("muted"))), ("trombone", Rec("trombone", None)), ("tuba", Rec("tuba", None)),
     ("flute", Rec("flute", None)), ("piccolo", Rec("piccolo", None)), ("oboe", Rec("oboe", None)), ("clarinet", Rec("clarinet", None)), ("bassoon", Rec("bassoon", None)),
     ("saxophone", Rec("tenorSax", None)), ("tenorSax", Rec("tenorSax", None)),
     ("marimba", Rec("marimba", None)), ("glassMarimba", Rec("marimba", None)), ("vibraphone", Rec("vibraphone", None)), ("xylophone", Rec("xylophone", None)),
@@ -128,6 +128,7 @@ const STUDIO: (&str, &str) = ("studio-kit", "studio-kit.sfz");
 pub const KITS: &[Kit] = &[
     Kit { name: "drums", about: "recorded rock kit (MuldjordKit); rim, clap and shaker from the studio kit", file: Some(("muldjord-kit", "MuldjordKit SFZ+FLAC-20201018/rostrum-gm.sfz")), fill: Some(STUDIO), credit: Some(MULDJORD) },
     Kit { name: "studio", about: "recorded studio kit (Karoryfer Big Rusty Drums, VCSL claps and shaker)", file: Some(STUDIO), fill: None, credit: None },
+    Kit { name: "jazz", about: "recorded jazz kit played with brushes (Karoryfer Swirly Drums): brush snare and stir, ride, hats, toms; rim, clap, shaker and ride bell from the studio kit", file: Some(("swirly-kit", "swirly-kit.sfz")), fill: Some(STUDIO), credit: None },
     Kit { name: "classic", about: "the synthesized kit", file: None, fill: None, credit: None },
 ];
 

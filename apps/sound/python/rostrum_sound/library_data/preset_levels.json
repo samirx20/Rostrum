@@ -135,6 +135,12 @@
    "lufs": -18.63,
    "gain": 0.8114
   },
+  "builtIn:mutedTrumpet": {
+   "role": "lead",
+   "lufs": -19.51,
+   "gain": 0.6361,
+   "mixDb": -3
+  },
   "builtIn:oboe": {
    "role": "lead",
    "lufs": -24.41,
@@ -257,6 +263,12 @@
    "role": "groove",
    "lufs": -19.54,
    "gain": 0.6383,
+   "mixDb": -3
+  },
+  "kit:jazz": {
+   "role": "groove",
+   "lufs": -24.01,
+   "gain": 1.0678,
    "mixDb": -3
   },
   "kit:studio": {

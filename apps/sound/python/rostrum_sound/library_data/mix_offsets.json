@@ -8,6 +8,8 @@
   "builtIn:trombone": -5,
   "builtIn:horn": -3,
   "builtIn:trumpet": -3,
-  "builtIn:strings": 3
+  "builtIn:strings": 3,
+  "kit:jazz": -3,
+  "builtIn:mutedTrumpet": -3
  }
 }
