@@ -8,9 +8,10 @@ values are read, through inspect.musical_row (the one place a value is shown), a
 differ. many.merge then folds the groups' rows with those differing rows marked (`differs`): the result is exactly
 many.merge of every item's own rows (guarded by tests/test_select.py).
 
-Each merge starts from the one before, but trusts nothing of it: keys are kept for notes changed only in plain values
-(`_keys`), and the item last found to differ in a row is asked first (`_WITNESS`). A whole-song Right, its undo and
-redo (3,607 notes and hits): 12-40 ms a merge before, 4-12 ms now (70-110 ms profiled in the window, before).
+Keys are made once per distinct reading of the key fields, not once per item (`_keys`), and each merge asks first the
+item last found to differ in a row (`_WITNESS`, trusting nothing else of the merge before). The Big song, all 3,607
+notes and hits picked: ~2-6 ms a merge, fresh copies too (an undo of a whole-song Delete: 18 ms before; a Ctrl+D's
+7,214: 31 ms before; 50-110 ms profiled in the window).
 
 A value is "plain" (read per item) when nothing but the row's own value depends on it: no valid_when names it (each
 kind's own rule, many.own_rules, for mixed kinds), it has no "shown while changed" rule, and it is no pick or list.
@@ -107,62 +108,43 @@ def _plain(static: list[dict], named: set) -> set | None:
     return {r["id"] for r in params if r["id"] not in named and r.get("shown", "") != "changed" and r["id"] != "ridePath"}
 
 
-_KEYS: dict = {}                            # item id -> (item, its parent, its page, its facts, its key): kept between merges
-_SAME: dict = {}                            # facts and pages, one object per value: a kept one is told by identity
-_LAYOUT: list = [None]                      # the layout those keys were made for (struct, plain)
-
-
 def _keys(bridge, items: list[dict], struct: list, plain: list) -> list:
-    """Each item's group key (`_key`; an item of another kind: its place, a group of its own). A key is kept while
-    the item and its parent are the very same objects, its page shows the same and the layout is the same: a note's
-    facts are its track's (doc/kind.py facts), so a pick of the same notes again makes no key twice. A change writes
-    new items and a new parent (rostrum_core/edits.py): a note that changed only in plain values, written in the same
-    type (a move: `at`), under a track with the same facts keeps its key too (`_alike`). A whole-song Right made 3,607
-    keys again (~3.5 µs each; 20-50 ms of the merge profiled); now it compares each note's few fields."""
-    layout = (tuple(struct), tuple(plain))
-    if _LAYOUT[0] != layout or len(_KEYS) > 100_000:
-        _KEYS.clear()
-        _SAME.clear()
-        _LAYOUT[0] = layout
-    idx, out, pages, facts, loose = bridge.doc.locs(), [], {}, {}, (set(plain), set(struct))
+    """Each item's group key (`_key`; an item of another kind: its place, a group of its own), in one pass that reads
+    each item's key fields by value and makes a key only once per distinct reading: 3,607 notes and hits (the Big
+    song) make 2 keys. A note's facts are its track's (doc/kind.py facts) and its page its kind's (onpage.py; only a
+    clip's is its own), so both are read once per track and kind.
+    The reading holds each key field's type beside its value (1, 1.0 and True are not alike: _frozen). Before, keys
+    were kept per item id between merges and checked field by field (`_alike`): fresh copies (an undo of a whole-song
+    Delete, a Ctrl+D) still cost every item a check or a key (40-80 ms a merge); now ~1 µs an item."""
+    idx, out, pages, facts, seen = bridge.doc.locs(), [], {}, {}, {}
+    at, read = idx.get, bool(struct or plain)
     for n, it in enumerate(items):
         t = it["type"]
         if t not in FOLDED:
             out.append(n)
             continue
-        loc = idx.get(it["id"])
-        parent = idx[loc.parent].item if loc is not None and loc.parent in idx else None
-        page = pages.get(t)                 # a note's or a hit's page is its kind's (onpage.py; only a clip's is its own)
-        if page is None:
-            p = frozenset(bridge.on_page(it))
-            page = pages[t] = _SAME.setdefault(p, p)
-        kept = _KEYS.get(it["id"])
-        if kept is not None and kept[0] is it and kept[1] is parent and kept[2] is page:
-            out.append(kept[4])
-            continue
-        f = facts.get((t, id(parent)))      # a note's facts are its track's, a hit's none: once a track
-        if f is None:
-            f = tuple(sorted(bridge.facts_of(it).items()))
-            f = facts[(t, id(parent))] = _SAME.setdefault(f, f)
-        if kept is not None and kept[2] is page and kept[3] is f and (kept[0] is it or _alike(kept[0], it, *loose)):
-            key = kept[4]
-        else:
+        loc = at(it["id"])
+        raw = (t, loc.parent if loc is not None else None)
+        if read:                            # (a tuple made per item costs ~0.5 µs: none when no field is read)
+            vals = tuple(map(it.get, struct))
+            raw = (*raw, vals, *map(type, vals), *map(type, map(it.get, plain)))
+        try:
+            key = seen.get(raw)
+        except TypeError:                   # a key field holding a list or a dict: read as _frozen does
+            raw, key = None, None
+        if key is None:
+            page = pages.get(t)
+            if page is None:
+                page = pages[t] = frozenset(bridge.on_page(it))
+            parent = idx[loc.parent].item if loc is not None and loc.parent in idx else None
+            f = facts.get((t, id(parent)))  # a hit's facts are none, a note's its track's: once a track
+            if f is None:
+                f = facts[(t, id(parent))] = tuple(sorted(bridge.facts_of(it).items()))
             key = _key(it, struct, plain, page, f)
-        _KEYS[it["id"]] = (it, parent, page, f, key)
+            if raw is not None:
+                seen[raw] = key
         out.append(key)
     return out
-
-
-def _alike(old: dict, new: dict, plain: set, struct: set) -> bool:
-    """`new` is `old` with only plain values changed, each written in the same type, or fields no key reads: the
-    same key. (An edit writes a new value and keeps every other one: a value not changed is the very same object.)"""
-    if len(old) != len(new):
-        return False
-    for k, v in new.items():
-        o = old.get(k, _NONE)
-        if o is not v and (o is _NONE or k in struct or (k in plain and type(o) is not type(v))):
-            return False
-    return True
 
 
 def _key(it: dict, struct: list, plain: list, page: frozenset, facts: tuple) -> tuple:

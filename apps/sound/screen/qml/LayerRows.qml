@@ -6,7 +6,8 @@ import RostrumKit
 // Absent unless the selection has a group with another layer (rule of individuality; screensound/layers.py).
 Column {
     id: lr
-    readonly property var info: { backend.selection; backend.historyCount; return backend.layers() }
+    // (follows `picked`: one shared object a selection; `selection` was a new list of every id, 3,607 on Ctrl+A)
+    readonly property var info: { backend.picked; backend.historyCount; return backend.layers() }
     visible: !!info.group
     width: parent ? parent.width - Theme.keyGutter : 0     // ends where the fields above end (the key gutter is theirs)
     Text { text: "Layers"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label

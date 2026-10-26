@@ -62,9 +62,8 @@ class SelectSlots:
         ids = tuple(self._picks.ids)
         kept = self.__dict__.get("_picked_maps_")
         if kept is None or kept[0] != ids:
-            js, plain = qjsEngine(self), dict.fromkeys(ids, True)
-            live = [i for i in ids if self.doc.has(i)]
-            heads = {i: True for i, t in zip(live, self.kinds_of(live)) if t not in BLOCKS}
+            js, plain, idx = qjsEngine(self), dict.fromkeys(ids, True), self.doc.locs()
+            heads = {i: True for i in ids if i in idx and idx[i].item["type"] not in BLOCKS}
             kept = self.__dict__["_picked_maps_"] = (ids, js.toScriptValue(plain) if js is not None else plain, heads)
         return kept
 
@@ -102,13 +101,16 @@ class SelectSlots:
         self._pick([str(i) for i in ids], later=True)
         self._settle()
 
-    def _pick(self, ids, anchor=None, later=False):
+    def _pick(self, ids, anchor=None, later=False, checked=False):
         """`later`, or a drag open (a press on an item, a drawn note): the outline shows at once, the settings panel
         and the Editor's track follow when the drag ends (`_settle`): making the panel's rows costs frames the press
-        must not wait for."""
-        gone = [i for i in ids if not self.doc.has(i)]
-        if gone:
-            return self._fail(f'Error: select: no item "{gone[0]}".')
+        must not wait for. `checked`: the caller has just found every id in the song (one look per id per pick: a
+        whole-song undo looked each of 3,607 ids up ~6 times)."""
+        if not checked:
+            idx = self.doc.locs()
+            gone = [i for i in ids if i not in idx]
+            if gone:
+                return self._fail(f'Error: select: no item "{gone[0]}".')
         was = list(self._picks.ids)
         self._picks.set(ids, anchor)
         if ids:
@@ -135,7 +137,8 @@ class SelectSlots:
         if pointer_quiet.busy():                 # the person is still clicking or dragging: the panel waits for a quiet
             return QTimer.singleShot(SETTLE_MS, self, self._settled)    # pointer, never inside a click (M4)
         if self.__dict__.get("_unsettled") and self._drag is None and self._kit.scrub is None:
-            self._pick([i for i in self._picks.ids if self.doc.has(i)], self._picks.anchor)
+            idx = self.doc.locs()
+            self._pick([i for i in self._picks.ids if i in idx], self._picks.anchor, checked=True)
 
     @Slot(str, bool, bool)
     def clickSelect(self, item_id, ctrl, shift):
@@ -297,18 +300,18 @@ class SelectSlots:
         aimed = {t for seq in (change.undoes or change.redoes) if 0 < seq <= len(h.changes)
                  for c in h.get(seq).calls for t in (c.get("target") or [])}
         touched = [i for i in touched if i in aimed] or touched      # a call aimed at a track that made notes: the notes
-        back = [i for i in touched if self.doc.has(i) and self.doc.item(i)["type"] in kinds]
+        idx = self.doc.locs()
+        back = [i for i in touched if i in idx and idx[i].item["type"] in kinds]
         if set(back) == set(self._picks.ids):       # already what is selected (undo of a whole-song Right): picking it
             return                                  # again in the step's order redrew 3,352 outlines in every lane
         if back:                    # the outlines now; the settings panel once the undo is drawn (`_settle`)
-            self._pick(back, later=True)
+            self._pick(back, later=True, checked=True)
             self._settle()
 
     def _on_doc(self, event):
         """A selected item that went away (an undo of an add, a delete) leaves the selection; the rest stay."""
-        if self._picks.keep(self.doc.has):
-            self._pick(self._picks.ids, later=True)        # the panel follows after the change is drawn
+        if self._picks.keep(self.doc.locs().__contains__):
+            self._pick(self._picks.ids, later=True, checked=True)      # the panel follows after the change is drawn
             self._settle()
-        super()._on_doc(event)
-        if event.kind == "change":
-            self._restore(event.change)
+        super()._on_doc(event)      # (the person's undo / redo picks what it touched once the rows are sent: _restore,
+                                    # from bridge.py; picked first, every lane looked for 3,607 picks among its old blocks)

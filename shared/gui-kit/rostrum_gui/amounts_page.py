@@ -21,6 +21,7 @@ from . import amounts as A
 from . import rows as R
 from .after_frame import AfterFrame
 from .model import RowsModel
+from .plan_aside import PlanAside, big
 
 
 class AmountsPage(QObject):
@@ -36,6 +37,7 @@ class AmountsPage(QObject):
         self._static: list[dict] = []
         self._later = AfterFrame(self._refresh, self)     # a slider drag's moves: one re-run per frame, the last value
         self._ahead, self._todo, self._made = AfterFrame(self._make_one, self, ahead=True), [], set()
+        self._aside = PlanAside(self)       # a big step (a whole song's Repeat) planned on a worker: the window goes on
 
     # ---- what the popover (and InspectorRow) reads -------------------------------------------------------------
     @Property(QObject, constant=True)
@@ -87,6 +89,7 @@ class AmountsPage(QObject):
     def keep(self):
         """Enter or a click away: the session is ONE change, named with its amounts."""
         self._later.flush()                    # a change still waiting for its frame lands first
+        self._aside.finish()                   # and the plan of the amounts shown, if it is still being made
         d, self._drag = self._drag, None
         if d is None:
             return
@@ -110,6 +113,7 @@ class AmountsPage(QObject):
     def _drop(self) -> bool:
         """The live session taken back, if one is open (True then)."""
         self._later.cancel()
+        self._aside.drop()
         d, self._drag = self._drag, None
         if d is not None:
             d.end(cancel=True)
@@ -216,9 +220,17 @@ class AmountsPage(QObject):
         self.model.update(self._rows, instant)
         self.changed.emit()
         if preview and self._drag is not None:
-            now = A.shown(self._rows)
+            now, d = A.shown(self._rows), self._drag
             try:
-                self._drag.preview(lambda: a.calls(f, now), fresh=True)
-                self._say(self.label())
-            except RostrumError as e:           # this amount can't be done (past the 128 notes): said, last good kept
-                self._say(e.person())
+                calls = d.fresh_calls(lambda: a.calls(f, now))
+                if big(calls) and not d.same(calls):     # (planned aside; shown, and said, when it lands)
+                    return self._aside.start(d, calls, self._previewed)
+                self._aside.drop()                       # (a small step after a big one: the big one is void)
+                d.preview(calls, fresh=True)
+            except RostrumError as e:
+                return self._previewed(e)
+            self._previewed(None)
+
+    def _previewed(self, error):
+        """A step shown (error None), or refused: this amount can't be done (past the 128 notes): said, last good kept."""
+        self._say(error.person() if error is not None else self.label())

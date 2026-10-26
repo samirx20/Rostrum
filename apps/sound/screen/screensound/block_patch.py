@@ -31,11 +31,12 @@ _GONE = object()
 
 class Patch:
     """What takes the list the screen shows to the new one: `gone` ids, `put` blocks (new or changed), `by`
-    {(field, d): [ids]} (moved only: "beats" adds d to atBeat and endBeat, "secs" to t), `changed` (the new blocks
-    of `put` and `by`: what the roll looks the selection up in)."""
+    {(field, d): [ids]} (moved only: "beats" adds d to atBeat and endBeat, "secs" to t), `cp` [(field, d, [(new id,
+    id copied)])] (new blocks that are a shown block with another id, moved by d: `copies`), `changed` (the new
+    blocks of `put`, `by` and `cp`: what the roll looks the selection up in)."""
 
-    def __init__(self, gone, put, by, changed, every=False):
-        self.gone, self.put, self.by, self.changed = gone, put, by, changed
+    def __init__(self, gone, put, by, changed, every=False, cp=()):
+        self.gone, self.put, self.by, self.changed, self.cp = gone, put, by, changed, cp
         self.every = every          # every block of the list moved by the one (field, d) in `by`: sent without ids
 
     def __bool__(self):
@@ -43,25 +44,28 @@ class Patch:
 
     def text(self) -> str:
         return json.dumps({"gone": self.gone, "put": [seen(b) for b in self.put],
-                           "by": [[f, d, None if self.every else ids] for (f, d), ids in self.by.items()]},
+                           "by": [[f, d, None if self.every else ids] for (f, d), ids in self.by.items()],
+                           "cp": [[f, d, [i for pair in pairs for i in pair]] for f, d, pairs in self.cp]},
                           separators=(",", ":"), allow_nan=False)
 
 
-def moved(old: dict, new: dict):
+def moved(old: dict, new: dict, copy=False):
     """(field, d) when `new` is `old` shifted by d along its place and equal in all else as the screen gets it
-    (`seen`); (field, 0.0) when the screen sees no difference; None for any other change."""
+    (`seen`); (field, 0.0) when the screen sees no difference; None for any other change. `copy`: its id aside."""
     if ("atBeat" in new) != ("atBeat" in old) or ("endBeat" in new) != ("endBeat" in old) or len(new) != len(old):
         return None
     if "atBeat" in new:
         field, d = "beats", new["atBeat"] - old["atBeat"]
         if old["atBeat"] + d != new["atBeat"] or ("endBeat" in new and old["endBeat"] + d != new["endBeat"]):
             return None
-        skip = ("t", "dur", "atBeat", "endBeat") if "endBeat" in new else ("t", "atBeat")
+        skip = ("t", "dur", "atBeat", "endBeat", "id") if "endBeat" in new else ("t", "atBeat", "id")
     else:
         field, d = "secs", new["t"] - old["t"]
         if old["t"] + d != new["t"]:
             return None
-        skip = ("t",)
+        skip = ("t", "id")
+    if not copy and old["id"] != new["id"]:
+        return None
     for k, v in new.items():
         if k not in skip and old.get(k, _GONE) != v:
             return None
@@ -91,8 +95,44 @@ def diff(old: list | None, new: list) -> Patch | None:
         elif m[1] != 0:
             by.setdefault(m, []).append(x["id"])
             changed.append(x)
-    every = not gone and not put and len(by) == 1 and len(changed) == len(new) == len(old)
-    return Patch(gone, put, by, changed, every)
+    cp = copies(old, [x for x in put if x["id"] not in was])
+    if cp:
+        put = [x for x in put if x["id"] in was]
+    every = not gone and not put and not cp and len(by) == 1 and len(changed) == len(new) == len(old)
+    return Patch(gone, put, by, changed, every, cp)
+
+
+COPIES = 8              # fewer new blocks than this go whole
+LOOK = 64               # how far on in the shown list a new block's original is looked for
+
+
+def copies(old: list, new: list) -> list:
+    """The new blocks as copies of shown ones ([(field, d, [(new id, id copied)])], in their order, a run per d), when
+    every one is a block of `old` with another id, moved (`moved`, copy=True: the screen makes it as it makes a moved
+    block, the same floating point); else [] (all go whole, so the screen keeps them in their order). Ctrl+D and
+    Repeat add copies in the order of what they copy: each is looked for at the place after the last one's original
+    (or from the start), a few places on at most. 3,607 copies sent whole were ~450 KB of text to write, parse and
+    let go (~20 ms here, ~40-60 ms on the screen)."""
+    if len(new) < COPIES:
+        return []
+    runs, at = [], 0
+    for x in new:
+        got = None
+        for start in ((at, 0) if at else (0,)):
+            for j in range(start, min(start + LOOK, len(old))):
+                m = moved(old[j], x, copy=True)
+                if m is not None:
+                    got, at = m, j + 1
+                    break
+            if got is not None:
+                break
+        if got is None:
+            return []
+        if runs and runs[-1][:2] == got:
+            runs[-1][2].append((x["id"], old[at - 1]["id"]))
+        else:
+            runs.append((*got, [(x["id"], old[at - 1]["id"])]))
+    return runs
 
 
 def apply(blocks: list, p: dict) -> list:
@@ -100,6 +140,7 @@ def apply(blocks: list, p: dict) -> list:
     place, new ones at the end. A moved id the list doesn't have fails loudly (the screen and the song disagree)."""
     at = {b["id"]: b for b in blocks}
     put = list(p["put"])
+    cp = [(field, d, i, ids[n + 1]) for field, d, ids in p.get("cp", []) for n, i in enumerate(ids) if n % 2 == 0]
     for field, d, ids in p["by"]:
         for i in ids if ids is not None else list(at):
             o = dict(at[i])
@@ -110,6 +151,15 @@ def apply(blocks: list, p: dict) -> list:
             else:
                 o["t"] += d
             put.append(o)
+    for field, d, i, src in cp:
+        o = {**at[src], "id": i}
+        if field == "beats":
+            o["atBeat"] += d
+            if "endBeat" in o:
+                o["endBeat"] += d
+        else:
+            o["t"] += d
+        put.append(o)
     drop, by = set(p["gone"]), {b["id"]: b for b in put}
     out = [by.pop(b["id"], b) for b in blocks if b["id"] not in drop]
     return out + [b for b in put if b["id"] in by]

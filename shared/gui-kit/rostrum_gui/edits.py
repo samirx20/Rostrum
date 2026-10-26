@@ -50,6 +50,26 @@ class Drag:
         self._ctx.preview(calls, fresh)
         self._fresh = calls if fresh else None
 
+    # A fresh step in parts (plan_aside.py: a big one planned on a worker thread): the calls, the plan, the showing
+    def fresh_calls(self, calls) -> list:
+        return self._ctx.fresh_calls(calls)
+
+    def same(self, calls) -> bool:
+        """These fresh calls are the state shown already: nothing to plan or show."""
+        return calls == self._fresh
+
+    def plan(self, calls):
+        return self._ctx.plan(calls)
+
+    def show_planned(self, planned, calls):
+        self._fresh = None
+        self._ctx.show_planned(planned)
+        self._fresh = calls
+
+    @property
+    def closed(self) -> bool:
+        return self._ctx._ended
+
     def end(self, cancel=False, calls=None, label=None):
         """Close the drag: one change, or nothing with `cancel`; `label`: what the history calls it, decided at the end
         (the amounts popover's "Humanise · 12 notes · 15 ms, 8 %"). `calls`: a last preview first (the whole gesture at

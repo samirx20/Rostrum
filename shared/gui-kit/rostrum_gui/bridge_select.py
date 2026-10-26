@@ -31,8 +31,8 @@ class SelectSlots(SlotMixin):
         """Several items, the primary first (its name and order lead the panel); [] = none."""
         k = self._kit
         person = pointer_quiet.busy()       # asked first: the pick's own work below (200 outlines) outlasts QUIET_S
-        ids = list(dict.fromkeys(str(i) for i in ids))
-        gone = [i for i in ids if not self.doc.has(i)]
+        ids, idx = list(dict.fromkeys(str(i) for i in ids)), self.doc.locs()
+        gone = [i for i in ids if i not in idx]            # (one look per id: a whole song is thousands)
         if gone:
             return self._fail(f'Error: select: no item "{gone[0]}".')
         moved = ids != k.selection
@@ -58,7 +58,9 @@ class SelectSlots(SlotMixin):
         the narrowing lines all ask; a whole-song selection is thousands of items). Read only."""
         key, kept = tuple(ids), self._kit.kinds
         if kept[0] is not self.doc.data or kept[1] != key:
-            kept = self._kit.kinds = (self.doc.data, key, [self.doc.item(i)["type"] for i in key])
+            idx = self.doc.locs()
+            kept = self._kit.kinds = (self.doc.data, key,       # (a gone id: doc.item says so)
+                                      [idx[i].item["type"] if i in idx else self.doc.item(i)["type"] for i in key])
         return kept[2]
 
     def ready_new_kinds(self):

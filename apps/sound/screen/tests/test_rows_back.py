@@ -67,3 +67,27 @@ def test_items_put_back_equal_get_their_very_blocks_again():
     memo.made(("tr", "notes"), [], make)
     memo.follow("another clock", {"tr"})            # the clock moved: nothing held is handed out as it was
     assert all(a is not b for a, b in zip(memo.made(("tr", "notes"), full, make), before))
+
+
+def test_copies_sent_as_copies_show_the_song():
+    """Ctrl+D / Repeat: new blocks that are shown ones with another id, moved, go as copies (`cp`, block_patch
+    `copies`); the screen makes them as it makes a moved block. A new block that is no copy sends them all whole."""
+    memo, rows, screen = BlockMemo(), RowBlocks(), Screen()
+    make = lambda x: {"id": x["id"], "type": "note", "t": x["at"] * 0.5, "dur": 0.25, "keys": [x["pitch"]],   # noqa: E731
+                      "atBeat": float(x["at"]), "endBeat": x["at"] + 0.5}
+    memo.follow("clock", {"tr"})
+    full = [note(i, i, 60 + i % 12) for i in range(100)]
+    once = [{**n, "id": f"c{n['id']}", "at": n["at"] + 100} for n in full]
+    twice = once + [{**n, "id": f"d{n['id']}", "at": n["at"] + 200} for n in full]
+    odd = full + once[:50] + [note(999, 7, 30)] + once[50:]
+    sent = []
+    for items in [full, full + once, full, full + twice, full, odd, full]:
+        blocks = memo.made(("tr", "notes"), items, make)
+        got = rows.send([{"id": "tr", "blocks": blocks}])
+        sent += [json.loads(p) for _, p in got[1]]
+        screen.take(got, "tr")
+        assert [b["id"] for b in screen.shown()] == [b["id"] for b in blocks]
+        assert screen.shown() == list(map(seen, blocks))
+    copied = [p for p in sent if p.get("cp")]
+    assert len(copied) == 2 and [len(r[2]) for r in copied[1]["cp"]] == [200, 200]
+    assert not any(p.get("cp") for p in sent if len(p["put"]) > 100)     # `odd`: whole, in its order

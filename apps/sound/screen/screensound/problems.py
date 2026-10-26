@@ -43,15 +43,12 @@ def refused_rows(refused: dict) -> list[dict]:
              "message": refused["message"], "fix": ""}]
 
 
-def doc_rows(doc, making=frozenset()) -> list[dict]:
-    """The song's problems; a cleaned take that is being made now is activity (the Clean up bar shows it), not a problem."""
-    return [_row(p) for p in problems(doc) if not (p["kind"] == "pending-take" and p["item"] in making)]
-
-
 def make(bridge, cleaning=None) -> ProblemsList:
     """The chip. After a change it checks the song in steps of at most SLICE_S between events (diagnose.steps), so a
     whole-song check (3,352 notes moved: their times worked out again, each clip's file looked for) never holds up a
-    key; a newer change drops the run and starts again from the song as it is then. The list shows once complete."""
+    key; a newer change drops the run and starts again from the song as it is then. The list shows once complete.
+    The song's check is made once per song data: the render's and the sound's news after an edit (3-6 of them) only
+    put the render's rows beside it (each started the whole check again: 9-13 runs an action, ~0.1-0.2 s)."""
     def jump(row):
         try:
             bridge.doc.item(row.get("item") or "")
@@ -60,13 +57,37 @@ def make(bridge, cleaning=None) -> ProblemsList:
         bridge.select(row["item"])
     plist = ProblemsList(jump, bridge)
     run: dict = {}
+    kept: dict = {"data": None, "found": []}     # the song's own check, for the song data it was made on
+
+    def show():
+        making = cleaning.making() if cleaning else ()
+        found = [_row(p) for p in kept["found"] if not (p["kind"] == "pending-take" and p["item"] in making)]
+        plist.show_rows(refused_rows(bridge.soundRefused) + rows(bridge.lastRender or {}) + found)
 
     def start(*_):
         if pointer_quiet.busy():                     # never inside a click or a drag: a moment later
             return later.start()
-        run["out"] = []
+        data = bridge.doc.data
+        if not run.pop("again", False):
+            if data is run.get("data"):              # this very song is being checked: its list comes when done
+                return
+            if data is kept["data"]:                 # checked already: only the render's rows follow (a render's news,
+                run.clear()                          # the sound's state: 3-6 a change; an undo back to it)
+                return show()
+        run.clear()
+        run["out"], run["data"] = [], data
         run["steps"] = steps(bridge.doc, run["out"])
         step.start()
+
+    def recheck(*_):
+        """A take made or begun (its cleaned file in the cache), or a render that may have read a missing file put
+        back: the song's own rows can change with no edit, so it is checked again."""
+        run["again"] = True
+        later.start()
+
+    def rendered(*_):
+        stale = any(p["kind"] in ("missing-file", "pending-take") for p in kept["found"])
+        recheck() if stale else later.start()
 
     def go():
         if "steps" not in run:
@@ -77,17 +98,17 @@ def make(bridge, cleaning=None) -> ProblemsList:
         for _ in run["steps"]:
             if time.perf_counter() >= end:
                 return step.start()
-        making = cleaning.making() if cleaning else ()
-        found = [_row(p) for p in run.pop("out") if not (p["kind"] == "pending-take" and p["item"] in making)]
+        kept["found"], kept["data"] = run.pop("out"), run.pop("data")
         del run["steps"]
-        plist.show_rows(refused_rows(bridge.soundRefused) + rows(bridge.lastRender or {}) + found)
+        show()
 
     later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=start)   # once, after the edit is drawn: the
     step = QTimer(plist, singleShot=True, interval=0, timeout=go)               # chip is never what the pointer waits for
     if cleaning:                                     # (a drop ran it twice)
-        cleaning.changed.connect(later.start)        # a take finished (or began): the chip follows
-    bridge.renderChanged.connect(later.start)
-    bridge.soundChanged.connect(later.start)     # a render failed, or the next one worked
-    bridge.docChanged.connect(later.start)       # every change (a clip added is a block: no layout news)
-    plist.show_rows(refused_rows(bridge.soundRefused) + rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
+        cleaning.changed.connect(recheck)            # a take finished (or began): the chip follows
+    bridge.renderChanged.connect(rendered)           # a render failed, or the next one worked; a file put back
+    bridge.soundChanged.connect(later.start)
+    bridge.docChanged.connect(later.start)       # every change (a clip added is a block: no layout news): a new song data
+    kept["found"], kept["data"] = problems(bridge.doc), bridge.doc.data
+    show()
     return plist
