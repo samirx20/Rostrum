@@ -15,16 +15,15 @@ import anyio
 from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import Runtime, Tools, build_server
 
-from . import tool_groups, tools_arrangement, tools_audition, tools_cleanup, tools_ears, tools_inspect, tools_look, tools_main_mix, tools_midi, tools_motion, tools_plugins, tools_project, tools_render, tools_sfx, tools_voice
+from rostrum_sound.modules import TOOLS
+from . import tool_groups, tools_project
 from .song_line import with_song_line
 from .app import make_app
 
 
 def sound_tools() -> Tools:
     tools = Tools()
-    for m in (tools_render, tools_audition, tools_look, tools_arrangement, tools_inspect, tools_sfx, tools_voice, tools_motion, tools_plugins, tools_midi,
-              tools_cleanup, tools_ears, tools_project, tools_main_mix):
-        m.register(tools)
+    TOOLS.call("register", tools)
     return tool_groups.group(tools)
 
 

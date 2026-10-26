@@ -58,9 +58,17 @@ def _moved(h, mark):
 
 
 def _blocked(h, c) -> bool:
-    """Would taking `c` back (or bringing it back) be refused: a later done change by anyone touched the same."""
+    """Would taking `c` back (or bringing it back) be refused: another change on the same things stands otherwise now
+    than just before `c` was made (done then and not now, or the reverse), by a walk of the whole history."""
+    def then(x):
+        v = False
+        for y in h.changes:
+            if y.seq >= c.seq:
+                break
+            v = True if (y.seq == x.seq and y.original) or x.seq in y.redoes else False if x.seq in y.undoes else v
+        return v
     mine = h.keys(c)
-    return any(x.original and x.seq != c.seq and h.done[x.seq] and h.at[x.seq] > h.at[c.seq] and E.overlap(h.keys(x), mine)
+    return any(x.original and x.seq != c.seq and h.done[x.seq] != then(x) and E.overlap(h.keys(x), mine)
                for x in h.changes)
 
 
@@ -87,10 +95,34 @@ def test_random_edits_undos_and_redos_match_the_replayed_history():
                 else:
                     d.redo(who)
             except RostrumError as e:                   # a refused step changes nothing
-                refused = "can't be taken back" in str(e)
+                refused = "can't be taken back" in str(e) or "can't be brought back" in str(e)
             assert refused == expect, f"seed {seed}: refused {refused}, the walk says {expect}"
             assert d.data == d.at_step(d.seq), f"seed {seed}: the document drifted from its history"
+            h = d.history
+            assert h.stuck() == {c.seq for c in h.changes if c.original and h.done[c.seq] and _blocked(h, c)}, seed
             for w in (SAM, AGENT):
                 h = d.history
                 assert (h.last_undoable(w), h.last_redoable(w), _own_t(h, w)) == _walked(h, w), f"seed {seed}: {w}"
             assert [d.history.moved_since(m) for m in marks] == [_moved(d.history, m) for m in marks], f"seed {seed}"
+
+
+def test_undo_n_then_redo_n_over_whole_comp_moves_and_a_duplicate_is_exact():
+    """The second redo was refused (critic r8, shared history): in order it never is, and each state comes back exact."""
+    import copy
+    d = Document.new(KIND)
+    d.run_script("intro.py", run_source(SRC, "intro.py"))
+    layers = lambda: [i["id"] for i in d.data["comps"][0]["layers"] if i["type"] != "camera"]    # noqa: E731
+    states = [copy.deepcopy(d.data)]
+    for calls in ([{"op": "layer.shift", "target": layers(), "args": {"by": 0.5}}],
+                  [{"op": "value.set", "target": l, "args": {"prop": "x", "v": 300}} for l in layers()],
+                  [{"op": "layer.duplicate", "target": layers()}],
+                  [{"op": "layer.shift", "target": layers(), "args": {"by": -0.25}}]):
+        d.apply(calls, SAM, join=False)
+        states.append(copy.deepcopy(d.data))
+    for n in range(4):
+        d.undo(SAM)
+        assert d.data == states[-2 - n]
+    for n in range(4):
+        d.redo(SAM)
+        assert d.data == states[1 + n]
+    assert d.data == d.at_step(d.seq)

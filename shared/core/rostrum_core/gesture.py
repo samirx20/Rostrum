@@ -22,6 +22,7 @@ class Gesture:
         self._stepped = False        # a step was shown: listeners saw a state that the end must take back or keep
         self._near = set()           # the ids the shown state differs on from the start: compares look only there
         self._made = None            # a fresh step's edits from the start (the shown state is exactly start + these)
+        self._ended = False          # closed (a window closing cancels it: its owner's later end does nothing)
 
     def __enter__(self):
         if self.doc._gesture is not None:
@@ -36,6 +37,9 @@ class Gesture:
         `fresh`: run them on the state from before the drag instead (an action re-run live with other amounts, the
         kit's amounts popover: Humanise twice must not loosen twice); `calls` may then be a function, called while the
         document reads as it was before the drag (calls worked out from the selection see the original items)."""
+        if self._ended:
+            raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"', "is closed already (cancelled when the "
+                               "window closed)", hint="Start it again.")
         if fresh:
             return self._fresh(calls)
         work, edits, calls, idx = run.plan_indexed(self.doc.kind, self.doc.data, calls, idx=self.doc._index())
@@ -70,6 +74,9 @@ class Gesture:
         self.cancelled = True
 
     def __exit__(self, exc_type, exc, tb):
+        if self._ended:
+            return False
+        self._ended = True
         self.doc._gesture = None
         end, end_idx = self.doc.data, self.doc._index()
         self.doc.data = self.start

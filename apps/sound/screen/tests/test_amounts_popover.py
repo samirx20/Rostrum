@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtCore import QPoint, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
+from rostrum_gui.pointer import wait_until  # noqa: E402
 from screensound import playback  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
 from test_song_swap import song  # noqa: E402
@@ -103,12 +104,10 @@ def test_live_then_enter_is_one_step_and_undo_restores_exactly(tmp_path, monkeyp
         doc = b.doc
         before, n = humanise_live(screen, b)
         QTest.keyClick(screen.win, Qt.Key_Return)
-        QTest.qWait(150)
-        assert len(doc.history.changes) == n + 1
+        wait_until(lambda: len(doc.history.changes) == n + 1, "Enter keeps the live change as one step")
         assert doc.history.changes[-1].label.startswith("Humanise · 2 notes · ")
         QTest.keyClick(screen.win, Qt.Key_Z, Qt.ControlModifier)
-        QTest.qWait(150)
-        assert [doc.item(i) for i in NOTES] == before
+        wait_until(lambda: [doc.item(i) for i in NOTES] == before, "Undo restores the notes exactly")
     finally:
         screen.close()
         QTest.qWait(50)
@@ -120,7 +119,7 @@ def test_esc_after_live_changes_leaves_the_song_unchanged(tmp_path, monkeypatch)
         doc = b.doc
         before, n = humanise_live(screen, b)
         QTest.keyClick(screen.win, Qt.Key_Escape)
-        QTest.qWait(150)
+        wait_until(lambda: [doc.item(i) for i in NOTES] == before, "Esc takes the live change back")
         assert len(doc.history.changes) == n
         assert [doc.item(i) for i in NOTES] == before
     finally:

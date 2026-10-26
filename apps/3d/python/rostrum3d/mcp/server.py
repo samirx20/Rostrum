@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+from functools import reduce
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,8 +23,8 @@ from rostrum_core.storage import paths
 from rostrum3d import ops_mesh
 from rostrum3d.engine import Engine
 from rostrum3d.kind import KIND
+from rostrum3d.modules import TOOLS
 from rostrum3d.script import run_source
-from . import anims, estimate, facts, lipsync, look, place, render, send
 
 GUIDES = Path(__file__).resolve().parents[1] / "guides"
 INSTRUCTIONS = ("rostrum-3d makes 3D shots: a scene of meshes (cut and joined live by combines), imports, lights and cameras, animated by keys and rendered by Hydra "
@@ -37,7 +38,8 @@ class ThreeDState:
 
 
 def app_tools():
-    return look.tools.merged_with(render.tools).merged_with(facts.tools).merged_with(estimate.tools).merged_with(place.tools).merged_with(anims.tools).merged_with(lipsync.tools).merged_with(send.tools)
+    first, *rest = TOOLS.attrs("tools")
+    return reduce(lambda merged, tools: merged.merged_with(tools), rest, first)
 
 
 def open_documents(project: str, items: list[str]) -> dict:

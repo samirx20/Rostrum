@@ -87,6 +87,21 @@ class Document:
     def base(self, value):
         self._base = value
 
+    @property
+    def kept(self) -> dict:
+        """The document as its history leaves it: what every save writes. While a drag or a live-preview box is open
+        (gesture.py) `data` shows its unsaved picture; a save then (closing the window, Save, a timer, opening another
+        song) writes the state from before it, never the preview as if it were kept."""
+        return self._gesture.start if self._gesture is not None else self.data
+
+    def drop_gesture(self):
+        """Cancel an open drag or live-preview box, as Esc does: the document shows what its history leaves again and
+        nothing is recorded. A window closing or switching songs calls it before its last save."""
+        g = self._gesture
+        if g is not None:
+            g.cancel()
+            g.__exit__(None, None, None)
+
     # reading
     def _index(self) -> dict:
         """id -> Loc for the current data, kept until the data is replaced (every change makes a new tree; a tree is
@@ -235,13 +250,13 @@ class Document:
     @_through_door
     def redo_changes(self, targets, who, label=None) -> Change:
         """Bring back undone originals `targets` as one new change (refused like any redo)."""
-        self.history.blockers(targets, max(self.history.at[c.seq] for c in targets))
+        self.history.blockers(targets)
         edits = [e for c in sorted(targets, key=lambda c: c.seq) for e in c.edits]
         return self._replay(edits, who, label or f"Redid: {targets[-1].label}", redoes=[c.seq for c in targets])
 
     @_through_door
     def undo_changes(self, targets, who, label=None) -> Change:
-        self.history.blockers(targets, max(self.history.at[c.seq] for c in targets))
+        self.history.blockers(targets)
         rev = [E.reverse(e) for c in sorted(targets, key=lambda c: -c.seq) for e in reversed(c.edits)]
         return self._replay(rev, who, label or f"Undid: {targets[-1].label}", undoes=[c.seq for c in targets])
 
@@ -250,7 +265,7 @@ class Document:
         c = self.history.last_redoable(who)
         if not c:
             return None
-        self.history.blockers([c], self.history.at[c.seq])
+        self.history.blockers([c])
         return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
     def _replay(self, edits, who, label, **kw) -> Change:

@@ -31,7 +31,11 @@ def background() -> bool:
     that thread (Qt 6.12, Direct3D) never answers a window kept at the bottom, so the window drew nothing on its own,
     not even the layout a click is matched against. A click landed where a control had been before the last change
     (critic r7 should-fix 9: "Select inside" right after a pick hit the End field under it; clicks in the first
-    seconds after opening did nothing, until a picture was taken, which lays the window out)."""
+    seconds after opening did nothing, until a picture was taken, which lays the window out).
+
+    And a frame it shows never waits for the screen's refresh (swap interval 0): with the display asleep, showing a
+    frame that waits for a refresh blocked ~250 ms, so every move of a check's drag took that long; awake, the plain
+    timer still paces its frames."""
     from rostrum_core import userhome
     return os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1" or userhome.scripted() is not None
 
@@ -62,6 +66,10 @@ def qt_app():
     if QGuiApplication.instance() is None and background():
         os.environ.setdefault("QSG_RENDER_LOOP", "basic")   # a window behind others: see background()
         os.environ.setdefault("QT_D3D_NO_VBLANK_THREAD", "1")   # its frames on a timer: see background()
+        from PySide6.QtGui import QSurfaceFormat
+        fmt = QSurfaceFormat.defaultFormat()
+        fmt.setSwapInterval(0)                     # a frame shown never waits for the screen's refresh: see background()
+        QSurfaceFormat.setDefaultFormat(fmt)
     sys.setswitchinterval(SWITCH_S)
     return QGuiApplication.instance() or QGuiApplication(sys.argv)
 

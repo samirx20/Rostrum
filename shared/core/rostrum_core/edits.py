@@ -377,9 +377,18 @@ def keys(e, lists: dict) -> set[tuple]:
     raise TypeError(f"not an edit: {e!r}")
 
 
+def heads(k: tuple):
+    """Every leading part of key k, itself included: ("n1",), ("n1", "at"), ("n1", "at", "beat")."""
+    return (k[:n] for n in range(1, len(k) + 1))
+
+
 def overlap(a: set[tuple], b: set[tuple]) -> set[tuple]:
-    """Keys in a that collide with b: equal, or one inside the other (an item and one of its fields)."""
-    return {x for x in a for y in b if x[:len(y)] == y or y[:len(x)] == x}
+    """Keys in a that collide with b: equal, or one inside the other (an item and one of its fields). Looked up through
+    b's leading parts, never pair by pair (two whole-song steps were 11 million compares: a redo took 6.8 s)."""
+    if not a or not b:
+        return set()
+    inside = {h for y in b for h in heads(y)}
+    return {x for x in a if x in inside or any(h in b for h in heads(x))}
 
 
 def key_text(k: tuple) -> str:

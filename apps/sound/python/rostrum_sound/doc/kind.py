@@ -1,4 +1,4 @@
-"""The Sound document kind: its operations (registered by importing the ops modules), where items live,
+"""The Sound document kind: its operations (the ops modules in rostrum_sound/modules.py), where items live,
 a fresh document, and the whole-document check.
 
     root (doc: tempo, length, beatsPerBar, sampleRate)
@@ -15,9 +15,11 @@ from rostrum_core import DocKind
 from .. import names
 from . import dropped, markers, media, migrations, past_end
 from . import fields as FD
-from . import ops_bus_tracks, ops_buses, ops_cleanup, ops_mix, ops_music, ops_range, ops_fit, ops_section_copy, ops_select_clips, ops_select_move, ops_select_notes, ops_select_place, ops_select_tracks, ops_swap, ops_timed, ops_tracks, ops_transpose, ops_fit_key, ops_feel, ops_fill, ops_voice, ops_chord, ops_strum, ops_arp  # noqa: F401  (they register the operations)
+from ..modules import OPS
 from .check import check
 from .registry import LISTS, MASTER_ID, REGISTRY
+
+OPS.load()                    # they register the operations (rostrum_sound/modules.py)
 
 
 def blank() -> dict:
