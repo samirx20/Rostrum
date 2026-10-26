@@ -5,7 +5,7 @@ GUI thread with its own engine process (never the viewport's), through the same 
 
 A render reads a snapshot taken on press (scene, shot, history step), so edits made while it runs are not in it, and
 its manifest says exactly which step it shows. Cancel ends that process by its own handle (never by name); the job then says "Render cancelled", shows no picture and
-leaves no finished render (the half-made folder stays `.partial`, which render_still never lists as a version).
+leaves nothing on disk (its half-made `.partial` folder is removed).
 A failure is reported (red status, the error line), never as success.
 """
 from __future__ import annotations
@@ -88,7 +88,7 @@ class RenderJob(QObject):
                 engine = self._engine = self._make_engine()
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
-                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder, layers)
+                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder, layers, stop.is_set)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was

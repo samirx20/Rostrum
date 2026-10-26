@@ -4,7 +4,8 @@ import RostrumKit
 // The selected item's gizmo over the viewport (screen3d/gizmo_qt.py has the maths and the edits): move arrows and the
 // middle square, turn rings, scale cubes, in the axis colours (X red, Y green, Z blue). A press on a handle drags it
 // (one undo step); a press anywhere else falls through to the viewport (orbit, pick). Ctrl while dragging frees the
-// snapping. While D is held only the move handles show: they move the pivot.
+// snapping. While D is held only the move handles show: they move the pivot. A click on a handle that never drags goes
+// to a bone drawn there (a mesh's arrows cross its bones on the Animate page): the bone is picked.
 Item {
     id: gz
     readonly property var colours: [Theme.danger, "#5fbf6a", Theme.accent]
@@ -50,6 +51,7 @@ Item {
         hoverEnabled: true
         preventStealing: true
         property string grabbed: ""
+        property point from: Qt.point(0, 0)
         onPositionChanged: (m) => {
             if (grabbed !== "") gizmo.dragTo(m.x / width, m.y / height, (m.modifiers & Qt.ControlModifier) !== 0)
             else gz.hot = gizmo.hitAt(m.x / width, m.y / height)
@@ -59,9 +61,13 @@ Item {
         onPressed: (m) => {
             var h = m.button === Qt.LeftButton ? gizmo.hitAt(m.x / width, m.y / height) : ""
             if (h === "" || !gizmo.begin(h, m.x / width, m.y / height)) { m.accepted = false; return }
-            grabbed = h
+            grabbed = h; from = Qt.point(m.x, m.y)
         }
-        onReleased: { if (grabbed !== "") { grabbed = ""; gizmo.end() } }
+        onReleased: (m) => {
+            if (grabbed === "") return
+            grabbed = ""; gizmo.end()
+            if (Math.abs(m.x - from.x) + Math.abs(m.y - from.y) <= 3) gizmo.tap(m.x / width, m.y / height)
+        }
         onCanceled: { if (grabbed !== "") { grabbed = ""; gizmo.end() } }
     }
 

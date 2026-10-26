@@ -58,6 +58,8 @@ def _focus_on_item(id_: str, fr: _Frames) -> list[float] | None:
 def _out(p, value):
     if p.type == "color":
         return linear(value)
+    if p.type == "toggle":
+        return bool(value)                         # a keyed Visible: True / False per frame (F.toggle_at)
     return round(value, 6) if isinstance(value, float) else value
 
 
@@ -70,7 +72,7 @@ def _rig_node(item: dict, fr: _Frames) -> dict:
         per_frame[r] = [t[i] for t in turns]
     node = {"id": item["id"], "type": "group", "props": {p.name: _out(p, per_frame[p.name][0]) for p in params}}
     anim = {k: [_out(F.param("group", k), x) for x in vals] for k, vals in per_frame.items()
-            if k != "visible" and max(vals) - min(vals) > 1e-9}
+            if max(vals) - min(vals) > 1e-9}
     if anim:
         node["anim"] = anim
     node["children"] = [_node(c, fr) for c in item.get("children", [])]

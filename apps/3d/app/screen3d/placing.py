@@ -82,7 +82,7 @@ def into_parent(args: dict, parent_world) -> dict:
     p = aim._apply(inv, [a - t for a, t in zip((args["x"], args["y"], args["z"]), parent_world[1])])
     turn = aim._mul(inv, aim.local({"x": 0, "y": 0, "z": 0, "rx": args.get("rx", 0.0), "ry": args.get("ry", 0.0),
                                     "rz": args.get("rz", 0.0), "sx": 1, "sy": 1, "sz": 1})[0])
-    rx, ry, rz = aim._euler(turn)
+    rx, ry, rz = aim.euler(turn)
     return {**args, "x": p[0], "y": p[1], "z": p[2], "rx": rx, "ry": ry, "rz": rz}
 
 

@@ -19,8 +19,18 @@ class SceneMixin:
 
     @Property("QVariantList", notify=S.outlineChanged)
     def sceneRows(self):
-        """The scene list, its keys on the same rows (outline.scene_rows)."""
-        return outline.scene_rows(self.doc.data, self._folded, self.selectedOwner, self._info["fps"])
+        """The scene list, its keys on the same rows (outline.scene_rows). Worked out once per outlineChanged: a drag
+        step's one change was read by every binding (about 15 times a step, 2 of every 3 ms of a gizmo move)."""
+        kept = getattr(self, "_rows_kept", None)
+        if kept is None:
+            self.outlineChanged.connect(self._forget_scene_rows)
+        key = (frozenset(self._folded), self.selectedOwner, self._info["fps"])
+        if not kept or kept[0] != key:
+            kept = self._rows_kept = (key, outline.scene_rows(self.doc.data, self._folded, key[1], key[2]))
+        return kept[1]
+
+    def _forget_scene_rows(self):
+        self._rows_kept = ()
 
     @Property("QVariantList", notify=S.outlineChanged)
     def materials(self):

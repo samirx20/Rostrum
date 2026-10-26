@@ -1,5 +1,5 @@
 """Proves the render time estimate is honest: for a still (1920x1080, good = 128 samples), a 24-frame mp4 at full size (draft = 32
-samples) and the same at half size (re-scaled from the same kept probe, no new one) of one small moving scene, the estimate (estimate_job.measure on a fresh scratch cache + estimate.scale) is set against a real
+samples), the same at half size (re-scaled from the same kept probe, no new one) and 7 frames at half size as pictures (a tiny render) of one small moving scene, the estimate (estimate_job.measure on a fresh scratch cache + estimate.scale) is set against a real
 render made the way the Render button does it (a NEW Engine, wall-clock from creating it to the last file written, the mp4 encode
 included). Prints a table (with the probe's own wall time) and writes estimate_check.json (estimate, real, error %, per-frame figures, the measurement).
 Through the lock: heavy.ps1 run "<team>: estimate check" gpu <python> apps/3d/tools/estimate_check.py (PYTHONPATH apps/3d/python;shared/core;shared/gui-kit)."""
@@ -48,7 +48,7 @@ def real_still(scene, info, s):
     return time.perf_counter() - t0, [f["ms"] for f in r["frames"]], {}
 
 
-def real_video(scene, info, s):
+def real_video(scene, info, s, mp4=True):
     pngs = OUT / "_png"
     shutil.rmtree(pngs, ignore_errors=True)
     (OUT / "v.mp4").unlink(missing_ok=True)
@@ -63,6 +63,8 @@ def real_video(scene, info, s):
     finally:
         e.close()
     t_draw = time.perf_counter() - t0
+    if not mp4:                                                  # a picture sequence (the render sheet's shot, the Render page)
+        return t_draw, [f["ms"] for f in r["frames"]], {"load_s": round(t_load, 2)}
     first = min(int(p.name.split(".")[1]) for p in pngs.glob("*.png"))
     render._encode("estimate_check", pngs, "v", first, info["fps"], OUT / "v.mp4", OUT)
     total = time.perf_counter() - t0
@@ -77,21 +79,24 @@ def main():
     doc.run_script("est.py", run_source(SCENE, "est.py"))
     scene, info = describe(doc.data, "s", None), shot_info(doc.data, "s")
     rows = []
-    for name, shot, still in (("still", {"renderQuality": "good"}, True),
-                              ("anim full", {"renderQuality": "draft"}, False),
-                              ("anim half", {"renderQuality": "draft", "renderSize": "half"}, False)):
+    for name, shot, still, upto in (("still", {"renderQuality": "good"}, True, None),
+                                    ("anim full", {"renderQuality": "draft"}, False, None),
+                                    ("anim half", {"renderQuality": "draft", "renderSize": "half"}, False, None),
+                                    ("tiny seq", {"renderQuality": "draft", "renderSize": "half"}, False, 7)):   # 7 frames, pictures only
         s = settings(shot, info)
         if still:
             s["start"] = s["end"] = (s["start"] + s["end"]) // 2
+        if upto:
+            s["end"] = s["start"] + upto - 1
         frames = s["end"] - s["start"] + 1
         t0 = time.perf_counter()
         m = estimate_job.measure(scene, info, s)
         probe_wall = time.perf_counter() - t0
-        est = estimate.scale(m, s, frames, mp4=not still)
+        est = estimate.scale(m, s, frames, mp4=not still and not upto)
         seen = {}                                                # the card caveat must fire while our own render runs
         spy = threading.Timer(4.0, lambda: seen.setdefault("during_render", gpu_busy.busy()))
         spy.start()
-        real, ms, parts = (real_still if still else real_video)(scene, info, s)
+        real, ms, parts = real_still(scene, info, s) if still else real_video(scene, info, s, mp4=not upto)
         spy.cancel()
         parts.update(seen)
         per_real = sum(ms) / len(ms) / 1000

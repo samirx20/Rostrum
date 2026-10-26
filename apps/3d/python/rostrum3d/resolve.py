@@ -4,7 +4,7 @@ from the shot's start. Frame n is at n / fps seconds; the one evaluator and easi
 """
 from __future__ import annotations
 
-from rostrum_core.keys import keys_of, track_value
+from rostrum_core.keys import keys_of
 
 from . import aim, fields as F, follow, rigs
 
@@ -57,8 +57,10 @@ class Frames:
     def _resolve(self, id_: str, f: int) -> dict:
         item, t = self.items[id_], f / self.fps
         v = {p.name: item.get(p.name, p.default) for p in F.FIELDS[item["type"]]}
+        for prop in F.KEYED_TOGGLES & v.keys():
+            v[prop] = bool(v[prop])                          # a still Visible left as 1.0 / 0.0 by key.clear
         for prop in {k["prop"] for k in item.get("keys", [])}:
-            v[prop] = track_value(keys_of(item, prop), t)
+            v[prop] = F.key_value_at(item["type"], prop, keys_of(item, prop), t)
         if item["type"] == "rig":
             v.update(rigs.transform(v, t))
         elif item["type"] == "light" and v["kind"] == "dome":     # a dome only turns around up (light_fields.py)

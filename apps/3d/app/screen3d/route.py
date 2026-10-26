@@ -4,7 +4,7 @@ what keys may drive and what the inspector shows (values at the playhead). No Qt
 from __future__ import annotations
 
 from rostrum3d import fields as F
-from rostrum_core.keys import keys_of, track_value
+from rostrum_core.keys import keys_of
 from rostrum_gui.route import KeyRoute
 
 
@@ -15,7 +15,9 @@ def drives(item: dict, prop: str) -> bool:
 
 def value_at(item: dict, prop: str, t: float):
     keys = keys_of(item, prop)
-    return track_value(keys, t) if keys else item.get(prop, F.param(item["type"], prop).default)
+    if not keys:
+        return item.get(prop, F.param(item["type"], prop).default)
+    return F.key_value_at(item["type"], prop, keys, t)             # a keyed Visible: on / off, held (never 0.5)
 
 
 def shown_values(item: dict, t: float) -> dict:
