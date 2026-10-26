@@ -66,6 +66,7 @@ class ExportSheet(QObject):
         self._open, self._choice, self._range, self._folder = False, "", "all", ""
         self._state, self._note, self._progress, self._result = "", "", 0.0, {}
         self._asked: Path | None = None
+        self._stem_chosen = ""                      # the name typed in the sheet ("" = the app's default)
         self._can_replace = True
         self._done_message = ""
         self._thread: threading.Thread | None = None
@@ -86,9 +87,24 @@ class ExportSheet(QObject):
         """Where it goes when the person chose no folder, in words (the project's Renders folder)."""
         raise NotImplementedError
 
-    def file_name(self) -> str:
-        """The file's name for the current choice ("Main.mp4"; a sequence: its folder's name)."""
+    NAMEABLE = False                              # True: the person may name the file (an app that implements default_stem + file_ext)
+
+    def default_stem(self) -> str:
+        """The file's name without its type when the person named nothing ("Main"); a nameable app says it."""
         raise NotImplementedError
+
+    def file_ext(self) -> str:
+        """The file type after the name (".mp4"); "" for a sequence (its folder's name stands alone)."""
+        return ""
+
+    def file_name(self) -> str:
+        """The file's name for the current choice ("Main.mp4"; a sequence: its folder's name). A nameable app gets it from
+        the stem and the type; any other app says its own."""
+        return self.stem() + self.file_ext()
+
+    def stem(self) -> str:
+        """The name the file is written under (without its type): the person's, else the app's default."""
+        return self._stem_chosen or self.default_stem()
 
     def replaceable(self) -> bool:
         """False for something that can't be replaced in place (a folder of frames): only Keep both / Cancel."""
@@ -178,6 +194,19 @@ class ExportSheet(QObject):
     def fileName(self):
         return self.file_name()
 
+    @Property(bool, constant=True)
+    def nameable(self):
+        """True: the sheet shows the name as a field the person can type in (nameStem, then the file type after it)."""
+        return self.NAMEABLE
+
+    @Property(str, notify=changed)
+    def nameStem(self):
+        return self.stem() if self.NAMEABLE else ""        # an app that doesn't name its files shows fileName instead
+
+    @Property(str, notify=changed)
+    def nameExt(self):
+        return self.file_ext() if self.NAMEABLE else ""
+
     @Property(str, notify=changed)
     def state(self):
         """"" | "running" | "done" | "failed" | "cancelled"."""
@@ -248,6 +277,16 @@ class ExportSheet(QObject):
         """(start, end) of the chosen range; None = everything."""
         r = next((r for r in self.ranges_list() if r["value"] == self._range), None)
         return (float(r["start"]), float(r["end"])) if r and r["value"] != "all" else None
+
+    @Slot(str)
+    def setNameStem(self, text):
+        """The file's name typed in the sheet (what a file name can't hold is dropped; empty goes back to the default)."""
+        if self.NAMEABLE and not self.running():
+            self._stem_chosen = re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|\x00-\x1f]', " ", text)).strip(" .")
+            if self._stem_chosen == self.default_stem():
+                self._stem_chosen = ""
+            self.stale()
+            self.changed.emit()
 
     @Slot(str)
     def setFolder(self, path):

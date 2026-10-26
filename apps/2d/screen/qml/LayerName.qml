@@ -27,7 +27,7 @@ Rectangle {
     }
 
     property bool renaming: false
-    function beginRename() { if (isLayer && !isFrame) { renaming = true; nameBox.text = rowData.label; nameBox.forceActiveFocus(); nameBox.selectAll() } }
+    function beginRename() { if (isLayer && !isFrame) { renaming = true } }     // (the box takes its text and the keys as it shows)
     function endRename(keep) { if (renaming) { renaming = false; if (keep) backend.renameLayer(rowData.id, nameBox.text) } }
     Connections { target: backend; function onRenameRequested(id) { if (id === name.rowData.id) name.beginRename() } }   // menus run a choice once closed (ActionMenu)
 
@@ -73,14 +73,14 @@ Rectangle {
         kind: name.rowData.kind; shape: name.rowData.shape
         ink: name.selected ? Theme.accentHover : name.rowData.owned ? Theme.fg3 : Theme.fg2
     }
-    TextInput {  // the name box while renaming: Enter keeps, Esc or leaving the row drops
+    NameBox {  // the kit's name box (Ctrl+Z with nothing typed closes it and undoes): Enter or leaving the row keeps, Esc drops
         id: nameBox
         visible: name.renaming
+        current: name.rowData.label
+        keepOnAway: true
         anchors { left: icon.right; leftMargin: Theme.gap; right: parent.right; rightMargin: Theme.gap; verticalCenter: parent.verticalCenter }
-        font.family: uiFont; font.pixelSize: Theme.body; color: Theme.fg; selectByMouse: true; clip: true
-        onAccepted: name.endRename(true)
-        onActiveFocusChanged: if (!activeFocus) name.endRename(true)
-        Keys.onEscapePressed: name.endRename(false)
+        onDone: (t) => name.endRename(true)
+        onCancelled: name.endRename(false)
     }
     Row {  // the lock and the eye: on hover, or always while on (a click is one change; hidden layers dim and don't export)
         id: switches

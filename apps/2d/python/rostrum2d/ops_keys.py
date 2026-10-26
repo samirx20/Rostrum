@@ -101,6 +101,20 @@ def adds_nothing(owner: dict, prop: str, v) -> bool:
     return bool(keys) and all(key_value(k) == v for k in keys)
 
 
+class _Seen:
+    """What `_value_now` reads of an operation's context, for the screens asking before they call (K)."""
+    def __init__(self, doc):
+        self.doc = doc
+
+    def facts(self, item: dict) -> dict:
+        return self.doc.kind.facts(item, self.doc)
+
+
+def keyable_now(doc, owner: dict, t) -> bool:
+    """K would key something on this owner at own time t (the same rule key.add fields "pose" follows)."""
+    return any(_value_now(_Seen(doc), owner, p, t) is not None for p in POSE)
+
+
 put_key = register_key_ops(R, owners=OWNERS, check_key=_checked_value, check_still=_still_value, settable=settable,
                            value_params=[V, C, D], key_add_help="The field is animated from then on: its keys alone decide its value.",
                            field_sets={"pose": POSE}, value_now=_value_now)

@@ -182,3 +182,14 @@ pub fn animatable(kind: &str, field: &Field) -> bool {
         && crate::motion::animatable(kind, field.0)
         && !(kind == "camera" && crate::frame::STILL.contains(&field.0))
 }
+
+/// Fields that decide WHAT is drawn rather than where or how it is placed, by (item type, field): a counter's number.
+/// In a motion-blurred frame every sub-frame reads them at the frame's own time (eval.rs `props_at`), so the content
+/// stays sharp and only movement blurs, as in After Effects. Which picture shows (a drawing's frame, paint, grain, a
+/// video's frame) follows the same rule in eval.rs. A new keyable field of that sort is listed here.
+pub const CONTENT: &[(&str, &str)] = &[("text", "count")];
+
+/// Whether `field` of an item of type `kind` decides what is drawn (CONTENT).
+pub fn content(kind: &str, field: &str) -> bool {
+    CONTENT.contains(&(kind, field))
+}

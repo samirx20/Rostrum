@@ -11,6 +11,12 @@ def siblings(doc, parent: str) -> list[str]:
     return [c["id"] for c in reversed(doc.item(parent).get("layers", [])) if c["type"] != "camera"]
 
 
+def level_of(doc, picked: list[str], scene: str) -> list[str]:
+    """Ctrl+A: every layer at the level the first picked layer is in (a group's layers once you are inside it); with nothing
+    picked, the scene's."""
+    return siblings(doc, doc.parent_of(picked[0])[0] if picked else scene)
+
+
 def next_to(doc, picked: list[str], sign: int, scene: str) -> str:
     """Tab (sign 1) or Shift+Tab (-1) from the last picked layer, at its level, wrapping round; with nothing picked the scene's
     first (its last for Shift+Tab). "" when the level is empty."""

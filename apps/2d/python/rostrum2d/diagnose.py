@@ -15,6 +15,7 @@ from rostrum_core.keys import animated, key_value, keys_of, marked
 from rostrum_core.marker_times import lookup
 
 from . import fields as F, follow, render3d, retime
+from .anims import PAIRS
 from .engine import EngineError
 from .expr import ExprError, find
 from .grain import is_recipe
@@ -174,10 +175,18 @@ def _unused_keys(comp: dict, items: dict, exprs: dict) -> list[dict]:
                 out.append(_p("unused-keys", item["id"], f"{where}: every key is outside the layer's own time ({start:g}–{end:g} s)",
                               "Move the keys or the layer's start / end"))
             waiting = item["type"] == FRAME and any(k.get("ease") == "hold" for k in keys)     # a cut waiting for its shot
-            if len(keys) > 1 and not waiting and all(key_value(k) == key_value(keys[0]) for k in keys):
+            if len(keys) > 1 and not waiting and all(key_value(k) == key_value(keys[0]) for k in keys) and not _partner_moves(item, prop):
                 out.append(_p("unused-keys", item["id"], f"{where}: {len(keys)} keys that all hold {_value_words(key_value(keys[0]))}",
                               "Change one, or remove the keys"))
     return out
+
+
+def _partner_moves(item: dict, prop: str) -> bool:
+    """The other half of a pair (Tilt X | Y, Position X | Y: anims.PAIRS) has keys that change: the pair is one setting and
+    its mark keys both halves, so a half that stays put is not an unused key."""
+    other = next((b if prop == a else a for a, b in PAIRS.values() if prop in (a, b)), None)
+    keys = keys_of(item, other) if other else []
+    return any(key_value(k) != key_value(keys[0]) for k in keys)
 
 
 def _laid_out(comp: dict, item: dict) -> bool:

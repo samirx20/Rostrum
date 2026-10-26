@@ -32,7 +32,7 @@ document
 - `inspect_operations` lists everything you can do (`text.set`, `shape.set`, `key.add`, `value.set`, `layer.arrange` …) with
   arguments. `edit_document` applies a list of them, all or nothing.
 - Copy a comp with everything in it with `comp.duplicate` (the copy lands right after it, named "<name> copy"), put comps in order with `comp.move` (`index` 0 = first), delete a throw-away comp with `comp.remove` (never the last one; Undo brings it back). A comp added without a name is numbered: "Scene 2", "Scene 3". Look and inspect tools called without `comp` read the **longest** comp and say so in their warnings; pass `comp` to choose.
-- A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`. A layer's `x`, `y` is where its **anchor** sits
+- A **comp** has `width`, `height`, `fps`, `duration` (seconds), `background`, `shutter` (motion blur, degrees; 0 = off; see frame-parallax-motion-blur). A layer's `x`, `y` is where its **anchor** sits
   in the comp, in pixels (0,0 is top-left). The anchor is `anchorX`/`anchorY`, 0 to 1 across the box, default 0.5 = centre.
   A group's children are placed inside the group's own box (its top-left is 0,0).
 - Colours are `#rrggbb` (or short, `#fff`). Mixing colours between keys happens in linear light.
@@ -138,7 +138,7 @@ refused, never dropped.
 | Layer | Its main fields |
 |---|---|
 | every layer | `x`, `y` (where its anchor sits, px), `scale`, `rotation` (°), `opacity` **0–1**, `anchorX`/`anchorY` (0–1, default 0.5 = centre), `start`/`end` (s on screen), `blend`, `matte`, `timing` |
-| `comp` | `width`, `height`, `fps`, `duration` (s), `background` |
+| `comp` | `width`, `height`, `fps`, `duration` (s), `background`, `shutter` (motion blur angle, 0 = off), `shutterSamples` |
 | `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
 | `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
 | `path` | `d` (SVG data: M L C Z), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |

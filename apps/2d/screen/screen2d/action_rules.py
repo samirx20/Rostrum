@@ -21,6 +21,7 @@ from rostrum2d import fields as F
 from rostrum2d.frame import TYPE as FRAME
 from rostrum2d.names import display_name
 from rostrum2d.ops_group import HOLDERS, _why_not
+from rostrum2d.ops_keys import keyable_now
 from rostrum2d.ops_painting import why_not_from
 from rostrum2d.rig.bodynames import bodylike
 from rostrum2d.rig.guess import guessable
@@ -166,7 +167,9 @@ def _order(f: Facts, how: str) -> list[dict]:
 def _pose(f: Facts) -> list[dict]:
     """K: key.add fields "pose" on each selected layer at the playhead in its own seconds (one call per layer)."""
     return [{"op": "rig.key", "target": [i], "args": {"t": round(f.at(i), 6)}} if f.doc.item(i)["type"] == "rig"   # a rig: its bones' pose (rig/joints.py)
-            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids]
+            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids
+            if f.doc.item(i)["type"] == "rig" or keyable_now(f.doc, f.doc.item(i), round(f.at(i), 6))]   # none: "Key here would change nothing here"
+
 
 
 POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "zoom": "zoom", "rotation": "rotation", "opacity": "opacity"}

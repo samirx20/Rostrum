@@ -102,9 +102,16 @@ FocusScope {
         readonly property bool pending: activeFocus && text !== f.text && text !== f.editText && text !== sent
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
-        function commit() { if (text !== f.text && text !== f.editText && text !== sent) { sent = text; if (f.keepOnRefusal) f.problem = ""; f.committed(text); sent = text } }
+        property bool typed: false      // a key was typed since the caret went in: a value typed again as it already is says so (below)
+        onTextEdited: typed = true
+        function commit() {
+            if (text !== f.text && text !== f.editText && text !== sent) { sent = text; if (f.keepOnRefusal) f.problem = ""; f.committed(text); sent = text }
+            else if (typed && f.keepOnRefusal && text !== "" && text !== sent && typeof backend !== "undefined" && backend.tell)   // typed, and as it already is
+                backend.tell("Nothing changed: it already is " + f.text + (f.hasUnit ? " " + f.suffix.trim() : "") + ".")
+            typed = false
+        }
         onAccepted: { commit(); f.entered(); if (!(f.keepOnRefusal && f.problem !== "")) focus = false; else selectAll() }
-        onActiveFocusChanged: if (activeFocus) { sent = ""; f.problem = ""; if (f.editText !== "") text = f.editText; f.typingStarted() } else { commit(); if (f.keepOnRefusal && f.problem !== "") text = f.text; f.typingEnded() }
+        onActiveFocusChanged: if (activeFocus) { sent = ""; typed = false; f.problem = ""; if (f.editText !== "") text = f.editText; f.typingStarted() } else { commit(); if (f.keepOnRefusal && f.problem !== "") text = f.text; f.typingEnded() }
         Keys.onEscapePressed: { text = f.text; if (f.keepOnRefusal) f.problem = ""; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)

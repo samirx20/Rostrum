@@ -117,7 +117,7 @@ def evaluate(static: list[dict], item: dict, facts: dict, more_open: bool, anim=
                                                                                 or bool(item.get(r["id"], r["default"])))
           for r in static if r["row"] == "param"}
     ok.update(dict.fromkeys(set(elsewhere) & ok.keys(), False))
-    opened = _open_groups(static, item, ok, opened, starts or {})
+    opened = _open_groups(static, item, ok, opened, starts or {}, anim)
     out = []
     for r in static:
         r = dict(r)
@@ -173,16 +173,17 @@ class _Opened(set):
     changed: set
 
 
-def _open_groups(static, item, ok, choice, starts) -> _Opened:
+def _open_groups(static, item, ok, choice, starts, anim=None) -> _Opened:
     """Which groups are open: the person's choice, else open when changed (a value that applies, at neither its
-    default nor the kind's own start)."""
+    default nor the kind's own start, or a field with keys: it is animated, whatever it reads at this moment)."""
     choice = choice if isinstance(choice, dict) else {g: True for g in choice}
     params = {r["id"]: r for r in static if r["row"] == "param"}
     out = _Opened()
     out.changed = set()
     for f in (r for r in static if "fold" in r):
         if any(ok[m] and params[m]["default"] is not None
-               and item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
+               and (item.get(m, params[m]["default"]) not in (params[m]["default"], starts.get(m, params[m]["default"]))
+                    or (anim and anim(m) in ("keyed", "onkey")))
                for m in f["members"]):
             out.changed.add(f["fold"])
         sw = f.get("switch")

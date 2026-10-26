@@ -96,7 +96,7 @@ fn shutter_samples_never_cross_a_jump() {
     let mut comp = item("c", "comp", json!({}));
     comp["layers"] = json!([f]);
     let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
-    let x = |centre: f64, t: f64| eval::shutter_at(centre, || eval::props_at(&scene.comp.layers[0], t))["x"].as_f64().unwrap();
+    let x = |centre: f64, t: f64| eval::shutter_at(centre, t, || eval::props_at(&scene.comp.layers[0], t))["x"].as_f64().unwrap();
     for ts in super::sample_times(1.0 - 1.0 / 30.0, 30.0, 360.0, 8) {
         assert_eq!(x(1.0 - 1.0 / 30.0, ts), 0.0, "the frame before the cut sees the next shot at {ts}");
     }
@@ -110,6 +110,30 @@ fn shutter_samples_never_cross_a_jump() {
 
 /// Steps follow the motion (steps.rs): a fast move gets copies at most GAP_PX apart, a still or slow one keeps the
 /// fewest (no extra cost), and the count never passes MOST.
+/// Motion blur blurs where a thing is, never what it is (as After Effects): a counter counting while it moves shows
+/// the frame's one number in every sub-frame (critic 2d-r9: "2,058" printed over "2,068"), while its place still blurs.
+#[test]
+fn shutter_samples_keep_what_is_drawn() {
+    let mut s = item("n", "text", json!({ "counter": true, "countSeparator": "comma", "countDigits": 1.0 }));
+    s["anim"] = json!({
+        "count": [{ "t": 0.0, "v": 0.0, "ease": "linear" }, { "t": 1.0, "v": 3000.0, "ease": "linear" }],
+        "x": [{ "t": 0.0, "v": 0.0, "ease": "linear" }, { "t": 1.0, "v": 900.0, "ease": "linear" }],
+    });
+    let mut comp = item("c", "comp", json!({}));
+    comp["layers"] = json!([s]);
+    let scene = Scene::load(&json!({ "format": FORMAT, "version": VERSION, "comp": comp })).unwrap();
+    let layer = &scene.comp.layers[0];
+    let still = eval::props_at(layer, 0.5);
+    let mut xs = vec![];
+    for ts in super::sample_times(0.5, 30.0, 180.0, 8) {
+        let p = eval::shutter_at(0.5, ts, || eval::props_at(layer, ts));
+        assert_eq!(p["body"], still["body"], "sub-frame at {ts} shows another number");
+        xs.push(p["x"].as_f64().unwrap());
+    }
+    assert_eq!(still["body"], json!("1,500"));
+    assert!(xs.windows(2).all(|w| w[1] > w[0]), "its place still blurs: {xs:?}");
+}
+
 #[test]
 fn blur_steps_follow_the_move_on_screen() {
     let blur = item("tr", "trail", json!({ "copies": 1.0, "spacing": 1.0, "fade": 0.5 }));

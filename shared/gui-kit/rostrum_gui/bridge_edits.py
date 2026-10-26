@@ -95,7 +95,7 @@ class EditSlots(SlotMixin):
         if len({n for _, n in todo}) > 1:            # both halves: "Animate Position", never "Animate X"
             op = self._kit.op_kind[0]
             own = next(p.label for p in op.params if p.name == names[0])
-            pair = next(r["label"] for r in self._kit.static if r.get("half") == "first" and r["id"] == names[0])
+            pair = next(r.get("said") or r["label"] for r in self._kit.static if r.get("half") == "first" and r["id"] == names[0])
             label = label.replace(own, pair)
         ids = list(dict.fromkeys(i for i, _ in todo))
         calls = [c for calls, _ in made for c in calls]
@@ -192,7 +192,10 @@ class EditSlots(SlotMixin):
         self._done(hit[1] if hit else None, nothing, said=True)
 
     def _apply(self, calls, label):
-        self._done(self.doc.apply(calls, self.who, label=label), "")
+        """The calls as one change; the change, or None when nothing was different (said in the top bar, never silent)."""
+        change = self.doc.apply(calls, self.who, label=label)
+        self._done(change, "Nothing changed: it already is that way.")
+        return change
 
     def _apply_each(self, calls_of, ids):
         """`calls_of(id) -> (calls, label)` for each item, applied as one change."""

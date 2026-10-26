@@ -16,7 +16,7 @@ Rectangle {
     height: 42 + 2 * Theme.grid; radius: Theme.radiusCtl
     color: area.containsMouse ? Theme.hover : "transparent"
 
-    function startRename() { nameEdit.text = p.name; renaming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() }
+    function startRename() { renaming = true }
     function openMenu(x, y) {
         const g = row.mapToItem(null, x, y)
         menu.entries = [
@@ -49,14 +49,13 @@ Rectangle {
         Text { id: subText; width: parent.width; text: row.p.line; elide: Text.ElideRight; color: Theme.fg3
                font.family: uiFont; font.pixelSize: Theme.label }
     }
-    TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+    NameBox {     // rename in place (the kit's box): Enter keeps it, Esc or a click elsewhere leaves the name as it was
         id: nameEdit
         visible: row.renaming
+        current: row.p.name
         anchors { left: words.left; right: words.right; verticalCenter: parent.verticalCenter }
-        color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.body; font.family: uiFont; clip: true
-        onAccepted: { row.renaming = false; row.renamed(text) }
-        Keys.onEscapePressed: row.renaming = false
-        onActiveFocusChanged: if (!activeFocus) row.renaming = false
+        onDone: (t) => { row.renaming = false; row.renamed(t) }
+        onCancelled: row.renaming = false
     }
     MouseArea {
         id: area

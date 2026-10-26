@@ -24,6 +24,7 @@ class Touched:
         self.ids = {k[0] for k in keys}
         self.fields = {(k[0], k[1]) for k in keys if len(k) > 1}
         self._above: set | None = None       # every item above a touched one (`reaches`: once per change)
+        self._by_item = None                 # the touched ids sorted into items (`fields_of`: once per change)
 
     def reaches(self, doc, ids) -> bool:
         """Did the change touch any of `ids`, an item above one (a parent's time or place moves it) or one inside
@@ -54,33 +55,50 @@ class Touched:
         """The item's own fields this touched: a field of it, and for a key in it the field the key animates (the one
         animation model, rostrum_core.keys: an owner's `keys`, each naming its `prop`). None when it can't be told that
         narrowly: an add, remove, move or rename; the item touched whole; an item above it (its time or place moves
-        every value it shows); anything else inside it."""
+        every value it shows); anything else inside it. The touched ids are sorted into items once per change
+        (`_sorted`), so asking for every item of a big selection is one walk, not one per item."""
         if self.structural:
             return None
-        idx, out = doc._index(), {f for i, f in self.fields if i == item_id}
+        idx = doc._index()
+        if self._by_item is None:
+            self._by_item = self._sorted(idx)
+        own, keyed, blocked = self._by_item
+        if own is None or item_id in blocked:
+            return None
+        out = own.get(item_id, set()) | keyed.get(item_id, set())
+        if item_id in self.ids and not out:
+            return None                             # touched whole, no field named
+        loc = idx.get(item_id)
+        while loc is not None and loc.parent:       # a touched item above it
+            if loc.parent in self.ids:
+                return None
+            loc = idx.get(loc.parent)
+        return set(out)
+
+    def _sorted(self, idx):
+        """(fields by item, key-animated fields by item, items that can't be told); own is None when a touched id is gone."""
+        own: dict[str, set] = {}
+        for i, f in self.fields:
+            own.setdefault(i, set()).add(f)
+        keyed: dict[str, set] = {}
+        blocked: set[str] = set()
         for i in self.ids:
             loc = idx.get(i)
-            if i == item_id:
-                if not out:
-                    return None                     # touched whole, no field named
-            elif loc is not None and loc.parent == item_id and loc.key == "keys" and "prop" in loc.item:
-                out.add(loc.item["prop"])
-            elif loc is None or _inside(idx, i, {item_id}) or _inside(idx, item_id, {i}):
-                return None
-        return out
+            if loc is None:
+                return None, keyed, blocked
+            up = loc.parent
+            if loc.key == "keys" and "prop" in loc.item and up:
+                keyed.setdefault(up, set()).add(loc.item["prop"])
+                up = idx.get(up).parent if idx.get(up) is not None else None
+            while up and up not in blocked:         # every item above it (the walk stops where an earlier one went)
+                blocked.add(up)
+                above = idx.get(up)
+                up = above.parent if above is not None else None
+        return own, keyed, blocked
 
     def joined(self, other: "Touched | None") -> "Touched | None":
         """This and `other` together (two steps a part takes in at once); None (can't tell) stays None."""
         return None if other is None else Touched(self.keys | other.keys, self.structural or other.structural)
-
-
-def _inside(idx, item_id, ids: set) -> bool:
-    loc = idx.get(item_id)
-    while loc is not None and loc.parent:
-        if loc.parent in ids:
-            return True
-        loc = idx.get(loc.parent)
-    return False
 
 
 def of(doc, event) -> Touched | None:

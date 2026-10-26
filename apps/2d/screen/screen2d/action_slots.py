@@ -86,9 +86,11 @@ class ActionSlots(SlotMixin):
             self._set_status("Already framed")
             return
         framed = frame_actions.told(calls, self._facts()) if any(c["op"] in frame_actions.OPS for c in calls) else ""   # said before
-        since = self.doc.seq
-        if not self._guard(lambda: self._apply(calls, label)):
+        since, made = self.doc.seq, []
+        if not self._guard(lambda: made.append(self._apply(calls, label))):
             return
+        if made[0] is None:                                   # K again, Align on what is already aligned: nothing was different
+            return                                            # (_apply said so in the top bar)
         words = (framed or said(calls, label, self.doc)) + keyed_note.note(self.doc, since, calls, self._t)
         if words != label:                                    # K: "Keyed 4 settings on 3 layers" (action_rules.said); an
             self._set_status(words)                           # Align that keyed X: "… · keyed X at 3.00 s" (keyed_note.py)

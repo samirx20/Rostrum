@@ -74,3 +74,25 @@ def test_a_file_there_is_never_replaced_without_asking(tmp_path):
 
     export(sheet, "replace")                             # Replace: only once asked
     assert old.read_text(encoding="utf-8") == "new" and "Exported v002" in b.doc.marked
+
+
+class Named(Sheet):
+    NAMEABLE = True
+    file_name = ExportSheet.file_name
+
+    def default_stem(self):
+        return "Main"
+
+    def file_ext(self):
+        return ".txt"
+
+
+def test_the_name_typed_in_the_sheet_is_the_file_written(tmp_path):
+    sheet = Named(Bridge())
+    sheet.setFolder(str(tmp_path))
+    sheet.setNameStem('my: film/v2')                      # what a file name can't hold is dropped
+    assert sheet.fileName == "my film v2.txt"
+    export(sheet)
+    assert (tmp_path / "my film v2.txt").is_file()
+    sheet.setNameStem("")                                 # empty = the app's own name again
+    assert sheet.fileName == "Main.txt"

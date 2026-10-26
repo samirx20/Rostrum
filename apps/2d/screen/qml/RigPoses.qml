@@ -39,7 +39,7 @@ Column {
             readonly property real labelW: Theme.labelColumnFor(pl.full)
             width: pl.full; height: Theme.row; radius: Theme.radiusCtl
             color: rowArea.containsMouse ? Theme.hover : "transparent"
-            function startRename() { nameEdit.text = modelData.name; renaming = true; nameEdit.forceActiveFocus(); nameEdit.selectAll() }
+            function startRename() { renaming = true }
             NameLabel {
                 id: nameText
                 visible: !row.renaming
@@ -47,14 +47,13 @@ Column {
                 width: row.labelW - Theme.gap
                 text: row.modelData.name; help: "Click: key this pose at the playhead · double-click: rename"
             }
-            TextInput {     // rename in place: Enter keeps it, Esc or a click elsewhere leaves the name as it was
+            NameBox {     // rename in place (the kit's box): Enter keeps it, Esc or a click elsewhere leaves the name as it was
                 id: nameEdit
                 visible: row.renaming
+                current: row.modelData.name
                 anchors { left: nameText.left; right: nameText.right; verticalCenter: parent.verticalCenter }
-                color: Theme.fg; selectionColor: Theme.accent; font.pixelSize: Theme.body; font.family: uiFont
-                onAccepted: { row.renaming = false; if (text.trim() && text.trim() !== row.modelData.name) pl.p.rename(row.modelData.id, text.trim()) }
-                Keys.onEscapePressed: row.renaming = false
-                onActiveFocusChanged: if (!activeFocus) row.renaming = false
+                onDone: (t) => { row.renaming = false; if (t.trim() && t.trim() !== row.modelData.name) pl.p.rename(row.modelData.id, t.trim()) }
+                onCancelled: row.renaming = false
             }
             MouseArea {
                 id: rowArea

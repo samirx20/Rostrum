@@ -69,9 +69,10 @@ def layout(op, kind: str = "") -> list[dict]:
 
 def _unsaid(rows: list[dict]) -> list[dict]:
     """A row inside an open group that would only repeat the group's heading ("Anchor" over the Anchor X | Y pair, "Tilt"
-    over Tilt) keeps its field and drops its label: the heading right above it already says the word."""
+    over Tilt) keeps its field and drops its label (`said` keeps the words for the history: "Animate Tilt"): the heading
+    right above it already says the word."""
     heading = {r["fold"]: r["label"] for r in rows if r["row"] == "fold"}
-    return [{**r, "label": ""} if r["row"] == "param" and r.get("in") and r["label"] == heading.get(r["in"]) else r
+    return [{**r, "label": "", "said": r["label"]} if r["row"] == "param" and r.get("in") and r["label"] == heading.get(r["in"]) else r
             for r in rows]
 
 

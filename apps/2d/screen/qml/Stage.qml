@@ -283,6 +283,7 @@ Rectangle {
             function stop() { if (moving) backend.endDrag(); moving = false; band = false; held = "" }
             function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
             property string held: ""        // an Alt press on a layer: a click picks behind, a drag past 4 px makes a copy (decided on the first move)
+            property bool lined: false      // Alt+Shift: the same, but a click leaves the pick alone and the copy goes along a line
             function begin(hit, p, copy) {  // a layer pressed: it is what Ctrl+C, X and V act on, not keys picked before
                 backend.keys.clear()
                 if (!backend.multi.has(hit)) backend.multi.pick(p.x, p.y, deep ? "deep" : "click")   // else keep the selection and move it
@@ -293,9 +294,9 @@ Rectangle {
                 deep = Mods.ctrl(m)
                 unseen = hidden(m)
                 var hit = unseen ? "" : backend.multi.target(p.x, p.y, deep ? "deep" : "click")
-                sx = m.x; sy = m.y; band = false; moving = false; held = ""
+                sx = m.x; sy = m.y; band = false; moving = false; held = ""; lined = Mods.alt(m) && Mods.shift(m)
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
-                if (Mods.alt(m) && !Mods.shift(m)) { held = hit; return }                       // Alt: click or copy-drag, not yet known
+                if (Mods.alt(m)) { held = hit; return }                                          // Alt (and Shift: on a line): click or copy-drag, not yet known
                 if (Mods.shift(m)) { backend.keys.clear(); backend.multi.toggle(hit) }        // Shift+click: add / remove
                 else begin(hit, p, false)
             }
@@ -308,7 +309,7 @@ Rectangle {
                 } else if (band) b1 = comp(m)
             }
             onReleased: (m) => {
-                if (held !== "") { const p = comp({ x: sx, y: sy }); backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click"); held = "" }   // Alt+click: the layer behind
+                if (held !== "") { const p = comp({ x: sx, y: sy }); if (!lined) { backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click") }; held = "" }   // Alt+click: the layer behind (Alt+Shift+click: the pick stays)
                 if (band) {
                     if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) {                   // a click: the composition
                         if (unseen) backend.clearSelection(); else backend.pickAt(b0.x, b0.y)

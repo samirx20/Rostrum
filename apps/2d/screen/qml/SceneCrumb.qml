@@ -10,11 +10,13 @@ Item {
     implicitWidth: crumbRow.implicitWidth + 2 * Theme.grid; implicitHeight: Theme.button
     property bool renaming: false
     function beginRename() {       // (the menu gives the keyboard back to where it was as it closes: the box takes it after that)
-        renaming = true; nameBox.text = backend.frameInfo.label; nameBox.had = false
-        if (sceneMenu.visible) sceneMenu.close(); else focusBox()
+        renaming = true
+        if (sceneMenu.visible) { settling = true; sceneMenu.close() } else focusBox()
     }
-    function focusBox() { nameBox.forceActiveFocus(); nameBox.selectAll() }
-    function endRename(keep) { if (!renaming) return; renaming = false; if (keep) backend.renameScene(nameBox.text) }
+    property bool settling: false     // the menu is closing under the box: its focus grab is not the person leaving
+    function focusBox() { settling = false; nameBox.forceActiveFocus(); nameBox.selectAll() }
+    function endRename(keep) { if (!renaming || settling) return;
+        renaming = false; if (keep) backend.renameScene(nameBox.text) }
     function open() { sceneMenu.entries = backend.sceneEntries(); sceneMenu.openFrom(crumb, "left") }
     Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: crumbArea.containsMouse ? Theme.hover : "transparent" }
     Row {
@@ -28,16 +30,16 @@ Item {
                HoverTip { text: parent.truncated ? parent.text : ""; hovered: nameHover.hovered } }
         Chevron { color: Theme.fg3; anchors.verticalCenter: parent.verticalCenter }
     }
-    TextInput {  // the name box while renaming: Enter or leaving the box keeps, Esc drops
+    NameBox {  // the kit's name box (Ctrl+Z with nothing typed closes it and undoes): Enter or leaving the box keeps, Esc drops
         id: nameBox
         objectName: "sceneNameBox"
         visible: crumb.renaming
+        current: backend.frameInfo.label
+        keepOnAway: true
         x: Theme.grid + 14; width: Math.max(120, crumbRow.implicitWidth - 14 - Theme.grid); anchors.verticalCenter: parent.verticalCenter
-        font.family: uiFont; font.pixelSize: Theme.body; font.weight: Font.DemiBold; color: Theme.fg; selectByMouse: true; clip: true
-        onAccepted: crumb.endRename(true)
-        property bool had: false
-        onActiveFocusChanged: { if (activeFocus) had = true; else if (had) crumb.endRename(true) }
-        Keys.onEscapePressed: crumb.endRename(false)
+        font.weight: Font.DemiBold
+        onDone: (t) => crumb.endRename(true)
+        onCancelled: crumb.endRename(false)
     }
     MouseArea { id: crumbArea; objectName: "sceneCrumbArea"; anchors.fill: parent; hoverEnabled: true; enabled: !crumb.renaming
                 cursorShape: Qt.PointingHandCursor

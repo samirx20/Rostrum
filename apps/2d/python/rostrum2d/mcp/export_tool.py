@@ -29,6 +29,7 @@ tools = Tools()
     "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0. Not for lottie or motion (both always hold the whole composition)."},
     "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition. Not for lottie or motion."},
     "path": {"type": "string", "description": "Write here (absolute, or relative to the project folder; for png a new folder). Default: the project's renders folder (a versioned render with a manifest, the file named after the project and composition), or the person's Videos folder (no project)."},
+    "name": {"type": "string", "description": "The file's name without its type (\"Launch film\" → Launch film.mp4), as the Export panel's name field. Default: the project's name (and the composition's when it says something). Characters a file name can't hold are dropped."},
     "overwrite": {"type": "boolean", "description": "Replace a file that already exists at `path`. Default false: an existing file makes the export fail (nothing is replaced)."}}})
 def render_export(ctx, args):
     """Export a composition in one of the formats the Export button offers, through the same engine as look_frame. Always a job: it
@@ -58,7 +59,7 @@ def render_export(ctx, args):
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"layers"', "is for format motion only")
     scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
     folder, item, seq = ctx.app.folder, doc.item_id, doc.seq
-    name, overwrite = export_name.stem_of(doc, comp["id"]), bool(args.get("overwrite"))
+    name, overwrite = (export_name.clean(args.get("name") or "") or export_name.stem_of(doc, comp["id"])), bool(args.get("overwrite"))
 
     def job_fn(job):
         facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite, on_stop=job.on_cancel)
