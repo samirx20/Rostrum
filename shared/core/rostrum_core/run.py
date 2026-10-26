@@ -222,7 +222,7 @@ def plan_indexed(kind, data: dict, calls, locked_by=None, who=None, idx=None, ch
     for err, op, target, args, where in late:
         view = View(work, kind.lists, idx)
         _check_valid_when(kind, op, [view.locs()[t].item for t in target if t in view.locs()], args, view, where)
-    problems = kind.problems(work, changed_items(applied, idx, kind.lists), set_fields(applied)) if check else []
+    problems = kind.problems(work, changed_items(applied, idx, kind.lists), set_fields(applied), idx) if check else []
     if problems:
         raise RostrumError(codes.CHECK_FAILED, f"{len(calls)} op(s)", "the document", "would break its check: "
                            + "; ".join(problems))

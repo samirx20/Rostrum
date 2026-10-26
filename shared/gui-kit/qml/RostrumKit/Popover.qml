@@ -12,7 +12,7 @@ import "."
 //                                 // or menu that opened it; at (x, y) when none is shown (a key or a script opened it)
 // Built on SmallPopup (the window's keys keep working). Closes on Esc (first `escaped()`, so an app can take the change back;
 // typing in a field is dropped with it) and on a click outside. A `modal` popover
-// swallows the click that closes it (and never dims the window: `dim` is off). `accepted()` is Enter pressed anywhere in it that no field used (the app decides
+// swallows the click that closes it (and never dims the window: `dim` is off). `accepted()` is Enter pressed while it is open, wherever the keyboard is, that no field or list used (the app decides
 // whether that closes it: pop.close()). The popover stays inside the window, whatever the size. Keyboard focus goes
 // into `focusItem` (else the popover itself) on opening and goes back to what had it when it closes.
 SmallPopup {
@@ -87,7 +87,11 @@ SmallPopup {
     onAboutToShow: before = focused
     onOpened: (focusItem ? focusItem : pop).forceActiveFocus()
     onClosed: { if (before && before.visible) before.forceActiveFocus(); before = null }
-    KeyShortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.mine && !pop.typing; onActivated: pop.accepted() }
+    // Enter keeps it wherever the keyboard is while it is the newest popup open (critic r10: a choice list picked with the
+    // mouse hands the keys to the window behind as it closes, and an Enter that asked `mine` was then heard by nothing).
+    // A text field (its own Enter sets its number first) and a list open over it (its Enter picks) go first.
+    readonly property bool newest: OpenPopups.open.length > 0 && OpenPopups.open[OpenPopups.open.length - 1] === pop
+    KeyShortcut { sequences: ["Return", "Enter"]; enabled: pop.opened && pop.newest && !pop.typing; onActivated: pop.accepted() }
 
     contentItem: Column {
         readonly property var popover: pop           // a choice list inside finds its popover by this (ChoiceField.handKeysBack)

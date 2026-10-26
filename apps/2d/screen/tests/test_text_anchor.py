@@ -57,6 +57,6 @@ def test_the_text_tool_and_a_script_place_a_text_alike(screen):
     QTest.qWait(300)
     made = next(lay for lay in b.comp()["layers"] if lay["type"] == "text" and lay["id"] != "ref")
     ref, mine = boxes.box(b.doc.item("ref"), 0.0), boxes.box(made, 0.0)
-    assert abs(made["x"] - 600) < 2 and abs(made["y"] - 1000) < 2, made
-    assert abs((ref[0] + ref[2]) / 2 - (mine[0] + mine[2]) / 2) < 2, (ref, mine)          # the same across, about x
-    assert abs((ref[1] + ref[3]) / 2 - (mine[1] + mine[3]) / 2 + 700) < 2, (ref, mine)    # and about y (700 lower)
+    assert abs(made["x"] - 600) < 2.5 and abs(made["y"] - 1000) < 2.5, made     # a screen pixel here, + the click's whole-pixel rounding
+    assert abs((ref[0] + ref[2]) / 2 - (mine[0] + mine[2]) / 2) < 2.5, (ref, mine)        # the same across, about x
+    assert abs((ref[1] + ref[3]) / 2 - (mine[1] + mine[3]) / 2 + 700) < 2.5, (ref, mine)  # and about y (700 lower)

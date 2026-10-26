@@ -88,13 +88,13 @@ Rectangle {
         visible: tl.canCompact && tl.canPickRows
         anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: ruler.verticalCenter }
         implicitHeight: 26; kind: "ghost"
-        text: tl.compact ? "All layers" : "Only this layer"
+        text: tl.compact ? "Show all layers" : "Only this layer"
         // its room is kept whether it shows or not (and whichever words it has), so the ruler never changes scale when a layer is picked
         readonly property real room: Math.max(wordsA.implicitWidth, wordsB.implicitWidth)
         width: room
         onClicked: tl.compactAsked(!tl.compact)
         Button { id: wordsA; visible: false; implicitHeight: 26; kind: "ghost"; text: "Only this layer" }
-        Button { id: wordsB; visible: false; implicitHeight: 26; kind: "ghost"; text: "All layers" }
+        Button { id: wordsB; visible: false; implicitHeight: 26; kind: "ghost"; text: "Show all layers" }
     }
     readonly property real rowsTop: ruler.y + ruler.height + Theme.grid
     Item {   // where `curves` lies

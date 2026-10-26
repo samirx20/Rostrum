@@ -38,7 +38,7 @@ class DepthTyped(QObject):
             return False
         self._value = float(f.items[0].get("depth", 0.0))
         self._what = self.b.selection_label(f.ids)
-        if not self.b.guard(lambda: setattr(self, "_drag", Drag(self.b.doc, self.b.who, "Set depth"))):
+        if not self.b.guard(lambda: setattr(self, "_drag", Drag(self.b.doc, self.b.who, "Set depth", interrupt=self.end))):
             return False
         self.changed.emit()
         self.opened.emit()

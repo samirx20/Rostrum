@@ -130,7 +130,9 @@ Every pattern below follows the same layout:
 4. The **edit block** (Copy, Cut, Paste, Duplicate, Rename, Delete) never sits on the context bar or under its ⋯. These
    are keys, and they are in the right-click menu.
 5. An action with an amount (stagger by, transpose by, fade length) opens a small popover or an inline field in the
-   bar. It remembers the last amount, and is one undo step when you click away or press Enter.
+   bar. It remembers the last amount, and is one undo step when you click away or press Enter (Enter keeps it wherever
+   the keyboard is, also right after picking from one of its lists with the mouse). Any other command while it is open
+   (Ctrl+G, Ctrl+Z, Delete …) keeps it first, then runs; Ctrl+Z then takes it back.
 
 **Why (3E).**
 - *Effective:* every relating action (group, mask, combine, send to a group, layer as one sound) takes the right

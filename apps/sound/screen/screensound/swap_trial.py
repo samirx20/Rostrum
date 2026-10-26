@@ -30,7 +30,7 @@ class SwapTrial:
         b = self.bridge
         if not self.active:
             self.clip, self._original = clip_id, copy.deepcopy(b.doc.item(clip_id))
-            self._drag = Drag(b.doc, b.who, LABEL)
+            self._drag = Drag(b.doc, b.who, LABEL, interrupt=self.keep)    # another edit keeps the one on show first
             self._was_loop = b.transport.loop
         args = {"media": result["path"], **({"in": result["start"]} if result["start"] > 0.05 else {}),
                 **ops_swap.original_args(self._original, b.doc.data)}
