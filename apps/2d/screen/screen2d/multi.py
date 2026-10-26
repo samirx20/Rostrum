@@ -30,17 +30,16 @@ class Multi(QObject):
         # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
-        self._boxes = self._group = None                    # the boxes, made once per change (see `boxes`)
-        for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged, bridge.docChanged,
-                  bridge.docStepped, bridge.timeChanged):
-            s.connect(self._forget)                         # first: a reader told of news below finds fresh boxes
+        self._boxes = self._group = (None, None)            # (what they were made from, the boxes): see `_made`
         for name in ("boxesChanged", "pickedChanged", "rideChanged"):
             told = news.relay(self, name)
             for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
                 s.connect(told)
 
-    def _forget(self):
-        self._boxes = self._group = None
+    def _made(self):
+        """What the boxes are made from: the picked layers and the picture on screen (shown.py). A cache keyed on it
+        can't go stale the way one cleared by a list of signals did (one missed and a pick drew no outline)."""
+        return (tuple(self.layers()), self.b.shown_placed(), self.b.shown_t())
 
     @Property("QVariantList", notify=boxesChanged)
     def boxes(self):
@@ -48,17 +47,19 @@ class Multi(QObject):
         shows them (shown.py; a layer newer than the picture has none yet). Made once per change and kept: each outline
         reads the whole list (`backend.multi.boxes[index]`), so remaking it per read made a pick of n layers n x n boxes
         (48 layers: 2,500 boxes, ~100 ms)."""
-        if self._boxes is None:
-            self._boxes = [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
-        return self._boxes
+        made = self._made()
+        if not _same(self._boxes[0], made):
+            self._boxes = (made, [dressed(b) for b in self.b.shown_boxes(self.layers())])   # with their knobs (handle_kinds.dressed)
+        return self._boxes[1]
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
         """The one box round all the selected layers (their handles: group_slots.py); {} for fewer than two."""
-        if self._group is None:
+        made = self._made()
+        if not _same(self._group[0], made):
             boxes = self.b.shown_boxes(self.layers())
-            self._group = dressed(union(boxes)) if len(boxes) > 1 else {}
-        return self._group
+            self._group = (made, dressed(union(boxes)) if len(boxes) > 1 else {})
+        return self._group[1]
 
     @Property("QVariantMap", notify=rideChanged)
     def ride(self):
@@ -233,3 +234,8 @@ class Multi(QObject):
         ids = box(self.layers(), touched, set(mods.split()), "canvas")
         self._set(ids)
         return len(ids)
+
+
+def _same(was, now) -> bool:
+    """Multi._made's keys alike: the same layers and time, and the very same picture (not an equal one: no deep compare)."""
+    return was is not None and was[0] == now[0] and was[1] is now[1] and was[2] == now[2]

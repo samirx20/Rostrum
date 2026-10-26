@@ -55,3 +55,21 @@ def test_alt_drag_from_the_middle_of_a_tiny_dot_copies_it(screen):
     assert (round(layers["dot"]["x"]), round(layers["dot"]["w"])) == (500, 28), "the original must stay as it was"
     copies = [l for i, l in layers.items() if i not in ("dot", "frame")]
     assert len(copies) == 1 and round(copies[0]["w"]) == 28 and copies[0]["x"] > 560
+
+
+def test_a_click_on_a_layer_shows_its_squares(screen):
+    """A pick draws the layer's outline and squares (f3942096 cached the boxes and a pick then drew none)."""
+    from PySide6.QtCore import QObject, QPoint, QPointF, Qt
+    from PySide6.QtTest import QTest
+    b, win = screen
+    st = win.findChild(QObject, "stage")
+    scale, o = st.property("compScale"), st.property("compOrigin")
+    q = st.mapToScene(QPointF(o.x() + 500 * scale, o.y() + 500 * scale))
+    QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, QPoint(round(q.x()), round(q.y())))
+    QTest.qWait(300)
+    todo, squares = [win.contentItem()], []
+    while todo:                                     # the squares are made by a Repeater: walk the items, not the QObjects
+        it = todo.pop()
+        squares += [it] if it.objectName().startswith("handle:") and it.isVisible() else []
+        todo += it.childItems()
+    assert b.multi.ids == ["dot"] and len(squares) >= 4
