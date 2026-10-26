@@ -24,10 +24,10 @@ def _visible(bridge) -> dict | None:
 
 
 def state(bridge) -> dict:
-    comp = bridge.comp()
-    ids = [r["id"] for r in _selected(bridge)]
+    comp, picked = bridge.comp(), _selected(bridge)          # (once: 200 layers picked, ~9 ms each time)
+    ids = [r["id"] for r in picked]
     return {
-        "selection": _selected(bridge),
+        "selection": picked,
         "playhead": bridge._t,                         # composition seconds
         "range": None,                                 # 2D has no time range yet
         "scene": bridge.label_of(comp),                # the open composition

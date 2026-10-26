@@ -62,7 +62,7 @@ class Facts:
         self.copied = copied if copied and doc.has(copied) else ""
         groupable = bool(p) and p["type"] in HOLDERS and p.get("layout", "none") == "none" and FRAME not in self.kinds
         groups = self.kinds == {"group"}
-        self.facts = {
+        self.facts = Later({
             "one": self.count == 1, "same_parent": p is not None, "groupable": groupable,
             "one_group": self.count == 1 and groups,       # a group alone: Ungroup, not "Group" echoing its own title
             "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_frame": FRAME in self.kinds,
@@ -84,7 +84,7 @@ class Facts:
             "bones_guessable": self.count == 1 and guessable(self.items[0]),
             "mirrorable": self.count == 1 and self.items[0]["type"] == "rig" and bool(mirror_pairs(self.items[0])),   # Mirror pose ▾ (rig/mirror.py)
             "attachable": rig_attach.pair(doc, list(self.state.get("picked", []))) is not None,   # a part + a bone
-            "body_parts": groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items)),   # Make rig first
+            "body_parts": later(lambda: groupable and p["type"] != "rig" and "rig" not in self.kinds and bodylike(_part_names(self.items))),   # Make rig first
             "mouth_set": self.count == 1 and is_mouth(self.items[0]),
             "eyes_set": self.count == 1 and is_eyes(self.items[0]),
             "depth_ok": self.kinds == {"drawing"} and bool(p) and p["type"] == "comp",   # Set depth: drawings of the scene itself
@@ -92,7 +92,25 @@ class Facts:
             "painted_fill": self.count == 1 and self.items[0].get("fillType") == "painted",   # Paint it (the fill picker)
             **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
             **pin_depth.facts(self),                        # Pin to frame / Unpin from frame (pin_depth.py)
-            **cover_move.facts(self)}                       # Cover the frame's move (cover_move.py)
+            "cover_ok": later(lambda: cover_move.applies_to_all(self))})    # Cover the frame's move (cover_move.py)
+
+
+class later:
+    """A fact worked out only when a rule reads it (`Later`): one that walks every picked layer and that few actions ask
+    (Make rig's body part names, Cover the frame's move): 200 layers picked made them on every pick, ~25 ms."""
+    __slots__ = ("fn",)
+
+    def __init__(self, fn):
+        self.fn = fn
+
+
+class Later(dict):
+    """Facts, some `later`: `get` (how every rule reads facts: conditions.holds) works one out the first time."""
+    def get(self, name, default=None):
+        v = dict.get(self, name, default)
+        if isinstance(v, later):
+            v = self[name] = v.fn()
+        return v
 
 
 def _comp_of(doc, id_: str) -> str:
@@ -166,10 +184,14 @@ def _order(f: Facts, how: str) -> list[dict]:
 
 def _pose(f: Facts) -> list[dict]:
     """K: key.add fields "pose" on each selected layer at the playhead in its own seconds (one call per layer)."""
-    return [{"op": "rig.key", "target": [i], "args": {"t": round(f.at(i), 6)}} if f.doc.item(i)["type"] == "rig"   # a rig: its bones' pose (rig/joints.py)
-            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids
-            if f.doc.item(i)["type"] == "rig" or keyable_now(f.doc, f.doc.item(i), round(f.at(i), 6))]   # none: "Key here would change nothing here"
+    return list(_poses(f))
 
+
+def _poses(f: Facts):
+    """K's calls one layer at a time (`_pose`; listing asks only for the first: ANY)."""
+    return ({"op": "rig.key", "target": [i], "args": {"t": round(f.at(i), 6)}} if f.doc.item(i)["type"] == "rig"   # a rig: its bones' pose (rig/joints.py)
+            else {"op": "key.add", "target": [i], "args": {"fields": "pose", "t": round(f.at(i), 6)}} for i in f.ids
+            if f.doc.item(i)["type"] == "rig" or keyable_now(f.doc, f.doc.item(i), round(f.at(i), 6)))   # none: "Key here would change nothing here"
 
 
 POSE_WORDS = {"x": "position", "y": "position", "scale": "scale", "zoom": "zoom", "rotation": "rotation", "opacity": "opacity"}
@@ -207,5 +229,6 @@ def said(calls: list[dict], label: str, doc) -> str:
     return f"Keyed {n} setting{'s' if n != 1 else ''} on {on}"
 
 
+ANY = {"pose": lambda f: next(_poses(f), None) is not None}     # a rule's "would it make any call", told sooner (Action.any_calls)
 RULES = {"order": _order, "duplicate": _duplicate, "pose": _pose, "depth": pin_depth.depth_calls, "pin": pin_depth.calls, "frame": frame_actions.calls,
          "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}

@@ -21,8 +21,9 @@ def targets(doc, ids) -> list[str]:
     return [i for i in ids if (c := _comp(doc, i)) is not None and applies(doc.item(i), c)]
 
 
-def facts(f) -> dict:
-    return {"cover_ok": bool(f.ids) and targets(f.doc, f.ids) == list(f.ids)}
+def applies_to_all(f) -> bool:
+    """The fact "cover_ok": every picked layer can take it (the first that can't ends the look)."""
+    return bool(f.ids) and all((c := _comp(f.doc, i)) is not None and applies(f.doc.item(i), c) for i in f.ids)
 
 
 def data(a) -> list[dict]:
