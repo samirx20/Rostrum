@@ -16,7 +16,7 @@ def _number(ctx, owner, prop, args):
 
 @R.operation("object.add", "Add an object", target="doc", params=[Param.text("id", label="Id", required=True)])
 def object_add(ctx, targets, args):
-    ctx.insert("root", "objects", {"id": args["id"], "type": "object", "keys": []}, None)
+    ctx.insert("root", "objects", {"id": args["id"], "type": "object", "visible": True, "keys": []}, None)
 
 
 put_key = register_key_ops(R, owners=["object"], check_key=_number, check_still=lambda ctx, o, p, a: float(a["v"]))
@@ -50,3 +50,14 @@ def test_a_script_eases_a_3d_objects_stretch(doc):
 def test_the_last_key_starts_no_stretch(doc):
     with pytest.raises(RostrumError, match="last key"):
         doc.apply({"op": "anim.ease", "target": ["cube.lx.k2000"], "args": {"preset": "linear"}}, SAM)
+
+
+def test_an_on_off_field_stays_true_false_when_its_keys_go(doc):
+    """A toggle's key holds 1.0 / 0.0; stopping the animation or deleting its last key writes back True / False."""
+    for t, v in ((0.0, 1.0), (1.0, 0.0)):
+        doc.apply([{"op": "key.add", "target": "cube", "args": {"prop": "visible", "t": t, "v": v}}], SAM)
+    doc.apply([{"op": "key.clear", "target": "cube", "args": {"prop": "visible", "at": 2.0}}], SAM)
+    assert doc.item("cube")["visible"] is False
+    doc.apply([{"op": "key.add", "target": "cube", "args": {"prop": "visible", "t": 0.0, "v": 1.0}}], SAM)
+    doc.apply([{"op": "key.remove", "target": "cube.visible.k0"}], SAM)
+    assert doc.item("cube")["visible"] is True
