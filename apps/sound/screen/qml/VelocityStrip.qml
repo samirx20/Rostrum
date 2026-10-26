@@ -1,6 +1,7 @@
 import QtQuick
 import RostrumKit
 import "Blocks.js" as Blocks
+import "Slide.js" as Slide
 import "Marks.js" as Marks
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
@@ -107,6 +108,11 @@ Item {
             if (waiting) return                                  // the stretched picture stands until its turn
             if (height <= 0) { whole = true; return }            // the Editor still opening: painted once it has a size
             var ctx = getContext("2d"), v = view(), at = Marks.velAt(v)
+            var slid = whole ? null : Slide.slide(kept, ctx, s.blocks, s.picked, v.x0, v.perSec, width, height)
+            for (var j = 0; slid !== null && j < slid.length; j++) {    // every bar moved as one: the picture moved
+                Blocks.clear(ctx, slid[j][0]); paintIn(ctx, slid[j][1], v, slid[j][0]); ctx.restore()
+            }
+            if (slid !== null) return
             var dirty = whole ? null : Blocks.update(kept, s.blocks, s.picked, at)
             whole = false
             if (dirty === null) { markPainted(); ctx.reset(); paintIn(ctx, Blocks.rebuild(kept, s.blocks, s.picked, at, width), v, null); return }

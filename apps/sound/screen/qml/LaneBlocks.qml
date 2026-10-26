@@ -1,6 +1,7 @@
 import QtQuick
 import RostrumKit
 import "Blocks.js" as Blocks
+import "Slide.js" as Slide
 import "Marks.js" as Marks
 
 // One track's things in an arrangement row, drawn only (clicks are the Timeline's): notes as thin bars placed
@@ -135,6 +136,11 @@ Item {
         onPaint: {
             if (waiting) return                                  // the stretched picture stands until its turn
             var ctx = getContext("2d"), v = view(), at = Marks.laneAt(v)
+            var slid = whole ? null : Slide.slide(kept, ctx, lane.shown, lane.picked, v.x0, v.perSec, width, height)
+            for (var s = 0; slid !== null && s < slid.length; s++) {    // every block moved as one: the picture moved
+                Blocks.clear(ctx, slid[s][0]); Marks.lanePaint(ctx, slid[s][1], v, slid[s][0]); ctx.restore()
+            }
+            if (slid !== null) return
             var dirty = whole ? null : Blocks.update(kept, lane.shown, lane.picked, at)
             whole = false
             if (dirty === null) { markPainted(); ctx.reset(); Marks.lanePaint(ctx, Blocks.rebuild(kept, lane.shown, lane.picked, at, width), v, null); return }
