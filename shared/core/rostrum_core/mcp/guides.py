@@ -27,6 +27,23 @@ START_HERE = """# Start here: how every Rostrum server answers
 CAP = 8000      # characters of a guide one inspect_guide reply carries before it lists the remaining sections
 
 
+def split_front(text: str) -> tuple[dict, str]:
+    """A guide's front matter and the rest. Front matter is an optional first block of `key: value` lines between two
+    `---` lines (the Help menu reads `help:` and `order:` from it); a guide without one comes back whole."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        return {}, text
+    for i, line in enumerate(lines[1:], 1):
+        if line.strip() == "---":
+            meta = {}
+            for row in lines[1:i]:
+                key, sep, value = row.partition(":")
+                if sep:
+                    meta[key.strip()] = value.strip()
+            return meta, "".join(lines[i + 1:]).lstrip(chr(10))
+    return {}, text
+
+
 def _head(part: str) -> str:
     return part.splitlines()[0].lstrip("# ").strip()
 
@@ -39,14 +56,19 @@ class Guides:
 
     def __init__(self, topics: dict[str, str] | None = None):
         self._topics = {"start-here": START_HERE, **(topics or {})}
+        self._origins: dict[str, str] = {}      # topic -> a plugin's id; a built-in guide has no entry
 
-    def add(self, topic: str, text: str):
+    def add(self, topic: str, text: str, origin: str = "builtin"):
         self._topics[topic] = text
+        self._origins[topic] = origin
 
-    def load_folder(self, folder) -> "Guides":
+    def load_folder(self, folder, origin: str = "builtin") -> "Guides":
         for f in sorted(Path(folder).glob("*.md")):
-            self._topics[f.stem] = f.read_text(encoding="utf-8")
+            self.add(f.stem, split_front(f.read_text(encoding="utf-8"))[1], origin)
         return self
+
+    def origin(self, topic: str) -> str:
+        return self._origins.get(topic, "builtin")
 
     def topics(self) -> list[str]:
         return sorted(self._topics)

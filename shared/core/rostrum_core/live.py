@@ -136,7 +136,8 @@ class Live:
             if not self.behind():
                 return False
             ch = self.doc.history.changes
-            self._writing = DocWrite(self.p["doc"], self.doc.kind, self.doc.data, self.doc.seq, ch[-1] if ch else None)
+            self._writing = DocWrite(self.p["doc"], self.doc.kind, self.doc.data, self.doc.seq, ch[-1] if ch else None,
+                                     self.doc.uses)
         return True
 
     def fold_work(self, budget=0.003) -> bool:

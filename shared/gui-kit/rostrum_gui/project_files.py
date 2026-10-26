@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
-from rostrum_core import RostrumError, codes, live, samples
+from rostrum_core import RostrumError, codes, live, plugin_parts, samples
 
 from . import docfiles as F, heap
 from .file_menu import FileMenuSlots
@@ -210,6 +210,8 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
         if self._said:
             self._refuse(self._said)
             self._said = ""
+        elif (lacks := plugin_parts.missing_of(doc)) and self.host.bridge is not None:
+            self.host.bridge.say(" ".join(lacks))           # it opened; the top bar names the plugins it lacks
 
     def _picture(self, bridge, doc):
         try:

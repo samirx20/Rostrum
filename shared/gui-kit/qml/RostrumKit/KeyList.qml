@@ -3,7 +3,7 @@ import QtQuick.Controls as QQC
 import "."
 
 // The key list (Ctrl+/, INTERACTION.md 1.17): every key of this app, grouped by job, searchable. Built from the same
-// key map the shortcuts are made from (`keys`: the hub's [{job, keys, label, area}]), so it can never be out of date.
+// key map the shortcuts are made from (`keys`: the hub's [{job, keys, label, area, origin}]; a key from the person's own key file says "your key"), so it can never be out of date.
 // Esc closes it and the keys go back to the work.
 SmallPopup {
     id: dlg
@@ -59,7 +59,7 @@ SmallPopup {
                    font.capitalization: Font.AllUppercase; font.letterSpacing: Theme.capsSpacing }
             Text { visible: !parent.modelData.head; anchors.verticalCenter: parent.verticalCenter
                    width: parent.width - keysRow.width - Theme.gap; elide: Text.ElideRight
-                   text: parent.modelData.label || ""; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                   text: (parent.modelData.label || "") + (parent.modelData.origin === "user" ? " (your key)" : ""); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
             Row {
                 id: keysRow
                 visible: !parent.modelData.head

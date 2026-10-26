@@ -39,4 +39,7 @@ The same actions are in the command box (**Ctrl+K**).
 
 A damaged project, or one saved by a newer Rostrum2D, is not opened. A sentence in the top bar says why, in plain words ("This project file is damaged and can't be opened: proj.mtn"), and that nothing was changed.
 
+## Your own keys
+
+To use a different key for something, make the text file `.rostrum/keys/rostrum2d.toml` in your home folder and write one line per action: `"Undo" = "Ctrl+Shift+Z"`. An empty key (`"Add a marker at the playhead" = ""`) takes the key away. Write the action's name as the Keys list (**Ctrl+/**) shows it; a key you changed is marked "(your key)" there. If a line names an action that doesn't exist, or a key another action already has, the app says so when it starts and tells you which file to fix.
 Next: [first-animation.md](first-animation.md), [exporting.md](exporting.md).

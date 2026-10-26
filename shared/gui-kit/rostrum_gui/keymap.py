@@ -9,8 +9,25 @@ press, once (no auto-repeat), and the job's release when the key comes up (keyho
 A clash is refused at start-up with a plain message naming both meanings (fail loudly): an app key that takes a
 shared key, or one key meaning two things in one app. Pointer gestures (click, box, wheel, drag modifiers) are in
 1.3 and 1.10, not here: they are not shortcuts.
+
+Origin: every key row says where it comes from: "builtin" (Rostrum's own), a plugin's id, or "user" (the person's own
+key file, below). The key list shows it.
+
+The person's own keys: `<home>/keys/<app>.toml` (home: rostrum_core.userhome, so a scripted run reads its scratch
+home; <app> is the map's name in lower case: rostrum2d.toml), read LAST, one line per action:
+
+    "undo" = "Ctrl+Shift+Z"        # a job -> its key; a list of keys is fine; "" = no key
+    "Add a marker at the playhead" = ""      # or the name as the key list shows it
+
+Without the file nothing changes. A file that can't be read, names a job this app doesn't have, or gives a key another
+job holds is refused at start-up with the file's path and what is wrong (never ignored).
 """
 from __future__ import annotations
+
+import tomllib
+from pathlib import Path
+
+from rostrum_core import userhome
 
 MODS = ("Ctrl", "Alt", "Shift", "Meta")
 NAMES = {"esc": "Esc", "escape": "Esc", "return": "Enter", "del": "Delete", "bksp": "Backspace", "pgup": "PgUp",
@@ -129,8 +146,9 @@ class KeyMap:
     shared job adds another key for it (2D's Shift+2 for Fit). A hold key is a single key without Ctrl / Alt, so
     letting it go is never mistaken for letting go of a modifier."""
 
-    def __init__(self, app: str, app_keys=(), drop=(), words=None):
+    def __init__(self, app: str, app_keys=(), drop=(), words=None, origin: str = "builtin"):
         """`drop`: shared jobs this app has nothing behind (2D has no Preferences): no key, not in the key list.
+        `origin`: where the app keys come from ("builtin", or a plugin's id; an app key may carry its own "origin").
         `words`: {job: label}, what a shared key is called in this app's own words (Sound's "one frame" is a grid step)."""
         self.app = app
         words = words or {}
@@ -138,7 +156,7 @@ class KeyMap:
         if unknown:
             raise ValueError(f"{app}'s key map names shared jobs that do not exist: {', '.join(unknown)}")
         self._rows = [{**r, "keys": [normal(k) for k in r["keys"]], "where": "shared", "hold": False,
-                       "label": words.get(r["job"], r["label"])}
+                       "origin": "builtin", "label": words.get(r["job"], r["label"])}
                       for r in SHARED if r["job"] not in drop]
         jobs = {r["job"]: r for r in self._rows}
         self._by_key = _index(self._rows, "the shared key map")
@@ -160,16 +178,44 @@ class KeyMap:
                 row["keys"] += [k for k in keys if k not in row["keys"]]
             else:
                 row = {"job": a["job"], "keys": keys, "label": a["label"], "area": a.get("area", app), "where": app,
-                       "hold": bool(a.get("hold"))}
+                       "hold": bool(a.get("hold")), "origin": a.get("origin", origin)}
                 self._rows.append(row)
                 jobs[row["job"]] = row
             for k in keys:
                 self._by_key[k] = row
         self._jobs = jobs
+        self._user_keys(Path(userhome.home()) / "keys" / f"{app.lower()}.toml")
+        self._spellings()
+
+    def _spellings(self):
         for r in self._rows:                    # the other spelling of a shifted sign runs the same job (SHIFTED)
             for k in r["keys"]:
                 for also in typed(k)[1:]:
                     self._by_key.setdefault(also, r)
+
+    def _user_keys(self, path: Path):
+        """The person's own keys, last (see the top of this file). No file: nothing changes."""
+        if not path.is_file():
+            return
+        try:
+            wanted = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (tomllib.TOMLDecodeError, OSError) as e:
+            raise ValueError(f"Your key file {path} can't be read: {e}") from e
+        by_label = {r["label"].lower(): r for r in self._rows}     # an action is written as its job or as in the key list
+        unknown = [j for j in wanted if j not in self._jobs and j.lower() not in by_label]
+        if unknown:
+            raise ValueError(f"Your key file {path} names actions {self.app} doesn't have: {', '.join(unknown)}. "
+                             f"Actions: {', '.join(sorted(self._jobs))}.")
+        for job, value in wanted.items():
+            row = self._jobs.get(job) or by_label[job.lower()]
+            try:
+                keys = [normal(k) for k in ([value] if isinstance(value, str) else value) if k]
+            except (ValueError, TypeError) as e:
+                raise ValueError(f'Your key file {path}: the key for "{job}" is wrong: {e}') from e
+            if row["hold"] and any("Ctrl+" in k or "Alt+" in k for k in keys):
+                raise ValueError(f'Your key file {path}: "{job}" is a hold key and must be a key on its own, without Ctrl or Alt')
+            row["keys"], row["origin"] = keys, "user"
+        self._by_key = _index(self._rows, f"Your key file {path}")
 
     def has(self, job: str) -> bool:
         return job in self._jobs

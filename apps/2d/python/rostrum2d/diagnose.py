@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from rostrum_core import project as P
+from rostrum_core import plugin_parts, project as P
 from rostrum_core.keys import animated, key_value, keys_of, marked
 from rostrum_core.marker_times import lookup
 
@@ -33,7 +33,10 @@ def _p(kind, item, message, fix=""):
 
 
 def problems(comp: dict, folder=None, markers: dict | None = None) -> list[dict]:
-    """The document-side problems (no engine). `markers`: the project's {name: seconds}; None = no project folder."""
+    """The document-side problems (no engine). `markers`: the project's {name: seconds}; None = no project folder.
+    A plugin's items are not looked at (rostrum_core.plugin_parts: what's missing is said on open and to agents)."""
+    from .kind import LISTS
+    comp = plugin_parts.engine_tree(comp, LISTS)
     items = items_of(comp)
     exprs = exprs_of(items)
     out = [_p("broken-link", "", m, "Point it at a path layer beside it, or clear its Follows path / Rides path field") for m in follow.problems(comp)]

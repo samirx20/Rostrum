@@ -56,6 +56,7 @@ class Document:
         self.script_bases: dict[str, dict] = {}         # § 7: what each script produced last time
         self.file_version = kind.version                # the file format it was read as (an older one is migrated on open)
         self.saved_by: str | None = None                # the app version that last saved it (storage.py)
+        self.uses: dict = {}                            # the plugins it uses, from its file (plugin_parts.py), saved back
         self.file_at: int | None = None                 # opened: the step its document file showed (None: unknown)
         self._subs, self._gesture = [], None
         self.live = None                                # live.Live when another program shares the file

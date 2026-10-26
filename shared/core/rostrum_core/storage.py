@@ -1,10 +1,12 @@
 """Saving and opening a document (OPERATIONS.md § 6, project-service CONTRACT.md § 1).
 
 In the project folder:
-    docs/<item><ext>                    the document: {"format", "version", "saved_by", "at", "hash", "doc"}, compact
+    docs/<item><ext>                    the document: {"format", "version", "saved_by", "at", "hash", ["uses",] "doc"}, compact
                                         JSON ("version" is the file format's number; "saved_by" the app version that
                                         wrote it, from the one VERSION file at the repo / install root; "at" the
-                                        step it shows, "t" that step's clock time, "hash" its contents' hash: S39)
+                                        step it shows, "t" that step's clock time, "hash" its contents' hash: S39;
+                                        "uses" the plugins it uses, id -> {"version", "api"}, written only when there
+                                        are some and kept as read: plugin_parts.py)
     .rostrum/<item>.history.jsonl       the document when history began, then one line per change, appended
                                         (histfile.py has the layout)
     .rostrum/<item>.script.json         what each script produced last time (for the § 7 merge)
@@ -172,16 +174,20 @@ def save(doc, document=True, p=None):
         if fh is not None:
             fh.close()
     if document:
-        doc.saved_by = write_document(p["doc"], kind.format, kind.version, doc.seq, ch[-1].t if ch else 0.0, body, h)[1]
+        doc.saved_by = write_document(p["doc"], kind.format, kind.version, doc.seq, ch[-1].t if ch else 0.0, body, h,
+                                      doc.uses)[1]
 
 
-def write_document(path, format_, version, at, t, body, h=None) -> tuple[str, str]:
-    """Write the document file: `body` its canonical text, `h` its hash when known. (hash, saved_by). Made only of
-    plain values, so it may run on another thread (doc_write.py: hashing and writing let the screen's thread run)."""
+def write_document(path, format_, version, at, t, body, h=None, uses=None) -> tuple[str, str]:
+    """Write the document file: `body` its canonical text, `h` its hash when known, `uses` the plugins it uses (left
+    out when none). (hash, saved_by). Made only of plain values, so it may run on another thread (doc_write.py:
+    hashing and writing let the screen's thread run)."""
     h = h or _sha(body)
     saved_by = app_version()
-    top = json.dumps({"format": format_, "version": version, "saved_by": saved_by, "at": at, "t": t, "hash": h},
-                     ensure_ascii=False, separators=(",", ":"))
+    head = {"format": format_, "version": version, "saved_by": saved_by, "at": at, "t": t, "hash": h}
+    if uses:
+        head["uses"] = uses
+    top = json.dumps(head, ensure_ascii=False, separators=(",", ":"))
     write_atomic(path, f'{top[:-1]},"doc":{body}}}')
     return h, saved_by
 
@@ -290,6 +296,7 @@ def _read_doc(cls, folder, item, kind, p):
         doc = cls(kind, file["doc"], folder, item)
         doc.saved_by = file.get("saved_by")         # None: saved before files recorded it
         doc.file_version = file.get("version", 1)
+        doc.uses = _uses(file, p["doc"])
         return doc, None
     r, changes, versions = read_history(p["history"], kind)
     written = _as_written(text, file)
@@ -305,6 +312,7 @@ def _read_doc(cls, folder, item, kind, p):
     doc.saved_by, doc.notes = file.get("saved_by"), [r.torn] if r.torn else []
     doc.file_at = file.get("at") if trusted else None       # the step the document file shows (live.py folds the rest)
     doc.file_version = file.get("version", 1)
+    doc.uses = _uses(file, p["doc"])
     for c in changes:
         doc.history.add(c)
     doc.history.versions = versions
@@ -321,6 +329,15 @@ def _read_doc(cls, folder, item, kind, p):
     elif not trusted:
         doc.data = replayed                       # Rostrum's own file, behind a step replaced since
     return doc, items
+
+
+def _uses(file, path) -> dict:
+    """The file's `uses` table (plugin id -> what it was saved with), kept as read; {} without one. Not a table: loud."""
+    uses = file.get("uses", {})
+    if not isinstance(uses, dict) or not all(isinstance(v, dict) for v in uses.values()):
+        raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"has a damaged plugin list (uses: {uses!r})",
+                           hint="Nothing was saved over it.")
+    return uses
 
 
 def _record_outside(doc, replayed, on_disk):

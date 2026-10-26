@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from rostrum_core import Param
+from rostrum_core import Param, plugin_parts
 from rostrum_core.keys import KEY_FIELDS
 
 from . import painting_fields as _painting, blends as _blends, group_bg as _group_bg, looping, fill_fields as _fill, grade_fields as _grade, layout_fields as _layout, paint_fields as _paint, stepped as _stepped, swap as _swap
@@ -490,6 +490,8 @@ FIELDS["text"].append(X("textStyle", "Text style", "Font", "", S, control="pick"
                         help="The named text style this text follows (its font, size, weight, colour …): changing the style "
                              "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
 STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"
+FIELDS = plugin_parts.Table(FIELDS, lambda kind: [])          # a plugin's item: no fields we know, a plain row
+LABELS = plugin_parts.Table(LABELS, plugin_parts.label)
 
 
 def param(kind: str, name: str) -> Param | None:

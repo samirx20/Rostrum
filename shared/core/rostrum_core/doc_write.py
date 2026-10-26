@@ -18,8 +18,8 @@ _POOL = ThreadPoolExecutor(1, thread_name_prefix="document-file")   # (its threa
 
 
 class DocWrite:
-    def __init__(self, path, kind, data, seq, last):
-        self.path, self.format, self.version = path, kind.format, kind.version
+    def __init__(self, path, kind, data, seq, last, uses=None):
+        self.path, self.format, self.version, self.uses = path, kind.format, kind.version, uses
         self.data, self.seq, self.last = data, seq, last
         self._pieces, self._made, self._job = canonical_pieces(data), [], None
 
@@ -34,7 +34,8 @@ class DocWrite:
             if time.perf_counter() > end:
                 return True
         t = self.last.t if self.last is not None else 0.0
-        self._job = _POOL.submit(write_document, self.path, self.format, self.version, self.seq, t, "".join(made))
+        self._job = _POOL.submit(write_document, self.path, self.format, self.version, self.seq, t, "".join(made), None,
+                                  self.uses)
         self._made = None
         return False
 

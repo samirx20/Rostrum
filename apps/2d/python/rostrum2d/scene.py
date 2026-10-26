@@ -15,7 +15,7 @@ from functools import lru_cache
 
 from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video
 from .layout_fields import py_only
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, plugin_parts
 from rostrum_core.errors import codes
 from rostrum_core.keys import after, animated, keys_of, springs
 from rostrum_paint import library
@@ -202,7 +202,10 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
 
 def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: dict | None = None) -> tuple:
     """(the composition in composition seconds, its fps, the baked expression / layout keys, `where`): what every
-    node is made from. `timed_memo`: retime.timed's, kept by scene_keep.Keeper."""
+    node is made from. `timed_memo`: retime.timed's, kept by scene_keep.Keeper. A plugin's items are left out here,
+    once for every path (rostrum_core.plugin_parts: kept in the file, never drawn)."""
+    from .kind import LISTS
+    doc_data = plugin_parts.engine_tree(doc_data, LISTS)
     comps = doc_data.get("comps", [])
     if not comps:
         raise ValueError("the document has no composition yet (comp.add)")
