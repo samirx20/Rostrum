@@ -30,10 +30,24 @@ class _Watch(GuiFilter):
     def on_event(self, obj, event):
         if event.type() in POINTER:
             self.last = time.monotonic()
+            if _before and event.type() in FIRST:
+                for fn in _before[:]:
+                    _before.remove(fn)
+                    fn()
         return False
 
 
 _watch: dict = {}           # the app -> its watcher (a test makes one app, a window run one)
+FIRST = {QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick, QEvent.Type.KeyPress}
+_before: list = []          # run once before the next press or key (before_next_input)
+
+
+def before_next_input(fn) -> None:
+    """Run `fn` once before the next press or key reaches a window: work a click put off to the frame after (a made
+    layer's pick, select_soon.py) is done before the person's next action reads it (Ctrl+D right after drawing)."""
+    busy()                                  # (the watcher exists)
+    if fn not in _before:
+        _before.append(fn)
 
 
 def busy() -> bool:

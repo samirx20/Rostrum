@@ -13,6 +13,7 @@ from rostrum_core import toy
 
 from rostrum_gui import DocBridge
 from rostrum_gui.app import start, stop
+from rostrum_gui.pointer import wait_until
 
 WINDOW = """
 import QtQuick
@@ -31,14 +32,15 @@ AppShell {
 """
 
 
-def _esc(app, win):
+def _esc(win, obj, prop="opened"):
+    """Esc, then wait until `obj` reports closed (its state, not a fixed time)."""
     QTest.keyClick(win, Qt.Key_Escape)
-    QTest.qWait(300)                            # the popup's fade
+    wait_until(lambda: not obj.property(prop), f"{obj.objectName() or obj} to close after Esc")
 
 
-def _call(obj, name, *args):
+def _call(obj, name, *args, prop="opened"):
     QMetaObject.invokeMethod(obj, name, *[Q_ARG("QVariant", a) for a in args])
-    QTest.qWait(300)                            # its fade in
+    wait_until(lambda: obj.property(prop), f"{obj.objectName() or obj} to open ({name})")
 
 
 def test_esc_closes_the_newest_popup_wherever_the_keys_are(tmp_path):
@@ -52,29 +54,30 @@ def test_esc_closes_the_newest_popup_wherever_the_keys_are(tmp_path):
 
         _call(plain, "open")
         assert plain.property("opened")
-        _esc(app, win)
+        _esc(win, plain)
         assert not plain.property("opened"), "Esc left a plain menu open"
 
         _call(dialog, "open")
         _call(choice, "open")                   # a dropdown inside a modal dialog
         assert choice.property("opened")
-        _esc(app, win)
+        _esc(win, choice)
         assert not choice.property("opened") and dialog.property("opened"), "Esc must close the dropdown first, only it"
-        _esc(app, win)
+        _esc(win, dialog)
         assert not dialog.property("opened"), "Esc left a modal dialog open"
 
         _call(menu, "openAt", 40, 40, 0)
-        _call(menu, "openSub", 1)
-        sub = [m for m in win.findChildren(QObject) if m is not menu and m.property("owner") == menu]
-        assert sub and sub[0].property("opened"), "the side menu did not open"
-        _esc(app, win)
+        QMetaObject.invokeMethod(menu, "openSub", Q_ARG("QVariant", 1))
+        subs = lambda: [m for m in win.findChildren(QObject) if m is not menu and m.property("owner") == menu]  # noqa: E731
+        wait_until(lambda: subs() and subs()[0].property("opened"), "the side menu to open")
+        sub = subs()
+        _esc(win, sub[0])
         assert not sub[0].property("opened") and menu.property("opened"), "one Esc closes the side menu, not its menu"
-        _esc(app, win)
+        _esc(win, menu)
         assert not menu.property("opened"), "the second Esc closes the menu"
 
-        _call(win, "openHistory", "")
+        _call(win, "openHistory", "", prop="historyOpen")
         assert win.property("historyOpen")
-        _esc(app, win)
+        _esc(win, win, "historyOpen")
         assert not win.property("historyOpen"), "Esc left the History sheet open"
     finally:
         stop(engine, win, then=bridge.deleteLater)

@@ -17,6 +17,7 @@ import math
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
+from rostrum_gui.select_soon import SelectSoon
 
 from . import adding, bounds
 from .text_ink import ink_for
@@ -57,6 +58,7 @@ class Create(QObject):
         super().__init__(parent or bridge)
         self.b, self._press, self._box, self._text, self._whole = bridge, None, {}, None, True
         self._ink = "#ffffff"                  # the new text's starting colour (text_ink.py), set when typing starts
+        self._picked = SelectSoon(bridge, self)  # a shape drawn by the pointer: picked the frame after its release
         bridge.toolChanged.connect(self._tool_changed)
         bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
         self.typingChanged.connect(self.canEditChanged)
@@ -136,17 +138,21 @@ class Create(QObject):
         click = abs(x - x0) + abs(y - y0) <= slop
         if kind in ALONG:
             cx, cy, length, turn = (x0, y0, DEFAULT_SIZE, 0.0) if click else along_box(x0, y0, x, y, shift)
-            return self.addShape(kind, cx, cy, length, 0.0, turn)
+            return self._add(kind, cx, cy, length, 0.0, turn, soon=True)
         cx, cy, w, h = (x0, y0, DEFAULT_SIZE, DEFAULT_SIZE) if click else shape_box(x0, y0, x, y, shift, alt)
         if w < 1 or h < 1:
             return self.b._fail("Error: shape: draw it at least 1 px wide and high (hold Alt to draw from the centre).")
-        self.addShape(kind, cx, cy, w, h)
+        self._add(kind, cx, cy, w, h, soon=True)
 
     @Slot(str, float, float, float, float)
     @Slot(str, float, float, float, float, float)
     def addShape(self, kind, cx, cy, w, h, turn=0.0):
         """The operation behind the tool: one layer, `{shape, x, y, w, h}` at its centre, selected, one change.
         A line or an arrow: `w` is its length, `turn` its rotation, and it is as tall as its line or its head."""
+        self._add(kind, cx, cy, w, h, turn)
+
+    def _add(self, kind, cx, cy, w, h, turn=0.0, soon=False):
+        """`soon`: drawn by the pointer: the release's frame shows the shape, it is picked the frame after (select_soon.py)."""
         if kind not in LABELS:
             return self.b._fail(f"Error: shape: {kind!r} is not a shape here ({', '.join(LABELS)}).")
         calls, lid = adding.new_layer_calls(self.b.doc, self.b.comp(), "shape")
@@ -157,7 +163,7 @@ class Create(QObject):
                 args["rotation"] = round(turn, 2)
         calls[1]["args"].update(args)
         if self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=f"Draw {LABELS[kind]}"), "")):
-            self.b.select(lid)
+            self._picked.ask(lid) if soon else self.b.select(lid)
             self.b.setTool("move")
 
     # ---- text ---------------------------------------------------------------------------------------------------

@@ -18,6 +18,7 @@ pub mod grade_curve;
 pub mod letters;
 pub mod matte;
 pub mod measure;
+pub mod measure_page;
 pub mod morph;
 pub mod outline_cmd;
 pub mod path_data;

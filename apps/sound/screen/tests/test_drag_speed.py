@@ -4,6 +4,8 @@ is open, and its release renders once."""
 from test_select import A, bridge  # noqa: F401  (the fixture: a small song, the engine stood in for)
 
 from PySide6.QtCore import QCoreApplication
+from rostrum_gui import after_frame
+from rostrum_gui.pointer import wait_until
 from screensound import timeline
 
 
@@ -43,8 +45,9 @@ def test_no_render_while_dragging_and_one_on_release(bridge):  # noqa: F811
     t.render()                                       # the release's change: one render, after the frame (never dropped)
     assert asked == [] and t.busy()                  # (the compile waits for the next turn of the loop: play waits too)
     t.render()                                       # asked again before it ran: still that one render
-    QCoreApplication.processEvents()
-    assert len(asked) == 1
+    wait_until(lambda: asked, "the release's one render to be asked")      # (when the loop turns: a frame, or its timer)
+    wait_until(lambda: not after_frame.pending(), "the render's turn to finish")
+    assert len(asked) == 1, f"expected exactly one render after the release, got {len(asked)}"
 
 
 def test_a_track_added_keeps_the_others_blocks_and_a_tempo_change_remakes_them(bridge):  # noqa: F811
