@@ -30,6 +30,8 @@ class Touched:
         one (a group's rows read its members)? Always True for an add, remove, move or rename anywhere."""
         if self.structural or not ids:
             return self.structural
+        if not self.ids.isdisjoint(ids):     # an item it touched itself: no walk up (a whole-song Right on its own
+            return True                      # selection walked 3,607 items up to the song first: ~4 ms)
         idx = doc._index()
         near = set()
         for i in ids:
