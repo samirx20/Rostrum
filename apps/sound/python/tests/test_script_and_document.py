@@ -34,7 +34,7 @@ def _unchanged(doc, fn):
 
 
 def test_a_failed_script_changes_nothing(doc):
-    bad = 'h = track("h2", builtIn="horn")\nh.note("D3", at="#cut to street", end=2.0)\n'     # ends before it starts
+    bad = 'h = track("h2", builtIn="horn")\nh.note("D3", at="#cut to street", dur=1)\nh.note("D3", at="#nowhere", dur=1)\n'   # no such marker
     _unchanged(doc, lambda: doc.run_script("t2.py", run_source(bad, "t2.py", doc), Who.agent("m")))
     tree = run_source(CUE, "t2.py", doc)
     tree["tracks"][0]["instrument"] = "none"                    # past the script's own check: the merge refuses it whole
