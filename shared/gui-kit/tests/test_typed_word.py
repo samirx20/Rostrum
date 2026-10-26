@@ -45,6 +45,13 @@ def test_a_word_runs_no_command_but_a_lone_key_and_a_field_do():
     key(Qt.Key_M, 1.0)
     assert win.property("marks") == 2, "a lone M after the word did nothing"
 
+    from PySide6.QtCore import QCoreApplication, QEvent  # a press sent straight to the window (a script's)
+    from PySide6.QtGui import QKeyEvent
+    for k, ch in ((Qt.Key_D, "d"), (Qt.Key_M, "m")):
+        now[0] += 0.05
+        QCoreApplication.sendEvent(win, QKeyEvent(QEvent.Type.KeyPress, k, Qt.KeyboardModifier.NoModifier, ch))
+    assert win.property("marks") == 2, "an M sent straight to the window inside a word ran its command"
+
     win.findChild(object, "field").forceActiveFocus()
     for k in (Qt.Key_M, Qt.Key_I, Qt.Key_X):
         key(k, 0.05)

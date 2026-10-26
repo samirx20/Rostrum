@@ -11,7 +11,8 @@ letters are its own), and a held key's auto-repeats are left alone.
 
 Watched on the window before Qt tries its shortcuts: Qt asks the window's focus object whether it wants a key
 (ShortcutOverride) before any shortcut runs; taking that event here keeps the shortcut from running, and the key's
-press that follows is dropped too.
+press that follows is dropped too. A press sent straight to the window (a script's) has no such question first and
+is judged on the press itself, which the window sees before its shortcut runs.
 """
 from __future__ import annotations
 
@@ -42,23 +43,36 @@ def typing_in_field() -> bool:
 class TypedWord(GuiFilter):
     def __init__(self, win, clock=time.monotonic):
         super().__init__(win)
-        self.clock, self.last, self.dropping = clock, -1.0, None
+        self.clock, self.last, self.dropping, self.judged = clock, -1.0, None, None
         self.watch(win)
 
-    def on_event(self, obj, event):
-        t = event.type()
-        if t == QEvent.Type.KeyPress and self.dropping is not None and event.key() == self.dropping:
-            self.dropping = None
-            return True                                 # the press of a key that was part of a word
-        if t != QEvent.Type.ShortcutOverride or event.isAutoRepeat() or not plain(event) or typing_in_field():
+    def _word(self, event) -> bool:
+        """Is this plain key part of a word (and so to be dropped)? Each press is judged once."""
+        if event.isAutoRepeat() or not plain(event) or typing_in_field():
             return False
         now, before = self.clock(), self.last
         self.last = now
-        if now - before < WORD_S:
-            self.dropping = event.key()
-            event.accept()                              # "the focus wants it": Qt runs no shortcut for it
-            return True
-        return False
+        return now - before < WORD_S
+
+    def on_event(self, obj, event):
+        t = event.type()
+        if t == QEvent.Type.ShortcutOverride:               # the usual way: asked before any shortcut is tried
+            self.judged = (event.key(), event.timestamp())     # the press that follows has the same stamp
+            if self._word(event):
+                self.dropping = event.key()
+                event.accept()                              # "the focus wants it": Qt runs no shortcut for it
+                return True
+            return False
+        if t != QEvent.Type.KeyPress:
+            return False
+        if self.dropping is not None and event.key() == self.dropping:
+            self.dropping = self.judged = None
+            return True                                     # the press of a key that was part of a word
+        if self.judged == (event.key(), event.timestamp()):   # judged on its override: let it be
+            self.judged = None
+            return False
+        return self._word(event)                            # a press sent straight to the window (no override first):
+                                                            # the shortcut runs from it, so it is judged here
 
 
 def watch(win):
