@@ -60,6 +60,15 @@ def acted() -> None:
         _watch[id(app)].last = time.monotonic()
 
 
+def idle_for(s: float) -> bool:
+    """No button down and no input for `s` seconds: the person has paused, not just finished one click (long work,
+    such as a full heap walk, waits for this so the next key rarely meets it)."""
+    if busy():
+        return False
+    w = _watch.get(id(QGuiApplication.instance()))
+    return w is None or time.monotonic() - w.last >= s
+
+
 def busy() -> bool:
     app = QGuiApplication.instance()
     if not isinstance(app, QGuiApplication):

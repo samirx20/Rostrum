@@ -49,14 +49,16 @@ def op_words(op) -> str:
     return f"{op.label} {op.name} {op.summary}"
 
 
-def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> list[dict]:
+def build(doc, selection: list[str], name_of, kind_of=None, where: str = "", skip=()) -> list[dict]:
     """`kind_of(item)`: an item's kind in words (default: its type, capitalised); `where`: what the selection is
-    called in hints (default: the one item's name, or "N items"). An operation on the whole document has no hint."""
+    called in hints (default: the one item's name, or "N items"). An operation on the whole document has no hint.
+    `skip`: operation names the screen lists itself (its action rows): not tried here (each try plans the operation
+    on the whole selection: Make a chord's 8 shapes on 457 notes were most of a 1.3 s Ctrl+K)."""
     reg = doc.kind.registry
     where = where or (name_of(doc.item(selection[0])) if len(selection) == 1 else f"{len(selection)} items")
     out = _field_commands(doc, selection, where) if selection else []
     for op in reg.available(doc, selection):
-        if op.fields:
+        if op.fields or op.name in skip:
             continue
         target = list(selection) if op.targets else None
         hint = where if target else ""     # no scope word for what is the whole document
@@ -71,8 +73,9 @@ def build(doc, selection: list[str], name_of, kind_of=None, where: str = "") -> 
             p = missing[0]
             out += [{**_cmd(f"{op.name}:{o}", f"{op.label}: {p.option_label(o)}", hint, [_call(op.name, target, {p.name: o})]),
                      **found} for o in p.options if runs(doc, [_call(op.name, target, {p.name: o})])]
+    picked = set(selection)
     for it in doc.items():
-        if it["id"] != doc.data["id"] and it["id"] not in selection:
+        if it["id"] != doc.data["id"] and it["id"] not in picked:
             out.append({"key": "select:" + it["id"], "label": "Select " + name_of(it),
                         "hint": kind_of(it) if kind_of else it["type"].capitalize(),
                         "select": it["id"], "words": it["type"], "weight": len(IMPORTANCE)})

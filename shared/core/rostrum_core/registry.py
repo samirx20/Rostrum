@@ -155,13 +155,19 @@ class Registry:
         """Operations that can run right now: those that fit these targets (every one of them, and enough of them),
         plus those that need no target (Add layer). The command bar's list (absent, not greyed)."""
         items = [doc.item(i) for i in target_ids]
-        out = []
+        out, facts = [], {}            # each item's facts worked out once, not once per operation (457 notes × 14 ops)
+
+        def fits(op, n, it):
+            if it["type"] not in op.targets:
+                return False
+            if op.valid_when and n not in facts:
+                facts[n] = doc.kind.facts(it, doc)
+            return holds(op.valid_when, it, facts.get(n, {}))
         for op in self._ops.values():
             if op.targets is None:
                 out.append(op)
                 continue
-            if len(items) >= max(1, op.min_targets) and all(it["type"] in op.targets and holds(op.valid_when, it, doc.kind.facts(it, doc))
-                             for it in items):
+            if len(items) >= max(1, op.min_targets) and all(fits(op, n, it) for n, it in enumerate(items)):
                 out.append(op)
         return out
 

@@ -20,6 +20,8 @@ from . import pointer_quiet
 AFTER_MS = 1500     # after a document is shown: its first frames, fonts and pictures are made by then
 PAUSE_MS = 700      # after an edit: set aside without a walk
 REST_MS = 8000      # after an edit and no other: the full calm (unfreeze, collect, freeze)
+IDLE_S = 3.0        # the full walk (~200 ms on a 3-minute song) waits for this long a pause in the person's input: at
+                    # "no input in the last 80 ms" it began just before a key (critic r10: Esc on Chord ▾ ~450 ms)
 _TIMERS: list = []
 
 
@@ -28,7 +30,7 @@ def calm_later(ms: int = AFTER_MS):
 
 
 def _calm():
-    if pointer_quiet.busy():                 # never beside a click or a drag: once the pointer rests
+    if not pointer_quiet.idle_for(IDLE_S):   # never beside a click, a key or a drag: once the person pauses
         return QTimer.singleShot(500, _calm)
     calm_now()
 
@@ -51,6 +53,7 @@ def after_edit():
 
 
 def _quietly(fn):
-    if pointer_quiet.busy():                 # never beside a click or a drag
+    quiet = pointer_quiet.idle_for(IDLE_S) if fn is calm_now else not pointer_quiet.busy()   # never beside a click or a key
+    if not quiet:
         return QTimer.singleShot(500, lambda: _quietly(fn))
     fn()

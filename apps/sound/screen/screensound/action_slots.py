@@ -25,6 +25,8 @@ from . import block_menu, clipboard, inspect, palette, timing
 from .actions import ACTS_ON, LIST, RANGE
 
 AMOUNTS = {a.id for a in LIST.actions if a.amounts}      # Ctrl+K opens their popover ("Quantise…")
+ASKED_OPS = {"note.strum", "note.arpeggiate"}     # what Strum… / Arpeggio… run: their calls wait for the popover, so the
+# kit's own "Strum" / "Arpeggiate" rows are left out by name (each was a whole plan of the selection on every Ctrl+K)
 from .keys import ROUTES, SKIP
 from .select_slots import SETTLE_MS
 
@@ -335,9 +337,9 @@ class ActionSlots:
         mine = [{**c, "do": lambda k=c["key"]: self._hub.choose(k)} if "do" in c or c["key"] in AMOUNTS else c
                 for c in do_commands(LIST.available(f), self._what(f))]
         mine = [{**c, "hint": self._subject(c["key"]) or c["hint"], "own": True} for c in mine]
-        ops = {x["op"] for c in mine for x in c.get("calls", [])}
+        ops = {x["op"] for c in mine for x in c.get("calls", [])} | ASKED_OPS
         rest = commands.build(self.doc, self._picks.ids, self.label_of, kind_of=lambda it: KINDS.get(it["type"], ""),
-                              where=self._what(f))
+                              where=self._what(f), skip=ops)
         picked = self._picks.ids
         own = commands.field_rows(self.doc, picked[0], self.label_of) if len(picked) == 1 else []     # "velocity", "volume"
         own += palette.lane_rows(self.doc, self._paste_track(), self.openLane, self.openPlayLane)      # "automation", "sustain"
