@@ -201,11 +201,11 @@ class ExportSheet(QObject):
 
     @Property(str, notify=changed)
     def nameStem(self):
-        return self.stem()
+        return self.stem() if self.NAMEABLE else ""        # an app that doesn't name its files shows fileName instead
 
     @Property(str, notify=changed)
     def nameExt(self):
-        return self.file_ext()
+        return self.file_ext() if self.NAMEABLE else ""
 
     @Property(str, notify=changed)
     def state(self):
