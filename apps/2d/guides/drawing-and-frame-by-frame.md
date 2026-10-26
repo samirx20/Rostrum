@@ -95,7 +95,7 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 | `brush` | `round` soft dab · `bristle` dry brush with streaks · `chalk` broken by paper grain · `flat` wide flat brush · `block` square-ended block-in · `line` crisp thin line |
 | `size`, `opacity`, `hardness` | width in px; 0..1; soft to hard edge |
 | `mode` | `normal`, `multiply` (glaze), `erase`, `screen` / `add` (light that builds up), `overlay`, `soft_light`, `color`. A paint layer's own `mode` is `normal`, `multiply`, `screen` or `add` |
-| `smudge` + `wet` (+ `pickup`) | the brush drags the paint under it (and from the layers below) |
+| `smudge` + `wet` (+ `pickup`) | the brush drags the paint under it (and from the layers below). `smudge` is on / off; `wet` 1 only drags (a blender), lower also lays that share of the brush's colour; a soft `round` tip blends, a `bristle` tip streaks |
 | `steady` | Steadiness: the line trails the pen and smooths a shaky hand (0 = raw) |
 | `size_pressure`, `opacity_pressure`, `tilt_angle`, `tilt_size` | what a pen's pressure and lean change (a stroke's points may carry tilt: `[x, y, pressure, tiltX, tiltY]`) |
 | `taper_start`, `taper_end` | the stroke starts / ends thin over this many tip sizes |

@@ -93,7 +93,9 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
 - `line` is a crisp thin mark: glints, the waterline, wires.
 - `color_jitter` / `hue_jitter` vary each dab's colour; `jitter` scatters dabs off the path; `size_pressure` with
   pressure falling along the points tapers a stroke (a blade of grass, a fir tip).
-- `smudge` + `wet` drags paint already on the layer; it also drags transparency, so blend over an opaque base.
+- `smudge` + `wet` drags paint already on the layer; it also drags transparency, so blend over an opaque base. To melt
+  bands together (a sky), use `wet=1` (it then lays no colour of its own) with a soft `round` tip, strokes along the
+  bands; below 1 the brush also lays its own colour, and a `bristle` tip drags it in lines, which reads as streaks.
 
 ## Ways of working (techniques, not rules)
 
