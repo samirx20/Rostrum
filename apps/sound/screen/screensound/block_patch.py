@@ -10,7 +10,10 @@ it is the old block with its place shifted by exactly `d` and everything else eq
 the same floating point; anything else goes whole in `put`). The arrangement's row model keeps the last whole list
 sent for each row (`held`): a patched row leaves the model's value as it was. When a row comes back to that very list
 (Esc of a preview, undo back to it: the same block objects, block_memo.py), the screen is told to drop its patch
-(`resets`) and shows the list it parsed then: the exact inverse, sent as nothing but the row's id.
+(`resets`) and shows the list it parsed then: the exact inverse, sent as nothing but the row's id. Likewise a row back
+to the list it showed one step before (an undo, then its redo; block_memo.py hands back the very blocks): the screen
+swaps back to the list it kept (`backs`), with no block sent or parsed (an undo of a whole-song Delete sent and
+parsed all 3,607 blocks again: ~0.2 s).
 
 A whole list goes as JSON text (`text`), which the screen parses once (Blocks.js `parse`): handing Qt a list of
 dicts converted every block field by field (3,352 notes: ~150-250 ms of a whole-song Right or Esc), the text costs a
@@ -143,29 +146,39 @@ class Texts:
         self._held = {k: v for k, v in self._held.items() if k in keys}
 
 
+def same(a: list, b: list | None) -> bool:
+    """The very same blocks, in the same order."""
+    return b is not None and len(a) == len(b) and all(map(is_, a, b))
+
+
 class RowBlocks:
     """The arrangement rows' blocks: the whole list the row model holds for each row (`held`), the list the screen
-    shows (`shown`: the held one, patched since for the rows in `patched`)."""
+    shows (`shown`: the held one, patched since for the rows in `patched`) and the one it showed before (`before`)."""
 
     def __init__(self):
         self.held: dict[str, list] = {}
         self.shown: dict[str, list] = {}
         self.patched: set[str] = set()
+        self.before: dict[str, list] = {}
         self._order: list[str] = []
         self._texts = Texts()
 
     def send(self, rows: list[dict]):
         """For the rows now: ({row id: the model's blocks, as JSON text}, [(id, patch text)], [ids whose patch the
-        screen drops]). Rows that came, went or moved go whole (a row's patch lives on the screen part that showed
-        it, which may now show another row): every patched row is told to drop its patch."""
+        screen drops], [ids the screen takes back to the list before]). Rows that came, went or moved go whole (a
+        row's patch lives on the screen part that showed it, which may now show another row): every patched row is
+        told to drop its patch."""
         order = [r["id"] for r in rows]
         whole, self._order = order != self._order, order
-        model, patches, resets = {}, [], []
+        if whole:                                         # (a lane showing another row forgets its list before)
+            self.before = {}
+        model, patches, resets, backs = {}, [], [], []
         for r in rows:
             k, now = r["id"], r.get("blocks", [])
             held = self.held.get(k)
             if held is None or (whole and now is not held):
                 model[k] = self.held[k] = self.shown[k] = now
+                self.before.pop(k, None)
                 if k in self.patched:
                     self.patched.discard(k)
                     resets.append(k)
@@ -173,19 +186,27 @@ class RowBlocks:
             model[k], shown = held, self.shown[k]
             if shown is now:                              # a row the change did not touch: its very same list
                 continue
-            if len(now) == len(held) and all(map(is_, now, held)):
+            if same(now, held):
                 self.shown[k] = held                      # back to the list the model holds (Esc of a preview,
                 if k in self.patched:                     # an undo back to it): the screen drops its patch
                     self.patched.discard(k)
                     resets.append(k)
+                    self.before[k] = shown
+                continue
+            self.shown[k] = now
+            if same(now, self.before.get(k)):             # back to the list shown a step before: swapped back
+                self.before[k] = shown
+                self.patched.add(k)
+                backs.append(k)
                 continue
             p = diff(shown, now)
-            self.shown[k] = now
             if p:
                 patches.append((k, p.text()))
+                self.before[k] = shown
                 self.patched.add(k)
         self.held = {k: v for k, v in self.held.items() if k in model}
         self.shown = {k: v for k, v in self.shown.items() if k in model}
+        self.before = {k: v for k, v in self.before.items() if k in model}
         self.patched &= set(model)
         self._texts.keep(model)
-        return {k: self._texts.of(k, v) for k, v in model.items()}, patches, resets
+        return {k: self._texts.of(k, v) for k, v in model.items()}, patches, resets, backs

@@ -32,9 +32,10 @@ def start_of(root: dict, item: dict) -> float:
     return kept[0] if kept is not None else times.seconds(item["at"], root, item["id"])
 
 
-def moved(ctx, item: dict, by, where: str | None = None):
-    """The time `item["at"]` after moving by `by`, in its own form. Before the start of the song: a loud error."""
-    sec = start_of(ctx.doc, item)
+def moved(ctx, item: dict, by, where: str | None = None, sec: float | None = None):
+    """The time `item["at"]` after moving by `by`, in its own form. Before the start of the song: a loud error.
+    `sec`: where it starts, when the caller has it already."""
+    sec = start_of(ctx.doc, item) if sec is None else sec
     to = sec + delta(ctx.doc, sec, by)
     if to < -1e-9:
         ctx.fail(codes.BAD_ARGUMENT, f'"{item["id"]}"', f"would start before the start of the song ({to:.3f} s)",
@@ -110,7 +111,7 @@ def note_dur(root: dict, item: dict, new_start: float, new_end: float):
 
 def inserted(change) -> list[str]:
     """The ids a change brought in, in order (the screen selects them after a duplicate or a split)."""
-    return [e.id for e in change.edits if isinstance(e, E.Insert)]
+    return [e.id for e in E.flat(change.edits) if isinstance(e, E.Insert)]
 
 
 def need_same_kind(ctx, targets, what: str):

@@ -8,7 +8,7 @@ from . import edits as E
 from . import ids, locks
 from .conditions import describe, holds
 from .errors import RostrumError, codes, did_you_mean
-from .tree import View, fields, index, subtree_ids
+from .tree import View, child_keys, fields, index, subtree_ids
 
 
 class Context:
@@ -58,6 +58,19 @@ class Context:
 
     def remove(self, id_):
         self._do(E.Remove(id_))
+
+    def insert_many(self, adds):
+        """`adds`: (parent, key, item) each, put at the end of its list in order: one edit for them all (edits.Many,
+        each list rebuilt once), so a whole-song Ctrl+D is one history entry. One item: a plain insert."""
+        made = [E.Insert(item["id"], parent, key, 10**9, item) for parent, key, item in adds]
+        if made:
+            self._do(made[0] if len(made) == 1 else E.Many(made))
+
+    def remove_many(self, ids_):
+        """The items `ids_` taken out as one edit (edits.Many); one item: a plain remove."""
+        made = [E.Remove(i) for i in dict.fromkeys(ids_)]
+        if made:
+            self._do(made[0] if len(made) == 1 else E.Many(made))
 
     def move(self, id_, parent, key, index=None):
         self._do(E.Move(id_, (), (parent, key, 10**9 if index is None else index)))
@@ -145,9 +158,14 @@ def _check_valid_when(kind, op, items, args, view, where):
 
 def changed_items(edits, idx, lists) -> list[dict]:
     """The items whose own values these edits set or brought in (still in the document)."""
-    ids = dict.fromkeys(i for e in edits if isinstance(e, (E.Set, E.Insert, E.Shift))
-                        for i in (subtree_ids(e.item, lists) if isinstance(e, E.Insert) else E.ids(e)))
+    ids = dict.fromkeys(i for e in E.flat(edits) if isinstance(e, (E.Set, E.Insert, E.Shift))
+                        for i in (_brought(e, lists) if isinstance(e, E.Insert) else E.ids(e)))
     return [idx[i].item for i in ids if i in idx]
+
+
+def _brought(e, lists) -> list:
+    """An Insert's item and those inside it (a note holds none: no walk)."""
+    return subtree_ids(e.item, lists) if child_keys(e.item, lists) else [e.id]
 
 
 def set_fields(edits) -> dict:
@@ -155,7 +173,7 @@ def set_fields(edits) -> dict:
     whose kind changed, is checked whole): None when Set (checked whole), the path inside it when only Shifts moved a
     number there (only its range is checked: Param.shift_bounds). A field nobody set holds what passed the check before."""
     out, whole = {}, set()
-    for e in edits:
+    for e in E.flat(edits):
         if isinstance(e, (E.Shift, E.Set)) and e.path[0] != "type":   # (a Shift never moves "type": edits refuses it)
             one = {e.path[0]: tuple(e.path[1:]) if isinstance(e, E.Shift) else None}  # shared by a Shift's 3,352 notes
             for i in E.ids(e):

@@ -14,7 +14,7 @@ from __future__ import annotations
 import bisect
 import json
 
-from .edits import MISSING, Insert, Move, Remove, Set, Shift
+from .edits import MISSING, Insert, Move, Remove, Set, Shift, flat
 from .tree import bare, child_keys, fields, index, subtree_ids
 
 
@@ -114,7 +114,7 @@ def diff(a: dict, b: dict, lists: dict, ia: dict | None = None, ib: dict | None 
 def touched(edits, lists) -> set:
     """The ids whose own fields or presence these edits changed (diff's `near`)."""
     out = set()
-    for e in edits:
+    for e in flat(edits):
         if isinstance(e, (Insert, Remove)):
             out.update(subtree_ids(e.item, lists) or (e.id,))
         else:

@@ -5,7 +5,8 @@ undo step. How an edit becomes a call lives in route.py only.
 
 Bridge3D is this class (the wiring, the document hooks, the file pieces) and its mix-ins, one job each:
 bridge_signals (the signals), bridge_shots (shot + page), bridge_scene (scene list, selection), bridge_time (playhead,
-timeline, key drags), bridge_rows (the settings panel's rows, the screen's facts), action_preview3d (actions).
+timeline, key drags), bridge_rows (the settings panel's rows, the screen's facts), action_preview3d (actions),
+key_routes3d (the keys that are not actions).
 
 What the viewport (viewport.py) reads from it: scene(), frame, shot_info(), selected, select(id), and the signals
 docChanged, frameChanged, selectionChanged.
@@ -16,14 +17,14 @@ from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, Slot
 from rostrum3d.compile import describe, shot_info
-from rostrum_gui import DocBridge, sections
+from rostrum_gui import DocBridge, commands as command_search, sections
 from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.time_snap import TimeSnap
 
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
 from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL
 
-from . import lipsync3d, outline, route
+from . import job_when3d, lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
 from .adding import Adder
 from .bridge_rows import RowsMixin
@@ -31,7 +32,7 @@ from .bridge_scene import SceneMixin
 from .bridge_shots import ShotMixin
 from .bridge_signals import Signals3D
 from .bridge_time import TimeMixin
-from .context_qt import Context
+from .key_routes3d import KeyRoutes3D
 from .poses_qt import Poses
 from .material_balls import BallRenderer, MaterialBalls
 from .materials import Materials3D
@@ -53,7 +54,7 @@ def _viewport(bridge):
     return Viewport(bridge)
 
 
-class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, DocBridge):
+class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPreview3D, KeyRoutes3D, DocBridge):
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: a "Final" tag
 
@@ -75,7 +76,6 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.queue = RenderQueue(self, render_engine)     # the Render page's queue (queue.py)
         self.send_to = Sender(self)                       # Send to 2D (send_qt.py); QML's `sender` (not a QObject attribute: sender() is Qt's)
         self.add = Adder(self)
-        self.ctx = Context(self)
         self._poses = Poses(self)
         self._lipsync, self.open_lipsync = lipsync3d.make(self)     # Lip sync… on a mouth group (lipsync3d.py)
         self._mover, self._time_snap = Mover(self), TimeSnap(self)        # the timeline (timeline3d.py, key_pick3d.py)
@@ -122,8 +122,15 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     renderQueue = Property(QObject, lambda self: self.queue, constant=True)   # QML: backend.renderQueue (queue.py)
 
     def extra_commands(self):
-        """Ctrl K: the render queue's operations (queue.commands)."""
-        return self.queue.commands()
+        """Ctrl K: the actions (the same list as the panel, right-click and the keys), the key map's jobs that would do
+        something now (job_when3d.py), then the render queue's operations (queue.commands)."""
+        return job_when3d.commands(self) + self.queue.commands()
+
+    @Slot(str, result="QVariantList")
+    def commands(self, query):
+        """Ctrl+K's rows with their key ("Ctrl+D"): the kit's own slot hands the bar the key, label and hint only, so a
+        row never shows its key. (KIT GAP: when DocBridge.commands passes `keys` on, this override goes.)"""
+        return [{k: c[k] for k in ("key", "label", "hint", "keys") if k in c} for c in command_search.search(self._commands(), query)]
 
     # ---- the kit's hooks: the 3D animation model (route.py) ----------------------------------------------------
     def label_of(self, item):

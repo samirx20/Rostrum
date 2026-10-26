@@ -21,6 +21,10 @@ new list with the last one from both ends by identity (in C, `operator.is_`) and
 between: an edit's cost is the items it changed, not the track's length (each item looked up by id grew with the
 song: ~2.5 ms a click on a 3-minute drum track). A block handed out is shared: nobody may change it in place (a
 row's lanes are a new dict, `made` with a key).
+
+The blocks of the items an edit took away are kept too, until the part's next change (`_gone`): an undo of a
+whole-song Delete, or a redo of a Ctrl+D, puts back items equal to them, and gets back the very same blocks (the row
+then reads as the list the screen showed a step before: block_patch.py `back`), not 3,600 blocks made again (~0.1 s).
 """
 from __future__ import annotations
 
@@ -45,9 +49,10 @@ class BlockMemo:
         self._parts: dict = {}
         self._clock = None
         self._stale: set = set()        # parts held from before the clock moved: re-placed (`again`) or made again
+        self._gone: dict = {}           # part -> {id: (item, block)} of the items its last change took away
 
     def clear(self):
-        self._parts, self._clock, self._stale = {}, None, set()
+        self._parts, self._clock, self._stale, self._gone = {}, None, set(), {}
 
     def keeps(self, clock) -> bool:
         """The blocks held are still right under `clock` (follow would keep them)."""
@@ -61,6 +66,7 @@ class BlockMemo:
         kept = self.keeps(clock)
         self._parts = {k: v for k, v in self._parts.items() if k[0] in tracks}
         self._stale = self._stale & self._parts.keys() if kept else set(self._parts)
+        self._gone = {k: v for k, v in self._gone.items() if k in self._parts} if kept else {}
         self._clock = clock
         return kept
 
@@ -85,25 +91,28 @@ class BlockMemo:
                 tail = list(map(again, items[len(items) - b:], blocks[len(blocks) - b:]))
             else:
                 head, tail = blocks[:a], blocks[len(blocks) - b:]
-            out = head + self._middle(items[a:len(items) - b], was[a:len(was) - b], blocks[a:len(blocks) - b],
+            out = head + self._middle(part, items[a:len(items) - b], was[a:len(was) - b], blocks[a:len(blocks) - b],
                                       make, again, stale) + tail
         self._parts[part] = (items, out, key)
         return out
 
-    @staticmethod
-    def _middle(items, was, blocks, make, again, stale) -> list[dict]:
+    def _middle(self, part, items, was, blocks, make, again, stale) -> list[dict]:
         """The blocks of the items between the lists' same ends: an item held as it was keeps its block (re-placed
-        when stale); one moved (same id, only `at` changed) is its old block re-placed; any other is made."""
+        when stale), as does one equal to it; one moved (same id, only `at` changed) is its old block re-placed; one equal to an item the last
+        change took away is that item's block again; any other is made. What this change took away is kept."""
         old = {x.get("id"): (x, bl) for x, bl in zip(was, blocks)}
+        back = self._gone.get(part, {}) if not stale else {}
         out = []
         for x in items:
-            got = old.get(x.get("id"))
+            got = old.pop(x.get("id"), None)
             if got is None:
-                out.append(make(x))
-            elif got[0] is x:
+                got = back.get(x.get("id"))
+                out.append(got[1] if got is not None and (got[0] is x or got[0] == x) else make(x))
+            elif got[0] is x or got[0] == x:
                 out.append(again(x, got[1]) if stale else got[1])
             else:
                 out.append(again(x, got[1]) if again is not None and moved(got[0], x) else make(x))
+        self._gone[part] = old
         return out
 
     def tally(self, part, items, key_of) -> Counter:

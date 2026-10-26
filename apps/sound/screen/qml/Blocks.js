@@ -17,7 +17,7 @@ function patch(blocks, text, map) {
         n++
     }
     for (i = 0; i < put.length; i++) {
-        if (tm !== null && put[i].atBeat !== undefined) put[i] = _moved(put[i], "beats", 0, tm)
+        if (tm !== null && put[i].atBeat !== undefined) _timeAt(put[i], put[i], tm)     // (just parsed: its own)
         if (one) moved(put[i], blocks[at[put[i].id]])
     }
     for (i = 0; i < p.by.length; i++) {
@@ -60,17 +60,16 @@ function patch(blocks, text, map) {
 
 // A block shown, its place moved by d: one placed in beats, timed at once under the map shown (`tm`: [map, its key],
 // as `timed` makes it: a layer over its own block, never one more), so `timed` passes it by; one in seconds, a copy.
-// A block a patch puts is timed here the same way (d = 0): `timed` copying a list of 3,352 new blocks (Ctrl+D) and
-// keeping a map of each cost ~140 ms.
+// A block a patch puts is timed here too, in place (it was just parsed: nothing else holds it): `timed` copying a list of
+// 3,352 new blocks (Ctrl+D) and keeping a map of each cost ~140 ms, and a layer over each new block ~10 ms more.
 // (Copying each moved block and timing it after cost ~25 µs a block: 0.1 s for a 1,900-note row.)
 function _moved(x, field, d, tm) {
     var o
     if (field === "beats" && tm !== null) {
-        o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)
-        o.atBeat = x.atBeat + d; o.t = Tempo.seconds(tm[0], o.atBeat)
-        if (x.endBeat !== undefined) { o.endBeat = x.endBeat + d; o.dur = Tempo.seconds(tm[0], o.endBeat) - o.t }
-        o.__tempo = tm[1]
-        return o
+        o = Object.create(_base(x))
+        o.atBeat = x.atBeat + d
+        if (x.endBeat !== undefined) o.endBeat = x.endBeat + d
+        return _timeAt(o, o, tm)
     }
     o = {}
     for (var key in x) if (key !== "__tempo") o[key] = x[key]
@@ -95,6 +94,17 @@ function _shift(o, x) {
     return o.t - x.t
 }
 
+// `o` given the seconds of the beats `x` is placed at under the map `tm` ([map, its key]); `o` back
+function _timeAt(o, x, tm) {
+    o.t = Tempo.seconds(tm[0], x.atBeat)
+    if (x.endBeat !== undefined) o.dur = Tempo.seconds(tm[0], x.endBeat) - o.t
+    o.__tempo = tm[1]
+    return o
+}
+
+// The block a re-timed one is a layer over (its own fields: the id and what it shows); one timed in place is its own
+function _base(x) { return x.__tempo === undefined || Object.prototype.hasOwnProperty.call(x, "id") ? x : Object.getPrototypeOf(x) }
+
 function _at(list) {                     // id -> index (made once per list a patch starts from)
     if (list.__at === undefined) {
         var m = {}
@@ -118,12 +128,10 @@ function timed(list, map) {
         var x = list[i]
         if (x.atBeat === undefined || x.__tempo === key) continue
         if (out === null) { out = list.slice(); made = new Map() }
-        var o = Object.create(x.__tempo !== undefined ? Object.getPrototypeOf(x) : x)   // (a re-timed one: from its own block, never a layer more); its fields read through (a copy of each cost ~30 ms a tempo step)
+        var o = Object.create(_base(x))         // (a re-timed one: from its own block, never a layer more); its fields read through (a copy of each cost ~30 ms a tempo step)
         o.atBeat = x.atBeat                     // (its own, when it was moved here: `_moved`)
         if (x.endBeat !== undefined) o.endBeat = x.endBeat
-        o.t = Tempo.seconds(map, x.atBeat)
-        if (x.endBeat !== undefined) o.dur = Tempo.seconds(map, x.endBeat) - o.t
-        o.__tempo = key
+        _timeAt(o, x, [map, key])
         out[i] = o; made.set(x, o)
     }
     if (out === null) return list
@@ -143,41 +151,12 @@ function _plainMap(map) {
 }
 
 // A list as sent whole from Python: JSON text (an arrangement row's role, backend.rollBlocks: block_patch.py `text`),
-// parsed once into plain blocks; a list (anything else) as `own`.
+// parsed once into plain blocks; a list (anything else) made plain once (`_plain`). Every block a painter reads is a
+// plain JS object (parsed, or a layer over one: `timed`, `_moved`), so the painters read it as it is: a copy of each
+// block on its first paint (a block from Python read each field through Qt) made ~4 objects a note, ~40 µs a block
+// of a whole-song undo of Delete or Ctrl+D, mostly in the script engine's collections.
 function parse(sent) {
-    return typeof sent === "string" ? (sent === "" ? [] : JSON.parse(sent)) : own(sent || [])
-}
-
-// The tempo map as plain JS arrays, read once a call: each read of one from Python goes through Qt (~10 reads a
-// block: ~50 µs a block, 0.1 s for a 1,900-note row)
-function _plainMap(map) {
-    var out = new Array(map.length)
-    for (var i = 0; i < map.length; i++) out[i] = Array.prototype.slice.call(map[i])
-    return out
-}
-
-// A list as sent whole from Python (a row's role, backend.rollBlocks), as a JS array of its blocks, read once. The list
-// itself hands out a new object for a block on every read, so a surface's kept entries never matched the blocks of the
-// next read: the first edit after every whole send painted the whole surface again (a first note: ~10-20 ms).
-function own(list) {
-    var out = new Array(list.length)
-    for (var i = 0; i < list.length; i++) out[i] = list[i]
-    return out
-}
-
-// A block's fields as a plain object, made once a block (the painters read only these). A block from Python reads each
-// field through the list it came from (~1-2 µs a read): a whole paint of a 1,000-hit drum track read ~10 fields a
-// hit, 10-20 ms of every paint. Made when first painted, kept by id while the block stays the same object (up to 3
-// copies an id: the same note reaches the row, the roll and the velocity strip as different objects). Not a WeakMap:
-// one keyed on the objects that read through Python's lists crashed the app (an access violation in a later click).
-var _facts = {}
-function fact(b) {
-    var held = _facts[b.id] || (_facts[b.id] = [])
-    for (var i = 0; i < held.length; i++) if (held[i][0] === b) return held[i][1]
-    var f = _plain(b)
-    if (held.length >= 3) held.shift()
-    held.push([b, f])
-    return f
+    return typeof sent === "string" ? (sent === "" ? [] : JSON.parse(sent)) : (sent || []).map(_plain)
 }
 
 function _plain(b) {                     // its lists too (keys, names, peaks …)

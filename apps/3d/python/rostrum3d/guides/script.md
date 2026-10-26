@@ -96,6 +96,7 @@ Materials and shots always go to the top level, even when made inside a `with`.
   Key ids come from the item, field and time (`cube.ry.k2000`), so the same script gives the same keys every run.
   Springs and curves: `item.key("y", {0: 0.1, 1: 0}, ease="spring", stiffness=240, damping=14)` (settings on every key), or per key
   `{0: {"v": 0, "ease": "custom", "x1": 0.2, "y1": 0, "x2": 0.1, "y2": 1.1}, 1: 30}`. A setting that doesn't fit the key's ease is refused.
+  `item.key("visible", {0: False, 1.2: True})` shows and hides: on or off from each key to the next, never in between.
 - `item.aim(item_or_id)` or `item.aim((x, y, z))` points the item's −Z at an item's origin or a point, every frame (turns `rx ry rz` off while it aims).
   `item.aim(target, roll=90)` then turns it around the way it points: a strip light stands on end, a camera's horizon tilts. `roll` can be keyed.
 - `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_usd_file`).

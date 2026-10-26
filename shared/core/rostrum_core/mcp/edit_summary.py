@@ -14,7 +14,7 @@ def _gather(change) -> dict[str, dict]:
     """{"added": {id: type}, "changed": {id: None}, "removed": {id: type}}: an item added and removed in one change shows
     in neither; one added then edited stays added."""
     added, removed, changed = {}, {}, {}
-    for e in change.edits:
+    for e in E.flat(change.edits):
         if isinstance(e, E.Insert):
             if e.id in removed:
                 removed.pop(e.id)
@@ -55,7 +55,7 @@ def _phrase(doc, id_: str, removed: dict | None) -> str:
 def summarize(doc, change) -> dict:
     """{"added": {"count", "types", "items"}, …} for the three kinds; empty kinds left out. `items` are the first LIST."""
     out = {}
-    removed_items = {e.id: e.item for e in change.edits if isinstance(e, E.Remove)}
+    removed_items = {e.id: e.item for e in E.flat(change.edits) if isinstance(e, E.Remove)}
     for name, group in _gather(change).items():
         if not group:
             continue

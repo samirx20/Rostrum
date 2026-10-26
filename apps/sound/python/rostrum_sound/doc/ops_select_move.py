@@ -25,8 +25,29 @@ def _with_group(ctx, targets, kind):
     return out
 
 
-def _new_id(kind, track, item, ctx):
-    have, root = taken(ctx), ctx.doc
+class Taken:
+    """The ids in the working document plus those of the items about to come in with them (one insert for all: they
+    are not in the document yet), so a copy's new id is free of both, at one look each."""
+
+    def __init__(self, ctx):
+        self.doc, self.new = taken(ctx), set()
+
+    def __contains__(self, id_):
+        return id_ in self.new or id_ in self.doc
+
+    def __or__(self, other):
+        return set(self.doc) | self.new | set(other)
+
+    def __iter__(self):
+        yield from self.doc
+        yield from self.new
+
+    def add(self, id_):
+        self.new.add(id_)
+
+
+def _new_id(kind, track, item, ctx, have=None):
+    have, root = have if have is not None else taken(ctx), ctx.doc
     if kind == "note":
         return ids.note(track, item["at"], root, have)
     if kind == "hit":
@@ -34,8 +55,9 @@ def _new_id(kind, track, item, ctx):
     return ids.clip(track, item["at"], root, have)
 
 
-def _free_group(ctx, group):
+def _free_group(ctx, group, adds=()):
     have = {c.get("group") for i in ctx.idx.values() for c in [i.item] if c.get("type") == "clip"}
+    have |= {c.get("group") for _, _, c in adds}
     n = 2
     while f"{group} {n}" in have:
         n += 1
@@ -79,15 +101,17 @@ def _register(kind):
     def duplicate(ctx, targets, args):
         root = ctx.doc
         items = [ctx.item(t) for t in _with_group(ctx, targets, kind)]
-        first = min(start_of(root, i) for i in items)
+        starts = [start_of(root, i) for i in items]     # once each (a whole-song Repeat asks for every copy)
+        first = min(starts)
         by = args["by"] if "by" in args else max(end_of(root, i) for i in items) - first
         if "by" not in args and by <= 1e-6:
             ctx.fail(codes.BAD_ARGUMENT, "by", f"can't be worked out: the selected {label}s have no length",
                      hint="Give `by` (seconds or beats).")
         n, point = repeat.count(ctx, first, by, args)
-        plan = [(item, ctx.idx[item["id"]].parent, moved(ctx, item, repeat.scaled(by, k)), k)   # all from the start state
-                for k in range(1, n + 1) for item in items]
-        renamed_groups: dict = {}
+        parents = [ctx.idx[item["id"]].parent for item in items]
+        plan = [(item, track, moved(ctx, item, repeat.scaled(by, k), sec=sec), k)   # all from the start state
+                for k in range(1, n + 1) for item, track, sec in zip(items, parents, starts)]
+        renamed_groups, have, adds = {}, Taken(ctx), []
         for item, track, at, k in plan:
             new = copy.deepcopy(item) if kind == "clip" else dict(item)   # the insert copies it whole; a clip: effects renamed below
             new["at"] = at
@@ -95,15 +119,16 @@ def _register(kind):
                 new = repeat.cut(ctx, kind, new, end_of(root, item) + start_of(root, new) - start_of(root, item), point)
                 if new is None:
                     continue
-            new["id"] = _new_id(kind, track, new, ctx)
+            new["id"] = _new_id(kind, track, new, ctx, have)
+            have.add(new["id"])
             if kind == "clip":
                 if new.get("group"):                    # a copied layer is its own layer, not a member of the old one
-                    new["group"] = renamed_groups.setdefault((new["group"], k), _free_group(ctx, new["group"]))
-                used = taken(ctx) | {new["id"]}
+                    new["group"] = renamed_groups.setdefault((new["group"], k), _free_group(ctx, new["group"], adds))
                 for e in new.get("effects", []):
-                    e["id"] = ids.effect(new["id"], e.get("effect", "effect"), used)
-                    used.add(e["id"])
-            ctx.insert(track, key, new)
+                    e["id"] = ids.effect(new["id"], e.get("effect", "effect"), have)
+                    have.add(e["id"])
+            adds.append((track, key, new))
+        ctx.insert_many(adds)                           # one edit for every copy (one history entry, each list once)
 
 
 for _kind in LABELS:

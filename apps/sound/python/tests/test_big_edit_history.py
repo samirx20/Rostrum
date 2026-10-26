@@ -76,3 +76,27 @@ def test_a_call_that_adds_then_changes_keeps_its_record_as_added():
     doc.redo(P)
     assert doc.data == made
     _same_as_history(doc)
+
+
+def test_whole_song_delete_and_repeat_are_one_edit_each_exact_both_ways_and_kept_by_a_rerun(tmp_path):
+    doc = _song()
+    by = {k: [i["id"] for t in doc.data["tracks"] for i in t.get(k + "s", [])] for k in ("note", "hit")}
+    start = copy.deepcopy(doc.data)
+    doc.apply([{"op": f"{k}.duplicate", "target": ids, "args": {"times": 3}} for k, ids in by.items()], P)
+    repeated = copy.deepcopy(doc.data)
+    assert len(doc.item("a")["notes"]) == 960 and len(doc.history.changes[-1].edits) == 2   # one Many per kind
+    doc.apply([{"op": f"{k}.remove", "target": ids, "args": {}} for k, ids in by.items()], P)
+    deleted = copy.deepcopy(doc.data)
+    assert len(doc.item("a")["notes"]) == 720
+    for state in (repeated, start):
+        doc.undo(P)
+        assert doc.data == state and doc_hash(doc.data) == doc_hash(state)
+    for state in (repeated, deleted):
+        doc.redo(P)
+        assert doc.data == state
+    _same_as_history(doc)
+    rep = doc.run_script("song.py", run_source(SONG.replace("vel=0.6", "vel=0.7"), "song.py"))
+    notes = doc.item("a")["notes"]                  # the person's copies stay, their deletions stay deleted
+    assert len(notes) == 720 and not any(doc.has(i) for i in by["note"]) and rep.applied is not None
+    assert all(n["vel"] == 0.6 for n in notes)      # (only copies left: the script's own notes were deleted)
+    _same_as_history(doc)

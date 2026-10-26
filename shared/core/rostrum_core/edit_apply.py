@@ -5,7 +5,8 @@ from math import copysign
 
 from .errors import RostrumError, codes
 from .tree import Loc, child_keys, index, subtree_ids
-from .edit_types import MISSING, Insert, Move, Remove, Set, Shift
+from .edit_types import MISSING, Insert, Many, Move, Remove, Set, Shift
+from .edit_many import apply_many
 from .edit_fork import (Fork, _missing, _own, _own_list, _own_many, _place, _position, _prev, clone)
 
 
@@ -39,6 +40,8 @@ def apply(data: dict, lists: dict, e, where: str = "edit", idx: dict | None = No
         idx = index(data, lists)
     if isinstance(e, Shift):
         return _shift(idx, lists, e, where)
+    if isinstance(e, Many):
+        return apply_many(idx, lists, e, where)
     target = e.parent if isinstance(e, Insert) else e.id
     if target not in idx:
         raise _missing(where, target, idx)

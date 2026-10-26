@@ -34,6 +34,12 @@ class PlaceLight(QObject):
         self.mode, self.light = mode, light
         self.b.say(self.hint())
 
+    def stop(self):
+        """Esc (esc3d.py): placing or linking ends."""
+        if self.mode:
+            self.mode = ""
+            self.b.say("")
+
     def hint(self) -> str:
         if self.mode == "place":
             return "Click where its highlight should land  ·  Alt+click again later to move it"

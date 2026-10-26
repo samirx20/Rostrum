@@ -44,16 +44,24 @@ class RollView:
         relaid, self._view["rollShape"] = laid != self._view["rollShape"], laid
         if moved:                   # first: what the new layout's handlers read (framing the keys on the notes)
             same = before.get("id") == roll.get("id")     # another track: its list whole
-            p = block_patch.diff(before.get("blocks"), roll.get("blocks", [])) if same else None
+            now, was = roll.get("blocks", []), self.__dict__.get("_roll_was")
+            back = same and block_patch.same(now, was)   # the list shown a step before: the screen swaps back to it
+            p = block_patch.diff(before.get("blocks"), now) if same and not back else None
             by = self.__dict__.setdefault("_roll_by", {})
-            if p is not None:
+            if back:
+                self.__dict__["_roll_was"] = before.get("blocks")
+                self.__dict__["_roll_by"] = {b["id"]: b for b in now}
+                self.rollBack.emit()
+            elif p is not None:
                 for i in p.gone:
                     by.pop(i, None)
                 by.update((b["id"], b) for b in p.changed)
                 if p:
+                    self.__dict__["_roll_was"] = before.get("blocks")
                     self.rollPatched.emit(p.text())     # the screen patches the list it shows (block_patch.py)
             else:
-                self.__dict__["_roll_by"] = {b["id"]: b for b in roll.get("blocks", [])}
+                self.__dict__["_roll_was"] = None
+                self.__dict__["_roll_by"] = {b["id"]: b for b in now}
                 self.rollBlocksChanged.emit()
             self._roll_picks()
         if relaid:

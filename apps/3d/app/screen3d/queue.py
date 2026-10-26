@@ -6,7 +6,7 @@ Operations (screen state, never the document; rule 4): `render.queue.add {shot}`
 A job reads a snapshot taken when it was added (scene, shot, settings: the shot's own render fields, the sheet's Save
 as), renders its frames through rostrum3d.mcp.sequence (the same path as the sheet's Export of the shot) on its own
 engine process, into the project's next render version via `.partial`. Cancel ends that process by its own handle
-(the job's stop hook; never by name); the row then says "Render cancelled" in red and only the `.partial` is left.
+(the job's stop hook; never by name); the row then says "Render cancelled" and nothing of it is left on disk (its `.partial` folder goes).
 """
 from __future__ import annotations
 
@@ -179,7 +179,7 @@ class RenderQueue(QObject):
             job.progress(0, meta["frames"], "starting")
             done, files = sequence("render queue", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
                                    plan["cycles"], plan["folder"], progress=frames,
-                                   passes=passes(plan["shot"]) if "exr" in plan["formats"] else None)
+                                   passes=passes(plan["shot"]) if "exr" in plan["formats"] else None, stopped=job.cancel_requested.is_set)
         finally:
             engine.close()
         pngs = [f for f in files if f.suffix == ".png"]

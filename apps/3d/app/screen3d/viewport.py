@@ -148,7 +148,7 @@ class Viewport(QObject):
         if frame != self._frame:
             self._frame = frame
             self.settingsChanged.emit()
-        self._wide = shot_frame.overscan(self._scene, self._shot["camera"], w / fw)
+        self._wide = shot_frame.overscan(self._scene, self._shot["camera"], w / fw, w / h)
 
     def sent(self) -> tuple[dict, dict]:
         """(scene, camera part) as the engine gets them: through the shot camera, its wider copy (shot_frame.py)."""
@@ -323,8 +323,9 @@ class Viewport(QObject):
             self._guard(lambda: self.place.click(x, y))
         elif self._size is not None and self.bone_tool.wants_click():
             self._guard(lambda: self.bone_tool.click(x, y))
-        elif self._size is not None:
-            self._guard(lambda: self._r.pick(*self._pick_at(x, y)))
+        elif self._size is not None:      # a drawn bone near the click is picked before the mesh behind it (bones_qt.py)
+            bone = "" if getattr(self, "_drop", "") or self.bridge.add.armed else self.bone_tool.bone_at(x, y)
+            self._guard(lambda: self._on_picked(bone) if bone else self._r.pick(*self._pick_at(x, y)))
 
     @Slot(float, float)
     def altClick(self, x, y):

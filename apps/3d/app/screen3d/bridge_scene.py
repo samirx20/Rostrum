@@ -1,5 +1,5 @@
 """The scene list and the selection for Bridge3D (a slot mix-in): the rows with their keys, which item the selection
-belongs to, Ctrl / Shift picking in the list, and the right-click menu."""
+belongs to, Ctrl / Shift picking in the list."""
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Slot
@@ -19,8 +19,18 @@ class SceneMixin:
 
     @Property("QVariantList", notify=S.outlineChanged)
     def sceneRows(self):
-        """The scene list, its keys on the same rows (outline.scene_rows)."""
-        return outline.scene_rows(self.doc.data, self._folded, self.selectedOwner, self._info["fps"])
+        """The scene list, its keys on the same rows (outline.scene_rows). Worked out once per outlineChanged: a drag
+        step's one change was read by every binding (about 15 times a step, 2 of every 3 ms of a gizmo move)."""
+        kept = getattr(self, "_rows_kept", None)
+        if kept is None:
+            self.outlineChanged.connect(self._forget_scene_rows)
+        key = (frozenset(self._folded), self.selectedOwner, self._info["fps"])
+        if not kept or kept[0] != key:
+            kept = self._rows_kept = (key, outline.scene_rows(self.doc.data, self._folded, key[1], key[2]))
+        return kept[1]
+
+    def _forget_scene_rows(self):
+        self._rows_kept = ()
 
     @Property("QVariantList", notify=S.outlineChanged)
     def materials(self):
@@ -56,14 +66,6 @@ class SceneMixin:
         here = self.selected if self.selected in order else item_id
         run = click(self.selection, here, item_id, {"shift"}, "list", order)[0]
         self.selectMany([here] + [i for i in run if i != here] if here in run else run)
-
-    @Slot(str, result="QVariantList")
-    def contextEntries(self, item_id):
-        return self.ctx.entries(item_id)
-
-    @Slot(str, str)
-    def contextRun(self, item_id, value):
-        self._guard(lambda: self.ctx.run(item_id, value))
 
     @Slot(str)
     def toggleFold(self, item_id):

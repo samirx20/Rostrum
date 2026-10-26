@@ -45,8 +45,6 @@ Item {
         onHeightChanged: requestPaint()
     }
 
-    KeyShortcut { sequence: "Return"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
-    KeyShortcut { sequence: "Enter"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.make() }
-    KeyShortcut { sequence: "Backspace"; enabled: bonesLayer.tool.on && bonesLayer.tool.count > 0; onActivated: bonesLayer.tool.back() }
-    KeyShortcut { sequence: "Escape"; enabled: bonesLayer.tool.on; onActivated: bonesLayer.tool.cancel() }
+    // its keys come through the one key map (Main.qml KeyMap, key_routes3d.mode_takes): Enter makes the chain, Delete or
+    // Backspace takes the last point back, Esc cancels (esc3d.py)
 }

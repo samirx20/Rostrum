@@ -16,6 +16,8 @@ class SoundSignals:
     rollPickedChanged = Signal()    # the roll's selected blocks (`rollPicked`): a pick, or an edit on one of them
     blocksPatched = Signal(str, str)                # a change of an arrangement row's: (row id, patch text, block_patch.py)
     blocksReset = Signal(str)       # that row's whole list again: the screen drops its patch
+    blocksBack = Signal(str)        # that row's list of one step before again: the screen swaps back to it
+    rollBack = Signal()             # the same for the roll's blocks
     pictureChanged = Signal()       # the picture corner's choice, start or render (picture_slots.py)
     renderChanged = Signal()
     soundChanged = Signal()

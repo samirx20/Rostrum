@@ -5,7 +5,7 @@ import RostrumKit
 
 // 3D's tool rail (SPEC §2): the kit's ToolRail filled from today's add operations (backend.adder.rail, adding.py).
 // Select, then Shapes (R), Type & logo (T: 3D text, Logo from SVG, From a 2D drawing; SPEC §4.4), Lights (L), Camera (C);
-// on the Animate page Select, Poses (P), Onion skin (O), Bones (while a mesh is selected: bones_qt.py), Lights, Camera.
+// on the Animate page Select, Poses (P), Onion skin (O), Bones (Shift+B, while a mesh is selected: bones_qt.py), Lights, Camera.
 // Logo from SVG asks for the file first, From a 2D drawing for the 2D item and its path layer (one list, two levels);
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
@@ -16,27 +16,29 @@ ToolRail {
     current: paintMode.on ? "paint" : "select"
     iconKinds: ({ shape3d: icon3d })
     Component { id: icon3d; Icon3D { } }
+    // `job` on an entry or a group: the key map job whose key its hover shows (keys3d.py: V, P, O, B; R T L C open the
+    // groups, but the kit's rail shows a group's key only through its entries, which would put "R" on every shape)
     function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value })) }
-    readonly property var selectGroup: ({ id: "select", items: [{ name: "Select", icon: "select", tool: "select", help: "Click a thing in the viewport or the scene list." }] })
+    readonly property var selectGroup: ({ id: "select", items: [{ name: "Select", icon: "select", tool: "select", job: "move_tool", help: "Click a thing in the viewport or the scene list." }] })
     // the Animate page (SPEC §2): Select, Poses (P), Onion skin (O), Bones (a mesh selected), Lights, Camera; Simulate joins when built
     groups: backend.page === "animate" ? [
         rail.selectGroup,
-        { id: "poses", name: "Poses", panel: true, items: [{ name: "Poses", icon: "pose", kind: "shape3d",
+        { id: "poses", name: "Poses", panel: true, items: [{ name: "Poses", icon: "pose", kind: "shape3d", job: "poses_panel",
           help: "Save the selected items' pose; click a saved one to key it at the playhead." }] },
-        { id: "onion", name: "Onion skin", panel: true, items: [{ name: "Onion skin", icon: "onion", kind: "shape3d",
+        { id: "onion", name: "Onion skin", panel: true, items: [{ name: "Onion skin", icon: "onion", kind: "shape3d", job: "onion",
           help: "Ghosts of the selected item before (red) and after (green), to time its arc by eye." }] },
-        { id: "bones", name: "Bones", items: viewport.bones.meshSelected ? [{ name: "Bones", icon: "bone", kind: "shape3d", act: "bones",
+        { id: "bones", name: "Bones", items: viewport.bones.meshSelected ? [{ name: "Bones", icon: "bone", kind: "shape3d", act: "bones", job: "bones_tool",
           help: "Click points along the selected mesh, root first, then Enter: a bone chain it bends with." }] : [] },   // only with a mesh selected
         { sep: true },
-        { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
-        { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
+        { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
+        { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
     ] : [
         rail.selectGroup,
-        { id: "shapes", name: "Shapes", items: rail.entries(backend.adder.rail.shapes) },
-        { id: "type", name: "Type & logo", items: rail.entries(backend.adder.rail.type) },
+        { id: "shapes", name: "Shapes", job: "shapes_menu", items: rail.entries(backend.adder.rail.shapes) },
+        { id: "type", name: "Type & logo", job: "type_menu", items: rail.entries(backend.adder.rail.type) },
         { sep: true },
-        { id: "lights", name: "Lights", items: rail.entries(backend.adder.rail.lights) },
-        { id: "camera", name: "Camera", items: rail.entries(backend.adder.rail.camera) }
+        { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
+        { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
     ].concat(paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh selected
              ? [{ sep: true }, { id: "paint", items: [{ name: "Paint", icon: "brush", tool: "paint", job: "paint_tool",
                                                        help: "Paint on the selected mesh: colour, roughness, height, metal or glow." }] }]

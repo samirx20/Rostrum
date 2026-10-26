@@ -1,0 +1,47 @@
+"""What Esc means in Rostrum3D, in one written order (the shared key `step_back`). Esc first closes the newest open popup,
+menu or sheet wherever the keyboard is (the kit's one Esc: AppShell + OpenPopups; the window's key map waits while one is
+open). With none open, Esc takes the FIRST step below that applies, one step per press: never two at once, and never
+nothing while something is under way. With none of them, Esc does nothing (there is nothing to step back from).
+
+A typing in place (a 3D text just placed: TypeInPlace.qml) ends on its own Esc before any of this.
+"""
+from __future__ import annotations
+
+ORDER = (
+    ("render", "a render running: cancel it",
+     lambda b, v: b.render.state == "running", lambda b, v: b.render.cancel()),
+    ("result", "a render shown over the viewport: put it away",
+     lambda b, v: b.render.state in ("done", "failed"), lambda b, v: b.render.dismiss()),
+    ("queue_result", "a finished render from the queue shown over the viewport: put it away",
+     lambda b, v: b.queue.shown.state == "done", lambda b, v: b.queue.shown.dismiss()),
+    ("armed", "a shape waiting for its click: let go of it",
+     lambda b, v: b.add.armed != "", lambda b, v: b.add.disarm()),
+    ("bones", "bones being placed: cancel them",
+     lambda b, v: v is not None and v.bone_tool.on, lambda b, v: v.bone_tool.cancel()),
+    ("focus", "picking a camera's focus: stop",
+     lambda b, v: v is not None and bool(v.focus.camera), lambda b, v: v.focus.stop()),
+    ("link", "picking what a light lights: finish",
+     lambda b, v: v is not None and bool(v.place.mode), lambda b, v: v.place.stop()),
+    ("knife", "the Knife's line: drop it",
+     lambda b, v: v is not None and v.mesh_edit.knifing, lambda b, v: v.mesh_edit.escape()),
+    ("mesh", "Edit mesh: leave it",
+     lambda b, v: v is not None and v.mesh_edit.on, lambda b, v: v.mesh_edit.leave()),
+    ("paint", "Paint: leave it",
+     lambda b, v: v is not None and v.paint.on, lambda b, v: v.paint.leave()),
+    ("stretch", "an animation picked on the timeline: back to its item",
+     lambda b, v: b._stretch.shown, lambda b, v: b._stretch.clear()),
+    ("keys", "several keys picked: let go of them",
+     lambda b, v: b._keys.count > 1, lambda b, v: b._keys.clear()),
+    ("selection", "a selection: let go of it (the Scene panel shows)",
+     lambda b, v: b.selected != "", lambda b, v: b.select("")),
+)
+
+
+def step(bridge) -> str:
+    """Take the first step that applies; its name ("" when nothing applied)."""
+    v = getattr(bridge, "viewport", None)
+    for name, _words, applies, do in ORDER:
+        if applies(bridge, v):
+            do(bridge, v)
+            return name
+    return ""

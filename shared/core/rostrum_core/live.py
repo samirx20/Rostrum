@@ -36,7 +36,6 @@ import time
 from .document import Event
 from .errors import RostrumError, codes
 from .history import History
-from .histfile import LAYOUT
 from .doc_write import DocWrite
 from .storage import _wrote, doc_hash, paths, read_history, save
 from . import edits as E
@@ -201,9 +200,7 @@ class Live:
         doc.history.versions = versions
         if self.p["script"].exists():
             doc.script_bases = json.loads(self.p["script"].read_text(encoding="utf-8"))
-        _wrote(doc, hist, r.end)
-        if r.layout != LAYOUT and not tail:
-            doc._written = None                          # an old layout: the next save writes it whole, new layout
+        _wrote(doc, hist, r.end, layout=w.layout if tail else r.layout)   # an old layout too: read once, not per tick
         for c in new:
             doc._emit(Event("change", c))
         return new

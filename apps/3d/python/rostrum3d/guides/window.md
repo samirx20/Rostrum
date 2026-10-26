@@ -11,7 +11,7 @@ sits on top of it.
 | **Rostrum3D**, then the project's name | Click the name to rename the project |
 | **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
 | **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
-| **Build · Animate · Render** | The pages (Ctrl+1, Ctrl+2, Ctrl+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
+| **Build · Animate · Render** | The pages (Alt+1, Alt+2, Alt+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
 | **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
 | **Search or run a command** | Ctrl+K: every action and setting by name |
 | **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
@@ -27,20 +27,26 @@ sits on top of it.
   the dimming off.)
 - Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. A click selects what is there; a click
   on empty space selects nothing. Double-click goes back to the shot's view.
-- **Right-click** an item (here or in the scene list): Duplicate, Delete, Lip sync… (a mouth group: a group whose children
-  are mouth shapes named like `mouth_rest`, `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a
-  voice line from RostrumSound, check the mesh each shape shows, Apply: one undo step, keys on the timeline), Look through (lights), Copy material /
-  Paste material (shapes). Right-click empty space: Frame all, New shot.
+- **Right-click** an item (here or in the scene list): the same actions as the settings panel's top and Ctrl+K, only what
+  applies, six at most, each with its key: Edit mesh (Enter), Combine (two solids), Copy material (Ctrl+Alt+C) / Paste
+  material (Ctrl+Alt+V) on shapes, Look through and Pick what it lights (lights), Focus on a point (a camera with depth of
+  field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
+  `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
+  mesh each shape shows, Apply: one undo step, keys on the timeline), then Duplicate (Ctrl+D) and Delete (Delete). An item
+  outside the selection is selected alone first. Right-click empty space (nothing there): Back to the shot's view (`)
+  and New shot from this view, while you look through the free camera.
 
 ### The gizmo
 
 The selected item shows its handles: **arrows** move it along X (red), Y (green) and Z (blue), the **square** in the
-middle moves it across the view, the **rings** turn it, and the small **cubes** scale it.
+middle moves it across the view, the **rings** turn it, and the small **cubes** scale it. A selected bone (Animate
+page) shows only rings, on its head: a drag keys its Turn at the playhead (see Bones below).
 
 | Key | Does |
 |---|---|
-| V | All the handles |
+| V | Select: all the handles (and out of Paint) |
 | W · E · S | Only move · only turn · only scale |
+| ← → ↑ ↓ | Nudge the selection 1 cm along X (← →) or up and down (↑ ↓); Shift 10 cm, Alt 1 mm. One undo step a press |
 | D (hold) | The arrows move the **pivot** (the point it turns and scales around), not the item |
 | K | Keys what the gizmo moved, at the playhead (Position when nothing moved yet) |
 | Ctrl (while dragging) | No snapping |
@@ -52,6 +58,8 @@ middle moves it across the view, the **rings** turn it, and the small **cubes** 
 - An animated setting gets its key at the playhead as you drag.
 - Agents do the same with the same operations: `value.set` and `key.add` on `x y z`, `rx ry rz`, `sx sy sz` and the
   pivot `px py pz`.
+- **Visible** has a key mark too: key it to show or hide an item at a moment. It switches at each
+  key and holds until the next (lip sync shows its mouth shapes this way). Agents: `key.add` `visible` with `v` 1 or 0.
 
 ## The tool rail (left edge)
 
@@ -79,7 +87,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   settings panel becomes Brush and Paint layers; a drag on the mesh paints, one undo step per stroke; B or Esc leaves.
   The guide `painting` has it all.
 
-**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (while a mesh is selected), Lights and Camera:
+**On the Animate page** the rail is Select, **Poses** (P), **Onion skin** (O), **Bones** (Shift+B, while a mesh is selected), Lights and Camera:
 
 - **Poses** (P): with items selected (a lid and its buds), type a name and **Save pose**: it keeps their Position, Turn
   and Scale as they are at the playhead. Click a saved pose to key all of that at the playhead (one undo step).
@@ -89,15 +97,18 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Onion skin** (O turns it on and off): ghosts of the selected item in the viewport, red before, green after, to
   time an arc by eye. Its panel picks the frames: **At the keys** (its previous and next keys) or **2 and 4 frames**
   each way. The quick look only: Final shows no ghosts. It never changes the scene.
-- **Bones** (shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
-  points along the mesh, root first: dots and a line show them; **Backspace** takes the last one back. **Enter** makes the
-  chain (one undo step), **Esc** cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
-  Select a bone and key its **Turn X / Y / Z** (the Turn it has plus the bend you want): the mesh bends with it and the
-  bones after it, in the viewport and the render alike. On this page the selected mesh's bones are drawn over the picture
-  as thin diamonds, posed at the playhead (the selected bone in blue). The mesh's **Bend with bones** turns the bending off
+- **Bones** (Shift+B; shows while a mesh is selected): a chain of bones the mesh bends with (a strap, a cable, a tail). Click
+  points along the mesh, root first: dots and a line show them; **Backspace** or **Delete** takes the last one back. **Enter** makes the
+  chain (one undo step), **Esc** or Shift+B again cancels. Each bone is a row under the mesh in the scene list, each inside the one before.
+  On this page the selected mesh's bones are drawn over the picture as thin diamonds, posed at the playhead (the
+  selected bone in blue). **Click a bone** in the viewport to select it (a click near its line picks the bone, not the
+  mesh behind). A selected bone shows **turn rings** on its head: drag one to bend it (Ctrl frees the 15° steps); each
+  drag is one undo step and keys the bone's **Turn X / Y / Z** at the playhead, so the mesh bends with it and the bones
+  after it, in the viewport and the render alike. You can also type its Turn in the settings panel (the Turn it has plus
+  the bend you want). The mesh's **Bend with bones** turns the bending off
   and on. A mesh bends only where it has points along its length: the ready shapes have none along their straight part (a
-  capsule's or cylinder's Segments go around it), so make it an editable mesh (Tab) and cut across it with the Knife
-  (K) every few centimetres first.
+  capsule's or cylinder's Segments go around it), so make it an editable mesh (Enter) and cut across it with the Knife
+  (Shift+K) every few centimetres first.
 - The Poses and Onion skin panels open and close on their own: click a rail button to open its panel, again to close it, Esc
   closes the one you are in. Both can be open side by side; leaving the Animate page closes them.
 
@@ -182,6 +193,34 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
     ("Turn · lid · Turn X"); then From and To, Start, Length, the easing presets **Linear, Smooth, In, Out, Spring, Bounce, Hold**,
     the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc
     goes back to the item.
+
+## Keys
+
+Every key is listed on the Keys sheet (Ctrl+/) and found in Ctrl+K by what it does; nothing on the sheet is dead. The
+keys every Rostrum app shares mean the same here as in 2D and Sound: Space plays, Ctrl+← → step a frame, Home / End,
+`,` and `.` (here: the previous / next key of the selection, or of everything, or marker), M adds a marker, the arrows
+nudge, Tab / Shift+Tab walk the scene list, Enter goes in (Edit mesh on a shape; the first item of a group), Shift+Enter
+goes out, Ctrl+A selects all, Ctrl+D duplicates, Delete deletes, Ctrl+Alt+C / Ctrl+Alt+V copy and paste a material,
+K keys what the gizmo moved, F9 / Shift+F9 / Ctrl+Shift+F9 / Ctrl+Alt+J ease the picked keys (Smooth, Ease in, Ease out,
+Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
+
+| Key | Does |
+|---|---|
+| R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
+| P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
+| W · E · S | The gizmo's move, turn or scale handles only (V: all) |
+| 1 · 2 · 3 | Edit mesh: points, edges, faces |
+| Shift+K · Alt+Z | Edit mesh: Knife, X-ray |
+| Alt+1 · Alt+2 · Alt+3 | The Build, Animate and Render pages |
+| ` | The shot camera's view, or the free camera from it |
+| Shift+F | Look: Quick or Final |
+| F12 | Render (on the Render page: the shown shot's render, next in the queue) |
+
+**Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
+newest one); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
+for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
+Knife's line is dropped; then Edit mesh or Paint is left; then an animation picked on the timeline goes back to its item;
+then several picked keys are let go; then the selection is let go (the Scene panel shows).
 
 ## Files
 

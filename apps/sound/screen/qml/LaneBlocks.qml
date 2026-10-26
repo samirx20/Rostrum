@@ -16,17 +16,20 @@ Item {
     property var track          // the row's layout: hue, mute, group
     property var blocks: ""     // its notes / hits / clips as JSON text (the row model's own role: an edit on them sends only these)
     property var patched: null  // a few of them changed since (backend.blocksPatched): the list as patched
+    property var was: null      // the list shown a step before (null: `parsed`), for backend.blocksBack (block_patch.py)
     readonly property var parsed: Blocks.parse(blocks)              // (parsed once a text: a patch dropped shows it again)
     readonly property var sent: patched || parsed
     readonly property var shown: Blocks.timed(sent, ruler ? ruler.placing : null)   // in seconds (a tempo change: here only)
     readonly property string rowId: track.id
-    onBlocksChanged: patched = null
-    onRowIdChanged: patched = null    // (this lane now shows another row: a patch is its row's alone)
+    onBlocksChanged: { patched = null; was = null }
+    onRowIdChanged: { patched = null; was = null }   // (this lane now shows another row: a patch is its row's alone)
     Connections {
         target: backend
-        function onBlocksPatched(key, text) { if (key === lane.track.id) lane.patched = Blocks.patch(lane.shown, text, lane.ruler ? lane.ruler.placing : null) }
-        function onBlocksReset(key) { if (key === lane.track.id) lane.patched = null }
+        function onBlocksPatched(key, text) { if (key === lane.track.id) lane.show(Blocks.patch(lane.shown, text, lane.ruler ? lane.ruler.placing : null)) }
+        function onBlocksReset(key) { if (key === lane.track.id) lane.show(null) }
+        function onBlocksBack(key) { if (key === lane.track.id) lane.show(lane.was) }
     }
+    function show(list) { var now = patched; patched = list; was = now }     // the list shown now is kept as the one before
     property var ruler
     property int slot: 0        // its row: after a resize, rows paint again in turn (ViewCanvas)
     readonly property int pad: 3

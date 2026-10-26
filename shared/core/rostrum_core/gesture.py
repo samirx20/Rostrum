@@ -49,7 +49,7 @@ class Gesture:
         self.doc.data = work
         self.doc._indexed(work, idx)
         self._calls = self._kept + calls     # the last step says where the drag ended, after the steps that made
-        if any(isinstance(e, (E.Insert, E.Remove)) for e in edits):     # items (an Alt+drag copy is a duplicate, then
+        if any(isinstance(e, (E.Insert, E.Remove, E.Many)) for e in edits):     # items (an Alt+drag copy is a duplicate, then
             self._kept = self._calls                                     # moves): later moves don't erase the copy
         self._stepped = True
         self.doc._emit(Event("preview", edits=edits))     # what this step changed: listeners redo only that
@@ -65,7 +65,8 @@ class Gesture:
             self.doc.data = shown
             self.doc._indexed(shown, shown_idx)
         near = touched(made, self.doc.kind.lists)
-        edits = diff(shown, work, self.doc.kind.lists, shown_idx, idx, self._near | near)   # from what listeners show now
+        edits = made if shown is self.start else diff(                  # from what listeners show now (the first
+            shown, work, self.doc.kind.lists, shown_idx, idx, self._near | near)   # step: start + made, a Many stays one)
         self._near, self._made = near, made
         self.doc.data = work
         self.doc._indexed(work, idx)
