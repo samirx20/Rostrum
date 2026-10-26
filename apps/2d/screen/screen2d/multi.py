@@ -30,22 +30,35 @@ class Multi(QObject):
         # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
+        self._boxes = self._group = None                    # the boxes, made once per change (see `boxes`)
+        for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged, bridge.docChanged,
+                  bridge.docStepped, bridge.timeChanged):
+            s.connect(self._forget)                         # first: a reader told of news below finds fresh boxes
         for name in ("boxesChanged", "pickedChanged", "rideChanged"):
             told = news.relay(self, name)
             for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
                 s.connect(told)
 
+    def _forget(self):
+        self._boxes = self._group = None
+
     @Property("QVariantList", notify=boxesChanged)
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
-        shows them (shown.py; a layer newer than the picture has none yet)."""
-        return [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
+        shows them (shown.py; a layer newer than the picture has none yet). Made once per change and kept: each outline
+        reads the whole list (`backend.multi.boxes[index]`), so remaking it per read made a pick of n layers n x n boxes
+        (48 layers: 2,500 boxes, ~100 ms)."""
+        if self._boxes is None:
+            self._boxes = [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
+        return self._boxes
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
         """The one box round all the selected layers (their handles: group_slots.py); {} for fewer than two."""
-        boxes = self.b.shown_boxes(self.layers())
-        return dressed(union(boxes)) if len(boxes) > 1 else {}
+        if self._group is None:
+            boxes = self.b.shown_boxes(self.layers())
+            self._group = dressed(union(boxes)) if len(boxes) > 1 else {}
+        return self._group
 
     @Property("QVariantMap", notify=rideChanged)
     def ride(self):

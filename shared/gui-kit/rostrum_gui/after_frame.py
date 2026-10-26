@@ -23,11 +23,13 @@ class AfterFrame(QObject):
         self._fn, self.due = fn, False
         self.ahead = ahead              # work made ahead (a panel nobody shows yet): a settled picture doesn't wait for it
 
-    def ask(self):
+    def ask(self, first=False):
+        """`first`: before the jobs already waiting (a pick's settings panel: the thing the pointer goes to next, so it
+        takes the first turn, ahead of the outline and path checks, which nobody clicks."""
         if self.due:
             return
         self.due = True
-        _TURNS.append(self)
+        _TURNS.append(self, first)
         _TURNS.arm()
 
     def cancel(self):
@@ -53,8 +55,8 @@ class _Turns(QObject):
         self._jobs: list[AfterFrame] = []
         self._armed, self._gen = False, 0
 
-    def append(self, job):
-        self._jobs.append(job)
+    def append(self, job, first=False):
+        self._jobs.insert(0, job) if first else self._jobs.append(job)
 
     def drop(self, job):
         if job in self._jobs:

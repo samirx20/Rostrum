@@ -135,8 +135,16 @@ class Hooks2D:
         if param not in SIBLING_PICKS:
             return []
         parent, key, _ = self.doc.parent_of(item["id"])
-        return [{"value": s["id"], "label": outline.label_of(s, None)} for s in self.doc.item(parent).get(key, [])
-                if s["id"] != item["id"] and SIBLING_PICKS[param](s)]
+        # the siblings' list is the same for every one of them (less the item itself): made once per document state, not per
+        # item (48 layers picked: 48 x 48 labels, ~60 ms)
+        made = self.__dict__.setdefault("_sibling_picks", {})
+        if made.get("data") is not self.doc.data:
+            made.clear(); made["data"] = self.doc.data
+        every = made.get((parent, key, param))
+        if every is None:
+            every = made[(parent, key, param)] = [{"value": s["id"], "label": outline.label_of(s, None)}
+                                                  for s in self.doc.item(parent).get(key, []) if SIBLING_PICKS[param](s)]
+        return [c for c in every if c["value"] != item["id"]]
 
     def expr_state(self, item, param):
         return exprs.state(item, param)

@@ -46,7 +46,7 @@ class SelectSlots(SlotMixin):
         if moved:
             self.selectedItemsChanged.emit()
         if pointer_quiet.busy():            # a person's pick (pointer or key): its highlight and outline are drawn
-            self._panel_later().ask()       # first, the panel in the frame after (after_frame.py); a reader of the rows
+            self._panel_later().ask(first=True)   # first, the panel in the frame after (after_frame.py); a reader of the rows
         else:                               # makes it now. A script's or an agent's: at once
             self._panel_later().due = False
             self._show_panel()
