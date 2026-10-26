@@ -73,13 +73,25 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         if g is not None:
             g.cancel()
             g.__exit__(None, None, None)
+
+    def make_way(self, what, end=True):
+        """Another edit comes while a gesture is open. A live box that says how it ends when something else comes
+        (`Gesture.interrupt`: Stagger…'s and the amounts popover's keep, as Enter does; a hover preview's take-back)
+        ends first; a drag a person still holds refuses in plain words (critic r10: an open Stagger box made Ctrl+G
+        say "being dragged by a person"). `end=False`: only the refusal (the caller picked its target already)."""
+        g = self._gesture
+        if g is not None and end and g.interrupt is not None:
+            g.interrupt()
+        g = self._gesture
+        if g is not None:
+            raise RostrumError(codes.CONFLICT, what, f'"{g.label}"', "is still open",
+                               hint="Finish it first: let go of the mouse, or press Enter to keep it, Esc to put it back.")
+
     @_through_door
     def apply(self, calls, who: Who, label=None, session=None, based_on=None, join=True) -> Change | None:
         """Run a list of operations as one change, all or nothing. Nothing changed = nothing recorded (None).
         `join=False`: never merge into the person's previous change (an arrow-key press is one step each)."""
-        if self._gesture is not None:
-            raise RostrumError(codes.CONFLICT, "apply", "the document", "is being dragged by a person right now",
-                               hint="Try again in a moment.")
+        self.make_way("apply")
         if self.kind.tidy:
             calls = self.kind.tidy(run.normalize(calls), self.folder)
         work, edits, calls, idx = run.plan_indexed(self.kind, self.data, calls, self.locked_by, who, self._index())

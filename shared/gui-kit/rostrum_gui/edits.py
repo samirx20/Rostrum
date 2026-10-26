@@ -35,9 +35,12 @@ def edit_label(doc, item_id, name, value) -> str:
 class Drag:
     """One press-drag-release = one change: preview each move's calls, then end (one change) or cancel (nothing)."""
 
-    def __init__(self, doc, who, label):
+    def __init__(self, doc, who, label, interrupt=None):
+        """`interrupt`: how a live box ends when another edit comes while it is open (Document.make_way): a popover's
+        keep (as Enter does) or a hover's take-back. None (a pointer drag): that edit is refused in plain words."""
         self._ctx = doc.gesture(label, who)
-        self._ctx.__enter__()              # a second open drag raises CONFLICT
+        self._ctx.__enter__()              # an open box with `interrupt` ends first; another open drag raises CONFLICT
+        self._ctx.interrupt = interrupt
         self._fresh = None                 # the last step's fresh calls (they say the state shown)
 
     def preview(self, calls, fresh=False):
@@ -49,6 +52,14 @@ class Drag:
         self._fresh = None
         self._ctx.preview(calls, fresh)
         self._fresh = calls if fresh else None
+
+    @property
+    def interrupt(self):
+        return self._ctx.interrupt
+
+    @interrupt.setter
+    def interrupt(self, fn):
+        self._ctx.interrupt = fn
 
     # A fresh step in parts (plan_aside.py: a big one planned on a worker thread): the calls, the plan, the showing
     def fresh_calls(self, calls) -> list:

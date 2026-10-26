@@ -72,7 +72,7 @@ class EasePlay(QObject):
 
         def show():
             if self._shown is None:
-                self._shown = Drag(self.b.doc, self.b.who, "Ease preview")
+                self._shown = Drag(self.b.doc, self.b.who, "Ease preview", interrupt=self.unpreview)
             self._shown.preview([{"op": "key.set", "target": list(ids), "args": {"ease": ease}}], fresh=True)
         return self.b.guard(show) and (self.play(ids) or True)
 

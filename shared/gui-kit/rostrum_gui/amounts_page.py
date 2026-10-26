@@ -78,10 +78,11 @@ class AmountsPage(QObject):
         self._found, self._static, self._vals = self._made_for(action, facts, mine)
         self._action, self._facts, self._title, self._more = action, facts, title, False
         self._drag = self._drag_fn(title)
+        self._drag.interrupt = self.keep       # another edit while it is open keeps it first, as Enter does
         try:
             self._refresh(preview=False, instant=True)   # at once, on the delegates made before (RowsModel keeps them per
         except BaseException:                            # setting, parked between uses); a failure never leaves the
-            self._drop()                                 # gesture open ("being dragged by a person" for every later edit)
+            self._drop()                                 # gesture open (every later edit refused)
             raise
         self._later.ask()                            # the action runs the frame after
 
