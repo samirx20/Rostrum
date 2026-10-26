@@ -113,7 +113,7 @@ def follow(folder, doc) -> list[str]:
 def choices(words: str = "", limit: int = 40, folder=None, chosen: str = "") -> list[dict]:
     """What to pick from, music first (apps/sound/PURPOSE.md): with no words, a note / hit on the song's own instruments
     (sound_cue_music, when the project has a song), then the person's own recordings, then Sound's installed library
-    (what there is); never an effect first. With words: the person's recordings, then the library, all words matching.
+    (a spread over the library's packs, one or two files each, never one instrument's notes; Sound's catalogue, rostrum_sound.library); never an effect first. With words: the person's recordings, then the library, all words matching.
     [{path, about, seconds, where}];
     a source that isn't there is skipped."""
     out = []
@@ -128,7 +128,8 @@ def choices(words: str = "", limit: int = 40, folder=None, chosen: str = "") -> 
     if words.strip() or len(out) < limit:        # no words: what is there, the library after the song and yours
         try:
             from rostrum_sound import library
-            for p in library.find("recordings", words)[:max(0, limit - len(out))]:
+            found = library.find("recordings", words)[:max(0, limit - len(out))] if words.strip() else library.spread("recordings", max(0, limit - len(out)))
+            for p in found:
                 d = library.describe(p)
                 out.append({"path": d["path"], "about": d["about"], "seconds": d.get("seconds"), "where": "Library"})
         except FileNotFoundError:

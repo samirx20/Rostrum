@@ -214,6 +214,7 @@ Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), nev
   recordings, RostrumSound's library; `edit_sound_cue {layer, sound}` ties one to the layer's start (Sound mixes it).
 - `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
   suggests notes and hits for each landing).
+- **No sound?** A render of a project with no RostrumSound item, or with `sound: false`, makes a silent mp4; it never fails for that. The Sound server is only needed to make or change the music, not to render it.
 - Guide `timing-to-music`: hearing the song, its beats, snapping and tying layers to its markers.
 
 ## Reading errors

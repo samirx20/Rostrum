@@ -99,6 +99,17 @@ def find(kind: str = "instruments", words: str = "") -> list[Path]:
     return [p for p, suffix, text in _listing() if suffix in want and all(w in text for w in ws)]
 
 
+def spread(kind: str = "recordings", limit: int = 20) -> list[Path]:
+    """A spread of the installed files of `kind` for browsing with no words: from each pack in turn (sound effects,
+    mallets, strings, kits ...) one file, then another from the middle of its list, up to `limit`, so a list is never one
+    instrument's notes."""
+    packs: dict[str, list[Path]] = {}
+    for p in find(kind):
+        packs.setdefault(p.relative_to(LIBRARY).parts[0], []).append(p)
+    picks = [[files[0], files[len(files) // 2]] if len(files) > 1 else files for files in packs.values()]
+    return list(dict.fromkeys(f[i] for i in range(2) for f in picks if i < len(f)))[:limit]
+
+
 _LISTED: tuple = (None, (), [])     # (the library folder, [(folder, modified time)], [(path, suffix, searchable text)]) of the last walk
 
 

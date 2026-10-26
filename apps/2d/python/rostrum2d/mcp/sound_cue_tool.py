@@ -16,12 +16,13 @@ tools = Tools()
 
 @tools.tool("inspect_sounds", {"properties": {
     **ITEM_COMP,
-    "words": {"type": "string", "description": "Words that must all appear in a recording's name, description or folders, e.g. \"cello pizzicato\". Empty: everything there is, the song's instruments first (a note or hit on the moment), then the person's recordings, then RostrumSound's library."},
+    "words": {"type": "string", "description": "Words that must all appear in a recording's name, description or folders, e.g. \"cello pizzicato\". Empty: the song's instruments first (a note or hit on the moment), then the person's recordings, then a spread over RostrumSound's library packs."},
     "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}}})
 def inspect_sounds(ctx, args):
     """What to tie to a layer with edit_sound_cue, music first: with no words, a note or a hit on the song's own
-    instruments ("note:<track>" / "hit:<track>"), then the person's own recordings; with words, their recordings, then
-    RostrumSound's installed library. Most moves need no sound; a note on the landing or a string / cymbal rise into it
+    instruments ("note:<track>" / "hit:<track>"), then the person's own recordings, then a spread of RostrumSound's library
+    (a file or two from each pack: strings, keys, kits, mallets, sound effects), never one instrument's notes; with words, their recordings, then
+    RostrumSound's installed library matching all the words. Most moves need no sound; a note on the landing or a string / cymbal rise into it
     (edit_sounds_from_motion in RostrumSound) beats an effect. Each: path, about (what it is), seconds, where."""
     doc, comp = doc_and_comp(ctx, args)
     rows = sound_cues.choices(args.get("words", ""), int(args.get("limit", 20)), doc.folder, comp.get("soundtrack", ""))
