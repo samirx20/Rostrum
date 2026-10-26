@@ -24,6 +24,13 @@ struct GhostIn {
   float opacity = 0.35f;       // 0..1
 };
 
+// where a `view` picture goes: the engine program's shared memory (ENGINE_CONTRACT § 4), or a GL framebuffer of the
+// window that holds the core (window_core.h: the in-window viewport draws straight into its own texture)
+struct ViewTarget {
+  unsigned fbo = 0;  // 0 = shared memory
+  int width = 0, height = 0;
+};
+
 struct ViewPostIn {
   int width = 0, height = 0;
   unsigned color = 0, depth = 0, mask = 0;  // GL textures from Hydra::view; mask 0 = nothing selected
@@ -42,8 +49,10 @@ class ViewPost {
   ~ViewPost();
   ViewPost(const ViewPost&) = delete;
   ViewPost& operator=(const ViewPost&) = delete;
-  // writes width * height * 4 bytes of straight RGBA8, top row first, to dst; throws r3d::Error on a GL failure
-  void run(const ViewPostIn& in, unsigned char* dst);
+  // writes width * height * 4 bytes of straight RGBA8, top row first, to dst; throws r3d::Error on a GL failure.
+  // With `target` (dst null): the finished picture is drawn into that framebuffer instead, scaled to its size, in
+  // GL's own row order (the window's view, window_core.h)
+  void run(const ViewPostIn& in, unsigned char* dst, const ViewTarget* target = nullptr);
 
  private:
   struct Targets;

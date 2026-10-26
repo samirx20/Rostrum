@@ -143,12 +143,18 @@ class Hydra::Engine : public UsdImagingGLEngine {
   std::vector<std::string> aovs_;  // the extra outputs set now (use_aovs)
 };
 
-Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
+namespace {
+void register_scene_fixes() {
   register_cycles_dome_fix();
   register_cycles_lights();
   register_storm_sun();
   register_storm_lights();
 }
+}  // namespace
+
+Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) { register_scene_fixes(); }
+
+Hydra::Hydra(UsdStageRefPtr stage, GlContext::Borrow b) : stage_(std::move(stage)), gl_(b) { register_scene_fixes(); }
 
 Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there

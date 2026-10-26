@@ -5,6 +5,10 @@ file is what is 3D's: the engine, the scene sent again only when it changed (`en
 
 Picks go through the same thread and engine, in the order asked, before the next view; each answer comes back as
 `picked(item id, reply)` ("" = nothing there).
+
+With a `link` (view_item.py) the window draws the live view itself: the quick look's views, picks and clay strokes go
+to the Rostrum3DView item and its pictures land on screen without passing through here (`ready` still says so); the
+Final look and the engine-only requests go to the engine program as before.
 """
 from __future__ import annotations
 
@@ -31,9 +35,12 @@ class ViewRenderer(PictureWorker):
     #   normal: where the surface was hit and which way it faces)
     notice = Signal(str)         # the engine was started again (never silent)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, link=None):
         super().__init__("view3d", parent)
         self._final = False                          # the last view was the Final look (Cycles), worker thread only
+        self.link = link                             # the window's own view (view_item.ViewLink), or None: pictures
+        if link is not None:
+            link.drawn.connect(self._drawn)
         self.start()
 
     def request(self, scene: dict, req: dict):
@@ -68,6 +75,9 @@ class ViewRenderer(PictureWorker):
         return box["v"]
 
     def open_engine(self):
+        if self.link is not None:
+            from .view_item import ItemEngine
+            return ItemEngine(self.link, open_engine())
         return open_engine()
 
     def handle(self, eng, job):
@@ -82,7 +92,9 @@ class ViewRenderer(PictureWorker):
         if kind == "view":
             self._final = final
         eng.ensure_scene(scene)
-        if kind == "pick":
+        if kind == "view" and self.link is not None and not final:
+            eng.show(req)                            # drawn in the window; `_drawn` says when
+        elif kind == "pick":
             out = eng.pick(**req)
             self.picked.emit(out.get("item", "") if out.get("hit") else "", out)
         else:
@@ -106,6 +118,15 @@ class ViewRenderer(PictureWorker):
                         bool(reply.get("cameraDof", False)),
                         {"final": reply.get("final"), "vram": reply.get("vram")})
         return serial
+
+    def _drawn(self, reply: dict):
+        """The window drew a picture (view_item.ViewLink.drawn): as `show`'s `ready`, with no picture to serve."""
+        if not reply.get("ok", True):
+            return self.failed.emit(f"Error: viewport view: {reply.get('error', 'no reason given')}")
+        self.serial += 1
+        self.ready.emit(self.serial, float(reply.get("tRender1", 0.0)) - float(reply.get("tRender0", 0.0)),
+                        bool(reply.get("sceneDome", False)), bool(reply.get("cameraDof", False)),
+                        {"final": None, "vram": reply.get("vram"), "frame": reply.get("frame")})
 
     def describe(self, job, error):
         return f"Error: viewport {job[0]} at frame {job[2].get('frame')}: {error}"

@@ -135,7 +135,7 @@ unsigned ViewPost::program(const std::string& key, const std::string& fragment) 
   return programs_[key] = p;
 }
 
-void ViewPost::run(const ViewPostIn& in, unsigned char* dst) {
+void ViewPost::run(const ViewPostIn& in, unsigned char* dst, const ViewTarget* target) {
   const int w = in.width, h = in.height;
   if (!t_ || t_->w != w || t_->h != h) {
     t_.reset();
@@ -192,8 +192,14 @@ void ViewPost::run(const ViewPostIn& in, unsigned char* dst) {
   draw_into(t_->out.fbo, w, h);
 
   glBindFramebuffer(GL_READ_FRAMEBUFFER, t_->out.fbo);
-  glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, dst);
+  if (target) {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target->fbo);
+    glBlitFramebuffer(0, 0, w, h, 0, 0, target->width, target->height, GL_COLOR_BUFFER_BIT,
+                      w == target->width && h == target->height ? GL_NEAREST : GL_LINEAR);
+  } else {
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, dst);
+  }
   glUseProgram(0);
   glBindVertexArray(0);
   glActiveTexture(GL_TEXTURE0);

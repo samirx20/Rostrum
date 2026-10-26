@@ -64,6 +64,7 @@ struct DrawSettings {
 class Hydra {
  public:
   explicit Hydra(PXR_NS::UsdStageRefPtr stage);
+  Hydra(PXR_NS::UsdStageRefPtr stage, GlContext::Borrow);  // on the context current now (the window's view)
   ~Hydra();
   // "storm" | "cycles" | "stylized" -> Hydra plug-in id; unknown names are an error listing the accepted ones
   static PXR_NS::TfToken plugin_for(const std::string& name);

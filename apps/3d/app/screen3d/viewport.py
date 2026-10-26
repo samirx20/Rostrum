@@ -23,6 +23,8 @@ from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
 from .frames import EngineVia, ViewRenderer
+from . import view_item
+from .view_item import ViewLink
 from .viewcam import ViewCam
 
 MAX_WIDTH = 1600             # pictures wider than this are drawn smaller and scaled up on screen
@@ -49,7 +51,8 @@ class Viewport(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.bridge, self.cam = bridge, ViewCam()
-        self._r = ViewRenderer(self)
+        self.link = ViewLink(self) if view_item.on() else None   # the window draws the live view (view_item.py)
+        self._r = ViewRenderer(self, link=self.link)
         self.provider = self._r.provider
         self._serial, self._ms, self._status = 0, 0.0, ""
         self._exposure, self._studio, self._lights = 0.0, 1.0, True
@@ -93,6 +96,9 @@ class Viewport(QObject):
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
+    # the live view is drawn in the window (LiveView.qml), not served as pictures; the Final look stays a picture
+    inWindow = Property(bool, lambda s: s.link is not None, constant=True)
+    viewLink = Property(QObject, lambda s: s.link, constant=True)
     ms = Property(float, lambda s: s._ms, notify=serialChanged)
     status = Property(str, lambda s: s._status, notify=statusChanged)
     mode = Property(str, lambda s: s.cam.mode, notify=settingsChanged)

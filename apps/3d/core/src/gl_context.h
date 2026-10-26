@@ -9,6 +9,9 @@ namespace r3d {
 class GlContext {
  public:
   GlContext();   // hidden window + OpenGL 4.6 compatibility context, made current; throws r3d::Error
+  // the context current on this thread, someone else's (the window's view, window_core.h): nothing made or destroyed
+  struct Borrow {};
+  explicit GlContext(Borrow) {}
   ~GlContext();
   GlContext(const GlContext&) = delete;
   GlContext& operator=(const GlContext&) = delete;
