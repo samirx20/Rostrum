@@ -1,6 +1,7 @@
 """`note.transpose`: the selected notes up or down by half steps (`semitones`) or by steps of the song's key (`steps`,
 the key playing at each note's own time; a chord moves by its lowest note's step, so it keeps its shape). One rule for
-the screen's Transpose menu, Ctrl+↑ / ↓ and agents. Going past the 128 notes fails and changes nothing.
+the screen's Transpose menu, Ctrl+↑ / ↓ and agents. A note that would leave the 128 MIDI keys
+(0 to 127) fails the whole call and changes nothing; any number of notes can be transposed in one call.
 """
 from __future__ import annotations
 
@@ -42,7 +43,8 @@ def _distance(ctx, t, pitch, steps) -> tuple[int, str]:
 
 @REGISTRY.operation("note.transpose", "Move the selected notes up or down: `semitones` in half steps (12 = an octave), "
                     "or `steps` along the song's key at each note (2 = a third up; a chord moves by its lowest note's "
-                    "step). Exactly one of the two. Past the 128 notes it fails and changes nothing.",
+                    "step). Exactly one of the two. A note that would leave the 128 MIDI keys (0 to 127) fails the call and changes nothing; "
+                    "there is no limit on how many notes one call moves.",
                     target="note", params=[SEMITONES, STEPS], label="Transpose")
 def transpose(ctx, targets, args):
     given = [k for k in ("semitones", "steps") if k in args]
@@ -56,7 +58,7 @@ def transpose(ctx, targets, args):
         try:
             new = [_shifted(p, by, key) for p in pitch] if isinstance(pitch, list) else _shifted(pitch, by, key)
         except ValueError:
-            ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', f"would go outside the 128 notes by {by:+d} half steps",
+            ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', f"would go outside the 128 MIDI keys (0 to 127) by {by:+d} half steps",
                      hint="Transpose by less.")
         plan.append((t, new))
     for t, new in plan:                                  # all checked first: a failure changes nothing

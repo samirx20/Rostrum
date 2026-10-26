@@ -111,6 +111,11 @@ def even_steps(total: float, rate: float) -> list[tuple[float, float, float]]:
     return [(i * rate, rate, 0.84 if i % 4 == 0 else 0.7) for i in range(int(total / rate + 1e-6))]
 
 
+def tour_length(tones: list[int], mode: str, seed: str = "") -> int:
+    """How many steps one pass through the tones takes in `mode` (upDown on 3 tones: 4)."""
+    return len(_order(tones, mode, seed))
+
+
 def play(steps, sets, per, mode, seed, gate) -> list[tuple[float, float, list[int], float]]:
     """The arpeggio: (at, length, tones, accent) for each step, stepping through the tone set playing then (a set lasts
     `per` beats) in `mode`'s order, each step held `gate` of its length. `seed(set index)` seeds "random". The one

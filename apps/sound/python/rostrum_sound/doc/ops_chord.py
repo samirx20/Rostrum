@@ -3,7 +3,7 @@
 Make a chord: each selected note is a root; the chord's other tones are added as separate notes (same start, length,
 velocity and playing; new ids), each spelled in the key playing then. A chord is what a person sees: a stack of notes
 that can each be edited. Invert works on the chords of the selection (`chords.py`, base B). Both fail whole, changing
-nothing, when a tone would go past the 128 notes.
+nothing, when a tone would go past the 128 MIDI keys (0 to 127).
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _voiced(root_midi: int, shape: str, key, inversion: int) -> list[int]:
                     "that note (D in C major gives D-F-A, B gives B-D-F), \"key7\" with its 7th, or major, minor, sus2, "
                     "sus4, power, octave; `inversion` 1-3 puts the 3rd, 5th or 7th lowest. Valid on notes of a pitched "
                     "track; \"key\" and \"key7\" need the song's key and a note in it. Tones already sounding there are not "
-                    "doubled. The reply lists the added notes. Past the 128 notes it fails and changes nothing.",
+                    "doubled. The reply lists the added notes. Past the 128 MIDI keys (0 to 127) it fails and changes nothing.",
                     target="note", params=[SHAPE, INVERSION], label="Make a chord", importance="secondary")
 def chord(ctx, targets, args):
     shape, inversion, root = args["shape"], args.get("inversion", 0), ctx.doc
@@ -57,7 +57,7 @@ def chord(ctx, targets, args):
         low = min(keys.midis(n["pitch"]))
         tones = _voiced(low, shape, key, inversion)
         if not all(0 <= m <= 127 for m in tones):
-            ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "would have tones outside the 128 notes", hint="Use a lower inversion or another note.")
+            ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "would have tones outside the 128 MIDI keys (0 to 127)", hint="Use a lower inversion or another note.")
         track = ctx.idx[t].parent
         sounding = {m for o in ctx.item(track)["notes"] if abs(start_of(root, o) - sec) <= chords.TOGETHER
                     for m in keys.midis(o["pitch"])}
@@ -72,7 +72,7 @@ def chord(ctx, targets, args):
 @REGISTRY.operation("note.invert", "Invert each chord of the selection (notes starting together, a strummed chord, or a "
                     "note with a list of pitches): `by` +1 moves the lowest note up an octave, -1 the top note down an "
                     "octave, ±2 / ±3 repeat it. Valid when the selection holds a chord of two or more notes. The reply "
-                    "lists the notes whose pitch changed. Past the 128 notes it fails and changes nothing.",
+                    "lists the notes whose pitch changed. Past the 128 MIDI keys (0 to 127) it fails and changes nothing.",
                     target="note", params=[BY], label="Invert", importance="secondary")
 def invert(ctx, targets, args):
     by = args["by"]
@@ -101,4 +101,4 @@ def _moved(ctx, t, p, by):
     try:
         return _shifted(p, by)
     except ValueError:
-        ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "would go outside the 128 notes", hint="Invert the other way.")
+        ctx.fail(codes.BAD_ARGUMENT, f'"{t}"', "would go outside the 128 MIDI keys (0 to 127)", hint="Invert the other way.")

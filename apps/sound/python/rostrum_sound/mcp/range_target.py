@@ -38,6 +38,12 @@ def _bar(root, sec: float) -> str:
     return f"bar {meter.bar_at(root, tempo.beat_at(root, sec)) + 1:.2f} ({sec:.2f} s)"
 
 
+def bounds(root, target: dict, where: str) -> tuple[float, float]:
+    """(from, to) seconds of a range target; a missing `from` is the start, a missing `to` the end (infinity)."""
+    return (_seconds(root, target["from"], where) if "from" in target else 0.0,
+            _seconds(root, target["to"], where) if "to" in target else float("inf"))
+
+
 def ids_in(doc, target: dict, kind: str, where: str) -> list[str]:
     """Ids of the track's notes / hits starting in the range; an empty range fails."""
     root = doc.data
@@ -48,8 +54,7 @@ def ids_in(doc, target: dict, kind: str, where: str) -> list[str]:
     if track is None or track.get("type") != "track":
         raise RostrumError.not_found(where, "track", target["track"], [t["id"] for t in root.get("tracks", [])])
     items = [(start_of(root, n), n["id"]) for n in track.get(LISTS[kind], [])]
-    a = _seconds(root, target["from"], where) if "from" in target else 0.0
-    b = _seconds(root, target["to"], where) if "to" in target else float("inf")
+    a, b = bounds(root, target, where)
     found = [i for s, i in items if a - 1e-9 <= s < b - 1e-9]
     if not found:
         span = f"its {LISTS[kind]} start from {_bar(root, min(s for s, _ in items))} to {_bar(root, max(s for s, _ in items))}" if items \

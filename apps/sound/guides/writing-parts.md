@@ -159,7 +159,7 @@ they were put and are listed as held back. Helpers write plain values you can ed
 `humanize(seed, timing, velocity)` for small timing and velocity variation (see `script`). The operation for
 notes already written is `note.humanize`, with note ids as its targets (not the track):
 `{"timing": 15, "velocity": 0.08, "length": 0.1, "seed": 2}` (`length` 0 … 0.5: how much each note's length may vary,
-notes only; the same seed on the same notes gives the same result every time).
+notes only; the same seed on the same notes gives the same result every time). It moves each note from where it is now, so it **stacks**: on a script's own `humanize` (the script's offsets are already in the notes), and on an earlier `note.humanize` (the same seed adds the same amount again). Humanize a part once, or undo and run it again with other amounts. `hit.humanize` is the same for drum hits (`timing`, `velocity`, `seed`). The track's Feel (`track.feel`) is another kind: it plays the notes loosely without changing them.
 
 ## Operations on notes already written
 
@@ -174,8 +174,17 @@ same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpo
   clips shortened, hits past it left out). The same on `hit.duplicate` and `clip.duplicate`; one call is one undo step.
 - **Transpose:** `note.transpose {semitones: 7}` moves notes up a fifth in half steps; `note.transpose {steps: 2}` moves
   them two steps of the song's key (a third), each note in the key at its own time, a chord by its lowest note's step.
-  Give one of the two. Without a key, `steps` fails ("The song has no key …"); past the 128 notes it fails and changes
-  nothing.
+  Give one of the two. Without a key, `steps` fails ("The song has no key …"); a note that would leave the 128 MIDI keys (0 to 127) fails the whole call and changes nothing. There is no limit on how
+  many notes one call moves (a whole track, or a range target, in one call: no chunking).
+- **Thin:** `note.thin {keep_every: 2}` keeps every other note of each track (time order; `offset: 1` keeps the other
+  half) and removes the rest; `note.thin {below_vel: 0.3}` removes the notes played softer than that. Give exactly one of
+  the two. The same on `hit.thin`. Works on ids and on a range target, one undo step.
+- **What the reply says:** every `edit_document` answer lists what changed, counts per kind and the first 12 ids, each as
+  `id at <seconds> s <pitch> <length>` (a hit: its drum; a clip: its range), in the sentence after "Applied …" and in
+  `changed.items` (`added`, `changed`, `removed`, each with `count`, `types`, `ids`, `items`, `more`). A thin or delete also says
+  "Kept K of the N targeted". Note ids are the track and the start in milliseconds (`harp.n8438` starts at 8.438 s).
+- **Arpeggiate** keeps every tone of the chord: a chord too short for one step per tone gets finer steps than `rate`
+  (3 tones in one beat at rate 0.5 play as thirds of a beat), never a dropped tone.
 - **Fit to key:** `note.fit_key {}` moves the notes that are outside the key to the nearest note of the key (the song's
   key at each note's own time; `key: "D minor"` to name one; `direction: "down"` or `"up"` to always go one way; with
   "nearest", a note halfway between two notes of the key goes up: C#4 in D minor becomes D4). Notes already in the key
@@ -192,7 +201,7 @@ same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpo
   not added twice. One undo removes the added tones only. For finer voicings (drop 2, spread, voice leading) write
   the chords in a script with `voice(...)` (`inspect_guide 'writing-music-tools'`).
 - **Invert:** `note.invert {by: 1}` moves each chord's lowest note up an octave (`-1`: the top note down; `±2`, `±3`
-  repeat it). A list chord turns inside its list. Past the 128 notes it fails and changes nothing.
+  repeat it). A list chord turns inside its list. A tone outside the 128 MIDI keys (0 to 127) fails it and changes nothing.
 - **Strum:** `note.strum {gap: 30, soften: 0.1}` makes each note of a chord start `gap` ms after the one below it
   (`gap: -30`: from the top note, an up-strum) and keeps each note's end, so the later notes get shorter. `soften`
   makes the last note that much softer than the first (0.1 = 10 %), the ones between in steps. Strumming a strummed

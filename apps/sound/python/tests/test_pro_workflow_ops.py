@@ -1,5 +1,5 @@
 """The pro-workflow operations (sound-pro-workflows SPEC § 3.2–3.5): what would break silently. Repeat × N is one undo
-step and never crosses its `until`; transpose by key steps reads each note's own key and fails whole past the 128 notes;
+step and never crosses its `until`; transpose by key steps reads each note's own key and fails whole past the 128 MIDI keys;
 humanize with length repeats with the seed; track.feel merges (never wipes a person's feel); quantize swing moves only
 the off-beat cells. (perform.person false with swing: the engine's contract/tests.rs.)"""
 import pytest
@@ -55,7 +55,7 @@ def test_transpose_steps_uses_each_notes_key_and_fails_whole_past_the_128_notes(
     d.apply(_op("note.add", ["t"], id="top", pitch=126, at={"beat": 2}, dur=0.5), P)
     before = {n["id"]: n["pitch"] for n in d.item("t")["notes"]}
     for args in ({"steps": 2}, {"semitones": 3}):
-        with pytest.raises(RostrumError, match="128 notes"):
+        with pytest.raises(RostrumError, match="128 MIDI keys"):
             d.apply(_op("note.transpose", ["c", "top"], **args), P)
         assert {n["id"]: n["pitch"] for n in d.item("t")["notes"]} == before        # nothing changed
     with pytest.raises(RostrumError, match="give exactly one"):

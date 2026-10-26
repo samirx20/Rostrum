@@ -113,11 +113,12 @@ A second verse or a "B" that answers "A": copy the section with everything in it
    milliseconds: `<track>.n<ms>` for a note (`melody.n22222` starts at 22.222 s), `<track>.<drum><ms>` for a hit
    (`drums.kick22222`), so you cannot guess them before the copy exists. Ask for them afterwards:
    - `inspect_item {"id": "section.A-2"}` gives the copy's `at` and `end`;
+   - `inspect_notes {"track": "melody", "section": "A-2"}` lists that section's notes in one line each (id, time, pitch, length, velocity);
    - `inspect_item {"id": "melody", "detail": "full"}` lists every note on that track with its id and values (`at`,
      `pitch`, `dur`); keep the ones that start between the copy's `at` and `end`.
    - `look_arrangement` shows both sections side by side, to check the copy landed where you meant.
 3. **Vary it.** Change the copy with ordinary operations on those ids, in one `edit_document` call (all or nothing,
-   one step): `note.set` (`pitch`, `vel`, `dur`; a chord takes a list of pitches), `note.transpose`, `note.remove`,
+   one step): `note.set` (`pitch`, `vel`, `dur`; a chord takes a list of pitches), `note.transpose`, `note.remove`, `note.thin` (every Nth, or the soft ones),
    `hit.add` / `hit.remove` for a busier or sparser groove, `track.set` to change a sound only for the whole track.
    On the screen, **Select inside** on the copy's section selects everything in it to move or change at once.
 

@@ -13,7 +13,7 @@ import dataclasses
 
 from rostrum_core import Param, codes
 
-from ..writing.comp import ARP_MODES, even_steps, play, stack
+from ..writing.comp import ARP_MODES, even_steps, play, stack, tour_length
 from . import chords, ids, keys, tempo
 from .registry import REGISTRY, taken
 from .select_time import at_seconds, note_dur
@@ -21,8 +21,8 @@ from .select_time import at_seconds, note_dur
 MODES = [m for m in ARP_MODES if m != "chord"]
 RATE = dataclasses.replace(Param.number("rate", min=1 / 32, max=1, default=0.25, group="Arpeggio", unit="beats",
                                         label="Rate", help="How long each step is, in beats: 0.25 = 16ths, 0.5 = 8ths, "
-                                                           "1 = quarters, down to 1/32. A chord shorter than a step plays "
-                                                           "one step."), step=1 / 32)
+                                                           "1 = quarters, down to 1/32. A chord too short for one step per "
+                                                           "tone gets finer steps, so no tone is dropped."), step=1 / 32)
 MODE = Param.choice("mode", MODES, default="up", group="Arpeggio", label="Pattern",
                     labels={"up": "Up", "down": "Down", "upDown": "Up and down", "downUp": "Down and up",
                             "converge": "Outside in", "diverge": "Inside out", "order": "As written", "random": "Random"},
@@ -42,7 +42,8 @@ SEED = Param.number("seed", min=0, max=1_000_000, integer=True, default=1, group
                     "downUp, converge, diverge, order = as written, random with `seed`), over `octaves` octaves, each "
                     "note holding `gate` of its step. The chord's notes are replaced by plain notes (one undo brings the "
                     "chord back); every new note lies inside the chord's span. Valid when the selection holds a chord of "
-                    "two or more notes. The reply lists the removed and added notes. For a new part in a script, use "
+                    "two or more notes. The reply lists the removed and added notes. A chord too short for one step per tone gets finer "
+                    "steps, so every tone plays (never dropped). For a new part in a script, use "
                     "arp(...).", target="note", params=[RATE, MODE, OCTAVES, GATE, SEED], label="Arpeggio",
                     importance="secondary")
 def arpeggiate(ctx, targets, args):
@@ -51,13 +52,19 @@ def arpeggiate(ctx, targets, args):
     plan = []
     for k, c in enumerate(chords.need_chords(ctx, targets)):
         if max(c["tones"]) + 12 * (octaves - 1) > 127:
-            ctx.fail(codes.BAD_ARGUMENT, "octaves", f"{octaves} would go past the 128 notes", hint="Use fewer octaves.")
+            ctx.fail(codes.BAD_ARGUMENT, "octaves", f"{octaves} would go past the 128 MIDI keys (0 to 127)", hint="Use fewer octaves.")
         notes = [ctx.item(t) for t in c["ids"]]
         source = {m: notes[0 if c["listed"] else i] for i, m in enumerate(c["tones"])}
         b0, b1 = tempo.beat_at(root, c["start"]), tempo.beat_at(root, c["end"])
         total = b1 - b0
-        steps = even_steps(total, min(rate, total)) if total > 1e-6 else []
-        run = play(steps, [stack(c["written"], octaves)], total, mode, lambda _, k=k: f"{seed}:{k}", gate)
+        tones = stack(c["written"], octaves)
+        need = tour_length(tones, mode)                  # every tone must get a step: a chord shorter than its tones x rate
+        step = min(rate, total / need) if total > 1e-6 else rate        # gets finer steps, never a dropped tone
+        if total > 1e-6 and step < 1 / 64:
+            ctx.fail(codes.BAD_ARGUMENT, "rate", f"leaves no room for the {need} tones of the chord at {c['start']:.2f} s "
+                     f"({total:.3g} beats long)", hint="Use fewer octaves or a simpler mode, or arpeggiate a longer chord.")
+        steps = even_steps(total, step) if total > 1e-6 else []
+        run = play(steps, [tones], total, mode, lambda _, k=k: f"{seed}:{k}", gate)
         plan.append((c, [(_base(m[0], source), m[0], b0 + at, b0 + at + dur) for at, dur, m, _ in run]))
     for c, run in plan:                                  # all checked first: a failure changes nothing
         for t in c["ids"]:
