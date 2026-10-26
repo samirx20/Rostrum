@@ -198,3 +198,16 @@ def test_many_notes_fold_to_exactly_the_merge_of_each_notes_rows(bridge):
             continue
         assert rows["at"]["mixed"] and rows["dur"]["mixed"] == ("lead.x6" in picked)   # (2 beats; the rest 1)
         assert rows["position"]["valid"] == (picked == guitar)                          # only while every note is struck
+    # each merge keeps the keys and the "differs" proofs of the one before (a note changed only in a plain value keeps
+    # its group; the item that differed is asked first): after a move, its undo and redo, values made alike again and
+    # a time written in another form, still exactly the merge of every note's own rows
+    lead = [i for i in made if i.startswith("lead.")]
+    steps = (lambda: d.apply([op("note.move", lead[:4], by={"beats": 1})], Who.person()), bridge.undo, bridge.redo,
+             lambda: d.apply([op("note.set", lead, vel=0.5)], Who.person()),
+             lambda: d.apply([op("note.set", lead[1:2], at=7.5)], Who.person()), bridge.undo)
+    for step in steps:
+        step()
+        bridge.selectMany(lead + hits)
+        items = [d.item(i) for i in bridge._kit.selection]
+        each = [inspect.musical_rows(it, bridge._item_rows(it), d.data) for it in items]
+        assert many_rows.merged(bridge, items, d.data) == many.merge(each)

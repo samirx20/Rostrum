@@ -53,9 +53,10 @@ class ActionHub(QObject):
         self._subject = subject_fn or (lambda _id, facts: self._what(facts))
         self._page = AmountsPage(drag_fn, kept_fn or (lambda change, label: None), message_fn, self) if drag_fn else None
 
-    def _now(self):
+    def _now(self, shown=False):
+        """(facts, entries). `shown`: for the list as shown, whose calls are never read (ActionList.listed)."""
         facts = self._facts()
-        return facts, self.list.available(facts, **self._kept())
+        return facts, (self.list.listed if shown else self.list.available)(facts, **self._kept())
 
     def _kept(self) -> dict:
         """The amounts last kept, for an app with amounts (an app's own list may override `available` without them)."""
@@ -103,7 +104,7 @@ class ActionHub(QObject):
         actions alone redraws neither row."""
         self._refreshed = True
         self._later.cancel()
-        facts, entries = self._now()
+        facts, entries = self._now(shown=True)
         bar, panel = views.bar(entries, self._what(facts)), views.panel(entries, self.list.short_menu)
         if bar != self._bar:
             self._bar = bar
@@ -128,7 +129,7 @@ class ActionHub(QObject):
 
     @Slot(result="QVariantList")
     def menu(self):
-        return views.menu(self._now()[1], self.list.short_menu)
+        return views.menu(self._now(shown=True)[1], self.list.short_menu)    # (a row chosen: `choose` reads it again)
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
