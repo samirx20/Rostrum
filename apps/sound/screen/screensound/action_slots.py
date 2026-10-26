@@ -107,7 +107,8 @@ class ActionSlots:
 
     def _facts(self):
         return C.Facts(self.doc, self._picks.ids, self._t, self._picks.range, bool(self._board["items"]), self._track,
-                       self.__dict__.get("_range_newer", False), self.__dict__.get("_fill"))
+                       self.__dict__.get("_range_newer", False), self.__dict__.get("_fill"),
+                       self._grid_now.beats(self.doc.data))
 
     def _what(self, f) -> str:
         return self.selectionWords or ("Time range" if self._picks.range else "")

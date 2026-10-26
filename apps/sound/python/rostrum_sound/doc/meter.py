@@ -20,6 +20,7 @@ from . import tempo
 
 UNITS = (2, 4, 8, 16)
 EARLY = 0.125      # beats (a 1/32 note): the widest nudge Humanise / Feel give, a start this much before a line is on it
+NUDGE = 0.03       # beats: a usual humanised nudge, within which a short figure's length is still its written one
 
 
 class Seg(NamedTuple):
@@ -116,13 +117,28 @@ def bar_count(root: dict, end: float) -> int:
     return max(0, int(n) + (n - int(n) > 1e-6))
 
 
-def whole_bars(root: dict, start: float, end: float) -> float:
-    """Beats from the bar line at or before `start` to the first bar line at or after `end` (seconds), at least one
-    bar: how far a repeated phrase steps (four chords on bars 1–4 step 4 bars, a 2.5-bar phrase 3). A first note
-    nudged up to EARLY before a bar line counts from that line."""
-    first = math.floor(bar_at(root, tempo.beat_at(root, start) + EARLY) + 1e-6)
-    last = max(first + 1, math.ceil(bar_at(root, tempo.beat_at(root, end)) - 1e-6))
-    return bar_start(root, last + 1) - bar_start(root, first + 1)
+def copy_step(root: dict, start: float, end: float, grid: float = 0.25, single: bool = False) -> float:
+    """Beats from a figure to its copy (Ctrl+D, each step of Repeat): `start` / `end` in seconds, the first item's
+    start and the last one's end (a drum hit takes one `grid` cell). Counted from the first start, never from the bar
+    line before it, so a phrase from mid-bar lands right after itself, on the same beat (critic r11):
+    - a figure longer than a beat: whole bars (four chords on bars 1–4 step 4 bars, a 2.5-bar phrase 3, two claps on
+      beats 1 and 3 one bar);
+    - a figure of a beat or less: the first of grid, 2 grids, … one beat that holds it (two 8ths step a beat, a hit
+      one grid), so Ctrl+D builds a run;
+    - one item longer than a beat: its own length rounded up to the grid.
+    A humanised edge never adds a bar (up to EARLY) or a cell (up to NUDGE)."""
+    b0 = tempo.beat_at(root, start)
+    span = max(0.0, tempo.beat_at(root, end) - b0)
+    grid = max(grid, 1 / 32)
+    if span - NUDGE <= 1:
+        step = grid
+        while step < min(span - NUDGE, 1.0) - 1e-6:
+            step *= 2
+        return min(step, 1.0)
+    if single:
+        return math.ceil((span - NUDGE) / grid - 1e-6) * grid
+    bar = seg_at(root, b0).bar
+    return max(1, math.ceil((span - EARLY) / bar - 1e-6)) * bar
 
 
 def bar_start(root: dict, bar: int) -> float:

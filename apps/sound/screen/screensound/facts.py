@@ -24,8 +24,10 @@ def _memo(doc, ids: tuple) -> dict:
 class Facts:
     """What the selection is: ids in pick order, their items and kinds, their tracks, the playhead, the range."""
 
-    def __init__(self, doc, ids, playhead=0.0, rng=None, clipboard=False, track="", range_newer=False, fill=None):
+    def __init__(self, doc, ids, playhead=0.0, rng=None, clipboard=False, track="", range_newer=False, fill=None,
+                 grid=0.25):
         self.doc, self.ids, self.count = doc, list(ids), len(ids)
+        self.grid = grid                  # the grid's step in beats (a short figure's copy steps by it: span_by)
         self._memo = _memo(doc, tuple(self.ids))
         self.items, self.kinds, self.one, self.parents = self.once("items", _items)
         self.playhead, self.range, self.clipboard, self.track = playhead, rng, clipboard, track
