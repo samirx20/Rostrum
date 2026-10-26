@@ -99,36 +99,47 @@ def clone(v):
 
 def _own_many(idx, ids_, lists, where) -> list:
     """The items `ids_` as this version's own copies (as _own, one by one), each parent list owned once and each item
-    found in it once: a whole-song Shift owns 3,352 notes in a few ms instead of ~10 µs a note."""
+    found in it once: a whole-song Shift owns 3,607 notes and hits in ~4 ms instead of ~10 µs a note. One pass: owning a
+    list owns its parent and that one's parents, never an item in it, so an item's place read before stays true."""
     owned = getattr(idx, "owned", None)
-    out, todo = [], {}
+    if owned is None:
+        return [_found(idx, i, where).item for i in ids_]
+    out, lsts, where_is = [], {}, {}
+    add, get, last, lst = out.append, idx.get, None, None   # last: the (parent, list) the item before sat in
     for id_ in ids_:
-        loc = idx.get(id_)
+        loc = get(id_)
         if loc is None:
             raise _missing(where, id_, idx)
-        if owned is None or id(loc.item) in owned:
-            out.append(loc.item)
-        elif loc.parent is None:
-            out.append(_own(idx, id_, lists))
-        else:
-            out.append(None)
-            todo.setdefault((loc.parent, loc.key), []).append((len(out) - 1, id_))
-    for (parent, key), group in todo.items():
-        lst, where_is = _own_list(idx, parent, key, lists), None
-        for n, id_ in group:
-            loc = idx[id_]                          # again: owning a list may have owned it (an id twice, a parent)
-            if id(loc.item) in owned:
-                out[n] = loc.item
-                continue
-            pos = loc.index
-            if pos is None or pos >= len(lst) or lst[pos] is not loc.item:
-                if where_is is None:                # stale positions: look the list up once, not once per item
-                    where_is = {id(c): i for i, c in enumerate(lst)}
-                pos = where_is[id(loc.item)]
-            item = lst[pos] = out[n] = dict(loc.item)
-            owned[id(item)] = item
-            idx[id_] = Loc(item, parent, key, pos)
+        item = loc.item
+        if id(item) in owned:                       # owned already (an id twice, or a parent owned for its list)
+            add(item)
+            continue
+        parent, key = loc.parent, loc.key
+        if parent is None:
+            add(_own(idx, id_, lists))
+            continue
+        if last is None or last[0] != parent or last[1] != key:
+            last = parent, key
+            lst = lsts.get(last)
+            if lst is None:
+                lst = lsts[last] = _own_list(idx, parent, key, lists)
+        pos = loc.index
+        if pos is None or pos >= len(lst) or lst[pos] is not item:
+            if last not in where_is:                # stale positions: look the list up once, not once per item
+                where_is[last] = {id(c): i for i, c in enumerate(lst)}
+            pos = where_is[last][id(item)]
+        new = lst[pos] = dict(item)
+        owned[id(new)] = new
+        idx[id_] = Loc(new, parent, key, pos)
+        add(new)
     return out
+
+
+def _found(idx, id_, where):
+    loc = idx.get(id_)
+    if loc is None:
+        raise _missing(where, id_, idx)
+    return loc
 
 
 def _position(lst: list, loc: Loc) -> int:

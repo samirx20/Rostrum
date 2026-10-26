@@ -118,25 +118,46 @@ LANE_LISTS = {**LISTS, "doc": ["tracks", "buses", "master"],                 # w
 _SEEN = {"markers": [], "marks": None}   # the markers the last check saw (their items, so `is` compares them)
 
 
-def _holders(data: dict, items, marks: list) -> tuple[list, list]:
+TIMING = ("doc", "tempo", "meter")             # a change to one may move every lane point's seconds
+
+
+def _scan(items, only) -> tuple[list, list, bool]:
+    """(the changed items with a field set, not only moved by a Shift: a nudge writes numbers, so no reference comes or
+    goes; the changed meters; whether the song, a tempo or a meter changed), in one pass over a call's items (a
+    whole-song nudge's 3,607 were walked three times). `only`: run.set_fields."""
+    keep, meters, timing = [], [], False
+    for i in items:
+        t = i.get("type")
+        if t in TIMING:
+            timing = True
+            if t == "meter" and "at" in i:
+                meters.append(i)
+        f = only.get(i["id"]) if only else None
+        if f is None or None in f.values():
+            keep.append(i)
+    return keep, meters, timing
+
+
+def _holders(data: dict, items, kept, timing: bool, marks: list) -> tuple[list, list]:
     """(the items whose marker references need checking, the items whose lanes do). A reference names a marker, so
-    only the changed items need it checked while the markers' names are the same as the last check saw; every item
-    when a name came, went or changed. Lanes hold times: every lane also when a marker moved or the tempo or meter
-    changed (a point on a marker and one in seconds may swap). A tempo drag re-checked every note's references on each
-    move (~20 ms a move on a 3-minute song) though a tempo moves no name; so did a marker drag (~50 ms a move)."""
+    only the changed items (`kept`: those with a field set, _scan) need it checked while the markers' names are the
+    same as the last check saw; every item when a name came, went or changed. Lanes hold times: every lane also when a
+    marker moved or the tempo or meter changed (`timing`: a point on a marker and one in seconds may swap). A tempo drag
+    re-checked every note's references on each move (~20 ms a move on a 3-minute song) though a tempo moves no name; so
+    did a marker drag (~50 ms a move)."""
     own = data.get("markers", [])
     named = items is not None and marks == _SEEN["marks"]
     still = len(own) == len(_SEEN["markers"]) and all(a is b for a, b in zip(own, _SEEN["markers"]))
     _SEEN.update(markers=list(own), marks=marks)
-    if named and still and not any(i.get("type") in ("doc", "tempo", "meter") for i in items):
-        return items, items
+    if named and still and not timing:
+        return kept, items
     lanes = [i for i in walk(data, LANE_LISTS) if i.get("type") in ("effect", "automation")]
-    return (items if named else list(walk(data, LISTS))), lanes
+    return (kept if named else list(walk(data, LISTS))), lanes
 
 
-def check(data: dict, items=None) -> list[str]:
-    """`items`: the items a call changed (None: everything, as on open). Track and song rules are always checked
-    whole; marker references only in the changed items unless a marker changed."""
+def check(data: dict, items=None, only=None) -> list[str]:
+    """`items`: the items a call changed (None: everything, as on open); `only`: which of their fields (run.set_fields).
+    Track and song rules are always checked whole; marker references only in the changed items unless a marker changed."""
     out = []
     try:
         marks = [markers.key(n) for n, _ in markers.items(data)]
@@ -145,13 +166,14 @@ def check(data: dict, items=None) -> list[str]:
     out += [f"two markers are named {n!r}" for n in set(marks) if marks.count(n) > 1]
     out += check_mix.problems(data)
     out += sections.problems(data)
-    for m in () if items is None else (i for i in items if i.get("type") == "meter" and "at" in i):
+    kept, meters, timing = _scan(items, only) if items is not None else (None, (), True)
+    for m in meters:
         out += [p] if (p := meter.off_bar(data, m)) else []         # an old song still opens; a new change is on a bar
     for track in data.get("tracks", []):
         if not TRACK_ID.match(track["id"]):
             out.append(f"track id {track['id']!r} must be 1–64 letters, digits, _ . -")
         out += _instrument(track)
-    refs, lanes = _holders(data, items, marks)
+    refs, lanes = _holders(data, items, kept, timing, marks)
     for item in lanes:
         t = item.get("type")
         if t == "effect":

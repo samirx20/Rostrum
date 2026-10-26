@@ -151,15 +151,16 @@ def changed_items(edits, idx, lists) -> list[dict]:
 
 
 def set_fields(edits) -> dict:
-    """item id -> the top-level fields these edits set (a frozenset), for items only Set (an inserted item, or one whose kind
-    changed, is checked whole). A field nobody set holds what passed the check before."""
+    """item id -> {top-level field: how these edits changed it} for items only Set or Shifted (an inserted item, or one
+    whose kind changed, is checked whole): None when Set (checked whole), the path inside it when only Shifts moved a
+    number there (only its range is checked: Param.shift_bounds). A field nobody set holds what passed the check before."""
     out, whole = {}, set()
     for e in edits:
         if isinstance(e, (E.Shift, E.Set)) and e.path[0] != "type":   # (a Shift never moves "type": edits refuses it)
-            one = frozenset(e.path[:1])             # one set shared by a Shift's 3,352 notes; joined, never changed
+            one = {e.path[0]: tuple(e.path[1:]) if isinstance(e, E.Shift) else None}  # shared by a Shift's 3,352 notes
             for i in E.ids(e):
                 have = out.get(i)
-                out[i] = one if have is None else have | one
+                out[i] = one if have is None else {**have, **{k: v if have.get(k, v) == v else None for k, v in one.items()}}
         elif isinstance(e, (E.Insert, E.Set)):
             whole.add(e.id)
     for i in whole:
