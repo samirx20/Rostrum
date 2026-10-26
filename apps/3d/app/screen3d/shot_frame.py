@@ -25,8 +25,9 @@ def fit(view_w: float, view_h: float, shot_w: float, shot_h: float, margin: floa
     return (view_w - w) / 2, (view_h - h) / 2, w, h
 
 
-def overscan(scene: dict, camera: str, factor: float) -> dict:
-    """A copy of `scene` with VIEW_CAMERA beside `camera`: the same camera with a sensor `factor` times wider."""
+def overscan(scene: dict, camera: str, factor: float, aspect: float | None = None) -> dict:
+    """A copy of `scene` with VIEW_CAMERA beside `camera`: the same camera with a sensor `factor` times wider, and
+    shaped like the viewport (`aspect`, width / height), so Quick (Storm) and Final (Cycles) frame it alike."""
     out = copy.deepcopy(scene)
     stack = [out.get("items", [])]
     while stack:
@@ -36,6 +37,8 @@ def overscan(scene: dict, camera: str, factor: float) -> dict:
                 twin = copy.deepcopy(node)
                 twin["id"] = VIEW_CAMERA
                 twin["props"]["sensorWidth"] *= factor
+                if aspect:
+                    twin["props"]["aspect"] = aspect
                 if "sensorWidth" in twin.get("anim", {}):
                     twin["anim"]["sensorWidth"] = [s * factor for s in twin["anim"]["sensorWidth"]]
                 siblings.append(twin)

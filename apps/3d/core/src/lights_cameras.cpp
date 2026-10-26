@@ -105,9 +105,12 @@ void build_camera(Item& it, const SdfPath& path) {
   const auto sensor = it.nums("sensorWidth");
   it.write<float>(cam.CreateHorizontalApertureAttr(), sensor.size(),
                   [&](size_t i) { return float(pick(sensor, i) * kMmToTenthsOfAMetre); });
-  // The render sets the height from its aspect; 16:9 until then (and in a saved .usda).
+  // The sensor's height: `aspect` (width / height) when the picture's shape is known (the viewport's wide copy of the
+  // shot camera, screen3d/shot_frame.py), else 16:9 (a render sets its own fit). A sensor shaped like the picture frames
+  // it the same whatever a renderer's window policy: Storm conforms, Cycles fits (the Final look's framing).
+  const double aspect = it.props.has("aspect") ? it.props.num_min("aspect", 0.0, false) : 16.0 / 9.0;
   it.write<float>(cam.CreateVerticalApertureAttr(), sensor.size(),
-                  [&](size_t i) { return float(pick(sensor, i) * 9.0 / 16.0 * kMmToTenthsOfAMetre); });
+                  [&](size_t i) { return float(pick(sensor, i) / aspect * kMmToTenthsOfAMetre); });
   const bool dof = it.props.flag("dof");
   const auto fstop = it.nums("fStop");
   it.write<float>(cam.CreateFStopAttr(), dof ? fstop.size() : 1,
