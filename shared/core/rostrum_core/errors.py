@@ -30,6 +30,11 @@ def did_you_mean(word, choices) -> str | None:
     return f"Did you mean {close[0]}?" if close else None
 
 
+# An item id as the documents write them ("track_1.n8000", "logo.s2"): dotted lower-case words with a digit in the last part.
+ID = re.compile(r'"?\b[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*\d[a-z0-9_]*)+\b"?')
+GONE = "Something you were working on changed or went away, so that was not done. Try again."
+
+
 class RostrumError(Exception):
     """code, where (which call / op), subject (what was given), problem, accepted (what would work), hint."""
 
@@ -59,7 +64,10 @@ class RostrumError(Exception):
         prefix, no ids in brackets, long decimals rounded."""
         if self.plain:
             return self.plain
+        if self.code == codes.NOT_FOUND and ID.search(self.subject):      # an item that is gone ("track_1.n8000"): a person
+            return GONE                                                   # knows no ids, so no ids and no "did you mean"
         text = f"{self.subject} {self.problem}.".strip()
+        text = ID.sub("an item", text)
         text = re.sub(r"\s*\([a-z0-9_.\-]+\)", "", text)                             # (layer_id)
         text = re.sub(r"\d+\.\d{3,}", lambda m: f"{float(m.group()):.0f}", text)        # 959.7945 -> 960
         return (text + (f" {self.hint}" if self.hint else "")).strip()

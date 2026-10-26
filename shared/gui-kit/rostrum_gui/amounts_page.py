@@ -76,8 +76,12 @@ class AmountsPage(QObject):
         self._found, self._static, self._vals = self._made_for(action, facts, mine)
         self._action, self._facts, self._title, self._more = action, facts, title, False
         self._drag = self._drag_fn(title)
-        self._refresh(preview=False, instant=True)   # at once, on the delegates made before (RowsModel keeps them per
-        self._later.ask()                            # setting, parked between uses); the action runs the frame after
+        try:
+            self._refresh(preview=False, instant=True)   # at once, on the delegates made before (RowsModel keeps them per
+        except BaseException:                            # setting, parked between uses); a failure never leaves the
+            self._drop()                                 # gesture open ("being dragged by a person" for every later edit)
+            raise
+        self._later.ask()                            # the action runs the frame after
 
     @Slot()
     def keep(self):
@@ -89,7 +93,12 @@ class AmountsPage(QObject):
         label = self.label()
         self.memory[self._action.id] = dict(self._vals)
         self.changed.emit()
-        self._kept_fn(d.end(label=label), label)
+        try:
+            change = d.end(label=label)            # (the gesture is closed whatever happens: Gesture.__exit__)
+        except RostrumError as e:                  # refused at the end: nothing kept, said in plain words
+            self._say(f"{self._title} was not added. {e.person()}")
+            return
+        self._kept_fn(change, label)
 
     @Slot()
     def cancel(self):

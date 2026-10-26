@@ -33,6 +33,14 @@ FieldFrame {
         for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
         return out
     }
+    // Inside a popover (the amounts box, Stagger…) the keys go back to the popover when the list closes (Qt leaves them on the window behind it, so the
+    // popover's Enter never reached it and a picked change was never kept).
+    function handKeysBack() {
+        for (let it = f.parent; it; it = it.parent) {
+            const p = it.popover
+            if (p && p.opened) { if (!p.mine) (p.focusItem ? p.focusItem : p).forceActiveFocus(); return }
+        }
+    }
     function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
@@ -79,6 +87,7 @@ FieldFrame {
         enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
         exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
         onOpened: if (f.searchable) search.forceActiveFocus()
+        onClosed: f.handKeysBack()
         contentItem: Column {
             id: list
             focus: true
