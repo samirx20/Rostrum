@@ -107,6 +107,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     pick = lambda wanted: next((f for f in wanted if f in families), QGuiApplication.font().family())  # noqa: E731
     engine = QQmlApplicationEngine()
     engine.warnings.connect(lambda ws: [print(f"QML: {w.toString()}", file=sys.stderr) for w in ws])   # never silent
+    from .incubation import install
+    install(engine)                    # rows made ahead are built in idle time, never inside a drag's frames (incubation.py)
     engine.addImportPath(str(KIT_QML))
     for folder in imports:
         engine.addImportPath(str(folder))

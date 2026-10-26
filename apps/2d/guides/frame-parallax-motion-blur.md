@@ -58,19 +58,19 @@ shows as a dashed line with no dots. The faint path and outlines also show while
 them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
 
 **Framing by clicks.** With the frame picked, the top of the settings panel has **Frame the view** and **Cut here**, and
-its **⋯** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on
+its **More** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on
 right-click (the Frame row, or the canvas) and in **Ctrl+K**, which also has **Cut to the view**. With layers picked,
-**⋯** has **Frame these** and **Cut to these**. Only what applies shows: no Cut here at 0 s (hover the Frame row: its tip says so), and a locked frame offers
+**More** has **Move the frame to these** and **Cut to these**. Only what applies shows: no Cut here at 0 s (hover the Frame row: its tip says so), and a locked frame offers
 only Unlock. **Frame the view** on a view the frame already shows keys nothing and says "Already framed" (an agent's `frame.fit` refuses it the same way).
 
 - **A push:** pick the frame (**C**) at 0 s, move the playhead to 3 s, pan and zoom your view until the second place
   fills the canvas the way you want it, then **Frame the view**. The frame fits what you see (leaving the same room
   round it as **Ctrl+0**) and is keyed at 3 s; the status line says "Frame keyed at 0 s (where it was) and 3 s". Or
-  pick the layers you want in the shot and use **⋯ › Frame these**. Then shape the move as any move: drag its key
+  pick the layers you want in the shot and use **More › Move the frame to these**. Then shape the move as any move: drag its key
   squares, bend its handles, ease it in the key bar.
 - **A cut:** put the playhead where the cut happens and click **Cut here** ("Cut at 2.40 s. Move the frame to the next
   shot."). Then drag the frame to the next shot, or pan there and **Frame the view**: either sets the key at the
-  playhead. A cut keys only what changes (position and zoom; the turn only when it changes), so no key sits there doing nothing. Faster: pan to the next shot and **Ctrl+K › Cut to the view**, or pick layers and **⋯ › Cut to these**.
+  playhead. A cut keys only what changes (position and zoom; the turn only when it changes), so no key sits there doing nothing. Faster: pan to the next shot and **Ctrl+K › Cut to the view**, or pick layers and **More › Cut to these**.
   The cut shows as an orange tick on the Frame row and a dashed path on the canvas. Any frame key can also be made a
   cut by hand: pick it on the timeline and choose **Hold** in the Key block's **Ease** (or press **Ctrl+Alt+J**).
 - **On a marker:** with the playhead on a marker (**Alt+M** goes to the next one), Frame the view and Cut here tie their keys to
@@ -114,7 +114,7 @@ Each **top-level** layer of the scene has:
 | Field | Does |
 |---|---|
 | `depth` | How far behind the frame's plane. 0 = on it (moves with the frame fully); 1 = twice as far (moves half as much); 3 = a quarter; below 0 = nearer (−0.5 moves twice as much). Must be above −1. Animatable. |
-| `screenLock` | **Pinned to frame**: moves with the frame, not the scene (a title, a border, a logo bug); its `x`, `y` are in the frame's own px. |
+| `screenLock` | **Sticks to the shot**: moves with the frame, not the scene (a title, a border, a logo bug); its `x`, `y` are in the frame's own px. |
 
 ```python
 shape("hills", shape="rect", w=2400, h=500, x=960, y=900, depth=3)       # far: moves little
@@ -135,7 +135,7 @@ move (see `painted-backgrounds`). The canvas draws every layer as the frame sees
 parallax when you scrub, and you grab it where you see it.
 
 **Place far things with the playhead at the moment the frame looks at them.** A far hill placed at 0 s, with the frame
-at home, is right for 0 s; where it shows when the frame arrives at 4 s is the parallax. **Frame these** works depth
+at home, is right for 0 s; where it shows when the frame arrives at 4 s is the parallax. **Move the frame to these** works depth
 out correctly.
 
 **The numbers, for placing by hand.** With the frame at its home (an output of W × H, home at its centre) and no
@@ -154,15 +154,14 @@ From an agent: `layer.set_depth target=[hills] depth=3 at=2` keeps the layer whe
 along, so its motion keeps its shape); `keep: "values"` changes only the depth (the layer may jump). In a script:
 `set_depth("hills", 3)`. Setting the `depth` field itself (`value.set`, `shape(..., depth=3)`) changes only the number.
 
-## Pinned to frame
+## Sticks to the shot
 
 ![A title pinned to the frame rides inside its box](pictures/frame-pinned-title.png)
 
-A title, a logo bug or a border that belongs to the shot, not the world, is **pinned to the frame**: it moves, zooms
+A title, a logo bug or a border that belongs to the shot, not the world, is **stuck to the shot** (pinned to the frame): it moves, zooms
 and turns with the frame, and its X, Y are in the frame's own pixels (960, 540 is the middle of the shot).
 
-- **On the screen:** pick it › settings › **Depth** › **Pinned to frame** on, or **⋯ › Pin to frame** (**Unpin from
-  frame** when it is pinned). It stays where it shows at the playhead; one undo step. Its row in the layers list gets a
+- **On the screen:** pick it › settings › **Depth** › **Sticks to the shot** on, or **More › Stick to the shot** (**Unstick from the shot** when it is pinned). It stays where it shows at the playhead; one undo step. Its row in the layers list gets a
   small pin.
 - **In the world view** it rides inside the frame's outline: scrub and it travels with the outline; when the frame
   zooms or turns it is drawn sized and turned with the box. Dragging it moves it within the frame, and it snaps to the
@@ -182,9 +181,9 @@ centre**. It keeps looking at the same point of the world; its zoom, turn and ke
 layers keep their parallax. Layers in the world don't move. **Pinned layers keep their distance from the frame's
 centre**, so a centred title stays centred. One change, one undo step; the view refits if it was fitted.
 
-So Wide 16:9 → Vertical 9:16 shows the middle of the old picture, not its left edge; move the frame (or **Frame these**)
+So Wide 16:9 → Vertical 9:16 shows the middle of the old picture, not its left edge; move the frame (or **Move the frame to these**)
 to choose another part. **Fill the frame** and **Align to the frame** use the frame where it is at the playhead; while
-the frame moves, ⋯ › **Cover the frame's move** sizes a layer for the whole move (`painted-backgrounds`).
+the frame moves, More › **Cover the frame's move** sizes a layer for the whole move (`painted-backgrounds`).
 
 
 ## Motion blur (shutter)

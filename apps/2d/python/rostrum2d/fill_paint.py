@@ -31,6 +31,16 @@ def colour_field(item: dict) -> str:
     return "color" if item["type"] == "text" else "fill"
 
 
+LINE_SHAPES = ("line", "arrow", "spiral")          # shapes that are all stroke: their paint is the colour of the line
+
+
+def row_label(item: dict) -> str:
+    """The inspector's paint row name: "Colour" on a text, "Stroke" on a line, arrow or spiral, else "Fill"."""
+    if item["type"] == "text":
+        return "Colour"
+    return "Stroke" if item["type"] == "shape" and item.get("shape") in LINE_SHAPES else "Fill"
+
+
 def kind_of(item: dict) -> str:
     """The fill's type; "none" when a shape or path isn't filled."""
     if item["type"] != "text" and not item.get("filled", True):

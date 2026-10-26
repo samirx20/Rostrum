@@ -92,7 +92,7 @@ class Hooks2D:
             return {"op": "layer.ride", "target": [item_id], "args": {"path": value, "at": it.get("rideAt", "end"),
                     "along": it.get("rideAlong", 0.0), "turn": it.get("rideTurn", False)}}
         pinned = pin_depth.edit_call(self.doc, item_id, param, value, self._t)
-        if pinned is not None and not isinstance(value, str):     # Pinned to frame, Depth: kept where it shows now
+        if pinned is not None and not isinstance(value, str):     # Sticks to the shot, Depth: kept where it shows now
             return pinned
         if isinstance(value, str) and value.lstrip().startswith("="):    # typed "=pulse()" into a field: the expr.set agents call
             return exprs.typed_call(item_id, param, value)

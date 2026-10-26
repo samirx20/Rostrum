@@ -1,4 +1,4 @@
-"""The Depth group's switch and field, and ⋯ Pin to frame, keep a layer where it shows at the playhead (2d-camera SPEC
+"""The Depth group's switch and field, and ⋯ Stick to the shot, keep a layer where it shows at the playhead (2d-camera SPEC
 §4.9, §4.10): a plain field write would make it jump with nothing said. Through the screen's own routing (pin_depth.py,
 as hooks.edit_call and the action list use it) and the boxes the canvas draws (bounds.boxes)."""
 import sys

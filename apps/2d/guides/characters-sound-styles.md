@@ -23,7 +23,7 @@ Pose the character on the canvas by dragging its bones: press on a bone's middle
 
 ### Lip sync
 
-1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**, which is under **⋯** at the end of the settings panel's top row). Name them by mouth shape, or name the set "mouth".
+1. Make a swap set of mouth drawings (select the drawings, then **Make swap set**, which is under **More** at the end of the settings panel's top row). Name them by mouth shape, or name the set "mouth".
 2. Select the set. **Lip sync…** appears at the top of the settings panel.
 3. In the sheet, click a **Voice line**. Voice lines come from RostrumSound. Check the drawing shown for each mouth shape and change a wrong one in its list.
 4. Click **Apply**. The first time a voice line is used, the sheet listens to it: it shows **Step 1 of 3**, **2 of 3**, **3 of 3** with a moving bar, takes a few seconds (longer on a busy computer), and you can keep working meanwhile. A line heard before applies at once. The mouth is keyed to the voice in one change. **×** or **Esc** closes the sheet and leaves everything as it was. A voice line whose voice is not made yet in RostrumSound is not listed; the sheet says how many are waiting.
@@ -50,7 +50,7 @@ Every scene has one **frame**: the box that is exported. There is no camera tool
 the frame's name tab, or its **Frame** row at the top of the timeline) to pick it, then drag inside it to move it, drag
 a corner square to zoom, and drag just outside a corner to turn it. With no keys a drag moves it for the whole piece;
 once it has keys, a drag sets a key at the playhead. One drag is one undo step. With it picked, **Frame the view** fits
-it to what your canvas shows and **Cut here** makes a jump at the playhead (**⋯** has **Frame home**, when the frame is away from home; **Cut here** shows once the playhead is after 0 s). Its path, a faint
+it to what your canvas shows and **Cut here** makes a jump at the playhead (**More** has **Frame home**, when the frame is away from home; **Cut here** shows once the playhead is after 0 s). Its path, a faint
 outline at each key and its cuts show while it is picked. The whole of it is in [the-screen.md](the-screen.md) part 2 and
 [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md).
 

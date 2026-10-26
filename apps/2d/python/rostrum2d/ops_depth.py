@@ -1,4 +1,4 @@
-"""Pin to frame and Set depth (FRAME.md › Pinned and depth): `layer.pin` and `layer.set_depth` on a scene's own
+"""Stick to the shot and Set depth (FRAME.md › Pinned and depth): `layer.pin` and `layer.set_depth` on a scene's own
 layers. With keep "shown" (the default) the layer stays exactly where it shows in the export at `at` (the playhead):
 its x, y, scale and rotation are carried through the frame's maths there (frame/place.py, view.py), on the still
 values and every key, so an animated layer keeps its motion. Keep "values" changes only the switch or the depth.
@@ -35,7 +35,7 @@ def _now(ctx, lid: str, at):
              "or unpin them (off). keep \"shown\" (the default): each stays exactly where it shows in the export at `at`; "
              "its x, y become the frame's own px when pinned (world px when not), its scale and turn take the frame's "
              "zoom and turn, every key included. keep \"values\": only the switch flips. Only a scene's own layers.",
-             target=F.PLACED, label="Pin to frame", importance="secondary", valid_when=TOP,
+             target=F.PLACED, label="Stick to the shot", importance="secondary", valid_when=TOP,
              params=[Param.toggle("on", label="Pinned", required=True), KEEP, AT])
 def layer_pin(ctx, targets, args):
     on = bool(args["on"])

@@ -30,18 +30,18 @@ def _child(folder):
     do_click_step(session.win, "clickobj", ["rail_brush"], "clickobj rail_brush")   # a real press and release
     fly = session.win.findChild(QObject, "brushFlyout")
     print("panel:", "open" if fly is not None and fly.property("opened") else "closed", "tool:", b.tool, flush=True)
-    # a stroke begun at the picture's left edge (where the panel once lay) closes the panel and paints, in that one press
+    # a stroke begun on the picture, clear of the panel (which lies beside the rail), closes the panel and paints, in that one press
     from PySide6.QtCore import QPoint, QPointF
     from PySide6.QtTest import QTest
     st = session.win.findChild(QObject, "stage")
     o, k = st.property("compOrigin"), st.property("compScale")
-    q = st.mapToScene(QPointF(o.x() + 100 * k, o.y() + 400 * k))
+    q = st.mapToScene(QPointF(o.x() + 1200 * k, o.y() + 400 * k))
     a = QPoint(round(q.x()), round(q.y()))
     QTest.mousePress(session.win, Qt.LeftButton, Qt.NoModifier, a)
     for i in range(1, 8):
-        QTest.mouseMove(session.win, a + QPoint(20 * i, 5 * i))
+        QTest.mouseMove(session.win, a + QPoint(-20 * i, 5 * i))
         QTest.qWait(20)
-    QTest.mouseRelease(session.win, Qt.LeftButton, Qt.NoModifier, a + QPoint(140, 35))
+    QTest.mouseRelease(session.win, Qt.LeftButton, Qt.NoModifier, a + QPoint(-140, 35))
     QTest.qWait(300)
     print("panel then:", "open" if fly.property("opened") else "closed", "painted:", any(
         l["type"] == "drawing" for l in b.comp()["layers"]), flush=True)

@@ -8,7 +8,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 
 ## 1. Pick the brush
 
-1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens over the settings column at the right, so the whole picture stays free: click or drag on the canvas and the panel closes and the stroke starts in that same press.
+1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens beside the rail, so the settings column at the right (brush, size, colour) stays in view: click or drag on the canvas outside it and the panel closes and the stroke starts in that same press.
 2. The top row of the panel holds the five paint tools:
 
    | Tool | Key | Does |
@@ -23,7 +23,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 3. Under them are **19 brushes in five groups**: Sketch, Ink, Paint, Light and Texture. Each shows a real stroke of itself; rest the pointer on one and its stroke shows larger. Click one; it sets every brush setting but your colour.
 4. Last come **My brushes**: the brushes you saved, from this project and from your own library (see "Save your own brush" below). A brush kept in only one of the two says which, small, on the corner of its stroke: **project** or **library**. Right-click one for what you can do with it: **Rename** (type, then Enter), **Duplicate** (a copy named "… copy", to change without losing the first), **Also keep in my library** or **Also keep in this project** (when it is only in one), **Remove from this project** or **Remove from my library** (when it is in both), and **Delete** (gone from both).
 
-![The brush panel over the settings column, the picture clear beside it](pictures/brush-panel.png)
+![The brush panel beside the rail, the settings column clear at the right](pictures/brush-panel.png)
 
 5. What you paint on depends on what is picked:
    - **a shape, a text, a picture or a path**: the paint goes onto it, kept inside its outline. Strokes that go past the edge are simply not shown there. Its edge is drawn dashed so you can see what you are painting on.
