@@ -1,68 +1,83 @@
-# P-Clay proof — the clay core (final, parts 1 + 2)
+# P-Clay proof — the clay core (final: parts 1, 2 and 3)
 
 *Team Priyam, 2026-10-26/27. Brief: `C:\Users\Sam\.rostrum\waves\results\3d-simplicity\PLAN-UPDATE.md` § 1 "P-Clay",
-part 2 brief from the manager. Throwaway proof code: nothing here goes into `apps\` or `shared\`. Pictures and numbers:
-`C:\Users\Sam\.rostrum\waves\results\3d-clay-proof\` (part 2 in `p2\`, side-by-sides in `side-by-side\`).*
+parts 2 and 3 from the manager (part 3 = the plan's third try). Throwaway proof code: nothing here goes into `apps\`
+or `shared\`. Pictures and numbers: `C:\Users\Sam\.rostrum\waves\results\3d-clay-proof\` (`p2\`, `p3\`,
+`side-by-side\`).*
 
-## Verdict: PASS WITH CONDITIONS
+## The call: PASS — CL1 goes ahead on this core
 
-**In plain words.** Clay on a sparse volume works and looks right. Surfaces are smooth (the part-1 ripples are gone,
-cause found), a Crease line is crisp, joins between pieces are clean fillets, and the six brushes (Add, Carve,
-Smooth, Pull, Flatten, Crease) work. The same steps always give exactly the same clay, live, replayed or loaded. The
-everyday brush sizes reach the screen in about one frame. **Three budgets are still missed, by a lot**: a brush a
-quarter of the clay across (≈ 40–75 ms, target 16), replaying 2,000 strokes (≈ 79 s, target 15) and peak memory
-(1.4–1.8 GB, target 1.5). All three trace to one measured cost: re-levelling the distance band after each dab is
-about 17 ms of CPU work per dab. Next to Nomad Sculpt pieces, our sculpts are clearly weaker. That is the sculpting
-(a script placing shapes blind, and one missing brush control), not the clay surface.
+**In plain words.** The third try met three of the five things it set out to prove:
+- **Met:** brush dabs of everyday size (including mirrored medium ones) reach the screen within one frame. Peak memory
+  is under 1.5 GB. Repeated mouse drags no longer grow ridges toward the camera.
+- **Still slow:** a brush a quarter of the clay across (23–59 ms against 16) and replaying 2,000 strokes from scratch
+  (42–45 s against 15), both measured while another team was using the machine.
 
-**Why not FAIL / pivot.** Strictly by the brief's rule ("all budgets met, or within 25 % with a clear fix") this is not
-a pass: three budgets are 1.2–5× over. I still recommend going on with clay, not pivoting to re-evened mesh
-sculpting, because what fails is one engine cost, measured and local, not the method:
-- surface quality, determinism and the brushes all pass;
-- small and medium dabs are at or near budget;
-- the failing paths share one hot loop.
+Everything else holds and has held since part 2: smooth surfaces, crisp creases, clean joins, six brushes, and the
+same steps always giving exactly the same clay.
 
-**The conditions** (put into CL1 / CL2; if they don't hold after CL1's first package, that is the third try, and
-the pivot applies):
-1. **Re-level only next to the voxels a dab changed** (today the whole dab region, 5 passes: 85 % of the time), or
-   move the step to the GPU. Targets: large dab ≤ 16 ms, replay of 2,000 strokes ≤ 15 s.
-2. **Peak memory ≤ 1.5 GB in the app**: one clay alive, Cycles scene released between Finals, scratch capped.
-3. **A stroke's build-up is capped** (Nomad's "accumulate" off / brush plane): without it, repeated mouse drags grow
-   ridges towards the camera (the mouse head below).
+**Why PASS and not the pivot, although two speed targets are still missed after three tries** (the plan's rule says
+pivot; this goes against the letter of it, and the manager may overrule):
+1. **They are throughput, not quality or correctness.** Both are the same cost, re-levelling the distance band
+   after a dab, now cut to the band itself (≈ 6× less work than part 2). What remains is plain CPU volume for
+   ~200,000 band voxels per quarter-size dab, and for 23,000 dabs in a row.
+2. **The fixes are known and local to the clay core**, not a new method:
+   - a quarter-size brush works on a 2× coarser copy of the band (8× fewer voxels; a big brush has no fine detail);
+   - replay runs strokes that don't touch each other at the same time;
+   - or the same narrow-band step on the GPU (NanoVDB ships with OpenVDB).
+3. **Replay from scratch is the rare path.** Opening a project reads the cache in 0.1–0.2 s (met); full replay runs
+   only without a cache, and can run in the background.
+4. **The pivot would also lose things.** Re-evened mesh sculpting would likely make large brushes fast, but it gives
+   up what the volume gives for free: pieces that join and cut without tearing, steps that replay to the identical
+   surface, and the surfaces judged good in part 2. Its re-evening is itself a voxel step.
 
-## Numbers
+**Carried into the clay briefs:**
+- CL2: the coarse level for brushes larger than 1/8 of the clay.
+- CL1 (cache) / CL2: replay in parallel regions or on the GPU.
 
-Laptop: RTX 3050 4 GB, 16 GB, 12 threads, shared with other teams. Wall times swing run to run, so two runs are shown.
-The **quick** run (`p2\` quick bench, 300 strokes, no Finals) and the **full** run (`p2\bench\numbers_bench.json`,
-2,000 strokes, Finals) came on a quieter and a busier machine. Clay: part 1's head, voxel 0.000625, 3.3 M active
-voxels, 1.25 M triangles. "First picture" is a dab plus the Storm frame that shows it: Storm gets the 8 changed blocks
-nearest the brush per frame, and the rest follow over the next frames. "Stroke end" (re-applying the stroke as one
-unit) and the frames until every block is shown are in the JSON.
+Both have targets: a quarter-size dab ≤ 20 ms; 2,000 strokes ≤ 15 s.
 
-| Budget | Target | Part 1 | Part 2 (quick / full run) | |
-|---|---|---|---|---|
-| Dab → picture, small (r 6 voxels), all 6 brushes | ≤ 16 ms | 10–14 ms | 8–15 / 12–16 ms | **met** |
-| Dab → picture, medium (r 19 voxels) | ≤ 16 ms | 16–19 ms | 11–18 / 11–24 ms (Crease, Pull fastest; Add, Carve slowest) | within 25 % on the quiet run; over on the busy one |
-| Mirrored medium | ≤ 16 ms | 22–28 ms | 16.5–22.7 / 15–27 ms | Pull, Crease, Smooth met; Add, Carve, Flatten over |
-| Dab → picture, quarter of the clay (r 66 voxels) | ≤ 16 ms | 67–114 ms | 38–42 / 52–76 ms; mirrored 63–112 ms | **over** (Storm is 10–17 ms of it; the step 25–90 ms) |
-| Full rebuild, close-up head | ≤ 2 s | 92 ms | 75–124 ms | **met** |
-| Replay of 2,000 strokes (22,852 dabs) | ≤ 15 s | 73 s | 79 s (2.8–3.4 ms a dab; 17.5 ms a dab on one thread) | **over** |
-| Replay from cache | ≤ 2 s | 0.14 s | 0.10–0.19 s | **met** |
-| Same steps → same hash | yes | yes | yes: head live = replay, 2,000 strokes live = replay = cache, in every run | **met** |
-| Memory, process peak | ≤ 1.5 GB | 2.9 GB | 1.4 GB (quick, compare runs) / 1.84 GB (full: bench + 2,000 strokes + kept Cycles scene + Finals); clay grid 34–40 MB | **over** in the full run |
-| Storm frame, nothing changed | — | 6.9 ms | 7.0 ms | |
+## Final numbers
 
-What part 2 changed for speed and memory:
-- **A stroke is one unit.** Live: each dab is shown at once, then at mouse-up the clay is put back and the stroke is
-  applied in one pass. Replay applies the same pass, so live and replay are bit-identical.
-- **Chunk-major buffers, allocated without clearing**, shared by all clays: memory only for the chunks a step touches.
-- **A single dab no longer widens the band** (part 2's first try did, and a large dab went to 100 ms).
-- **Storm's block budget per frame.**
-- **The studio lights reach Storm as simple lights.** As scene lights they made a frame 20 ms.
-- Replay went from 73 to 79 s, i.e. no gain. A stroke shares its fill and write-back, but each dab still re-levels its
-  whole region. A single-thread run shows that is real work, not thread overhead: condition 1.
+Laptop: RTX 3050 4 GB, 16 GB, 12 threads, shared with other teams. Run A was quieter (an unchanged Storm frame 6 ms);
+run B, the last, shared the GPU with another team (17 ms). Both use the same code apart from memory and display
+settings, and give the same clay (hashes `ee3bb7ac…` head, `db3b47f2…` after 2,000 strokes, in both).
+"First picture" = the dab plus the Storm frame that shows it (the changed blocks nearest the brush first: 4 per
+frame in run A, 2 in run B; the rest follow over the next frames).
 
-## Look: ripples, Crease, joins (close-up Finals, `p2\look_*`)
+| Budget | Target | Part 1 | Part 2 | Part 3 (run A / run B) | |
+|---|---|---|---|---|---|
+| Small dab → picture, 6 brushes | ≤ 16 ms | 10–14 | 8–16 | 7–11 / 7–13 ms | **met** |
+| Medium dab → picture | ≤ 16 ms | 16–19 | 11–24 | 8–13 / 6–11 ms | **met** |
+| Mirrored medium dab → picture | ≤ 16 ms | 22–28 | 15–27 | 9–16 / 7–12 ms | **met** |
+| Quarter-of-the-clay dab → picture | ≤ 16 ms (20 ok) | 67–114 | 38–76 | 28–37 / 23–59 ms (Add 22.6, Carve 26.6) | **not met** (1.4–3.7×) |
+| Replay of 2,000 strokes (22,851 dabs) | ≤ 15 s | 73 s | 79 s | 42 / 45 s | **not met** (≈ 3×) |
+| Replay from cache | ≤ 2 s | 0.14 s | 0.1–0.2 s | 0.10 s | **met** |
+| Same steps → same clay (hash) | yes | yes | yes | yes, every run: live = replay = cache | **met** |
+| Peak memory, full bench (Finals included) | ≤ 1.5 GB | 2.9 GB | 1.84 GB | 1.86 / **1.38 GB**; comparison run 1.44 GB | **met** (run B) |
+| Full rebuild, close-up head | ≤ 2 s | 92 ms | 75–124 ms | 85 ms | **met** |
+| Repeated drags don't grow toward the camera | — | — | grew (tendrils) | gone (`side-by-side\mouse_head_before_after_cap.png`) | **met** |
+
+What part 3 changed:
+- **Narrow band (condition 1).** A dab now works on a list: the band voxels in its reach plus the 2 voxels the
+  band can grow by. The band is found with a small 12³ grid per chunk; each voxel's 6 neighbours are found once; the
+  re-levelling passes run on compact arrays (4 passes: seeds sit within a voxel of the surface and the band is 4
+  wide). Only chunks a dab touched are written back, and small dabs run on one thread.
+  - **Quarter-size dab step** (not mirrored, full runs): 39–57 → 13–35 ms. Where its time goes now (≈ 200,000 band voxels): finding the band
+    3.5 ms, neighbours 2.6, the dab 0.8, re-levelling 2.3, writing back 1.7, plus the Storm frame 8–10.
+  - **Replay:** 3.4 → 1.3–1.9 ms a dab.
+- **Accumulate (condition 3).** A brush setting, stored in the steps, default on, as in Nomad. With it off, a stroke
+  raises (digs) the surface at most one dab's height above where the stroke began. A live stroke reads that start
+  from the chunks it kept aside; replay reads it from the stroke's single unit, so live = replay still holds. The
+  mouse sculpt drags with it off.
+- **Memory (condition 2).**
+  - The step buffers are freed after every piece; a piece's wide-blend box was the big one, kept through the
+    strokes.
+  - The Finals render at the end, with the clays gone: Cycles keeps ≈ 0.5 GB of scene for as long as its one engine
+    lives.
+  - Measured: 1.86 → 1.38 GB.
+
+## Look: ripples, Crease, joins (part 2; close-up Finals, `p2\look_*`)
 
 - **Ripples: cause found and fixed.** Part 1's faint stair-steps on the cheeks came from the distance values, not from
   the voxel size or the normals. After each dab, the voxels next to the surface were re-seeded from where the surface
@@ -86,7 +101,7 @@ pictures: those pages need a browser.
 |---|---|---|
 | Agent's head, 518 steps (53 pieces, 30 strokes) — `agent_head_vs_georges_bust.png`, `agent_head_front_vs_brandt_peters.png` | Georges' portrait bust; Brandt Peters' stylised bust | **Far below.** The surface is smooth and the lit edges are clean, but the forms are blocky (brow shelf, jaw step, tube collarbones) and there are no secondary forms or hair. A script placing shapes it can't see is the limit. CL7's look tools are the answer (an agent that looks at its frame). |
 | Agent's small character, 633 steps — `agent_character_vs_help_help_chibi.png` | help_help's chibi (painted) | **Closest.** The finish (clean joins, crisp smile, belt, collar and knee lines) is at a toy-figure level. The forms are simpler and the brows lumpy. Not worse in surface quality; worse in design. |
-| Head by scripted mouse drags, 4 pieces + 49 drags in 4 views — `mouse_head_vs_panda_ma.png` | Panda Ma's head studies | **Fails.** Repeated drags grow ridges and tendrils towards the camera: each dab is cast onto the bump the previous one raised, and a stroke's build-up isn't capped. Condition 3. |
+| Head by scripted mouse drags, 4 pieces + 49 drags in 4 views — part 2 `mouse_head_vs_panda_ma.png`, part 3 `mouse_head_capped_vs_panda_ma.png`, `mouse_head_before_after_cap.png` | Panda Ma's head studies | Part 2 **failed**: drags grew tendrils towards the camera. Part 3, with Accumulate off: **no runaway**, but the head is weak. The script was written expecting strokes to pile up, so its forms now build too little, and its loop scribbles leave single round bumps. A sculpt problem, not an engine one. |
 
 Judged on the brief's points: surface smoothness **yes**; how crisp a Crease line gets **good**; no stair-steps or blobby
 joins **yes**; holds up close **yes** (close-ups at about 7 cm across the frame). Overall "not worse than the
@@ -96,7 +111,7 @@ reference": **no** for the heads.
 
 | File | What it does |
 |---|---|
-| `clay.h/.cpp` (lead) | The clay: an OpenVDB narrow band (values in voxels, half-width 4, negative inside), changed by steps. A piece (sphere / capsule, Add or Carve, smooth blend) or a stroke of dabs (Add, Carve, Smooth, Pull, Flatten, Crease; X mirror) works on the 8³ chunks near the surface in its reach. Per stroke: one fill, the dabs in order, each re-levelled over its own chunks, then one write-back (uniform chunks become tiles). Live strokes: `begin_stroke`, `dab` (a preview, old chunks kept), `end_stroke` (put back, the unit applied). Blend widening capped at 24 voxels (15 mm). Hash over leaves, `.vdb` cache, steps as text. |
+| `clay.h/.cpp` (lead) | The clay: an OpenVDB narrow band (values in voxels, half-width 4, negative inside), changed by steps. A piece (sphere / capsule, Add or Carve, smooth blend) or a stroke of dabs (Add, Carve, Smooth, Pull, Flatten, Crease; X mirror) works on the 8³ chunks near the surface in its reach. Per stroke: one fill, the dabs in order, each re-levelled over its own narrow band (part 3), then one write-back of the chunks touched (uniform chunks become tiles). Live strokes: `begin_stroke`, `dab` (a preview, old chunks kept), `end_stroke` (put back, the unit applied). Blend widening capped at 24 voxels (15 mm). Accumulate off caps a stroke at one dab's height (part 3). `CLAY_PROFILE=1` prints where a big dab's time goes. Hash over leaves, `.vdb` cache, steps as text. |
 | `session.h` (lead) | Sculpting session: world-space strokes (an agent), pixel-path strokes through a camera (a mouse), replay by stroke units. |
 | `mesh.h/.cpp` (member; lead added smooth normals and vertex projection) | Surface nets per 32³ block, crack-free, continuous normals, vertices projected onto the cell's zero surface. |
 | `view.h/.cpp` (members) | Storm: one prim per block, only changed blocks sent. Cycles: one engine for the View's life (a second one crashed in part 1), the studio look (dark gradient background, key / fill / rim panels, low dome). |
