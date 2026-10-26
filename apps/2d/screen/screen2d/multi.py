@@ -5,6 +5,8 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 layer.distribute {gap}). A QObject part, read in QML as `backend.multi`."""
 from __future__ import annotations
 
+import math
+
 from rostrum2d import boxes as B
 from rostrum_gui import news
 from rostrum_gui.edits import Drag
@@ -51,6 +53,24 @@ class Multi(QObject):
         if not _same(self._boxes[0], made):
             self._boxes = (made, [dressed(b) for b in self.b.shown_boxes(self.layers())])   # with their knobs (handle_kinds.dressed)
         return self._boxes[1]
+
+    @Slot(str, result=str)
+    def outlinePath(self, skip):
+        """With several layers picked, every one's turned outline as ONE svg path (composition px): the canvas draws
+        them as one shape, not an item with knobs each (48 layers: ~250 ms of items -> a string). `skip`: the layer
+        whose outline something else is drawing now (painting its true edge, typing). Read `boxes` in the binding so
+        it runs again when they change."""
+        out = []
+        for b in self.boxes:
+            if b.get("id") == skip or b.get("w") is None:
+                continue
+            x, y, w, h = b["x"], b["y"], b["w"], b["h"]
+            ax, ay, a = x + b.get("ax", 0) * w, y + b.get("ay", 0) * h, math.radians(b.get("rot", 0))
+            c, s = math.cos(a), math.sin(a)
+            pts = [(ax + (px - ax) * c - (py - ay) * s, ay + (px - ax) * s + (py - ay) * c)
+                   for px, py in ((x, y), (x + w, y), (x + w, y + h), (x, y + h))]
+            out.append("M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z")
+        return " ".join(out)
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
