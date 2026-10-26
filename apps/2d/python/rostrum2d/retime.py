@@ -125,8 +125,9 @@ def offset_of(doc_data: dict, item_id: str, markers: dict | None) -> float:
     Kept per document state and markers (each change gives new ones): one walk of the whole document gives every
     item's, so a drag of 200 layers walks once per step, not once per layer."""
     got = _offsets[0]                       # (one read and one write of the cell: a worker thread may ask too)
-    if got[0] is not doc_data or got[1] is not markers:
-        got = _offsets[0] = (doc_data, markers, _offset_walk(doc_data, markers))
+    if got[0] is not doc_data or (got[1] is not markers and got[1] != markers):   # (equal markers: each times() call is
+        got = _offsets[0] = (doc_data, None if markers is None else dict(markers),  # a new dict; a Stagger of 200 layers
+                             _offset_walk(doc_data, markers))                       # walked the document 200 times)
     off = got[2].get(item_id, 0.0)
     if isinstance(off, RostrumError):       # its own or a parent's marker is missing: said when asked, as before
         raise off
