@@ -170,8 +170,8 @@ Everything on screen sits in one of five tiers. An element earns its tier from t
 - **Compact:** the header, the ruler with its markers, and **only the selected layer's row** (its bar, its keys, a
   drawing's frames). Its name is a menu of all the layers, so another layer is one click away. For canvas moments.
 - Switch with the button at the right end of the timeline's header, or drag its top edge. **Move remembers its own
-  height, Draw its own** (Draw starts compact). Picking Draw gives the canvas the room; going back to Move brings the
-  rows back. No extra click, and nothing moves that you didn't ask for.
+  height, Draw its own** (both start full, so the canvas never changes size on picking Draw). Fold it for painting room.
+  Nothing moves that you didn't ask for.
 
 ### Where the flows pull apart, and how I chose
 

@@ -96,7 +96,7 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
 
 ## The brush panel and the settings panel while painting (H50, painting design phase 1)
 
-- **The Brush group's flyout is the brush panel** (`BrushFlyout.qml`): the five paint tools Brush B, Eraser E,
+- **The Brush group's flyout is the brush panel** (`BrushFlyout.qml`; it opens over the settings column, never over the picture, so a press on the canvas closes it and starts the stroke; the timeline is not folded by Brush): the five paint tools Brush B, Eraser E,
   Fill G, Pick I, Select S (`paint_tool.py` as `backend.paintTool`: which is on is read from the brush's erase mode,
   Fill, Pick and Select strokes, so they never disagree; the rail's Brush icon is the last one used), then the 19
   shipped brushes (`brush_presets.py`: only existing brush settings, never a colour) as real strokes painted by the

@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 
 from rostrum_core import Param
+from rostrum_core.keys import keys_of
 from rostrum_core.errors import codes
 from rostrum_core.tree import index
 from rostrum_paint import linked
@@ -135,3 +136,21 @@ def frame_move(ctx, targets, args):
     others = [f for f in frames if f["id"] != t]
     ctx.set(t, "at", to)
     ctx.move(t, parent, "frames", _place(others, to))
+
+
+@R.operation("drawing.centre", "Turn a new drawing about its middle, as every drawn shape does, without moving anything you see "
+             "(the pen's first stroke starts a drawing where the stroke began, so its turning point sat there). Only a drawing "
+             "not turned, stretched or keyed at its position, scale and turning point.", target="drawing",
+             label="Centre the turning point", importance="deep")
+def drawing_centre(ctx, targets, args):
+    for t in targets:
+        item = ctx.item(t)
+        if item.get("rotation") or any(keys_of(item, p) for p in ("x", "y", "scale", "scaleX", "scaleY", "rotation", "anchorX", "anchorY")):
+            continue
+        w, h = int(item.get("w", 1920)), int(item.get("h", 1080))
+        k = item.get("scale", 1.0)
+        for axis, size, stretch in (("X", w, item.get("scaleX", 1.0)), ("Y", h, item.get("scaleY", 1.0))):
+            move = (0.5 - item.get("anchor" + axis, 0.5)) * size * k * stretch
+            if abs(move) > 1e-6:
+                ctx.set(t, axis.lower(), item.get(axis.lower(), 0.0) + move)
+                ctx.set(t, "anchor" + axis, 0.5)

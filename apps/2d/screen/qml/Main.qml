@@ -25,8 +25,8 @@ AppShell {
     // the frame again only when that layout changes (Stage.qml), never when a panel's contents change.
     // ⊟ folds the timeline to its header (screen state, never the document).
     property bool timelineFolded: false
-    // Each tool remembers its own timeline height (the-screen.md §2.7): Brush starts compact, every other tool full
-    property var foldedFor: ({ "draw": true })
+    // Each tool remembers its own timeline height (the-screen.md §2.7): every tool starts at the full height, so opening the Brush never resizes the canvas
+    property var foldedFor: ({})
     readonly property string toolNow: backend.tool
     onToolNowChanged: timelineFolded = foldedFor[toolNow] === true
     function fold(on) { const m = Object.assign({}, foldedFor); m[toolNow] = on; foldedFor = m; timelineFolded = on }
