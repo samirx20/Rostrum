@@ -85,7 +85,7 @@ Item {
         id: tab
         visible: !root.through
         width: words.width + 2 * Theme.gap; height: words.height + 4
-        radius: Theme.radiusCtl; color: root.picked ? Theme.accent : Theme.raised
+        radius: Theme.radiusCtl; color: root.picked ? Theme.accentFill : Theme.raised
         x: root.corners[0].x; y: root.corners[0].y - height
         transformOrigin: Item.BottomLeft; rotation: box.rot || 0
         Text { id: words; anchors.centerIn: parent; text: backend.frameView.label; color: root.picked ? "white" : Theme.fg2

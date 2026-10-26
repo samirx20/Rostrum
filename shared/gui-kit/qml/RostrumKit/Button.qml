@@ -31,7 +31,7 @@ Item {
     HoverHandler { id: hoverHandler; cursorShape: Qt.PointingHandCursor }
     Rectangle {
         anchors.fill: parent; radius: Theme.radiusCtl
-        color: b.primary ? (b.hovered || area.pressed ? Theme.accentHover : Theme.accent)
+        color: b.primary ? (b.hovered || area.pressed ? Theme.accentFillHover : Theme.accentFill)
              : area.pressed || b.down ? Theme.active
              : b.hovered ? Theme.hover
              : b.kind === "ghost" ? "transparent" : Theme.raised

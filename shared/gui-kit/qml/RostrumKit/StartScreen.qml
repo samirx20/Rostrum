@@ -50,14 +50,14 @@ Rectangle {
         readonly property bool hovered: wayHover.hovered
         signal picked()
         width: start.cardWidth; height: 112; radius: Theme.radiusPanel
-        color: main ? (wayHover.hovered ? Theme.accentHover : Theme.accent) : (wayHover.hovered ? Theme.raised : Theme.panel)
+        color: main ? (wayHover.hovered ? Theme.accentFillHover : Theme.accentFill) : (wayHover.hovered ? Theme.raised : Theme.panel)
         Column {
             anchors { left: parent.left; right: parent.right; margins: Theme.pad + 4; verticalCenter: parent.verticalCenter }
             spacing: Theme.grid
             Text { width: parent.width; text: way.label; elide: Text.ElideRight; color: way.main ? "white" : Theme.fg
                    font.family: uiFont; font.pixelSize: way.main ? 22 : Theme.heading; font.weight: Font.DemiBold }
             Text { width: parent.width; text: way.hint; elide: Text.ElideRight
-                   color: way.main ? Qt.rgba(1, 1, 1, 0.7) : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+                   color: way.main ? Qt.rgba(1, 1, 1, 0.96) : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }
         HoverHandler { id: wayHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: way.picked() }
