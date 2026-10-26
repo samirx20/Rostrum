@@ -100,7 +100,16 @@ def placed_note(own: dict, n: dict, root: dict) -> dict:
 
 
 def note_block(n, root):
-    return placed_note({"id": n["id"], "type": "note", "keys": timing.keys(n["pitch"]), "vel": n.get("vel", 0.8)}, n, root)
+    p = n["pitch"]
+    return placed_note({"id": n["id"], "type": "note", "keys": _keys(tuple(p) if type(p) is list else p),
+                        "vel": n.get("vel", 0.8)}, n, root)
+
+
+@lru_cache(maxsize=4096)
+def _keys(pitch) -> list[int]:
+    """The keys a pitch plays ("D4", 62 or a chord as a tuple), read once per pitch: shared by every block of it (a
+    block is never changed in place). Reading each copy's pitch again was a third of making 3,607 copies' blocks."""
+    return timing.keys(list(pitch) if type(pitch) is tuple else pitch)
 
 
 def again(root):

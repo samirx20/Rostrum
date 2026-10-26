@@ -3,13 +3,16 @@
 // A patch of a row's or the roll's blocks (screensound/block_patch.py `apply`, the same rule; JSON text, one per
 // change at any count): the blocks whose ids are gone are left out, changed ones take their place, new ones go at
 // the end, and the blocks only moved (`by`: [field, d, ids]) are made here from the ones shown, their place shifted by
-// d ("beats": atBeat and endBeat, "secs": t): a whole-song move sends ids and a number, not every block again. The
+// d ("beats": atBeat and endBeat, "secs": t): a whole-song move sends ids and a number, not every block again; new
+// blocks that copy shown ones (`cp`: [field, d, [new id, id copied, …]], Ctrl+D, Repeat) are made the same way, with
+// their own id, after the others (block_patch.py `copies`). The
 // list made remembers the patch (`__patch`: the list it came from, what it put and took), so a surface that painted
 // that list looks only at those blocks (`update`), and where each block sits (`__at`, id -> index, shared while no
 // block goes): a hit drawn on a track of 3,000 costs what one block costs, not a walk over all of them on each surface.
 function patch(blocks, text, map) {
     var p = JSON.parse(text), put = p.put, gone = p.gone, out, at = _at(blocks), i, j
-    var tm = map && map.length && (p.by.length || put.length) ? [_plainMap(map), Tempo.key(map)] : null
+    var cp = p.cp || []
+    var tm = map && map.length && (p.by.length || put.length || cp.length) ? [_plainMap(map), Tempo.key(map)] : null
     var dt = null, one = gone.length === 0, n = 0                     // every block moved by one time (Slide.js)
     function moved(o, x, plain) {                                   // (plain: moved here, so nothing else changed)
         var s = plain ? o.t - x.t : _shift(o, x)
@@ -28,6 +31,17 @@ function patch(blocks, text, map) {
             put.push(_moved(blocks[k], field, d, tm))
             if (one) moved(put[put.length - 1], blocks[k], typeof put[put.length - 1].t === "number"
                            && Math.abs((put[put.length - 1].dur || 0) - (blocks[k].dur || 0)) < 1e-9)
+        }
+    }
+    if (cp.length) one = false                                       // (new blocks: no move of the whole picture)
+    for (i = 0; i < cp.length; i++) {
+        var ids2 = cp[i][2]
+        for (j = 0; j < ids2.length; j += 2) {
+            var src = at[ids2[j + 1]]
+            if (src === undefined || src >= blocks.length || blocks[src].id !== ids2[j + 1]) throw new Error("Blocks.patch: no block " + ids2[j + 1] + " to copy")
+            var o = _moved(blocks[src], cp[i][0], cp[i][1], tm)
+            o.id = ids2[j]
+            put.push(o)
         }
     }
     if (put.length === blocks.length && p.by.length === 1 && p.by[0][2] === null) {
@@ -216,6 +230,8 @@ function index(k) {
 // The places to paint again for the blocks and the selection now ([]: none); null: so many that one whole paint is as
 // quick (then `rebuild`). Changed blocks keep their place in the order, new ones come last (as `patch`).
 function update(k, blocks, picked, rectsOf) {
+    var p = blocks.__patch
+    if (p !== undefined && p.from === k.list && p.put.length + p.gone.length > MANY) return null   // (each counts: no columns made for nothing)
     index(k)
     var dirty = [], seen = {}, changed = 0, i, e, id
     function mark(rs) {
@@ -239,7 +255,6 @@ function update(k, blocks, picked, rectsOf) {
         was[3] = true; mark(rectsOf(was[0])); delete k.by[id]; delete k.sel[id]
         return true
     }
-    var p = blocks.__patch
     if (p !== undefined && p.from === k.list) {          // a patch of the list painted: only the blocks it names
         for (i = 0; i < p.put.length; i++) if (!took(p.put[i])) return null
         for (i = 0; i < p.gone.length; i++) if (!dropped(p.gone[i])) return null
