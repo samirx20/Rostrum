@@ -133,7 +133,10 @@ ListView {
         readonly property var sound: modelData.row === "layer" ? backend.soundtrack.videos.rows[modelData.id] : undefined
         height: own + (sound ? Theme.rowDense - 2 : 0)     // a video with sound: its sound's row under it (VideoSoundRow)
         opacity: list.dragId === modelData.id ? 0.45 : 1
-        ListView.onPooled: { rowName.endRename(false); rowTrack.release() }     // nothing of the row it was stays
+        property bool parked: false        // kept out of view for the next row (reuseItems): hidden, so no check sees it
+        visible: !parked
+        ListView.onPooled: { parked = true; rowName.endRename(false); rowTrack.release() }     // nothing of the row it was stays
+        ListView.onReused: parked = false
         LayerName {
             id: rowName
             x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own
