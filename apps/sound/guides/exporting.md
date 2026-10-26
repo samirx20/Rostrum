@@ -18,7 +18,7 @@ A solo or a mute that is on changes what the file holds, so the sheet says so fi
 
 What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's name sits just above the **Export** button: click the box and type the name you want (the file type stays after it); the line under it shows the exact folder the file lands in. The sheet opens with the choices the song's last export was made with (file type, trimming, stems, markers file; each export keeps the sheet's choices in its `manifest.json` as `export_sheet`), so a new window doesn't quietly drop the stems, even when the song was exported twice without a change in between. Every choice on the sheet keeps its value when you change another (changing the target leaves Stems as you set it), and the sheet never moves under the pointer: the range picker's place at the top stays empty until the song has a section or a time range.
 
-Pick where it is going. The list starts with **As the mix plays now** (it says "No loudness target": nothing is changed; it is there while the song's loudness matches no choice, and it goes once you pick one), then **Streaming**, **Apple Music**, **Broadcast**, **US TV**, **Podcast** and **MIDI file**. Each target choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
+Pick where it is going. The list starts with **As the mix plays now** (it says "No loudness target": nothing is changed; it is there while the song's loudness matches no choice, and it goes once you pick one), then **Streaming: Spotify, YouTube, Tidal**, **Apple Music**, **Broadcast**, **US TV**, **Podcast** and **MIDI file**. Each target choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
 
 The last choice, **MIDI file**, writes no sound: it saves the song's notes, drum hits, sustain pedal, expression and
 pitch bend, tempo map, time signature, keys, markers and sections as a `.mid` for another music app. The sound
@@ -29,6 +29,21 @@ and anything MIDI can't hold is listed when it is done. Agents make the same fil
 Under the choices a line checks the sound that plays now against that target. With a range chosen it reads that range alone (its loudness and loudest peak), because that is the file you get:
 - "✓ Right for the target: loudness −14.2, loudest peak −1.3 dB" (green), or
 - "Misses the target: 2.1 dB too quiet." and, under it, what to do ("Turn the mix up."), in amber.
+
+**When the target can't be reached as the master is set.** Gentle limiting lets the master's limiter pull the loudest
+moments down by at most **Most limiting** (2 dB in a new song); a mix with tall peaks then lands under the target. The
+sheet says so before you save, in amber, with what the file will measure and what reaching the target takes:
+"Will land at −16.4 LUFS: reaching −14 needs 4.4 dB of limiting (Most limiting allows 2). Over ~3 dB of limiting starts
+to flatten acoustic drums and piano." Under it, one click:
+- **Push to −14** (chosen by default): Export raises Most limiting to what the target needs (one undo step, "Push loudness
+  to target") and the file reaches the target; the loudest peak still stays under the ceiling.
+- **Keep it dynamic**: Export writes the mix at the level it reaches, and the sheet says that instead of "Loudness set to
+  −14": "Kept dynamic: the file will measure −16.4 LUFS, 2.4 dB under Streaming's −14". Streaming services play a
+  quieter file as it is, so the dynamics stay.
+
+A song that would need more than the master's 12 dB says so and is written at the level it reaches; turn the peakiest
+track down (or tame it) first. After any export the result line says what the file measured: "measured −14.2 LUFS,
+loudest peak −1.3 dBTP, 4.3 dB of limiting".
 
 When the master's numbers match none of the choices the picker reads "As the mix plays now" and the check line is not shown:
 there is no target to meet or miss until you pick one.

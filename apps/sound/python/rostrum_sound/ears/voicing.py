@@ -6,7 +6,7 @@ from itertools import combinations
 
 import numpy as np
 
-from ..doc import keys
+from ..doc import keys, meter, tempo, times
 from ..doc.keys import pitch_name as _name
 from .theory import interval_name, low_interval_limit
 
@@ -98,15 +98,38 @@ def crossings(notes, min_apart: int = 3) -> list[dict]:
     return merge_repeats(ev)
 
 
+def key_changes(root: dict) -> list[tuple[float, str]]:
+    """The document's key list as (seconds, key), in time order: the one source every key check reads."""
+    return sorted((times.seconds(k.get("at", 0), root, k["id"]), k["key"]) for k in root.get("keys", []) if k.get("key"))
+
+
+def _leads_into(root: dict, changes, sec: float, midi: int, now: str):
+    """(seconds, key) of the key change this note leads into: the next change, at most a bar after the note, to a key
+    the note belongs to (the new key's dominant in the bar before it, say); None otherwise."""
+    t, k = next(((t, k) for t, k in changes if t > sec + 1e-9), (None, None))
+    if t is None or k == now or not keys.in_key(midi, k):
+        return None
+    b0, b1 = tempo.beat_at(root, sec), tempo.beat_at(root, t)
+    return (t, k) if b1 - b0 <= meter.per_bar_at(root, int(b1)) + 1e-6 else None
+
+
 def out_of_key(notes, root: dict, fallback: str | None) -> list[dict]:
-    """Notes whose pitch class is not in the key playing at the time (the document's key map, else `fallback`)."""
+    """Notes whose pitch class is not in the key playing at the time (the document's key map, else `fallback`). A note of
+    the next key in the bar before a key change is not out of key: it leads into that key (kind "leads_into_key")."""
     ev = []
+    changes = key_changes(root)
     for n in notes:
         k = keys.key_at(root, n["start"]) or fallback
         if k is None:
             continue
         for m in n["midis"]:
-            if not keys.in_key(m, k):
-                ev.append({"kind": "out_of_key", "at_s": n["start"], "tracks": [n["track"]], "notes": [_name(m)],
+            if keys.in_key(m, k):
+                continue
+            lead = _leads_into(root, changes, n["start"], m, k)
+            if lead:
+                ev.append({"kind": "leads_into_key", "at_s": n["start"], "tracks": [n["track"]], "notes": [_name(m)], "key": k,
+                           "into": lead[1], "why": f"{_name(m)} is not in {k}: it leads into {lead[1]} (from {lead[0]:.1f} s)"})
+            else:
+                ev.append({"kind": "out_of_key", "at_s": n["start"], "tracks": [n["track"]], "notes": [_name(m)], "key": k,
                            "why": f"{_name(m)} is not in {k}"})
     return merge_repeats(ev)

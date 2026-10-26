@@ -26,7 +26,7 @@ def register(tools: Tools):
         `maxLimit` that reaches the target, the balance untouched), `tame_peaks` (a gentle compressor (ratio 4:1, attack 5 ms, release 120 ms; a track's own compressor is set instead) first on the most peaked
         track, or the two or three most peaked when one is not enough: the threshold found by re-rendering, the makeup measured so each track keeps its loudness against the mix; reaches the target within
         the master's own `maxLimit`, balance as written) and `trim_track` (the smallest volume cut (at most 12 dB) of the most peaked track that reaches the target within `maxLimit`; the balance moves).
-        `best`: keep_balance when it raises `maxLimit` by at most 1 dB, else tame_peaks (the master stays transparent), else whatever is possible. Each option has `ops`, ready for edit_document; `apply` makes one as a single change. A target that cannot be reached is said, never faked; `apply` of an option that is not possible fails the job and changes nothing.
+        `best`: keep_balance when it raises `maxLimit` by at most 1 dB, else tame_peaks (the master stays transparent), else whatever is possible. Each option says how much limiting it leaves on the master: over ~3 dB starts to flatten acoustic drums and piano, so for acoustic music tame_peaks is usually the better way to a streaming target. Each option has `ops`, ready for edit_document; `apply` makes one as a single change. A target that cannot be reached is said, never faked; `apply` of an option that is not possible fails the job and changes nothing.
         Example: {"apply": "best"}. Returns a job (it renders to search)."""
         doc = ctx.document(args.get("item"))
         state = ctx.app.state

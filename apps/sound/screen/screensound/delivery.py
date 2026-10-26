@@ -15,7 +15,7 @@ from rostrum_core.conditions import holds
 LUFS_TOLERANCE = 1.0          # a mix within ±1 LU of the target meets it (the engine normalizes to the target)
 
 TARGETS = [
-    {"key": "streaming", "label": "Streaming", "lufs": -14.0, "peak": -1.0,
+    {"key": "streaming", "label": "Streaming: Spotify, YouTube, Tidal", "short": "Streaming", "lufs": -14.0, "peak": -1.0,
      "source": "Spotify for Artists (loudness normalization: -14 LUFS, true peak -1 dBTP); YouTube plays near -14 LUFS."},
     {"key": "apple", "label": "Apple Music", "lufs": -16.0, "peak": -1.0,
      "source": "Apple Digital Masters / Sound Check reference level -16 LUFS; true peak -1 dBTP."},
@@ -26,6 +26,8 @@ TARGETS = [
     {"key": "podcast", "label": "Podcast", "lufs": -16.0, "peak": -1.0,
      "source": "Apple Podcasts / AES TD1004 recommendation (-16 LUFS stereo; true peak -1 dBTP)."},
 ]
+for _t in TARGETS:
+    _t.setdefault("short", _t["label"])         # the name in a sentence and the top bar ("Streaming"); `label` names it in the list
 BY_KEY = {t["key"]: t for t in TARGETS}
 
 
@@ -59,7 +61,7 @@ def label_of(master: dict, fields=ALL) -> str:
     if "loudness" not in fields:                       # Normalize off: no target chosen yet
         return "Choose…"
     t = BY_KEY.get(key_of(master, fields))
-    return t["label"] if t else _detail({FIELDS[f][0]: master.get(f) for f in fields}, fields) or "Custom"
+    return t["short"] if t else _detail({FIELDS[f][0]: master.get(f) for f in fields}, fields) or "Custom"
 
 
 def call(key: str, master_id: str = "master") -> dict:
@@ -108,4 +110,4 @@ def said(master: dict) -> str:
     """What choosing a target did to the song, in words ("" when the master matches no target): the sheet shows it,
     so the change to the mix is never silent."""
     t = BY_KEY.get(key_of(master))
-    return f"Loudness set to {_n(t['lufs'])} for {t['label']}" if t and master.get("normalize") else ""
+    return f"Loudness set to {_n(t['lufs'])} for {t['short']}" if t and master.get("normalize") else ""

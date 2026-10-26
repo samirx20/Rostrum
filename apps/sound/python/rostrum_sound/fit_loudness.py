@@ -32,6 +32,50 @@ def need_db(r: dict) -> float:
     return round((m.get("limiterMaxReductionDb") or 0) + (m.get("heldDb") or 0), 2)
 
 
+LOT_DB = 3.0             # more limiting than this starts to flatten acoustic drums and piano
+REACH_OK = 0.5           # a file within this of its target has reached it (what the Export sheet and the agents promise)
+
+
+def _n(v: float) -> str:
+    return f"{round(v, 1):g}".replace("-", "−")
+
+
+def a_lot(db: float) -> str:
+    """A word on how much limiting `db` is, for acoustic music ("" while it is gentle)."""
+    if db <= LOT_DB:
+        return ""
+    return f" Over ~{LOT_DB:g} dB of limiting starts to flatten acoustic drums and piano."
+
+
+def landing(master: dict, r: dict | None) -> dict:
+    """Where a render of the song will land against the master's loudness target, from the last render `r`: the one
+    prediction the Export sheet, the export and the agents' replies use. The limiter's need rises dB for dB with the
+    gain the target asks, so with what it pulled (`limiterMaxReductionDb`) at the render's loudness, reaching the goal
+    needs `pulled + goal - lufs` dB; gentle limiting holds it to `maxLimit` and the rest is left under the target.
+    {target, lufs (predicted), need_db, limit, short_db, reaches, push (the master.set that reaches it, None when it
+    already does or can't), impossible, words}. {} with no render or no target (nothing to predict)."""
+    if not r or not isinstance(r.get("lufs"), (int, float)) or not master.get("normalize"):
+        return {}
+    goal = master.get("loudness", -16)
+    m = r.get("master") or {}
+    need = max(0.0, round((m.get("limiterMaxReductionDb") or 0) + goal - r["lufs"], 2))
+    limit = master.get("maxLimit", 2) if master.get("gentle", True) else None
+    short = max(0.0, need - limit) if limit is not None else 0.0
+    lands = goal - short
+    out = {"target": goal, "lufs": round(lands, 2), "need_db": need, "limit": limit, "short_db": round(short, 2),
+           "reaches": short <= REACH_OK, "push": None, "impossible": False}
+    if out["reaches"]:
+        return {**out, "words": f"Will land at {_n(goal)} LUFS with {need:.1f} dB of limiting." + a_lot(need)}
+    kb = _keep_balance(goal, need, limit)
+    if kb.get("impossible"):
+        return {**out, "impossible": True,
+                "words": f"Will land at {_n(lands)} LUFS: reaching {_n(goal)} needs {need:.1f} dB of limiting, more than the {MAX_LIMIT:g} dB "
+                         f"the master can do; the file stays there unless the peakiest track is turned down or tamed."}
+    return {**out, "push": {"max_limit_db": kb["max_limit_db"], "ops": [{**kb["ops"][0], "args": {"maxLimit": kb["max_limit_db"], "gentle": True}}]},
+            "words": f"Will land at {_n(lands)} LUFS: reaching {_n(goal)} needs {need:.1f} dB of limiting (Most limiting allows {limit:g})."
+                     + a_lot(need)}
+
+
 def peakiest_track(r: dict) -> str | None:
     """The track whose peaks stand highest over its own average (peak / rms): the one a limiter works on."""
     t = max(r.get("tracks") or [], key=lambda t: (t.get("peak") or 0) / max(t.get("rms") or 0, 1e-9), default=None)
@@ -71,7 +115,8 @@ def _keep_balance(goal, need, limit):
         return {"name": "keep_balance", "impossible": True,
                 "words": f"Reaching {goal:g} LUFS as written needs {need:g} dB of limiting, more than the master's top {MAX_LIMIT:g} dB: not possible without changing the balance."}
     return {"name": "keep_balance", "max_limit_db": ask, "ops": [{"op": "master.set", "target": ["master"], "args": {"maxLimit": ask}}],
-            "words": f"Reach {goal:g} LUFS with the balance exactly as written: the limiter then pulls up to {ask:g} dB (now allowed: {limit:g})."}
+            "words": f"Reach {goal:g} LUFS with the balance exactly as written: the limiter then pulls up to {ask:g} dB (now allowed: {limit:g})."
+                     + a_lot(ask)}
 
 
 def _trim(goal, limit, short, who, tracks, root, engine, scratch):

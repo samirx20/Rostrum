@@ -22,6 +22,7 @@ from rostrum_core import RostrumError, project
 from rostrum_gui.export_sheet import ExportSheet
 from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver, handoff, midi, presets
+from rostrum_sound import fit_loudness as fit
 from rostrum_sound.doc import markers
 
 from . import delivery, export_stems, loudness, playback, strips
@@ -45,9 +46,19 @@ def summary(r: dict) -> str:
     if r.get("silentStems"):
         stems += " (silent: " + ", ".join(r["silentStems"]) + ")"
     cut = f", {r['songSeconds'] - r['seconds']:.1f} s of silence trimmed" if r.get("trimmed") else ""
+    loud = measured(r)
     warn = "".join(f" · {w}" for w in r.get("warnings") or [])        # a clipped file, stems that don't add up: said here
     return (f"Version {r['version']} · {r.get('format', {}).get('label', '')}, {r.get('sampleRate', 0) / 1000:g} kHz · "
-            f"{r['seconds']:.1f} s{cut} · {stems}{warn}")
+            f"{r['seconds']:.1f} s{cut}{loud} · {stems}{warn}")
+
+
+def measured(r: dict) -> str:
+    """What the file measured, in the result line: its loudness and loudest peak, and the limiting it took."""
+    if not isinstance(r.get("lufs"), (int, float)):
+        return ""
+    lim = (r.get("master") or {}).get("limiterMaxReductionDb") or 0
+    peak = f", loudest peak {r['truePeak']:.1f} dBTP" if isinstance(r.get("truePeak"), (int, float)) else ""
+    return (f" · measured {r['lufs']:.1f} LUFS{peak}, {lim:.1f} dB of limiting").replace("-", "−")
 
 
 def option(c: dict) -> dict:
@@ -68,6 +79,7 @@ class RenderExport(ExportSheet):
         self._said.connect(self._say)
         self._stems, self._format, self._rate, self._trim = "off", deliver.DEFAULT_FORMAT, 0, True   # rate 0: the song's own
         self._markers = False                         # markers.json beside the files
+        self._dynamic = False                         # "Keep it dynamic": export at the level the master reaches, not pushed to the target
         self._choice = self._target_key()
         self._more = Versions()
         self._watching, self._missed = False, False   # the sheet on screen (`watch`); news it missed meanwhile
@@ -139,6 +151,7 @@ class RenderExport(ExportSheet):
                                                                 "another music app; no sound"}]
 
     def chose(self):
+        self._dynamic = False                          # a new target is reached unless kept dynamic again
         if self._choice == MIDI:
             return
         if self._loud is not None and self._choice != self._target_key():
@@ -173,6 +186,9 @@ class RenderExport(ExportSheet):
                     "root": copy.deepcopy(doc.data), "out": out}
         # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
         master = presets.PRESETS.get(self.preset, {}).get("master", True)
+        land = self._landing()
+        if master and land.get("push") and not self._dynamic:     # a named target is reached unless kept dynamic (one undo step)
+            self.bridge._apply(land["push"]["ops"], "Push loudness to target")
         try:
             schedule = compile_doc(doc, master=master)
         except RostrumError as e:
@@ -384,7 +400,35 @@ class RenderExport(ExportSheet):
             return {}
         if t.get("shown") and self._stale():        # the last render is from before the change: never judge it as if new
             return {"ok": False, "text": WAITING}
+        land = self._landing()
+        if land and not land["reaches"]:            # what the file will measure, before it is made (loudnessWay offers the choice)
+            return {} if self._dynamic and land.get("push") else {"ok": False, "text": land["words"]}
         return delivery.verdict(m, self._measured(), fields) if t.get("shown") else {}
+
+    def _landing(self) -> dict:
+        """fit_loudness.landing for the chosen target and the render that plays ({} with none, MIDI, or a render on its way)."""
+        if self._choice in ("", MIDI) or self._stale() or "loudness" not in (self._loud._fields()[1] if self._loud is not None else []):
+            return {}
+        return fit.landing(self.bridge.doc.item("master"), self._measured())
+
+    @Property("QVariantMap", notify=own)
+    def loudnessWay(self):
+        """{shown, current: "push" | "dynamic", options, said}: when the master can't reach the chosen target as set, the one-click
+        choice between pushing to it (Export raises Most limiting, the true-peak ceiling still holds) and keeping it dynamic."""
+        land = self._landing()
+        if not land.get("push"):
+            return {"shown": False}
+        goal = delivery._n(land["target"])
+        said = (f"Export raises Most limiting to {land['push']['max_limit_db']:g} dB; the loudest peak stays under the ceiling."
+                if not self._dynamic else "")
+        return {"shown": True, "current": "dynamic" if self._dynamic else "push", "said": said,
+                "options": [{"value": "push", "label": f"Push to {goal}"}, {"value": "dynamic", "label": "Keep it dynamic"}]}
+
+    @Slot(str)
+    def setLoudnessWay(self, way):
+        if not self.running() and way in ("push", "dynamic"):
+            self._dynamic = way == "dynamic"
+            self.changed.emit()
 
     def _stale(self) -> bool:
         tr = getattr(self.bridge, "transport", None)
@@ -395,7 +439,14 @@ class RenderExport(ExportSheet):
         """What the chosen target did to the song's loudness, in words ("" for none): a target is the master's own
         setting (one undo step), so the sheet says so instead of changing the mix quietly."""
         m = self.bridge.doc.item("master")
-        return delivery.said(m) if self._choice not in ("", MIDI) else ""
+        if self._choice in ("", MIDI):
+            return ""
+        land = self._landing()
+        if land and not land["reaches"] and (self._dynamic or not land.get("push")):     # the file won't be at the target: never "set to −14"
+            t = delivery.BY_KEY.get(self._choice)
+            under = f", {land['short_db']:.1f} dB under {t['short']}’s {delivery._n(t['lufs'])}" if t else ""
+            return f"{'Kept dynamic: t' if land.get('push') else 'T'}he file will measure {delivery._n(round(land['lufs'], 1))} LUFS{under}"
+        return delivery.said(m)
 
     @Property("QVariantList", notify=own)
     def more(self):
