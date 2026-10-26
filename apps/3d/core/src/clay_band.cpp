@@ -267,13 +267,18 @@ void run_dabs(const DabUnit& du) {
       const float old = V[i];
       const float bx = float(x), by = float(y), bz = float(z);
       switch (s.op) {
-        case Op::Add:  // without accumulate, a stroke raises the surface at most one dab above where it began
+        // without accumulate, one stroke raises (digs) the surface at most kStrokeLift x strength x the brush
+        // radius above (below) where it began, however often it passes; each dab still moves it at most `disp`.
+        // (CL2b: the cap was one dab's own move, at most 2 grains, so a stroke with Build up off barely showed.)
+        // (the cap is the same for every point of the stroke, never scaled by this dab's weight: scaled, a point at
+        // the rim of the newest dab was pulled back to where the stroke began, undoing the dabs before it)
+        case Op::Add:
           V[i] = old - disp * w;
-          if (!s.accumulate) V[i] = std::max(V[i], St[i] - disp * w);
+          if (!s.accumulate) V[i] = std::max(V[i], std::min(old, St[i] - std::max(disp, kStrokeLift * s.strength * best->r)));
           break;
         case Op::Carve:
           V[i] = old + disp * w;
-          if (!s.accumulate) V[i] = std::min(V[i], St[i] + disp * w);
+          if (!s.accumulate) V[i] = std::min(V[i], std::max(old, St[i] + std::max(disp, kStrokeLift * s.strength * best->r)));
           break;
         case Op::Smooth: {
           const float avg = (NX[b.at(x - 1, y, z)] + NX[b.at(x + 1, y, z)] + NX[b.at(x, y - 1, z)] +

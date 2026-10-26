@@ -81,23 +81,33 @@ StepTiming Volume::apply_stroke_shared(const std::vector<Step>& dabs, Buffers& b
   return units(dabs, &bufs, &lock);
 }
 
+// Where the stroke began, for a stroke applied by apply_stroke (thread-local: a parallel replay runs several strokes
+// at once on one volume); a live stroke uses live_.
+namespace {
+thread_local ChunkRecord* tl_start = nullptr;
+}
+
 StepTiming Volume::units(const std::vector<Step>& dabs, Buffers* bufs, std::shared_mutex* lock) {
-  // the stroke in units that each move the surface at most kStrokeAcc: one fill, one re-levelling, one write per unit;
-  // big dabs (the coarse copy) and the others in units of their own (a stroke without accumulate: one unit, as its
-  // first dab)
+  // A stroke, dab after dab, exactly as it was sculpted live (Volume::dab): one dab, one re-levelling. CL2b: units of
+  // several dabs between re-levellings (and a whole stroke as one unit without accumulate) gave a different clay from
+  // the one drawn live: a person saw a ridge, and letting go left half of it, or nothing. Live = end = replay now holds
+  // by construction. The chunks as they were when the stroke began are kept aside for Build up off (as live_ is live).
   StepTiming t;
-  const float iv = 1.0f / voxel_;
-  auto big = [&](const Step& s) { return coarse_ && coarse_dab(s, iv); };
-  for (size_t start = 0; start < dabs.size();) {
-    size_t end = start + 1;
-    if (!dabs[start].accumulate) end = dabs.size();
-    const bool c = big(dabs[start]);
-    while (end < dabs.size() && big(dabs[end]) == c && pile_up(&dabs[start], end + 1 - start, iv) <= kStrokeAcc) ++end;
-    const StepTiming u = run(&dabs[start], end - start, bufs, lock);
-    t.ms += u.ms;
-    t.voxels += u.voxels;
-    start = end;
+  ChunkRecord start;
+  start.on = true;
+  ChunkRecord* const before = tl_start;
+  tl_start = &start;
+  try {
+    for (const Step& d : dabs) {
+      const StepTiming u = run(&d, 1, bufs, lock);
+      t.ms += u.ms;
+      t.voxels += u.voxels;
+    }
+  } catch (...) {
+    tl_start = before;
+    throw;
   }
+  tl_start = before;
   return t;
 }
 
@@ -132,7 +142,7 @@ void Volume::record_into(ChunkRecord* rec) {
 void Volume::restore(const ChunkRecord& rec) { put_back(rec); }
 
 void Volume::keep(const Coord& o) {
-  live_.keep(grid_->tree(), &mask_->tree(), o);
+  (tl_start ? *tl_start : live_).keep(grid_->tree(), &mask_->tree(), o);
   if (record_) record_->keep(grid_->tree(), &mask_->tree(), o);
 }
 
@@ -217,7 +227,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     cu.tree = &grid_->tree();
     cu.mask = &mask_->tree();
     cu.bufs = &S;
-    cu.start = &live_;
+    cu.start = tl_start ? tl_start : &live_;
     cu.lock = lock;
     cu.steps = steps;
     cu.n = n;
@@ -334,7 +344,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
       b.each(ci, [&](int, int, int, size_t i) { V[i] = u; });
     }
     if (needStart) {
-      const ChunkRecord::Chunk* kept = live_.find(b.lo + Coord(x, y, z));
+      const ChunkRecord::Chunk* kept = (tl_start ? tl_start : &live_)->find(b.lo + Coord(x, y, z));
       if (!kept) b.copy(ci, V, St);
       else if (kept->leaf) b.each(ci, [&](int xx, int yy, int zz, size_t i) { St[i] = kept->values[leaf_offset(xx, yy, zz)]; });
       else b.each(ci, [&](int, int, int, size_t i) { St[i] = kept->value; });
