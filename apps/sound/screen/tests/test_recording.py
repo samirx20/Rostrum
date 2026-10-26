@@ -20,23 +20,14 @@ from screensound import playback  # noqa: E402
 from screensound.bridge import SoundBridge  # noqa: E402
 from screensound.keys_record import KeysRecording  # noqa: E402
 from screensound.recording import Recording  # noqa: E402
+import stand_in  # noqa: E402
+from stand_in import FAKE_PLAYER  # noqa: E402
 
-FAKE = [sys.executable, "-I", str(Path(__file__).resolve().parents[1] / "screensound" / "fake_play.py")]
+FAKE = FAKE_PLAYER
 
 
-class FakeEngine:
-    def request(self, do, schedule=None, out=None, **kw):
-        sf.write(out, np.zeros((48000 * 6, 2), "float32"), 48000)
-        return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
-
-    def take_restarted(self):
-        return ""
-
-    def close(self):
-        pass
-
-    def abort(self):
-        pass
+def FakeEngine():
+    return stand_in.FakeEngine(seconds=6)
 
 
 def pump(s, until=lambda: False):

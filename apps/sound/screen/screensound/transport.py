@@ -121,6 +121,7 @@ class Transport(QObject):
         self.last, self.stale = dict(result), False
         self._set_failure("")
         self.player.load(self.last["file"])
+        self.renderer.taken(self.last["file"])
         self._warm = not self._want and not settings.load()["exclusive"]
         self._tell()                 # what shows the render (loudness, meters, Problems): once the pointer is quiet
         if self._want:

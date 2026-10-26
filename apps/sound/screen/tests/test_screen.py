@@ -1,9 +1,7 @@
 """What would break silently on the Sound screen: a note drag is one undo step (and undo puts it back), it keeps
 the time's form (beats stay beats), and re-running the song's script keeps what a person moved.
 The engine is replaced by a stand-in that writes a real short silent WAV (sound is checked by listening)."""
-import os
 import sys
-import wave
 from pathlib import Path
 
 import pytest
@@ -15,6 +13,7 @@ from rostrum_sound import KIND, run_source  # noqa: E402
 from screensound import playback  # noqa: E402
 from screensound.bridge import SoundBridge  # noqa: E402
 from screensound.steps import drag  # noqa: E402
+from stand_in import FakeEngine  # noqa: E402,F401  (other tests import it from here)
 
 SRC = '''
 tempo(120); beats_per_bar(4)
@@ -22,25 +21,6 @@ lead = track("lead", builtIn="feltPiano")
 lead.note("C4", at=beat(4), dur=beats(1))
 lead.note("E4", at=beat(6), dur=beats(1))
 '''
-
-
-class FakeEngine:
-    def request(self, do, schedule=None, out=None, **kw):
-        tmp = Path(f"{out}.partial")                     # like the engine: a temp name, then the rename
-        with wave.open(str(tmp), "wb") as w:
-            w.setnchannels(2), w.setsampwidth(2), w.setframerate(44100)
-            w.writeframes(bytes(4 * 441))
-        os.replace(tmp, out)
-        return {"file": out, "lufs": -20.0, "tracks": [], "stems": {}}
-
-    def take_restarted(self):
-        return ""
-
-    def close(self):
-        pass
-
-    def abort(self):
-        pass
 
 
 @pytest.fixture
