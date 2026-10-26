@@ -505,7 +505,10 @@ the agent's `inspect_tools`.
   notes to Strings", "Undid: Move title", "Exported Main.mp4". It is overwritten by the next change. History keeps
   everything.
 - After it: **Saved · 14 changes**.
-  - "Saved" confirms the change is on disk.
+  - "Saved" confirms the change is on disk. A key's own frame keeps only a small note of the change; its full
+    history line is written the frame after (a whole-song Ctrl+D's is ~1 MB). If Rostrum closes in between (a crash),
+    opening the song makes that step again from the note and the top bar says "The last step before Rostrum closed
+    (…) was brought back." (`rostrum_core/pending.py`).
   - The count is the number of recorded steps since this window opened. **Click it to open History** (Ctrl+H).
 - **When the top bar runs short**, nothing is cut with "…" and nothing slides under anything. The room goes out by
   priority:

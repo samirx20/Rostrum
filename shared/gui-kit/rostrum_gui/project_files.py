@@ -212,6 +212,8 @@ class ProjectFiles(FileMenuSlots, RepairSlots, QObject):
             self._said = ""
         elif (lacks := plugin_parts.missing_of(doc)) and self.host.bridge is not None:
             self.host.bridge.say(" ".join(lacks))           # it opened; the top bar names the plugins it lacks
+        elif doc.notes and self.host.bridge is not None:
+            self.host.bridge.say(" ".join(doc.notes))       # what opening put right (a step brought back after a crash)
 
     def _picture(self, bridge, doc):
         try:
