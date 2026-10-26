@@ -338,8 +338,9 @@ class SelectSlots(SlotMixin):
         sel = self._kit.selection
         if not step and self._kit.ready_kinds:      # (from the window's own first pass on: session.py)
             self._kinds_later().ask()
-        if any(not self.doc.has(i) for i in sel):
-            kept = [i for i in sel if self.doc.has(i)]
+        idx = self.doc.locs()                       # (once: 3,607 picked notes asked it one by one, ~10-19 ms a change)
+        if any(i not in idx for i in sel):
+            kept = [i for i in sel if i in idx]
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
         elif not self.reached(sel):                        # a change elsewhere leaves these rows as they are
             return
