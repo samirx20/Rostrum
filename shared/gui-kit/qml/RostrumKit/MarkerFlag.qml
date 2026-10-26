@@ -1,5 +1,6 @@
 import QtQuick
 import "."
+import "UndoKeys.js" as UndoKeys
 
 // One marker on a Ruler (INTERACTION.md 1.6 › Markers): a line down the ruler and a flag with its name in the
 // marker band, above the time labels. Shared markers (the project's, seen in every app; `shared` missing = shared)
@@ -87,6 +88,7 @@ Item {
             onAccepted: { mk.naming = false; if (text.trim() && text !== modelData.name) ru.markerRenamed(modelData.id, text.trim()) }
             onActiveFocusChanged: if (!activeFocus) mk.naming = false
             Keys.onEscapePressed: mk.naming = false
+            Keys.onPressed: (e) => UndoKeys.passOn(e, text !== modelData.name, typeof backend === "undefined" ? null : backend, () => { mk.naming = false })
         }
     }
 }

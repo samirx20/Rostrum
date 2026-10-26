@@ -181,7 +181,7 @@ class EditSlots:
         self._to_track = track_id
 
     def _snap_targets(self):
-        return [snap.Target("marker", m["name"], m["t"]) for m in self._view["markers"]]             + [snap.Target("playhead", "playhead", self._t)]
+        return [snap.Target("playhead", "playhead", self._t)]       # (markers and section edges: the window's grid)
 
     @Slot()
     def endDrag(self):

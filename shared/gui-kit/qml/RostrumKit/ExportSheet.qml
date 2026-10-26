@@ -49,12 +49,15 @@ Panel {
             spacing: Theme.gap
 
             Column {        // FIRST, as in every bounce dialog: what part (only when the document has more than "everything": a time range, markers)
-                visible: sheet.model && sheet.model.ranges.length > 1
+                readonly property bool has: !!sheet.model && sheet.model.ranges.length > 1
+                visible: has || (!!sheet.model && sheet.model.rangeRoom)     // `rangeRoom`: its place is kept, nothing moves when it arrives
                 width: parent.width; spacing: Theme.grid
-                ChoiceField { width: parent.width; options: sheet.model ? sheet.model.ranges : []
+                height: has ? implicitHeight : Theme.field
+                ChoiceField { objectName: "exportRange"; visible: parent.has; width: parent.width; options: sheet.model ? sheet.model.ranges : []
                               current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
             }
             ChoiceField {   // an app with a few plain choices (model.choicesPicker): one picker, each option's `detail` under its name
+                objectName: "exportTarget"
                 visible: !!sheet.model && sheet.model.choicesPicker
                 width: parent.width; options: sheet.model ? sheet.model.choices : []
                 current: sheet.model ? sheet.model.choice : ""; onPicked: (v) => sheet.model.setChoice(v)

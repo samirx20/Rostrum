@@ -22,11 +22,12 @@ from .comp import arp, comp
 from .drums import drum_grid
 from .line import line, shift, write
 from .ops import develop, vary
-from .pitch import roman, tones
+from ..script_scope import say
+from .pitch import outside_key, roman, tones
 from .voicing import voice
 
 API = ['roman(numeral, key)', 'chord_tones(chord, key)', 'voice(chords, voicing="led", range=("G3", "D5"), ...)',
-       'comp(chords, rhythm="hold", per=bar, push=0, ...)', 'bass_line(chords, style="root" | pattern=..., approach=False, ...)',
+       'comp(chords, rhythm="hold", per=bar, push=0, ...)', 'bass_line(chords, style="root" | pattern=..., approach=False, chromatic=False, ...)',
        'arp(chords_or_notes, mode="up", rate=0.5, pattern=None, octaves=1, ...)', 'drum_grid({drum: steps}, bars=1, fill=None, ...)',
        'vary(line, "ops")', 'develop(line, repeat, vary=[ops, ...])', 'line([(pitch, at, dur, vel), ...])', 'shift(line, beats)',
        'write(track, line, at)']
@@ -43,22 +44,28 @@ def scope(song) -> dict:
     def bpb(given):
         return given if given is not None else song.root.get("beatsPerBar", 4)
 
-    def with_song(fn, name, per=False):
+    def with_song(fn, name, per=False, say_outside=False):
         def call(*args, key=None, beats_per_bar=None, **kw):
             kw = {k: v["beats"] if isinstance(v, Beats) else v for k, v in kw.items()}     # per=beats(8) reads as 8
             b = bpb(beats_per_bar)
             if per and "per" not in kw:
                 kw["per"] = b
-            return fn(*args, key=song_key(key), beats_per_bar=b, where=name, **kw)
+            k = song_key(key)
+            result = fn(*args, key=k, beats_per_bar=b, where=name, **kw)
+            out = outside_key(result, k) if say_outside else []
+            if out:                                      # never silent: the reply names every note outside the key
+                say(f"{name}: {', '.join(out)} {'is' if len(out) == 1 else 'are'} outside {k} "
+                    "(from a chord that is not in the key, or chromatic=True); fine if meant, else change the chord or key")
+            return result
         call.__name__, call.__doc__ = name, fn.__doc__
         return call
     return {
         "roman": lambda numeral, key=None: roman(numeral, song_key(key), "roman"),
         "chord_tones": lambda chord, key=None: _names(tones(chord, "chord_tones", song_key(key)), song_key(key)),
         "voice": lambda chords, key=None, **kw: voice(chords, song_key(key), where="voice", **kw),
-        "comp": with_song(comp, "comp", per=True),
-        "bass_line": with_song(bass_line, "bass_line", per=True),
-        "arp": with_song(arp, "arp", per=True),
+        "comp": with_song(comp, "comp", per=True, say_outside=True),
+        "bass_line": with_song(bass_line, "bass_line", per=True, say_outside=True),
+        "arp": with_song(arp, "arp", per=True, say_outside=True),
         "drum_grid": lambda patterns, beats_per_bar=None, **kw: drum_grid(patterns, beats_per_bar=bpb(beats_per_bar), **kw),
         "vary": with_song(vary, "vary"),
         "develop": with_song(develop, "develop"),

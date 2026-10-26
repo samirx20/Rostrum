@@ -135,10 +135,16 @@ class ActionList:
             return "invalid", []
         if a.valid and not a.valid(facts):
             return "invalid", []
-        calls = (a.calls(facts, (amounts or {}).get(a.id, {})) if a.amounts else a.calls(facts)) if a.calls else []
+        if a.asks:          # every door opens its popover, which makes the calls with the amounts chosen: its `valid` is the
+            return None, []  # whole guard (a whole-song Repeat's calls cost ~70-110 ms on every change just to list it)
+        calls = self.calls_for(a, facts, amounts)
         if a.calls and not calls:
             return "nothing", []
         return None, calls
+
+    def calls_for(self, a: Action, facts, amounts=None) -> list:
+        """The action's calls now, with the amounts last used (`amounts`: {action id: amounts})."""
+        return (a.calls(facts, (amounts or {}).get(a.id, {})) if a.amounts else a.calls(facts)) if a.calls else []
 
     def available(self, facts, among=None, amounts=None) -> list[dict]:
         """The actions this selection allows, resolved, in order: promoted first, then by rank. `among`: only these

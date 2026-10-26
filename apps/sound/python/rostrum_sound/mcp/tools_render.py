@@ -32,7 +32,7 @@ def held(r: dict, goal=None) -> str:
     loud = {"id": fit.peakiest_track(r)} if r.get("tracks") else None
     need = pulls + h
     keep = f"maxLimit {need + 0.05:.1f} keeps the balance" if need <= MAX_LIMIT else f"the target needs {need:.1f} dB, more than the {MAX_LIMIT} dB maxLimit allows"
-    way = f"call edit_loudness first: it answers the exact edit ({keep}; or the smallest cut of {loud['id'] if loud else 'the loudest track'}, the most peaked, that stays within the master's maxLimit)"
+    way = f"call edit_loudness (one call, measured; {{\"apply\": \"keep_balance\"}} makes the first edit) instead of setting the limiter by hand: it answers the exact edit ({keep}; or the smallest cut of {loud['id'] if loud else 'the loudest track'}, the most peaked, that stays within the master's maxLimit)"
     return (f" Gentle limiting turned the whole mix down {h:.1f} dB so the limiter pulls at most {pulls:.1f} dB at the loudest moment; "
             f"the mix {under}: {way}.")
 

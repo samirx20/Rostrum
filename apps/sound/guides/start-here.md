@@ -103,7 +103,7 @@ the `render_mix` reply says how far and what would reach it. Two ways to get lou
 
 - **Cleaner:** turn the track that sets the peaks down (`look_sound` `loudness` names who drove the limiter's worst moment; `levels`
   shows each track's level), or write its loudest notes softer. The balance of the mix changes, and no limiting is added.
-- **Louder:** `master.set` with `maxLimit` higher (the reply names the value that reaches the target). More limiting means a
+- **Louder:** `edit_loudness {"apply": "keep_balance"}` sets `maxLimit` to the value that reaches the target (one call, measured; do not set it by hand). More limiting means a
   flatter, denser master; 4 to 6 dB is a loud, pressed one. The balance between tracks does not change.
 
 Take the cleaner way first; raise `maxLimit` only when the dense sound is what the piece wants.

@@ -42,7 +42,7 @@ from its own brief.
 ## Bass motion
 
 - The bass carries the harmony: **roots on strong beats**, other chord notes (5th, 3rd, octave) in between, and
-  **approach notes** (a half step or a scale step into the next root) just before a change. `bass_line(prog,
+  **approach notes** (a scale step into the next root; `chromatic=True` for a half step, which can leave the key and is then named in the reply) just before a change. `bass_line(prog,
   style="walking", approach=True)` writes this; a pattern like `"R--r..8-R-.r5-8r"` shapes your own.
 - **Lock with the kick.** A bass note on every kick, and few bass notes where the kick isn't, makes a groove feel
   like one instrument. Write the kick pattern first, then the bass rhythm to fit it.

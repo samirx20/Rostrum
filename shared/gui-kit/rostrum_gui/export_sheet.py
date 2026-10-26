@@ -52,6 +52,7 @@ def version_name(result: dict, versions) -> str:
 
 class ExportSheet(QObject):
     CHOICES_PICKER = False                        # "What for" as one picker, not rows (see `choicesPicker`)
+    RANGE_ROOM = False                            # keep the range picker's place while the document has only "everything" (see `rangeRoom`)
     WHAT = "the file"                            # what a failed save names ("Couldn't save the file: …")
     VERBS = ("Export", "Exporting", "Exported")   # an app whose sheet makes something else says so ("Render", …)
     changed = Signal()
@@ -130,6 +131,12 @@ class ExportSheet(QObject):
         """True: "What for" is one picker (a short field with a list) instead of rows. An app with a few plain choices
         and no file type to show beside each one sets it (Sound); the default is the rows."""
         return self.CHOICES_PICKER
+
+    @Property(bool, constant=True)
+    def rangeRoom(self):
+        """True: the range picker's place stays empty until the document has a range or section, so the picker arriving
+        (a section added, a range dragged) never moves the rows under the pointer. An app whose ranges come and go sets it."""
+        return self.RANGE_ROOM
 
     @Property(str, notify=changed)
     def choice(self):

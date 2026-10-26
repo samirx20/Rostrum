@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+from pathlib import Path
 
 from rostrum_core import RostrumError
 from rostrum_core.mcp import Reply, Tools, open_folder
@@ -92,6 +93,9 @@ def with_script_print(runtime) -> None:
         script_scope.forget_printed()
         try:
             out = old.fn(ctx, args)
+            if args.get("path") and not args.get("name"):        # the name came from the file: say so, a new file adds a copy
+                ctx.note(f'script name: "{Path(args["path"]).name}" (from the file). A different file name adds a second copy beside '
+                         'this run; to replace this run\'s notes from another file, give the same `name`.')
             for p in note_ranges.problems(ctx.document(args.get("item")).data, ctx.app.state.engine):
                 ctx.note(f"{p['message']}. {FIXES['out-of-range']}.")
             return out

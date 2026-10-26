@@ -62,7 +62,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self._t, self._track = 0.0, ""
         # the dock changed what the inspector leaves out (onpage.py): its rows change in place, each keeping the
         # delegate that showed the same setting (a reset made every row's control again: ~45 ms per dock switch)
-        self.workspace = Workspace(lambda line: self._fail(line), lambda: self.model.update(self._rows(), instant=True))
+        self.workspace = Workspace(lambda line: self._fail(line), self._dock_changed)
         self._drag = self._grab = None
         self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
@@ -137,6 +137,10 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
     @Property("QVariantMap", notify=songChanged)
     def song(self):
         return self._view["song"]
+
+    def _dock_changed(self):
+        self.model.update(self._rows(), instant=True)
+        self._editor_zoom()                 # the Editor opens at a working zoom (view_slots.py)
 
     @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):

@@ -36,6 +36,12 @@ def _print(*args, sep=" ", end="", **kw):
         lines.append("… (more print lines left out)")
 
 
+def say(message: str) -> None:
+    """A note from a helper to the script's reply (the same list `print` fills); nowhere to say it outside a run."""
+    if hasattr(_printed, "lines"):
+        _print(message)
+
+
 def scope() -> dict:
     """A fresh scope for one run: builtins, math, random seeded at 1, and an empty print list (read with `printed`)."""
     rnd = SeededRandom(1)

@@ -1,10 +1,12 @@
 import QtQuick
 import "."
+import "UndoKeys.js" as UndoKeys
 
 // The one in-place name box (a track, a marker, a section renamed where it is). Open it by showing it: it takes the
 // text from `current`, focuses and selects it. Enter -> done(text); Esc -> cancelled(); a click away -> cancelled(),
 // or done(text) with `keepOnAway`. When it closes, the keys go back to the work (Ctrl+Z, Delete, Space ... answer at
-// once): a hidden box must never keep the keyboard.
+// once): a hidden box must never keep the keyboard. Ctrl+Z / redo with the name untouched (a new section's box that
+// opened by itself) closes it and undoes in the song (UndoKeys).
 TextInput {
     id: box
     property string current: ""
@@ -20,5 +22,6 @@ TextInput {
     }
     onAccepted: done(text)
     Keys.onEscapePressed: cancelled()
+    Keys.onPressed: (e) => UndoKeys.passOn(e, text !== current, typeof backend === "undefined" ? null : backend, () => cancelled())
     onActiveFocusChanged: if (!activeFocus && visible) { if (keepOnAway) done(text); else cancelled() }
 }

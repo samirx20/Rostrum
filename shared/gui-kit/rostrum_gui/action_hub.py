@@ -190,8 +190,10 @@ class ActionHub(QObject):
         """The pointer rests on an action: the app shows its would-be result, recording nothing (`preview_fn(calls)`).
         An action not valid now, one that is not a plain change (copy, rename) or an app with no preview: nothing."""
         entry = next((e for e in self._now()[1] if e["id"] == id_), None) if self._preview else None
-        if entry and not entry["do"] and entry["calls"]:
-            self._preview(entry["calls"])
+        calls = (self.list.calls_for(self.list.find(id_), self._facts(), self._kept().get("amounts")) if entry and entry["asks"]
+                 else entry["calls"] if entry else [])                # one that asks: its calls made only for this hover
+        if entry and not entry["do"] and calls:
+            self._preview(calls)
 
     @Slot()
     def previewEnd(self):

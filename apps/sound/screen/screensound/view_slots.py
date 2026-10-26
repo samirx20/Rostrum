@@ -6,7 +6,10 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum_sound.doc import musical
 
+from . import timing
 from .signals import SoundSignals as S
+
+WORK_BARS = 8       # the Editor opens on this many bars when the view shows more (a whole song: a quarter note ~8 px)
 
 
 class ViewSlots:
@@ -76,6 +79,21 @@ class ViewSlots:
     @Slot(float)
     def setViewStart(self, t):
         self._tv.setStart(t)
+
+    def _editor_zoom(self):
+        """The Editor just opened: when the view shows more than WORK_BARS, show WORK_BARS from the bar before the
+        selection's first note or hit on this track (else the playhead), so a click lands where the person aims
+        (critic r8). A narrower view the person chose stays."""
+        bars = self._view["song"]["bars"] if self._view else []
+        if self.workspace.dock != "editor" or len(bars) <= WORK_BARS or self._zoom.span <= bars[WORK_BARS] - bars[0]:
+            return
+        root, mine = self.doc.data, self.__dict__.get("_track", "")
+        times = [timing.sec(self.doc.item(i)["at"], root, i) for i in self._picks.ids
+                 if self.doc.has(i) and self.doc.item(i)["type"] in ("note", "hit") and self.doc.parent_of(i)[0] == mine]
+        at = min(times) if times else self._t
+        first = max(0, max((k for k, b in enumerate(bars) if b <= at + 1e-6), default=0) - 1)
+        first = min(first, len(bars) - 1 - WORK_BARS)
+        self._tv.fitTo(bars[first], bars[first + WORK_BARS])
 
     def _moved(self, t):
         self._t = t

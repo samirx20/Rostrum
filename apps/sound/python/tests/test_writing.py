@@ -21,11 +21,20 @@ def test_led_voicing_holds_common_tones_and_moves_the_rest_by_step():
     assert len(g7) == 4 and "B3" in g7                  # C's E falls a half step to B on G7
 
 
-def test_approach_note_is_a_half_step_into_the_next_root():
+def test_approach_note_is_a_step_into_the_next_root():
     ln = bass_line(["C", "F"], style="walking", approach=True, key="C major")
     last_of_bar1 = [n for n in ln if n["at"] < 4][-1]
-    assert last_of_bar1["pitch"] in ("E2", "F#2", "E1", "F#1")
+    assert last_of_bar1["pitch"] in ("E1", "G1", "E2", "G2")       # a step of the key; half steps only with chromatic=True
     assert [n for n in ln if n["at"] == 4][0]["pitch"].startswith("F")
+
+
+def test_walking_bass_stays_in_the_key_unless_chromatic_is_asked():
+    from rostrum_sound.writing.pitch import outside_key
+    prog = ["i", "iv", "v", "i"]
+    for kw in ({"style": "walking"}, {"approach": True}):
+        assert outside_key(bass_line(prog, key="D minor", **kw), "D minor") == []
+    chrom = bass_line(prog, key="D minor", style="walking", chromatic=True)
+    assert outside_key(chrom, "D minor")                 # the half-step approach leaves the key, and only when asked
 
 
 def test_a_written_line_lands_on_its_beats_and_reruns_the_same():

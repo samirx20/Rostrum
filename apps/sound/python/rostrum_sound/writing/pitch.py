@@ -68,6 +68,16 @@ def scale_step(m: int, steps: int, pcs: list[int]) -> int:
     return m
 
 
+def outside_key(ln: list[dict], key: str | None) -> list[str]:
+    """The distinct pitch names in a line that are not notes of `key` (none when there is no key). The one check every
+    line helper's reply uses, so a note out of the key is always said, never found later."""
+    if key is None or K.parse(key) is None:
+        return []
+    pcs = K.scale(key)
+    bad = {m for n in ln if "pitch" in n for m in K.midis(n["pitch"]) if m % 12 not in pcs}
+    return [name(m, key) for m in sorted(bad)]
+
+
 def _pc(letter: str, acc: str) -> int:
     return (K.TONICS[letter] + {"#": 1, "b": -1}.get(acc, 0)) % 12
 
