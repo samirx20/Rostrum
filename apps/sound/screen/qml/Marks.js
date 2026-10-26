@@ -35,7 +35,7 @@ function rollRects(b, x, k) {            // where a block is painted, 2 px of ma
     }
     return [Blocks.box(x, k.H * 0.2, Math.max(4, b.dur * k.perSec), k.H * 0.6, 2)]
 }
-function rollAt(k) { return function (b) { b = Blocks.fact(b); return rollRects(b, xOf(b, k), k) } }
+function rollAt(k) { return function (b) { return rollRects(b, xOf(b, k), k) } }
 
 function _round(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundedRect(x, y, w, h, r, r) }
 
@@ -68,7 +68,7 @@ function rollPaint(ctx, entries, k, d) {
     var alpha = 1, fill = null, dd = k.d
     for (var pass = 0; pass < 2; pass++) {
         for (var i = 0; i < entries.length; i++) {
-            var b = Blocks.fact(entries[i][0]), on = entries[i][1]
+            var b = entries[i][0], on = entries[i][1]
             if (on !== (pass === 1)) continue
             var x = Math.round(k.x0 + b.t * k.perSec), w = b.dur * k.perSec
             if (x > k.W + 12 || x + w < -12) continue        // off screen
@@ -94,14 +94,14 @@ function rollPaint(ctx, entries, k, d) {
 // k: x0, perSec, H, W, top (the bars' foot), plotH, hue, accent
 
 function velAt(k) {                      // a bar's column (its grip reaches 3 px around it)
-    return function (b) { b = Blocks.fact(b); return b.type === "note" || b.type === "hit" ? [Blocks.box(Math.round(k.x0 + b.t * k.perSec) - 3, 0, 7, k.H, 2)] : [] }
+    return function (b) { return b.type === "note" || b.type === "hit" ? [Blocks.box(Math.round(k.x0 + b.t * k.perSec) - 3, 0, 7, k.H, 2)] : [] }
 }
 
 function velPaint(ctx, entries, k, d) {
     for (var pass = 0; pass < 2; pass++) {               // selected bars last, on top
         ctx.fillStyle = pass === 1 ? k.accent : k.hue; ctx.globalAlpha = pass === 1 ? 1 : 0.8
         for (var i = 0; i < entries.length; i++) {
-            var b = Blocks.fact(entries[i][0])
+            var b = entries[i][0]
             if (b.type !== "note" && b.type !== "hit") continue
             if (entries[i][1] !== (pass === 1)) continue
             var x = Math.round(k.x0 + b.t * k.perSec)
@@ -120,7 +120,7 @@ function velPaint(ctx, entries, k, d) {
 // clip(ctx, b, on, x, w, y0, h)
 
 function laneWidth(b, on, k) { return b.type === "hit" ? (on ? 3 : 2) : Math.max(2, b.dur * k.perSec - 1) }
-function laneAt(k) { return function (b) { b = Blocks.fact(b); return [Blocks.box(xOf(b, k), 0, laneWidth(b, true, k), k.H, 2)] } }
+function laneAt(k) { return function (b) { return [Blocks.box(xOf(b, k), 0, laneWidth(b, true, k), k.H, 2)] } }
 
 // Clips under, then notes and hits (a bar per lane, 0 top .. 1 bottom of the row: by key, by drum, or a group
 // header's own `lanes`), then what is selected
@@ -128,7 +128,7 @@ function lanePaint(ctx, entries, k, d) {
     var h = k.H - 2 * k.pad, n = entries.length, fill = null
     for (var pass = 0; pass < 3; pass++) {
         for (var i = 0; i < n; i++) {
-            var b = Blocks.fact(entries[i][0]), on = entries[i][1], isClip = b.type === "clip" || b.type === "line"
+            var b = entries[i][0], on = entries[i][1], isClip = b.type === "clip" || b.type === "line"
             if ((pass === 0 ? !isClip || on : pass === 1 ? isClip || on : !on)) continue
             var x = Math.round(k.x0 + b.t * k.perSec), w = laneWidth(b, on, k)
             if (x > k.W || x + w < 0) continue          // off screen

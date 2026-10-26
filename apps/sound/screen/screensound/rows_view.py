@@ -60,10 +60,12 @@ class RowsView(RollView):
     def _send_rows(self, rows):
         """The row model's rows (the layout and the blocks as two roles, so a block change signals only `blocks`);
         a block change goes as a patch instead (block_patch.py; rows that came, went or moved: whole)."""
-        held, patches, resets = self._held.send(rows)
+        held, patches, resets, backs = self._held.send(rows)
         self._lanes.update([{"id": r["id"], "track": shape(r), "blocks": held[r["id"]]} for r in rows], instant=True)
         for k in resets:
             self.blocksReset.emit(k)
+        for k in backs:
+            self.blocksBack.emit(k)
         for k, p in patches:
             self.blocksPatched.emit(k, p)
 
