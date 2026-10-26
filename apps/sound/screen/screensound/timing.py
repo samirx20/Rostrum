@@ -18,12 +18,18 @@ cell before).
 Strong lines pull first: with `px` given, a "nearest" snap within PULL_PX of a bar line takes the bar line, then a
 beat line, before the finest grid step. People aim at the bar line they see; a fine step is only 8-16 px wide, so a
 release 5 px past the bar was nearer the next step and a range ended one step late (critic r5, r6, r7).
+
+Markers pull before the grid: a window's Grid carries `marks` (its markers and section edges, from the bridge), and
+any snap from the screen (`px` given) within the kit's 6 px of one lands on it, for a click that makes something as
+for a drag or a range (critic r8: Snap ignored the picture's markers, so a hit aimed at the flash landed a beat late).
+The ruler, the arrangement and the Editor all land a pointer through this one rule (`catch`, then the grid).
 """
 from __future__ import annotations
 
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import meter, musical, tempo, times
 from rostrum_sound.doc.shift import spb, write_like
+from rostrum_gui import snap as kit_snap
 
 SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
 PULL_PX = 7.0              # a bar or beat line this near the pointer (screen px) wins over finer grid lines
@@ -39,6 +45,7 @@ class Grid:
 
     def __init__(self):
         self.value, self.on, self.auto_beats = "auto", True, 0.25
+        self.marks = None        # the window's markers and section edges: marks(skip="") -> [kit Target] (None: none)
 
     def beats(self, root: dict, at: float = 0.0) -> float:
         """One step in beats at beat `at`; for "bar", that bar's length (`snap` follows each bar's own); "beat" is
@@ -101,6 +108,9 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = 
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
+    caught = catch(t, grid, px)
+    if caught is not None:
+        return max(0.0, round(caught.value, 6))
     if how == "nearest":
         lo, hi = lines_around(t, root, grid)
         at = strong_line(t, root, px * PULL_PX) if px > 0 else None
@@ -108,6 +118,17 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = 
     else:
         at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
     return max(0.0, round(at, 6))
+
+
+def catch(t: float, grid: Grid, px: float, skip: str = "", extra=()):
+    """The kit's Caught for the marker or section edge (or `extra` target: the playhead for a drag) within 6 screen px
+    of `t`, strongest first; None when nothing is that near, or not from the screen (`px` 0). `skip`: a marker being
+    dragged."""
+    targets = [*(grid.marks(skip) if grid.marks else ()), *extra]
+    if px <= 0 or not targets:
+        return None
+    caught = kit_snap.snap(t, targets, 1.0 / px)
+    return caught if caught.target is not None else None
 
 
 def strong_line(t: float, root: dict, reach: float) -> float | None:

@@ -36,6 +36,10 @@ def test_ctrl_z_in_a_name_box_that_opened_by_itself_undoes_the_new_thing(tmp_pat
             QTest.mouseMove(win, QPoint(x0 + (x1 - x0) * k // 6, y))
         QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(x1, y))
         QTest.qWait(150)
+        for _ in range(40):                                            # the range's actions come once the panel is made
+            if any(it.objectName() == "action:section" and it.isVisible() and it.width() > 0 for it in items(win)):
+                break
+            QTest.qWait(50)
         click(win, shown(win, "action:section"))
         assert len(music_map.sections(b.doc.data)) == 1
         box = shown(win, "sectionNameBox")

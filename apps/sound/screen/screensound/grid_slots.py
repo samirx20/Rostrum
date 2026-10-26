@@ -25,8 +25,21 @@ class GridSlots:
 
     @property
     def _grid_now(self) -> Grid:
-        """This window's grid (one per bridge: windows and tests never share it)."""
-        return self.__dict__.setdefault("_grid_state", Grid())
+        """This window's grid (one per bridge: windows and tests never share it), carrying its markers and section
+        edges, so every snap from the screen catches them first (timing.catch)."""
+        g = self.__dict__.get("_grid_state")
+        if g is None:
+            g = self.__dict__["_grid_state"] = Grid()
+            g.marks = self._land_marks
+        return g
+
+    def _land_marks(self, skip=""):
+        """What a pointer's time catches before the grid: the markers (`skip`: one being dragged), then the sections'
+        starts and ends."""
+        marks = [snap.Target("marker", m["name"], m["t"]) for m in self._view["markers"] if m["id"] != skip]
+        for s in music_map.sections(self.doc.data):
+            marks += [snap.Target("section", s["name"], s["t"]), snap.Target("section", f"{s['name']} end", s["end"])]
+        return marks
 
     @Property(str, notify=gridChanged)
     def grid(self):
@@ -171,11 +184,8 @@ class GridSlots:
         root, grid = self.doc.data, self._grid_now
         if free or not grid.on:
             return max(0.0, round(t, 4)), {}
-        marks = [snap.Target("marker", m["name"], m["t"]) for m in self._view["markers"] if m["id"] != skip]
-        for s in music_map.sections(root):
-            marks += [snap.Target("section", s["name"], s["t"]), snap.Target("section", f"{s['name']} end", s["end"])]
-        caught = snap.snap(t, marks, scale) if scale > 0 else None
-        if caught is not None and caught.target is not None:
+        caught = timing.catch(t, grid, 1.0 / scale if scale > 0 else 0.0, skip)
+        if caught is not None:
             return caught.value, {"t": caught.value, "name": caught.name}
         fps = self.__dict__.get("_picture_fps", 0.0)
         if seconds_line and fps > 0 and self.picture:

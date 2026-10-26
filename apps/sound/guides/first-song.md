@@ -84,7 +84,8 @@ The **Colour** row shows the colour the track is drawn in.
    the note's last few pixels; every selected note changes by the same amount), or its left end to move where it starts
    (its end stays put). Neither end makes a note shorter than one grid step (Ctrl: no snapping, then down to 20 ms). A click just past a note's end is
    empty space, so with **Draw** you can write notes on one key back to back.
-   - It snaps to the nearest grid line. **Grid ▾** in the arrangement's header strip sets the step: **Auto**, ticked
+   - It snaps to a marker or a section's edge within a few pixels, else to the nearest grid line (a click that adds a
+     note or hit catches a marker the same way, so a hit aimed at a marker lands on it). **Grid ▾** in the arrangement's header strip sets the step: **Auto**, ticked
      at first, follows the zoom (the button reads the step it is on: "Grid Auto · 1/8"), never a step narrower than 8 pixels on screen (beats or bars when zoomed out, finer as
      you zoom in); or Bar, 1/2, 1/4, 1/8, 1/16, 1/32, triplets (the current one is ticked); **Snap** switches snapping off and on. Hold **Ctrl** while dragging to drag
      without snapping once.

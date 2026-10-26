@@ -103,10 +103,10 @@ instrument can use are offered (the screen hides the rest). On the screen a note
 
 - **A new track** starts from a sound in the **Library** (Ctrl+L): every row has its own **Add**, and Add always makes a new
   track. To change a track's sound, pick another in the **Sound ▾** field of its settings panel (the notes stay).
-- **Editor** (the dock under the arrangement, E; the selected track): it opens tall (about three quarters of the room under the arrangement) and framed on the track's notes (keys never smaller than 9 px; the view scrolls if the part is wider), beside a
+- **Editor** (the dock under the arrangement, E; the selected track): it opens tall (about three quarters of the room under the arrangement) and framed on the track's notes (keys never smaller than 9 px; the view scrolls if the part is wider). When the whole song is in view it opens on about 8 bars from the bar before the selected notes (or the playhead), so the grid cells are wide enough to aim at; Fit (Ctrl+0) shows the whole song again. It sits beside a
   piano keyboard (a C label on every octave; click a key to hear it on the track's instrument). Its top line, beside
   the Editor / Mixer tabs, holds the track's name, **Select** (V) / **Draw** (B) and **Note ▾** (how long a new note
-  is, and under Draw whether a click stamps a single note or a chord). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer; drag to move (it snaps to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
+  is, and under Draw whether a click stamps a single note or a chord). Double-click to add, or the **Draw** tool where every click adds, in the grid cell under the pointer, or on a marker within a few pixels of it; drag to move (it snaps to a marker or section edge within a few pixels, else to the grid set by **Grid ▾**, with **Snap** on; Ctrl = no snapping,
   Alt = a copy, Shift = only in time), drag its right end to lengthen or shorten it, its left end to move its start (the end
   stays; neither makes it shorter than one grid step), Delete removes. A note dragged towards the end of a song of a set
   length stops on the last grid line before the end. Each drag

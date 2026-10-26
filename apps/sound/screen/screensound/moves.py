@@ -53,16 +53,17 @@ def grab_many(doc, ids, primary) -> dict:
 
 
 def snap_to(t: float, root: dict, free: bool, targets: list[snap.Target], scale: float, grid=None) -> tuple[float, dict]:
-    """(where `t` lands, what it caught: {"t", "name"}; {} when free). Markers and the playhead catch within the kit's
-    6 px (`scale` = screen px per second; 0 = catch nothing), strongest first; otherwise the grid."""
-    if free:
+    """(where `t` lands, what it caught: {"t", "name"}; {} when free or Snap is off). The one landing rule
+    (timing.catch, then timing.snap): the window's markers and section edges, and `targets` (the playhead), catch
+    within the kit's 6 px (`scale` = screen px per second; 0 = catch nothing), strongest first; otherwise the grid."""
+    grid = grid or timing.DEFAULT
+    if free or not grid.on:
         return max(0.0, round(t, 4)), {}
-    caught = snap.snap(t, targets, scale) if scale > 0 else None
-    if caught is not None and caught.target is not None:
+    px = 1.0 / scale if scale > 0 else 0.0
+    caught = timing.catch(t, grid, px, extra=targets)
+    if caught is not None:
         return caught.value, {"t": caught.value, "name": caught.name}
-    if not (grid or timing.DEFAULT).on:
-        return max(0.0, round(t, 4)), {}
-    g = timing.snap(t, root, False, grid)
+    g = timing.snap(t, root, False, grid, px=px)
     return g, {"t": g, "name": ""}
 
 
