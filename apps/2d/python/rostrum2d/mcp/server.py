@@ -13,6 +13,7 @@ inspect_fonts, inspect_diagnose, render_video, render_export, run_import, run_br
 from __future__ import annotations
 
 import argparse
+from functools import reduce
 from pathlib import Path
 
 import anyio
@@ -20,9 +21,8 @@ from mcp.server.stdio import stdio_server
 from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
-from . import at, curves, diagnose_tool, draw, export_tool, fonts_tool, import_tool, layout_tool, look, motion, project_tool, rig, video, world
-from . import tool_groups
-from . import background_tool, brand_tool, brush_tool, lipsync, painting_tool, picture_tool, sound_cue_tool, soundtrack_tool, swap_tool
+from rostrum2d.modules import TOOLS
+from . import project_tool, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -56,12 +56,8 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
 
 
 def app_tools():
-    return tool_groups.group(look.tools.merged_with(motion.tools).merged_with(at.tools).merged_with(video.tools)
-            .merged_with(draw.tools).merged_with(rig.tools).merged_with(lipsync.tools).merged_with(curves.tools).merged_with(export_tool.tools)
-            .merged_with(layout_tool.tools).merged_with(swap_tool.tools).merged_with(import_tool.tools).merged_with(diagnose_tool.tools).merged_with(fonts_tool.tools)
-            .merged_with(background_tool.tools).merged_with(project_tool.tools).merged_with(soundtrack_tool.tools)
-            .merged_with(sound_cue_tool.tools).merged_with(brand_tool.tools)
-            .merged_with(picture_tool.tools).merged_with(brush_tool.tools).merged_with(painting_tool.tools).merged_with(world.tools))
+    first, *rest = TOOLS.attrs("tools")
+    return tool_groups.group(reduce(lambda merged, tools: merged.merged_with(tools), rest, first))
 
 
 def make_app(project: str | None = None, items: list[str] | None = None, documents: dict | None = None) -> App:

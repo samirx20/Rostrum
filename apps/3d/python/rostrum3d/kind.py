@@ -143,5 +143,5 @@ KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
 # painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel
 rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=paint_fields.LAYER)
 
-from . import ops_bones, ops_combine, ops_follow, ops_items, ops_keys, ops_lipsync, ops_lights, ops_materials, ops_mesh, ops_mesh2, ops_poses, ops_rigs, ops_scene, unfold  # noqa: E402,F401  (they register on REGISTRY)
-from . import ops_anim  # noqa: E402,F401  (anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations)
+from .modules import OPS  # noqa: E402
+OPS.load()  # noqa: E402  (they register on REGISTRY: rostrum3d/modules.py)

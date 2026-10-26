@@ -1,0 +1,13 @@
+"""Rostrum3D's operation modules and agent tool modules, in registration order (the order agents see them): the lists the
+document kind and the agent server read (rostrum_core.modules). A plugin adds its own module to the same lists."""
+from rostrum_core.modules import ModuleList
+
+OPS = ModuleList("rostrum3d", [      # they register on REGISTRY
+    ".ops_bones", ".ops_combine", ".ops_follow", ".ops_items", ".ops_keys", ".ops_lipsync", ".ops_lights", ".ops_materials", ".ops_mesh", ".ops_mesh2",
+    ".ops_poses", ".ops_rigs", ".ops_scene", ".unfold",
+    ".ops_anim",   # anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations
+])
+
+TOOLS = ModuleList("rostrum3d.mcp", [      # each has a `tools`; the order is the tools' order
+    ".look", ".render", ".facts", ".estimate", ".place", ".anims", ".lipsync", ".send",
+])
