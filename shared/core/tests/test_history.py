@@ -222,3 +222,48 @@ def test_quick_repeats_merge_but_a_change_back_is_its_own_step():
     assert len(doc.history.changes) == 3
     doc.undo(SAM)
     assert doc.item("cam_1")["dof"] is True
+
+
+def test_undo_n_then_redo_n_in_order_is_never_refused_and_comes_back_exact():
+    """Redo stopped after one step: the first redo counted as "a later change" that blocked the next (critic r8)."""
+    doc = toy.sample()
+    states = [doc.data]
+    for v in (5, 9, 14):
+        doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": v}}, SAM, join=False)
+        states.append(doc.data)
+    for n in range(3):
+        doc.undo(SAM)
+        assert doc.data == states[-2 - n]
+    for n in range(3):
+        doc.redo(SAM)
+        assert doc.data == states[1 + n]
+    assert doc.history.stuck() == {1, 2} and doc.data == doc.at_step(doc.seq)    # only the newest can be undone
+
+
+def test_a_refused_redo_says_in_words_what_blocks_it():
+    doc = toy.sample()
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)
+    doc.undo(SAM)
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 9}}, AGENT)
+    c = doc.history.last_redoable(SAM)
+    with pytest.raises(RostrumError) as e:
+        doc.redo_changes([c], SAM)
+    line = e.value.line()
+    assert "brought back" in line and "Claude changed some of the same things" in line and "card." not in line
+
+
+def test_a_save_while_a_preview_is_open_writes_the_kept_song_not_the_preview(tmp_path):
+    """Closing the window with a Repeat box open saved its preview with no history step (critic r8: 448 notes became
+    2,240). Every save writes what the history leaves, live or not."""
+    doc = toy.sample(tmp_path, "itm")
+    doc.apply({"op": "layer.move", "target": ["card"], "args": {"x": 5}}, SAM)
+    doc.save()
+    live.keep(doc)
+    with doc.gesture("Repeat", SAM) as g:
+        g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 400}})
+        doc.save()                                   # Save, close or a timer while the box is open
+        g.cancel()
+    on_disk = json.loads((tmp_path / "docs" / f"itm{toy.KIND.ext}").read_text(encoding="utf-8"))
+    assert on_disk["doc"] == doc.data and not doc.live.behind()
+    again = Document.open(tmp_path, "itm", toy.KIND)
+    assert x(again) == 5 and again.seq == 1 and again.data == again.at_step(again.seq)
