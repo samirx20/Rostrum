@@ -221,7 +221,7 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """What a list param may hold, or a pick param may name, [{value, label}] (a list of choices uses its own options)."""
         return []
 
-    def animate_calls(self, item_id, param) -> tuple[list[dict], str]:
+    def animate_calls(self, item_id, param, stop=False) -> tuple[list[dict], str]:
         raise RostrumError(codes.UNKNOWN_OPERATION, "inspector", f'"{param}"', "can't be animated in this app")
 
     def expr_state(self, item: dict, param: str):
@@ -302,6 +302,13 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         """A typed entry that was refused (FieldFrame's `problem`: "“zzz” is not a colour …"): said in the top bar in
         red as well as in the box, since a hover tip never shows to someone who has just clicked the box."""
         self._set_status(why, True)
+
+    @Slot(str)
+    def unrefuse(self, why):
+        """The refused entry was put right (typed again, or left): its sentence leaves the top bar, if it is still the one
+        showing. Anything said since stays."""
+        if self._kit.status == why:
+            self._set_status("", False)
 
     def _set_status(self, text, failed=None):
         self._kit.status = text
