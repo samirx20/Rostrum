@@ -143,6 +143,8 @@ others' changes   = diff(B, C)      # what people and agents changed
 apply the script's changes to C, except where they collide with others' changes
 ```
 
+An item the script makes again equal in every field but its id, in the same place, to one it made last time under an id it no longer makes, is that item and keeps its id (`merge_ids.py`). Ids built from content (Sound: a note's start in ms) move when something else changes (a new tempo); without this a re-run removed and re-made every note, and a person's edited note was held back beside the script's new copy.
+
 - The first run creates the document from N.
 - **Collision** (the script changed a field someone else also changed): the other author's value is **kept**, and the reply lists it: `logo.x: script says 400, kept 620 (person, "Move logo")`. The agent decides: change it with an operation, or run again with `force=["logo.x"]` (or `force=True` for everything).
 - An item the script deletes but someone edited is kept and reported the same way.

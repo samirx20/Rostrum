@@ -14,7 +14,8 @@
 - The song you work on is the item `cue` unless the project has another; `inspect_project` says.
 - Your changes carry your client name and are grouped per turn, so a person can review or undo them together.
 - `run_script` merges what the script makes into the document. Anything a person moved by hand stays where they put it
-  and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite.
+  and is listed in the reply as held back; pass `force` with those keys only when you mean to overwrite. Changing only
+  the tempo and running again keeps every note (and a person's edits to them): nothing is removed and re-made.
 - Long work (`render_mix`) comes back as a job id. Ask with `inspect_job` (`wait_s` up to 25); stop with `run_stop`.
 
 ## Writing parts from scratch, or changing what is there

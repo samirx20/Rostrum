@@ -182,7 +182,9 @@ same for hits. Example, a fifth up on those bars: `{"ops": [{"op": "note.transpo
 - **What the reply says:** every `edit_document` answer lists what changed, counts per kind and the first 12 ids, each as
   `id at <seconds> s <pitch> <length>` (a hit: its drum; a clip: its range), in the sentence after "Applied …" and in
   `changed.items` (`added`, `changed`, `removed`, each with `count`, `types`, `ids`, `items`, `more`). A thin or delete also says
-  "Kept K of the N targeted". Note ids are the track and the start in milliseconds (`harp.n8438` starts at 8.438 s).
+  "Kept K of the N targeted". A note's id is the track and where it started, in milliseconds, when it was made (`harp.n8438`); it
+  stays when the note moves or the tempo changes (a script run again at a new tempo keeps each note's id, and the edits a
+  person made to it), so read times from `inspect_notes`, never from ids.
 - **Arpeggiate** keeps every tone of the chord: a chord too short for one step per tone gets finer steps than `rate`
   (3 tones in one beat at rate 0.5 play as thirds of a beat), never a dropped tone.
 - **Fit to key:** `note.fit_key {}` moves the notes that are outside the key to the nearest note of the key (the song's
