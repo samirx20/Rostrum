@@ -93,6 +93,13 @@ def make_all(jobs: list) -> None:
             done.result()
 
 
+def queue(later: list, key, job) -> None:
+    """Add a picture's job to `later` once: a describe asks for one drawing's picture at every frame it shows."""
+    if not any(getattr(j, "key", None) == key for j in later):
+        job.key = key
+        later.append(job)
+
+
 def frame_number(t: float, fps: float) -> int:
     return int(math.floor(t * fps + 1e-6))
 
@@ -141,7 +148,7 @@ def picture(item: dict, frame: dict, later: list | None = None) -> Path:
     if got and got[1:3] == (w, h) and (got[0] is frame or got[0] == frame) and filestamps.is_file(got[3]):
         return got[3]
     if later is not None and canvas.made(frame, w, h) is None:
-        later.append(lambda: canvas.png(frame, w, h))
+        queue(later, ("canvas", frame["id"], w, h), lambda: canvas.png(frame, w, h))
         return got[3] if got and got[1:3] == (w, h) and filestamps.is_file(got[3]) else canvas.png({"paints": []}, w, h)
     path = canvas.png(frame, w, h)
     if len(_SHOWN) > 512:
@@ -164,7 +171,7 @@ def inked(item: dict, frame: dict, later: list | None = None) -> dict:
         return got[3]
     done = ink.made(frame, w, h)
     if done is None and later is not None:
-        later.append(lambda: ink.png(frame, w, h))
+        queue(later, ("ink", frame["id"], w, h), lambda: ink.png(frame, w, h))
         if got and filestamps.is_file(got[3]["src"]):
             return _moved(got[3], got[0], frame)
         return _entry(ink.png({"paints": []}, w, h))

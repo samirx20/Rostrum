@@ -8,8 +8,13 @@ one comes is dropped (the newer change has its own pictures). A picture that fai
 from __future__ import annotations
 
 import threading
+import time
 
 from PySide6.QtCore import QObject, Signal
+from rostrum2d import drawing
+
+
+ROUND = 0.1     # s of Drawn so far pictures made before the screen draws them (each round describes the scene again)
 
 
 class PaintPictures(QObject):
@@ -38,10 +43,12 @@ class PaintPictures(QObject):
                 (jobs, token), self._next = self._next, None
             try:
                 ahead = all(getattr(job, "ahead", False) for job in jobs)
-                for job in jobs:
-                    job()
-                    if ahead:               # pictures the screen draws without waiting for (write_on.Ahead): each one
-                        break               # shows once made, and the screen asks again for the rest (nearest first)
+                start, each = time.perf_counter(), drawing.WORKERS if ahead else len(jobs)
+                for i in range(0, len(jobs), max(1, each)):
+                    drawing.make_all(jobs[i:i + each])
+                    if ahead and (time.perf_counter() - start > ROUND or self._next is not None):
+                        break               # pictures the screen draws without waiting for (write_on.Ahead): those
+                        #                     made show each round, and the screen asks again for the rest (nearest first)
             except Exception as e:  # noqa: BLE001  said on screen, the frame isn't drawn
                 self.failed.emit(f"Error: the drawing's picture could not be made: {e}")
                 continue

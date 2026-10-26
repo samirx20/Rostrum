@@ -427,8 +427,9 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._waiting = self.doc.data if waits and self._scene else None
             self._ahead = self.doc.data if later and not waits and self._scene else None
             self._ahead_at = None
-            if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile
-                self._pictures.make(later, self._waiting)
+            if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile; only
+                self._pictures.make(waits, self._waiting)   # those: Drawn so far's come after, drawn as they're made (2D r12:
+                #                                             made with them, a new stroke stayed off the canvas ~30 s)
             self._ahead_jobs = later if self._ahead is not None else []     # drawn now with stand-ins (Drawn so far's
         if self._ahead is not None and self._ahead_at != self._t:          # frames: the whole drawing), again as its
             self._ahead_at = self._t                                       # pictures are made, those nearest the
