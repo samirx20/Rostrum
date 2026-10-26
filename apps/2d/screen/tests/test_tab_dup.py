@@ -1,4 +1,4 @@
-"""Tab walks the layers at this level; Ctrl+D again repeats the move made on the copy. Real keys and mouse events into the real
+"""Tab walks the layers at this level; Ctrl+D again repeats the step from the original to the copy, however the copy was made. Real keys and mouse events into the real
 window (QTest); needs the built engine."""
 import sys
 from pathlib import Path
@@ -47,14 +47,15 @@ def _key(win, key, mods=None):
     QTest.qWait(40)
 
 
-def _drag(win, x, y, dx):
+def _drag(win, x, y, dx, mods=None):
     from PySide6.QtCore import QPoint, Qt
     from PySide6.QtTest import QTest
+    mods = mods or Qt.NoModifier
     a, b = _at(win, x, y), _at(win, x + dx, y)
-    QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
+    QTest.mousePress(win, Qt.LeftButton, mods, a)
     for k in range(1, 9):
         QTest.mouseMove(win, QPoint(a.x() + (b.x() - a.x()) * k // 8, a.y()))
-    QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, b)
+    QTest.mouseRelease(win, Qt.LeftButton, mods, b)
     QTest.qWait(50)
 
 
@@ -70,21 +71,46 @@ def test_tab_three_times_from_the_top_layer_picks_the_fourth(screen):
     assert b.multi.ids == [top[2]]
 
 
-def test_ctrl_d_again_repeats_the_move_made_on_the_copy(screen):
+def _row(b, ids):
+    """Each copy's step from the one before: (across, down)."""
+    xy = [(b.doc.item(i)["x"], b.doc.item(i)["y"]) for i in ids]
+    return [(round(q[0] - p[0], 2), round(q[1] - p[1], 2)) for p, q in zip(xy, xy[1:])]
+
+
+def _ctrl_d(b, win, times):
+    from PySide6.QtCore import Qt
+    made = []
+    for _ in range(times):
+        _key(win, Qt.Key_D, Qt.ControlModifier)
+        made.append(b.multi.ids[0])
+    return made
+
+
+def test_ctrl_d_moved_copy_then_ctrl_d_repeats_the_gap_from_the_original(screen):
     from PySide6.QtCore import Qt
     b, win = screen
     b.select("mover")
     _key(win, Qt.Key_D, Qt.ControlModifier)
     first = b.multi.ids[0]
-    _drag(win, 324, 724, 100)             # the copy sits 24 px right and down; drag it 100 px on
+    _drag(win, 324, 724, 200)             # the copy lands 24 px right and down; drag it on, so it sits ~224 px across
     assert b.multi.ids == [first]
-    x1 = b.doc.item(first)["x"]
-    moved = x1 - 324                                # what the drag really moved the copy (the pointer's first px is the drag distance)
-    assert 80 < moved <= 100
-    _key(win, Qt.Key_D, Qt.ControlModifier)
-    second = b.multi.ids[0]
-    assert second != first
-    assert abs(b.doc.item(second)["x"] - x1 - moved) < 0.01 and b.doc.item(second)["y"] == b.doc.item(first)["y"]
+    row = ["mover", first] + _ctrl_d(b, win, 2)
+    steps = _row(b, row)
+    assert 200 < steps[0][0] <= 224 and steps[0][1] == 24
+    assert steps == [steps[0]] * 3, steps          # an even row: each copy takes the step from the original to the copy
+
+
+def test_alt_drag_a_copy_then_ctrl_d_repeats_its_step(screen):
+    from PySide6.QtCore import Qt
+    b, win = screen
+    b.select("mover")
+    _drag(win, 300, 700, 300, Qt.AltModifier)       # Alt+drag: the original stays, the copy moves ~300 px right
+    first = b.multi.ids[0]
+    assert first != "mover" and b.doc.item("mover")["x"] == 300
+    row = ["mover", first] + _ctrl_d(b, win, 2)
+    steps = _row(b, row)
+    assert 270 < steps[0][0] < 330 and steps[0][1] == 0     # (the drop may snap to a neighbour's edge)
+    assert steps == [steps[0]] * 3, steps
 
 
 def test_ctrl_d_right_after_drawing_a_shape_puts_the_copy_24_px_on(screen):
