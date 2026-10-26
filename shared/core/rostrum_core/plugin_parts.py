@@ -74,20 +74,19 @@ def found(data: dict, lists: dict) -> dict[str, dict]:
 
 
 def missing(data: dict, lists: dict, uses: dict | None = None) -> list[str]:
-    """Plain sentences naming the plugins this document needs and this Rostrum doesn't have (none load yet), from the
-    parts it holds and the file's `uses` table (plugin id -> {"version", …})."""
-    parts, out = found(data, lists), []
-    for pid, use in sorted((uses or {}).items()):
-        v = use.get("version") if isinstance(use, dict) else None
-        out.append(f'This file uses the plugin "{pid}"{f" {v}" if v else ""}, which isn\'t installed: its parts are '
-                   f"kept as they are when you save, but not shown or played.")
-    for p, what in sorted(parts.items()):
-        n, f = len(what["items"]), len(what["fields"])
-        bits = ([f"{n} item{'s' * (n != 1)} ({', '.join(map(str, what['items'][:3]))}{' …' if n > 3 else ''})"] if n else []) + \
-               ([f"{f} setting{'s' * (f != 1)} ({', '.join(what['fields'][:3])}{' …' if f > 3 else ''})"] if f else [])
-        out.append(f'Parts made by a plugin ("{p}:") aren\'t available here: {" and ".join(bits)}. They are kept '
-                   f"unchanged when you save, but not shown or played.")
-    return out
+    """One plain sentence naming the plugins this document needs and this Rostrum doesn't have (none load yet), from
+    the file's `uses` table (plugin id -> {"version", …}) and the parts it holds; [] when it needs none."""
+    parts = found(data, lists)
+    named = [f'"{pid}"' + (f" {u['version']}" if isinstance(u, dict) and u.get("version") else "") for pid, u in sorted((uses or {}).items())]
+    if not named and not parts:
+        return []
+    n = sum(len(w["items"]) for w in parts.values())
+    f = sum(len(w["fields"]) for w in parts.values())
+    what = " and ".join([f"{n} item{'s' * (n != 1)}"] * bool(n) + [f"{f} setting{'s' * (f != 1)}"] * bool(f)) or "its parts"
+    who = ", ".join(named) if named else ", ".join(f'"{p}:"' for p in sorted(parts))
+    ids = [i for w in parts.values() for i in w["items"]] + [x for w in parts.values() for x in w["fields"]]
+    return [f"This file uses the plugin{'s' * (len(named or parts) > 1)} {who}, not installed here: {what} "
+            f"({', '.join(map(str, ids[:4]))}{' …' if len(ids) > 4 else ''}) kept as they are when you save, but not shown or played."]
 
 
 def engine_tree(item: dict, lists: dict) -> dict:
