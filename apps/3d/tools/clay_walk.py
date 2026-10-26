@@ -2,9 +2,12 @@
 # A scratch project with the sample scene; Q (the real key); a Lump click on the ground (a real click) makes a clay;
 # then real drags across it: each of the six brushes that shape, its tile clicked (Add, Carve, Smooth, Pull, Flatten,
 # Crease); Ctrl on Add (carves), Shift (smooths), Ctrl on Flatten (puffs out: the step keeps `invert`); a Mask stroke
-# across the upper part and then an Add from top to bottom (the masked band must not change in the picture, the
-# free part must); and F held with the pointer moved right (the ring grows live, nothing is kept until F comes up,
-# then the new size is one undo step). Each pointer move is timed: the GUI thread's processor time for the move (cpu
+# down the clay's left side and an Add across it (the masked band must not change in the picture, the free middle
+# must, and the same Add with no mask changes the band: difference pictures show it); the pointer resting on the clay
+# shows the ring, and F held with the pointer moved right (the ring grows live, nothing is kept until F comes up, then
+# the new size is one undo step). (F typed in a text box still typing an F is a person's check: a window behind the
+# person's work never gets the keyboard focus, so its text boxes get no keys.) Each pointer move is timed: the GUI
+# thread's processor time for the move (cpu
 # ms), the wait until the engine answered its dab (wall ms, and the engine's own ms), and the engine process's processor
 # time over the dab. Each stroke must be
 # exactly one undo step: one new step on the clay, gone after Ctrl+Z, back after Ctrl+Shift+Z. Pictures after each
@@ -26,7 +29,8 @@ sys.path.insert(0, str(APP))
 import main as app3d  # noqa: E402  (puts this checkout's code first)
 from screen3d import clay_ring as R  # noqa: E402
 
-from PySide6.QtCore import QCoreApplication, QPoint, QPointF, Qt  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QPoint, QPointF, QRect, QRectF, Qt  # noqa: E402
+from PySide6.QtGui import QColor, QPainter, QPen  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_core import Document  # noqa: E402
 from rostrum3d import KIND  # noqa: E402
@@ -37,6 +41,7 @@ from screen3d.sample import SOURCE  # noqa: E402
 
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Sam\.rostrum\waves\results\3d-cl2")
 SIZE, BUDGET_MS = (1646, 900), 16.0
+SEEN = 0.03                     # a picture box counts as changed with this share of its pixels changed
 K32 = ct.windll.kernel32
 K32.GetCurrentThread.restype = ct.c_void_p
 K32.OpenProcess.restype = ct.c_void_p
@@ -187,36 +192,88 @@ def settled_picture(screen, win):
     return win.grabWindow()
 
 
-def changed_share(a, b, cx, cy, half):
-    """The share of a 9 x 9 grid of pixels in the box (cx ± half, cy ± half) that changed between pictures a and b."""
-    n = 0
-    for i in range(9):
-        for j in range(9):
-            x, y = int(cx - half + 2 * half * i / 8), int(cy - half + 2 * half * j / 8)
+def changed_share(a, b, box, dpr, diff=None):
+    """The share of the pixels in `box` (window px: x0, y0, x1, y1) that changed between pictures a and b (grabbed at
+    `dpr` device px a window px); each changed pixel is marked in `diff` (a picture the size of a) when given."""
+    x0, y0 = max(0, round(box[0] * dpr)), max(0, round(box[1] * dpr))
+    x1, y1 = min(a.width() - 1, round(box[2] * dpr)), min(a.height() - 1, round(box[3] * dpr))
+    n = changed = 0
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
             pa, pb = a.pixelColor(x, y), b.pixelColor(x, y)
-            n += max(abs(pa.red() - pb.red()), abs(pa.green() - pb.green()), abs(pa.blue() - pb.blue())) > 12
-    return n / 81
+            d = max(abs(pa.red() - pb.red()), abs(pa.green() - pb.green()), abs(pa.blue() - pb.blue()))
+            n, changed = n + 1, changed + (d > 8)
+            if diff is not None:
+                diff.setPixelColor(x, y, QColor(min(255, d * 8), min(255, d * 8), 0) if d > 8 else QColor(40, 40, 40))
+    return changed / max(1, n)
 
 
 def mask_then_add(screen, win, at, radius, core):
-    """A Mask stroke across the clay's upper part (left to right, so Mirror's left-right copy masks the same band), then
-    an Add from top to bottom: in the picture the masked band stays as it was and the free lower part changes. Each is
-    one undo step (stroke())."""
-    tool = screen.bridge.viewport.clay
+    """Mask, then Add across it, proved by the picture. A Mask stroke down the clay's left side; Mirror (left-right, the
+    clay's own x, the picture's left-right from this camera) masks the same band on the right. Then an Add across the
+    lit upper part, left to right: it crosses the left band, the free middle and the right band. In the picture the
+    middle changes and the left band (the one stroked) does not. The control: both strokes undone, the same Add with no
+    mask changes the left band too (so it was the mask that kept it, not the light or the stroke's place). The lower
+    half of the clay is in shadow, where a bulge hardly changes the picture, so all of it happens in the upper half;
+    each part is measured over the brush's width, every pixel. The engine's shape hash says the Add changed the clay
+    at all. The pictures and difference pictures (changed pixels yellow; the band blue, the middle green) go to the out
+    folder; the clay ends as it was before the Mask, plus the control's Add."""
+    tool, v = screen.bridge.viewport.clay, screen.bridge.viewport
+    clay_id = tool.clayId
+    brush = radius / 0.6 * tool._item().get("brushSize", 0.025) / tool._item()["steps"][0].get("radius", 0.1)  # its px
+    row, band = -0.5, 0.7                          # the Add's height and the band's distance from the middle (in radius)
+    steps0 = len(screen.bridge.doc.item(clay_id)["steps"])
     pick_tile(win, tool, "Mask", "mask")
-    out = {"mask": stroke(screen, win, "Mask", "mask", at, radius, Qt.NoModifier, core, frm=(-0.9, -0.45), to=(0.9, -0.45))}
+    out = {"mask": stroke(screen, win, "Mask", "mask", at, radius, Qt.NoModifier, core, frm=(-band, -1.0), to=(-band, 0.1))}
     before = settled_picture(screen, win)
+    hash0 = v._r.wait_for(lambda e: e.clay_info(clay_id)).get("hash")
     pick_tile(win, tool, "Add", "add")
-    out["add"] = stroke(screen, win, "Add over the mask", "add", at, radius, Qt.NoModifier, core,
-                        frm=(0.0, -0.9), to=(0.0, 0.9))
+    add = {"frm": (-0.95, row), "to": (0.95, row)}
+    out["add"] = stroke(screen, win, "Add over the mask", "add", at, radius, Qt.NoModifier, core, **add)
     after = settled_picture(screen, win)
+    hash1 = v._r.wait_for(lambda e: e.clay_info(clay_id)).get("hash")
+    for _ in range(4):              # the control: Ctrl+Z back to before the Mask (a tile's brush is an undo step too)
+        if len(screen.bridge.doc.item(clay_id)["steps"]) == steps0:
+            break
+        QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier)
+        pump(0.5)
+    steps = len(screen.bridge.doc.item(clay_id)["steps"])
+    check(steps == steps0, f"the control: Ctrl+Z takes back the Add and the Mask ({steps0} -> {steps} steps)")
+    pick_tile(win, tool, "Add", "add")
+    plain = settled_picture(screen, win)
+    out["control"] = stroke(screen, win, "Add with no mask", "add", at, radius, Qt.NoModifier, core, **add)
+    control = settled_picture(screen, win)
+    dpr = after.width() / win.width()
+    y = at.y() + row * radius
+    band_box = (at.x() - band * radius - 0.2 * brush, y - 0.3 * brush, at.x() - band * radius + 0.2 * brush, y + 0.3 * brush)
+    free_box = (at.x() - 0.25 * radius, y - 0.3 * brush, at.x() + 0.25 * radius, y + 0.3 * brush)
+    whole = (at.x() - 1.8 * radius, at.y() - 1.8 * radius, at.x() + 1.8 * radius, at.y() + 1.8 * radius)
+    shares = {}
+    for name, a, b in (("mask", before, after), ("control", plain, control)):
+        diff = after.copy()
+        diff.setDevicePixelRatio(1.0)                          # drawn in device px, as the boxes are given
+        diff.fill(QColor(20, 20, 20))
+        changed_share(a, b, whole, dpr, diff)                  # the whole clay, for the eye
+        shares[name] = {"band": changed_share(a, b, band_box, dpr), "free": changed_share(a, b, free_box, dpr)}
+        paint = QPainter(diff)
+        for box, colour in ((band_box, QColor(80, 160, 255)), (free_box, QColor(80, 255, 120))):
+            paint.setPen(QPen(colour, 2))
+            paint.drawRect(QRectF(box[0] * dpr, box[1] * dpr, (box[2] - box[0]) * dpr, (box[3] - box[1]) * dpr))
+        paint.end()
+        diff.copy(QRect(*(round(c * dpr) for c in (whole[0], whole[1], whole[2] - whole[0], whole[3] - whole[1])))).save(
+            str(OUT / f"clay-walk-{name}-difference.png"))
+    before.save(str(OUT / "clay-walk-mask-before-add.png"))
     after.save(str(OUT / "clay-walk-mask-then-add.png"))
-    half = 0.12 * radius
-    masked = changed_share(before, after, at.x(), at.y() - 0.45 * radius, half)
-    free = changed_share(before, after, at.x(), at.y() + 0.5 * radius, half)
-    check(masked <= 0.1, f"Add over the mask: the masked part did not change ({masked:.0%} of its pixels changed)")
-    check(free >= 0.3, f"Add over the mask: the free part changed ({free:.0%} of its pixels changed)")
-    out["changed"] = {"masked": masked, "free": free}
+    control.save(str(OUT / "clay-walk-add-with-no-mask.png"))
+    m, c = shares["mask"], shares["control"]
+    check(hash1 != hash0, f"Add over the mask: the engine's clay changed ({hash0} -> {hash1})")
+    # (CL2b: one Add stroke shows as faint rings at the dabs' edges, not a raised ridge, so a few % of a box is a
+    # change; the control is what proves the mask kept the band)
+    check(m["free"] >= SEEN, f"Add over the mask: the free middle changed ({m['free']:.1%} of its pixels changed)")
+    check(m["band"] <= 0.01, f"Add over the mask: the masked band did not change ({m['band']:.1%} of its pixels changed)")
+    check(c["band"] >= SEEN, f"the control, the same Add with no mask: the band changed ({c['band']:.1%} of its pixels)")
+    out["changed"] = {**shares, "brushPx": round(brush, 1), "hash": [hash0, hash1],
+                      "bandBox": [round(q) for q in band_box], "freeBox": [round(q) for q in free_box]}
     return out
 
 
@@ -226,13 +283,16 @@ def size_drag(screen, win, at):
     tool, doc, v = screen.bridge.viewport.clay, screen.bridge.doc, screen.bridge.viewport
     clay_id = tool.clayId
     size0, n0, steps0 = doc.item(clay_id).get("brushSize"), len(doc.history.changes), len(doc.item(clay_id)["steps"])
-    QTest.mouseMove(win, at.toPoint())
+    for dx in (-12, -6, 0):                         # onto the clay as a hand comes: a few moves, the ring follows
+        QTest.mouseMove(win, QPoint(at.toPoint().x() + dx, at.toPoint().y()))
+        pump(0.05)
     pump(5, lambda: len(tool.ring) > 2, "the ring under the pointer")
+    check(len(tool.ring) > 2, "resting the pointer on the clay shows the brush ring (no press)")
     ring_px = lambda: R.ring_px(tool._ring, tool._ring_c, *v._size)  # noqa: E731
     r0 = ring_px()
     QTest.keyPress(win, Qt.Key_F)
     pump(0.1)
-    check(tool.sizing, "holding F over the clay starts the size drag")
+    check(tool.sizing, f"holding F over the clay starts the size drag (status line: {v.status or '-'})")
     moves, p = [], at.toPoint()
     for i in range(1, 21):
         p = QPoint(at.toPoint().x() + 3 * i, at.toPoint().y())

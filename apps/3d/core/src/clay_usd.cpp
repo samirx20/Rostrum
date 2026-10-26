@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cstring>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -25,6 +26,16 @@ PXR_NAMESPACE_USING_DIRECTIVE
 namespace r3d::clay {
 
 namespace {
+// The mask, shown (CL2b): masked clay drawn darker, by up to kMaskDarken at mask 1. Written per vertex as
+// `primvars:rostrumMaskShade` (1 - kMaskDarken * mask), which every material's Storm network reads into its
+// UsdPreviewSurface `occlusion` (materials.cpp; it scales all light, direct and indirect), and as
+// `primvars:displayColor` (Storm's 0.5 grey times the same), what Storm draws a clay with no material with. Cycles'
+// networks don't read the shade, so Final renders don't show the mask. A block with no mask near it has neither.
+constexpr float kMaskDarken = 0.6f;
+constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no material and no displayColor
+const char* const kShade = "primvars:rostrumMaskShade";
+const char* const kDisplayColor = "primvars:displayColor";
+
 std::string coord(int v) { return v < 0 ? "n" + std::to_string(-v) : std::to_string(v); }
 TfToken block_name(const BlockKey& k) { return TfToken("clay_" + coord(k.x) + "_" + coord(k.y) + "_" + coord(k.z)); }
 
@@ -41,6 +52,7 @@ struct Blocks::Impl {
   SdfLayerRefPtr layer;  // held here: an anonymous layer lives as long as someone holds it
   std::optional<SdfChangeBlock> changes;
 };
+
 
 Blocks::Blocks(const UsdStageRefPtr& stage) : p_(new Impl) {
   p_->stage = stage;
@@ -105,8 +117,8 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   VtIntArray idx(nt * 3), counts(nt, 3);
   std::memcpy(idx.data(), m.indices.data(), nt * 3 * sizeof(int32_t));
   GfVec3f lo(FLT_MAX), hi(-FLT_MAX);
-  for (const GfVec3f& q : pts)
-    for (int c = 0; c < 3; ++c) lo[c] = std::min(lo[c], q[c]), hi[c] = std::max(hi[c], q[c]);
+  for (size_t i = 0; i < nv; ++i)
+    for (int c = 0; c < 3; ++c) lo[c] = std::min(lo[c], pts[i][c]), hi[c] = std::max(hi[c], pts[i][c]);
   VtVec3fArray extent{lo, hi};
   const TfToken& dflt = SdfFieldKeys->Default;
   layer->SetField(attr("points"), dflt, VtValue::Take(pts));
@@ -114,6 +126,30 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   layer->SetField(attr("faceVertexCounts"), dflt, VtValue::Take(counts));
   layer->SetField(attr("faceVertexIndices"), dflt, VtValue::Take(idx));
   layer->SetField(attr("extent"), dflt, VtValue::Take(extent));
+
+  const SdfPath shadePath = attr(kShade), colorPath = attr(kDisplayColor);
+  if (m.mask.size() == nv) {
+    if (!layer->HasSpec(shadePath)) {
+      SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
+      SdfAttributeSpec::New(prim, kShade, SdfValueTypeNames->FloatArray)
+          ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->vertex));
+      SdfAttributeSpec::New(prim, kDisplayColor, SdfValueTypeNames->Color3fArray)
+          ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->vertex));
+    }
+    VtFloatArray shade(nv);
+    VtVec3fArray color(nv);
+    for (size_t i = 0; i < nv; ++i) {
+      const float s = 1.0f - kMaskDarken * std::clamp(m.mask[i], 0.0f, 1.0f);
+      shade[i] = s;
+      color[i] = GfVec3f(kNoMaterialGrey * s);
+    }
+    layer->SetField(shadePath, dflt, VtValue::Take(shade));
+    layer->SetField(colorPath, dflt, VtValue::Take(color));
+  } else if (layer->HasSpec(shadePath)) {  // the mask left this block: back to the plain clay
+    SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
+    for (const SdfPath& q : {shadePath, colorPath})
+      if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(q)) prim->RemoveProperty(a);
+  }
   check(mark, "writing " + path.GetString());
 }
 
