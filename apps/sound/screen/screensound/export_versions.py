@@ -6,6 +6,9 @@ row's target does not touch the master: its render is compiled from a copy of th
 from __future__ import annotations
 
 import copy
+import json
+import re
+from pathlib import Path
 
 from rostrum_sound import compile as compile_doc
 from rostrum_sound import deliver
@@ -89,3 +92,29 @@ def schedule_for(doc, target: str):
     data["master"][0].update(normalize=True, loudness=t["lufs"], truePeak=t["peak"])
     with markers.project(doc.folder):
         return compile_doc(data)
+
+
+def last_choices(folder, item: str) -> dict | None:
+    """The sheet's own choices the song's newest export was made with, read from its manifest: {"format", "trim",
+    "stems", "markers"} (None: never exported). The sheet starts from them, so stems chosen for the last export are
+    still chosen in the next window (critic r8: a new window's sheet said "Only the mix" and the next file went out
+    without stems). Extra versions ("+ Another version") come after the first of the same Export run and carry no
+    stems: the run's first version (the lowest number made from the same song state) is what the sheet chose."""
+    base = Path(folder) / "renders" / item if folder and item else None
+    if base is None or not base.is_dir():
+        return None
+    made = []
+    for d in base.iterdir():
+        if re.match(r"^v\d{3,}$", d.name) and (d / "manifest.json").is_file():
+            try:
+                made.append(json.loads((d / "manifest.json").read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue                                  # a manifest that can't be read tells nothing: the next one does
+    if not made:
+        return None
+    newest = max(made, key=lambda m: m.get("version", 0))
+    run = [m for m in made if m.get("source") == newest.get("source")]
+    m = min(run, key=lambda m: m.get("version", 0))
+    stems = "groups" if m.get("stems_by") else "all" if m.get("stems") or m.get("bus_stems") else "off"
+    return {"format": (m.get("format") or {}).get("id"), "trim": bool(m.get("trimmed_silence", True)),
+            "stems": stems, "markers": bool(m.get("markers_file"))}

@@ -83,17 +83,18 @@ def verdict(master: dict, render: dict, fields=ALL) -> dict:
         return {}
     goal, ceiling = master.get("loudness", -16), master.get("truePeak", -1)
     off = lufs - goal
-    problems = []
+    problems, todo = [], []
     held = (render.get("master") or {}).get("heldDb") or 0
     if "loudness" in fields and abs(off) > LUFS_TOLERANCE:
-        problems.append(f"{abs(off):.1f} dB too {'loud' if off > 0 else 'quiet'}" + (
-            f" (Gentle limiting turned the mix down {held:.1f} dB to keep its peaks clean: turn the loudest track down "
-            "or raise Most limiting)" if held >= 0.1 and off < 0 else ""))
+        problems.append(f"{abs(off):.1f} dB too {'loud' if off > 0 else 'quiet'}")
+        todo.append("Turn the mix down." if off > 0 else
+                    "Turn the loudest track down, or raise Most limiting." if held >= 0.1 else "Turn the mix up.")
     if peak > ceiling:
         problems.append(f"loudest peak {peak - ceiling:.1f} dB over the limit")
+        todo.append("Turn the loudest track down.")
     measured = f"loudness {_n(round(lufs, 1))}, loudest peak {_n(round(peak, 1))} dB"
     if problems:
-        return {"ok": False, "text": f"Misses the target: {' and '.join(problems)} ({measured})"}
+        return {"ok": False, "text": f"Misses the target: {' and '.join(problems)}.\n{' '.join(dict.fromkeys(todo))}"}
     if "loudness" not in fields:                       # only the ceiling applies: no target to pass
         if abs(off) > LUFS_TOLERANCE:                  # the top bar still measures against the goal: say where it stands
             return {"ok": False, "text": f"Loudest peak is under the limit, but the mix is {abs(off):.1f} dB too "

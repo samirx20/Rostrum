@@ -120,7 +120,7 @@ Column {
     Action { text: "+ Another version"; onClicked: root.job.addVersion() }
     Field {
         label: "Stems"; tip: "Separate files for the Editor or a mix elsewhere; they add up to the mix"
-        ChoiceField { width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
+        ChoiceField { objectName: "exportStems"; width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
     }
     SwitchRow { wordsAfter: true; visible: root.job.hasMarkers; checked: root.job.markers; onToggled: (v) => root.job.setMarkers(v)
                 label: "Markers file" }

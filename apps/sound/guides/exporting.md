@@ -12,7 +12,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 ## 1. What for
 
-What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button.
+What it is for is one picker at the top: open it and each choice shows its numbers under its name. **For the Editor** is a switch under it: on sets the file, quality, trimming, stems and markers for handing the song to a video editor, and it stays on while the choices still match; turn it off to put them back to the usual. Choosing **MIDI file** leaves only the file name and folder. The file's whole name sits just above the **Export** button. The sheet opens with the choices the song's last export was made with (file type, trimming, stems, markers file), so a new window doesn't quietly drop the stems. Every choice on the sheet keeps its value when you change another (changing the target leaves Stems as you set it), and the sheet never moves under the pointer: the range picker's place at the top stays empty until the song has a section or a time range.
 
 Pick where it is going. The list starts with **As the mix plays now** (it says "No loudness target": nothing is changed; it is there while the song's loudness matches no choice, and it goes once you pick one), then **Streaming**, **Apple Music**, **Broadcast**, **US TV**, **Podcast** and **MIDI file**. Each target choice sets the song's loudness and its loudest peak in one step (one undo), and the sheet says so under the picker ("Loudness set to −14 for Streaming") with an **Undo** beside it while that is still your newest step: the mix is never changed quietly. A song whose loudness matches no choice shows "As the mix plays now" there until you pick one.
 
@@ -24,7 +24,7 @@ and anything MIDI can't hold is listed when it is done. Agents make the same fil
 
 Under the choices a line checks the sound that plays now against that target. With a range chosen it reads that range alone (its loudness and loudest peak), because that is the file you get:
 - "✓ Right for the target: loudness −14.2, loudest peak −1.3 dB" (green), or
-- "Misses the target: 2.1 dB too quiet …" (amber).
+- "Misses the target: 2.1 dB too quiet." and, under it, what to do ("Turn the mix up."), in amber.
 
 When the master's numbers match none of the choices the picker reads "As the mix plays now" and the check line is not shown:
 there is no target to meet or miss until you pick one.

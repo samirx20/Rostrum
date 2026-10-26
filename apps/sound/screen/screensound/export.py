@@ -25,7 +25,7 @@ from rostrum_sound import deliver, handoff, midi, presets
 from rostrum_sound.doc import markers
 
 from . import delivery, export_stems, loudness, playback, strips
-from .export_versions import Versions, ranges, schedule_for
+from .export_versions import Versions, last_choices, ranges, schedule_for
 
 
 MIDI = "midi"     # the What for choice that writes a MIDI file, not a mix
@@ -56,6 +56,7 @@ def option(c: dict) -> dict:
 
 
 class RenderExport(ExportSheet):
+    RANGE_ROOM = True                                 # "Whole song" arrives with the first section or range: its place is kept
     CHOICES_PICKER = True                             # What for is one picker (Streaming … MIDI file), the numbers under each name
     own = Signal()                                    # = changed, for this class's own properties
     _said = Signal(str)                               # the running export's own words ("Writing song_mix.wav and 4 stems")
@@ -80,10 +81,27 @@ class RenderExport(ExportSheet):
         """The sheet is on screen or not (ExportSettings.qml). Its live check measures the render again on every read:
         while it is closed, the newest step, render or range is kept as news for when it opens (each edit re-ran the
         check of a closed sheet: ~4-8 ms a click)."""
+        if on and not self._watching:
+            self._seed()
         if on and not self._watching and self._missed:
             self._missed = False
             self.changed.emit()
         self._watching = on
+
+    def _seed(self):
+        """The first time the sheet shows a song in this window, its choices start from the song's last export
+        (export_versions.last_choices), so they are what the person chose last time; later in the window they are
+        kept as the person leaves them."""
+        doc = self.bridge.doc
+        key = (str(doc.folder or ""), doc.item_id or "")
+        if key == getattr(self, "_seeded", None):
+            return
+        self._seeded, last = key, last_choices(doc.folder, doc.item_id)
+        if last is None or self.running():
+            return
+        self._format = last["format"] if last["format"] in deliver.BY_FORMAT else self._format
+        self._trim, self._stems, self._markers = last["trim"], last["stems"], last["markers"]
+        self.changed.emit()
 
     def _news(self, *_):
         if self._watching:
