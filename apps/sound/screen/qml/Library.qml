@@ -41,7 +41,9 @@ Panel {
         else if (e) soundLibrary.stopAudition()
     }
 
-    function finish() { soundLibrary.stopAudition(); workspace.closeLibraryAfterFrame(); p.used() }   // after an add: the preview stops and the Library closes (the frame after the new row)
+    // after an add: the preview stops; the Library stays open on the same search and list, so the next sound is one
+    // click away (critic r11: six tracks took six Ctrl+L); a narrow window's floating Library closes (shell.used)
+    function finish() { soundLibrary.stopAudition(); p.used() }
 
     function use(i) {
         const e = found[i]

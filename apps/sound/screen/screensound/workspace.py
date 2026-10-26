@@ -6,7 +6,6 @@ and whether the Library (instruments and sounds) is open on the left. Exposed to
 from __future__ import annotations
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_gui.after_frame import AfterFrame
 
 DOCKS = ("editor", "mixer", "")
 AHEAD_MS = 1500
@@ -21,7 +20,6 @@ class Workspace(QObject):
         self._fail, self._on_dock = fail, on_dock        # bridge._fail; called after the dock changes
         self._dock, self._library, self._seconds = "", False, False
         self._heights = {"editor": 0, "mixer": 0}
-        self._close_later = AfterFrame(lambda: self.setLibrary(False), self)
 
     @Property(str, notify=changed)
     def dock(self):
@@ -78,12 +76,6 @@ class Workspace(QObject):
         if on != self._library:
             self._library = on
             self.changed.emit()
-
-    @Slot()
-    def closeLibraryAfterFrame(self):
-        """After an add: the new track's row is drawn first, the Library closes in the frame after (the window laid out
-        again for its width: ~6-10 ms that the add's own click no longer waits for)."""
-        self._close_later.ask()
 
     @Slot()
     def toggleLibrary(self):

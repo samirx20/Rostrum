@@ -41,7 +41,7 @@ you close the window and every 20 changes; the change log beside it always has t
    here. Closest: Clarinet, Cello"); when the lit chip hides what you typed, one button takes you there (**Show “brass” in
    Instruments**).
 3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
-   sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
+   sound appears, selected, the preview stops and the **Editor** opens under the arrangement. The Library stays open on the same search, so the next sound is one click away.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
      type a line, then press Play. Voice rows have no preview.
@@ -50,7 +50,7 @@ you close the window and every 20 changes; the change log beside it always has t
      move the folder, and nothing is raised under **Problems**.
    - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel: it lists every sound the track's content can use (a notes track: the recorded instruments first, then the synth presets, the synth, the modelled instruments and, last, the classic synthesized voices; an empty track: any sound, a voice or a kit too; a drum track: the three kits, Rock, Studio and Classic). The notes stay, and the track's name follows the new sound unless you renamed it. An agent does the same with `track.set {sound: "builtIn:warmPad"}` (also `"builtIn:piano"`, `"synth"`, `"model:guitar"`, `"kit:studio"`, `"voice:ryan"`). A plain instrument is a recorded one and plays like a person would by default (the track's **Feel** group: **Played like a person** off plays every note exactly as written; **Swing** makes
    every second 8th or 16th come late without moving the notes; see `writing-parts`). If its sample pack is not installed yet, playing says which one and how to install it (Library: `inspect_library (kind: packs)` and `run_model_install` for agents).
-4. The Library closes after each use. Close it any time with ×, Ctrl+L or Esc (while a preview plays, the first Esc stops it).
+4. Close the Library with ×, Ctrl+L or Esc (while a preview plays, the first Esc stops it). In a narrow window it floats over the arrangement and closes after each use.
 
 ## 3. Shape the sound
 

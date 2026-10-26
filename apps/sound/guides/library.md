@@ -29,7 +29,7 @@ in your settings (`~/.rostrum/settings/sound-library.json`), not in a project.
 sounds…** sits at its bottom. Search with the Library's search box, narrow by kind, length and brightness, click a row
 to hear it (a click only plays it; it changes nothing in the song; voice rows have no preview: they are made from a line you type, see [voice.md](voice.md)), and press the
 row's **Add** to put it at the playhead: on the selected recordings track, else on a "Sound effects" track (one undo
-step). The Library closes after an add and the preview stops.
+step). The preview stops and the Library stays open (in a narrow window it closes).
 
 ## Add a folder
 
