@@ -44,7 +44,7 @@ page) shows only rings, on its head: a drag keys its Turn at the playhead (see B
 
 | Key | Does |
 |---|---|
-| V | Select: all the handles (and out of Paint) |
+| V | Select: all the handles (and out of Paint or Clay) |
 | W · E · S | Only move · only turn · only scale |
 | ← → ↑ ↓ | Nudge the selection 1 cm along X (← →) or up and down (↑ ↓); Shift 10 cm, Alt 1 mm. One undo step a press |
 | D (hold) | The arrows move the **pivot** (the point it turns and scales around), not the item |
@@ -66,6 +66,10 @@ page) shows only rings, on its head: a drag keys its Turn at the playhead (see B
 Icons only. Hover one to see its name. A small corner mark means it opens a list beside the rail.
 
 - **Select**: click a thing in the viewport or in the scene list.
+- **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Lump: a click drops a ball of clay, on a
+  clay it joins) and, with a clay selected, **Brush** (Add, Carve, Smooth), Size, Strength and Mirror. A drag on the
+  clay sculpts (Ctrl: the opposite brush, Shift: Smooth), one undo step per stroke; a drag on empty space turns the
+  view. Q again, V or Esc goes back to Select. The guide `sculpting` has it all.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
   along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
@@ -206,6 +210,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 
 | Key | Does |
 |---|---|
+| Q | Clay: make clay and sculpt it (Q again: Select) |
 | R · T · L · C | The Shapes, Type & logo, Lights and Camera lists of the rail |
 | P · O · Shift+B | Poses, Onion skin, Bones (Animate page; Shift+B with a mesh selected) |
 | W · E · S | The gizmo's move, turn or scale handles only (V: all) |
@@ -219,7 +224,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 **Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
 newest one); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
 for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
-Knife's line is dropped; then Edit mesh or Paint is left; then an animation picked on the timeline goes back to its item;
+Knife's line is dropped; then Edit mesh, Paint or the Clay tool is left; then an animation picked on the timeline goes back to its item;
 then several picked keys are let go; then the selection is let go (the Scene panel shows).
 
 ## Files

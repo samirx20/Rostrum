@@ -28,6 +28,8 @@ ORDER = (
      lambda b, v: v is not None and v.mesh_edit.on, lambda b, v: v.mesh_edit.leave()),
     ("paint", "Paint: leave it",
      lambda b, v: v is not None and v.paint.on, lambda b, v: v.paint.leave()),
+    ("clay", "the Clay tool: back to Select",
+     lambda b, v: v is not None and v.clay_tool.on, lambda b, v: v.clay_tool.leave()),
     ("stretch", "an animation picked on the timeline: back to its item",
      lambda b, v: b._stretch.shown, lambda b, v: b._stretch.clear()),
     ("keys", "several keys picked: let go of them",

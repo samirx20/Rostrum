@@ -19,7 +19,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -152,6 +152,11 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-mode", s, ["select block", "paint-b", "wait 1500"]),                    # Brush, Paint layers (none yet)
         ("paint-layers", s, ["select block", "paint-b", "wait 1500", "paint-layer", "paint-channel roughness",
                              "paint-drag 0.42 0.5 0.58 0.55", "wait 1500"]),            # a roughness stroke, its layer
+        # Clay (Q, clay_tool_qt.py): Make only, nothing to sculpt yet; then a real Lump click on the ground makes a clay
+        # (clay.add: the core's clay must be built), its Brush tiles and rows; then Carve picked by a real click
+        ("clay-tool", s, ["press Q"]),
+        ("clay-made", s, ["press Q", "mouseclick 640 560", "wait 2500"]),
+        ("clay-brush", s, ["press Q", "mouseclick 640 560", "wait 2500", "click Carve", "wait 300"]),
         ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),

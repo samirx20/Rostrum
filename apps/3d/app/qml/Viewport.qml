@@ -100,9 +100,10 @@ Rectangle {
         onWheel: (w) => viewport.zoom(w.angleDelta.y / 120)
     }
 
-    HoverHandler { cursorShape: backend.adder.armed ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape waits for its click
+    HoverHandler { cursorShape: backend.adder.armed || viewport.clay.tool === "lump" && viewport.clay.on ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape (or Lump) waits for its click
     // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc
+    ClayStrokes { anchors.fill: parent; z: 9.2 }  // Clay: a left drag sculpts the clay (or turns the view off it); the brush ring
     MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
     Bones { anchors.fill: parent; z: 10.5 }  // a mesh's bone chain (Animate) and the points Bones is placing; draws only
     Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above

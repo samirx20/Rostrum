@@ -224,6 +224,7 @@ class KeyRoutes3D(SlotMixin):
         self.add.disarm()
         if vp is not None:
             vp.paint.leave()
+            vp.clay_tool.leave()
             vp.gizmo.setShow("all")
 
     @Slot()
@@ -233,6 +234,7 @@ class KeyRoutes3D(SlotMixin):
         if vp is None:
             return
         if vp.paint.on or vp.paint.can:
+            vp.clay_tool.leave()
             vp.paint.toggle()
         else:
             self._set_status("Paint needs one mesh selected")

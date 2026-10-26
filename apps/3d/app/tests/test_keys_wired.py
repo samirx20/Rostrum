@@ -39,7 +39,7 @@ def test_shared_keys_mean_what_they_mean_everywhere():
     assert KEYS3D.job_of("Left") == "nudge_left" and KEYS3D.job_of("Right") == "nudge_right"
     assert KEYS3D.job_of("Ctrl+1") == "" and KEYS3D.job_of("Tab") == "next_item"
     assert KEYS3D.job_of("V") == "move_tool" and KEYS3D.job_of("B") == "paint_tool"
-    assert KEYS3D.job_of("Q") == ""                        # kept free for Clay (3d-simplicity SPEC)
+    assert KEYS3D.job_of("Q") == "clay_tool"               # Clay (3d-simplicity SPEC; clay_tool_qt.py)
 
 
 def test_no_hand_bound_key_left_in_the_window():

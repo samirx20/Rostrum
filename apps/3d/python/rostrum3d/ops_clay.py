@@ -67,13 +67,15 @@ def _piece(ctx, clay: str, args: dict, shape: str):
 
 
 @R.operation("clay.add", "Add a clay: a lump to sculpt, starting as one sphere of `radius` at `at`. Its detail (the "
-             "smallest grain) is radius / 100. Then clay.lump joins more, clay.stroke sculpts it.", label="Add clay",
+             "smallest grain) is radius / 100, its brush a quarter of the radius. Then clay.lump joins more, clay.stroke sculpts it.", label="Add clay",
              params=[*PLACE, AT, RADIUS, SYM, Param.text("material", label="Material", kind="material")])
 def clay_add(ctx, targets, args):
     r = args.get("radius", RADIUS.default)
     detail = min(0.05, max(0.0002, round(r / 100, 4)))
     x, y, z = (float(v) for v in args["at"])
     fields = {"x": x, "y": y, "z": z, "detail": detail, "symmetry": args.get("symmetry") or "x",
+              "brushSize": round(max(r / 4, 0.0005), 4),          # a quarter of the clay: big enough to shape it,
+                                                                   # small enough to stay within a frame (proof: medium dab)
               "material": args.get("material") or ""}
     item = new_item(ctx, "clay", args, fields)
     parent, key = _holder(ctx, args.get("into"))

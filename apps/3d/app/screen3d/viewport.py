@@ -77,6 +77,8 @@ class Viewport(QObject):
         self.mesh_edit = MeshEdit(bridge, self)                # Edit mesh: points / edges / faces (mesh_edit_qt.py)
         from .paint_mode_qt import PaintMode
         self.paint = PaintMode(bridge, self)                   # Paint (B): brush strokes on a mesh (paint_mode_qt.py)
+        from .clay_tool_qt import ClayTool
+        self.clay_tool = ClayTool(bridge, self)                # Clay (Q): Lump and the brushes (clay_tool_qt.py)
         self.gizmo = Gizmo(bridge, self)                       # the selected item's handles (gizmo_qt.py)
         ops_mesh.use_engine(EngineVia(self._r), bridge.doc.folder)   # mesh.edit asks this engine for a shape's mesh
         _ENGINE_FOR_OPS[0] = self                              # (the newest window's; an old one closing leaves it)
@@ -115,6 +117,7 @@ class Viewport(QObject):
     # the shot frame in the viewport, as parts of its width and height [x, y, w, h]; shown in the shot camera only
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
     onionSkin = Property(QObject, lambda s: s.onion, constant=True)
+    clay = Property(QObject, lambda s: s.clay_tool, constant=True)        # QML: viewport.clay (clay_tool_qt.py)
     bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)     # QML: viewport.onionSkin (onion_qt.py)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
@@ -321,6 +324,8 @@ class Viewport(QObject):
             self._guard(lambda: self.focus.click(x, y))
         elif self._size is not None and self.place.wants_click():
             self._guard(lambda: self.place.click(x, y))
+        elif self._size is not None and self.clay_tool.wants_click():          # Clay's Lump: a ball there
+            self._guard(lambda: self.clay_tool.click(x, y))
         elif self._size is not None and self.bone_tool.wants_click():
             self._guard(lambda: self.bone_tool.click(x, y))
         elif self._size is not None:      # a drawn bone near the click is picked before the mesh behind it (bones_qt.py)

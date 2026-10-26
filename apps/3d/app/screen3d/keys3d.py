@@ -7,7 +7,7 @@ their keys from here through `job`.
 Every job here and in the shared map runs something: an action, a ROUTE (a bridge method: key_routes3d.py), a WINDOW job
 (Main.qml `windowJobs`: it needs the rail or the window) or a SKIP job (bound by the kit's AppShell and FilesMenu). A
 shared job 3D has nothing behind is in NOT_HERE: no key, not on the Keys sheet. tests/test_keys_wired.py keeps this
-honest. Q stays free for Clay (3d-simplicity SPEC: "Clay's key is set in C1's key table").
+honest. Q is Clay (clay_tool_qt.py; Q again, V or Esc: back to Select).
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from rostrum_gui.keymap import KeyMap
 
 OWN = [
     # the rail (Rail3D.qml): the flyouts and the Animate page's two panels
+    {"job": "clay_tool", "keys": ["Q"], "label": "Clay: make and sculpt clay", "area": "Tools"},
     {"job": "shapes_menu", "keys": ["R"], "label": "Shapes", "area": "Tools"},
     {"job": "type_menu", "keys": ["T"], "label": "Type & logo", "area": "Tools"},
     {"job": "lights_menu", "keys": ["L"], "label": "Lights", "area": "Tools"},
@@ -50,7 +51,7 @@ NOT_HERE = ("preferences",                  # no setting of 3D is a person's to 
             "actual_size", "fit", "fit_all",                # the viewport has no 100 % and no framing yet (` is the shot's view)
             "find_item", "library", "add_file", "notes_tool")
 KEYS3D = KeyMap("Rostrum3D", OWN, drop=NOT_HERE, words={
-    "move_tool": "Select (all handles; leaves Paint)", "paint_tool": "Paint on the mesh",
+    "move_tool": "Select (all handles; leaves Paint and Clay)", "paint_tool": "Paint on the mesh",
     "go_in": "Go in (Edit mesh; cut with the Knife; make the bones)",
     "go_out": "Go out (leave Edit mesh; pick the group)",
     "copy_style": "Copy material", "paste_style": "Paste material",
@@ -83,7 +84,7 @@ ROUTES = {
     "shot_view": ("shotViewKey",), "look": ("lookKey",), "render": ("renderKey",),
 }
 # the window's own (Main.qml `windowJobs`): they need the rail
-WINDOW = ("shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "quit")
+WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "quit")
 # bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the
 # settings panel, Alt+Shift+J in the timeline's time box) and the kit's FilesMenu (the files)
 SKIP = ["undo", "redo", "command_box", "guides", "key_list", "history", "export", "export_again", "fold_panels", "next_area",
