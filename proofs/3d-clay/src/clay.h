@@ -40,14 +40,17 @@ struct Step {
   float strength = 0.5f; // stamp: 0..1
   bool mirror = false;   // also at x -> -x (the same step, mirrored, in the same pass)
   uint32_t stroke = 0;   // stamp: the stroke it belongs to (dabs of one stroke are applied as one unit); 0 = alone
+  bool accumulate = true;  // Add / Carve: off = a stroke raises (digs) at most one dab's height from where it began
 };
 
+std::string profile_text();  // where the steps' time went so far (totals)
 std::string to_line(const Step& s);  // one text line, floats round-trip exactly
 bool from_line(const std::string& line, Step& s);
 
 struct StepTiming {
   double ms = 0;       // whole apply()
   size_t voxels = 0;   // dense box size
+  double prepMs = 0, fillMs = 0, workMs = 0, writeMs = 0;  // where the time went: chunks found, filled, worked, written
 };
 
 class Clay {
