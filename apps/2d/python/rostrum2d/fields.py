@@ -498,8 +498,18 @@ FIELDS = plugin_parts.Table(FIELDS, lambda kind: [])          # a plugin's item:
 LABELS = plugin_parts.Table(LABELS, plugin_parts.label)
 
 
+_BY_NAME: dict = {}     # kind -> (its field list, its length, {name: Param}): asked per field of every moved layer
+
+
 def param(kind: str, name: str) -> Param | None:
-    return next((p for p in FIELDS.get(kind, ()) if p.name == name), None)
+    params = FIELDS.get(kind, ())
+    got = _BY_NAME.get(kind)
+    if got is None or got[0] is not params or got[1] != len(params):     # a plugin's kind, or fields added since
+        by = {}
+        for p in params:
+            by.setdefault(p.name, p)                                     # (the first of a name, as the scan found)
+        got = _BY_NAME[kind] = (params, len(params), by)
+    return got[2].get(name)
 
 
 def defaults(kind: str) -> dict:

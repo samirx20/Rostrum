@@ -17,7 +17,7 @@ HOOKS = frozenset({
     "label_of", "kind_label", "starts", "subtitle", "edit_call", "relative_call", "shown_values", "facts_of", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "rows_context", "sections", "selection_label", "extra_commands",
     "select", "setValue", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
-    "staticMetaObject",
+    "staticMetaObject", "holds_panel",
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 
@@ -25,7 +25,7 @@ ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
-                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "rows_due",
+                 "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "panel_held", "rows_due",
                  "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated", "memo",
                  "history_due",
                  "history_stale", "history_news")
@@ -35,6 +35,7 @@ class KitState:
         self.scrub = None                   # the open scrub (edits.Scrub), if any
         self.panel = None                   # after_frame.AfterFrame: a pick's panel, the frame after (bridge_select)
         self.rows_due = None                # after_frame.AfterFrame: the panel's rows after a document change (the same)
+        self.panel_held = False             # a pick's panel waits for the drop of the drag it was made in (holds_panel)
         self.partners = []                  # other documents in this person's one history (join_history)
         self.opened = [opened]              # where each history stood when this window opened (historyCount)
         self.static = []                    # the rows' fixed layout for the selection's kind

@@ -10,10 +10,15 @@ def _spot(item: dict):
     return (round(float(item.get("x", 0)), 3), round(float(item.get("y", 0)), 3))
 
 
-def steps_for(siblings: list[dict], items: list[dict]) -> int:
+def spots(siblings: list[dict]) -> set:
+    """Where these layers sit, by type: what steps_for keeps clear (a caller copying many keeps it and adds each copy)."""
+    return {(s.get("type"), *_spot(s)) for s in siblings}
+
+
+def steps_for(siblings: list[dict], items: list[dict], taken: set | None = None) -> int:
     """How many NUDGE steps the copies need, all together (they keep their places among themselves), so none sits
-    at the x, y of a sibling of its type."""
-    taken = {(s.get("type"), *_spot(s)) for s in siblings}
+    at the x, y of a sibling of its type. `taken`: spots(siblings), when the caller keeps it."""
+    taken = spots(siblings) if taken is None else taken
     n = 0
     while any((i.get("type"), *(round(c + n * NUDGE, 3) for c in _spot(i))) in taken for i in items):
         n += 1

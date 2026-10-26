@@ -138,27 +138,40 @@ def layer_duplicate(ctx, targets, args):
         if id_ is not None and (id_ in taken or not ids.is_valid(id_)):
             ctx.fail(codes.BAD_ARGUMENT, "copy_ids", f'"{id_}" is already in the document or not a usable id (letters, digits, '
                      "_ . -; not starting with a digit)", hint="Pick another pattern, e.g. a word no layer uses yet.")
-        new = stepped({**bare(item, lists), "id": id_ or ids.counted(taken, item["type"])}, step)
+        new = stepped({**bare(item, lists), "id": id_ or ids.counted(taken, item["type"], start=after.get(item["type"], 1))}, step)
         taken.add(new["id"])
+        if id_ is None:                             # the next counted id of this type starts after it (copies of 200)
+            after[item["type"]] = int(new["id"].rsplit("_", 1)[1]) + 1
         ctx.insert(parent, key, new, at)
         for k in child_keys(item, lists):
             for child in item.get(k, []):
                 put(child, new["id"], k, None, taken, for_child(child, step))
         return new["id"]
 
-    from .ops_nudge import NUDGE, for_child, steps_for, stepped
+    from .ops_nudge import NUDGE, for_child, spots, steps_for, stepped
     by = [args.get(k) for k in ("by_x", "by_y", "by_turn", "by_scale")]
     given = any(v is not None for v in by)
     dx, dy, turn, ratio = (by[0] or 0, by[1] or 0, by[2] or 0, by[3] if by[3] is not None else 1)
+    taken, names, after = set(ctx.idx), _names(ctx), {}   # once per call, then kept up to date: copying 200 layers
+    places = {}                                     # was 600 walks of the whole document (~2 s in an Alt+drag)
     for t in targets:
-        idx = _all_ids(ctx)
-        loc = idx[t]
-        first = steps_for(ctx.item(loc.parent).get(loc.key, []), [loc.item])
-        taken, at, name = set(idx), loc.index + 1, re.sub(r" copy( \d+)?$", "", display_name(loc.item)) + " copy"   # a copy's copy: "copy 2", never "copy copy"
+        loc = ctx.idx[t]                            # (its parent and list hold; its position may be stale)
+        siblings = ctx.item(loc.parent).get(loc.key, [])
+        if not given:                               # where its siblings and the copies so far sit (ops_nudge.py)
+            place = places.get((loc.parent, loc.key))
+            if place is None:
+                place = places[(loc.parent, loc.key)] = spots(siblings)
+            first = steps_for(siblings, [loc.item], place)
+        at = next(i for i, c in enumerate(siblings) if c is loc.item) + 1
+        name = re.sub(r" copy( \d+)?$", "", display_name(loc.item)) + " copy"   # a copy's copy: "copy 2", never "copy copy"
         for n in range(1, args.get("times", 1) + 1):
             step = (n * dx, n * dy, n * turn, ratio ** n) if given else first + n - 1
             copy = put(loc.item, loc.parent, loc.key, at, taken, step, pattern and pattern.replace("{n}", str(n)))
-            ctx.set(copy, "name", copy if pattern else unique_name(_names(ctx), name))
+            named = copy if pattern else unique_name(names, name)
+            names.add(named)
+            ctx.set(copy, "name", named)
+            if not given:
+                place |= spots([ctx.item(copy)])
             at += 1
 
 

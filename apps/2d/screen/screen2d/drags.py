@@ -46,6 +46,15 @@ class DragSlots(SlotMixin):
             self._snap.begin(self._grabbed())           # what the drag may snap to (snapper.py)
         return ok
 
+    def moving_many(self) -> bool:
+        """Several layers moved on the canvas: a step changes their places only, so the timeline's rows and the panel
+        (mixed values) follow at the drop; rebuilding 200 layers' rows every step cost tens of ms a move."""
+        return self._drag is not None and isinstance(self._grab, list)
+
+    def holds_panel(self) -> bool:
+        """The kit's hook (bridge_select): Alt+drag's copies, picked inside the drag, get their panel at the drop."""
+        return self.moving_many()
+
     def _grabbed(self) -> list:
         """The layers this drag moves."""
         return [g[0] for g in self._grab] if isinstance(self._grab, list) else [self._grab[0]]
