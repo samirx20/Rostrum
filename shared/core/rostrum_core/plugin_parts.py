@@ -86,7 +86,7 @@ def missing(data: dict, lists: dict, uses: dict | None = None) -> list[str]:
     who = ", ".join(named) if named else ", ".join(f'"{p}:"' for p in sorted(parts))
     ids = [i for w in parts.values() for i in w["items"]] + [x for w in parts.values() for x in w["fields"]]
     return [f"This file uses the plugin{'s' * (len(named or parts) > 1)} {who}, not installed here: {what} "
-            f"({', '.join(map(str, ids[:4]))}{' …' if len(ids) > 4 else ''}) kept as they are when you save, but not shown or played."]
+            f"({', '.join(map(str, ids[:4]))}{' …' if len(ids) > 4 else ''}) kept as they are when you save; you can move, lock, hide or delete them, but they are not drawn or played."]
 
 
 def engine_tree(item: dict, lists: dict) -> dict:
