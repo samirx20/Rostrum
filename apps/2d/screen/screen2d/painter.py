@@ -238,9 +238,10 @@ class Painter(BrushPanel):
             if not make:
                 check_showing(self.b.doc.item(d["id"]), self.b.own_t(d["id"]), self.b.time)
             args = self.brush.stroke_args()
-            self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
-                                          c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(), True,
-                                          fill)
+            with self.b.frames.asking():    # the made layer's place is asked before its first picture is drawn
+                self._stroke = s = StrokeDrag(self.b.doc, self.b.who, d["id"], self.b.time if make else self.b.own_t(d["id"]),
+                                              c["fps"], args, x, y, self.b.place_of, pressure, make, layer, self.tilt.lean(),
+                                              True, fill)
             settled = self.b.opened.shows_now if self.b.opened.on else None     # opened: its own picture lands
             smear = (args.get("smudge") and args.get("mode") != "erase"
                      and (smear_ink(self._wet, args, s, self.b.selBox, self._n()) if fill is None
