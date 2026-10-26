@@ -25,3 +25,13 @@ def wait(ms: int) -> None:
     loop = QEventLoop()
     QTimer.singleShot(int(ms), loop.quit)
     loop.exec()
+
+
+def wait_until(condition, what: str, timeout_ms: int = 5000) -> None:
+    """Run the window in short slices until `condition()` is true; fail loudly (naming `what`) at the deadline."""
+    import time
+    end = time.monotonic() + timeout_ms / 1000
+    while not condition():
+        if time.monotonic() > end:
+            raise AssertionError(f"timed out after {timeout_ms} ms waiting for: {what}")
+        wait(15)

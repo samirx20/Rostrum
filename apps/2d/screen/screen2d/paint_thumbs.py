@@ -28,6 +28,7 @@ class ThumbProvider(ScreenImages):
     def __init__(self):
         super().__init__()
         self._lock, self._images, self._last, self._asked = threading.Lock(), {}, {}, set()
+        self._want: dict[str, str] = {}                 # paint id -> the thumbnail name its list row asked for last
         self.notes, self.drawn = ThumbsReady(), 0       # drawn: how many so far (a new one: the list's sources change)
 
     def source(self, frame: dict, paint: dict, w: int, h: int) -> str:
@@ -38,6 +39,7 @@ class ThumbProvider(ScreenImages):
         """The thumbnail's name for this layer's content; drawn off the GUI thread when it isn't kept yet."""
         k = canvas.layer_key(frame, paint["id"], w, h)[:16]
         with self._lock:
+            self._want[paint["id"]] = k
             if k in self._images or k in self._asked:
                 return k
             self._asked.add(k)
@@ -45,6 +47,10 @@ class ThumbProvider(ScreenImages):
         return k
 
     def _draw(self, k, frame, paint_id, w, h):
+        with self._lock:
+            if k not in self._want.values():       # the layer changed again while this waited its turn: drawing it
+                self._asked.discard(k)             # would only delay the one that is wanted (one worker, a canvas each)
+                return
         try:
             image = _draw(frame, paint_id, w, h)
         except KeyError:            # the layer went (an undo) while it was being drawn: nothing to show
