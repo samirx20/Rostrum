@@ -10,6 +10,8 @@ from .. import deliver, handoff, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
 from ..doc.fields import FIELDS
+from .. import fit_loudness as fit
+from . import tools_fit
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
@@ -27,11 +29,10 @@ def held(r: dict, goal=None) -> str:
         return ""
     pulls = m.get("limiterMaxReductionDb", 0)
     under = f"landed {goal - r['lufs']:.1f} dB under the {goal:g} LUFS target" if isinstance(goal, (int, float)) and goal > r["lufs"] else "was turned down"
-    loud = max(r.get("tracks") or [], key=lambda t: t.get("peak", 0), default=None)
-    down = f" or turn down {loud['id']} (the highest peak)" if loud else ""
+    loud = {"id": fit.peakiest_track(r)} if r.get("tracks") else None
     need = pulls + h
-    way = (f"to reach it, set master maxLimit to {need + 0.05:.1f} (Most limiting){down}" if need <= MAX_LIMIT
-           else f"it needs more than the {MAX_LIMIT} dB maxLimit allows, so turn down {loud['id'] if loud else 'the loudest track'} (the highest peak)")
+    keep = f"maxLimit {need + 0.05:.1f} keeps the balance" if need <= MAX_LIMIT else f"the target needs {need:.1f} dB, more than the {MAX_LIMIT} dB maxLimit allows"
+    way = f"call edit_loudness first: it answers the exact edit ({keep}; or the smallest cut of {loud['id'] if loud else 'the loudest track'}, the most peaked, that stays within the master's maxLimit)"
     return (f" Gentle limiting turned the whole mix down {h:.1f} dB so the limiter pulls at most {pulls:.1f} dB at the loudest moment; "
             f"the mix {under}: {way}.")
 
@@ -47,6 +48,7 @@ def summary(r: dict, goal=None) -> str:
 
 
 def register(tools: Tools):
+    tools_fit.register(tools)
     @tools.tool("render_mix", {"properties": {**ITEM,
         "solo": {"type": "array", "items": {"type": "string"}, "description": "Only these track ids are heard."},
         "mute": {"type": "array", "items": {"type": "string"}, "description": "These track ids are not heard."},

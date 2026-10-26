@@ -14,7 +14,7 @@ order to use them in when checking a whole mix; the table of every tool and what
    shows whether the loud and quiet parts are where the piece needs them, and the summary names the loudest moment and
    its time (the loudest 3 s and 0.4 s, and the highest sample): check that the climax is where you meant; clipped moments are listed with times. On a render's mix it also draws where the master's glue and limiter turned the sound down
    (the engine's own gain curve, the worst moments with the dB reduced) and, with stems, names the tracks that drove each
-   moment: lower those tracks where it works.
+   moment: lower those tracks where it works. A render that landed under the loudness target (the reply says how far) is fixed by `edit_loudness`, before any guess at `maxLimit` or volumes: it answers the exact edit, e.g. `edit_loudness {"apply": "keep_balance"}`.
 2. **Balance:** `look_sound` (`what: "levels"`). Which track is far under or over the rest. A track you meant to be quiet is not a problem;
    one you meant to lead and is buried is. Each stem's `db_vs_mix` and the track's `volume_db` are side by side: to
    move a track N dB against the other tracks, set its volume to `volume_db` + N (`track.set` `{"volume": {"db": …}}`); the

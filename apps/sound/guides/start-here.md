@@ -108,6 +108,13 @@ the `render_mix` reply says how far and what would reach it. Two ways to get lou
 
 Take the cleaner way first; raise `maxLimit` only when the dense sound is what the piece wants.
 
+**Under the target: call `edit_loudness` first.** It reads the last render and answers both ways with measured numbers
+and the exact `edit_document` call for each: `keep_balance` (the `maxLimit` that reaches the target, no track moves) and
+`trim_track` (the smallest cut of the most peaked track, or the `track` you name, that reaches it within the current
+`maxLimit`, tried with offline renders). `{"apply": "trim_track"}` or `{"apply": "keep_balance"}` makes that edit as one
+step. Never rebalance or raise `maxLimit` by guess. Turning every track up does not make the mix louder while the target
+is on: the master sets the level, and only how far the peaks stand above the average decides the limiting.
+
 ## Which arguments go with which `what`
 
 `look_sound` and `look_music` are one tool each; `what` picks the question and the call is checked against that question's own
