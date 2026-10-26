@@ -147,7 +147,7 @@ def test_a_player_that_cannot_open_is_loud_and_the_playhead_runs_on(bridge):
     bridge.transport.player.program = [sys.executable, "-c", "import sys; sys.stderr.write('no output device'); sys.exit(3)"]
     bridge.setTime(1.0)
     bridge.togglePlay()
-    pump(1.0, lambda: not bridge.transport.player.alive)
+    pump(10, lambda: "no output device" in bridge.status)    # the process starts and dies: slow on a busy machine
     pump(0.3)
     assert "no output device" in bridge.status and bridge.soundState.startswith("No sound output")
     assert bridge.playing and bridge.time > 1.1
