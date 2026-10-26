@@ -199,7 +199,9 @@ pick the scene, click **+ Motion blur**: it is on at 180° (**Amount**), with **
 
 The frame at time t is the average of the samples centred on t. Layers that do not move stay sharp. Motion of keys, groups,
 rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. Preview
-and export blur the same way. If the steps show on a very fast spin or whip, raise
+and export blur the same way. While the picture moves (playing, or dragging the playhead) the canvas draws one step so it
+keeps up, unless **Motion blur while playing** is on (the zoom menu); the moment the playhead stops, the frame is drawn
+with every step, exactly as it exports. If the steps show on a very fast spin or whip, raise
 `shutterSamples`. Motion blur and a flip (a group keyed through `scaleX` 0) export like anything else; if a frame ever
 takes over 2 minutes, the export stops and its error names that frame, so you can look at it with `look_frame`.
 

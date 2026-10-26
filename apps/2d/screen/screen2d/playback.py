@@ -2,7 +2,15 @@
 
 Playback follows the clock: each tick puts the playhead where real time says and draws that frame; frames that
 couldn't be drawn in time are skipped, so motion plays at its true speed. While playing only the playhead and the
-frame change; the inspector, layer outline and handles catch up when it stops (they cost more than a frame).
+frame change, together: the playhead moves when the picture of its time arrives (bridge2d `_picture_arrives`), so a
+frame costs the window one redraw and the playhead never runs ahead of the picture. The inspector, layer outline and
+handles catch up when it stops (they cost more than a frame).
+
+Scrubbing (the playhead moved by hand while paused, a move within SETTLE_MS of the one before: the ruler dragged, a
+key held) is time moving too: its pictures are drawn the way playing draws them (one blur step unless "Motion blur
+while playing" is on; the world picture at half size, world_view.py, as during a canvas drag) and the panels wait.
+SETTLE_MS after the last move the playhead rests: the full frame is drawn and the panels follow. One jump or step
+of the playhead is not a scrub: it is drawn full at once.
 
 Motion blur draws each frame several times (the composition's Blur steps). With "Motion blur while playing" off (a checked entry in the canvas view menu) (the
 default), playback asks the engine for one step per frame (its `shutterSamples` override), the same scene and the
@@ -23,6 +31,8 @@ from .playstats import STATS
 
 SIZES = {"full": 1.0, "half": 0.5, "quarter": 0.25}   # Preview size → the engine's `scale`
 SIZE_FROM = 1280                                      # px on the long side from which Preview size is offered
+TICK_MS = 4                                           # the playing clock's tick (_tick_ms)
+SETTLE_MS = 120                                       # a scrub rests this long after its last move (a few frames)
 
 
 def size_offered(comp: dict) -> bool:
@@ -40,6 +50,11 @@ class Playback(QObject):
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.timeout.connect(self._tick)
+        self.scrubbing, self._moved_at = False, 0.0         # the playhead moved by hand, and when last
+        self._settle = QTimer(self)
+        self._settle.setSingleShot(True)
+        self._settle.setInterval(SETTLE_MS)
+        self._settle.timeout.connect(self._rest)
 
     @Property(bool, notify=changed)
     def playing(self):
@@ -67,12 +82,33 @@ class Playback(QObject):
         self._size = size
         self.changed.emit()
 
+    def moved_by_hand(self) -> bool:
+        """The playhead was moved while paused (bridge.setTime): a scrub when within SETTLE_MS of the move before (its
+        picture drawn as playing draws, the panels wait); the rest follows SETTLE_MS after the last move."""
+        now = time.perf_counter()
+        self.scrubbing = now - self._moved_at < SETTLE_MS / 1000
+        self._moved_at = now
+        if self.scrubbing:
+            self._settle.start()
+        return self.scrubbing
+
+    def _rest(self):
+        if self.scrubbing:
+            self.scrubbing = False
+            self.b.time_rests()
+
+    def moving(self) -> bool:
+        """Time is moving: playing, or a scrub."""
+        return self._timer.isActive() or self.scrubbing
+
     @Slot()
     def toggle(self):
         if self._timer.isActive():
             self.stop()
             self.b.setTime(self.b.time)        # the rest of the screen catches up; the full frame is drawn
         else:
+            self.scrubbing = False
+            self._settle.stop()
             self._clock = (time.perf_counter(), self.b.time)
             self._timer.start(self._tick_ms())
             self.b.soundtrack.play(self.b.time)     # the project's sound, through Sound's engine (soundtrack.py)
@@ -95,8 +131,9 @@ class Playback(QObject):
             self.changed.emit()
 
     def samples(self) -> int | None:
-        """Motion-blur steps for the frame being asked for: 1 while playing without blur, else the composition's."""
-        return 1 if self._timer.isActive() and not self._blur else None
+        """Motion-blur steps for the frame being asked for: 1 while time moves (playing, scrubbing) without "Motion blur
+        while playing", else the composition's."""
+        return 1 if self.moving() and not self._blur else None
 
     def scale(self) -> float:
         """The engine's `scale` for the frame being asked for: Preview size while playing (where it is offered), else 1."""
@@ -105,9 +142,10 @@ class Playback(QObject):
         return SIZES[self._size]
 
     def _tick_ms(self) -> int:
-        """Ticks at twice the frame rate: each new frame is caught within half a frame (ticks at the frame rate drift
-        against the frames, skipping one now and then); a tick on the frame shown does nothing."""
-        return max(1, round(500 / self.b.comp()["fps"]))
+        """Ticks every TICK_MS (or twice the frame rate, if faster): each new frame is asked within a few ms of its time.
+        Ticks at the frame rate, or twice it, beat against the screen's refresh: at 25 fps on a 60 Hz screen pictures
+        stayed up anywhere from 1 to 4 refreshes instead of 2 or 3. A tick on the frame shown does nothing."""
+        return max(1, min(TICK_MS, round(500 / self.b.comp()["fps"])))
 
     def ahead(self, t: float) -> float | None:
         """While playing, the frame after `t` (bridge.setTime's own rounding, so the next tick asks for exactly it): asked

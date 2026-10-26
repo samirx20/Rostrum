@@ -98,6 +98,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self._pictures = PaintPictures(self)                # ... off this thread (paint_pictures.py)
         self._pictures.done.connect(self._pictures_made)
         self._pictures.failed.connect(self._fail)
+        self._time_due = False                              # playing: the playhead waits for its picture (setTime)
         self.held_view = None                               # a camera-key drag: the scene as at the press (motion_path.py)
         self.frames.ready.connect(self._on_frame)
         self.frames.failed.connect(self._fail)
@@ -302,12 +303,31 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     def setTime(self, t):
         c = self.comp()
         self._t = min(max(round(t * c["fps"]) / c["fps"], 0.0), c["duration"])
-        still = not self.play.playing            # while playing, only the playhead and the frame (playback.py)
+        if self.play.playing:                    # only the playhead and the frame, moving together (playback.py):
+            self._time_due = True                # the playhead moves when this time's picture arrives
+            if not self._show():
+                self._time_moves()
+            return
         self.timeChanged.emit()
-        if still:                                # the panel's values and what follows the outline at the new time:
-            self._rows_due().ask()               # the frame after (outline_news.py), the picture asked first
-            self._outline_news.soon()
+        if not self.play.moved_by_hand():        # a scrub's panels wait until it rests (time_rests)
+            self._follow_time()
         self._show()
+
+    def time_rests(self):
+        """A scrub came to rest (playback.py): the full frame, and the panels at the playhead."""
+        self._follow_time()
+        self._show()
+
+    def _follow_time(self):
+        """The panel's values and what follows the outline at the playhead: the frame after (outline_news.py), the
+        picture asked first."""
+        self._rows_due().ask()
+        self._outline_news.soon()
+
+    def _time_moves(self):
+        if self._time_due:
+            self._time_due = False
+            self.timeChanged.emit()
 
     @Slot(str)
     def setTool(self, tool):
@@ -378,17 +398,18 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
 
     def drawn(self) -> bool:
         """The document's own picture is on screen: a frame landed, none is being drawn, and no paint picture of the
-        state shown is still being made (until then the frame shows the last ones; a scripted picture waits for this)."""
-        return self.frames.idle() and self._frame > 0 and self._waiting is None
+        state shown is still being made (until then the frame shows the last ones; a scripted picture waits for this), and
+        no scrub is still moving (its pictures are the moving kind: playback.py)."""
+        return self.frames.idle() and self._frame > 0 and self._waiting is None and not self.play.scrubbing
 
     def _render_all(self):
         """Something outside the document changed (the markers, a 3D render): every node is described again."""
         self._keeper.forget()
         self._render()
 
-    def _show(self):
+    def _show(self) -> bool:
         """The frame at the playhead. The scene doesn't depend on the playhead (the engine evaluates every time), so it
-        is described once per change, never per frame: playing and scrubbing only send `t`."""
+        is described once per change, never per frame: playing and scrubbing only send `t`. False: no picture asked."""
         self._previewing = False                            # the document's own picture is drawn again (action_preview.py)
         if self._scene is None:
             later = []
@@ -406,9 +427,11 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._asked_from = self.placed_index()          # what the picture asked for shows (picture_change.py)
             self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag(),
                                 **self.frame_extras())
-        elif self._shown is not None:                       # no picture for this state: the overlays go live
+            return True
+        if self._shown is not None:                         # no picture for this state: the overlays go live
             self._shown = None
             self.shownChanged.emit()
+        return False
 
     def _pictures_made(self, token):
         """The paint pictures of the state described last are made: described again (now with them) and drawn. A scene with
@@ -427,6 +450,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     def _picture_arrives(self, serial, tag):
         self._frame = serial
         self.frameChanged.emit()                            # the picture and the overlays change together
+        self._time_moves()                                  # playing: the playhead with its picture (setTime)
         if tag == PREVIEW_TAG:                              # an action's hover preview: not the document, the overlays stay
             return
         self._frame_shown(tag)
