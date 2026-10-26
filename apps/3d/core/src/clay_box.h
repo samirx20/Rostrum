@@ -242,7 +242,7 @@ inline V3 mirror_x(V3 p) { return {-p.x, p.y, p.z}; }
 // A step's buffers, shared by every clay (steps run one at a time). Allocated without clearing: only the chunks a
 // step lists are touched, so only they take memory. A big piece's buffers are given back after it.
 struct Buffers {
-  std::unique_ptr<float[]> a, b, orig, after, start;
+  std::unique_ptr<float[]> a, b, orig, after, start, mask;
   std::unique_ptr<uint8_t[]> fixed;
   size_t cap = 0;
   void fit(size_t n) {
@@ -252,6 +252,7 @@ struct Buffers {
     orig.reset(new float[n]);
     after.reset(new float[n]);
     start.reset(new float[n]);
+    mask.reset(new float[n]);
     fixed.reset(new uint8_t[n]);
     cap = n;
   }
@@ -261,6 +262,7 @@ struct Buffers {
     orig.reset();
     after.reset();
     start.reset();
+    mask.reset();
     fixed.reset();
     cap = 0;
   }
@@ -287,6 +289,7 @@ inline float dab_shift(const Step& s, float iv) {
     case Op::Flatten: return kDispCap;
     case Op::Pull: return std::min(len3(s.b) * iv, kDispCap);
     case Op::Crease: return kDispCap;
+    case Op::Mask: return 0.0f;  // paints the mask only: the surface stays
   }
   return kDispCap;
 }
@@ -339,6 +342,8 @@ struct DabUnit {
   const std::vector<uint8_t>* work = nullptr;
   const std::vector<int>* extList = nullptr;
   std::vector<uint8_t>* touched = nullptr;    // out: the chunks a dab worked on (only they are written back)
+  float* M = nullptr;  // the clay's mask (0..1), filled like V; null when the clay has none and no dab paints one
+  std::vector<uint8_t>* maskTouched = nullptr;  // out: the chunks a Mask dab painted (their mask is written back)
 };
 void run_dabs(const DabUnit& u);
 

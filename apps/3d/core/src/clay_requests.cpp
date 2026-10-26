@@ -5,6 +5,8 @@
 #include <pxr/base/gf/ray.h>
 #include <pxr/usd/usdGeom/xformable.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 
@@ -26,7 +28,8 @@ double r1(double v) { return std::round(v * 10) / 10; }
 
 JsObject Core::sculpt(const JsObject& o) {
   Args a(o, "sculpt", {"item", "phase", "camera", "eye", "target", "fov", "frame", "width", "height", "points",
-                       "brush", "size", "strength", "mirror", "accumulate", "folder"});
+                       "brush", "size", "strength", "mirror", "accumulate", "folder", "view", "falloff", "spacing",
+                       "frontOnly", "invert"});
   need_scene("sculpt");
   const std::string phase = a.str("phase");
   if (phase != "begin" && phase != "dab" && phase != "end" && phase != "cancel")
@@ -39,13 +42,19 @@ JsObject Core::sculpt(const JsObject& o) {
     clay::Brush b;
     const std::string op = a.str("brush");
     if (!clay::op_from_name(op.c_str(), b.op))
-      throw Error("sculpt.brush: \"" + op + "\" is unknown. Accepted: add, carve, smooth, pull, flatten, crease");
+      throw Error("sculpt.brush: \"" + op + "\" is unknown. Accepted: add, carve, smooth, pull, flatten, crease, mask");
     b.radius = float(a.num("size"));
     if (!(b.radius > 0)) throw Error("sculpt.size: must be above 0 (the brush radius, metres in the clay's space)");
     b.strength = float(a.num("strength"));
     if (b.strength < 0 || b.strength > 1) throw Error("sculpt.strength: must be 0..1");
     b.mirror = a.flag("mirror", false);
     b.accumulate = a.flag("accumulate", false);
+    b.falloff = float(a.num("falloff", 0.5));
+    if (b.falloff < 0 || b.falloff > 1) throw Error("sculpt.falloff: must be 0..1 (0 soft, 1 a hard edge)");
+    b.spacing = float(a.num("spacing", 0.3));
+    if (b.spacing < 0.05f || b.spacing > 1) throw Error("sculpt.spacing: must be 0.05..1 (a share of the brush radius)");
+    b.frontOnly = a.flag("frontOnly", false);
+    b.invert = a.flag("invert", false);
     clay_->sculpt_begin(a.str("item"), b);
   } else if (!clay_->sculpting()) {
     throw Error("sculpt.phase: no stroke begun; send phase \"begin\" first");
@@ -60,16 +69,20 @@ JsObject Core::sculpt(const JsObject& o) {
   }
 
   // begin / dab: the event's new pointer positions, through the camera, into the clay's own space at the frame
-  std::vector<std::pair<float, float>> px;
+  std::vector<std::array<float, 3>> px;  // x, y and the pen's pressure (1 without one)
   if (a.has("points")) {
     const JsValue& pts = a.need("points");
-    if (!pts.IsArray()) throw Error("sculpt.points: needs a list of [x, y] pixels");
+    const char* need = "sculpt.points: needs a list of [x, y] or [x, y, pressure 0..1] pixels";
+    if (!pts.IsArray()) throw Error(need);
+    auto isnum = [](const JsValue& v) { return v.IsReal() || v.IsInt(); };
+    auto num = [](const JsValue& v) { return v.IsReal() ? v.GetReal() : double(v.GetInt()); };
     for (const JsValue& p : pts.GetJsArray()) {
-      if (!p.IsArray() || p.GetJsArray().size() != 2 || !(p.GetJsArray()[0].IsReal() || p.GetJsArray()[0].IsInt()) ||
-          !(p.GetJsArray()[1].IsReal() || p.GetJsArray()[1].IsInt()))
-        throw Error("sculpt.points: needs a list of [x, y] pixels");
-      auto num = [](const JsValue& v) { return v.IsReal() ? v.GetReal() : double(v.GetInt()); };
-      px.emplace_back(float(num(p.GetJsArray()[0])), float(num(p.GetJsArray()[1])));
+      if (!p.IsArray()) throw Error(need);
+      const JsArray& q = p.GetJsArray();
+      if ((q.size() != 2 && q.size() != 3) || !isnum(q[0]) || !isnum(q[1]) || (q.size() == 3 && !isnum(q[2])))
+        throw Error(need);
+      const float pr = q.size() == 3 ? float(std::clamp(num(q[2]), 0.0, 1.0)) : 1.0f;
+      px.push_back({float(num(q[0])), float(num(q[1])), pr});
     }
   }
   clay::SculptReply r;
@@ -112,6 +125,13 @@ JsObject Core::sculpt(const JsObject& o) {
     out["point"] = vec3(p);
     out["normal"] = vec3(n);
   }
+  // the dab and its picture in one request (CL2): `view` holds the viewport's own view request, drawn right after
+  // the dab, so the screen never waits for a second round trip queued behind the next pointer event
+  if (a.has("view")) {
+    const JsValue& v = a.need("view");
+    if (!v.IsObject()) throw Error("sculpt.view: needs the view request's fields (an object)");
+    out["view"] = JsValue(view(v.GetJsObject()));
+  }
   return out;
 }
 
@@ -137,7 +157,16 @@ JsObject Core::clay_bench(const JsObject& o) {
                   {"liveHash", JsValue(hex(r.live))},
                   {"serialHash", JsValue(hex(r.serial))},
                   {"parallelHash", JsValue(hex(r.parallel))},
-                  {"same", JsValue(r.live == r.serial && r.serial == r.parallel)}};
+                  {"same", JsValue(r.live == r.serial && r.serial == r.parallel)},
+                  {"bigDabs", JsValue(uint64_t(r.bigDabs))},
+                  {"bigCoarseMs", JsValue(r1(r.bigCoarseMs))},
+                  {"bigCoarseP90", JsValue(r1(r.bigCoarseP90))},
+                  {"bigFineMs", JsValue(r1(r.bigFineMs))},
+                  {"bigFineP90", JsValue(r1(r.bigFineP90))},
+                  {"bigLive", JsValue(hex(r.bigLive))},
+                  {"bigSerial", JsValue(hex(r.bigSerial))},
+                  {"bigParallel", JsValue(hex(r.bigParallel))},
+                  {"bigSame", JsValue(r.bigLive == r.bigSerial && r.bigSerial == r.bigParallel)}};
 }
 
 JsObject Core::clay_info(const JsObject& o) {
