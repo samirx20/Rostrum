@@ -33,7 +33,7 @@ pub fn steps(comp: &Node, t: f64, fps: f64, angle: f64, least: usize) -> usize {
     let corners: Vec<HashMap<(&str, usize), Pt>> = (0..=probes)
         .map(|k| {
             let at = t + open * (k as f64 / probes as f64 - 0.5);
-            eval::shutter_at(t, || eval::at(comp, at)).map_or_else(HashMap::new, |c| on_screen(&c))
+            eval::shutter_at(t, at, || eval::at(comp, at)).map_or_else(HashMap::new, |c| on_screen(&c))
         })
         .collect();
     // The most any corner moves across one slice (a layer showing on one side only has no move to measure).

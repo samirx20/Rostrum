@@ -41,6 +41,12 @@ a held pose, a step of "on twos"): on the far side of the jump it takes the valu
 never smears two shots, and a held step doesn't smear into the next. Per field, so other moving layers on that frame
 still blur (engine `scene/eval.rs` `shutter_at`, `near_side`; FRAME.md).
 
+**Blur moves things, never changes them (as After Effects).** A field that decides *what* is drawn rather than where it
+is placed is read at the frame's own time in every sub-frame: a counter's number (`count`), and which picture shows (a
+drawing's frame, paint, grain's frame, a video's frame). So a counting number is one sharp number per frame and a
+frame-by-frame drawing never shows two drawings at once; only the layer's movement blurs. The list is data on the field
+(engine `scene/fields.rs` `CONTENT`; a new keyable field of that sort is added there).
+
 Exports go through the same `frame` request, so preview ≡ export.
 
 **Steps follow the motion** (engine `motion/steps.rs`, as After Effects' adaptive sample limit). `shutterSamples` is the

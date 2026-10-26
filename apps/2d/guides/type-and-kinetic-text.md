@@ -104,6 +104,7 @@ To make a text follow a path layer, use `text.follow` with `path:"<path layer id
 A text can show a number that counts instead of its words: a running total, a price, a percentage. Turn on `counter`
 and key `count` like any number; the engine writes the number on every frame, so the canvas, `look_frame` and the export
 show the same digits, and the text's box (alignment, auto layout, a group that fits its content) follows the number shown.
+A counting text that still has its automatic name is listed as "Counter" ("Counter 2" …), not as the words typed in it; a name you gave it is kept.
 
 | Field | What it does |
 |---|---|
@@ -128,7 +129,7 @@ n.key("count", {0.5: (0, "easeOut"), 2.0: (450, "hold"), 2.4: 900})     # severa
 - The anchor decides which side stays put as digits are added: `anchorX=1` with `align="right"` keeps the last digit
   still (a total that grows to the left), `anchorX=0` keeps the first.
 - Per-letter animation (`letterDelay`) splits the shown number, so each digit can move on its own.
-- With motion blur on (the scene's `shutter`), a fast count blends the digits it passes through within a frame.
+- With motion blur on (the scene's `shutter`), the number stays sharp: each frame shows its own one number, as in After Effects. Only the text's movement (place, turn, size, fade) blurs.
 
 ## Fonts
 

@@ -269,7 +269,7 @@ pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, Str
     // screen needs), averaged by serve.rs.
     let (mut samples, mut eval_ms) = (vec![], 0.0);
     for ts in crate::motion::sub_frames(&scene.comp, req, t)? {
-        let (mk, ms) = crate::scene::eval::shutter_at(t, || markup(scene, ts, alpha))?;
+        let (mk, ms) = crate::scene::eval::shutter_at(t, ts, || markup(scene, ts, alpha))?;
         eval_ms += ms;
         samples.push(mk);
     }

@@ -66,26 +66,29 @@ fn shown(frames: &[super::Pic], t: f64, fps: f64) -> Option<&super::Pic> {
 
 fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
     let mut props = props_at(node, t);
+    // Which picture shows (a drawing's frame, paint, grain's frame, a video's frame) decides what is drawn, so it is
+    // read at the frame's own time even in a motion-blur sub-frame (`content_time`).
+    let tc = content_time(t);
     if node.kind == "drawing" {
-        props.insert("src".into(), Value::from(drawing_src(&node.frames, t, fps)));
-        if let Some(c) = shown(&node.frames, t, fps).and_then(|f| f.2) {
+        props.insert("src".into(), Value::from(drawing_src(&node.frames, tc, fps)));
+        if let Some(c) = shown(&node.frames, tc, fps).and_then(|f| f.2) {
             props.insert("crop".into(), Value::from(c.to_vec()));     // where its ink-only picture lies (stage.rs)
         }
     }
     if !node.paint.is_empty() {
         // Paint on an element (stage_paint.rs): the picture showing now ("" before its first drawing).
-        props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, t, fps)));
+        props.insert("paintSrc".into(), Value::from(drawing_src(&node.paint, tc, fps)));
         props.insert("paintInside".into(), Value::from(node.paint_inside));
     }
     if !node.fill_frames.is_empty() {
         // A painted fill (stage_raster.rs): the painting's drawing showing now is the fill's picture.
-        props.insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, t, fps)));
+        props.insert("fillPicture".into(), Value::from(drawing_src(&node.fill_frames, tc, fps)));
     }
     if node.kind == "grain" {
-        props.insert("frame".into(), Value::from((t * fps + 1e-6).floor()));
+        props.insert("frame".into(), Value::from((tc * fps + 1e-6).floor()));
     }
     if node.kind == "video" {
-        props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, t, fps)));
+        props.insert("picture".into(), Value::from(super::stage_fx::video_picture(node, tc, fps)));
     }
     let mut item = Item {
         id: &node.id,
@@ -110,13 +113,18 @@ fn eval(node: &Node, t: f64, all: bool, fps: f64) -> Option<Item<'_>> {
 }
 
 /// A node's own field values at time `t` (its still values, keyed fields decided by their keys; a counting text's
-/// shown text in `body`). While a motion-blurred frame's sub-frames are built (`shutter_at`), each field is read on
-/// its own side of a jump.
+/// shown text in `body`). While a motion-blurred frame's sub-frames are built (`shutter_at`), a field that decides
+/// what is drawn (fields.rs `content`: a counter's number) is read at the frame's own time, so the sub-frames agree
+/// on it and only movement blurs (as in After Effects); every other field is read on its own side of a jump.
 pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
     let mut props = node.props.clone();
-    let centre = CENTRE.with(|c| c.get());
+    let offset = OFFSET.with(|c| c.get());
     for (field, keys) in &node.anim {
-        let at = centre.map_or(t, |c| near_side(keys, c, t));
+        let at = match offset {
+            None => t,
+            Some(o) if super::fields::content(node.kind, field) => t - o,
+            Some(o) => near_side(keys, t - o, t),
+        };
         props.insert(field.clone(), track_value(keys, at));
     }
     if node.kind == "text" {
@@ -126,17 +134,25 @@ pub fn props_at(node: &Node, t: f64) -> Map<String, Value> {
 }
 
 thread_local! {
-    /// The time of the frame whose shutter is open (crate::motion), while its sub-frames are evaluated.
-    static CENTRE: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
+    /// How far the sub-frame being evaluated lies from its frame (crate::motion; sub-frame time − frame time), while
+    /// a motion-blurred frame's sub-frames are evaluated. Kept as an offset, so a layer read at its own shifted time
+    /// (a letter's delay) finds its own frame time too.
+    static OFFSET: std::cell::Cell<Option<f64>> = const { std::cell::Cell::new(None) };
 }
 
-/// `f` evaluated as a sub-frame of the frame at `centre`: no field's value crosses a jump (a key after a hold key)
-/// between the frame's time and the sub-frame's, so a cut never smears two shots (MOTION.md › Motion blur).
-pub fn shutter_at<T>(centre: f64, f: impl FnOnce() -> T) -> T {
-    CENTRE.with(|c| c.set(Some(centre)));
+/// `f` evaluated as the sub-frame at `sub` of the frame at `centre`: no field's value crosses a jump (a key after a
+/// hold key) between the frame's time and the sub-frame's, so a cut never smears two shots, and what is drawn is the
+/// frame's own (MOTION.md › Motion blur).
+pub fn shutter_at<T>(centre: f64, sub: f64, f: impl FnOnce() -> T) -> T {
+    OFFSET.with(|c| c.set(Some(sub - centre)));
     let out = f();
-    CENTRE.with(|c| c.set(None));
+    OFFSET.with(|c| c.set(None));
     out
+}
+
+/// The time that decides what is drawn at `t`: `t` itself, or in a motion-blur sub-frame its frame's own time.
+pub fn content_time(t: f64) -> f64 {
+    t - OFFSET.with(|c| c.get()).unwrap_or(0.0)
 }
 
 /// The time to read a track at for a sub-frame at `t` of the frame at `centre`: `t`, or the near side of the first
