@@ -61,7 +61,7 @@ class PaintEdge(QObject):
         self._asked, self._layer, self._path, self._at = [], "", "", (0.0, 0.0)
         self._others, self._others_at, self.places = "", (0.0, 0.0), {}
         bridge.frames.placed.connect(self._on_placed)
-        for s in (bridge.toolChanged, bridge.selectedItemsChanged, bridge.painter.changed):
+        for s in (bridge.toolChanged, bridge.selectedItemsChanged, bridge.painter.targetChanged):
             s.connect(self._retarget)
 
     def ids(self) -> list[str]:
