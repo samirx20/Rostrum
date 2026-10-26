@@ -334,9 +334,11 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         self._stepping = event.kind == "preview"
         super()._on_doc(event)
         known = event.kind != "reset" or event.edits is not None    # a drag taken back says what it undid: those rows
-        self._guard(lambda: self._drag_step(change=not self._stepping) if known else self._rebuild())
-        if event.kind == "change":             # a drag renders once, when it lands (never during one: Transport.held)
-            self._restore(event.change)        # (after the rows: each lane meets the picks with the blocks they name)
+        with self._picks_after():               # (an undo / redo picks what it touched: the rows' check after it)
+            self._guard(lambda: self._drag_step(change=not self._stepping) if known else self._rebuild())
+            if event.kind == "change":
+                self._restore(event.change)     # (after the rows: each lane meets the picks with the blocks they name)
+        if event.kind == "change":              # a drag renders once, when it lands (never during one: Transport.held)
             self.transport.changed()
 
     def close(self):

@@ -16,7 +16,11 @@ class Selection:
         self.range: tuple[float, float] | None = None    # a time range on the ruler (seconds), or none
 
     def set(self, ids, anchor: str | None = None) -> list[str]:
-        self.ids = list(dict.fromkeys(i for i in ids if i))
+        """The same ids again (a pick settling) keep the very list: what is worked out per selection is kept by it
+        (the lanes' picks by row, the panel's maps)."""
+        ids = list(dict.fromkeys(i for i in ids if i))
+        if ids != self.ids:
+            self.ids = ids
         self.anchor = anchor if anchor is not None else (self.ids[-1] if self.ids else "")
         return self.ids
 
