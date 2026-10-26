@@ -3,11 +3,12 @@ import RostrumKit
 import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
+import "Picks.js" as Picks
 
 // One track's things in an arrangement row, drawn only (clicks are the Timeline's): notes as thin bars placed
 // by pitch (a chord: one per key), drum hits as ticks placed by drum, recorded clips as blocks with their
 // waveform; clips and lines that overlap share the lane in rows (pick.stack); a clip being cleaned fills
-// left to right. Every selected one is drawn in the accent colour (backend.picked). `ruler` gives the time mapping.
+// left to right. Every selected one is drawn in the accent colour (Picks.js). `ruler` gives the time mapping.
 // One painted surface per row, not a few items per note: a song of 14,000 notes made over a hundred thousand
 // items and over a gigabyte of screen memory. Only what is on screen is painted, and it is painted again only
 // when the row, the zoom, the scroll or the selection changes.
@@ -34,7 +35,7 @@ Item {
     property int slot: 0        // its row: after a resize, rows paint again in turn (ViewCanvas)
     readonly property int pad: 3
     readonly property real mark: Math.max(2, Math.min(5, height / 9))     // a note bar's thickness
-    readonly property var picked: backend.picked                           // one read per change
+    readonly property var picked: Picks.row(backend, backend.pickStamp, track.id)   // this row's picks only, one shared object
     readonly property var cleaning: mixer.cleaning.progress                // clip id -> 0..1 while cleaning
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 

@@ -3,6 +3,7 @@ import RostrumKit
 import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
+import "Picks.js" as Picks
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
@@ -22,7 +23,7 @@ Item {
     readonly property real foldedHeight: 18
     readonly property real padTop: 6
     readonly property real plotH: height - padTop - 4
-    readonly property var picked: backend.picked
+    readonly property var picked: Picks.all(backend, backend.pickStamp)     // one shared object a selection
     property string mode: ""                    // "" | "press" | "bar" | "line"
     property string hit: ""
     property real x0: 0

@@ -33,6 +33,8 @@ def bridge(monkeypatch):
     b = SoundBridge(doc)
     yield b
     b.close()
+    import shiboken6
+    shiboken6.delete(b)        # freed, as a closed song is: its jobs waiting for a frame never run ahead of the next test's
 
 
 def drag(b, item, dt, dsemi, free=False, only_time=False):

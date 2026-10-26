@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // Every click and drag on the Editor's piano roll / drum rows, in one place (the same rules as LaneInput):
 // click selects alone, Ctrl+click adds / removes, Shift+click the run between; a press that moves 4 px or more
@@ -75,7 +76,7 @@ MouseArea {
             handle = "length"
             return
         }
-        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.pressSelect(hit)   // the outline now, the panel after the frame
+        if (hit !== "" && !ctrl(e) && !shift(e) && !Picks.all(backend, backend.pickStamp)[hit]) backend.pressSelect(hit)   // the outline now, the panel after the frame
         mode = hit !== "" ? "press" : "empty"
     }
     onPositionChanged: (e) => {
@@ -86,7 +87,7 @@ MouseArea {
         if (mode === "hpress" && far(e)) mode = backend.beginHandle(hit, handle) ? "handle" : ""
         if (mode === "handle") { backend.handleTo((e.x - x0) / bars.perSec, 0, ctrl(e)); return }
         if (mode === "press" && far(e)) {
-            if (!backend.picked[hit]) backend.clickSelect(hit, ctrl(e), false)
+            if (!Picks.all(backend, backend.pickStamp)[hit]) backend.clickSelect(hit, ctrl(e), false)
             mode = backend.beginDrag(hit) ? "drag" : ""
         } else if (mode === "empty" && far(e)) {
             mode = "box"

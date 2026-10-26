@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // A group's header in the arrangement (DESIGN.md §3.1d): a bus that tracks play into, drawn as a row above them with
 // a fold arrow (click folds the tracks behind this one row, Alt+click folds or unfolds every group), its name (click
@@ -12,7 +13,7 @@ Rectangle {
     property var track
     property bool showAuto: true
     signal menuWanted(real x, real y)       // right-click: the host opens the group's actions (backend.itemMenu)
-    readonly property bool on: !!backend.pickedHeads[track.id]
+    readonly property bool on: !!Picks.heads(backend, backend.pickStamp)[track.id]
     readonly property real indent: (track.depth || 0) * 14
     // The name comes first: the track count, then the automation button, give way when the name would be cut (an open
     // automation lane keeps its button, so it can be closed). The name's own hover tip shows it whole when still too long.

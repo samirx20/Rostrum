@@ -68,6 +68,7 @@ class RowsView(RollView):
             self.blocksBack.emit(k)
         for k, p in patches:
             self.blocksPatched.emit(k, p)
+        self._rows_sent()                           # the selected blocks' rows (select_slots: Picks.js)
 
     def rows_now(self) -> list[dict]:
         """The arrangement's rows with their blocks, as made (QML's `tracks` is their layout only)."""

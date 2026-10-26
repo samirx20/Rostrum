@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // Every click and drag on the arrangement's lanes, in one place (select first, then act: INTERACTION.md §1.3, §1.10).
 // On an item: click selects it alone, Ctrl+click adds / removes, Shift+click takes the run between on its track;
@@ -85,14 +86,14 @@ MouseArea {
         }
         var h = handleUnder(e)
         if (h.id) { hit = h.id; handle = h.handle; rowH = Math.max(1, tl.hOf(u.r) - 8); mode = "hpress"; return }
-        if (hit !== "" && !ctrl(e) && !shift(e) && !backend.picked[hit]) backend.pressSelect(hit)
+        if (hit !== "" && !ctrl(e) && !shift(e) && !Picks.all(backend, backend.pickStamp)[hit]) backend.pressSelect(hit)
         mode = hit !== "" ? "press" : "empty"
     }
     onPositionChanged: (e) => {
         x1 = e.x; y1 = e.y
         if (!pressed) { var h = handleUnder(e); hover = h.handle || ""; return }
         if (mode === "press" && far(e)) {
-            if (!backend.picked[hit]) backend.clickSelect(hit, ctrl(e), false)
+            if (!Picks.all(backend, backend.pickStamp)[hit]) backend.clickSelect(hit, ctrl(e), false)
             mode = backend.beginDrag(hit) ? "drag" : ""
         } else if (mode === "hpress" && far(e)) {
             mode = backend.beginHandle(hit, handle) ? "handle" : ""

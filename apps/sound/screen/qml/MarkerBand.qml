@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // The named markers above the ruler, each a small tag at its time. Click selects the marker and puts the playhead on
 // it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels the renaming);
@@ -40,7 +41,7 @@ Item {
         delegate: Rectangle {
             required property int index
             readonly property var modelData: band.marks[index]
-            readonly property bool on: !!backend.pickedHeads[modelData.id]
+            readonly property bool on: !!Picks.heads(backend, backend.pickStamp)[modelData.id]
             readonly property bool naming: backend.renaming === modelData.id
             x: Math.round(band.ruler.xOf(modelData.t) + (modelData.id === band.sharedId ? band.sharedDx : 0)); y: 1
             visible: !modelData.named && x + width > 0 && x < band.width

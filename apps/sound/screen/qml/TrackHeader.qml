@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import "Picks.js" as Picks
 
 // A track's header in the arrangement, laid out like a desk channel's head (Logic, Ableton, Bitwig):
 // line 1 its colour, a small picture of what it holds (TrackIcon), its name (click selects the track; Ctrl / Shift
@@ -12,7 +13,7 @@ Rectangle {
     objectName: "trackHeader"
     property var track
     property bool showAuto: true            // off while the arrangement is slim (its lanes cannot open there)
-    readonly property bool on: !!backend.pickedHeads[track.id]
+    readonly property bool on: !!Picks.heads(backend, backend.pickStamp)[track.id]
     signal menuWanted(real x, real y)       // right-click: the host opens the track's actions (backend.itemMenu)
     signal dragMoved(real x, real y)        // the header is being dragged (pointer in this header's coordinates): into / out of a group
     signal dragEnded(real x, real y, bool dropped)
