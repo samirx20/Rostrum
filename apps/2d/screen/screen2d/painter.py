@@ -14,6 +14,7 @@ from rostrum2d.names import display_name
 from rostrum2d import paint_overflow
 from rostrum2d.ops_paint import PAINTABLE
 from rostrum_gui import rows
+from rostrum_gui.after_frame import AfterFrame
 from rostrum_gui.frames import ImageProvider
 from rostrum_gui.model import RowsModel
 from rostrum_gui.select_soon import SelectSoon
@@ -29,7 +30,15 @@ from .strokes import StrokeDrag, check_showing
 
 
 class Painter(BrushPanel):
-    changed = Signal()
+    # What QML reads, in three groups, each told only when one of its values changed (_refresh): one signal for all
+    # of them re-ran every painter binding of the window (the Layer ▾ list, the onion rows, the brush header) at each
+    # new drawing and each frame of a scrub.
+    framesChanged = Signal()        # the drawing at the playhead
+    onionChanged = Signal()         # the onion skin
+    targetChanged = Signal()        # what the pen paints on
+    _GROUPS = (("framesChanged", ("drawingId", "now", "newHold")),
+               ("onionChanged", ("onionOn", "onionReach", "onionSerial", "onionHere")),
+               ("targetChanged", ("targetName", "targetValue", "targetChoices", "canErase", "canNewLayer", "newLayerNext")))
     _revealed = Signal(object, object, object)     # the eraser's ink, the frame without its layer, an error (worker thread)
 
     def __init__(self, bridge, parent=None):
@@ -52,7 +61,8 @@ class Painter(BrushPanel):
         self._revealed.connect(self._reveal)
         self.previews = brush_presets.PreviewProvider()     # image://brushes: the shipped ones and My brushes
         self._mine = []                                 # My brushes: the project's saved brushes (brush_panel.py)
-        self._told = None                               # what QML last heard (_refresh)
+        self._told = [None] * len(self._GROUPS)         # what QML last heard of each group (_refresh)
+        self._soon = AfterFrame(self._refresh, self)    # _refresh the frame after (the playhead moved)
         self.ahead = None                               # the eraser's reveal drawn ahead (reveal_ahead.py; the bridge's)
         self.model = RowsModel(rows.ROLES, self)
         self.model.reset(self.brush.rows(bool(self.b.doc.folder)))
@@ -60,8 +70,9 @@ class Painter(BrushPanel):
         bridge.docChanged.connect(self._doc_changed)
         bridge.docStepped.connect(self._doc_changed)       # a drag's step moves what the onion shows too
         bridge.outlineChanged.connect(self._refresh)
-        bridge.timeChanged.connect(self._refresh)          # the navigator and the onion follow the playhead
-        self.changed.connect(self.headerChanged)        # the header names what the pen paints on (not brushChanged: a
+        bridge.timeChanged.connect(self._soon.ask)         # the navigator and the onion follow the playhead, the frame
+                                                        # after its own (a new drawing's frame tools showing: ~13 ms)
+        self.targetChanged.connect(self.headerChanged)  # the header names what the pen paints on (not brushChanged: a
                                                         # pick re-ran the brush list, the paint tool and its rows)
         self.brushChanged.connect(self.headerChanged)   # ... and the brush being edited
 
@@ -84,7 +95,7 @@ class Painter(BrushPanel):
         item = aim if aim is not None and aim is not t else t
         return item if item and (item["type"] == "drawing" or item.get("frames")) else None
 
-    onionHere = Property(bool, lambda self: self.through() is None, notify=changed)   # the onion skin lies over the layer's box
+    onionHere = Property(bool, lambda self: self.through() is None, notify=onionChanged)   # the onion skin lies over the layer's box
 
     def _cells(self) -> dict | None:
         """The drawing whose cells the timeline shows (and the onion skin, over its box): not a painting painted in
@@ -108,33 +119,28 @@ class Painter(BrushPanel):
         t, d = self.target(), self._aim()
         return t if t is not None and d is not None and d is not t else None
 
-    @Property(str, notify=changed)
+    @Property(str, notify=framesChanged)
     def drawingId(self):
         """The selected frame-by-frame layer (Draw each frame on): only it shows the timeline's frame tools (UX_SPEC
         3.9). Alt+N works on any painted element (it turns Draw each frame on): it reads drawing(), not this."""
         d = self._cells()
         return d["id"] if d and each_frame(d) else ""
 
-    @Property("QVariantMap", notify=changed)
+    @Property("QVariantMap", notify=framesChanged)
     def now(self):
         """Which drawing buttons apply at the playhead (see framing.state); {} with no drawing selected."""
         d = self.drawing()
         return framing.state(d, self._n()) if d else {}
 
-    @Property("QVariantList", notify=changed)
-    def frameMarks(self):
-        d = self._cells()
-        return framing.marks(self.b.placed_item(d["id"]), self.b.comp()["fps"], self.b.comp()["duration"]) if d else []     # composition seconds
+    onionOn = Property(bool, lambda self: self._onion, notify=onionChanged)
+    onionReach = Property("QVariantMap", lambda self: dict(self._reach), notify=onionChanged)
 
-    onionOn = Property(bool, lambda self: self._onion, notify=changed)
-    onionReach = Property("QVariantMap", lambda self: dict(self._reach), notify=changed)
-
-    @Property(int, notify=changed)
+    @Property(int, notify=framesChanged)
     def newHold(self):
         d = self.drawing()
         return int(d.get("newHold") or 2) if d else 2
 
-    @Property(int, notify=changed)
+    @Property(int, notify=onionChanged)
     def onionSerial(self):
         return self._serial if self._onion and self._built else 0
 
@@ -148,12 +154,12 @@ class Painter(BrushPanel):
         p = fill_aim.painting_of(self.b.doc, t)
         return p if p is not None and fill_aim.on_fill(t, self._on_fill) else t
 
-    @Property(str, notify=changed)
+    @Property(str, notify=targetChanged)
     def targetName(self):
         d = self._aim()
         return display_name(d) if d else "New drawing"
 
-    @Property(str, notify=changed)
+    @Property(str, notify=targetChanged)
     def targetValue(self):
         """Which of targetChoices is on: "selected" or "new"; on an element with a painted fill "own" or "fill"."""
         d = self._aim()
@@ -161,7 +167,7 @@ class Painter(BrushPanel):
             return fill_aim.FILL if self.through() is not None else fill_aim.OWN
         return "selected" if d else "new"
 
-    @Property("QVariantList", notify=changed)
+    @Property("QVariantList", notify=targetChanged)
     def targetChoices(self):
         """Painting on › Layer ▾: the selected layer (an element with a painted fill: its own paint and the painting),
         the other painted layers (newest first), New drawing."""
@@ -186,7 +192,7 @@ class Painter(BrushPanel):
             self.b.select(which)
         else:
             self._fresh = self.b.selectedLayer if which == "new" else None
-        self.changed.emit()
+        self._refresh()
 
     @Slot()
     def paintFill(self):
@@ -198,24 +204,24 @@ class Painter(BrushPanel):
     def _erasing(self) -> bool:
         return self.brush.values.get("mode") == "erase"
 
-    @Property(bool, notify=changed)
+    @Property(bool, notify=targetChanged)
     def canErase(self):
         """The eraser has paint to take away: what the pen paints on holds some (else the pointer says it can't)."""
         d = self._aim()
         return bool(d and (d["type"] == "drawing" or d.get("frames")))
 
-    @Property(bool, notify=changed)
+    @Property(bool, notify=targetChanged)
     def canNewLayer(self):
         d = self._aim()
         return bool(d and d.get("frames"))
 
-    newLayerNext = Property(bool, lambda self: self._new_layer, notify=changed)
+    newLayerNext = Property(bool, lambda self: self._new_layer, notify=targetChanged)
 
     @Slot()
     def newPaintLayer(self):
         """The next stroke starts a new paint layer on top (paint.stroke layer "new"); pressed again: not."""
         self._new_layer = not self._new_layer
-        self.changed.emit()
+        self._refresh()
 
     # ---- the pen: one stroke = one gesture = one change -----------------------------------------------------
     @Slot(float, float, float, result=bool)
@@ -469,20 +475,20 @@ class Painter(BrushPanel):
 
     def _refresh(self):
         """The outline or the playhead moved: announced only when what QML reads of the painter changed (sent on every
-        edit and every frame of a scrub, it re-ran the paint panel, the brush header and the frame marks: ~5 ms).
-        Worked out only when what it is worked out from moved (_paint_state)."""
+        edit and every frame of a scrub, it re-ran the paint panel, the brush header and the frame marks: ~5 ms), and
+        then only that group (_GROUPS). Worked out only when what it is worked out from moved (_paint_state)."""
+        self._soon.cancel()
         state, seen = self._paint_state(), self._seen
         if seen is not None and seen[0] is state[0] and seen[1] is state[1] and seen[2] == state[2]:
             return
         self._seen = state
         if self._stroke is None:                    # not while a stroke is being drawn: the neighbours don't change
             self._rebuild_onion()
-        told = (self.drawingId, self.now, self.frameMarks, self.onionOn, self.onionReach, self.newHold,
-                self.onionSerial, self.onionHere, self.targetName, self.targetValue, self.targetChoices, self.canErase,
-                self.canNewLayer, self.newLayerNext)
-        if told != self._told:
-            self._told = told
-            self.changed.emit()
+        for i, (signal, names) in enumerate(self._GROUPS):
+            told = tuple(getattr(self, n) for n in names)
+            if told != self._told[i]:
+                self._told[i] = told
+                getattr(self, signal).emit()
 
     def _rebuild_onion(self):
         d = self._cells()

@@ -161,7 +161,9 @@ def _action(d: dict) -> Action:
     rules = ([] if d["locked_ok"] else [_UNLOCKED]) + ([] if d["frame_ok"] else [_NO_FRAME]) + ([d["when"]] if d["when"] else [])
     when = {"all": rules} if len(rules) > 1 else rules[0] if rules else None
     calls = (lambda f, spec=d["calls"]: calls_of(spec, f, f.at)) if d["calls"] else None
-    any_calls = action_rules.ANY.get((d["calls"] or {}).get("rule"))
+    spec = d["calls"] or {}
+    any_fn = action_rules.ANY.get(spec.get("rule"))
+    any_calls = (lambda f, kw={k: v for k, v in spec.items() if k != "rule"}: any_fn(f, **kw)) if any_fn else None
     return Action(f"layer:{d['id']}", d["label"], when=when, kinds=d["kinds"], min_targets=d["min_targets"],
                   max_targets=d["max_targets"], importance=d["importance"], importance_one=d["importance_one"], rank=d["rank"], job=d["job"],
                   group=d["group"], bar=d["bar"], calls=calls, do=d["do"], why=d["why"], panel=d["panel"],

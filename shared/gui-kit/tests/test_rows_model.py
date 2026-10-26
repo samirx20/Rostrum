@@ -29,3 +29,10 @@ def test_changes_are_row_by_row():
     log.clear()
     m.set([{"id": "c", "t": 1}, {"id": "a", "t": 2}, {"id": "x", "t": 1}])                          # nothing changed: nothing announced
     assert log == []
+
+
+def test_rows_by_id_and_place():
+    """QML finds a row through these (LayerRows.qml), never by reading every row."""
+    m = RowsModel()
+    m.set([{"id": "a"}, {"id": "b"}])
+    assert (m.indexOf("b"), m.indexOf("nope"), m.at(1), m.at(5)) == (1, -1, {"id": "b"}, {})

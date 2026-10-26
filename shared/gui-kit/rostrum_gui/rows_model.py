@@ -4,7 +4,7 @@ at each announcement, which dropped a key (and its mouse grab) under the pointer
 per change; over this model a row's delegate lives as long as the row does. The delegate reads the row as `modelData`."""
 from __future__ import annotations
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Slot
 
 
 class RowsModel(QAbstractListModel):
@@ -20,6 +20,18 @@ class RowsModel(QAbstractListModel):
 
     def data(self, index, role=Qt.UserRole + 1):
         return self._rows[index.row()] if index.isValid() and role == Qt.UserRole + 1 else None
+
+    # A row by id or by place, for QML: reading the whole list into the screen's script to find one row cost ~100 ms
+    # a pick at 200 layers (every row with its keys and frames made into script objects).
+    @Slot(str, result=int)
+    def indexOf(self, row_id: str) -> int:
+        """The place of the row with this id; -1: none."""
+        return next((i for i, r in enumerate(self._rows) if r["id"] == row_id), -1)
+
+    @Slot(int, result="QVariantMap")
+    def at(self, i: int) -> dict:
+        """The row at this place; {} past the end."""
+        return self._rows[i] if 0 <= i < len(self._rows) else {}
 
     def set(self, rows: list[dict]) -> None:
         """Make the model show `rows`, with the fewest changes: removals, then in order each row's insert, move or update."""

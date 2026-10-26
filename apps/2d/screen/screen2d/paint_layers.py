@@ -37,7 +37,8 @@ class PaintLayers(QObject):
         for sig in (bridge.docChanged, bridge.outlineChanged, bridge.frameChanged):
             sig.connect(self._tell)
         bridge.toolChanged.connect(self.changed)           # Draw on: the panel reads it all afresh
-        bridge.painter.changed.connect(self._painter_changed)
+        for sig in (bridge.painter.targetChanged, bridge.painter.framesChanged):    # what it paints on, the drawing at the playhead
+            sig.connect(self._painter_changed)
 
     def _tell(self):
         """Told only while Draw is on: the panel is shown only then (a layer dragged with Move re-ran its rows at each

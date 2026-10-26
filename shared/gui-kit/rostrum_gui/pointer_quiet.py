@@ -50,6 +50,16 @@ def before_next_input(fn) -> None:
         _before.append(fn)
 
 
+def acted() -> None:
+    """A key the person pressed reached us by a shortcut: Qt hands a Shortcut's key to the shortcut before any window
+    sees it, so the watcher missed it and Ctrl+A made its settings panel inside the key's own frame (200 layers:
+    ~60 ms). The key hub tells it here."""
+    busy()                                  # (the watcher exists)
+    app = QGuiApplication.instance()
+    if isinstance(app, QGuiApplication):
+        _watch[id(app)].last = time.monotonic()
+
+
 def busy() -> bool:
     app = QGuiApplication.instance()
     if not isinstance(app, QGuiApplication):

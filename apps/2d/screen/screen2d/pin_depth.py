@@ -51,7 +51,9 @@ def depth_calls(f, value: float) -> list[dict]:
 
 
 def facts(f) -> dict:
-    ok = bool(f.ids) and all(_own(f.doc, i) for i in f.ids)
+    """Pin to frame's facts (action_rules.Facts): `_own` for every picked layer, asked once per kind and per parent."""
+    ok = bool(f.ids) and FRAME not in f.kinds and all(F.param(k, "screenLock") is not None for k in f.kinds) and all(
+        f.doc.item(p)["type"] == "comp" for p in {w[0] for w in f.where.values()})
     pinned = [bool(it.get("screenLock")) for it in f.items]
     return {"pin_ok": ok, "any_pinned": ok and any(pinned), "any_unpinned": ok and not all(pinned)}
 
