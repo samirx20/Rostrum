@@ -99,6 +99,7 @@ The error codes and the one-line message format are defined once, in `shared/mcp
 - On open, if the file's hash doesn't match the history's last line, the difference is recorded first as a change by `outside`, so history never silently disagrees with the file. A damaged history line stops the save and names the file and line.
 - Save stamps (save time, generator) are not tracked, so a save that changes nothing records nothing.
 - Kept whole; no trimming until a real project shows it is too big.
+- **An older file is brought up to date once** (`formats.py`). Opening a file of an older format runs the app's format steps (`DocKind.migrations`) and records them as one change by Rostrum that carries `format: [from, to]`. The document file's `version` is the format of the data at its step `at`; steps after it in the history can carry the data further, so the format the opened data is in comes from the last such change, not from the file's number alone (on 2026-10-26 a song folded before its upgrade step was moved again on every open). Nobody's undo takes that change back (refused in words); restoring a version from before it brings the restored data up to date again. A history that already holds a step run twice (written before steps carried their format, read by `DocKind.upgraded`) is put right on open: the repeat is taken back as a change by Rostrum, or, when something since touched the same things, left as it is with one change saying so.
 
 ### Undo and redo
 - Undo is a **new change** that applies the reverse of an earlier one (`"Undid: Move logo"`; a redo reads `"Redid: Move logo"`). History only grows, so undo itself can be undone and every step stays visible.
@@ -124,7 +125,7 @@ with doc.gesture("Move logo"):         # person drags; many small updates
 - Repeated small nudges by the same person on the same fields (arrow keys, typing in a number box), with nothing else in between, within about a second, are merged into the last change.
 
 ### Named versions and who changed what
-- A **version** is a name on a point in history (`"before client notes"`). Restoring is a new change back to that point, so it can be undone.
+- A **version** is a name on a point in history (`"before client notes"`). Restoring is a new change back to that point, so it can be undone. A version from before the file was brought up to date comes back in today's format (it plays as it did).
 - `history.who(id, field)` gives the last change that touched a value: who, when, the label. The history panel shows each change as you / agent / script.
 
 ## 7. Re-running a script never wipes a person's work

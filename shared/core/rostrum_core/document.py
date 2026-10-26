@@ -92,19 +92,19 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
             return self.history.changes[-1]
         return self.commit(work, edits, who, label, calls, session, idx=idx)
 
-    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=(), idx=None) -> Change:
+    def commit(self, work, edits, who, label, calls=(), session=None, undoes=(), redoes=(), idx=None, format=None) -> Change:
         """Record an already-checked new tree as one change (used by apply, undo, merge, gestures). Live (live.py): if
         the door took in another program's steps first, `work` is an older picture, so the edits go on top of now.
-        `idx`: work's index, when known."""
+        `idx`: work's index, when known. `format`: [from, to], an upgrade's file formats (formats.py)."""
         with self._door() as caught:
             if caught:
                 work, idx = E.fork(self.data, self.kind.lists, self._index())
                 edits = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
-            return self._record(work, edits, who, label, calls, session, undoes, redoes, idx)
+            return self._record(work, edits, who, label, calls, session, undoes, redoes, idx, format)
 
-    def _record(self, work, edits, who, label, calls, session, undoes, redoes, idx=None) -> Change:
+    def _record(self, work, edits, who, label, calls, session, undoes, redoes, idx=None, format=None) -> Change:
         c = Change(self.seq + 1, self.seq, who, label, _now(), list(edits), list(calls), session,
-                   "", list(undoes), list(redoes), self.clock(), joint.current() or joint.new_id())
+                   "", list(undoes), list(redoes), self.clock(), joint.current() or joint.new_id(), format)
         c.hash_of(work)                     # worked out when first read (saving, comparing), not on every change
         self.data = work
         if idx is not None:
