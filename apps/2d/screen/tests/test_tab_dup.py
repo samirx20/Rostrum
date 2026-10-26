@@ -97,10 +97,11 @@ def test_ctrl_d_right_after_drawing_a_shape_puts_the_copy_24_px_on(screen):
     QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
     for k in range(1, 9):
         QTest.mouseMove(win, a + (z - a) * k / 8)
+    before = {it["id"] for it in b.doc.items()}
     QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, z)
-    QTest.qWait(50)
-    drawn = b.doc.item(b.multi.ids[0])
-    _key(win, Qt.Key_D, Qt.ControlModifier)
+    drawn = next(it for it in b.doc.items() if it["id"] not in before)
+    _key(win, Qt.Key_D, Qt.ControlModifier)     # at once: the shape is picked the frame after its release, or before
+    #                                             the next key if that comes first (select_soon.py)
     copy = b.doc.item(b.multi.ids[0])
     assert copy["id"] != drawn["id"]
     assert (round(copy["x"] - drawn["x"]), round(copy["y"] - drawn["y"])) == (24, 24)

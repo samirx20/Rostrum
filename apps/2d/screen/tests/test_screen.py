@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rostrum_core import Document  # noqa: E402
 from rostrum2d import KIND, run_source, textsize  # noqa: E402
 from rostrum_core.keys import keys_of  # noqa: E402
-from rostrum_gui.pointer import wait  # noqa: E402
+from rostrum_gui.pointer import wait, wait_until  # noqa: E402
 from screen2d import frames  # noqa: E402
 from screen2d.bridge2d import Bridge2D  # noqa: E402
 
@@ -91,11 +91,12 @@ def test_canvas_drag_is_one_undo_step_and_keys_an_animated_field(bridge):
     held = {k: v for k, v in shown()["x"].items() if k in ("valid", "holds")}
     for dx in (5, 10, 20):
         bridge.moveBy(dx, 4)
-        if dx == 5:     # a step's rows (values only, rows.evaluate step): exact, keyed, what shows as at the press
+        if dx == 5:     # a step's rows (values only, rows.evaluate step), the frame after the step's: exact, keyed,
+            wait_until(lambda: shown()["x"]["value"] == 205, "the first step's rows")    # what shows as at the press
             assert (shown()["x"]["value"], shown()["y"]["value"]) == (205, 94)
             assert shown()["x"]["anim"] == bridge.anim_state(bridge.doc.item("box"), "x")
             assert {k: shown()["x"][k] for k in held} == held
-    wait(40)            # the rows follow the later steps once a screen refresh is over (news.OnceAFrame)
+    wait_until(lambda: shown()["x"]["value"] == 220, "the last step's rows")   # once a refresh is over (news.OnceAFrame)
     full = {r["id"]: (r["value"], r["anim"]) for r in bridge._rows() if r["row"] == "param"}   # every row read again
     assert shown()["x"]["value"] == 220 and {i: (r["value"], r["anim"]) for i, r in shown().items()} == full
     bridge.endDrag()
