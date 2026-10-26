@@ -96,6 +96,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self._scene = None                                  # the engine's scene, described once per change (_render)
         self._keeper = Keeper()                             # ... again only where the change touched (scene_keep.py)
         self._waiting = None                                # the document state whose paint pictures are being made
+        self._ahead = None                                  # ... whose pictures are made while stand-ins show (write_on.Ahead)
+        self._ahead_jobs, self._ahead_at = [], None         # (those pictures, and the playhead they were ordered for)
         self._pictures = PaintPictures(self)                # ... off this thread (paint_pictures.py)
         self._pictures.done.connect(self._pictures_made)
         self._pictures.failed.connect(self._fail)
@@ -401,7 +403,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         """The document's own picture is on screen: a frame landed, none is being drawn, and no paint picture of the
         state shown is still being made (until then the frame shows the last ones; a scripted picture waits for this), and
         no scrub is still moving (its pictures are the moving kind: playback.py)."""
-        return self.frames.idle() and self._frame > 0 and self._waiting is None and not self.play.scrubbing
+        return self.frames.idle() and self._frame > 0 and self._waiting is None and self._ahead is None and not self.play.scrubbing
 
     def _render_all(self):
         """Something outside the document changed (the markers, a 3D render): every node is described again."""
@@ -421,9 +423,17 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             except Exception as e:  # noqa: BLE001
                 self._scene = False                         # tried; the next change tries again
                 self._fail(str(e))
-            self._waiting = self.doc.data if later and self._scene else None
+            waits = [job for job in later if not getattr(job, "ahead", False)]
+            self._waiting = self.doc.data if waits and self._scene else None
+            self._ahead = self.doc.data if later and not waits and self._scene else None
+            self._ahead_at = None
             if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile
                 self._pictures.make(later, self._waiting)
+            self._ahead_jobs = later if self._ahead is not None else []     # drawn now with stand-ins (Drawn so far's
+        if self._ahead is not None and self._ahead_at != self._t:          # frames: the whole drawing), again as its
+            self._ahead_at = self._t                                       # pictures are made, those nearest the
+            self._ahead_jobs.sort(key=lambda job: abs(job.at - self._t))   # playhead first (made ones are only read)
+            self._pictures.make(list(self._ahead_jobs), self._ahead)
         if self._scene and self._waiting is None and self._ghost is not None and self._ghost.moved:
             self._ghost.draw()                              # a drag of many layers: drawn where they are now (ghost_move.py)
             return True
@@ -440,8 +450,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     def _pictures_made(self, token):
         """The paint pictures of the state described last are made: described again (now with them) and drawn. A scene with
         paintings has its rows read again too: the Fill row and its picker show a painting's picture (fill_rows.picture)."""
-        if token is self._waiting and token is self.doc.data:
-            self._waiting, self._scene = None, None
+        if token is self.doc.data and token in (self._waiting, self._ahead):
+            self._waiting, self._ahead, self._scene = None, None, None
             if self.held_view is None:
                 self._show()
             if self.doc.data.get("paintings"):

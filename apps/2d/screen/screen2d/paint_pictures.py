@@ -37,8 +37,11 @@ class PaintPictures(QObject):
                     return
                 (jobs, token), self._next = self._next, None
             try:
+                ahead = all(getattr(job, "ahead", False) for job in jobs)
                 for job in jobs:
                     job()
+                    if ahead:               # pictures the screen draws without waiting for (write_on.Ahead): each one
+                        break               # shows once made, and the screen asks again for the rest (nearest first)
             except Exception as e:  # noqa: BLE001  said on screen, the frame isn't drawn
                 self.failed.emit(f"Error: the drawing's picture could not be made: {e}")
                 continue
