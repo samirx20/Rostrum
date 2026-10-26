@@ -22,7 +22,7 @@ COVERED = ("group.make", "group.release", "rig.make", "mask.make", "mask.release
            "layer.align", "layer.distribute", "layer.match_size", "style.apply", "layer.lock", "layer.unlock",
            "layer.hide", "layer.remove", "layer.duplicate", "style.define", "style.use", "style.detach",
            "frame.fit", "frame.cut", "frame.home", "background.fit", "layer.fill_frame")
-COVERED_FIELDS = ("locked", "hidden", "screenLock")      # settings whose own toggle an action is (Lock, Hide, Pin to frame)
+COVERED_FIELDS = ("locked", "hidden", "screenLock")      # settings whose own toggle an action is (Lock, Hide, Stick to the shot)
 UNLISTED = ("key",)                                       # items Ctrl+K never offers to select: keys are picked on the timeline
 
 

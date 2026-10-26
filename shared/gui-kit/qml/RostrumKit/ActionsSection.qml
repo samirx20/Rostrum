@@ -8,7 +8,7 @@ import "."
 // the rest small buttons. The icon runs come first, so they start at the panel's left edge whatever buttons the
 // selection has; the slots are fixed in the data (action_views.panel: what applies to one item first, so a second item
 // only adds after). The runs flow on the panel grid, a wider gap between runs, wrapping when the panel is narrow. The
-// less used ones (secondary) are one "⋯" at the end of the row, folded like right-click; no main action, no row.
+// less used ones (secondary) are one "More ▾" at the end of the row, folded like right-click; no main action, no row.
 // An action with amounts (rostrum_gui/amounts.py) has a small ▾ beside its button: the button runs it at once with the
 // last amounts, the ▾ opens the app's AmountsPopover under it (hub.ask); in a menu its name ends in "…" (hub.choose).
 // Resting on an action (about 250 ms) shows its would-be result on the canvas, recorded nowhere (hub.previewStart; H63);
@@ -100,12 +100,12 @@ Item {
                     implicitHeight: section.size; text: run.modelData.title; chevron: true
                     onClicked: section.openMenu(barButton, run.modelData.menu)   // dividers by group, side menus (action_views._bar_menu)
                 }
-                IconButton {    // "⋯" is part of the last unit, so it can never wrap onto a row of its own
+                Button {        // "More ▾" is part of the last unit, so it can never wrap onto a row of its own
                     id: moreButton
                     objectName: "actionsMore"
                     visible: run.index === section.units.length - 1 && section.more.length > 0
-                    width: section.size; height: section.size
-                    kind: "ghost"; glyph: "⋯"; tip: "More"; help: "The other actions for this selection"
+                    implicitHeight: section.size
+                    kind: "ghost"; text: "More"; chevron: true; help: "The other actions for this selection"
                     onClicked: section.openMenu(moreButton, section.more)
                 }
             }

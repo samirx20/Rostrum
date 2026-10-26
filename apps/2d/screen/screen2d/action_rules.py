@@ -8,7 +8,7 @@ field's `valid_when`), read on the selection's facts below. Its `calls`:
     {"rule": "order", "how": "front"}                    a named rule that makes several calls (layer.arrange)
     {"rule": "depth", "value": 3.0}                      Set depth: layer.set_depth (kept where shown) + background.fit where it applies
     {"rule": "attach"} · {"rule": "frame", "how": "view"}  Attach to bone (rig_attach.py) · the frame's (frame_actions.py)
-    {"rule": "pin", "on": True}                          Pin to frame / Unpin from frame: layer.pin (pin_depth.py)
+    {"rule": "pin", "on": True}                          Stick to the shot / Unstick from the shot: layer.pin (pin_depth.py)
 
 Target rules: ids (in pick order) · stack (bottom first) · stack_but_top · rest (all but the first) · locked ·
 unlocked · hidden · shown · not_copied · styled (texts following a style). Argument values starting with "$" are rules: $new:<type> (a fresh id, so the
@@ -28,7 +28,7 @@ from rostrum2d.rig.guess import guessable
 from rostrum2d.rig.mirror import pairs as mirror_pairs
 from rostrum_core.ids import counted
 
-from . import cover_move, dup_step, frame_actions, pin_depth, rig_attach
+from . import action_words, cover_move, dup_step, frame_actions, pin_depth, rig_attach
 from .rig_mouths import is_eyes, is_mouth
 
 SHAPES = ("shape", "path")
@@ -91,7 +91,7 @@ class Facts:
             "paint_makeable": self.count == 1 and why_not_from(self.items[0]) is None,     # Make painted fill (ops_painting.py)
             "painted_fill": self.count == 1 and self.items[0].get("fillType") == "painted",   # Paint it (the fill picker)
             **frame_actions.facts(self),                    # Frame the view, Cut here … (frame_actions.py)
-            **pin_depth.facts(self),                        # Pin to frame / Unpin from frame (pin_depth.py)
+            **pin_depth.facts(self),                        # Stick to the shot / Unstick from the shot (pin_depth.py)
             "cover_ok": later(lambda: cover_move.applies_to_all(self))})    # Cover the frame's move (cover_move.py)
 
 
@@ -223,6 +223,9 @@ def said(calls: list[dict], label: str, doc) -> str:
     note = cover_move.fill_note(calls, label, doc)             # Fill the frame while the frame moves: at that moment only
     if note:
         return note
+    plain = action_words.told(calls, doc)                      # Fill / Fit / Stay put / Crop: what was done, in plain words
+    if plain:
+        return plain
     if cut:
         return f"{label} — {cutter_name(cut, doc)} is the cutter"
     pose = [c for c in calls if c["op"] == "key.add" and c["args"].get("fields") == "pose"]

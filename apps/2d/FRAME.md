@@ -7,7 +7,7 @@ before frames existed. The full design (screens, actions, agents' eyes) is the c
 `C:\Users\Sam\.rostrum\waves\results\2d-camera\SPEC.md`; this file is the document, the maths and the engine.
 
 Every top-level layer has a **depth**: how far behind the frame's plane it sits. When the frame moves, near layers move
-more and far layers less (parallax). A layer **Pinned to frame** (`screenLock`) moves with the frame, not the world: a
+more and far layers less (parallax). A layer **Sticks to the shot** (`screenLock`) moves with the frame, not the world: a
 title, a border, a logo bug.
 
 Code: Python `apps/2d/python/rostrum2d/frame/` (`fields.py` the fields, `view.py` the maths, `fit.py` framing,
@@ -30,7 +30,7 @@ it by its type (`frame.view.of`), never by its id.
 | `ridePath`, `rideAt`, `rideAlong`, `rideTurn` | The frame rides a path layer as any layer does (`layer.ride`): its centre sits on the path, `x`, `y` an offset from there. |
 | `locked` | Drags and operations refuse to move it. |
 | any top-level layer: `depth` | 0 = on the frame's plane (moves fully). 1 = twice as far (half as much). Below 0 = nearer. Above −1. Keyable. |
-| any top-level layer: `screenLock` | Pinned to frame: its `x`, `y` are in the frame's own px. |
+| any top-level layer: `screenLock` | Sticks to the shot: its `x`, `y` are in the frame's own px. |
 
 `x`, `y`, `zoom`, `rotation` and `rideAlong` are keyed with the one animation model. A **cut** is a jump: a key with
 the `hold` ease, then the next key (the screen calls that ease *Hold*). Keys may sit on shared markers

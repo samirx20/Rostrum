@@ -44,7 +44,7 @@ def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0,
     raster = "painted" in types
     for r in rows:
         if r["row"] == "param" and r["id"] == colour:
-            out.append({**r, "id": ROW, "label": "Fill" if colour == "fill" else "Colour", "type": "paint", "valid": r["valid"] or own,
+            out.append({**r, "id": ROW, "label": fill_paint.row_label(item), "type": "paint", "valid": r["valid"] or own,
                         "value": value(item, t, doc), "anim": anim_state(item, t, fps), "default": None,
                         "options": {**OPTIONS, "types": types, **({"sources": sources(doc), "add": NEW} if raster else {}),
                                     **paint_it(item, doc)}})
@@ -149,14 +149,14 @@ def animate_calls(item: dict, t: float, fps: float, stop: bool = False) -> tuple
     """The Fill row's key mark, as route.KeyRoute.animate_calls does for one field, over all its parts."""
     parts = _parts(item)
     if stop:
-        return [{"op": "key.clear", "target": [it["id"]], "args": {"prop": f, "at": t}} for it, f in parts if keys_of(it, f)],             "Stop animating Fill"
+        return [{"op": "key.clear", "target": [it["id"]], "args": {"prop": f, "at": t}} for it, f in parts if keys_of(it, f)],             f"Stop animating {fill_paint.row_label(item)}"
     here = [k for it, f in parts if (k := route.key_at(keys_of(it, f), t, fps))]
     if here:
-        return [{"op": "key.remove", "target": [k["id"] for k in here], "args": {}}], f"Delete Fill key at {t:.2f} s"
+        return [{"op": "key.remove", "target": [k["id"] for k in here], "args": {}}], f"Delete {fill_paint.row_label(item)} key at {t:.2f} s"
     calls = []
     for it, f in parts:
         c = route.value_call(it, f, resolve(it, t).get(f, it.get(f)), t)
         c["op"] = "key.add"
         c["args"]["t"] = c["args"].pop("at")
         calls.append(c)
-    return calls, f"Key Fill at {t:.2f} s" if any(keys_of(it, f) for it, f in parts) else "Animate Fill"
+    return calls, f"Key {fill_paint.row_label(item)} at {t:.2f} s" if any(keys_of(it, f) for it, f in parts) else f"Animate {fill_paint.row_label(item)}"

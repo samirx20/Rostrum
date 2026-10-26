@@ -32,9 +32,9 @@ Paint first, then set depths: select first, then act.
 The scene's **Background** colour always fills the frame. For a picture, a gradient or a painted background there are
 two tools, by what you want:
 
-- **It moves with the frame** (no parallax): pick it, ⋯ › **Pin to frame**, then **Fill the frame**. It covers the frame
+- **It moves with the frame** (no parallax): pick it, More › **Stick to the shot**, then **Fill the frame**. It covers the frame
   at every moment.
-- **It is part of the world** (with or without depth): pick it, ⋯ › **Cover the frame's move** (there while the frame
+- **It is part of the world** (with or without depth): pick it, More › **Cover the frame's move** (there while the frame
   moves: keys or a ride). It is sized and placed at its depth to cover everything the frame shows of it over the whole
   piece, plus 24 px. A picture, shape or group is scaled evenly and keeps its turn and stretch; a drawing's canvas
   grows. Run it again after you change the move. It is for a layer that stays still (not keyed, not pinned); a text has

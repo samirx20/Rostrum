@@ -40,7 +40,7 @@ PRESETS = [
     ("glaze", "Glaze", "Light", 44, dict(brush="round", hardness=.1, mode="multiply", opacity=.6, spacing=.03, size_pressure=0, opacity_pressure=.8)),
     ("glow", "Glow", "Light", 44, dict(brush="round", hardness=0, mode="add", opacity=.3, spacing=.03, size_pressure=0, opacity_pressure=.8)),
     ("chalk", "Pastel", "Texture", 26, dict(brush="chalk", hardness=.5, grain=.6, opacity_pressure=.6, color_jitter=.05)),
-    ("scumble", "Dry brush", "Texture", 30, dict(brush="bristle", hardness=.5, grain=.45, opacity=1, spacing=.15, color_jitter=.06, texture="streaks")),
+    ("scumble", "Dry brush", "Texture", 30, dict(brush="bristle", hardness=.9, grain=.2, opacity=1, spacing=.08, color_jitter=.06, texture="ragged")),
     ("spatter", "Spatter", "Texture", 5, dict(brush="round", hardness=.85, jitter=1.6, spacing=.9, size_pressure=.6, opacity_pressure=0, color_jitter=.1)),
 ]
 BY_ID = {p[0]: p for p in PRESETS}

@@ -412,7 +412,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("frame-cut", ["--sample"], ["frame pick", "time 2.4", "framecut", "frame drag 2400 300", "time 3", "zoom 30 2400 700"]),
         ("frame-menu", ["--sample"], ["frame pick", "frame drag 2200 0", "time 2", "zoom 30 2000 540", "canvasmenu"]),
         # F7 (mock-5): the title pinned, the frame moved across and zoomed at the playhead, the title riding inside its
-        # box; picked, so its row's pin glyph and the settings' Depth group with Pinned to frame on show
+        # box; picked, so its row's pin glyph and the settings' Depth group with Sticks to the shot on show
         ("frame-pinned-title", ["--sample"], ["select title", "set screenLock true", "frame pick", "animate x", "animate zoom",
                                               "time 2.5", "set x 1700", "set zoom 1.17", "select title", "fitall"]),
         # F7 (mock-4): looking through the frame (Shift+C): a far card and a near title at depths, the frame moved and

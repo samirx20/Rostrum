@@ -1,4 +1,4 @@
-"""Framing and cuts (ops_frame_fit.py, spec test 5): Frame these ends with every layer inside the export at that time,
+"""Framing and cuts (ops_frame_fit.py, spec test 5): Move the frame to these ends with every layer inside the export at that time,
 depth included; a cut holds the place one frame before; a cut on a marker moves with the marker."""
 import pytest
 from rostrum_core import Document, Who
