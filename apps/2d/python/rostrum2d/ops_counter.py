@@ -20,7 +20,7 @@ FORMAT = {"decimals": "countDecimals", "digits": "countDigits", "separator": "co
              "written with `decimals` places, at least `digits` digits (zeros in front) and the `separator` thousands mark (comma 1,284.5; period 1.284,5; space "
              "1 284.5; none), between `prefix` and `suffix` (e.g. \"$\", \" GWh\"). One change; the text's words are not "
              "shown while it counts. Format fields left out stay as they are. More steps: key.add on `count`; tabular "
-             "figures (figures) keep the width steady.", target="text", label="Count a number", importance="secondary",
+             "figures (figures, only on a font that has them, e.g. Inter) keep the width steady.", target="text", label="Count a number", importance="secondary",
              params=[Param.number("from", label="From", required=True), Param.number("to", label="To", required=True),
                      Param.number("at", label="Starts at", min=0, max=36000, unit=" s", default=0.0),
                      Param.number("duration", label="Takes", min=0.001, max=36000, unit=" s", default=1.0),

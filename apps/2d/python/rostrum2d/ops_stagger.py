@@ -4,7 +4,7 @@ counting from the earliest start among them. Staggering again re-spreads from th
 key.stagger (rostrum_core.keys.stagger, registered in ops_anim.py) does the same with picked keys, through this file's
 CASCADE. The spatial orders compare where each layer is seen, in composition px (placement.centres_at: through
 its groups and the camera), so layers in different groups line up as they look; a layer that enters unseen (from
-opacity or scale 0) counts where it is first seen.
+opacity or scale 0) counts where it sits (its own scale and opacity taken as full), in one engine ask for all.
 """
 from __future__ import annotations
 

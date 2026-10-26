@@ -27,7 +27,7 @@ Popover {
             spacing: Theme.grid
             Text { anchors.verticalCenter: parent.verticalCenter; text: "Each starts"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
             NumberField {
-                id: byField
+                id: byField; objectName: "staggerBy"
                 anchors.verticalCenter: parent.verticalCenter; width: 64
                 value: pop.st.by; from: 0; to: 600; step: 1; unit: " f"
                 onEdited: (v) => pop.st.setBy(v)
@@ -39,6 +39,7 @@ Popover {
             spacing: Theme.grid
             Text { anchors.verticalCenter: parent.verticalCenter; text: "Order"; color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
             ChoiceField {
+                objectName: "staggerOrder"
                 anchors.verticalCenter: parent.verticalCenter; width: 160
                 options: pop.st.orders; current: pop.st.order
                 onPicked: (v) => pop.st.setOrder(v)
