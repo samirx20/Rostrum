@@ -37,7 +37,9 @@ you close the window and every 20 changes; the change log beside it always has t
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
 2. Type to search ("warm", "bass", "voice"; a family word, **strings**, **brass**, **woodwinds** or **percussion**, finds every section and solo in it; sounds whose name holds the words come first), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
-   **Voice**, **My sounds**.
+   **Voice**, **My sounds**. The Library always opens on **All**. A word that finds nothing names the closest sounds ("No “clr”
+   here. Closest: Clarinet, Cello"); when the lit chip hides what you typed, one button takes you there (**Show “brass” in
+   Instruments**).
 3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
    sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
    - **Microphone** makes a track that is ready to record (see [recording.md](recording.md)).
@@ -58,7 +60,7 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 4. Write notes
 
-1. With the track selected, the **Editor** shows its notes beside a piano keyboard, centred on its notes (each track then stays where you scrolled it)
+1. With the track selected, the **Editor** shows its notes beside a piano keyboard, centred on them (each track then stays where you scrolled it)
    (drums: a row per drum; recordings: their waveform). Each octave's C is labelled (C4 is middle C); **click a key
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.

@@ -73,17 +73,21 @@ Panel {
             // (its rows) in no set order, and placing in between read the last track's rows (after the drums, the
             // piano opened on the drums' rows: empty keys). Several reasons in one change place it once.
             function frameLater() { Qt.callLater(centre) }
-            property var kept: ({})      // track id -> the key at the view's middle, as the person left it
+            property var kept: ({})      // track id -> [the key at the view's middle, how far into its row], as the person left it
             property real placedH: -1    // the height it was last placed at: a scroll Qt makes while the height changes is not the person's
-            onContentYChanged: if (shown === seenShown && p.kind === "notes" && height === placedH)
-                                   kept[p.roll.id] = grid.keyAtRow(Math.floor((contentY + height / 2) / grid.rowH))
-            function toKey(key) { contentY = Math.max(0, Math.min(contentHeight - height, (grid.rowOf(key) + 0.5) * grid.rowH - height / 2)) }
+            // read from the roll itself: while another track arrives, `shown` may not have caught up yet, and the
+            // last track's place was written under the new one's name
+            onContentYChanged: if (p.roll.id + "/" + p.roll.kind + (p.roll.rows ? "/rows" : "") === seenShown
+                                   && p.roll.kind === "notes" && height === placedH)
+                                   kept[seenShown] = [grid.keyAtRow(Math.floor((contentY + height / 2) / grid.rowH)),
+                                                      (contentY + height / 2) % grid.rowH]
+            function toKey(key, into) { contentY = Math.max(0, Math.min(contentHeight - height, grid.rowOf(key) * grid.rowH + (into === undefined ? grid.rowH / 2 : into) - height / 2)) }
             function centre() {   // where the person left this track, else centred on its notes
                 seenHi = p.roll.hi; seenShown = shown; placedH = -1
                 Qt.callLater(() => placedH = height)
                 if (p.kind !== "notes") { contentY = 0; return }
-                var left = kept[p.roll.id]
-                if (left !== undefined && grid.shows(left)) return toKey(left)
+                var left = kept[shown]
+                if (left !== undefined && grid.shows(left[0])) return toKey(left[0], left[1])
                 var ks = [], b = p.blocks
                 for (var i = 0; i < b.length; i++) if (b[i].keys) ks = ks.concat(b[i].keys)
                 if (!ks.length)   // an empty notes track opens on the middle of its range (its sound's best keys)
