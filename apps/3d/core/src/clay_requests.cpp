@@ -1,12 +1,15 @@
-// The clay requests (ENGINE_CONTRACT.md § 1): `sculpt` (a live stroke from the screen) and `clay_info`.
+// The clay requests (ENGINE_CONTRACT.md § 1): `sculpt` (a live stroke from the screen), `clay_info`, and the check
+// request `clay_bench`.
 #include <pxr/base/gf/frustum.h>
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/ray.h>
 #include <pxr/usd/usdGeom/xformable.h>
 
 #include <cmath>
+#include <cstdio>
 
 #include "args.h"
+#include "clay_replay.h"
 #include "error.h"
 #include "inspect.h"
 #include "requests.h"
@@ -110,6 +113,31 @@ JsObject Core::sculpt(const JsObject& o) {
     out["normal"] = vec3(n);
   }
   return out;
+}
+
+JsObject Core::clay_bench(const JsObject& o) {
+  Args a(o, "clay_bench", {"strokes", "threads"});
+  const int strokes = a.whole("strokes", 2000), threads = a.whole("threads", 0);
+  if (strokes < 1 || strokes > 20000) throw Error("clay_bench.strokes: must be 1..20000");
+  if (threads < 0 || threads > 256) throw Error("clay_bench.threads: must be 0..256 (0 = every core)");
+  const clay::BenchResult r = clay::bench(strokes, threads);
+  auto hex = [](uint64_t h) {
+    char s[17];
+    std::snprintf(s, sizeof s, "%016llx", static_cast<unsigned long long>(h));
+    return std::string(s);
+  };
+  return JsObject{{"ok", JsValue(true)},
+                  {"strokes", JsValue(r.strokes)},
+                  {"dabs", JsValue(uint64_t(r.dabs))},
+                  {"threads", JsValue(r.threads)},
+                  {"liveMs", JsValue(r1(r.liveMs))},
+                  {"serialMs", JsValue(r1(r.serialMs))},
+                  {"parallelMs", JsValue(r1(r.parallelMs))},
+                  {"chain", JsValue(uint64_t(r.chain))},
+                  {"liveHash", JsValue(hex(r.live))},
+                  {"serialHash", JsValue(hex(r.serial))},
+                  {"parallelHash", JsValue(hex(r.parallel))},
+                  {"same", JsValue(r.live == r.serial && r.serial == r.parallel)}};
 }
 
 JsObject Core::clay_info(const JsObject& o) {

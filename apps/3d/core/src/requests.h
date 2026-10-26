@@ -29,6 +29,7 @@ class Core {
   PXR_NS::JsObject save(const PXR_NS::JsObject& a);
   PXR_NS::JsObject sculpt(const PXR_NS::JsObject& a);     // clay_requests.cpp
   PXR_NS::JsObject clay_info(const PXR_NS::JsObject& a);  // clay_requests.cpp
+  PXR_NS::JsObject clay_bench(const PXR_NS::JsObject& a); // clay_requests.cpp (a check: the replay bench)
   PXR_NS::JsObject info();
 
  private:

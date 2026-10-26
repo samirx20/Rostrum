@@ -72,6 +72,7 @@ int serve(std::FILE* in, std::FILE* out) {
       {"save", [&](const JsObject& a) { return core.save(a); }},
       {"sculpt", [&](const JsObject& a) { return core.sculpt(a); }},
       {"clay_info", [&](const JsObject& a) { return core.clay_info(a); }},
+      {"clay_bench", [&](const JsObject& a) { return core.clay_bench(a); }},
       {"info", [&](const JsObject&) { return core.info(); }},
   };
   for (bool eof = false; !eof;) {

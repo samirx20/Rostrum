@@ -11,6 +11,7 @@
 #include <map>
 
 #include "clay_cache.h"
+#include "clay_replay.h"
 #include "clay_stroke.h"
 #include "clay_usd.h"
 #include "clay_volume.h"
@@ -24,6 +25,7 @@ namespace {
 constexpr size_t kUndoUnits = 64;                  // steps whose replaced chunks are kept
 constexpr size_t kUndoBytes = size_t(512) << 20;   // ... at most this much per clay (a big piece's record is big)
 constexpr size_t kCacheOverUndo = 8;               // more steps than this to apply: the cache file is quicker
+constexpr size_t kReplayTogether = 8;              // at least this many strokes in a row: replayed in parallel
 
 double ms_since(std::chrono::steady_clock::time_point t0) {
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
@@ -142,6 +144,45 @@ struct Store::Impl {
     while (e.undo.size() > kUndoUnits || (e.undo.size() > 1 && undo_bytes(e.undo) > kUndoBytes)) e.undo.pop_front();
   }
 
+  // steps[from..] applied in order. Strokes from stored dabs that keep no undo record (all but the last 64 steps) are
+  // gathered and replayed together, in parallel where they don't touch (clay_replay.h): the same clay, bit for bit.
+  void apply_from(Entry& e, const std::vector<StepNode>& steps, size_t from) {
+    std::vector<std::vector<Step>> batch;
+    std::vector<std::string> keys;
+    auto flush = [&] {
+      try {
+        if (batch.size() >= kReplayTogether) replay_strokes(*e.vol, batch);
+        else
+          for (const auto& dabs : batch) e.vol->apply_stroke(dabs);
+      } catch (...) {
+        fresh(e);  // part of the batch applied: the clay matches no list of steps, so it starts again next time
+        throw;
+      }
+      e.keys.insert(e.keys.end(), keys.begin(), keys.end());
+      batch.clear();
+      keys.clear();
+    };
+    for (size_t i = from; i < steps.size(); ++i) {
+      const StepNode& s = steps[i];
+      const bool keepUndo = steps.size() - i <= kUndoUnits;
+      if (keepUndo || s.piece || s.path == StepNode::Path::Along) {
+        flush();
+        apply(e, s, keepUndo);
+        continue;
+      }
+      std::vector<DabRow> rows;
+      try {
+        rows = s.path == StepNode::Path::File ? read_dabs(s.file, s.where + ".dabs") : s.rows;
+      } catch (...) {
+        flush();  // the clay keeps the steps before the one that failed
+        throw;
+      }
+      batch.push_back(dabs_from_rows(rows, s.brush));
+      keys.push_back(s.key);
+    }
+    flush();
+  }
+
   // brings one clay to `n`'s steps; true when its volume changed
   bool reconcile(Entry& e, const Node& n) {
     const std::vector<StepNode>& steps = n.steps;
@@ -190,7 +231,7 @@ struct Store::Impl {
       fresh(e);
       p = 0;
     }
-    for (size_t i = p; i < steps.size(); ++i) apply(e, steps[i], steps.size() - i <= kUndoUnits);
+    apply_from(e, steps, p);
     return true;
   }
 
