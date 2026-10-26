@@ -1,108 +1,136 @@
-# P-Clay proof — the clay core (part 1 of 2)
+# P-Clay proof — the clay core (final, parts 1 + 2)
 
-*Team Priyam, 2026-10-26. Brief: `C:\Users\Sam\.rostrum\waves\results\3d-simplicity\PLAN-UPDATE.md` § 1 "P-Clay".
-Throwaway proof code: nothing here goes into `apps\` or `shared\`. Pictures and numbers:
-`C:\Users\Sam\.rostrum\waves\results\3d-clay-proof\`.*
+*Team Priyam, 2026-10-26/27. Brief: `C:\Users\Sam\.rostrum\waves\results\3d-simplicity\PLAN-UPDATE.md` § 1 "P-Clay",
+part 2 brief from the manager. Throwaway proof code: nothing here goes into `apps\` or `shared\`. Pictures and numbers:
+`C:\Users\Sam\.rostrum\waves\results\3d-clay-proof\` (part 2 in `p2\`, side-by-sides in `side-by-side\`).*
 
-## Verdict (part 1): the core works; the budgets are half met; not a pass yet, not a pivot
+## Verdict: PASS WITH CONDITIONS
 
-**In plain words.** Clay built on a sparse volume works. Steps go in, a closed surface comes out, and Storm and Cycles both
-show it. The same list of steps always gives exactly the same clay, saved or replayed. Small and medium brush dabs
-show up on screen within about one frame (10–19 ms). Three things are still too slow or too big: very large brushes
-(a quarter of the clay across: 67–114 ms, 4–7× over), replaying 2,000 strokes (73 s against 15 s) and peak memory
-(2.9 GB against 1.5 GB). Each has a clear, contained fix, listed below. The first sculpted head renders cleanly in
-Final, but it is crude next to a Nomad Sculpt or ZBrush piece. Judging the surface against those pieces is part 2,
-together with the missing brushes.
+**In plain words.** Clay on a sparse volume works and looks right. Surfaces are smooth (the part-1 ripples are gone,
+cause found), a Crease line is crisp, joins between pieces are clean fillets, and the six brushes (Add, Carve,
+Smooth, Pull, Flatten, Crease) work. The same steps always give exactly the same clay, live, replayed or loaded. The
+everyday brush sizes reach the screen in about one frame. **Three budgets are still missed, by a lot**: a brush a
+quarter of the clay across (≈ 40–75 ms, target 16), replaying 2,000 strokes (≈ 79 s, target 15) and peak memory
+(1.4–1.8 GB, target 1.5). All three trace to one measured cost: re-levelling the distance band after each dab is
+about 17 ms of CPU work per dab. Next to Nomad Sculpt pieces, our sculpts are clearly weaker. That is the sculpting
+(a script placing shapes blind, and one missing brush control), not the clay surface.
 
-By the brief's rule ("all budgets met, or within 25 % with a clear fix"), part 1 is **not yet a pass**. It is also
-**no reason to pivot**: the slow parts are known and local, and they are not limits of the method.
+**Why not FAIL / pivot.** Strictly by the brief's rule ("all budgets met, or within 25 % with a clear fix") this is not
+a pass: three budgets are 1.2–5× over. I still recommend going on with clay, not pivoting to re-evened mesh
+sculpting, because what fails is one engine cost, measured and local, not the method:
+- surface quality, determinism and the brushes all pass;
+- small and medium dabs are at or near budget;
+- the failing paths share one hot loop.
+
+**The conditions** (put into CL1 / CL2; if they don't hold after CL1's first package, that is the third try, and
+the pivot applies):
+1. **Re-level only next to the voxels a dab changed** (today the whole dab region, 5 passes: 85 % of the time), or
+   move the step to the GPU. Targets: large dab ≤ 16 ms, replay of 2,000 strokes ≤ 15 s.
+2. **Peak memory ≤ 1.5 GB in the app**: one clay alive, Cycles scene released between Finals, scratch capped.
+3. **A stroke's build-up is capped** (Nomad's "accumulate" off / brush plane): without it, repeated mouse drags grow
+   ridges towards the camera (the mouse head below).
+
+## Numbers
+
+Laptop: RTX 3050 4 GB, 16 GB, 12 threads, shared with other teams. Wall times swing run to run, so two runs are shown.
+The **quick** run (`p2\` quick bench, 300 strokes, no Finals) and the **full** run (`p2\bench\numbers_bench.json`,
+2,000 strokes, Finals) came on a quieter and a busier machine. Clay: part 1's head, voxel 0.000625, 3.3 M active
+voxels, 1.25 M triangles. "First picture" is a dab plus the Storm frame that shows it: Storm gets the 8 changed blocks
+nearest the brush per frame, and the rest follow over the next frames. "Stroke end" (re-applying the stroke as one
+unit) and the frames until every block is shown are in the JSON.
+
+| Budget | Target | Part 1 | Part 2 (quick / full run) | |
+|---|---|---|---|---|
+| Dab → picture, small (r 6 voxels), all 6 brushes | ≤ 16 ms | 10–14 ms | 8–15 / 12–16 ms | **met** |
+| Dab → picture, medium (r 19 voxels) | ≤ 16 ms | 16–19 ms | 11–18 / 11–24 ms (Crease, Pull fastest; Add, Carve slowest) | within 25 % on the quiet run; over on the busy one |
+| Mirrored medium | ≤ 16 ms | 22–28 ms | 16.5–22.7 / 15–27 ms | Pull, Crease, Smooth met; Add, Carve, Flatten over |
+| Dab → picture, quarter of the clay (r 66 voxels) | ≤ 16 ms | 67–114 ms | 38–42 / 52–76 ms; mirrored 63–112 ms | **over** (Storm is 10–17 ms of it; the step 25–90 ms) |
+| Full rebuild, close-up head | ≤ 2 s | 92 ms | 75–124 ms | **met** |
+| Replay of 2,000 strokes (22,852 dabs) | ≤ 15 s | 73 s | 79 s (2.8–3.4 ms a dab; 17.5 ms a dab on one thread) | **over** |
+| Replay from cache | ≤ 2 s | 0.14 s | 0.10–0.19 s | **met** |
+| Same steps → same hash | yes | yes | yes: head live = replay, 2,000 strokes live = replay = cache, in every run | **met** |
+| Memory, process peak | ≤ 1.5 GB | 2.9 GB | 1.4 GB (quick, compare runs) / 1.84 GB (full: bench + 2,000 strokes + kept Cycles scene + Finals); clay grid 34–40 MB | **over** in the full run |
+| Storm frame, nothing changed | — | 6.9 ms | 7.0 ms | |
+
+What part 2 changed for speed and memory:
+- **A stroke is one unit.** Live: each dab is shown at once, then at mouse-up the clay is put back and the stroke is
+  applied in one pass. Replay applies the same pass, so live and replay are bit-identical.
+- **Chunk-major buffers, allocated without clearing**, shared by all clays: memory only for the chunks a step touches.
+- **A single dab no longer widens the band** (part 2's first try did, and a large dab went to 100 ms).
+- **Storm's block budget per frame.**
+- **The studio lights reach Storm as simple lights.** As scene lights they made a frame 20 ms.
+- Replay went from 73 to 79 s, i.e. no gain. A stroke shares its fill and write-back, but each dab still re-levels its
+  whole region. A single-thread run shows that is real work, not thread overhead: condition 1.
+
+## Look: ripples, Crease, joins (close-up Finals, `p2\look_*`)
+
+- **Ripples: cause found and fixed.** Part 1's faint stair-steps on the cheeks came from the distance values, not from
+  the voxel size or the normals. After each dab, the voxels next to the surface were re-seeded from where the surface
+  crossed their edges (1/d² = Σ 1/d_axis²). That formula is exact only for flat surfaces and leaves voxel-scale noise,
+  which smooth normals then show as rings. Re-seeding by the value's own gradient (v / |∇v|, central differences)
+  removes it. A sphere after 4 overlapping Smooth strokes (`look_sphere_smoothed_final.png`) is clean. An A/B with and
+  without the new vertex projection in the mesher (`p2\noproject\`) shows no visible difference, so the field was the
+  cause.
+- **Crease** (`look_brushes_final.png`): two lines on a sphere read as crisp grooves with lit rims. Faint beading
+  inside the groove where dabs overlap; a finer dab spacing for Crease (CL2) removes it.
+- **Joins** (`look_join_final.png`): an arm blended into a body and smoothed along the join: one even fillet, no lump,
+  no stair-step.
+- Flatten and Pull work (same picture); the small character uses Crease ×18 and Flatten, Pull.
+
+## The comparison (`side-by-side\`, references private in `C:\Users\Sam\.rostrum\references\3d\`)
+
+References: 7 pictures their artists posted publicly on the Nomad Sculpt forum (`sources.md` there). No ZBrush
+pictures: those pages need a browser.
+
+| Ours | Reference | Judgement |
+|---|---|---|
+| Agent's head, 518 steps (53 pieces, 30 strokes) — `agent_head_vs_georges_bust.png`, `agent_head_front_vs_brandt_peters.png` | Georges' portrait bust; Brandt Peters' stylised bust | **Far below.** The surface is smooth and the lit edges are clean, but the forms are blocky (brow shelf, jaw step, tube collarbones) and there are no secondary forms or hair. A script placing shapes it can't see is the limit. CL7's look tools are the answer (an agent that looks at its frame). |
+| Agent's small character, 633 steps — `agent_character_vs_help_help_chibi.png` | help_help's chibi (painted) | **Closest.** The finish (clean joins, crisp smile, belt, collar and knee lines) is at a toy-figure level. The forms are simpler and the brows lumpy. Not worse in surface quality; worse in design. |
+| Head by scripted mouse drags, 4 pieces + 49 drags in 4 views — `mouse_head_vs_panda_ma.png` | Panda Ma's head studies | **Fails.** Repeated drags grow ridges and tendrils towards the camera: each dab is cast onto the bump the previous one raised, and a stroke's build-up isn't capped. Condition 3. |
+
+Judged on the brief's points: surface smoothness **yes**; how crisp a Crease line gets **good**; no stair-steps or blobby
+joins **yes**; holds up close **yes** (close-ups at about 7 cm across the frame). Overall "not worse than the
+reference": **no** for the heads.
 
 ## What was built (`src\`)
 
 | File | What it does |
 |---|---|
-| `clay.h/.cpp` (lead) | The clay: an OpenVDB `FloatGrid` narrow band (values in voxels, half-width 4, negative inside). **Steps**: pieces (sphere / capsule, Add or Carve, with a smooth **blend** distance) and brush **stamps** (Add, Carve, Smooth), each optionally **mirrored** in X in the same pass. A step works only on the 8³ chunks near the surface inside its reach. It fills them from the grid, widens the distances when a blend needs them (Jacobi upwind eikonal), applies the step, re-seeds the changed voxels next to the surface from where the surface crosses their edges, re-levels the band and writes back (chunks that end up uniform become tiles). It marks the changed **blocks** (32³) dirty. Also: surface picking (`cast`, `snap`), the replay **hash** (leaves and tiles in tree order, FNV-1a), `.vdb` save / load (the replay cache), steps as text lines whose floats round-trip exactly. |
-| `mesh.h/.cpp` (member, surface nets; smooth normals added by the lead) | The surface of one block, read out by surface nets. A block owns the edges that start inside it, so blocks join without cracks or double faces (self-test: closed, consistently wound). Normals are a trilinear blend of central-difference gradients at the cell's corners, read from a one-voxel-wider window, so shading is continuous across cells. |
-| `view.h/.cpp` (member) | Storm: one mesh prim per block under `/Clay`, written at the Sdf level inside one change block, so **only changed blocks are sent**. Cycles: the whole rebuilt surface as one mesh, rendered to convergence and written as an sRGB PNG; a failed render throws and leaves no file. A clay material, key / fill / rim lights and a dim dome. |
-| `main.cpp` (lead) | The scripted head (the "agent" sculpt: 21 pieces plus 233 brush dabs). The timings and the 2,000-stroke replay below. `--check`: after every step the whole surface must be closed (every edge used twice). |
+| `clay.h/.cpp` (lead) | The clay: an OpenVDB narrow band (values in voxels, half-width 4, negative inside), changed by steps. A piece (sphere / capsule, Add or Carve, smooth blend) or a stroke of dabs (Add, Carve, Smooth, Pull, Flatten, Crease; X mirror) works on the 8³ chunks near the surface in its reach. Per stroke: one fill, the dabs in order, each re-levelled over its own chunks, then one write-back (uniform chunks become tiles). Live strokes: `begin_stroke`, `dab` (a preview, old chunks kept), `end_stroke` (put back, the unit applied). Blend widening capped at 24 voxels (15 mm). Hash over leaves, `.vdb` cache, steps as text. |
+| `session.h` (lead) | Sculpting session: world-space strokes (an agent), pixel-path strokes through a camera (a mouse), replay by stroke units. |
+| `mesh.h/.cpp` (member; lead added smooth normals and vertex projection) | Surface nets per 32³ block, crack-free, continuous normals, vertices projected onto the cell's zero surface. |
+| `view.h/.cpp` (members) | Storm: one prim per block, only changed blocks sent. Cycles: one engine for the View's life (a second one crashed in part 1), the studio look (dark gradient background, key / fill / rim panels, low dome). |
+| `sculpts.cpp` (member) | The comparison sculpts: agent head, agent small character, mouse head; their cameras. |
+| `compose.py` (member) | Side-by-side sheets: `python -I compose.py ours.png ref.jpg out.png [--label-left …] [--label-right …]`. |
+| `main.cpp` (lead) | Modes: `bench` (the numbers), `look` (close-ups), `compare` (the sculpts + Finals), `check` (every head step's surface has no hole; edges shared by 4 = two sheets touching, not counted), `replay <file>` (pieces and dabs timed apart; `CLAY_THREADS=n`). |
 
-Build and run (both through `heavy.ps1`): `build.bat`, then `run.bat <out folder> [--samples n] [--no-final] [--strokes n]`.
+Build and run (both through `heavy.ps1`): `build.bat` (`CLAY_CMAKE_ARGS=-DCLAY_SCULPTS=OFF` without the sculpts), then
+`run.bat <out folder> bench|look|compare|check|replay …`. Storm uses the scene lights with `CLAY_STORM_SCENE=1`.
 
-## Numbers (this laptop: RTX 3050 4 GB, 16 GB, 12 threads, shared and busy; run 4, `numbers.json`)
+## Found and fixed on the way (worth knowing for CL1)
 
-Clay: a head and neck 0.33 units tall at voxel 0.000625 (about 530 voxels top to bottom). 3.26 M active voxels;
-1.24 M triangles in 781 blocks.
-
-| Budget | Target | Measured | |
-|---|---|---|---|
-| Stamp → picture, small brush (r 6 voxels) | ≤ 16 ms | **10–14 ms** p50, p95 ≤ 16 ms (step 0.8–1.1, mesh 0.8–0.9, USD 0.3–0.4, Storm 8.5–11.5) | met |
-| Stamp → picture, medium (r 19 voxels) | ≤ 16 ms | **16–19 ms** p50; mirrored 22–28 ms | within 25 %; mirrored over |
-| Stamp → picture, quarter of the clay across (r 66 voxels) | ≤ 16 ms | **67–70 ms** p50; mirrored 91–114 ms (step 21–55, mesh 4–11, USD 2–4, Storm 31–43) | **4–7× over** |
-| Full rebuild of the close-up head | ≤ 2 s | **92 ms** (all 781 blocks, parallel) | met |
-| Memory | ≤ 1.5 GB | grid **33–39 MB**; process peak **2.9 GB**, 0.8 GB at the end | **over** (see below) |
-| Replay of 2,000 strokes (23,153 dabs) | ≤ 15 s | **73 s** (the head's 254 steps before it took another 55 s) | **4.9× over** |
-| Replay from the cache (`.vdb`) | ≤ 2 s | **0.14 s** | met |
-| Same steps → same surface hash | yes | **yes**: head live = replay (`7ab0339f574c620e`), 2,000 strokes live = replay from file = cache (`79defd62f84f2886`), and the same hashes in every run since | met |
-| Storm frame with nothing changed | — | 6.9 ms (1.24 M triangles, 1280×720) | |
-| Final (Cycles, 256 samples, denoised, 1280×720) | — | 5.5 s | |
-
-Wall times measured on a shared machine; per-step CPU time is in `numbers.json` (`*_cpu_ms`).
-
-### Found and fixed on the way (worth knowing for CL1)
-- **Storm drew on the AMD integrated graphics** until the program exported `NvOptimusEnablement` /
-  `AmdPowerXpressRequestHighPerformance` (as `apps\3d\core\src\main.cpp` does). That alone took a frame from about 40 ms to
-  about 7 ms. Any new program that draws must export them.
-- **Nested parallel loops + thread-local buffers = holes.** The block read-out ran its own parallel loop inside the
-  parallel meshing of blocks. TBB then ran another block on the same thread while it waited, and that block reused the
-  thread's buffers. The result was holes at block seams, different on every run (the replay hash stayed right, because
-  the clay itself was fine). The read-out is now serial inside a block. `--check` shows every one of the 254 head
-  steps leaves a closed surface.
-- **Block listing:** a block holds the quads for edges that *start* in it, so the blocks to mesh are each leaf's block
-  plus the block just below it on each axis.
-- Whole-box steps were 10–20× slower than working on the chunks near the surface (first version: 160–400 ms per large
-  dab, 11 ms per replay dab).
-
-## Where part 1 stopped (and what part 2 does)
-
-Done: sparse volume on OpenVDB; pieces with add / carve / blend; stamps Add, Carve, Smooth; mirror; blocks with only
-changed ones sent to Storm; whole-surface rebuild for Cycles; replay with a stable hash and a cache; the measurements
-above; a first sculpted head in Final (`head_final_cycles.png`; Storm: `head_storm.png`; the timing dabs on the cranium: `after_bench_dabs_storm.png`).
-
-Not done (part 2):
-1. **Brushes Pull, Flatten, Crease.** The stamp code has one place for each op (`clay.cpp`, step E).
-2. **Large brushes to ≤ 16 ms.** Today a quarter-size dab spends about 25 ms in the step and 31–43 ms in Storm re-sending
-   about 150 blocks. Fixes, in order: (a) re-level only the chunks a dab changed, not every chunk in its reach;
-   (b) cap Storm's per-frame work: send the dab's blocks as they finish and the rest on the next frame, or use 64³
-   blocks (fewer prims; the mesher's row masks need 128-bit rows for that); (c) for very large dabs, a coarser level.
-3. **Replay to ≤ 15 s.** A replay dab costs about 3 ms (19 ms CPU spread over threads): many small parallel loops per
-   dab. Fix: replay a whole stroke's dabs in one box (one fill, one write-back, re-levelling once per stroke), with live
-   sculpting doing the same per stroke, so the hash stays identical.
-4. **Memory to ≤ 1.5 GB.** The grid is small (39 MB). The peak comes from a step's dense scratch buffers for the big
-   wide-blend pieces of the head (box up to about 420³) and from three clays alive at once in this test program. Fix: a
-   chunk-sparse scratch (only the listed chunks, not the whole box) and one shared scratch.
-5. **Wide blends are slow** (a 0.03 blend = 48 voxels needs about 50 re-levelling passes): the head's 21 pieces take most of
-   its 43 s. Not a budget, but CL1 needs it faster: fast sweeping, or the widening done on a coarser grid.
-6. **The comparison by eye.** Reference pictures (published Nomad Sculpt / ZBrush pieces) saved privately under
-   `C:\Users\Sam\.rostrum\references\3d\` (not done yet: the folder doesn't exist); an agent and a member with a mouse
-   sculpt a head and a small character; Final renders side by side. Today's head is a scripted first try: blobby
-   forms, smeared smoothing, faint ripples on the cheeks where many smooth dabs overlap. It is not at the reference's
-   level.
-7. **Cycles:** a second Cycles engine made after the first is gone crashes (access violation). The proof makes one Final
-   per run; part 2 keeps one engine alive, as `apps\3d\core\src\hydra.cpp` does.
+- Draw on the RTX: export `NvOptimusEnablement` / `AmdPowerXpressRequestHighPerformance` (Storm was on the AMD chip: 40 → 7 ms).
+- Nested TBB loops with thread-local buffers left holes at block seams, different every run (part 1). Block listing
+  must include the block below each leaf on each axis.
+- Re-levelling swaps buffers. Inside a stroke only the dab's chunks are current in the other buffer, so copy back.
+  Getting this wrong grew false surfaces (3× the voxels) and broke the hash.
+- Seeding by edge crossings leaves voxel-scale ripples; seed by v / |∇v|.
+- A second Cycles engine after the first is destroyed crashes; keep one.
+- PowerShell variables ignore case (`$R` = `$r`), which bit the run scripts once.
 
 ## Libraries
 
-- **OpenVDB 13.0.0** (MPL-2.0). Its DLL was already in the 3D library folder (`runtime\bin\openvdb.dll`). The headers and
-  import library come from the same Blender `lib-windows_x64` bundle (tag v5.2.2, commit 60d6e96; that DLL is
-  byte-identical), fetched with a sparse Git LFS checkout of just its `openvdb\` folder into
-  `C:\Users\Sam\.rostrum\downloads\blender-lib-v5.2.2-openvdb\` (80 MB on disk with its Git data: include, lib, DLLs). Nothing was built
-  from source. OpenVDB's own dependencies are inside the DLL and already listed for the Cycles bundle: oneTBB
-  (Apache-2.0), Blosc (BSD-3-Clause), zlib (zlib), Imath (BSD-3-Clause). For CL1, `apps\3d\libs\lay_out.py` should
-  copy `openvdb\include` and `openvdb.lib` into the library folder's `sdk\`.
-- Everything else is already in the 3D library folder (OpenUSD / Hydra, Cycles, TBB, epoxy, OpenImageIO).
+- **OpenVDB 13.0.0** (MPL-2.0). The DLL is already in the 3D library folder (`runtime\bin\openvdb.dll`). The headers and
+  import library come from the same Blender `lib-windows_x64` bundle (v5.2.2, 60d6e96; that DLL is byte-identical), in
+  `C:\Users\Sam\.rostrum\downloads\blender-lib-v5.2.2-openvdb\` (80 MB with its Git data). Its own dependencies (oneTBB
+  Apache-2.0, Blosc BSD-3-Clause, zlib, Imath BSD-3-Clause) are inside the DLL and already listed for the Cycles bundle.
+  For CL1, `apps\3d\libs\lay_out.py` should copy `openvdb\include` and `openvdb.lib` into the sdk.
+- Pillow (already in the shared venv) for `compose.py`, dev only.
+- No new downloads in part 2 except the private reference pictures (not shipped, not in the repo).
 
 ## Attribution rows
 
 | Name | Version | Licence | Used by | How it's linked | Ships? | What it asks of us | Source |
 |---|---|---|---|---|---|---|---|
 | OpenVDB (headers + import library; DLL already listed) | 13.0.0 (Blender lib-windows_x64 v5.2.2, 60d6e96) | MPL-2.0 | `proofs/3d-clay` (the clay volume); later `apps/3d/core` | dynamic | dev only (proof); the DLL already ships with the 3D libraries | Keep the notice; changes to OpenVDB's own files stay MPL (none made) | https://github.com/AcademySoftwareFoundation/openvdb |
+| Pillow | 13 (shared venv) | MIT-CMU (HPND) | `proofs/3d-clay/compose.py` | Python package | dev only | Keep the notice | https://pypi.org/project/pillow/ |
