@@ -35,6 +35,7 @@ class Multi(QObject):
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
         self._boxes = self._group = (None, None)            # (what they were made from, the boxes): see `_made`
+        self._path = (None, None, "")                       # (the boxes, skip, outlinePath's path)
         # the Gap row is the settings panel's and lands with it, the frame after (it reads every picked layer's box:
         # 200 layers ~5-10 ms inside the pick's own frame)
         gap = AfterFrame(news.relay(self, "gapChanged"), self)
@@ -60,14 +61,24 @@ class Multi(QObject):
             self._boxes = (made, [dressed(b) for b in got] if len(got) == 1 else got)
         return self._boxes[1]
 
+    @Property("QVariantList", notify=boxesChanged)
+    def knobBoxes(self):
+        """`boxes` while at most one layer is picked (its outline item with knobs), else []: several draw as one shape
+        (outlinePath), so the canvas's outline items never copy the whole list (QML copies a list on every read: 200
+        boxes were ~ms a reader, on every pick and every box change)."""
+        return self.boxes if len(self.layers()) <= 1 else []
+
     @Slot(str, result=str)
     def outlinePath(self, skip):
         """With several layers picked, every one's turned outline as ONE svg path (composition px): the canvas draws
         them as one shape, not an item with knobs each (48 layers: ~250 ms of items -> a string). `skip`: the layer
-        whose outline something else is drawing now (painting its true edge, typing). Read `boxes` in the binding so
-        it runs again when they change."""
+        whose outline something else is drawing now (painting its true edge, typing). Read `groupBox` (same news, a
+        small map) in the binding so it runs again when they change; `boxes` there copied all of them into QML."""
+        boxes = self.boxes                                  # (made once per change: `_made`)
+        if self._path[0] is boxes and self._path[1] == skip:   # both news (picked, boxes) re-read it: built once
+            return self._path[2]
         out = []
-        for b in self.boxes:
+        for b in boxes:
             if b.get("id") == skip or b.get("w") is None:
                 continue
             x, y, w, h = b["x"], b["y"], b["w"], b["h"]
@@ -76,7 +87,8 @@ class Multi(QObject):
             pts = [(ax + (px - ax) * c - (py - ay) * s, ay + (px - ax) * s + (py - ay) * c)
                    for px, py in ((x, y), (x + w, y), (x + w, y + h), (x, y + h))]
             out.append("M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z")
-        return " ".join(out)
+        self._path = (boxes, skip, " ".join(out))
+        return self._path[2]
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
