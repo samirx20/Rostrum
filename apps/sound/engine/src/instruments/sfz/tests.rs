@@ -51,7 +51,7 @@ fn a_note_longer_than_its_sample_holds_on_a_crossfaded_loop() {
     let file = dir.join("i.sfz").to_string_lossy().into_owned();
     let n = (sr * 8.0) as usize;
     let (mut l, mut r) = (vec![0.0f32; n + 4410], vec![0.0f32; n + 4410]);
-    render(&SfzSpec { file, legato: false, swell: false, even: false, gains: vec![] }, &[Note { start: 0, len: n, freqs: &[220.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
+    render(&SfzSpec { file, legato: false, swell: false, even: false, gains: vec![], key_offset: 0 }, &[Note { start: 0, len: n, freqs: &[220.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
     let rms = |a: f64, b: f64| { let s = &l[(a * sr) as usize..(b * sr) as usize]; (s.iter().map(|v| (*v as f64).powi(2)).sum::<f64>() / s.len() as f64).sqrt() };
     let (early, late) = (rms(1.0, 2.0), rms(6.5, 7.5));
     assert!(early > 0.05 && late > early * 0.7, "early {early}, late {late}");
@@ -75,14 +75,19 @@ fn renders_at_pitch_with_legato_handover() {
     let crossings = |x: &[f32]| x.windows(2).filter(|w| w[0] <= 0.0 && w[1] > 0.0).count();
     // An octave up plays at 440 Hz: about 44 rising crossings in 0.1 s.
     let (mut l, mut r) = (vec![0.0f32; 4410], vec![0.0f32; 4410]);
-    render(&SfzSpec { file: file.clone(), legato: false, swell: false, even: false, gains: vec![] }, &[Note { start: 0, len: 4410, freqs: &[440.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
+    render(&SfzSpec { file: file.clone(), legato: false, swell: false, even: false, gains: vec![], key_offset: 0 }, &[Note { start: 0, len: 4410, freqs: &[440.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
+    assert!((43..=45).contains(&crossings(&l)), "{}", crossings(&l));
+    // A file that names the sample an octave above what it sounds (as Growlybass does), with its key offset: as written.
+    std::fs::write(dir.join("high.sfz"), "<region> sample=sine.wav lokey=0 hikey=127 pitch_keycenter=69 ampeg_release=0.01").unwrap();
+    let (mut l, mut r) = (vec![0.0f32; 4410], vec![0.0f32; 4410]);
+    render(&SfzSpec { file: dir.join("high.sfz").to_string_lossy().into_owned(), legato: false, swell: false, even: false, gains: vec![], key_offset: 12 }, &[Note { start: 0, len: 4410, freqs: &[440.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
     assert!((43..=45).contains(&crossings(&l)), "{}", crossings(&l));
     // Legato: the first note fades out over the handover instead of ringing to its release.
     let n = [Note { start: 0, len: 22050, freqs: &[220.0], velocity: 1.0, pan: 0.0, expression: None }, Note { start: 11025, len: 11025, freqs: &[330.0], velocity: 1.0, pan: 0.0, expression: None }];
     let (mut l1, mut r1) = (vec![0.0f32; 22050], vec![0.0f32; 22050]);
-    render(&SfzSpec { file: file.clone(), legato: true, swell: false, even: false, gains: vec![] }, &n[..1], &mut l1, &mut r1, sr).unwrap();
+    render(&SfzSpec { file: file.clone(), legato: true, swell: false, even: false, gains: vec![], key_offset: 0 }, &n[..1], &mut l1, &mut r1, sr).unwrap();
     let (mut l2, mut r2) = (vec![0.0f32; 22050], vec![0.0f32; 22050]);
-    render(&SfzSpec { file, legato: true, swell: false, even: false, gains: vec![] }, &n, &mut l2, &mut r2, sr).unwrap();
+    render(&SfzSpec { file, legato: true, swell: false, even: false, gains: vec![], key_offset: 0 }, &n, &mut l2, &mut r2, sr).unwrap();
     let tail = |x: &[f32]| x[16000..18000].iter().map(|v| v.abs()).fold(0.0f32, f32::max);
     // After the handover only the second note sounds: 330 Hz, not the 220 Hz first note added on top.
     assert!(tail(&l1) > 0.3 && (14..=16).contains(&crossings(&l2[16000..18000])), "{} {}", tail(&l1), crossings(&l2[16000..18000]));
@@ -105,7 +110,7 @@ fn one_shots_ring_past_the_note_chokes_stop_them_and_release_samples_follow_the_
     let file = dir.join("k.sfz").to_string_lossy().into_owned();
     let f = |k: f64| 440.0 * 2f64.powf((k - 69.0) / 12.0);
     let (oh, ch, c4) = ([f(46.0)], [f(42.0)], [f(60.0)]);
-    let play = |notes: &[Note]| { let (mut l, mut r) = (vec![0.0f32; 44100], vec![0.0f32; 44100]); render(&SfzSpec { file: file.clone(), legato: false, swell: false, even: false, gains: vec![] }, notes, &mut l, &mut r, sr).unwrap(); l };
+    let play = |notes: &[Note]| { let (mut l, mut r) = (vec![0.0f32; 44100], vec![0.0f32; 44100]); render(&SfzSpec { file: file.clone(), legato: false, swell: false, even: false, gains: vec![], key_offset: 0 }, notes, &mut l, &mut r, sr).unwrap(); l };
     let peak = |x: &[f32], a: f64, b: f64| x[(a * sr) as usize..(b * sr) as usize].iter().fold(0.0f32, |m, v| m.max(v.abs()));
     // A one-shot open hat held 0.1 s still rings at 0.5 s; a closed hat at 0.3 s chokes it.
     let open = play(&[Note { start: 0, len: 4410, freqs: &oh, velocity: 1.0, pan: 0.0, expression: None }]);
@@ -136,7 +141,7 @@ fn a_slow_attack_note_is_heard_on_its_time() {
     std::fs::write(dir.join("i.sfz"), "<region> sample=slow.wav lokey=0 hikey=127 pitch_keycenter=57 ampeg_release=0.05").unwrap();
     let file = dir.join("i.sfz").to_string_lossy().into_owned();
     let (mut l, mut r) = (vec![0.0f32; 96000], vec![0.0f32; 96000]);
-    render(&SfzSpec { file, legato: false, swell: false, even: false, gains: vec![] }, &[Note { start: 48000, len: 24000, freqs: &[220.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
+    render(&SfzSpec { file, legato: false, swell: false, even: false, gains: vec![], key_offset: 0 }, &[Note { start: 48000, len: 24000, freqs: &[220.0], velocity: 1.0, pan: 0.0, expression: None }], &mut l, &mut r, sr).unwrap();
     let frames: Vec<[f32; 2]> = l.iter().zip(&r).map(|(a, b)| [*a, *b]).collect();
     let heard = (36000 + onset::find(&frames, sr, 36000)) as f64 / sr;
     assert!((heard - 1.0).abs() <= 0.010, "heard at {heard:.3} s");

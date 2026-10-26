@@ -35,7 +35,7 @@ ROLES: dict[str, Role] = {
     "builtIn:guitar": Role(("comp", "lead"), "F1", "B5", "a recorded classical (nylon) guitar"),
     "builtIn:acousticGuitar": Role(("comp", "lead"), "A1", "G6", "a recorded steel-string archtop guitar"),
     "builtIn:electricGuitar": Role(("comp", "lead"), "B1", "D6", "a recorded clean electric guitar"),
-    "builtIn:bass": Role(("bass",), "A1", "G5", "a recorded fingered electric bass"),
+    "builtIn:bass": Role(("bass",), "A0", "G4", "a recorded fingered electric bass"),
     "builtIn:uprightBass": Role(("bass",), "C1", "C4", "a recorded plucked double bass"),
     "builtIn:strings": Role(("pad",), "C1", "D6", "a recorded string section (basses to violins, by pitch), sustained"),
     "builtIn:spiccatoStrings": Role(("comp",), "C1", "D6", "the same string section, short and bouncy"),

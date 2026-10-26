@@ -18,11 +18,15 @@ means adding its step here (the kind refuses to start without it).
     5 → 6   endings and kits (2026-10-25): a new song rings out past its length (`ringOut`) and its drum kits are
             even (track `evenKit`: pieces at measured levels, transients in reach of each hit's loudness). A saved
             song gets both off: it ends and its drums sound exactly as before.
+    6 → 7   the recorded bass at its true pitch (2026-10-26): Growlybass names each sample an octave above what it
+            sounds, so `bass` (`electricBass`, `bassGuitar`) played every note an octave below the one written. The
+            engine now plays it as written; a saved song's notes on those tracks move down an octave (spelling kept),
+            so it sounds exactly as before. The names are frozen here: they are what format 6 played low.
 """
 from __future__ import annotations
 
 from .. import names
-from . import preset_level
+from . import keys, preset_level
 
 VOLUME_MAX = 4.0        # the fader's top (and the engine's)
 
@@ -94,5 +98,30 @@ def endings_and_kits(data: dict, lists: dict):
     return data, "The song ends at its length and its drum kits play as recorded (Ring out and Even kit off), so it sounds as before"
 
 
-STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits}
+OCTAVE_LOW = ("bass", "electricBass", "bassGuitar")     # the names format 6 played an octave below the written note
+
+
+def _octave_down(p):
+    if keys.midi(p) < 12:
+        raise ValueError(f"the note {p!r} on a bass track has no octave below it")
+    if isinstance(p, int):
+        return p - 12
+    m = keys.PITCH.match(p)
+    return f"{m.group(1)}{m.group(2) or ''}{int(m.group(3)) - 1}"
+
+
+def bass_true_pitch(data: dict, lists: dict):
+    moved = 0
+    for t in data.get("tracks", []):
+        if t.get("instrument") != "builtIn" or t.get("builtIn") not in OCTAVE_LOW:
+            continue
+        for n in t.get("notes", []):
+            p = n["pitch"]
+            n["pitch"] = [_octave_down(x) for x in p] if isinstance(p, list) else _octave_down(p)
+        moved += 1
+    return data, (f"The bass now plays at the written pitch: the notes on {moved} bass track{'s' * (moved != 1)} moved down "
+                  "an octave, so the song sounds as before") if moved else "Bass pitch: nothing to change"
+
+
+STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch}
 FORMAT = len(STEPS) + 1

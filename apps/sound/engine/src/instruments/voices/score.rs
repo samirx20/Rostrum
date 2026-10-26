@@ -21,10 +21,10 @@ pub fn render_score(voices: &[crate::mix::schedule::Voice], left: &mut [f32], ri
     }
     // SFZ instruments (sfz.rs): each articulation's notes together, so legato hands over between them.
     let mut files: Vec<&crate::instruments::sfz::SfzSpec> = vec![];
-    for v in voices { if let V::Note { sfz: Some(s), .. } = v { if !files.iter().any(|f| f.file == s.file && f.legato == s.legato && f.swell == s.swell) { files.push(s); } } }
+    for v in voices { if let V::Note { sfz: Some(s), .. } = v { if !files.iter().any(|f| f.plays_as(s)) { files.push(s); } } }
     for spec in files {
         let notes: Vec<_> = voices.iter().filter_map(|v| match v {
-            V::Note { sfz: Some(s), freqs, start_idx, duration, velocity, pan, expression, .. } if s.file == spec.file && s.legato == spec.legato && s.swell == spec.swell => Some(crate::instruments::sfz::Note { start: *start_idx, len: (duration * sr).round() as usize, freqs: freqs.as_slice(), velocity: *velocity, pan: *pan, expression: expression.as_ref() }),
+            V::Note { sfz: Some(s), freqs, start_idx, duration, velocity, pan, expression, .. } if s.plays_as(spec) => Some(crate::instruments::sfz::Note { start: *start_idx, len: (duration * sr).round() as usize, freqs: freqs.as_slice(), velocity: *velocity, pan: *pan, expression: expression.as_ref() }),
             _ => None,
         }).collect();
         crate::instruments::sfz::render(spec, &notes, left, right, sr)?;
