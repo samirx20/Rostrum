@@ -19,6 +19,18 @@ def test_an_old_songs_kit_synth_opens_as_drums():
     assert data["tracks"][0]["kit"] == "drums"
 
 
+def test_an_old_songs_bass_moves_down_an_octave_so_it_sounds_as_before():
+    old = copy.deepcopy(OLD)
+    old["tracks"] = [{"id": "b", "type": "track", "instrument": "builtIn", "builtIn": "electricBass", "notes": [
+                         {"id": "n1", "type": "note", "pitch": "Bb2", "at": 0, "dur": 1},
+                         {"id": "n2", "type": "note", "pitch": ["E2", 47], "at": 1, "dur": 1}]},
+                     {"id": "u", "type": "track", "instrument": "builtIn", "builtIn": "uprightBass", "notes": [
+                         {"id": "n3", "type": "note", "pitch": "E2", "at": 0, "dur": 1}]}]
+    data, _ = KIND.migrate(old, 6)
+    assert [n["pitch"] for n in data["tracks"][0]["notes"]] == ["Bb1", ["E1", 35]]
+    assert data["tracks"][1]["notes"][0]["pitch"] == "E2"
+
+
 def _sent(source):
     doc = Document.new(KIND)
     doc.run_script("t.py", run_source(source, "t.py"), Who.script("t.py"))

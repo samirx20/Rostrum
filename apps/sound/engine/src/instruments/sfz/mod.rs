@@ -47,6 +47,22 @@ pub struct SfzSpec {
     pub even: bool,
     #[serde(default)]
     pub gains: Vec<(u8, f64)>,
+    /// Half steps the file maps its samples above the pitch they sound (contract/names_instruments.rs): a note asks
+    /// the file for its own key plus this.
+    #[serde(default)]
+    pub key_offset: i8,
+}
+
+impl SfzSpec {
+    /// The same file played the same way: its notes render together (legato hands over between them).
+    pub fn plays_as(&self, o: &SfzSpec) -> bool {
+        self.file == o.file && self.legato == o.legato && self.swell == o.swell && self.key_offset == o.key_offset
+    }
+
+    /// The file's key for a pitch (MIDI, fractional).
+    pub fn file_key(&self, freq: f64) -> f64 {
+        69.0 + 12.0 * (freq / 440.0).log2() + self.key_offset as f64
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -263,15 +279,17 @@ pub fn render(spec: &SfzSpec, notes: &[Note], left: &mut [f32], right: &mut [f32
         let n = &notes[i];
         let vel = (n.velocity.clamp(0.0, 1.0) * 127.0).round().clamp(1.0, 127.0) as u8;
         for (j, &f) in n.freqs.iter().enumerate() {
-            let midi = 69.0 + 12.0 * (f / 440.0).log2();
+            let midi = spec.file_key(f);
             let key = midi.round().clamp(0.0, 127.0) as u8;
             let nth = { let c = struck.entry(key).or_insert(0); *c += 1; *c - 1 };
             let rand = ((k as u64 * 0x9E37_79B9 + j as u64 * 0x85EB_CA6B + key as u64) % 10007) as f64 / 10007.0;
             let hits = select(&regions, key, vel, nth, rand);
             if hits.is_empty() {
-                let name = |k: u8| format!("{}{}", ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][k as usize % 12], k as i32 / 12 - 1);
+                // Named as written: the file's keys less its offset.
+                let written = |k: u8| k as i32 - spec.key_offset as i32;
+                let name = |k: u8| { let k = written(k); format!("{}{}", ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"][k.rem_euclid(12) as usize], k.div_euclid(12) - 1) };
                 let (lo, hi) = (regions.iter().map(|r| r.lokey).min().unwrap_or(0), regions.iter().map(|r| r.hikey).max().unwrap_or(0));
-                return Err(format!("{}: no sample for {} (key {key}) at velocity {vel}; the instrument plays {}–{}", spec.file, name(key), name(lo), name(hi)));
+                return Err(format!("{}: no sample for {} (key {}) at velocity {vel}; the instrument plays {}–{}", spec.file, name(key), written(key), name(lo), name(hi)));
             }
             let (off, release, legato) = ends[i];
             let level = spec.gains.iter().find(|(k, _)| *k == key).map_or(0.0, |g| g.1);

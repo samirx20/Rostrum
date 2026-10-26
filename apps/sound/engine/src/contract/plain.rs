@@ -66,13 +66,20 @@ fn recorded(name: &str, e: &Recorded, art: Option<&'static str>, at: &str) -> Re
             let font = file(name, z.pack, rel, at)?;
             return Ok(Resolved { inst: Inst::Sampler(json!({ "font": font, "program": 0, "bank": 0, "drums": false, "humanize": true })), family: art_family(z.arts[0].0), credit: e.credit });
         }
+        let spec = |file: Value, legato: bool, swell: bool| {
+            let mut s = json!({ "file": file, "legato": legato, "swell": swell });
+            if z.key_offset != 0 {
+                s["keyOffset"] = json!(z.key_offset);
+            }
+            s
+        };
         let mut arts: Vec<(String, Value)> = vec![];
         for (a, rel) in z.arts {
-            arts.push((a.to_string(), json!({ "file": file(name, z.pack, rel, at)?, "legato": false, "swell": false })));
+            arts.push((a.to_string(), spec(json!(file(name, z.pack, rel, at)?), false, false)));
         }
         if let Some(sus) = arts.iter().find(|(a, _)| a == "sustain").map(|(_, s)| s["file"].clone()) {
-            arts.push(("legato".into(), json!({ "file": sus, "legato": true, "swell": false })));
-            arts.push(("swell".into(), json!({ "file": sus, "legato": false, "swell": true })));
+            arts.push(("legato".into(), spec(sus.clone(), true, false)));
+            arts.push(("swell".into(), spec(sus, false, true)));
         }
         let main = arts.iter().find(|(a, _)| a == first).unwrap_or(&arts[0]).1.clone();
         zones.push(Zone { hikey, main, arts });

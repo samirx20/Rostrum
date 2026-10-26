@@ -9,7 +9,7 @@ SONG = """tempo(110); beats_per_bar(4); length(bar(5)); key("A minor")
 prog = ["Am", "F", "C", "G"]
 d = track("drums", kit="studio"); bs = track("bass", builtIn="bass"); pn = track("piano", builtIn="piano")
 write(d, drum_grid({"kick": "X...x..xX...x...", "snare": "....X.......X...", "hat": "x.x.x.x.x.x.x.x."}, bars=4, crash=True), at=bar(1))
-write(bs, bass_line(prog, pattern="R.R.R.R.R.R.R.R5", octave=2, per=4), at=bar(1))
+write(bs, bass_line(prog, pattern="R.R.R.R.R.R.R.R5", octave=1, per=4), at=bar(1))
 write(pn, comp(prog, rhythm="X.x.x.x.X.x.x.xx", vel=0.7, range=("C3", "E5")), at=bar(1))
 master(loudness=-14, truePeak=-1)
 """
