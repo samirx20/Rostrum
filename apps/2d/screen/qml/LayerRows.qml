@@ -18,6 +18,9 @@ ListView {
     spacing: 2
     clip: true
     cacheBuffer: 4000                   // rows are built ahead, off the click: a pick that scrolls the list to its row finds them made (was ~100 ms of row-making inside the click)
+    reuseItems: true                    // rows scrolled out are kept and given the next row's data, never made anew: a pick
+                                        // far down the list made every row there (~3 ms each), more the further the list had
+                                        // scrolled (a grab among 200 layers grew 70 -> 230 ms over 17 picks; now flat)
     boundsBehavior: Flickable.StopAtBounds
 
     // Right-click menu of a layer: what applies to the selection (backend.layerMenu: an unselected layer is selected
@@ -130,7 +133,12 @@ ListView {
         readonly property var sound: modelData.row === "layer" ? backend.soundtrack.videos.rows[modelData.id] : undefined
         height: own + (sound ? Theme.rowDense - 2 : 0)     // a video with sound: its sound's row under it (VideoSoundRow)
         opacity: list.dragId === modelData.id ? 0.45 : 1
+        property bool parked: false        // kept out of view for the next row (reuseItems): hidden, so no check sees it
+        visible: !parked
+        ListView.onPooled: { parked = true; rowName.endRename(false); rowTrack.release() }     // nothing of the row it was stays
+        ListView.onReused: parked = false
         LayerName {
+            id: rowName
             x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own
             rowData: row.modelData; rows: list
         }
@@ -139,6 +147,7 @@ ListView {
             ChangeOutline { x: Theme.gap; width: list.labelWidth - Theme.gap; height: row.own }
         }
         LayerTrack {
+            id: rowTrack
             x: list.ruler.x - 8; width: list.ruler.width + 16; height: row.own
             rowData: row.modelData; ruler: list.ruler; rows: list
             cells: Component { FrameMarks {   // a drawing's cells

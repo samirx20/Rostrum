@@ -199,14 +199,23 @@ class Engine:
         description now held; a restarted engine gets it whole. With no working graphics driver the engine draws
         the same frames on the processor and `fallback` says so. Why it went whole is a developer's fact, not a
         warning: kept in `loaded["why"]`, and logged only with ROSTRUM2D_LOG_SCENE=1 (stderr reaches agents)."""
-        req, why = scene_change.request(self.scene, scene)
+        req, why = ({"scene": scene}, "the held scene was edited (a drag)") if self.edited else scene_change.request(self.scene, scene)
         if why and os.environ.get("ROSTRUM2D_LOG_SCENE") == "1":
             _log_line(f"2D scene sent whole: {why}")
         out = self._request(req)
         self.fallback = out.get("fallback")
-        self.scene = scene
+        self.scene, self.edited = scene, False
         self.loaded = {"sent": next(iter(req)), "kept": out.get("kept", 0), "timing": out.get("timing") or {}, "ms": out["ms"],
                        "why": why or ""}
+
+    edited = False          # `edit` changed the held scene: it no longer matches `self.scene`, the next load sends it whole
+
+    def edit(self, edits: list[dict]) -> None:
+        """Small changes to the held scene without resending it (ENGINE_CONTRACT.md `edit`: a drag's moves), all or
+        nothing: [{"id", "props"?: {…}, "anim"?: {…}}]. The next `load` sends its scene whole."""
+        self._props()
+        self._request({"edit": edits})
+        self.edited = True
 
     def _props(self) -> dict:
         if self.scene is None:

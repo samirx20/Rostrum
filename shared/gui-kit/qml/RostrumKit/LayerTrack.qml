@@ -30,6 +30,8 @@ Rectangle {
     function dots(keys) { return frozen ? KeyGroups.regroup(keys, frozen) : KeyGroups.group(keys, xOf, 16) }   // keys whose click areas (a dot is 16 px wide, KeyDot.qml) would touch: one dot for the run
     function hold() { frozen = barDots.concat(loneDots).map(d => d.members) }
     function release() { frozen = null }
+    readonly property var noBand: ({ ids: [""], t0: 0, t1: 0, owner: "", tip: "" })     // a kept band with none to show (hidden)
+    function band(shown, i) { const b = shown ? rowData.stretches || [] : []; return i < b.length ? b[i] : noBand }
     readonly property bool fixed: rowData.frame === true       // the frame's bar: the whole scene, never slid or trimmed
     readonly property bool trims: rowData.trim === true && !fixed   // its ends can be dragged (2D layers; 3D's bar is only its keys)
     readonly property bool named: rowData.trim === true         // the layer's name is written in the bar
@@ -109,9 +111,14 @@ Rectangle {
             onReleased: { if (held) backend.endDrag(); held = "" }
             onCanceled: { if (held) backend.endDrag(); held = "" }
         }
-        Repeater {   // the stretches of the animations on the layer's first line, under its keys (SPEC §9.2)
-            model: track.hasBar ? track.rowData.stretches || [] : []
-            delegate: StretchBand { row: track; shift: bar.x; room: bar.width }
+        KeptRepeater {   // the stretches of the animations on the layer's first line, under its keys (SPEC §9.2); kept
+            id: barBands     // by index: a Repeater over the list remade every band at each change (a Stagger of 200 layers)
+            needed: track.hasBar ? (track.rowData.stretches || []).length : 0
+            delegate: Item {
+                required property int index
+                visible: index < barBands.needed; width: parent.width; height: parent.height
+                StretchBand { row: track; shift: bar.x; room: bar.width; modelData: track.band(track.hasBar, parent.index) }
+            }
         }
         Repeater {   // the two ends: 16 px each, centred on the edge, drag = trim the layer (start / end); beside the keys (a key at the edge keeps its diamond, the handle moves just outside it)
             model: track.trims ? ["start", "end"] : []
@@ -151,15 +158,17 @@ Rectangle {
         }
     }
     Loader { anchors.fill: parent; sourceComponent: track.cells }   // the app's own marks on the row (2D: a drawing's cells, FrameMarks.qml)
-    Repeater {   // a tied end: a small flag with the marker's name on hover
-        model: [{ at: "start", name: track.rowData.startMarker || "" }, { at: "end", name: track.rowData.endMarker || "" }]
+    Repeater {   // a tied end: a small flag with the marker's name on hover (a count: the flags are kept as the row changes)
+        model: 2
         delegate: Rectangle {
-            required property var modelData
-            visible: track.rowData.bar === true && modelData.name !== ""
-            x: track.xOf(modelData.at === "start" ? track.rowData.start || 0 : track.rowData.end || 0) - (modelData.at === "start" ? 0 : width); y: 1
+            required property int index
+            readonly property bool atStart: index === 0
+            readonly property string name: (atStart ? track.rowData.startMarker : track.rowData.endMarker) || ""
+            visible: track.rowData.bar === true && name !== ""
+            x: track.xOf(atStart ? track.rowData.start || 0 : track.rowData.end || 0) - (atStart ? 0 : width); y: 1
             width: 7; height: 7; radius: 1; color: Theme.warn
             HoverHandler { id: flagHover }
-            HoverTip { hovered: flagHover.hovered; text: (modelData.at === "start" ? "Starts at marker " : "Ends at marker ") + modelData.name }
+            HoverTip { hovered: flagHover.hovered; text: (atStart ? "Starts at marker " : "Ends at marker ") + name }
         }
     }
     Repeater {   // the frame's cuts (rowData.cuts): a short orange tick at each, as on the ruler above

@@ -186,8 +186,22 @@ def png(frame: dict, w: int, h: int, amount: float, cropped: bool) -> dict:
     return _entry(key, cropped)
 
 
-def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | None) -> dict:
-    """One picture of the drawing part drawn: made now, or (a screen: `later`) made off its thread, nothing meanwhile."""
+class Ahead:
+    """A picture the screen draws without waiting for (`later`): the whole drawing stands in until it is made, then the
+    canvas draws again. A keyed Drawn so far needs a picture per frame (~50 for 2 s, about a second each the first
+    time), and waiting for them all kept the canvas on its old picture for about a minute (2D r11b)."""
+    ahead = True
+
+    def __init__(self, make, at: float = 0.0):
+        self.make, self.at = make, at          # `at`: the time it shows (the screen makes those near its playhead first)
+
+    def __call__(self):
+        return self.make()
+
+
+def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | None, stand_in=None, at: float = 0.0) -> dict:
+    """One picture of the drawing part drawn: made now, or (a screen: `later`) made off its thread, `stand_in()` (the
+    whole drawing) meanwhile."""
     w, h = size
     if amount <= 0:
         return ({"src": str(ink.png({"paints": []}, w, h)[0])} if cropped else {"src": str(canvas.png({"paints": []}, w, h))})
@@ -196,8 +210,8 @@ def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | 
         return got
     if later is None:
         return png(frame, w, h, amount, cropped)
-    later.append(lambda: png(frame, w, h, amount, cropped))
-    return _part(frame, size, 0.0, cropped, None)
+    later.append(Ahead(lambda: png(frame, w, h, amount, cropped), at))
+    return stand_in() if stand_in is not None else _part(frame, size, 0.0, cropped, None)
 
 
 def entries(item: dict, run: list, fps: float, first: int, last: int, size: tuple, full, later: list | None) -> list[dict]:
@@ -208,7 +222,7 @@ def entries(item: dict, run: list, fps: float, first: int, last: int, size: tupl
     cropped = item["type"] == "drawing"
     if not keys_of(item, DRAWN):
         a = amount_at(item, 0.0)
-        return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later))} for n, f in run]
+        return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, lambda f=f: full(f), n / fps))} for n, f in run]
     out, i, shown = [], 0, None
     for n in range(max(first, run[0][0]) if run else 0, last + 1 if run else 0):
         while i + 1 < len(run) and run[i + 1][0] <= n:
@@ -216,5 +230,5 @@ def entries(item: dict, run: list, fps: float, first: int, last: int, size: tupl
         a = amount_at(item, n / fps)
         if (i, a) != shown:
             shown, f = (i, a), run[i][1]
-            out.append({"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later))})
+            out.append({"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, lambda f=f: full(f), n / fps))})
     return out or [{"at": n, **full(f)} for n, f in run[:1]]

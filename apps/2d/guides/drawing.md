@@ -202,6 +202,7 @@ How it draws:
 - A fill fades in over its share of the time.
 - With **Draw each frame** on, the drawing showing at each moment is drawn that far.
 - Ease the keys like any others (the curve view): ease in starts the pen slowly.
+- The in-between pictures are made the first time they're needed, those near the playhead first. Until a moment's picture is made, the canvas shows the whole drawing there; it fills in on its own. An export always waits for every picture.
 
 For an agent: the field is `drawnSoFar` (0–1) on the drawing layer or the painted element. Key it like any field: `key.add {target, prop: "drawnSoFar", t, v}`, or in a script `d.key("drawnSoFar", {0.5: 0, 2.5: 1}, ease="easeInOut")`. Then `look_frame` with `what: "sheet"` shows it painting on. To reveal part of a stroke by area rather than along its path, a keyed mask on the layer still works.
 

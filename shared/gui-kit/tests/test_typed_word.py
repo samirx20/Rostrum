@@ -89,4 +89,12 @@ def test_a_field_gets_every_key_however_fast():
     for k in (Qt.Key_M, Qt.Key_1, Qt.Key_2, Qt.Key_Period, Qt.Key_5, Qt.Key_X):
         key(k, 0.015)
     assert win.property("text") == "m12.5x" and win.property("marks") == 0, "a text field lost keys to the guard"
+
+    class Behind:                     # a window kept behind the person's work: the app has no focus object (2D r11b)
+        focusObject = staticmethod(lambda: None)
+    real, typed_word.QGuiApplication = getattr(typed_word, "QGuiApplication", None), Behind
+    try:
+        assert typed_word.typing_in_field(win), "a field focused in a window kept behind was not seen as typing"
+    finally:
+        typed_word.QGuiApplication = real
     engine.deleteLater()

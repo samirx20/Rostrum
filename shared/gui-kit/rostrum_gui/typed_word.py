@@ -50,6 +50,13 @@ def is_field(item) -> bool:
     return mo is not None and mo.indexOfProperty("cursorPosition") >= 0 and mo.indexOfProperty("selectByMouse") >= 0
 
 
+def typing_in_field(win) -> bool:
+    """A text field of `win` has the keys. Asked of the window: the app's focus object is empty while the window is
+    not the active one (a check window kept behind the person's work), and every key after the first typed into a
+    field there was dropped (2D r11b, Sound critic r11)."""
+    return is_field(win.activeFocusItem() if hasattr(win, "activeFocusItem") else None)
+
+
 class TypedWord(GuiFilter):
     def __init__(self, clock=time.monotonic):
         super().__init__()
@@ -64,7 +71,7 @@ class TypedWord(GuiFilter):
 
     def _drop(self, win, event) -> bool:
         """Is this key the rest of a word (and so to be dropped)? Each press is judged once."""
-        if event.isAutoRepeat() or is_field(win.activeFocusItem() if hasattr(win, "activeFocusItem") else None):
+        if event.isAutoRepeat() or typing_in_field(win):
             return False
         now, before, in_word = self.clock(), self.last, self.in_word
         drop = droppable(event) and in_word and now - before < WORD_S
