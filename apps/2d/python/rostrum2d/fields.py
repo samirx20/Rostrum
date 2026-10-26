@@ -247,7 +247,9 @@ FIELDS: dict[str, list[Param]] = {
           help="The font's own italic (refused if the family has none)"),
         C("color", "Colour", "Text", "#ffffff"),
         *_fill.OPACITY,
-        CH("align", ["left", "center", "right"], "Align", "Paragraph", "center", S),
+        CH("align", ["left", "center", "right"], "Align", "Paragraph", "center", S,
+           help="Lines line up on the left, the centre or the right. Without a box width, X is then the text's left edge, "
+                "middle or right edge: the words re-flow around it (its anchor follows, unless you moved the anchor)"),
         N("tracking", "Letter spacing", "Paragraph", -0.5, 2, 0.001, "em", S, help="Space between letters"),
         N("lineHeight", "Line height", "Paragraph", 0.5, 4, 0.01, "×", S, default=1.1),
         N("stretch", "Width", "Font", 25, 200, 1, "%", D, default=100.0, help="Variable font width"),
@@ -470,11 +472,6 @@ FIELDS["text"].append(X("textStyle", "Text style", "Font", "", S, control="pick"
                         help="The named text style this text follows (its font, size, weight, colour …): changing the style "
                              "changes the text. Empty = its own. Setting one of those fields by hand detaches it"))
 STILL["textstyle"], LABELS["textstyle"] = set(STYLED), "Text style"
-
-
-# What a kind's own tool starts it with where that differs from the field's default (the Text tool places a text by
-# its top-left, left-aligned). The tool writes these; the settings panel counts them as unchanged (hooks.py starts).
-STARTS = {"text": {"anchorX": 0.0, "anchorY": 0.0, "align": "left"}}
 
 
 def param(kind: str, name: str) -> Param | None:

@@ -113,6 +113,7 @@ Item {
             font.pixelSize: Math.max(4, (ov.look.size || 40) * ov.scale)
             font.weight: Math.max(1, Math.min(1000, ov.look.weight || 600))
             wrapMode: ov.box.wrap ? TextEdit.Wrap : TextEdit.NoWrap
+            horizontalAlignment: ov.look.align === "right" ? TextEdit.AlignRight : ov.look.align === "left" ? TextEdit.AlignLeft : TextEdit.AlignHCenter   // the lines line up as the text's do
             persistentSelection: true
             property bool loading: false
             cursorDelegate: Item { }                     // drawn below (it shows with or without window focus)

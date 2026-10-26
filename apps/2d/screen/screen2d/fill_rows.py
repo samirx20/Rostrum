@@ -3,7 +3,8 @@ place of the colour row and the fill's own fields (on / off, type, gradient angl
 handles set those; a picture's file, fit and scale too: the picker shows them once). Not a stored field: the row is rostrum2d.fill_paint.of(item) and an edit is the agents'
 `layer.fill`. The engine draws any number of stops anywhere in 0..1, see-through too (E8).
 The row's key mark (`anim_state`, `animate_calls`): a solid fill is its colour's; a gradient's is its stops' colours (and an
-inner stop's position): keyed when any is, a click keys them all at the playhead or stops them all. The picker shows the
+inner stop's position): keyed when any is; a click keys them all at the playhead, or deletes their keys at the playhead
+when there are some (route.py's key mark); Stop animating stops them all. The picker shows the
 paint at the playhead and an edit keys what is animated there (layer.fill `at`).
 A picture or painted fill's per-element fields (Scale, Offset, Rotation, Drift, Colour under it, Blend, Opacity, Start at
 drawing) stay the panel's own rows, evaluated like any (valid when, key marks), marked `inside` the Fill row: the picker
@@ -144,14 +145,18 @@ def anim_state(item: dict, t: float, fps: float) -> str:
     return next((s for s in ("onkey", "keyed", "still") if s in states), "")
 
 
-def animate_calls(item: dict, t: float) -> tuple[list[dict], str]:
+def animate_calls(item: dict, t: float, fps: float, stop: bool = False) -> tuple[list[dict], str]:
+    """The Fill row's key mark, as route.KeyRoute.animate_calls does for one field, over all its parts."""
     parts = _parts(item)
-    if any(keys_of(it, f) for it, f in parts):
+    if stop:
         return [{"op": "key.clear", "target": [it["id"]], "args": {"prop": f, "at": t}} for it, f in parts if keys_of(it, f)],             "Stop animating Fill"
+    here = [k for it, f in parts if (k := route.key_at(keys_of(it, f), t, fps))]
+    if here:
+        return [{"op": "key.remove", "target": [k["id"] for k in here], "args": {}}], f"Delete Fill key at {t:.2f} s"
     calls = []
     for it, f in parts:
         c = route.value_call(it, f, resolve(it, t).get(f, it.get(f)), t)
         c["op"] = "key.add"
         c["args"]["t"] = c["args"].pop("at")
         calls.append(c)
-    return calls, "Animate Fill"
+    return calls, f"Key Fill at {t:.2f} s" if any(keys_of(it, f) for it, f in parts) else "Animate Fill"

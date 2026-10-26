@@ -22,7 +22,8 @@ import "ValueKinds.js" as VK
 // With `keyMarks` (an app with keys) every param row keeps a gutter at the right for its key mark (model.anim):
 // a filled diamond = a key at the playhead, outlined = animated, faint (always shown, a little stronger on hover) =
 // could be animated (INTERACTION 1.5: always visible, not only on hover).
-// Clicking the mark is bridge.toggleAnimate (the app decides what that does).
+// Clicking the mark is bridge.toggleAnimate (the app decides what that does); its right-click › Stop animating is
+// bridge.stopAnimating.
 // Right-click on a param row: Reset puts it back to its default (model.default) through the same set operation, one
 // undo step (INTERACTION 1.4). At its default (or with no default, or driven by an expression) there is nothing to
 // reset, so the menu is absent. Mixed values count as not at the default.
@@ -287,8 +288,16 @@ Item {
                 KeyMark { anchors.centerIn: parent; filled: row.model.anim === "onkey"
                           color: row.model.anim === "still" ? (markArea.containsMouse ? Theme.fg2 : rowHover.hovered ? Theme.fg3 : Theme.fg4)
                                : markArea.containsMouse ? Theme.accentHover : Theme.accent }
-                MouseArea { id: markArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: row.bridge.toggleAnimate(row.model.id) }      // a pair (X | Y): both halves, one change (bridge)
+                MouseArea { id: markArea; objectName: "keymark:" + row.model.id; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor; acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: (e) => {      // a pair (X | Y): both halves, one change (bridge)
+                                if (e.button === Qt.LeftButton) return row.bridge.toggleAnimate(row.model.id)
+                                if (row.model.anim === "still") return
+                                const p = mapToItem(null, e.x, e.y); stopMenu.active = true; stopMenu.item.openAt(p.x, p.y) } }
+            }
+            Loader {   // the key mark's right-click: stopping all of a setting's animation is its own named step, never a click's
+                id: stopMenu; active: false
+                sourceComponent: ActionMenu { entries: [{ value: "stop", label: "Stop animating" }]; onPicked: row.bridge.stopAnimating(row.model.id) }
             }
             Loader {   // made at the first right-click only: a panel has many rows
                 id: resetMenu; active: false

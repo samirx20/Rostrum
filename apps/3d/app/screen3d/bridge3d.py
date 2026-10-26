@@ -139,8 +139,8 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     def anim_state(self, item, param):
         return route.anim_state(item, param, self.time, self._info["fps"])
 
-    def animate_calls(self, item_id, param):
-        return route.animate_calls(self.doc.item(item_id), param, self.time)
+    def animate_calls(self, item_id, param, stop=False):
+        return route.animate_calls(self.doc.item(item_id), param, self.time, self._info["fps"], stop)
 
     def _first(self):
         return next((i["id"] for i in self.doc.data.get("items", [])), "")

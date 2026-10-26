@@ -17,7 +17,7 @@ import re
 import rostrum_paint
 from rostrum_core import DocKind, Registry
 
-from . import advice, exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, widthprofile
+from . import advice, exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, text_anchor, widthprofile
 from .frame import make as frame_make, rules as frame_rules
 from .rig import model as rig_model
 
@@ -47,8 +47,12 @@ def _set_fields(ctx, targets, args):
         if item.get("type") in ("text", "textstyle") and {"font", "italic"} & set(args) and (why := fontlist.setting_refusal(
                 t, args.get("font", item.get("font", "")), args.get("italic", item.get("italic", False)))):
             raise ValueError(why)                       # never drawn in another font: refused when set
+        before = dict(item) if item.get("type") == "text" else None
         for k, v in args.items():
             ctx.set(t, k, v)
+        if before is not None:                       # Align moves a point text's anchor with it (text_anchor.py)
+            for k, v in text_anchor.follow(before, ctx.item(t), args).items():
+                ctx.set(t, k, v)
         names.after_set(ctx, t, args)                # a new shape is named for its kind, counted per kind
         text_styles.after_set(ctx, t, args)          # a style reaches its texts; a text set by hand leaves its style
         frame_make.resized(ctx, t, size)             # a scene's new size: its pinned layers keep their distance from the frame's centre

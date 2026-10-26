@@ -195,6 +195,8 @@ Every pattern below follows the same layout:
 3. **Every other group is folded to its name**, every name in one wrapping line. Click to open it. The panel remembers
    open groups by name across selections. A group you turn on (+ Outline, + Motion blur, + Levels) is turned on by that
    one click; − on its heading turns it off. Pairs (Position, Size) have one key mark for both values.
+   A click on a key mark starts animating, adds a key at the playhead, or deletes only the key at the playhead (said in
+   the top bar); right-click › Stop animating takes every key away (route.py).
 4. **Search:** typing shows every matching setting from any group, open and editable. It understands people's words
    ("transparency" finds Opacity). Esc clears.
 5. **Several selected:** their shared settings, with **Mixed** where the values differ. Changing one sets them all, as

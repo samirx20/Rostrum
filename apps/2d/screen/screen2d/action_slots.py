@@ -11,7 +11,7 @@ from rostrum_gui.action_views import commands as do_commands
 from rostrum_gui.parts import SlotMixin
 from rostrum_gui.selection_rules import esc_step
 
-from . import frame_actions, job_when
+from . import frame_actions, job_when, keyed_note
 from .action_rules import said
 from .actions import LIST, Facts
 from .key_routes import KeyHub
@@ -86,10 +86,12 @@ class ActionSlots(SlotMixin):
             self._set_status("Already framed")
             return
         framed = frame_actions.told(calls, self._facts()) if any(c["op"] in frame_actions.OPS for c in calls) else ""   # said before
+        since = self.doc.seq
         if not self._guard(lambda: self._apply(calls, label)):
             return
-        if framed or said(calls, label, self.doc) != label:   # K: "Keyed 4 settings on 3 layers" (action_rules.said)
-            self._set_status(framed or said(calls, label, self.doc))
+        words = (framed or said(calls, label, self.doc)) + keyed_note.note(self.doc, since, calls, self._t)
+        if words != label:                                    # K: "Keyed 4 settings on 3 layers" (action_rules.said); an
+            self._set_status(words)                           # Align that keyed X: "… · keyed X at 3.00 s" (keyed_note.py)
         if any(c["op"] == "layer.duplicate" for c in calls):
             after = [self.doc.item(parent)[k][at + 1]["id"] for parent, k, at in (self.doc.parent_of(i) for i in layers)]
         if after:

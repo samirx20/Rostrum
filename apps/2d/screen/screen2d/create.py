@@ -5,8 +5,9 @@ Shapes: press-drag-release on the canvas draws one at that place and size: one c
 tool back to Move. Shift = square / circle, Alt = from the centre, a click under `slop` = 200 x 200 centred on it.
 A line or an arrow is drawn from where the press was to where it lets go (its length and its turn; Shift = in steps
 of 45°), as tall as its line or head.
-Text: a click starts a text there (left-aligned, it grows as you type), a dragged box wraps inside; typing is one
-undo step (typing_session.py). All coordinates in and out are composition px; the screen maps them (Stage's mapping only).
+Text: a click starts a text there, a dragged box wraps inside; typing is one undo step (typing_session.py). A new text
+starts as a script's does (fields.py's defaults: centred on its point, text_anchor.py), so the click is the middle of
+its first line and the words grow both ways; Align Left / Right makes them grow right / left from it. All coordinates in and out are composition px; the screen maps them (Stage's mapping only).
 `box` is the live outline / typing box for QML: {kind, x, y, w, h, label} (x, y = its top-left). Every action is
 also a plain operation (`layer.add` + the type's field operation) that agents call themselves.
 """
@@ -162,9 +163,12 @@ class Create(QObject):
     # ---- text ---------------------------------------------------------------------------------------------------
     @Slot(float, float, float)
     def beginText(self, x, y, width):
-        """Start typing at (x, y) (the text's top-left); width > 0 = a box the words wrap in."""
+        """Start typing at (x, y): the click point (the middle of the first line), or with width > 0 the top-left
+        of a box the words wrap in (its first line lands at the box's top)."""
         self.finish()
-        place = {"x": round(x, 2), "y": round(y, 2), **F.STARTS["text"]}
+        if width > 0:
+            x, y = x + width / 2, y + self._start_size() * F.defaults("text")["lineHeight"] / 2
+        place = {"x": round(x, 2), "y": round(y, 2)}
         if width > 0:
             place["boxWidth"] = round(width, 2)
         self._ink = ink_for(self.b.colourPick.colour_at(x + 6, y + 6), self.b.comp().get("background", ""))
@@ -255,8 +259,9 @@ class Create(QObject):
         if mine:
             box = {"kind": "text", "x": mine["x"], "y": mine["y"], "w": mine["w"], "h": mine["h"], "wrap": wrap}
         else:
-            box = {"kind": "text", "x": p.get("x", 0), "y": p.get("y", 0), "w": p.get("boxWidth", 0),
-                   "h": self._start_size(), "wrap": wrap}
+            d, w, h = F.defaults("text"), p.get("boxWidth", 0), self._start_size()     # around the point, as the text will be
+            box = {"kind": "text", "x": p.get("x", 0) - w * d["anchorX"], "y": p.get("y", 0) - h * d["anchorY"], "w": w,
+                   "h": h, "wrap": wrap}
         self._set_box(box)
         self.typingChanged.emit()
 

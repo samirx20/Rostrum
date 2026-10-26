@@ -17,7 +17,7 @@ below is a field (`inspect_item id=title` lists them with what is valid right no
 | `italic` | The family's own italic (on / off). Refused if the family has none. |
 | `slant`, `grade` | The font's `slnt` and `GRAD` axes, set only when not 0. |
 | `axes` | Any other axis by tag: `"XTRA 468, CASL 1"`. It wins over the named fields. An axis the font lacks is refused; a value out of range is clamped. |
-| `tracking` (em), `lineHeight`, `align`, `boxWidth` | Spacing between letters, line spacing, left / center / right, wrap width (0 = one line). |
+| `tracking` (em), `lineHeight`, `align`, `boxWidth` | Spacing between letters, line spacing, left / center / right (without a wrap width it also says where `x` is: the left edge, the middle, the right edge; the anchor follows it), wrap width (0 = one line). |
 | `stroke`, `strokeColor`, `strokeWidth` | An outline on the letters. |
 
 **Optical size** (`opsz`) is set for you: it follows `size`, held to 8–144, so a big title uses the font's display design

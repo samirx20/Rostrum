@@ -185,7 +185,7 @@ class Gizmo(QObject):
         calls = []
         for p in props:
             if route.anim_state(it, p, t, fps) == "still":
-                calls += route.animate_calls(it, p, t)[0]
+                calls += route.animate_calls(it, p, t, fps)[0]
             else:
                 calls.append(route.value_call(it, p, route.value_at(it, p, t), t))
         self.bridge._guard(lambda: self.bridge._apply(calls, f"Key {', '.join(props)} of {self.bridge.label_of(it)}"))

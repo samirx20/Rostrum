@@ -45,10 +45,11 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ![Two keys on the text's bar](pictures/animate-in-place.png)
 
-5. The diamond beside a value tells you its state:
-   - **Filled**: there is a key at the playhead.
-   - **Outlined**: the value is animated, but there is no key at this moment.
-   - **Faint**: it is not animated yet. Click it to start.
+5. The diamond beside a value tells you its state, and a click does the one thing that fits it:
+   - **Faint**: it is not animated yet. Click it to start: a first key at the playhead.
+   - **Outlined**: the value is animated, but there is no key at this moment. Click it to add a key here, holding the value it has now (the other keys stay).
+   - **Filled**: there is a key at the playhead. Click it to delete just that key; the top bar says so ("Delete Opacity key at 2.00 s") and **Ctrl+Z** brings it back. The setting's other keys stay.
+   - To stop animating a setting altogether (every key goes; it keeps the value it has at the playhead), right-click its diamond › **Stop animating**.
 6. **See where it goes.** While a layer with position keys is picked, its **motion path** shows on the picture: a thin line through every place it passes, with one dot per frame. Dots close together mean it moves slowly there; far apart, fast. Each position key is a small square on the line:
    - Drag a square to move that key's place. Only that key changes, and the whole drag is one step you can undo. It snaps, like a thing dragged on the picture, to the frame's edges and centre and to other things; hold **Ctrl** or **Alt** to place it freely. A key timed on a marker shows on the path too, at the marker's time, and stays on its marker when you drag it.
    - Click a square to pick that key. Its **handles** appear; drag a handle's round end to bend the line into a curve. The other handle turns with it so the curve stays smooth; hold **Alt** to move one handle alone.
@@ -58,7 +59,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 ## 6. Change how it feels
 
 1. Click a diamond on the bar. The **Key** block appears at the top of the settings panel, short so the layer's settings stay in view under it: **Key** with its **Ease** beside it (a button showing the key's ease and its curve: **Smooth**, say), a small curve, and for one key its **Time** and **Value** (in the setting's own unit). A Position key is one key: its Time moves X and Y together. The ease is how the value speeds up and slows down on its way to the next key.
-2. Click **Ease** to open the list: **Linear**, **Smooth**, **Ease in**, **Ease out**, **Spring**, **Hold**, each with its curve, the key's own ticked, and **More** for Snappy, Natural, Heavy, Stronger smooth and Bounce. Rest the pointer on one and the canvas plays it, nothing changed; click it and every picked key changes at once, as one step. You can also right-click a diamond for the same list, or press **F9** (Smooth), **Shift+F9** (Ease in), **Ctrl+Shift+F9** (Ease out) or **Ctrl+Alt+J** (Hold).
+2. Click **Ease** to open the list: **Linear**, **Smooth**, **Ease in**, **Ease out**, **Spring**, **Hold**, each with its curve, the key's own ticked, and **More** for Snappy, Natural, Heavy, Stronger smooth and Bounce. Rest the pointer on one and the canvas plays it, nothing changed; click it and every picked key changes at once, as one step. On a setting's last key there is no move after it, so the ease you pick there is set on the key before it: the move into the last key (the Ease button then shows that move's ease). You can also right-click a diamond for the same list, or press **F9** (Smooth), **Shift+F9** (Ease in), **Ctrl+Shift+F9** (Ease out) or **Ctrl+Alt+J** (Hold).
 3. Drag the two small dots on the curve to shape it by hand: the ease becomes **Custom**.
 4. **Spring** overshoots and settles. Two sliders appear: **Bounce** (none to a lot) and **Speed** (slow to fast).
 5. The bar itself stays plain. A click on a **diamond** picks that key and shows the **Key** block above. A click on the **bar between two keys** picks the whole move from one key to the next and the settings panel turns into a **Move** view instead: **‹** (or **Esc**) goes back to the layer; one row per setting with its start and end value; **Start** and **Length** in seconds; its **Ease** (the same button and list as the Key block's) with the curve under it (Bounce and Speed sliders for a spring); **Reverse** swaps the two values and **Delete** removes the move (undo brings it back). The two views change the same keys; use whichever you reached first.
