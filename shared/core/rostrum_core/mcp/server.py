@@ -15,7 +15,7 @@ import mcp_types as types
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
-from .. import bug
+from .. import bug, plugin_parts
 from ..errors import RostrumError, codes
 from ..who import Who
 from . import shared_edit, shared_inspect, shared_markers, shared_screen, tools_list
@@ -59,7 +59,7 @@ class Runtime:
                 reply = tool.fn(ctx, checked)
             if not isinstance(reply, Reply):
                 raise TypeError(f"tool {name} returned {type(reply).__name__}, not Reply")
-            said = ctx.notes + [w for d in ctx.seen for w in d.kind.warnings(d.data)]   # never silent (kind.warn)
+            said = ctx.notes + [w for d in ctx.seen for w in [*plugin_parts.missing_of(d), *d.kind.warnings(d.data)]]   # never silent (kind.warn, a plugin it lacks)
             reply.warnings.extend(n for n in dict.fromkeys(said) if n not in reply.warnings)
             return reply.to_dict(), reply.images
         except RostrumError as e:

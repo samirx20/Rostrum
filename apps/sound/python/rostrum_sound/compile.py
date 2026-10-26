@@ -12,7 +12,7 @@ are not written out: only what the document holds. Options:
 """
 from __future__ import annotations
 
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, plugin_parts
 
 from . import clean_clips, names, voice_lines
 from .doc import effects as FX
@@ -20,6 +20,7 @@ from .doc import playing as PL
 from .doc import preset_level
 from .doc import plugins
 from .doc import markers, meter, tempo, times
+from .doc.registry import LISTS
 
 NOTE_KEYS = ("pitch", "at", "dur", "vel", "pan", *PL.NOTE_KEYS)
 HIT_KEYS = ("drum", "at", "vel", "pan", "tune", "decay")
@@ -187,7 +188,7 @@ def compile(doc, solo=None, mute=None, master=True, matched=True, memo: dict | N
     if folder is not None:
         with markers.project(folder):
             return compile(doc.data, solo, mute, master, matched, memo)
-    root = getattr(doc, "data", doc)
+    root = plugin_parts.engine_tree(getattr(doc, "data", doc), LISTS)   # a plugin's items: kept in the file, never played
     tracks = root.get("tracks", [])
     heard = _ids(solo, tracks, "solo") | {t["id"] for t in tracks if t.get("solo")}
     silent = _ids(mute, tracks, "mute")

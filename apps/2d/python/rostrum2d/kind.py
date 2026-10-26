@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 
 import rostrum_paint
-from rostrum_core import DocKind, Registry
+from rostrum_core import DocKind, Registry, plugin_parts
 
 from . import advice, exprbake, fields as F, fill_fields, fill_paint, fontcheck, fontlist, layout_pin, media, migrations, names, paint_fields, paintings, pathdata, refusals, shared_paints, text_anchor, widthprofile
 from .frame import make as frame_make, rules as frame_rules
@@ -184,6 +184,8 @@ def check(data: dict, items=None) -> list[str]:
             held = HOLDS[key]
             for child in item.get(key, []):
                 t = child.get("type")
+                if plugin_parts.is_plugin(t):   # a plugin's item: kept as it is, never looked inside (plugin_parts.py)
+                    continue
                 if changed is not None and child["id"] in changed and (not owners or owners[-1] is not item):
                     owners.append(item)
                 if t not in held:

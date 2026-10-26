@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 
 import rostrum_paint
-from rostrum_core import DocKind, Registry
+from rostrum_core import DocKind, Registry, plugin_parts
 from rostrum_core.tree import walk
 
 from . import fields as F, paint_fields
@@ -98,11 +98,11 @@ def check(data: dict) -> list[str]:
     for item in everything:
         for key in LISTS.get(item.get("type"), []):
             for child in item.get(key, []):
-                if child.get("type") not in HOLDS[key]:
+                if child.get("type") not in HOLDS[key] and not plugin_parts.is_plugin(child.get("type")):   # a plugin's: kept as it is
                     problems.append(f'{item["id"]}.{key} can\'t hold a {child.get("type")} ({child["id"]}); '
                                     f"it holds: {', '.join(HOLDS[key])}")
         t = item.get("type")
-        stray = sorted(set(item) - _KNOWN.get(t, set(item)))
+        stray = sorted(k for k in set(item) - _KNOWN.get(t, set(item)) if not plugin_parts.is_plugin(k))
         if stray:                                        # e.g. a re-run that gave an id another kind (light → mesh)
             problems.append(f'{t} {item["id"]}: has {", ".join(stray)}, which a {t} does not have (did a script give '
                             f'the id "{item["id"]}" to a different kind of thing? Use a new id for the new kind)')

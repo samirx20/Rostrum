@@ -81,6 +81,7 @@ Every reply has the same shape:
 - `files`: absolute paths of anything written. Look pictures go to the project's `looks/` folder (`rostrum_core.mcp.files.look_folder`), so they travel with it; with no project open, to the look cache.
 - Pictures also come back as MCP image content, so the agent sees them at once.
 - **Edits** add `changed`: the history entry id, the operation ids, and any **new** check failures this change caused. A change that breaks something says so in its own reply.
+- `warnings` also name, on every reply about a document, any plugin that document uses and this Rostrum doesn't have ("This file uses the plugin \"hiremylens.wiggle-tools\" 1.2.0, which isn't installed …"). Its parts (names with a `prefix:`) are kept untouched; don't try to edit or remove them to make the warning go away (OPERATIONS.md § 11).
 
 ## 5. Every change goes through operations
 
@@ -179,6 +180,7 @@ Sound has these first. The Editor uses the same tools on its mix. 2D and 3D use 
 ## 10. Help and discovery
 
 - `inspect_operations` lists every operation from the **one registry**: the same list the GUI's inspector and command bar are built from. Nothing is listed by hand.
+- Everything listed carries an `origin` when it isn't Rostrum's own (a plugin's id); a built-in says nothing, so replies stay short. A plugin's names carry its `prefix:` (OPERATIONS.md § 11).
 - `inspect_guide` returns how-to guides: techniques and how tools work, never style rules or finished pieces to copy.
 - **Every server has `inspect_tools`**, so an agent never needs its own MCP client to list tools. It is generated from the tool registrations (the purpose is the first sentence of each tool's description), never written by hand. An unknown `verb` or `name` answers `NOT_FOUND` with the accepted list. The `start-here` guide of every app ends with a line pointing to it (added by `rostrum_core`, so an app's own text needs no copy).
 - The MCP handshake's `instructions` hold a short "start here" for the app. The guides are also published as MCP resources (`rostrum://guide/<topic>`).
