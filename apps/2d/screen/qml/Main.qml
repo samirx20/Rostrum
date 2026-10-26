@@ -192,7 +192,9 @@ AppShell {
         compact: shell.timelineFolded && !shell.bottomBeside
         canCompact: !shell.bottomBeside
         onResized: (h) => { shell.fold(false); shell.setAsked("bottom", h) }   // its top edge, dragged: the person's height
-        onCompactAsked: (on) => shell.fold(on)
+        // the person asked for the room (the button): a view at Fit fits the frame to it, so no empty band is left (critic
+        // r10); a tool's own remembered height and a zoomed-in view keep the picture where it is
+        onCompactAsked: (on) => { const fit = stage.view.fitted; shell.fold(on); if (fit) Qt.callLater(stage.fitAll) }
         compactExtra: backend.soundtrack.present ? Theme.row + 2 : 0      // the Sound row stays
         frameTicks: painter.drawingId !== ""
         rows: LayerRows { ruler: timeline.ruler; labelWidth: timeline.labelWidth; compact: timeline.compact }
