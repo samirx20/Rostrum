@@ -280,12 +280,23 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         while i and self.doc.has(i) and self.doc.item(i)["type"] not in ("track", "doc", "master", "marker"):
             i = self.doc.parent_of(i)[0]
         was = self._track
-        if i and self.doc.has(i) and self.doc.item(i)["type"] == "track":
+        if i and self.doc.has(i) and self.doc.item(i)["type"] == "track" and i != was and self._holds(was):
+            pass                                  # a selection across tracks that holds the Editor's track keeps it there
+        elif i and self.doc.has(i) and self.doc.item(i)["type"] == "track":
             self._track = i
         elif not (self._track and self.doc.has(self._track)):
             self._track = next((t["id"] for t in self.doc.data.get("tracks", [])), "")
         if self._view and self._track != was:     # the roll of another track: in the frame after the pick's (rows_view)
             self._roll_later.ask()
+
+    def _holds(self, track_id) -> bool:
+        """The selection has the track or something on it: the Editor never leaves a track the person is still working
+        on for the first track of a wider selection (critic r10 must-fix 1: Ctrl+A on the whole song moved it to String
+        section)."""
+        if not track_id or not self.doc.has(track_id):
+            return False
+        locs = self.doc.locs()
+        return any(i == track_id or getattr(locs.get(i), "parent", None) == track_id for i in self._picks.ids)
 
     def _one_of_each(self) -> list[str]:
         first: dict = {}
