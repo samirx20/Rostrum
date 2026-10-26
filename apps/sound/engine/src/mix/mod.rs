@@ -36,7 +36,8 @@ pub fn render_cmd(args: &[String]) -> Result<(), String> {
     let t0 = Instant::now();
     let mix = render::render(&s)?;
     let took = t0.elapsed().as_secs_f64();
-    wavwriter::write_mix(std::path::Path::new(&args[2]), &mix, s.sample_rate)?;
+    let (out, levels) = (std::path::Path::new(&args[2]), render::levels::Levels::of(&mix, s.sample_rate as f64, s.range.map_or(0, |r| r.0)));
+    wavwriter::write_mix(out, &mix, s.sample_rate, |whole| levels.write(whole, out))?;      // its levels beside it, as `render` does
     let ducks: Vec<serde_json::Value> = mix.ducks.iter().map(|(t, spans)| serde_json::json!({ "track": t, "spans": spans.iter().map(|&(a, b, db)| [a, b, db]).collect::<Vec<_>>() })).collect();
     let secs = mix.frames() as f64 / s.sample_rate as f64;
     let loud = mix.loud()?;
