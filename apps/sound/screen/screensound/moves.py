@@ -14,6 +14,7 @@ from .moves_add import add_hit_call, add_note_call, add_note_calls  # noqa: F401
 from .timeline import kind_of, roll_drums
 
 MANY = ("note", "hit", "clip", "line")          # what moves together when several are selected
+FRESH = ("section",)                            # drags whose call is an amount from the press: previewed from it
 MOVABLE = ("note", "hit", "clip", "line", "marker", "section", "tempo", "meter", "key")
 REMOVABLE = ("note", "hit", "clip", "line", "marker", "track", "effect", "automation", "bus", "send", "duck",
              "tempo", "meter", "key", "section")
@@ -122,12 +123,13 @@ def copy_calls(g: dict) -> list[dict]:
 
 
 def section_calls(doc, g: dict, dt: float, free: bool = False, grid=None) -> list[dict]:
-    """A section dragged: one `section.move` (it and everything inside), by what is left to go from where it is
-    now (a drag previews on top of itself), in beats when the section is written in beats."""
+    """A section dragged: one `section.move` (it and everything inside) by the whole amount from where it was at the
+    press, in beats when the section is written in beats. A drag of a kind in FRESH previews every step on the song as
+    it was at the press (and works these calls out there), so what the section carries is decided at the press,
+    nothing it passes over is picked up, and the one `by` the history records replays to the same song."""
     root = doc.data
-    at = doc.item(g["id"])["at"]
-    now, to = timing.sec(at, root, g["id"]), timing.snap(g["t"] + dt, root, free, grid)
-    by = {"beats": round(timing.beat(to, root) - timing.beat(now, root), 4)} if isinstance(at, dict)         else round(to - now, 4)
+    to = timing.snap(g["t"] + dt, root, free, grid)
+    by = {"beats": round(timing.beat(to, root) - timing.beat(g["t"], root), 4)} if isinstance(g["at"], dict)         else round(to - g["t"], 4)
     if abs(by["beats"] if isinstance(by, dict) else by) < 1e-6:
         return []
     return [{"op": "section.move", "target": [g["id"]], "args": {"by": by}}]

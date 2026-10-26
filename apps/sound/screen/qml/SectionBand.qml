@@ -4,7 +4,8 @@ import RostrumKit
 // The song's sections (intro, verse, drop) under the markers: each a bar from its start to its end with its name.
 // Click selects the section (the inspector edits its name, start and end); double-click or F2 renames it in place;
 // drag moves it and everything that
-// starts inside it (one `section.move` per step, the whole drag one undo step; a quarter beat grid, Ctrl = free).
+// started inside it at the press (markers stay; each step shown from the song as it was at the press; on release one
+// `section.move` by the whole amount, one undo step; a quarter beat grid, Ctrl = free).
 // Drag the left or right edge: that edge only moves (`section.set`, one undo step), the section's contents stay.
 // Absent when the song has no sections. The clicks are taken here in one place, as in MarkerBand.
 Item {

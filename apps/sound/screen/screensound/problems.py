@@ -1,6 +1,7 @@
 """Sound's Problems list (the kit's ProblemsChip, rostrum_gui/problems.py): what is wrong with the song now, in words with
 what to do: the same list inspect_diagnose gives agents (rostrum_sound/diagnose.py: missing files, files outside the song,
-cleaned takes not made yet, sounds no longer made) and the newest render's loudest peak over full scale (clipping, red).
+cleaned takes not made yet, sounds no longer made), the newest render's refusal while it stands (a note its sound can't
+play: the track to jump to) and the newest render's loudest peak over full scale (clipping, red).
 """
 from __future__ import annotations
 
@@ -30,6 +31,16 @@ SLICE_S = 0.004      # the most one step of the check holds the screen's thread;
 
 def _row(p: dict) -> dict:
     return {**p, "label": LABELS[p["kind"]], "danger": p["kind"] == "missing-file"}
+
+
+def refused_rows(refused: dict) -> list[dict]:
+    """The newest render's refusal (bridge.soundRefused) as a row: red, with the track it names. Its message already says
+    what to do (plain_errors.say), so no second fix line repeats it."""
+    if not refused:
+        return []
+    kind = refused["kind"]
+    return [{"label": LABELS.get(kind, "Can't make the sound"), "danger": True, "item": refused["item"],
+             "message": refused["message"], "fix": ""}]
 
 
 def doc_rows(doc, making=frozenset()) -> list[dict]:
@@ -69,13 +80,14 @@ def make(bridge, cleaning=None) -> ProblemsList:
         making = cleaning.making() if cleaning else ()
         found = [_row(p) for p in run.pop("out") if not (p["kind"] == "pending-take" and p["item"] in making)]
         del run["steps"]
-        plist.show_rows(rows(bridge.lastRender or {}) + found)
+        plist.show_rows(refused_rows(bridge.soundRefused) + rows(bridge.lastRender or {}) + found)
 
     later = QTimer(plist, singleShot=True, interval=SETTLE_MS, timeout=start)   # once, after the edit is drawn: the
     step = QTimer(plist, singleShot=True, interval=0, timeout=go)               # chip is never what the pointer waits for
     if cleaning:                                     # (a drop ran it twice)
         cleaning.changed.connect(later.start)        # a take finished (or began): the chip follows
     bridge.renderChanged.connect(later.start)
+    bridge.soundChanged.connect(later.start)     # a render failed, or the next one worked
     bridge.docChanged.connect(later.start)       # every change (a clip added is a block: no layout news)
-    plist.show_rows(rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
+    plist.show_rows(refused_rows(bridge.soundRefused) + rows(bridge.lastRender or {}) + doc_rows(bridge.doc, cleaning.making() if cleaning else ()))
     return plist

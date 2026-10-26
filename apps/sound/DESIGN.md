@@ -1588,10 +1588,11 @@ of the six jobs needs them.
 3. **Resize:** drag a section's edge (changes only the label's range, not the music).
 4. **Move with everything in it:** drag the label. The others **make room**: dropping the bridge before verse 2 moves
    verse 2 and what follows later, and closes the gap where the bridge was (ripple). Everything that starts inside the
-   section moves with it: notes, hits, clips, sounds, lines, markers, tempo and key changes, automation points.
+   section moves with it: notes, hits, clips, sounds, lines, tempo and key changes, automation points. Markers stay
+   (they are sync points: picture cuts, hits), and so do the song's opening tempo, time signature and key.
    **Alt+drag** = move without making room (overlaps what's there).
 5. **Duplicate:** **Ctrl+D** with a section selected: a copy right after it, everything later pushed later. Named
-   "chorus 2". Ctrl+drag the label = copy to the drop point (making room).
+   "chorus-2" (refused, saying what is there, when the bars after it already hold music). Ctrl+drag the label = copy to the drop point (making room).
 6. **Delete:** **Delete** removes the label only (the music stays). Right-click › **"Delete with its music"**
    (Shift+Delete, proposed) removes everything inside and closes the gap.
 7. **Loop a section:** double-click the label = set the loop to it and play.

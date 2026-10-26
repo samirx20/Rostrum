@@ -14,7 +14,7 @@ keys, one key map, the selection rules. The rules themselves are INTERACTION.md 
 | Adapter | `rostrum_gui/action_adapt.py` | `from_dicts(dicts, keymap)`: turns the older dict shape (Sound's P27) into Actions unchanged. |
 | Selection | `rostrum_gui/selection_rules.py` | `click` (lists: Ctrl adds, Shift runs; canvas: Shift adds, Ctrl deepest), `box`, `select_all`, `esc_step` (the Esc ladder). Pure; selecting is never an undo step. |
 | Context bar | `qml/RostrumKit/ContextBar.qml` | Fixed top-centre of a view: count chip, up to 5 actions by rank, folds into ⋯ when narrow, hidden while dragging, `toolOptions` slot for a tool's options. |
-| Menu | `qml/RostrumKit/ActionMenu.qml` | Right-click: keys on every row, dividers between groups, `openAt(x, y)` stays on screen, side menus. |
+| Menu | `qml/RostrumKit/ActionMenu.qml` | Right-click: keys on every row, dividers between groups, `openAt(x, y)` stays on screen, side menus. Every popup is sized and placed once, before it shows (`MenuPlace.settle`), and never moves while visible. |
 | Keys | `qml/RostrumKit/KeyMap.qml` | One `Shortcut` per key map entry, calling `hub.key(job)`. Never write a QML Shortcut for an action. |
 | Ctrl+K | `qml/RostrumKit/CommandBar.qml` | Rows show their keys. |
 

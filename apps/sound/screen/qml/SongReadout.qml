@@ -34,6 +34,7 @@ Row {
 
     FieldFrame {   // type "5.3" (bars.beats) or "9.6 s" and Enter to jump there; a refusal says why
         id: place
+        objectName: "songPosition"
         readonly property string full: backend.positionText(backend.time, ro.song.length)   // (the length: a dependency on the song, not the whole map sent)
         readonly property var parts: full.split("  ")     // bars.beats, then the clock (musical.py)
         text: ro.compact ? parts[0] : full
@@ -77,7 +78,7 @@ Row {
     }
     Text { visible: text !== "" && (ro.room < 0 || width > 0); text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
            elide: Text.ElideRight; width: ro.room < 0 ? implicitWidth : Math.max(0, Math.min(implicitWidth, ro.room - x))
-           color: /^Render failed/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+           color: /^Can't make the sound/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
            MouseArea { id: stateHover; anchors.fill: parent; hoverEnabled: true }
            HoverTip { text: parent.truncated ? backend.soundState : ""; hovered: stateHover.containsMouse } }
 }

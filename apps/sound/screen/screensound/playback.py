@@ -3,7 +3,9 @@ GUI thread, newest request wins. The render file is what the engine's live trans
 
 `Renderer`: one worker thread owns one long-lived engine process (rostrum_sound.engine.Engine, which reuses each
 unchanged track's render, so a re-render after a small edit is quick); each render goes to a new numbered file
-(the player may still hold the last one open), with stems for every track so the Mix page has meters. A failed
+(the player may still hold the last one open). No stems: the Mix page's meters are the answer's per-track and
+per-group measures and the levels file beside the mix (written by every render); writing a stem per track took
+3-4 s of each re-render on a 3-minute song, for files nothing read (export makes its own). A failed
 render is reported (`failed`), never passed off as the new sound; the last good render stays playable.
 Closing (a New or Open, the window closing) never waits on the screen's thread: the worker ends its own engine and
 deletes its renders on its way out, and the app's exit waits for that (atexit), so no engine outlives the app.
@@ -76,7 +78,7 @@ class Renderer(QObject):
                     eng = self._eng
                     self._serial += 1
                     out = self._dir / f"play-{self._serial}.wav"
-                    result = eng.request("render", schedule=schedule, out=str(out), stems="all")
+                    result = eng.request("render", schedule=schedule, out=str(out))
                     if not Path(result.get("file", "")).is_file():
                         raise RuntimeError(f"the engine answered but wrote no file at {out}")
                     require_whole_wav(result["file"])    # never a partial or empty file into the player

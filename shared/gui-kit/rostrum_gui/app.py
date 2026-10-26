@@ -25,7 +25,13 @@ def background() -> bool:
     frame only when one can be shown, and a window behind others never shows one, so not one animation advanced in it
     (a popup's fade-in stayed at nothing: Ctrl+K never settled, the action menu's picture was taken without the menu).
     The basic loop runs animations on the clock and draws every frame on the screen's thread, so a check's timings
-    include the drawing: never kinder than the person's window."""
+    include the drawing: never kinder than the person's window.
+
+    Its frames are asked for on a plain timer, not Qt's display-sync thread (QT_D3D_NO_VBLANK_THREAD, set in qt_app):
+    that thread (Qt 6.12, Direct3D) never answers a window kept at the bottom, so the window drew nothing on its own,
+    not even the layout a click is matched against. A click landed where a control had been before the last change
+    (critic r7 should-fix 9: "Select inside" right after a pick hit the End field under it; clicks in the first
+    seconds after opening did nothing, until a picture was taken, which lays the window out)."""
     from rostrum_core import userhome
     return os.environ.get("ROSTRUM_BACKGROUND_WINDOWS") == "1" or userhome.scripted() is not None
 
@@ -55,6 +61,7 @@ def qt_app():
             os.environ.setdefault(k, v)
     if QGuiApplication.instance() is None and background():
         os.environ.setdefault("QSG_RENDER_LOOP", "basic")   # a window behind others: see background()
+        os.environ.setdefault("QT_D3D_NO_VBLANK_THREAD", "1")   # its frames on a timer: see background()
     sys.setswitchinterval(SWITCH_S)
     return QGuiApplication.instance() or QGuiApplication(sys.argv)
 

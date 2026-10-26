@@ -70,3 +70,9 @@ def test_note_touch_follows_its_track():
                   Who.person())
     note = doc.item("gtr")["notes"][0]
     assert KIND.facts(note, doc)["plucked"] and not KIND.facts(note, doc)["articulated"]
+
+
+def test_a_manifest_without_stems_says_nothing_about_stems(tmp_path):
+    doc = Document.new(KIND, folder=tmp_path, item="song")
+    m = handoff.manifest("song", 1, {"file": str(tmp_path / "song_mix.wav")}, doc, "agent:test", True)
+    assert not {"stems", "bus_stems", "direct", "stems_rule", "stems_add_up"} & set(m)

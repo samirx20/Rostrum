@@ -88,7 +88,7 @@ ACTIONS = [
         amounts=("timing", "velocity", "length", "seed")),
     act("repeat", "Repeat…", A.repeat_valid, A.repeat_calls, "Ctrl+R", group="time", asks=True,
         amounts=("times", A.UNTIL), fit=A.repeat_fit,
-        needs="Repeat needs notes, drum hits or clips selected, or a time range with something inside"),
+        needs="Repeat needs notes, hits, clips or a time range"),     # short: the top bar shows a message whole or not at all
     # a drum row's Fill row… (its menu sets the target; keys and Ctrl+K only while it is open: drum_step_slots.py)
     act("fill_row", "Fill row…", lambda f: f.fill is not None, A.fill_calls, group="fill", asks=True, panel=False,
         amounts=("every", "offset", "vel", "accentEvery"), fit=A.fill_fit),
@@ -128,7 +128,7 @@ ACTIONS = [
     act("stems", "Split into parts (stems)", lambda f: CLIP(f) and f.count == 1,
         lambda f: [C.call("clip.split_stems", f.ids)], group="clip"),
     act("section_duplicate", "Duplicate section", lambda f: f.one == "section", lambda f: [C.call("section.duplicate", f.ids)],
-        importance="primary", group="section"),
+        importance="primary", group="section"),        # (Ctrl+D on a section: the edit block's Duplicate, below)
     act("section_inside", "Select inside", lambda f: f.one == "section" and f.count == 1, importance="primary",
         group="section", do="inside_section"),
     # a time range (a section is made from the range whatever else is selected; the rest when the range is newer)
@@ -149,9 +149,9 @@ ACTIONS = [
         needs="Cut needs notes, hits, clips or lines selected"),
     act("paste", "Paste", lambda f: f.clipboard, shortcut="Ctrl+V", group="edit", do="paste",
         needs="Nothing to paste yet: copy something first"),
-    act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f)),
+    act("duplicate", "Duplicate", lambda f: f.count and not f.on_range and (f.kinds <= set(TIMED) or TRACK(f) or f.one == "section"),
         C.duplicate, "Ctrl+D",
-        group="edit", needs="Duplicate needs notes, hits, clips or tracks selected"),
+        group="edit", needs="Duplicate needs notes, hits, clips, tracks or a section"),
     act("range_duplicate", "Duplicate", lambda f: f.on_range and bool(C.inside(f)), C.range_duplicate,
         "Ctrl+D", group="edit"),
     act("rename", "Rename", lambda f: f.one in NAMED and f.count == 1, shortcut="F2", group="edit", do="rename",

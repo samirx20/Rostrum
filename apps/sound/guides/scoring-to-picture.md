@@ -5,8 +5,10 @@ This page covers the tools; what the music should do is yours to decide.
 
 ## 1. See the picture
 
-- **On the screen:** **+ Add › Picture to work to…** (or **+ Add › From a file…** with a video) opens the Picture panel
-  at the arrangement's top right, with the video frame at the playhead. It plays along while you play. Pick a project
+- **On the screen:** drag a video file from Explorer or the desktop onto the arrangement, or use **+ Add › Picture to
+  work to…** (or **+ Add › From a file…** with a video). The Picture panel opens at the arrangement's top right, with
+  the video frame at the playhead. The song becomes at least as long as the picture, so you can mark the cuts before
+  any music is written: type a time in the position field (`0:38`, Enter), then **M**. It plays along while you play. Pick a project
   item's latest render or a file; an item reference follows the item's newest render. Once a picture is set,
   **Picture** in the arrangement's header strip shows and hides it. With a picture set, a click on the ruler's seconds
   line puts the playhead on the nearest whole frame of the picture (the bars line: the nearest grid line, marker or
@@ -83,7 +85,7 @@ song still opens. `look_arrangement` still draws the song: such notes are drawn 
   `bar: 13` turned a 96 bpm song into 115.2 bpm (12 bars of 4 beats in 25 s). With a tempo change before that bar, the tempo in force
   at that bar is the one set. Check the result with `look_arrangement` and `look_music` (`what: "beats"`).
 - **Key:** `key.add` / `key.set` (`key` like `"D minor"`, `at`). **Sections:** `section.add` (`name`, `at`, `end`),
-  `section.move` (`by`) moves a section and everything in it.
+  `section.move` (`by`) moves a section and everything in it, except markers: the picture's cut points stay put.
 - Things placed in beats move when the tempo changes; things placed on markers or in seconds stay with the picture.
   Choose per element: music in beats, picture-locked hits on markers.
 

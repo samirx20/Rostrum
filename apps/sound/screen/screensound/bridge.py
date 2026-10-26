@@ -27,7 +27,7 @@ from rostrum_sound.doc import sounds
 from rostrum_sound.doc import ops_mix
 
 from . import voice_card
-from .plain_errors import say as say_error
+from .plain_errors import refusal as say_refusal, say as say_error
 from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline, velocity
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
@@ -189,6 +189,13 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
     def soundState(self):
         """A short line about the sound: rendering, no output on this machine, or that the render failed."""
         return self.transport.state
+
+    @Property("QVariantMap", notify=S.soundChanged)
+    def soundRefused(self):
+        """The newest render's refusal while it stands ({} when the newest render worked): kind, item (to jump to),
+        message, short (plain_errors.refusal). The loudness chip and the Problems list read it, never the old render's
+        "Ready"."""
+        return say_refusal(self.transport.failure, self.doc.data) if self.transport.failure else {}
 
     @Slot(str, float, float, float, result=str)
     def blockAt(self, track_id, t, lane, tol):

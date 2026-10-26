@@ -51,6 +51,20 @@ class PictureSlots:
     def pictureUrl(self):
         return picture.url(self.picture)
 
+    @Slot(float)
+    def setPictureLength(self, seconds):
+        """How long the shown video is, as its player reads it (PictureCorner; 0 with none): screen state. The song
+        on screen is at least as long as the picture, so its cuts can be marked before any music is written."""
+        seconds = max(0.0, float(seconds or 0))
+        if abs(seconds - self.__dict__.get("_picture_len", 0.0)) > 1e-3:
+            self._picture_len = seconds
+            self._guard(self._rebuild)
+
+    def _picture_end(self) -> float:
+        """Where the shown picture ends on the song's clock (seconds; 0 with none)."""
+        n = self.__dict__.get("_picture_len", 0.0)
+        return picture.start(self.doc.data)[0] + n if n > 0 else 0.0
+
     @Slot(bool)
     def setPictureOpen(self, on):
         self._picture_open = bool(on)

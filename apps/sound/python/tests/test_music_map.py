@@ -74,14 +74,19 @@ def test_section_move_moves_everything_inside_as_one_step():
     notes = {n["pitch"]: n["at"] for n in doc.item("lead")["notes"]}
     assert notes["D4"] == {"beat": 1.0} and notes["F4"] == {"beat": 5.0}    # inside: moved, still in beats
     assert notes["A4"] == {"beat": 12}                                      # in the drop: untouched
-    assert notes["C5"] == "#hit+0.25"                                      # on a marker that moved: follows it
-    assert doc.item("marker.hit")["at"] == {"beat": 5.0}
+    assert notes["C5"] == "#hit+0.75"                                      # on a marker: keeps it, a new offset
+    assert doc.item("marker.hit")["at"] == {"beat": 4}                      # markers stay (sync points)
+    assert doc.data["keys"][0]["at"] in (0, 0.0, {"beat": 0})              # the song's opening key stays
     assert doc.item("drums.kick0")["at"] == {"beat": 1.0}
     assert doc.item("section.verse")["at"] == {"beat": 1.0} and doc.item("section.verse")["end"] == {"beat": 9.0}
     assert doc.item("section.drop")["at"] == {"beat": 8}
     assert [p[0] for p in doc.item("lead.auto_volume")["points"]] == [0.5, {"beat": 5.0}, {"beat": 12}]
     doc.undo(Who.person())
     assert doc.data == _doc().data                                         # one undo puts it all back
+    doc.apply({"op": "section.move", "target": ["section.verse"], "args": {"by": {"beats": 1}, "markers": True}},
+              Who.person())
+    notes = {n["pitch"]: n["at"] for n in doc.item("lead")["notes"]}      # asked: the song's markers inside go too
+    assert doc.item("marker.hit")["at"] == {"beat": 5.0} and notes["C5"] == "#hit+0.25"
 
 
 def test_midi_round_trip_keeps_notes_and_tempo(tmp_path):

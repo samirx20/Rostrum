@@ -17,7 +17,7 @@ from rostrum_sound.doc import media as mediafile
 from rostrum_sound.doc import markers as mk
 from rostrum_sound.doc import meter, tempo, times
 
-from . import groups, lanes, music_map, pick, timing
+from . import block_clock, groups, lanes, music_map, pick, timing
 from . import block_memo
 from .block_memo import BlockMemo
 from .handles import level_y
@@ -177,14 +177,10 @@ def layered(clips: list[dict]) -> list[dict]:
     return clips
 
 
-OWN = ("tracks", "buses", "master")     # what no other track's block reads (stepped.py: the mix rows are always made)
+OWN = block_clock.OWN
 
 
-def clock(root: dict) -> tuple:
-    """Everything a note's or hit's block reads besides its own item: the song's settings (tempo and its map, meter,
-    keys, markers, sections …) and the project's shared markers (a time may be written on one). Blocks made under an
-    equal clock are still right (block_memo.py)."""
-    return {k: v for k, v in root.items() if k not in OWN}, mk.project_rows()
+clock = block_clock.clock      # what a note's or hit's block reads besides its own item (block_clock.py)
 
 
 def blocks(track: dict, root: dict, memo: BlockMemo | None = None) -> list[dict]:
@@ -294,15 +290,18 @@ SPARE_BARS = 2              # and, once it has sound, this many empty bars after
 
 
 def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None,
-                memo: BlockMemo | None = None) -> float:
+                memo: BlockMemo | None = None, least: float = 0.0) -> float:
     """The song's length on the screen (`song`'s): everything else `song` holds follows the tempo, meter and keys.
-    `memo`: each row's last end kept, worked out again only from the blocks an edit changed (block_memo.last_end)."""
+    `memo`: each row's last end kept, worked out again only from the blocks an edit changed (block_memo.last_end).
+    `least`: where the picture ends (seconds): a song scored to picture has room for the whole picture before any
+    music is written, so its cuts can be marked first (critic r7)."""
     if made is not None and memo is not None:
         ends = [memo.last_end((r["id"], "end"), r["blocks"]) for r in made if r["blocks"]]
     else:
         every = [r["blocks"] for r in made] if made is not None else [blocks(t, root) for t in root.get("tracks", [])]
         ends = [b["t"] + b["dur"] for bl in every for b in bl]
     ends += [m["t"] for m in (markers(root) if marks is None else marks)] + [s["end"] for s in music_map.sections(root)]
+    ends.append(least)
     bar = meter.start_bar(root) * timing.spb(root)
     if root.get("length") is not None:
         length = timing.sec(root["length"], root)
@@ -311,12 +310,13 @@ def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | 
     return max(length, 1.0)
 
 
-def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None, memo: BlockMemo | None = None) -> dict:
+def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None, memo: BlockMemo | None = None,
+         least: float = 0.0) -> dict:
     """The grid and length: what the ruler draws. Without a set length: room to write: the last sound rounded up
     to a whole bar plus SPARE_BARS, never under EMPTY_BARS (the mix itself still ends at its last sound + 2 s).
     `made`: the track rows already made (track_rows: their blocks are these; nothing is made twice); `marks`: the
     markers already read (`markers`: they read the project's shared markers)."""
-    length = song_length(root, made, marks, memo)
+    length = song_length(root, made, marks, memo, least)
     return {"length": length, "spb": timing.spb(root), "beatsPerBar": meter.start_per_bar(root),
             "beatUnit": meter.start_unit(root), "barBeats": meter.start_bar(root),
             "tempo": float(root.get("tempo", 120)), "tempoMap": [list(s) for s in tempo.segments(root)],   # (Tempo.js)

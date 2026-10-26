@@ -9,11 +9,15 @@ bridge holds one and passes it to every snap (drags, ends, the ruler's range, Dr
 default (Auto, Snap on) is used. Auto follows the zoom: the finest step at least MIN_PX wide on screen.
 
 One snap, two ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
-NEAREST line (a range released a few pixels past the bar line ends on it: critic r6 M3); a click that makes
+NEAREST line; a click that makes
 something (a Draw note, a drum hit, a double-click, an automation point) takes the CELL under the pointer, the line
 at or before it. `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
 pointer on that pixel is on the line (a press exactly on a drawn line gives that line's time, a pixel before it the
 cell before).
+
+Strong lines pull first: with `px` given, a "nearest" snap within PULL_PX of a bar line takes the bar line, then a
+beat line, before the finest grid step. People aim at the bar line they see; a fine step is only 8-16 px wide, so a
+release 5 px past the bar was nearer the next step and a range ended one step late (critic r5, r6, r7).
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from rostrum_sound.doc import meter, musical, tempo, times
 from rostrum_sound.doc.shift import spb, write_like
 
 SNAP_BEATS = 0.25          # the music map's own snap (tempo / key changes, sections): a quarter beat
+PULL_PX = 7.0              # a bar or beat line this near the pointer (screen px) wins over finer grid lines
 MIN_PX = 8.0               # Auto: no step narrower than this on screen
 EPS = 1e-6                 # beats: a time written as a line's seconds is on that line
 
@@ -98,10 +103,25 @@ def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = 
         return max(0.0, round(t, 4))
     if how == "nearest":
         lo, hi = lines_around(t, root, grid)
-        at = hi if hi - t < t - lo else lo
+        at = strong_line(t, root, px * PULL_PX) if px > 0 else None
+        at = at if at is not None else hi if hi - t < t - lo else lo
     else:
         at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
     return max(0.0, round(at, 6))
+
+
+def strong_line(t: float, root: dict, reach: float) -> float | None:
+    """The bar line within `reach` seconds of `t`, else the beat line within it, else None (the grid decides)."""
+    b = max(0.0, tempo.beat_at(root, max(0.0, t)))
+    s = meter.seg_at(root, b)
+    bar0 = s.start + ((b - s.start + EPS) // s.bar) * s.bar
+    count = meter.count(s)
+    beat0 = bar0 + ((b - bar0 + EPS) // count) * count
+    for lo, step in ((bar0, s.bar), (beat0, count)):
+        near = min((tempo.seconds_at(root, x) for x in (lo, lo + step)), key=lambda x: abs(x - t))
+        if abs(near - t) <= reach:
+            return near
+    return None
 
 
 def line_name(t: float, root: dict) -> str:

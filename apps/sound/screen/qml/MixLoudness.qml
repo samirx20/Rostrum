@@ -43,11 +43,12 @@ Rectangle {
     ColumnLayout {
         anchors { fill: parent; margins: Theme.pad }
         spacing: Theme.gap
-        Row {   // the title, with the target it is measured against
-            Layout.fillWidth: true; Layout.preferredHeight: 22; spacing: Theme.grid + 2; clip: true
+        Flow {   // the title, with the target it is measured against (on a line of its own when the panel is narrow: never cut)
+            id: titleFlow
+            Layout.fillWidth: true; Layout.preferredHeight: implicitHeight; spacing: Theme.grid + 2
             Text { height: 22; verticalAlignment: Text.AlignVCenter; text: "Loudness"; color: Theme.fg
                    font.family: uiFont; font.pixelSize: Theme.title; font.weight: Font.DemiBold }
-            Text { height: 22; verticalAlignment: Text.AlignVCenter; text: "· " + l.targetText()
+            Text { width: Math.min(implicitWidth, titleFlow.width); wrapMode: Text.WordWrap; topPadding: 3; text: l.targetText()
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.title; font.features: { "tnum": 1 } }
         }
         Text { visible: !l.measured; Layout.fillWidth: true; Layout.fillHeight: true; verticalAlignment: Text.AlignTop; wrapMode: Text.WordWrap

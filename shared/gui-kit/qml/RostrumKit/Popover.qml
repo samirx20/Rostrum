@@ -29,6 +29,7 @@ SmallPopup {
 
     parent: QQC.Overlay.overlay
     padding: Theme.pad
+    margins: Theme.grid                           // grows while open (More): Qt keeps it inside the window, it never moves otherwise
     focus: true
     dim: false                                      // a small popover is light: even a modal one never dims the window
     background: MenuBackground { radius: Theme.radiusPanel }
@@ -54,6 +55,7 @@ SmallPopup {
     function place() {
         const ov = parent
         if (!ov) return
+        settle()
         let p = anchor ? anchor.mapToItem(ov, 0, anchor.height + Theme.grid) : point
         let y0 = p.y
         if (y0 + height > ov.height - Theme.grid && anchor)      // no room below: above the anchor
@@ -70,9 +72,7 @@ SmallPopup {
         x = Math.max(Theme.grid, Math.min(x0, ov.width - width - Theme.grid))
         y = Math.max(Theme.grid, Math.min(y0, ov.height - height - Theme.grid))
     }
-    onWidthChanged: if (visible) place()
-    onHeightChanged: if (visible) place()
-    Connections {       // the window resized while open: placed again, so it stays inside and by its anchor
+    Connections {       // the window resized while open: placed again, so it stays inside and by its anchor (it never moves otherwise)
         target: pop.parent
         function onWidthChanged() { if (pop.visible) pop.place() }
         function onHeightChanged() { if (pop.visible) pop.place() }

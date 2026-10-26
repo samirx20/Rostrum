@@ -24,7 +24,8 @@ _SECS = re.compile(r"^\s*(?:(\d+):(\d+(?:\.\d*)?)|(\d+(?:\.\d*)?|\.\d+)\s*(?:s|s
 _WORDS = re.compile(r"^\s*(?:(\d+)\s*bars?)?[\s,]*(?:and\s+)?(?:(\d+(?:\.\d+)?)\s*beats?)?[\s,]*(?:and\s+)?(?:(\d+)\s*(?:sixteenths?|16ths?))?\s*$", re.I)
 _FRACTION = re.compile(r"^\s*(dotted\s+)?1/(\d+)\s*$", re.I)
 NOTE_LENGTHS = {1 / 32: "1/32", 3 / 64: "dotted 1/32", 1 / 16: "1/16", 3 / 32: "dotted 1/16", 1 / 8: "1/8", 3 / 16: "dotted 1/8",
-                1 / 4: "1/4", 3 / 8: "dotted 1/4", 1 / 2: "1/2", 3 / 4: "dotted 1/2", 1.0: "1/1"}   # fractions of a whole note
+                1 / 4: "1/4", 3 / 8: "dotted 1/4", 1 / 2: "1/2", 3 / 4: "dotted 1/2"}   # fractions of a whole note
+# (a whole note is said as bars and beats: "1 bar" in 4/4, never "1/1"; "1/1" is still read back)
 NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 

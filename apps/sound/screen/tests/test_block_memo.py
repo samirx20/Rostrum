@@ -19,7 +19,7 @@ tempo_change(6.0, 100)
 key("C major")
 key("D minor", at=beat(10))
 key("Eb major", at=5.0)
-marker("drop", beat(12))
+marker("drop", beat(12)); marker("quiet", beat(30))
 lead = track("lead", builtIn="feltPiano")
 bass = track("bass", builtIn="feltPiano")
 for i in range(40):
@@ -59,3 +59,16 @@ def test_re_placed_blocks_are_the_blocks_made_from_nothing():
             else:
                 doc.apply([{"op": "note.move", "target": some, "args": {"by": {"beats": rnd.choice([-1, 0.5, 2, 3.25])}}}], who)
         assert shown(memo, doc.data) == fresh(doc.data), step
+
+
+def test_a_marker_moved_re_places_only_what_is_written_on_it():
+    """Blocks are kept when a marker nothing is placed on moves (block_clock.py); the note on "#drop" follows "drop"."""
+    doc, who = Document.new(KIND), Who.person()
+    doc.run_script("song.py", run_source(SRC, "song.py"))
+    memo = BlockMemo()
+    before = shown(memo, doc.data)
+    doc.apply([{"op": "marker.set", "target": ["marker.quiet"], "args": {"at": {"beat": 34}}}], who)
+    after = shown(memo, doc.data)
+    assert all(a is b for a, b in zip(after, before)) and after == fresh(doc.data)
+    doc.apply([{"op": "marker.set", "target": ["marker.drop"], "args": {"at": {"beat": 14}}}], who)
+    assert shown(memo, doc.data) == fresh(doc.data)

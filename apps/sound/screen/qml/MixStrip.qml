@@ -47,8 +47,10 @@ Rectangle {
                 font.pixelSize: Theme.title; font.weight: Font.DemiBold
                 MouseArea { anchors.fill: parent; onPressed: s.pick() }
             }
-            MixChain {   // one line per effect (scrolls past three), "+ Effect" pinned under them
-                Layout.fillWidth: true; Layout.preferredHeight: Math.min(contentHeight, 22 + rowStep * Math.max(1, Math.floor((Math.min(s.low ? 72 : 94, s.chainRoom) - 22) / rowStep)))   // whole lines and "+ Effect"
+            MixChain {   // one line per effect (scrolls past what fits), "+ Effect" pinned under them
+                // the room for its lines is kept whether they are used or not: adding an effect never moves this strip's
+                // or (through the tallest head) any other strip's pan and fader under the pointer (critic r6, r7)
+                Layout.fillWidth: true; Layout.preferredHeight: 22 + rowStep * Math.max(1, Math.floor((Math.min(s.low ? 72 : 94, s.chainRoom) - 22) / rowStep))   // whole lines and "+ Effect"
                 chips: s.model.effects; ownerId: s.model.id
             }
             Loader {   // sends and ducks (a low dock: they open from "Sends" on the output line); scrolls only when the dock has no room for all

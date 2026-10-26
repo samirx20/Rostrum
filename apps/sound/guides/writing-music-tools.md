@@ -55,7 +55,7 @@ A pattern of 16ths whose characters are chord degrees, so one pattern fits every
 `"C/E"`), `r` ghost root, `8` octave, `5` fifth, `3` third, `7` seventh, `b` fifth below, `A` approach (a half step
 into the next root), `-` hold, `.` rest. Styles: `root`, `half`, `pulse`, `octave`, `rootFifth`, `walking`,
 `syncopated`; anything else is a `pattern`. `approach=True` turns the last note before each change into an approach
-note. `octave=1` puts the roots between E1 and D#2 (`2`: E2–D#3). `gate` sets the note length against its step.
+note. `octave=1` puts the roots between E1 and D#2 (`2`: E2–D#3). Match it to the track's sound: the recorded electric bass (`builtIn="bass"`) starts at A1, so use `octave=2` there; `uprightBass`, `basses`, `tuba` and `subBass` take `octave=1` (`inspect_instrument` gives any sound's lowest note). A note the sound can't play is named in `run_script`'s reply and in `inspect_diagnose` (out-of-range), before any render. `gate` sets the note length against its step.
 
 ## Arpeggios: `arp(chords_or_notes, mode="up", rate=0.5, pattern=None, octaves=1, gate=0.9, per=<a bar>, bars=None)`
 

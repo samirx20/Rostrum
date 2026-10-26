@@ -77,4 +77,5 @@ def arp_calls(f, a=None):
 def arp_fit(f, a):
     return {"rate": {"type": "choice", "options": [{"value": v, "label": w} for v, w in RATES], "importance": "primary"},
             "mode": {"type": "choice", "options": [{"value": v, "label": w} for v, w in PATTERNS], "importance": "primary"},
-            "octaves": {"importance": "primary"}, "gate": {"importance": "secondary"}, "seed": {"importance": "secondary"}}
+            "octaves": {"importance": "primary"}, "gate": {"importance": "secondary"},
+            "seed": {"importance": "secondary", "valid": a.get("mode") == "random"}}    # only Random has a take to change

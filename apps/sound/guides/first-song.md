@@ -7,7 +7,8 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 - **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet, every setting of what is selected and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
   "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber, or "… the
   target …" when the loudness target is not streaming's −14 LUFS ("Quieter than the target wants"); rest the pointer
-  on it for the number, click it to open the Mixer, which shows the same with its curve) and **Export** (both once the
+  on it for the number, click it to open the Mixer, which shows the same with its curve; while the newest render is
+  refused it says so in red, "Can't play: fix the notes", and a click selects the track to fix) and **Export** (both once the
   song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
@@ -35,7 +36,7 @@ you close the window and every 20 changes; the change log beside it always has t
 
 1. Click **Add a track** in the middle of the empty song, **+ Track** under the last track, or **+ Add › Track with a
    sound…**. You can also press **Ctrl+L**. The **Library** opens on the left.
-2. Type to search ("warm", "bass", "voice"), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
+2. Type to search ("warm", "bass", "voice"; a family word, **strings**, **brass**, **woodwinds** or **percussion**, finds every section and solo in it; sounds whose name holds the words come first), or click a chip: **All**, **Instruments**, **Drums**, **Mic and files**,
    **Voice**, **My sounds**.
 3. Click a row to hear it (on a track with notes selected, it plays those notes; a click only previews and never changes a track), then press that row's **Add** (or select it and press **Enter**). A new track with that
    sound appears, selected, the preview stops, the Library closes and the **Editor** opens under the arrangement.
@@ -43,7 +44,7 @@ you close the window and every 20 changes; the change log beside it always has t
    - Click a voice and the footer says why there is nothing to hear: a voice is made from a line you type, so add it,
      type a line, then press Play. Voice rows have no preview.
    - **+ Add › From a file…** (Ctrl+I) brings in a sound file (a new track with the file at the playhead), a MIDI file
-     or a video. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
+     or a video; dragging the same files onto the arrangement does the same. A sound file is copied into the song's folder (`media`), so the song carries it when you copy or
      move the folder, and nothing is raised under **Problems**.
    - **Add** always makes a new track; clicking a row never changes one. To give an existing track another sound, use the **Sound ▾** picker in its settings panel: it lists every sound the track's content can use (a notes track: the recorded instruments first, then the synth presets, the synth, the modelled instruments and, last, the classic synthesized voices; an empty track: any sound, a voice or a kit too; a drum track: the three kits, Rock, Studio and Classic). The notes stay, and the track's name follows the new sound unless you renamed it. An agent does the same with `track.set {sound: "builtIn:warmPad"}` (also `"builtIn:piano"`, `"synth"`, `"model:guitar"`, `"kit:studio"`, `"voice:ryan"`). A plain instrument is a recorded one and plays like a person would by default (the track's **Feel** group: **Played like a person** off plays every note exactly as written; **Swing** makes
    every second 8th or 16th come late without moving the notes; see `writing-parts`). If its sample pack is not installed yet, playing says which one and how to install it (Library: `inspect_library (kind: packs)` and `run_model_install` for agents).
@@ -111,7 +112,8 @@ The **Colour** row shows the colour the track is drawn in.
    of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
    **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
    chord on that note; only when the song has a key), In key with 7th, Major, Minor, Sus2, Sus4, Power (5th) or Octave.
-   Each new tone is its own note you can move or delete. When the selection holds a chord (notes that start together),
+   Each new tone is its own note you can move or delete (while nothing else applies, **Chord ▾** shows that list of shapes directly, with no
+   **Make a chord** step in between). When the selection holds a chord (notes that start together),
    the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
    **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
    **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves).
@@ -119,7 +121,7 @@ The **Colour** row shows the colour the track is drawn in.
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Repeat… (on notes, hits and clips), Delete, and for tracks Group,
    Move up / down, Lock and Rename; on an audio clip also Split here, Fade in to here, Fade out from here and Swap…. On empty lane space it offers Add track…, Paste here, Add marker here and Select all on this
-   track; on empty space in the Editor, Add note here (a hit on a drum row), Paste here, Select all on this track and Select every C4 (that key); on notes and hits it adds Quantise, Humanise and Transpose ▸; on a marker's flag, Rename, Delete, Put a sound here and Start a bar here…; on a lane's point, Delete point; on either ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer, as a range drawn on the ruler does) and Show seconds. **Ctrl+K** finds every action by
+   track; on empty space in the Editor, Add note here (a hit on a drum row), Paste here, Select all on this track and Select every C4 (that key); on notes and hits it adds Quantise, Humanise and Transpose ▸; on a marker's flag, Rename, Delete, Put a sound here and Start a bar here…; on a lane's point, Delete point; on either ruler, Add marker here, Make a section from here (it starts on the grid line nearest the pointer) and Show seconds. **Ctrl+K** finds every action by
    name, every key on the Keys list (Ctrl+/; "nudge" finds the arrow keys): export, undo, Preferences, snapping, zoom, History, the Library, the playhead and markers, Guides, tempo and the grid;
    a setting of what is selected by its name ("velocity", "volume": Enter jumps to its field in the settings panel) and the selected track's lanes
    ("automation", "sustain": Show the Volume lane, Playing lane: Sustain). An action that can't run right now says why instead ("paste" before a copy:
@@ -129,7 +131,7 @@ The **Colour** row shows the colour the track is drawn in.
 6. **Keys on the selection:**
    - Copy, cut and paste: **Ctrl+C**, **Ctrl+X**, **Ctrl+V**. What you copy stays until you copy something else, in every song you open, so you can paste it into another song (a clip's sound is copied into that song's own media folder). Duplicate: **Ctrl+D**. **Repeat…** (**Ctrl+R**) copies the selection or the time range several times in one go: choose how many, or *Until* the end of the section or the next marker. Delete: **Delete** (on a group: the group goes, its tracks stay and play where the group played to; one Undo brings it back).
    - In the Editor, drag a drum hit **up or down** to move it to another drum row (Shift: time only); dragging sideways still moves it in time.
-   - **A time range:** drag on the ruler's thin top band. Each end goes to the grid line nearest the pointer. The settings panel offers **Make a section**, **Select
+   - **A time range:** drag on the ruler's thin top band. Each end goes to a bar or beat line when you let go within a few pixels of it (so letting go just past a bar line ends on that bar), otherwise to the grid line nearest the pointer. The settings panel offers **Make a section**, **Select
      inside** and **Repeat…**; Ctrl+D duplicates it. With both a time range and selected notes, Ctrl+D acts on **the one you made last**:
      drag a range after clicking notes and Ctrl+D repeats the whole stretch; click notes after drawing a range and it
      copies just those notes. **Shift+Delete** (**Cut out and close the gap**) cuts the range out of the clips under it and closes the gap.

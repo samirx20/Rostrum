@@ -1,13 +1,16 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import "."
+import "MenuPlace.js" as Place
 
 // A choice: the field frame showing the current option, a drawn arrow at the right (vertically centred,
 // not a font glyph), and our own list under it. Click, Space or Enter opens; Up / Down move; Enter picks; Esc closes.
 // A long list (more than 15) or one whose options carry `face` (a font family: the option is drawn in it, a font picker)
 // opens with a search line on top: what is typed keeps only the options whose label holds it. Options carrying `section`
 // are shown under a small heading per run ("In Rostrum", "On this computer"); the list scrolls only past 20 rows or the window's height
-// (a 13-key list shows whole).
+// (a 13-key list shows whole). The list opens under the field (above it when it fits only there; beside neither: it takes the
+// roomier side and scrolls), is sized and placed before it shows, and never covers the field: the entry that was under the
+// pointer is never another one a moment later, and a click where the field was cannot pick an entry.
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
@@ -30,7 +33,7 @@ FieldFrame {
         for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
         return out
     }
-    function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.open() }
+    function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: f.opened
@@ -52,8 +55,23 @@ FieldFrame {
         id: menu
         ownKeys: ["Up", "Down", "Enter"]
         property int highlighted: 0
-        y: f.height + 2
         width: f.width
+        property bool up: false              // opens above the field (only when it does not fit below and fits above)
+        y: up ? -height - 2 : f.height + 2
+        property real listMax: 600           // the list's tallest height here (the room on the side the list opens to)
+        // under the field, else above it, else the roomier side (then the list scrolls): once, before it shows
+        function placeNow() {
+            const ov = QQC.Overlay.overlay
+            if (!ov) return
+            optionList.forceLayout()
+            const top = f.mapToItem(ov, 0, 0).y
+            const chrome = 2 * padding + (f.searchable ? Theme.field : 0) + (f.more !== "" ? Theme.popupRow : 0)
+            const below = ov.height - margins - (top + f.height + 2), above = top - 2 - margins
+            const want = chrome + Math.min(optionList.contentHeight, Theme.popupRow * 20)
+            const down = want <= below || below >= above
+            listMax = Math.max(Theme.popupRow * 4, (down ? below : above) - chrome)
+            up = !down
+        }
         padding: Theme.grid
         margins: Theme.gap
         focus: true
@@ -100,8 +118,8 @@ FieldFrame {
                 id: optionList
                 objectName: "choiceList"
                 width: menu.availableWidth
-                readonly property real room: (QQC.Overlay.overlay ? QQC.Overlay.overlay.height : 600) - 2 * (menu.margins + menu.padding) - y
-                height: Math.min(contentHeight, Theme.popupRow * 20, Math.max(Theme.popupRow * 4, room))
+                cacheBuffer: f.searchable ? 320 : 4000     // every option built at once (not a long list): its true height is known before it shows
+                height: Math.min(contentHeight, Theme.popupRow * 20, menu.listMax)
                 clip: true; boundsBehavior: Flickable.StopAtBounds
                 model: f.shown
                 currentIndex: menu.highlighted

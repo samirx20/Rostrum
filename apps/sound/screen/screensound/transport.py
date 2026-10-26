@@ -9,9 +9,13 @@ after a frame is on screen (after_frame.py), so it takes the time between two fr
 for; edits in between are that one render (coalesced, never dropped: `stale` until it is asked). The
 engine itself runs below the screen's priority (playback.py), so a render that is running keeps the screen at 60 fps.
 
-Play waits for a render that is on its way (never plays a stale one silently). A failed render is loud: `failed`
-carries the error, the state line says so, and only then is the last good render played, saying that it is. When the
-engine's player cannot open (no sound output) or dies, that is loud too and the playhead runs on a clock.
+Play starts at once: a render on its way never holds it up (on a 3-minute song one takes 6-10 s). The last good
+render plays, the state line says "Updating the sound…" until the new one lands, and the new one is loaded into the
+playing transport where it is (the engine swaps files at the playhead): never a stale one silently, never a wait.
+Only the very first render (nothing to play yet) and a take being armed (a take is placed against the song as it is
+now) wait for it. A failed render is loud: `failed` carries the error, the state line says so, and the last good
+render plays, saying that it is. When the engine's player cannot open (no sound output) or dies, that is loud too and
+the playhead runs on a clock.
 """
 from __future__ import annotations
 
@@ -25,6 +29,7 @@ from .live_transport import LivePlay
 from .playback import Renderer
 
 DEBOUNCE_MS = 300
+UPDATING = "Updating the sound…"      # the state line while a render is on its way and the last good one plays
 
 
 class Transport(QObject):
@@ -39,7 +44,8 @@ class Transport(QObject):
         super().__init__(parent)
         self._schedule, self._length, self._held, self._pointing = schedule_fn, length_fn, held, pointing
         self.last: dict = {}
-        self.state, self.stale, self._want, self._at, self._render_failed = "Rendering…", True, False, 0.0, False
+        self.state, self.stale, self._want, self._at = "Making the sound…", True, False, 0.0
+        self.failure = ""          # the newest render's error line ("" once one lands): the one source for every "it failed"
         self._warm = False                                 # open the player (stopped) once the render's news is out
         self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
         self.renderer = Renderer(self)
@@ -66,6 +72,7 @@ class Transport(QObject):
         """The document changed: render again shortly (edits in quick succession render once)."""
         self.stale = True
         self._debounce.start()
+        self._show_state()                     # "Updating the sound…" from the edit on, not from the render's start
 
     def render(self):
         self.stale = True
@@ -78,7 +85,7 @@ class Transport(QObject):
         if self._held() or self._pointing():   # a press came meanwhile: once the pointer is quiet again
             self._debounce.start()
             return
-        self._set_state("Rendering…")
+        self._show_state()
         try:
             self.renderer.request(self._schedule())
         except Exception as e:  # noqa: BLE001  e.g. a marker reference that no longer resolves
@@ -90,8 +97,8 @@ class Transport(QObject):
             self.player.stop()
             self._tick.stop()
             self.playingChanged.emit()
-        elif self.busy():
-            self._want, self._at = True, t    # starts when the render lands
+        elif self.busy() and (not self.last or self.player.state.get("record")):
+            self._want, self._at = True, t    # nothing to play yet, or a take: starts when the render lands
         elif not self.last:
             self.failed.emit("Error: play: nothing to play, the render failed (the reason is above)")
         else:
@@ -111,7 +118,8 @@ class Transport(QObject):
     def _rendered(self, result):
         if result.get("restarted"):
             self.said.emit(result["restarted"])
-        self.last, self.stale, self._render_failed = dict(result), False, False
+        self.last, self.stale = dict(result), False
+        self._set_failure("")
         self.player.load(self.last["file"])
         self._warm = not self._want and not settings.load()["exclusive"]
         self._tell()                 # what shows the render (loudness, meters, Problems): once the pointer is quiet
@@ -133,18 +141,28 @@ class Transport(QObject):
         self._show_state()
 
     def _failed(self, line):
-        self.stale, self._render_failed = False, True
+        self.stale = False
         self.failed.emit(line)
+        self._set_failure(line)
         self._show_state()
         if self._want and self.last:
             self._want = False
             self._play(self._at)
 
+    def _set_failure(self, line):
+        """The newest render failed (its line) or did not (""): the state line, the loudness chip and Problems read it
+        (bridge.soundRefused), so stateChanged goes out whenever it changes, even when the state's words stay."""
+        changed, self.failure = line != self.failure, line
+        if changed:
+            self.stateChanged.emit()
+
     def _show_state(self):
-        if self._render_failed:
-            text = "Render failed" + (": playing the last good render" if self.last else "")
+        if self.failure:
+            text = "Can't make the sound" + (": the last good sound plays" if self.last else "")
         elif not self.player.alive:
             text = "No sound output: the playhead runs on a clock (the reason is in the status line)"
+        elif self.stale or not self.renderer.idle():
+            text = UPDATING if self.last else "Making the sound…"
         else:
             text = ""
         self._set_state(text)

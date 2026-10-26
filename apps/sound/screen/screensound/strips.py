@@ -39,8 +39,9 @@ def chain(item: dict, vendor_of=None) -> list[dict]:
 
 
 def meter_of(render: dict, track_id: str) -> dict:
-    """{peak (dBFS), lufs} of a track, or {} when no render has measured it."""
-    for t in render.get("tracks") or []:
+    """{peak (dBFS), lufs} of a track or a group (the engine answers groups apart, as `buses`), or {} when no render
+    has measured it."""
+    for t in [*(render.get("tracks") or []), *(render.get("buses") or [])]:
         if t.get("id") == track_id:
             return {"peak": db(t.get("peak")), "lufs": _num(t.get("lufs"))}
     return {}
