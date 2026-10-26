@@ -18,16 +18,18 @@ from rostrum_core.keys import track_value
 from .field_kit import (ANIMATED, ANIMATING, ANY, C, CH, D, DOF, FOLLOWS, IS, N, NO_AIM, NOT, P, POLY, S, STEPS,  # noqa: F401
                         T, TIMING, TRANSFORM, X)
 from .item_fields import COMBINE_OPS, FIELDS, SOLIDS  # noqa: F401
+from .clay_fields import STILL as CLAY_STILL
 from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, STILL as LIGHT_STILL  # noqa: F401
 from .mesh_fields import SHAPES  # noqa: F401
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
-ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig")      # scene items (USD prims)
+ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay")      # scene items (USD prims)
 KEYED = (*ITEMS, "bone")                       # what keys, poses and the animation operations can move (a bone: its Turn)
 HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
          "camera": ["keys"],
+         "clay": ["steps", "keys"],                     # its steps build its shape, in order (clay_fields.py)
          "combine": ["children", "keys"],
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
@@ -35,11 +37,12 @@ DATA_GROUPS = {"Mesh data", "Bone data"}       # data an operation writes (a mes
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
+         "clay": CLAY_STILL,                     # its brush settings and detail
          "bone": {"x", "y", "z", "length"},       # a bone moves only by its Turn
          "*": {"aim"}}
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
-          "bone": "Bone"}
+          "bone": "Bone", "clay": "Clay", "claystep": "Clay step"}
 KEYED_TOGGLES = {"visible"}                    # toggles keys may drive: on / off at each key, nothing in between
 
 

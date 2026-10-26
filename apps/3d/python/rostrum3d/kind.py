@@ -5,6 +5,7 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
                     ─ import ─ children, parts ─ keys
                     ─ combine ─ children (2+ meshes / combines) ─ keys
                     ─ mesh ─ bones (a chain: bone ─ bones …, keys) ─ keys
+                    ─ clay ─ steps (claystep: pieces and strokes, in order) ─ keys
                     ─ light | camera ─ keys
         ─ materials ─ material
         ─ shots     ─ shot
@@ -17,11 +18,11 @@ import rostrum_paint
 from rostrum_core import DocKind, Registry, plugin_parts
 from rostrum_core.tree import walk
 
-from . import fields as F, paint_fields
+from . import clay_dabs, clay_fields, fields as F, paint_fields
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
-         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), **rostrum_paint.HOLDS}
+         "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
 REGISTRY = Registry()
@@ -125,7 +126,10 @@ def check(data: dict) -> list[str]:
                 _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
         if t == "combine":
             _check_combine(item, problems)
-        if t in ("mesh", "combine", "import", "part"):
+        if t == "clay":
+            for step in item.get("steps", []):
+                clay_fields.check_step(item, step, problems)
+        if t in ("mesh", "combine", "import", "part", "clay"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":
             for face in ("frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"):
@@ -137,7 +141,7 @@ def check(data: dict) -> list[str]:
     return problems
 
 
-KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
+KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts, tidy=clay_dabs.tidy,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
 # painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel

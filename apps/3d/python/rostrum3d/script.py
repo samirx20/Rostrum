@@ -13,6 +13,9 @@ person moved stays where they put it).
     with import_usd("phone", file=r"C:/assets/phone.usdc") as phone:
         phone.part("Body/Screen", material="glass")
     shot("hero", camera=cam, fps=24, start=0, end=2)
+    head = clay("head", y=1.6, detail=0.001)                 # a clay: its shape is its steps, in order (ops_clay.py)
+    head.lump((0, 0, 0), 0.1).lump((0, -0.02, 0.09), 0.03, name="nose")          # pieces: spheres, capsules (to=)
+    head.stroke(path=[(0.03, 0.02, 0.2), (0.05, 0.02, 0.2)], dir=(0, 0, -1), brush="carve", size=0.01)
 
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
 script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
@@ -29,6 +32,7 @@ from rostrum_core.keys import key_id
 from . import build, fields as F, shape_size
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
+from .ops_clay import piece_values, stroke_values
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -117,6 +121,25 @@ class Item:
         self.node["parts"].append(node)
         return Item(self._b, node)
 
+    def lump(self, at, radius: float = 0.15, to=None, **values) -> "Item":
+        """A clay's piece: a sphere at `at` (a capsule to `to`), joined (mode="add") or carved; blend, symmetry, name."""
+        return self._step(piece_values(self.node, {"at": list(at), "radius": radius,
+                                                   "to": list(to) if to is not None else None, **values},
+                                       "capsule" if to is not None else "sphere"))
+
+    def stroke(self, **values) -> "Item":
+        """A clay's brush stroke: path=[(x, y, z) …] + dir=(x, y, z) (each dab where a ray along dir meets the clay),
+        or dabList; brush, size, strength, symmetry, accumulate default to the clay's brush settings."""
+        return self._step(stroke_values(self.node, {k: ([list(q) for q in v] if k in ("path", "dabList") else
+                                                        list(v) if k == "dir" else v) for k, v in values.items()}))
+
+    def _step(self, values: dict) -> "Item":
+        if self.node["type"] != "clay":
+            raise ValueError(f"{self.id} is a {self.node['type']}; .lump() and .stroke() are for a clay")
+        step_id = self._b.new_id(f"{self.id}.s{len(self.node['steps']) + 1}", loose=True)   # an operation's: .step_N
+        self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}"))
+        return self
+
     def __enter__(self):
         if self.node["type"] not in F.HOLDERS:
             raise ValueError(f"{self.id} is a {self.node['type']}; only a group, rig, import or combine holds items")
@@ -196,9 +219,10 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "clay(id, **fields)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh)",
-       "import.part(path, material=, visible=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
+       "import.part(path, material=, visible=)",
+       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 
 
 def run_source(source: str, name: str) -> dict:
@@ -208,7 +232,7 @@ def run_source(source: str, name: str) -> dict:
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
-             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
+             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig", "clay")}}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:

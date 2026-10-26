@@ -165,6 +165,16 @@ class Engine:
         """A `mesh` item's built mesh laid flat (xatlas): uvs (one u, v per face corner), charts, used."""
         return self._request({"unfold": {"item": item, "size": size}})
 
+    def sculpt(self, **req) -> dict:
+        """One live stroke event on a clay (CL1 contract § 4): `item`, `phase` begin | dab | end | cancel, the camera
+        fields as `pick`, the pointer's new `points` in pixels and the brush. `end` (with the project `folder`) gives
+        `dabs`, the stroke's file reference ("" when nothing landed) for clay.stroke."""
+        return self._request({"sculpt": req})
+
+    def clay_info(self, item: str) -> dict:
+        """A clay as the core holds it: its shape's hash, steps applied, voxels, memoryMb, blocks."""
+        return self._request({"clay_info": {"item": item}})
+
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""

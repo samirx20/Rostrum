@@ -8,6 +8,7 @@ import dataclasses
 from rostrum_core import Param
 from rostrum_core.keys import KEY_FIELDS
 
+from .clay_fields import CLAY, STEP as CLAYSTEP
 from .field_kit import CH, C, D, DOF, N, S, T, TRANSFORM, X, ANY
 from .light_fields import LIGHT
 from .material_fields import MATERIAL
@@ -40,6 +41,8 @@ FIELDS: dict[str, list[Param]] = {
         X("material", "Material", "Part", "", help='A material id, or "" to keep the file\'s', refers="material"),
         T("visible", "Visible", "Part", True),
     ],
+    "clay": CLAY,                       # clay_fields.py: a lump to sculpt, its shape = its steps
+    "claystep": CLAYSTEP,               # one piece or brush stroke of a clay, in order
     "light": LIGHT,                     # light_fields.py
     "camera": [
         N("focalLength", "Focal length", "Lens", 1, 2000, 0.1, "mm", default=50.0,
