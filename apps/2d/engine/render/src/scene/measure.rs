@@ -1,10 +1,9 @@
 //! serve's `measure` (ENGINE_CONTRACT.md § 1): the box each text is laid out in, from its evaluated fields, by the
 //! same path that draws it. Each text becomes one layer of a scratch comp, checked as a load checks it (mod.rs
-//! `node`), written by stage.rs and laid out in a page of its own (the page shell's fonts, glyphs.rs's way); its
-//! layer box is read as boxes.rs reads one (the border box, `final_layout`). The whole list is one page, one
-//! layout pass. No time: the caller evaluates animated fields first.
+//! `node`), written by stage.rs and laid out on the measuring page (the page shell's fonts, glyphs.rs's way; kept
+//! between requests: measure_page.rs); its layer box is read as boxes.rs reads one (the border box, `final_layout`).
+//! The whole list is one stage, one layout pass. No time: the caller evaluates animated fields first.
 
-use blitz_html::HtmlDocument;
 use serde_json::{json, Map, Value};
 
 use super::fields::{self, Kind};
@@ -105,25 +104,14 @@ pub fn measure(req: &Value, held: Option<&[fonts::Font]>) -> R<Value> {
     let comp = Node { id: "measure".into(), kind: "comp", role: fields::Role::Comp, props: comp_props, anim: vec![], effects: vec![], masks: vec![], layers, frames: vec![], paint: vec![], paint_inside: true, fill_frames: vec![], rig: vec![], stops: vec![] };
     let named = |e: String| ids.iter().enumerate().rev().fold(e, |e, (i, id)| e.replace(&page_id(i), id));
     let markup = stage::stage(&eval::whole(&comp, 0.0)).map_err(named)?;
-    let empty = "<div id=\"rostrum-stage\"></div>";
-    let shell = stage::shell(ROOM, ROOM, &fonts::faces_of(all, &used))?;
-    if !shell.contains(empty) {
-        return Err("measure: the page shell has no empty stage to fill".into());
-    }
-    let html = shell.replacen(empty, &format!("<div id=\"rostrum-stage\">{markup}</div>"), 1);
-    let assets = crate::assets::Assets::default();
-    let mut doc = HtmlDocument::from_html(&html, crate::serve::page_config(ROOM, ROOM, &assets));
-    doc.handle_messages();
-    doc.resolve(0.0);
-    let failed = std::mem::take(&mut *assets.failures.lock().unwrap());
-    if !failed.is_empty() {
-        return Err(format!("measure: {} font(s) failed to load: {}", failed.len(), failed.join("; ")));
-    }
-    let mut sizes = Map::new();
-    for (i, id) in ids.iter().enumerate() {
-        let n = doc.query_selector(&format!("#{}", page_id(i))).ok().flatten().ok_or_else(|| format!("{id}: its layer is missing from the measured page"))?;
-        let s = doc.get_node(n).unwrap().final_layout().size;
-        sizes.insert(id.clone(), json!([s.width as f64, s.height as f64]));
-    }
+    let sizes = super::measure_page::lay_out(&fonts::faces_of(all, &used), ROOM, &markup, |doc| {
+        let mut sizes = Map::new();
+        for (i, id) in ids.iter().enumerate() {
+            let n = doc.query_selector(&format!("#{}", page_id(i))).ok().flatten().ok_or_else(|| format!("{id}: its layer is missing from the measured page"))?;
+            let s = doc.get_node(n).unwrap().final_layout().size;
+            sizes.insert(id.clone(), json!([s.width as f64, s.height as f64]));
+        }
+        Ok(sizes)
+    })?;
     Ok(json!({ "ok": true, "sizes": sizes }))
 }
