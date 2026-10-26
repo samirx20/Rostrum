@@ -16,18 +16,43 @@ def finding(kind: str, text: str, **data) -> dict:
 
 
 def entrance_overlaps(facts: list[dict]) -> list[dict]:
-    """Layers whose first moving stretch overlaps another layer's; the overlap in seconds."""
+    """Runs of layers whose first moving stretches overlap (each one starts before the run so far has finished): one
+    finding a run, never one a pair (a staggered grid of 200 dots was 11,000+ pair findings, critic r10). Two layers
+    keep the pair's sentence; a longer run says its span, how many start together and how far apart the starts are."""
     ent = sorted(((f["entrance"], f["id"]) for f in facts if f["entrance"] and f["type"] != "camera"), key=lambda e: e[0])
-    out = []
-    for i, ((a0, a1), a) in enumerate(ent):
-        for (b0, b1), b in ent[i + 1:]:
-            if b0 >= a1:
-                break
-            both = round(min(a1, b1) - b0, 3)
-            how = "start together" if abs(a0 - b0) < 1e-6 else f"start {r(b0 - a0, 2)} s apart"
-            out.append(finding("entrances_overlap", f"{a} ({a0}–{a1} s) and {b} ({b0}–{b1} s) move at the same time for {both} s; they {how}.",
-                               layers=[a, b], overlap_s=both, apart_s=r(b0 - a0)))
-    return out
+    runs, cur, end = [], [], 0.0
+    for (a0, a1), a in ent:
+        if cur and a0 < end:
+            cur.append(((a0, a1), a))
+            end = max(end, a1)
+        else:
+            runs.append(cur)
+            cur, end = [((a0, a1), a)], a1
+    runs.append(cur)
+    return [_run(run) for run in runs if len(run) > 1]
+
+
+def _run(run: list) -> dict:
+    ids, starts = [a for _, a in run], [s for (s, _), _ in run]
+    t0, t1 = starts[0], max(e for (_, e), _ in run)
+    if len(run) == 2:
+        ((a0, a1), a), ((b0, b1), b) = run
+        both = round(min(a1, b1) - b0, 3)
+        how = "start together" if abs(a0 - b0) < 1e-6 else f"start {r(b0 - a0, 2)} s apart"
+        return finding("entrances_overlap", f"{a} ({a0}–{a1} s) and {b} ({b0}–{b1} s) move at the same time for {both} s; they {how}.",
+                       layers=ids, overlap_s=both, apart_s=r(b0 - a0))
+    gaps = [r(y - x, 3) for x, y in zip(starts, starts[1:])]
+    apart = [g for g in gaps if g >= 0.001]
+    together = len(gaps) - len(apart)
+    if not apart:
+        how = "they all start together"
+    elif min(apart) == max(apart) and not together:
+        how = f"each starts {apart[0]} s after the one before"
+    else:
+        how = f"{together + 1 if together else 0} start together, the others start {min(apart)}–{max(apart)} s apart"
+    shown = ", ".join(ids[:3]) + f" … {ids[-1]}" if len(ids) > 4 else ", ".join(ids)
+    return finding("entrances_overlap", f"{len(ids)} layers ({shown}) move in one overlapping run from {r(t0, 2)} to {r(t1, 2)} s; {how}.",
+                   layers=ids, start=r(t0), end=r(t1), apart_s=r(min(apart) if apart else 0.0))
 
 
 def quiet_spans(facts: list[dict], duration: float) -> list[dict]:

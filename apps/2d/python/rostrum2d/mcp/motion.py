@@ -92,7 +92,8 @@ def trimmed(a: dict, limit: int | None) -> tuple[dict, list[str]]:
     "all": {"type": "boolean", "description": "Every moving layer and every finding line, no cap (identical findings are still one line each)."}}})
 def look_motion(ctx, args):
     """What moves and how, from the document's keys (no rendering): per layer when it moves, its path's start and end, peak speed,
-    which fields animate, ease and overshoot, holds; plus facts: entrances that overlap, stretches where nothing moves,
+    which fields animate, ease and overshoot, holds; plus facts: entrances that overlap (two layers as a pair, a longer chain
+    as one run with its span and how far apart the starts are: a staggered grid is one line), stretches where nothing moves,
     layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Layers are judged on screen by the
     engine's own drawn place (groups, frame / camera, depth, tilt, drawing cycles); a key on the last frame or at the end counts as
     reached. Short by default: a line a moving layer, identical findings (a hundred windows entering together) one line with a

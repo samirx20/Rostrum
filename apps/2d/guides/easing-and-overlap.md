@@ -36,8 +36,10 @@ Two entrances **overlap** when the second starts before the first has finished. 
 the last) is one way to get a read order; starting them all together is another. Neither is wrong: decide it, then check
 that the file says what you decided.
 
-- `look_motion` lists entrances that overlap with the overlap in seconds, and whether they start together. Pairs that look alike
-  (the same kind of layer made in a loop) are one line with a count and examples; `layers: [id]` lists the pairs of the ones you are tuning.
+- `look_motion` lists entrances that overlap: two layers as a pair with the overlap in seconds and whether they start together;
+  a longer chain (each starts before the ones so far have finished: a staggered grid, letters) as ONE run with its span, how many
+  start together and how far apart the starts are ("200 layers … move in one overlapping run from 0.0 to 8.96 s; each starts
+  0.04 s after the one before"). `layers: [id]` lists only the runs those layers are in.
   A stagger you meant as "one after another" that shows a large overlap, or a "together" that shows an offset, is a script
   mistake you can read without rendering.
 - `layer.stagger {target: [layer ids], by, order}` spreads layers so each starts `by` seconds after the one before, counting from the
