@@ -177,6 +177,11 @@ class AmountsPage(QObject):
         action = self._todo.pop(0)
         self._made.add(action.id)
         facts, mine = self._facts_fn(), self.memory.get(action.id, {})
+        if action.valid and not action.valid(facts):     # the selection changed since it was asked (Esc after a range):
+            self._made.discard(action.id)                 # nothing to make for it now; tried again with another
+            if self._todo:
+                self._ahead.ask()
+            return
         try:
             found, static, vals = self._made_for(action, facts, mine)
             fit = action.fit(facts, vals) if action.fit else {}
