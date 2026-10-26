@@ -4,6 +4,7 @@
 
 pub mod blends;
 pub mod change;
+pub mod counter;
 pub mod ease;
 pub mod eval;
 pub mod fields;
@@ -237,6 +238,9 @@ fn node_in(v: &Value, parent: &str, refs: &mut Refs) -> Result<Node, String> {
     }
     for f in &fields {
         check_value(&id, f, props.get(f.0).ok_or_else(|| format!("{id}: field \"{}\" is missing (the scene carries every field)", f.0))?)?;
+    }
+    if kind == "text" {
+        counter::check(&id, &props)?;
     }
     let mut anim = vec![];
     for (name, keys) in v["anim"].as_object().into_iter().flatten() {

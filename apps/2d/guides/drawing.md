@@ -54,7 +54,7 @@ The right-hand panel is headed "Painting", with the name and kind of what you pa
    - **Spacing**, **Even soft edge**, **Scatter**, **Size jitter**, **Angle jitter**, **Tip follows stroke** and **Tip angle**. Spacing and Scatter are a share of the tip (10 % = dabs a tenth of the tip apart); Taper start and end are in tip sizes (2 × size = thin over two tip widths).
    - **Paper grain** and **Paper** (tooth, canvas, cold press, laid, rough, or the project's own) with **Paper scale**: the paper's tooth breaks up the paint and stays put on the canvas. Agents judge the grain at 100 % with `look_drawing` / `look_painting` `crop: [x, y]`.
    - **Colour drift** and **Hue drift**.
-   - **Wet (smudge)**, **Wetness** and **Pick up layers below**: the brush drags the paint under it.
+   - **Wet (smudge)**, **Wetness** and **Pick up layers below**: the brush drags the paint under it. At 100 % Wetness it only blends (no colour of its own); lower, it also lays its own colour.
 4. Under the brush, **Painting on** holds where the paint goes (part 6).
 
 ### Save your own brush

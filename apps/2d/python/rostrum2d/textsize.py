@@ -19,7 +19,8 @@ from .engine import EngineError
 # the rest don't change it.
 FIELDS = ("body", "font", "size", "weight", "italic", "stretch", "tracking", "lineHeight", "align", "boxWidth",
           "ligatures", "figures", "smallCaps", "features", "slant", "grade", "axes",
-          "path", "pathOffset", "pathAlign", "pathOverflow", "letterDelay")
+          "path", "pathOffset", "pathAlign", "pathOverflow", "letterDelay",
+          "counter", "count", "countDecimals", "countDigits", "countSeparator", "countPrefix", "countSuffix")   # a counter: its number now
 KEEP = 4096                 # sizes kept; past it the table starts again (a slider dragged through many sizes)
 
 _lock = threading.RLock()

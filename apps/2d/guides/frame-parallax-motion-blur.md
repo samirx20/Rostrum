@@ -138,6 +138,18 @@ parallax when you scrub, and you grab it where you see it.
 at home, is right for 0 s; where it shows when the frame arrives at 4 s is the parallax. **Frame these** works depth
 out correctly.
 
+**The numbers, for placing by hand.** With the frame at its home (an output of W × H, home at its centre) and no
+turn, a layer at depth d moves s = 1 / (1 + d) as far as the frame. So:
+
+- To have a far layer show at picture x = q when the frame's centre is at world X: put it at `x = q + s · (X − W/2)`
+  (the same for y with H/2). A depth-3 tree centred in the picture when a 1920-wide frame reaches X = 4000:
+  `x = 960 + (4000 − 960) / 4 = 1720`.
+- How wide it must be to cover a pan of D px: the output's width plus s · D (a depth-3 sky under a 4000 px pan:
+  1920 + 1000 = 2920 px, centred on the middle of its travel). A push-in to zoom z grows it by z^s only, so it
+  needs no more; a pull-out to z < 1 needs W / z^s.
+- Easier than the sums: place it at depth 0 with the playhead where the frame looks at it, then
+  `set_depth(layer, d, at=that time)` (below): it stays where it shows then.
+
 From an agent: `layer.set_depth target=[hills] depth=3 at=2` keeps the layer where it shows at 2 s (every key carried
 along, so its motion keeps its shape); `keep: "values"` changes only the depth (the layer may jump). In a script:
 `set_depth("hills", 3)`. Setting the `depth` field itself (`value.set`, `shape(..., depth=3)`) changes only the number.

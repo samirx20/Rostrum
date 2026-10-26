@@ -254,8 +254,9 @@ fn layer(it: &Item) -> R<String> {
         if paint::shows(it) {
             // A painted layer's shadow follows element and paint together (and is never painted on).
             let _ = write!(filters, "drop-shadow({}px {}px {}px {rgba}) ", v(s, "dx"), v(s, "dy"), v(s, "radius"));
-        } else if it.kind == "path" {
-            // A path's shadow follows its outline, not its box.
+        } else if matches!(it.kind, "path" | "group" | "image") {
+            // A path's shadow follows its outline, a group's what it holds, an image's its see-through edges; never
+            // the plain box (a group of rounded cards had a hard rectangle under them).
             let _ = write!(style, "filter:drop-shadow({}px {}px {}px {rgba});", v(s, "dx"), v(s, "dy"), v(s, "radius"));
         } else {
             let _ = write!(style, "{prop}:{}px {}px {}px {rgba};", v(s, "dx"), v(s, "dy"), v(s, "radius"));

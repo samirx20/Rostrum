@@ -10,8 +10,12 @@ from rostrum_core.keys.marked import order
 
 from ..evaluate import value_at
 from ..motion_samples import _cameras, _screen
+from rostrum2d import placement
+
 from . import motion_checks as C
-from .geometry import _apply, _invert, _mul, flatten
+from . import motion_report as R
+from .geometry import _apply, _invert, _mul, comp_size, flatten
+from .motion_screen import Screen
 from ..boxes import matrix as box_matrix
 from .motion_facts import all_layers, layer_facts, r
 from .pick import ITEM_COMP, doc_and_comp
@@ -23,11 +27,11 @@ def _about(finding: dict) -> set[str]:
     return {*finding.get("layers", []), finding.get("layer", ""), finding.get("owner", "").split(".")[0]}
 
 
-def analyse(comp: dict, only: list[str] | None = None) -> dict:
+def analyse(comp: dict, screen: Screen, only: list[str] | None = None) -> dict:
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     facts = [layer_facts(layer, fps, within) for layer, within in all_layers(comp)]
-    findings = [*C.entrance_overlaps(facts), *C.quiet_spans(facts, duration), *C.not_showing(comp, duration - 1 / fps),
-                *C.never_shown(comp, fps, duration), *C.dead_keys(comp, duration)]
+    findings = [*C.entrance_overlaps(facts), *C.quiet_spans(facts, duration), *C.not_showing(comp, duration - 1 / fps, screen),
+                *C.never_shown(comp, fps, duration, screen), *C.dead_keys(comp, duration)]
     if only:
         known = [f["id"] for f in facts]
         for i in only:
@@ -63,46 +67,45 @@ def describe(a: dict, full: bool = True) -> str:
     return "\n".join(lines)
 
 
-LIMIT = 30      # layers that move and findings a reply lists before "N more" (a 500-layer piece stays readable)
-
-
-def trimmed(a: dict, limit: int) -> tuple[dict, list[str]]:
-    """The analysis cut to `limit` moving layers and `limit` findings (still layers named in one line), with the lines
-    that say what was left out and how to ask for it."""
+def trimmed(a: dict, limit: int | None) -> tuple[dict, list[str]]:
+    """The analysis cut to `limit` moving layers and `limit` finding lines (identical findings one line, the ones that
+    matter first), with the lines that say what was left out and how to ask for it. No `limit`: everything."""
     moving = [f for f in a["layers"] if f["moves"]]
     still = [f["id"] for f in a["layers"] if not f["moves"]]
     notes = []
-    if len(moving) > limit:
-        notes.append(f"{len(moving) - limit} more moving layers not listed: ask with `layers` (ids) or a bigger `limit`.")
+    if limit is not None and len(moving) > limit:
+        notes.append(f"{len(moving) - limit} more moving layers not listed: ask with `layers` (ids), `all: true` or a bigger `limit`.")
     if still:
         notes.append(f'{len(still)} still layer{"s" * (len(still) != 1)} (no keys): {", ".join(still[:10])}{" …" if len(still) > 10 else ""}.')
-    count: dict[str, int] = {}
-    for x in a["findings"]:
-        count[x["kind"]] = count.get(x["kind"], 0) + 1
-    findings = sorted(a["findings"], key=lambda x: count[x["kind"]])    # rare kinds first: 6 dead keys before 1450 overlaps
-    if len(findings) > limit:
-        kinds: dict[str, int] = {}
-        for x in findings[limit:]:
-            kinds[x["kind"]] = kinds.get(x["kind"], 0) + 1
-        notes.append(f'{len(findings) - limit} more findings ({", ".join(f"{n} {k}" for k, n in kinds.items())}): '
-                     "ask with `layers` for the ones you are tuning, or a bigger `limit`.")
-    return {**a, "layers": moving[:limit], "findings": findings[:limit]}, notes
+    groups = R.grouped(a["findings"])
+    if limit is not None:
+        groups, rest = R.capped(groups, limit)
+        notes += [rest] if rest else []
+    return {**a, "layers": moving if limit is None else moving[:limit], "findings": groups}, notes
 
 
 @tools.tool("look_motion", {"properties": {**ITEM_COMP, "layers": {"type": "array", "items": {"type": "string"}, "description": "Only these layer ids (all of them listed, no limit)."},
     "full": {"type": "boolean", "description": "Every move of every layer (from, to, ease, peak speed) and the full data. Default false: one line a "
                                               "layer, which is enough to judge a whole piece; ask `full` with `layers` for the few you are tuning."},
-    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": LIMIT, "description": "Without `layers`: how many moving "
-              "layers and findings to list (default 30); the reply says how many more there are."}}})
+    "limit": {"type": "integer", "minimum": 1, "maximum": 1000, "default": R.LIMIT, "description": "Without `layers`: how many moving "
+              "layers and finding lines to list (default 20); the reply says how many more there are."},
+    "all": {"type": "boolean", "description": "Every moving layer and every finding line, no cap (identical findings are still one line each)."}}})
 def look_motion(ctx, args):
     """What moves and how, from the document's keys (no rendering): per layer when it moves, its path's start and end, peak speed,
     which fields animate, ease and overshoot, holds; plus facts: entrances that overlap, stretches where nothing moves,
-    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Short by default: a line a moving layer,
-    at most `limit` (30) layers and findings, then how many more; `layers` lists just those; `full` gives every move and the full data."""
-    comp = doc_and_comp(ctx, args)[1]                 # times as they play (pick.py)
-    a = analyse(comp, args.get("layers"))
+    layers not on screen at the end or ever, keys that do nothing. Facts only, no scores. Layers are judged on screen by the
+    engine's own drawn place (groups, frame / camera, depth, tilt, drawing cycles); a key on the last frame or at the end counts as
+    reached. Short by default: a line a moving layer, identical findings (a hundred windows entering together) one line with a
+    count and examples, the ones that matter first (never on screen, not on screen, keys after the end, keys that do nothing,
+    stretches where nothing moves, overlapping entrances); at most `limit` (20) layers and finding lines, then how many more;
+    `all` lifts the cap; `layers` lists just those; `full` gives every move and the full data."""
+    doc, comp = doc_and_comp(ctx, args)                 # times as they play (pick.py)
+    w, h = comp_size(comp)
+    screen = Screen(lambda: placement.asker(doc.data, comp["id"], (0.0, float(comp.get("duration", 5.0)))), w, h)
+    a = analyse(comp, screen, args.get("layers"))
     n, full = len(a["findings"]), bool(args.get("full"))
-    shown, notes = (a, []) if args.get("layers") else trimmed(a, int(args.get("limit", LIMIT)))
+    every = args.get("all") or args.get("layers")
+    shown, notes = trimmed(a, None if every else int(args.get("limit", R.LIMIT)))
     data = shown if full else {**shown, "layers": [{k: f[k] for k in ("id", "animated_fields", "moving", "holds") if k in f} for f in shown["layers"]]}
     more = "" if full or not a["layers"] else "\n(Short form: ask `full` for every move, with `layers` for just the ones you are tuning.)"
     text = "\n".join(x for x in (describe(shown, full), *notes) if x)

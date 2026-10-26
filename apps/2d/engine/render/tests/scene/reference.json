@@ -691,6 +691,46 @@
     ]
    ],
    [
+    "counter",
+    "toggle",
+    null
+   ],
+   [
+    "count",
+    "number",
+    null
+   ],
+   [
+    "countDecimals",
+    "number",
+    null
+   ],
+   [
+    "countDigits",
+    "number",
+    null
+   ],
+   [
+    "countSeparator",
+    "choice",
+    [
+     "comma",
+     "period",
+     "space",
+     "none"
+    ]
+   ],
+   [
+    "countPrefix",
+    "text",
+    null
+   ],
+   [
+    "countSuffix",
+    "text",
+    null
+   ],
+   [
     "x",
     "number",
     null
@@ -3219,6 +3259,7 @@
    "slant",
    "grade",
    "pathOffset",
+   "count",
    "x",
    "y",
    "scale",
@@ -3606,90 +3647,6 @@
   },
   {
    "key": {
-    "ease": "hold"
-   },
-   "x": -0.1,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.0,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.03,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.1,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.25,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.37,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.5,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.63,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.75,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.9,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 0.97,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "hold"
-   },
-   "x": 1.0,
-   "p": 1.0
-  },
-  {
-   "key": {
     "ease": "smooth"
    },
    "x": -0.1,
@@ -3768,6 +3725,366 @@
   {
    "key": {
     "ease": "smooth"
+   },
+   "x": 1.0,
+   "p": 1.0
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": -0.1,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.0,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.03,
+   "p": 0.0016452805672550596
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.1,
+   "p": 0.017026609651562913
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.25,
+   "p": 0.09346465071882464
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.37,
+   "p": 0.18757099305624728
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.5,
+   "p": 0.31535681257253906
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.63,
+   "p": 0.46562216703520964
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.75,
+   "p": 0.6218618691748907
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.9,
+   "p": 0.8394278457624661
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 0.97,
+   "p": 0.9500675912596921
+  },
+  {
+   "key": {
+    "ease": "easeIn"
+   },
+   "x": 1.0,
+   "p": 1.0
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": -0.1,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.0,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.03,
+   "p": 0.04993240874030729
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.1,
+   "p": 0.16057215423753382
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.25,
+   "p": 0.3781381308251094
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.37,
+   "p": 0.5343778329647904
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.5,
+   "p": 0.6846431874274609
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.63,
+   "p": 0.8124290069437528
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.75,
+   "p": 0.9065353492811754
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.9,
+   "p": 0.9829733903484371
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 0.97,
+   "p": 0.9983547194327449
+  },
+  {
+   "key": {
+    "ease": "easeOut"
+   },
+   "x": 1.0,
+   "p": 1.0
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": -0.1,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.0,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.03,
+   "p": 0.08920153223206495
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.1,
+   "p": 0.6995019344334397
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.25,
+   "p": 1.3395248138960216
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.37,
+   "p": 0.9588665659900882
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.5,
+   "p": 0.9016436468357965
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.63,
+   "p": 1.0416310290901838
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.75,
+   "p": 1.023239947032584
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.9,
+   "p": 0.9819340525334214
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 0.97,
+   "p": 0.9910408821782967
+  },
+  {
+   "key": {
+    "ease": "spring",
+    "stiffness": 220,
+    "damping": 9
+   },
+   "x": 1.0,
+   "p": 1.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": -0.1,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.0,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.03,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.1,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.25,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.37,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.5,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.63,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.75,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.9,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
+   },
+   "x": 0.97,
+   "p": 0.0
+  },
+  {
+   "key": {
+    "ease": "hold"
    },
    "x": 1.0,
    "p": 1.0
@@ -4026,174 +4343,6 @@
   },
   {
    "key": {
-    "ease": "easeIn"
-   },
-   "x": -0.1,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.0,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.03,
-   "p": 0.0016452805672550596
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.1,
-   "p": 0.017026609651562913
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.25,
-   "p": 0.09346465071882464
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.37,
-   "p": 0.18757099305624728
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.5,
-   "p": 0.31535681257253906
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.63,
-   "p": 0.46562216703520964
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.75,
-   "p": 0.6218618691748907
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.9,
-   "p": 0.8394278457624661
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 0.97,
-   "p": 0.9500675912596921
-  },
-  {
-   "key": {
-    "ease": "easeIn"
-   },
-   "x": 1.0,
-   "p": 1.0
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": -0.1,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.0,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.03,
-   "p": 0.04993240874030729
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.1,
-   "p": 0.16057215423753382
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.25,
-   "p": 0.3781381308251094
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.37,
-   "p": 0.5343778329647904
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.5,
-   "p": 0.6846431874274609
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.63,
-   "p": 0.8124290069437528
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.75,
-   "p": 0.9065353492811754
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.9,
-   "p": 0.9829733903484371
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 0.97,
-   "p": 0.9983547194327449
-  },
-  {
-   "key": {
-    "ease": "easeOut"
-   },
-   "x": 1.0,
-   "p": 1.0
-  },
-  {
-   "key": {
     "ease": "easeInOut"
    },
    "x": -0.1,
@@ -4272,114 +4421,6 @@
   {
    "key": {
     "ease": "easeInOut"
-   },
-   "x": 1.0,
-   "p": 1.0
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": -0.1,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.0,
-   "p": 0.0
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.03,
-   "p": 0.08920153223206495
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.1,
-   "p": 0.6995019344334397
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.25,
-   "p": 1.3395248138960216
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.37,
-   "p": 0.9588665659900882
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.5,
-   "p": 0.9016436468357965
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.63,
-   "p": 1.0416310290901838
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.75,
-   "p": 1.023239947032584
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.9,
-   "p": 0.9819340525334214
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
-   },
-   "x": 0.97,
-   "p": 0.9910408821782967
-  },
-  {
-   "key": {
-    "ease": "spring",
-    "stiffness": 220,
-    "damping": 9
    },
    "x": 1.0,
    "p": 1.0
@@ -4814,6 +4855,13 @@
       "letterOrder": "forward",
       "letterSeed": 0.0,
       "letterSplit": "letters",
+      "counter": false,
+      "count": 0.0,
+      "countDecimals": 0.0,
+      "countDigits": 1.0,
+      "countSeparator": "comma",
+      "countPrefix": "",
+      "countSuffix": "",
       "x": 200,
       "y": 60,
       "scale": 1.0,
@@ -5410,6 +5458,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 90,
        "scale": 1.0,
@@ -5800,6 +5855,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 83.69791666666667,
        "scale": 1.0,
@@ -6190,6 +6252,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 63.73697916666667,
        "scale": 1.0,
@@ -6580,6 +6649,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 61.822916666666664,
        "scale": 1.0,
@@ -7057,6 +7133,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 59.474826388888886,
        "scale": 1.0,
@@ -7534,6 +7617,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 51.597222222222214,
        "scale": 1.0,
@@ -8011,6 +8101,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 51.388888888888886,
        "scale": 1.0,
@@ -8488,6 +8585,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 50.2734375,
        "scale": 1.0,
@@ -8965,6 +9069,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 50,
        "scale": 1.0,
@@ -9355,6 +9466,13 @@
        "letterOrder": "forward",
        "letterSeed": 0.0,
        "letterSplit": "letters",
+       "counter": false,
+       "count": 0.0,
+       "countDecimals": 0.0,
+       "countDigits": 1.0,
+       "countSeparator": "comma",
+       "countPrefix": "",
+       "countSuffix": "",
        "x": 200,
        "y": 50,
        "scale": 1.0,

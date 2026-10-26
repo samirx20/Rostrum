@@ -22,13 +22,20 @@ def shown_ids(comp: dict, t: float) -> list[str]:
     return [n["id"] for n in flatten(comp, t) if n["type"] != "group" and not problems_showing(n, w, h)]
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
-                                                                          "description": "Picture width in px (never larger than the composition). Default 960."}}})
+TIMES = {"times": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 24,
+                   "description": "Seconds, several: one contact sheet of exactly these moments (instead of time / frame), e.g. [0.5, 1.2, 3.0]. Each tile is labelled with its time."}}
+
+
+@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
+                                                                          "description": "Picture width in px (never larger than the composition). Default 960; with `times`, the width of the whole sheet (default 1280)."}}})
 def look_frame(ctx, args):
     """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
+    Give `times: [0.5, 1.2, 3.0]` for one contact sheet of those moments in one call (same drawing as look_frame what: sheet).
     Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait."""
     doc, comp = doc_and_comp(ctx, args)
+    if "times" in args:
+        return _times_sheet(ctx, doc, comp, args)
     t, frame = time_of(ctx, comp, args)
     scene, width = render.scene_of(doc, comp["id"], (t, t)), args.get("width", FRAME_WIDTH)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_f{frame}', project=doc.folder)
@@ -44,6 +51,21 @@ def look_frame(ctx, args):
                      scene.get("warnings", []))
 
     return ctx.long(f'look_frame {comp["id"]} f{frame}', job_fn)
+
+
+def _times_sheet(ctx, doc, comp, args: dict):
+    """look_frame `times`: a contact sheet of those moments; a bad list is refused whole, naming the moment."""
+    for other in ("time", "frame"):
+        if other in args:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"times" and "{other}"', "were both given", ["times", other], "Give one: times for a sheet, time or frame for one picture.")
+    fps, frames_in_comp = comp.get("fps", 30), round(comp.get("duration", 5.0) * comp.get("fps", 30))
+    frames = []
+    for t in args["times"]:
+        f = round(t * fps)
+        if not 0 <= f < frames_in_comp:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f"time {t} s", f"is outside the composition (0 to {(frames_in_comp - 1) / fps:.3f} s, its last frame)")
+        frames.append(f)
+    return _sheet_of(ctx, doc, comp, sorted(set(frames)), args)
 
 
 @tools.tool("look_sheet", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
@@ -64,6 +86,12 @@ def look_sheet(ctx, args):
     if not 0 <= start < end <= last + 1e-9:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'range {start}–{end} s', f"must satisfy 0 <= start < end <= {last:.3f} (the last frame)")
     frames = sorted({round((start + (end - start) * i / (count - 1)) * fps) for i in range(count)})
+    return _sheet_of(ctx, doc, comp, frames, args)
+
+
+def _sheet_of(ctx, doc, comp, frames: list[int], args: dict):
+    """The one contact-sheet path: the frames (whole numbers, sorted) of a composition as one labelled picture."""
+    fps = comp.get("fps", 30)
     scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps))
     cols = min(args.get("cols", 4), len(frames))
     tile_w = sheet.tile_width(args.get("width", SHEET_WIDTH), cols)

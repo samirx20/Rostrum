@@ -185,8 +185,11 @@ class Create(QObject):
     @Slot(str)
     def editText(self, layer_id, whole=True):
         """Type in an existing text again (Enter; a double-click with whole=False): `text.set {body}`, one change; empty
-        or unchanged = nothing."""
-        if self.b.doc.has(layer_id) and self.b.doc.item(layer_id)["type"] == "text":
+        or unchanged = nothing. A text that counts a number shows no words to type: it is only picked (its Counter rows
+        in the panel set the number)."""
+        if self.b.doc.has(layer_id) and self.b.doc.item(layer_id)["type"] == "text" and self.b.doc.item(layer_id).get("counter"):
+            self.b.select(layer_id)
+        elif self.b.doc.has(layer_id) and self.b.doc.item(layer_id)["type"] == "text":
             self.finish()
             self._whole = whole
             self._text = Session(self.b, layer_id, {}, {})

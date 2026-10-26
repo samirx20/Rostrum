@@ -123,6 +123,16 @@ def _places(doc_data: dict, layer_id: str, span: tuple[float, float], asks: list
     return [host.place(scene, t, ids) for t, ids in asks]
 
 
+def asker(doc_data: dict, comp_id: str, span: tuple[float, float]):
+    """`ask(t, ids) -> {id: place}` for one composition: its scene described once (a scan of many times and layers
+    loads it once; the engine takes a scene it already holds back at once), asked through the same host as `place_at`.
+    An undrawn layer among the ids fails the whole ask (EngineError naming it)."""
+    from .scene import describe
+    host = _host or Host()
+    scene = describe(doc_data, comp_id, host.markers(), host.folder(), span)
+    return lambda t, ids: host.place(scene, t, ids)
+
+
 def place_at(doc_data: dict, layer_id: str, t: float) -> dict:
     """The layer's place at composition time `t`, from the document as it is."""
     return _places(doc_data, layer_id, (t, t), [(t, [layer_id])])[0][layer_id]
@@ -149,13 +159,30 @@ def first_shown(doc_data: dict, layer_id: str) -> int | None:
 
 def centres_at(doc_data: dict, when: dict[str, float]) -> dict[str, tuple[float, float]]:
     """Each layer's box centre in composition px, each at its own composition time (`when`: {id: seconds}), through
-    its groups, the camera and tilt (the engine's `place`): one scene load for them all. layer.stagger's spatial
-    orders read these, so layers in different groups compare where they are seen."""
+    its groups, the camera and tilt (the engine's `place`). layer.stagger's spatial orders read these, so layers in
+    different groups compare where they are seen. A layer not drawn at its time (it enters from opacity or scale 0)
+    is placed where it is first seen after it, a tenth of a second at a time; one never seen fails in plain words."""
     if not when:
         return {}
-    got = _places(doc_data, next(iter(when)), (min(when.values()), max(when.values())), [(t, [i]) for i, t in when.items()])
+    from .engine import EngineError
+    from .scene import describe
+    comp = next(c for c in doc_data["comps"] if c["id"] == _comp_of(doc_data, next(iter(when))))
+    fps, end = comp.get("fps", 30), float(comp.get("duration", 1))
+    host = _host or Host()
+    scene = describe(doc_data, comp["id"], host.markers(), host.folder(), (min(when.values()), end))
     out = {}
-    for (id_, _), places in zip(when.items(), got):
-        p = places[id_]
-        out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
+    for id_, t in when.items():
+        for n in range(round(t * fps), round(end * fps) + 1, max(1, round(fps / 10))):
+            try:
+                p = host.place(scene, max(t, n / fps), [id_])[id_]
+            except (KeyError, ValueError, EngineError) as e:    # not drawn at this time: look on
+                if "not drawn" not in str(e):
+                    raise                                        # any other refusal is the engine's, told as it is
+                continue
+            out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
+            break
+        else:
+            raise ValueError(f'"{id_}" is never drawn from {t:g} s to the end (hidden, out of its time or fully '
+                             "see-through), so it has no place to order by. Show it, or use order picked (the order "
+                             "you list) or stack")
     return out

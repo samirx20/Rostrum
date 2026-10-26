@@ -124,12 +124,14 @@ t = text("headline", body="Words", size=160, x=960, y=520)
 t.key("opacity", {0.0: 0, 0.6: 1}, ease="easeOut")          # {time: value} or {time: (value, ease)}
 t.effect("shadow", dy=24, radius=60)
 t.mask("reveal", w=0).key("w", {0.0: 0, 0.8: 1400})
-with group("cluster", x=960, y=800):                          # layers made inside go into the group
+with group("cluster", x=960, y=800) as cluster:               # layers made inside go into the group
     shape("dot", shape="ellipse", w=24, h=24)
+cluster.end = 4                                               # a field as an attribute is .set(end=4); t.x reads it back
 ```
 
 Unknown fields, bad values, and animating something that cannot be animated fail loudly, naming the line and what to
-write instead.
+write instead. A field written as an attribute (`t.end = 4`) goes through the same check as `.set(end=4)`: it is set or
+refused, never dropped.
 
 ### What to write (the fields agents reach for)
 
@@ -194,7 +196,7 @@ You can't judge motion from the script. Look.
 
 | Tool | Use it to |
 |---|---|
-| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. Short by default: a line a moving layer, at most 30 layers and 30 findings (rare kinds first), then how many more; pass `layers` for just those, `limit` for more, `full` (with `layers`) for every move. Run it after every script. |
+| `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
 | `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1280, the whole sheet), `cols` tiles a row. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
@@ -216,6 +218,7 @@ Tie the two by **shared markers** ("drop", "logo lands"; `inspect_markers`), nev
   recordings, RostrumSound's library; `edit_sound_cue {layer, sound}` ties one to the layer's start (Sound mixes it).
 - `render_export` `format: "motion"` hands your layers' motion to RostrumSound (`edit_sounds_from_motion` there
   suggests notes and hits for each landing).
+- **No sound?** A render of a project with no RostrumSound item, or with `sound: false`, makes a silent mp4; it never fails for that. The Sound server is only needed to make or change the music, not to render it.
 - Guide `timing-to-music`: hearing the song, its beats, snapping and tying layers to its markers.
 
 ## Reading errors

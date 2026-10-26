@@ -32,8 +32,10 @@ it. In a project it lands in `renders/<item>/vNNN/` with a manifest Sound and th
 `.partial` folder and is never listed. `start` and `end` (seconds) pick a range.
 
 **MP4 quality.** An mp4 takes one setting, `quality`: `standard`, `high` (the default) or `best`. It sets how much detail the
-file keeps, and so its size: at 1080p and 25 frames a second that is about 12, 25 and 50 Mbit/s; a bigger picture or more
-frames a second gets more in proportion. `bitrate` (Mbit/s, up to 160) asks for an exact number instead. On the screen the
+file keeps, and so its size. Each frame gets the bits its picture needs, so flat motion graphics stay at a few Mbit/s on
+every step and only a busy, grainy picture grows. The worst case measured, a 15 s 1080p24 painted piece with a film-grain
+overlay: `standard` about 9 MB (smooths fine grain), `high` about 35 MB (keeps it, looks like `best` at normal size), `best`
+about 108 MB (for hand-offs and re-grading, not for sending). `bitrate` (Mbit/s, up to 160) asks for an exact number instead. On the screen the
 Export panel shows **Quality** only while MP4 is chosen. `render_video` and `render_export` both take `quality` and `bitrate`.
 
 The Python `rostrum2d.io.export(engine, fmt, out, alpha=None, depth=None, start=0.0, end=None, quality=None, bitrate=None, gif=None)` goes through the **same engine

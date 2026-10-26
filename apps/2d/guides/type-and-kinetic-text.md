@@ -25,7 +25,7 @@ and small text its text design. To pin it, name it yourself in `axes`: `axes="op
 
 **Animatable:** every number and colour field above (`size`, `weight`, `stretch`, `slant`, `grade`, `tracking`,
 `lineHeight`, `color`, `strokeWidth` and the transform). Not animatable: `body`, `font`, the type switches, `letterDelay`,
-`letterSeed`, `boxWidth`. `inspect_operations name=key.add` lists them.
+`letterSeed`, `boxWidth`. `inspect_operations name=key.add` lists them. A number that counts is the `count` field (below).
 
 ```python
 t = text("head", body="Words", size=180, weight=300, x=960, y=500)
@@ -98,6 +98,37 @@ layer inside it. Masks cut before effects, so a glow cannot spill past a mask.
 
 To make a text follow a path layer, use `text.follow` with `path:"<path layer id>"` (a script writes `pathLayer="<id>"`); the text's own `path` field holds raw path data, not a layer id. The fields `pathLayer`, `path`, `pathOffset`, `pathAlign`, `pathOverflow` exist on a text layer; the guide for them is
 [text-on-a-path.md](text-on-a-path.md). Easing and timing of the moves: [curve-editor.md](curve-editor.md) and [expressions.md](expressions.md).
+
+## A number that counts
+
+A text can show a number that counts instead of its words: a running total, a price, a percentage. Turn on `counter`
+and key `count` like any number; the engine writes the number on every frame, so the canvas, `look_frame` and the export
+show the same digits, and the text's box (alignment, auto layout, a group that fits its content) follows the number shown.
+
+| Field | What it does |
+|---|---|
+| `counter` | On: the text shows `countPrefix`, the number, `countSuffix`; its `body` is not shown. |
+| `count` | The number. Animatable: from → to by keys, with any ease. |
+| `countDecimals` | Places after the decimal mark (0 to 6; not animatable). The number is rounded to them. |
+| `countDigits` | At least this many digits, zeros in front (3: 007), as a scoreboard or an odometer (not animatable). |
+| `countSeparator` | The thousands mark: `comma` 1,284.5 · `period` 1.284,5 · `space` 1 284.5 · `none` 1284.5. |
+| `countPrefix`, `countSuffix` | Words before and after the number: `"$"`, `" GWh"`, `"%"` (put the space in yourself). |
+
+In one change, from an agent or the panel's operation: `text.counter` with `from`, `to`, `at`, `duration`, `ease` and the
+format (`decimals`, `digits`, `separator`, `prefix`, `suffix`). It replaces the `count` keys with two. In a script:
+
+```python
+n = text("total", counter=True, count=0, countSuffix=" GWh", font="Inter", figures="tabular lining", size=200, x=600, y=300)
+n.key("count", {0.5: (0, "easeOut"), 2.0: (450, "hold"), 2.4: 900})     # several steps: one key per step
+```
+
+- **Tabular figures** (`figures="tabular lining"`) give every digit one width, so a centred or right-aligned number does
+  not jiggle while it counts (the font must have them: a font without is refused, naming the features it has). With
+  proportional figures the box changes width with each digit.
+- The anchor decides which side stays put as digits are added: `anchorX=1` with `align="right"` keeps the last digit
+  still (a total that grows to the left), `anchorX=0` keeps the first.
+- Per-letter animation (`letterDelay`) splits the shown number, so each digit can move on its own.
+- With motion blur on (the scene's `shutter`), a fast count blends the digits it passes through within a frame.
 
 ## Fonts
 
