@@ -9,6 +9,8 @@ in place), so a step that changed no track (a marker drag) looks at no item, and
 """
 from __future__ import annotations
 
+from itertools import repeat
+
 from rostrum_sound.doc import markers as mk
 
 OWN = ("tracks", "buses", "master")     # what no other track's block reads (stepped.py: the mix rows are always made)
@@ -16,7 +18,21 @@ _SEEN: dict = {}                        # id(track) -> (the track, the marker na
 
 
 def _names(node) -> frozenset:
-    return frozenset(mk.ref(r) for r in mk.refs_in(node))
+    """The marker names written anywhere in `node` (markers.refs_in's rule: a "colour" is not one), in one flat walk:
+    only a text starting with "#" can name a marker (refs_in's generator per value cost ~45 ms of a whole-song Right)."""
+    out, todo = set(), [node]
+    while todo:
+        x = todo.pop()
+        for k, v in (x.items() if type(x) is dict else zip(repeat(None), x)):
+            t = type(v)
+            if t is str:
+                if v[:1] == "#" and k != "colour":
+                    r = mk.ref(v)
+                    if r:
+                        out.add(r)
+            elif (t is dict or t is list) and k != "colour":
+                todo.append(v)
+    return frozenset(out)
 
 
 def _track_names(track: dict) -> frozenset:

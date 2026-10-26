@@ -9,8 +9,9 @@
 // block goes): a hit drawn on a track of 3,000 costs what one block costs, not a walk over all of them on each surface.
 function patch(blocks, text, map) {
     var p = JSON.parse(text), put = p.put, gone = p.gone, out, at, i, j
+    var tm = map && map.length && (p.by.length || put.length) ? [_plainMap(map), Tempo.key(map)] : null
+    if (tm !== null) for (i = 0; i < put.length; i++) if (put[i].atBeat !== undefined) put[i] = _moved(put[i], "beats", 0, tm)
     if (p.by.length) {
-        var tm = map && map.length ? [_plainMap(map), Tempo.key(map)] : null
         at = _at(blocks)
         for (i = 0; i < p.by.length; i++) {
             var field = p.by[i][0], d = p.by[i][1], ids = p.by[i][2]
@@ -47,6 +48,8 @@ function patch(blocks, text, map) {
 
 // A block shown, its place moved by d: one placed in beats, timed at once under the map shown (`tm`: [map, its key],
 // as `timed` makes it: a layer over its own block, never one more), so `timed` passes it by; one in seconds, a copy.
+// A block a patch puts is timed here the same way (d = 0): `timed` copying a list of 3,352 new blocks (Ctrl+D) and
+// keeping a map of each cost ~140 ms.
 // (Copying each moved block and timing it after cost ~25 µs a block: 0.1 s for a 1,900-note row.)
 function _moved(x, field, d, tm) {
     var o
