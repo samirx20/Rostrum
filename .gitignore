@@ -49,3 +49,18 @@ Thumbs.db
 
 # the app's own FFmpeg build, fetched by tools/release/extras.py (never committed)
 apps/*/ffmpeg/
+
+# internal working docs live in the private Rostrum-internal folder, never in this public repo
+/CLAUDE.md
+/AGENTS.md
+/HANDOFF.md
+/NEEDS_DECISIONS.md
+/START_HERE.md
+PROGRESS*.md
+/docs/PLAN.md
+/docs/CARRY_OVER.md
+/docs/REFERENCES.md
+/docs/PROOFS.md
+/docs/RELEASE.md
+/apps/2d/STATUS.md
+/apps/sound/STATUS.md
