@@ -8,7 +8,7 @@ from rostrum2d.evaluate import resolve
 from rostrum_core.tree import subtree_ids
 from rostrum_gui.parts import SlotMixin
 
-from . import bounds, route
+from . import bounds, levels, route
 
 
 class LayerOrder(SlotMixin):
@@ -99,8 +99,9 @@ class LayerOrder(SlotMixin):
     # ---- keyboard: select all, clear, nudge ---------------------------------------------------------------------
     @Slot()
     def selectAllLayers(self):
-        """Ctrl+A: every top-level layer of the composition (not the camera)."""
-        ids = [c["id"] for c in reversed(self.comp()["layers"]) if c["type"] != "camera"]
+        """Ctrl+A: every layer at the level you are in (levels.py: the group's layers once inside one, else the
+        composition's; not the camera)."""
+        ids = levels.level_of(self.doc, self.selected_layers(), self.comp_id)
         if ids:
             self._select(ids)
 
