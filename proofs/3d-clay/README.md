@@ -95,7 +95,7 @@ Not done (part 2):
 - **OpenVDB 13.0.0** (MPL-2.0). Its DLL was already in the 3D library folder (`runtime\bin\openvdb.dll`). The headers and
   import library come from the same Blender `lib-windows_x64` bundle (tag v5.2.2, commit 60d6e96; that DLL is
   byte-identical), fetched with a sparse Git LFS checkout of just its `openvdb\` folder into
-  `C:\Users\Sam\.rostrum\downloads\blender-lib-v5.2.2-openvdb\` (about 40 MB: include + lib + DLLs). Nothing was built
+  `C:\Users\Sam\.rostrum\downloads\blender-lib-v5.2.2-openvdb\` (80 MB on disk with its Git data: include, lib, DLLs). Nothing was built
   from source. OpenVDB's own dependencies are inside the DLL and already listed for the Cycles bundle: oneTBB
   (Apache-2.0), Blosc (BSD-3-Clause), zlib (zlib), Imath (BSD-3-Clause). For CL1, `apps\3d\libs\lay_out.py` should
   copy `openvdb\include` and `openvdb.lib` into the library folder's `sdk\`.
