@@ -6,7 +6,10 @@ saying who got there first ("already changed by agent:mcp (\"Run map.py\")"; pas
 **The script's `name` decides replace or add:** the same name replaces and merges what that script made; a new name adds
 a second copy beside it (the reply warns). Keep one script name per song, and to change what an earlier script made, run
 under its name; a check that fails because two scripts made the same things names the earlier script. A script error names the script and line; an unknown track method lists what a track
-can do, an unknown name lists the script's names.
+can do, an unknown name lists the script's names. **A run that fails changes nothing** (no half-made track is left): fix
+the line it names and run again. A run that merged says so, even when a note ends before it starts (a warning naming
+the note, see "Before the render"). Times can name the song's markers (`"#drop"`,
+made with `marker.add`) and the project's without the script restating them.
 
 **The call.** `run_script` takes `source` (the Python text, required), `name` (the script's name, default `agent_script.py`),
 `item` (the song, when more than one is open), `force` and `detail`. There is no `script` or `code` argument.

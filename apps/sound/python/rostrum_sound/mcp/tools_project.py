@@ -9,6 +9,7 @@ document and does not touch the person's Recent songs list.
 """
 from __future__ import annotations
 
+import copy
 import dataclasses
 
 from rostrum_core import RostrumError
@@ -18,6 +19,7 @@ from .. import KIND
 from .. import lastproject as last
 from .. import note_ranges, script_scope
 from ..diagnose import FIXES
+from . import edit_examples, range_target
 from .app import NO_PROJECT, open_project
 
 
@@ -42,12 +44,17 @@ def with_no_project_sentence(runtime) -> None:
 
 EDIT_DOCUMENT = (
     "Apply a list of operations, all or nothing, as one change in the history. Read inspect_guide 'start-here' and "
-    "'writing-parts' first; the argument is `ops`, a list of {op, target?, args?}; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
-    "(the song itself is \"root\"). A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
-    "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\"). A volume is gain 0 … 4 as a bare number, or in dB as "
+    "'writing-parts' first; the argument is `ops` (not operations), a list of {op, target?, args?}; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "
+    "(a track is its id, \"drums\"; the song itself is \"root\"). A note or drum-hit operation takes note / hit ids, or a RANGE "
+    "target that names them: {\"track\": \"guitar\", \"from\": {\"bar\": 1}, \"to\": {\"bar\": 9}} is every note of that track "
+    "starting from bar 1 up to (not including) bar 9 (`from` / `to` left out = the start / the end; a time is also seconds, {\"beat\": 8} or \"#drop\"; "
+    "an empty range fails and says where the track's notes are; the range reads the song as it was before this call). "
+    "A bare number for a time or a length is SECONDS: beats are {\"beat\": 8} for a time "
+    "(\"at\") and {\"beats\": 2} for a length (\"dur\", \"length\", \"by\"). A volume is gain 0 … 4 as a bare number, or in dB as "
     "{\"db\": -6}; tracks on built-in instruments are level-matched for the part each suits (inspect_engine), and start at a rough-mix level (kits and bass a few dB under, brass no louder than strings), so equal volumes are roughly balanced: check with look_sound (what: levels). A note can end on a "
     "marker: {\"to\": \"#end\"} as its length (\"#end+2beats\": two beats after it). A project marker moves with edit_markers, "
-    "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter.")
+    "the song's own with marker.move here (marker.set is the same). Several parts at once: run_script is shorter. "
+    "Complete calls (the whole arguments), each tried on a real song:\n" + edit_examples.as_text())
 RUN_SCRIPT = ("The Python text goes in `source` (not script or code); `name` is optional: the same name replaces what that script made, a new name adds a second copy. "
               "Example: {\"name\": \"cue\", \"source\": \"tempo(96); length(bar(9))\nt = track('keys', builtIn='piano')\nt.note('D4', at=bar(1), dur=beats(4))\"}. "
               "Track and section names: 1 to 64 letters, digits, _ . - (no spaces); marker names may have spaces. Effect settings are plain numbers "
@@ -66,11 +73,14 @@ def with_sound_edit_help(runtime) -> None:
 
     def edit_document(ctx, args):
         try:
-            return old.fn(ctx, args)
+            doc = ctx.document(args.get("item"))
+            return old.fn(ctx, {**args, "ops": range_target.expand(doc, doc.kind.registry, args["ops"])})
         except RostrumError as e:
             e.hint = e.hint or ERROR_HINT
             raise
-    runtime.tools._tools["edit_document"] = dataclasses.replace(old, fn=edit_document, description=EDIT_DOCUMENT)
+    schema = copy.deepcopy(old.schema)
+    schema["properties"]["ops"]["items"]["properties"]["target"]["items"] = range_target.SCHEMA_ITEM
+    runtime.tools._tools["edit_document"] = dataclasses.replace(old, fn=edit_document, description=EDIT_DOCUMENT, schema=schema)
 
 
 def with_script_print(runtime) -> None:

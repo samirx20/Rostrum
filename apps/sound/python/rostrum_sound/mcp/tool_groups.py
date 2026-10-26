@@ -14,8 +14,9 @@ GROUPS = [
     ("look_music", "Hear the music as facts: where sounds start and whether they hit their times (default), the tempo "
      "and beat grid, the pitch of a melodic line against the written notes, or the key and chords.",
      {"events": "look_events", "beats": "look_beats", "pitch": "look_pitch", "harmony": "inspect_harmony"}, "events"),
-    ("inspect_engine", "What the sound engine can play: every name it accepts and which built-in sound suits which part "
-     "(default), one instrument's range and drum names, or the installed CLAP / VST3 plug-ins.",
+    ("inspect_engine", "What the sound engine can play. `what` is \"names\" (default: every name it accepts and which built-in sound suits "
+     "which part; the list of instruments is `names`, not `instruments`), \"instrument\" (one instrument's range and drum names) or "
+     "\"plugins\" (the installed CLAP / VST3 plug-ins).",
      {"names": "inspect_engine", "instrument": "inspect_instrument", "plugins": "inspect_plugins"}, "names"),
     ("inspect_library", "Sound files to use: installed packs and the person's own sound folders, searched by words, kind "
      "and shape (default), or recordings cut into single sounds (the cut pool).",

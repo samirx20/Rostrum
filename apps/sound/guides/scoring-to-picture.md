@@ -30,6 +30,8 @@ A marker is a named time (`marker.add` with `name` and `at`). Anything else can 
 | `"#logo+0.5"` / `"#logo-1"` | half a second after / one second before it |
 
 Put hits, clips, sections, automation points and look-tool checks on markers (`"#logo"`), never on a copied number.
+Mark the cuts first, then write: a script names the song's markers (made with `marker.add` or on the screen) and the
+project's as `"#logo"` without restating them; `marker("logo", at=...)` in a script makes a marker of its own.
 When the cut moves, move the marker once (`marker.move`: `edit_markers` for a project marker, `edit_document` for one of the song's own,
 the same name for both; `marker.set` is read as it, `inspect_operations name=marker.move` answers as marker.set, and an error names the one you sent; `edit_markers` times are seconds only (a plain number): for beats or a time on another marker use `edit_document`; or drag it on the arrangement's marker band) and everything on it
 follows. Times keep the form they were written in: a drag on the screen never turns `"#logo+0.5"` into seconds.

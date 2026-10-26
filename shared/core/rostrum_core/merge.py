@@ -78,6 +78,7 @@ class MergeReport:
     held: list = field(default_factory=list)    # {"key", "script", "kept", "who", "label"}
     removed: list = field(default_factory=list) # {"id", "type"}: the items the run took out (topmost ones)
     others: list = field(default_factory=list)  # first run under this name: the names of the scripts that already made things
+    broken: list = field(default_factory=list)  # check failures the document had before this run (not this run's)
 
     def warnings(self) -> list:
         """One line per thing a caller must not miss: each held-back value, what the run took out, and that a new
@@ -87,7 +88,8 @@ class MergeReport:
         gone = [f"Removed {removed_text(self.removed)}: the script no longer makes them."] if self.removed else []
         new = [f'"{self.script}" is a new script name, so it ADDED its items beside what {", ".join(self.others)} made. '
                f"To change those instead, run again under their name (a script re-run under the same name replaces what it made)."] if self.others else []
-        return held + gone + new
+        old = [f"The document was already broken before this run (not by it): {p}." for p in self.broken]
+        return held + gone + new + old
 
     def summary(self) -> str:
         text = f"Script {self.script}: {self.applied} change(s) applied"
@@ -236,9 +238,14 @@ def merge_script(doc, name, output: dict, who, force=False, session=None) -> Mer
             continue
         _record(new_base, lists, e, name, base_idx)
     problems = doc.kind.check(work)
-    if problems:
-        raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
-                           "would break its check: " + twin_hint(doc, name, output) + "; ".join(problems))
+    if problems:                          # all or nothing: a run that breaks the check changes nothing. A problem the
+        had = set(doc.kind.check(doc.data))   # document had before (an older file) is not this run's: named, not blamed
+        new = [p for p in problems if p not in had]
+        if new:
+            raise RostrumError(codes.CHECK_FAILED, f"run_script {name}", "the merged document",
+                               "would break its check, so nothing was merged: " + twin_hint(doc, name, output) + "; ".join(new)
+                               + (f" (already broken before this run, not by it: {'; '.join(sorted(had))})" if had else ""))
+        report.broken = sorted(had)
     first_run = name not in doc.script_bases
     doc.script_bases[name] = new_base
     report.applied = len(applied)

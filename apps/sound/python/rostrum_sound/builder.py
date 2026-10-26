@@ -13,7 +13,7 @@ from .builder_music import MusicMap
 from .builder_parts import Clip, Inserts, checked
 from .doc import blank
 from .doc import fields as FD
-from .doc import ids
+from .doc import ids, markers
 from .doc.check import playing
 from .doc.kind import facts as item_facts
 from .doc.registry import MASTER_ID
@@ -158,6 +158,7 @@ class Song(MusicMap):
         self.root = {k: v for k, v in blank().items() if k not in ("tracks", "markers", "master")}
         self.tracks: list[Track] = []
         self.markers: list[dict] = []
+        self.known: list[dict] = []        # the document's own markers (marker.add): read, never made, by the script
         self.master = Master()
 
     def set(self, **fields):
@@ -175,8 +176,14 @@ class Song(MusicMap):
         self.markers.append({"id": id or ids.marker(name), "type": "marker",
                              **checked("marker", {"name": name, "at": at}, f"marker {name}")})
 
+    def marks(self) -> list[dict]:
+        """The markers a time in the script can name: its own, then the document's it doesn't restate (one list
+        of markers, the document's, so a marker added with marker.add is found by a later script)."""
+        mine = {markers.key(m["name"]) for m in self.markers}
+        return self.markers + [m for m in self.known if markers.key(m.get("name", m["id"])) not in mine]
+
     def tree(self) -> dict:
-        root = {**self.root, "markers": self.markers}
+        root = {**self.root, "markers": self.marks()}
         taken = {m["id"] for m in self.markers} | {t.id for t in self.tracks} | {MASTER_ID}
         taken |= {i["id"] for k in ("tempos", "meters", "keys", "sections") for i in self.root.get(k, [])}
         holders = [*self.tracks, self.master, *(c for t in self.tracks for c in t.clips)]
