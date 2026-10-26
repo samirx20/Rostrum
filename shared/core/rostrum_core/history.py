@@ -36,6 +36,7 @@ class Change:
     redoes: list = field(default_factory=list)     # seqs of originals this step re-did
     t: float = 0.0                                 # clock time: merging nudges, ordering undo across documents
     step: str | None = None                        # one step across documents (joint.py): undone / redone together
+    format: list | None = None                     # [from, to]: the file formats an upgrade on open took it between (formats.py)
 
     _after: dict | None = field(default=None, repr=False, compare=False)
 
@@ -68,14 +69,14 @@ class Change:
                 "when": self.when, "session": self.session, "calls": self.calls,
                 "edits": [E.to_dict(e) for e in self.edits], "hash_after": self._hash,   # "" until known (storage)
                 "undoes": self.undoes, "redoes": self.redoes, "t": self.t,
-                **({"step": self.step} if self.step else {})}
+                **({"step": self.step} if self.step else {}), **({"format": self.format} if self.format else {})}
 
     @classmethod
     def from_dict(cls, d) -> "Change":
         return cls(d["seq"], d["based_on"], Who.from_dict(d["who"]), d["label"], d["when"],
                    [E.from_dict(e) for e in d["edits"]], d.get("calls", []), d.get("session"),
                    d.get("hash_after", ""), d.get("undoes", []), d.get("redoes", []), d.get("t", 0.0),
-                   d.get("step"))
+                   d.get("step"), d.get("format"))
 
 
 class History:

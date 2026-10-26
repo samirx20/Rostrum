@@ -53,4 +53,4 @@ def elsewhere(id_: str) -> str | None:
                      f'edit_markers (marker.move / marker.rename), so 2D and the Editor see it too.')
 
 
-KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)
+KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, upgraded=migrations.upgraded, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, upgrade=media.upgrade, tidy=media.tidy)

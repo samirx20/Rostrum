@@ -123,5 +123,19 @@ def bass_true_pitch(data: dict, lists: dict):
                   "an octave, so the song sounds as before") if moved else "Bass pitch: nothing to change"
 
 
+# What each step's label starts with or holds, for upgrade steps written before steps carried their formats
+# (rostrum_core formats.py; frozen: the labels those builds wrote).
+_SAID = {1: ("Level matching:",), 2: ('The drum kit "synth" is now', "moved to the new instruments' level matching",
+                                      "Instrument names:"),
+         3: ("moved to the new starting balance", "Starting balance:"), 4: ("(Gentle limiting off)",),
+         5: ("(Ring out and Even kit off)",), 6: ("The bass now plays at the written pitch", "Bass pitch:")}
+
+
+def upgraded(label: str):
+    """(from, to): the formats an upgrade step with this label took a song between, or None (not a format step)."""
+    ran = [n for n, said in _SAID.items() if any(w in label for w in said)]
+    return (min(ran), max(ran) + 1) if ran else None
+
+
 STEPS = {1: level_matched, 2: plain_names, 3: balance, 4: gentle_limiting, 5: endings_and_kits, 6: bass_true_pitch}
 FORMAT = len(STEPS) + 1

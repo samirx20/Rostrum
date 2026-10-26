@@ -36,6 +36,9 @@ class DocKind:
     # before the document is checked, so a file written by any earlier build opens. Every format below `version` must
     # have its step: raising `version` without one is refused here, so a format change can't ship without it.
     migrations: dict[int, Callable[[dict, dict], tuple[dict, str]]] = field(default_factory=dict)
+    # upgraded(label) -> (from, to) or None: the formats an upgrade step written before steps carried their `format`
+    # took the document between, read from its label (formats.py). Only for histories written before 2026-10-26.
+    upgraded: Callable[[str], tuple[int, int] | None] | None = None
     # The app's check, run after every call: check(data), or check(data, items=None) to be handed the items a call
     # changed (None: look at everything, as on open) so a big document isn't walked whole per change, or
     # check(data, items=None, only=None) also told which of their fields it changed (run.set_fields: a field only a
@@ -102,6 +105,16 @@ class DocKind:
             for n in range(from_version, self.version):
                 data, label = self.migrations[n](data, self.lists, folder)
                 labels.append(label)
+        return data, labels
+
+    def bring_up(self, data: dict, from_version: int, folder=None) -> tuple[dict, list[str]]:
+        """`data` (format `from_version`) as this build holds it: the format's steps, then the app's `upgrade`.
+        (new data, labels); no labels: nothing changed. Raises what a step raises."""
+        data, labels = self.migrate(data, from_version, folder)
+        up = self.upgrade(data, self.lists, folder) if self.upgrade else None
+        if up is not None:
+            data, label = up
+            labels.append(label)
         return data, labels
 
     def bad_values(self, items, only=None):

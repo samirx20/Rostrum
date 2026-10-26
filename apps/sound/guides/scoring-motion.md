@@ -54,6 +54,11 @@ They are then one sound: `clip.set` moving or re-levelling one moves them all; `
 
 ## Older songs
 
+A song saved by an older Rostrum is brought up to date once, the first time it opens, so it sounds exactly as before:
+the history shows one step by "Rostrum (older file)" saying what moved (for example *The bass now plays at the written
+pitch: the notes on 1 bass track moved down an octave*: the written notes change, the sound doesn't). That step can't be
+undone, and it never runs again. A song an older build moved twice is put back on open, with a step saying so.
+
 Risers, reverse cymbals, sub drops and big impacts no longer ship in the library (PURPOSE.md: no synthetic transition
 sounds; build with strings, a cymbal roll or a piano run). A song whose clip still uses one of those recordings opens, and
 the Problems chip names the clip and the kind ("clip "c1" uses a cinematic.riser recording … that Rostrum no longer

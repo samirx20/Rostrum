@@ -4,12 +4,13 @@ from __future__ import annotations
 import copy
 
 from . import edits as E
+from . import formats
 from .diff import diff
 from .doc_door import _through_door
 from .errors import RostrumError, codes
 from .history import Change
 from .tree import index
-from .who import Who
+from .who import UPGRADE, Who
 
 
 class UndoMixin:
@@ -35,12 +36,14 @@ class UndoMixin:
     @_through_door
     def redo_changes(self, targets, who, label=None) -> Change:
         """Bring back undone originals `targets` as one new change (refused like any redo)."""
+        _kept(targets)
         self.history.blockers(targets)
         edits = [e for c in sorted(targets, key=lambda c: c.seq) for e in c.edits]
         return self._replay(edits, who, label or f"Redid: {targets[-1].label}", redoes=[c.seq for c in targets])
 
     @_through_door
     def undo_changes(self, targets, who, label=None) -> Change:
+        _kept(targets)
         self.history.blockers(targets)
         rev = [E.reverse(e) for c in sorted(targets, key=lambda c: -c.seq) for e in reversed(c.edits)]
         return self._replay(rev, who, label or f"Undid: {targets[-1].label}", undoes=[c.seq for c in targets])
@@ -50,6 +53,7 @@ class UndoMixin:
         c = self.history.last_redoable(who)
         if not c:
             return None
+        _kept([c])
         self.history.blockers([c])
         return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
@@ -81,6 +85,18 @@ class UndoMixin:
     def restore_version(self, name, who: Who) -> Change | None:
         if name not in self.history.versions:
             raise RostrumError.not_found("restore_version", "version", name, self.history.versions)
-        target = self.at_step(self.history.versions[name])
+        seq = self.history.versions[name]
+        target, older = self.at_step(seq), formats.before(self.history.changes, seq)
+        if older is not None:                           # a version from before the file was brought up to date
+            target = self.kind.bring_up(target, older, self.folder)[0]
         edits = diff(self.data, target, self.kind.lists)
         return self._replay(edits, who, f"Restore version \"{name}\"") if edits else None
+
+
+def _kept(targets):
+    """An older file brought up to date (who.UPGRADE) is nobody's step: taking it back would leave the document in a format
+    this build reads otherwise (formats.py), so it is refused in words."""
+    up = next((c for c in targets if c.who == UPGRADE), None)
+    if up is not None:
+        raise RostrumError(codes.CONFLICT, "undo", f'"{up.label}"', "can't be taken back or brought back: it brought an "
+                           "older file up to date")

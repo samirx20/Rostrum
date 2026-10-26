@@ -29,7 +29,7 @@ import copy
 from pathlib import Path
 
 from . import edits as E
-from . import histfile
+from . import formats, histfile
 from .errors import RostrumError, codes
 from .kind import SHAPE_ERRORS
 from .tree import index
@@ -50,6 +50,7 @@ def read_history(path: Path, kind, start=0, changes=(), versions=None):
     changes, versions = list(changes), dict(versions or {})
     try:
         histfile.fold(r.entries, changes, versions, Change.from_dict)
+        formats.fill(changes, kind)
     except (KeyError, TypeError, ValueError, AttributeError) as e:
         raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"is damaged ({type(e).__name__}: {e})",
                            hint="Nothing was saved over it.") from e
@@ -74,22 +75,25 @@ def open_doc(cls, folder, item, kind):
 
 def _upgrade(doc, kind, path) -> bool:
     """An older file brought up to date before it is checked (so a rule that grew stricter never turns an old file
-    away): the format's steps (DocKind.migrations) from the file's own number, then the app's upgrade (DocKind.upgrade),
-    recorded as one change by Rostrum so the history before it replays as written and undo takes it back. A file that
-    can't be brought up to date is refused loudly, never opened half-converted. True when something changed."""
+    away): the format's steps (DocKind.migrations) from the format the opened data is in, then the app's upgrade
+    (DocKind.upgrade), recorded as one change by Rostrum carrying `format` [from, to] (formats.py), so it runs once per
+    document: the next open reads the format from that step, whatever the document file's own number says. The
+    history before it replays as written and nobody's undo takes it back. A file that can't be brought up to date is
+    refused loudly, never opened half-converted. True when something changed."""
+    note = formats.repair(doc)
+    if note:
+        doc.notes.append(note)
     try:
-        data, labels = kind.migrate(doc.data, doc.file_version, getattr(doc, "folder", None))
-        up = kind.upgrade(data, kind.lists, getattr(doc, "folder", None)) if kind.upgrade else None
+        data, labels = kind.bring_up(doc.data, doc.file_version, getattr(doc, "folder", None))
     except (*SHAPE_ERRORS, RostrumError) as e:
         raise RostrumError(codes.CHECK_FAILED, "open", str(path), f"can't be brought up to date: {type(e).__name__}: {e}",
                            hint="Nothing was saved over it.") from e
-    if up is not None:
-        data, label = up
-        labels.append(label)
     if not labels:
-        return False
+        return bool(note)
     from .diff import diff
-    doc.commit(data, diff(doc.data, data, kind.lists), UPGRADE, "; ".join(labels))
+    doc.commit(data, diff(doc.data, data, kind.lists), UPGRADE, "; ".join(labels),
+               format=[doc.file_version, kind.version] if doc.file_version < kind.version else None)
+    doc.file_version = kind.version
     return True
 
 
@@ -142,9 +146,11 @@ def _read_doc(cls, folder, item, kind, p):
     if r.layout == histfile.LAYOUT:
         _wrote(doc, p["history"], r.end)
     if not written and doc_hash(replayed) != doc_hash(file["doc"]):
-        _record_outside(doc, replayed, file["doc"])
-    elif not trusted:
-        doc.data = replayed                       # Rostrum's own file, behind a step replaced since
+        _record_outside(doc, replayed, file["doc"], formats.after(doc.file_version, changes))
+    else:
+        doc.file_version = formats.after(doc.file_version, changes if not trusted else changes[file["at"]:])
+        if not trusted:
+            doc.data = replayed                   # Rostrum's own file, behind a step replaced since
     return doc, items
 
 
@@ -157,9 +163,11 @@ def _uses(file, path) -> dict:
     return uses
 
 
-def _record_outside(doc, replayed, on_disk):
-    """The file was changed by something without history: record the difference first, then carry on."""
+def _record_outside(doc, replayed, on_disk, replayed_version):
+    """The file was changed by something without history: record the difference first, then carry on. The data is
+    then the file's own, in its format (the step says so when the history had taken it further: formats.py)."""
     from .diff import diff
     edits = diff(replayed, on_disk, doc.kind.lists)
     doc.data = copy.deepcopy(replayed)
-    doc.commit(copy.deepcopy(on_disk), edits, Who.outside("file changed outside Rostrum"), "Changed outside Rostrum")
+    doc.commit(copy.deepcopy(on_disk), edits, Who.outside("file changed outside Rostrum"), "Changed outside Rostrum",
+               format=[replayed_version, doc.file_version] if replayed_version != doc.file_version else None)
