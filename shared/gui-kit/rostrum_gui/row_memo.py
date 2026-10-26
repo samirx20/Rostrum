@@ -28,13 +28,26 @@ LIMIT = 4000                    # entries kept (a whole-song selection in Sound 
 
 
 class Entry:
-    __slots__ = ("item", "stamp", "facts", "changed", "gone", "rows", "sig", "values", "fields", "near")
+    __slots__ = ("item", "stamp", "facts", "changed", "gone", "rows", "sig", "values", "fields", "near", "_shape")
 
     def __init__(self, item, stamp, facts, seen, rows):
         self.item, self.stamp, self.facts = item, stamp, facts
         self.changed, self.gone = seen.get("changed", frozenset()), seen.get("gone", frozenset())
         self.rows, self.sig, self.values = rows, _sig(rows), tuple(r.get("value") for r in rows)
         self.fields, self.near = set(), False        # fields changed since; a neighbour changed (facts to read again)
+        self._shape = None
+
+    def shape(self) -> tuple:
+        """({param id: its place}, {param id: applies}, {half's id: both halves' ids}): what a patch leaves as it is,
+        read once."""
+        if self._shape is None:
+            at = {r["id"]: n for n, r in enumerate(self.rows) if r["row"] == "param"}
+            pair = {}
+            for r in self.rows:
+                if r.get("half") == "first":
+                    pair[r["id"]] = pair[r["partner"]] = (r["id"], r["partner"])
+            self._shape = (at, {i: self.rows[n]["holds"] for i, n in at.items()}, pair)
+        return self._shape
 
 
 class Memo:
@@ -93,33 +106,38 @@ class Memo:
         deciders, params, folds_of = _laid(static)
         if fields & deciders:
             return False
-        at = {r["id"]: n for n, r in enumerate(e.rows) if r["row"] == "param"}
+        at, holds, pair = e.shape()
         ids = {i for i in fields if i in at}
-        ids |= {r["partner"] for r in e.rows if r.get("half") == "first" and (r["id"] in ids or r["partner"] in ids)}
+        ids |= {h for i in ids if i in pair for h in pair[i]}
         folds = {id(f): f for i in fields for f in folds_of.get(i, ())}
         if not ids and not folds:
             return True
         new, shown, starts, anim, gone = redo(item, [e.rows[at[i]] for i in ids])
         if gone != e.gone:
             return False                            # (the page shows another field itself now: whole)
-        holds = {r["id"]: r["holds"] for r in e.rows if r["row"] == "param"}
         if any(R.changed(f, params, shown, holds, starts, anim) != (f["fold"] in e.changed) for f in folds.values()):
             return False                            # a folded group that opens or closes: whole
-        out = list(e.rows)
+        out, sig, values = list(e.rows), list(e.sig), list(e.values)
         for r in new:
             out[at[r["id"]]] = r
-        for n, r in enumerate(out[:-1]):            # a pair's halves read together (pairs.pair_valid)
-            if r.get("half") == "first" and r["id"] in ids:
-                pairs.pair_valid(out[n:n + 2], shown)
-        e.rows, e.sig, e.values = out, _sig(out), tuple(r.get("value") for r in out)
+        for i in ids:                               # a pair's halves read together (pairs.pair_valid)
+            if i in pair and pair[i][0] == i:
+                pairs.pair_valid(out[at[i]:at[i] + 2], shown)
+        for i in ids:
+            n = at[i]
+            sig[n], values[n] = _row_sig(out[n]), out[n].get("value")
+        e.rows, e.sig, e.values = out, tuple(sig), tuple(values)
         return True
 
 
 def _sig(rows: list[dict]) -> tuple:
     """What many.merge reads of an item's rows besides their values: which rows, which apply and show, key marks,
     expressions, which groups are open."""
-    return tuple((r["id"], r.get("holds"), r.get("valid"), r.get("open"), r.get("anim"), repr(r.get("expr") or ""))
-                 for r in rows)
+    return tuple(map(_row_sig, rows))
+
+
+def _row_sig(r: dict) -> tuple:
+    return r["id"], r.get("holds"), r.get("valid"), r.get("open"), r.get("anim"), repr(r.get("expr") or "")
 
 
 _LAID: dict = {}
