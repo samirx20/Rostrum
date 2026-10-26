@@ -15,7 +15,7 @@ pub const SYNTH_DRUMS: &[&str] = &["kick", "snare", "clap", "hat", "openHat", "c
 pub const GM_DRUMS: &[(&str, u8)] = &[
     ("kick", 36), ("kick2", 35), ("rim", 37), ("snare", 38), ("clap", 39), ("snare2", 40), ("hat", 42), ("pedalHat", 44), ("openHat", 46),
     ("lowTom", 41), ("floorTom", 43), ("tomLow", 45), ("tom", 47), ("midTom", 47), ("tomHigh", 50), ("highTom", 50), ("crash", 49),
-    ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55), ("crash2", 57), ("ride2", 59), ("shaker", 70),
+    ("cymbal", 49), ("ride", 51), ("china", 52), ("rideBell", 53), ("splash", 55), ("crash2", 57), ("ride2", 59), ("stir", 60), ("shaker", 70),
 ];
 /// The performance layer's families and their defaults (ENGINE_CONTRACT.md § Perform; the experiment's
 /// performDefaults.ts, Sam 2026-10-15): timing ms, velocity spread, accent, strum, articulation.

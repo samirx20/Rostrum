@@ -216,10 +216,10 @@ def drums_of(track: dict, memo: BlockMemo | None = None) -> list[str]:
 
 
 def roll_drums(track: dict, memo: BlockMemo | None = None) -> list[str]:
-    """The rows of a drum track's piano roll: a synth drum kit shows all its drums (so the area is the kit, not three
-    thin rows), then any other drum the track has hit."""
+    """The rows of a drum track's piano roll: a kit shows the drums it starts with (names.kit_rows: the jazz kit its
+    brushes and ride; so the area is the kit, not three thin rows), then any other drum the track has hit."""
     used = drums_of(track, memo)
-    return list(dict.fromkeys([*names.SYNTH_DRUMS, *used])) if track.get("instrument") == "kit" else used
+    return list(dict.fromkeys([*names.kit_rows(track.get("kit")), *used])) if track.get("instrument") == "kit" else used
 
 
 def kind_of(track: dict) -> str:

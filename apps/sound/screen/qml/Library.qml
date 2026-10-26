@@ -8,6 +8,7 @@ import RostrumKit
 // Sound ▾ picker, never a question here. "My sounds" is the person's own library
 // (LibraryPanel.qml: a sound goes on the selected recordings track at the playhead). Picking an entry (click, ↑ / ↓) plays it
 // through the engine (soundLibrary.auditionEntry: an instrument plays the selected track's notes); Esc or ■ Stop ends it.
+// A search that finds nothing names the closest sounds, or the kind chip they are under ("Show Instruments").
 // A click only previews: it never changes a track's sound. Loop (the loop mark beside Add on the row that plays) repeats what you hear. A voice row has no preview. Closes with × or Ctrl+L, and after each use (`finish`: the preview stops).
 Panel {
     id: p
@@ -20,7 +21,8 @@ Panel {
     readonly property var found: chip === "mine" ? [] : adder.find(query, chip)
     headerRight: IconButton { glyph: "×"; kind: "ghost"; tip: "Close (Ctrl+L)"; width: 28; height: 28
                               onClicked: workspace.setLibrary(false) }
-    onVisibleChanged: if (visible) { search.input.forceActiveFocus(); current = 0; noHear = "" }
+    // opens on All: a chip left on from the last visit hid every other kind (critic r11: "clar" under Drums said "no sound")
+    onVisibleChanged: if (visible) { chip = ""; search.input.forceActiveFocus(); current = 0; noHear = "" }
     function back() {                                    // Esc: end a swap or a preview first; with neither, the Library closes
         if (soundLibrary.swapping) soundLibrary.swapBack(); else if (soundLibrary.auditioning !== "") soundLibrary.stopAudition(); else workspace.setLibrary(false)
     }
@@ -113,12 +115,17 @@ Panel {
         }
     }
     EdgeFade { flick: list; anchors.fill: list; visible: list.visible }
-    Column {   // the search found nothing
+    Column {   // the search found nothing: the closest names, or the kind it is under (one click to that chip)
+        id: none
+        objectName: "libraryNone"
+        readonly property var miss: visible ? adder.missed(p.query, p.chip) : ({ say: "", chip: "" })
         visible: p.chip !== "mine" && p.found.length === 0
         anchors { left: parent.left; right: parent.right; top: chips.bottom; topMargin: Theme.pad }
         spacing: Theme.gap
-        Text { width: parent.width; wrapMode: Text.WordWrap; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
-               text: "No sound called “" + p.query + "”. Try a shorter word." }
+        Text { visible: none.miss.chip === ""; width: parent.width; wrapMode: Text.WordWrap; color: Theme.fg3
+               font.family: uiFont; font.pixelSize: Theme.body; text: none.miss.say }
+        Button { objectName: "libraryShowKind"; visible: none.miss.chip !== ""; height: Theme.button
+                 text: none.miss.say; onClicked: p.chip = none.miss.chip }
     }
     LibraryPanel {
         id: mine

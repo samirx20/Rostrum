@@ -50,6 +50,7 @@ ROLES: dict[str, Role] = {
     "builtIn:horn": Role(("pad", "lead"), "A1", "F5", "a recorded French horn"),
 
     "builtIn:trumpet": Role(("lead",), "E3", "C6", "a recorded trumpet"),
+    "builtIn:mutedTrumpet": Role(("lead",), "E3", "C6", "the recorded trumpet with a straight mute: soft, nasal, close"),
     "builtIn:trombone": Role(("pad", "lead"), "A#1", "F4", "a recorded tenor trombone"),
     "builtIn:tuba": Role(("bass",), "F1", "D4", "a recorded tuba"),
     "builtIn:flute": Role(("lead",), "C4", "C7", "a recorded flute"),
@@ -91,6 +92,7 @@ ROLES: dict[str, Role] = {
     "synth:sine": Role(("lead", "bass"), "C1", "C7", "a pure tone: a sub under a bass, or a gentle lead"),
     "kit:drums": Role(("groove",), "", "", "a recorded rock kit (kick, snare, hats, toms, crash, ride; rim, clap and shaker from the studio kit)"),
     "kit:studio": Role(("groove",), "", "", "a recorded studio kit (rusty close-miked drums, claps, shaker)"),
+    "kit:jazz": Role(("groove",), "", "", "a recorded jazz kit played with brushes (brush snare taps and a \"stir\" sweep, ride, soft hats, toms)"),
     "kit:classic": Role(("groove",), "", "", "synthesized drums: kick, snare, clap, hats, cymbal, tom, rim"),
 }
 

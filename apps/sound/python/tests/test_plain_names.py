@@ -73,3 +73,17 @@ def test_a_download_that_fails_its_fingerprint_is_deleted_and_nothing_is_install
         packs.install("toy")
     assert packs.state("toy")[0] == "missing" and not (tmp_path / "assets" / ".install-toy").exists()
     assert not list((tmp_path / "assets" / "sounds").rglob("*.ogg"))
+
+
+def test_every_listed_instruments_preview_lies_in_its_range():
+    """The Library's preview of a recorded instrument plays only notes it has (critic r11: the clarinet, vibraphone and
+    flute previews were refused for C3, so they seemed missing)."""
+    from rostrum_sound import audition, names, roles
+    from rostrum_sound.doc import keys
+    for name in (n for g in names.BUILT_IN_GROUPS.values() for n in g):
+        role = roles.ROLES[f"builtIn:{name}"]
+        if not role.low:
+            continue
+        song = audition._song({"instrument": "builtIn", "builtIn": name}, "instrument", [], None).tree()
+        heard = [m for n in song["tracks"][0]["notes"] for m in keys.midis(n["pitch"])]
+        assert keys.midi(role.low) <= min(heard) and max(heard) <= keys.midi(role.high), name

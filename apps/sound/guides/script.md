@@ -262,9 +262,11 @@ tracks[0].set(instrument="sfz", sfz=r"C:\...\Cello.sfz")
   moved marker but ends at a fixed `19.5` breaks when the marker moves past it (the render refuses it, naming the note and
   what to write); put a marker on the cue's end (`marker("end", at=19.5)`) and write `end="#end"`: a later start only
   makes the note shorter.
-- **Drums.** The kits (`kit=`): `"drums"` (the default: a recorded rock kit), `"studio"` (a recorded studio kit) and
-  `"classic"` (synthesized). The recorded kits take `kick`, `snare`, `clap`, `hat`, `openHat`, `pedalHat`, `rim`, `tomLow`,
-  `tom`, `tomHigh`, `crash`, `cymbal`, `ride`, `china`, `rideBell`, `splash`, `crash2`, `ride2`, `shaker`. The classic kit has
+- **Drums.** The kits (`kit=`): `"drums"` (the default: a recorded rock kit), `"studio"` (a recorded studio kit), `"jazz"` (a recorded
+  jazz kit played with brushes: brush snare, ride, soft hats and toms) and `"classic"` (synthesized). The recorded kits take
+  `kick`, `snare`, `clap`, `hat`, `openHat`, `pedalHat`, `rim`, `tomLow`, `tom`, `tomHigh`, `crash`, `cymbal`, `ride`, `china`,
+  `rideBell`, `splash`, `crash2`, `ride2`, `shaker`, and the jazz kit also `stir` (a brush swept round the snare: one hit
+  under a bar or two; the other kits refuse it). A name a kit has no sample for is an error listing what it plays. The classic kit has
   `kick`, `snare`, `clap`, `hat`, `openHat`, `cymbal` (its one cymbal: write it for a crash or a ride), `tom`, `rim`. An SFZ
   kit on General MIDI keys (`kitSfz=`) also takes any GM key number 27 … 87. **Even kit** (track field `evenKit`, on for
   new kit tracks; script only): each drum plays at its measured level against the kick and snare, and each hit's very first

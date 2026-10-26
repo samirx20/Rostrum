@@ -2,7 +2,7 @@
 
 ## Sample packs: the recorded instruments, drum kits and sound effects
 
-The plain instrument names (piano, strings, bass, flute …), the drum kits (`drums`, `studio`) and the sound-effect library
+The plain instrument names (piano, strings, bass, flute …), the drum kits (`drums`, `studio`, `jazz`) and the sound-effect library
 are **sample packs**: real recordings installed on this machine, not part of the app (the piano alone is 1.2 GB). Each pack
 is listed with its author, licence and size; every file is checked by its fingerprint before it is kept (a wrong one is
 deleted and the install fails, saying so), and what was installed is recorded in `<assets>/assets.json`.

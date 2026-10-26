@@ -20,7 +20,7 @@ BUILT_IN_GROUPS = {
     "Piano and keys": ["piano", "electricPiano", "organ", "pipeOrgan"],
     "Guitar and bass": ["guitar", "acousticGuitar", "electricGuitar", "bass", "uprightBass"],
     "Strings": ["strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp"],
-    "Brass and winds": ["brass", "horn", "trumpet", "trombone", "tuba", "flute", "piccolo", "oboe", "clarinet",
+    "Brass and winds": ["brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba", "flute", "piccolo", "oboe", "clarinet",
                         "bassoon", "saxophone"],
     "Mallets and drums": ["marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani"],
     "Synth": ["warmPad", "subBass", "pluck", "choirPad"],
@@ -39,15 +39,15 @@ BUILT_INS = [*(n for g in BUILT_IN_GROUPS.values() for n in g), *BUILT_IN_ALIASE
 DEFAULT_BUILT_IN = "piano"
 # The plain names that are synthesized (an analog preset or a classic voice): any key plays; the rest are recordings with a range.
 SYNTHESIZED = [*BUILT_IN_GROUPS["Synth"], *BUILT_IN_GROUPS["Classic (synthesized)"]]
-KITS = ["drums", "studio", "classic"]
+KITS = ["drums", "studio", "jazz", "classic"]
 OLD_KITS = {"synth": "drums"}      # the one kit there was, before the kits had names: a document or script that says it means "drums"
-KIT_WORDS = {"drums": "Rock kit", "studio": "Studio kit", "classic": "Classic (synthesized) kit"}
+KIT_WORDS = {"drums": "Rock kit", "studio": "Studio kit", "jazz": "Jazz kit", "classic": "Classic (synthesized) kit"}
 SYNTH_DRUMS = ["kick", "snare", "clap", "hat", "openHat", "cymbal", "tom", "rim"]
 # General MIDI drum names an SFZ kit on GM keys answers to (the engine's `describe` gmDrums); a GM key
 # number (27 … 87) is always accepted.
 GM_DRUMS = ["kick", "kick2", "rim", "snare", "clap", "snare2", "hat", "pedalHat", "openHat", "lowTom", "floorTom", "tomLow",
             "tom", "midTom", "tomHigh", "highTom", "crash", "cymbal", "ride", "china", "rideBell", "splash", "crash2", "ride2",
-            "shaker"]
+            "stir", "shaker"]
 GM_KEYS = (27, 87)
 # Drum names agents and people reach for first, one meaning on every kit: written as the kit's own name.
 # Keys are compared lower case without spaces, "-" or "_" (drum_key), so "Hi-Hat", "hi_hat" and "hihat" are one.
@@ -64,9 +64,17 @@ KIT_NEAREST = {"kit": {**{k: "cymbal" for k in ("crash", "crash2", "ride", "ride
                "kitSfz": {**{k: "tomLow" for k in ("lowtom", "floortom")}, **{k: "tomHigh" for k in ("hightom", "hitom")}}}
 
 
-# The recorded kits ("drums", "studio") sit on General MIDI keys: every GM name, the shaker and the toms by either name; a
+# The recorded kits ("drums", "studio", "jazz") sit on General MIDI keys: every GM name, the shaker and the toms by either name; a
 # GM key number is not accepted there (hits name their drum). The classic kit has its own eight.
 KIT_DRUMS = GM_DRUMS
+
+
+# The rows a kit's Editor starts with (the drums a person reaches for on it); any other drum hit adds its row.
+KIT_ROWS = {"jazz": ["kick", "snare", "stir", "ride", "hat", "pedalHat", "crash", "tom"]}
+
+
+def kit_rows(kit: str | None) -> list[str]:
+    return KIT_ROWS.get(kit or "", SYNTH_DRUMS)
 
 
 def kit_drums(kit: str | None) -> list[str]:
