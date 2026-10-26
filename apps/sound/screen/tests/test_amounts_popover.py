@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import QPoint, Qt  # noqa: E402
 import shiboken6  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
+from rostrum_gui import laid_out  # noqa: E402
 from rostrum_gui.pointer import wait_until  # noqa: E402
 from screensound import playback  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
@@ -22,6 +23,7 @@ NOTES = ["lead.n0", "lead.n16000"]
 
 def items(win):
     """Every item in the window, popups' overlay included."""
+    laid_out.now(win)                     # where things are now, not before the last step's layout
     root = win.contentItem()
     while root.parentItem() is not None:
         root = root.parentItem()
