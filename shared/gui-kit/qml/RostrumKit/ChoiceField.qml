@@ -33,7 +33,7 @@ FieldFrame {
         for (let i = 0; i < options.length; i++) if (!q || labelAt(i).toLowerCase().indexOf(q) >= 0) out.push(i)
         return out
     }
-    // Inside a popover (the amounts box, Stagger…) the keys go back to the popover when the list closes (Qt leaves them on the window behind it, so the
+    // Inside a popover (the amounts box, Stagger…) the keys go back to the popover as the list starts closing (Qt leaves them on the window behind it, so the
     // popover's Enter never reached it and a picked change was never kept).
     function handKeysBack() {
         for (let it = f.parent; it; it = it.parent) {
@@ -87,7 +87,7 @@ FieldFrame {
         enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
         exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
         onOpened: if (f.searchable) search.forceActiveFocus()
-        onClosed: f.handKeysBack()
+        onAboutToHide: f.handKeysBack()        // at once, not after the fade: a Return right after a pick is the popover's
         contentItem: Column {
             id: list
             focus: true
