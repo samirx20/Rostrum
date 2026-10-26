@@ -133,12 +133,21 @@ class SelectSlots(SlotMixin):
 
     def _show_panel(self):
         """The selection's panel: its rows in place and at once (no reveal animation, and only the rows another kind
-        adds or drops are made or freed), its name, then what follows the panel (panelShown: its actions, effects)."""
+        adds or drops are made or freed), its name, then what follows the panel (panelShown: its actions, effects). A pick
+        made inside a drag that holds the panel (Alt+drag's 200 copies: ~0.9 s of rows) shows it at the drop."""
+        if self.holds_panel():
+            self._kit.panel_held = True
+            return
+        self._kit.panel_held = False
         self._rows_due().cancel()           # (a change's rows still waiting: these are newer)
         self.model.update(self._rows(), instant=True)
         self.rowsChanged.emit()
         self._announce(force=True)
         self.panelShown.emit()
+
+    def holds_panel(self) -> bool:
+        """The app's say: a drag is moving many items now, so the panel follows at its drop (2D: drags.moving_many)."""
+        return False
 
     def _panel_now(self):
         """A reader of the rows (or a change to them) right after a pick or a change: its panel first."""
@@ -289,6 +298,8 @@ class SelectSlots(SlotMixin):
         """The same rows with new values or validity: changed in place, so each row animates its own reveal."""
         if self._panel_later().due:         # a pick's panel not shown yet: shown now, as a pick shows it
             return self._panel_later().flush()
+        if self._kit.panel_held:            # (or held by the drag that just ended)
+            return self._show_panel()
         self._rows_due().cancel()
         self.model.update(self._rows())
         self.rowsChanged.emit()
@@ -321,7 +332,8 @@ class SelectSlots(SlotMixin):
         elif not self.reached(sel):                        # a change elsewhere leaves these rows as they are
             return
         elif step:
-            self._kit.paced.ask()
+            if len(sel) == 1:            # many items dragged together: their folded rows show mixed values anyway, and
+                self._kit.paced.ask()    # folding 200 items' rows each step cost ~70 ms; they follow at the drop
         else:
             self._kit.paced.cancel()
             self._rows_due().ask()          # the rows' new values the frame after: an action that then picks what it

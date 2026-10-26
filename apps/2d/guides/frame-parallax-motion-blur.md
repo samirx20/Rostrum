@@ -204,7 +204,7 @@ streak at the default 8, a still frame or a slow move costs no more than before,
 keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples`.
 
 The frame at time t is the average of the samples centred on t. Layers that do not move stay sharp. Motion of keys, groups,
-rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. What a layer shows never blurs, only how it moves: a counting number stays one sharp number per frame and a drawing drawn frame by frame shows one drawing, as in After Effects. Preview
+rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. What a layer shows never blurs, only how it moves: a counting number stays one sharp number per frame and a drawing drawn frame by frame shows one drawing, as in After Effects. A layer that shows in a frame shows in all its samples, so the first frame of the piece (or of a layer) is as strong as the next. Preview
 and export blur the same way. While the picture moves (playing, or dragging the playhead) the canvas draws one step so it
 keeps up, unless **Motion blur while playing** is on (the zoom menu); the moment the playhead stops, the frame is drawn
 with every step, exactly as it exports (with Motion blur while playing on, playing draws every step too, so a whip

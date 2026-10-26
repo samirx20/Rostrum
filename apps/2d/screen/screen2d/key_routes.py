@@ -108,6 +108,12 @@ class KeyRoutes(SlotMixin):
             self._keys.clear()
             self.selectAllLayers()
 
+    @Slot()
+    def pickLayerKeys(self):
+        """Ctrl+Alt+A: every key of the picked layers (key_select.pick_layers_keys); says so when there are none."""
+        n = self._keys.pick_layers_keys()
+        self._set_status(f"Picked {n} key{'' if n == 1 else 's'}" if n else "No keys here to pick")
+
     @Slot(str)
     def toolKey(self, tool):
         """A tool's key: the tool; P again goes back to Select; J says why when no rig is picked."""

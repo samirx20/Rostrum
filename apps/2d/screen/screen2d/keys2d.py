@@ -42,6 +42,7 @@ OWN = [
     {"job": "subtract", "keys": ["Ctrl+Alt+S"], "label": "Combine: subtract"},
     {"job": "intersect", "keys": ["Ctrl+Alt+I"], "label": "Combine: intersect"},
     {"job": "exclude", "keys": ["Ctrl+Alt+X"], "label": "Combine: exclude"},
+    {"job": "pick_keys", "keys": ["Ctrl+Alt+A"], "label": "Pick every key of the picked layers", "area": "Animate"},   # After Effects' key
     {"job": "make_painted_fill", "keys": [], "label": "Make painted fill"},          # no key: the right-click's Make block
 ]
 
@@ -58,7 +59,7 @@ ROUTES = {
     "frame_back": ("stepFrames", -1), "frame_on": ("stepFrames", 1),
     "frame_back_ten": ("stepFrames", -10), "frame_on_ten": ("stepFrames", 10),
     "marker": ("markerHere",), "next_marker": ("markerJump", 1), "prev_marker": ("markerJump", -1),
-    "select_all": ("selectAllKey",), "animated_rows": ("showAnimated",),
+    "select_all": ("selectAllKey",), "pick_keys": ("pickLayerKeys",), "animated_rows": ("showAnimated",),
     **{f"nudge_{n}": ("nudgeKey", n) for n in NUDGE},
     "move_tool": ("toolKey", "move"), "pen_tool": ("toolKey", "pen"), "rect_tool": ("toolKey", "rect"),
     "ellipse_tool": ("toolKey", "ellipse"), "text_tool": ("toolKey", "text"), "hand_tool": ("toolKey", "hand"),

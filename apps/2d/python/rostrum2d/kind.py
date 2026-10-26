@@ -64,21 +64,26 @@ for _type, _params in F.FIELDS.items():
                        params=[p for p in _params if p.name not in F.FIXED.get(_type, ())], fields=True)(_set_fields)
 
 
-def facts(item: dict, doc=None) -> dict:
+def facts(item: dict, doc=None, only=None) -> dict:
+    """`only`: the fact names wanted (a field's check reads one or two: inLayout costs nothing, underCamera a look at
+    every layer beside it, ~200 per moved layer in a drag of 200); None: all."""
+    want = (lambda *names: True) if only is None else (lambda *names: not only.isdisjoint(names))
     if item.get("type") == "key":
         return {"number": "v" in item, "color": "c" in item, "shape": "d" in item,      # rawSpring: keys.spring
                 "rawSpring": not {"bounce", "speed"} & set(item)}
     out = {"hasPaint": bool(item.get("frames"))} if item.get("type") in paint_fields.TYPES else {}
     if item.get("fillType") == "painted" and doc is not None:     # Start at drawing: its painting draws each frame
         out["paintingBoils"] = _boils(doc, item.get("fillPainting", ""))
-    if item.get("type") == "camera":                       # frame.home is offered only while the frame is away
+    if item.get("type") == "camera" and want("frameAway"):  # frame.home is offered only while the frame is away
         from .ops_frame_fit import away
         out["frameAway"] = away(item)
-    if item.get("type") in ("text", "textstyle"):         # Italic shows where the family has one (or it is on)
+    if item.get("type") in ("text", "textstyle") and want("fontItalic"):    # Italic shows where the family has one (or it is on)
         out["fontItalic"] = bool(item.get("italic")) or _has_italic(item.get("font", F.defaults("text")["font"]))
     if item.get("type") in F.LAYERS and doc is not None:      # inside a group with an auto layout (layout.py)
         parent = doc.parent(item)
         out["inLayout"] = bool(parent) and parent.get("type") == "group" and parent.get("layout", "none") != "none"
+        if not want("underCamera", "frameMoves"):
+            return out
         # a scene's own layer with a camera beside it: Depth and Pinned to screen mean something (fields.UNDER_CAMERA)
         out["underCamera"] = bool(parent) and parent.get("type") == "comp" \
             and any(c.get("type") == "camera" for c in parent.get("layers", []))

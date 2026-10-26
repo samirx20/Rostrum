@@ -54,11 +54,39 @@ def settable(ctx, owner: dict, prop: str):
         ctx.fail(codes.CONFLICT, f'{owner["id"]}.{prop}', f"is driven by an expression ({source}); a value or key would do nothing",
                  hint="expr.clear it first.")
     p = F.param(owner["type"], prop)
-    if p is not None and not holds(p.valid_when, {**F.defaults(owner["type"]), **owner}, ctx.facts(owner)):
+    if p is not None and p.valid_when is not None and not holds(p.valid_when, _Values(owner),
+                                                                _facts(ctx, owner, p.valid_when)):
         from rostrum_core.conditions import describe
         when = describe(p.valid_when, {q.name: q.label for q in F.FIELDS[owner["type"]]})
         ctx.fail(codes.BAD_ARGUMENT, f'{owner["id"]}.{prop}', "doesn't apply right now",
                  hint=f"{p.label or prop} only works when {when}; it is not on the screen until then.")
+
+
+class _Values:
+    """The owner's values as a condition reads them (`get` only): its own, else its field's default."""
+
+    def __init__(self, owner: dict):
+        self.owner = owner
+
+    def get(self, name, default=None):
+        if name in self.owner:
+            return self.owner[name]
+        p = F.param(self.owner["type"], name)
+        return p.default if p is not None else default
+
+
+_NAMES: dict = {}       # id(condition) -> (condition, the facts it reads)
+
+
+def _facts(ctx, owner: dict, cond) -> dict:
+    """Only the facts the condition reads (a drag of 200 layers checks x and y of each, every step)."""
+    from rostrum_core.conditions import refs
+    from rostrum_core.tree import View
+    from .kind import facts
+    got = _NAMES.get(id(cond))
+    if got is None or got[0] is not cond:
+        got = _NAMES[id(cond)] = (cond, frozenset(n for k, n in refs(cond) if k == "fact"))
+    return facts(owner, View(ctx.doc, ctx.kind.lists, ctx.idx), only=got[1]) if got[1] else {}
 
 
 def _still_value(ctx, owner: dict, prop: str, args: dict):

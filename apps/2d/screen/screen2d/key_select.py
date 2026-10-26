@@ -86,6 +86,17 @@ class KeySelect(KeyMoves, QObject):
         ids = [str(i) for g in groups for i in g]
         self._set(self._ids + ids if how in ("ctrl", "shift") else ids)
 
+    def pick_layers_keys(self) -> int:
+        """Ctrl+Alt+A: every key of the picked layers (none picked: of every layer), shown on screen or not, so one ease
+        or one move reaches them all (After Effects: U, then a box; critic 2d-r11: a box only reached the rows on
+        screen). The layers stay the selection. Returns how many keys are picked."""
+        doc = self.b.doc
+        layers = set(self.b.selected_layers())
+        keys = [i["id"] for i in doc.items() if i.get("type") == "key"
+                and (not layers or layer_of(doc, i["id"]) in layers)]
+        self._set(keys)
+        return len(keys)
+
     @Slot()
     def clear(self):
         """A layer picked (canvas, name, bar, Ctrl+A) or Esc: the pick is about layers; the keys go."""

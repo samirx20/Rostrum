@@ -38,7 +38,10 @@ class TimelineRows:
         return got[3]
 
     def _layers_check(self):
-        """Something the rows may depend on changed: tell QML only when they differ from what it shows."""
+        """Something the rows may depend on changed: tell QML only when they differ from what it shows. While several
+        layers move on the canvas, at the drop (drags.moving_many)."""
+        if self.moving_many():
+            return
         rows, told = self.layer_rows(), self._rows_told
         self._rows_told = rows
         if rows != told:

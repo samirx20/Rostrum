@@ -5,7 +5,7 @@ what is picked. The step is always B now against A, however B was made and moved
 right, Ctrl+D gives 300 px across, and each Ctrl+D after keeps adding it. Only a change that called layer.duplicate is a
 copy: a shape just drawn, a text, a paste or an import is inserted after the layer under it too, but it is no copy of it
 (round 7: Ctrl+D after drawing threw the copy 460 px away). `step` gives it as layer.duplicate's arguments (by_x, by_y,
-by_turn, by_scale). Anything else changed since, or another pick, and there is no step: Ctrl+D is the plain 24 px one."""
+by_turn, by_scale). Anything else changed since, or another pick, and there is no step: Ctrl+D copies in place (action_rules._duplicate)."""
 from __future__ import annotations
 
 from rostrum_core.edits import Insert, Set, flat

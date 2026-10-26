@@ -92,11 +92,11 @@ def test_ctrl_d_moved_copy_then_ctrl_d_repeats_the_gap_from_the_original(screen)
     b.select("mover")
     _key(win, Qt.Key_D, Qt.ControlModifier)
     first = b.multi.ids[0]
-    _drag(win, 324, 724, 200)             # the copy lands 24 px right and down; drag it on, so it sits ~224 px across
+    _drag(win, 300, 700, 200)             # the copy lands in place, on top; drag it on, so it sits ~200 px across
     assert b.multi.ids == [first]
     row = ["mover", first] + _ctrl_d(b, win, 2)
     steps = _row(b, row)
-    assert 200 < steps[0][0] <= 224 and steps[0][1] == 24
+    assert 170 < steps[0][0] <= 200 and steps[0][1] == 0     # (the drop may snap to a neighbour's edge)
     assert steps == [steps[0]] * 3, steps          # an even row: each copy takes the step from the original to the copy
 
 
@@ -113,7 +113,7 @@ def test_alt_drag_a_copy_then_ctrl_d_repeats_its_step(screen):
     assert steps == [steps[0]] * 3, steps
 
 
-def test_ctrl_d_right_after_drawing_a_shape_puts_the_copy_24_px_on(screen):
+def test_ctrl_d_right_after_drawing_a_shape_copies_it_in_place(screen):
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
     b, win = screen
@@ -130,4 +130,4 @@ def test_ctrl_d_right_after_drawing_a_shape_puts_the_copy_24_px_on(screen):
     #                                             the next key if that comes first (select_soon.py)
     copy = b.doc.item(b.multi.ids[0])
     assert copy["id"] != drawn["id"]
-    assert (round(copy["x"] - drawn["x"]), round(copy["y"] - drawn["y"])) == (24, 24)
+    assert (round(copy["x"] - drawn["x"]), round(copy["y"] - drawn["y"])) == (0, 0)   # (round 7: not thrown 460 px away)

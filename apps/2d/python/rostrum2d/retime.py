@@ -116,34 +116,40 @@ def timed(comp: dict, markers: dict | None, fps: float, memo: dict | None = None
     return {**comp, "layers": layers} if "layers" in comp else comp
 
 
-_offsets = [(None, None, {})]   # [(document data, markers, {item id: offset})]: a screen asks per settings row
+_offsets = [(None, None, None)]   # [(document data, markers, {item id: offset})]: a screen asks per settings row and per moved layer
 
 
 def offset_of(doc_data: dict, item_id: str, markers: dict | None) -> float:
     """Where an item's own time 0 sits in its composition's seconds: its marker's time, or its nearest timed
     parent's (0 when none). A key on a marker sits at that marker's time minus this, in the item's own seconds.
-    Kept per document state and markers (each change gives new ones): one walk per item, not one per ask."""
+    Kept per document state and markers (each change gives new ones): one walk of the whole document gives every
+    item's, so a drag of 200 layers walks once per step, not once per layer."""
     got = _offsets[0]                       # (one read and one write of the cell: a worker thread may ask too)
     if got[0] is not doc_data or got[1] is not markers:
-        got = _offsets[0] = (doc_data, markers, {})
-    kept = got[2]
-    if item_id not in kept:
-        kept[item_id] = _offset_walk(doc_data, item_id, markers)
-    return kept[item_id]
+        got = _offsets[0] = (doc_data, markers, _offset_walk(doc_data, markers))
+    off = got[2].get(item_id, 0.0)
+    if isinstance(off, RostrumError):       # its own or a parent's marker is missing: said when asked, as before
+        raise off
+    return off
 
 
-def _offset_walk(doc_data: dict, item_id: str, markers: dict | None) -> float:
-    def walk(node: dict, off: float):
+def _offset_walk(doc_data: dict, markers: dict | None) -> dict:
+    """{item id: offset} for every item inside the compositions (the error, for an item timed by a missing marker)."""
+    out = {}
+
+    def walk(node: dict, off):
         for key in CHILDREN:
             for child in node.get(key, []):
-                o = _offset(child, off, markers)
-                if child.get("id") == item_id:
-                    return o
-                found = walk(child, o)
-                if found is not None:
-                    return found
-        return None
-    return next((o for c in doc_data.get("comps", []) if (o := walk(c, 0.0)) is not None), 0.0)
+                try:
+                    o = _offset(child, off, markers)        # (a parent's error passes down unless it has its own marker)
+                except RostrumError as err:
+                    o = err
+                if "id" in child:
+                    out.setdefault(child["id"], o)
+                walk(child, o)
+    for c in doc_data.get("comps", []):
+        walk(c, 0.0)
+    return out
 
 
 def as_played(doc_data: dict, item_id: str, markers: dict | None) -> tuple[dict, dict] | None:

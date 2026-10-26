@@ -62,3 +62,18 @@ def test_times_with_a_step_makes_a_row_in_one_undo_step():
     assert [d.item(i)["x"] for i in ids[1:5]] == [960, 1060, 1160, 1260]
     d.undo(SAM)
     assert len(d.item("film")["layers"]) == 4
+
+
+def test_many_copies_in_one_call_keep_ids_names_and_places_apart():
+    """One call copying many layers (Alt+drag of all, Ctrl+D of all) works out ids, names and taken places once and
+    keeps them up to date: no copy takes another's id or name, and each still steps off the copies made before it."""
+    d = _doc()
+    d.apply({"op": "layer.duplicate", "target": ["shape_1", "shape_2"]}, SAM)       # both at 960, 540
+    layers = d.item("film")["layers"]
+    assert [c["id"] for c in layers][:5] == ["frame", "shape_1", "shape_3", "shape_2", "shape_4"]
+    assert [(d.item(i)["x"], d.item(i)["y"]) for i in ("shape_3", "shape_4")] == [(984, 564), (1008, 588)]
+    d.apply({"op": "layer.duplicate", "target": ["shape_1", "shape_3", "shape_2"], "args": {"by_x": 0}}, SAM)
+    ids = [c["id"] for c in d.item("film")["layers"]]
+    names = [c["name"] for c in d.item("film")["layers"] if c["name"].endswith(("copy", "copy 2", "copy 3", "copy 4"))]
+    assert len(ids) == len(set(ids)) == 9 and len(names) == len(set(names)) == 5
+    assert ids.index("shape_5") == ids.index("shape_1") + 1 and ids.index("shape_7") == ids.index("shape_2") + 1

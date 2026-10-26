@@ -34,7 +34,10 @@ at time *t* is the **average of n pictures** at moments spread evenly over the o
 Centred, so a blurred frame sits where the sharp still at *t* is (a still and the export agree; the blur leads
 and trails equally). Each sub-frame is a full evaluation and stage (keys, rigs, trails, smears), drawn and summed
 on the GPU (renderer `painter.rs accumulate`). Layers that don't move come out the same in every sub-frame, so they
-stay sharp. A layer that starts or ends inside the open shutter fades in or out across it, as on film.
+stay sharp. Whether a layer shows is decided at the frame's own time, as After Effects: a layer showing in a frame
+is in every one of its sub-frames (its values before its start or before 0 s hold its first ones), and one not
+showing is in none. So the first frame of a piece, or of a layer, is as strong as the next (engine `scene/eval.rs`
+`eval`, test `shutter_samples_keep_who_shows`).
 
 **No blur across a jump.** A sub-frame never reads a field past a jump (a key after a `hold` key: a cut of the frame,
 a held pose, a step of "on twos"): on the far side of the jump it takes the value on the frame's own side. So a cut

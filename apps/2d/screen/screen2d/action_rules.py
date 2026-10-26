@@ -210,14 +210,16 @@ def cutter_name(call: dict, doc) -> str:
 
 
 def _duplicate(f: Facts) -> list[dict]:
-    """Duplicate: after a duplicate and moves of the copy, the same step again (dup_step.py reads it from the history)."""
-    return [{"op": "layer.duplicate", "target": list(f.ids), "args": dup_step.step(f.doc, f.ids)}]
+    """Duplicate: after a duplicate and moves of the copy, the same step again (dup_step.py reads it from the history);
+    else the copy in place, as After Effects and Figma make it (and Alt+drag), so a step typed on it (X "+64") is the
+    whole step from the original, never 24 px more."""
+    return [{"op": "layer.duplicate", "target": list(f.ids), "args": dup_step.step(f.doc, f.ids) or {"by_x": 0}}]
 
 
 def said(calls: list[dict], label: str, doc) -> str:
     """The words a change is recorded and shown with: K says what it keyed ("Keyed 4 settings on 3 layers")."""
-    dup = next((c for c in calls if c["op"] == "layer.duplicate" and c["args"]), None)
-    if dup:
+    dup = next((c for c in calls if c["op"] == "layer.duplicate" and dup_step.words(c["args"])), None)
+    if dup:                                                    # (a copy in place says only its label)
         return f"Duplicated · {dup_step.words(dup['args'])}"
     cut = next((c for c in calls if c["op"] == "mask.make"), None)
     note = cover_move.fill_note(calls, label, doc)             # Fill the frame while the frame moves: at that moment only
