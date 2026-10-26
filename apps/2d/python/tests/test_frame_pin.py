@@ -1,4 +1,4 @@
-"""Pin to frame, Set depth and a new size (ops_depth.py, frame/make.py resized): a layer stays exactly where it shows in
+"""Stick to the shot, Set depth and a new size (ops_depth.py, frame/make.py resized): a layer stays exactly where it shows in
 the export at the playhead, and a pinned title keeps its distance from the frame's centre when the size changes. These
 break silently otherwise (the picture jumps)."""
 import pytest

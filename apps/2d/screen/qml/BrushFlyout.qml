@@ -29,9 +29,9 @@ SmallPopup {
     property real floor: 10000         // the lowest it may reach (above the timeline's names column)
     MenuSpot { id: spot }
     y: Math.max(8, Math.min(at, Math.min(floor, parent ? parent.height : 0) - implicitHeight))
-    // The panel opens over the settings panel (the right column), never over the picture: nothing of the canvas is hidden,
-    // so a press anywhere on it closes the panel and starts the stroke in that same press (a click outside = CloseOnPressOutside,
-    // and the press goes on to the canvas). The settings it covers come back the moment it closes (a brush picked, or any click).
+    // The panel opens beside the rail, over the left of the picture, so the settings panel (the Brush row, Size, Colour) stays in
+    // view while a brush is chosen; a press anywhere outside it closes it and starts the stroke in that same press
+    // (a click outside = CloseOnPressOutside, and the press goes on to the canvas).
     function settingsZone(item) {     // the visible settings panel's rectangle in the window, or null
         if (!item || !item.visible) return null
         if (item.popupsBeside === true && item.width > 0) { const q = item.mapToItem(parent, 0, 0); return { x: q.x, y: q.y, w: item.width, h: item.height } }
@@ -43,7 +43,7 @@ SmallPopup {
         const w = 3 * tileW + 2 * 8 + 2 * padding
         const z = settingsZone(button.Window.window.contentItem)
         spot.anchor = button
-        x = z ? Math.max(p.x + 8, z.x + z.w - w) : p.x + 8       // the panel's right edge lined up with the settings panel's
+        x = p.x + 8                                              // beside the rail: the settings panel stays in view (brush, size, colour)
         const top = z ? z.y : p.y - padding
         floor = spot.floorBelow(x, w, top)     // above the timeline's names, not over them
         if (z) floor = Math.min(floor, z.y + z.h)     // and within the settings panel: the brushes scroll for the rest

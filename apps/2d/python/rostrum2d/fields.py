@@ -126,7 +126,7 @@ TRANSFORM = [      # x, y are absent while a group's auto layout places the laye
     # The frame (frame/, apps/2d/FRAME.md): only a composition's own layers use these (kind.facts "underCamera").
     N("depth", "Depth", "Depth", -0.99, 1000, 0.01, "", D, {"all": [UNDER_CAMERA, {"not": IS("screenLock", True)}]},   # no parallax while pinned
       help="How far behind the frame's plane: 0 = on it, 1 = twice as far (moves half as much), -0.5 = nearer (twice as much)"),
-    T("screenLock", "Pinned to frame", "Depth", False, D, UNDER_CAMERA, help="Moves with the frame, not the world: X, Y are in the frame's own px (a title, a logo bug, a border)"),
+    T("screenLock", "Sticks to the shot", "Depth", False, D, UNDER_CAMERA, help="Moves with the frame, not the world: X, Y are in the frame's own px (a title, a logo bug, a border)"),
     # A track matte (engine: scene/matte.rs): the layer is seen through another layer beside it, drawn only as the matte.
     X("matte", "Track matte", "Matte", "", S, control="pick",       # screens: a choice of the layer's siblings
       help="Id of a layer in the same group or comp; this layer shows only where that one is drawn. Empty = none"),

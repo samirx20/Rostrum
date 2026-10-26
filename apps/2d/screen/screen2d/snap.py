@@ -64,11 +64,12 @@ def gaps(boxes, axis):
     """Base G: [(a, b, gap)] for each box `a` and its nearest neighbour `b` after it along `axis` ("x" or "y") among
     the boxes overlapping it on the other axis; gap = b's start - a's end (>= 0). Boxes are extents (x0, y0, x1, y1)."""
     i = 0 if axis == "x" else 1
+    run = sorted(boxes, key=lambda b: b[i])         # by start: the first overlapping one past a's end is the nearest
+    starts = [b[i] for b in run]                    # (comparing every pair was ~25 ms a press at 200 layers)
     out = []
     for a in boxes:
-        after = [b for b in boxes if b is not a and b[i] >= a[i + 2] and _over(a, b, 1 - i)]
-        if after:
-            b = min(after, key=lambda b: b[i])
+        b = next((b for b in run[bisect_left(starts, a[i + 2]):] if b is not a and _over(a, b, 1 - i)), None)
+        if b is not None:
             out.append((a, b, b[i] - a[i + 2]))
     return out
 

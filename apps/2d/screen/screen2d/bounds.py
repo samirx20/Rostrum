@@ -37,7 +37,21 @@ def _compose(m, a, b, c, d, e, f):
             m[0] * e + m[2] * f + m[4], m[1] * e + m[3] * f + m[5])
 
 
+_LAST: list = [None, None, None]         # the last whole list: (the composition it was made from, t, the boxes)
+
+
 def boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
+    """`_boxes`, the whole list kept for the composition and time it was made from (a composition is never changed in
+    place: each change is a new tree, Bridge2D.placed). A drag's press asked for it three times (its parents' frames,
+    the snap targets, the pick): ~20 ms each at 200 layers. Callers only read it."""
+    if only is not None:
+        return _boxes(comp, t, only)
+    if _LAST[0] is not comp or _LAST[1] != t:
+        _LAST[:] = [comp, t, _boxes(comp, t)]
+    return _LAST[2]
+
+
+def _boxes(comp: dict, t: float, only: set | None = None) -> list[dict]:
     """[{id, x, y, w, h, rot, ax, ay}] for every layer showing at t (with `only`: those layers and the groups they are
     in, nothing else worked out), bottom of the stack first (a group before its layers), all on the canvas (world px): x, y is the unturned top-left of the box about its anchor, w x h the size on
     screen. A layer inside groups is carried through their whole chain (position, turn, scale, anchor), as the engine

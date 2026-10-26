@@ -1,5 +1,5 @@
-"""Pinned to frame and Depth from the screen (2d-camera SPEC §4.9, §4.10, §5 #11 #13, §6): on a scene's own layer the
-Depth group's switch and field, Set depth ▾ and ⋯ Pin to frame / Unpin from frame go through `layer.pin` and
+"""Sticks to the shot and Depth from the screen (2d-camera SPEC §4.9, §4.10, §5 #11 #13, §6): on a scene's own layer the
+Depth group's switch and field, Set depth ▾ and ⋯ Stick to the shot / Unstick from the shot go through `layer.pin` and
 `layer.set_depth` with keep "shown": the layer stays where it shows at the playhead, one change (a keyed depth gets
 its key there: the operation's own rule). `at` is the playhead in scene seconds, as the operations read it.
 
@@ -51,7 +51,7 @@ def depth_calls(f, value: float) -> list[dict]:
 
 
 def facts(f) -> dict:
-    """Pin to frame's facts (action_rules.Facts): `_own` for every picked layer, asked once per kind and per parent."""
+    """The pin actions' facts (action_rules.Facts): `_own` for every picked layer, asked once per kind and per parent."""
     ok = bool(f.ids) and FRAME not in f.kinds and all(F.param(k, "screenLock") is not None for k in f.kinds) and all(
         f.doc.item(p)["type"] == "comp" for p in {w[0] for w in f.where.values()})
     pinned = [bool(it.get("screenLock")) for it in f.items]
@@ -65,8 +65,8 @@ def calls(f, on: bool) -> list[dict]:
 
 
 def data(a) -> list[dict]:
-    """⋯ Pin to frame / Unpin from frame (made with actions._a): only the one that applies."""
-    return [a("pin", "Pin to frame", rank=74, group="arrange", when={"fact": "any_unpinned"},
+    """⋯ Stick to the shot / Unstick from the shot (made with actions._a): only the one that applies."""
+    return [a("pin", "Stick to the shot", rank=74, group="arrange", when={"fact": "any_unpinned"},
               calls={"rule": "pin", "on": True}, why=WHY),
-            a("unpin", "Unpin from frame", rank=74, group="arrange", when={"fact": "any_pinned"},
+            a("unpin", "Unstick from the shot", rank=74, group="arrange", when={"fact": "any_pinned"},
               calls={"rule": "pin", "on": False}, why=WHY)]

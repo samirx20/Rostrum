@@ -4,7 +4,7 @@
         n repetitions (default 20), each a real change (alternating), on the layer "card" (any document with it; else
         layer=<id>):
         field: its x typed in the inspector | dragend: a canvas drag, only the release timed | key: a key at the playhead
-        (the key mark's toggle) added, then removed next round | pin: Pin to frame / Unpin from frame | undo: one undo of
+        (the key mark's toggle) added, then removed next round | pin: Stick to the shot / Unstick from the shot | undo: one undo of
         an edit made just before (only the undo timed).
         Per repetition: the screen thread's busy ms until it is idle again, and the ms until the picture asked after the
         change arrived; the stages (describe, load, pixels, engine split) are each repetition's sum. Medians and worst

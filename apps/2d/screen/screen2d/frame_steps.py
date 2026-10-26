@@ -6,7 +6,7 @@ FrameHandles.qml calls (backend.frameDrag: frame_drag.py), so a check or an agen
     frame drag <dx> <dy>         drag inside it by world px (one change)
     frame corner <dx>            drag its bottom-right square outward by dx world px (bigger box = zoom down)
     frame turn <deg>             drag a turn zone round its centre by deg degrees
-    framefit view|sel            Frame the view (the canvas's view) / Frame these (the picked layers): frame_actions.py
+    framefit view|sel            Frame the view (the canvas's view) / Move the frame to these (the picked layers): frame_actions.py
     framecut [view|sel]          Cut here / Cut to the view / Cut to these, at the playhead
     frametime drag|zoom|turn [n] n pointer moves of that drag (default 60), each waited out: prints each move's
                                  GUI-thread ms, its time to the picture that shows it, and the release's

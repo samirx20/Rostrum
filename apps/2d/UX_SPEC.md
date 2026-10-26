@@ -1397,7 +1397,7 @@ operation is one (`mask.make`).
 ### Depth, focus and blur · Now (depth) · Next (focus by clicking)
 - **Goal:** layers at different distances; a rack focus.
 - **Steps:** each layer's **Depth** (in the Depth group; 0 = the frame's plane, positive = further, kept where it
-  shows at the playhead) and **Pinned to frame**. With the frame:
+  shows at the playhead) and **Sticks to the shot**. With the frame:
   **Depth of field** on → **Focus on**: click the eyedropper and click a layer on the canvas to focus on it; key it to
   move the focus from one layer to another (a rack focus). **Blur amount**.
 - **Agent:** `value.set {z, focus, aperture}`.

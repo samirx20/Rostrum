@@ -1,5 +1,5 @@
 """The frame's actions (camera spec § 3.4, 4.5, 4.6, 6): with the frame picked the actions row shows Frame the view ·
-Cut here · ⋯ (Frame home, Lock); with layers picked ⋯ holds Frame these and Cut to these; Ctrl+K also has Cut to the
+Cut here · ⋯ (Frame home, Lock); with layers picked ⋯ holds Move the frame to these and Cut to these; Ctrl+K also has Cut to the
 view, and Frame the view / Cut to the view with nothing picked. Each is one change through `frame.fit`, `frame.cut` or
 `frame.home` on the frame, the operations an agent calls too.
 
@@ -101,7 +101,7 @@ def data(a, R) -> list[dict]:
         a("cut_here", "Cut here", rank=2, importance="primary", when=alone("after_start"), calls=R("cut"), **one),
         a("frame_home", "Frame home", rank=3, when=alone("frame_away"), calls=R("home"), **one),
         a("cut_view", "Cut to the view", rank=4, when=alone("after_start", "view_known"), calls=R("cut_view"), panel=False, **one),
-        a("frame_these", "Frame these", rank=3, group=GROUP, when=free(), calls=R("items"), why=WHY_THESE),
+        a("frame_these", "Move the frame to these", rank=3, group=GROUP, when=free(), calls=R("items"), why=WHY_THESE),
         a("cut_these", "Cut to these", rank=4, group=GROUP, when=free("after_start"), calls=R("cut_items"), why=WHY_THESE),
         a("frame_view_any", "Frame the view", rank=1, when=none("view_known"), calls=R("view"), **nothing),
         a("cut_view_any", "Cut to the view", rank=4, when=none("after_start", "view_known"), calls=R("cut_view"), **nothing),
