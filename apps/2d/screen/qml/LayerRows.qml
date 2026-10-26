@@ -23,7 +23,7 @@ ListView {
     // Right-click menu of a layer: what applies to the selection (backend.layerMenu: an unselected layer is selected
     // alone first), the same list as Ctrl+K and the context bar. (px, py) in the list's px; the kit menu opens in the window's.
     function openMenu(id, px, py) {
-        const item = itemAtIndex(backend.layers.findIndex(r => r.id === id))
+        const item = itemAtIndex(list.model.indexOf(id))
         const entries = backend.layerMenu(id)
         if (!entries.length) return
         const g = list.mapToItem(null, px === undefined ? Theme.gap * 4 : px,
@@ -33,11 +33,16 @@ ListView {
     }
     ActionMenu { id: menu; onPicked: (key) => backend.run(key) }
     // the list follows the pick: a layer picked anywhere (the canvas, Tab, Ctrl+K) brings its row into view, the last
-    // picked one; a row already in view stays put (ListView.Contain), so a click in the list never scrolls it
+    // picked one; a row already in view stays put (ListView.Contain), so a click in the list never scrolls it. A pick
+    // of several (Ctrl+A, a range, the rubber band) leaves the list where it is: every picked row is lit, and jumping to
+    // the last one lost the person's place (and made the rows at the bottom: ~80 ms at 200 layers).
+    // Rows are found through the model (indexOf, at: rostrum_gui/rows_model.py), never by reading backend.layers:
+    // that made every row, keys and frames too, into script objects (~100 ms a pick at 200 layers).
     function follow() {
+        if (list.compact || list.dragId !== "") return
         const sel = backend.selection
-        const i = sel.length ? backend.layers.findIndex(r => r.id === sel[sel.length - 1]) : -1
-        if (i >= 0 && !list.compact && list.dragId === "") list.positionViewAtIndex(i, ListView.Contain)
+        const i = sel.length === 1 ? list.model.indexOf(sel[0]) : -1
+        if (i >= 0) list.positionViewAtIndex(i, ListView.Contain)
     }
     Connections { target: backend; function onSelectedItemsChanged() { Qt.callLater(list.follow) } }
     function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
@@ -55,12 +60,12 @@ ListView {
     function dropAt(y) {
         let i = indexAt(labelWidth / 2, y)
         if (i < 0) i = indexAt(labelWidth / 2, y - 3)
-        const rows = backend.layers
         const item = i < 0 ? null : itemAtIndex(i)
-        if (i < 0 || !item || rows[i].owned || rows[i].frame || rows[i].id === dragId) { dropRow = ""; return }
+        const r = item ? item.modelData : null
+        if (!r || r.owned || r.frame || r.id === dragId) { dropRow = ""; return }
         const f = (y - item.y) / item.height
-        const holds = rows[i].kind === "group" || rows[i].kind === "rig"
-        dropRow = rows[i].id
+        const holds = r.kind === "group" || r.kind === "rig"
+        dropRow = r.id
         dropWhere = holds && f > 0.25 && f < 0.75 ? "into" : f < 0.5 ? "above" : "below"
     }
     function finishDrag() {
@@ -75,7 +80,7 @@ ListView {
     property int swipeFrom: -1
     property int swipeLast: -1
     function swipeBegin(id, field, on) {
-        swipeFrom = backend.layers.findIndex(r => r.id === id); swipeLast = swipeFrom
+        swipeFrom = list.model.indexOf(id); swipeLast = swipeFrom
         swipeField = field; swipeOn = on; const m = {}; m[id] = true; swipeIds = m
     }
     function swipeTo(y) {              // y in the list's content px
@@ -84,9 +89,11 @@ ListView {
         if (i < 0) i = y < 0 ? 0 : count - 1
         if (i === swipeLast) return
         swipeLast = i
-        const rows = backend.layers, m = {}
-        for (let k = Math.min(i, swipeFrom); k <= Math.max(i, swipeFrom); k++)
-            if (rows[k].row === "layer" && (swipeField === "locked" || !rows[k].frame)) m[rows[k].id] = true
+        const m = {}
+        for (let k = Math.min(i, swipeFrom); k <= Math.max(i, swipeFrom); k++) {
+            const r = list.model.at(k)
+            if (r.row === "layer" && (swipeField === "locked" || !r.frame)) m[r.id] = true
+        }
         swipeIds = m
     }
     function swipeEnd() {
@@ -94,7 +101,7 @@ ListView {
         swipeField = ""; swipeIds = ({}); swipeFrom = -1; swipeLast = -1
     }
     Rectangle {  // the drop line (between rows), or an outline round a group the layer would go into
-        readonly property var target: list.dropRow === "" ? null : list.itemAtIndex(backend.layers.findIndex(r => r.id === list.dropRow))
+        readonly property var target: list.dropRow === "" ? null : list.itemAtIndex(list.model.indexOf(list.dropRow))
         visible: target !== null
         z: 5
         x: Theme.gap; width: list.width - x

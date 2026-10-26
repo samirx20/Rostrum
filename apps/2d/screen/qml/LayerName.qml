@@ -71,7 +71,7 @@ Rectangle {
         visible: name.rowData.row !== "field"
         x: name.indent + 16; anchors.verticalCenter: parent.verticalCenter
         kind: name.rowData.kind; shape: name.rowData.shape
-        ink: name.selected ? Theme.accentHover : name.rowData.owned ? Theme.fg3 : Theme.fg2
+        ink: name.rowData.owned ? Theme.fg3 : Theme.fg2; litInk: Theme.accentHover; lit: name.selected
     }
     NameBox {  // the kit's name box (Ctrl+Z with nothing typed closes it and undoes): Enter or leaving the row keeps, Esc drops
         id: nameBox
