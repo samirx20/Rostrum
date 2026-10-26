@@ -16,7 +16,7 @@ from .row_memo import Memo as RowMemo
 HOOKS = frozenset({
     "label_of", "kind_label", "starts", "subtitle", "edit_call", "relative_call", "shown_values", "facts_of", "on_page", "anim_state", "list_choices", "animate_calls",
     "expr_state", "clear_expr_calls", "rows_context", "sections", "selection_label", "extra_commands",
-    "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
+    "select", "setValue", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
     "staticMetaObject",
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})

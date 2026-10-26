@@ -81,7 +81,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 9. Do something to several layers at once
 
-Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer at the level you are in. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
+Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer at the level you are in. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. A number typed in **X** or **Y** moves them together instead: the leftmost (topmost) one lands on it and the rest keep their spacing; **+20** adds 20 to each one's own value. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
 
 The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, even one layer, Ctrl+Shift+G ungroups).
 
