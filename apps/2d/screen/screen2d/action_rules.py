@@ -46,7 +46,7 @@ class Facts:
         self.doc, self.ids, self.count = doc, ids, len(ids)
         self.items = [doc.item(i) for i in ids]
         self.kinds = {it["type"] for it in self.items}
-        where = {i: doc.parent_of(i) for i in ids}
+        self.where = where = {i: doc.parent_of(i) for i in ids}    # id -> (parent, list key, index)
         parents = {w[0] for w in where.values()}
         self.stack = sorted(ids, key=lambda i: where[i][2])
         p = doc.item(next(iter(parents))) if len(parents) == 1 else None
@@ -68,7 +68,7 @@ class Facts:
             "shapes": self.kinds <= set(SHAPES), "has_text": "text" in self.kinds, "has_frame": FRAME in self.kinds,
             "releasable": groups and all(_why_not(it, doc.item(where[it["id"]][0])) is None for it in self.items),
             "rigable": self.count > 1 or groups,           # Make rig: several parts, or a group of them (one rectangle has nothing to rig)
-            "maskable": groupable and all(F.param(it["type"], "matte") for it in self.items),
+            "maskable": groupable and all(F.param(k, "matte") for k in self.kinds),   # (per kind, not per layer)
             "matted": any(it.get("matte") for it in self.items) or (
                 bool(p) and any(s.get("matte") in ids for s in p.get("layers", []))),
             "any_locked": bool(self.lists["locked"]), "any_unlocked": bool(self.lists["unlocked"]),
@@ -119,10 +119,11 @@ def _comp_of(doc, id_: str) -> str:
     return id_
 
 
-def _part_names(items: list[dict]) -> list[str]:
-    """The parts a selection would make a character of: one group's own layers, else the layers picked."""
+def _part_names(items: list[dict]):
+    """The names of the parts a selection would make a character of: one group's own layers, else the layers picked
+    (named as they are asked: bodylike stops at the second body part)."""
     one = items[0] if len(items) == 1 and items[0]["type"] == "group" else None
-    return [display_name(lay) for lay in (one.get("layers", []) if one else items)]
+    return (display_name(lay) for lay in (one.get("layers", []) if one else items))
 
 
 def calls_of(spec: dict | None, f: Facts, at) -> list[dict]:
@@ -167,13 +168,18 @@ def reordered(stack: list[str], picked: set[str], how: str) -> list[str]:
     return out
 
 
+def _stacks(f: Facts):
+    """(parent's stack bottom first, the picked layers in it) for each parent of the picked layers."""
+    by_parent = {}
+    for layer in f.ids:
+        by_parent.setdefault(f.where[layer][0], set()).add(layer)
+    return (([c["id"] for c in f.doc.item(parent)["layers"]], picked) for parent, picked in by_parent.items())
+
+
 def _order(f: Facts, how: str) -> list[dict]:
     """layer.arrange calls that put each parent's stack in the new order (none when nothing would move)."""
-    calls, by_parent = [], {}
-    for layer in f.ids:
-        by_parent.setdefault(f.doc.parent_of(layer)[0], set()).add(layer)
-    for parent, picked in by_parent.items():
-        now = [c["id"] for c in f.doc.item(parent)["layers"]]
+    calls = []
+    for now, picked in _stacks(f):
         for i, id_ in enumerate(reordered(now, picked, how)):
             if now[i] != id_:
                 calls.append({"op": "layer.arrange", "target": [id_], "args": {"index": i}})
@@ -229,6 +235,12 @@ def said(calls: list[dict], label: str, doc) -> str:
     return f"Keyed {n} setting{'s' if n != 1 else ''} on {on}"
 
 
-ANY = {"pose": lambda f: next(_poses(f), None) is not None}     # a rule's "would it make any call", told sooner (Action.any_calls)
+def _order_moves(f: Facts, how: str) -> bool:
+    """`_order` would make a call: some stack's order changes (one pass per stack, not a call per layer moved)."""
+    return any(reordered(now, picked, how) != now for now, picked in _stacks(f))
+
+
+# a rule's "would it make any call", told sooner (Action.any_calls), with the rule's own arguments as `RULES`
+ANY = {"pose": lambda f: next(_poses(f), None) is not None, "order": _order_moves}
 RULES = {"order": _order, "duplicate": _duplicate, "pose": _pose, "depth": pin_depth.depth_calls, "pin": pin_depth.calls, "frame": frame_actions.calls,
          "attach": lambda f: rig_attach.calls(f.doc, list(f.state.get("picked", [])))}

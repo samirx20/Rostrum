@@ -66,9 +66,10 @@ class ActionSlots(SlotMixin):
                                                          "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
 
     def _hub_at(self):
-        """The playhead or the markers moved: the frame's actions follow (not while playing: nothing is picked then)."""
+        """The playhead or the markers moved: the frame's actions follow in the frame after (not while playing: nothing
+        is picked then). Running an action works its facts out afresh, so a key pressed meanwhile sees the playhead."""
         if not self.play.playing:
-            self._hub.refresh()
+            self._hub.refresh_later()
 
     def _what(self, f) -> str:
         """What the bar acts on: "title", "3 layers" ("" = nothing selected: no bar)."""
