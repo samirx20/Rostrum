@@ -9,11 +9,16 @@ import RostrumKit
 // markers, track headers and lanes, + Track, the Master row last). A new song shows one button, Add a track. The picture floats at the top right while it is open.
 Rectangle {
     id: a
+    objectName: "soundArrangement"              // a press in it makes Ctrl+A the arrangement's (press_area.py)
     property int headerWidth: 224                      // the window's choice (Main.qml); the headers never go under `minHeader`
     // a short row puts R M S A beside the name (TrackHeader): this keeps about eight letters of the name beside them,
     // so a small window shows names, never just "…"
     readonly property int minHeader: 176
     property bool compact: false                       // a small window: the position and key show short
+    // the room an open dock (Editor or Mixer) would take but doesn't while folded: the track rows are as tall as with
+    // it open, so opening the Editor never changes a row's height or layout (critic r10 must-fix 4: the spot of a
+    // track's name became its Solo button once the rows shrank)
+    property real dockSlack: 0
     readonly property bool tight: a.width < 860        // a squeezed panel (a drawer open on a small window): − + fold away (Ctrl −/+, Fit stay)
     readonly property alias picture: corner
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
@@ -128,6 +133,7 @@ Rectangle {
     Timeline {
         id: timeline
         headerWidth: Math.max(a.headerWidth, a.minHeader)
+        slack: a.dockSlack
         anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
         onAddTrack: a.addTrack()
     }

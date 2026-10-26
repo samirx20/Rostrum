@@ -23,7 +23,7 @@ IGNORE = ()
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 BATCH = 1        # one state to a process: measured, Sound opens a song slower the more windows it has made (10 states
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
-QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
+QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "library-key-picture", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
          "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -35,6 +35,7 @@ SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","t
               '{"op":"meter.add","target":[],"args":{"at":{"beat":15},"beatsPerBar":6,"beatUnit":8}},'
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
 
+PICTURE = 'agent A picture|[{"op":"doc.set","target":["root"],"args":{"picture":"film.mp4"}}]'   # its button shows (no file needed)
 DKEY = 'agent A key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]'
 CHORD = ('agent A chord|[' + ",".join('{"op":"note.add","target":["melody"],"args":{"id":"%s","pitch":"%s","at":{"beat":16},"dur":{"beats":4}}}'
                                        % (i, p) for i, p in (("c1", "D4"), ("c2", "F4"), ("c3", "A4"))) + "]")
@@ -78,6 +79,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("header-long-name-locked", long_project(), ["select drums", f"lock {LONG_TRACK}"]),    # B3: a padlock by the name, the unselected row
         ("library", ["--sample"], ["library"]),
         ("library-voice", ["--sample"], ["library voice"]),
+        # the Library open on a song with a key and a picture: the strip's shortest case (critic r9 + r10: "Minor" ran
+        # under the Picture button; the state with no key showed "No key", shorter, and missed it)
+        ("library-key-picture", ["--sample"], [DKEY, PICTURE, "zoom 2", "library"]),
         ("library-auditioning", ["--sample"], ["select melody", "library", "audition builtIn:piano"]),
         ("library-hearing-long", long_project(), [*busy, f"select {LONG_TRACK}", "library", "audition builtIn:piano"]),   # P29: the Hearing line + Stop
         ("clean-result-line", ["--sample"], ["select-clip door", "dock editor", "clean 0 0 1",
