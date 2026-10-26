@@ -1,10 +1,11 @@
-"""fit_loudness: the exact edit that brings the last render to the master's loudness target (fit_loudness.py)."""
+"""edit_loudness: the exact edit that brings the last render to the master's loudness target (fit_loudness.py)."""
 from __future__ import annotations
 
 import json
 import tempfile
 from pathlib import Path
 
+from rostrum_core import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import fit_loudness as fit
@@ -19,7 +20,7 @@ def register(tools: Tools):
     def edit_loudness(ctx, args):
         """Gain staging after a render that landed under the loudness target. Reads the last render and answers the exact edits, measured by the engine, never guessed: `keep_balance` (the
         `maxLimit` that reaches the target, the balance untouched) and `trim_track` (the smallest volume cut (at most 12 dB) of the most peaked track, found by re-rendering, that reaches the target within the
-        master's own `maxLimit`; the balance moves). Each option has `ops`, ready for edit_document; `apply` makes one as a single change. A target that cannot be reached is said, never faked.
+        master's own `maxLimit`; the balance moves). Each option has `ops`, ready for edit_document; `apply` makes one as a single change. A target that cannot be reached is said, never faked; `apply` of an option that is not possible fails the job and changes nothing.
         Example: {"apply": "keep_balance"}. Returns a job (it renders to search)."""
         doc = ctx.document(args.get("item"))
         state = ctx.app.state
@@ -34,8 +35,9 @@ def register(tools: Tools):
             words, applied = p["words"] + "".join(f" [{o['name']}] {o['words']}" for o in p["options"]), None
             if args.get("apply"):
                 pick = next((o for o in p["options"] if o["name"] == args["apply"]), None)
-                if not pick or not pick.get("ops"):
-                    words += f" Nothing applied: {args['apply']} is not available" + (f" ({pick['words']})." if pick else ".")
+                if not pick or not pick.get("ops"):     # asked for and impossible: a failure, never a quiet "nothing"
+                    raise RostrumError(codes.CHECK_FAILED, "edit_loudness", f'"apply": "{args["apply"]}"', "is not possible here, nothing was changed: "
+                                       + (pick["words"] if pick else "no such option"), hint=words)
                 else:
                     doc.apply(pick["ops"], ctx.who, label=f"Fit loudness ({args['apply']})")
                     applied, words = args["apply"], words + f" Applied {args['apply']}: render again to check."
