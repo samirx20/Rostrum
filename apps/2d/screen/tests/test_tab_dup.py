@@ -85,3 +85,22 @@ def test_ctrl_d_again_repeats_the_move_made_on_the_copy(screen):
     second = b.multi.ids[0]
     assert second != first
     assert abs(b.doc.item(second)["x"] - x1 - moved) < 0.01 and b.doc.item(second)["y"] == b.doc.item(first)["y"]
+
+
+def test_ctrl_d_right_after_drawing_a_shape_puts_the_copy_24_px_on(screen):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    b, win = screen
+    b.clearSelection()
+    _key(win, Qt.Key_R)                   # the drawn shape is inserted after the layer under it: no copy of it (round 7)
+    a, z = _at(win, 900, 500), _at(win, 1100, 650)
+    QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, a)
+    for k in range(1, 9):
+        QTest.mouseMove(win, a + (z - a) * k / 8)
+    QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, z)
+    QTest.qWait(50)
+    drawn = b.doc.item(b.multi.ids[0])
+    _key(win, Qt.Key_D, Qt.ControlModifier)
+    copy = b.doc.item(b.multi.ids[0])
+    assert copy["id"] != drawn["id"]
+    assert (round(copy["x"] - drawn["x"]), round(copy["y"] - drawn["y"])) == (24, 24)

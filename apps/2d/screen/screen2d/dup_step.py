@@ -1,6 +1,7 @@
 """Ctrl+D again repeats your last move. The step is read from the document's history and from nothing else, so it is never stale:
 the newest changes are a duplicate (or an Alt+drag copy) of A into B, then only move / turn / scale changes on B, and B is what is
-picked. The step is B against A now, and `step` gives it as layer.duplicate's arguments (by_x, by_y, by_turn, by_scale). Anything
+picked. Only a change that called layer.duplicate is a copy: a shape just drawn, a text, a paste or an import is inserted
+after the layer under it too, but it is no copy of it (round 7: Ctrl+D after drawing threw the copy 460 px away). The step is B against A now, and `step` gives it as layer.duplicate's arguments (by_x, by_y, by_turn, by_scale). Anything
 else changed since, or another pick, and there is no step: Ctrl+D is the plain 24 px one."""
 from __future__ import annotations
 
@@ -28,6 +29,8 @@ def _between(doc, c, inserts, ids) -> dict:
     """The step from the original to the first picked copy, when this change made exactly the picked layers as copies. A copy
     that landed the plain way (24 px right and down, or the free place after it) carries no step of its own: only the moves
     since count. One that landed by a `by` step, or in an Alt+drag (moves inside the change), carries it all."""
+    if not any(call.get("op") == "layer.duplicate" for call in c.calls):
+        return {}                                           # a drawn shape, text, paste or import: nothing to repeat
     made = {e.id for e in inserts}
     tops = {e.id: e.after for e in inserts if e.parent not in made}
     if set(tops) != set(ids) or not all(isinstance(e, Insert) or (isinstance(e, Set) and e.id in made) for e in c.edits):
