@@ -10,12 +10,13 @@ import shiboken6
 
 from PySide6.QtCore import Slot
 
-from . import commands, many, pointer_quiet, rows
+from . import commands, many, pointer_quiet, row_memo, rows
 from .after_frame import AfterFrame
 from .history_rows import who_name
 from .pending import finish_typing
 from .parts import SlotMixin
 
+_OWN: dict = {}         # (layout, kind) -> the layout with that kind's own rules (_static_of)
 AHEAD_ROWS = 3          # settings rows made ahead per frame (~1.5-4 ms each: make_panels_ahead)
 
 
@@ -202,23 +203,74 @@ class SelectSlots(SlotMixin):
                 + self.extra_commands())
 
     def _rows(self):
+        """The selection's rows: one item's own, or many items' folded into one panel (row_memo.fold: alike items
+        compared column by column). Each item's rows are kept between picks and patched after a change (row_memo)."""
         k = self._kit
-        each = [self._item_rows(self.doc.item(i)) for i in k.selection]
         if len(k.evaluated) > len(k.selection):           # kept for the items these rows are of, never one picked before
-            k.evaluated = {i: k.evaluated[i] for i in k.selection}
-        return [] if not each else each[0] if len(each) == 1 else many.merge(each)
+            k.evaluated = {i: k.evaluated[i] for i in k.selection if i in k.evaluated}
+        if k.stepping or not k.selection:
+            each = [self._item_rows(self.doc.item(i)) for i in k.selection]
+            return [] if not each else each[0] if len(each) == 1 else many.merge(each)
+        entries = [self._entry(self.doc.item(i)) for i in k.selection]
+        return entries[0].rows if len(entries) == 1 else row_memo.fold(entries, many.merge)
 
-    def _item_rows(self, it):
+    def _entry(self, it) -> row_memo.Entry:
+        """The item's kept rows (row_memo), or worked out now and kept."""
         k = self._kit
-        static = k.static if k.op_kind[1] else many.own_rules(k.static, self.doc.kind.registry.field_op(it["type"]))
+        opened = k.open_groups
+        stamp = (self._static_of(it), k.more, k.search,
+                 tuple(sorted(opened.items())) if isinstance(opened, dict) else tuple(sorted(opened)), self.rows_context())
+        e = k.memo.get(it["id"], it, stamp, self.facts_of, self._redo_rows)
+        if e is None:
+            seen, facts = {}, self.facts_of(it)
+            e = k.memo.put(it["id"], it, stamp, facts, seen, self._item_rows(it, facts, seen))
+        else:
+            k.evaluated[it["id"]] = (self.doc.data, k.static, e.rows)
+        return e
+
+    def _redo_rows(self, it, old):
+        """These rows of the item with their values, key marks and expressions read again (row_memo's patch):
+        (new rows, the values shown, starts, the key-mark reader, the fields shown elsewhere on the page)."""
+        shown = self.shown_values(it)
+        anim, expr = (lambda name: self.anim_state(it, name)), (lambda name: self.expr_state(it, name))
+        new = [rows._values({**r}, shown, anim, expr, None, {}) for r in old]        # (no list or pick: row_memo)
+        return new, shown, self.starts(it), anim, frozenset(self.on_page(it))
+
+    def rows_context(self):
+        """What an item's rows read besides the document and the panel's own state, which no change announces (2D: the
+        playhead, the markers): kept rows are worked out again when it differs. None: nothing."""
+        return None
+
+    def _item_rows(self, it, facts=None, seen=None):
+        k = self._kit
+        static = self._static_of(it)
         step, kept = bool(k.stepping), self._kept_rows(it["id"])
         gone = self.on_page(it)
-        evaluated = rows.evaluate(static, self.shown_values(it), {} if step else self.facts_of(it), k.more,
+        if facts is None:
+            facts = {} if step else self.facts_of(it)
+        evaluated = rows.evaluate(static, self.shown_values(it), facts, k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
                                   lambda name: self.list_choices(it, name), k.open_groups, k.search, gone,
-                                  {} if step else self.starts(it), step=step, kept=kept)
+                                  {} if step else self.starts(it), step=step, kept=kept, seen=seen)
         k.evaluated[it["id"]] = (self.doc.data, k.static, evaluated)       # (what later steps keep: no copy)
+        if seen is not None:
+            seen["gone"] = frozenset(gone)
         return rows.omit(evaluated, gone)
+
+    def _static_of(self, it):
+        """The layout this item's rows are worked out from: the selection's, with the item's own rules when kinds are
+        mixed (many.own_rules), made once per layout and kind."""
+        k = self._kit
+        if k.op_kind[1]:
+            return k.static
+        op = self.doc.kind.registry.field_op(it["type"])
+        key = (id(k.static), it["type"])
+        got = _OWN.get(key)
+        if got is None or got[0] is not k.static or got[1] is not op:
+            if len(_OWN) > 64:
+                _OWN.clear()
+            got = _OWN[key] = (k.static, op, many.own_rules(k.static, op))
+        return got[2]
 
     def _kept_rows(self, item_id):
         """A drag's step: the item's rows the steps since the rows last followed left alone, as they were then

@@ -10,10 +10,12 @@ the app's. So:
 """
 from __future__ import annotations
 
+from .row_memo import Memo as RowMemo
+
 # What an app may override (call super() where it extends rather than replaces).
 HOOKS = frozenset({
     "label_of", "kind_label", "starts", "subtitle", "edit_call", "relative_call", "shown_values", "facts_of", "on_page", "anim_state", "list_choices", "animate_calls",
-    "expr_state", "clear_expr_calls", "sections", "selection_label", "extra_commands",
+    "expr_state", "clear_expr_calls", "rows_context", "sections", "selection_label", "extra_commands",
     "select", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
     "staticMetaObject",
 })
@@ -24,7 +26,7 @@ class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
                  "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "rows_due",
-                 "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated")
+                 "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated", "memo")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -50,6 +52,7 @@ class KitState:
         self.stepped = None                 # the drag's steps since the rows last followed: (data before them, Touched or None)
         self.seen = None                    # the document's data as last heard (where the next step starts from)
         self.evaluated = {}                 # {item id: (data, layout, its rows as evaluated)}: rows.evaluate kept
+        self.memo = RowMemo()               # each item's rows kept between picks, patched after a change (row_memo.py)
         self.kinds = (None, (), [])         # (song data, ids, their types): bridge_select.kinds_of, once per selection
 
 
