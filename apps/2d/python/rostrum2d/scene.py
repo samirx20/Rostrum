@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video
+from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video, write_on
 from .layout_fields import py_only
 from rostrum_core import RostrumError, plugin_parts
 from rostrum_core.errors import codes
@@ -130,15 +130,21 @@ SPARE = 2       # frames either side of a span whose drawings are sent too (a mo
 def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
     """The drawings that can show (the Draw each frame rule, drawing.py), each as its picture; a looping drawing's
     run repeated to the layer's end (or the composition's). A drawing layer's pictures are cropped to their ink; paint
-    on an element covers its whole box."""
+    on an element covers its whole box. Drawn so far under 100 % (or keyed): a picture per frame it changes (write_on.py)."""
     until = min(item.get("end", retime.END_OF_COMP), (where or {}).get("until", 0.0) or 60.0)
     later, span = (where or {}).get("later"), (where or {}).get("span")
     run = drawing.repeats(item, math.ceil(until * fps))
+    first, last = 0, math.ceil(until * fps)
     if span is not None:                # a look or a part: only the drawings showing then (motion blur's reach spared)
-        run = drawing.within(run, math.floor(span[0] * fps) - SPARE, math.ceil(span[1] * fps) + SPARE) or run[:1]
+        first, last = math.floor(span[0] * fps) - SPARE, math.ceil(span[1] * fps) + SPARE
+        run = drawing.within(run, first, last) or run[:1]
     if item["type"] == "drawing":       # a drawing's picture holds only its ink, with where it goes (`crop`)
-        return [{"at": n, **drawing.inked(item, f, later)} for n, f in run]
-    return [{"at": n, "src": str(drawing.picture(item, f, later))} for n, f in run]
+        full = lambda f: drawing.inked(item, f, later)                                  # noqa: E731
+    else:
+        full = lambda f: {"src": str(drawing.picture(item, f, later))}                  # noqa: E731
+    if item.get(paint_fields.DRAWN, 1.0) >= 1 and not keys_of(item, paint_fields.DRAWN):
+        return [{"at": n, **full(f)} for n, f in run]
+    return write_on.entries(item, run, fps, first, last, drawing.canvas_size(item), full, later)   # Drawn so far
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:

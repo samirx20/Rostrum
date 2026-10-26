@@ -142,6 +142,7 @@ refused, never dropped.
 | `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
 | `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
 | `path` | `d` (SVG data: M L C Z), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |
+| `drawing` | `w`, `h` (its canvas, px), `eachFrame`, `loop`, `drawnSoFar` (0–1: key 0 → 1 to paint its strokes on in the order they were painted) |
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
 
 Effects: `item.effect("shadow", dx=, dy=, radius=, color=, strength=)`, `"glow"`, `"blur"`, `"gradient"` (`color1`,

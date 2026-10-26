@@ -62,6 +62,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   `paint.fill` makes from a click, `fill.add` in an edit): a silhouette or a ridge in one call. Add a third number
   per point for holes (`[x, y, ring]`, ring 0 the outside).
   A refusal "drawing … must have the same paint layers" means a drawing's paint lacks that shared `layer="…"`.
+- **Paint it on over time:** key the drawing layer's `drawnSoFar` 0 → 1 (`d.key("drawnSoFar", {0.5: 0, 2.5: 1})`): its
+  strokes appear in the order they were painted, each along its own path with a round tip (drawing.md, part 10). Paint on
+  an element takes it too.
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
   `eachFrame` (the screen's "Draw each frame") on. `set <element> eachFrame true` works on an element that has no paint yet

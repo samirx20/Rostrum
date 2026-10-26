@@ -40,4 +40,18 @@ def _new_hold(group, when):
 
 ELEMENT.append(_new_hold(G, {"all": [HAS_PAINT, {"is": ["eachFrame", True]}]}))
 DRAWING.append(_new_hold("Drawing", {"is": ["eachFrame", True]}))
+
+# Drawn so far (write_on.py): the paint painted on over time, stroke after stroke in the order they were painted.
+DRAWN = "drawnSoFar"
+
+
+def _drawn(group, importance, when):
+    return Param.number(DRAWN, label="Drawn so far", group=group, min=0, max=1, step=0.01, default=1.0, display="percent",
+                        importance=importance, valid_when=when,
+                        help="How much of the paint is drawn, stroke after stroke in the order they were painted, each "
+                             "along its own path with the brush's round tip: key 0 % to 100 % to paint it on")
+
+
+ELEMENT.append(_drawn(G, "secondary", HAS_PAINT))
+DRAWING.append(_drawn("Drawing", "primary", None))
 NAMES = {p.name for p in ELEMENT}          # never sent to the engine (scene.python_only); paintW / paintH are still
