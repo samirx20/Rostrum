@@ -424,6 +424,9 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._waiting = self.doc.data if later and self._scene else None
             if self._waiting is not None:                   # the frame shown (and wet ink over it) stays meanwhile
                 self._pictures.make(later, self._waiting)
+        if self._scene and self._waiting is None and self._ghost is not None and self._ghost.moved:
+            self._ghost.draw()                              # a drag of many layers: drawn where they are now (ghost_move.py)
+            return True
         if self._scene and self._waiting is None:
             self._asked_from = self.placed_index()          # what the picture asked for shows (picture_change.py)
             self.frames.request(self._scene, self._t, self.play.samples(), self.frame_scale(), self.frame_tag(),

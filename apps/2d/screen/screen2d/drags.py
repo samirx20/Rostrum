@@ -12,9 +12,12 @@ from rostrum_gui.parts import SlotMixin
 
 from . import bounds, exprs, key_moves, layout_drag, route, time_snap
 from .bar_drag import PARTS, BarGrab
+from .ghost_move import GhostMove
 
 
 class DragSlots(SlotMixin):
+    _ghost = None            # ghost_move.GhostMove: several layers moved without a change per move (None: per move)
+
     @Slot(result=bool)
     def beginMove(self):
         return self._begin_move(False)
@@ -44,6 +47,7 @@ class DragSlots(SlotMixin):
             ok = self._copy_in_drag([layer] + more)
         if ok:
             self._snap.begin(self._grabbed())           # what the drag may snap to (snapper.py)
+            self._ghost = GhostMove.start(self, self._grab) if isinstance(self._grab, list) else None
         return ok
 
     def moving_many(self) -> bool:
@@ -94,6 +98,9 @@ class DragSlots(SlotMixin):
         if not isinstance(self._grab, dict):
             dx, dy = self._snap.move(dx, dy)            # Shift: straight; then snapping (snapper.py)
         ox, oy = dx, dy
+        if isinstance(self._grab, list) and self._ghost is not None:
+            self._ghost.move(ox, oy)
+            return
         if isinstance(self._grab, list):
             calls = []
             for lay, x0, y0 in self._grab:
@@ -177,6 +184,10 @@ class DragSlots(SlotMixin):
 
     @Slot()
     def endDrag(self):
+        ghost, self._ghost = self._ghost, None
+        redraw = False                                  # the moves' one change, checked at the press (ghost_move.py);
+        if ghost is not None and ghost.moved and self._drag is not None:   # refused after all: the picture the engine was told goes back
+            redraw = not self._guard(lambda: self._drag.preview(ghost.calls()))
         d, g, self._drag, self._grab = self._drag, self._grab, None, None
         held, self.held_view = self.held_view, None     # a camera-key drag held the view: it follows the camera again
         self._snap.end()                                # the snap lines go with the drag
@@ -187,6 +198,8 @@ class DragSlots(SlotMixin):
             self._guard(lambda: self._done(d.end(), ""))
         if held is not None and self._scene is None:    # drawn once, at the drop
             self._show()
+        if redraw:
+            self._render()
 
     def _begin(self, label, grab) -> bool:
         self.endDrag()

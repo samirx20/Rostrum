@@ -112,6 +112,12 @@ class FrameRenderer(PictureWorker):
         this one is shown (ENGINE_CONTRACT.md › ahead)."""
         self.post_latest((scene, t, samples, scale, tag, world, place, ahead))
 
+    def request_edit(self, scene: dict, edits: list[dict], t: float, samples: int | None = None, scale: float = 1.0, tag=None,
+                     world=None, place=None, ahead=None):
+        """Draw `scene` with `edits` (engine `edit`: absolute values, so a newer request may replace an older one) at `t`:
+        a drag of many layers (ghost_move.py). Never kept in the frame cache; the next `request` loads its scene whole."""
+        self.post_latest(("edit", scene, edits, t, samples, scale, tag, world, place, ahead))
+
     def place(self, scene: dict, t: float, ids: list[str], timeout_s: float = 10.0, world: bool = False) -> dict:
         """The layers' places at `t` now (ahead of the next picture), from the engine that draws the canvas. Raises
         what the engine said, or on no answer within `timeout_s`. `world`: places in world px (what the canvas shows)
@@ -146,8 +152,9 @@ class FrameRenderer(PictureWorker):
     def open_engine(self):
         return open_engine()
 
-    def _load(self, eng, scene):
-        if scene is not self._loaded:                       # the bridge describes a new scene only on a change
+    def _load(self, eng, scene, edits=False):
+        if scene is not self._loaded or (getattr(eng, "edited", False) and not edits):     # (a drag's edits: on the scene held; anything
+            # else after them loads its scene whole, engine.load). The bridge describes a new scene only on a change
             with STATS.stage("load"):
                 eng.load(scene)
             self._loaded = scene
@@ -164,6 +171,16 @@ class FrameRenderer(PictureWorker):
             except Exception as e:  # noqa: BLE001  handed to the asker, who raises it
                 box["error"] = e
             box["done"].set()
+            return
+        if job[0] == "edit":
+            _, scene, edits, t, samples, scale, tag, world, place, ahead = job
+            self._load(eng, scene, edits=True)
+            eng.edit(edits)
+            image = _frame(eng, t, SCRATCH / "frame.png", samples, scale, place, None, world, self._pool, ahead)
+            self.placed.emit(eng.placed if place else {})
+            serial = self.publish(image)
+            self.pictured.emit(serial, world)
+            self.ready.emit(serial, tag)
             return
         if job[0] == "ask":
             _, scene, fn, done = job
@@ -193,7 +210,7 @@ class FrameRenderer(PictureWorker):
     def describe(self, job, error):
         if getattr(error, "plain", False):                  # a whole sentence for the person (engine.GAVE_UP)
             return f"Error: {error}"
-        what, t = ("place", job[2]) if job[0] == "place" else ("frame", job[1])
+        what, t = ("place", job[2]) if job[0] == "place" else ("frame", job[3]) if job[0] == "edit" else ("frame", job[1])
         return f"Error: canvas {what} at {t:.2f} s: {error}"
 
     def close(self):
