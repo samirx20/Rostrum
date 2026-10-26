@@ -27,8 +27,8 @@ pub(super) fn measure(it: &mut Item, prev: &Item) {
 }
 
 /// The layer's own box in its px (before its scale): w × h, or a text's estimated from its size and letters
-/// (the laid-out box isn't known before layout; `amount` is the control that tunes it).
-fn size(it: &Item) -> Option<(f64, f64)> {
+/// (the laid-out box isn't known before layout; `amount` is the control that tunes it). steps.rs measures it too.
+pub(super) fn size(it: &Item) -> Option<(f64, f64)> {
     if it.props.contains_key("w") {
         return Some((it.num("w"), it.num("h")));
     }

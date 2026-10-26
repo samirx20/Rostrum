@@ -9,8 +9,8 @@
 //! - `{"frame": {"t": 1.25, "image"? | "rgba"? | "boxes"? …}}`: the scene at `t` seconds, drawn as any frame is
 //!   (serve.rs `frame`; `index` defaults to the frame number round(t·fps), so a still equals the exported frame).
 //!   Adds `timing.evalMs` (keys, easing and the stage markup). With the comp's `shutter` > 0 the frame is motion
-//!   blurred: `samples` are the stages at `shutterSamples` sub-frame times centred on t (crate::motion, MOTION.md);
-//!   the request's own `shutter` / `shutterSamples` override the comp's (e.g. `shutterSamples: 1` for a fast preview).
+//!   blurred: `samples` are the stages at sub-frame times centred on t, at least `shutterSamples` and more on fast moves (crate::motion, MOTION.md);
+//!   the request's own `shutter` / `shutterSamples` override the comp's (its `shutterSamples` is then the exact count, e.g. 1 for a fast preview).
 //! - `{"export": {"start"?, "end"?, "encode": {"program", "args"}, "file"?}}` → `{"ok", "frames", "timing"}`: every
 //!   frame from start (default 0) to end (default the comp's duration) at the comp's fps into the encoder; `file`
 //!   is checked to exist and not be empty after. Or `"images": "C:\\…\\f-{frame}.png"`: each frame to a picture.
@@ -265,15 +265,13 @@ pub(crate) fn placed_world(held: &Held, s: &mut Session, t: f64, ids: &Value, re
 /// sum, `boxes` lays it out); otherwise the picture is the sub-frames' sum alone and its stage is left empty.
 pub(crate) fn stage_at(scene: &Scene, t: f64, req: &Value) -> Result<Staged, String> {
     let alpha = req["alpha"].as_bool() == Some(true);
-    // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter, averaged by serve.rs.
-    let (angle, n) = crate::motion::shutter(&scene.comp, req)?;
+    // Motion blur (crate::motion, MOTION.md): the stage at each sub-frame of the open shutter (as many as the motion on
+    // screen needs), averaged by serve.rs.
     let (mut samples, mut eval_ms) = (vec![], 0.0);
-    if angle > 0.0 && n > 1 {
-        for ts in crate::motion::sample_times(t, scene.fps(), angle, n) {
-            let (mk, ms) = crate::scene::eval::shutter_at(t, || markup(scene, ts, alpha))?;
-            eval_ms += ms;
-            samples.push(mk);
-        }
+    for ts in crate::motion::sub_frames(&scene.comp, req, t)? {
+        let (mk, ms) = crate::scene::eval::shutter_at(t, || markup(scene, ts, alpha))?;
+        eval_ms += ms;
+        samples.push(mk);
     }
     // Nothing moves while the shutter is open: every sub-frame is the same picture, so their average is that one
     // picture, drawn once (the same pixels, within the sum's rounding).

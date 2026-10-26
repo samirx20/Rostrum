@@ -195,14 +195,21 @@ pick the scene, click **+ Motion blur**: it is on at 180° (**Amount**), with **
 | Field | Does |
 |---|---|
 | `shutter` | Shutter angle in degrees of a frame. 0 = no blur (default); 180 = half a frame; 360 = a whole frame. |
-| `shutterSamples` | How many moments inside the open shutter are averaged (2–64, default 8). More is smoother on fast moves and takes about that many times longer per frame. |
+| `shutterSamples` | The fewest moments inside the open shutter that are averaged (2–64, default 8). A frame where something moves fast gets more on its own (below). |
+
+**Steps follow the motion.** For each frame the engine measures how far every layer travels on screen while the
+shutter is open (its own move, turn and scale, its group's, and the frame's: a pan or whip moves everything) and draws
+enough moments that two neighbouring copies are at most 1 px apart, up to 128. So a whip pan comes out as a smooth
+streak at the default 8, a still frame or a slow move costs no more than before, and only the fast frames take longer
+(the fastest frames of a whip pan take 4 to 7 times as many steps). What moves inside a layer (a path changing shape, letters playing their
+keys, a rig's bends) is not measured: if steps show there, raise `shutterSamples`.
 
 The frame at time t is the average of the samples centred on t. Layers that do not move stay sharp. Motion of keys, groups,
 rigs and the frame all blur, except across a cut (a hold key): no sample crosses it, so two shots never smear. Preview
 and export blur the same way. While the picture moves (playing, or dragging the playhead) the canvas draws one step so it
 keeps up, unless **Motion blur while playing** is on (the zoom menu); the moment the playhead stops, the frame is drawn
-with every step, exactly as it exports. If the steps show on a very fast spin or whip, raise
-`shutterSamples`. Motion blur and a flip (a group keyed through `scaleX` 0) export like anything else; if a frame ever
+with every step, exactly as it exports (with Motion blur while playing on, playing draws every step too, so a whip
+plays slower). If steps show inside a layer (a shape morphing fast), raise `shutterSamples`. Motion blur and a flip (a group keyed through `scaleX` 0) export like anything else; if a frame ever
 takes over 2 minutes, the export stops and its error names that frame, so you can look at it with `look_frame`.
 
 ## Smear and trail (effects on a layer)
