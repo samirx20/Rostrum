@@ -42,7 +42,8 @@ class DocKind:
     # The app's check, run after every call: check(data), or check(data, items=None) to be handed the items a call
     # changed (None: look at everything, as on open) so a big document isn't walked whole per change, or
     # check(data, items=None, only=None) also told which of their fields it changed (run.set_fields: a field only a
-    # Shift moved holds a number moved, so a rule about its form or its references needn't ask it again).
+    # Shift moved holds a number moved, so a rule about its form or its references needn't ask it again),
+    # or with a keyword `idx` (check(data, items=None, idx=None)): the call's index too, to find a changed item's parent.
     check: Callable[..., list[str]] = _no_problems
     # Facts about an item, for valid_when {"fact": …}: the app writes facts(item, doc), where doc is a View
     # (doc.parent(item), doc.item(id)), so a child can be valid by its parent (a note by its track's instrument).
@@ -79,10 +80,15 @@ class DocKind:
             raise ValueError(f"DocKind {self.name!r}: format {self.version} needs an upgrade step (migrations) for "
                              f"format {', '.join(map(str, missing))}")
         app_check = self.check
-        n = len(inspect.signature(app_check).parameters)
-        if n < 3:
-            self.check = ((lambda data, items=None, only=None: app_check(data)) if n < 2 else
-                          (lambda data, items=None, only=None: app_check(data, items)))
+        params = inspect.signature(app_check).parameters
+        n = len(params)
+        if "idx" in params:              # check(data, items, idx=): the call's index finds a changed item's parent
+            self.check = lambda data, items=None, only=None, idx=None: app_check(data, items, idx=idx)
+        elif n < 3:
+            self.check = ((lambda data, items=None, only=None, idx=None: app_check(data)) if n < 2 else
+                          (lambda data, items=None, only=None, idx=None: app_check(data, items)))
+        else:
+            self.check = lambda data, items=None, only=None, idx=None: app_check(data, items, only)
         app_facts = self.facts
         takes_doc = len(inspect.signature(app_facts).parameters) >= 2
 
@@ -125,14 +131,15 @@ class DocKind:
         """Each stored field value its kind's own field op refuses (field_values.bad_values). Yields RostrumErrors."""
         return field_values.bad_values(self.registry, self.lists, items, only)
 
-    def problems(self, data: dict, items=None, only=None) -> list[str]:
+    def problems(self, data: dict, items=None, only=None, idx=None) -> list[str]:
         """The whole-document check: every field value (or only `items`', the ones a call changed; `only`: of those,
         just the fields it set, see bad_values) against its field's own data, then the app's own check. Run after
-        every call and on every open."""
+        every call and on every open. `idx`: data's index (with `items`), so an app's check finds a changed item's
+        parent without walking the whole document (a drag's every move: ~1 ms per 100 layers)."""
         try:
             out = [f"{e.where}: {e.subject} {e.problem}" + (f" ({', '.join(e.accepted)})" if e.accepted else "")
                    for e in self.bad_values(walk(data, self.lists) if items is None else items, only)]
-            return out + list(self.check(data, items, only if items is not None else None))
+            return out + list(self.check(data, items, only if items is not None else None, idx if items is not None else None))
         except SHAPE_ERRORS as e:
             return [f"{type(e).__name__}: {e}"]
 

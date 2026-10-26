@@ -77,7 +77,7 @@ def problems(data: dict, items=None) -> list[str]:
     changed = None if items is None else {i["id"] for i in items}
     painting_changed = items is not None and any(i.get("type") == "painting" for i in items)
     out = []
-    for item in walk(data, LISTS):
+    for item in walk(data, LISTS) if changed is None or painting_changed else items:     # (a drag's move: its layer, not all)
         if item.get("fillType") != "painted" or (changed is not None and item["id"] not in changed and not painting_changed):
             continue
         if item["type"] not in OWNERS or item["type"] == "text":

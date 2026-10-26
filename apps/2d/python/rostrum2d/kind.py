@@ -171,10 +171,13 @@ def _check_owner(item: dict, problems: list, opening: bool = False):
         problems += shared_paints.problems(item)       # every drawing holds the layer's paint layers
 
 
-def check(data: dict, items=None) -> list[str]:
+def check(data: dict, items=None, idx=None) -> list[str]:
     """Each list holds only its own kinds of item; keys name real animatable fields, one per field per time.
     `items`: the items a change set or brought in (rostrum_core.kind); then only they and the items holding them are
-    checked in full (a key's owner sees its duplicate times), and only their texts' fonts. None: everything, as on open."""
+    checked in full (a key's owner sees its duplicate times), and only their texts' fonts. None: everything, as on open.
+    `idx` (with `items`): the document's index, so the items holding them are looked up, not walked to."""
+    if items is not None and idx is not None:
+        return _check_changed(data, items, idx)
     problems, stack = [], [data]
     changed = None if items is None else {i["id"] for i in items}
     owners = []
@@ -199,6 +202,29 @@ def check(data: dict, items=None) -> list[str]:
         for item in {id(i): i for i in [*owners, *items]}.values():
             _check_owner(item, problems)
     texts = data if items is None else {"layers": [i for i in items if i.get("type") == "text"]}
+    return problems + paintings.problems(data, items) + frame_rules.problems(data, items) + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
+
+
+def _check_changed(data: dict, items, idx) -> list[str]:
+    """check() of the items a change set or brought in, each found in its parent's list through the index."""
+    problems, owners = [], {}
+    for child in items:
+        loc = idx.get(child["id"])
+        if loc is None or loc.parent is None or plugin_parts.is_plugin(child.get("type")):
+            continue
+        parent, up = idx[loc.parent].item, idx[loc.parent]
+        while up is not None and not plugin_parts.is_plugin(up.item.get("type")):
+            up = idx[up.parent] if up.parent is not None else None
+        if up is not None:                      # inside a plugin's item: kept as it is, never looked inside
+            continue
+        owners[id(parent)] = parent
+        held = HOLDS[loc.key]
+        if child.get("type") not in held:
+            problems.append(f'{parent["id"]}.{loc.key} can\'t hold a {child.get("type")} ({child["id"]}); '
+                            f"it holds: {', '.join(held)}")
+    for item in {**owners, **{id(i): i for i in items}}.values():
+        _check_owner(item, problems)
+    texts = {"layers": [i for i in items if i.get("type") == "text"]}
     return problems + paintings.problems(data, items) + frame_rules.problems(data, items) + exprbake.problems_of_doc(data) + fontcheck.problems_of_doc(texts)
 
 
