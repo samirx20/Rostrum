@@ -33,7 +33,7 @@ def rows(rows: list[dict], item: dict | None) -> list[dict]:
         return rows
     if not fam:
         return rows
-    lacks = fontcheck.figures_the_font_lacks(item)       # Number style: only what this font can do (the one now stays)
+    lacks = fontcheck.figures_the_font_lacks(item)       # Number style: only what this font can do (the one now stays; Tabular always can)
     out = []
     for r in rows:
         if r["row"] == "param" and r["id"] == "figures" and lacks:

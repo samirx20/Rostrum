@@ -38,7 +38,8 @@ def _refusal(p: dict) -> str:
 
 
 def figures_the_font_lacks(item: dict) -> set[str]:
-    """The Number style choices (`figures`) this text's font can't do (e.g. Roboto Flex has no tnum, so no tabular):
+    """The Number style choices (`figures`) this text's font can't do (e.g. old-style on a font
+    without onum; tabular works on every font: the engine spaces the digits by hand where the font has no tnum):
     what a screen leaves out of the list, so no choice is offered that would be refused. Empty when no engine is built
     (nothing can be drawn then; the look tools say so loudly)."""
     p = {**F.defaults("text"), **{f: item[f] for f in textsize.FIELDS if f in item}}

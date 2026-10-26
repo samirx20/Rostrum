@@ -89,7 +89,8 @@ fn axes(it: &Item, font: Option<&FontRef>) -> R<Vec<(Tag, f32)>> {
 
 /// The OpenType features asked for, in order (a later one of the same tag wins): ligatures off, figures, small
 /// caps, then `features` ("ss01 ss03 salt", "cv05=2", "-kern"). One turned on that the font lacks is refused
-/// (except proportional / lining figures, usually the font's own).
+/// (except proportional / lining figures, usually the font's own, and tabular figures, drawn by hand where the font
+/// has none: `tabular_by_hand`).
 fn features(it: &Item, font: Option<&FontRef>) -> R<Vec<(Tag, u16)>> {
     let mut want: Vec<(Tag, u16, &str)> = vec![];
     if !it.on("ligatures") {
@@ -112,6 +113,11 @@ fn features(it: &Item, font: Option<&FontRef>) -> R<Vec<(Tag, u16)>> {
     }
     if let Some(f) = font {
         let have = font_features(f);
+        // Tabular figures on a font without them are drawn by hand (`tabular_by_hand`), not asked of the font.
+        let tnum = Tag::new(b"tnum");
+        if !have.contains(&tnum) {
+            want.retain(|(t, _, field)| !(*t == tnum && *field == "figures"));
+        }
         // Proportional and lining figures are most fonts' own; asking for them where the font has no switch is fine.
         let usual = |t: &Tag| *t == Tag::new(b"pnum") || *t == Tag::new(b"lnum");
         if let Some((t, _, field)) = want.iter().find(|(t, v, _)| *v != 0 && !usual(t) && !have.contains(t)) {
@@ -122,6 +128,17 @@ fn features(it: &Item, font: Option<&FontRef>) -> R<Vec<(Tag, u16)>> {
         }
     }
     Ok(want.into_iter().map(|(t, v, _)| (t, v)).collect())
+}
+
+/// Tabular figures asked for (`figures`) on a font without a tnum feature (Roboto Flex, the default): drawn by hand.
+/// Every digit 0-9 takes the widest digit's advance (`measure`), its glyph centred in it, and the text is drawn letter
+/// by letter (stage_type.rs `by_letter`), so a counting number keeps still instead of shifting as its digits change.
+pub fn tabular_by_hand(it: &Item) -> bool {
+    if !it.str("figures").split(' ').any(|w| w == "tabular") {
+        return false;
+    }
+    let Ok(held) = bytes(it) else { return false };      // a font that can't be read is refused by `css`
+    FontRef::new(&held).is_ok_and(|f| !font_features(&f).contains(&Tag::new(b"tnum")))
 }
 
 fn font_features(f: &FontRef) -> Vec<Tag> {
@@ -177,11 +194,20 @@ pub fn measure(it: &Item, line: &str) -> R<Measure> {
     let glyphs = font.glyph_metrics(size, &location);
     let charmap = font.charmap();
     let track = it.num("tracking") * it.num("size");
-    let mut advances = vec![];
-    for ch in line.chars() {
+    let width = |ch: char| -> R<f64> {
         let id = charmap.map(ch).ok_or_else(|| format!("{}.body: the font \"{}\" has no letter {ch:?}", it.id, it.str("font")))?;
         let w = glyphs.advance_width(id).ok_or_else(|| format!("{}.body: the width of {ch:?} in \"{}\" can't be read", it.id, it.str("font")))?;
-        advances.push(w as f64 + track);
+        Ok(w as f64)
+    };
+    // Tabular figures by hand: every digit as wide as the widest (letters.rs centres each glyph in its advance).
+    let digit = if tabular_by_hand(it) { Some(('0'..='9').map(&width).collect::<R<Vec<_>>>()?.into_iter().fold(0.0, f64::max)) } else { None };
+    let mut advances = vec![];
+    for ch in line.chars() {
+        let w = match digit {
+            Some(d) if ch.is_ascii_digit() => d,
+            _ => width(ch)?,
+        };
+        advances.push(w + track);
     }
     let m = font.metrics(size, &location);
     Ok(Measure { advances, ascent: m.ascent as f64, descent: m.descent.abs() as f64 })

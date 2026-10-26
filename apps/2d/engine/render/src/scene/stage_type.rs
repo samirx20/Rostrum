@@ -19,9 +19,10 @@ pub fn font_css(it: &Item) -> R<String> {
     type_font::css(it)
 }
 
-/// Drawn letter by letter: on a path, or playing its keys letter by letter.
+/// Drawn letter by letter: on a path, playing its keys letter by letter, or with tabular figures the font lacks
+/// (type_font.rs `tabular_by_hand`: each digit centred in the widest digit's advance).
 pub fn by_letter(it: &Item) -> bool {
-    it.kind == "text" && (!it.str("path").is_empty() || animated(it))
+    it.kind == "text" && (!it.str("path").is_empty() || animated(it) || type_font::tabular_by_hand(it))
 }
 
 /// Its keys play letter by letter (letterDelay ≠ 0).
@@ -73,10 +74,12 @@ pub fn letters(it: &Item, mut style: String, gradient: Option<&str>, color: Opti
     if it.on("stroke") {
         let _ = write!(style, "-webkit-text-stroke:{}px {};", it.num("strokeWidth"), it.str("strokeColor"));
     }
+    // Tabular figures by hand: each glyph centred in its advance (a digit's is the widest digit's); else at its left.
+    let align = if type_font::tabular_by_hand(it) { "center" } else { "left" };
     let mut inner = String::new();
     for (l, rank) in placed.letters.iter().zip(ranks) {
         let (left, top) = (l.x - l.advance / 2.0, l.y - base);
-        let mut s = format!("position:absolute;left:{left:.3}px;top:{top:.3}px;width:{:.3}px;height:{line:.3}px;line-height:{line:.3}px;text-align:left;transform-origin:{:.3}px {base:.3}px;", l.advance, l.advance / 2.0);
+        let mut s = format!("position:absolute;left:{left:.3}px;top:{top:.3}px;width:{:.3}px;height:{line:.3}px;line-height:{line:.3}px;text-align:{align};transform-origin:{:.3}px {base:.3}px;", l.advance, l.advance / 2.0);
         let mut tf = vec![];
         let own = animated(it).then(|| eval::props_at(it.node, it.t - it.num("letterDelay") * rank));
         if let Some(p) = &own {

@@ -38,7 +38,7 @@ t.key("tracking", {0.0: 0.1, 0.8: 0.0}, ease="easeOut")
 | Field | What it does |
 |---|---|
 | `ligatures` | Joined letters such as fi, fl, where the font has them (on by default). |
-| `figures` | `default`, `proportional lining`, `tabular lining`, `proportional old-style`, `tabular old-style`. Tabular numbers all have one width (they line up in columns, and a changing number does not jiggle). The panel's Number style lists only the styles the text's font can do (a font without tabular numbers, such as Roboto Flex, does not offer Tabular; pick a font that has them, such as Inter). A script or agent asking for one the font lacks is refused, naming the features the font has. |
+| `figures` | `default`, `proportional lining`, `tabular lining`, `proportional old-style`, `tabular old-style`. Tabular numbers all have one width (they line up in columns, and a changing number does not jiggle). Tabular works on every font: where the font has no tabular numbers of its own (Roboto Flex, the default), every digit is given the widest digit's width, centred in it. The panel's Number style lists only the styles the text's font can do (old-style numbers need a font that has them); a script or agent asking for one the font lacks is refused, naming the features the font has. |
 | `smallCaps` | The font's own small capitals (`smcp`). Refused if the font has none. |
 | `features` | Any OpenType tags: `"ss01 ss03 salt"`, `"cv05=2"`, `"-kern"` (a later tag wins). A tag the font lacks is refused, naming the layer, the field and the features the font has. |
 
@@ -123,7 +123,7 @@ n.key("count", {0.5: (0, "easeOut"), 2.0: (450, "hold"), 2.4: 900})     # severa
 ```
 
 - **Tabular figures** (`figures="tabular lining"`) give every digit one width, so a centred or right-aligned number does
-  not jiggle while it counts (the font must have them: Number style in the panel then offers Tabular only for such fonts, e.g. Inter; a script asking for it on a font without is refused, naming the features it has). With
+  not jiggle while it counts. It works on every font: where the font has no tabular numbers of its own (Roboto Flex, the default), every digit takes the widest digit's width, centred in it. With
   proportional figures the box changes width with each digit.
 - The anchor decides which side stays put as digits are added: `anchorX=1` with `align="right"` keeps the last digit
   still (a total that grows to the left), `anchorX=0` keeps the first.
