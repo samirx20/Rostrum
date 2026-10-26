@@ -109,7 +109,7 @@ Rectangle {
             }
             Button { objectName: "snapButton"; text: "Snap"; kind: "ghost"; height: Theme.field; down: backend.snapOn
                      onClicked: backend.setSnap(!backend.snapOn)
-                     HoverTip { text: backend.snapOn ? "Snapping is on: drags land on the grid, markers and the playhead (hold Ctrl for free). Click or Shift+G to turn it off"
+                     HoverTip { text: backend.snapOn ? "Snapping is on: clicks and drags land on a marker a few pixels away, else the grid (hold Ctrl for free). Click or Shift+G to turn it off"
                                                      : "Snapping is off: everything moves freely. Click or Shift+G to turn it on"; hovered: parent.hovered } }
             Item { width: Theme.gap; height: 1 }
             Text {   // while zoomed in: how far
