@@ -208,7 +208,9 @@ class Viewport(QObject):
         return {**cam, "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
-                "selected": [sel] if sel in drawn else [],     # a material or key has no outline
+                "selected": [sel] if sel in drawn and not self.clay_tool.sculpting(sel) else [],   # a material or key
+                #   has no outline; nor the clay being sculpted (the brush ring is its mark; CL1b: its outline doubled
+                #   every picture's time while sculpting)
                 **self.onion.request(drawn)}                   # onion skin's ghosts, when on (quick look only)
 
     @Slot()

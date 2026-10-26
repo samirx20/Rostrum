@@ -89,6 +89,10 @@ class ClayTool(ClayStroke, QObject):
         self.changed.emit()
 
     # --- the tool
+    def _rows_again(self):
+        """The settings panel's rows read `sculpting` (the tool being on): a clay's Brush group comes and goes with it."""
+        self.b.model.update(self.b._rows())
+
     @Slot()
     def toggle(self):
         self.leave() if self._on else self.enter()
@@ -102,15 +106,23 @@ class ClayTool(ClayStroke, QObject):
         self.b.add.disarm()
         self._on = True
         self._make = "" if self._item() is not None else "lump"      # nothing to sculpt yet: make one first
+        self._rows_again()
         self._refresh()
+        self.v.redraw()                                  # the sculpted clay's outline goes (sculpting())
 
     @Slot()
     def leave(self):
         if self._on:
             self.cancel()
             self._on, self._ring = False, []
+            self._rows_again()
             self.changed.emit()
             self.ringChanged.emit()
+            self.v.redraw()                                  # its outline back (sculpting(): none while Clay is on)
+
+    def sculpting(self, item_id: str) -> bool:
+        """Clay is on with this clay to sculpt: the viewport draws no outline on it (the brush ring is its mark)."""
+        return self._on and bool(item_id) and item_id == self.clayId
 
     @Slot(str)
     def choose(self, value):

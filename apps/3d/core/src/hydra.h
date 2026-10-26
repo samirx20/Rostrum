@@ -91,6 +91,8 @@ class Hydra {
  private:
   class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene
   Engine& engine(const std::string& renderer, bool viewport = false);
+  Engine& mask_engine();  // the selection mask's own Storm engine (hydra.cpp)
+  std::unique_ptr<Engine> make_engine(const std::string& renderer);
   Framebuffer& framebuffer(int width, int height);
   Framebuffer& mask_framebuffer(int width, int height);
 

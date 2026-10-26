@@ -16,7 +16,7 @@ undone, and the clay comes back exactly the same when you open the scene again.
 3. **Pick a brush** in the panel: **Add** builds clay up under the brush, **Carve** takes clay away, **Smooth** evens
    bumps out. Rest the pointer on a tile to see what it does.
 4. **Drag on the clay** to sculpt. A ring lying on the surface shows the brush: where it touches and how big it is.
-   The clay changes under the pointer while you drag; when you let go, **the whole stroke is one undo step** (Ctrl+Z
+   While the Clay tool is on, the clay you sculpt has no selection outline: the ring is its only mark. The clay changes under the pointer while you drag; when you let go, **the whole stroke is one undo step** (Ctrl+Z
    takes back exactly that stroke).
    - Hold **Ctrl** for the opposite brush: Add carves, Carve adds.
    - Hold **Shift** to smooth, whatever brush is chosen.
@@ -37,7 +37,8 @@ undone, and the clay comes back exactly the same when you open the scene again.
 A clay's shape is its list of steps, in order: the balls and joins Lump made, then every stroke. A stroke is stored
 as the exact path of brush touches it made, in a small file in the project's `clay` folder, so it replays to exactly
 the same shape. The clay's **Detail** (how fine its grain is, set from the first ball's size) is under **+ Detail** in
-its settings when Select is on.
+its settings when Select is on. The brush settings (Brush, Size, Strength, Mirror, Build up) show only while the Clay
+tool is on; with Select they are not in the settings. An agent can still read and set them any time (`clay.set`).
 
 ## For agents
 
