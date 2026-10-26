@@ -2,16 +2,18 @@ import QtQuick
 import RostrumKit
 
 // The settings panel while the Clay tool is on (3d-visual DESIGN mockup 2, § 2; screen3d/clay_tool_qt.py). The clay's
-// name and kind; then Make (Lump; Draw and Spin join in CL2) and, with a clay selected, Brush (Add, Carve, Smooth), one
-// choice across both: what a drag in the viewport does. Then the brush's Size, Strength and Mirror, the clay's own
-// fields drawn by the kit's rows (clay.set, one undo step each). Nothing else: no helper text (the tiles' hover says
-// what each does). Q, V or Esc leaves.
+// name and kind; then Make (Lump) and, with a clay selected, Brush: the six that shape (Add, Carve, Smooth / Pull,
+// Flatten, Crease: two full rows of three) and Mask on a row of its own a little apart (it protects, it does not shape).
+// One choice across all of them: what a drag in the viewport does. Then the brush's rows, the clay's own fields drawn by
+// the kit's rows (clay.set, one undo step each): Size, Strength, Mirror, then Falloff, Spacing, Front faces only.
+// Nothing else: no helper text (the tiles' hover says what each does, Ctrl's opposite included). Q, V or Esc leaves.
 Item {
     id: panel
     objectName: "clayPanel"
     readonly property bool tight: (Window.window ? Window.window.height : 900) < 800
     readonly property int groupSpace: tight ? Theme.groupGap : 20       // DESIGN § 4.1: 20 between groups, 16 under 800 high
     Flickable {
+        id: flick
         anchors.fill: parent
         contentHeight: col.height + 2 * Theme.pad
         clip: true
@@ -34,7 +36,7 @@ Item {
             }
 
             Item { width: 1; height: panel.groupSpace }
-            Text { text: "Make"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+            Text { objectName: "clayMakeHead"; text: "Make"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
             Item { width: 1; height: Theme.gap }
             ClayTiles {
                 objectName: "clayMake"
@@ -47,7 +49,7 @@ Item {
                 width: parent.width
                 visible: viewport.clay.brushes.length > 0
                 Item { width: 1; height: panel.groupSpace }
-                Text { text: "Brush"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
+                Text { objectName: "clayBrushHead"; text: "Brush"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label; font.weight: Font.DemiBold }
                 Item { width: 1; height: Theme.gap }
                 ClayTiles {
                     objectName: "clayBrushes"
@@ -55,8 +57,15 @@ Item {
                     tiles: viewport.clay.brushes
                     onPicked: (v) => viewport.clay.choose(v)
                 }
+                Item { width: 1; height: Theme.gap + 4 }      // DESIGN § 4.1: 12 after a grid; Mask sits apart from the six
+                ClayTiles {
+                    objectName: "clayMasks"
+                    width: col.inner; tight: panel.tight; prefix: "clayBrush"
+                    tiles: viewport.clay.masks
+                    onPicked: (v) => viewport.clay.choose(v)
+                }
                 Item { width: 1; height: Theme.pad }
-                Repeater {      // Size, Strength, Mirror
+                Repeater {      // Size, Strength, Mirror, Falloff, Spacing, Front faces only (clay_brush_qt.py)
                     model: viewport.clay.brushObj.rows
                     delegate: InspectorRow { width: col.width; bridge: viewport.clay.brushObj
                                              instant: viewport.clay.brushObj.rows.instant }
@@ -64,4 +73,5 @@ Item {
             }
         }
     }
+    EdgeFade { flick: flick; anchors.fill: flick }    // under 800 high the rows scroll: a half-scrolled row fades
 }

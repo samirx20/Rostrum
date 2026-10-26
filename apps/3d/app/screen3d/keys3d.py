@@ -7,7 +7,9 @@ their keys from here through `job`.
 Every job here and in the shared map runs something: an action, a ROUTE (a bridge method: key_routes3d.py), a WINDOW job
 (Main.qml `windowJobs`: it needs the rail or the window) or a SKIP job (bound by the kit's AppShell and FilesMenu). A
 shared job 3D has nothing behind is in NOT_HERE: no key, not on the Keys sheet. tests/test_keys_wired.py keeps this
-honest. Q is Clay (clay_tool_qt.py; Q again, V or Esc: back to Select).
+honest. Q is Clay (clay_tool_qt.py; Q again, V or Esc: back to Select). F, held while Clay is on, sizes the brush: the
+Clay tool watches it itself (a shortcut never sees a key come up), so it is in SKIP and TOOL. (The shared Fit, F, has no
+meaning in 3D yet: it is in NOT_HERE.)
 """
 from __future__ import annotations
 
@@ -16,6 +18,8 @@ from rostrum_gui.keymap import KeyMap
 OWN = [
     # the rail (Rail3D.qml): the flyouts and the Animate page's two panels
     {"job": "clay_tool", "keys": ["Q"], "label": "Clay: make and sculpt clay", "area": "Tools"},
+    {"job": "clay_size", "keys": ["F"], "label": "Clay: hold and move left or right to size the brush", "area": "Tools",
+     "hold": True},
     {"job": "shapes_menu", "keys": ["R"], "label": "Shapes", "area": "Tools"},
     {"job": "type_menu", "keys": ["T"], "label": "Type & logo", "area": "Tools"},
     {"job": "lights_menu", "keys": ["L"], "label": "Lights", "area": "Tools"},
@@ -85,12 +89,14 @@ ROUTES = {
 }
 # the window's own (Main.qml `windowJobs`): they need the rail
 WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "quit")
+# held keys a tool watches itself (clay_tool_qt.SizeKey: F down and up while Clay is on): no shortcut, no Ctrl+K row
+TOOL = ("clay_size",)
 # bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the
 # settings panel, Alt+Shift+J in the timeline's time box) and the kit's FilesMenu (the files)
 SKIP = ["undo", "redo", "command_box", "guides", "key_list", "history", "export", "export_again", "fold_panels", "next_area",
-        "find_setting", "go_to_time", "new", "open", "save_version", "duplicate_file"]
+        "find_setting", "go_to_time", "new", "open", "save_version", "duplicate_file", *TOOL]
 # Ctrl+K runs these through the kit's AppShell.runJob (Main.qml hands on every job it doesn't answer itself)
 SHELL = ("undo", "redo", "history", "export", "export_again", "guides", "key_list", "fold_panels", "next_area",
          "find_setting", "problems", "go_to_time")
 # jobs with a row of their own in Ctrl+K already (the ≡ menu's files) or none on purpose (Esc steps back: no row)
-HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "step_back")
+HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "step_back", *TOOL)

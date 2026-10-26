@@ -190,7 +190,7 @@ def test_clay_brush_rows_show_while_the_clay_tool_is_on(bridge):
     tool = Tool()
     bridge.viewport = SimpleNamespace(clay_tool=tool)      # what bridge_rows reads for `sculpting`
     brush = ClayBrush(tool)
-    assert brush.model.rowCount() == 3
+    assert brush.model.rowCount() == 6
     tool.on = False
     brush.refresh()
     assert brush.model.rowCount() == 0

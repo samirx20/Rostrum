@@ -19,7 +19,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-mask",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -155,10 +155,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         # Clay (Q, clay_tool_qt.py): Make only, nothing to sculpt yet; then a real Lump click on the ground makes a clay
         # (clay.add: the core's clay must be built), its Brush tiles and rows; then Carve picked by a real click
         # (`settled` before and after Q: Q's action runs a frame later, and a click in the same instant met Select; after the click: the picture
-        # with the new clay in it, not the one before — CL1b's "clay on the box not drawn" was that picture)
+        # with the new clay in it, not the one before — CL1b's "clay on the box not drawn" was that picture).
+        # CL2: the Brush group is seven tiles (the six that shape in two rows, Mask on its own row) over six rows (Size,
+        # Strength, Mirror, Falloff, Spacing, Front faces only): clay-brush with Carve chosen, clay-mask with Mask, the
+        # lone tile of the last row chosen (its blue must not touch the rows under it at 720 high)
         ("clay-tool", s, ["settled", "press Q"]),
         ("clay-made", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled"]),
         ("clay-brush", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled", "wait 300", "click Carve", "settled"]),
+        ("clay-mask", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled", "wait 300", "click Mask", "settled"]),
         ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),

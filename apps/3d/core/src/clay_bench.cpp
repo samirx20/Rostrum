@@ -2,6 +2,7 @@
 // (proofs/3d-clay/src/main.cpp: sculpt_head, random_strokes; the same steps and seed), at the proof's grain 0.625 mm.
 #include <tbb/task_arena.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -127,6 +128,48 @@ void random_strokes(Sculpt& S, int count) {
   }
 }
 
+// The big-brush dabs (as the proof's quarter-size case): 24 round the cranium per brush, each its own live stroke.
+// Returns each dab's time; `strokes` gets the strokes.
+std::vector<double> big_dabs(Volume& v, std::vector<std::vector<Step>>& strokes) {
+  const float r = 0.331f / 8.0f;  // the head's largest extent (the proof measured it) / 8
+  const Op ops[] = {Op::Add, Op::Carve, Op::Smooth, Op::Flatten, Op::Pull, Op::Crease};
+  std::vector<double> ms;
+  for (const Op op : ops) {
+    const int N = 24;
+    for (int i = 0; i < N; ++i) {
+      const float az = -1.2f + 2.4f * i / (N - 1);
+      const V3 dir = unit({-std::sin(az), -0.35f, -std::cos(az)});
+      V3 on, nrm;
+      if (!v.cast(sub({0, 0.03f, 0}, mul(dir, 0.2f)), dir, 0.4f, on, nrm)) continue;
+      Step s;
+      s.kind = Kind::Stamp;
+      s.op = op;
+      s.a = on;
+      s.n = nrm;
+      s.radius = r;
+      s.strength = 0.5f;
+      s.stroke = 1;
+      const V3 tang = unit(cross(nrm, {0, 1, 0}));
+      if (op == Op::Pull) s.b = mul(tang, r * 0.25f);
+      if (op == Op::Crease) s.b = tang;
+      v.begin_stroke();
+      const auto t0 = std::chrono::steady_clock::now();
+      v.dab(s);
+      ms.push_back(ms_since(t0));
+      v.end_stroke({s});
+      strokes.push_back({s});
+    }
+  }
+  return ms;
+}
+
+double pct(std::vector<double> v, double q) {
+  if (v.empty()) return 0;
+  const size_t k = std::min(v.size() - 1, size_t(q * (v.size() - 1) + 0.5));
+  std::nth_element(v.begin(), v.begin() + k, v.end());
+  return v[k];
+}
+
 }  // namespace
 
 BenchResult bench(int nstrokes, int threads) {
@@ -172,6 +215,38 @@ BenchResult bench(int nstrokes, int threads) {
       r.parallelMs = st.ms;
       r.chain = st.chain;
       r.parallel = v.hash();
+    }
+    // the big brush: on the clay after the strokes, coarse and fine, and the coarse strokes replayed
+    std::vector<std::vector<Step>> bigStrokes;
+    {
+      Volume v(kVoxel);
+      head_clay(v);
+      replay_strokes(v, strokes);
+      Volume f(kVoxel);  // the same clay, the coarse copy off
+      f.allow_coarse(false);
+      head_clay(f);
+      replay_strokes(f, strokes);
+      const std::vector<double> c = big_dabs(v, bigStrokes);
+      std::vector<std::vector<Step>> unused;
+      const std::vector<double> fi = big_dabs(f, unused);
+      r.bigDabs = c.size();
+      r.bigCoarseMs = pct(c, 0.5), r.bigCoarseP90 = pct(c, 0.9);
+      r.bigFineMs = pct(fi, 0.5), r.bigFineP90 = pct(fi, 0.9);
+      r.bigLive = v.hash();
+    }
+    {
+      Volume v(kVoxel);
+      head_clay(v);
+      replay_strokes(v, strokes);
+      for (const auto& s : bigStrokes) v.apply_stroke(s);
+      r.bigSerial = v.hash();
+    }
+    {
+      Volume v(kVoxel);
+      head_clay(v);
+      replay_strokes(v, strokes);
+      replay_strokes(v, bigStrokes);
+      r.bigParallel = v.hash();
     }
   });
   return r;

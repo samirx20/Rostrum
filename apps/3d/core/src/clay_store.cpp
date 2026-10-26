@@ -4,6 +4,7 @@
 #include <tbb/parallel_for.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <deque>
@@ -90,7 +91,9 @@ struct Store::Impl {
     return it->second;
   }
 
-  // the changed blocks (or all of them) meshed in parallel and sent to the stage in one change
+  // the changed blocks (or all of them) meshed in parallel and sent to the stage in one change (one prim per block:
+  // CL2 tried 2x2x2 blocks per prim, and Storm's time after a dab went up 23 -> 90-170 ms: its cost follows the
+  // surface re-sent, not the number of prims)
   void publish(Entry& e) {
     std::vector<BlockKey> keys;
     if (e.full) {
@@ -299,7 +302,7 @@ void Store::sync(const std::vector<Node>& nodes) {
     s.publish(e);
     namespace fs = std::filesystem;
     if (changed && !n.cache.empty() && e.keys.size() == n.steps.size() && !fs::exists(fs::u8path(n.cache)))
-      s.cache.request(n.id, e.vol->copy(), n.cache);
+      s.cache.request(n.id, e.vol->copy(), n.cache, e.vol->copy_mask());
   }
 }
 
@@ -317,7 +320,7 @@ void Store::sculpt_begin(const std::string& item, const Brush& brush) {
   s.live = std::move(live);
 }
 
-SculptReply Store::sculpt_points(const std::vector<std::pair<float, float>>& px, const RayFn& ray,
+SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
                                  const PixelsPerMetreFn& ppm) {
   Impl& s = *p_;
   if (!s.live) throw Error("sculpt.phase: no stroke begun; send phase \"begin\" first");
@@ -326,25 +329,25 @@ SculptReply Store::sculpt_points(const std::vector<std::pair<float, float>>& px,
   Entry& e = s.entry(l.item, "sculpt.item");
   SculptReply r;
   std::vector<V3> samples;
-  for (const auto& [x, y] : px) {
+  std::vector<float> pressures;
+  for (const auto& q : px) {
+    const float x = q[0], y = q[1];
     if (!l.rs) {
-      // dabs every 0.3 brush radius as the brush looks on screen where the stroke starts (dabs every couple of
+      // dabs every `spacing` (0.3 by default) of the brush radius as the brush looks on screen where the stroke starts (dabs every couple of
       // pixels piled up and grew towards the camera, each landing on the one before)
       V3 o, d, on, nrm;
       float depth = 0;
       if (ray(x, y, o, d)) depth = e.vol->cast(o, d, 1e4f, on, nrm) ? len(sub(on, o)) : len(o);
       const float radiusPx = depth > 0 ? l.brush.radius * ppm(depth) : 3.0f;
-      l.rs = std::make_unique<Resampler>(0.3f * std::max(radiusPx, 3.0f));
+      l.rs = std::make_unique<Resampler>(l.brush.spacing * std::max(radiusPx, 3.0f));
     }
-    std::vector<V3> pts;
-    l.rs->push(V3{x, y, 0}, pts);
-    samples.insert(samples.end(), pts.begin(), pts.end());
+    l.rs->push(V3{x, y, 0}, q[2], samples, pressures);
   }
   bool any = false;
-  for (const V3& p : samples) {
+  for (size_t i = 0; i < samples.size(); ++i) {
     V3 o, d;
-    if (!ray(p.x, p.y, o, d)) continue;
-    l.dabs->add(o, d, 1e4f);
+    if (!ray(samples[i].x, samples[i].y, o, d)) continue;
+    l.dabs->add(o, d, 1e4f, pressures[i]);
     any = true;
   }
   s.publish(e);

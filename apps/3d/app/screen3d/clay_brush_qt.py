@@ -1,8 +1,9 @@
-"""The Clay tool's Size, Strength and Mirror rows (clay_tool_qt.py), for QML as `viewport.clay.brushObj`: the selected clay's
+"""The Clay tool's brush rows (Size, Strength, Falloff, Spacing, Mirror, Front faces only) (clay_tool_qt.py), for QML as `viewport.clay.brushObj`: the selected clay's
 own brush fields (rostrum3d fields, group "Brush"; CL1 CONTRACT § 1) drawn by the kit's InspectorRow exactly as it
 draws any field. The values live on the clay (they are the next stroke's settings; each stroke step keeps its own copy),
 so an edit is the bridge's own `clay.set` (one undo step; a scrub is one gesture), the same call an agent makes.
-The brush row (Add / Carve / Smooth) is drawn as tiles by ClayPanel.qml, not here.
+The brush itself (the seven tiles, Mask among them) is drawn by ClayPanel.qml, not here. The kit's layout puts the main
+rows first (Size, Strength, Mirror), then the finer ones (Falloff, Spacing, Front faces only).
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ from rostrum3d import fields as F
 from rostrum_gui import rows
 from rostrum_gui.model import RowsModel
 
-ROWS = ("brushSize", "brushStrength", "symmetry")
+ROWS = ("brushSize", "brushStrength", "brushFalloff", "brushSpacing", "symmetry", "frontOnly")
 
 
 class ClayBrush(QObject):

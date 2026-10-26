@@ -1,6 +1,10 @@
 // Clay: one unit of dabs over the narrow band (clay_box.h DabUnit). Each dab works on a list: the band voxels in its
 // reach plus the 2 voxels the band can grow by; their 6 neighbours are found once, and the re-levelling passes run on
 // compact arrays. Moved from proofs/3d-clay (clay.cpp, Clay::run's stroke part, part 3).
+//
+// CL2: each dab's weight follows its falloff (0 soft .. 1 hard); Flatten works towards the average surface under the
+// brush; `invert` puffs Flatten out and turns Crease's groove into a ridge; a Mask dab paints the clay's mask (M) and
+// changes nothing else, and every other dab changes a voxel by (1 - mask there) as much.
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -8,6 +12,22 @@
 #include "clay_box.h"
 
 namespace r3d::clay::detail {
+
+namespace {
+
+// A dab's weight at t = distance / radius: 1 at the centre, 0 at the rim. h = 0.5 is CL1's (1 - t^2)^2 bit for bit;
+// harder keeps the full weight out to an inner radius (0.8 at h = 1) and falls over the rest; softer narrows the
+// bell ((1 - t^2)^4 at h = 0), so the edge fades out over most of the radius.
+float weight(float t, float h) {
+  if (t >= 1.0f) return 0.0f;
+  if (h < 0.5f) return std::pow(1.0f - t * t, 2.0f + 4.0f * (0.5f - h));
+  const float inner = 1.6f * (h - 0.5f);
+  const float s = t <= inner ? 0.0f : (t - inner) / (1.0f - inner);
+  const float u = 1.0f - s * s;
+  return u * u;
+}
+
+}  // namespace
 
 void run_dabs(const DabUnit& du) {
   const Box& b = *du.b;
@@ -23,6 +43,7 @@ void run_dabs(const DabUnit& du) {
   const auto& work = *du.work;
   const auto& extList = *du.extList;
   auto& touched = *du.touched;
+  float* M = du.M;
   const int nch = b.chunks();
   const float hd = 6.1f;  // a chunk's centre to its farthest voxel
   auto centre = [&](int ci) {
@@ -54,6 +75,8 @@ void run_dabs(const DabUnit& du) {
   std::vector<uint8_t> fixL;
   for (size_t j = 0; j < n; ++j) {
     const Step& s = steps[j];
+    const bool masking = s.op == Op::Mask;
+    if (masking && !M) continue;  // (Volume::run always fills a mask for a unit with Mask dabs)
     // the dab's chunks: in its reach and next to a chunk that holds the band now (the surface moves during a
     // stroke, so this follows it); and those plus their neighbours, for reading around a voxel
     std::vector<int> mine, around;
@@ -73,7 +96,7 @@ void run_dabs(const DabUnit& du) {
     if (mine.empty()) continue;
     ++stamp;
     for (int ci : mine) {
-      touched[ci] = 1;
+      (masking ? *du.maskTouched : touched)[ci] = 1;  // a Mask dab writes the mask back, not the clay
       const int cx = ci % b.cnx, cy = (ci / b.cnx) % b.cny, cz = ci / (b.cnx * b.cny);
       for (int dz = -1; dz <= 1; ++dz)
         for (int dy = -1; dy <= 1; ++dy)
@@ -150,6 +173,28 @@ void run_dabs(const DabUnit& du) {
         for (size_t k = r.begin(); k < r.end(); ++k) f(k);
       });
     };
+    // the shape (or its mirrored copy) that weighs most at p, and its weight
+    auto strongest = [&](const V3& p, float& w) {
+      w = 0;
+      const DabShape* best = nullptr;
+      for (const DabShape& d : dabShapes[j]) {
+        const V3 e = vsub(p, d.c);
+        const float wd = weight(std::sqrt(vdot(e, e)) / d.r, s.falloff);
+        if (wd > w) w = wd, best = &d;
+      }
+      return best;
+    };
+    if (masking) {  // paint the mask towards 1 (invert: towards 0); the clay stays as it is
+      const float a = std::min(std::max(s.strength, 0.0f), 1.0f);
+      overK([&](size_t k) {
+        float w;
+        if (!strongest(P(L[k].x, L[k].y, L[k].z), w)) return;
+        float& m = M[L[k].i];
+        m = s.invert ? m - a * w * m : m + a * w * (1.0f - m);
+        m = std::min(std::max(m, 0.0f), 1.0f);
+      });
+      continue;
+    }
     // each band voxel's 6 neighbours, found once: an index into the band (>= 0), or -(box index + 1) for a voxel
     // off the band, whose value doesn't change during the dab. The passes then only gather from small arrays.
     // (band voxels are only ever in the dab's own chunks, so only those get a table)
@@ -174,20 +219,51 @@ void run_dabs(const DabUnit& du) {
     oldL.resize(K);
     overK([&](size_t k) { oldL[k] = V[L[k].i]; });
     const float disp = shift[j];
+    // Flatten: the plane is the average surface under the brush (each shape its own): the band voxels next to the
+    // surface, put onto it along their gradient, weighted by the falloff. Summed in band order on this thread, so the
+    // same every run. Too little surface found: the dab's own point and normal.
+    V3 planeC[2], planeN[2];
+    if (s.op == Op::Flatten) {
+      const size_t ns = std::min<size_t>(2, dabShapes[j].size());
+      double sw[2] = {0, 0}, sc[2][3] = {}, sn[2][3] = {};
+      for (size_t k = 0; k < K; ++k) {
+        const float v = oldL[k];
+        if (std::fabs(v) >= 1.5f) continue;
+        const Vox& q = L[k];
+        const V3 p = P(q.x, q.y, q.z);
+        float w;
+        const DabShape* best = strongest(p, w);
+        if (!best || w <= 0) continue;
+        const size_t si = size_t(best - dabShapes[j].data());
+        if (si >= ns) continue;
+        const float gx = 0.5f * (V[b.at(q.x + 1, q.y, q.z)] - V[b.at(q.x - 1, q.y, q.z)]);
+        const float gy = 0.5f * (V[b.at(q.x, q.y + 1, q.z)] - V[b.at(q.x, q.y - 1, q.z)]);
+        const float gz = 0.5f * (V[b.at(q.x, q.y, q.z + 1)] - V[b.at(q.x, q.y, q.z - 1)]);
+        const float gl = std::sqrt(gx * gx + gy * gy + gz * gz);
+        if (gl < 1e-6f) continue;
+        const float on[3] = {p.x - gx / gl * v, p.y - gy / gl * v, p.z - gz / gl * v};
+        const float g[3] = {gx / gl, gy / gl, gz / gl};
+        sw[si] += w;
+        for (int a = 0; a < 3; ++a) sc[si][a] += double(w) * on[a], sn[si][a] += double(w) * g[a];
+      }
+      for (size_t si = 0; si < ns; ++si) {
+        const DabShape& d = dabShapes[j][si];
+        planeC[si] = d.c;
+        planeN[si] = d.n;
+        const double gn = std::sqrt(sn[si][0] * sn[si][0] + sn[si][1] * sn[si][1] + sn[si][2] * sn[si][2]);
+        if (sw[si] < 1.0 || gn < 1e-3 * sw[si]) continue;  // under one voxel's worth of surface, or no clear side
+        planeC[si] = {float(sc[si][0] / sw[si]), float(sc[si][1] / sw[si]), float(sc[si][2] / sw[si])};
+        planeN[si] = {float(sn[si][0] / gn), float(sn[si][1] / gn), float(sn[si][2] / gn)};
+      }
+    }
     overK([&](size_t k) {
       const Vox& q = L[k];
       const size_t i = q.i;
       const int x = q.x, y = q.y, z = q.z;
       const V3 p = P(x, y, z);
-      // the shape (or its mirrored copy) that weighs most here
-      float w = 0;
-      const DabShape* best = nullptr;
-      for (const DabShape& d : dabShapes[j]) {
-        const V3 e = vsub(p, d.c);
-        const float wd = falloff(std::sqrt(vdot(e, e)) / d.r);
-        if (wd > w) w = wd, best = &d;
-      }
-      if (w <= 0) return;
+      float w;
+      const DabShape* best = strongest(p, w);
+      if (!best || w <= 0) return;
       const float old = V[i];
       const float bx = float(x), by = float(y), bz = float(z);
       switch (s.op) {
@@ -205,9 +281,13 @@ void run_dabs(const DabUnit& du) {
           V[i] = old + 0.6f * s.strength * w * (avg - old);
           break;
         }
-        case Op::Flatten: {  // towards the plane through the dab point, across the brush
-          const float plane = vdot(vsub(p, best->c), best->n);
-          V[i] = old + std::max(-kDispCap, std::min(kDispCap, 0.35f * s.strength * w * (plane - old)));
+        case Op::Flatten: {  // towards the average surface under the brush; inverted: up to a low dome above it
+          const size_t si = std::min<size_t>(size_t(best - dabShapes[j].data()), 1);
+          const float plane = vdot(vsub(p, planeC[si]), planeN[si]);
+          // the dome's top is 0.25 x radius x strength above the plane (values are negative inside)
+          const float target = s.invert ? plane - 0.25f * s.strength * best->r * w : plane;
+          V[i] = old + std::max(-kDispCap, std::min(kDispCap, 0.35f * s.strength * w * (target - old)));
+          if (s.invert) V[i] = std::min(V[i], old);  // puffing only ever adds clay
           break;
         }
         case Op::Pull: {  // the clay under the brush moves by b (falling off): read where it comes from
@@ -227,9 +307,18 @@ void run_dabs(const DabUnit& du) {
           const float dl = std::sqrt(std::max(0.0f, vdot(e, e) - along * along - up * up)) / best->r;
           const float g = std::max(0.0f, 1.0f - dl / 0.3f);
           const float depth = std::min(s.strength * best->r * 0.2f, kDispCap);
-          V[i] = pinched + depth * g * g * falloff(std::fabs(along) / best->r);
+          const float groove = depth * g * g * weight(std::fabs(along) / best->r, s.falloff);
+          V[i] = s.invert ? pinched - groove : pinched + groove;  // inverted: the pinched line raised to a ridge
           break;
         }
+        case Op::Mask:  // (painted above)
+          break;
+      }
+      // the mask holds the clay: a voxel changes by (1 - mask) as much (fully masked: not at all)
+      if (M) {
+        const float m = M[i];
+        if (m >= 1.0f) V[i] = old;
+        else if (m > 0.0f) V[i] = old + (V[i] - old) * (1.0f - m);
       }
     });
     // back to the stored band, on the narrow band only: unchanged band voxels stay; changed ones next to the

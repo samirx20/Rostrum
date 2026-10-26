@@ -9,6 +9,7 @@
 //   when the scene's next stroke names the same dab file; otherwise they are put back first.
 // The cache .vdb for the current steps is written on a thread of its own after a change (the newest wins).
 #pragma once
+#include <array>
 #include <functional>
 #include <memory>
 #include <string>
@@ -54,7 +55,8 @@ class Store {
 
   // A live stroke on `item` (begin, points…, end or cancel). Points are pixels; `ray` turns them into clay-space rays.
   void sculpt_begin(const std::string& item, const Brush& brush);
-  SculptReply sculpt_points(const std::vector<std::pair<float, float>>& px, const RayFn& ray,
+  // px: x, y and the pen pressure 0..1
+  SculptReply sculpt_points(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
                             const PixelsPerMetreFn& ppm);
   // applies the stroke as one unit and writes its dab file into <folder>/clay/; the stroke waits to be adopted
   SculptReply sculpt_end(const std::string& folder, const std::string& where);

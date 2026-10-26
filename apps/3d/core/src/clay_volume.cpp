@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "clay_box.h"
+#include "clay_coarse.h"
 
 namespace r3d::clay {
 
@@ -26,7 +27,7 @@ const ChunkRecord::Chunk* ChunkRecord::find(const Coord& o) const {
   return it == seen_.end() ? nullptr : &chunks_[it->second];
 }
 
-void ChunkRecord::keep(const Tree& t, const Coord& o) {
+void ChunkRecord::keep(const Tree& t, const Tree* maskTree, const Coord& o) {
   if (!on || !seen_.emplace(std::make_tuple(o.x(), o.y(), o.z()), chunks_.size()).second) return;
   Chunk c;
   c.o = o;
@@ -36,6 +37,11 @@ void ChunkRecord::keep(const Tree& t, const Coord& o) {
     c.mask = l->getValueMask();
   } else {
     c.value = t.getValue(o);
+  }
+  if (maskTree) {
+    c.maskKept = true;
+    if (const Leaf* l = maskTree->probeConstLeaf(o))
+      c.maskValues.assign(l->buffer().data(), l->buffer().data() + Leaf::SIZE);
   }
   chunks_.push_back(std::move(c));
 }
@@ -47,7 +53,8 @@ void ChunkRecord::clear() {
 
 size_t ChunkRecord::bytes() const {
   size_t n = 0;
-  for (const Chunk& c : chunks_) n += sizeof(Chunk) + c.values.size() * sizeof(float) + 48;  // + the map's node
+  for (const Chunk& c : chunks_)
+    n += sizeof(Chunk) + (c.values.size() + c.maskValues.size()) * sizeof(float) + 48;  // + the map's node
   return n;
 }
 
@@ -59,21 +66,34 @@ Volume::Volume(float voxel) : voxel_(voxel) {
   grid_->setTransform(openvdb::math::Transform::createLinearTransform(voxel));
   grid_->setGridClass(openvdb::GRID_LEVEL_SET);
   grid_->setName("clay");
+  mask_ = openvdb::FloatGrid::create(0.0f);
+  mask_->setTransform(grid_->transform().copy());
+  mask_->setName("mask");
 }
 
 void Volume::own_buffers() { bufs_ = std::make_unique<Buffers>(); }
 
 StepTiming Volume::apply(const Step& s) { return run(&s, 1); }
 
-StepTiming Volume::apply_stroke(const std::vector<Step>& dabs) {
-  // the stroke in units that each move the surface at most kStrokeAcc: one fill, one re-levelling, one write per unit
+StepTiming Volume::apply_stroke(const std::vector<Step>& dabs) { return units(dabs, nullptr, nullptr); }
+
+StepTiming Volume::apply_stroke_shared(const std::vector<Step>& dabs, Buffers& bufs, std::shared_mutex& lock) {
+  return units(dabs, &bufs, &lock);
+}
+
+StepTiming Volume::units(const std::vector<Step>& dabs, Buffers* bufs, std::shared_mutex* lock) {
+  // the stroke in units that each move the surface at most kStrokeAcc: one fill, one re-levelling, one write per unit;
+  // big dabs (the coarse copy) and the others in units of their own (a stroke without accumulate: one unit, as its
+  // first dab)
   StepTiming t;
   const float iv = 1.0f / voxel_;
+  auto big = [&](const Step& s) { return coarse_ && coarse_dab(s, iv); };
   for (size_t start = 0; start < dabs.size();) {
     size_t end = start + 1;
     if (!dabs[start].accumulate) end = dabs.size();
-    while (end < dabs.size() && pile_up(&dabs[start], end + 1 - start, iv) <= kStrokeAcc) ++end;
-    const StepTiming u = run(&dabs[start], end - start);
+    const bool c = big(dabs[start]);
+    while (end < dabs.size() && big(dabs[end]) == c && pile_up(&dabs[start], end + 1 - start, iv) <= kStrokeAcc) ++end;
+    const StepTiming u = run(&dabs[start], end - start, bufs, lock);
     t.ms += u.ms;
     t.voxels += u.voxels;
     start = end;
@@ -112,12 +132,13 @@ void Volume::record_into(ChunkRecord* rec) {
 void Volume::restore(const ChunkRecord& rec) { put_back(rec); }
 
 void Volume::keep(const Coord& o) {
-  live_.keep(grid_->tree(), o);
-  if (record_) record_->keep(grid_->tree(), o);
+  live_.keep(grid_->tree(), &mask_->tree(), o);
+  if (record_) record_->keep(grid_->tree(), &mask_->tree(), o);
 }
 
 void Volume::put_back(const ChunkRecord& rec) {
   Tree& tree = grid_->tree();
+  Tree& maskTree = mask_->tree();
   int lo[3] = {1 << 30, 1 << 30, 1 << 30}, hi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
   for (const ChunkRecord::Chunk& c : rec.chunks()) {
     if (c.leaf) {
@@ -126,6 +147,15 @@ void Volume::put_back(const ChunkRecord& rec) {
       l->setValueMask(c.mask);
     } else {
       tree.addTile(1, c.o, c.value, false);
+    }
+    if (c.maskKept) {  // the mask chunk as it was: its leaf, or no leaf
+      if (!c.maskValues.empty()) {
+        Leaf* l = maskTree.touchLeaf(c.o);
+        std::memcpy(l->buffer().data(), c.maskValues.data(), sizeof(float) * Leaf::SIZE);
+        l->setValuesOn();
+      } else if (maskTree.probeConstLeaf(c.o)) {
+        maskTree.addTile(1, c.o, 0.0f, false);
+      }
     }
     for (int a = 0; a < 3; ++a) lo[a] = std::min(lo[a], c.o[a]), hi[a] = std::max(hi[a], c.o[a] + 7);
   }
@@ -146,9 +176,10 @@ std::set<BlockKey> Volume::take_dirty() {
   return d;
 }
 
-StepTiming Volume::run(const Step* steps, size_t n) {
+StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_mutex* lock) {
   const auto t0 = std::chrono::steady_clock::now();
-  Buffers& S = bufs_ ? *bufs_ : buffers();
+  Buffers& S = bufs ? *bufs : bufs_ ? *bufs_ : buffers();
+  GridLock<true> readLock(lock);  // (a parallel replay) the grid is read up to the dabs, written after them
   const float iv = 1.0f / voxel_;
   auto vox = [&](V3 p) { return V3{p.x * iv, p.y * iv, p.z * iv}; };
   const bool piece = steps[0].kind == Kind::Piece;  // a piece is always alone (n == 1)
@@ -178,6 +209,27 @@ StepTiming Volume::run(const Step* steps, size_t n) {
       shift[j] = dab_shift(s, iv);
       reachOf[j] = r + kBand + 1 + shift[j];
     }
+  }
+  // big dabs: on a 2x coarser copy of the band (clay_coarse.cpp)
+  if (!piece && coarse_ && coarse_dab(s0, iv)) {
+    readLock.unlock();
+    CoarseUnit cu;
+    cu.tree = &grid_->tree();
+    cu.mask = &mask_->tree();
+    cu.bufs = &S;
+    cu.start = &live_;
+    cu.lock = lock;
+    cu.steps = steps;
+    cu.n = n;
+    cu.shapes = &dabShapes;
+    cu.shift = &shift;
+    cu.keep = [this](const Coord& o) { keep(o); };
+    cu.dirty = [this](const int* lo, const int* hi) { mark_dirty(lo, hi); };
+    run_coarse(cu);
+    StepTiming t;
+    t.voxels = cu.written * 512;
+    t.ms = ms_since(t0);
+    return t;
   }
   // how wide the distances must be before the step: a blend reads them up to k past the band (a dab moves the
   // surface less than the trusted band and needs nothing wider)
@@ -264,6 +316,8 @@ StepTiming Volume::run(const Step* steps, size_t n) {
   const std::vector<int> extList = listed(dilate(pre, b.cnx, b.cny, b.cnz, 1));
 
   std::vector<uint8_t> touched(nch, 0);  // chunks a dab worked on (only they are written back)
+  float* M = nullptr;                     // the mask, when the unit uses one (E0)
+  std::vector<uint8_t> maskTouched;       // chunks a Mask dab painted (their mask is written back)
   bool needStart = false;
   for (size_t j = 0; j < n && !piece; ++j) needStart |= !steps[j].accumulate;
 
@@ -288,6 +342,7 @@ StepTiming Volume::run(const Step* steps, size_t n) {
   });
 
   if (piece) {
+    readLock.unlock();
     // D. widen the distances to what the blend reads (the stored band is trusted)
     if (wpre > 0) {
       par(extList, [&](int ci) { b.each(ci, [&](int, int, int, size_t i) { F[i] = std::fabs(V[i]) < kBand - 0.5f; }); });
@@ -332,6 +387,25 @@ StepTiming Volume::run(const Step* steps, size_t n) {
     });
     relevel(b, V, NX, F, kBand, extList, extList, workList);
   } else {
+    // E0. the mask, where the unit paints or reads one (a clay with no mask and no Mask dab: none, as in CL1)
+    bool painting = false;
+    for (size_t j = 0; j < n; ++j) painting |= steps[j].op == Op::Mask;
+    if (painting || has_mask()) {
+      M = S.mask.get();
+      maskTouched.assign(nch, 0);
+      const Tree& mt = mask_->tree();
+      par(extList, [&](int ci) {
+        int x, y, z;
+        b.corner(ci, x, y, z);
+        if (const Leaf* l = mt.probeConstLeaf(b.lo + Coord(x, y, z))) {
+          const float* d = l->buffer().data();
+          b.each(ci, [&](int xx, int yy, int zz, size_t i) { M[i] = d[leaf_offset(xx, yy, zz)]; });
+        } else {
+          b.each(ci, [&](int, int, int, size_t i) { M[i] = 0.0f; });
+        }
+      });
+    }
+    readLock.unlock();
     // E. dabs one after another, each over its own narrow band (clay_band.cpp)
     DabUnit u;
     u.b = &b;
@@ -347,6 +421,8 @@ StepTiming Volume::run(const Step* steps, size_t n) {
     u.work = &work;
     u.extList = &extList;
     u.touched = &touched;
+    u.M = M;
+    u.maskTouched = &maskTouched;
     run_dabs(u);
   }
 
@@ -367,6 +443,7 @@ StepTiming Volume::run(const Step* steps, size_t n) {
   });
   for (int ci = 0; ci < nch; ++ci)
     if (whole[ci]) cls[ci] = whole[ci];
+  GridLock<false> writeLock(lock);
   std::vector<Leaf*> leaves(nch, nullptr);
   std::vector<int> mixed;
   int wlo[3] = {1 << 30, 1 << 30, 1 << 30}, whi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
@@ -397,8 +474,45 @@ StepTiming Volume::run(const Step* steps, size_t n) {
     });
   });
 
+  // G2. the mask chunks Mask dabs painted: a leaf, or no leaf when all 0 (after the clay's: a chunk both write is
+  //     kept, clay and mask, before either changes)
+  if (M) {
+    Tree& mt = mask_->tree();
+    std::vector<int> maskList;
+    for (int ci : workList)
+      if (maskTouched[ci]) maskList.push_back(ci);
+    std::vector<uint8_t> blank(nch, 0);
+    par(maskList, [&](int ci) {
+      bool zero = true;
+      b.each(ci, [&](int, int, int, size_t i) { zero &= M[i] == 0.0f; });
+      blank[ci] = zero;
+    });
+    std::vector<Leaf*> mleaves(nch, nullptr);
+    std::vector<int> mfill;
+    for (int ci : maskList) {
+      int x, y, z;
+      b.corner(ci, x, y, z);
+      const Coord o = b.lo + Coord(x, y, z);
+      if (blank[ci]) {
+        if (!mt.probeConstLeaf(o)) continue;  // no mask here before either
+        keep(o);
+        mt.addTile(1, o, 0.0f, false);
+      } else {
+        keep(o);
+        mleaves[ci] = mt.touchLeaf(o);
+        mfill.push_back(ci);
+      }
+      for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+    }
+    par(mfill, [&](int ci) {
+      Leaf* lf = mleaves[ci];
+      b.each(ci, [&](int x, int y, int z, size_t i) { lf->setValueOn(leaf_offset(x, y, z), M[i]); });
+    });
+  }
+
   // H. the blocks whose surface may have changed
   if (wlo[0] <= whi[0]) mark_dirty(wlo, whi);
+  writeLock.unlock();
 
   // a piece's buffers (a big box, wide blends) can be hundreds of MB: give them back rather than keep them for the dabs
   if (piece || b.size() > (size_t(16) << 20)) S.release();

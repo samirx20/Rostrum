@@ -57,10 +57,34 @@ def ring(cam: dict, scene: dict, frame: int, point, normal, radius: float, n: in
     return out
 
 
-def opposite(brush: str, ctrl: bool, shift: bool) -> str:
-    """The brush a stroke uses: Shift = Smooth with any brush, Ctrl = the opposite (Add ↔ Carve; others keep theirs)."""
+def opposite(brush: str, ctrl: bool, shift: bool) -> tuple[str, bool]:
+    """(the brush a stroke uses, invert): Shift = Smooth with any brush; Ctrl = the opposite: Add <-> Carve swap the brush,
+    Flatten (puff out), Crease (pinch out to a ridge) and Mask (take the mask away) keep theirs with `invert`."""
     if shift:
-        return "smooth"
-    if ctrl:
-        return {"add": "carve", "carve": "add"}.get(brush, brush)
-    return brush
+        return "smooth", False
+    if ctrl and brush in ("add", "carve"):
+        return {"add": "carve", "carve": "add"}[brush], False
+    return brush, ctrl and brush in INVERTS
+
+
+INVERTS = ("flatten", "crease", "mask")         # the brushes whose Ctrl opposite is `invert` on the same brush
+
+
+def pressure(p: float) -> float | None:
+    """A pen's pressure (QML's eventPoint.pressure, 0..1) as a point's third value; None for a mouse (QML sends -1).
+    Kept above 0.01: a pen just touching still makes a (tiny) dab, never one of no size."""
+    return None if p < 0 else round(min(1.0, max(0.01, p)), 3)
+
+
+def ring_px(ring: list, centre, w: float, h: float) -> float:
+    """The ring's mean radius in px of a w x h picture (the ring's points are parts of it)."""
+    if not ring or centre is None:
+        return 0.0
+    return sum(math.hypot((p[0] - centre[0]) * w, (p[1] - centre[1]) * h) for p in ring) / len(ring)
+
+
+def sized(size0: float, ring0_px: float, dx_px: float, lo: float, hi: float) -> float:
+    """F + drag: the brush size after a drag of dx_px to the right (left: smaller), so the ring's edge follows the
+    pointer (its radius on screen grows by dx), within the field's range; a millimetre's tenth."""
+    r0 = max(ring0_px, 8.0)
+    return round(min(hi, max(lo, size0 * max(0.02, (r0 + dx_px) / r0))), 4)

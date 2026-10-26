@@ -178,9 +178,18 @@ class Engine:
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""
-        import mmap
         out = self._request({"view": req})
-        shm = out["shm"]
+        return (*self._pixels(out["shm"]), out)
+
+    def sculpt_view(self, view: dict, **req) -> tuple[dict, tuple | None]:
+        """A live stroke event and the viewport picture after it, in one request (CL2): (the sculpt reply, the
+        picture as `view` gives it, or None when the engine drew none: an end or cancel)."""
+        out = self._request({"sculpt": {**req, "view": view}})
+        v = out.pop("view", None)
+        return out, ((*self._pixels(v["shm"]), v) if v else None)
+
+    def _pixels(self, shm: dict) -> tuple[memoryview, int, int, int]:
+        import mmap
         if shm["format"] != "rgba8":
             raise EngineError(f"view: the engine sent {shm['format']}; the viewport reads rgba8")
         with self._lock:
@@ -188,7 +197,7 @@ class Engine:
                 self._close_shm()
                 self._shm = (shm["name"], mmap.mmap(-1, shm["size"], tagname=shm["name"], access=mmap.ACCESS_READ))
             view = memoryview(self._shm[1])[shm["offset"]:shm["offset"] + shm["bytes"]]
-        return view, shm["width"], shm["height"], shm["stride"], out
+        return view, shm["width"], shm["height"], shm["stride"]
 
     def _close_shm(self):
         if self._shm is not None:
