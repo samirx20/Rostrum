@@ -58,7 +58,7 @@ The **Colour** row shows the colour the track is drawn in.
 
 ## 4. Write notes
 
-1. With the track selected, the **Editor** shows its notes beside a piano keyboard, framed so every note is in view
+1. With the track selected, the **Editor** shows its notes beside a piano keyboard, centred on its notes (each track then stays where you scrolled it)
    (drums: a row per drum; recordings: their waveform). Each octave's C is labelled (C4 is middle C); **click a key
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
    **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.

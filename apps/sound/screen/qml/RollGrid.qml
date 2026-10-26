@@ -5,8 +5,9 @@ import RostrumKit
 // drum), at the left a real keyboard (white and black keys, a C label on every octave; press a key to hear it, drag
 // across to play each one: backend.playKey) or the drum names, the beat grid, and the track's notes, hits or clips
 // (RollNotes.qml, painted).
-// rowAt(y) is the one mapping from height to a key (MIDI number), a drum row, or 0 for clips. frame(n): rows high
-// enough that n keys (the track's notes) fit the view, at least 7 px (PianoRoll calls it when it opens on a track).
+// rowAt(y) is the one mapping from height to a key (MIDI number), a drum row, or 0 for clips. Key rows have one
+// height, keyRow, whatever the track, its notes or an undo (rows that re-fitted on every open and undo, 12 / 13.3 / 16 px,
+// put clicks on the wrong keys: critic r11); the key range is always taller than the view (timeline.roll).
 Item {
     id: g
     property var roll
@@ -20,9 +21,8 @@ Item {
     readonly property var shownKeys: roll.rows || null       // Only the key's rows: the keys shown, top first (null = every key from hi to lo)
     readonly property var rowIdx: { if (!shownKeys) return null; var m = {}; for (var i = 0; i < shownKeys.length; i++) m[shownKeys[i]] = i; return m }
     readonly property int count: notes ? (shownKeys ? shownKeys.length : roll.hi - roll.lo + 1) : roll.kind === "drums" ? Math.max(1, roll.drums.length) : 1
-    property int fitRows: 0
-    function frame(n) { fitRows = n }
-    readonly property real rowH: notes ? Math.max(viewHeight / count, fitRows > 0 ? Math.max(9, Math.min(16, viewHeight / (fitRows + 2))) : 12)
+    readonly property real keyRow: 12
+    readonly property real rowH: notes ? Math.max(viewHeight / count, keyRow)
                                : roll.kind === "drums" ? Math.min(56, viewHeight / count) : viewHeight
     // A drum hit's diamond, centred on its time on its row: half its width (and height) in px. The one place: RollNotes
     // draws it this size, RollInput catches a click anywhere on it (backend.rollAt, a hit is caught either side of its time).
