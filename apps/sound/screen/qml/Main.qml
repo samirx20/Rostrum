@@ -82,6 +82,7 @@ AppShell {
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     SettingsPanel { id: settingsPanel }
     actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
+        SoloChip { },   // only while a track or group is soloed: it holds the rest back from play and export
         Item {   // the chip's place is held too (an empty song leaves it empty), as Export's
             width: loudness.slotWidth; height: Theme.button
             LoudnessReadout { id: loudness; visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter }

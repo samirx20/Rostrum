@@ -23,7 +23,7 @@ IGNORE = ()
 # about 2 minutes. Every brief runs it before reporting; the full run (every state, four sizes) stays for merges and audits.
 BATCH = 1        # one state to a process: measured, Sound opens a song slower the more windows it has made (10 states
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
-QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "file-menu",
+QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
          "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -114,6 +114,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("in-key-rows", ["--sample"], [DKEY, "select melody", "dock editor", "inkey rows"]),
         ("export", ["--sample"], ["deliver streaming", "export-open"]),
         ("long-export", long_project(), [*busy, "deliver streaming", "export-open"]),
+        ("solo-on", ["--sample"], ["solo melody", "select drums"]),                        # the top bar's "Solo on: …" chip, a lit S
+        ("solo-on-long", long_project(), [f"solo {LONG_TRACK}", "mute drums"]),            # a long name in the chip
+        ("export-solo", ["--sample"], ["solo melody", "mute drums", "exportsheet open streaming"]),   # the sheet warns: solo, mute, one click
         ("export-sheet", long_project(), [*busy, "exportsheet open streaming", f"exportwhere {LONG_FOLDER}"]),   # S34: the kit sheet
         ("export-versions", long_project(), [*busy, "range 1 3", "exportsheet open streaming", "export-what range",
                                              "export-more podcast mp3", "export-more ebu flac"]),     # P28: What + two more versions

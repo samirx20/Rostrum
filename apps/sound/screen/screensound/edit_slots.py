@@ -17,6 +17,7 @@ from .actions import LIST
 
 class EditSlots:
     snapChanged = Signal()
+    listeningChanged = Signal()             # = docChanged (bridge.py): a solo or mute may have moved
 
     @Property("QVariantMap", notify=snapChanged)
     def snapLine(self):
@@ -50,6 +51,19 @@ class EditSlots:
             call, label = moves.toggle_call(self.doc, track_id, field)
             self._apply([call], label)
         self._guard(go)
+
+    @Property("QVariantMap", notify=listeningChanged)
+    def listening(self):
+        """{solo: [names], mute: [names]} of the tracks and groups heard alone / not heard now: what the top bar's
+        "Solo on" chip and the Export sheet say, and Hear everything turns off (op mix.hear_all)."""
+        from rostrum_sound.doc.ops_listen import listening
+        return listening(self.doc.data)
+
+    @Slot(str)
+    def hearAll(self, what):
+        """One click: every solo ("solo"), every mute ("mute") or both off, one undo step."""
+        words = {"solo": "Turn off solo", "mute": "Turn off mute", "both": "Turn off solo and mute"}
+        self._guard(lambda: self._apply([{"op": "mix.hear_all", "args": {"what": what}}], words.get(what, "Hear everything")))
 
     @Slot(float, int, float)
     def addNote(self, t, key, px=0.0):

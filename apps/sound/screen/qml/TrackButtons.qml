@@ -15,6 +15,7 @@ Row {
     Item {
         width: 22; height: 22
         HeaderButton {
+            objectName: "arm_" + r.track.id
             visible: !!r.track.canRecord
             letter: "R"; lit: recorder.armed === r.track.id; litColor: Theme.danger
             tip: lit ? "Armed: press Record (R) to record on this track. Click to disarm."
@@ -22,9 +23,9 @@ Row {
             onClicked: recorder.arm(r.track.id)
         }
     }
-    HeaderButton { letter: "M"; lit: !!r.track.mute; litColor: Theme.warn; tip: lit ? "Muted: click to hear it again" : "Mute this track"
+    HeaderButton { objectName: "mute_" + r.track.id; letter: "M"; lit: !!r.track.mute; litColor: Theme.warn; tip: lit ? "Muted: click to hear it again" : "Mute this track"
                    onClicked: backend.toggleTrack(r.track.id, "mute") }
-    HeaderButton { letter: "S"; lit: !!r.track.solo; litColor: Theme.ok; tip: lit ? "Soloed: click to hear every track" : "Solo: hear only this track (and other soloed ones)"
+    HeaderButton { objectName: "solo_" + r.track.id; letter: "S"; lit: !!r.track.solo; litColor: Theme.ok; tip: lit ? "Soloed: click to hear every track" : "Solo: hear only this track (and other soloed ones)"
                    onClicked: backend.toggleTrack(r.track.id, "solo") }
     LaneToggle { visible: r.showAuto; track: r.track }
 }
