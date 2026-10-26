@@ -88,6 +88,7 @@ FieldFrame {
         exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
         onOpened: if (f.searchable) search.forceActiveFocus()
         onAboutToHide: f.handKeysBack()        // at once, not after the fade: a Return right after a pick is the popover's
+        onClosed: f.handKeysBack()             // and again once closed: Qt gives the keys to the window as it finishes closing
         contentItem: Column {
             id: list
             focus: true

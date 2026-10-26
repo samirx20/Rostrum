@@ -16,7 +16,7 @@ def stem(name: str) -> str:
 def _key(f: dict) -> tuple:
     kind = f["kind"]
     if kind == "entrances_overlap":
-        return kind, tuple(sorted(stem(i) for i in f["layers"]))
+        return kind, len(f["layers"]) > 2, tuple(sorted({stem(i) for i in f["layers"]}))
     if kind in ("never_shown", "not_showing"):
         return kind, stem(f["layer"]), tuple(f.get("reasons", ())), f.get("why", "")
     if kind in ("key_after_end", "key_does_nothing"):
@@ -34,6 +34,9 @@ def _examples(ids: list[str], n: int = 3) -> str:
 
 def _text(kind: str, members: list[dict]) -> str:
     first, n = members[0], len(members)
+    if kind == "entrances_overlap" and len(first["layers"]) > 2:
+        ids = [i for m in members for i in m["layers"]]
+        return f'{n} overlapping runs of entrances ({len(ids)} layers: {_examples(ids)}), {min(m["start"] for m in members)}–{max(m["end"] for m in members)} s.'
     if kind == "entrances_overlap":
         secs = [m["overlap_s"] for m in members]
         together = sum(1 for m in members if m["apart_s"] < 0.001)

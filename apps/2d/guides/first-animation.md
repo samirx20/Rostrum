@@ -72,7 +72,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 3. Drag a picked diamond to move them all. Hold **Alt** and drag the first or the last picked diamond to stretch or squeeze them all in time.
 4. **Ctrl+C** copies the picked keys. Pick other layers, move the playhead and press **Ctrl+V**: the keys land on the same settings of those layers, starting at the playhead and keeping their spacing. A picked layer that has no such setting (a rectangle has no text Size) gets nothing, and the top bar says which one and why.
 5. **,** and **.** jump the playhead to the previous or next thing that happens: a key, a marker, a drawing, or where a layer starts or ends. With layers picked, only theirs.
-6. To make layers start one after another, pick them and click **Stagger…** at the top of the settings panel. A small box opens under the button (the picture stays as it is: nothing dims). Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Press Enter or click away to keep it (one step; the box closes), or press Esc to take it back. Open Stagger again to change it.
+6. To make layers start one after another, pick them and click **Stagger…** at the top of the settings panel. A small box opens under the button (the picture stays as it is: nothing dims). Set "Each starts [2 f] after the one before" and an **Order** (stack, as picked, left to right, top to bottom, from the centre, random). The bars spread as you change it. Press Enter or click away to keep it (one step; the box closes), or press Esc to take it back. Any other command while it is open (Ctrl+G, Delete, Ctrl+Z …) keeps it first, then runs. Open Stagger again to change it.
 
 ## 8. Play it
 
@@ -81,7 +81,7 @@ A value moves over time when it has **keys**. A key is a small diamond that reme
 
 ## 9. Do something to several layers at once
 
-Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer at the level you are in. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
+Select first, then act. Hold **Shift** and click more things in the picture, or **Ctrl+click** more names in the timeline, or drag a box round them on empty canvas, or press **Ctrl+A** for every layer at the level you are in. The panel then shows the settings they share ("Mixed" where they differ); change one and it changes on all of them, as one step. A number typed in **X** or **Y** moves them together instead: the leftmost (topmost) one lands on it and the rest keep their spacing; **+20** adds 20 to each one's own value. One box is drawn round everything picked: drag its squares to resize them all together, or just outside a corner to turn them all (one undo step each).
 
 The top of the **settings panel** shows only what applies to them: **Combine** (two or more shapes), **Group**, **Mask**, **Align**, **Distribute** (three or more); **…** (more) holds the rest. Right-click gives the short menu (cut, copy, group, order, hide, lock, rename); everything is also in **Ctrl+K**, and in a few shortcuts (Ctrl+G groups, even one layer, Ctrl+Shift+G ungroups).
 

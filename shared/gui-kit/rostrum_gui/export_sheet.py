@@ -65,6 +65,7 @@ class ExportSheet(QObject):
         self.bridge = bridge
         self._open, self._choice, self._range, self._folder = False, "", "all", ""
         self._state, self._note, self._progress, self._result = "", "", 0.0, {}
+        self._writing = ""                          # the folder the running export writes into (fixed when it starts)
         self._asked: Path | None = None
         self._stem_chosen = ""                      # the name typed in the sheet ("" = the app's default)
         self._can_replace = True
@@ -174,9 +175,12 @@ class ExportSheet(QObject):
     @Property(str, notify=changed)
     def where(self):
         """Where the file goes: the folder chosen; once an export is done, the folder it really wrote into (the result's
-        own path, never the next version's); else what the next export will write."""
+        own path, never the next version's); while one runs, the folder it is writing into (critic r10: the line switched to
+        the next version, v002, while the file was still being written into v001); else what the next export will write."""
         if self._folder:
             return self._folder
+        if self._state == "running" and self._writing:
+            return self._writing
         if self._state == "done" and self.path:
             return str(Path(self.path).parent)
         return self.default_folder()
@@ -376,6 +380,7 @@ class ExportSheet(QObject):
     _started = False                             # an export was started in this window (Ctrl+Shift+E repeats it)
 
     def _go(self, out, overwrite):
+        self._writing = str(out.parent) if out else self.default_folder()     # before begin makes the version folder
         try:
             plan = self.begin(out, overwrite)
         except Exception as e:  # noqa: BLE001  refused before it started: say why, nothing written

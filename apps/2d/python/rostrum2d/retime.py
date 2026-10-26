@@ -26,6 +26,7 @@ from rostrum_core.keys import marked
 from rostrum_core.marker_times import lookup
 
 from . import fields as F
+from .subtree import Subtree
 
 FIELD, END = "marker", "endMarker"
 # every list whose items have keys of their own (kind.LISTS): one left out keeps "#marker" key times unresolved
@@ -33,9 +34,12 @@ CHILDREN = ("effects", "masks", "layers", "bones", "iks", "binds", "stops")
 END_OF_COMP = 36000.0               # `end`'s "End of comp" word (fields.py): stays the end of the comp
 
 
+_TIMED = Subtree(lambda node: ("timed",) if node.get(FIELD) or node.get(END) or any(marked.marked(k) for k in node.get("keys", ())) else (),
+                 lambda node: (c for key in CHILDREN for c in node.get(key, ())))   # remembered per item: a drag's move asks again
+
+
 def _any_timed(node: dict) -> bool:
-    return (bool(node.get(FIELD) or node.get(END)) or any(marked.marked(k) for k in node.get("keys", []))
-            or any(_any_timed(c) for key in CHILDREN for c in node.get(key, [])))
+    return bool(_TIMED(node))
 
 
 def _at(item: dict, field: str, markers: dict | None) -> float:

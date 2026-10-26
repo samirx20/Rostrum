@@ -106,7 +106,7 @@ The **Colour** row shows the colour the track is drawn in.
    as **Quantise** and **Transpose**, each always in the same place. A button with a small **▾** beside it (Quantise ▾,
    Humanise ▾) runs at once with the amounts you used last; its **▾** opens a small box of amounts. While it is open
    every change plays straight away on the notes; **Enter** or a click away keeps it as one undo step, **Esc** puts
-   everything back. **Humanise** loosens the selected notes a little (writes it into them): its **▾** sets how much,
+   everything back; any other command while it is open (Ctrl+Z included) keeps it first. **Humanise** loosens the selected notes a little (writes it into them): its **▾** sets how much,
    timing in milliseconds, velocity and length, and **Another take** gives a new result with the same amounts.
    **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
    track without moving its notes, use the track's **Feel**). **Transpose ▾ › By…** moves the selected notes any number

@@ -25,6 +25,8 @@ drags call it.
 """
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
+
 DISTANCE = 6.0                 # screen px, at any zoom (one number for one feel, INTERACTION 1.11)
 ALL = (0, 1, 2)
 _SAME = 0.5                    # composition px: lines this close to the caught one are shown as caught too
@@ -120,26 +122,52 @@ def _equal(box, sp, limit, i):
     return best
 
 
+class _Lines:
+    """Every target's three lines on each axis, sorted by where they are, made once per list of targets (a drag's
+    press): a move looks up only the lines within the snap distance (bisect) instead of every layer's (200 layers:
+    ~2-3 ms of each move)."""
+    __slots__ = ("targets", "ats", "rows")
+
+    def __init__(self, targets):
+        self.targets, self.ats, self.rows = targets, [], []
+        for lo, hi in ((0, 2), (1, 3)):
+            rows = sorted((at, n, k, rank, t) for n, (rank, t) in enumerate(targets)
+                          for k, at in _lines((t[lo], 0, t[hi]), ALL))
+            self.rows.append(rows)
+            self.ats.append([r[0] for r in rows])
+
+    def near(self, a, lo, hi):
+        """The lines of axis a from lo to hi (inclusive), as (at, order, line, rank, target)."""
+        ats = self.ats[a]
+        return self.rows[a][bisect_left(ats, lo):bisect_right(ats, hi)]
+
+
+_KEPT = [None]                 # the last targets' _Lines (one drag at a time; held, so its id stays its own)
+
+
+def _index(targets) -> _Lines:
+    if _KEPT[0] is None or _KEPT[0].targets is not targets:
+        _KEPT[0] = _Lines(targets)
+    return _KEPT[0]
+
+
 def _axis(box, targets, limit, which, a):
     """Best snap on one axis (a = 0: x, 1: y): ((rank, distance), offset, the targets it lines up with); None."""
     lo, hi = (0, 2) if a == 0 else (1, 3)
     mine = _lines((box[lo], 0, box[hi]), which)
-    best = None
-    for rank, t in targets:
-        for _, at in _lines((t[lo], 0, t[hi]), ALL):
-            for _, m in mine:
-                d = at - m
-                if abs(d) <= limit and (best is None or (rank, abs(d)) < best[:2]):
-                    best = (rank, abs(d), d)
+    if not mine:
+        return None
+    index, best = _index(targets), None
+    for _, m in mine:
+        for at, n, k, rank, t in index.near(a, m - limit, m + limit):
+            d = at - m
+            if abs(d) <= limit and (best is None or (rank, abs(d), n, k) < best[:2] + best[3:]):
+                best = (rank, abs(d), d, n, k)
     if best is None:
         return None
     d = best[2]
-    hits = []
-    for _, t in targets:
-        for _, at in _lines((t[lo], 0, t[hi]), ALL):
-            if any(abs(at - (m + d)) <= _SAME for _, m in mine):
-                hits.append((at, t))
-    return best[:2], d, hits
+    hits = sorted({(n, k): (at, t) for _, m in mine for at, n, k, _, t in index.near(a, m + d - _SAME, m + d + _SAME)}.items())
+    return best[:2], d, [h for _, h in hits]
 
 
 def _line(at, t, moved, a):

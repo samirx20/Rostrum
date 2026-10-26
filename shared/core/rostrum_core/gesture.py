@@ -24,11 +24,10 @@ class Gesture:
         self._near = set()           # the ids the shown state differs on from the start: compares look only there
         self._made = None            # a fresh step's edits from the start (the shown state is exactly start + these)
         self._ended = False          # closed (a window closing cancels it: its owner's later end does nothing)
+        self.interrupt = None        # how it ends when another edit comes (Document.make_way); None: that edit is refused
 
     def __enter__(self):
-        if self.doc._gesture is not None:
-            raise RostrumError(codes.CONFLICT, "gesture", f'"{self.label}"',
-                               f"can't start: \"{self.doc._gesture.label}\" is still being dragged")
+        self.doc.make_way("gesture")            # an open box that knows how ends first; else a plain refusal
         self.start, self._start_idx = self.doc.data, self.doc._index()   # never changed in place: no copy needed
         self.doc._gesture = self
         return self

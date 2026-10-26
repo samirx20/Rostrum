@@ -17,6 +17,7 @@ class UndoMixin:
     # undo / redo: new changes, per author
     @_through_door
     def undo(self, who: Who) -> Change | None:
+        self.make_way("undo")               # an open box is kept first (as Enter): Ctrl+Z then takes it back
         c = self.history.last_undoable(who)
         return self.undo_changes([c], who) if c else None
 
@@ -50,6 +51,7 @@ class UndoMixin:
 
     @_through_door
     def redo(self, who: Who) -> Change | None:
+        self.make_way("redo")
         c = self.history.last_redoable(who)
         if not c:
             return None
@@ -58,9 +60,8 @@ class UndoMixin:
         return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
 
     def _replay(self, edits, who, label, **kw) -> Change:
-        if self._gesture is not None:           # undo / redo under a live drag or popover would step the history under
-            raise RostrumError(codes.CONFLICT, "undo", "the document",            # what it shows (its end then mixes both)
-                               f'has "{self._gesture.label}" open right now', hint="Finish it first: Enter keeps it, Esc puts it back.")
+        self.make_way("undo", end=False)    # under a live drag or popover it would step the history under what it
+                                            # shows (its end then mixes both): undo / redo end an open box first
         work, idx = E.fork(self.data, self.kind.lists, self._index())
         done = [E.apply(work, self.kind.lists, e, label, idx) for e in edits]
         return self.commit(work, done, who, label, idx=idx, **kw)

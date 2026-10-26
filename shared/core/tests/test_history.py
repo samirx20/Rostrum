@@ -51,6 +51,29 @@ def test_undo_while_a_drag_or_popover_is_open_is_refused_and_changes_nothing():
     assert x(doc) == 40 and doc.item("cam_1")["dof"] is True and doc.seq == 2
 
 
+def test_an_open_box_that_says_how_it_ends_makes_way_for_another_edit():
+    """Critic r10: an open Stagger box made Ctrl+G say "being dragged by a person" and Esc then lost the stagger.
+    A box with `interrupt` (keep, as Enter does) ends first: the other edit runs on top, and Ctrl+Z takes back
+    the box's own change first; a drag a person holds (no `interrupt`) refuses in plain words."""
+    doc = toy.sample()
+    g = doc.gesture("Stagger 2 layers", SAM).__enter__()
+    g.interrupt = lambda: g.__exit__(None, None, None)
+    g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 40}})
+    doc.apply(CAM, SAM)
+    assert doc.history.changes[0].label == "Stagger 2 layers" and len(doc.history.changes) == 2
+    assert x(doc) == 40 and doc.item("cam_1")["dof"] is True
+    g = doc.gesture("Stagger 2 layers", SAM).__enter__()
+    g.interrupt = lambda: g.__exit__(None, None, None)
+    g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 70}})
+    doc.undo(SAM)                                        # kept, then taken back: the card is where it was
+    assert x(doc) == 40 and doc.history.changes[-1].label == "Undid: Stagger 2 layers"
+    with doc.gesture("Move card", SAM) as g:
+        g.preview({"op": "layer.move", "target": ["card"], "args": {"x": 90}})
+        with pytest.raises(RostrumError, match="is still open") as e:
+            doc.apply(CAM, SAM)
+        assert "dragged by a person" not in e.value.person()
+
+
 def test_a_drag_back_to_the_start_takes_its_steps_back_and_a_click_sends_nothing():
     doc, heard = toy.sample(), []
     doc.subscribe(lambda ev: heard.append(ev.kind))

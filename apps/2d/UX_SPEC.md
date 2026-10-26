@@ -1217,7 +1217,7 @@ operation is one (`mask.make`).
 - **Goal:** cards, letters of a logo or icons start one after another.
 - **Steps:** select the layers (or their keys) → context bar **Stagger…** → a small popover: **Each starts [2 f]
   after the one before**, **Order: stack · as picked · left to right · top to bottom · from the centre · random** →
-  bars and keys spread live as you change the number → click away to keep it.
+  bars and keys spread live as you change the number → Enter or a click away keeps it; any other command keeps it first.
 - **Feedback:** live; the bars form a staircase.
 - **Undo and adjust:** one step; open Stagger again to change it (it re-spreads from the first one).
 - **Agent:** `layer.stagger {ids, by, order}`; picked keys: `key.stagger {by, order}` (H31).

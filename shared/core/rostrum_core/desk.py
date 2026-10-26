@@ -75,7 +75,9 @@ def _whole(parts, act, newest_first: bool):
 
 def undo(docs, who: Who, open_item=None):
     """(document, the undo change) for the person's newest live change across `docs`; None when there is none.
-    A step across documents is undone whole (`.all` on the result)."""
+    A step across documents is undone whole (`.all` on the result). An open box is kept first (Ctrl+Z takes it back)."""
+    for d in docs:
+        d.make_way("undo")
     best = _newest(docs, lambda h, w: h.last_undoable(w), who)
     if best is None:
         return None
@@ -87,6 +89,8 @@ def undo(docs, who: Who, open_item=None):
 def redo(docs, who: Who, open_item=None):
     """(document, the redo change) for what the person undid last across `docs`; None when there is nothing to
     redo, or the person has made a new change in any of them since that undo. A step is redone whole."""
+    for d in docs:
+        d.make_way("redo")
     best = _newest(docs, lambda h, w: h.last_redoable(w), who)
     newest_own = max((c.t for d in docs for c in [d.history.newest_own(who)] if c is not None), default=0.0)
     if best is None or best[0] < newest_own:

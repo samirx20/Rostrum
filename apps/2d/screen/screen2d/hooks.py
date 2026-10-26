@@ -5,9 +5,10 @@ from rostrum2d import fields as F, fill_fields, stepped, text_anchor
 from rostrum2d.frame import TYPE as FRAME
 from rostrum_gui import sections
 
-from . import beat_words, corner_rows, exprs, outline, fill_rows, font_rows, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
+from . import beat_words, corner_rows, exprs, outline, fill_rows, font_rows, pair_keys, pin_depth, project_picks, route, size_rows, soundtrack_rows, swap_rows
 
-SIBLING_PICKS = {"matte": lambda s: True,                          # any layer beside it can be its track matte
+SIBLING_PICKS = {"matte": lambda s: s.get("type") != FRAME,       # any layer beside it that draws a picture can be its
+                                                                    # track matte: the frame (the camera) draws none
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
                  "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath")}   # a layer rides one (not a riding one)
 
@@ -114,12 +115,15 @@ class Hooks2D:
     def anim_state(self, item, param):
         if param == fill_rows.ROW:                       # the Fill row's mark: its colour's or its stops' keys
             return fill_rows.anim_state(item, self.own_t(item["id"]), self.comp()["fps"])
-        return route.anim_state(self.placed_item(item["id"]), param, self._t, self.comp()["fps"])
+        placed = self.placed_item(item["id"])          # a pair's still half reads as its animated partner (pair_keys.py)
+        return route.anim_state(placed, pair_keys.rides(placed, param) or param, self._t, self.comp()["fps"])
 
     def animate_calls(self, item_id, param, stop=False):
         fps = self.comp()["fps"]
         if param == fill_rows.ROW:
             return fill_rows.animate_calls(self.doc.item(item_id), self.own_t(item_id), fps, stop)
+        if not stop and pair_keys.rides(self.placed_item(item_id), param):    # its partner's mark keys only the partner
+            return [], f"Key {F.param(self.doc.item(item_id)['type'], param).label} at {self._t:.2f} s"
         calls, label = route.animate_calls(self.placed_item(item_id), param, self._t, fps, stop)      # built in composition seconds
         off = self.offset(item_id)
         for c in calls:                                  # the document writes the layer's own seconds

@@ -15,6 +15,7 @@ from rostrum2d import fields as F
 from rostrum2d.evaluate import value_at
 from rostrum_core.keys import animated
 from rostrum2d.retime import END_OF_COMP
+from rostrum2d.subtree import Subtree
 
 TIMELESS = {"shape", "text", "image", "path", "group", "camera"}   # their start / end only say whether they show
 FOLLOWS = ("ridePath", "pathLayer")                                 # fields that name a path layer to follow
@@ -48,15 +49,22 @@ def _layer_of(idx, item_id):
 
 def _reads_others(comp, layers, lists) -> bool:
     """An expression anywhere, or a layer following one of `layers` as its path."""
-    stack = [comp]
-    while stack:
-        item = stack.pop()
-        if item.get("exprs") or any(item.get(f) in layers for f in FOLLOWS):
-            return True
-        for key in lists.get(item.get("type"), ()):
-            if key != "keys":
-                stack.extend(item.get(key, ()))
-    return False
+    found = _reads(lists)(comp)
+    return "@expr" in found or any(lay in found for lay in layers)
+
+
+_READS = {}
+
+
+def _reads(lists):
+    """What a subtree reads of others (remembered per item: subtree.py): "@expr" for an expression, the path layers
+    followed by name."""
+    key = id(lists)
+    if key not in _READS:
+        _READS[key] = (lists, Subtree(
+            lambda item: (["@expr"] if item.get("exprs") else []) + [item[f] for f in FOLLOWS if item.get(f) and isinstance(item[f], str)],
+            lambda item: (c for key in lists.get(item.get("type"), ()) if key != "keys" for c in item.get(key, ()))))
+    return _READS[key][1]
 
 
 def _seen(item, t, lists):

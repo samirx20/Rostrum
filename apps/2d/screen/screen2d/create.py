@@ -5,6 +5,8 @@ Shapes: press-drag-release on the canvas draws one at that place and size: one c
 tool back to Move. Shift = square / circle, Alt = from the centre, a click under `slop` = 200 x 200 centred on it.
 A line or an arrow is drawn from where the press was to where it lets go (its length and its turn; Shift = in steps
 of 45°), as tall as its line or head.
+Drawn shapes and text clicks land on whole pixels (the pointer is rounded where it comes in: at Fit zoom one screen
+pixel is a fraction of a composition pixel, and 599.9 is nobody's number); `addShape` takes the numbers it is given.
 Text: a click starts a text there, a dragged box wraps inside; typing is one undo step (typing_session.py). A new text
 starts as a script's does (fields.py's defaults: centred on its point, text_anchor.py), so the click is the middle of
 its first line and the words grow both ways; Align Left / Right makes them grow right / left from it. All coordinates in and out are composition px; the screen maps them (Stage's mapping only).
@@ -109,13 +111,14 @@ class Create(QObject):
     def beginShape(self, kind, x, y, slop):
         if kind not in LABELS:
             return self.b._fail(f"Error: shape: {kind!r} is not a shape here ({', '.join(LABELS)}).")
-        self._press = (kind, x, y, slop)
+        self._press = (kind, round(x), round(y), slop)
         self._set_box({})
 
     @Slot(float, float, bool, bool)
     def dragShape(self, x, y, shift, alt):
         if self._press is None:
             return
+        x, y = round(x), round(y)                  # the pointer on whole composition pixels (a Fit zoom gives 599.9)
         kind, x0, y0, slop = self._press
         if abs(x - x0) + abs(y - y0) <= slop:
             return self._set_box({})
@@ -132,17 +135,18 @@ class Create(QObject):
     def endShape(self, x, y, shift, alt):
         if self._press is None:
             return
+        x, y = round(x), round(y)
         kind, x0, y0, slop = self._press
         self._press = None
         self._set_box({})
         click = abs(x - x0) + abs(y - y0) <= slop
         if kind in ALONG:
             cx, cy, length, turn = (x0, y0, DEFAULT_SIZE, 0.0) if click else along_box(x0, y0, x, y, shift)
-            return self._add(kind, cx, cy, length, 0.0, turn, soon=True)
+            return self._add(kind, round(cx), round(cy), round(length), 0.0, turn, soon=True)
         cx, cy, w, h = (x0, y0, DEFAULT_SIZE, DEFAULT_SIZE) if click else shape_box(x0, y0, x, y, shift, alt)
         if w < 1 or h < 1:
             return self.b._fail("Error: shape: draw it at least 1 px wide and high (hold Alt to draw from the centre).")
-        self._add(kind, cx, cy, w, h, soon=True)
+        self._add(kind, *map(round, (cx, cy, w, h)), soon=True)     # drawn: whole pixels, as a person types them
 
     @Slot(str, float, float, float, float)
     @Slot(str, float, float, float, float, float)
@@ -172,11 +176,12 @@ class Create(QObject):
         """Start typing at (x, y): the click point (the middle of the first line), or with width > 0 the top-left
         of a box the words wrap in (its first line lands at the box's top)."""
         self.finish()
+        x, y, width = round(x), round(y), round(width)    # the click on whole composition pixels, like a drawn shape
         if width > 0:
             x, y = x + width / 2, y + self._start_size() * F.defaults("text")["lineHeight"] / 2
-        place = {"x": round(x, 2), "y": round(y, 2)}
+        place = {"x": round(x), "y": round(y)}
         if width > 0:
-            place["boxWidth"] = round(width, 2)
+            place["boxWidth"] = width
         self._ink = ink_for(self.b.colourPick.colour_at(x + 6, y + 6), self.b.comp().get("background", ""))
         self._text = Session(self.b, None, {"size": self._start_size(), "color": self._ink}, place)
         self.b.select("")

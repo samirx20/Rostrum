@@ -115,7 +115,7 @@ inside.
 ### Track mattes
 
 A track matte uses another whole layer as the mask: its shape, letters or picture, animated with its own keys. Set
-`matte` on the layer to show (the id of a layer in the same group or comp) and `matteMode`:
+`matte` on the layer to show (the id of a layer in the same group or comp that draws something: not the Frame, which draws no picture; the Track matte list leaves it out) and `matteMode`:
 
 | `matteMode` | The layer shows |
 |---|---|

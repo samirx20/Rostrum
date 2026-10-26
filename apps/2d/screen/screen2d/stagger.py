@@ -58,7 +58,7 @@ class Stagger(QObject):
         label = f"Stagger {self._what}"
 
         def go():
-            self._drag = Drag(self.b.doc, self.b.who, label)
+            self._drag = Drag(self.b.doc, self.b.who, label, interrupt=self.end)   # another edit keeps it first
         if not self.b.guard(go):
             return False
         self._spread()
