@@ -13,6 +13,8 @@ No engine built -> EngineError, loudly: no estimate.
 from __future__ import annotations
 
 import atexit
+import hashlib
+import json
 import threading
 
 from . import drawing as D
@@ -20,6 +22,7 @@ from . import drawing as D
 _lock = threading.RLock()
 _own = None                 # this module's own engine (own_place)
 _host = None                # the running program's (`use`)
+_centres: dict = {}         # centres_at's last answers by (scene, times): a Stagger preview asks again and again for one document
 
 
 class Host:
@@ -158,31 +161,43 @@ def first_shown(doc_data: dict, layer_id: str) -> int | None:
 
 
 def centres_at(doc_data: dict, when: dict[str, float]) -> dict[str, tuple[float, float]]:
-    """Each layer's box centre in composition px, each at its own composition time (`when`: {id: seconds}), through
-    its groups, the camera and tilt (the engine's `place`). layer.stagger's spatial orders read these, so layers in
-    different groups compare where they are seen. A layer not drawn at its time (it enters from opacity or scale 0)
-    is placed where it is first seen after it, a tenth of a second at a time; one never seen fails in plain words."""
+    """Each layer's box centre in composition px (`when`: {id: seconds}; the earliest of them is the moment looked at),
+    through its groups, the camera and tilt (the engine's `place`). layer.stagger's spatial orders read these, so layers
+    in different groups compare where they are seen. The layers' own scale, opacity and time range are opened out for
+    this (`_unveiled`): one entering from opacity or scale 0, or starting later, has its place all the same and is never
+    waited for, so this is ONE engine ask for all layers, and the same document asks none again (a Stagger preview asks
+    on every change). A layer the engine still doesn't have (hidden, or inside a group out of its time) fails in plain
+    words."""
     if not when:
         return {}
     from .engine import EngineError
     from .scene import describe
     comp = next(c for c in doc_data["comps"] if c["id"] == _comp_of(doc_data, next(iter(when))))
-    fps, end = comp.get("fps", 30), float(comp.get("duration", 1))
     host = _host or Host()
-    scene = describe(doc_data, comp["id"], host.markers(), host.folder(), (min(when.values()), end))
-    out = {}
-    for id_, t in when.items():
-        for n in range(round(t * fps), round(end * fps) + 1, max(1, round(fps / 10))):
-            try:
-                p = host.place(scene, max(t, n / fps), [id_])[id_]
-            except (KeyError, ValueError, EngineError) as e:    # not drawn at this time: look on
-                if "not drawn" not in str(e):
-                    raise                                        # any other refusal is the engine's, told as it is
-                continue
-            out[id_] = comp_point(p, p["w"] / 2, p["h"] / 2)
-            break
-        else:
-            raise ValueError(f'"{id_}" is never drawn from {t:g} s to the end (hidden, out of its time or fully '
-                             "see-through), so it has no place to order by. Show it, or use order picked (the order "
-                             "you list) or stack")
-    return out
+    t = min(when.values())
+    scene = _unveiled(describe(doc_data, comp["id"], host.markers(), host.folder(), (t, float(comp.get("duration", 1)))), set(when))
+    key = (hashlib.sha1(json.dumps(scene, separators=(",", ":"), default=str).encode()).hexdigest(), t, tuple(sorted(when)))
+    if key not in _centres:
+        try:
+            got = host.place(scene, t, list(when))
+        except (KeyError, ValueError, EngineError) as e:
+            if "not drawn" not in str(e):
+                raise                                            # any other refusal is the engine's, told as it is
+            raise ValueError(f"{e}; so it has no place to order by. Show it (a hidden layer, or one in a group that is out "
+                             "of its time), or use order picked (the order you list) or stack") from None
+        if len(_centres) >= 8:
+            _centres.pop(next(iter(_centres)))
+        _centres[key] = {i: comp_point(p, p["w"] / 2, p["h"] / 2) for i, p in got.items()}
+    return dict(_centres[key])
+
+
+def _unveiled(scene: dict, ids: set[str]) -> dict:
+    """The scene with these layers' own scale, opacity and time range opened out (scale and opacity 1, their keys left
+    out, on from always), so the engine places them wherever they sit; the other nodes are left as they were."""
+    def walk(node):
+        kids = [walk(c) for c in node.get("layers", [])]
+        if node.get("id") in ids:
+            node = {**node, "props": {**node["props"], "scale": 1.0, "opacity": 1.0, "start": -36000.0, "end": 36000.0},
+                    "anim": {k: v for k, v in node.get("anim", {}).items() if k not in ("scale", "opacity")}}
+        return {**node, "layers": kids} if "layers" in node else node
+    return {**scene, "comp": walk(scene["comp"])}

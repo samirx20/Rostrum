@@ -64,3 +64,27 @@ def test_comp_px_strokes_use_the_running_programs_engine():
     assert asked == [(0.0, ["egg"])] and marks                       # the host's engine, with the project's markers
     pts = d.item("egg")["frames"][0]["paints"][0]["strokes"][0]["points"]
     assert [p[:2] for p in pts] == [[9.5, 9.5], [49.5, 9.5]]        # own px (10, 10) / (50, 10) -> pixel centres
+
+
+def test_ordering_by_place_asks_the_engine_once_for_layers_that_start_at_scale_0():
+    """layer.stagger's spatial orders (placement.centres_at): 48 dots scaled up from 0 are placed in ONE ask, as the
+    layers sit (a layer at scale 0 is not drawn, and used to be waited for a tenth of a second at a time: ~20 s)."""
+    from rostrum2d import placement
+    asked, seen = [], []
+
+    def place(scene, t, ids):
+        asked.append(ids)
+        seen.append({n["id"]: n for n in scene["comp"]["layers"]})
+        return {i: {"m": [1, 0, 10, 0, 1, 20, 0, 0, 1], "w": 40, "h": 40, "edge": ""} for i in ids}
+    d = Document.new(KIND)
+    ids = [f"d{i}" for i in range(48)]
+    d.apply([{"op": "comp.add", "args": {"id": "film"}},
+             *[{"op": "layer.add", "target": "film", "args": {"type": "shape", "id": i}} for i in ids],
+             *[{"op": "key.add", "target": i, "args": {"prop": "scale", "t": 0, "v": 0}} for i in ids]], SAM)
+    placement.use(placement.Host(place))
+    try:
+        got = placement.centres_at(d.data, {i: 0.0 for i in ids})
+    finally:
+        placement.use(None)
+    assert len(asked) == 1 and len(got) == 48 and got["d3"] == (30.0, 40.0)
+    assert all(n["props"]["scale"] == 1.0 and "scale" not in n.get("anim", {}) for i, n in seen[0].items() if i != "frame")

@@ -1,10 +1,11 @@
 //! Motion blur, smears and trails (apps/2d/MOTION.md). All three read the layer's real motion: the comp evaluated
 //! at other times (eval.rs `at`), so a rig-bound layer's motion is its posed motion. The shutter (shutter.rs) picks
-//! the sub-frame times scene_serve.rs `frame` writes a stage for; trails (trail.rs) and smears (smear.rs) are a
+//! the sub-frame times scene_serve.rs `frame` writes a stage for, as many as the motion on screen needs (steps.rs); trails (trail.rs) and smears (smear.rs) are a
 //! post-pass on the evaluated tree, run by scene_serve.rs `markup` between `eval::at` and `stage::stage`.
 
 mod shutter;
 mod smear;
+mod steps;
 mod trail;
 #[cfg(test)]
 mod tests;
@@ -90,6 +91,18 @@ impl Plan {
             trail::add(self, root, comp, fps);
         }
     }
+}
+
+/// The sub-frame times of the frame at `t` (none: no motion blur). The comp's `shutterSamples` (Blur steps) is the
+/// fewest: a frame whose layers move further on screen gets more (steps.rs). A request's own `shutterSamples` is the
+/// exact count (1 = a fast preview while playing, or a timing test).
+pub fn sub_frames(comp: &Node, req: &serde_json::Value, t: f64) -> Result<Vec<f64>, String> {
+    let (angle, n) = shutter(comp, req)?;
+    if angle <= 0.0 || n < 2 {
+        return Ok(vec![]);
+    }
+    let n = if req["shutterSamples"].is_null() { steps::steps(comp, t, fps(comp), angle, n) } else { n };
+    Ok(sample_times(t, fps(comp), angle, n))
 }
 
 /// Load-time check (scene_serve.rs `check`): the trails' copies and the comp's shutter.

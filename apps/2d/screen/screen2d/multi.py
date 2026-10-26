@@ -5,6 +5,8 @@ Shift+click on the canvas, Ctrl+click / Shift+click in the layers list, the rubb
 layer.distribute {gap}). A QObject part, read in QML as `backend.multi`."""
 from __future__ import annotations
 
+import math
+
 from rostrum2d import boxes as B
 from rostrum_gui import news
 from rostrum_gui.edits import Drag
@@ -30,22 +32,54 @@ class Multi(QObject):
         # only news, and each kind of news on its own signal: one `changed` for all six made every reader of any of
         # them run again whenever one moved (each box arriving with the picture re-lit every timeline row; ~37 ms
         # of a Ctrl+G)
+        self._boxes = self._group = (None, None)            # (what they were made from, the boxes): see `_made`
         for name in ("boxesChanged", "pickedChanged", "rideChanged"):
             told = news.relay(self, name)
             for s in (bridge.selectedItemsChanged, bridge.outlineChanged, bridge.shownChanged):
                 s.connect(told)
 
+    def _made(self):
+        """What the boxes are made from: the picked layers and the picture on screen (shown.py). A cache keyed on it
+        can't go stale the way one cleared by a list of signals did (one missed and a pick drew no outline)."""
+        return (tuple(self.layers()), self.b.shown_placed(), self.b.shown_t())
+
     @Property("QVariantList", notify=boxesChanged)
     def boxes(self):
         """The box of every selected layer (the primary first): the outlines the canvas draws, as the picture on screen
-        shows them (shown.py; a layer newer than the picture has none yet)."""
-        return [dressed(b) for b in self.b.shown_boxes(self.layers())]     # with their knobs (handle_kinds.dressed)
+        shows them (shown.py; a layer newer than the picture has none yet). Made once per change and kept: each outline
+        reads the whole list (`backend.multi.boxes[index]`), so remaking it per read made a pick of n layers n x n boxes
+        (48 layers: 2,500 boxes, ~100 ms)."""
+        made = self._made()
+        if not _same(self._boxes[0], made):
+            self._boxes = (made, [dressed(b) for b in self.b.shown_boxes(self.layers())])   # with their knobs (handle_kinds.dressed)
+        return self._boxes[1]
+
+    @Slot(str, result=str)
+    def outlinePath(self, skip):
+        """With several layers picked, every one's turned outline as ONE svg path (composition px): the canvas draws
+        them as one shape, not an item with knobs each (48 layers: ~250 ms of items -> a string). `skip`: the layer
+        whose outline something else is drawing now (painting its true edge, typing). Read `boxes` in the binding so
+        it runs again when they change."""
+        out = []
+        for b in self.boxes:
+            if b.get("id") == skip or b.get("w") is None:
+                continue
+            x, y, w, h = b["x"], b["y"], b["w"], b["h"]
+            ax, ay, a = x + b.get("ax", 0) * w, y + b.get("ay", 0) * h, math.radians(b.get("rot", 0))
+            c, s = math.cos(a), math.sin(a)
+            pts = [(ax + (px - ax) * c - (py - ay) * s, ay + (px - ax) * s + (py - ay) * c)
+                   for px, py in ((x, y), (x + w, y), (x + w, y + h), (x, y + h))]
+            out.append("M" + " L".join(f"{px:.2f},{py:.2f}" for px, py in pts) + " Z")
+        return " ".join(out)
 
     @Property("QVariantMap", notify=boxesChanged)
     def groupBox(self):
         """The one box round all the selected layers (their handles: group_slots.py); {} for fewer than two."""
-        boxes = self.b.shown_boxes(self.layers())
-        return dressed(union(boxes)) if len(boxes) > 1 else {}
+        made = self._made()
+        if not _same(self._group[0], made):
+            boxes = self.b.shown_boxes(self.layers())
+            self._group = (made, dressed(union(boxes)) if len(boxes) > 1 else {})
+        return self._group[1]
 
     @Property("QVariantMap", notify=rideChanged)
     def ride(self):
@@ -220,3 +254,8 @@ class Multi(QObject):
         ids = box(self.layers(), touched, set(mods.split()), "canvas")
         self._set(ids)
         return len(ids)
+
+
+def _same(was, now) -> bool:
+    """Multi._made's keys alike: the same layers and time, and the very same picture (not an equal one: no deep compare)."""
+    return was is not None and was[0] == now[0] and was[1] is now[1] and was[2] == now[2]

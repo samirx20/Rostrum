@@ -107,3 +107,16 @@ fn shutter_samples_never_cross_a_jump() {
     assert!(x(1.5, 1.5 + 1.0 / 120.0) > 950.0, "away from the cut the move still blurs");
     assert_eq!(eval::props_at(&scene.comp.layers[0], 0.99)["x"].as_f64(), Some(0.0), "no shutter: the plain value");
 }
+
+/// Steps follow the motion (steps.rs): a fast move gets copies at most GAP_PX apart, a still or slow one keeps the
+/// fewest (no extra cost), and the count never passes MOST.
+#[test]
+fn blur_steps_follow_the_move_on_screen() {
+    let blur = item("tr", "trail", json!({ "copies": 1.0, "spacing": 1.0, "fade": 0.5 }));
+    let steps = |speed: f64| super::steps::steps(&moving(speed, blur.clone()).comp, 0.5, 30.0, 180.0, 8);
+    assert_eq!(steps(0.0), 8, "nothing moves: the fewest");
+    assert_eq!(steps(4.0), 8, "2 px per shutter: the fewest");
+    // 60 px a frame, half a frame open: 30 px per shutter → 30 steps, 1 px apart.
+    assert_eq!(steps(60.0), 30);
+    assert_eq!(steps(10_000.0), super::steps::MOST);
+}

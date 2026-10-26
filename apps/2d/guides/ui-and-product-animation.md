@@ -85,7 +85,7 @@ Copies are only useful if you know which is which. Two ways, by who makes them:
   duplicate the row's group down the same way (`by_y`, `copy_ids: "row_{n}"`). An id that is already used is refused.
 
 Then stagger them in a reading order: `layer.stagger` with `order: "left_to_right"`, `"top_to_bottom"` or `"centre"`
-orders by where each is seen (one that fades or scales in from 0 counts where it is first seen).
+orders by where each is seen (one that fades or scales in from 0 counts where it sits, its own scale and opacity taken as full).
 
 ## Boxes, images, video
 

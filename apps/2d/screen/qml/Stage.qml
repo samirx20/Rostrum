@@ -346,7 +346,7 @@ Rectangle {
             }
             KeptRepeater {  // kept: picking another layer (or the frame, and back) moves the same outline and knobs
                 id: outlines    // to it, never remakes them
-                needed: backend.multi.boxes.length
+                needed: backend.multi.count > 1 ? 0 : backend.multi.boxes.length   // several: one light shape below, no knobs made
                 delegate: Handles {
                     required property int index
                     readonly property var modelData: backend.multi.boxes[index] || ({})
@@ -355,6 +355,17 @@ Rectangle {
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && !(modelData.type === "path" && backend.pen.editing) && !backend.pen.on
                 }
+            }
+            Shape {   // several layers: their outlines as one shape (multi.outlinePath): a dark halo under the accent line, as HaloLine draws one
+                id: multiOutline
+                visible: backend.multi.count > 1
+                scale: view.zoom; transformOrigin: Item.TopLeft
+                readonly property string d: backend.multi.boxes.length >= 0 ? backend.multi.outlinePath(
+                    well.drawing ? backend.paintEdge.layer : (backend.create.typing ? backend.selected : "")) : ""
+                ShapePath { strokeWidth: 3 / view.zoom; strokeColor: Qt.rgba(0, 0, 0, 0.6); fillColor: "transparent"; joinStyle: ShapePath.MiterJoin; capStyle: ShapePath.RoundCap
+                            PathSvg { path: multiOutline.d } }
+                ShapePath { strokeWidth: 1 / view.zoom; strokeColor: Theme.accent; fillColor: "transparent"; joinStyle: ShapePath.MiterJoin; capStyle: ShapePath.RoundCap
+                            PathSvg { path: multiOutline.d } }
             }
             Handles {   // several layers: one box round them all with the same knobs, acting on all together (group_slots.py)
                 box: backend.multi.groupBox; fit: view.zoom; space: marks; group: true

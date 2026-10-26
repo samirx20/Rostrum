@@ -13,8 +13,9 @@ COMP = [
       help="Shutter angle: how long each frame's shutter stays open, in degrees of a frame. 0 = no blur, "
            "180 = half a frame (the film look), 360 = a whole frame"),
     N("shutterSamples", "Blur steps", "Motion blur", 2, 64, 1, "", D, {"not": IS("shutter", 0)}, integer=True, default=8,
-      help="How many moments inside the open shutter are drawn and averaged. More = smoother blur on fast moves, "
-           "and each frame takes about that many times longer"),
+      help="The fewest moments inside the open shutter that are drawn and averaged. Fast moves get more on their own "
+           "(up to 128, so the blur is a smooth streak); a higher number here smooths slow moves too, and each frame "
+           "takes about that many times longer"),
 ]
 
 FIELDS = {

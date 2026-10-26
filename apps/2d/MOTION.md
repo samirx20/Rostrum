@@ -13,7 +13,7 @@ tables must match (engine `scene/tests.rs` checks it).
 | Item | Field | Kind | Animatable | Meaning |
 |---|---|---|---|---|
 | **comp** | `shutter` | number 0..720 ° | no | Shutter angle: how long each frame's shutter is open, in degrees of one frame. 0 = no motion blur (default), 180 = half a frame (the usual film look), 360 = the whole frame. |
-| | `shutterSamples` | whole number 2..64 | no | How many moments inside the open shutter are drawn and averaged. Default 8. Shown only when `shutter` > 0. |
+| | `shutterSamples` | whole number 2..64 | no | The fewest moments inside the open shutter that are drawn and averaged (fast moves get more: below). Default 8. Shown only when `shutter` > 0. |
 | **trail** (effect) | `copies` | whole number 1..32 | no | How many echoes follow the layer. Default 4. |
 | | `spacing` | number, frames | yes | Frames between one echo and the next. Default 2. |
 | | `fade` | number 0..1 | yes | Each echo's opacity is the one before times this. Default 0.6. |
@@ -43,11 +43,27 @@ still blur (engine `scene/eval.rs` `shutter_at`, `near_side`; FRAME.md).
 
 Exports go through the same `frame` request, so preview ≡ export.
 
-**Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
-the comp's values for that one frame (1 sample = no blur: a fast preview; or a timing test at 8 vs 16).
+**Steps follow the motion** (engine `motion/steps.rs`, as After Effects' adaptive sample limit). `shutterSamples` is the
+fewest. Before a blurred frame is staged, the comp is evaluated (no stage, no paint) at the edges of k equal slices of
+the open shutter (k = `shutterSamples`, 2..16), each as a sub-frame of the frame (so a cut is never a move); every
+layer's box corners (a text's estimated as for smears) are carried to the output through its own x, y, rotation and
+scale, its groups' and the frame's (`frame/mod.rs` `map`: pan, zoom, roll, depth). The fastest corner's move across one
+slice, × k, is that layer's px per shutter at its fastest; the frame takes
 
-**Cost:** about n times a sharp frame (n stages written and painted). 8 samples is a good start; push to 16–32
-only for very fast spins or whips where the steps show.
+    n = clamp(ceil(px per shutter / GAP_PX), shutterSamples, MOST)      GAP_PX = 1, MOST = 128
+
+so two neighbouring copies are at most about 1 px apart: a smooth streak, not a ladder of copies. Nothing moving (or
+moving under 1 px per step) keeps `shutterSamples`, at no extra cost but the probe (k + 1 evaluations, well under a
+millisecond each on a typical scene). Not measured: what moves inside a layer (a path's shape, letters playing their
+keys, a rig's warp, tilt's perspective); raise `shutterSamples` for those.
+
+**Request override (agents, previews):** `{"frame": {"t": 1.5, "shutter": 180, "shutterSamples": 1}}` overrides
+the comp's values for that one frame, and its `shutterSamples` is then the exact count, not adapted (1 sample = no blur:
+a fast preview while playing; or a timing test at 8 vs 16). The screen's playback sends 1 while time moves unless
+**Motion blur while playing** is on; then it sends nothing and plays the comp's own adaptive steps, exactly as export.
+
+**Cost:** about n times a sharp frame (n stages written and painted; layers that keep still are painted once:
+`still_runs.rs`). Only the fast frames take more steps, so an export with one whip pan costs a little more in total.
 
 ## Trails
 
@@ -87,8 +103,8 @@ Notes:
 ## Seeing it (agents)
 
 `look_frame` at the fastest moments shows the smear, the echoes and the blur; `look_frame` (`what: "sheet"`) over the move shows how
-they grow and settle. A smear frame should read as one stretched shape; if the steps of motion blur show, raise
-`shutterSamples`.
+they grow and settle. A smear frame should read as one stretched shape; motion blur on a fast move should read as one streak (steps adapt
+to layer and frame moves; if steps show inside a layer that changes shape fast, raise `shutterSamples`).
 
 ## Motion samples (the hand-off to RostrumSound)
 

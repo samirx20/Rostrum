@@ -57,8 +57,9 @@ def cascade(ctx, items: list[dict], args: dict, orders: Orders | None):
     """(item, how far it moves) for each item ({id, start: scene seconds}) in the cascade."""
     by, order = float(args["by"]), args.get("order", "stack" if orders else "picked")
     if order in SPATIAL:
-        for it, (x, y) in ((it, orders.places(ctx, items)[it["id"]]) for it in items):
-            it["x"], it["y"] = x, y
+        seen = orders.places(ctx, items)             # asked once for all, never once per item
+        for it in items:
+            it["x"], it["y"] = seen[it["id"]]
     stack = orders.stack(ctx, [it["id"] for it in items]) if orders and order == "stack" else []
     base = min(it["start"] for it in items)
     for it, rank in zip(items, ranks(items, order, stack)):

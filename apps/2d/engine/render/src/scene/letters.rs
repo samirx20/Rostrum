@@ -1,6 +1,7 @@
 //! Where each letter of a text layer goes when it is drawn letter by letter (stage_type.rs): on its lines as the
 //! normal text sits, or along `path`, each letter turned to the path's direction. One placement for both, so a
-//! text on a path can also play its keys letter by letter. Advances are the font's own (type_font.rs).
+//! text on a path can also play its keys letter by letter. Advances are the font's own (type_font.rs; a digit's the
+//! widest digit's for tabular figures drawn by hand).
 
 use kurbo::{BezPath, ParamCurve, ParamCurveArclen, PathSeg, Point, Shape};
 
@@ -33,7 +34,7 @@ pub struct Placed {
 
 pub fn place(it: &Item) -> R<Placed> {
     if it.num("boxWidth") != 0.0 {
-        return Err(format!("{}.boxWidth: text wrapped in a box is not drawn letter by letter yet (boxWidth 0, or no path and letterDelay 0)", it.id));
+        return Err(format!("{}.boxWidth: text wrapped in a box is not drawn letter by letter yet (boxWidth 0; or no path, letterDelay 0 and, on a font without tabular figures, figures not tabular)", it.id));
     }
     let lines: Vec<&str> = it.str("body").split('\n').collect();
     let measures = lines.iter().map(|l| type_font::measure(it, l)).collect::<R<Vec<_>>>()?;

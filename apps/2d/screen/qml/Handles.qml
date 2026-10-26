@@ -14,6 +14,8 @@ Item {
     property bool editable: false
     property bool group: false          // the one box round several selected layers: its drags act on all of them (group_slots.py)
     readonly property var kit: box.kit || ({ knobs: [], turn: false, anchor: false })   // which knobs and turn zones (handle_kinds.dressed)
+    readonly property real tiny: 32       // screen px: under this a side's knobs sit outside the box
+    readonly property real tinyOut: 7     // how far outside (half a knob and its hit margin, less the body's edge)
     readonly property real bw: (box.w || 0) * fit
     readonly property real bh: (box.h || 0) * fit
     x: (box.x || 0) * fit; y: (box.y || 0) * fit; width: bw; height: bh
@@ -57,7 +59,12 @@ Item {
             visible: index < knobs.needed && (!edge || info.always === true || (hx === 0 ? h.bw : h.bh) > 36)   // a small box keeps only its corners
             width: 9; height: 9; color: "white"; border.width: 1; border.color: Theme.accent
             Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Qt.rgba(0, 0, 0, 0.6) }   // the halo
-            x: (hx + 1) / 2 * h.bw - width / 2; y: (hy + 1) / 2 * h.bh - height / 2
+            // A small box on screen (under `tiny` px a side): its knobs sit just OUTSIDE it on that side, so the knobs never cover the
+            // body and a drag or Alt+drag from the middle of a 15 px dot moves / copies it (Figma). One rule, the one place knobs are placed and hit.
+            readonly property bool outX: h.bw < h.tiny && hx !== 0
+            readonly property bool outY: h.bh < h.tiny && hy !== 0
+            x: (hx + 1) / 2 * h.bw - width / 2 + (outX ? hx * h.tinyOut : 0)
+            y: (hy + 1) / 2 * h.bh - height / 2 + (outY ? hy * h.tinyOut : 0)
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
                 cursorShape: ({"hor": Qt.SizeHorCursor, "ver": Qt.SizeVerCursor, "fdiag": Qt.SizeFDiagCursor,
