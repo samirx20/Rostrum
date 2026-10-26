@@ -26,7 +26,21 @@ FocusScope {
         else if (problem === "" && _said !== "" && backend.unrefuse) backend.unrefuse(_said)
         _said = problem
     }
-    readonly property bool active: engaged || input.activeFocus
+    // `typeToStart` (a popover's first field: Popover.qml): the box holds the keys without a caret, looks in use, and the first
+    // key that types (`starts`: any character; a NumberField's digits and sums) starts typing with it; every other key
+    // (Enter, Ctrl+G, Delete …) stays the window's, the same every time it opens (critic 2d-r11).
+    property bool typeToStart: false
+    property var starts: /^\S$/
+    readonly property bool ready: typeToStart && editable && activeFocus && !input.activeFocus
+    function startsWith(e) { return ready && !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && starts.test(e.text) }
+    Keys.onShortcutOverride: (e) => { if (startsWith(e)) e.accepted = true }     // a typed digit is the box's, never a window key
+    Keys.onPressed: (e) => {
+        if (!startsWith(e)) return
+        input.forceActiveFocus()
+        input.text = e.text; input.cursorPosition = input.text.length; input.typed = true
+        e.accepted = true
+    }
+    readonly property bool active: engaged || input.activeFocus || ready
     readonly property bool hovered: hoverHandler.hovered
     property alias input: input
     property alias leading: leadingSlot.data

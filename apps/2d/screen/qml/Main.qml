@@ -103,7 +103,7 @@ AppShell {
     readonly property bool canvasKeys: backend.tool === "move" && !typing
     KeyMap {
         hub: backend.actions
-        enabled: !shell.typing
+        typing: shell.typing            // a Ctrl command a text box doesn't use still runs from a kit field (KeyMap)
         skip: backend.actions.skip
     }
     KeyShortcut { sequences: ["Return", "Enter"]; enabled: shell.canvasKeys && !OpenPopups.takes(["Enter"]) && backend.create.canEdit       // the selected text: type in it

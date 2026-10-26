@@ -74,6 +74,7 @@ FieldFrame {
     function reset() { if (hasDefault) { f.input.focus = false; f.edited(Math.max(from, Math.min(to, Number(defaultValue)))) } }
 
     editable: true
+    starts: /^[0-9.,+\-*\/=(]$/                                  // the keys that start typing a number (FieldFrame.typeToStart)
     keepOnRefusal: true
     engaged: scrub.scrubbing
     text: word || format(value)
@@ -115,7 +116,7 @@ FieldFrame {
     }
     Connections {   // arriving by Tab: the number is selected, so typing replaces it (a click selects it on release, above)
         target: f.input
-        function onActiveFocusChanged() { if (f.input.activeFocus && !scrub.pressed) Qt.callLater(() => f.input.selectAll()) }
+        function onActiveFocusChanged() { if (f.input.activeFocus && !scrub.pressed) Qt.callLater(() => { if (!f.input.typed) f.input.selectAll() }) }   // a first key that started the typing (typeToStart) stays
     }
     Timer { id: twice; interval: Qt.styleHints.mouseDoubleClickInterval }
     MouseArea {  // scrub or start typing; out of the way while the caret is in
