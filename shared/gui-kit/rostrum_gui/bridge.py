@@ -27,6 +27,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum_core import RostrumError, Who, codes
 
 from . import kit_state, news, qt_faults, rows
+from .after_frame import AfterFrame
 from . import touched as touch
 from .agent_watch import AgentWatch
 from .bridge_edits import EditSlots
@@ -71,7 +72,8 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         self._kit.agent = AgentWatch(self)
         self._kit.paced = news.OnceAFrame(self._step_rows, self)   # a drag's steps: the rows once per screen refresh
         self._history_check()                              # the count and ↶ ↷ as the window opens
-        self.docChanged.connect(self._history_check)      # first: the top bar's count and ↶ ↷ read it
+        self._kit.history_due = AfterFrame(self._history_send, self)
+        self.docChanged.connect(self._history_later)      # first: the top bar's count and ↶ ↷ read it (the frame after)
         self._kit.seen = doc.data                          # the first drag step's rows start from the data they were worked out on
         self._unsubscribe = doc.subscribe(self._on_doc)
         self.faultSeen.connect(self._fault_said)           # queued from a worker thread: shown on the screen's thread
@@ -154,12 +156,12 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
     # The count, ↶ ↷ and versions: worked out once per change (_history_check), read from there by every binding
     @Property(int, notify=countChanged)
     def historyCount(self):
-        return self._kit.told[0]
+        return self._history_now()[0]
 
     # History, ↶ ↷ and the agent chip (reads in bridge_review.py; Qt properties must sit on the QObject class)
-    undoLabel = Property(str, lambda self: self._kit.told[1][0], notify=historyChanged)    # "" = nothing to undo
-    redoLabel = Property(str, lambda self: self._kit.told[1][1], notify=historyChanged)
-    versions = Property("QVariantList", lambda self: list(self._kit.told[1][2]), notify=historyChanged)
+    undoLabel = Property(str, lambda self: self._history_now()[1][0], notify=historyChanged)    # "" = nothing to undo
+    redoLabel = Property(str, lambda self: self._history_now()[1][1], notify=historyChanged)
+    versions = Property("QVariantList", lambda self: list(self._history_now()[1][2]), notify=historyChanged)
     agent = Property(QObject, lambda self: self._kit.agent, constant=True)    # agent_watch.AgentWatch
 
     @Property(str, notify=statusChanged)
@@ -280,14 +282,45 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         every read (the top bar, the Inspector, an app's binding, Python) takes the kept value. Their own signals are
         sent only when they changed: on docChanged every binding that reads them ran again on every edit (the top bar
         re-measured its words each time), and each read worked them out again (7 history scans per Undo)."""
-        k, count = self._kit, self.changes_since_open()
+        self._kit.history_stale = True
+        self._history_send()
+
+    def _history_later(self):
+        """A change: the count and ↶ ↷ are worked out and told the frame after (~1-6 ms of a Ctrl+D's own frame at 200
+        layers, and the top bar's words laid out again with it); a read meanwhile works them out (_history_now)."""
+        self._kit.history_stale = True
+        self._kit.history_due.ask()
+
+    def _history_send(self):
+        k = self._kit
+        if k.history_due is not None:
+            k.history_due.cancel()
+        self._history_work()
+        news, k.history_news = k.history_news, set()
+        if "count" in news:
+            self.countChanged.emit()
+        if "labels" in news:
+            self.historyChanged.emit()
+
+    def _history_work(self):
+        k = self._kit
+        if not k.history_stale:
+            return
+        k.history_stale = False
+        count = self.changes_since_open()
         labels = (self.next_undo_label(), self.next_redo_label(), self.versions_list())
         if count != k.told[0]:
             k.told[0] = count
-            self.countChanged.emit()
+            k.history_news.add("count")
         if labels != k.told[1]:
             k.told[1] = labels
-            self.historyChanged.emit()
+            k.history_news.add("labels")
+
+    def _history_now(self) -> list:
+        """The kept count and ↶ ↷, worked out now if a change is still waiting for its frame (its signals still go
+        then: never sent from inside a binding's own read)."""
+        self._history_work()
+        return self._kit.told
 
     @Slot(str)
     def setFocusArea(self, name):

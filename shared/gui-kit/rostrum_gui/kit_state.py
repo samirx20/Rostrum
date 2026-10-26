@@ -26,7 +26,9 @@ class KitState:
     """Every piece of the bridge's own screen state (see each module for its meaning)."""
     __slots__ = ("sel", "selection", "more", "status", "scrub", "partners", "opened", "static", "op_kind",
                  "open_groups", "search", "handlers", "agent", "shown_sel", "held", "touched", "told", "paced", "stepping", "panel", "rows_due",
-                 "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated", "memo")
+                 "ready_kinds", "kinds_job", "ahead_filter", "kinds", "stepped", "seen", "evaluated", "memo",
+                 "history_due",
+                 "history_stale", "history_news")
 
     def __init__(self, opened):
         self.sel, self.selection, self.more, self.status = "", [], False, ""
@@ -43,6 +45,9 @@ class KitState:
         self.shown_sel = None               # selectedItem as last announced (_follow_doc re-announces only a change)
         self.held = None                    # (param, item ids): the field being typed in and the items it is for
         self.told = [0, ("", "", [])]       # [historyCount, (undo, redo, versions)]: worked out once per change
+        self.history_due = None             # after_frame.AfterFrame: `told` worked out and told the frame after a change (bridge)
+        self.history_stale = False          # a change since `told` was worked out
+        self.history_news = set()           # which of `told` changed and is not told yet ("count", "labels")
         self.touched = None                 # what the last change touched (touched.py); None = can't tell: everything
         self.ahead_filter = None            # an app's say on which items have a panel worth making ahead: fn(item) -> bool
         self.ready_kinds, self.kinds_job = set(), None      # kinds whose panel is made ahead; the job that finds a new kind
