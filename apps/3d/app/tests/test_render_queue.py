@@ -6,7 +6,6 @@ import sys
 import time
 from pathlib import Path
 
-import pytest
 from PySide6.QtGui import QGuiApplication
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -25,9 +24,6 @@ def _until(test, what, s=20):
         time.sleep(0.05)
 
 
-# KNOWN OPEN: shared jobs.listing() sorts outside its lock, so a job ending meanwhile raises KeyError 'cancelled' (about
-# 3 runs in 4). The one-line shared fix is written down for Team Sam (results/3d-l1-leftovers/shared-jobs-listing-race.md).
-@pytest.mark.xfail(raises=KeyError, strict=False, reason="KNOWN OPEN: shared jobs.listing race")
 def test_cancel_leaves_nothing_and_says_so(tmp_path):
     QGuiApplication.instance() or QGuiApplication([])
     made = []
