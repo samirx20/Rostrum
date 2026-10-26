@@ -52,7 +52,8 @@ class TypedWord(GuiFilter):
             return False
         now, before = self.clock(), self.last
         self.last = now
-        return now - before < WORD_S
+        # a Shift key is a command chosen on purpose (Shift+C twice), never dropped; it still starts a word ("Drums")
+        return now - before < WORD_S and not event.modifiers() & Qt.KeyboardModifier.ShiftModifier
 
     def on_event(self, obj, event):
         t = event.type()
