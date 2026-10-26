@@ -43,11 +43,12 @@ class Rate(NamedTuple):
     quality: int | None = None
 
 
-# MP4 quality: the encoder's constant quality (E15, measured on Night Bloom against lossless frames: flat motion
-# graphics need a few Mbit/s, a busy shot gets more). Best ≈ 4.7× smaller than the old fixed 0.96 bits per pixel at
-# VMAF 98.5 vs 98.8, SSIM 0.991 vs 0.994 (1 VMAF step people notice ≈ 6). An exact bitrate (Mbit/s, MAX_MBIT at
-# most) replaces the choice.
-QUALITY = {"standard": 85, "high": 95, "best": 100}
+# MP4 quality: the encoder's constant quality (1-100), each frame gets the bits its picture needs. The scale is steep: on
+# the grainiest 1080p24 piece we have (painted walk with a film-grain overlay, 15 s) 50 -> 9 MB, 65 -> 35 MB, 80 -> 81 MB,
+# 85 -> 108 MB; flat motion graphics stay at a few Mbit/s on every step. Compared against 85 by eye on the grain
+# (crops at 200%): 65 keeps it, 50 smooths it. So "high" (default) = 65, "standard" a smaller file that smooths fine grain,
+# "best" for hand-offs and re-grading. An exact bitrate (Mbit/s, MAX_MBIT at most) replaces the choice.
+QUALITY = {"standard": 55, "high": 65, "best": 85}
 DEFAULT_QUALITY = "high"
 NOMINAL_BPP = 0.24                           # the nominal rate written in the file with a quality: bits per pixel per frame
 MAX_MBIT = 160                               # H.264 High at level 5.1 carries 300; GPU encoders stay well under it
