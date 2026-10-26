@@ -101,9 +101,12 @@ Rectangle {
     }
 
     HoverHandler { cursorShape: backend.adder.armed || viewport.clay.tool === "lump" && viewport.clay.on ? Qt.CrossCursor : Qt.ArrowCursor }   // a shape (or Lump) waits for its click
-    // the viewport's two drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
+    // the viewport's drawn layers, each its own (z), the gizmo on top: a press it doesn't take falls through
     PaintStrokes { anchors.fill: parent; z: 9 }   // Paint: a left drag paints on the mesh; its trail and the brush disc
-    ClayStrokes { anchors.fill: parent; z: 9.2 }  // Clay: a left drag sculpts the clay (or turns the view off it); the brush ring
+    // Clay: a left drag sculpts the clay (or turns the view off it); the brush ring. Above the gizmo: the gizmo's area
+    // takes every hover move under it (so the ring never showed and F had nothing to size), and while Clay is on the
+    // gizmo has no handles; Clay off, this layer is hidden
+    ClayStrokes { anchors.fill: parent; z: 11.2 }
     MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
     Bones { anchors.fill: parent; z: 10.5 }  // a mesh's bone chain (Animate) and the points Bones is placing; draws only
     Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above

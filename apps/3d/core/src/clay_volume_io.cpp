@@ -3,6 +3,7 @@
 #include <openvdb/io/File.h>
 #include <tbb/parallel_for.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <filesystem>
@@ -26,7 +27,15 @@ void Volume::mesh(const BlockKey& k, BlockMesh& out) const {
     for (int y = 0; y < kDense; ++y)
       std::memcpy(&dense[size_t(kDense) * (y + size_t(kDense) * z)],
                   &wide[1 + size_t(kWide) * ((y + 1) + size_t(kWide) * (z + 1))], kDense * sizeof(float));
-  mesh_block(dense.data(), wide.data(), k, voxel_, out);
+  // the mask on the dense lattice, only when some of it is near this block (else no mask channel: no primvar)
+  const float* maskDense = nullptr;
+  if (has_mask()) {
+    thread_local std::vector<float> m(size_t(kDense) * kDense * kDense);
+    read_region(mask_->tree(), Coord(k.x * kBlock - 1, k.y * kBlock - 1, k.z * kBlock - 1), kDense, kDense, kDense,
+                m.data());
+    if (std::any_of(m.begin(), m.end(), [](float v) { return v != 0.0f; })) maskDense = m.data();
+  }
+  mesh_block(dense.data(), wide.data(), k, voxel_, out, maskDense);
 }
 
 std::vector<BlockKey> Volume::all_blocks() const {

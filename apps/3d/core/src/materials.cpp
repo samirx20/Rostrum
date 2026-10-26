@@ -129,6 +129,12 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(v, "clearcoatRoughness", kFloat, coat_roughness);
   set(v, "emissiveColor", kColor, emission * emission_strength);
   set(v, "opacity", kFloat, 1.0f - 0.92f * see_through);
+  // a clay's mask shown in the viewport (clay_usd.cpp): masked clay gets less light; anything else has no such
+  // primvar and gets the fallback 1 (as before). Cycles has no such link, so Final renders don't show it.
+  UsdShadeShader mask_shade = shader(stage, path, "PreviewMaskShade", "UsdPrimvarReader_float");
+  set(mask_shade, "varname", SdfValueTypeNames->String, std::string("rostrumMaskShade"));
+  set(mask_shade, "fallback", kFloat, 1.0f);
+  link(v, "occlusion", kFloat, mask_shade, "result", kFloat);
   if (!base_tex.empty() || !rough_tex.empty() || !metal_tex.empty() || !glow_tex.empty()) {
     UsdShadeShader st = shader(stage, path, "PreviewUV", "UsdPrimvarReader_float2");
     set(st, "varname", SdfValueTypeNames->String, std::string("st"));

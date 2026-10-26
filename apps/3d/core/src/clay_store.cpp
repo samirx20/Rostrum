@@ -77,6 +77,7 @@ struct Store::Impl {
     std::unique_ptr<ChunkRecord> rec;
     std::unique_ptr<StrokeDabs> dabs;
     std::unique_ptr<Resampler> rs;  // made by the first points (the spacing needs the brush's size on screen)
+    double sampleMs = 0;            // what one sample's dabs cost so far (a running average; the event budget)
   };
   std::unique_ptr<Live> live;
   CacheWriter cache;
@@ -94,6 +95,8 @@ struct Store::Impl {
   // the changed blocks (or all of them) meshed in parallel and sent to the stage in one change (one prim per block:
   // CL2 tried 2x2x2 blocks per prim, and Storm's time after a dab went up 23 -> 90-170 ms: its cost follows the
   // surface re-sent, not the number of prims)
+  int last_blocks = 0;                      // the last publish: blocks, ms meshing them, ms writing them (sculpt replies)
+  double last_mesh_ms = 0, last_usd_ms = 0;
   void publish(Entry& e) {
     std::vector<BlockKey> keys;
     if (e.full) {
@@ -107,9 +110,19 @@ struct Store::Impl {
       const std::set<BlockKey> d = e.vol->take_dirty();
       keys.assign(d.begin(), d.end());
     }
+    last_blocks = int(keys.size());
+    last_mesh_ms = last_usd_ms = 0;
     if (keys.empty()) return;
+    const auto t0 = std::chrono::steady_clock::now();
     std::vector<BlockMesh> meshes(keys.size());
     tbb::parallel_for(size_t(0), keys.size(), [&](size_t i) { e.vol->mesh(keys[i], meshes[i]); });
+    last_mesh_ms = ms_since(t0);
+    const auto t1 = std::chrono::steady_clock::now();
+    struct UsdTime {
+      std::chrono::steady_clock::time_point t;
+      double* out;
+      ~UsdTime() { *out = ms_since(t); }
+    } usd_time{t1, &last_usd_ms};
     blocks.begin();
     try {
       for (size_t i = 0; i < keys.size(); ++i) blocks.set(e.path, keys[i], meshes[i], e.blocks);
@@ -343,14 +356,38 @@ SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, co
     }
     l.rs->push(V3{x, y, 0}, q[2], samples, pressures);
   }
+  // The event's budget (CL2b): when the samples since the last event would cost more than kEventBudgetMs, keep an
+  // even share of them, the last always. Without it a slow event let more pointer moves pile up, the next event
+  // carried more dabs and was slower again (Pull: 62 dabs, 240 ms an event). The dabs kept are the stroke: what is
+  // stored and replayed, so live = replay still holds; a fast pointer on a slow machine gets slightly wider spacing.
+  constexpr double kEventBudgetMs = 6.0;
+  std::vector<size_t> keep;
+  const size_t n = samples.size();
+  const size_t most = l.sampleMs > 0 ? std::max<size_t>(1, size_t(kEventBudgetMs / l.sampleMs)) : n;
+  if (n <= most) {
+    for (size_t i = 0; i < n; ++i) keep.push_back(i);
+  } else {
+    for (size_t k = 1; k <= most; ++k) keep.push_back((k * n) / most - 1);  // evenly, ending on the newest
+  }
   bool any = false;
-  for (size_t i = 0; i < samples.size(); ++i) {
+  const auto ta = std::chrono::steady_clock::now();
+  size_t done = 0;
+  for (size_t i : keep) {
     V3 o, d;
     if (!ray(samples[i].x, samples[i].y, o, d)) continue;
     l.dabs->add(o, d, 1e4f, pressures[i]);
     any = true;
+    ++done;
   }
+  if (done) {
+    const double per = ms_since(ta) / double(done);
+    l.sampleMs = l.sampleMs > 0 ? 0.7 * l.sampleMs + 0.3 * per : per;
+  }
+  r.applyMs = ms_since(t0);
   s.publish(e);
+  r.meshMs = s.last_mesh_ms;
+  r.usdMs = s.last_usd_ms;
+  r.blocks = s.last_blocks;
   r.dabs = int(l.dabs->dabs().size());
   r.hit = any && l.dabs->hit;
   r.point = l.dabs->point;

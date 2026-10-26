@@ -117,7 +117,10 @@ JsObject Core::sculpt(const JsObject& o) {
     return float(ortho ? scale * proj11 * h / 2 : proj11 * h / (2.0 * std::max(depth, 1e-6f)));
   };
   r = clay_->sculpt_points(px, ray, ppm);
-  JsObject out{{"ok", JsValue(true)}, {"dabs", JsValue(r.dabs)}, {"ms", JsValue(r1(r.ms))}, {"hit", JsValue(r.hit)}};
+  JsObject out{{"ok", JsValue(true)}, {"dabs", JsValue(r.dabs)}, {"ms", JsValue(r1(r.ms))}, {"dabMs", JsValue(r1(r.ms))},
+               {"applyMs", JsValue(r1(r.applyMs))}, {"meshMs", JsValue(r1(r.meshMs))}, {"usdMs", JsValue(r1(r.usdMs))},
+               {"blocks", JsValue(r.blocks)},
+               {"hit", JsValue(r.hit)}};  // dabMs: the dab's own time (the client overwrites `ms` with its round trip)
   if (r.hit) {  // where the brush is (world), for the brush ring on the screen
     const GfVec3d p = toWorld.Transform(GfVec3d(r.point.x, r.point.y, r.point.z));
     GfVec3d n = toClay.GetTranspose().TransformDir(GfVec3d(r.normal.x, r.normal.y, r.normal.z));

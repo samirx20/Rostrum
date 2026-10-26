@@ -31,6 +31,7 @@ struct BlockMesh {
   std::vector<float> points;     // xyz per vertex, clay space (metres)
   std::vector<float> normals;    // xyz per vertex, unit, pointing out of the clay
   std::vector<int32_t> indices;  // 3 per triangle, counter-clockwise seen from outside
+  std::vector<float> mask;       // the clay's mask 0..1 per vertex, or empty: no mask anywhere near this block
   bool empty() const { return indices.empty(); }
   size_t triangles() const { return indices.size() / 3; }
 };
@@ -40,10 +41,13 @@ struct BlockMesh {
 // `wide`: kWide^3 values, origin blockMin - 2 (null: normals from the cell's own corners only). With it, a vertex's
 // normal is the trilinear blend of central-difference gradients at its cell's 8 corners, so shading is continuous
 // across cells (no voxel-scale rings), and still the same in both blocks of a seam.
+// `mask`: the clay's mask on the same kDense^3 lattice as `dense` (null: no mask). With it, each vertex gets the
+// trilinear blend of its cell's 8 corner mask values in `out.mask` (the same in both blocks of a seam).
 // Clears `out` and fills it with the block's part of the surface (iso level 0).
-void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out);
+void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out,
+                const float* mask = nullptr);
 
-// Appends `b` to `whole` (indices offset).
+// Appends `b` to `whole` (indices offset; a mask on one side only gets 0 for the other's vertices).
 void append(BlockMesh& whole, const BlockMesh& b);
 
 }  // namespace r3d::clay

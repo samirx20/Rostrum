@@ -22,6 +22,7 @@ using Tree = openvdb::FloatTree;
 using Leaf = Tree::LeafNodeType;
 
 constexpr float kDispCap = 2.0f;  // a stamp moves the surface at most this far (voxels) per dab
+constexpr float kStrokeLift = 0.5f;  // Build up off: a stroke rises at most this x strength x the brush radius
 
 inline int floor_div(int a, int b) { return (a >= 0) ? a / b : -((-a + b - 1) / b); }
 inline int floor8(int a) { return floor_div(a, 8) * 8; }

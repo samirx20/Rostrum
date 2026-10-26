@@ -41,6 +41,7 @@ inline int ctz64(uint64_t v) {
 struct Mesher {
   const float* d;
   const float* wide;  // kWide^3, origin one voxel before d's, or null
+  const float* mask;  // kDense^3, the same lattice as d's, or null
   float voxel;
   int ox, oy, oz;    // global voxel index of dense sample 0
   int32_t* cellVert; // kCellCount, -1 = no vertex yet
@@ -129,6 +130,12 @@ struct Mesher {
     out->normals.push_back(g[0] * il);
     out->normals.push_back(g[1] * il);
     out->normals.push_back(g[2] * il);
+    if (mask) {
+      const float* q = mask + cx + kSY * cy + kSZ * cz;
+      const float u0 = 1.f - u, v0 = 1.f - v, w0 = 1.f - w;
+      out->mask.push_back(w0 * (v0 * (u0 * q[0] + u * q[1]) + v * (u0 * q[kSY] + u * q[kSY + 1])) +
+                          w * (v0 * (u0 * q[kSZ] + u * q[kSZ + 1]) + v * (u0 * q[kSZ + kSY] + u * q[kSZ + kSY + 1])));
+    }
     return slot;
   }
 
@@ -156,10 +163,12 @@ struct Mesher {
 
 }  // namespace
 
-void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out) {
+void mesh_block(const float* dense, const float* wide, const BlockKey& key, float voxel, BlockMesh& out,
+                const float* mask) {
   out.points.clear();
   out.normals.clear();
   out.indices.clear();
+  out.mask.clear();
 
   // Inside bits per dense row (bit x = sample x < 0); the edge scan then only visits surface edges.
   static_assert(kDense <= 64, "a dense row must fit one 64-bit mask");
@@ -186,7 +195,7 @@ void mesh_block(const float* dense, const float* wide, const BlockKey& key, floa
   thread_local std::vector<int32_t> touched;
   touched.clear();
 
-  Mesher m{dense, wide, voxel, key.x * kBlock - 1, key.y * kBlock - 1, key.z * kBlock - 1, slots.v, &out, &touched};
+  Mesher m{dense, wide, mask, voxel, key.x * kBlock - 1, key.y * kBlock - 1, key.z * kBlock - 1, slots.v, &out, &touched};
 
   // Owned edges start at relative voxels [0, kBlock), i.e. dense [1, kBlock].
   constexpr uint64_t kOwned = ((uint64_t(1) << kBlock) - 1) << 1;
@@ -219,6 +228,11 @@ void mesh_block(const float* dense, const float* wide, const BlockKey& key, floa
 
 void append(BlockMesh& whole, const BlockMesh& b) {
   const int32_t base = int32_t(whole.points.size() / 3);
+  if (!b.mask.empty() || !whole.mask.empty()) {
+    whole.mask.resize(size_t(base), 0.f);
+    if (b.mask.empty()) whole.mask.resize(size_t(base) + b.points.size() / 3, 0.f);
+    else whole.mask.insert(whole.mask.end(), b.mask.begin(), b.mask.end());
+  }
   whole.points.insert(whole.points.end(), b.points.begin(), b.points.end());
   whole.normals.insert(whole.normals.end(), b.normals.begin(), b.normals.end());
   for (int32_t i : b.indices) whole.indices.push_back(i + base);

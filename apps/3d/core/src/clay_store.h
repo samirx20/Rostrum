@@ -32,6 +32,8 @@ struct SculptReply {
   bool hit = false;     // the last point's ray met the clay
   V3 point, normal;     // where, clay space (when hit)
   double ms = 0;
+  double applyMs = 0, meshMs = 0, usdMs = 0;  // where `ms` went: the dabs, meshing the changed blocks, writing them
+  int blocks = 0;                             // blocks changed by this event
   std::string file;     // end: "clay/<hash>.dabs", or "" when no dab landed
 };
 
