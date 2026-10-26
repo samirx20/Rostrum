@@ -47,6 +47,8 @@ def runtime_env(base: dict | None = None) -> dict:
                               "(or set ROSTRUM3D_LIBS to a folder it made)")
     env = dict(os.environ if base is None else base)
     env["PATH"] = os.pathsep.join([str(d) for d in dirs] + [env.get("PATH", "")])
-    env["PXR_PLUGINPATH_NAME"] = os.pathsep.join(str(p) for p in plugins)
+    ours = [str(p) for p in plugins]                  # ours first, then whatever the person already set (no duplicates)
+    theirs = [p for p in env.get("PXR_PLUGINPATH_NAME", "").split(os.pathsep) if p and p not in ours]
+    env["PXR_PLUGINPATH_NAME"] = os.pathsep.join(ours + theirs)
     env.setdefault("CYCLES_DEVICE", "OPTIX")
     return env

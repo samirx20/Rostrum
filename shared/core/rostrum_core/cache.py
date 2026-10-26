@@ -47,6 +47,15 @@ def cache_key(kind: str, engine: str, inputs=(), settings: dict | None = None) -
     return hashlib.sha256(json.dumps(recipe, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+def engine_id(name: str, version, plugins=()) -> str:
+    """The `engine` string of a key: "name@version", plus "+plugin-id@version" for each plugin that can change the
+    result (sorted, so order never changes a key). `plugins` is (id, version) pairs or a {id: version} dict.
+    Callers move to this at their next touch (Sound's exe size+mtime, 3D's exe hash, the hand-bumped strings);
+    none is changed now, since that would drop every cached result once."""
+    pairs = sorted(dict(plugins).items())
+    return f"{name}@{version}" + "".join(f"+{p}@{v}" for p, v in pairs)
+
+
 def file_hash(path) -> str:
     """The content hash of a file, for a key's inputs."""
     h = hashlib.sha256()
