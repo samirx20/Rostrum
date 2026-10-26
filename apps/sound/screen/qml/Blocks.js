@@ -277,7 +277,7 @@ function update(k, blocks, picked, rectsOf) {
         if (++changed > MANY) return null
         e = k.by[id]; e[1] = false; delete k.sel[id]; mark(rectsOf(e[0]))
     }
-    for (id in picked) {
+    if (k.count > 0) for (id in picked) {       // (an empty row has none of them)
         e = k.by[id]
         if (e === undefined || e[1]) continue
         if (++changed > MANY) return null
@@ -292,6 +292,7 @@ function touches(k, picked) {
     if (k.whole) return true
     if (k.picked === picked) return false        // the very selection painted (one shared object a selection)
     for (var id in k.sel) if (!picked[id]) return true
+    if (k.count === 0) return false              // nothing drawn here (the master row): no look through 3,607 picks
     for (id in picked) { var e = k.by[id]; if (e !== undefined && !e[1]) return true }
     return false
 }

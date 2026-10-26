@@ -107,7 +107,7 @@ def edit_call(doc, item_id, param, value) -> dict:
         try:
             value = note_feel.parse(param, value, _seconds(item, doc.data))
         except ValueError as e:
-            raise RostrumError(codes.BAD_ARGUMENT, "set", note_feel.LABELS[param], str(e)) from None
+            raise RostrumError(codes.BAD_ARGUMENT, "set", note_feel.LABELS[param], str(e), plain=str(e)) from None
     if item["type"] == "note" and param == "pitch" and isinstance(value, str):
         value = typed_pitch(value)
     kind = time_kind(item, param)
@@ -116,7 +116,7 @@ def edit_call(doc, item_id, param, value) -> dict:
         try:
             value = musical.parse(value, doc.data, kind == "length", start)
         except ValueError as e:
-            raise RostrumError(codes.BAD_ARGUMENT, "set", f"{param}={value!r}", str(e)) from None
+            raise RostrumError(codes.BAD_ARGUMENT, "set", f"{param}={value!r}", str(e), plain=str(e)) from None
     if kind and isinstance(value, (int, float)) and not isinstance(value, bool) and item.get(param) is not None:
         old = item[param]
         value = timing.write_time(old, float(value), doc.data) if kind == "time" else             timing.write_length(old, float(value), doc.data, _start(item, doc.data))

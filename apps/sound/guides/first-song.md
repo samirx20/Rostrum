@@ -117,7 +117,7 @@ The **Colour** row shows the colour the track is drawn in.
    **Make a chord** step in between). When the selection holds a chord (notes that start together),
    the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
    **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
-   **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves).
+   **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves; the new notes stay selected, so Humanise or Quantise act on all of them).
    Both open the small box of amounts and play live while it is open. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Repeat… (on notes, hits and clips), Delete, and for tracks Group,

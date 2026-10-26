@@ -112,15 +112,26 @@ def late(data: dict) -> list[str]:
         return []
     try:
         end = times.seconds(data["length"], data, "length")
-        late = [(i["id"], s) for t in data.get("tracks", []) for k in ("notes", "hits", "clips")
+        late = [(t, s) for t in data.get("tracks", []) for k in ("notes", "hits", "clips")
                 for i in t.get(k, []) if (s := _start(data, i)) >= end - 1e-6]
     except RostrumError:
         return []                                    # a broken time is the check's to report
     if not late:
         return []
-    shown = ", ".join(f"{i} at {s:.2f} s" for i, s in late[:SHOWN]) + (f" and {len(late) - SHOWN} more" if len(late) > SHOWN else "")
-    return [f"{len(late)} note(s), hit(s) or clip(s) start at or after the song's end ({end:.2f} s) and are never heard: {shown}. "
-            "Move them earlier or make the song longer (length)."]
+    per: dict = {}                                   # track id -> [track, how many, first start]
+    for t, s in late:
+        per.setdefault(t["id"], [t, 0, s])[1] += 1
+    order = [t["id"] for t in data.get("tracks", [])]
+    who = lambda t: f'“{t["name"]}”' if t.get("name") else f'track {order.index(t["id"]) + 1}'     # noqa: E731  (never an id)
+    named = [f"{n} on {who(t)}, from {_bar_beat(data, s)}" for t, n, s in per.values()]
+    shown = "; ".join(named[:SHOWN]) + (f"; and {len(named) - SHOWN} more tracks" if len(named) > SHOWN else "")
+    return [f"{len(late)} note(s), hit(s) or clip(s) start at or after the song's end ({_bar_beat(data, end)}) and are never heard: "
+            f"{shown}. Move them earlier or make the song longer (length)."]
+
+
+def _bar_beat(data: dict, seconds: float) -> str:
+    from . import musical                            # (musical needs this module's neighbours: imported when used)
+    return "bar " + ".".join(musical.position(seconds, data).split(".")[:2])
 
 
 @_once

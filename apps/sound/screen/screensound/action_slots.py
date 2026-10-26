@@ -319,11 +319,16 @@ class ActionSlots:
 
     def _act(self, calls, label, select_made=False):
         def go():
+            picked = list(self._picks.ids)      # (the change drops what it removed from the selection)
             change = self.doc.apply(calls, self.who, label=label)
             self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently
-            made = [i for i in ST.inserted(change) if self.doc.has(i)] if change and select_made else []
+            new = [i for i in ST.inserted(change) if self.doc.has(i)] if change else []
+            made = new if select_made else []
             made = [i for i in made if self.doc.item(i)["type"] == "section"] or made   # a new section stands for what
             # it holds: it alone is selected, so its own actions show (Duplicate section, Ctrl+D again)
+            kept = [i for i in picked if self.doc.has(i)]
+            if not made and new and len(kept) < len(picked):
+                made = kept + new               # one rule: what replaced selected items is selected (Arpeggio, then Humanise)
             if made:                            # the outlines with the change, the panel once both are drawn
                 self._pick(made, later=True)
                 self._settle()
