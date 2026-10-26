@@ -3,6 +3,17 @@ file reading and search (GuidesDrawer.qml, as the `guidePages` context property 
 
     entries(Path(__file__).parents[1] / "guides", [("first-song.md", "Making your first song"), …])
 
+Or, without the list, from the guides themselves: `entries(folder)` reads each guide's front matter, a first block
+between two `---` lines (the guide's own words in the guide's own file; the viewer and the agents' guide tool never show it):
+
+    ---
+    help: Making your first song
+    order: 1
+    ---
+
+Help lists the guides that have `help:` (the label), by `order:` (a number; ties by file name). A folder with none,
+a guide without a number `order:`, or two with the same label fails loudly at start. The menu is the same as the list's.
+
 Each entry is {value: the file's file:// address, label}; picking one opens it in the app's own guide viewer.
 The guides folder is the app's own (the installer copies apps/<app>/guides). A listed file that isn't there fails
 loudly at start, so a renamed guide can't leave a dead menu entry.
@@ -12,6 +23,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from rostrum_core.mcp.guides import split_front
 from PySide6.QtCore import Q_ARG, Q_RETURN_ARG, QMetaObject, QObject, QUrl, Slot
 from PySide6.QtGui import QImageReader, QTextBlockFormat, QTextCursor, QTextDocument
 
@@ -20,7 +32,23 @@ LIST_INDENT = 40      # px: Qt's indent of a list level; a picture inside a list
 PICTURE_WIDTH = 720    # px: the default text column; the drawer passes its own (readAt), wider pictures fit it
 
 
-def entries(folder: Path, pages: list[tuple[str, str]]) -> list[dict]:
+def listed(folder: Path) -> list[tuple[str, str]]:
+    """[(file, label)] for the guides whose front matter says `help:`, in `order:`."""
+    found = []
+    for f in sorted(Path(folder).glob("*.md")):
+        meta = split_front(f.read_text(encoding="utf-8"))[0]
+        if "help" in meta:
+            if not meta.get("order", "").isdigit():
+                raise ValueError(f"guide {f} says help: but has no number order: in its front matter")
+            found.append((int(meta["order"]), f.name, meta["help"]))
+    labels = [label for _, _, label in found]
+    if not found or len(set(labels)) != len(labels):
+        raise ValueError(f"guides in {folder}: " + ("none says help: in its front matter" if not found else "two share a Help label"))
+    return [(name, label) for _, name, label in sorted(found)]
+
+
+def entries(folder: Path, pages: list[tuple[str, str]] | None = None) -> list[dict]:
+    pages = listed(folder) if pages is None else pages
     missing = [f for f, _ in pages if not (folder / f).is_file()]
     if missing:
         raise FileNotFoundError(f"guides missing from {folder}: {', '.join(missing)}")
@@ -89,7 +117,7 @@ class GuidePages(QObject):
         """A guide as rich text, its pictures no wider than `width` (the drawer's text column)."""
         path = Path(QUrl(url).toLocalFile())
         try:
-            return page_html(path.read_text(encoding="utf-8"), path.parent, max(80, width))
+            return page_html(split_front(path.read_text(encoding="utf-8"))[1], path.parent, max(80, width))
         except OSError as e:                      # shown in the viewer, never an empty page
             return page_html(f"# This guide could not be opened\n\n`{path}`\n\n{e.strerror or e}")
 
@@ -102,7 +130,7 @@ class GuidePages(QObject):
             if not str(e.get("value", "")).lower().endswith(".md"):
                 continue
             try:
-                text = Path(QUrl(e["value"]).toLocalFile()).read_text(encoding="utf-8") if words else ""
+                text = split_front(Path(QUrl(e["value"]).toLocalFile()).read_text(encoding="utf-8"))[1] if words else ""
             except OSError:
                 text = ""
             if all(w in f'{e["label"]} {text}'.lower() for w in words):

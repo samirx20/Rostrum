@@ -173,6 +173,20 @@ Small modules, each under ~200 lines, each the only home of its idea:
 
 Each app adds only its own operations, its table of where items live, and its whole-document check.
 
+## 11. Plugin names
+
+Rostrum can later load plugins; the names are fixed now so nothing built today has to change.
+
+- A plugin's id is `vendor.name`, lower case (`hiremylens.wiggle-tools`). `rostrum.*` is reserved for Rostrum's own.
+- Everything a plugin adds carries its prefix and a colon: an item kind `wiggle:generator`, a field `wiggle:amount`, an operation `wiggle:shake.add` (`<prefix>:area.verb`; aliases too). The prefix is lower case.
+- Rostrum's own names never contain a `:`, so a plugin's name can never clash with one of ours. The registry refuses a built-in operation with a prefix and a plugin operation without one.
+- Every registration says where it comes from (`origin`: `builtin`, or the plugin's id): operations, tools, keys, guides, layout states. `inspect_operations` / `inspect_tools` show the origin only when it is not a built-in.
+- A file with plugin parts this Rostrum doesn't have still opens: those parts are kept unchanged when it is saved, never sent to an engine, and named in plain words. Code: `plugin_parts.py`.
+  - Each app's whole-document check skips a plugin's item (it never looks inside it); field checks skip a plugin's field. Engines get `plugin_parts.engine_tree(data, lists)`: the tree with plugin items left out (2D `scene.prepare`, Sound `compile`).
+  - The person sees it in the top bar when the file opens (`project_files.put`); an agent sees it in every reply's `warnings` while it works on that document (`mcp/server.py`).
+  - The document file's header records the plugins it uses: `"uses": {"<plugin id>": {"version", "api"}}`, written only when there are some and saved back exactly as read (`Document.uses`). Nothing writes new entries yet; the plugin loader will, from ops that carry a plugin's origin.
+- Overlay folders: `contrib.find(kind, builtin)` lists a data table's built-in, the person's (`~/.rostrum/<kind>/`) and each plugin's (`~/.rostrum/plugins/<id>/<kind>/`) files, with their origin. Cache keys name engines through one `cache.engine_id(name, version, plugins)`.
+
 ## Settled default
 
 - **Undo is per author** (as in the experiment): a person's Ctrl+Z never undoes an agent's work; agent changes are undone from the AI panel or the history panel, one change or a whole agent run at a time. If Sam prefers one shared undo for everyone, only `history` changes.

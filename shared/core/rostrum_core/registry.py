@@ -10,6 +10,7 @@ from typing import Callable
 from .conditions import check_refs, holds
 from .errors import RostrumError, codes, did_you_mean
 from .params import IMPORTANCE, Param
+from .plugin_parts import PREFIX, is_plugin, prefix
 
 NAME = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
 ITEM_KEYS = {"id", "type"}       # every item's own keys: never a field a person or agent sets
@@ -27,6 +28,7 @@ class Operation:
     valid_when: dict | None = None        # on the target item's fields / facts
     fields: bool = False                  # its params ARE the target kind's fields (the inspector reads it)
     min_targets: int = 1                  # how many targets it needs at least (a boolean: 2); offered only then
+    origin: str = "builtin"               # "builtin" / "builtin:<app>", or a plugin's id ("hiremylens.wiggle")
 
     def param(self, name) -> Param | None:
         return next((p for p in self.params if p.name == name), None)
@@ -34,6 +36,12 @@ class Operation:
     def shown_targets(self) -> list | None:
         """The targets as an agent writes them: the song / document itself is the id "root", not its item type "doc"."""
         return [("root" if t == "doc" else t) for t in self.targets] if self.targets else None
+
+    def brief(self) -> dict:
+        """The short row of inspect_operations. `origin` is said ONLY for a plugin's operation: every built-in's reply
+        stays exactly as big as it was (agents pay for every token), and "no origin" reads as "Rostrum's own"."""
+        return {"name": self.name, "summary": self.summary, "target": self.shown_targets(),
+                **({} if is_builtin(self.origin) else {"origin": self.origin})}
 
     def schema(self) -> dict:
         props = {p.name: p.json_schema() for p in self.params}
@@ -44,7 +52,23 @@ class Operation:
                               "additionalProperties": False},
                 "params": [p.to_dict() for p in self.params],
                 "importance": self.importance, "valid_when": self.valid_when, "fields": self.fields,
-                "min_targets": self.min_targets}
+                "min_targets": self.min_targets, **({} if is_builtin(self.origin) else {"origin": self.origin})}
+
+
+def is_builtin(origin: str) -> bool:
+    return origin == "builtin" or origin.startswith("builtin:")
+
+
+def name_problems(name: str, origin: str) -> list[str]:
+    """The name rule (OPERATIONS.md § 11): a built-in is "area.verb" and never holds ":"; a plugin's is
+    "<prefix>:area.verb" with a lower-case prefix."""
+    if is_builtin(origin):
+        return [] if NAME.match(name) else ["name must be area.verb, lower case (a built-in name never holds a colon)"]
+    if not is_plugin(name):
+        return [f'a plugin operation must be named "<prefix>:area.verb" (origin {origin})']
+    if not PREFIX.match(prefix(name)) or not NAME.match(name.split(":", 1)[1]):
+        return ['a plugin operation must be named "<prefix>:area.verb", lower case']
+    return []
 
 
 @dataclass
@@ -57,23 +81,23 @@ class Alias:
 
 
 class Registry:
-    def __init__(self):
+    def __init__(self, origin: str = "builtin"):
+        self.origin = origin                  # what an operation registered without its own origin comes from
         self._ops: dict[str, Operation] = {}
         self._aliases: dict[str, Alias] = {}
 
     def operation(self, name, summary, target=None, params=(), label="", importance="primary",
-                  valid_when=None, fields=False, min_targets=1):
+                  valid_when=None, fields=False, min_targets=1, origin=None):
         """Decorator: @reg.operation("camera.set", "Change a camera.", target="camera", params=[...])."""
         def register(fn):
             self.add(Operation(name, summary, fn, _kinds(target), list(params), label or name, importance,
-                               valid_when, fields, min_targets))
+                               valid_when, fields, min_targets, origin or self.origin))
             return fn
         return register
 
     def add(self, op: Operation):
         problems = []
-        if not NAME.match(op.name):
-            problems.append("name must be area.verb, lower case")
+        problems += name_problems(op.name, op.origin)
         if op.name in self._ops:
             problems.append("is already registered")
         if op.importance not in IMPORTANCE:
@@ -92,11 +116,11 @@ class Registry:
             raise ValueError(f"operation {op.name}: " + "; ".join(problems))
         self._ops[op.name] = op
 
-    def alias(self, name, to=None, note=None, expand=None):
+    def alias(self, name, to=None, note=None, expand=None, origin=None):
         """Read `name` as another operation: `to` (same target and arguments), or whatever `expand(call)` returns (a list
         of calls). Said in the reply when `note` is given. A real operation of the same name wins (never shadowed)."""
-        if name in self._ops or name in self._aliases or not NAME.match(name):
-            raise ValueError(f"alias {name}: must be area.verb and not already an operation or alias")
+        if name in self._ops or name in self._aliases or name_problems(name, origin or self.origin):
+            raise ValueError(f"alias {name}: must be area.verb (a plugin's: <prefix>:area.verb) and not already an operation or alias")
         self._aliases[name] = Alias(name, expand or (lambda call: [{**call, "op": to}]), note)
 
     def resolve(self, calls) -> list[dict]:

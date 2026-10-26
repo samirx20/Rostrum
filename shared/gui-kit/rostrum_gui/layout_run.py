@@ -162,11 +162,12 @@ def record(out: Path, name: str, found: dict):
 
 
 def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, only: str | None = None,
-            quick: bool = False) -> int:
+            quick: bool = False, origin: str = "builtin") -> int:
     """Run the states, `BATCH` to a process (the app starts once per batch: layout_batch.py), write faults.txt.
     `only`: comma-separated state names, just those (an unknown name fails loudly). `quick`: the app's QUICK states at
     Sam's size only. A state that kills its batch (a crash, a Qt fault, a hang) is reported as not run, and the rest
-    go on in a new one. Returns the exit code: 0 only when every state ran and found nothing."""
+    go on in a new one. `origin`: where these states come from ("builtin", or a plugin's id): a fault of a plugin's
+    state is written with it, so the fault is the plugin's to fix. Returns the exit code: 0 only when every state ran and found nothing."""
     if quick:
         os.environ["ROSTRUM_CHECK_SIZES"] = "x".join(str(n) for n in SAM)
     if only:
@@ -193,7 +194,9 @@ def run_all(main_py: Path, states: list[tuple[str, list[str], list[str]]], out, 
             broken.append(f"{culprit}: the state did not run (exit {r}): {err[-600:]}")
             pending[:0] = [s for s in group if s[0] != culprit and not done_in(out, s[0])]
     data = json.loads((out / "faults.json").read_text(encoding="utf-8")) if (out / "faults.json").is_file() else {}
-    lines = [f"{name} {size}: {line}" for name, sizes in data.items() for size, ls in sizes.items() for line in ls]
+    who = "" if origin == "builtin" or origin.startswith("builtin:") else f"[{origin}] "
+    broken = [who + b for b in broken]
+    lines = [f"{who}{name} {size}: {line}" for name, sizes in data.items() for size, ls in sizes.items() for line in ls]
     (out / "faults.txt").write_text("\n".join(broken + lines) + "\n", encoding="utf-8")
     total = len(lines)
     print(f"\nlayout check: {len(states)} states x {len(wanted_sizes())} sizes, {total} fault(s), {len(broken)} state(s) failed"

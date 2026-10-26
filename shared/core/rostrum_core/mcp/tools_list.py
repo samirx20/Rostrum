@@ -21,6 +21,10 @@ def _args(tool: Tool) -> list[dict]:
             for k, v in props.items()]
 
 
+def _origin(tool: Tool) -> dict:
+    return {} if tool.origin == "builtin" or tool.origin.startswith("builtin:") else {"origin": tool.origin}
+
+
 def register(tools: Tools):
     schema = {"properties": {
         "verb": {"type": "string", "description": f"Only the tools of this verb: {', '.join(VERBS)}."},
@@ -38,11 +42,12 @@ def register(tools: Tools):
             t = mine[args["name"]]
             names = ", ".join(a["name"] + ("*" if a["required"] else "") for a in _args(t)) or "none"
             return Reply(f"{t.name}: {purpose(t)} Arguments (* required): {names}.",
-                         {"tool": {"name": t.name, "verb": t.verb, "description": t.description, "arguments": _args(t)}})
+                         {"tool": {"name": t.name, "verb": t.verb, "description": t.description, "arguments": _args(t),
+                                  **_origin(t)}})   # origin only for a plugin's tool: built-in replies keep their size
         if "verb" in args and args["verb"] not in VERBS:
             raise RostrumError.not_found("", "verb", args["verb"], VERBS, "the verbs")
         verbs = [args["verb"]] if "verb" in args else list(VERBS)
-        groups = {v: [{"name": t.name, "purpose": purpose(t)} for t in mine.values() if t.verb == v] for v in verbs}
+        groups = {v: [{"name": t.name, "purpose": purpose(t), **_origin(t)} for t in mine.values() if t.verb == v] for v in verbs}
         counts = ", ".join(f"{v} {len(g)}" for v, g in groups.items())
         listing = "\n".join(f"{v}: " + "; ".join(f'{t["name"]} ({t["purpose"]})' for t in g) for v, g in groups.items() if g)
         return Reply(f"{sum(map(len, groups.values()))} tools ({counts}). Ask with name for one tool's arguments.\n{listing}", {"verbs": groups})

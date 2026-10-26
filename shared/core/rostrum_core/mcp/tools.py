@@ -27,6 +27,7 @@ class Tool:
     schema: dict            # JSON schema of the arguments (an object)
     model: Any              # a pydantic model class when the app gave one, else None
     fn: Callable
+    origin: str = "builtin"   # "builtin" or a plugin's id; shown by inspect_tools only when it isn't a built-in
 
     @property
     def verb(self) -> str:
@@ -72,11 +73,12 @@ def _schema_of(schema) -> tuple[dict, Any]:
 class Tools:
     """A set of tools. One per server; apps register theirs and the server adds the shared ones."""
 
-    def __init__(self):
+    def __init__(self, origin: str = "builtin"):
+        self.origin = origin                  # what a tool added without its own origin comes from
         self._tools: dict[str, Tool] = {}
         self._renamed: dict[str, tuple[str, str | None]] = {}   # old name -> (new tool, the argument to pass)
 
-    def add(self, name: str, fn: Callable, schema=None, description: str | None = None) -> Tool:
+    def add(self, name: str, fn: Callable, schema=None, description: str | None = None, origin: str | None = None) -> Tool:
         if not _NAME.match(name):
             raise RostrumError(codes.BAD_ARGUMENT, "tool registration", f'"{name}"', "is not a valid tool name; use <verb>_<thing>, lower case",
                                VERBS, "Example: look_frame, inspect_markers, render_stems.")
@@ -86,12 +88,12 @@ class Tools:
         text = (description or fn.__doc__ or "").strip()
         if not text:
             raise RostrumError(codes.BAD_ARGUMENT, "tool registration", f'"{name}"', "has no description; agents choose tools by it")
-        self._tools[name] = Tool(name, text, spec, model, fn)
+        self._tools[name] = Tool(name, text, spec, model, fn, origin or self.origin)
         return self._tools[name]
 
-    def tool(self, name: str, schema=None, description: str | None = None):
+    def tool(self, name: str, schema=None, description: str | None = None, origin: str | None = None):
         def register(fn):
-            self.add(name, fn, schema, description)
+            self.add(name, fn, schema, description, origin)
             return fn
         return register
 
@@ -116,7 +118,7 @@ class Tools:
     def described(self, name: str, more: str):
         """Add an app's own words to a shared tool's description (run_script: what the app's script layer offers)."""
         t = self._tools[name]
-        self._tools[name] = Tool(t.name, f"{t.description} {more}", t.schema, t.model, t.fn)
+        self._tools[name] = Tool(t.name, f"{t.description} {more}", t.schema, t.model, t.fn, t.origin)
 
     def all(self) -> list[Tool]:
         return list(self._tools.values())

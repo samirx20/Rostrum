@@ -29,3 +29,7 @@ These apply to songs you make from now on. A song keeps its own once made.
 
 - A change to Speakers or Microphone may need a moment, or the next time you play or arm a track.
 - Some preferences can also be overridden by environment variables set on the computer; that is for experts.
+
+## Your own keys
+
+To use a different key for something, make the text file `.rostrum/keys/rostrumsound.toml` in your home folder and write one line per action: `"Undo" = "Ctrl+Shift+Z"`. An empty key (`"Add a marker at the playhead" = ""`) takes the key away. Write the action's name as the Keys list (**Ctrl+/**) shows it; a key you changed is marked "(your key)" there. If a line names an action that doesn't exist, or a key another action already has, the app says so when it starts and tells you which file to fix.
