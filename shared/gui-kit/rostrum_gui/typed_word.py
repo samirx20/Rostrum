@@ -33,9 +33,11 @@ def plain(event) -> bool:
         Qt.Key.Key_A <= k <= Qt.Key.Key_Z or Qt.Key.Key_0 <= k <= Qt.Key.Key_9 or k == Qt.Key.Key_Space)
 
 
-def typing_in_field() -> bool:
-    """A text field has the keyboard (the same test as the kit's OpenPopups.typing)."""
-    f = QGuiApplication.focusObject()
+def typing_in_field(win=None) -> bool:
+    """A text field has the keyboard (the same test as the kit's OpenPopups.typing). The window's own focus item counts:
+    the app's `focusObject` is empty while the window is not the active one (a check window kept behind the person's
+    work), and every digit after the first typed into a field there was dropped as part of a word (2D r11b)."""
+    f = QGuiApplication.focusObject() or (win.activeFocusItem() if hasattr(win, "activeFocusItem") else None)
     mo = f.metaObject() if f is not None else None
     return mo is not None and mo.indexOfProperty("cursorPosition") >= 0 and mo.indexOfProperty("selectByMouse") >= 0
 
@@ -46,9 +48,9 @@ class TypedWord(GuiFilter):
         self.clock, self.last, self.dropping, self.judged = clock, -1.0, None, None
         self.watch(win)
 
-    def _word(self, event) -> bool:
+    def _word(self, event, win=None) -> bool:
         """Is this plain key part of a word (and so to be dropped)? Each press is judged once."""
-        if event.isAutoRepeat() or not plain(event) or typing_in_field():
+        if event.isAutoRepeat() or not plain(event) or typing_in_field(win):
             return False
         now, before = self.clock(), self.last
         self.last = now
@@ -59,7 +61,7 @@ class TypedWord(GuiFilter):
         t = event.type()
         if t == QEvent.Type.ShortcutOverride:               # the usual way: asked before any shortcut is tried
             self.judged = (event.key(), event.timestamp())     # the press that follows has the same stamp
-            if self._word(event):
+            if self._word(event, obj):
                 self.dropping = event.key()
                 event.accept()                              # "the focus wants it": Qt runs no shortcut for it
                 return True
@@ -72,7 +74,7 @@ class TypedWord(GuiFilter):
         if self.judged == (event.key(), event.timestamp()):   # judged on its override: let it be
             self.judged = None
             return False
-        return self._word(event)                            # a press sent straight to the window (no override first):
+        return self._word(event, obj)                       # a press sent straight to the window (no override first):
                                                             # the shortcut runs from it, so it is judged here
 
 

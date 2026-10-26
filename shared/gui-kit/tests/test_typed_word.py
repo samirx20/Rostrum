@@ -56,5 +56,13 @@ def test_a_word_runs_no_command_but_a_lone_key_and_a_field_do():
     for k in (Qt.Key_M, Qt.Key_I, Qt.Key_X):
         key(k, 0.05)
     assert win.property("text") == "mix" and win.property("marks") == 2, "a text field lost letters to the guard"
+
+    class Behind:                     # a window kept behind the person's work: the app has no focus object (2D r11b)
+        focusObject = staticmethod(lambda: None)
+    real, typed_word.QGuiApplication = typed_word.QGuiApplication, Behind
+    try:
+        assert typed_word.typing_in_field(win), "a field focused in a window kept behind was not seen as typing"
+    finally:
+        typed_word.QGuiApplication = real
     engine.deleteLater()
     del app
