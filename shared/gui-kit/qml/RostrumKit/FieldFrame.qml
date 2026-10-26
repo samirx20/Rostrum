@@ -1,5 +1,6 @@
 import QtQuick
 import "."
+import "UndoKeys.js" as UndoKeys
 
 // The one field box. Number, text, choice and colour fields are all this frame, so the box, the underline,
 // the hover and focus look, the padding and the text (font, size, left-aligned, vertically centred) are drawn
@@ -107,15 +108,8 @@ FocusScope {
         Keys.onEscapePressed: { text = f.text; if (f.keepOnRefusal) f.problem = ""; focus = false; f.escaped() }
         Keys.onUpPressed: (e) => f.arrow(1, (e.modifiers & Qt.ShiftModifier) !== 0)
         Keys.onDownPressed: (e) => f.arrow(-1, (e.modifiers & Qt.ShiftModifier) !== 0)
-        // Ctrl+Z / redo with nothing typed here (the box holds its value, or a find box what it found): the box lets go
-        // and the window's undo runs, never a box swallowing the key (a focused text box takes it before any shortcut)
-        Keys.onPressed: (e) => {
-            const undo = e.matches(StandardKey.Undo), redo = e.matches(StandardKey.Redo) || (e.key === Qt.Key_Y && e.modifiers === Qt.ControlModifier)
-            if ((!undo && !redo) || pending || typeof backend === "undefined" || !backend || !backend.undo) return
-            e.accepted = true
-            focus = false
-            if (undo) backend.undo(); else backend.redo()
-        }
+        // Ctrl+Z / redo with nothing typed here (the box holds its value, or a find box what it found): the window's undo
+        Keys.onPressed: (e) => UndoKeys.passOn(e, pending, typeof backend === "undefined" ? null : backend, () => { focus = false })
     }
     Binding {  // the shown text follows the value, except while the person is typing
         target: input; property: "text"; value: f.text
