@@ -7,6 +7,12 @@ time keeps its form: beats stay beats (moved by whole beats when `by` is in beat
 a marker keeps the marker with a new offset. All new values are worked out from the song as it was, then set
 together (one operation, one undo step).
 
+Which notes a section owns (`window`, the one rule for every section edit): a note, hit, clip or line belongs to the
+section it starts in by its musical place, so both of the section's lines count EARLY beats (a 1/32 note, the
+widest Humanise / Feel nudge) sooner: a chorus's first hit nudged to beat 47.989 belongs to the chorus that starts
+at 48, and a crash at 79.99 belongs to the section that starts at 80, not the one ending there. Tempo, time
+signature and key changes, markers, sections and automation points are placed exactly: they keep the plain lines.
+
 What stays (the rule):
 - **Markers stay.** A marker is a sync point (a picture cut, "logo lands"): moving music never moves it. The
   project's shared markers never move here; the song's own markers move only when asked (`carry_markers`, the
@@ -21,12 +27,31 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 from rostrum_core.tree import walk
 
-from . import markers, tempo, times
+from . import markers, meter, tempo, times
 from .registry import LISTS
 from .shift import write_like
 
 TIMED = ("note", "hit", "clip", "line", "marker", "tempo", "meter", "key", "section")
 OPENING = ("tempo", "meter", "key")
+PLAYED = ("note", "hit", "clip", "line")       # what a section owns by its musical place (window)
+EARLY = meter.EARLY                             # beats: a 1/32 note, the widest nudge Humanise / Feel give
+
+
+def _early(root: dict, sec: float) -> float:
+    beat = tempo.beat_at(root, sec) - EARLY
+    return float("-inf") if beat < 1e-9 else tempo.seconds_at(root, beat)
+
+
+def window(root: dict, a: float, b: float) -> tuple[float, float]:
+    """The seconds a section from `a` to `b` (seconds) owns notes, hits, clips and lines in: both lines EARLY beats
+    sooner (at the tempo there), so a hit nudged a hair before a section line belongs to the section it opens. A
+    section at the song's start owns everything before its end window."""
+    return _early(root, a), _early(root, b)
+
+
+def starts_in(sec: float, win: tuple[float, float]) -> bool:
+    """Whether a start at `sec` seconds falls in `win` (from `window`)."""
+    return win[0] - 1e-6 <= sec < win[1] - 1e-6
 
 
 def by_problem(v) -> str | None:
@@ -53,8 +78,10 @@ def moves(root: dict, section: dict, by, carry_markers: bool = False) -> list[tu
     lo = times.seconds(section["at"], root, where)
     hi = times.seconds(section["end"], root, where)
 
-    def inside(sec):
-        return lo - 1e-9 <= sec < hi - 1e-9
+    played = window(root, lo, hi)
+
+    def inside(sec, t=None):
+        return starts_in(sec, played) if t in PLAYED else lo - 1e-9 <= sec < hi - 1e-9
 
     moved_marks = {name for name, sec in markers.all(root, own=True) if inside(sec)} if carry_markers else set()
 
@@ -77,7 +104,7 @@ def moves(root: dict, section: dict, by, carry_markers: bool = False) -> list[tu
     for item in walk(root, LISTS):
         t, iid = item.get("type"), item["id"]
         if t in TIMED and "at" in item and (iid == section["id"] or (
-                inside(sec := times.seconds(item["at"], root, iid)) and carried(t, sec))):
+                inside(sec := times.seconds(item["at"], root, iid), t) and carried(t, sec))):
             for key in ("at", "end") if t == "section" else ("at",):
                 v, _ = new(item[key], f"{iid}.{key}")
                 if v != item[key]:

@@ -50,3 +50,19 @@ def watch(win) -> LaidOut:
     """Keep `win` laid out for scripted input (kept on the window: one per window)."""
     got = win.findChild(LaidOut)
     return got if got is not None else LaidOut(win)
+
+
+def now(win) -> None:
+    """Lay `win` out now when it drew nothing since its last input, so a check reads where things ARE before it aims:
+    the press is laid out first anyway, but its spot was worked out from the old layout (a track row given back by an
+    undo stood at the top of the list until the next frame, and a click aimed at its Mute muted the row above: Sound's
+    test_plugin_items failed about 3 runs in 4)."""
+    lo = win.findChild(LaidOut)
+    if lo is not None and not lo._drew and not lo._grabbing:
+        lo._grabbing = True
+        try:
+            win.grabWindow()
+            lo.grabs += 1
+        finally:
+            lo._grabbing = False
+        lo._drew = True

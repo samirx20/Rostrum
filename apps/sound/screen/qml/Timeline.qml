@@ -16,6 +16,8 @@ import RostrumKit
 Rectangle {
     id: tl
     property bool slim: false
+    readonly property real rowsBottom: list.y + Math.min(list.height, column.height - list.contentY)   // where the rows end (PictureCorner sits under them)
+    property real slack: 0                  // height the rows leave free for a folded dock (Arrangement.dockSlack)
     property int headerWidth: 224
     signal addTrack()
     readonly property real addH: slim ? 0 : 28          // the "+ Track" row, between the tracks and the group / master rows
@@ -31,7 +33,7 @@ Rectangle {
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
-              (list.height - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
+              (list.height - slack - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
     // Dragging a track header: where it would land is asked of the backend (group_drag.py), the one rule.
     property string dragId: ""
     property string dropOver: ""            // the row under the pointer

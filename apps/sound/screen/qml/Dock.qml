@@ -8,6 +8,7 @@ import RostrumKit
 // again on each switch). `preferred`: the window size's default height; `room`: the most it may take.
 Item {
     id: d
+    objectName: "soundDock"                     // a press in it (Editor tab) makes Ctrl+A the Editor's (press_area.py)
     property real preferred: 380
     property real room: 1000
     readonly property string tool: workspace.dock

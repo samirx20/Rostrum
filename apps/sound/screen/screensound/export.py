@@ -183,7 +183,8 @@ class RenderExport(ExportSheet):
         o = self.options()
         base = {"format": o.format, "sampleRate": o.sample_rate, "trim": o.trim, **({"from": span[0], "to": span[1]} if span else {})}
         versions = [{"schedule": schedule, "options": base, "markers": self._markers,
-                     "stems": export_stems.REQUEST[export_stems.mode(self._stems, doc.data)]}]
+                     "stems": export_stems.REQUEST[export_stems.mode(self._stems, doc.data)],
+                     "sheet": {"format": o.format, "trim": o.trim, "stems": self._stems, "markers": self._markers}}]
         for r in self._more.rows:               # each extra version: its own target, file type and quality (no stems)
             rate = r["rate"] if r["rate"] in [x["id"] for x in deliver.rates_for(r["format"])] else 0
             versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [], "markers": False,
@@ -207,7 +208,7 @@ class RenderExport(ExportSheet):
             for i, v in enumerate(p["versions"]):
                 of = f"Version {i + 1} of {n}: " if n > 1 else ""
                 made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"],
-                                           markers_file=v["markers"], name=p["name"], say=lambda w, of=of: self._said.emit(of + w)))
+                                           markers_file=v["markers"], name=p["name"], sheet=v.get("sheet"), say=lambda w, of=of: self._said.emit(of + w)))
         finally:
             eng.close()
         for m in made:

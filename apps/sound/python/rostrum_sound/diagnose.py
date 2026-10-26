@@ -18,7 +18,7 @@ LABELS = {"missing-file": "Missing file", "outside-project": "File outside the s
           "no-longer-made": "No longer made",
           "hard-end": "Stops dead at the end", "out-of-range": "Notes it can't play"}
 KINDS = tuple(LABELS)
-FIXES = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "Move them earlier or make the song longer",
+FIXES = {"broken-tie": "End it later or give it a length (the message says how)", "after-the-end": "",     # (the message already says it: said once)
          "held-past-end": "Shorten them or make the song longer if they should be heard whole (or turn on Ring out to let them ring)",
          "no-longer-made": "Remove it or replace it with an instrument",
          "out-of-range": "Move those notes into its range (Up or Down an octave) or pick another sound"}

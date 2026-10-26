@@ -44,6 +44,7 @@ from screensound.file_in import FileIn
 from screensound.keys_record import KeysRecording
 from screensound.library_panel import LibraryPanel
 from screensound.mixer import MixPage
+from screensound.press_area import PressArea
 from screensound.recording import Recording
 from screensound.sample import SOURCE
 from screensound.files_sound import FILES_SOUND, title
@@ -111,6 +112,7 @@ class Screen:
         old = self.parts
         if self.engine is None:
             _, self.engine, self.win = start(MAIN_QML, context, self.size)
+            PressArea(self.win, lambda: (self.parts or {}).get("bridge"))    # Ctrl+A's area: where the last press was
         else:
             ctx = self.engine.rootContext()
             for k, v in context.items():

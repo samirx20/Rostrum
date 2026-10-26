@@ -1,5 +1,6 @@
 """`section.duplicate`: a copy of a section and everything that starts inside it (notes, drum hits and clips
-on every track), placed right after it: the copy section starts where the original ends. One operation, one
+on every track, owned by their musical place: sections.window, so a hit Humanise nudged a hair before the section's
+line is copied and one a hair before its end is left to the next section), placed right after it: the copy section starts where the original ends. One operation, one
 undo step; nothing after the section moves. Bars after it that already hold music (a note, hit or clip starting
 there, or another section) refuse the copy, saying what is there: stacked on top it would double the music under a
 hidden section. The copy is named with the next free number: "verse-2" (a copy of "verse-2" is "verse-3").
@@ -11,7 +12,7 @@ import re
 
 from rostrum_core import codes
 
-from . import ids
+from . import ids, sections
 from .ops_select_move import _new_id
 from .registry import REGISTRY, taken
 from .select_time import moved, start_of
@@ -21,13 +22,16 @@ WORDS = {"notes": ("note", "notes"), "hits": ("drum hit", "drum hits"), "clips":
 
 
 def _starting(root, a, b):
-    """[(track id, list key, item)] for every note, hit and clip that starts in [a, b)."""
+    """[(track id, list key, item)] for every note, hit and clip a section from `a` to `b` (seconds) owns."""
+    win = sections.window(root, a, b)
     return [(tr["id"], key, it) for tr in root.get("tracks", []) for key in KINDS for it in tr.get(key, [])
-            if a - 1e-6 <= start_of(root, it) < b - 1e-6]
+            if sections.starts_in(start_of(root, it), win)]
 
 
 def _in_the_way(ctx, s, b, by):
-    """Refuse when the bars the copy would fill already hold music or another section, naming what is there."""
+    """Refuse when the bars the copy would fill already hold music or another section, naming what is there. The
+    music there is what a section in those bars would own (the same window), so the next section's own early hits
+    never refuse a copy that ends at its line."""
     root = ctx.doc
     there = _starting(root, b, b + by)
     counts = {k: sum(1 for _, key, _ in there if key == k) for k in KINDS}
@@ -56,7 +60,9 @@ def _copy_name(s, root, ctx):
 
 
 @REGISTRY.operation("section.duplicate", "Copy sections with everything that starts inside them to right after "
-                    "each (the copy is named like it, with the next free number: verse-2); one step. Refused when the bars after it "
+                    "each (the copy is named like it, with the next free number: verse-2); one step. A note, hit or "
+                    "clip nudged up to a 1/32 note before the section's line counts as inside (one that close to its "
+                    "end belongs to the next section). Refused when the bars after it "
                     "already have music or another section (it says what is there).", target="section",
                     label="Duplicate section")
 def duplicate(ctx, targets, args):

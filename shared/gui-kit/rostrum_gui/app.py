@@ -145,6 +145,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
         show_behind(win)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
+    from rostrum_gui import typed_word                # a word typed with nothing focused runs no commands
+    typed_word.watch(win)
     return app, engine, win
 
 

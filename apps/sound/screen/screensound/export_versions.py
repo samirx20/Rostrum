@@ -99,7 +99,11 @@ def last_choices(folder, item: str) -> dict | None:
     "stems", "markers"} (None: never exported). The sheet starts from them, so stems chosen for the last export are
     still chosen in the next window (critic r8: a new window's sheet said "Only the mix" and the next file went out
     without stems). Extra versions ("+ Another version") come after the first of the same Export run and carry no
-    stems: the run's first version (the lowest number made from the same song state) is what the sheet chose."""
+    stems. Each export writes the sheet's own choices into its first version's manifest (`export_sheet`), so the newest
+    of those is read as it is. Older exports, without it, are read back from what was made: an export with stems is
+    always its run's first (extra versions carry none), so a run's version with stems is what the sheet chose (the run
+    is the versions made from one song state; two exports of one state, the second with stems, read "off" by the run's
+    first version: critic r10 must-fix 3)."""
     base = Path(folder) / "renders" / item if folder and item else None
     if base is None or not base.is_dir():
         return None
@@ -113,8 +117,11 @@ def last_choices(folder, item: str) -> dict | None:
     if not made:
         return None
     newest = max(made, key=lambda m: m.get("version", 0))
-    run = [m for m in made if m.get("source") == newest.get("source")]
-    m = min(run, key=lambda m: m.get("version", 0))
+    run = sorted((m for m in made if m.get("source") == newest.get("source")), key=lambda m: m.get("version", 0))
+    said = [m["export_sheet"] for m in run if isinstance(m.get("export_sheet"), dict)]
+    if said:
+        return {**said[-1], "trim": bool(said[-1].get("trim", True)), "markers": bool(said[-1].get("markers"))}
+    m = next((m for m in reversed(run) if m.get("stems") or m.get("bus_stems")), run[0])
     stems = "groups" if m.get("stems_by") else "all" if m.get("stems") or m.get("bus_stems") else "off"
     return {"format": (m.get("format") or {}).get("id"), "trim": bool(m.get("trimmed_silence", True)),
             "stems": stems, "markers": bool(m.get("markers_file"))}

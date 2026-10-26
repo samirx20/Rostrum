@@ -13,11 +13,13 @@ beats are what the click plays: in a compound bar (6/8, 9/8, 12/8) every third c
 """
 from __future__ import annotations
 
+import math
 from typing import NamedTuple
 
 from . import tempo
 
 UNITS = (2, 4, 8, 16)
+EARLY = 0.125      # beats (a 1/32 note): the widest nudge Humanise / Feel give, a start this much before a line is on it
 
 
 class Seg(NamedTuple):
@@ -112,6 +114,15 @@ def bar_count(root: dict, end: float) -> int:
     """The bars a song ending at `end` seconds touches: a bar only partly played counts as one."""
     n = bars_long(root, end)
     return max(0, int(n) + (n - int(n) > 1e-6))
+
+
+def whole_bars(root: dict, start: float, end: float) -> float:
+    """Beats from the bar line at or before `start` to the first bar line at or after `end` (seconds), at least one
+    bar: how far a repeated phrase steps (four chords on bars 1–4 step 4 bars, a 2.5-bar phrase 3). A first note
+    nudged up to EARLY before a bar line counts from that line."""
+    first = math.floor(bar_at(root, tempo.beat_at(root, start) + EARLY) + 1e-6)
+    last = max(first + 1, math.ceil(bar_at(root, tempo.beat_at(root, end)) - 1e-6))
+    return bar_start(root, last + 1) - bar_start(root, first + 1)
 
 
 def bar_start(root: dict, bar: int) -> float:

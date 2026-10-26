@@ -19,10 +19,15 @@ class _Ctx(dict):
     __getattr__ = dict.__getitem__
 
 
+UNITS = {"octave": "octaves", "steps": "scale steps", "thin": "beats", "displace": "beats", "augment": "times as long"}
+
+
 def _num(arg, default, lo, hi, op, c):
     x = default if arg in (None, "") else _float(arg, op, c)
     if not lo <= x <= hi:
-        refuse(c.where, f'"{op}:{arg}"', f"takes a number {lo:g} … {hi:g}")
+        unit = f" {UNITS[op]}" if op in UNITS else ""
+        refuse(c.where, f'"{op}:{arg}"', f"takes a number of{unit} from {lo:g} to {hi:g}" if unit else f"takes a number {lo:g} … {hi:g}",
+               [f"{op}:{n:g}" for n in sorted({lo, default, hi})])
     return x
 
 

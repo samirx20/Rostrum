@@ -58,10 +58,14 @@ class SelectSlots:
         return self._picked_maps()[2]
 
     def _picked_maps(self):
-        """(ids, picked, pickedHeads), made once per selection (each is read by many bindings per change)."""
-        ids = tuple(self._picks.ids)
+        """(ids, picked, pickedHeads), made once per selection (each is read by many bindings per change). The list
+        is known by itself first (Selection makes a new one on every change, never edits one in place): ~55 readers
+        each copying and comparing 3,607 ids cost ~10 ms of every whole-song pick."""
+        ids = self._picks.ids
         kept = self.__dict__.get("_picked_maps_")
-        if kept is None or kept[0] != ids:
+        if kept is not None and kept[0] is not ids and kept[0] == ids:
+            kept = self.__dict__["_picked_maps_"] = (ids, *kept[1:])     # the same ids again: the same shared object
+        if kept is None or kept[0] is not ids:
             js, plain, idx = qjsEngine(self), dict.fromkeys(ids, True), self.doc.locs()
             heads = {i: True for i in ids if i in idx and idx[i].item["type"] not in BLOCKS}
             kept = self.__dict__["_picked_maps_"] = (ids, js.toScriptValue(plain) if js is not None else plain, heads)
@@ -302,6 +306,8 @@ class SelectSlots:
         touched = [i for i in touched if i in aimed] or touched      # a call aimed at a track that made notes: the notes
         idx = self.doc.locs()
         back = [i for i in touched if i in idx and idx[i].item["type"] in kinds]
+        if not back:                # the step only made things (undo of a duplicate): what it was aimed at, like a Repeat's
+            back = [t for t in dict.fromkeys(t for t in aimed if t in idx and idx[t].item["type"] in kinds)]
         if set(back) == set(self._picks.ids):       # already what is selected (undo of a whole-song Right): picking it
             return                                  # again in the step's order redrew 3,352 outlines in every lane
         if back:                    # the outlines now; the settings panel once the undo is drawn (`_settle`)

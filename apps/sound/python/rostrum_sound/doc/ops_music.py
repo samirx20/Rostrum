@@ -72,7 +72,9 @@ CARRY = Param.toggle("markers", default=False, group="Section", label="Markers t
 
 
 @REGISTRY.operation("section.move", "Move sections and everything that starts inside them (notes, hits, clips, "
-                    "lines, tempo and key changes, other sections, automation points) by an amount, as one step. "
+                    "lines, tempo and key changes, other sections, automation points) by an amount, as one step. A note, "
+                    "hit, clip or line nudged up to a 1/32 note before the section's line counts as inside (one that "
+                    "close to its end belongs to the next section). "
                     "Markers stay (markers: true moves the song's own markers inside too); the song's opening tempo, "
                     "time signature and key stay.",
                     target="section", params=[BY, CARRY], label="Move section")

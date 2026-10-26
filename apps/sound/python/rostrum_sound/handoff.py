@@ -151,7 +151,7 @@ def names_of(doc, ids) -> dict:
 
 
 def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: bool = True, options: dict | None = None,
-           markers_file: bool = False, say=None, name: str = "") -> dict:
+           markers_file: bool = False, say=None, name: str = "", sheet: dict | None = None) -> dict:
     """Render `schedule` into the next version of the document's item. Returns the engine's answer with
     `file` / `stems` pointing into the finished folder, plus `version` and `folder`. Any failure or stop raises, and the
     `.partial` folder is removed (HANDOFFS § 1). `options` is `deliver.Options.read`'s request: the
@@ -159,18 +159,20 @@ def render(folder, doc, engine, schedule: dict, who: str, stems="all", master: b
     files are named after the tracks; the manifest keeps the id → file mapping. `stems`: "all" (a file per track and per group),
     a list of track ids, [] (none) or "groups" (a stem per group and per ungrouped track: stem_groups.py).
     `markers_file`: also write `markers.json` beside the files (the Editor preset). `say(words)`: what it is doing now
-    (the Export sheet shows it). `name`: the mix's file name without its type (default "<item>_mix"); stems keep the tracks' names."""
+    (the Export sheet shows it). `name`: the mix's file name without its type (default "<item>_mix"); stems keep the tracks' names.
+    `sheet`: the Export sheet's own choices this file was made with ({format, trim, stems, markers}; only on the run's
+    first version), kept in the manifest as `export_sheet` so the next sheet starts from them (export_versions.last_choices)."""
     opts = deliver.Options.read(options, doc.data.get("sampleRate", 48000))      # a wrong choice answers before any folder is made
     part = begin_render(folder, doc.item_id)
     try:
         return _render(part, folder, doc, engine, {**schedule, "sampleRate": opts.sample_rate}, who, stems, master, opts, markers_file,
-                       say or (lambda _w: None), name)
+                       say or (lambda _w: None), name, sheet)
     except BaseException:                  # failed, or stopped (a cancel): no `vNNN.partial` is left to look like a render
         shutil.rmtree(part, ignore_errors=True)
         raise
 
 
-def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say, name="") -> dict:
+def _render(part, folder, doc, engine, schedule, who, stems, master, opts, markers_file, say, name="", sheet=None) -> dict:
     item = doc.item_id
     say("Rendering the mix and its stems" if stems else "Rendering the mix")
     try:
@@ -197,7 +199,7 @@ def _render(part, folder, doc, engine, schedule, who, stems, master, opts, marke
     except Exception as e:
         raise RostrumError(codes.JOB_FAILED, "render", str(part), f"could not write the {opts.spec['label']} files: {e}") from e
     version = int(part.name[1:-len(".partial")])
-    done = finish_render(part, manifest(item, version, r, doc, who, master, names))
+    done = finish_render(part, {**manifest(item, version, r, doc, who, master, names), **({"export_sheet": sheet} if sheet else {})})
     moved = lambda p: str(done / Path(p).name)   # noqa: E731
     return {**r, "silentStems": silent_stems(r, names), "warnings": warnings(r), "file": moved(r["file"]), "stems": {k: moved(p) for k, p in r.get("stems", {}).items()},
             "busStems": {k: moved(p) for k, p in r.get("busStems", {}).items()},
