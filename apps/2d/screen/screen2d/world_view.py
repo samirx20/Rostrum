@@ -18,7 +18,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 MOST_SCALE = 64.0          # the engine's limits
 MOST_PX = 8192
 MARGIN = 0.25              # of the visible size, each side: room to pan before a new picture is needed
-DRAG_SCALE = 0.5           # while dragging: the picture at half the size shown, so it keeps up
+DRAG_SCALE = 0.5           # while dragging or scrubbing (playback.py): the picture at half the size shown, so it keeps up
 
 
 def on_pixels(x: float, y: float, w: float, h: float, k: float) -> dict:
@@ -52,7 +52,8 @@ class WorldView(QObject):
     def scale(self) -> float:
         """Device px per world px for the next picture."""
         k = self.b.view_zoom() * self._ratio
-        return k * DRAG_SCALE if self.b.dragging() and not self.b.play.playing else k
+        moving = self.b.dragging() or self.b.play.scrubbing
+        return k * DRAG_SCALE if moving and not self.b.play.playing else k
 
     def rect(self) -> dict | None:
         """The world rectangle the next frame job asks for (None while playing or before the view is known): the
