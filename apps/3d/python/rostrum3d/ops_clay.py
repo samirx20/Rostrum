@@ -11,7 +11,7 @@ from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 
 from . import build, fields as F
-from .clay_fields import BRUSHES, SYMMETRY
+from .clay_fields import BRUSHES, CLAY, SYMMETRY
 from .kind import REGISTRY as R
 from .ops_items import PLACE, _holder, new_item
 
@@ -51,13 +51,18 @@ def piece_values(clay: dict, args: dict, shape: str) -> dict:
 
 
 STROKE_FROM_CLAY = {"brush": "brush", "size": "brushSize", "strength": "brushStrength", "symmetry": "symmetry",
-                    "accumulate": "accumulate"}
+                    "accumulate": "accumulate", "falloff": "brushFalloff", "spacing": "brushSpacing",
+                    "frontOnly": "frontOnly"}
 PATHS = ("dabs", "dabList", "path")
+_CLAY_DEFAULT = {p.name: p.default for p in CLAY}
 
 
 def stroke_values(clay: dict, args: dict) -> dict:
-    """A stroke step's values: the settings given, else the clay's brush settings; its one path (dabs or path + dir)."""
-    values = {k: args[k] if args.get(k) is not None else clay[own] for k, own in STROKE_FROM_CLAY.items()}
+    """A stroke step's values: the settings given, else the clay's brush settings (a CL1 clay without the CL2 ones:
+    their defaults); `invert` only as given; its one path (dabs or path + dir)."""
+    values = {k: args[k] if args.get(k) is not None else clay.get(own, _CLAY_DEFAULT[own])
+              for k, own in STROKE_FROM_CLAY.items()}
+    values["invert"] = bool(args.get("invert"))
     values.update({k: args[k] for k in (*PATHS, "dir") if args.get(k)})
     return {"step": "stroke", "name": args.get("name") or "", **values}
 
@@ -67,13 +72,12 @@ def _piece(ctx, clay: str, args: dict, shape: str):
 
 
 @R.operation("clay.add", "Add a clay: a lump to sculpt, starting as one sphere of `radius` at `at`. Its detail (the "
-             "smallest grain) is radius / 100, its brush a quarter of the radius. Then clay.lump joins more, clay.stroke sculpts it.", label="Add clay",
+             "smallest grain) follows the shot cameras (clay.set detailMode=fixed detail=… fixes it), its brush a quarter of the radius. Then clay.lump joins more, clay.stroke sculpts it.", label="Add clay",
              params=[*PLACE, AT, RADIUS, SYM, Param.text("material", label="Material", kind="material")])
 def clay_add(ctx, targets, args):
     r = args.get("radius", RADIUS.default)
-    detail = min(0.05, max(0.0002, round(r / 100, 4)))
     x, y, z = (float(v) for v in args["at"])
-    fields = {"x": x, "y": y, "z": z, "detail": detail, "symmetry": args.get("symmetry") or "x",
+    fields = {"x": x, "y": y, "z": z, "symmetry": args.get("symmetry") or "x",
               "brushSize": round(max(r / 4, 0.0005), 4),          # a quarter of the clay: big enough to shape it,
                                                                    # small enough to stay within a frame (proof: medium dab)
               "material": args.get("material") or ""}
@@ -105,15 +109,25 @@ def clay_shape(ctx, targets, args):
 
 @R.operation("clay.stroke", "Sculpt a clay with one brush stroke. Give the dabs as applied (`dabs`, a file reference "
              "a live stroke made, or `dabList` inline), or a world stroke: `path` points and `dir`, each dab landing "
-             "where a ray along dir meets the clay (in its own space). Settings left out are the clay's brush settings.",
+             "where a ray along dir meets the clay (in its own space). Settings left out are the clay's brush settings. "
+             "brush=mask paints a mask that protects the clay from every other brush; invert=true is Ctrl's opposite "
+             "(flatten puffs out, crease pinches to a ridge, mask takes the mask away).",
              target="clay", label="Sculpt",
              params=[Param.choice("brush", BRUSHES, label="Brush"),
                      Param.number("size", label="Size", min=0.0005, max=10, unit="m", help="The brush's radius"),
                      Param.number("strength", label="Strength", min=0, max=1), SYM,
                      Param.toggle("accumulate", label="Build up"),
+                     Param.number("falloff", label="Falloff", min=0, max=1, help="0 = soft edge, 1 = hard edge"),
+                     Param.number("spacing", label="Spacing", min=0.05, max=1,
+                                  help="Dab spacing, as a share of the radius"),
+                     Param.toggle("frontOnly", label="Front faces only",
+                                  help="Skip a dab that would land on a surface facing away from the view"),
+                     Param.toggle("invert", label="Opposite", help="Ctrl's opposite: flatten puffs, crease pinches, "
+                                  "mask unmasks"),
                      Param.text("dabs", label="Dabs", help='"clay/<hash>.dabs" (a file in the project)'),
-                     Param.points("dabList", label="Dabs (inline)", min=9, max=9,
-                                  help="[ax, ay, az, nx, ny, nz, bx, by, bz] each"),
+                     Param.points("dabList", label="Dabs (inline)", min=9, max=11,
+                                  help="[ax, ay, az, nx, ny, nz, bx, by, bz] each, + [radiusScale, strengthScale] "
+                                       "with a pen"),
                      Param.points("path", label="Path", min=3, max=3, help="[x, y, z] points"),
                      V3("dir", "Direction", help="The way the rays point, e.g. [0, 0, -1]"), NAME])
 def clay_stroke(ctx, targets, args):

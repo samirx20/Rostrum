@@ -17,12 +17,15 @@ class CacheWriter {
  public:
   CacheWriter();
   ~CacheWriter();
-  void request(const std::string& item, openvdb::FloatGrid::Ptr grid, const std::string& path);
+  // `mask`: the clay's mask (Volume::copy_mask), written beside it; null when it has none
+  void request(const std::string& item, openvdb::FloatGrid::Ptr grid, const std::string& path,
+               openvdb::FloatGrid::Ptr mask = nullptr);
 
  private:
   struct Job {
     openvdb::FloatGrid::Ptr grid;
     std::string path;
+    openvdb::FloatGrid::Ptr mask;
   };
   void loop();
   std::mutex m_;

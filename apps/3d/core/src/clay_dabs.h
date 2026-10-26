@@ -1,7 +1,9 @@
-// Clay: dab files, the compact binary a live stroke is kept in beside the document (CL1 contract § 2; the Python side
-// is rostrum3d/clay_dabs.py). Little-endian: "CLD1", uint32 count n, then n x 9 float32 (a.xyz n.xyz b.xyz: point
-// on the surface, its normal, the Pull vector / Crease direction / zeros), clay space. Named by content:
-// <folder>/clay/<first 32 hex of the file's sha256>.dabs, never rewritten.
+// Clay: dab files, the compact binary a live stroke is kept in beside the document (CL1 contract § 2, CL2; the Python
+// side is rostrum3d/clay_dabs.py). Little-endian: "CLD2", uint32 count n, then n x 11 float32 (a.xyz n.xyz b.xyz:
+// point on the surface, its normal, the Pull vector / Crease direction / zeros, clay space; then radiusScale
+// strengthScale: pen pressure, 1 1 without a pen). Dabs whose scales are all 1 are written in the CL1 form, "CLD1"
+// and n x 9 float32 (the file, and its name, CL1 wrote; clay_dabs.py does the same); both forms are read. Named by
+// content: <folder>/clay/<first 32 hex of the file's sha256>.dabs, never rewritten.
 #pragma once
 #include <array>
 #include <cstdint>
@@ -10,7 +12,7 @@
 
 namespace r3d::clay {
 
-using DabRow = std::array<float, 9>;
+using DabRow = std::array<float, 11>;  // a.xyz n.xyz b.xyz radiusScale strengthScale
 
 std::string sha256_hex(const void* data, size_t n);  // 64 lower-case hex characters
 

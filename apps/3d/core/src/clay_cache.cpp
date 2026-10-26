@@ -19,10 +19,11 @@ CacheWriter::~CacheWriter() {
   thread_.join();
 }
 
-void CacheWriter::request(const std::string& item, openvdb::FloatGrid::Ptr grid, const std::string& path) {
+void CacheWriter::request(const std::string& item, openvdb::FloatGrid::Ptr grid, const std::string& path,
+                          openvdb::FloatGrid::Ptr mask) {
   {
     std::lock_guard<std::mutex> lock(m_);
-    jobs_[item] = Job{std::move(grid), path};
+    jobs_[item] = Job{std::move(grid), path, std::move(mask)};
   }
   cv_.notify_all();
 }
@@ -41,11 +42,12 @@ void CacheWriter::loop() {
       jobs_.erase(jobs_.begin());
     }
     std::string error;
-    if (!Volume::save(job.grid, job.path, &error)) {
+    if (!Volume::save(job.grid, job.path, &error, job.mask)) {
       std::fprintf(stderr, "clay: cache %s not written: %s\n", job.path.c_str(), error.c_str());
       continue;
     }
     job.grid.reset();
+    job.mask.reset();
     std::string old;
     {
       std::lock_guard<std::mutex> lock(m_);

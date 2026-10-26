@@ -1,16 +1,40 @@
 // Clay: finding a stroke's dabs (clay_stroke.h). Moved from proofs/3d-clay (session.h Session::run, resample).
 #include "clay_stroke.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace r3d::clay {
 
 namespace {
-const char* kOpNames[] = {"add", "carve", "smooth", "pull", "flatten", "crease"};
+const char* kOpNames[] = {"add", "carve", "smooth", "pull", "flatten", "crease", "mask"};
+constexpr int kOps = int(sizeof(kOpNames) / sizeof(kOpNames[0]));
+constexpr int kPullSplit = 4;  // a Pull dab moving the clay further than one dab can is cut into at most this many
+
+// A dab of `b` at `a` (normal `n`, Pull vector / Crease direction `dir`) with the pen's scales. The one place a stamp
+// is made, live and from stored rows alike, so both give the same numbers bit for bit.
+Step stamp(const Brush& br, V3 a, V3 n, V3 dir, float radiusScale, float strengthScale) {
+  Step s;
+  s.kind = Kind::Stamp;
+  s.op = br.op;
+  s.a = a;
+  s.n = n;
+  s.b = dir;
+  s.radiusScale = radiusScale;
+  s.strengthScale = strengthScale;
+  s.radius = br.radius * radiusScale;
+  s.strength = br.strength * strengthScale;
+  s.mirror = br.mirror;
+  s.stroke = 1;
+  s.accumulate = br.accumulate;
+  s.falloff = br.falloff;
+  s.invert = br.invert;
+  return s;
 }
+}  // namespace
 
 bool op_from_name(const char* name, Op& op) {
-  for (int i = 0; i < 6; ++i)
+  for (int i = 0; i < kOps; ++i)
     if (std::strcmp(name, kOpNames[i]) == 0) {
       op = Op(i);
       return true;
@@ -33,30 +57,56 @@ void Resampler::push(V3 p, std::vector<V3>& out) {
   have_ = true;
 }
 
-bool StrokeDabs::add(V3 o, V3 d, float maxDist) {
+void Resampler::push(V3 p, float pressure, std::vector<V3>& out, std::vector<float>& pressures) {
+  const size_t first = out.size();
+  const bool had = have_;
+  const V3 from = last_;
+  const float p0 = lastPressure_;
+  push(p, out);
+  // the samples before the point lie on from..p at the same share as their pressure on p0..pressure
+  const V3 seg = sub(p, from);
+  const float ll = dot(seg, seg);
+  for (size_t i = first; i < out.size(); ++i) {
+    float t = 1.0f;
+    if (had && i + 1 < out.size() && ll > 0) t = dot(sub(out[i], from), seg) / ll;
+    pressures.push_back(p0 + (pressure - p0) * t);
+  }
+  lastPressure_ = pressure;
+}
+
+bool StrokeDabs::add(V3 o, V3 d, float maxDist, float pressure) {
   V3 on, nrm;
   hit = vol_.cast(o, d, maxDist, on, nrm);
   if (!hit) return false;
+  // Front faces only: a point that faces away from the ray is the far side of a thin part (the snap went through)
+  if (brush_.frontOnly && dot(nrm, d) > 0) {
+    hit = false;
+    return false;
+  }
   point = on;
   normal = nrm;
-  Step s;
-  s.kind = Kind::Stamp;
-  s.op = brush_.op;
-  s.a = on;
-  s.n = nrm;
-  s.radius = brush_.radius;
-  s.strength = brush_.strength;
-  s.mirror = brush_.mirror;
-  s.stroke = 1;
-  s.accumulate = brush_.accumulate;
-  // Pull: the pull vector (along the drag, in the surface); Crease: the line's direction
+  const float rs = pressure_radius_scale(pressure), ss = pressure_strength_scale(pressure);
+  // Pull: the drag since the last dab, along the surface (all of it at strength 0.5 and above: the clay follows the
+  // pointer); Crease: the line's direction
   const V3 along = havePrev_ ? sub(on, prev_) : V3{0, 0, 0};
   const V3 tang = sub(along, mul(nrm, dot(along, nrm)));
-  if (brush_.op == Op::Pull) s.b = mul(unit(tang), brush_.radius * brush_.strength * 0.5f);
-  if (brush_.op == Op::Crease) s.b = unit(tang);
   prev_ = on;
   havePrev_ = true;
   if ((brush_.op == Op::Pull || brush_.op == Op::Crease) && len(tang) == 0) return false;  // no direction yet
+  if (brush_.op == Op::Pull) {
+    // one dab moves the clay at most 2 grains (the band it works on is 4 wide): a longer drag is cut into dabs at
+    // the same spot that each move a part of it, so a fast drag still carries the clay along
+    const V3 pull = mul(tang, std::min(1.0f, 2.0f * brush_.strength * ss));
+    const int k = std::min(kPullSplit, std::max(1, int(std::ceil(len(pull) / (2.0f * vol_.voxel())))));
+    const V3 part = mul(pull, 1.0f / float(k));
+    for (int i = 0; i < k; ++i) {
+      const Step s = stamp(brush_, on, nrm, part, rs, ss);
+      vol_.dab(s);
+      dabs_.push_back(s);
+    }
+    return true;
+  }
+  const Step s = stamp(brush_, on, nrm, brush_.op == Op::Crease ? unit(tang) : V3{0, 0, 0}, rs, ss);
   vol_.dab(s);
   dabs_.push_back(s);
   return true;
@@ -66,7 +116,7 @@ std::vector<Step> stroke_along(Volume& v, const Brush& b, const std::vector<V3>&
   dir = unit(dir);
   const float back = std::max(0.08f, 4.0f * b.radius);
   std::vector<V3> samples;
-  Resampler rs(b.radius * 0.3f);
+  Resampler rs(b.radius * b.spacing);
   for (const V3& p : points) rs.push(p, samples);
   StrokeDabs sd(v, b);
   v.begin_stroke();
@@ -75,28 +125,16 @@ std::vector<Step> stroke_along(Volume& v, const Brush& b, const std::vector<V3>&
   return sd.dabs();
 }
 
-std::vector<Step> dabs_from_rows(const std::vector<std::array<float, 9>>& rows, const Brush& b) {
+std::vector<Step> dabs_from_rows(const std::vector<DabRow>& rows, const Brush& b) {
   std::vector<Step> out;
   out.reserve(rows.size());
-  for (const auto& r : rows) {
-    Step s;
-    s.kind = Kind::Stamp;
-    s.op = b.op;
-    s.a = {r[0], r[1], r[2]};
-    s.n = {r[3], r[4], r[5]};
-    s.b = {r[6], r[7], r[8]};
-    s.radius = b.radius;
-    s.strength = b.strength;
-    s.mirror = b.mirror;
-    s.stroke = 1;
-    s.accumulate = b.accumulate;
-    out.push_back(s);
-  }
+  for (const DabRow& r : rows)
+    out.push_back(stamp(b, {r[0], r[1], r[2]}, {r[3], r[4], r[5]}, {r[6], r[7], r[8]}, r[9], r[10]));
   return out;
 }
 
-std::array<float, 9> row_of(const Step& s) {
-  return {s.a.x, s.a.y, s.a.z, s.n.x, s.n.y, s.n.z, s.b.x, s.b.y, s.b.z};
+DabRow row_of(const Step& s) {
+  return {s.a.x, s.a.y, s.a.z, s.n.x, s.n.y, s.n.z, s.b.x, s.b.y, s.b.z, s.radiusScale, s.strengthScale};
 }
 
 }  // namespace r3d::clay

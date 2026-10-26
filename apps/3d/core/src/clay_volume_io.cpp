@@ -137,14 +137,22 @@ uint64_t Volume::hash() const {
       mix(&word, sizeof(word));
     }
   }
+  // then the mask's leaves (origin, values), in tree order: a clay without a mask hashes as in CL1
+  for (auto it = mask_->tree().cbeginLeaf(); it; ++it) {
+    const Coord o = it->origin();
+    mix(o.data(), sizeof(int) * 3);
+    mix(it->buffer().data(), sizeof(float) * Leaf::SIZE);
+  }
   return h;
 }
 
-size_t Volume::memory_bytes() const { return size_t(grid_->memUsage()); }
+size_t Volume::memory_bytes() const { return size_t(grid_->memUsage() + mask_->memUsage()); }
 size_t Volume::active_voxels() const { return size_t(grid_->activeVoxelCount()); }
 openvdb::FloatGrid::Ptr Volume::copy() const { return grid_->deepCopy(); }
+openvdb::FloatGrid::Ptr Volume::copy_mask() const { return has_mask() ? mask_->deepCopy() : nullptr; }
 
-bool Volume::save(const openvdb::FloatGrid::ConstPtr& grid, const std::string& path, std::string* error) {
+bool Volume::save(const openvdb::FloatGrid::ConstPtr& grid, const std::string& path, std::string* error,
+                  const openvdb::FloatGrid::ConstPtr& mask) {
   namespace fs = std::filesystem;
   const std::string partial = path + ".partial";  // written aside and renamed: a failure never leaves a broken cache
   try {
@@ -152,7 +160,9 @@ bool Volume::save(const openvdb::FloatGrid::ConstPtr& grid, const std::string& p
     {
       openvdb::io::File f(partial);
       f.setCompression(openvdb::io::COMPRESS_NONE);
-      f.write({grid});
+      openvdb::GridCPtrVec grids{grid};
+      if (mask) grids.push_back(mask);  // named "mask" (the volume's)
+      f.write(grids);
       f.close();
     }
     fs::rename(partial, path);
@@ -170,11 +180,18 @@ bool Volume::load(const std::string& path, std::string* error) {
     openvdb::io::File f(path);
     f.open(false);
     auto g = openvdb::gridPtrCast<openvdb::FloatGrid>(f.readGrid("clay"));
+    openvdb::FloatGrid::Ptr m;  // the mask, when the clay had one
+    if (f.hasGrid("mask")) {
+      m = openvdb::gridPtrCast<openvdb::FloatGrid>(f.readGrid("mask"));
+      if (!m) throw std::runtime_error("its grid \"mask\" is not a float grid");
+    }
     f.close();
     if (!g) throw std::runtime_error("no float grid \"clay\"");
     const float v = float(g->voxelSize()[0]);
     if (std::fabs(v - voxel_) > 1e-6f * voxel_) throw std::runtime_error("its grain size differs from the clay's detail");
     grid_ = g;
+    if (m) mask_ = m;
+    else mask_->tree().clear();
     dirty_.clear();
     live_.clear();
     live_.on = false;

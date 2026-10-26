@@ -82,14 +82,18 @@ std::string sha256_hex(const void* data, size_t n) {
 }
 
 std::vector<uint8_t> dabs_bytes(const std::vector<DabRow>& rows) {
+  // no pen anywhere (every scale 1): the CL1 form, so a mouse stroke's file is the one CL1 wrote
+  bool wide = false;
+  for (const DabRow& r : rows) wide |= r[9] != 1.0f || r[10] != 1.0f;
+  const size_t w = wide ? 11 : 9;
   std::vector<uint8_t> out;
-  out.reserve(8 + rows.size() * 36);
-  for (char c : {'C', 'L', 'D', '1'}) out.push_back(uint8_t(c));
+  out.reserve(8 + rows.size() * w * 4);
+  for (char c : {'C', 'L', 'D', wide ? '2' : '1'}) out.push_back(uint8_t(c));
   put_u32(out, uint32_t(rows.size()));
   for (const DabRow& r : rows)
-    for (float f : r) {
+    for (size_t k = 0; k < w; ++k) {
       uint32_t u;
-      std::memcpy(&u, &f, 4);
+      std::memcpy(&u, &r[k], 4);
       put_u32(out, u);
     }
   return out;
@@ -132,17 +136,21 @@ std::vector<DabRow> read_dabs(const std::string& path, const std::string& where)
     return uint32_t(bytes[at]) | uint32_t(bytes[at + 1]) << 8 | uint32_t(bytes[at + 2]) << 16 |
            uint32_t(bytes[at + 3]) << 24;
   };
-  if (bytes.size() < 8 || std::memcmp(bytes.data(), "CLD1", 4) != 0)
-    throw Error(where + ": " + path + " is not a dab file (no CLD1 header)");
+  const bool v1 = bytes.size() >= 8 && std::memcmp(bytes.data(), "CLD1", 4) == 0;
+  const bool v2 = bytes.size() >= 8 && std::memcmp(bytes.data(), "CLD2", 4) == 0;
+  if (!v1 && !v2) throw Error(where + ": " + path + " is not a dab file (no CLD1 or CLD2 header)");
+  const size_t w = v2 ? 11 : 9;  // numbers per dab
   const uint32_t n = u32(4);
-  if (bytes.size() != 8 + size_t(n) * 36)
+  if (bytes.size() != 8 + size_t(n) * w * 4)
     throw Error(where + ": " + path + " is cut short or too long for its " + std::to_string(n) + " dabs");
   std::vector<DabRow> rows(n);
-  for (uint32_t i = 0; i < n; ++i)
-    for (int k = 0; k < 9; ++k) {
-      const uint32_t u = u32(8 + (size_t(i) * 9 + k) * 4);
+  for (uint32_t i = 0; i < n; ++i) {
+    rows[i][9] = rows[i][10] = 1.0f;  // CLD1: no pen
+    for (size_t k = 0; k < w; ++k) {
+      const uint32_t u = u32(8 + (size_t(i) * w + k) * 4);
       std::memcpy(&rows[i][k], &u, 4);
     }
+  }
   return rows;
 }
 

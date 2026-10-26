@@ -71,3 +71,49 @@ def test_step_keys_are_stable(tmp_path):
     assert keys == [s["key"] for s in chain(filed.item("head")["steps"])]       # the file ref keys as the inline dabs
     assert keys == [s["key"] for s in chain(inline.item("head")["steps"])]      # same steps, same keys
     assert len(set(keys)) == 2                                                  # each step its own key
+
+
+def test_auto_detail_is_finer_for_a_close_up():
+    from rostrum3d import clay_detail
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source('''
+blob = clay("blob")
+blob.lump((0, 0, 0), 0.05)
+camera("near", z=0.5)
+camera("far", z=5)
+camera("away", z=0.5, ry=180)
+shot("close", camera="near")
+shot("wide", camera="far")
+''', "s.py"))
+    data, blob = d.data, d.item("blob")
+    both = clay_detail.detail(data, blob)
+    wide = clay_detail.detail({**data, "shots": [s for s in data["shots"] if s["id"] == "wide"]}, blob)
+    assert both == 0.0003 and wide == 0.0028 and both < wide          # 10 cm clay, 50 mm lens, 1920 px wide
+    behind = {**data, "shots": [{**data["shots"][0], "camera": "away"}]}
+    assert clay_detail.detail(behind, blob) == 0.0005                 # no shot sees it: radius / 100
+    assert clay_detail.detail(data, {**blob, "detailMode": "fixed", "detail": 0.004}) == 0.004
+    moved = {**data, "items": [({**i, "z": 0.501} if i["id"] == "near" else i) for i in data["items"]]}
+    assert clay_detail.detail(moved, blob) == both                   # a small move: same number, same cache
+
+
+def test_cl2_brush_settings_set_without_a_screen_and_go_into_the_stroke():
+    d = Document.new(KIND)
+    d.apply({"op": "clay.add", "args": {"id": "head", "at": [0, 1, 0], "radius": 0.1}}, SAM)
+    d.apply({"op": "clay.set", "target": ["head"], "args": {"brush": "mask", "brushFalloff": 0.9, "brushSpacing": 0.1,
+                                                             "frontOnly": False}}, SAM)
+    d.apply({"op": "clay.set", "target": ["head"], "args": {"detailMode": "fixed", "detail": 0.003}}, SAM)
+    d.apply({"op": "clay.stroke", "target": ["head"], "args": {"dabList": DABS, "invert": True}}, SAM)
+    step = chain(d.item("head")["steps"])[-1]
+    assert (step["op"], step["falloff"], step["spacing"], step["frontOnly"], step["invert"]) == ("mask", 0.9, 0.1,
+                                                                                                False, True)
+    assert d.item("head")["detail"] == 0.003
+
+
+def test_cl1_dab_files_still_read(tmp_path):
+    import struct
+    from rostrum3d.clay_dabs import pack, unpack
+    old = struct.pack("<4sI", b"CLD1", 2) + struct.pack("<18f", *[x for r in DABS for x in r])
+    assert pack(DABS) == old                                           # CL1's dabs keep their file name and key
+    assert [x for r in unpack(old) for x in r] == pytest.approx([x for r in DABS for x in r], abs=1e-7)
+    pen = [DABS[0] + [0.5, 0.8], DABS[1]]                              # a pen: CLD2, a dab without one scales 1
+    assert unpack(pack(pen))[1][9:] == [1.0, 1.0] and pack(pen)[:4] == b"CLD2"

@@ -48,12 +48,24 @@ clay::StepNode read_step(const JsValue& value, const std::string& where) {
     p.mirror = s.flag("mirror");
   } else {
     clay::Brush& b = st.brush;
-    b.op = op_of(s, {"add", "carve", "smooth", "pull", "flatten", "crease"});
+    b.op = op_of(s, {"add", "carve", "smooth", "pull", "flatten", "crease", "mask"});
     b.radius = float(positive(s, "radius"));
     b.strength = float(s.num("strength"));
     if (b.strength < 0 || b.strength > 1) fail(s.at("strength"), std::to_string(b.strength), "0..1");
     b.mirror = s.flag("mirror");
     b.accumulate = s.flag("accumulate");
+    // CL2's settings; a step without them (CL1) is applied as CL1 did: falloff 0.5, spacing 0.3, every face, as is
+    if (s.has("falloff")) {
+      b.falloff = float(s.num("falloff"));
+      if (!(b.falloff >= 0 && b.falloff <= 1)) fail(s.at("falloff"), std::to_string(b.falloff), "0 (soft) .. 1 (hard)");
+    }
+    if (s.has("spacing")) {
+      b.spacing = float(s.num("spacing"));
+      if (!(b.spacing >= 0.05f && b.spacing <= 1))
+        fail(s.at("spacing"), std::to_string(b.spacing), "0.05 .. 1 (x the radius)");
+    }
+    if (s.has("frontOnly")) b.frontOnly = s.flag("frontOnly");
+    if (s.has("invert")) b.invert = s.flag("invert");
     const int ways = int(s.has("dabs")) + int(s.has("dabList")) + int(s.has("path") || s.has("dir"));
     const char* accepted = "exactly one of dabs (a .dabs file), dabList (inline) or path + dir";
     if (ways != 1) fail(where, std::to_string(ways) + " stroke paths given", accepted);
@@ -69,14 +81,20 @@ clay::StepNode read_step(const JsValue& value, const std::string& where) {
       const JsArray& rows = s.list("dabList");
       for (size_t i = 0; i < rows.size(); ++i) {
         const std::string at = s.at("dabList") + "[" + std::to_string(i) + "]";
-        if (!rows[i].IsArray() || rows[i].GetJsArray().size() != 9)
-          fail(at, "is not a list of 9", "[ax, ay, az, nx, ny, nz, bx, by, bz] numbers");
+        const size_t w = rows[i].IsArray() ? rows[i].GetJsArray().size() : 0;
+        if (w != 9 && w != 11)
+          fail(at, "is not a list of 9 or 11",
+               "[ax, ay, az, nx, ny, nz, bx, by, bz] numbers, then radiusScale, strengthScale (pen pressure) or none");
         clay::DabRow r;
-        for (int k = 0; k < 9; ++k) {
+        r[9] = r[10] = 1.0f;  // no pen
+        for (size_t k = 0; k < w; ++k) {
           const JsValue& x = rows[i].GetJsArray()[k];
           if (!is_number(x)) fail(at, "holds " + x.GetTypeName(), "numbers");
           r[k] = float(to_number(x));
         }
+        if (!(r[9] > 0 && r[9] <= 1) || !(r[10] >= 0 && r[10] <= 1))
+          fail(at, "has pen scales " + std::to_string(r[9]) + ", " + std::to_string(r[10]),
+               "radiusScale above 0 up to 1, strengthScale 0..1");
         st.rows.push_back(r);
       }
     } else {
