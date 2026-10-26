@@ -7,6 +7,7 @@ picked keys (key_edits.key_jobs: copy, cut, duplicate, delete, the arrows); a jo
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
+from rostrum_gui import pointer_quiet
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.parts import SlotMixin
 
@@ -27,6 +28,7 @@ class KeyHub(ActionHub):
 
     @Slot(str)
     def key(self, job):
+        pointer_quiet.acted()           # the person acting (a shortcut's key never reaches the window's watcher)
         if self.bridge.keys_take(job):
             return
         if job in ROUTES:

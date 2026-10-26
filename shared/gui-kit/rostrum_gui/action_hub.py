@@ -23,7 +23,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from . import commands as command_box
 from . import action_views as views
-from . import qt_faults
+from . import pointer_quiet, qt_faults
 from .actions import ActionList
 from .after_frame import AfterFrame
 from .amounts_page import AmountsPage
@@ -211,6 +211,7 @@ class ActionHub(QObject):
     @Slot(str)
     def key(self, job):
         """A shortcut pressed: run its action if valid now, else say why. A key with no action here does nothing."""
+        pointer_quiet.acted()           # the person acting: work that waits for a quiet moment waits (a pick's panel)
         entry, why = self.list.on_key(self._facts(), job, **self._kept())
         if entry and entry["asks"]:
             self.ask(entry["id"])
