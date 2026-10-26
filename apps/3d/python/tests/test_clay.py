@@ -36,6 +36,18 @@ def test_rerun_keeps_a_persons_strokes_in_order():
     assert set(order) == {"head.s1", "head.s2", "head.s3", mine}
 
 
+def test_brush_settings_set_without_a_screen_and_hide_when_not_sculpting():
+    from rostrum_core.conditions import holds
+    from rostrum3d import fields as F
+    d = Document.new(KIND)
+    d.apply({"op": "clay.add", "args": {"id": "head", "at": [0, 1, 0], "radius": 0.1}}, SAM)
+    d.apply({"op": "clay.set", "target": ["head"], "args": {"brushSize": 0.05, "brush": "carve", "symmetry": "off"}}, SAM)
+    assert d.item("head")["brushSize"] == 0.05 and d.item("head")["brush"] == "carve"       # agents: always valid
+    p = F.param("clay", "brushSize")
+    assert holds(p.valid_when, d.item("head"), KIND.facts(d.item("head"), d))               # no screen: the fact is on
+    assert not holds(p.valid_when, d.item("head"), {**KIND.facts(d.item("head"), d), "sculpting": False})  # Select
+
+
 def test_a_stroke_is_one_undo_step():
     d = Document.new(KIND)
     d.apply({"op": "clay.add", "args": {"id": "head", "at": [0, 1, 0], "radius": 0.1}}, SAM)

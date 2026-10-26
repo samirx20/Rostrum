@@ -9,7 +9,7 @@ import dataclasses
 
 from rostrum_core import Param
 
-from .field_kit import CH, D, IS, N, S, T, TRANSFORM, X
+from .field_kit import CH, D, IS, N, S, SCULPTING, T, TRANSFORM, X
 
 BRUSHES = ["add", "carve", "smooth", "pull", "flatten", "crease"]     # the core has all six; CL1's screen shows three
 SYMMETRY = ["off", "x"]
@@ -17,15 +17,16 @@ _MIRROR = {"off": "Off", "x": "Left–right"}
 PIECE, STROKE = IS("step", "piece"), IS("step", "stroke")
 
 CLAY = [
-    CH("brush", BRUSHES, "Brush", "Brush", "add",
+    CH("brush", BRUSHES, "Brush", "Brush", "add", when=SCULPTING,
        help="Add builds clay up, Carve digs in, Smooth evens bumps out; Pull drags the surface along the stroke, "
             "Flatten presses it to a plane, Crease cuts a sharp fold"),
-    N("brushSize", "Size", "Brush", 0.0005, 10, 0.001, "m", default=0.03, help="The brush's radius"),
-    dataclasses.replace(N("brushStrength", "Strength", "Brush", 0, 1, 0.01, "", default=0.5), display="percent"),
-    dataclasses.replace(CH("symmetry", SYMMETRY, "Mirror", "Brush", "x",
+    N("brushSize", "Size", "Brush", 0.0005, 10, 0.001, "m", when=SCULPTING, default=0.03, help="The brush's radius"),
+    dataclasses.replace(N("brushStrength", "Strength", "Brush", 0, 1, 0.01, "", when=SCULPTING, default=0.5),
+                        display="percent"),
+    dataclasses.replace(CH("symmetry", SYMMETRY, "Mirror", "Brush", "x", when=SCULPTING,
                            help="Left–right: every stroke and piece is mirrored across the clay's own X = 0"),
                         labels=_MIRROR),
-    T("accumulate", "Build up", "Brush", False, S,
+    T("accumulate", "Build up", "Brush", False, S, SCULPTING,
       help="On: going over the same place keeps adding. Off: one stroke adds at most its strength, however often "
            "it passes"),
     N("detail", "Detail", "Clay", 0.0002, 0.05, 0.0001, "m", D, default=0.002,

@@ -41,6 +41,7 @@ NO_AIM = IS("aim", "none")
 FOLLOWS = NOT("follow", "")
 ANIMATED = {"fact": "animated"}      # the item, or something inside it, has keys (animated_fact below)
 ANIMATING = {"fact": "animating"}    # the person is animating: a screen's Animate page; always, for agents (kind.py)
+SCULPTING = {"fact": "sculpting"}    # the Clay tool is on: a screen's tool; always, for agents (kind.py)
 STEPS = {"smooth": 1, "on2": 2, "on3": 3}   # Timing: how many frames each value holds (compile.py)
 TIMING = dataclasses.replace(
     CH("timing", list(STEPS), "Timing", "Timing", "smooth", S, {"all": [ANIMATED, ANIMATING]},

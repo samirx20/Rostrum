@@ -45,6 +45,7 @@ def facts(item: dict) -> dict:
         return {"number": "v" in item, "color": "c" in item}
     if item.get("type") in F.KEYED:
         return {"animated": F.animated_fact(item), "animating": True,    # a screen overrides animating with its page
+                "sculpting": True,                                       # and sculpting with its Clay tool being on
                 "boned": bool(item.get("bones")),                         # a mesh with a chain: Bend with bones shows
                 "painted": bool(item.get("paints"))}                      # a mesh with paint layers: Paint size shows
     return {}

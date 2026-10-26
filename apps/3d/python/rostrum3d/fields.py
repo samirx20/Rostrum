@@ -101,4 +101,4 @@ def animated_fact(item: dict) -> bool:
 def not_valid(kind: str, item: dict, given) -> list[str]:
     """The given field names that don't apply to `item` as it is (e.g. width on a sphere). Timing may be given before
     the keys are (a script's mesh(…, timing="on2") then .key(…)): `animated` only decides whether screens show it."""
-    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True, "animating": True})]
+    return [n for n in given if (p := param(kind, n)) and not holds(p.valid_when, item, {"animated": True, "animating": True, "sculpting": True})]
