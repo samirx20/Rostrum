@@ -92,10 +92,16 @@ class Snapper(QObject):
             dx, dy = S.straight(dx, dy)
         if self._start is None:
             return dx, dy
-        s = self._start
-        sx, sy = self._snap((s[0] + dx, s[1] + dy, s[2] + dx, s[3] + dy),
-                            S.ALL if dx or not self._straight else (), S.ALL if dy or not self._straight else (), self._spaced)
-        return dx + sx, dy + sy
+        s, near = self._start, S.threshold(self.b.view_zoom())
+        sx, sy = self._snap((s[0] + dx, s[1] + dy, s[2] + dx, s[3] + dy),      # an axis the pointer has hardly left stays put:
+                            S.ALL if abs(dx) >= near else (), S.ALL if abs(dy) >= near else (), self._spaced)   # a straight pull down never leans
+        return (dx + sx if sx else self._whole(dx)), (dy + sy if sy else self._whole(dy))
+
+    def _whole(self, d: float) -> float:
+        """A drag the snap didn't catch lands on whole pixels (finer when zoomed in), not on the fraction the pointer's screen
+        pixel maps to: a row copied by dragging stays an exact step apart."""
+        q = 1.0 / max(1, round(self.b.view_zoom()))
+        return round(d / q) * q
 
     def edge(self, hx: int, hy: int, dx: float, dy: float) -> tuple[float, float]:
         """A resize handle (hx, hy) dragged by (dx, dy): the dragged edge(s) snap. Only for an unturned box (a turned

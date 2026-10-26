@@ -44,6 +44,8 @@ def _text(kind: str, members: list[dict]) -> str:
     if kind == "never_shown":
         return f'{len(ids)} layers ({_examples(ids)}) are never on screen: {first["why"]}.'
     if kind == "not_showing":
+        if first["reasons"] == ["opacity 0"]:
+            return f'{len(ids)} layers ({_examples(ids)}) are fully see-through (opacity 0) at {first["at"]} s: nothing is drawn for them then (as expected after a fade out).'
         return f'{len(ids)} layers ({_examples(ids)}) are not on screen at {first["at"]} s: {", ".join(first["reasons"])}.'
     return f'{len(ids)} layers ({_examples(ids)}): {first["text"]}'
 

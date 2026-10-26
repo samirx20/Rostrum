@@ -35,7 +35,8 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
                                             "sound": {"type": "boolean", "description": "Put the project's sound under the picture, as render_export's mp4 does (the scene's soundtrack, else the project's main mix). Default: on when the project has sound. If the mix fails, the render fails; never a silent file."},
-                                            "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder), with the project saved beside it as <name>.project/ so other apps can open the film. Default: only the project's renders folder."}}})
+                                            "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder; only the mp4 is written there unless `with_project` is true). Default: only the project's renders folder."},
+                                            "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."}}})
 def render_video(ctx, args):
     """Export an mp4 (H.264, bt709) of a composition through the same engine as look_frame. Always a job: it returns a job id at once;
     ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
@@ -77,8 +78,8 @@ def render_video(ctx, args):
                 shutil.copyfile(files[0], tmp)
                 tmp.replace(copy_to)
                 files.append(copy_to)
-                beside = project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
-        said = f" The project is saved beside the copy: {beside}." if partial and copy_to else ""
+                beside = args.get("with_project") and project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
+        said = f" The project is saved beside the copy: {beside}." if partial and copy_to and beside else ""
         took = info["timing"]["totalS"]
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
                      f'on {info.get("adapter") or "the processor"}.{said}',
@@ -86,4 +87,4 @@ def render_video(ctx, args):
                       "project_copy": str(beside) if said else None, "seconds": round(took, 1), "adapter": info.get("adapter"),
                       "timing": info["timing"], "workers": info.get("workers")}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
-    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}")
+    return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}")

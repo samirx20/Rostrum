@@ -52,12 +52,19 @@ def _drawn_ids(comp: dict, t: float, w: float, h: float, only: set | None = None
     return drawn, why
 
 
+def seen_words(layer: str, t: float, reasons: list[str]) -> str:
+    """What is true of a layer that is not drawn at t. Fully see-through (a fade out or a fade to dark) is a state, not a fault."""
+    if reasons == ["opacity 0"]:
+        return f"{layer} is fully see-through (opacity 0) at {r(t, 2)} s: nothing is drawn for it then (as expected after a fade out)."
+    return f'{layer} is not on screen at {r(t, 2)} s: {", ".join(reasons)}.'
+
+
 def not_showing(comp: dict, t: float, screen: Screen) -> list[dict]:
     """Layers that should be there at `t` (in their times) but are not seen: see-through, or outside the picture. A layer whose
     own end came before is not listed: it left on purpose."""
     w, h = comp_size(comp)
     drawn, why = _drawn_ids(comp, t, w, h)
-    out = [finding("not_showing", f'{i} is not on screen at {r(t, 2)} s: {", ".join(x)}.', layer=i, at=r(t), reasons=x)
+    out = [finding("not_showing", seen_words(i, t, x), layer=i, at=r(t), reasons=x)
            for i, x in why.items() if "outside its start/end times" not in x]
     seen = screen.seen(t, drawn)
     out += [finding("not_showing", f"{i} is not on screen at {r(t, 2)} s: outside the frame.", layer=i, at=r(t), reasons=["outside the frame"])

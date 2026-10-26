@@ -2,7 +2,7 @@
 
 A new layer is named in words ("Text", then "Text 2", "Text 3" …). An older document may hold a layer whose name is only
 its type's ("Text") with a meaningful id ("title"): there the id reads better, so it is shown instead. A text still
-named "Text" or "Text 2" reads as its words."""
+named "Text" or "Text 2" reads as its words, or "Counter" while it counts."""
 from __future__ import annotations
 
 import re
@@ -19,8 +19,11 @@ def display_name(item: dict) -> str:
         return id_
     if item.get("type") == "shape" and re.fullmatch(rf"{F.LABELS['shape']}( \d+)?", str(name)) and item.get("shape") in F.SHAPE_WORDS:
         return F.SHAPE_WORDS[item["shape"]] + str(name)[len(F.LABELS["shape"]):]      # a star not yet renamed is "Star", never "Shape"
-    if item.get("type") == "text" and re.fullmatch(rf"{F.LABELS['text']}( \d+)?", str(name)) and words(item):
-        return words(item)              # a text the person hasn't named reads as its words, as in a design tool
+    if item.get("type") == "text" and re.fullmatch(rf"{F.LABELS['text']}( \d+)?", str(name)):
+        if item.get("counter"):
+            return "Counter" + str(name)[len(F.LABELS["text"]):]      # a counting text shows a number, not its typed words
+        if words(item):
+            return words(item)              # a text the person hasn't named reads as its words, as in a design tool
     return str(name)
 
 
