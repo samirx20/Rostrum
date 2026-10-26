@@ -24,18 +24,22 @@ struct V3 {
   float x = 0, y = 0, z = 0;
 };
 
-enum class Op : uint8_t { Add, Carve, Smooth };
+// Add / Carve: raise or dig (pieces and dabs). Smooth: even out. Pull: move the clay under the brush along `b` (the
+// drag). Flatten: towards the plane through `a` with normal `n`. Crease: a sharp line, dug and pinched in along `b`.
+enum class Op : uint8_t { Add, Carve, Smooth, Pull, Flatten, Crease };
 enum class Kind : uint8_t { Piece, Stamp };  // a shape put in (sphere / capsule, with blend), or one brush dab
 
 struct Step {
   Kind kind = Kind::Piece;
   Op op = Op::Add;
-  V3 a, b;               // piece: sphere centre a, or capsule a..b (a == b: sphere). stamp: a = point on the surface
+  V3 a, b;               // piece: sphere centre a, or capsule a..b (a == b: sphere). stamp: a = point on the surface;
+                         // b = Pull's vector (world) or Crease's line direction (unit)
   V3 n;                  // stamp: surface normal at a (out of the clay)
   float radius = 0.1f;   // world
   float blend = 0.0f;    // piece: smooth join distance, world
   float strength = 0.5f; // stamp: 0..1
   bool mirror = false;   // also at x -> -x (the same step, mirrored, in the same pass)
+  uint32_t stroke = 0;   // stamp: the stroke it belongs to (dabs of one stroke are applied as one unit); 0 = alone
 };
 
 std::string to_line(const Step& s);  // one text line, floats round-trip exactly
@@ -52,7 +56,14 @@ class Clay {
   ~Clay();
   float voxel() const { return voxel_; }
 
-  StepTiming apply(const Step& s);  // marks the changed blocks dirty
+  StepTiming apply(const Step& s);  // a piece or a lone dab; marks the changed blocks dirty
+  // A stroke as one unit: all its dabs in one box, the band re-levelled once (what replay does).
+  StepTiming apply_stroke(const std::vector<Step>& dabs);
+  // Live: begin_stroke, then dab() per dab (shown at once, the grid's old chunks kept aside), then end_stroke puts
+  // the kept chunks back and applies the stroke as one unit, so the clay equals a replay of the same steps.
+  void begin_stroke();
+  StepTiming dab(const Step& s);
+  StepTiming end_stroke(const std::vector<Step>& dabs);
   std::set<BlockKey> take_dirty();  // and clears them
 
   // the surface of one block (mesh.h), and of everything (the whole-surface rebuild)
@@ -77,8 +88,9 @@ class Clay {
   openvdb::FloatGrid::Ptr grid_;
   float voxel_;
   std::set<BlockKey> dirty_;
-  struct Scratch;  // a step's buffers, kept between steps
-  std::unique_ptr<Scratch> scratch_;
+  struct Backup;  // what a stroke changed while it was drawn (end_stroke puts it back)
+  std::unique_ptr<Backup> backup_;
+  StepTiming run(const Step* steps, size_t n);  // one piece, or dabs as one unit
 };
 
 // world <-> voxel index helpers

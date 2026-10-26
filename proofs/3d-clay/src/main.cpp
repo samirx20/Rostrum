@@ -1,9 +1,10 @@
-// P-Clay proof, part 1: sculpt a head with steps, time stamp -> picture, the whole-surface rebuild, replay of 2,000
-// strokes with a stable hash, memory; Storm pictures and a Cycles Final. Throwaway proof code.
+// P-Clay proof: sculpt with steps, time a dab to its picture, rebuild the whole surface, replay 2,000 strokes with a
+// stable hash, memory; Storm pictures and Cycles Finals. Throwaway proof code.
 //
-//   clay_proof.exe <out folder> [--voxel 0.000625] [--samples 256] [--no-final] [--strokes 2000]
-//
-// Writes into <out folder>: numbers.json, head_steps.txt, strokes_steps.txt, cache.vdb, *.png, clay_blocks.usda.
+//   clay_proof.exe <out folder> bench   [--samples 256] [--no-final] [--strokes 2000] [--budget 8]
+//   clay_proof.exe <out folder> look    [--samples 256]   close-ups: smoothness, a Crease line, joins
+//   clay_proof.exe <out folder> compare [--samples 256]   the agent's head and character, the mouse head
+//   clay_proof.exe <out folder> check                     every head step must leave a closed surface
 #include <windows.h>
 #include <psapi.h>
 
@@ -13,17 +14,22 @@
 #include <cstdio>
 #include <fstream>
 #include <map>
-#include <set>
-#include <tuple>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
+#include <tbb/global_control.h>
 #include <tbb/parallel_for.h>
 
 #include "clay.h"
+#include "session.h"
 #include "view.h"
+#ifdef CLAY_SCULPTS
+#include "sculpts.h"
+#endif
 
 using namespace clay;
 
@@ -57,16 +63,16 @@ size_t now_ws() {
   return pmc.WorkingSetSize;
 }
 
-V3 add(V3 a, V3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
-V3 sub(V3 a, V3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
-V3 mul(V3 a, float s) { return {a.x * s, a.y * s, a.z * s}; }
-float len(V3 a) { return std::sqrt(a.x * a.x + a.y * a.y + a.z * a.z); }
-V3 unit(V3 a) { return mul(a, 1.0f / std::max(1e-12f, len(a))); }
-
 double pct(std::vector<double> v, double p) {
   if (v.empty()) return 0;
   std::sort(v.begin(), v.end());
   return v[std::min(v.size() - 1, size_t(p * (v.size() - 1) + 0.5))];
+}
+
+std::string hex(uint64_t h) {
+  char b[32];
+  std::snprintf(b, sizeof b, "%016llx", (unsigned long long)h);
+  return b;
 }
 
 struct Json {
@@ -78,110 +84,47 @@ struct Json {
   std::string done() { return s.str() + "\n}\n"; }
 };
 
-// The sculpting session: the clay, the steps it took, and (optionally) the live Storm view kept in step.
-struct Session {
-  Clay clay;
-  std::vector<Step> steps;
-  View* view = nullptr;
-  explicit Session(float voxel) : clay(voxel) {}
-
-  void (*after)(Session&) = nullptr;  // --check: called after every step
-  void apply(const Step& s) {
-    clay.apply(s);
-    steps.push_back(s);
-    if (after) after(*this);
-  }
-  // one brush stroke: the polyline resampled every 0.3 radius; each dab lands where a ray along `dir` meets the clay
-  // as it is now (like a pen on the screen), so later dabs ride on earlier ones
-  int stroke(Op op, const std::vector<V3>& pts, V3 dir, float radius, float strength, bool mirror) {
-    dir = unit(dir);
-    int n = 0;
-    const float spacing = std::max(radius * 0.3f, clay.voxel());
-    for (size_t i = 0; i + 1 < pts.size(); ++i) {
-      const V3 seg = sub(pts[i + 1], pts[i]);
-      const int k = std::max(1, int(len(seg) / spacing));
-      for (int j = 0; j < k + (i + 2 == pts.size() ? 1 : 0); ++j) {
-        const V3 p = add(pts[i], mul(seg, float(j) / k));
-        V3 on, nrm;
-        if (!clay.cast(sub(p, mul(dir, 0.08f)), dir, 0.16f, on, nrm)) continue;
-        Step s;
-        s.kind = Kind::Stamp;
-        s.op = op;
-        s.a = on;
-        s.n = nrm;
-        s.radius = radius;
-        s.strength = strength;
-        s.mirror = mirror;
-        apply(s);
-        ++n;
-      }
-    }
-    return n;
-  }
-};
-
-Step piece(Op op, V3 a, V3 b, float r, float blend, bool mirror) {
-  Step s;
-  s.kind = Kind::Piece;
-  s.op = op;
-  s.a = a;
-  s.b = b;
-  s.radius = r;
-  s.blend = blend;
-  s.mirror = mirror;
-  return s;
-}
-Step ball(Op op, V3 a, float r, float blend, bool mirror) { return piece(op, a, a, r, blend, mirror); }
-
-// The scripted sculpt ("the agent"): a head, Y up, facing +Z, symmetric in X. Units: metres-ish, ~0.25 tall.
+// Part 1's scripted head (kept as the bench's clay, so the numbers compare with part 1's).
 void sculpt_head(Session& S) {
   const bool M = true;
-  // big forms
-  S.apply(ball(Op::Add, {0, 0.035f, -0.01f}, 0.082f, 0, false));                          // cranium
-  S.apply(piece(Op::Add, {0, 0.03f, -0.03f}, {0, 0.01f, -0.06f}, 0.07f, 0.03f, false));     // back of the skull
-  S.apply(piece(Op::Add, {0, 0.01f, 0.03f}, {0, -0.045f, 0.035f}, 0.052f, 0.035f, false));  // face mass
-  S.apply(piece(Op::Add, {0.044f, -0.03f, -0.005f}, {0.018f, -0.083f, 0.045f}, 0.02f, 0.025f, M));  // jaw
-  S.apply(ball(Op::Add, {0, -0.088f, 0.058f}, 0.019f, 0.02f, false));                       // chin
-  S.apply(piece(Op::Add, {0, -0.05f, -0.02f}, {0, -0.17f, -0.035f}, 0.043f, 0.025f, false)); // neck
-  S.apply(ball(Op::Add, {0.048f, -0.008f, 0.052f}, 0.02f, 0.022f, M));                       // cheekbones
-  // eyes: sockets carved, eyeballs set in, brow ridge
+  S.apply(ball(Op::Add, {0, 0.035f, -0.01f}, 0.082f, 0, false));
+  S.apply(piece(Op::Add, {0, 0.03f, -0.03f}, {0, 0.01f, -0.06f}, 0.07f, 0.03f, false));
+  S.apply(piece(Op::Add, {0, 0.01f, 0.03f}, {0, -0.045f, 0.035f}, 0.052f, 0.035f, false));
+  S.apply(piece(Op::Add, {0.044f, -0.03f, -0.005f}, {0.018f, -0.083f, 0.045f}, 0.02f, 0.025f, M));
+  S.apply(ball(Op::Add, {0, -0.088f, 0.058f}, 0.019f, 0.02f, false));
+  S.apply(piece(Op::Add, {0, -0.05f, -0.02f}, {0, -0.17f, -0.035f}, 0.043f, 0.025f, false));
+  S.apply(ball(Op::Add, {0.048f, -0.008f, 0.052f}, 0.02f, 0.022f, M));
   S.apply(ball(Op::Carve, {0.031f, 0.016f, 0.086f}, 0.019f, 0.012f, M));
   S.apply(ball(Op::Add, {0.031f, 0.013f, 0.062f}, 0.012f, 0.003f, M));
-  S.apply(piece(Op::Add, {0.019f, 0.021f, 0.071f}, {0.043f, 0.021f, 0.066f}, 0.0045f, 0.004f, M));  // upper lids
-  S.apply(piece(Op::Add, {0.021f, 0.004f, 0.071f}, {0.041f, 0.005f, 0.067f}, 0.0035f, 0.004f, M));  // lower lids
+  S.apply(piece(Op::Add, {0.019f, 0.021f, 0.071f}, {0.043f, 0.021f, 0.066f}, 0.0045f, 0.004f, M));
+  S.apply(piece(Op::Add, {0.021f, 0.004f, 0.071f}, {0.041f, 0.005f, 0.067f}, 0.0035f, 0.004f, M));
   S.apply(piece(Op::Add, {0.01f, 0.036f, 0.079f}, {0.05f, 0.036f, 0.064f}, 0.0095f, 0.012f, M));
-  // nose
   S.apply(piece(Op::Add, {0, 0.026f, 0.081f}, {0, -0.014f, 0.098f}, 0.0085f, 0.012f, false));
   S.apply(ball(Op::Add, {0, -0.016f, 0.097f}, 0.0105f, 0.006f, false));
   S.apply(ball(Op::Add, {0.011f, -0.02f, 0.087f}, 0.0068f, 0.006f, M));
-  S.apply(ball(Op::Carve, {0.0062f, -0.0275f, 0.0905f}, 0.0028f, 0.002f, M));  // nostrils
-  // mouth
+  S.apply(ball(Op::Carve, {0.0062f, -0.0275f, 0.0905f}, 0.0028f, 0.002f, M));
   S.apply(piece(Op::Add, {-0.017f, -0.045f, 0.084f}, {0.017f, -0.045f, 0.084f}, 0.006f, 0.01f, false));
   S.apply(piece(Op::Add, {-0.015f, -0.0555f, 0.082f}, {0.015f, -0.0555f, 0.082f}, 0.0062f, 0.01f, false));
   S.apply(piece(Op::Carve, {-0.019f, -0.0502f, 0.092f}, {0.019f, -0.0502f, 0.092f}, 0.0022f, 0.0015f, false));
-  // ears
   S.apply(piece(Op::Add, {0.08f, 0.012f, -0.008f}, {0.082f, -0.024f, -0.002f}, 0.0105f, 0.008f, M));
   S.apply(ball(Op::Carve, {0.091f, -0.004f, -0.002f}, 0.0062f, 0.003f, M));
-
-  // brush work: smooth the joins, build the brow and cheeks, carve the folds
   const V3 front{0, 0, -1}, side{-1, 0, 0};
   for (int pass = 0; pass < 2; ++pass) {
-    S.stroke(Op::Smooth, {{0.02f, 0.05f, 0.1f}, {0.05f, 0.0f, 0.1f}, {0.045f, -0.06f, 0.1f}, {0.0f, -0.08f, 0.1f}},
-             front, 0.016f, 0.8f, M);
-    S.stroke(Op::Smooth, {{0.1f, 0.06f, 0.0f}, {0.1f, -0.03f, 0.03f}, {0.1f, -0.08f, 0.0f}}, side, 0.02f, 0.8f, M);
-    S.stroke(Op::Smooth, {{0.03f, -0.07f, 0.1f}, {0.0f, -0.11f, 0.1f}}, front, 0.02f, 0.8f, M);
+    S.stroke({Op::Smooth, 0.016f, 0.8f, M},
+             {{0.02f, 0.05f, 0.1f}, {0.05f, 0.0f, 0.1f}, {0.045f, -0.06f, 0.1f}, {0.0f, -0.08f, 0.1f}}, front);
+    S.stroke({Op::Smooth, 0.02f, 0.8f, M}, {{0.1f, 0.06f, 0.0f}, {0.1f, -0.03f, 0.03f}, {0.1f, -0.08f, 0.0f}}, side);
+    S.stroke({Op::Smooth, 0.02f, 0.8f, M}, {{0.03f, -0.07f, 0.1f}, {0.0f, -0.11f, 0.1f}}, front);
   }
-  S.stroke(Op::Add, {{0.012f, 0.042f, 0.1f}, {0.03f, 0.045f, 0.1f}, {0.05f, 0.038f, 0.1f}}, front, 0.007f, 0.6f, M);
-  S.stroke(Op::Add, {{0.035f, -0.005f, 0.1f}, {0.055f, -0.012f, 0.1f}}, front, 0.012f, 0.6f, M);
-  S.stroke(Op::Carve, {{0.013f, -0.024f, 0.1f}, {0.024f, -0.04f, 0.1f}, {0.026f, -0.055f, 0.1f}}, front, 0.0045f,
-           0.6f, M);  // the folds from the nose to the mouth corners
-  S.stroke(Op::Carve, {{0.02f, 0.026f, 0.1f}, {0.031f, 0.029f, 0.1f}, {0.042f, 0.026f, 0.1f}}, front, 0.003f, 0.5f,
-           M);  // upper eyelid crease
-  S.stroke(Op::Smooth, {{0.0f, -0.07f, 0.1f}, {0.0f, -0.08f, 0.1f}}, front, 0.01f, 0.5f, false);
-  S.stroke(Op::Smooth, {{0.02f, -0.05f, 0.1f}, {-0.02f, -0.05f, 0.1f}}, front, 0.008f, 0.4f, false);  // the lips
+  S.stroke({Op::Add, 0.007f, 0.6f, M}, {{0.012f, 0.042f, 0.1f}, {0.03f, 0.045f, 0.1f}, {0.05f, 0.038f, 0.1f}}, front);
+  S.stroke({Op::Add, 0.012f, 0.6f, M}, {{0.035f, -0.005f, 0.1f}, {0.055f, -0.012f, 0.1f}}, front);
+  S.stroke({Op::Carve, 0.0045f, 0.6f, M}, {{0.013f, -0.024f, 0.1f}, {0.024f, -0.04f, 0.1f}, {0.026f, -0.055f, 0.1f}},
+           front);
+  S.stroke({Op::Carve, 0.003f, 0.5f, M}, {{0.02f, 0.026f, 0.1f}, {0.031f, 0.029f, 0.1f}, {0.042f, 0.026f, 0.1f}}, front);
+  S.stroke({Op::Smooth, 0.01f, 0.5f, false}, {{0.0f, -0.07f, 0.1f}, {0.0f, -0.08f, 0.1f}}, front);
+  S.stroke({Op::Smooth, 0.008f, 0.4f, false}, {{0.02f, -0.05f, 0.1f}, {-0.02f, -0.05f, 0.1f}}, front);
 }
 
-// 2,000 strokes over the head, from a fixed seed (own generator: the same list on any compiler)
+// 2,000 strokes over the head, from a fixed seed (own generator: the same list on any compiler), every brush
 void random_strokes(Session& S, int count) {
   uint64_t st = 0x9E3779B97F4A7C15ull;
   auto rnd = [&]() {
@@ -196,8 +139,9 @@ void random_strokes(Session& S, int count) {
     const float L = 0.01f + 0.03f * rnd();
     const float r = 0.003f + 0.012f * rnd();
     const float u = rnd();
-    const Op op = u < 0.5f ? Op::Add : u < 0.75f ? Op::Carve : Op::Smooth;
-    S.stroke(op, {sub(c, mul(t, L * 0.5f)), add(c, mul(t, L * 0.5f))}, dir, r, 0.3f + 0.4f * rnd(), rnd() < 0.3f);
+    const Op op = u < 0.35f ? Op::Add : u < 0.55f ? Op::Carve : u < 0.75f ? Op::Smooth : u < 0.85f ? Op::Flatten
+                : u < 0.93f ? Op::Pull : Op::Crease;
+    S.stroke({op, r, 0.3f + 0.4f * rnd(), rnd() < 0.3f}, {sub(c, mul(t, L * 0.5f)), add(c, mul(t, L * 0.5f))}, dir);
   }
 }
 
@@ -219,35 +163,52 @@ std::vector<Step> read_steps(const std::string& path) {
   return v;
 }
 
-// send the dirty blocks to the view (meshing in parallel); returns {mesh ms, usd ms, blocks}
-struct Sent {
-  double meshMs = 0, usdMs = 0;
-  size_t blocks = 0, tris = 0;
-};
-Sent send_dirty(Clay& clay, View& view) {
-  Sent r;
-  const auto dirty = clay.take_dirty();
-  std::vector<BlockKey> keys(dirty.begin(), dirty.end());
-  std::vector<BlockMesh> meshes(keys.size());
-  auto t0 = Clock::now();
-  tbb::parallel_for(size_t(0), keys.size(), [&](size_t i) { clay.mesh(keys[i], meshes[i]); });
-  r.meshMs = ms_since(t0);
-  t0 = Clock::now();
-  view.begin_changes();
-  for (size_t i = 0; i < keys.size(); ++i) {
-    view.set_block(keys[i], meshes[i]);
-    r.tris += meshes[i].triangles();
+// The live view: changed blocks wait in a queue and go to Storm nearest the brush first, at most `budget` per frame,
+// so a big dab shows where the brush is at once and the rest follows over the next frames.
+struct Live {
+  Clay* clay;
+  View* view;
+  size_t budget = 8;
+  std::set<BlockKey> pending;
+  struct Frame {
+    double meshMs = 0, usdMs = 0, renderMs = 0;
+    size_t sent = 0, left = 0;
+  };
+  Frame frame(V3 focus) {
+    Frame f;
+    for (const BlockKey& k : clay->take_dirty()) pending.insert(k);
+    std::vector<BlockKey> keys(pending.begin(), pending.end());
+    const float bw = kBlock * clay->voxel();
+    auto d2 = [&](const BlockKey& k) {
+      const float x = (k.x + 0.5f) * bw - focus.x, y = (k.y + 0.5f) * bw - focus.y, z = (k.z + 0.5f) * bw - focus.z;
+      return x * x + y * y + z * z;
+    };
+    std::sort(keys.begin(), keys.end(), [&](const BlockKey& a, const BlockKey& b) { return d2(a) < d2(b); });
+    if (keys.size() > budget) keys.resize(budget);
+    std::vector<BlockMesh> meshes(keys.size());
+    auto t0 = Clock::now();
+    tbb::parallel_for(size_t(0), keys.size(), [&](size_t i) { clay->mesh(keys[i], meshes[i]); });
+    f.meshMs = ms_since(t0);
+    t0 = Clock::now();
+    view->begin_changes();
+    for (size_t i = 0; i < keys.size(); ++i) {
+      view->set_block(keys[i], meshes[i]);
+      pending.erase(keys[i]);
+    }
+    view->end_changes();
+    f.usdMs = ms_since(t0);
+    f.renderMs = view->render_storm();
+    f.sent = keys.size();
+    f.left = pending.size();
+    return f;
   }
-  view.end_changes();
-  r.usdMs = ms_since(t0);
-  r.blocks = keys.size();
-  return r;
-}
+};
 
-// --check: the whole surface after a step must be closed (every edge, welded by exact position, used twice)
+// --check: the whole surface must be closed: no edge (welded by exact position) used by one triangle only. An edge
+// used by 4 is where two sheets of clay touch along a voxel edge (surface nets makes a pinch there): not a hole.
 size_t open_edges(const Clay& clay) {
   std::vector<std::pair<BlockKey, BlockMesh>> all;
-  clay.mesh_all(all);  // exactly what the view and the Final get
+  clay.mesh_all(all);
   std::map<std::tuple<float, float, float>, int> ids;
   std::map<std::pair<int, int>, int> edges;
   for (auto& [k, m] : all) {
@@ -265,55 +226,57 @@ size_t open_edges(const Clay& clay) {
   size_t open = 0;
   std::vector<std::tuple<float, float, float>> pos(ids.size());
   for (auto& [p, i] : ids) pos[i] = p;
-  std::map<int, size_t> byCount;
   for (auto& [e, n] : edges) {
-    if (n == 2) continue;
-    ++byCount[n];
-    if (open++ < 6) {
+    if (n != 1) continue;  // a hole; an edge of 4 is two sheets touching (a pinch), counted apart
+    if (open++ < 4) {
       const auto [x, y, z] = pos[e.first];
-      std::printf("  open edge used %d times near voxel (%.2f %.2f %.2f)\n", n, x / clay.voxel(), y / clay.voxel(),
+      std::printf("  open edge (used %d times) near voxel (%.2f %.2f %.2f)\n", n, x / clay.voxel(), y / clay.voxel(),
                   z / clay.voxel());
     }
   }
-  for (auto& [n, c] : byCount) std::printf("  edges used %d times: %zu\n", n, c);
   return open;
 }
 
-}  // namespace
+BlockMesh whole_of(const Clay& c) {
+  std::vector<std::pair<BlockKey, BlockMesh>> all;
+  c.mesh_all(all);
+  BlockMesh w;
+  for (auto& [k, m] : all) append(w, m);
+  return w;
+}
 
-int main(int argc, char** argv) {
-  if (argc < 2) {
-    std::fprintf(stderr, "usage: clay_proof <out folder> [--voxel v] [--samples n] [--no-final] [--strokes n]\n");
-    return 2;
-  }
-  const std::string out = argv[1];
-  float voxel = 0.000625f;
-  int samples = 256, nstrokes = 2000;
-  bool final = true;
-  for (int i = 2; i < argc; ++i) {
-    const std::string a = argv[i];
-    if (a == "--voxel" && i + 1 < argc) voxel = std::stof(argv[++i]);
-    else if (a == "--samples" && i + 1 < argc) samples = std::stoi(argv[++i]);
-    else if (a == "--strokes" && i + 1 < argc) nstrokes = std::stoi(argv[++i]);
-    else if (a == "--no-final") final = false;
-  }
-  CreateDirectoryA(out.c_str(), nullptr);
-  if (argc > 2 && std::string(argv[2]) == "--check") {  // find the first head step that leaves the surface open
-    Session S(voxel);
-    S.after = [](Session& s) {
-      const size_t open = open_edges(s.clay);
-      std::printf("step %zu %s: open edges %zu\n", s.steps.size() - 1, to_line(s.steps.back()).c_str(), open);
-      if (open) {
-        std::exit(3);
-      }
-    };
-    sculpt_head(S);
-    return 0;
-  }
-  Json J;
-  J.num("voxel", voxel);
-  try {
-    // 1. the head, sculpted by script
+void show_all(Clay& c, View& view) {  // every block of the clay into the (empty) view
+  std::vector<std::pair<BlockKey, BlockMesh>> all;
+  c.mesh_all(all);
+  c.take_dirty();
+  view.begin_changes();
+  for (auto& [k, m] : all) view.set_block(k, m);
+  view.end_changes();
+}
+
+void clear_view(View& view, const std::set<BlockKey>& shown) {
+  view.begin_changes();
+  for (const BlockKey& k : shown) view.set_block(k, BlockMesh{});
+  view.end_changes();
+}
+
+Camera cam_of(V3 eye, V3 target, float fov) {
+  Camera c;
+  c.eye[0] = eye.x, c.eye[1] = eye.y, c.eye[2] = eye.z;
+  c.target[0] = target.x, c.target[1] = target.y, c.target[2] = target.z;
+  c.fovYDeg = fov;
+  return c;
+}
+
+const Camera kHeadCam = cam_of({0.2f, 0.035f, 0.4f}, {0, -0.015f, 0.02f}, 30);
+
+// ---------------------------------------------------------------------------------------------------------------
+int bench(const std::string& out, float voxel, int samples, bool final, int nstrokes, size_t budget, Json& J) {
+  std::vector<Step> headSteps;
+  uint64_t headHash = 0;
+  View view(1280, 720);
+  {
+    // 1. the head, sculpted by script (strokes go through the live path: dabs shown, then the stroke as one unit)
     Session S(voxel);
     auto t0 = Clock::now();
     sculpt_head(S);
@@ -321,66 +284,34 @@ int main(int argc, char** argv) {
     J.num("head_sculpt_ms", ms_since(t0));
     J.num("head_active_voxels", double(S.clay.active_voxels()));
     J.num("head_grid_mb", S.clay.memory_bytes() / 1048576.0);
-    const uint64_t headHash = S.clay.hash();
-    char hx[32];
-    std::snprintf(hx, sizeof hx, "%016llx", (unsigned long long)headHash);
-    J.str("head_hash", hx);
+    headHash = S.clay.hash();
+    headSteps = S.steps;
+    J.str("head_hash", hex(headHash));
     if (!write_steps(out + "/head_steps.txt", S.steps)) throw std::runtime_error("could not write head_steps.txt");
-    std::setvbuf(stdout, nullptr, _IONBF, 0);
-    std::printf("head: %zu steps, %.0f ms, hash %s\n", S.steps.size(), ms_since(t0), hx);
+    std::printf("head: %zu steps, %.0f ms, hash %s, peak %.0f MB\n", S.steps.size(), ms_since(t0),
+                hex(headHash).c_str(), peak_ws() / 1048576.0);
+    J.num("peak_after_head_mb", peak_ws() / 1048576.0);
 
     // 2. the whole-surface rebuild (what a Cycles render gets)
-    std::vector<std::pair<BlockKey, BlockMesh>> all;
     t0 = Clock::now();
-    const double cpu0 = process_cpu_ms();
-    S.clay.mesh_all(all);
-    BlockMesh whole;
-    for (auto& [k, m] : all) append(whole, m);
+    BlockMesh whole = whole_of(S.clay);
     J.num("rebuild_ms", ms_since(t0));
-    J.num("rebuild_cpu_ms", process_cpu_ms() - cpu0);
-    J.num("rebuild_blocks", double(all.size()));
     J.num("rebuild_triangles", double(whole.triangles()));
-    std::printf("rebuild: %zu blocks, %zu triangles, %.0f ms\n", all.size(), whole.triangles(), ms_since(t0));
 
-    // 3. Storm: all blocks in, then stamps one by one, each to a finished picture
-    View view(1280, 720);
-    Camera cam;
-    const float eye[3] = {0.2f, 0.035f, 0.4f}, tgt[3] = {0, -0.015f, 0.02f};
-    std::copy(eye, eye + 3, cam.eye);
-    std::copy(tgt, tgt + 3, cam.target);
-    cam.fovYDeg = 30;
-    view.set_camera(cam);
-    S.clay.take_dirty();
+    // 3. Storm: all blocks in, then dabs one by one, each to its first picture
+    view.set_camera(kHeadCam);
     t0 = Clock::now();
-    view.begin_changes();
-    for (auto& [k, m] : all) view.set_block(k, m);
-    view.end_changes();
+    show_all(S.clay, view);
     J.num("storm_all_blocks_usd_ms", ms_since(t0));
-    t0 = Clock::now();
-    view.render_storm();
-    J.num("storm_first_frame_ms", ms_since(t0));
     for (int i = 0; i < 3; ++i) view.render_storm();
-    {
-      std::vector<double> st;  // a frame with nothing changed: the floor under every stamp's time
-      for (int i = 0; i < 10; ++i) st.push_back(view.render_storm());
-      J.num("storm_static_frame_p50_ms", pct(st, 0.5));
-      std::printf("storm static frame p50 %.1f ms\n", pct(st, 0.5));
-    }
+    std::vector<double> st;
+    for (int i = 0; i < 10; ++i) st.push_back(view.render_storm());
+    J.num("storm_static_frame_p50_ms", pct(st, 0.5));
     view.save_storm_png(out + "/head_storm.png");
-    view.export_usda(out + "/clay_blocks.usda");
+    if (final) J.num("final_seconds", view.render_cycles(whole, samples, out + "/head_final.png"));
 
-    // brush sizes: small, medium, and a quarter of the clay across (the budget's largest)
-    float ext = 0;  // the clay's largest extent, from the surface's bounds
-    {
-      float mn[3] = {1e9f, 1e9f, 1e9f}, mx[3] = {-1e9f, -1e9f, -1e9f};
-      for (size_t i = 0; i < whole.points.size(); i += 3)
-        for (int a = 0; a < 3; ++a) {
-          mn[a] = std::min(mn[a], whole.points[i + a]);
-          mx[a] = std::max(mx[a], whole.points[i + a]);
-        }
-      ext = std::max({mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]});
-    }
-    J.num("clay_extent", ext);
+    Live live{&S.clay, &view, budget};
+    const float ext = 0.331f;  // the clay's largest extent (part 1: measured from the surface)
     const struct {
       const char* name;
       float r;
@@ -388,16 +319,16 @@ int main(int argc, char** argv) {
     const struct {
       const char* name;
       Op op;
-    } ops[] = {{"add", Op::Add}, {"carve", Op::Carve}, {"smooth", Op::Smooth}};
-    for (const auto& sz : sizes) {
-      for (const auto& op : ops) {
+    } ops[] = {{"add", Op::Add},         {"carve", Op::Carve}, {"smooth", Op::Smooth},
+               {"flatten", Op::Flatten}, {"pull", Op::Pull},   {"crease", Op::Crease}};
+    for (const auto& sz : sizes)
+      for (const auto& op : ops)
         for (int mirror = 0; mirror < 2; ++mirror) {
-          if (mirror && sz.r < 0.01f) continue;  // mirrored: medium and quarter only
-          std::vector<double> total, apply, mesh, usd, render, cpu;
-          double blocks = 0;
-          const int N = 30;
+          if (mirror && sz.r < 0.01f) continue;
+          std::vector<double> total, apply, mesh, usd, render, settle, endMs, frames, cpu;
+          const int N = 24;
           for (int i = 0; i < N; ++i) {
-            // dabs around the cranium, aimed at its centre, each a separate stroke so they don't pile up
+            // dabs around the cranium, aimed at its centre, each its own stroke
             const float az = -1.2f + 2.4f * i / (N - 1);
             const V3 dir = unit({-std::sin(az), -0.35f, -std::cos(az)});
             V3 on, nrm;
@@ -410,112 +341,282 @@ int main(int argc, char** argv) {
             s.radius = sz.r;
             s.strength = 0.5f;
             s.mirror = mirror != 0;
+            s.stroke = 1;
+            const V3 tang = unit(cross(nrm, {0, 1, 0}));
+            if (op.op == Op::Pull) s.b = mul(tang, sz.r * 0.25f);
+            if (op.op == Op::Crease) s.b = tang;
             const double c0 = process_cpu_ms();
             const auto a0 = Clock::now();
-            S.apply(s);
+            S.clay.begin_stroke();
+            S.clay.dab(s);
             const double ta = ms_since(a0);
-            const Sent sent = send_dirty(S.clay, view);
-            const double tr = view.render_storm();
+            const Live::Frame f = live.frame(on);
             total.push_back(ms_since(a0));
-            apply.push_back(ta);
-            mesh.push_back(sent.meshMs);
-            usd.push_back(sent.usdMs);
-            render.push_back(tr);
             cpu.push_back(process_cpu_ms() - c0);
-            blocks += double(sent.blocks);
+            apply.push_back(ta);
+            mesh.push_back(f.meshMs);
+            usd.push_back(f.usdMs);
+            render.push_back(f.renderMs);
+            // the stroke ends: the dab is applied as a unit (what replay does); the rest of the blocks follow
+            const auto e0 = Clock::now();
+            S.clay.end_stroke({s});
+            endMs.push_back(ms_since(e0));
+            int n = 1;
+            const auto s0 = Clock::now();
+            while (true) {
+              const Live::Frame g = live.frame(on);
+              ++n;
+              if (!g.left) break;
+            }
+            settle.push_back(ta + f.meshMs + f.usdMs + f.renderMs + ms_since(s0) + endMs.back());
+            frames.push_back(n);
           }
-          const std::string key = std::string("stamp_") + sz.name + "_" + op.name + (mirror ? "_mirror" : "");
+          const std::string key = std::string("dab_") + sz.name + "_" + op.name + (mirror ? "_mirror" : "");
           J.num(key + "_radius", sz.r);
-          J.num(key + "_n", double(total.size()));
-          J.num(key + "_total_p50_ms", pct(total, 0.5));
-          J.num(key + "_total_p95_ms", pct(total, 0.95));
-          J.num(key + "_apply_p50_ms", pct(apply, 0.5));
+          J.num(key + "_first_picture_p50_ms", pct(total, 0.5));
+          J.num(key + "_first_picture_p95_ms", pct(total, 0.95));
+          J.num(key + "_step_p50_ms", pct(apply, 0.5));
           J.num(key + "_mesh_p50_ms", pct(mesh, 0.5));
           J.num(key + "_usd_p50_ms", pct(usd, 0.5));
           J.num(key + "_render_p50_ms", pct(render, 0.5));
           J.num(key + "_cpu_p50_ms", pct(cpu, 0.5));
-          J.num(key + "_blocks_avg", total.empty() ? 0 : blocks / total.size());
-          std::printf("%-28s r=%.4f  total p50 %.1f p95 %.1f ms (apply %.1f mesh %.1f usd %.1f render %.1f) blocks %.0f\n",
+          J.num(key + "_stroke_end_p50_ms", pct(endMs, 0.5));
+          J.num(key + "_all_shown_p50_ms", pct(settle, 0.5));
+          J.num(key + "_frames_p50", pct(frames, 0.5));
+          std::printf("%-26s r=%.4f first picture p50 %5.1f p95 %5.1f ms (step %.1f mesh %.1f usd %.1f render %.1f) "
+                      "| stroke end %.1f, all shown %.1f ms in %.0f frames\n",
                       key.c_str(), sz.r, pct(total, 0.5), pct(total, 0.95), pct(apply, 0.5), pct(mesh, 0.5),
-                      pct(usd, 0.5), pct(render, 0.5), total.empty() ? 0 : blocks / total.size());
+                      pct(usd, 0.5), pct(render, 0.5), pct(endMs, 0.5), pct(settle, 0.5), pct(frames, 0.5));
         }
-      }
-    }
     view.save_storm_png(out + "/after_bench_storm.png");
-
-    // 4. Final: a fresh head (without the bench dabs), whole surface rebuilt, Cycles
-    if (final) {
-      view.set_camera(cam);
-      const double sec = view.render_cycles(whole, samples, out + "/head_final.png");
-      J.num("final_seconds", sec);
-      // one Final per run: a second Cycles engine after the first is gone crashes (part 2: keep one engine)
-    }
-
-    // 5. replay: the head's steps into new clay, same hash
+    J.num("peak_after_bench_mb", peak_ws() / 1048576.0);
+    // replay: the head's steps into new clay, same hash
+    t0 = Clock::now();
     {
-      const auto steps = read_steps(out + "/head_steps.txt");
       Clay c(voxel);
-      t0 = Clock::now();
-      for (const Step& s : steps) c.apply(s);
+      replay(c, read_steps(out + "/head_steps.txt"));
       J.num("replay_head_ms", ms_since(t0));
       J.num("replay_head_same_hash", c.hash() == headHash ? 1 : 0);
     }
-    // 6. 2,000 strokes on the head, recorded, then replayed from the file into new clay
-    {
-      Session R(voxel);
-      for (const Step& s : read_steps(out + "/head_steps.txt")) R.apply(s);
-      const size_t before = R.steps.size();
-      t0 = Clock::now();
-      random_strokes(R, nstrokes);
-      J.num("strokes", nstrokes);
-      J.num("strokes_dabs", double(R.steps.size() - before));
-      J.num("strokes_live_ms", ms_since(t0));
-      const uint64_t live = R.clay.hash();
-      if (!write_steps(out + "/strokes_steps.txt", R.steps)) throw std::runtime_error("could not write strokes_steps.txt");
-      // the file read and the head's own steps are timed apart from the 2,000 strokes
-      auto tf = Clock::now();
-      const auto steps = read_steps(out + "/strokes_steps.txt");
-      J.num("replay_read_file_ms", ms_since(tf));
+  }  // the bench's clay is gone
+
+  // 4. 2,000 strokes on the head, drawn live (dab previews, each stroke settled as one unit), then replayed
+  std::vector<Step> all;
+  uint64_t live = 0;
+  {
+    Session R(voxel);
+    replay(R.clay, headSteps);
+    R.steps = headSteps;
+    auto t0 = Clock::now();
+    random_strokes(R, nstrokes);
+    J.num("strokes", nstrokes);
+    J.num("strokes_dabs", double(R.steps.size() - headSteps.size()));
+    J.num("strokes_live_ms", ms_since(t0));
+    live = R.clay.hash();
+    all = R.steps;
+    if (!write_steps(out + "/strokes_steps.txt", all)) throw std::runtime_error("could not write strokes_steps.txt");
+  }
+  {
+    auto tf = Clock::now();
+    const auto steps = read_steps(out + "/strokes_steps.txt");
+    J.num("replay_read_file_ms", ms_since(tf));
+    const std::vector<Step> head(steps.begin(), steps.begin() + headSteps.size());
+    const std::vector<Step> strokes(steps.begin() + headSteps.size(), steps.end());
+    Clay c(voxel);
+    replay(c, head);
+    auto t0 = Clock::now();
+    const double c0 = process_cpu_ms();
+    replay(c, strokes);
+    J.num("replay_strokes_ms", ms_since(t0));
+    J.num("replay_strokes_cpu_ms", process_cpu_ms() - c0);
+    const uint64_t replayed = c.hash();
+    J.num("replay_strokes_same_hash", replayed == live ? 1 : 0);
+    J.str("strokes_hash", hex(replayed));
+    std::printf("replay %d strokes (%zu dabs): %.0f ms, same hash %d\n", nstrokes, strokes.size(), ms_since(t0),
+                int(replayed == live));
+    if (!c.save(out + "/cache.vdb")) throw std::runtime_error("could not write cache.vdb");
+    t0 = Clock::now();
+    Clay cached(voxel);
+    if (!cached.load(out + "/cache.vdb")) throw std::runtime_error("could not read cache.vdb");
+    J.num("replay_cache_ms", ms_since(t0));
+    J.num("replay_cache_same_hash", cached.hash() == replayed ? 1 : 0);
+    J.num("strokes_grid_mb", c.memory_bytes() / 1048576.0);
+    if (final) {
+      view.set_camera(kHeadCam);
+      view.render_cycles(whole_of(c), samples, out + "/strokes2000_final.png");
+    }
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// close-ups: a plain sphere; the same after many smooth dabs; a Crease line; a join of two pieces, smoothed
+int look(const std::string& out, float voxel, int samples, Json& J) {
+  View view(1280, 720);
+  auto shoot = [&](Clay& c, const Camera& cam, const std::string& name) {
+    view.set_camera(cam);
+    show_all(c, view);
+    view.render_storm();
+    view.save_storm_png(out + "/" + name + "_storm.png");
+    const BlockMesh w = whole_of(c);
+    J.num(name + "_final_s", view.render_cycles(w, samples, out + "/" + name + "_final.png"));
+    std::set<BlockKey> shown;
+    for (const BlockKey& k : c.all_blocks()) shown.insert(k);
+    clear_view(view, shown);
+  };
+  const Camera close = cam_of({0.03f, 0.03f, 0.12f}, {0, 0.0f, 0.05f}, 30);  // ~7 cm wide at the surface
+  {
+    Session S(voxel);
+    S.apply(ball(Op::Add, {0, 0, 0}, 0.06f, 0, false));
+    shoot(S.clay, close, "look_sphere");
+    for (int pass = 0; pass < 4; ++pass)
+      S.stroke({Op::Smooth, 0.012f, 0.8f, false}, {{-0.03f, 0.03f, 0.1f}, {0.03f, 0.0f, 0.1f}, {-0.03f, -0.03f, 0.1f}},
+               {0, 0, -1});
+    shoot(S.clay, close, "look_sphere_smoothed");
+    for (int i = 0; i < 4; ++i)
+      S.stroke({Op::Add, 0.01f, 0.6f, false}, {{-0.03f, 0.02f - 0.012f * i, 0.1f}, {0.03f, 0.02f - 0.012f * i, 0.1f}},
+               {0, 0, -1});
+    shoot(S.clay, close, "look_sphere_added");
+  }
+  {
+    Session S(voxel);  // a Crease line and a Flatten patch and a Pull on a sphere
+    S.apply(ball(Op::Add, {0, 0, 0}, 0.06f, 0, false));
+    S.stroke({Op::Crease, 0.006f, 0.8f, false}, {{-0.03f, 0.015f, 0.1f}, {0.0f, 0.02f, 0.1f}, {0.03f, 0.012f, 0.1f}},
+             {0, 0, -1});
+    S.stroke({Op::Crease, 0.006f, 0.8f, false}, {{-0.03f, 0.0f, 0.1f}, {0.0f, 0.004f, 0.1f}, {0.03f, -0.002f, 0.1f}},
+             {0, 0, -1});
+    for (int i = 0; i < 3; ++i)
+      S.stroke({Op::Flatten, 0.012f, 0.8f, false}, {{-0.025f, -0.025f, 0.1f}, {0.0f, -0.03f, 0.1f}}, {0, 0, -1});
+    S.stroke({Op::Pull, 0.01f, 0.8f, false}, {{0.015f, -0.02f, 0.1f}, {0.03f, -0.035f, 0.1f}}, {0, 0, -1});
+    shoot(S.clay, close, "look_brushes");
+  }
+  {
+    Session S(voxel);  // a join: an arm into a body, blended, then smoothed along the join
+    S.apply(piece(Op::Add, {0, -0.04f, 0}, {0, 0.04f, 0}, 0.045f, 0, false));
+    S.apply(piece(Op::Add, {0.03f, 0.02f, 0.01f}, {0.09f, -0.02f, 0.03f}, 0.014f, 0.012f, false));
+    S.stroke({Op::Smooth, 0.01f, 0.7f, false}, {{0.045f, 0.035f, 0.1f}, {0.05f, 0.0f, 0.1f}, {0.045f, -0.015f, 0.1f}},
+             {0, 0, -1});
+    shoot(S.clay, cam_of({0.12f, 0.03f, 0.16f}, {0.05f, 0.005f, 0.02f}, 30), "look_join");
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+#ifdef CLAY_SCULPTS
+int compare(const std::string& out, float voxel, int samples, Json& J) {
+  View view(1280, 720);
+  auto shoot = [&](Session& S, const Camera& cam, const std::string& name) {
+    view.set_camera(cam);
+    show_all(S.clay, view);
+    view.render_storm();
+    view.save_storm_png(out + "/" + name + "_storm.png");
+    view.render_cycles(whole_of(S.clay), samples, out + "/" + name + "_final.png");
+    std::set<BlockKey> shown;
+    for (const BlockKey& k : S.clay.all_blocks()) shown.insert(k);
+    clear_view(view, shown);
+  };
+  auto run = [&](const char* name, auto sculpt) {
+    Session S(voxel);
+    const auto t0 = Clock::now();
+    sculpt(S);
+    J.num(std::string(name) + "_ms", ms_since(t0));
+    J.num(std::string(name) + "_steps", double(S.steps.size()));
+    write_steps(out + "/" + name + "_steps.txt", S.steps);
+    std::printf("%s: %zu steps, %.0f ms\n", name, S.steps.size(), ms_since(t0));
+    return S.steps;
+  };
+  {
+    Session S(voxel);
+    replay(S.clay, run("agent_head", [](Session& s) { sculpt_agent_head(s); }));
+    shoot(S, head_three_quarter(), "agent_head_34");
+    shoot(S, head_front(), "agent_head_front");
+  }
+  {
+    Session S(voxel);
+    replay(S.clay, run("agent_character", [](Session& s) { sculpt_agent_character(s); }));
+    shoot(S, character_three_quarter(), "agent_character_34");
+  }
+  {
+    Session S(voxel);
+    replay(S.clay, run("mouse_head", [](Session& s) { sculpt_mouse_head(s, 1280, 720); }));
+    shoot(S, head_three_quarter(), "mouse_head_34");
+    shoot(S, head_front(), "mouse_head_front");
+  }
+  return 0;
+}
+#endif
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  if (argc < 3) {
+    std::fprintf(stderr, "usage: clay_proof <out folder> bench|look|compare|check [--samples n] [--no-final] "
+                         "[--strokes n] [--budget blocks]\n");
+    return 2;
+  }
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  const std::string out = argv[1], mode = argv[2];
+  float voxel = 0.000625f;
+  int samples = 256, nstrokes = 2000;
+  size_t budget = 8;
+  bool final = true;
+  for (int i = 3; i < argc; ++i) {
+    const std::string a = argv[i];
+    if (a == "--voxel" && i + 1 < argc) voxel = std::stof(argv[++i]);
+    else if (a == "--samples" && i + 1 < argc) samples = std::stoi(argv[++i]);
+    else if (a == "--strokes" && i + 1 < argc) nstrokes = std::stoi(argv[++i]);
+    else if (a == "--budget" && i + 1 < argc) budget = size_t(std::stoi(argv[++i]));
+    else if (a == "--no-final") final = false;
+  }
+  CreateDirectoryA(out.c_str(), nullptr);
+  std::unique_ptr<tbb::global_control> threads;  // CLAY_THREADS=n: at most n threads (to see what the parallel loops buy)
+  if (const char* t = std::getenv("CLAY_THREADS"))
+    threads = std::make_unique<tbb::global_control>(tbb::global_control::max_allowed_parallelism, size_t(std::atoi(t)));
+  Json J;
+  J.num("voxel", voxel);
+  int rc = 0;
+  try {
+    if (mode == "check") {
+      Session S(voxel);
+      S.afterUnit = [](Session& s) {
+        const size_t open = open_edges(s.clay);
+        std::printf("unit ending at step %zu: open edges %zu\n", s.steps.size() - 1, open);
+        if (open) std::exit(3);
+      };
+      sculpt_head(S);
+      return 0;
+    } else if (mode == "replay") {  // replay <out> replay <steps file>: pieces and strokes timed apart
+      const auto steps = read_steps(argv[3]);
+      std::vector<Step> pieces, strokes;
+      for (const Step& s : steps) (s.kind == Kind::Piece ? pieces : strokes).push_back(s);
       Clay c(voxel);
-      tf = Clock::now();
-      for (size_t i = 0; i < before; ++i) c.apply(steps[i]);
-      J.num("replay_head_part_ms", ms_since(tf));
+      auto t0 = Clock::now();
+      replay(c, pieces);
+      const double tp = ms_since(t0);
       t0 = Clock::now();
       const double c0 = process_cpu_ms();
-      for (size_t i = before; i < steps.size(); ++i) c.apply(steps[i]);
-      J.num("replay_strokes_ms", ms_since(t0));
-      J.num("replay_strokes_cpu_ms", process_cpu_ms() - c0);
-      const uint64_t replayed = c.hash();
-      J.num("replay_strokes_same_hash", replayed == live ? 1 : 0);
-      std::snprintf(hx, sizeof hx, "%016llx", (unsigned long long)replayed);
-      J.str("strokes_hash", hx);
-      std::printf("replay %d strokes (%zu dabs): %.0f ms, same hash %d\n", nstrokes, steps.size() - before,
-                  ms_since(t0), int(replayed == live));
-      // from the cache: the saved grid
-      if (!c.save(out + "/cache.vdb")) throw std::runtime_error("could not write cache.vdb");
-      t0 = Clock::now();
-      Clay cached(voxel);
-      if (!cached.load(out + "/cache.vdb")) throw std::runtime_error("could not read cache.vdb");
-      J.num("replay_cache_ms", ms_since(t0));
-      J.num("replay_cache_same_hash", cached.hash() == replayed ? 1 : 0);
-      J.num("strokes_grid_mb", c.memory_bytes() / 1048576.0);
-      // the surface after 2,000 strokes, rebuilt and shown
-      std::vector<std::pair<BlockKey, BlockMesh>> all2;
-      t0 = Clock::now();
-      c.mesh_all(all2);
-      J.num("strokes_rebuild_ms", ms_since(t0));
-      BlockMesh whole2;
-      for (auto& [k, m] : all2) append(whole2, m);
-      J.num("strokes_rebuild_triangles", double(whole2.triangles()));
+      replay(c, strokes);
+      std::printf("pieces %zu: %.0f ms; dabs %zu: %.0f ms wall, %.0f ms cpu (%.2f ms a dab)\n", pieces.size(), tp,
+                  strokes.size(), ms_since(t0), process_cpu_ms() - c0, ms_since(t0) / std::max<size_t>(1, strokes.size()));
+      return 0;
+    } else if (mode == "bench") {
+      rc = bench(out, voxel, samples, final, nstrokes, budget, J);
+    } else if (mode == "look") {
+      rc = look(out, voxel, samples, J);
+#ifdef CLAY_SCULPTS
+    } else if (mode == "compare") {
+      rc = compare(out, voxel, samples, J);
+#endif
+    } else {
+      throw std::runtime_error("unknown mode " + mode);
     }
-    J.num("peak_working_set_mb", peak_ws() / 1048576.0);
-    J.num("working_set_end_mb", now_ws() / 1048576.0);
   } catch (const std::exception& e) {
     std::fprintf(stderr, "FAILED: %s\n", e.what());
-    std::ofstream(out + "/numbers.json") << J.done();
-    return 1;
+    rc = 1;
   }
-  std::ofstream(out + "/numbers.json") << J.done();
+  J.num("peak_working_set_mb", peak_ws() / 1048576.0);
+  J.num("working_set_end_mb", now_ws() / 1048576.0);
+  std::ofstream(out + "/numbers_" + mode + ".json") << J.done();
   std::printf("%s", J.done().c_str());
-  return 0;
+  return rc;
 }

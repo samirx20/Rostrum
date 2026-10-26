@@ -39,7 +39,8 @@ class View {
 
   // Final: Cycles renders `whole` (the whole rebuilt surface, one mesh) with the same camera, material and lights,
   // into an sRGB PNG at `path`. `samples` Cycles samples, denoised. Throws std::runtime_error on failure (no file).
-  // Returns wall seconds.
+  // Returns wall seconds. Call it as often as needed (other meshes, other cameras): one Cycles engine is made by the
+  // first call and reused until the View goes.
   double render_cycles(const BlockMesh& whole, int samples, const std::string& path);
 
   // Writes the current stage (block prims) as .usda for inspection.

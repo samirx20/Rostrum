@@ -6,7 +6,9 @@
 // neighbouring blocks give the same floats for a shared cell (keep /fp:precise; /fp:fast may reorder).
 #include "mesh.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <utility>
 #ifdef _MSC_VER
@@ -69,7 +71,7 @@ struct Mesher {
     }
     // n > 0: the cell is only asked for around a surface edge, which is one of its own edges.
     const float inv = 1.f / float(n);
-    const float u = sx * inv, v = sy * inv, w = sz * inv;
+    float u = sx * inv, v = sy * inv, w = sz * inv;
 
     // Trilinear gradient at (u, v, w); increasing value = outward.
     auto gradient = [&c](float u, float v, float w, float g[3]) {
@@ -78,6 +80,23 @@ struct Mesher {
       g[1] = u0 * w0 * (c[2] - c[0]) + u * w0 * (c[3] - c[1]) + u0 * w * (c[6] - c[4]) + u * w * (c[7] - c[5]);
       g[2] = u0 * v0 * (c[4] - c[0]) + u * v0 * (c[5] - c[1]) + u0 * v * (c[6] - c[2]) + u * v * (c[7] - c[3]);
     };
+    // The mean of the crossings lies off the surface wherever it bends inside the cell, by up to a voxel, and in a
+    // pattern that repeats with the lattice (terraces on gentle slopes). Two Newton steps put the vertex on the
+    // cell's own (trilinear) zero surface, kept inside the cell; still from the cell's 8 corners only.
+    static const bool kProject = !std::getenv("CLAY_NO_PROJECT");  // A/B for the look test
+    for (int it = 0; kProject && it < 2; ++it) {
+      const float u0 = 1.f - u, v0 = 1.f - v, w0 = 1.f - w;
+      const float f = w0 * (v0 * (u0 * c[0] + u * c[1]) + v * (u0 * c[2] + u * c[3])) +
+                      w * (v0 * (u0 * c[4] + u * c[5]) + v * (u0 * c[6] + u * c[7]));
+      float gn[3];
+      gradient(u, v, w, gn);
+      const float l2 = gn[0] * gn[0] + gn[1] * gn[1] + gn[2] * gn[2];
+      if (!(l2 > 1e-12f)) break;
+      const float k = f / l2;
+      u = std::min(1.f, std::max(0.f, u - k * gn[0]));
+      v = std::min(1.f, std::max(0.f, v - k * gn[1]));
+      w = std::min(1.f, std::max(0.f, w - k * gn[2]));
+    }
     float g[3];
     if (wide) {
       // central differences at the 8 corners (wide index = dense index + 1), blended trilinearly

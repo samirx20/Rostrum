@@ -17,7 +17,15 @@ if(NOT EXISTS "${OPENVDB}/include/openvdb/openvdb.h")
 endif()
 
 set(CORE ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/3d/core/src)
-add_executable(clay_proof src/main.cpp src/clay.cpp src/mesh.cpp src/view.cpp ${CORE}/gl_context.cpp)
+option(CLAY_SCULPTS "build the comparison sculpts (src/sculpts.cpp)" ON)
+set(SRC src/main.cpp src/clay.cpp src/mesh.cpp src/view.cpp ${CORE}/gl_context.cpp)
+if(CLAY_SCULPTS)
+  list(APPEND SRC src/sculpts.cpp)
+endif()
+add_executable(clay_proof ${SRC})
+if(CLAY_SCULPTS)
+  target_compile_definitions(clay_proof PRIVATE CLAY_SCULPTS)
+endif()
 target_include_directories(clay_proof PRIVATE src ${CORE})
 target_include_directories(clay_proof SYSTEM PRIVATE ${OPENVDB}/include
   ${BUNDLE}/usd/include ${BUNDLE}/tbb/include ${BUNDLE}/epoxy/include ${BUNDLE}/python/313/include
