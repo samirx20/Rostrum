@@ -31,9 +31,12 @@ Panel {
                                        : panel.bridge.selectedItem.kindLabel || Theme.sentence(panel.bridge.selectedItem.kind)
     readonly property bool finds: !!panel.bridge.sectioned
     property int tick: 0                 // "2 min ago" ages while the panel stays open
-    readonly property var narrow: { panel.bridge.selection; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
-    readonly property var last: { panel.bridge.selection; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged ? panel.bridge.lastChanged() : ({}) }   // a page bridge (Brush, Settings) has neither
-    readonly property bool hasLast: panel.bridge.selected !== "" && !!panel.last.who && panel.last.who !== "You"   // only when someone else (an agent) changed it: "You · just now" is noise
+    // Everything over or inside the rows follows `selectedItem` (sent with the pick's panel, bridge_select._show_panel), never
+    // `selection` (sent at the click, a frame before the rows): "Show only" lines or the last line appearing early moved the
+    // old rows under the pointer, and a click aimed at the new panel landed on the old one's controls.
+    readonly property var narrow: { panel.bridge.selectedItem; return panel.bridge.narrowLines ? panel.bridge.narrowLines() : [] }
+    readonly property var last: { panel.bridge.selectedItem; panel.bridge.historyCount; panel.tick; return panel.bridge.lastChanged ? panel.bridge.lastChanged() : ({}) }   // a page bridge (Brush, Settings) has neither
+    readonly property bool hasLast: panel.bridge.selectedItem.id !== "" && !!panel.last.who && panel.last.who !== "You"   // only when someone else (an agent) changed it: "You · just now" is noise
 
     NameLabel { id: name; text: panel.bridge.selectedItem.label; font.pixelSize: Theme.heading; font.weight: Font.DemiBold
                 anchors.left: parent.left; anchors.right: parent.right }   // a long name, whole on hover
