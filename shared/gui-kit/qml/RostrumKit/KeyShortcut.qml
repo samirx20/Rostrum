@@ -4,7 +4,9 @@ import QtQuick
 // behind the person's work (app.background(), `backgroundWindow`) is never the active window, and Qt fires a window
 // shortcut only in the active window, so there each shortcut answers application-wide: a real key press (QTest on the
 // window) reaches it without the window being activated. Set when the shortcut is made, so a key never searches the
-// window for shortcuts made since (that cost 35-400 ms a key on a full song).
+// window for shortcuts made since (that cost 35-400 ms a key on a full song). Firing tells the window's typed-word
+// guard that this key was a command, not a word's first letter (rostrum_gui/typed_word.py), so the next key runs too.
 Shortcut {
     context: typeof backgroundWindow !== "undefined" && backgroundWindow ? Qt.ApplicationShortcut : Qt.WindowShortcut
+    onActivated: if (typeof typedWord !== "undefined" && typedWord) typedWord.ran()
 }

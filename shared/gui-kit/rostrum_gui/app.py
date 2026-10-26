@@ -134,6 +134,10 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     ctx.setContextProperty("panelSizes", PanelSizes(app_id(main_qml), engine))
     from rostrum_gui.colour_bank import bank         # every colour picker's swatches and eyedropper (colour_bank.py)
     ctx.setContextProperty("colourBank", bank())
+    from rostrum_gui import typed_word                # a word typed with nothing focused runs no commands; every
+    words = typed_word.make()                         # KeyShortcut tells it when a shortcut ran
+    words.setParent(engine)
+    ctx.setContextProperty("typedWord", words)
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))
@@ -145,8 +149,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
         show_behind(win)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
-    from rostrum_gui import typed_word                # a word typed with nothing focused runs no commands
-    typed_word.watch(win)
+    words.watch(win)
     return app, engine, win
 
 

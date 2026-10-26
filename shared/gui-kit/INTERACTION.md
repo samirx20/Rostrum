@@ -697,7 +697,7 @@ the agent's `inspect_tools`.
 - **Fields:** a text field takes every key until Enter, Tab or Esc. Space types a space; it does not play. Esc in a
   field returns focus to the main view.
 - **Letter keys work only when no field has focus,** so typing a name never switches tools.
-- **A word typed with no field focused runs no commands** past its first letter: a letter, digit or Space within 0.3 s of the one before is part of a word and does nothing (`rostrum_gui/typed_word.py`). A command key pressed on its own always runs.
+- **A word typed with no field focused runs no commands** past its first letter: a letter or digit is dropped only when the key before it (less than 0.3 s earlier) was a letter that ran no shortcut of its own, so it started a word ("drums": D is no command, so R, U, M, S run nothing). Two quick commands both run (B then V), Space is never dropped (Space–Space plays and stops), a Shift key is never dropped, and a text field gets every key however fast (`rostrum_gui/typed_word.py`; every KeyShortcut reports when it fires).
 - **An open menu, dropdown or small panel never stops the window's keys:** Ctrl+Z, Space and the rest work while it is
   open; it keeps only the keys it uses itself (a menu's ↑ ↓ Enter, its Esc). A clicked slider keeps ← → for itself.
   Only a dialog with a dimmed window behind it (Preferences, Report a problem) holds the keys until it closes.
