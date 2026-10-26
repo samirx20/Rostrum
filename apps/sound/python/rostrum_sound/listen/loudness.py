@@ -5,6 +5,7 @@ from . import bs1770
 from .core import BANDS, db, duration, load, name_of, num, peak_db
 from .ending import ending
 from .memo import remembered
+from .speech_room import room
 
 CLIP_LEVEL = 0.999           # full scale: the sample is clipped
 NEAR_CLIP_DB = -1.0          # within 1 dB of full scale: "near clip"
@@ -109,6 +110,7 @@ def loudness(wav, out_png=None, step=1.0, series=None, limiter=None, range=None)
            "ending": ending(y, sr) if at_end else None,
            "range_s": None if range is None else [num(t0, 3), num(t0 + duration(y, sr), 3)],
            "band_edges_hz": {n: [lo, hi] for n, lo, hi in BANDS},
+           "speech_room": room(y, sr),
            "clipped_samples": int(np.sum(np.abs(y) >= CLIP_LEVEL)),
            "clip_moments": clip_moments(y, sr),
            "loudest": loudest(y, sr),

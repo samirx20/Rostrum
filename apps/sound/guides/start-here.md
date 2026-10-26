@@ -99,19 +99,23 @@ The range is read as the song was before the call. Operations' own arguments: `i
 A new song has gentle limiting on: the master's limiter may pull the loudest moment down by at most `maxLimit` (default 2 dB;
 the screen's **Most limiting**; the document takes 0 to 12 dB). A mix whose peaks stand further above its average loudness is
 turned down as a whole instead, so it lands under its target (for a quiet piano or peaky drums, 1 to 3 dB under is normal) and
-the `render_mix` reply says how far and what would reach it. Two ways to get louder, and they trade against each other:
+the `render_mix` reply says how far and names the best of three ways to reach it:
 
 - **Cleaner:** turn the track that sets the peaks down (`look_sound` `loudness` names who drove the limiter's worst moment; `levels`
   shows each track's level), or write its loudest notes softer. The balance of the mix changes, and no limiting is added.
+- **Tamed:** `edit_loudness {"apply": "tame_peaks"}` puts a gentle compressor first on the most peaked track (two or three when one
+  is not enough), its threshold found by re-rendering and its makeup measured so the track keeps its loudness against the rest:
+  the target within the master's `maxLimit`, the balance as written. Do not guess compressor settings by hand.
 - **Louder:** `edit_loudness {"apply": "keep_balance"}` sets `maxLimit` to the value that reaches the target (one call, measured; do not set it by hand). More limiting means a
   flatter, denser master; 4 to 6 dB is a loud, pressed one. The balance between tracks does not change.
 
-Take the cleaner way first; raise `maxLimit` only when the dense sound is what the piece wants.
+`{"apply": "best"}` takes the one the reply names best: keep_balance when it raises `maxLimit` by 1 dB or less, else
+tame_peaks (the master stays transparent). Raise `maxLimit` further only when the dense sound is what the piece wants.
 
-**Under the target: call `edit_loudness` first.** It reads the last render and answers both ways with measured numbers
-and the exact `edit_document` call for each: `keep_balance` (the `maxLimit` that reaches the target, no track moves) and
-`trim_track` (the smallest cut of the most peaked track, or the `track` you name, that reaches it within the current
-`maxLimit`, tried with offline renders). `{"apply": "trim_track"}` or `{"apply": "keep_balance"}` makes that edit as one
+**Under the target: call `edit_loudness` first.** It reads the last render and answers three ways with measured numbers
+and the exact `edit_document` call for each: `keep_balance` (the `maxLimit` that reaches the target, no track moves),
+`tame_peaks` (the gentle compressor above, threshold and makeup measured, balance and limit kept) and `trim_track` (the smallest cut of the most peaked track, or the `track` you name, that reaches it within the current
+`maxLimit`, tried with offline renders). `{"apply": "best"}` (or an option's name) makes that edit as one
 step. Never rebalance or raise `maxLimit` by guess. Turning every track up does not make the mix louder while the target
 is on: the master sets the level, and only how far the peaks stand above the average decides the limiting.
 

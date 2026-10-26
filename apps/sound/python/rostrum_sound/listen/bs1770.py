@@ -47,15 +47,21 @@ def _good_size(n: int) -> int:
     return best
 
 
+def k_response(freqs, sr: float) -> np.ndarray:
+    """The K-weighting filters' complex response at `freqs` (Hz): the one place both biquads are evaluated."""
+    z = np.exp(-2j * np.pi * np.asarray(freqs, np.float64) / sr)          # e^{-jw}
+    h = np.ones_like(z)
+    for b, a in (_biquad("shelf", 4.0, 1 / math.sqrt(2), 1500.0, sr), _biquad("pass", 0.0, 0.5, 38.0, sr)):
+        h *= (b[0] + b[1] * z + b[2] * z * z) / (a[0] + a[1] * z + a[2] * z * z)
+    return h
+
+
 def k_weight(y: np.ndarray, sr: float) -> np.ndarray:
     """[n, channels] -> the K-weighted signal (float64), as if both filters ran from silence."""
     y = np.asarray(y, np.float64).reshape(len(y), -1)
     n = y.shape[0]
     size = _good_size(n + int(sr))
-    z = np.exp(-1j * np.pi * np.arange(size // 2 + 1) / (size / 2))       # e^{-jw} per FFT bin
-    h = np.ones_like(z)
-    for b, a in (_biquad("shelf", 4.0, 1 / math.sqrt(2), 1500.0, sr), _biquad("pass", 0.0, 0.5, 38.0, sr)):
-        h *= (b[0] + b[1] * z + b[2] * z * z) / (a[0] + a[1] * z + a[2] * z * z)
+    h = k_response(np.fft.rfftfreq(size, 1 / sr), sr)
     return np.stack([np.fft.irfft(np.fft.rfft(y[:, c], size) * h, size)[:n] for c in range(y.shape[1])], axis=1)
 
 

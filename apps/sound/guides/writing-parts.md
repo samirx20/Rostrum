@@ -77,7 +77,9 @@ and edit it; the track's Feel plays the notes loosely without changing them. Use
 
 Agents: `track.feel {swing: 0.55, swingGrid: 0.25}` changes only the values it names (a person's other settings stay);
 `null` puts one back to the family's default; `{person: false}` turns the family's looseness off while swing still
-plays. `track.set {perform: …}` replaces the whole object (use it only to write every value at once).
+plays. `track.set {perform: …}` replaces the whole object (use it only to write every value at once). In a script the same
+operation is `t.feel(swing=0.55, swingGrid=0.25)`. `inspect_item` on the track ends with its feel ("Feel: swing 0.55 on
+16ths."); `look_music beats` gives the swing set next to the swing heard.
 
 Every instrument is played, not just sequenced. It is **on by default**: a track's notes get the timing feel, velocity
 variety, accents, legato (sustained instruments), vibrato on held notes and strum of its family (plucked, mallets, drums,

@@ -16,6 +16,7 @@ from ..ears import clash as C
 from ..ears import engine_ears
 from ..ears import harmony as H
 from ..ears import pitch as P
+from ..ears import swing as SW
 from ..ears import voicing as V
 from ..ears.draw import beats_picture, pitch_picture
 from ..ears.draw_clash import clash_picture
@@ -61,7 +62,7 @@ def register(tools: Tools):
         "division": {"type": "integer", "default": 4, "description": "Grid to measure onsets against: 4 = sixteenth notes, 2 = eighths, 1 = beats."},
         "tolerance": {"type": "number", "default": 0.04, "description": "Seconds an onset may sit off the grid."}}})
     def look_beats(ctx, args):
-        """Tempo, the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture. On a render the tempo is the document's, checked against the audio: the reply says whether the audio's beats fit it (a groove, and rolls or fast figures, also repeat at half, double, 2/3 and 3/2 of its tempo, so a reading from the sound alone, `heard_bpm`, can name a related tempo: the summary then says so and the grid and offsets use the document's tempo). With `wav` (no document) the tempo is the audio's own, and a close call names the other reading."""
+        """Tempo, the beat grid and a downbeat guess, each onset's distance in ms from the nearest beat or sixteenth, against the audio's own beats and the document's tempo map, with a waveform picture. On a render the tempo is the document's, checked against the audio: the reply says whether the audio's beats fit it (a groove, and rolls or fast figures, also repeat at half, double, 2/3 and 3/2 of its tempo, so a reading from the sound alone, `heard_bpm`, can name a related tempo: the summary then says so and the grid and offsets use the document's tempo). Swing: the swing the document sets (each track's perform swing on its swingGrid) next to the swing heard, on the same 0 … 1 scale ("swing set 0.55 on 8ths (drums), heard 0.56"); the offsets are measured against the swung grid, so a swung off-beat is on time, not late. With `wav` (no document) the tempo is the audio's own, and a close call names the other reading."""
         doc, wav, stems = _source(ctx, args, "look_music (what: beats)")
         src = _pick(stems, args["track"], "look_music (what: beats)") if args.get("track") else wav
         use_doc = not args.get("wav")
@@ -74,10 +75,14 @@ def register(tools: Tools):
         grids = {"against_audio_beats": audio_pos} if audio_pos else {}
         if use_doc:
             grids["against_document_tempo"] = (lambda t: tempo.beat_at(doc.data, t), lambda b: tempo.seconds_at(doc.data, b))
-        out, pic_on = {}, []
+        out, pic_on, heard = {}, [], None
+        want = SW.for_source(doc.data, args.get("track")) if use_doc else None
         for name, f in sources.items():
             ons = B.stem_onsets(f)
-            full = {k: B.grid_offsets(ons, *g, div, tol) for k, g in grids.items()}
+            full = {k: B.grid_offsets(ons, *g, div, tol, want) for k, g in grids.items()}
+            if heard is None and grids:      # the first source's swing, on the grid the document swings (else 8ths)
+                pos = list(grids.values())[-1][0]
+                heard = SW.heard([p for t in ons if (p := pos(t)) is not None], want[1] if want else 0.5)
             out[name] = {"onsets": len(ons), **{k: {**v, "items": _cap(v["items"], args)} for k, v in full.items()}}
             if not pic_on and full:           # the picture shows the first source against the document grid (else the audio's)
                 pic_on = [(i["t"], i["off_ms"]) for i in list(full.values())[-1]["items"]]
@@ -96,6 +101,8 @@ def register(tools: Tools):
         s = (main.get("against_document_tempo") or main.get("against_audio_beats") or {}).get("summary")
         said = B.tempo_line(r, written, changes)
         said += f"; {main['onsets']} onsets" + (f", median {s['median_abs_off_ms']} ms off the {s['grid']} grid, {s['within_limit_pct']:.0f}% within {tol:.0f} ms, leaning {s['lean']}" if s else "")
+        r["swing"] = {"set": want[0] if want else None, "grid_beats": want[1] if want else 0.5, "tracks": want[2] if want else [], "heard": heard}
+        said += (f"; {sw}" if (sw := SW.line(want, heard)) else "")
         return Reply(said + ".", r, [str(png)], [str(png)])
 
     @tools.tool("look_pitch", {"properties": {**ITEM, **WAV, **TRACK, **DETAIL,

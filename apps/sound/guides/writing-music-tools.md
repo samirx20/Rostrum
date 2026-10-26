@@ -81,7 +81,8 @@ hit, `o` ghost, `r` 32nd roll, `t` triplet roll, `.` rest (spaces and `|` are ig
 Fills replace the last `fill_beats` of every `every` bars: `"snare"`, `"toms"` (down the drums in `toms`, high to
 low, e.g. `("tomHigh", "tom", "tomLow")` on a kit that has them), `"roll"`, `"build"` (quarters → 8ths → 16ths →
 roll), `"stop"` (everything rests). `crash=True` adds a cymbal after each fill; `last=False` leaves the final bars
-plain.
+plain. Swing is not written into the steps: write them straight and swing the drum track (`d.feel(swing=0.55)`, 8ths;
+`swingGrid=0.25` swings the 16th hats), then `look_music beats` says "swing set 0.55, heard 0.56".
 
 ## Developing a line
 
@@ -113,3 +114,7 @@ default. You don't need to write it in. To set a swing on a track: `track.feel {
 (0.25 = 16ths, 0.5 = 8ths). `track.feel` changes only what it names, so a person's other feel settings stay;
 `{person: false}` turns the instrument's looseness off and keeps the swing; `{timing: null}` puts one value back to the
 instrument's default.
+Where to set it: script: `t.feel(swing=0.55, swingGrid=0.25)` or `perform=` in `track(...)`; after the script:
+`track.feel` via `edit_document`. Read it back: `inspect_item` on the track ends "Feel: swing 0.55 on 16ths.", and
+`look_music beats` gives the swing set next to the swing heard (on the same 0 … 1 scale; swung off-beats count as on
+time, not late).

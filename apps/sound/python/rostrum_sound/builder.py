@@ -8,7 +8,7 @@ from __future__ import annotations
 from rostrum_core import RostrumError, codes
 
 from . import expression as EX
-from . import names
+from . import names, script_ops
 from .builder_music import MusicMap
 from .builder_parts import Clip, Inserts, checked
 from .doc import blank
@@ -39,6 +39,11 @@ class Track(Inserts):
         facts = item_facts({"type": "track", "automation": [{"lane": k} for k in self.lanes]})
         self.fields = checked("track", fields, f"track {self.id}", self.fields, facts)
         return self
+
+    def __getattr__(self, verb):           # t.feel(swing=0.55): the document's own track.<verb> (script_ops.py)
+        if verb.startswith("_") or (call := script_ops.method(self, verb)) is None:
+            raise AttributeError(f"'Track' object has no attribute '{verb}'")
+        return call
 
     def note(self, pitch, at, dur=None, vel=None, pan=None, id=None, end=None, **playing_):
         """One note: note("D4", at=beat(0), dur=beats(2), vel=0.7), or one that ends on a time or a marker:

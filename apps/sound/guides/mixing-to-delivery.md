@@ -17,12 +17,15 @@ document (`master.set`; the screen's **Most limiting**).
 
 **Reaching the target, first step: `edit_loudness`.** Do not rebalance by guess and do not raise `maxLimit` by feel. With the target
 on, raising every track's volume changes nothing (the master brings the mix to the target anyway); only the peaks over the average decide how much
-limiting the target takes. `edit_loudness` reads the last render and answers two exact edits, each with `ops` for `edit_document`:
+limiting the target takes. `edit_loudness` reads the last render and answers three exact edits, each with `ops` for `edit_document`:
 `keep_balance` (the `maxLimit` that reaches the target; no track moves; the master gets flatter and denser, 4–6 dB is a loud, pressed master)
+`tame_peaks` (a gentle compressor, ratio 4:1, attack 5 ms, release 120 ms, first in the chain of the most peaked track, or of the two or three most
+peaked when one is not enough; a track's own compressor is set instead of adding one; the threshold is found by re-rendering and the makeup measured
+so each tamed track keeps its loudness against the mix: the target inside the master's own `maxLimit`, the balance as written)
 and `trim_track` (the smallest cut, at most 12 dB, to the most peaked track, found by re-rendering, that reaches the target inside the master's
 own `maxLimit`; the balance moves; if no cut of that track is enough it says so, and `track` tries another). One call applies one:
-`edit_loudness {"apply": "keep_balance"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. The
-trade-off is **cleaner** (`trim_track`: nothing is squeezed, the balance moves) or **louder** (`keep_balance`: the balance does not move). With the master's
+`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. The
+trade-off is **tamed** (`tame_peaks`: only the peaky track is squeezed, the master stays transparent, the balance does not move), **cleaner** (`trim_track`: nothing is squeezed, the balance moves) or **louder** (`keep_balance`: the balance does not move, the whole master is squeezed). With the master's
 loudness target off, `edit_loudness` answers the `master.set` that turns it on.
 Songs saved before 2026-10-25 open with it
 off, so they sound as they did.
@@ -38,6 +41,13 @@ off, so they sound as they did.
   chain (inspect_engine (what "plugins")).
 - **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
+- **A bed under a voice:** `look_sound` (`what: "loudness"` or `"levels"`) gives the **room for speech**: how many dB a
+  voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a
+  standard speech spectrum, ANSI S3.5, compared band by band). Aim for **+6 dB or more** for a voice-over bed. Make room
+  by carving the music there (a pad's low-pass lower, an EQ dip at 2–4 kHz, a duck on the voice), not by its overall
+  level: the number is measured at the same loudness, so turning everything down does not change it. `levels` shows
+  which tracks fill the region (`speech_1_4k_db_vs_mix`). A quiet bed needs no limiting: when the loudness target is low
+  and the peaks sit under the ceiling, the limiter does nothing; leave it, don't squeeze the bed.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
   parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's **A** button opens its lanes;
   click adds a point (in the grid cell under the pointer), drag moves it, Delete removes it; one drag = one undo step.
@@ -110,7 +120,7 @@ as hard as it must. Either way the fix is at the source: turn the loud parts dow
 ## Checking (agents)
 
 1. `render_mix` (stems on). Its reply already has integrated LUFS, true peak and each track's level.
-2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments.
+2. `look_sound` (`what: "loudness"`): integrated, true peak, range, the loudest moment and its time, the short-term curve as a picture, clipped moments, room for speech (under a voice: +6 dB or more).
 3. `look_sound` (`what: "levels"`): each stem's level and how far under the loudest / the mix; flags a buried or dominant track.
 4. `look_sound` (`what: "clash"`): which two tracks fight in which frequency band, and when.
 5. `look_sound` (`what: "low_end"`): each track's and the mix's share below 150 Hz, below 60 Hz and in the low mids (150–500 Hz). `look_sound` (`what: "stereo"`): balance and mono safety.

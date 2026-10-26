@@ -9,14 +9,10 @@ from rostrum_core.mcp import Reply, Tools
 from .. import deliver, handoff, packs, presets
 from ..compile import compile as compile_doc
 from ..doc import markers, ops_mix, times
-from ..doc.fields import FIELDS
 from .. import fit_loudness as fit
 from . import tools_fit
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
-
-
-MAX_LIMIT = next(f.max for f in FIELDS["master"] if f.name == "maxLimit")      # the most the document's master `maxLimit` takes
 
 
 def held(r: dict, goal=None) -> str:
@@ -25,14 +21,17 @@ def held(r: dict, goal=None) -> str:
     need rises dB for dB with the mix, so reaching the target takes `maxLimit` = what it pulls now + `heldDb`."""
     m = r.get("master") or {}
     h = m.get("heldDb") or 0
-    if h < 0.1:
-        return ""
+    if h < 0.1 or (isinstance(goal, (int, float)) and goal - r["lufs"] < fit.SHORT_OK):
+        return ""                               # held a little but on the target (within what the engine settles to)
     pulls = m.get("limiterMaxReductionDb", 0)
     under = f"landed {goal - r['lufs']:.1f} dB under the {goal:g} LUFS target" if isinstance(goal, (int, float)) and goal > r["lufs"] else "was turned down"
-    loud = {"id": fit.peakiest_track(r)} if r.get("tracks") else None
+    loud = fit.peakiest_track(r) if r.get("tracks") else None
     need = pulls + h
-    keep = f"maxLimit {need + 0.05:.1f} keeps the balance" if need <= MAX_LIMIT else f"the target needs {need:.1f} dB, more than the {MAX_LIMIT} dB maxLimit allows"
-    way = f"call edit_loudness (one call, measured; {{\"apply\": \"keep_balance\"}} makes the first edit) instead of setting the limiter by hand: it answers the exact edit ({keep}; or the smallest cut of {loud['id'] if loud else 'the loudest track'}, the most peaked, that stays within the master's maxLimit)"
+    first = fit.first_choice(need, pulls)        # held down: the limiter pulls what maxLimit allows
+    why = {"keep_balance": f"maxLimit {need + 0.05:.1f} keeps the balance, barely more limiting",
+           "tame_peaks": f"a gentle compressor on {loud or 'the most peaked track'} (the most peaked), threshold and makeup measured, keeps the balance and the limit"}[first]
+    way = (f"call edit_loudness {{\"apply\": \"{first}\"}} (one call, measured by rendering; {why}) instead of setting the limiter or a compressor by hand; "
+           f"edit_loudness without apply lists all three ways (keep_balance, tame_peaks, trim_track)")
     return (f" Gentle limiting turned the whole mix down {h:.1f} dB so the limiter pulls at most {pulls:.1f} dB at the loudest moment; "
             f"the mix {under}: {way}.")
 

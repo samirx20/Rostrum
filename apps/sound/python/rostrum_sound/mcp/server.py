@@ -18,6 +18,7 @@ from rostrum_core.mcp import Runtime, Tools, build_server
 from rostrum_sound.modules import TOOLS
 from . import tool_groups, tools_project
 from .song_line import with_song_line
+from .track_line import with_track_feel
 from .app import make_app
 
 
@@ -33,6 +34,7 @@ def make_runtime(app) -> Runtime:
     tools_project.with_sound_edit_help(runtime)
     tools_project.with_script_print(runtime)
     with_song_line(runtime)
+    with_track_feel(runtime)
     return runtime
 
 

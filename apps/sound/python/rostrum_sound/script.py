@@ -6,6 +6,7 @@
     s.note("D4", at=beat(0), dur=beats(4), vel=0.7); s.chord(["D3", "A3", "F4"], at="#drop", dur=beats(2))
     p = track("keys", builtIn="piano"); b = track("bass", builtIn="uprightBass", perform=False)   # perform=False: every note exactly as written
     d = track("drums", kit="drums"); d.hit("kick", at=beat(0)); d.hit("snare", at="#drop+0.5")
+    d.feel(swing=0.55, swingGrid=0.25)     # the document's own track.feel: any track.<op> that changes only the track's settings
     v = track("door"); v.clip(r"C:\\...\\door.wav", at=3.0, in_=0.42, length=1.2).effect("eq", bands=[...])
     s.effect("reverb", space="hall", mix=0.3); s.automate("volume", [(0, 0.2), ("#drop", 0.9)])
     master(loudness=-16); master.effect("limiter", ceiling=-1)
@@ -29,7 +30,7 @@ from rostrum_core.merge import check_output
 from . import expression as EX
 from .builder import Song, Track
 from .doc import KIND, meter
-from . import script_scope, writing
+from . import script_ops, script_scope, writing
 from .script_time import Beat, Beats, plain, until
 
 API = ["tempo(bpm)", "length(time)", "beats_per_bar(n)", "beat_unit(n)", "sample_rate(hz)", "track(id, **fields)",
@@ -78,7 +79,8 @@ _INTERNAL = {"item", "init_inserts", "insert_items"}
 
 def _methods(cls) -> list[str]:
     """What a track can do, read from its class (so a new method shows up here by itself)."""
-    return [n for n in dir(cls) if not n.startswith("_") and n not in _INTERNAL and callable(getattr(cls, n))]
+    own = [n for n in dir(cls) if not n.startswith("_") and n not in _INTERNAL and callable(getattr(cls, n))]
+    return sorted({*own, *script_ops.verbs()})          # plus the document's track operations (t.feel(...))
 
 
 def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:

@@ -162,8 +162,11 @@ vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the tr
   eighth comes late by `swing` x one sixth of a beat (swing 1 is a triplet feel, 2:1; 0.5 halfway there, a light
   shuffle, 58 ms late at 85 bpm); `swingGrid` 0.25 swings the sixteenths instead. A note is moved only if it is written on that
   grid (within 8 percent of a cell), so write the notes straight and let `swing` move them. `lean` (ms, + behind the beat) and
-  `timing` (ms, random) are separate. There is no look tool that scores swing: `look_music beats` shows each onset's ms off
-  the grid, which is the swing plus the lean.
+  `timing` (ms, random) are separate. A track can also call the document's own `track.feel`, which changes only what it
+  names: `d.feel(swing=0.55, swingGrid=0.25)` (any `track.<op>` that changes only the track's own settings is a method
+  the same way; one that changes notes or other items, like `track.duplicate`, says to use `edit_document` after the
+  script). Check it: `look_music beats` says "swing set 0.55 on 16ths (drums), heard 0.56" (heard on the same scale;
+  the offsets are measured against the swung grid, so swung off-beats are on time, not late).
 - Touch fields (`position`, `damping`, `hardness`) are a model track's defaults; a note may override them.
   `damping` is plucked strings only; `position` / `hardness` not for violin. Wrong ones fail with the reason.
 - `humanize` and `phrase` write plain numbers into the notes when the script runs. Offsets come from the seed and
