@@ -110,6 +110,18 @@ def _unlock(fh) -> None:
         fcntl.flock(fh, fcntl.LOCK_UN)
 
 
+def held(path) -> bool:
+    """Someone holds `<path>.lock` right now (a lock taken by `locked`); asks without waiting."""
+    try:
+        with open(Path(path).with_name(Path(path).name + ".lock"), "r+b") as fh:
+            if not _try_lock(fh):
+                return True
+            _unlock(fh)
+    except OSError:                                # no lock file: nobody ever held it
+        pass
+    return False
+
+
 @contextlib.contextmanager
 def locked(path, where="settings", who="another Rostrum window"):
     """Exclusive lock on `<path>.lock` while the block runs; waits up to ~5 s, then fails loudly naming the file.

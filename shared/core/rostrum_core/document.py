@@ -7,7 +7,7 @@ from __future__ import annotations
 import copy
 
 from . import edits as E
-from . import joint, run
+from . import joint, pending, run
 from .doc_door import Event, _now, _through_door, ticking
 from .doc_nudge import NUDGE_S, ChangeMixin
 from .doc_read import ReadMixin
@@ -34,6 +34,7 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         self.live = None                                # live.Live when another program shares the file
         self._written = None                            # storage.Written: where the history file ends, as we left it
         self.notes: list[str] = []                      # plain sentences from opening (a step cut off by a crash)
+        self._intent = None                             # how to make the step being made again (pending.py; live.py)
 
     @classmethod
     def new(cls, kind, folder=None, item=None, start=(), **kw) -> "Document":
@@ -100,6 +101,7 @@ class Document(ReadMixin, ChangeMixin, UndoMixin):
         label = label or ", ".join(dict.fromkeys(self.kind.registry.get(c["op"]).label for c in calls))
         if not edits:
             return None
+        self._intent = pending.intent("apply", who, label, calls, session=session)
         if join and self._nudge(who, label, edits, calls, work, idx):
             return self.history.changes[-1]
         return self.commit(work, edits, who, label, calls, session, idx=idx)

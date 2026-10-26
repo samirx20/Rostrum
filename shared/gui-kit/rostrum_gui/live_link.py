@@ -22,6 +22,7 @@ from PySide6.QtCore import QObject, QTimer
 from rostrum_core import RostrumError, screen_state
 
 from . import pointer_quiet
+from .after_frame import AfterFrame
 
 TICK_MS = 300
 
@@ -52,8 +53,10 @@ class LiveLink(QObject):
         self._written = None                      # the last write's future: its failure is said at the next tick
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.tick)
+        self._owed = []                           # documents whose last change's history line comes the frame after
+        self._flush_job = AfterFrame(self._flush, self)
         if bridge.doc.live is not None:
-            bridge.doc.live.windowed()            # the whole document file is written on this timer, not in a change
+            self._windowed(bridge.doc.live)       # the whole document file is written on this timer, not in a change
         if bridge.doc.folder is not None:
             self._timer.start(TICK_MS)
 
@@ -63,7 +66,7 @@ class LiveLink(QObject):
         doc = self.bridge.doc
         try:
             if doc.live is not None:
-                doc.live.windowed()               # (the bridge may hold another document now)
+                self._windowed(doc.live)          # (the bridge may hold another document now)
                 doc.live.catch_up()
                 if doc.live.fold_if_quiet():
                     self._fold_work()             # its text a slice at a time, between events
@@ -83,6 +86,31 @@ class LiveLink(QObject):
                 if fail:
                     fail(line, e.person() if isinstance(e, RostrumError) else None)
 
+    def _windowed(self, live):
+        live.windowed(lambda: self._owe(live))
+
+    def _owe(self, live):
+        """A change's history line is owed (live.Live.door): written the frame after, so the key's frame doesn't wait
+        for it (a whole-song Ctrl+D's line: ~20-30 ms)."""
+        if live not in self._owed:
+            self._owed.append(live)
+        self._flush_job.ask()
+
+    def _flush(self):
+        owed, self._owed = self._owed, []
+        for live in owed:
+            try:
+                live.flush()
+            except (RostrumError, OSError) as e:  # loud; the step is still in the note (pending.py) and in memory
+                self._say(e)
+
+    def _say(self, e):
+        line = e.line() if isinstance(e, RostrumError) else f"Error: your last change could not be written to its file: {e}"
+        print(line, file=sys.stderr)
+        fail = getattr(self.bridge, "_fail", None)
+        if fail:
+            fail(line, e.person() if isinstance(e, RostrumError) else None)
+
     def _fold_work(self):
         live = self.bridge.doc.live
         if live is not None and live.fold_work():
@@ -98,6 +126,8 @@ class LiveLink(QObject):
 
     def close(self):
         self._timer.stop()
+        self._flush_job.cancel()
+        self._flush()
         self._writer.shutdown(wait=True)          # the last write lands before the file is cleared
         self.bridge.doc.drop_gesture()            # an open drag or preview box is cancelled, never saved as if kept
         if self.bridge.doc.live is not None:

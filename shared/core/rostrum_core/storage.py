@@ -30,7 +30,7 @@ import dataclasses
 from pathlib import Path
 
 from . import edits as E
-from . import formats, histfile
+from . import formats, histfile, pending
 from .errors import RostrumError, codes
 from .kind import SHAPE_ERRORS
 from .tree import index
@@ -71,6 +71,7 @@ def open_doc(cls, folder, item, kind):
         raise RostrumError(codes.CHECK_FAILED, "open", str(p["doc"]), "is damaged: it doesn't hold together "
                            f"({'; '.join(problems[:3])}{' …' if len(problems) > 3 else ''})",
                            hint="Nothing was saved over it.")
+    pending.recover(doc, p)                         # a step whose line a crash cut off: made again (pending.py)
     return doc
 
 
