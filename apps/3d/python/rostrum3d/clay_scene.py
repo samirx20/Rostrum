@@ -17,7 +17,7 @@ from rostrum_core.cache import CACHE, cache_key
 from . import clay_dabs, clay_detail, clay_shapes
 from .clay_fields import CLAY, STEP as CLAYSTEP
 
-VERSION = "rostrum3d-clay@7"          # bump when the core builds the same steps differently (the cache key holds it)
+VERSION = "rostrum3d-clay@6"          # bump when the core builds the same steps differently (the cache key holds it)
 BRUSH = {p.name for p in CLAY if p.group == "Brush"}          # the next stroke's settings: never sent
 STROKE = ("falloff", "spacing", "frontOnly", "invert")       # CL2's stroke settings (a CL1 step has the defaults)
 _DEFAULT = {p.name: p.default for p in CLAYSTEP if p.name in STROKE}
