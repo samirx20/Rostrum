@@ -95,7 +95,7 @@ class Engine:
         out, self._notices = self._notices, []
         return out
 
-    def _request(self, req: dict, timeout_s: float = 120.0, progress=None) -> dict:
+    def _request(self, req: dict, timeout_s: float = 120.0, progress=None, step=None) -> dict:
         name = next(iter(req))
         with self._lock:
             self._ensure_running()
@@ -118,9 +118,9 @@ class Engine:
                 out = json.loads(line)
                 if "ok" in out:
                     break
-                if "progress" in out and progress:
+                if ("progress" in out and progress) or ("step" in out and step):
                     try:
-                        progress(out["progress"], out.get("of"), out)
+                        progress(out["progress"], out.get("of"), out) if "progress" in out else step(out)
                     except BaseException:               # a stop request: the render cannot be told to stop, so the process is
                         self.proc.kill()                # (our own child); the next request starts a new one
                         self.proc.wait()
@@ -154,12 +154,13 @@ class Engine:
                 self.load(scene)
             return True
 
-    def render(self, progress=None, timeout_s: float | None = None, **req) -> dict:
-        """One frame or `frames=[first, last]`; the files are checked here, so nothing is "done" without its file."""
+    def render(self, progress=None, timeout_s: float | None = None, step=None, **req) -> dict:
+        """One frame or `frames=[first, last]`; the files are checked here, so nothing is "done" without its file.
+        `progress(i, of, line)` after each frame; `step(line)` while Cycles draws one ({"frame", "fraction", "ms"})."""
         if req.get("renderer") == "stylized":
             need_stylized("render")
-        out = self._request({"render": {**req, "progress": progress is not None}},
-                            timeout_s or float(req.get("timeoutS", 600)) + 60, progress)
+        out = self._request({"render": {**req, "progress": progress is not None or step is not None}},
+                            timeout_s or float(req.get("timeoutS", 600)) + 60, progress, step)
         missing = [f[k] for f in out.get("frames", []) for k in ("exr", "png") if f.get(k) and not Path(f[k]).is_file()]
         if missing:
             raise EngineError(f"3D engine said done but wrote no file: {missing[0]}; log {self.log_path}")
@@ -196,6 +197,10 @@ class Engine:
     def geometry(self, item: str) -> dict:
         """The built mesh of a `mesh` or `combine` item in its own space: points, faceCounts, faceIndices."""
         return self._request({"geometry": {"item": item}})
+
+    def copies_box(self, item: str, frame: int) -> dict:
+        """What a copies item's copies take in the world at `frame`, as drawn: lo, hi ([x, y, z]; None with no copies)."""
+        return self._request({"copies_box": {"item": item, "frame": frame}})
 
     def unfold(self, item: str, size: int = 2048) -> dict:
         """A `mesh` item's built mesh laid flat (xatlas): uvs (one u, v per face corner), charts, used."""

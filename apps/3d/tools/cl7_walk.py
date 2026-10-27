@@ -570,11 +570,19 @@ class Walk:
         job = self.b.renderJob
         if getattr(self, "render_t0", None) is None:
             return
-        ok = W.pump(600, lambda: job.state in ("done", "failed", ""), "the render")
+        timeline, last = [], [None]
+
+        def over():                                     # the header's clock as it changes: what the person was told when
+            if job.clock and job.clock != last[0]:
+                last[0] = job.clock
+                timeline.append({"s": round(time.perf_counter() - self.render_t0, 1), "clock": job.clock, "note": job.note})
+            return job.state in ("done", "failed", "")
+        ok = W.pump(600, over, "the render")
         secs = time.perf_counter() - self.render_t0
         W.pump(0.5)
         report["render"] = {"renderSeconds": round(secs, 1), "state": job.state, "note": job.note, "path": job.path,
-                            "said": self.clock.steps[-1].get("renderClock", "") if self.clock.steps else ""}
+                            "said": self.clock.steps[-1].get("renderClock", "") if self.clock.steps else "",
+                            "timeline": timeline}
         W.check(ok and job.state == "done", f"the render finished ({job.state}: {job.note})")
         W.check(bool(job.path) and Path(job.path).exists(), f"the render file exists ({job.path})")
         W.check(W.find(self.root, "renderShowInFolder") is not None and W.find(self.root, "renderClose") is not None,
