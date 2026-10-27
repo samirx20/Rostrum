@@ -61,6 +61,10 @@ Item {
         readonly property var look: [g.roll, g.rowH, g.count, g.keyed, g.rowInKey, g.keyRoot, g.keysWidth, Theme.app]
         onLookChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // a song opened with the Editor showing paints before the window has its width (0 wide): paint again when it
+        // comes, or the roll shows no keys and no row stripes until the first scroll (production round, piano piece)
+        onWidthChanged: requestPaint()
+        onAvailableChanged: if (available) requestPaint()
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
             var h = g.rowH, kw = g.keysWidth, n = g.count, W = width
