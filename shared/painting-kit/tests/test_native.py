@@ -130,3 +130,23 @@ def test_native_fill_equals_apply_paint():
         native.fill(ours[13:63, 21:91], c, col)
         marks.apply_paint(theirs[13:63, 21:91], np.zeros_like(c), c, col, "normal")
         assert ours.tobytes() == theirs.tobytes()
+
+
+@needs_native
+def test_hand_line_and_drying_wash_same_both_ways_and_in_pieces():
+    """wobble / swell / pool shape the dabs and edge_darken / granulation dry the wash after them: the native stamper
+    and numpy still agree bit for bit, and the live pen's pieces lay what the whole stroke lays."""
+    pts = [(20 + 4 * i, 60 + 15 * np.sin(i / 5)) for i in range(40)]
+    kw = dict(wobble=0.4, swell=0.6, edge_darken=0.7, granulation=0.6, grain=0.2, taper_start=1, mode="multiply",
+              by_dab=True, seed=5, hardness=0.7)
+    paper = marks.Paper(H, W)
+    a = np.zeros((H, W, 4), np.float32)
+    a[...] = [0.3, 0.35, 0.5, 1]
+    b, c = a.copy(), a.copy()
+    B.stamp_stroke(a, pts, (0.2, 0.3, 0.7), 14, "round", paper=paper, **kw)
+    B.stamp_stroke(b, pts, (0.2, 0.3, 0.7), 14, "round", paper=paper, lay=native.lay, **kw)
+    assert np.array_equal(a, b)
+    carry = B.Carry()
+    for k in range(5, 41, 5):
+        B.stamp_stroke(c, pts[:k], (0.2, 0.3, 0.7), 14, "round", paper=paper, carry=carry, piece=(0.0, k < 40), **kw)
+    assert np.array_equal(a, c)

@@ -15,7 +15,7 @@ PARAMS = dict(opacity=1.0, hardness=0.5, spacing=0.1, jitter=0.0, seed=0, angle=
               sample_all=False, grain=0.0, mode="normal", color_jitter=0.04, hue_jitter=0.0,
               size_pressure=0.8, opacity_pressure=0.3, steady=0.0, tilt_angle=0.0, tilt_size=0.0,
               taper_start=0.0, taper_end=0.0, size_jitter=0.0, angle_jitter=0.0, even=False, texture="none", wrap=False,
-              by_dab=False)
+              by_dab=False, wobble=0.0, swell=0.0, pool=0.0, edge_darken=0.0, granulation=0.0)
 EVEN = 0.13   # even soft edge: a dab every EVEN * sqrt(radius * edge width) px at most (ridges under ~1.5/255)
 
 

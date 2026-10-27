@@ -213,7 +213,8 @@ You can't judge motion from the script. Look.
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
 | `look_frame` (`what: "in_frame"`) | Ask **what is in the frame** at a time, or over a span: each layer in, partly in or out, and when it enters and leaves. |
-| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). |
+| `look_frame` (`what: "empty"`) | Find **blank, pale and standing-still stretches** from tiny pictures every 0.5 s (seconds to run), with times and numbers: near-empty frames (almost only background), washed-out frames (all pale, low contrast), nothing moving for `min_still` s (default 2), and whether the piece ends on one. Facts, not verdicts: a held title is yours to judge. `video: "<mp4 path>"` checks a finished file. |
+| `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file as `look_frame` `what: "empty"` does and names any blank, washed-out or unchanged stretches with times (`quiet_stretches`): look at those times with `look_frame`. |
 
 **Last step, every time: look at the export itself.** When `render_video` finishes, look at a sheet of the finished
 piece (`look_frame` `what: "sheet"` over the whole duration, after your last edit) and fix what is wrong before you call

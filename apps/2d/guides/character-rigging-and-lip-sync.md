@@ -191,3 +191,15 @@ with **One at a time** on (the field `swap`: in a script `with group("mouth", sw
   skin folds (use a bend bind).
 - Removing a bone moves its children up to its parent and deletes its binds and IK chains.
 - Frames from a rig are checked like any others: render stills at the extreme poses and look before you key the in-betweens.
+
+## Staging a character: framing, pose, arcs
+
+Technique, not a recipe. Where a figure feels stiff, the cause is usually one of these.
+
+- **Frame the part the shot is about.** A figure small in a wide frame cannot act. `frame.fit to=items ids=[head_layer] at=t pad=0.2` frames any layer inside a rig where it is *posed* at that time (the engine's place for it), so a face fills the shot; key a second fit at a later time on the whole body to pull back. A rig's parts work as ids like any layer.
+- **One pose per beat.** Save the pose of each beat (`pose.save`), key them on the beat times (`pose.apply`), then add the in-betweens. A pose reads from its silhouette: if the outline alone says what the figure is doing, the pose is working. Arms straight out from the shoulders and legs side by side read as a puppet; turn the shoulders and hips against each other, tilt the head a few degrees, and let one arm and one leg bend more than the other.
+- **Bend by default.** A chain whose bones lie in one line is straight, and an IK chain asked for a target at full reach is straight too. Rest the bones with a slight bend (a forearm 10-20 degrees off its upper arm), keep IK targets a little inside the chain's reach, and pick the side the joint folds to with the IK's `bend`.
+- **Arcs.** Hands, heads and tails travel on curves, not lines. A swing on a bone's `rotation` moves its tip on an arc by itself; for an IK target, key it at both ends and at a middle time with a sideways offset. `inspect_rig_motion` returns the tip's path so you can check the curve.
+- **Overlap and follow-through.** `rig.follow target=upper_arm start=0 end=1 lag=0.12 overshoot=0.4`: the bones below the target trail behind its turn, swing a little past and settle, each step down the chain a bit later. It is baked as ordinary `rotation` keys (linear between dense samples, thinned to what the curve needs) on those bones, plus the settle after `end`, so edit or delete them like any keys; run it again to re-bake the range. A bigger `lag` is looser (hair, a tail), a small one a stiff arm; `amount` below 1 shows only part of it. The target bone itself is not changed.
+- **Holds.** Let a pose rest for a few frames (a `hold` ease, or the same value at two times) before the next move; constant motion reads as drifting.
+- **Easing on IK.** Keys on an IK target (`targetX`, `targetY`, `mix`) take an ease like any key (`key.add ... ease=easeOut`): the hand leaves its place quickly and settles.

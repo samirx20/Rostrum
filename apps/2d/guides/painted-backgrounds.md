@@ -97,6 +97,41 @@ Every setting is listed by `inspect_operations name: stroke.add`. What each does
   bands together (a sky), use `wet=1` (it then lays no colour of its own) with a soft `round` tip, strokes along the
   bands; below 1 the brush also lays its own colour, and a `bristle` tip drags it in lines, which reads as streaks.
 
+## Washes, glazes and an inked line
+
+How watercolour-and-ink painting works with the kit; what to paint and in which colours is yours.
+
+- **Toned paper.** A drawing is see-through, so whatever is under it is the paper. A paint layer's `ground` makes the
+  paper part of the painting: the layer starts filled with that colour, opaque, and its strokes go on it. Multiply
+  glazes then darken the paper itself, and granulation settles in it. A light ground keeps the lights of the paper; a
+  dark or blue-grey ground starts the picture in the dark, and the lights are then painted in (screen / add) rather
+  than left as bare paper. Put the ground on the bottom paint layer, with the lines on a layer of their own above it:
+  `paint.fill` finds its area from the visible layers' paint and leaves a toned layer out (it covers everywhere, so
+  it bounds nothing); `edges: "layer"` naming the toned layer itself fills it whole.
+- **Layer order.** The usual order of a wash painting: ground (or paper) → big washes over whole areas → glazes that
+  deepen values where the shadows are → the darkest darks → the ink line → lights last in `screen` or `add` (a lamp,
+  a glint), because light laid in multiply can never get lighter than what is under it.
+- **Glazing.** `mode: "multiply"` darkens what is under it by the stroke's colour: a second glaze over the first is
+  darker again, and the hue of each stays (a blue over a blue goes deeper blue, not grey). `normal` paint at partial
+  opacity instead mixes toward its own colour, which lifts darks and greys complementary colours. Several thin
+  multiply glazes go deeper and cleaner than one opaque stroke; low saturation glaze colours grey the picture as they
+  stack.
+- **Wet-on-dry and wet-in-wet.** Each stroke is laid when it is done, like paint on paper that has dried: strokes that
+  overlap show both edges (wet-on-dry). For wet-in-wet, where colours melt into each other, lay soft (`hardness` low)
+  strokes, or blend them afterwards with `smudge` + `wet` on the same layer (it drags the paint, so work over the
+  ground or an opaque base).
+- **How a wash dries.** `edge_darken` lays more pigment in a rim just inside each stroke's edge, as a wash does when its
+  water pulls pigment to the wet edge; it shows most on firm edges (`hardness` 0.5 and up) and barely on very soft
+  ones. Overlapping strokes each keep their own rim, which is how separate passes read as separate. `granulation`
+  lays more paint in the paper's valleys, a speckle that follows the `paper` and `paper_scale` and stays put on the
+  canvas; it reads on flat areas and on a dark ground.
+- **A line that reads as inked.** A ruled line has one width and a perfect path. A hand's line drifts, swells and
+  loads: `wobble` drifts the path smoothly (around 0.2-0.5 of the size reads as a confident hand; jittering the
+  points yourself gives a jagged line instead), `swell` varies the width along it without pressure in the points,
+  `taper_start` / `taper_end` point its ends and `pool` makes the ends carry more ink (together: pointed, but loaded
+  where the brush touched down). A little `grain` breaks the edge on the paper's tooth (dry brush); a `bristle` tip
+  splits into hairs. Points with pressure still work and take precedence in feel: `size_pressure` follows them.
+
 ## Ways of working (techniques, not rules)
 
 - **Plan the move first.** Key the frame, then `background.add`; check with `look_drawing` (`what: "tiles"`) which parts each layer

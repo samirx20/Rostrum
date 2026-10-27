@@ -268,6 +268,16 @@ Both read the layer's **real** motion. Add with `effect.add type=smear` / `type=
 A smear reads the layer's **own** motion: a layer that only moves because its group moves does not smear; put the smear on
 the group. Text length is estimated (0.6 × size per letter) before layout; `amount` tunes it.
 
+## Haze, fog and distance
+
+A far layer reads as far when it has less contrast and takes the colour of the air between you and it. Depth of field blurs by distance; fog fades by distance; together the blur reads as air.
+
+- **Fog by distance.** `frame.fog target=frame color="#8fb8c8" amount=0.7 near=0 far=3 curve=1`. Each layer farther behind the frame than `near` shows more of the fog colour, up to `amount` of it at depth `far` (`curve` above 1 keeps near layers clear for longer). It is built from sheets of the fog colour, pinned to the frame (no parallax) and laid just above each depth layer, named `Fog over ...` (ids `fog_<layer>`). They are ordinary layers: key a sheet's opacity to roll the fog in or clear it, recolour one, delete one. Run again to rebuild; `amount` 0 removes them. Fog follows the stack, so order the layers back to front (the farthest lowest); a layer drawn above a farther one is refused, by name. Give the sky or water colour a layer of its own at the far depth: the sheets cover empty frame too, so what no layer paints shows as fog colour.
+- **Depth of field with it.** Turn `dof` on and set `focus` to the depth of what matters: far layers are soft and hazy, near ones soft and clear.
+- **Drifting particles** (dust, spray, plankton, snow): many small shapes made with `layer.duplicate` using `vary_move`, `vary_scale`, `vary_opacity`, `vary_time` and a `seed`, each given a `depth`; slow keys on their x and y make them drift, and their depth gives them parallax and blur as they pass. Some in front of the focus (large, soft), some behind (small, hazy).
+- **Light shafts.** A tall, narrow shape (a rotated rectangle or triangle) with a gradient effect from a light colour to transparent along its length, a screen or add `blend`, low opacity, slowly keyed (a few degrees of rotation, opacity breathing). Several at different widths and depths read as light through water or a window.
+- **Order.** Haze and shafts go between depth layers, not on top of everything: a fog sheet over the foreground makes the foreground foggy too.
+
 ## Seeing and checking
 
 - `look_frame` at the fastest moments shows the blur, smear and echoes; `look_frame` (`what: "sheet"`) over the move shows how they grow and settle.
