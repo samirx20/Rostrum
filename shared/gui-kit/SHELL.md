@@ -65,3 +65,26 @@ AskDialog { onClosed: shell.backToWork() }
 - Sound keeps its finer focus (`select_slots.focusArea`: arrangement / editor) for `inspect_screen`; the shell's
   accent edge marks the region.
 - Still to do in Sound: `help` / `job` on the header strip's buttons.
+
+## Window frame
+
+The top bar is the window's title bar (header design SPEC §4 and §7, `rostrum_gui/window_chrome.py`).
+
+- **What Windows still does:** the shadow, the rounded corners, the 1 px edge, the invisible resize borders on the
+  sides and bottom, snapping (drag to an edge, Win+arrows), the window menu (Alt+Space, or a right-click on the bar's
+  empty room), and the snap layouts when the pointer rests on the maximise button.
+- **What we do:** take the caption away (the window's content starts at its top edge) and tell Windows what each
+  pixel of the top 40 is: a button, chip or field is a click; everything else in the bar moves the window (drag), and a
+  double-click there maximises or restores; our maximise button counts as Windows' own maximise button; the top 5 px
+  resize the window (at 100 % screen scale; Windows' frame width at other scales), except over the three window
+  buttons and when maximised. The bar tells the window where its clickable things are (`windowChrome.setZones`) after
+  each layout change. A clickable thing missing from that list moves the window when clicked, so the layout check
+  checks the list.
+- **We draw** the three window buttons (`WindowButtons.qml`) in Windows' own icon font and colours.
+- **A check's window** (`ROSTRUM_BACKGROUND_WINDOWS=1`, or any scripted run) keeps Windows' normal frame and its
+  "Test · " title, so it is plainly not the person's app and can be moved and closed. `ROSTRUM_MERGED_FRAME=1` gives
+  it the merged bar instead (only the window-frame checks set it); its title still says "Test · ".
+- **Pictures** (`--shot`, `--step`, `--check-layout`) draw the merged bar with its buttons, as a person sees it.
+- QML reads `windowChrome` on every window: `merged` (draw the buttons), `native` (Windows does the hit-testing),
+  `active`, `maximised`, `maxHovered` / `maxPressed` (the maximise button's look while Windows owns the pointer
+  there), `resizeBand`, and `minimise()` / `toggleMaximise()` / `close()`.
