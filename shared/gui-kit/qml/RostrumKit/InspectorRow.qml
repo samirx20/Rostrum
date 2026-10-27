@@ -48,6 +48,7 @@ Item {
     property bool highlighted: false      // marked while it is in focus elsewhere (2D: its keys picked in the timeline)
     property bool instant: false          // the list model's `instant`: this change is a new selection, shown at once
     property string inside: ""            // the host row whose picker draws this list ("" = the panel's own list)
+    signal groupOpened(string group)      // "+ Name" clicked in the row of names: the panel brings the group into view
     readonly property bool here: (model.inside || "") === inside
     readonly property int gutter: Theme.keyGutter
     readonly property bool second: model.half === "second"      // the right half of a pair: it sits on the previous row's line
@@ -189,7 +190,8 @@ Item {
                                 visible: !!nameItem.modelData.changed && !nameItem.opened; width: 4; height: 4; radius: 2; color: Theme.accent
                                 anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
                             MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true; enabled: !nameItem.opened
-                                        cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: { row.bridge.toggleGroup(nameItem.modelData.group); row.groupOpened(nameItem.modelData.group) } }
                         }
                     }
                 }
