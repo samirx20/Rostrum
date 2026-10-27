@@ -8,10 +8,11 @@ A `Grid` is a window's grid setting (Grid ▾ and Snap in the arrangement's head
 bridge holds one and passes it to every snap (drags, ends, the ruler's range, Draw, nudges); without one, the
 default (Auto, Snap on) is used. Auto follows the zoom: the finest step at least MIN_PX wide on screen.
 
-One snap, two ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
-NEAREST line; a click that makes
-something (a Draw note, a drum hit, a double-click, an automation point) takes the CELL under the pointer, the line
-at or before it. `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
+One snap, three ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
+NEAREST line; a click that makes something (a drum hit, an automation point, a paste) takes the CELL under the
+pointer, the line at or before it; a note drawn on the roll (Draw click, double-click) goes to the nearest line, a bar
+line within PULL_PX first (DRAW: at 1/16 a cell is ~4 px, so the cell rule put a click 4 px past the bar a 16th late
+while the person aimed at the bar; beat lines don't pull there, so the 16ths beside a beat stay reachable). `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
 pointer on that pixel is on the line (a press exactly on a drawn line gives that line's time, a pixel before it the
 cell before).
 
@@ -106,16 +107,18 @@ def lines_around(t: float, root: dict, grid: Grid | None = None) -> tuple[float,
 def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = "nearest", px: float = 0.0) -> float:
     """`t` seconds onto `grid` (the window's; through the tempo map), unless free or its Snap is off. `how`:
     "nearest" (drags, ends, nudges, a range's edges), "cell" (a click that makes something: the cell under the
-    pointer). `px`: one screen pixel in seconds (0: not from the screen)."""
+    pointer), "draw" (a Draw click or double-click on the notes: the nearest line, a bar line within PULL_PX first; the
+    hover's faint note and its snap line ask the same, so the note lands where they showed). `px`: one screen pixel in
+    seconds (0: not from the screen)."""
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
     caught = catch(t, grid, px)
     if caught is not None:
         return max(0.0, round(caught.value, 6))
-    if how == "nearest":
+    if how in ("nearest", "draw"):
         lo, hi = lines_around(t, root, grid)
-        at = strong_line(t, root, px * PULL_PX) if px > 0 else None
+        at = strong_line(t, root, px * PULL_PX, how == "nearest") if px > 0 else None
         at = at if at is not None else hi if hi - t < t - lo else lo
     else:
         at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
@@ -133,14 +136,14 @@ def catch(t: float, grid: Grid, px: float, skip: str = "", extra=()):
     return caught if caught.target is not None else None
 
 
-def strong_line(t: float, root: dict, reach: float) -> float | None:
-    """The bar line within `reach` seconds of `t`, else the beat line within it, else None (the grid decides)."""
+def strong_line(t: float, root: dict, reach: float, beats: bool = True) -> float | None:
+    """The bar line within `reach` seconds of `t`, else (`beats`) the beat line within it, else None (the grid decides)."""
     b = max(0.0, tempo.beat_at(root, max(0.0, t)))
     s = meter.seg_at(root, b)
     bar0 = s.start + ((b - s.start + EPS) // s.bar) * s.bar
     count = meter.count(s)
     beat0 = bar0 + ((b - bar0 + EPS) // count) * count
-    for lo, step in ((bar0, s.bar), (beat0, count)):
+    for lo, step in ((bar0, s.bar), (beat0, count))[:2 if beats else 1]:
         near = min((tempo.seconds_at(root, x) for x in (lo, lo + step)), key=lambda x: abs(x - t))
         if abs(near - t) <= reach:
             return near

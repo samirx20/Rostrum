@@ -13,25 +13,58 @@ FIXED = ("builtIn", "sfz")         # the instruments with a fixed range (recorde
 _KEPT: dict[str, tuple[int, int] | None] = {}
 
 
+def sound_of(root: dict, track) -> dict | None:
+    """The track's instrument as the `range` request takes it, or None when it plays any key (synths, models)."""
+    spec = instrument_spec(root, track)
+    if not spec or not set(spec) & set(FIXED):
+        return None
+    return {k: spec[k] for k in spec if k in FIXED}
+
+
+def kept(inst: dict) -> tuple[bool, tuple[int, int] | None]:
+    """(asked already, its range or None for any key) for a sound, from what was kept: never asks the engine (the
+    screen's roll reads this on every draw; roll_range.py asks once, off the window's thread)."""
+    key = json.dumps(inst, sort_keys=True)
+    return key in _KEPT, _KEPT.get(key)
+
+
+def ask(engine, inst: dict) -> tuple[int, int] | None:
+    """The engine's range for a sound, asked once and kept (raises when the engine says no)."""
+    key = json.dumps(inst, sort_keys=True)
+    if key not in _KEPT:
+        rg = engine.request("range", instrument=inst)
+        _KEPT[key] = None if "any key" in str(rg.get("note", "")) else (rg["lowKey"], rg["highKey"])
+    return _KEPT[key]
+
+
+def words(name: str, lo: int, hi: int, bad) -> str:
+    """The refusal for notes `bad` (MIDI) outside a sound's range: "Timpani plays C2–C4: A1 is below it"."""
+    bad = sorted(set(bad))
+    under, over = [m for m in bad if m < lo], [m for m in bad if m > hi]
+    said = []
+    for ms, side in ((under, "below"), (over, "above")):
+        if ms:
+            names = [V._name(m) for m in ms[:3]] + ([f"{len(ms) - 3} more"] if len(ms) > 3 else [])
+            listed = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+            said.append(f"{listed} {'is' if len(ms) == 1 else 'are'} {side} it")
+    return f"{name} plays {V._name(lo)}–{V._name(hi)}: " + "; ".join(said)
+
+
 def ranges(root: dict, engine, tracks) -> tuple[dict, dict]:
     """({track: (lowest MIDI, highest MIDI)}, {track: why it was not checked}) for `tracks`."""
     found, unchecked = {}, {}
     for t in sorted(tracks):
-        spec = instrument_spec(root, t)
-        if not spec or not set(spec) & set(FIXED):
+        inst = sound_of(root, t)
+        if inst is None:
             unchecked[t] = "its instrument has no fixed range to ask the engine for"
             continue
-        inst = {k: spec[k] for k in spec if k in FIXED}
-        key = json.dumps(inst, sort_keys=True)
         try:
-            if key not in _KEPT:
-                rg = engine.request("range", instrument=inst)
-                _KEPT[key] = None if "any key" in str(rg.get("note", "")) else (rg["lowKey"], rg["highKey"])
+            rng = ask(engine, inst)
         except Exception as e:                       # the engine said no: say so, never pretend the range was fine
             unchecked[t] = f"engine range request failed: {e}"
             continue
-        if _KEPT[key] is not None:
-            found[t] = _KEPT[key]
+        if rng is not None:
+            found[t] = rng
     return found, unchecked
 
 

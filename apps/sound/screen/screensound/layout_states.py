@@ -37,6 +37,9 @@ SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","t
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
 
 PICTURE = 'agent A picture|[{"op":"doc.set","target":["root"],"args":{"picture":"film.mp4"}}]'   # its button shows (no file needed)
+VIB = ('agent A vibraphone|[{"op":"track.add","target":[],"args":{"id":"vib","instrument":"builtIn","builtIn":"vibraphone"}},'
+       '{"op":"note.add","target":["vib"],"args":{"pitch":"E3","at":{"beat":0},"dur":{"beats":1}}},'
+       '{"op":"note.add","target":["vib"],"args":{"pitch":"A3","at":{"beat":1},"dur":{"beats":1}}}]')
 DKEY = 'agent A key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]'
 CHORD = ('agent A chord|[' + ",".join('{"op":"note.add","target":["melody"],"args":{"id":"%s","pitch":"%s","at":{"beat":16},"dur":{"beats":4}}}'
                                        % (i, p) for i, p in (("c1", "D4"), ("c2", "F4"), ("c3", "A4"))) + "]")
@@ -103,6 +106,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
         ("timeline-zoomed", ["--sample"], ["zoom 4 0.5"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
+        # the rows a recorded sound can't play, tinted red (roll_range.py; vibraphone F3-F6, a note at E3 under it)
+        ("roll-out-of-range", ["--sample"], [VIB, "select vib", "dock editor", "tool draw", "wait 2"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
         ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",
                                               "line-type And now, the news from the whole second verse and bridge"]),

@@ -13,7 +13,7 @@ import "Pointers.js" as Pointers
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
 // a note Note ▾ long (drag on: longer) or a hit; on the drum rows Draw is the step tool: a click on an empty step adds a hit,
 // a click on a hit removes it, a drag along a row paints (or, from a hit, erases) every grid step it passes (Shift+click an accent,
-// Alt+click soft; one undo step per stroke: backend.stepPress / stepTo / stepEnd). A new note or hit goes in the grid cell under the pointer (timing.snap). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
+// Alt+click soft; one undo step per stroke: backend.stepPress / stepTo / stepEnd). A new hit goes in the grid cell under the pointer, a new note on the nearest grid line, a bar line within 7 px first (timing.snap: the faint note shows the same place). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
 // just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
 // step; a chip beside the pointer says the length, "1/8"); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
 // Right-click: the item's actions (the kit's short menu, then Quantise, Humanise, Transpose ▸), or on empty space what
@@ -213,7 +213,7 @@ MouseArea {
             visible: !!m.ghost && m.grid.shows(key)
             x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
             width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
-            color: m.grid.roll.hue; opacity: 0.55       // faint, still seen on the dark rows (real-window check)
+            color: m.ghost && m.ghost.out ? Theme.danger : m.grid.roll.hue; opacity: 0.55   // faint, still seen on the dark rows; red: a row its sound can't play (the click is refused)
         }
     }
     Diamond {   // a hit

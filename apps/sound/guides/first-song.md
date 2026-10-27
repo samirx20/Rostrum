@@ -77,8 +77,11 @@ The **Colour** row shows the colour the track is drawn in.
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
    **Draw** and **Note ▾** sit on the dock's bottom strip, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
-   **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
-   grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
+   **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note starts on the grid
+   line nearest the pointer (a bar line within about 7 px wins, so a click just past the bar lands on the bar); a new hit goes
+   in the grid cell under the pointer. The faint note and the snap line's chip ("Bar 13") show where the click lands before you click.
+   Rows tinted red are keys the track's recorded sound can't play: a click there draws nothing and the top bar says why
+   ("Timpani plays C2–C4: A1 is below it").
    **Drums:** with **Draw** (B), click a step to add a hit and click that hit again to remove it; drag along a row to
    paint every step you pass (start the drag on a hit to erase along the row); one drag is one step, one **Ctrl+Z**
    takes it away. Steps are the window's **Grid ▾** cells. **Shift+click**: an accent (100 %); **Alt+click**: soft
