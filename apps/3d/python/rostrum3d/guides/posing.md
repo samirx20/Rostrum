@@ -86,6 +86,10 @@ pose.move_joint(target="c", joint="forearm.L", to=[x, y, z])   -> placed: kept w
 pose.names(target="c", names="humanoid")
 ```
 
+The values after `->` are what each operation returns in a script. Through the MCP tools (`edit_document`) the reply
+says the change and the joints' names, not these values: read a joint's place with `inspect_item` on its id, and see
+a drag's result with `look_frame` (a hand that didn't reach shows as an arm stretched straight).
+
 - **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`; `look_at` on a pixel names
   the nearest joint, "forearm.R, 3 cm off"): a joint in the wrong place is fixed with `pose.move_joint` before posing.
   `look_shape` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
