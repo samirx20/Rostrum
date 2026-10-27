@@ -107,8 +107,13 @@ def item_remove(ctx, targets, args):
         if t in index(ctx.doc, ctx.kind.lists):     # already gone with a removed parent: fine
             gone |= set(subtree_ids(ctx.item(t), ctx.kind.lists))
             ctx.remove(t)
-    for c in mirror.copies_of((loc.item for loc in index(ctx.doc, ctx.kind.lists).values()), gone):
+    left = index(ctx.doc, ctx.kind.lists).values()
+    for c in mirror.copies_of((loc.item for loc in left), gone):
         ctx.remove(c)                               # a copy goes with its original or its clay (mirror.py)
+    for loc in left:                                # a part placed on a removed clay stays, standing where it was put
+        if loc.item.get("followPose") and loc.item.get("follow") in gone and loc.item["id"] not in gone:
+            ctx.set(loc.item["id"], "follow", "")
+            ctx.set(loc.item["id"], "followPose", False)
 
 
 def _reid(item: dict, new_id: str, taken: set, lists: dict):

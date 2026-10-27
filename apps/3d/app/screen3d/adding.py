@@ -141,11 +141,14 @@ class Adder(QObject):
         self.disarm()
         if choice in rigging.RIGS:
             return rigging.wrap(self, choice, hit)
-        size = placing.size_class(*on) if on else placing.PRODUCT
-        if shape not in OUTLINE_SHAPES:
-            clay = self.b.doc.item(hit["item"]) if on and hit.get("item") and self.b.doc.has(hit["item"]) else None
+        clay = self.b.doc.item(hit["item"]) if on and hit.get("item") and self.b.doc.has(hit["item"]) else None
+        clay = clay if clay and clay.get("type") == "clay" else None
+        part = shape not in OUTLINE_SHAPES          # a word or logo keeps the size class (it reads at that size)
+        size = placing.size_class(*on, clay if part else None, hit["point"]) if on else placing.PRODUCT
+        if part:
             across = hit["item"] if placing.mirrors(clay, on and on[0], hit["point"], size) else ""
-            return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size), across)
+            return self.add(choice, placing.placed(shape, hit["point"], hit["normal"], size), across,
+                            clay["id"] if clay else "")
         f = {**extra, **placing.outline_fields(shape, size)}
         if (below := self._below(shape, f)) is None:
             return
@@ -171,10 +174,11 @@ class Adder(QObject):
             self.armedChanged.emit()
 
     @Slot(str)
-    def add(self, choice, at: dict | None = None, mirror_on: str = ""):
+    def add(self, choice, at: dict | None = None, mirror_on: str = "", on_clay: str = ""):
         """Add `choice` (an entries value); `at` = fields of where it goes (world space; placing.placed's). A rig choice
         puts the camera on that rig (an orbit waits for the click on what it circles). `mirror_on`: a mirrored clay the
-        new mesh sits on; its mirrored copy is made in the same step (mesh.mirror)."""
+        new mesh sits on; its mirrored copy is made in the same step (mesh.mirror). `on_clay`: the clay it was placed
+        on; it follows the clay's pose there (follow.add pose, follow.py), its copy on its own side."""
         if choice in rigging.RIGS:
             if not rigging.needs_click(choice):
                 return rigging.wrap(self, choice)
@@ -200,6 +204,8 @@ class Adder(QObject):
         if at:
             args.update(placing.into_parent(at, self._world(args.get("into", ""))))
         calls = [{"op": f"{type_}.add", "args": args}]
+        if on_clay and type_ == "mesh":
+            calls.append({"op": "follow.add", "target": [new], "args": {"item": on_clay, "pose": True}})
         if mirror_on and type_ == "mesh":
             calls.append({"op": "mesh.mirror", "target": [new], "args": {"on": mirror_on}})
         self._apply(calls, f"Add {F.LABELS[type_].lower()}", new)

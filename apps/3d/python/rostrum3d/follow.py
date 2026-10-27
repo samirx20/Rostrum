@@ -6,15 +6,23 @@ transform at this frame times the inverse of its last frame's), scaled by `follo
 picked up (Amount 0 → 1) it starts riding from where it stands; let go (1 → 0) it stays where it was let go, and
 any part-way Amount rides that share of each step. The item's own keys still move it, inside the ride.
 
+Follow the pose (`followPose`, on a clay or a mesh with bones): the ride is the bone's move nearest where the item sits
+(its own Position at time 0, in the target's own space at rest; a mirrored copy's from its own side), the move the core
+bends the surface there with (skin.py: the bone now times its rest), on top of the target's own move. It counts from
+rest, not from time 0, so an item placed before posing stays on the posed surface whatever time is posed; the bone is
+chosen again whenever the joints are found again. The nearest bone, by the distance the core weights the skin by
+(core/src/skin.cpp, a point behind a clay bone's head counted BEHIND × farther): the heaviest bone there.
+
 Stick stands the item's Position (its pivot) on the top of a mesh's surface straight below, `y` above it.
 """
 from __future__ import annotations
 
 from rostrum_core.keys import keys_of, track_value
 
-from . import aim, surface
+from . import aim, skin, surface
 
 TRS = ("x", "y", "z", "rx", "ry", "rz", "sx", "sy", "sz")
+BEHIND = 3.0                    # core/src/clay_skin.cpp behind_head: a clay point behind a bone's head counts farther
 
 
 def decompose(m) -> dict:
@@ -53,23 +61,82 @@ def _target(fr, id_: str, field: str, word: str) -> str:
 
 
 def ride(fr, id_: str, f: int):
-    """The world-space move a following item has taken on by frame f (from time 0)."""
-    seq = fr.rides.setdefault(id_, [aim.IDENTITY])
-    if len(seq) <= f:
+    """The world-space move a following item has taken on by frame f (from time 0; with followPose, from rest). A
+    mirrored copy rides by its original's Follow fields, on its own side (mirror.values)."""
+    seq = fr.rides.get(id_)
+    if seq is None or len(seq) <= f:
         if id_ in fr.riding:
             raise ValueError(f"{id_}: it follows something that moves with it (an item inside it, or one that "
                              "follows it back)")
         fr.riding.add(id_)
         try:
-            item, target = fr.items[id_], _target(fr, id_, "follow", "follows")
+            source = fr.items[fr.items[id_].get("mirror") or id_]
+            target = _target(fr, source["id"], "follow", "follows")
+            carry = _carry(fr, id_, source, target)
+            if seq is None:
+                start = (aim.compose(carry(0), aim.invert(fr.world(target, 0))) if source.get("followPose")
+                         else aim.IDENTITY)
+                seq = fr.rides[id_] = [_share(start, amount(source, 0.0))]
             while len(seq) <= f:
                 g = len(seq)
-                a = amount(item, g / fr.fps)
-                step = aim.compose(fr.world(target, g), aim.invert(fr.world(target, g - 1))) if a > 0 else aim.IDENTITY
+                a = amount(source, g / fr.fps)
+                step = aim.compose(carry(g), aim.invert(carry(g - 1))) if a > 0 else aim.IDENTITY
                 seq.append(aim.compose(_share(step, a), seq[-1]))
         finally:
             fr.riding.discard(id_)
     return seq[max(0, f)]
+
+
+def _carry(fr, id_: str, source: dict, target: str):
+    """frame -> the transform the item rides on: the target's world, times the pose move of its bone nearest the item."""
+    bone = nearest_bone(fr.items[target], rest_spot(fr, id_, target)) if source.get("followPose") else None
+    if bone is None:
+        return lambda g: fr.world(target, g)
+    return lambda g: aim.compose(fr.world(target, g), bone_move(fr, target, bone, g))
+
+
+def rest_spot(fr, id_: str, target: str) -> list[float]:
+    """Where the item stands (its own Position, time 0) in the target's own space: a mirrored copy's from its
+    original's, reflected through its clay's mirror (mirror.reflection)."""
+    item = fr.items[id_]
+    source = fr.items[item.get("mirror") or id_]
+    p = aim.point(_parent(fr, source["id"], 0), [float(source.get(k, 0.0)) for k in ("x", "y", "z")])
+    if item.get("mirror") and item.get("mirrorOn") in fr.items:
+        from .mirror import reflection
+        p = aim.point(reflection(fr.world(item["mirrorOn"], 0)), p)
+    return aim.point(aim.invert(fr.world(target, 0)), p)
+
+
+def nearest_bone(target: dict, p) -> int | None:
+    """The index (skin.bones_of's order) of the bone nearest the point p (target's own space, at rest), as the core
+    weighs the skin: distance to the bone, plus BEHIND × how far behind its head on a clay. None without bones or with
+    Bend off."""
+    chain = skin.bones_of(target)
+    if not chain or not target.get("skinned", True):
+        return None
+    behind = BEHIND if target.get("type") == "clay" else 0.0
+
+    def far(seg):
+        a, b = seg[:3], seg[3:]
+        ab = [y - x for x, y in zip(a, b)]
+        ap = [y - x for x, y in zip(a, p)]
+        n2 = sum(c * c for c in ab) or 1e-30
+        t = sum(x * y for x, y in zip(ap, ab)) / n2
+        q = [x + min(1.0, max(0.0, t)) * c for x, c in zip(a, ab)]
+        return sum((x - y) ** 2 for x, y in zip(p, q)) ** 0.5 + behind * max(0.0, -t * n2 ** 0.5)
+
+    rest = skin.transforms(chain)
+    return min(range(len(chain)), key=lambda i: far(skin.segment(rest[i], chain[i][0])))
+
+
+def bone_move(fr, target: str, bone: int, g: int):
+    """The bone's move at frame g in the target's own space: now times its rest (the core's skin pose)."""
+    key = (target, fr.held(target, g))
+    if key not in fr.poses:
+        chain = skin.bones_of(fr.items[target])
+        fr.poses[key] = [aim.compose(n, aim.invert(r))
+                         for n, r in zip(skin.transforms(chain, key[1] / fr.fps), skin.transforms(chain))]
+    return fr.poses[key][bone]
 
 
 def _parent(fr, id_: str, f: int):

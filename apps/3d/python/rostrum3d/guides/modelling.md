@@ -24,8 +24,13 @@ the top afterwards.
 **mirrored copy** on the other side, named "… (mirrored)": one eye makes both. The copy follows the original: move,
 resize or recolour either one and both change (clicking the copy selects the original; a move on one side is the
 mirror of a move on the other). Deleting the original or the clay deletes the copy; deleting only the copy keeps the
-original. A shape put on the clay's middle line (a nose) gets no copy. Agents: `place_on("buddy", at=(x, y, z))` in a
-script, `edit_place_on` with a pixel of the last look, or `mesh.mirror` with `on=<clay>` on any mesh.
+original. A shape put on the clay's middle line (a nose: closer to it than the shape's own half size, so the two
+would overlap) gets no copy. A shape clicked onto a clay is **sized for the spot**: about a ninth of the clay's width
+there (an eye on a face, a bigger button on a belly); on anything else, a fifth of the thing clicked (a tenth of a
+metre on the ground). And it **follows the clay's pose**: each part rides the bone nearest it (the copy its own
+side's), so eyes stay on a head that turns (guide `posing` › Parts on a posed clay). Agents:
+`place_on("buddy", at=(x, y, z))` in a script, `edit_place_on` with a pixel of the last look (its reply gives the
+size a click there makes, `spotSize`, when the mesh is far from it), or `mesh.mirror` with `on=<clay>` on any mesh.
 
 Agents placing by numbers use `mesh.add`'s `x y z rx ry rz`; the engine's `pick` gives the point **and the surface's
 direction** (`normal`) under any pixel, so an agent can do what the screen does.

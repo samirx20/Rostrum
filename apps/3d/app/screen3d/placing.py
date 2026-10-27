@@ -1,7 +1,8 @@
 """Placing on a surface (SPEC §4.1, §4.4): where a shape picked in the Shapes flyout lands when the person then clicks
 in the viewport. The engine's pick gives the point and the surface's direction there (`normal`, facing the camera);
-the shape stands along that direction with its base on the surface, sized to the scene's size class: a tenth of a
-metre in an empty scene (product scale), else a fifth of the thing it was placed on (a 10 cm box on a 50 cm plinth).
+the shape stands along that direction with its base on the surface, sized to the spot: on a clay, a share of the
+clay's width there (an eye on a face, surface_place.part_size); else to the scene's size class: a tenth of a metre in
+an empty scene (product scale), else a fifth of the thing it was placed on (a 10 cm box on a 50 cm plinth).
 Clicking empty space places it on the ground (y = 0) where the view's ray meets it. Standing on the point and the
 mirrored copy on a mirrored clay are rostrum3d.surface_place's (shared with agents). Plain maths, no Qt.
 """
@@ -11,14 +12,17 @@ import math
 
 from rostrum3d import aim
 from rostrum3d.shape_size import extent
-from rostrum3d.surface_place import clean, into_parent, mirrors, stand, up_turn  # noqa: F401  (one source: placing's maths)
+from rostrum3d.surface_place import clean, into_parent, mirrors, part_size, stand, up_turn  # noqa: F401  (one source)
 
 PRODUCT = 0.1                        # the first shape in an empty scene, in metres (product scale)
 FIFTH = 0.2                          # after that: this much of the thing it was placed on
 
 
-def size_class(on_world, on_values: dict | None) -> float:
-    """The new shape's size: a fifth of the item clicked on (its world size), else product scale."""
+def size_class(on_world, on_values: dict | None, clay: dict | None = None, point=None) -> float:
+    """The new shape's size: on a clay (its document item) at `point`, sized for the spot (part_size); else a fifth
+    of the item clicked on (its world size), else product scale."""
+    if clay is not None and point is not None and (fit := part_size(clay, on_world, point)):
+        return fit
     if not on_values:
         return PRODUCT
     scale = max(math.hypot(*(on_world[0][r][c] for r in range(3))) for c in range(3))
