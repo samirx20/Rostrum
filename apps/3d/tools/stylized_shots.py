@@ -97,7 +97,19 @@ if __name__ == "__main__":
                       (frames["stylized"], "Stylized")])
         side_by_side("halftone.png", [(frames["stylized"], "Halftone on the front ball (Stylized), zoomed")],
                      crop=(0.35, 0.55, 0.65, 0.95))
-        side_by_side("starts.png", [(frames["final"], "Final"), (frames["stylized"], "Stylized")],
-                     crop=(0.15, 0.35, 0.85, 0.85))
+        imgs = [Image.open(frames[k]).convert("RGB") for k in ("final", "stylized")]
+        w, h = imgs[0].size
+        tiles = []
+        for im in imgs:                              # left ball and right ball, cut from each look
+            tiles += [im.crop((0, int(h * 0.35), int(w * 0.32), int(h * 0.85))),
+                      im.crop((int(w * 0.68), int(h * 0.35), w, int(h * 0.85)))]
+        labels = ["Painted (ramp) · Final", "Ink & flat · Final", "Painted (ramp) · Stylized", "Ink & flat · Stylized"]
+        out = Image.new("RGB", (sum(t.width for t in tiles) + 24, tiles[0].height + 40), (24, 24, 26))
+        x, font = 0, ImageFont.load_default(size=20)
+        for t, label in zip(tiles, labels):
+            out.paste(t, (x, 40))
+            ImageDraw.Draw(out).text((x + 8, 10), label, fill=(235, 235, 235), font=font)
+            x += t.width + 8
+        out.save(OUT / "starts.png")
     finally:
         app.state.engine.close()
