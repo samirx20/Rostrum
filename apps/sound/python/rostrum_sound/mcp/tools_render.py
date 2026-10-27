@@ -55,7 +55,8 @@ def loud_words(l: dict) -> str:
             else f" Loudness: measured {l['measured_lufs']:.1f} LUFS") + f", with {l['limiting_db']:.1f} dB of limiting."
     if "target" in l and not l["reaches"]:
         said += f" {l['words']}" + (f" To reach it: master maxLimit {l['push_max_limit']:g} (edit_loudness keep_balance), or "
-                                                f"edit_loudness tame_peaks to keep acoustic drums and piano open." if "push_max_limit" in l else "")
+                                                f"edit_loudness tame_peaks to keep acoustic drums and piano open." if "push_max_limit" in l
+                                      else " Fix: edit_loudness {\"apply\": \"best\"} (edit_loudness keep_balance raises the limiting).")
     elif l["limiting_db"] > fit.LOT_DB:
         said += fit.a_lot(l["limiting_db"])
     return said
@@ -94,6 +95,7 @@ def register(tools: Tools):
     def render_mix(ctx, args):
         """Render the document to a file (24-bit WAV by default; `format` picks WAV 16 / 24 / 32-bit float, FLAC or MP3) and stems as its next version (renders/<item>/vNNN/), with loudness, true
         peak and per-track meters. Stems are named after their tracks; the manifest maps ids to files. Recorded instruments are played from installed sample packs (a missing one stops the render and names the pack: run_model_install). A render that used a CC-BY instrument (Salamander piano, Wurlitzer, the rock kit) answers `credits`, the lines to credit it with, and the manifest holds them.
+        A first render often lands 1 to 3 dB under the master's loudness target (-16 LUFS): gentle limiting holds the mix to `maxLimit` (2 dB) instead of squashing it. The reply says so and edit_loudness {"apply": "best"} (or keep_balance) reaches the target in one measured call; do not leave it quiet. This file is for checking and delivery: 2D's render_video does not use it, it renders the song's current document itself (cached while the song is unchanged), so a video's sound always follows the song, not the last render_mix.
         Loudness (data.loudness, in the summary): what the previous render predicted this one would measure (predicted_lufs), what it measured (measured_lufs) and the limiting it took (limiting_db). With a loudness target that the master's gentle limiting (`maxLimit`, 2 dB by default) cannot reach, it says where the file lands and what reaching the target needs ("Will land at -16.4 LUFS: reaching -14 needs 4.4 dB of limiting"): raise `maxLimit` to push_max_limit (edit_loudness keep_balance; the true-peak ceiling still holds) or keep it dynamic. Over ~3 dB of limiting starts to flatten acoustic drums and piano: for acoustic music prefer edit_loudness tame_peaks. Returns a job."""
         doc = ctx.document(args.get("item"))
         args = presets.expand(args, args.get("preset"))             # a wrong preset answers now

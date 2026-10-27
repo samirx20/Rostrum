@@ -34,7 +34,7 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
-                                            "sound": {"type": "boolean", "description": "Put the project's sound under the picture, as render_export's mp4 does (the scene's soundtrack, else the project's main mix). Default: on when the project has sound. If the mix fails, the render fails; never a silent file."},
+                                            "sound": {"type": "boolean", "description": "Put the project's sound under the picture, as render_export's mp4 does (the scene's soundtrack, else the project's main mix; the song is mixed afresh from its current document, cached while it is unchanged, so no render_mix is needed first). Default: on when the project has sound. If the mix fails, the render fails; never a silent file."},
                                             "path": {"type": "string", "description": "Also copy the .mp4 here (absolute, or relative to the project folder; only the mp4 is written there unless `with_project` is true). Default: only the project's renders folder."},
                                             "with_project": {"type": "boolean", "description": "With `path`: also save the project beside the copy as <name>.project/ so another machine or app can open the film. Default false: just the mp4."}}})
 def render_video(ctx, args):

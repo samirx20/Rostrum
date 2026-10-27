@@ -43,6 +43,39 @@ def with_no_project_sentence(runtime) -> None:
     runtime.tools._tools["inspect_project"] = dataclasses.replace(old, fn=inspect_project)
 
 
+def one_line(text: str, limit: int = 110) -> str:
+    """A summary's first sentence, cut at a word when it is still long."""
+    first = text.split(". ")[0].rstrip(".")
+    return first if len(first) <= limit else first[:limit].rsplit(" ", 1)[0] + " …"
+
+
+def with_short_operations(runtime) -> None:
+    """inspect_operations answers a short list by default (name, target and one line each, about a fifth of the full text);
+    `name` / `names` give the full arguments of one or several, `detail: "full"` of all."""
+    old = runtime.tools.get("inspect_operations")
+
+    def inspect_operations(ctx, args):
+        args = dict(args)
+        names = list(args.pop("names", None) or [])
+        if names or "name" in args or args.get("detail") == "full":
+            if names and "name" not in args:
+                rows, said = [], []
+                for n in names:
+                    one = old.fn(ctx, {**args, "name": n})
+                    rows += one.data["operations"]
+                    said.append(one.summary)
+                return Reply(" ".join(said), {"operations": rows})
+            return old.fn(ctx, args)
+        full = old.fn(ctx, args)
+        rows = [{**r, "summary": one_line(r["summary"])} for r in full.data["operations"]]
+        return Reply(f"{len(rows)} operations (one line each; `name` or `names` for the full arguments of one or several, detail \"full\" for all).", {"operations": rows})
+    schema = copy.deepcopy(old.schema)
+    schema.setdefault("properties", {})["names"] = {"type": "array", "items": {"type": "string"}, "description": "Several operations at once, each with its full argument schema."}
+    runtime.tools._tools["inspect_operations"] = dataclasses.replace(
+        old, fn=inspect_operations, schema=schema,
+        description=old.description + " A short list by default (one line each); `name` / `names` give the full arguments of one or several operations; detail \"full\" gives everything.")
+
+
 EDIT_DOCUMENT = (
     "Apply a list of operations, all or nothing, as one change in the history. Read inspect_guide 'start-here' and "
     "'writing-parts' first; the argument is `ops` (not operations), a list of {op, target?, args?}; list the operations with inspect_operations (name=... for one's arguments). Targets are item ids "

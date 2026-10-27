@@ -93,10 +93,18 @@ def send_add(ctx, targets, args):
         ctx.insert(t, "sends", {"id": id_, "type": "send", **FD.DEFAULTS["send"], **args, "automation": []})
 
 
-@REGISTRY.operation("duck.add", "Duck a track under other tracks: it dips while they sound (music under a voice; sidechain pumping: the bass or a pad under the kick). "
+@REGISTRY.operation("duck.add", "Duck a track under other tracks: it dips while they sound. Two modes: under a spoken voice line track the dip lasts the whole line "
+                    "(short attack and release, a 0.3 s hold across the gaps between words; `voice` is turned on for you when every `under` track is a voice track; set `voice: false` to override); under anything else (the kick, "
+                    "a drum, an effect) it is a pump: a short dip per hit of about `attack` + `release` seconds, however long the sound rings. "
                     "To duck a bus, duck each track that feeds it.", target="track", label="Add duck",
                     params=FD.params("duck", required=True))
 def duck_add(ctx, targets, args):
+    args = dict(args)
+    if "voice" not in args:                   # under a spoken line the dip must span the line, not pump per word
+        under = args.get("under") or []
+        args["voice"] = bool(under) and all((ctx.item(u) or {}).get("instrument") == "voice" for u in under)
+        if args["voice"]:
+            args.setdefault("hold", 0.3)      # the dip bridges the gaps between words: it spans the whole line
     for t in targets:
         id_ = ids.effect(t, "duck", taken(ctx))
         ctx.insert(t, "ducks", {"id": id_, "type": "duck", **FD.DEFAULTS["duck"], **args})

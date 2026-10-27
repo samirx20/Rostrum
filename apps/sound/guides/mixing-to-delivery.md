@@ -51,7 +51,7 @@ off, so they sound as they did.
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_engine (what "plugins")).
 - **Ducks (sidechain):** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue; for a dance track's pumping, a bass or pad under the kick), and `depth`,
-  `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
+  `attack`, `release`, `hold`. **Under a spoken voice line track the dip lasts the whole line** (`voice` mode, turned on for you when every `under` track is a voice track, with the default 0.02 s attack and 0.3 s release; `hold` is set to 0.3 s for you so the music does not swell back between words). Under anything else (a kick, a drum) the duck is a pump: a short dip of about `attack` + `release` per hit, however long the sound rings: that is the 0.15 s dip people see when a duck is set under a voice with `voice` off. On the screen: **+ Dip under…** on a strip.
 - **A bed under a voice:** `look_sound` (`what: "loudness"` or `"levels"`) gives the **room for speech**: how many dB a
   voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a
   standard speech spectrum, ANSI S3.5, compared band by band). Aim for **+6 dB or more** for a voice-over bed. Make room

@@ -93,7 +93,10 @@ def _failure(e: Exception, name: str, names: list[str]) -> RostrumError:
         return RostrumError(codes.BAD_ARGUMENT, where, f'"{m[1]}"', "is not a name the script knows", names,
                             "A track you made is the variable you stored it in.")
     if isinstance(e, AttributeError) and (m := re.match(r"'Track' object has no attribute '(.+)'", str(e))):
-        return RostrumError(codes.BAD_ARGUMENT, where, f'track.{m[1]}', "is not something a track can do", _methods(Track))
+        voice_hint = (" Spoken lines are not written in a script: a script can make the voice track (`track('narrator', instrument='voice', voice='ryan')`), "
+                      "and the lines are added with edit_document `line.add` (text, at); inspect_guide 'voice' has the whole call."
+                      if m[1] in ("line", "say", "speak", "lines", "voice_line", "words", "text") else "")
+        return RostrumError(codes.BAD_ARGUMENT, where, f'track.{m[1]}', "is not something a track can do." + voice_hint, _methods(Track))
     if isinstance(e, ZeroDivisionError):
         return RostrumError(codes.BAD_ARGUMENT, where, "the script", "divides by zero")
     detail = {KeyError: f"looked for {e} and it is not there", IndexError: f"asked for a list position that is not there ({e})"}

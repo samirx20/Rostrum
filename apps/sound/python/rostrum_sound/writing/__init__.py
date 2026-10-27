@@ -26,7 +26,7 @@ from ..script_scope import say
 from .pitch import outside_key, roman, tones
 from .voicing import voice
 
-API = ['roman(numeral, key)', 'chord_tones(chord, key)', 'voice(chords, voicing="led", range=("G3", "D5"), ...)',
+API = ['roman(numeral, key)', 'chord_tones(chord, key)', 'voice(chords, voicing="led", range=("G3", "D5"), ...)  # a chord voicing, also chord_voicing(...); not a spoken voice line',
        'comp(chords, rhythm="hold", per=bar, push=0, ...)', 'bass_line(chords, style="root" | pattern=..., approach=False, chromatic=False, ...)',
        'arp(chords_or_notes, mode="up", rate=0.5, pattern=None, octaves=1, ...)', 'drum_grid({drum: steps}, bars=1, fill=None, ...)',
        'vary(line, "ops")', 'develop(line, repeat, vary=[ops, ...])', 'line([(pitch, at, dur, vel), ...])', 'shift(line, beats)',
@@ -63,6 +63,7 @@ def scope(song) -> dict:
         "roman": lambda numeral, key=None: roman(numeral, song_key(key), "roman"),
         "chord_tones": lambda chord, key=None: _names(tones(chord, "chord_tones", song_key(key)), song_key(key)),
         "voice": lambda chords, key=None, **kw: voice(chords, song_key(key), where="voice", **kw),
+        "chord_voicing": lambda chords, key=None, **kw: voice(chords, song_key(key), where="chord_voicing", **kw),
         "comp": with_song(comp, "comp", per=True, say_outside=True),
         "bass_line": with_song(bass_line, "bass_line", per=True, say_outside=True),
         "arp": with_song(arp, "arp", per=True, say_outside=True),
