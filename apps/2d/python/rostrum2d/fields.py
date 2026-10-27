@@ -162,7 +162,7 @@ TYPE = [
     X("pathLayer", "Follows path", "On a path", "", S, control="pick", help="The id of a path layer beside it (same group): the letters sit on that path as it is "
       "reshaped, moved or drawn on, and the text takes its place and turn. Empty = not following one (text.follow sets it)"),
     X("path", "Path", "On a path", "", D, when=NOT_FOLLOWING, shown="script",      # SVG text: agents; people pick Follows path
-      help="SVG path data (M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line. To follow a path LAYER use text.follow"),
+      help="SVG path data (any commands, kept as M L C Z) in the layer's own px; the letters sit on it. Empty = a normal line. To follow a path LAYER use text.follow"),
     N("pathOffset", "Start along path", "On a path", -100000, 100000, 1, "px", S, ON_PATH,
       help="Moves the text along the path from where its alignment puts it"),
     CH("pathAlign", ["start", "center", "end"], "Align on path", "On a path", "start", S, ON_PATH),
@@ -344,11 +344,11 @@ FIELDS: dict[str, list[Param]] = {
         N("loopStepY", "Step down", "Timing", -8192, 8192, 1, "px", S, when=IS("loop", "loop"),
           help="How far down each repeat sits from the one before, in the drawing's px (up is negative)"),
     ] + TRANSFORM + GRADED,
-    # A vector path (pathdata.py): `d` is absolute M, L, C, Z in the layer's own px from its box's top-left.
+    # A vector path (pathdata.py): `d` is stored as absolute M, L, C, Z (any SVG path data given is converted) in the layer's own px from its box's top-left.
     # trimStart..trimEnd is the part of the stroke drawn (fractions of its length: the "draw on").
     "path": [
         X("d", "Path data", "Points", "", D, shown="script",       # people edit the points on the canvas
-          help="Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z in the layer's own px; the pen tool writes it. A new path has no points"),
+          help="SVG path data (M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z) in the layer's own px; the pen tool writes it. A new path has no points"),
         N("w", "Box width", "Box", 1, 20000, 1, "px", D, default=100.0, shown="script",     # the pen sets it from the points
           help="The box the anchor and gradients use"),
         N("h", "Box height", "Box", 1, 20000, 1, "px", D, default=100.0, shown="script"),

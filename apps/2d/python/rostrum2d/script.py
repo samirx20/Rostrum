@@ -97,6 +97,21 @@ class Item:
         self._b.fill(self.node, values)
         return self
 
+    def measure(self, at: float = 0) -> tuple[float, float]:
+        """A text's box (w, h) in its own px at `at` (before scale), measured by the engine code that draws it: lay
+        out a line by its real width (`x = 1800 - t.measure()[0] * t.scale`)."""
+        self._need("text", "measure")
+        from .evaluate import resolve
+        from .textsize import size
+        return size(resolve(self.node, at))
+
+    def pivot(self, x: float, y: float, at: float = 0) -> "Item":
+        """The anchor (what it turns and scales around) on the point (x, y) of the parent's px (comp px, or the group's
+        box), the picture staying where it shows at `at` (layer.anchor point). A drawing's canvas that grows with its
+        strokes keeps it on the same spot, so it may come before or after the strokes."""
+        script_frame.run(self._b, self.node, "layer.anchor", {"point": [x, y], "at": at})
+        return self
+
     def key(self, prop: str, keys: dict, ease: str = "smooth") -> "Item":
         allowed = F.animatable(self.node["type"])
         prop = W.field(prop, [p.name for p in F.FIELDS[self.node["type"]]], self.node["type"])
@@ -107,7 +122,7 @@ class Item:
         for t, v in sorted(keys.items(), key=lambda kv: marked.order(kv[0])):   # a time: seconds or "#drop+0.2"
             value, e, *shape = v if isinstance(v, tuple) else (v, ease)
             if prop == "d" and isinstance(value, str):
-                value = pathdata.shifted(value, self.d_shift)
+                value = pathdata.shifted(pathdata.check(value, f"{self.id}.d at {t} s"), self.d_shift)
             if len(shape) > 1 or (shape and not isinstance(shape[0], dict)):
                 raise ValueError(f'{self.id}.{prop}: a key is value, (value, "ease") or (value, "ease", {{"bounce": 0.3, "speed": 0.4}})')
             t = F.param("key", "t").check(t, f"{self.id}.{prop} key time")
@@ -253,8 +268,8 @@ class Painted:
 class FrameItem(Item):
     """The scene's frame: an Item that also frames and cuts, through the operations (script_frame.py)."""
 
-    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
-        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation))
+    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None, ease=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation, ease=ease))
         return self
 
     def cut(self, at, to=None, items=None, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
@@ -448,8 +463,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
-       "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "frame().fit(layers | rect=(x, y, w, h), at=, ease=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
+       "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",

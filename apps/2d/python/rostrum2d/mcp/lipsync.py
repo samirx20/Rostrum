@@ -3,10 +3,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from rostrum_core.lipsync.track import TIMING, track
 from rostrum_core.lipsync.visemes import SHAPES
+from ..lipsync import voice_line
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -15,7 +17,7 @@ NUM = {"type": "number", "minimum": 0}
 
 @tools.tool("inspect_lipsync", {"properties": {
     **ITEM_COMP,
-    "source": {"type": "string", "description": "The voice clip: a WAV file (absolute, or inside the project folder)."},
+    "source": {"type": "string", "description": "The voice clip: a WAV file (absolute, or inside the project folder), or \"voice:<line id>\": a Sound voice line of this project (its made take; its words are the text)."},
     "text": {"type": "string", "description": "The words said in the clip (English). Without: the model's own hearing."},
     "at": {**NUM, "description": "Comp seconds where the clip starts. Default 0."},
     "start": {**NUM, "description": "Seconds into the file where the clip starts. Default 0."},
@@ -31,7 +33,12 @@ def inspect_lipsync(ctx, args):
     call on a clip runs the phone model (a few seconds, GPU); the answer is cached, so calls after it (and lipsync.apply /
     lipsync() on the same clip) are instant. Facts only: changes nothing."""
     _, comp = doc_and_comp(ctx, args)
-    src = Path(args["source"])
+    try:
+        source, words = voice_line.resolve(args["source"], getattr(ctx.app, "folder", None), ctx.tool)
+    except ValueError as e:
+        raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"source"', str(e).split(": ", 1)[-1]) from None
+    args = {**args, **({"text": words} if words and "text" not in args else {})}
+    src = Path(source)
     if not src.is_absolute() and getattr(ctx.app, "folder", None):
         src = Path(ctx.app.folder) / src
     timing = {k: args[k] for k in TIMING if k in args}

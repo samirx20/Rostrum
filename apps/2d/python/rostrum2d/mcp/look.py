@@ -14,7 +14,7 @@ from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
 tools = Tools()
 FRAME_WIDTH = 960
-SHEET_WIDTH = 1280      # the whole contact sheet (tiles, gaps and margins), so a 24-frame sheet is still one readable picture
+SHEET_WIDTH = 1600      # the whole contact sheet (tiles, gaps and margins): 4 across makes ~390 px tiles, big enough to judge
 
 
 def shown_ids(comp: dict, t: float) -> list[str]:
@@ -23,14 +23,16 @@ def shown_ids(comp: dict, t: float) -> list[str]:
 
 
 TIMES = {"times": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 1, "maxItems": 24,
-                   "description": "Seconds, several: one contact sheet of exactly these moments (instead of time / frame), e.g. [0.5, 1.2, 3.0]. Each tile is labelled with its time."}}
+                   "description": "Seconds, several: one contact sheet of exactly these moments (instead of time / frame), e.g. [0.5, 1.2, 3.0]. Each tile is labelled with its time. (what \"sheet\" is the same picture for `count` moments spread evenly from start to end.)"}}
 
 
 @tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
-                                                                          "description": "Picture width in px (never larger than the composition). Default 960; with `times`, the width of the whole sheet (default 1280)."}}})
+                                                                          "description": "Picture width in px (never larger than the composition). Default 960; with `times`, the width of the whole sheet, which its tiles share (default 1600: ~390 px tiles 4 across; fewer times give bigger tiles)."}}})
 def look_frame(ctx, args):
     """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
-    Give `times: [0.5, 1.2, 3.0]` for one contact sheet of those moments in one call (same drawing as look_frame what: sheet).
+    Give `times: [0.5, 1.2, 3.0]` for one contact sheet of exactly those moments in one call; what "sheet" makes the same
+    sheet from `start`, `end`, `count` (evenly spaced). A sheet is for the whole motion at a glance; for detail look at
+    one frame (960 px, or `width` up to the comp's), or a sheet of 2-4 moments.
     Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
     can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait."""
     doc, comp = doc_and_comp(ctx, args)
@@ -73,11 +75,12 @@ def _times_sheet(ctx, doc, comp, args: dict):
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
                                            "width": {"type": "integer", "minimum": 256, "maximum": 2048, "default": SHEET_WIDTH,
-                                                     "description": "Width of the whole sheet in px (default 1280); the tiles share it."}}})
+                                                     "description": "Width of the whole sheet in px (default 1600: ~390 px tiles 4 across); the tiles share it."}}})
 def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over a time range (`start`, `end` in seconds) in one image `width` px wide,
     each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
-    a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick."""
+    a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick.
+    For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     last = (round(duration * fps) - 1) / fps

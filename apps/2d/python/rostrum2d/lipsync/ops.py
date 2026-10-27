@@ -13,11 +13,13 @@ from rostrum_core.lipsync.track import TIMING, track
 from rostrum_core.tree import index
 
 from ..kind import REGISTRY as R
+from . import voice_line
+from .script import _folder
 from ..ops_keys import put_key
 
 SECONDS = dict(min=0, max=36000, unit="s")
 PARAMS = [
-    Param.text("source", label="Voice clip", required=True, control="file", filters=["WAV sound (*.wav)"], help="A WAV file (a made take, or a recording)"),
+    Param.text("source", label="Voice clip", required=True, control="file", filters=["WAV sound (*.wav)"], help="A WAV file (a made take, or a recording), or \"voice:<line id>\": a Sound voice line of the project (its take and words)"),
     Param.number("at", label="Starts at", default=0.0, help="Where the clip starts in the composition", **SECONDS),
     Param.text("text", label="Words said", help="With the words, phones are aligned to them (English); without, "
                                                   "the model's own hearing is used (any language)"),
@@ -70,7 +72,8 @@ def lipsync_apply(ctx, targets, args):
         if outside:
             ctx.fail(codes.BAD_ARGUMENT, f"mouth layers {outside}", f"are not inside {t}")
         fps = comp_of(ctx, t).get("fps", 30)
-        job = track(args["source"], args.get("at", 0.0), fps, shapes, args.get("text"), args.get("start", 0.0),
+        source, words = voice_line.resolve(args["source"], _folder(), ctx.where)
+        job = track(source, args.get("at", 0.0), fps, shapes, args.get("text", words), args.get("start", 0.0),
                     args.get("end"), args.get("language", "english"), where=ctx.where, **timing)
         known = index(ctx.doc, ctx.kind.lists)
         kids = [c["id"] for c in ctx.item(t).get("layers", [])]

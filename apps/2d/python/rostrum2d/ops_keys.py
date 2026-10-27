@@ -9,11 +9,11 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.keys import BEZIERS, key_value, keys_of, marked, register_key_ops, track_value
 
-from . import fields as F
+from . import fields as F, pathdata
 from .kind import REGISTRY as R, check_text
 
 OWNERS = F.ANIMATED_OWNERS
-D = Param.text("d", label="Shape", help="For a path's shape: path data (absolute M, L, C, Z), morphed between keys; "
+D = Param.text("d", label="Shape", help="For a path's shape: SVG path data (kept as absolute M, L, C, Z), morphed between keys; "
                "for its widthProfile: \"pos,mult …\", blended between keys")
 V = Param.number("v", label="Value", help="For a number field")
 C = Param.color("c", label="Colour", help="For a colour field")
@@ -35,10 +35,12 @@ def _checked_value(ctx, owner: dict, prop: str, args: dict):
     value = p.check(args[want], f"{ctx.where} › {owner['id']}.{prop}")
     if want == "d":
         try:
+            if prop == "d":
+                value = pathdata.normalize(value)            # any SVG path data, stored as M L C Z
             check_text(prop, value)
         except ValueError as e:
             ctx.fail(codes.BAD_ARGUMENT, '"d"', str(e), hint='"pos,mult pos,mult …", positions 0..1 increasing, multipliers 0 or more.'
-                     if prop == "widthProfile" else "Absolute M x y, L x y, C x1 y1 x2 y2 x y, Z.")
+                     if prop == "widthProfile" else "SVG path data: M L H V C S Q T A Z (lower case relative).")
     return want, value
 
 

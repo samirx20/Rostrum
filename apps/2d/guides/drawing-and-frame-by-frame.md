@@ -18,6 +18,11 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   amount in canvas px and moves the anchor with them, so nothing moves on screen (re-read canvas px after a stroke that
   grew it: `look_drawing` (`what: "at"`), `look_drawing`). Its picture holds only the painted rectangle, so empty canvas costs
   nothing.
+- **Turning or scaling a drawing round a point** (a beam round its lantern, an arm round its shoulder): never work out
+  `anchorX` from the grown canvas. In a script write `beam.pivot(1842, 640)`: the anchor goes on that point in comp px
+  (or the group's box) and `x`, `y` move with it, so nothing moves on screen; before or after the strokes, the same
+  result (growth keeps the anchor on its spot). With operations: `layer.anchor` with `point: [1842, 640]`. It keeps the
+  picture where it shows at `at` (default 0 s): call it before keying `x`, `y` or the anchor.
 - At most **8192 px a side**. A stroke that would grow a drawing past that goes into a **new drawing layer** just above
   it (same parent, depth, pin, position, scale, turn and keys; named "<name> 2", "<name> 3" …), in the same undo step;
   the screen says "'sky' is at its largest; this stroke started 'sky 2'". Never a lost or cropped stroke.
@@ -37,9 +42,12 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 
 - One `edit_document` call list = **one undo step**: put a whole pass (say, the 30 strokes of one drawing's base) in one
   call list. `undo` takes the whole pass back.
-- Or `run_script`: `d = drawing("fx", w=800, h=1000)`, `f = d.frame(0)`, `ink = f.paint("ink")`,
-  `ink.stroke([(x, y, p), …], color="#rrggbb", size=24, brush="bristle")`. Ids you write (`"ink"`) stay put; a re-run
+- Or `run_script`: `d = drawing("fx", w=800, h=1000)`, `f = d.frame(0)`, `ink = f.paint("fx_ink")`,
+  `ink.stroke([(x, y, p), …], color="#rrggbb", size=24, brush="bristle")`. Ids you write (`"fx_ink"`) stay put; a re-run
   merges stroke by stroke, so a drawing a person redrew is kept (the reply lists what was held).
+- **A paint layer's id is one in the whole document**, like every id: two drawing layers can't both have a paint layer
+  `"ink"`. Name each after its drawing (`sky.frame(0).paint("sky_ink")`, `cliff.frame(0).paint("cliff_ink")`), or leave
+  the id out (`f.paint()`: one is counted for you).
 - **Several drawings from a script:** every id is one in the whole document, but the drawings share their paint layers.
   So in each drawing write `f.paint()` (no id: it joins the layer made in the first drawing, at the same place), or
   `f.paint(f"ink{i}", layer="ink")` to name it (the same `layer="ink"` in every drawing). `f.paint("ink")` in a second
@@ -63,8 +71,9 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   per point for holes (`[x, y, ring]`, ring 0 the outside).
   A refusal "drawing … must have the same paint layers" means a drawing's paint lacks that shared `layer="…"`.
 - **Paint it on over time:** key the drawing layer's `drawnSoFar` 0 → 1 (`d.key("drawnSoFar", {0.5: 0, 2.5: 1})`): its
-  strokes appear in the order they were painted, each along its own path with a round tip (drawing.md, part 10). Paint on
-  an element takes it too.
+  strokes appear in the order they were painted, each along its own path with a round tip (drawing.md, part 10). A fill
+  (`ink.fill`) is not drawn along a path: its whole area fades in over its share (a ghost of the full shape mid-way), so
+  stroke its outline before the fill when it should look drawn. Paint on an element takes it too.
 - New drawing: `frame.add at=N` (blank) or `frame.add at=N copy=<frame id>` (start from a copy and change it). `at` left out
   puts it after the last drawing, held by the layer's `newHold` (1–4, default 2: the screen's "New ones hold"). It turns
   `eachFrame` (the screen's "Draw each frame") on. `set <element> eachFrame true` works on an element that has no paint yet

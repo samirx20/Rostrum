@@ -68,9 +68,23 @@ def test_a_cut_holds_one_frame_before_and_follows_its_marker(monkeypatch):
 def test_framing_a_view_the_frame_already_shows_keys_nothing():
     d = scene()
     call = {"op": "frame.fit", "target": "frame", "args": {"to": "view", "rect": [0, 0, 1920, 1080], "at": 2}}
-    with pytest.raises(Exception, match="already framed"):
-        d.apply(call, SAM)
+    d.apply(call, SAM)                                  # no error: nothing to do
     assert not d.item("frame").get("keys")
+
+
+def test_a_script_fits_in_time_order_with_an_eased_move():
+    """FRICTION A2-2 / A3-4: a fit where the frame already is (0 s at home) is a no-op, a repeat on an animated frame
+    holds there, and `ease` shapes the move into the next framing."""
+    from rostrum2d import run_source
+    src = ('comp("c", duration=6)\nshape("box", x=3000, y=500, w=400, h=300)\nf = frame()\n'
+           'f.fit(rect=(0, 0, 1920, 1080), at=0)\nf.fit(rect=(0, 0, 960, 540), at=1)\n'
+           'f.fit(rect=(0, 0, 960, 540), at=2)\nf.fit(["box"], at=5, ease="easeInOut")\n')
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source(src, "s.py"))
+    xs = sorted((k["t"], k["v"], k["ease"]) for k in d.item("frame")["keys"] if k["prop"] == "x")
+    assert [t for t, _, _ in xs] == [0.0, 1, 2, 5]
+    assert xs[1][1] == xs[2][1] and xs[2][2] == "easeInOut"          # held 1 s to 2 s, then the eased move to 5 s
+    assert value_at(d.item("frame"), "x", 1.5) == xs[1][1]
 
 
 def test_the_cameras_tools_write_no_keys_that_do_nothing():

@@ -51,3 +51,29 @@ def test_an_animated_position_gets_keys_and_still_shows_in_place():
     b = d.item("b")
     assert 0.5 in [k["t"] for k in keys_of(b, "x")]
     assert _same(boxes.corners(b, 0.5), before)
+
+
+def test_a_pivot_in_comp_px_keeps_a_grown_drawing_still():
+    """FRICTION A2-3: pivot(x, y) puts the anchor on a comp point with no box maths; the picture does not move, and the
+    canvas growing round strokes painted past its left edge (after or before the call) keeps it on that spot."""
+    import math
+    import pytest
+    from rostrum2d.evaluate import resolve
+
+    def where(src):                                     # the comp px of the stroke's first point at 0 s
+        d = Document.new(KIND)
+        d.run_script("s.py", run_source('comp("c")\nb = drawing("beam", x=900, y=500, w=400, h=300, rotation=20, scale=1.5)\n'
+                                        'ink = b.frame(0).paint()\n' + src, "s.py"))
+        item = d.item("beam")
+        p = resolve(item, 0)
+        sx, sy = p["scale"] * p["scaleX"], p["scale"] * p["scaleY"]
+        u = item["frames"][0]["paints"][0]["strokes"][0]["points"][0]
+        vx, vy = (u[0] - p["anchorX"] * p["w"]) * sx, (u[1] - p["anchorY"] * p["h"]) * sy
+        c, s = math.cos(math.radians(p["rotation"])), math.sin(math.radians(p["rotation"]))
+        return (p["x"] + c * vx - s * vy, p["y"] + s * vx + c * vy), p
+    stroke = 'ink.stroke([(-900, 100), (300, 150)], size=20)\n'
+    plain, _ = where(stroke)
+    for src in (stroke + 'b.pivot(1000, 520)\n', 'b.pivot(1000, 520)\n' + stroke):
+        moved, p = where(src)
+        assert moved == pytest.approx(plain, abs=0.05)                       # nothing moved (values kept to 4 places)
+        assert (p["x"], p["y"]) == pytest.approx((1000, 520), abs=0.05)      # the anchor is on the point

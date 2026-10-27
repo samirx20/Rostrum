@@ -1,4 +1,4 @@
-"""The script's framing calls (`f = frame()`; `f.fit(["hills", "tree"], at=4)`, `f.fit(rect=(x, y, w, h), at=…)`,
+"""The script's framing calls (`f = frame()`; `f.fit(["hills", "tree"], at=4)`, `f.fit(rect=(x, y, w, h), at=…, ease="easeInOut")` (the move into it eased),
 `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.cut(at="#logo lands")`, `f.home(at=…)`) and a layer's
 `pin(title)` / `set_depth(hills, 3)` (ops_depth.py, keeping where it shows). They run the same
 operations as the screen and agents (ops_frame_fit.py) on the tree the script is building, with the same argument
@@ -13,11 +13,11 @@ def _ids(items) -> list[str]:
     return [getattr(i, "id", i) for i in ([items] if isinstance(items, str) or hasattr(items, "id") else items)]
 
 
-def args_of(items=None, *, at=None, to=None, rect=None, pad=None, cut=None, keep_rotation=None) -> dict:
+def args_of(items=None, *, at=None, to=None, rect=None, pad=None, cut=None, keep_rotation=None, ease=None) -> dict:
     """An operation's args from a script call: `to` is "items" with layers, "rect" with a rectangle, unless given."""
     out = {"to": to or ("items" if items is not None else "rect" if rect is not None else None),
            "ids": None if items is None else _ids(items), "rect": None if rect is None else [float(v) for v in rect],
-           "at": at, "pad": pad, "cut": cut, "keepRotation": keep_rotation}
+           "at": at, "pad": pad, "cut": cut, "keepRotation": keep_rotation, "ease": ease}
     return {k: v for k, v in out.items() if v is not None}
 
 
