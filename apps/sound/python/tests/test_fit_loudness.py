@@ -32,6 +32,9 @@ def test_the_exact_edit_reaches_the_target_within_the_masters_limit(tmp_path):
         keep, trim = (next(o for o in p["options"] if o["name"] == n) for n in ("keep_balance", "trim_track"))
         assert keep["ops"] == [{"op": "master.set", "target": ["master"], "args": {"maxLimit": keep["max_limit_db"]}}]     # no volume moves: the balance is as written
         assert keep["max_limit_db"] >= fit.need_db(first)
+        if trim.get("impossible"):                                  # the peakiest track alone can't close it (a balanced
+            trim = next(o for t in tracks for o in fit.plan(first, master, tracks, data, e, tmp_path, track=t)["options"]   # mix):
+                        if o["name"] == "trim_track" and not o.get("impossible"))   # another track, as the reply says
         assert trim["trim_db"] > 0 and trim["volume"] < trim["was"], trim
         after = e.request("render", schedule=compile(fit.trimmed(data, trim["track"], trim["trim_db"])), out=str(tmp_path / "b.wav"), stems=[])
     goal = master["loudness"]
