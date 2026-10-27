@@ -70,7 +70,7 @@ class KeyRoutes3D(SlotMixin):
         if job in ("go_in", "delete") and vp.bone_tool.on:
             vp.bone_tool.make() if job == "go_in" else vp.bone_tool.back()
             return True
-        if job == "delete" and vp.pose_tool.on:          # Pose: the hold under the pointer (never the clay itself)
+        if job == "delete" and getattr(vp, "pose_tool", None) is not None and vp.pose_tool.on:          # Pose: the hold under the pointer (never the clay itself)
             vp.pose_tool.delete_hovered()
             return True
         return False

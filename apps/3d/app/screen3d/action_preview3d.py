@@ -38,7 +38,7 @@ class ActionPreview3D:
         vp = getattr(self, "viewport", None)
         screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
                   "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False,
-                  "pose": vp is not None and vp.pose_tool.on}
+                  "pose": vp is not None and bool(getattr(vp, "pose_tool", None) and vp.pose_tool.on)}
         return Facts(self.doc, list(self.selection), self._fits, screen)
 
     def engine_said(self, line: str) -> None:
