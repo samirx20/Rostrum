@@ -176,6 +176,31 @@ std::shared_ptr<const Field> make_outline(const ShapeSpec& s, float voxel, const
         if (ac[j] >= 0) f->arg[size_t(j) * nx + i] = ac[j] * nx + gi[size_t(ac[j]) * nx + i];
     }
   });
+  // Outside the outline the least power is always the smallest ball at the rim, so the field there was the distance to
+  // the rim line, not to the body (several grains too far just above and below the rim, and a jump at the outline):
+  // the mesher's surface and shading creased along the rim in short dashes. An outside cell takes the ball of its
+  // nearest inside cell instead (the big ball rounding the rim there); outside the union either way, so the shape stays.
+  each_row(ny, [&](int j) {
+    std::vector<float> fr(nx);
+    std::vector<int> v;
+    std::vector<double> z;
+    for (int i = 0; i < nx; ++i) fr[i] = f->radius[size_t(j) * nx + i] > 0 ? 0.0f : kInf;
+    envelope(fr.data(), nx, &g[size_t(j) * nx], &gi[size_t(j) * nx], v, z);
+  });
+  tbb::parallel_for(tbb::blocked_range<int>(0, nx, 4), [&](const tbb::blocked_range<int>& r) {
+    std::vector<float> fc(ny), dc(ny);
+    std::vector<int> ac(ny), v;
+    std::vector<double> z;
+    for (int i = r.begin(); i < r.end(); ++i) {
+      for (int j = 0; j < ny; ++j) fc[j] = g[size_t(j) * nx + i];
+      envelope(fc.data(), ny, dc.data(), ac.data(), v, z);
+      for (int j = 0; j < ny; ++j) {
+        const size_t k = size_t(j) * nx + i;
+        if (f->radius[k] > 0 || ac[j] < 0) continue;
+        f->arg[k] = f->arg[size_t(ac[j]) * nx + gi[size_t(ac[j]) * nx + i]];
+      }
+    }
+  });
   f->inv_puff = 1.0f / s.puff;
   f->scale = std::min(1.0f, s.puff);
   plane_bounds(*f, alo, ahi, blo, bhi, -most * s.puff, most * s.puff);
