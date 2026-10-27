@@ -43,9 +43,10 @@ naming, compact) at the four sizes, with long texts. Results: `C:\Users\Sam\.ros
   - give it `view: backend.timeView` (a `TimeViewObject` with `setLength(duration)` on load or edit) for Ctrl+wheel zoom
     at the pointer, Shift+wheel scroll and page-follow;
   - `rangeBand: true` with the 2D time range;
-  - the kit's `TimeRuler` now adds the marker itself on the name box's Enter (`markerEdit.addNamed(name, at)`, on the
-    playhead's frame), and the kit's Add marker button (`AddMarker { askOn: ruler }`, as LayerTimeline does) asks the name
-    first; an app that adds markers itself from `markerAdded` sets `addsMarkers: false`;
+  - the kit's Add marker button (`AddMarker { askOn: ruler }`, as LayerTimeline does) asks the name first; on the name
+    box's Enter the ruler sends `markerAdded`, and the app adds the marker (2D: RulerMenu). `addsMarkers: true` makes the
+    `TimeRuler` add it itself (`markerEdit.addNamed(name, at)`, on the playhead's frame) for an app with no handler of
+    its own; never both, or each marker is added twice;
   - `canShare` (Shared / own markers) is still open;
   - per marker, `shared: false` for the scene's own markers.
 - Move the header row of `LayerTimeline.qml` (play, time, Preview size, Keys / Curves, the hint and its fold chevron) into
