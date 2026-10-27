@@ -26,8 +26,18 @@ and framed before you add anything; change or delete any of them like any item (
      material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
      blocks"); it fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
-     Final applies ("Applied in Final: spread on rim, linking on rim").
+     Final applies ("Applied in Final: spread on rim, linking on rim"). For every text in the picture it also says which way
+     it reads from this camera: left to right, mirrored (seen from behind), upside down, tilted (its angle to the horizontal)
+     or edge-on; a text behind the camera or outside the picture is not listed. Fix a text that reads wrong by turning it
+     (`ry` 180 turns its back to the camera) or moving the camera, then look again.
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
+   - `look_shots` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
+     each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_sheet). Use it to compare the
+     framing of a sequence or two ends of a cut; an unknown shot fails and lists the document's shots.
+   - `look_material material=<id or name>` — that material on a ball (`shape: "plane"` for a flat square) turned through 4–8
+     angles in one strip, lit by the scene's own lights with everything else hidden. It picks Final (Cycles) by itself for
+     glass, metal, clear coat and Final-only settings and the reply says which renderer drew it and why; `quality: "fast"`
+     forces Storm. Judge a material's highlight and colour here before assigning it; an unknown material lists the known ones.
    - `edit_place_highlight` — put a light's highlight on what is at a pixel of that picture (`fresh=true` for a light just
      added: distance and a starting brightness too). The lighting guide explains it.
    - `look_at` — "what is at this pixel?" Give x, y of the picture you were just shown (same width). It answers with the item id,
