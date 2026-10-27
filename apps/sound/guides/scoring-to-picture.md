@@ -8,7 +8,7 @@ This page covers the tools; what the music should do is yours to decide.
 - **On the screen:** drag a video file from Explorer or the desktop onto the arrangement, or use **+ Add › Picture to
   work to…** (or **+ Add › From a file…** with a video). The Picture panel opens at the arrangement's right, under the last track when there is room there, else in its own column at the right with the tracks narrowed beside it (it never sits over a bar, so every bar stays clickable with the Editor open), with
   the video frame at the playhead. The song becomes at least as long as the picture, so you can mark the cuts before
-  any music is written: type a time in the position field (`0:38`, Enter), then **M**. It plays along while you play. Pick a project
+  any music is written: type a time in the position field (`0:38`, Enter), then **M** (its name box opens: type a name and Enter; **Space** before you type plays on and keeps the name it was given, so M then Space marks a cut without stopping). It plays along while you play. Pick a project
   item's latest render or a file; an item reference follows the item's newest render. Once a picture is set,
   **Picture** in the arrangement's header strip shows and hides it. With a picture set, a click on the ruler's seconds
   line puts the playhead on the nearest whole frame of the picture (the bars line: the nearest grid line, marker or

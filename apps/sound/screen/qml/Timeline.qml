@@ -34,6 +34,25 @@ Rectangle {
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
               (list.height - slack - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
+    // A track just added (Library Add or double-click, + Track, an undo bringing one back): its row flashes once and
+    // the rows scroll just enough to show it (PLAN S3). Seen as one new track while every track before stays, so
+    // opening another song never flashes.
+    property var knownIds: null              // the tracks shown before this change (null: none read yet)
+    property string arrived: ""              // the row flashing now
+    onRowsChanged: {
+        var ids = rows.filter(r => !r.mix).map(r => r.id), was = knownIds
+        knownIds = ids.reduce((o, i) => { o[i] = true; return o }, {})
+        if (was === null) return
+        var fresh = ids.filter(i => !was[i]), kept = Object.keys(was).every(i => knownIds[i])
+        if (fresh.length === 1 && kept) { arrived = fresh[0]; Qt.callLater(reveal, fresh[0]) }
+    }
+    function reveal(id) {   // scroll the rows just enough that this one is wholly in view (nothing moves when it is)
+        var s = rowSpan(id)
+        if (!s) return
+        var top = list.y, bottom = list.y + list.height, most = Math.max(0, list.contentHeight - list.height)
+        if (s.bottom > bottom) list.contentY = Math.min(most, list.contentY + s.bottom - bottom + Theme.grid)
+        else if (s.top < top) list.contentY = Math.max(0, list.contentY - (top - s.top) - Theme.grid)
+    }
     // Dragging a track header: where it would land is asked of the backend (group_drag.py), the one rule.
     property string dragId: ""
     property string dropOver: ""            // the row under the pointer
@@ -115,6 +134,18 @@ Rectangle {
                     readonly property real h: tl.hOf(modelData)
                     readonly property real top0: tl.addAbove(index)
                     width: column.width; height: top0 + h + (auto ? tl.laneGap + tl.laneH : 0)
+                    Loader {   // just added: the row (header and lane) flashes once in the accent and fades over a second
+                        active: tl.arrived !== "" && tl.arrived === row.modelData.id
+                        y: row.top0; width: parent.width; height: row.h; z: 2
+                        sourceComponent: Rectangle {
+                            objectName: "arrivedFlash"
+                            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18); radius: Theme.radiusCtl
+                            border.width: 2; border.color: Theme.accent
+                            enabled: false
+                            NumberAnimation on opacity { from: 1; to: 0; duration: 1000; easing.type: Easing.InQuad
+                                                         onFinished: if (tl.arrived === row.modelData.id) tl.arrived = "" }
+                        }
+                    }
                     Loader {   // + Track: made only in the rows that show it
                         active: row.top0 > 0 && backend.tracks.some(r => !r.mix)
                         x: Theme.grid; y: item ? (row.top0 - item.height) / 2 - tl.rowGap / 2 : 0

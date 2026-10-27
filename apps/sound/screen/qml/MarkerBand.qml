@@ -62,6 +62,10 @@ Item {
                 current: modelData.name; keepOnAway: true
                 onDone: (t) => backend.finishRename(modelData.id, t)
                 onCancelled: backend.finishRename(modelData.id, "")
+                // Space before a letter is typed plays (M then Space: the name it was given stays, critic r12 #14);
+                // once something is typed, it is a space in the name
+                Keys.onSpacePressed: (e) => { if (text !== current) { e.accepted = false; return }
+                                              backend.finishRename(modelData.id, ""); backend.togglePlay() }
             }
         }
     }
