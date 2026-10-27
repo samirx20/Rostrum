@@ -20,6 +20,7 @@ from . import fields as SF
 from .compute import SimError, compute, needed
 from .inputs import KIND, bodies, value
 from .result import read, stylized, trs
+from .thin import thinned
 
 _ENGINE = {"factory": None}           # what compute starts its engine with (None: rostrum3d.engine.Engine); tests swap it
 TRS = ("x", "y", "z", "rx", "ry", "rz")
@@ -125,7 +126,9 @@ def _key_frames(res, s0: int, s1: int, step: int, simplify: int) -> tuple[list[i
 
 
 @R.operation("sim.to_keys", "Turn a shot's simulation into ordinary keys: each falling item gets keys on x y z rx ry rz "
-             "(every frame; with Timing On 2s / On 3s a held key every 2 or 3 frames; with Simplify every nth frame) and "
+             "(only the keys that matter: a key the line between its neighbours already gives, within 1 mm / 0.1°, is left "
+             "out, so a fall keeps its bounces and a few keys per arc; with Timing On 2s / On 3s held keys every 2 or 3 "
+             "frames where the value changes; with Simplify from every nth frame) and "
              "stops simulating, in one undo step; then nudge any key by hand. Running it again never changes a key it "
              "already wrote for that result (a nudge stays) and never touches keys a person made. Computes first when "
              "needed. A falling copies item gets keys on each copy instead (copies.key nudges one) and stops "
@@ -153,9 +156,10 @@ def sim_to_keys(ctx, targets, args):
                 _copies_to_keys(ctx, item["id"], res, (s0, s1, fps), frames, ease, (step, simplify), tag)
                 continue
             per = trs(stylized(res, rows[0], range(s0, s1 + 1), s0, step, simplify))
+            few = thinned(frames, per, s0, ease)
             for prop in TRS:
-                times = [round(f / fps, 4) for f in frames]
-                for f, t in zip(frames, times):
+                times = [round(f / fps, 4) for f in few[prop]]
+                for f, t in zip(few[prop], times):
                     owner = ctx.item(item["id"])
                     there = next((k for k in keys_of(owner, prop) if same_time(k["t"], t)), None)
                     if there is not None and (not _ours(there, shot_id) or there.get("from") == tag):
@@ -173,16 +177,17 @@ def _copies_to_keys(ctx, copies_id: str, res, shot: tuple, frames: list[int], ea
     s0, s1, fps = shot
     owner = ctx.item(copies_id)
     keyed, mine = CK.keys_map(owner), owner.get(CK.FROM) == tag
-    times = [round(f / fps, 4) for f in frames]
-    new = set(times)
     for body in (b for b in res.bodies if b["item"] == copies_id):
         per = trs(stylized(res, body["row"], range(s0, s1 + 1), s0, *style))
+        few = thinned(frames, per, s0, ease)
         props = keyed.setdefault(int(body["copy"]), {})
         for prop in TRS:
+            times = [round(f / fps, 4) for f in few[prop]]
+            new = set(times)
             there = {k["t"]: k for k in props.get(prop, [])}
             if not mine:                                     # an older result's keys go; a person's stay
                 there = {t: k for t, k in there.items() if not k["sim"] or t in new}
-            for f, t in zip(frames, times):
+            for f, t in zip(few[prop], times):
                 k = there.get(t)
                 if k is not None and (not k["sim"] or mine):
                     continue                                 # a person's key, or this result's (maybe nudged): kept
