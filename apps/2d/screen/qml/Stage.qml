@@ -226,7 +226,6 @@ Rectangle {
                 : backend.strokeSelect.handleAt(paintAt.x, paintAt.y, view.zoom) || (backend.strokeSelect.hits(paintAt.x, paintAt.y) ? "body" : "")
             CanvasCursor {
                 id: paintPointer
-                anchors.fill: parent
                 kind: sizing.sizingNow ? "none" : backend.colourPick.alt || altHeld ? "dropper"
                     : parent.paintZone === "scale" ? "resize" : parent.paintZone === "turn" ? "rotate" : parent.paintZone === "body" ? "pick"
                     : parent.noErase ? "no" : backend.paintTool.now === "fill" ? "fill" : backend.paintTool.now === "select" ? "pick" : "none"
@@ -307,7 +306,7 @@ Rectangle {
                                               : backend.hoverAt(hoverAt.x, hoverAt.y, canvasPointer.ctrlHeld) }
             readonly property bool onLine: canvasPointer.ctrlHeld && hoverPick.hovered && motionPath.visible && motionPath.interactive
                                            && backend.motionPath.onLine(hoverAt.x, hoverAt.y, 5 / view.zoom)
-            CanvasCursor { anchors.fill: parent;
+            CanvasCursor {
                 id: canvasPointer
                 kind: "pick"
                 altBadge: canvas.over.id ? "copy" : ""

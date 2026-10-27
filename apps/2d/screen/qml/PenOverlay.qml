@@ -43,7 +43,7 @@ Item {
         hoverEnabled: true
         preventStealing: true
         readonly property bool onFirst: ov.pts.length > 1 && Math.hypot((mouseX - ov.ox) / ov.fit - ov.pts[0].x, (mouseY - ov.oy) / ov.fit - ov.pts[0].y) <= 8
-        CanvasCursor { anchors.fill: parent; visible: parent.enabled; kind: "pen"; badge: ov.pts.length === 0 ? "x" : parent.onFirst ? "close" : "" }
+        CanvasCursor { visible: parent.enabled; kind: "pen"; badge: ov.pts.length === 0 ? "x" : parent.onFirst ? "close" : "" }
         onPressed: (m) => ov.pen.press((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
         onPositionChanged: (m) => ov.pen.pull((m.x - ov.ox) / ov.fit, (m.y - ov.oy) / ov.fit)
         onReleased: ov.pen.release()
@@ -87,7 +87,7 @@ Item {
             anchors.fill: parent; anchors.margins: -4
             enabled: !ov.pen.on
             preventStealing: true
-            CanvasCursor { anchors.fill: parent; kind: "pick"; badge: k.part === "point" ? "point" : "bend" }
+            CanvasCursor { kind: "pick"; badge: k.part === "point" ? "point" : "bend" }
             property point start
             property bool dragging: false
             onPressed: (m) => { start = mapToItem(ov, m.x, m.y); if (k.part === "point") ov.pen.selectPoint(k.i); dragging = ov.pen.beginPointDrag(k.i, k.part) }

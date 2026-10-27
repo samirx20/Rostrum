@@ -46,7 +46,7 @@ Item {
                 x: bone.wide; y: -bone.wide; width: Math.max(4, bone.len - bone.wide * 1.5); height: 2 * bone.wide
                 enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
-                CanvasCursor { anchors.fill: parent; kind: "rotate"; angle: bone.rotation }
+                CanvasCursor { kind: "rotate"; angle: bone.rotation }
                 property bool on: false
                 property point p0
                 property bool ctrl: false       // Ctrl at the press or the release: a window that was not active at the press may only report it later
@@ -79,7 +79,7 @@ Item {
                 enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
                 acceptedButtons: Qt.LeftButton | (joint.modelData.ik !== "" ? Qt.RightButton : 0)
-                CanvasCursor { anchors.fill: parent; kind: "pick"; badge: "point" }
+                CanvasCursor { kind: "pick"; badge: "point" }
                 property bool on: false
                 onPressed: (m) => {
                     if (m.button === Qt.RightButton) { const g = jarea.mapToItem(null, m.x, m.y); pinMenu.ik = joint.modelData.ik

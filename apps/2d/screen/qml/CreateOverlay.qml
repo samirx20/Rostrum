@@ -34,7 +34,7 @@ Item {
         anchors.fill: parent
         enabled: (ov.creating || ov.create.typing) && !backend.playing && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
-        CanvasCursor { anchors.fill: parent; kind: ov.shapeTool ? "make" : "text-box" }
+        CanvasCursor { kind: ov.shapeTool ? "make" : "text-box" }
         preventStealing: true
         property point p0
         property real px: 0

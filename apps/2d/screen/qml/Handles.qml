@@ -40,7 +40,7 @@ Item {
                 anchors.fill: parent
                 preventStealing: true
                 property bool on: false
-                CanvasCursor { anchors.fill: parent; kind: "rotate"; angle: Math.atan2(zone.modelData[1], zone.modelData[0]) * 180 / Math.PI + (h.box.rot || 0) }
+                CanvasCursor { kind: "rotate"; angle: Math.atan2(zone.modelData[1], zone.modelData[0]) * 180 / Math.PI + (h.box.rot || 0) }
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
                 onPressed: (m) => { on = (h.group ? backend.beginGroupRotate() : backend.beginRotate()); if (on) { var q = at(m); h.group ? backend.groupRotateTo(q.x, q.y, false) : backend.rotateTo(q.x, q.y, false) } }
                 onPositionChanged: (m) => { if (on) { var q = at(m); var sh = (m.modifiers & Qt.ShiftModifier) !== 0; h.group ? backend.groupRotateTo(q.x, q.y, sh) : backend.rotateTo(q.x, q.y, sh) } }
@@ -82,7 +82,7 @@ Item {
                 // a text's side sets the wrap width (¶); Alt on any knob: from the centre. (A pointer item declares no
                 // properties of its own: that makes a QML subtype of the kit's item, which the kit neither sizes nor reads.)
                 readonly property bool wrap: h.kit.sides === "wrap" && knob.edge
-                CanvasCursor { anchors.fill: parent; kind: "resize"; angle: (h.box.angles || [])[knob.index] || 0
+                CanvasCursor { kind: "resize"; angle: (h.box.angles || [])[knob.index] || 0
                                badge: parent.wrap ? "wrap" : ""; altBadge: parent.wrap ? "" : "centre" }
                 property bool on: false
                 property point p0
@@ -115,7 +115,7 @@ Item {
         MouseArea {     // only while the Anchor group is open; shut, it is out of the way: the canvas below takes the press (and shows its pointer)
             anchors.fill: parent
             visible: backend.anchorOpen
-            CanvasCursor { anchors.fill: parent; kind: "anchor" }
+            CanvasCursor { kind: "anchor" }
             preventStealing: true
             property bool on: false
             property point p0

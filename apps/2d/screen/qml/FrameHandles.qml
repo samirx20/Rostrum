@@ -62,12 +62,12 @@ Item {
         }
         Mover {     // the picked frame's body; off (not picked): out of the way, so the canvas below shows its own pointer
             anchors.fill: parent; enabled: fh.picked; visible: enabled
-            CanvasCursor { anchors.fill: parent; kind: "pick" }
+            CanvasCursor { kind: "pick" }
         }
         Mover {     // over the tab (WorldFrame.qml draws it on the top-left corner)
             tab: true
             x: 0; y: -fh.world.tab.height; width: fh.world.tab.width; height: fh.world.tab.height
-            CanvasCursor { anchors.fill: parent; kind: "pick" }
+            CanvasCursor { kind: "pick" }
         }
 
         // a corner's drag: zoom (the square) or turn (the zone just outside it)
@@ -97,7 +97,7 @@ Item {
                 width: 28; height: 28
                 x: (modelData[0] + 1) / 2 * box.width + modelData[0] * 11 - 14
                 y: (modelData[1] + 1) / 2 * box.height + modelData[1] * 11 - 14
-                CanvasCursor { anchors.fill: parent; kind: "rotate"; angle: Math.atan2(modelData[1], modelData[0]) * 180 / Math.PI + (fh.world.box.rot || 0) }
+                CanvasCursor { kind: "rotate"; angle: Math.atan2(modelData[1], modelData[0]) * 180 / Math.PI + (fh.world.box.rot || 0) }
             }
         }
         Repeater {      // the corner squares
@@ -113,7 +113,7 @@ Item {
                 CornerDrag {
                     anchors.fill: parent; anchors.margins: -4
                     kind: "zoom"; corner: knob.index
-                    CanvasCursor { anchors.fill: parent; kind: "resize"; angle: backend.resizeCursor(knob.modelData[0], knob.modelData[1], fh.world.box.rot || 0) }
+                    CanvasCursor { kind: "resize"; angle: backend.resizeCursor(knob.modelData[0], knob.modelData[1], fh.world.box.rot || 0) }
                 }
             }
         }

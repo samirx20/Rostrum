@@ -88,7 +88,7 @@ Item {
         anchors.fill: parent
         enabled: mp.interactive && mp.layerRows.length + mp.frameRows.length > 0 && !spaceKey.held
         visible: enabled        // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
-        CanvasCursor { anchors.fill: parent; kind: "pick"; altBadge: mp.pointerAlt; ctrlBadge: mp.pointerCtrl }   // on: it covers the canvas, so it shows the canvas's pointer
+        CanvasCursor { kind: "pick"; altBadge: mp.pointerAlt; ctrlBadge: mp.pointerCtrl }   // on: it covers the canvas, so it shows the canvas's pointer
         onPressed: (m) => { m.accepted = Mods.ctrl(m) && backend.motionPath.addKeyAt((m.x - mp.ox) / mp.fit, (m.y - mp.oy) / mp.fit, 5 / mp.fit) }
     }
 
@@ -138,7 +138,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             enabled: mp.interactive && !spaceKey.held
-            CanvasCursor { anchors.fill: parent; kind: "pick"; badge: mark.knob ? "bend" : "point" }
+            CanvasCursor { kind: "pick"; badge: mark.knob ? "bend" : "point" }
             preventStealing: true
             property bool going: false
             property real sx: 0

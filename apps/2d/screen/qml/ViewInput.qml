@@ -14,7 +14,7 @@ Item {
         visible: spaceKey.held                  // there only while Space is down (else it is no click target at all)
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
-        CanvasCursor { anchors.fill: parent; kind: parent.pressed ? "hand-grab" : "hand" }     // the hand: moving the view, nothing else (CURSORS.md)
+        CanvasCursor { kind: parent.pressed ? "hand-grab" : "hand" }     // the hand: moving the view, nothing else (CURSORS.md)
         property point last
         onPressed: (m) => { spaceKey.use(); last = Qt.point(m.x, m.y) }
         onPositionChanged: (m) => { vi.view.panBy(m.x - last.x, m.y - last.y); last = Qt.point(m.x, m.y) }

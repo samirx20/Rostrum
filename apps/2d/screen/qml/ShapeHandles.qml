@@ -46,7 +46,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 preventStealing: true
-                CanvasCursor { anchors.fill: parent; kind: "pick"; badge: (hd.info.name || "").startsWith("radius") ? "radius" : "shape" }
+                CanvasCursor { kind: "pick"; badge: (hd.info.name || "").startsWith("radius") ? "radius" : "shape" }
                 property bool on: false
                 function at(m) { var q = mapToItem(s, m.x, m.y); return Qt.point(q.x / Math.max(s.width, 1e-6), q.y / Math.max(s.height, 1e-6)) }
                 onPressed: (m) => { var q = at(m); on = backend.beginShapeHandle(hd.info.name, q.x, q.y); if (on) s.held = hd.info.name }

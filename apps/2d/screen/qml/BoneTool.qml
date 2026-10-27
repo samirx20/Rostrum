@@ -22,7 +22,7 @@ Item {
         visible: enabled
         hoverEnabled: true
         preventStealing: true
-        CanvasCursor { anchors.fill: parent; kind: "make" }        // a new bone (CURSORS.md)
+        CanvasCursor { kind: "make" }        // a new bone (CURSORS.md)
         property bool going: false
         onPressed: (m) => { const p = ov.toComp(m.x, m.y); going = ov.tool.press(p.x, p.y, ov.near) }
         onPositionChanged: (m) => { const p = ov.toComp(m.x, m.y); ov.tool.hover(p.x, p.y) }

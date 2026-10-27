@@ -11,7 +11,7 @@ MouseArea {
     readonly property bool hand: backend.tool === "hand"
     enabled: hand || backend.tool === "zoom"
     visible: enabled            // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
-    CanvasCursor { anchors.fill: parent; id: pointer; visible: tools.enabled; kind: tools.hand ? (tools.pressed ? "hand-grab" : "hand") : pointer.altHeld ? "zoom-minus" : "zoom-plus" }
+    CanvasCursor { id: pointer; visible: tools.enabled; kind: tools.hand ? (tools.pressed ? "hand-grab" : "hand") : pointer.altHeld ? "zoom-minus" : "zoom-plus" }
     property point was
     onPressed: (m) => was = Qt.point(m.x, m.y)
     onPositionChanged: (m) => { if (hand && pressed) { view.panBy(m.x - was.x, m.y - was.y); was = Qt.point(m.x, m.y) } }
