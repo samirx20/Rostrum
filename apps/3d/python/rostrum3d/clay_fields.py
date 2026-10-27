@@ -27,6 +27,25 @@ FIXED = IS("detailMode", "fixed")
 _INVERT = ("Ctrl's opposite: Flatten puffs out, Crease pinches to a ridge, Mask takes the mask away (Add and Carve "
            "swap the brush instead)")
 
+BONED = {"fact": "boned"}
+# Pose by dragging (ops_pose.py): a clay's `bones` are found from its shape (pose.find_joints) and posed by keys on
+# their Turn, as a mesh's chain is (skin.py).
+POSE = [
+    T("skinned", "Bend with joints", "Pose", True, S, BONED,
+      help="Off: the clay keeps its resting shape; its joints and their keys stay"),
+    dataclasses.replace(CH("jointNames", ["plain", "humanoid"], "Joint names", "Pose", "plain", S, BONED,
+                           help="Plain: body, chest, arm.L, forearm.L, foot.R … Humanoid: Hips, Spine, LeftUpperArm, "
+                                "LeftLowerArm, RightFoot … (Unity's Humanoid / VRM), for motion capture and humanoid "
+                                "rigs. The bones' ids stay the same either way"),
+                        labels={"plain": "Plain", "humanoid": "Humanoid"}),
+    Param.points("holds", label="Holds", group="Pose data", importance=D, min=3, max=3, default=None, nullable=True,
+                 help="Spots that stay put while you drag (pose.hold): [x, y, z] each, on the RESTING clay in its own "
+                      "space; each holds the bone under it (the nearest bone at rest)"),
+    Param.text("jointsKey", label="Joints found for", group="Pose data", importance=D, default="", shown="script",
+               help="The clay's last step key when its joints were found; another key = the shape changed since "
+                    "(pose_joints.out_of_date)"),
+]
+
 CLAY = [
     CH("brush", BRUSHES, "Brush", "Brush", "add", when=SCULPTING,
        help="Add builds clay up, Carve digs in, Smooth evens bumps out; Pull drags the surface along the stroke, "
@@ -58,6 +77,7 @@ CLAY = [
            "more memory"),
     X("material", "Material", "Material", "", help='A material id, or "" for none', refers="material"),
     PAINT_SIZE,                         # a clay is a paint canvas (paint_fields.py, clay_paint.py)
+    *POSE,                              # its joints (ops_pose.py, pose_joints.py)
 ] + TRANSFORM
 
 _V3 = lambda name, label, when, help: Param.list(name, "number", label=label, group="Step data", importance=D,  # noqa: E731

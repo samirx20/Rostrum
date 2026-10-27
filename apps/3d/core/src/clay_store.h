@@ -10,12 +10,16 @@
 // The cache .vdb for the current steps is written on a thread of its own after a change (the newest wins).
 #pragma once
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <pxr/base/gf/vec3d.h>
+#include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
 
 #include "clay_scene.h"
@@ -41,6 +45,23 @@ struct ClayInfo {
   std::string hash;  // 16 hex
   size_t steps = 0, voxels = 0, blocks = 0;
   double memoryMb = 0;
+};
+
+// CL5, clay_pose: blocks re-posed, and the time it took
+struct PoseReply {
+  int blocks = 0;
+  double ms = 0;
+  double skinMs = 0, usdMs = 0;  // of ms: the bending (parallel), the Sdf writes (serial, one change block)
+};
+
+// CL5, clay_grid: the rest clay sampled at cell centres. Cell (i, j, k) has its centre at origin + (i+0.5, j+0.5,
+// k+0.5) × cell; `inside` holds one byte per cell (1 inside, 0 outside), x fastest, then y, then z.
+struct GridReply {
+  double origin[3] = {0, 0, 0};  // the grid's low corner, clay space
+  double cell = 0;               // metres
+  int dims[3] = {0, 0, 0};
+  std::vector<uint8_t> inside;
+  double ms = 0;
 };
 
 class Store {
@@ -84,6 +105,21 @@ class Store {
   std::string sculpt_item() const;
 
   ClayInfo info(const std::string& item) const;
+
+  // CL5, a clay with bones (clay_skin.h). Every skinned clay's blocks posed for `frame` (its pose table at frame -
+  // start, clamped; a clay_pose's moves instead until the next scene): before a view, render or pick draws or picks
+  // it, and before a stroke's rays. Only the blocks whose bones moved are written. Writes the stage. How many.
+  int pose_frame(int frame);
+  // clay_pose: the clay drawn with these bone moves until the next sync (or the next pose). Loud when the clay has no
+  // bones or the count differs. Writes the stage.
+  PoseReply pose(const std::string& item, const std::vector<BoneMove>& moves);
+  // clay_grid: the rest clay's inside, `cells` (8..128) along the longest side of its bounds padded by one cell
+  GridReply grid(const std::string& item, int cells) const;
+  bool skinned(const std::string& item) const;
+  // a picked spot on block prim `prim`, triangle `face`, at `local` (drawn, clay space) -> the same spot at rest;
+  // none when the clay has no bones or the prim is none of its blocks
+  std::optional<PXR_NS::GfVec3d> rest_spot(const std::string& item, const PXR_NS::SdfPath& prim, int face,
+                                           const PXR_NS::GfVec3d& local) const;
 
  private:
   struct Impl;

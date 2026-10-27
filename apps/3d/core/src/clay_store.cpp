@@ -10,7 +10,9 @@
 #include <cstdlib>
 #include <deque>
 #include <filesystem>
+#include <cmath>
 #include <map>
+#include <optional>
 #include <set>
 #include <thread>
 
@@ -63,6 +65,10 @@ struct Entry {
   std::unique_ptr<Volume> coarse;
   const Volume* coarseOf = nullptr;
   bool wantsCoarse = false;
+  // CL5: the clay's bones (null: none) and its first frame; a clay_pose's moves, drawn until the next scene
+  std::shared_ptr<const SkinRig> rig;
+  int skinStart = 0;
+  std::optional<std::vector<BoneMove>> livePose;
 };
 
 // What a kept coarse copy needs to be up to date: the clay's chunks changed since (all: anything may differ), and a
@@ -121,6 +127,7 @@ struct Store::Impl {
     std::unique_ptr<Volume> pv;
     size_t sent = 0, samples = 0;
     std::set<BlockKey> hidden, shown;
+    std::optional<Affine> lastBlend;  // CL5, a posed clay: the blended bone move where the last ray met it
     std::unique_ptr<Catchup> fine;
   };
   std::unique_ptr<Live> live;
@@ -576,6 +583,7 @@ void Store::sync(const std::vector<Node>& nodes) {
       continue;
     }
     s.blocks.begin();
+    s.blocks.set_skin(it->second.path, nullptr, {});
     s.blocks.remove_all(it->second.path, it->second.blocks);
     s.blocks.end();
     it = s.clays.erase(it);
@@ -594,11 +602,24 @@ void Store::sync(const std::vector<Node>& nodes) {
     }
     if (e.path != n.path) {  // moved into another group: its blocks go under the new path
       s.blocks.begin();
+      s.blocks.set_skin(e.path, nullptr, {});
       s.blocks.remove_all(e.path, e.blocks);
       s.blocks.end();
       e.path = n.path;
       e.full = true;
     }
+    // CL5: its bones (the blocks re-weighed only when the rest changed); posed for a frame by pose_frame
+    s.blocks.begin();
+    try {
+      s.blocks.set_skin(e.path, n.skin, e.blocks);
+    } catch (...) {
+      s.blocks.end();
+      throw;
+    }
+    s.blocks.end();
+    e.rig = n.skin;
+    e.skinStart = n.skinStart;
+    e.livePose.reset();
     bool changed = false;
     try {
       changed = s.reconcile(e, n);
@@ -664,6 +685,32 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
   if (l.fine) l.fine->wait_ready();       // the preview (made from the begin on; counted in applyMs)
   Volume& shown = l.pv ? *l.pv : *e.vol;  // what the rays meet and the dabs are shown on
   if (!l.dabs) l.dabs = std::make_unique<StrokeDabs>(shown, l.brush, e.vol->voxel());
+  // CL5: on a posed clay each pointer ray meets the DRAWN surface (the posed blocks the store keeps; never the stage)
+  // and goes on into the rest clay through the inverse of the blended bone move there, starting a little before the
+  // spot, so the volume's own march lands where the brush is drawn. A ray that misses the drawn clay goes through the
+  // last hit's move. The dabs are rest-space dabs (mirror included): live = replay holds.
+  const Skinning* posedSkin = s.blocks.skinning(e.path);
+  if (posedSkin && !posedSkin->posed()) posedSkin = nullptr;
+  const double before = 6.0 * double(shown.voxel());
+  const RayFn restRay = !posedSkin ? ray : RayFn([&](float x, float y, V3& o, V3& d) {
+    if (!ray(x, y, o, d)) return false;
+    const GfVec3d po(o.x, o.y, o.z), pd(d.x, d.y, d.z);
+    PosedHit h;
+    Affine inv;
+    GfVec3d from = po;
+    if (posedSkin->cast(po, pd, 1e4, h) && h.blend.inverse(inv)) {
+      l.lastBlend = h.blend;
+      from = h.point - pd * std::min(before, h.t);
+    } else if (!l.lastBlend || !l.lastBlend->inverse(inv)) {
+      return false;
+    }
+    const GfVec3d ro = inv.point(from);
+    GfVec3d rd = inv.dir(pd);
+    if (rd.Normalize() < 1e-12) return false;
+    o = V3{float(ro[0]), float(ro[1]), float(ro[2])};
+    d = V3{float(rd[0]), float(rd[1]), float(rd[2])};
+    return true;
+  });
   SculptReply r;
   std::vector<V3> samples;
   std::vector<float> pressures;
@@ -674,7 +721,13 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
       // pixels piled up and grew towards the camera, each landing on the one before)
       V3 o, d, on, nrm;
       float depth = 0;
-      if (ray(x, y, o, d)) depth = shown.cast(o, d, 1e4f, on, nrm) ? len(sub(on, o)) : len(o);
+      PosedHit h;
+      if (ray(x, y, o, d)) {
+        if (posedSkin)  // the drawn distance
+          depth = posedSkin->cast(GfVec3d(o.x, o.y, o.z), GfVec3d(d.x, d.y, d.z), 1e4, h) ? float(h.t) : len(o);
+        else
+          depth = shown.cast(o, d, 1e4f, on, nrm) ? len(sub(on, o)) : len(o);
+      }
       const float radiusPx = depth > 0 ? l.brush.radius * ppm(depth) : 3.0f;
       l.rs = std::make_unique<Resampler>(l.brush.spacing * std::max(radiusPx, 3.0f));
     }
@@ -721,7 +774,7 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
   size_t done = 0;
   for (size_t i : keep) {
     V3 o, d;
-    if (!ray(samples[i].x, samples[i].y, o, d)) continue;
+    if (!restRay(samples[i].x, samples[i].y, o, d)) continue;
     l.dabs->add(o, d, 1e4f, pressures[i]);
     any = true;
     ++done;
@@ -744,6 +797,12 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
   r.hit = keep.empty() ? l.dabs->hit : any && l.dabs->hit;
   r.point = l.dabs->point;
   r.normal = l.dabs->normal;
+  if (posedSkin && l.lastBlend) {  // where the brush is drawn: the rest spot through the move there
+    const GfVec3d p = l.lastBlend->point(GfVec3d(r.point.x, r.point.y, r.point.z));
+    const GfVec3d nn = l.lastBlend->normal(GfVec3d(r.normal.x, r.normal.y, r.normal.z));
+    r.point = V3{float(p[0]), float(p[1]), float(p[2])};
+    r.normal = V3{float(nn[0]), float(nn[1]), float(nn[2])};
+  }
   r.ms = ms_since(t0);
   return r;
 }
@@ -828,6 +887,102 @@ SculptReply Store::sculpt_end(const std::string& folder, const std::string& wher
 }
 
 void Store::sculpt_cancel() { p_->cancel_live(); }
+
+int Store::pose_frame(int frame) {
+  Impl& s = *p_;
+  int n = 0;
+  bool begun = false;
+  try {
+    for (auto& kv : s.clays) {
+      Entry& e = kv.second;
+      if (!e.rig || e.rig->pose.empty()) continue;
+      const int f = std::clamp(frame - e.skinStart, 0, int(e.rig->pose.size()) - 1);
+      if (!begun) s.blocks.begin(), begun = true;
+      n += s.blocks.pose(e.path, e.livePose ? *e.livePose : e.rig->pose[size_t(f)]);
+    }
+  } catch (...) {
+    if (begun) s.blocks.end();
+    throw;
+  }
+  if (begun) s.blocks.end();
+  return n;
+}
+
+PoseReply Store::pose(const std::string& item, const std::vector<BoneMove>& moves) {
+  Impl& s = *p_;
+  const auto t0 = std::chrono::steady_clock::now();
+  Entry& e = s.entry(item, "clay_pose.item");
+  if (!e.rig)
+    throw Error("clay_pose.item: \"" + item + "\" has no bones (its scene node carries no skin). Accepted: a clay "
+                "whose joints were found (pose.find_joints) and that bends with them");
+  if (moves.size() != e.rig->rest.size())
+    throw Error("clay_pose.pose: " + std::to_string(moves.size()) + " moves, but \"" + item + "\" has " +
+                std::to_string(e.rig->rest.size()) + " bones. Accepted: one [12 numbers] per bone, in the skin's order");
+  e.livePose = moves;
+  PoseReply r;
+  s.blocks.begin();
+  try {
+    r.blocks = s.blocks.pose(e.path, moves, &r.skinMs, &r.usdMs);
+  } catch (...) {
+    s.blocks.end();
+    throw;
+  }
+  s.blocks.end();
+  r.ms = ms_since(t0);
+  return r;
+}
+
+GridReply Store::grid(const std::string& item, int cells) const {
+  const Impl& s = *p_;
+  const auto t0 = std::chrono::steady_clock::now();
+  Entry& e = p_->entry(item, "clay_grid.item");
+  if (s.live && s.live->item == item)
+    throw Error("clay_grid.item: a stroke is being drawn on \"" + item + "\". Accepted: ask once it has ended");
+  openvdb::CoordBBox bb;
+  e.vol->tree().evalActiveVoxelBoundingBox(bb);
+  if (bb.empty()) throw Error("clay_grid.item: \"" + item + "\" holds no clay yet. Accepted: a clay with a shape");
+  const double vx = e.vol->voxel();
+  double lo[3], size[3], longest = 0;
+  for (int c = 0; c < 3; ++c) {
+    lo[c] = double(bb.min()[c]) * vx;
+    size[c] = double(bb.max()[c] - bb.min()[c]) * vx;
+    longest = std::max(longest, size[c]);
+  }
+  GridReply g;
+  g.cell = longest > 0 ? longest / cells : vx;
+  for (int c = 0; c < 3; ++c) {
+    g.dims[c] = std::max(1, int(std::ceil(size[c] / g.cell - 1e-9))) + 2;  // one cell of room each side
+    g.origin[c] = lo[c] - g.cell;
+  }
+  const size_t nx = size_t(g.dims[0]), ny = size_t(g.dims[1]), nz = size_t(g.dims[2]);
+  g.inside.assign(nx * ny * nz, 0);
+  const Volume& vol = *e.vol;
+  tbb::parallel_for(size_t(0), nz, [&](size_t k) {
+    for (size_t j = 0; j < ny; ++j)
+      for (size_t i = 0; i < nx; ++i) {
+        const V3 p{float(g.origin[0] + (double(i) + 0.5) * g.cell), float(g.origin[1] + (double(j) + 0.5) * g.cell),
+                   float(g.origin[2] + (double(k) + 0.5) * g.cell)};
+        g.inside[i + nx * (j + ny * k)] = vol.sample(p) < 0.0f ? 1 : 0;
+      }
+  });
+  g.ms = ms_since(t0);
+  return g;
+}
+
+bool Store::skinned(const std::string& item) const {
+  auto it = p_->clays.find(item);
+  return it != p_->clays.end() && it->second.rig != nullptr;
+}
+
+std::optional<GfVec3d> Store::rest_spot(const std::string& item, const SdfPath& prim, int face,
+                                        const GfVec3d& local) const {
+  auto it = p_->clays.find(item);
+  if (it == p_->clays.end() || prim.GetParentPath() != it->second.path) return std::nullopt;
+  const Skinning* skin = p_->blocks.skinning(it->second.path);
+  BlockKey k;
+  if (!skin || !block_key_of(prim.GetName(), k)) return std::nullopt;
+  return skin->rest_spot(k, face, local);
+}
 
 ClayInfo Store::info(const std::string& item) const {
   Entry& e = p_->entry(item, "clay_info.item");

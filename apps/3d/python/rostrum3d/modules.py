@@ -4,7 +4,7 @@ from rostrum_core.modules import ModuleList
 
 OPS = ModuleList("rostrum3d", [      # they register on REGISTRY
     ".ops_bones", ".ops_clay", ".ops_clay_make", ".ops_combine", ".ops_follow", ".ops_items", ".ops_keys", ".ops_lipsync", ".ops_lights", ".ops_materials", ".ops_mesh", ".ops_mesh2",
-    ".ops_poses", ".ops_rigs", ".ops_scene", ".unfold",
+    ".ops_pose", ".ops_poses", ".ops_rigs", ".ops_scene", ".unfold",
     ".ops_anim",   # anim.ease, key.scale, key.paste, key.stagger: rostrum_core.keys.anim_ops; anims.py: inspect_animations
 ])
 

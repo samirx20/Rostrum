@@ -86,6 +86,12 @@ FIELDS: dict[str, list[Param]] = {
         N("rz", "Turn Z", "Rotation", -36000, 36000, 0.1, "°", help="Bends the bone sideways"),
         N("length", "Length", "Bone", 0.001, 1e4, 0.001, "m", S, default=0.1,
           help="From its head to its tail, where the next bone starts"),
+        # a clay's joints (pose_joints.py): the part each bone is, and whether a person or agent placed it
+        X("joint", "Part", "Bone data", "", D,
+          help="The joint finder's part name: body, chest, head, arm.L, forearm.L, hand.L, leg.R, foot.R, tail, "
+               "part3 … (empty on a chain laid by hand)"),
+        T("placed", "Placed by hand", "Bone data", False, D,
+          help="Moved by a person or an agent (pose.move_joint): kept where it is when the joints are found again"),
     ],
     "key": KEY_FIELDS,                   # the one key shape (t in seconds, v or c, ease), shared with 2D
     # A saved pose (ops_poses.py): values of some items' fields, applied as keys at the playhead.

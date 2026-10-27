@@ -95,6 +95,9 @@ class Viewport(QObject):
         self.onion = Onion(self)                               # onion skin: ghosts at other frames (onion_qt.py)
         from .bones_qt import Bones
         self.bone_tool = Bones(self)                           # Bones: place a chain by clicking, see it (bones_qt.py)
+        from .pose_qt import Pose
+        self.pose_tool = Pose(bridge, self)                    # Pose: drag a clay's parts, holds (pose_qt.py)
+        self.pose_tool.toggled.connect(self.gizmo._refresh)    # Pose on: no gizmo (a drag poses)
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
@@ -127,7 +130,8 @@ class Viewport(QObject):
     frameRect = Property("QVariantList", lambda s: list(s._frame), notify=settingsChanged)
     onionSkin = Property(QObject, lambda s: s.onion, constant=True)
     clay = Property(QObject, lambda s: s.clay_tool, constant=True)        # QML: viewport.clay (clay_tool_qt.py)
-    bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)     # QML: viewport.onionSkin (onion_qt.py)
+    bones = Property(QObject, lambda s: s.bone_tool, constant=True)       # QML: viewport.bones (bones_qt.py)
+    pose = Property(QObject, lambda s: s.pose_tool, constant=True)        # QML: viewport.pose (pose_qt.py)
 
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):

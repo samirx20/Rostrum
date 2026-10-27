@@ -10,6 +10,8 @@ from __future__ import annotations
 ORDER = (
     ("gizmo", "a gizmo drag: cancel it (the item goes back, no history step)",
      lambda b, v: v is not None and v.gizmo.dragging, lambda b, v: v.gizmo.cancel()),
+    ("pose_drag", "a pose drag, a hold or joint being moved: cancel it (the clay goes back, no history step)",
+     lambda b, v: v is not None and getattr(v, "pose_tool", None) is not None and v.pose_tool.dragging, lambda b, v: v.pose_tool.cancel()),
     ("stroke", "a clay stroke in progress: cancel it (the clay goes back, no history step)",
      lambda b, v: v is not None and v.clay_tool._phase in ("wait", "sculpt"), lambda b, v: v.clay_tool.cancel()),
     ("draw", "a clay outline being drawn (Draw, Spin): drop it (nothing changes, no history step)",
@@ -36,6 +38,8 @@ ORDER = (
      lambda b, v: v is not None and v.paint.on, lambda b, v: v.paint.leave()),
     ("clay", "the Clay tool: back to Select",
      lambda b, v: v is not None and v.clay_tool.on, lambda b, v: v.clay_tool.leave()),
+    ("pose", "the Pose tool: back to Select",
+     lambda b, v: v is not None and getattr(v, "pose_tool", None) is not None and v.pose_tool.on, lambda b, v: v.pose_tool.leave()),
     ("stretch", "an animation picked on the timeline: back to its item",
      lambda b, v: b._stretch.shown, lambda b, v: b._stretch.clear()),
     ("keys", "several keys picked: let go of them",

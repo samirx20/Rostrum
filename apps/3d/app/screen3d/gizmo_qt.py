@@ -70,7 +70,7 @@ class Gizmo(live.LiveDrag, QObject):
 
     def _setup(self):
         it, vp = self._item(), self.vp
-        if it is None or vp._size is None or vp.paint.on or vp.clay_tool.on:
+        if it is None or vp._size is None or vp.paint.on or vp.clay_tool.on or getattr(vp, "pose_tool", None) and vp.pose_tool.on:
             return None
         scene, cam = vp.sent()
         w, h = vp._size

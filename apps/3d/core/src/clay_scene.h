@@ -1,6 +1,7 @@
 // Clay items of the scene (ENGINE_CONTRACT.md § 2, item type `clay`): read loudly while the stage is built, handed
 // to the clay store afterwards (BuildResult::clays). No OpenVDB here.
 #pragma once
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,7 @@
 #include "clay_dabs.h"
 #include "clay_shapes.h"
 #include "clay_step.h"
+#include "skin.h"
 
 namespace r3d {
 
@@ -44,6 +46,10 @@ struct Node {
   // picture's side in pixels
   std::string paintFile;
   int paintSize = 0;
+  // CL5, `skin` (optional, as a mesh's): the clay's bones, rest and a move per bone per frame from `skinStart` (the
+  // shot's first frame); null = no bones (clay_skin.h)
+  std::shared_ptr<const SkinRig> skin;
+  int skinStart = 0;
 };
 
 }  // namespace clay

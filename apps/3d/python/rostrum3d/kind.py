@@ -5,7 +5,8 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
                     ─ import ─ children, parts ─ keys
                     ─ combine ─ children (2+ meshes / combines) ─ keys
                     ─ mesh ─ bones (a chain: bone ─ bones …, keys) ─ keys
-                    ─ clay ─ steps (claystep: pieces and strokes, in order), paints (as a mesh's) ─ keys
+                    ─ clay ─ steps (claystep: pieces and strokes, in order), bones (its joints, as a mesh's chain),
+                             paints (as a mesh's) ─ keys
                     ─ light | camera ─ keys
         ─ materials ─ material
         ─ shots     ─ shot
@@ -46,7 +47,7 @@ def facts(item: dict) -> dict:
     if item.get("type") in F.KEYED:
         return {"animated": F.animated_fact(item), "animating": True,    # a screen overrides animating with its page
                 "sculpting": True,                                       # and sculpting with its Clay tool being on
-                "boned": bool(item.get("bones")),                         # a mesh with a chain: Bend with bones shows
+                "boned": bool(item.get("bones")),                         # a mesh with a chain / a clay with joints
                 "painted": bool(item.get("paints"))}                      # a mesh / clay with paint layers: Paint size shows
     return {}
 

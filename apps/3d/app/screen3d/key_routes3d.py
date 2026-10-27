@@ -70,6 +70,9 @@ class KeyRoutes3D(SlotMixin):
         if job in ("go_in", "delete") and vp.bone_tool.on:
             vp.bone_tool.make() if job == "go_in" else vp.bone_tool.back()
             return True
+        if job == "delete" and getattr(vp, "pose_tool", None) is not None and vp.pose_tool.on:          # Pose: the hold under the pointer (never the clay itself)
+            vp.pose_tool.delete_hovered()
+            return True
         return False
 
     # ---- time ----------------------------------------------------------------------------------------------------
@@ -225,6 +228,7 @@ class KeyRoutes3D(SlotMixin):
         if vp is not None:
             vp.paint.leave()
             vp.clay_tool.leave()
+            vp.pose_tool.leave()
             vp.gizmo.setShow("all")
 
     @Slot()
@@ -256,6 +260,17 @@ class KeyRoutes3D(SlotMixin):
         if self._page != "animate" and vp.bone_tool.meshSelected:
             self.setPage("animate")
         vp.bone_tool.start()
+
+    @Slot()
+    def poseKey(self):
+        """Shift+P: Pose on the selected clay, in and out (pose_qt.py)."""
+        vp = _vp(self)
+        if vp is None:
+            return
+        if vp.pose_tool.on or vp.pose_tool.can:
+            vp.pose_tool.toggle()
+        else:
+            self._set_status("Pose needs one clay selected")
 
     @Slot(str)
     def gizmoKey(self, show):

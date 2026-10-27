@@ -121,6 +121,8 @@ Rectangle {
     // gizmo has no handles; Clay off, this layer is hidden
     ClayStrokes { anchors.fill: parent; z: 11.2 }
     ClayDraw { anchors.fill: parent; z: 11.3; d: viewport.clay.drawObj }   // Clay's Draw, Spin: a left drag draws
+    // Pose: a left drag on the clay poses it, a click holds a spot; its bones, joints and holds (Pose off: hidden)
+    Pose { anchors.fill: parent; z: 11.4; onMenuAt: (x, y) => ctx.openAt(vp, x, y, backend.selected) }
     MeshEdit { anchors.fill: parent; z: 10 }  // Edit mesh: the edges, the picked points / edges / faces, the extrude arrow
     Bones { anchors.fill: parent; z: 10.5 }  // a mesh's bone chain (Animate) and the points Bones is placing; draws only
     Gizmo { anchors.fill: parent; z: 11 }   // the selected item's handles; a press off them falls through to the area above

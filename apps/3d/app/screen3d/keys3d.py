@@ -28,6 +28,8 @@ OWN = [
     {"job": "onion", "keys": ["O"], "label": "Onion skin on / off (Animate page)", "area": "Animate"},
     # Bones (bones_qt.py): Shift+B, beside B (Paint, the shared tool key): B was both once; Shift+B keeps the letter
     {"job": "bones_tool", "keys": ["Shift+B"], "label": "Bones: a chain on the selected mesh (Animate page)", "area": "Animate"},
+    # Pose (pose_qt.py): Shift+P, beside P (Poses on the Animate page), on both pages
+    {"job": "pose_tool", "keys": ["Shift+P"], "label": "Pose: drag the selected clay's parts", "area": "Tools"},
     # the gizmo (gizmo_qt.py): which handles the selected item shows (V, Select, shows them all)
     {"job": "gizmo_move", "keys": ["W"], "label": "Move handles only", "area": "Tools"},
     {"job": "gizmo_turn", "keys": ["E"], "label": "Turn handles only", "area": "Tools"},
@@ -81,7 +83,7 @@ ROUTES = {
     "smooth": ("easeKey", "smooth"), "ease_in": ("easeKey", "easeIn"), "ease_out": ("easeKey", "easeOut"),
     "jump": ("easeKey", "hold"),
     "zoom_in": ("zoomKey", 1), "zoom_out": ("zoomKey", -1),
-    "move_tool": ("selectTool",), "paint_tool": ("paintKey",), "onion": ("onionKey",), "bones_tool": ("bonesKey",),
+    "move_tool": ("selectTool",), "paint_tool": ("paintKey",), "onion": ("onionKey",), "bones_tool": ("bonesKey",), "pose_tool": ("poseKey",),
     "gizmo_move": ("gizmoKey", "move"), "gizmo_turn": ("gizmoKey", "turn"), "gizmo_scale": ("gizmoKey", "scale"),
     "mesh_points": ("meshKind", "points"), "mesh_edges": ("meshKind", "edges"), "mesh_faces": ("meshKind", "faces"),
     "mesh_xray": ("meshXray",), "mesh_knife": ("meshKnife",),
