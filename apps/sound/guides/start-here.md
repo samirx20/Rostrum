@@ -117,7 +117,7 @@ the `render_mix` reply says how far and names the best of three ways to reach it
 - **Louder:** `edit_loudness {"apply": "keep_balance"}` sets `maxLimit` to the value that reaches the target (one call, measured; do not set it by hand). More limiting means a
   flatter, denser master; 4 to 6 dB is a loud, pressed one. The balance between tracks does not change.
 
-`{"apply": "best"}` takes the one the reply names best: keep_balance when it raises `maxLimit` by 1 dB or less, else
+`{"apply": "best"}` takes the one the reply names best: keep_balance when it raises `maxLimit` by 1 dB or less and leaves at most ~3 dB of limiting, else
 tame_peaks (the master stays transparent). Raise `maxLimit` further only when the dense sound is what the piece wants.
 
 **Under the target: call `edit_loudness` first.** It reads the last render and answers three ways with measured numbers
