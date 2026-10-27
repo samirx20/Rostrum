@@ -48,6 +48,9 @@ class Rostrum3DView : public QQuickRhiItem {
   // the render thread's core, for a dab started early (post): set when made, null before it goes
   void setCore(r3d::WindowCore* core);
   void answeredSome(int n) { unanswered_ -= n; }
+  // held by the render thread while it uses the core (render(), up to its replies): a dab is started early only
+  // while the render thread is not inside the core, never under a scene, a view or a pose it is drawing (CL7b)
+  std::mutex& coreBusy() { return busyM_; }
 
  Q_SIGNALS:
   // replies carry, besides the engine's own fields, "frame" (the frame that drew it) and "tRender0"/"tRender1"
@@ -68,6 +71,7 @@ class Rostrum3DView : public QQuickRhiItem {
   // (WindowCore::ahead): it runs while the request travels to the render thread (Qt's polish and sync, or the frame
   // before still being shown), which then only writes the blocks and draws.
   std::mutex coreM_;
+  std::mutex busyM_;
   r3d::WindowCore* core_ = nullptr;
   std::atomic<int> unanswered_{0};
   QString glRenderer_;
