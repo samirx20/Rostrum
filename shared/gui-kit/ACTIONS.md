@@ -49,6 +49,13 @@ the hub says the action's own words: its `done` (`Action(..., done="Grouped {wha
 "<label> · <what>" ("Auto layout · 3 layers"). An app's own sentence always wins; this is the floor, so a new action
 can never act silently. Give an action a `done` when its past tense reads better than its label.
 
+**Answer on the press (1.21 rules 1–2; `rostrum_gui/ack.py`).** Kit controls show their pressed look on the mouse-down,
+with no fade. A person's press of an action known to be long (`Action(..., heavy=True)`, or its last run took 0.2 s or
+more) waits one frame so its press and "Group · 200 layers…" reach the screen, then runs; past 1 s the top bar's job
+chip shows. A long part that should be stoppable hands itself to `ACK.in_turns(generator)` (it yields between steps, a
+number = progress), which makes the chip's Cancel real; a plain action's chip says it can't be stopped part-way. A
+press during the wait runs after it, never dropped. Quick actions, scripts and agents run at once, as before.
+
 ## Notes for Team Hem (Rostrum2D)
 
 2D runs on the kit list on `team/sam` (commit 9a0ee57):

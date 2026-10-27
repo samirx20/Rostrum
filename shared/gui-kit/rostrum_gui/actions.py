@@ -54,6 +54,7 @@ class Action:
     do: str = ""                              # an app's own non-operation action ("copy", "rename")
     why: str = ""                             # the app's own sentence for why it isn't offered
     done: str | Callable = ""                 # what it says it did when the app said nothing: "Grouped {what}" or done(what) (told.py)
+    heavy: bool = False                       # known to take a while (a whole song's Repeat): its working line shows at once (ack.py)
     release: str = ""                         # a hold key let go: the app's own "do" run then (only if the press ran)
     # Amounts (the kit's amounts popover, amounts.py): the names of its operation's parameters a person may set; then
     # calls(facts, amounts) gets {name: value} (empty = the operation's defaults). A button runs it at once with the

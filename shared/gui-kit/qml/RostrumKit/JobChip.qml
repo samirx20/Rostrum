@@ -6,7 +6,8 @@ import "."
 // open its sheet or Cancel. A failed job stays, in red, with the reason, until read (Dismiss). Absent otherwise: when
 // a job is done the message line carries the result. `narrow` (the top bar ran short): the dot and the per cent.
 // `job`: an object with state, note, progress (0..1, or -1), cancellable, cancel(), dismiss(), setOpen(bool)
-// (rostrum_gui.export_sheet.ExportSheet is one).
+// (rostrum_gui.export_sheet.ExportSheet is one; so is a running action's, rostrum_gui.ack.AckJob, with no sheet to open:
+// a job that can't be cancelled says so, never shows a Cancel that does nothing).
 Rectangle {
     id: chip
     property var job
@@ -14,6 +15,7 @@ Rectangle {
     readonly property string state_: job ? job.state : ""
     readonly property bool failed: state_ === "failed"
     readonly property bool shown: state_ === "running" || failed
+    readonly property bool sheet: !!job && typeof job.setOpen === "function"      // an export's: "Open Export" (an action's run has none: ack.py)
     readonly property string pct: job && job.progress >= 0 ? Math.round(job.progress * 100) + " %" : ""
     readonly property string words: !shown ? "" : failed ? "Export failed"
                                     : (job.note || "Working") + (pct ? " · " + pct : "…")
@@ -69,11 +71,14 @@ Rectangle {
                 Rectangle { height: parent.height; radius: 2; color: Theme.accent
                             width: chip.job && chip.job.progress >= 0 ? parent.width * chip.job.progress : parent.width / 4 }
             }
+            Text { visible: !chip.failed && !!chip.job && !chip.job.cancellable; width: parent.width; wrapMode: Text.Wrap
+                   text: "This can't be stopped part-way: it finishes by itself."
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Text { visible: chip.failed; width: parent.width; wrapMode: Text.Wrap; text: "Nothing was replaced: the old file is kept."
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
             Row {
                 anchors.right: parent.right; spacing: Theme.gap
-                Button { text: "Open Export"; kind: "ghost"; onClicked: { pop.close(); chip.job.setOpen(true) } }
+                Button { visible: chip.sheet; text: "Open Export"; kind: "ghost"; onClicked: { pop.close(); chip.job.setOpen(true) } }
                 Button { visible: !chip.failed && chip.job && chip.job.cancellable; text: "Cancel"
                          onClicked: { pop.close(); chip.job.cancel() } }
                 Button { visible: chip.failed; text: "Dismiss"; onClicked: { pop.close(); chip.job.dismiss() } }

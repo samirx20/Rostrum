@@ -16,20 +16,27 @@ Item {
     property string tip: ""              // its name, in words: shown under it while the pointer rests on it
     property string help: ""             // hover help: one plain sentence of what it does (INTERACTION.md 1.17)
     property string job: ""              // its key map job: the key shown in the hover help (AppShell.keyFor)
+    property bool working: false         // what its click started is still running (ack.py): it stays pressed
     readonly property bool hovered: hoverHandler.hovered
     signal clicked()
     implicitWidth: Theme.button; implicitHeight: Theme.button
     activeFocusOnTab: true
-    Keys.onSpacePressed: clicked()
-    Keys.onReturnPressed: clicked()
+    Keys.onSpacePressed: { if (typeof ack !== "undefined" && ack) ack.by(b); clicked() }
+    Keys.onReturnPressed: { if (typeof ack !== "undefined" && ack) ack.by(b); clicked() }
 
     HoverHandler { id: hoverHandler; cursorShape: Qt.PointingHandCursor }
-    Rectangle {
+    Rectangle {          // at rest and hovered: the hover fades in
         anchors.fill: parent; radius: Theme.radiusCtl
-        color: area.pressed || b.down ? Theme.active : b.hovered ? Theme.hover : b.kind === "ghost" ? "transparent" : Theme.raised
-        border.width: b.activeFocus ? 1 : 0; border.color: Theme.accent
+        color: b.hovered ? Theme.hover : b.kind === "ghost" ? "transparent" : Theme.raised
         Behavior on color { ColorAnimation { duration: Theme.fast } }
     }
+    Rectangle {          // pressed, on or working: in the frame of the press, never faded (INTERACTION principle 1)
+        objectName: "pressLook"
+        anchors.fill: parent; radius: Theme.radiusCtl
+        visible: area.pressed || b.down || b.working; color: Theme.active
+    }
+    Rectangle { anchors.fill: parent; radius: Theme.radiusCtl; color: "transparent"; visible: b.activeFocus
+                border.width: 1; border.color: Theme.accent }
     readonly property color ink: b.danger ? Theme.danger : b.hovered || b.down ? Theme.fg : Theme.fg2
     Text {
         anchors.centerIn: parent
@@ -52,7 +59,7 @@ Item {
         }
     }
     ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: 18; height: 18 }
-    MouseArea { id: area; anchors.fill: parent; onClicked: b.clicked() }
+    MouseArea { id: area; anchors.fill: parent; onClicked: { if (typeof ack !== "undefined" && ack) ack.by(b); b.clicked() } }
     HoverTip { text: b.tip; help: b.help; key: b.job && b.Window.window && b.Window.window.keyFor ? b.Window.window.keyFor(b.job) : ""
                hovered: b.hovered; pressed: area.pressed || b.down }
 }
