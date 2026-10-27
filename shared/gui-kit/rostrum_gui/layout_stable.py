@@ -14,7 +14,8 @@ side panel opened beside it: `slid`): all fine. What moves on its own (a meter, 
 playhead, a blinking caret) is read twice before the click and left out.
 
 Which controls: clickable, enabled, wholly shown, not a text box, not the canvas (AREA_MAX of the window), not one whose
-words say it leaves the state or touches the machine (SKIP: open/save/export/delete/quit/play/record/download ... and
+words say it leaves the state or touches the machine (SKIP: open/save/export/delete/quit/play/record/download, the
+window's minimise / maximise (moving the window buttons is their job) ... and
 any "…", which opens a dialog), and only the top popup's when one is open. Spread over the panels, the lowest first
 (it has the most above it), at most MAX_CLICKS per state and BUDGET_S, and a control tried in an earlier state of the
 same run is not tried again (<out>/stable-tried.txt). After each click: Esc when it opened a popup, and when the
@@ -39,7 +40,7 @@ POPUP_MS = 300
 AREA_MAX = 0.04
 SKIP = re.compile(r"\b(open|save|export|import|render|bounce|delete|remove|clear|reset|discard|revert|quit|exit|close|"
                   r"new|play|stop|record|rec|listen|audition|hear|preview|download|install|generate|clean|transcribe|"
-                  r"caption|speak|connect|report|send|browse|file|folder|show file|reveal)\b|…|\.\.\.|▶|●|⏺", re.I)
+                  r"caption|speak|connect|report|send|browse|file|folder|show file|reveal|minimi[sz]e|maximi[sz]e|restore)\b|…|\.\.\.|▶|●|⏺", re.I)
 WORDS = ("objectName", "text", "tip", "help", "glyph", "label", "title", "name")
 INPUT = ("QQuickTextInput", "QQuickTextEdit")
 
