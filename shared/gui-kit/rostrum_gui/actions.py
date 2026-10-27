@@ -109,9 +109,12 @@ def plural(kind: str) -> str:
 class ActionList:
     _listing = False                          # inside `listed`: a `sure` action's calls are not made
 
-    def __init__(self, actions, keymap, noun: str = "item", short_menu: tuple | None = None):
-        """`short_menu`: right-click lists only those jobs (SHORT_MENU); None = every valid action (not moved yet)."""
+    def __init__(self, actions, keymap, noun: str = "item", short_menu: tuple | None = None, panel_keeps: tuple = ()):
+        """`short_menu`: right-click lists only those jobs (SHORT_MENU); None = every valid action (not moved yet).
+        `panel_keeps`: jobs of the short menu the settings panel shows as well (Group / Ungroup always do: views.KEEP),
+        so an app's own row of them goes through the panel like every other ("forward", "backward": 2D's Order)."""
         self.actions, self.keymap, self.noun, self.short_menu = list(actions), keymap, noun, short_menu
+        self.panel_keeps = tuple(panel_keeps)
         ids = [a.id for a in self.actions]
         if len(set(ids)) != len(ids):
             raise ValueError(f"two actions share an id: {sorted({i for i in ids if ids.count(i) > 1})}")
