@@ -2,12 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string>
 #include <vector>
 
 #include <pxr/base/gf/matrix3d.h>
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/usd/usdSkel/utils.h>
+#include <tbb/parallel_for.h>
 
 #include "json_read.h"
 
@@ -92,6 +94,15 @@ SkinParts read_parts(const JsObject& o, size_t bones, const std::string& where) 
   return p;
 }
 
+// CL7b: how wide the band where two pieces' shares cross is: the spread's blur, × the limb's blend
+constexpr double kShareWidth = 1.5;
+constexpr int kShareRings = 2;   // outside cells round the clay with shares too (a surface point sits between cells)
+constexpr int kShareMost = 256;  // spreading steps at most (a very fine grid's band comes out a little narrower)
+// the share spreads only round the limb's joint: within this × blend of it, or the whole patch where its root meets
+// the body (make_shares); elsewhere (an arm resting on the belly, a hanging forearm by the hip) each cell keeps its
+// own piece, sharpened (shares_at), so a touching limb neither drags the body along nor leaves "+" marks
+constexpr double kShareReach = 3.0;
+
 double fade(double x) {  // 1 up to 1, smoothly down to 0 at 2
   if (x <= 1) return 1;
   if (x >= 2) return 0;
@@ -101,34 +112,196 @@ double fade(double x) {  // 1 up to 1, smoothly down to 0 at 2
 
 }  // namespace
 
-int SkinParts::piece_at(const double p[3]) const {
-  double c[3];
-  int i[3];
-  for (int a = 0; a < 3; ++a) {
-    c[a] = (p[a] - origin[a]) / cell - 0.5;  // in cell-centre units
-    i[a] = int(std::floor(c[a] + 0.5));
-  }
-  auto at = [&](int x, int y, int z) -> int {
-    if (x < 0 || y < 0 || z < 0 || x >= dims[0] || y >= dims[1] || z >= dims[2]) return 255;
-    return cells[(size_t(z) * size_t(dims[1]) + size_t(y)) * size_t(dims[0]) + size_t(x)];
-  };
-  const int own = at(i[0], i[1], i[2]);
-  if (own != 255) return own;
-  int best = -1;
-  double dbest = 1e300;
-  for (int dz = -1; dz <= 1; ++dz)
-    for (int dy = -1; dy <= 1; ++dy)
-      for (int dx = -1; dx <= 1; ++dx) {
-        const int v = at(i[0] + dx, i[1] + dy, i[2] + dz);
-        if (v == 255) continue;
-        const double ex = i[0] + dx - c[0], ey = i[1] + dy - c[1], ez = i[2] + dz - c[2];
-        const double d = ex * ex + ey * ey + ez * ez;
-        if (d < dbest) best = v, dbest = d;
+void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
+  share.clear();
+  joint.assign(pieces.size(), {0, 0, 0, 0});
+  const int P = int(pieces.size());
+  if (P < 2) return;
+  const int nx = dims[0], ny = dims[1], nz = dims[2];
+  const size_t N = cells.size();
+  auto at = [&](int x, int y, int z) { return (size_t(z) * size_t(ny) + size_t(y)) * size_t(nx) + size_t(x); };
+  auto in = [&](int x, int y, int z) { return x >= 0 && y >= 0 && z >= 0 && x < nx && y < ny && z < nz; };
+  // each limb's joint and reach: kShareReach × its blend, or farther, to cover the whole patch where its root meets
+  // the clay round it (its cells beside another piece's, 26-connected, the patch with the cell nearest the joint) and
+  // a blend beyond; other patches (a forearm resting on the hip) stay sharp
+  for (int n = 1; n < P; ++n) {
+    const Piece& pc = pieces[size_t(n)];
+    if (pc.first < 0 || size_t(pc.first) >= rest.size() || !(pc.blend > 0)) continue;
+    const double* h = rest[size_t(pc.first)].data();
+    double reach = kShareReach * pc.blend;
+    std::vector<int> face(N, -1);  // the patch cells: 0 found, 1 in the root's patch
+    size_t first = N;
+    double dfirst = 1e300;
+    auto dist = [&](size_t i) {
+      const int x = int(i % size_t(nx)), y = int((i / size_t(nx)) % size_t(ny)), z = int(i / (size_t(nx) * size_t(ny)));
+      const double dx = origin[0] + (x + 0.5) * cell - h[0], dy = origin[1] + (y + 0.5) * cell - h[1],
+                   dz = origin[2] + (z + 0.5) * cell - h[2];
+      return std::sqrt(dx * dx + dy * dy + dz * dz);
+    };
+    for (int z = 0; z < nz; ++z)
+      for (int y = 0; y < ny; ++y)
+        for (int x = 0; x < nx; ++x) {
+          if (cells[at(x, y, z)] != n) continue;
+          const int nb[6][3] = {{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z}, {x, y + 1, z}, {x, y, z - 1}, {x, y, z + 1}};
+          bool other = false;
+          for (const auto& q : nb)
+            if (in(q[0], q[1], q[2])) {
+              const int v = cells[at(q[0], q[1], q[2])];
+              other = other || (v != 255 && v != n);
+            }
+          if (!other) continue;
+          const size_t i = at(x, y, z);
+          face[i] = 0;
+          if (const double d = dist(i); d < dfirst) dfirst = d, first = i;
+        }
+    if (first < N) {
+      std::vector<size_t> todo{first};
+      face[first] = 1;
+      double farthest = dfirst;
+      while (!todo.empty()) {
+        const size_t i = todo.back();
+        todo.pop_back();
+        farthest = std::max(farthest, dist(i));
+        const int x = int(i % size_t(nx)), y = int((i / size_t(nx)) % size_t(ny)), z = int(i / (size_t(nx) * size_t(ny)));
+        for (int dz = -1; dz <= 1; ++dz)
+          for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+              if (!in(x + dx, y + dy, z + dz)) continue;
+              const size_t j = at(x + dx, y + dy, z + dz);
+              if (face[j] == 0) face[j] = 1, todo.push_back(j);
+            }
       }
-  return best;
+      reach = std::max(reach, farthest + pc.blend);
+    }
+    joint[size_t(n)] = {h[0], h[1], h[2], reach};
+  }
+  // the cells that get shares: inside ones (1), then kShareRings rings of outside ones round them (2, 3 …)
+  std::vector<unsigned char> valued(N, 0);
+  for (size_t i = 0; i < N; ++i) valued[i] = cells[i] != 255;
+  std::vector<std::vector<size_t>> rings(kShareRings);
+  for (int r = 0; r < kShareRings; ++r) {
+    for (int z = 0; z < nz; ++z)
+      for (int y = 0; y < ny; ++y)
+        for (int x = 0; x < nx; ++x) {
+          if (valued[at(x, y, z)]) continue;
+          bool touches = false;
+          for (int dz = -1; dz <= 1 && !touches; ++dz)
+            for (int dy = -1; dy <= 1 && !touches; ++dy)
+              for (int dx = -1; dx <= 1 && !touches; ++dx)
+                touches = in(x + dx, y + dy, z + dz) && valued[at(x + dx, y + dy, z + dz)];
+          if (touches) rings[size_t(r)].push_back(at(x, y, z));
+        }
+    for (size_t i : rings[size_t(r)]) valued[i] = static_cast<unsigned char>(2 + r);
+  }
+  share.assign(size_t(P - 1) * N, std::numeric_limits<float>::quiet_NaN());
+  tbb::parallel_for(1, P, [&](int n) {
+    float* out = share.data() + size_t(n - 1) * N;
+    std::vector<float> f(N, 0.0f);
+    for (size_t i = 0; i < N; ++i) f[i] = cells[i] == n ? 1.0f : 0.0f;
+    const Piece& pc = pieces[size_t(n)];
+    if (joint[size_t(n)][3] > 0) {
+      // spread through the inside round the joint only: each step an inside cell there takes the mean of itself and
+      // its inside neighbours (a blur of about sqrt(2 × steps / 7) cells along the clay, never across air); the
+      // cells beyond the reach stay as they are
+      const double* at_joint = joint[size_t(n)].data();
+      const double sigma = std::max(kShareWidth * pc.blend / cell, 0.5), reach = at_joint[3];
+      const int steps = std::min(kShareMost, int(std::lround(3.5 * sigma * sigma)));
+      int lo[3], hi[3];
+      for (int a = 0; a < 3; ++a) {
+        lo[a] = std::max(0, int(std::floor((at_joint[a] - reach - origin[a]) / cell)) - 1);
+        hi[a] = std::min(dims[a] - 1, int(std::ceil((at_joint[a] + reach - origin[a]) / cell)) + 1);
+      }
+      auto by_joint = [&](int x, int y, int z) {
+        const double dx = origin[0] + (x + 0.5) * cell - at_joint[0], dy = origin[1] + (y + 0.5) * cell - at_joint[1],
+                     dz = origin[2] + (z + 0.5) * cell - at_joint[2];
+        return dx * dx + dy * dy + dz * dz <= reach * reach;
+      };
+      std::vector<float> g = f;
+      for (int it = 0; it < steps; ++it) {
+        for (int z = lo[2]; z <= hi[2]; ++z)
+          for (int y = lo[1]; y <= hi[1]; ++y)
+            for (int x = lo[0]; x <= hi[0]; ++x) {
+              const size_t i = at(x, y, z);
+              if (cells[i] == 255 || !by_joint(x, y, z)) continue;
+              double sum = f[i];
+              int cnt = 1;
+              const int nb[6][3] = {{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z},
+                                    {x, y + 1, z}, {x, y, z - 1}, {x, y, z + 1}};
+              for (const auto& q : nb)
+                if (in(q[0], q[1], q[2]) && cells[at(q[0], q[1], q[2])] != 255) sum += f[at(q[0], q[1], q[2])], ++cnt;
+              g[i] = float(sum / cnt);
+            }
+        std::swap(f, g);
+      }
+    }
+    for (size_t i = 0; i < N; ++i)
+      if (valued[i] == 1) out[i] = f[i];
+    for (int r = 0; r < kShareRings; ++r)  // an outside cell: the mean of its neighbours valued before its ring
+      for (size_t i : rings[size_t(r)]) {
+        const int x = int(i % size_t(nx)), y = int((i / size_t(nx)) % size_t(ny)), z = int(i / (size_t(nx) * size_t(ny)));
+        double sum = 0;
+        int cnt = 0;
+        for (int dz = -1; dz <= 1; ++dz)
+          for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+              if (!in(x + dx, y + dy, z + dz)) continue;
+              const size_t j = at(x + dx, y + dy, z + dz);
+              if (valued[j] && valued[j] < 2 + r) sum += out[j], ++cnt;
+            }
+        out[i] = cnt ? float(sum / cnt) : 0.0f;
+      }
+  });
 }
 
-double SkinParts::gate(int piece, int b, const double p[3], const std::vector<std::array<double, 6>>& rest) const {
+bool SkinParts::shares_at(const double p[3], double* out) const {
+  const int P = int(pieces.size());
+  if (P < 2) {
+    if (P == 1) out[0] = 1;
+    return P == 1;
+  }
+  const size_t N = cells.size();
+  int i0[3];
+  double t[3];
+  for (int a = 0; a < 3; ++a) {  // trilinear between the 8 cell centres round p (clamped to the grid)
+    const double c = std::clamp((p[a] - origin[a]) / cell - 0.5, 0.0, double(dims[a] - 1));
+    i0[a] = std::min(int(std::floor(c)), std::max(dims[a] - 2, 0));
+    t[a] = dims[a] > 1 ? c - i0[a] : 0.0;
+  }
+  for (int n = 0; n < P; ++n) out[n] = 0;
+  double wsum = 0;
+  for (int corner = 0; corner < 8; ++corner) {
+    size_t i = 0, stride = 1;
+    double wt = 1;
+    for (int a = 0; a < 3; ++a) {
+      const int up = (corner >> a) & 1;
+      i += size_t(std::min(i0[a] + up, dims[a] - 1)) * stride;
+      stride *= size_t(dims[a]);
+      wt *= up ? t[a] : 1 - t[a];
+    }
+    if (wt <= 0 || std::isnan(share[i])) continue;  // no clay near that cell
+    wsum += wt;
+    for (int n = 1; n < P; ++n) out[n] += wt * share[size_t(n - 1) * N + i];
+  }
+  if (wsum < 1e-9) return false;
+  double limbs = 0;
+  for (int n = 1; n < P; ++n) {
+    out[n] /= wsum;
+    // beyond the joint's reach the share is sharpened (a crease between a resting limb and the body splits within
+    // a fraction of a cell, so a body point beside a limb cell stays the body's); smoothly towards the joint
+    const auto& j = joint[size_t(n)];
+    const double dx = p[0] - j[0], dy = p[1] - j[1], dz = p[2] - j[2];
+    const double k = j[3] > 0 ? std::clamp((j[3] - std::sqrt(dx * dx + dy * dy + dz * dz)) * 3 / j[3], 0.0, 1.0) : 0;
+    const double x = std::clamp((out[n] - 0.25) * 2, 0.0, 1.0);
+    out[n] = k * out[n] + (1 - k) * x * x * (3 - 2 * x);
+    limbs += out[n];
+  }
+  out[0] = std::max(0.0, 1 - limbs);
+  const double total = out[0] + limbs;
+  for (int n = 0; n < P; ++n) out[n] /= total;
+  return true;
+}
+
+double SkinParts::gate_in(int piece, int b, const double p[3], const std::vector<std::array<double, 6>>& rest) const {
   if (piece < 0 || piece >= int(pieces.size())) return 1;
   const int mine = bone[size_t(b)];
   if (mine == piece) return 1;
@@ -179,7 +352,11 @@ SkinRig read_skin(const JsObject& skin, const std::string& where) {
       frame.push_back(read_bone_move(jpose[f].GetJsArray()[b], at + "[" + std::to_string(b) + "]"));
     rig.pose.push_back(std::move(frame));
   }
-  if (jparts) rig.parts = std::make_shared<const SkinParts>(read_parts(*jparts, rig.rest.size(), s.at("parts")));
+  if (jparts) {
+    SkinParts parts = read_parts(*jparts, rig.rest.size(), s.at("parts"));
+    parts.make_shares(rig.rest);
+    rig.parts = std::make_shared<const SkinParts>(std::move(parts));
+  }
   return rig;
 }
 
@@ -189,21 +366,59 @@ void skin_weights(const float* xyz, size_t n, const std::vector<std::array<doubl
                   double behind, const SkinParts* parts) {
   const int bones = int(rest.size()), k = skin_influences(rest.size());
   if (k == 0) return;
-  std::vector<std::pair<double, int>> closest(bones);
+  std::vector<std::pair<double, int>> closest(bones), mine(bones);
+  std::vector<double> shares(parts ? parts->pieces.size() : 0), pull(bones), mix(bones);
   for (size_t i = 0; i < n; ++i) {
     const GfVec3d p(xyz[3 * i], xyz[3 * i + 1], xyz[3 * i + 2]);
     const double pd[3] = {p[0], p[1], p[2]};
-    const int piece = parts ? parts->piece_at(pd) : -1;  // -1: every bone may lean on it
+    const bool gated = parts && parts->shares_at(pd, shares.data());  // no clay near: every bone may lean on it
     for (int b = 0; b < bones; ++b) {
       const auto& r = rest[b];
       const GfVec3d a(r[0], r[1], r[2]), t(r[3], r[4], r[5]);
       double dist = segment_distance(p, a, t);
-      if (behind > 0) {  // behind the head: how far back along the axis (metres), added `behind` times
+      // behind the head: how far back along the axis (metres), added `behind` times. CL7b: with parts, a limb's bones
+      // only; the body's own (the low belly is behind the root bone's head) not, or the belly leant on the chest and
+      // swung out with the wave
+      if (behind > 0 && !(parts && parts->bone[size_t(b)] == 0)) {
         const GfVec3d ab = t - a;
         const double len = ab.GetLength();
         if (len > 0) dist += behind * std::max(0.0, -GfDot(p - a, ab) / len);
       }
-      closest[b] = {(parts ? parts->gate(piece, b, pd, rest) : 1.0) / (std::pow(dist, 4) + 1e-12), b};
+      pull[b] = 1.0 / (std::pow(dist, 4) + 1e-12);
+      closest[b] = {pull[b], b};
+    }
+    if (gated) {  // CL7b: each piece's own weights mixed by the point's shares
+      std::fill(mix.begin(), mix.end(), 0.0);
+      // the 4 largest of `mine`, normalised, × share into mix
+      auto add = [&](double share) {
+        std::partial_sort(mine.begin(), mine.begin() + k, mine.end(), std::greater<>());
+        double s = 0;
+        for (int j = 0; j < k; ++j) s += mine[j].first;
+        if (s > 0)
+          for (int j = 0; j < k; ++j) mix[mine[j].second] += share * mine[j].first / s;
+      };
+      for (int pc = 0; pc < int(shares.size()); ++pc) {
+        if (shares[size_t(pc)] <= 0) continue;
+        // a piece's weights: its own bones', and by how far the point is into a joint's blend (the neighbour bone's
+        // gate) those with the neighbour bone too. Mixed by the gate, not multiplied into 1 / distance⁴, so a
+        // nearer neighbour bone's share falls evenly over the blend instead of all at its far end (CL7: the body
+        // under a raised arm went from 70 % arm to 2 % in 1.6 cm and tore)
+        double across = 0;
+        for (int b = 0; b < bones; ++b) {
+          const double g = parts->gate_in(pc, b, pd, rest);
+          if (parts->bone[size_t(b)] != pc) across = std::max(across, g);
+          mine[b] = {g * pull[b], b};
+        }
+        if (across > 0) add(shares[size_t(pc)] * across);
+        if (across < 1) {
+          for (int b = 0; b < bones; ++b) mine[b] = {parts->bone[size_t(b)] == pc ? pull[b] : 0.0, b};
+          add(shares[size_t(pc)] * (1 - across));
+        }
+      }
+      double total = 0;
+      for (int b = 0; b < bones; ++b) total += mix[b];
+      if (total > 0)  // (always: each piece holds a bone)
+        for (int b = 0; b < bones; ++b) closest[b] = {mix[b], b};
     }
     std::partial_sort(closest.begin(), closest.begin() + k, closest.end(), std::greater<>());
     double sum = 0;
