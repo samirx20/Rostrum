@@ -144,7 +144,7 @@ refused, never dropped.
 | `comp` | `width`, `height`, `fps`, `duration` (s), `background`, `shutter` (motion blur angle, 0 = off), `shutterSamples`, `workStart` / `workEnd` (the work area the screen shows on its ruler, s; 0 = none; export a part with `start` / `end`) |
 | `shape` | `shape` = `rect` `ellipse` `triangle` `polygon` `star` `line` `arrow` `arc` `spiral`; `w`, `h`, `radius`; `fill`, `filled`; `stroke`, `strokeColor`, `strokeWidth` |
 | `text` | `body` (the words), `size`, `weight`, `color`, `font` (`inspect_fonts` lists them), `italic`, `align` (`left` `center` `right`), `tracking` (em: 0.1 = a tenth of the letter size, −0.5 to 2), `letterDelay`, `letterOrder` |
-| `path` | `d` (any SVG path data: M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z, so reading it back shows those), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` |
+| `path` | `d` (any SVG path data: M L H V C S Q T A Z, lower case relative; kept as absolute M L C Z, so reading it back shows those), `fill`, `filled`, `stroke`, `strokeColor`, `strokeWidth`, `trimStart`/`trimEnd` (0–1, draw on), `cap`, `dash` + `gap` (px; `dash=0` = solid; key `dashOffset` to march) |
 | `drawing` | `w`, `h` (its canvas, px), `eachFrame`, `loop`, `drawnSoFar` (0–1: key 0 → 1 to paint its strokes on in the order they were painted) |
 | `group` | `w`, `h`, `clip`, `layout` (auto layout), `background` + `bgColor` + `bgRadius` (a box behind its layers) |
 
