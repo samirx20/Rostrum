@@ -46,13 +46,16 @@ Motion blur never crosses a cut.
 | `frame.fit … at=3 ease=easeInOut` | The same, and the move into it takes that ease (any key ease name: `smooth`, `easeInOut`, `snappy`, `linear` …). It goes on the key the move starts from (the frame's key before `at`, or the 0 s key the fit adds). |
 | `frame.cut at=2.4` | Two keys: the frame's place one frame before `at` with the Hold ease, and the same place at `at`. Then move the frame to the next shot: that sets the key at `at`. |
 | `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
-| `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. |
+| `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. Already home there: x, y and zoom are keyed there (a hold). |
 
 In a script: `f.fit(["hills", "tree"], at=4, ease="easeInOut")`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
-A fit where the frame already is changes nothing and is no error: at 0 s, or on a still frame, nothing is keyed; on an
-animated frame after 0 s its place is keyed there, a hold the next fit moves on from. So shots can be written in time
-order — `f.fit(rect=wide, at=0)`, `f.fit(rect=wide, at=2)` (hold until 2 s), `f.fit(["tree"], at=5, ease="easeInOut")`
-(an eased push from 2 s to 5 s).
+A fit where the frame already is is no error. After 0 s its place is keyed there all the same (and at 0 s where it
+was, if that field had no keys yet): a hold the next fit moves on from. Only at 0 s on a still frame is nothing keyed.
+`f.home(at=…)` on a frame already home holds it the same way (x, y and zoom keyed there), never a refusal. So shots
+can be written in time order — `f.fit(rect=wide, at=0)`, `f.fit(rect=wide, at=2)` (hold until 2 s),
+`f.fit(["tree"], at=5, ease="easeInOut")` (an eased push from 2 s to 5 s); `f.home(at=22)` then `f.fit(rect, at=30)`
+holds at home until 22 s, then pushes in. A frame holds its first key's value before it, so a move written alone
+(one fit at 30 s) runs from 0 s: key where it should start.
 
 **On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
 (**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
@@ -60,8 +63,8 @@ outside a corner turns it (see [the-screen.md](the-screen.md) part 2). You also 
 it will show there; a push in draws smaller outlines), and its keys as squares. Drag a square to move the frame at
 that key (one undo step; it snaps like any dragged thing, **Ctrl** or **Alt** frees it); click a square and drag
 its handles to curve the move. So a push along a curve is two or three keys and a few drags, no typed numbers. A cut
-shows as a dashed line with no dots. The faint path and outlines also show while something else is picked; switch
-them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
+shows as a dashed line with no dots. The faint path (without the outlines) also shows while something else is picked; switch
+it off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
 
 **Framing by clicks.** With the frame picked, the top of the settings panel has **Frame the view** and **Cut here**, and
 its **More** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on

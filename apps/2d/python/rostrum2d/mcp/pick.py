@@ -11,7 +11,7 @@ ITEM_COMP = {
     "comp": {"type": "string", "description": "The composition's id. Default: the longest one (the reply says which, when there are several)."},
 }
 TIME = {
-    "time": {"type": "number", "minimum": 0, "description": "Seconds."},
+    "time": {"type": "number", "minimum": 0, "description": "Seconds. The composition's length itself (30 on a 30 s scene) is its last frame."},
     "frame": {"type": "integer", "minimum": 0, "description": "A whole frame number at the composition's frame rate (instead of time)."},
 }
 
@@ -48,13 +48,16 @@ def comp_of(ctx, args: dict) -> dict:
 
 
 def time_of(ctx, comp: dict, args: dict, key: str = "time", frame_key: str = "frame", default: float = 0.0) -> tuple[float, int]:
-    """(seconds, frame) from `time` or `frame`; both given, or one past the last frame, is an error."""
+    """(seconds, frame) from `time` or `frame`; both given, or one past the last frame, is an error. A `time` at the
+    composition's end (30 on a 30 s scene) is its last frame: the end is where an agent's piece ends, not past it."""
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     frames = round(duration * fps)
     if key in args and frame_key in args:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"{key}" and "{frame_key}"', "were both given", [key, frame_key], "Give one.")
     t = args[frame_key] / fps if frame_key in args else args.get(key, default)
     frame = round(t * fps)
+    if frame_key not in args and frame >= frames and t <= duration + 1e-9:
+        t, frame = (frames - 1) / fps, frames - 1
     if frame >= frames:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, f'"{frame_key if frame_key in args else key}"', f"is at or past the end ({duration} s, {frames} frames at {fps} fps)",
                            hint=f"The last frame is {frames - 1} ({round((frames - 1) / fps, 4)} s).")

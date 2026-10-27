@@ -374,7 +374,10 @@ Item {
                          onEdited: (v) => row.set(v)
                          onScrubStarted: row.bridge.beginScrub(row.model.id)
                          onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
-                         onScrubEnded: row.bridge.endScrub() }
+                         onScrubEnded: row.bridge.endScrub()
+                         forwardsTyping: true                   // a number typed after a click on the slider goes to the box
+                         onTyped: (t) => { const f = amountField.item; if (!f) return
+                                           f.input.forceActiveFocus(); f.input.text = t; f.input.cursorPosition = t.length; f.input.typed = true } }
                 Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its widest words need ("Mixed", either end of its range)
                          width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.widestNeeds : 0)
                          sourceComponent: number }

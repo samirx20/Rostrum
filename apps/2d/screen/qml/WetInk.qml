@@ -35,6 +35,16 @@ Item {
         Image { anchors.fill: parent; source: bx.src; cache: false; smooth: true; asynchronous: false }
         Lay { pic: wi.above; part: "above"; box: bx.box }
     }
+    Repeater {  // strokes lifted before the canvas's picture holds them, kept until it does (wet_kept.py)
+        model: wi.w.kept
+        Image {
+            required property var modelData
+            x: (modelData.x + wi.dx) * wi.zoom; y: (modelData.y + wi.dy) * wi.zoom
+            width: modelData.w * wi.zoom; height: modelData.h * wi.zoom
+            source: "image://wet/" + modelData.part + "-1"
+            cache: false; smooth: true; asynchronous: false
+        }
+    }
     Box {   // its settled part
         visible: wi.w.drySerial > 0
         box: wi.w.dryBox

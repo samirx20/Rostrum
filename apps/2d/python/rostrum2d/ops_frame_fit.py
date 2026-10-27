@@ -118,8 +118,8 @@ def _ease_into(ctx, frame, fid, f, t, ease):
 @R.operation("frame.fit", "Frame something: `to` view or rect (the largest frame-shaped box inside `rect` [x, y, w, h], "
              "world px, keeping the frame's turn), or items (the layers `ids` as they show in the export at `at`, depth "
              "included, with `pad` room). Keys x, y, zoom at `at`; a field with no keys yet is also keyed at 0 s where "
-             "it was. `ease` (a key ease name) shapes the move into it. Already framed there: nothing changes (on an "
-             "animated frame after 0 s the place is keyed, a hold the next fit moves on from). `cut`: jump there (as "
+             "it was. `ease` (a key ease name) shapes the move into it. Already framed there after 0 s: its place is keyed "
+             "anyway (a hold the next fit moves on from); at 0 s on a still frame nothing changes. `cut`: jump there (as "
              "frame.cut).", target=TYPE, label="Frame the view",
              valid_when=UNLOCKED, params=[replace(TO[0], required=True), *TO[1:], AT, EASE,
                                           Param.toggle("cut", label="As a cut", default=False, importance="deep")])
@@ -135,9 +135,9 @@ def frame_fit(ctx, targets, args):
         t = _seconds(ctx, at)
         goal, now = _goal(ctx, frame, timed, t, args, _now(timed, t)["rotation"]), _now(timed, t)
         if all(abs(now[f] - v) < (1e-4 if f == "zoom" else 0.01) for f, v in goal.items()):     # already framed there
-            # no move: a still frame changes nothing; an animated one after 0 s gets its place keyed (a hold the next
-            # fit moves on from, so a script can write its shots in time order)
-            if t <= 0 or not any(keys_of(frame, f) for f in goal):
+            # no move, but after 0 s its place is keyed all the same (and at 0 s where it was): a hold the next fit
+            # moves on from, so a script writes its shots in time order. Unkeyed, the next fit's move started at 0 s.
+            if t <= 0 and not any(keys_of(frame, f) for f in goal):
                 continue
         ease = args.get("ease")
         for f, v in goal.items():
@@ -181,19 +181,22 @@ def frame_cut(ctx, targets, args):
 
 
 @R.operation("frame.home", "Put the frame back home: its centre at home, zoom 1, no turn. A still field changes; an "
-             "animated one gets a key at `at`.", target=TYPE, label="Frame home", importance="secondary",
-             valid_when={"all": [UNLOCKED, {"fact": "frameAway"}]}, params=[AT])
+             "animated one gets a key at `at`. Already home at `at`: keyed there all the same (and at 0 s where it was, "
+             "after 0 s), a hold the next fit or key moves on from, never a refusal.", target=TYPE, label="Frame home",
+             importance="secondary", valid_when=UNLOCKED, params=[AT])
 def frame_home(ctx, targets, args):
     for fid in targets:
         frame = ctx.item(fid)
         _usable(ctx, frame)
         at = args.get("at", 0.0)
-        now = _now(_scene(ctx, fid)[1], _seconds(ctx, at))
+        t = _seconds(ctx, at)
+        now = _now(_scene(ctx, fid)[1], t)
         home = {"x": float(frame.get("homeX", 960.0)), "y": float(frame.get("homeY", 540.0)), "zoom": 1.0, "rotation": 0.0}
-        if all(abs(now[f] - v) < 1e-6 for f, v in home.items()):
-            ctx.fail(codes.BAD_ARGUMENT, f'target "{fid}"', f"is already home at {marked.label(at)}")
+        there = all(abs(now[f] - v) < 1e-6 for f, v in home.items())
         for f, v in home.items():
-            if keys_of(frame, f):
+            if keys_of(frame, f) or (there and f in MOVE):     # (a turn nobody asked for is never keyed)
+                if not keys_of(frame, f) and t > 0:
+                    _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)))
                 _key(ctx, fid, f, at, v)
             else:
                 ctx.set(fid, f, v)

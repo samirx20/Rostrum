@@ -65,11 +65,17 @@ def test_a_cut_holds_one_frame_before_and_follows_its_marker(monkeypatch):
     assert x_at(2.4) == 960 and x_at(3.9) == 960 and x_at(4.0) == 4160
 
 
-def test_framing_a_view_the_frame_already_shows_keys_nothing():
+def test_framing_a_view_the_frame_already_shows_holds_it_there():
+    """2D final critic F2-2: a fit where the frame already is, after 0 s, keys its place there (and at 0 s): the next
+    fit's move starts there, not from 0 s. At 0 s on a still frame nothing changes. Frame home at home holds too (F4-1)."""
     d = scene()
-    call = {"op": "frame.fit", "target": "frame", "args": {"to": "view", "rect": [0, 0, 1920, 1080], "at": 2}}
-    d.apply(call, SAM)                                  # no error: nothing to do
+    d.apply({"op": "frame.fit", "target": "frame", "args": {"to": "view", "rect": [0, 0, 1920, 1080], "at": 0}}, SAM)
     assert not d.item("frame").get("keys")
+    d.apply({"op": "frame.fit", "target": "frame", "args": {"to": "view", "rect": [0, 0, 1920, 1080], "at": 2}}, SAM)
+    keys = sorted((k["prop"], k["t"], k["v"]) for k in d.item("frame")["keys"])
+    assert keys == [("x", 0.0, 960.0), ("x", 2, 960.0), ("y", 0.0, 540.0), ("y", 2, 540.0), ("zoom", 0.0, 1.0), ("zoom", 2, 1.0)]
+    d.apply({"op": "frame.home", "target": "frame", "args": {"at": 4}}, SAM)          # home already: a hold, no refusal
+    assert {k["t"] for k in d.item("frame")["keys"] if k["prop"] == "zoom"} == {0.0, 2, 4}
 
 
 def test_a_script_fits_in_time_order_with_an_eased_move():
