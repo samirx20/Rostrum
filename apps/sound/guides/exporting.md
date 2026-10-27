@@ -44,6 +44,16 @@ to flatten acoustic drums and piano." Under it, one click:
   −14": "Kept dynamic: the file will measure −16.4 LUFS, 2.4 dB under Streaming's −14". Streaming services play a
   quieter file as it is, so the dynamics stay.
 
+**When it would take a lot of limiting** (over ~3 dB, the loudest parts start to sound flat), the sheet also offers
+**Tame the peaks first**: one click finds the gentlest compressor that takes the sharpest attacks off the peakiest track
+(measured by rendering the song a few times in the background; the top bar says what it is doing), adds it first in
+that track's chain with its makeup set so the track sits where it did, and says how much limiting is left ("Peaks tamed
+on Piano … The master now needs 3.8 dB of limiting (was 9.8)"). It is one undo step ("Tame the peaks"); the compressor
+stays in the track's chain to see and change. Then Push to −14 needs far less. *Why not lift the quiet parts instead?*
+The loudness measure leaves out passages more than 10 LU quieter than the loud ones, so raising a soft intro does not
+lower the limiting a loud climax needs; it only makes the intro less soft (an agent can still ask for it: `edit_loudness`
+`lift_quiet`, which says what it would change before anything is changed).
+
 A song that would need more than the master's 12 dB says so and is written at the level it reaches; turn the peakiest
 track down (or tame it) first. After any export the result line says what the file measured: "measured −14.2 LUFS,
 loudest peak −1.3 dBTP, 4.3 dB of limiting".

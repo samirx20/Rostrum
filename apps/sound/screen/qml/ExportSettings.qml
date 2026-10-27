@@ -101,6 +101,16 @@ Column {
             Text { width: parent.width; wrapMode: Text.WordWrap; visible: !!parent.way.said; text: parent.way.said || ""
                    color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
         }
+        Column {   // a lot of limiting would flatten the loud parts: take the peaks off first (one undo step on the song)
+            objectName: "exportTame"
+            readonly property var offer: root.job.tameOffer
+            visible: root.target.shown && offer.shown
+            width: root.width; spacing: Theme.grid
+            Action { objectName: "exportTamePeaks"; visible: !parent.offer.busy; text: "Tame the peaks first"
+                     font.pixelSize: Theme.body; onClicked: root.job.tamePeaks() }
+            Text { width: parent.width; wrapMode: Text.WordWrap; text: parent.offer.said || ""
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+        }
         Row {   // a target is the master's own setting: picking one sets the loudness; it says so and takes it back in one click
             width: root.width; spacing: Theme.gap; visible: root.job.loudnessSaid !== ""
             Text { width: parent.width - (undo.visible ? undo.width + Theme.gap : 0); wrapMode: Text.WordWrap
