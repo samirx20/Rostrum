@@ -55,7 +55,7 @@ def prepare():
     QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
     prefer_fast_gpu()
     env = runtime.runtime_env()
-    for k in ("PATH", "PXR_PLUGINPATH_NAME", "CYCLES_DEVICE"):
+    for k in ("PATH", "PXR_PLUGINPATH_NAME", "PXR_MTLX_PLUGIN_SEARCH_PATHS", "CYCLES_DEVICE"):
         os.environ[k] = env[k]
     _ON[0] = True
     return module_dir()

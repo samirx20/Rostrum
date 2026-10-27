@@ -79,5 +79,10 @@ def runtime_env(base: dict | None = None) -> dict:
     ours = [str(p) for p in plugins]                  # ours first, then whatever the person already set (no duplicates)
     theirs = [p for p in env.get("PXR_PLUGINPATH_NAME", "").split(os.pathsep) if p and p not in ours]
     env["PXR_PLUGINPATH_NAME"] = os.pathsep.join(ours + theirs)
+    # the Rostrum MaterialX block library (a material's blocks, ENGINE_CONTRACT § Blocks): USD's MaterialX reader and
+    # Storm's MaterialX code find our nodedefs there
+    libs = [str(REPO / "apps" / "3d" / "core" / "mtlx"), str(REPO / "apps" / "3d" / "stylized" / "mtlx")]
+    theirs = [p for p in env.get("PXR_MTLX_PLUGIN_SEARCH_PATHS", "").split(os.pathsep) if p and p not in libs]
+    env["PXR_MTLX_PLUGIN_SEARCH_PATHS"] = os.pathsep.join(libs + theirs)
     env.setdefault("CYCLES_DEVICE", "OPTIX")
     return env

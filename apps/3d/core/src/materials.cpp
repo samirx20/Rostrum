@@ -2,6 +2,7 @@
 // image_texture, bump, tangent, texture_coordinate, vector_math, vector_transform); HdCycles matches USD input
 // names to socket names, ignoring case. Node builders: material_nodes.h.
 #include "materials.h"
+#include "material_blocks.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -202,6 +203,11 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   // The Stylized look's own shader, on every material (outputs:rostrum:surface). With Light to colour on, the Cycles
   // surface is rewired once the scene's lights exist (light_to_color.h).
   author_stylized(stage, path, look, base, preview_base, emission * emission_strength, 1.0f - 0.92f * see_through);
+  // The material's blocks (a MaterialX document, material_blocks.h): wired into both surfaces above.
+  if (p.has("blocks")) {
+    const std::string doc = p.str("blocks");
+    if (!doc.empty()) author_blocks(stage, path, id, doc, p.at("blocks"), c, v);
+  }
   p.finish();
 }
 
