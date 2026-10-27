@@ -33,13 +33,14 @@ sits on top of it.
   on purpose). A click selects what is there; a click on empty space selects nothing. Double-click goes back to the
   shot's view.
 - **Right-click** an item (here or in the scene list): the same actions as the settings panel's top and Ctrl+K, only what
-  applies, six at most, each with its key: Edit mesh (Enter), Combine (two solids), Copy material (Ctrl+Alt+C) / Paste
+  applies, eight at most, each with its key: Edit mesh (Enter), Combine (two solids), Copy material (Ctrl+Alt+C) / Paste
   material (Ctrl+Alt+V) on shapes, Look through and Pick what it lights (lights), Focus on a point (a camera with depth of
   field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
   mesh each shape shows, Apply: one undo step, keys on the timeline), **Make copies ›** (a shape, group, import or clay),
   **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected) and **Change near ›** (a
-  copies item), see *Copies and scatter* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
+  copies item), see *Copies and scatter* below, **Simulate ›** (Falls, Stays still, Off; the ✓ is what it is now), see
+  *Simulate* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
   outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
   Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
   while something is selected.
@@ -86,6 +87,8 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
   the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select, and so does picking a shape from
   Shapes (the next click places it). The guide `sculpting` has it all.
+- **Simulate** (while the selected items can be simulated): **Falls**, **Stays still** and **Off** act on the selection at
+  once (what it already is isn't listed). Same as right-click › Simulate; see *Simulate* below.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
   along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
@@ -215,6 +218,29 @@ One thing, many times, without making a thousand items (the guide *copies* has t
   and selected: move it and the copies near it change. Its settings (Radius, Amount, Falloff) are the effector's row under
   the copies in the scene list; key Amount or Radius for change over time.
 
+## Simulate
+
+Things that fall, bounce and settle, computed once and stored (the guide *simulate* has the fields, the script and the agent
+tool). By hand, twelve buds dropping into a bowl:
+
+- **Make the bodies:** select the buds (a copies item counts as one: every copy falls) and right-click › **Simulate ›
+  Falls**; select the bowl, right-click › **Simulate › Stays still**. Each is one undo step; the scene list shows a small
+  badge on each body's row (an arrow down: falls; a block on the ground: stays still). Only items at the top of the scene
+  list can be bodies (move one out of its group first). The ground at height 0 catches them too (Scene panel › Ground).
+- **Their settings:** the settings panel gains a **Simulation** group: Mass from size (as solid plastic) or Mass, Bounce,
+  Friction, Starts (Moving, or Asleep until hit) and Shape (Exact, Box, Sphere). Simulate › Off takes an item out again.
+- **Compute it:** a **Simulation** row appears under the timeline's rows: "Not computed" and **Simulate**. Click it: the bar
+  fills left to right as frames are computed (you can scrub meanwhile), then reads "Stored · 120 frames". Scrubbing and
+  renders read the stored result; nothing recomputes on its own. The record is one undo step.
+- **Out of date:** move the bowl, change a mass, key a body: the bar turns striped, "Out of date", with Simulate. The
+  viewport keeps showing the old result until you simulate again. A render with it out of date computes it first (the
+  render sheet says so on its top line); it never renders a stale one.
+- **When it fails** (a bud starts inside the bowl, something flies away, nothing under them): the row says so in red,
+  with the body, the frame and what to do ("buds copy 7 starts inside bowl at frame 0: move it up 4 mm or set Starts:
+  Asleep until hit"), until you try again.
+- **Nothing selected,** the Scene panel's **Simulation** group says the same in a line ("Drop 03: 12 bodies · stored · up
+  to date"), with Simulate and the **Ground** switch. Ctrl+K: "Simulate Drop 03", and Falls / Stays still / Off.
+
 ## The settings panel (right)
 
 The panel shows what is selected: an item, a material, a shot or a key. With **nothing selected** (Esc, or a click
@@ -282,7 +308,9 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
 - **Left:** the scene as a tree. A group's items sit indented under it, and the arrow folds them. A **combine** is a row with its own icon and its
   inputs indented under it; in a Subtract the cutters carry a minus sign. Ctrl+click and Shift+click pick several. Each row shows its
   material's name, dimmed; click that name to edit the material. Click a row to select the item. Drop a material ball on a row to give
-  that item the material. Right-click a row for its menu.
+  that item the material. Right-click a row for its menu. A body (Simulate) has a small badge at its row's right end.
+- **The Simulation row** (at the bottom, only while the scene has bodies): Simulate, and the stored result as a bar over
+  the shot's frames: empty, filling, solid (stored), striped (out of date), red (failed). See *Simulate* above.
 - **Right, on the same rows:** an animated item's keys as diamonds on a slim bar from its first key to its last.
   - The selected item opens a row for each animated setting, and a second line where two of its animations overlap in time.
   - Click a diamond to pick its key (the settings panel shows the key); Ctrl+click adds one, Shift+click picks the run between,

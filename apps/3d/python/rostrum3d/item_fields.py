@@ -16,6 +16,7 @@ from .material_fields import MATERIAL
 from .mesh_fields import MESH
 from .render_fields import RENDER
 from .rig_fields import RIG
+from .sim import fields as SIM
 
 COMBINE_OPS = ["union", "subtract", "intersect"]
 SOLIDS = ("mesh", "combine")                                   # what a combine combines
@@ -77,6 +78,7 @@ FIELDS: dict[str, list[Param]] = {
         C("background", "Background", "Frame", "#000000", S, help="What shows where nothing is (not a light)"),
 
         *RENDER,
+        *SIM.SHOT,                      # sim/fields.py: the ground, the stored result, Timing and Simplify
     ],
     # A camera rig (rigs.py): holds the camera; its own transform is the base, without aim or scale.
     "rig": RIG + [dataclasses.replace(p, valid_when=None) for p in TRANSFORM
@@ -109,3 +111,5 @@ FIELDS: dict[str, list[Param]] = {
                    help="One value per field, in the same order"),
     ],
 }
+for _type in SIM.TYPES:                 # sim/fields.py: what a body is made of and how it starts (top-level items only)
+    FIELDS[_type] = FIELDS[_type] + SIM.ITEM

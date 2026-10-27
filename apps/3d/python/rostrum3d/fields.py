@@ -22,6 +22,7 @@ from .clay_fields import STILL as CLAY_STILL
 from .copies_fields import STILL as COPIES_STILL
 from .light_fields import KIND_DEFAULTS as LIGHT_KIND_DEFAULTS, KINDS as LIGHT_KINDS, STILL as LIGHT_STILL  # noqa: F401
 from .mesh_fields import SHAPES  # noqa: F401
+from .sim import fields as SIM
 
 KIND_DEFAULTS = {"light": ("kind", LIGHT_KIND_DEFAULTS)}   # {item type: (its choice field, {choice: starting values})}
 ITEMS = ("group", "mesh", "combine", "import", "light", "camera", "rig", "clay", "copies")      # scene items (USD prims)
@@ -36,7 +37,7 @@ LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", 
          "effector": ["keys"],
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)
-DATA_GROUPS = {"Mesh data", "Bone data", "Mirror data"}   # data an operation writes (a mesh's points, a bone's head, a mirrored copy's link), never rows
+DATA_GROUPS = {"Mesh data", "Bone data", "Mirror data", "Simulation data"}   # data an operation writes (a mesh's points, a bone's head, a mirrored copy's link), never rows
 STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint")},   # a mesh's shape is built once
          "light": LIGHT_STILL,
          "combine": {"op"},
@@ -44,6 +45,8 @@ STILL = {"mesh": {p.name for p in FIELDS["mesh"] if p.group in ("Shape", "Paint"
          "clay": CLAY_STILL,                     # its brush settings and detail
          "bone": {"x", "y", "z", "length"},       # a bone moves only by its Turn
          "*": {"aim"}}
+for _type in SIM.TYPES:                          # the Simulation group is never keyed (sim/fields.py)
+    STILL[_type] = STILL.get(_type, set()) | SIM.NAMES
 LABELS = {"group": "Group", "mesh": "Mesh", "combine": "Combine", "import": "Import", "part": "Part", "light": "Light", "camera": "Camera", "rig": "Camera rig",
           "material": "Material", "shot": "Shot", "key": "Key", "pose": "Pose",
           "bone": "Bone", "clay": "Clay", "copies": "Copies", "effector": "Change near", "claystep": "Clay step"}
