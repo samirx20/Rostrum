@@ -143,9 +143,9 @@ class SoundBridge(AgentDemo, HistorySlots, ViewSlots, PictureSlots, SongSlots, L
         return self._view["song"]
 
     def _dock_changed(self):
-        self._kept_view().keep_tools({"dock": self.workspace.dock})      # a reopen shows the same tool (view_kept.py)
         self.model.update(self._rows(), instant=True)
         self._editor_zoom()                 # the Editor opens at a working zoom (view_slots.py)
+        self._kept_view().keep_tools({"dock": self.workspace.dock})      # a reopen shows the same tool (view_kept.py)
 
     @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):
