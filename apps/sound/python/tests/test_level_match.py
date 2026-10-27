@@ -40,3 +40,18 @@ def test_a_song_saved_before_the_starting_balance_sounds_as_before():
     heard = {t["id"]: t["volume"] * preset_level.gain(t, preset_level.FORMAT3) for t in old["tracks"]}
     assert all(abs(sent[k] - heard[k]) < 1e-3 for k in heard)
     assert data["tracks"][0]["volume"] > 1.0          # the new table is lower, so the saved volume rises to keep the sound
+
+
+def test_a_song_saved_before_the_three_phrase_levels_sounds_as_before():
+    """Format 8 -> 9 re-measured every starting level; a saved song's tracks and volume lanes keep their sound."""
+    old = {"id": "root", "type": "doc", "tempo": 120, "master": [], "tracks": [
+        {"id": "db", "type": "track", "instrument": "builtIn", "builtIn": "basses", "volume": 0.6},
+        {"id": "br", "type": "track", "instrument": "builtIn", "builtIn": "brass", "volume": 0.8,
+         "automation": [{"id": "a", "type": "automation", "lane": "volume", "points": LANE}]}]}
+    data, labels = KIND.migrate(copy.deepcopy(old), 8)
+    assert any("Starting levels re-measured" in w for w in labels)
+    sent = {t["id"]: t for t in compile(data)["tracks"]}
+    for t in old["tracks"]:
+        assert abs(sent[t["id"]]["volume"] - t["volume"] * preset_level.gain(t, preset_level.FORMAT8)) < 1e-3
+    g = preset_level.gain(old["tracks"][1], preset_level.FORMAT8)
+    assert all(abs(a[1] - b[1] * g) < 1e-3 for a, b in zip(sent["br"]["automation"]["volume"], LANE))
