@@ -88,7 +88,8 @@ def render_video(ctx, args):
                  "sound, or sound was off)")
         also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
-                     f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said}',
+                     f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said} '
+                     f'Before calling it done, look at it: look_frame what "sheet", start {start:g}, end {end:g}.',
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),

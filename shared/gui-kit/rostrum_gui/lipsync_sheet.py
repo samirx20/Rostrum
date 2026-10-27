@@ -1,8 +1,8 @@
 """Lip sync… (UX_SPEC 3.23; qml/RostrumKit/LipSyncSheet.qml, one sheet for 2D and 3D): the project's voice lines (from
 RostrumSound, rostrum_core.lipsync.voice), a row per mouth shape with the drawing / mesh guessed from its name (pick
-another to fix a wrong guess), Apply = one change. A line not heard before is listened to first, off the screen's
-thread (the phone model: a few seconds, longer on a busy machine); the sheet shows "Step n of 3", a bar and the seconds
-so far, the window stays free, and Apply makes the one change when it is done.
+another to fix a wrong guess), Apply = one change. A line not heard before is listened to first, in a process of its
+own (listen_proc.py; the phone model: a few seconds, longer on a busy machine; a stall fails loudly); the sheet shows
+"Step n of 3", a bar and the seconds so far, the window stays free, and Apply makes the one change when it is done.
 
 The app gives a host (duck-typed; the app's bridge is behind it):
     host.folder                          the project folder
@@ -16,7 +16,9 @@ from __future__ import annotations
 import threading
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core.lipsync import mouths, phonemes, voice
+from rostrum_core.lipsync import mouths, voice
+
+from . import listen_proc
 
 
 class LipSyncSheet(QObject):
@@ -135,11 +137,12 @@ class LipSyncSheet(QObject):
         self._busy, self._stage = True, (0, "", 0.0)
         self.changed.emit()
 
-        def listen():
+        def listen():                     # this thread only waits on the listening process's pipe (listen_proc)
             try:
-                phonemes.analyse(line["file"], 0.0, None, line["text"] if line["english"] else None, "english",
-                                 progress=lambda step, of, words, f: self._step.emit(step, words, f))
-                self._heard.emit(None)
+                listen_proc.listen(line["file"], line["text"] if line["english"] else None,
+                                   lambda step, words, f: self._step.emit(step, words, f))
+                self._heard.emit(None if voice.heard(line) else
+                                 RuntimeError("listening finished but its phones are not in the cache"))
             except Exception as e:  # noqa: BLE001  handed back to the screen's thread, said there
                 self._heard.emit(e)
         threading.Thread(target=listen, name="lipsync-listen", daemon=True).start()

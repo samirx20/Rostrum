@@ -18,6 +18,7 @@ HOOKS = frozenset({
     "expr_state", "clear_expr_calls", "rows_context", "sections", "selection_label", "extra_commands",
     "select", "setValue", "run", "open_item", "say", "commands", "historyCount", "undoLabel", "redoLabel", "_commands", "_rows", "_first", "_on_doc", "_before_followers",
     "staticMetaObject", "holds_panel",
+    "beginScrub", "scrub", "endScrub", "cancelScrub",          # an app's own drag of a setting (2D: a rig's pose follows it)
 })
 ONCE = frozenset({"doc", "who", "model", "_kit", "_unsubscribe"})
 

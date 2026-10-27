@@ -18,6 +18,8 @@ FocusScope {
     property bool editable: false       // typing allowed: a click puts the caret in
     property bool engaged: false        // the field says it is in use (scrubbing, list open): accent look
     property bool keepOnRefusal: false  // a refused entry keeps the caret and the typed text, to be fixed (Esc puts the value back)
+    property bool commitSame: false     // a value typed again as it already is is still sent (an animated setting keys a hold there:
+                                        // typing 180 at 14.3 s after a key of 180 at 13.9 s made no key, critic 2d-final row 6)
     property string problem: ""         // a refused entry, said in a sentence: the field shows red until the next edit
     property string _said: ""           // what this box put in the top bar; taken back when the entry is put right
     onProblemChanged: {
@@ -30,7 +32,7 @@ FocusScope {
     // key that types (`starts`: any character; a NumberField's digits and sums) starts typing with it; every other key
     // (Enter, Ctrl+G, Delete …) stays the window's, the same every time it opens (critic 2d-r11).
     property bool typeToStart: false
-    property bool numeric: false        // a number box: a key it cannot use (Delete with nothing after the caret, a letter) is the window's (KeyMap)
+    property bool numeric: false        // a number box: a key it cannot use (Delete with nothing after the caret, a letter) does nothing; a letter is said
     property var starts: /^\S$/
     readonly property bool ready: typeToStart && editable && activeFocus && !input.activeFocus
     function startsWith(e) { return ready && !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && starts.test(e.text) }
@@ -63,6 +65,14 @@ FocusScope {
     readonly property real restNeeds: Math.ceil(input.x + rest.implicitWidth + unitRoom + Theme.gap + trailingSlot.width + trailingSlot.anchors.rightMargin)
 
     HoverHandler { id: hoverHandler }
+    // A click anywhere on an editable box puts the caret in. The text line is thinner than the box: a click on its padding
+    // (above or below the words, left of them, by the unit) focused nothing, and the next keys went to the canvas:
+    // Backspace deleted the layer, Home moved the playhead (critic 2d-final row 1). A box that handles its own press (a
+    // number's scrub area) gets it first; the text line itself takes its press as any TextInput does.
+    TapHandler {
+        enabled: f.editable && !input.activeFocus
+        onTapped: (ev) => { input.forceActiveFocus(); input.cursorPosition = input.positionAt(input.mapFromItem(f, ev.position.x, 0).x) }
+    }
 
     Rectangle {  // the box: rounded top, square bottom that the underline closes
         id: box
@@ -119,7 +129,7 @@ FocusScope {
         // a handler may put text back (a refused value): `sent` is what the box holds after it, so Enter + the focus
         // loss that follows commit once and never send the put-back text as a new value
         // A key this box cannot use (numeric boxes only): Delete with nothing after the caret, a letter or any key a number never
-        // holds. KeyMap lets it through to the window's shortcut (the box lets go first, keeping what was typed).
+        // holds. It never reaches a window shortcut (KeyMap): the box says a letter (NumberField.saysLetter) and keeps its typing.
         function cannotUse(keys) {         // any one of the job's keys (Delete, Backspace): each press is judged by the key itself (below)
             if (!f.numeric) return false
             const at = cursorPosition, sel = selectedText, n = text.length      // read here: the shortcut's `enabled` follows them
@@ -134,12 +144,13 @@ FocusScope {
         Timer { id: passTimer; interval: 60; onTriggered: input.passing = false }
         // A focused TextInput claims Delete and every plain key before any shortcut is tried, and its own accept is out of QML's
         // reach. So the window's key filter (rostrum_gui/typed_word.py) asks here first, once per fresh press: for a key this box
-        // cannot use the box is read-only for that press, so the shortcut KeyMap allows (cannotUse) runs. A held key never.
+        // cannot use the box is read-only for that press, so it never lands in the number. A held key never.
         function passKey(k) { if (f.numeric && cannotUse([k])) { passing = true; passTimer.restart() } }
         property bool typed: false      // a key was typed since the caret went in: a value typed again as it already is says so (below)
         onTextEdited: typed = true
         function commit() {
             if (text !== f.text && text !== f.editText && text !== sent) { sent = text; if (f.keepOnRefusal) f.problem = ""; f.committed(text); sent = text }
+            else if (typed && f.commitSame && text !== "" && text !== sent) { sent = text; f.committed(text) }    // typed as it is: a hold key
             else if (typed && f.keepOnRefusal && text !== "" && text !== sent && typeof backend !== "undefined" && backend.tell)   // typed, and as it already is
                 backend.tell("Nothing changed: it already is " + f.text + (f.hasUnit ? " " + f.suffix.trim() : "") + ".")
             typed = false

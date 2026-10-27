@@ -77,7 +77,10 @@ Panel {
                   bottom: panel.hasLast ? lastLine.top : parent.bottom; topMargin: Theme.gap   // scrolled rows stop short of the subtitle
                   bottomMargin: panel.hasLast ? Theme.gap : 0                                     // ... and of the last line
                   rightMargin: Theme.padRight - panel.bodyPad }   // wider than the header: rows end 4 px from the panel's edge (grid)
-        contentHeight: list.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+        // a panel taller than its room ends with a row's room under its last row, which was flush on the bottom edge
+        // (or a sliver of it: the layout check's open Shadow card at 1366 x 768); a short one never moves
+        contentHeight: list.height + (list.height > height ? Theme.row : 0); clip: true; boundsBehavior: Flickable.StopAtBounds
+        WheelScroll { flick: scroller }     // the first click after a wheel scroll lands (WheelScroll.qml)
         Column {
             id: list
             width: parent.width
@@ -128,7 +131,7 @@ Panel {
                     }
                 }
             }
-            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null }   // "Effects (n) +" (effects.attach)
+            EffectsRow { part: panel.effects ? panel.bridge.invoke("effects", []) : null; keyMarks: panel.keyMarks }   // "Effects (n) +" (effects.attach)
             Column { id: belowSlot; width: parent.width }
         }
         Text { visible: panel.finds && panel.bridge.nothingFound; text: "No setting matches"; y: Theme.grid

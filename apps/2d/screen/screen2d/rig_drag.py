@@ -3,9 +3,11 @@ gesture = one undo step, made of the operations an agent calls:
 
 - a joint circle: fixes the joint at rest (`rig.move_joint`);
 - a bone in an IK chain (its bones, or a hand / foot hanging from its lower bone): pulls the chain's target with the
-  pointer (`value.set` targetX / targetY; keyed at the playhead once the chain is animated: K);
-- any other bone: turns it about its joint (`value.set` rotation: FK);
+  pointer (`key.add` targetX / targetY at the playhead);
+- any other bone: turns it about its joint (`key.add` rotation at the playhead: FK);
 - right-click a chain's end › Pin / Unpin (`ik.pin`, a hold key at the playhead).
+A pose is keyed at the playhead, always (a pose drag that only changed a still value moved every frame at once and left
+no keys: 2D final critic row 3). The same pose drags start from a press on a bound part (rig_view.pressAt, Stage.qml).
 Pointer points are composition px; they go to the rig's own px through the engine's `place` (placement.own_point).
 """
 from __future__ import annotations
@@ -28,6 +30,9 @@ def chain_bones(rig: dict, ik: dict) -> list[str]:
         out.append(cur)
         cur = up.get(cur, "")
     return out + [b for b, p in up.items() if p == ik["bone"]]
+
+
+SHORT = "Not posed: the drag was too short to move the part (a click only picks its bone). Drag a little further."
 
 
 class RigDrag(QObject):
@@ -97,21 +102,28 @@ class RigDrag(QObject):
                       "args": {"x": round(p[0], 2), "y": round(p[1], 2), "end": how[2]}}]
         elif how[0] == "ik":
             _, ik, t, p0, (tx, ty) = how
-            calls = [{"op": "value.set", "target": [ik], "args": {"prop": f, "at": t, "v": round(v, 2)}}
+            calls = [{"op": "key.add", "target": [ik], "args": {"prop": f, "t": t, "v": round(v, 2)}}
                      for f, v in (("targetX", tx + p[0] - p0[0]), ("targetY", ty + p[1] - p0[1]))]
         else:
             _, bone, t, pivot, a0, r0 = how
             turn = math.degrees(math.atan2(p[1] - pivot[1], p[0] - pivot[0]) - a0)
             turn = (turn + 180) % 360 - 180
-            calls = [{"op": "value.set", "target": [bone], "args": {"prop": "rotation", "at": t, "v": round(r0 + turn, 2)}}]
+            calls = [{"op": "key.add", "target": [bone], "args": {"prop": "rotation", "t": t, "v": round(r0 + turn, 2)}}]
         self.b.guard(lambda: self._drag.preview(calls))
 
     @Slot()
     def end(self):
-        """Let go: one change (nothing when it didn't move)."""
+        """Let go: one change. A drag too short to change the pose says so on the status line (hand maker C, C11: an
+        8 px drag left no key and no word)."""
         d, self._drag = self._drag, None
         if d is not None:
-            self.b.guard(lambda: self.b.done(d.end(), ""))
+            self.b.guard(lambda: self.b.done(d.end(), SHORT))
+
+    @Slot()
+    def short(self):
+        """A press that moved a little but less than a drag: it only picks the bone; the status line says so."""
+        self.cancel()
+        self.b._set_status(SHORT, False)
 
     @Slot()
     def cancel(self):

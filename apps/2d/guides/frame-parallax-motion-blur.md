@@ -20,7 +20,8 @@ the scene's first layer, of type `camera`, id `frame` (in a second scene `<scene
 | `homeX`, `homeY` | Where the frame's centre was when the scene was made. Written with the scene; never keyed. |
 | `locked` | Drags and operations refuse to move the frame until it is unlocked. |
 
-`x`, `y`, `zoom` and `rotation` can be keyed like any field:
+`x`, `y`, `zoom` and `rotation` can be keyed like any field (and `rideAlong` when the frame follows a path). There is
+no `scale` on the frame: closer is `zoom`.
 
 ```python
 f = frame()                                           # the scene's frame, made with comp()
@@ -45,13 +46,16 @@ Motion blur never crosses a cut.
 | `frame.fit … at=3 ease=easeInOut` | The same, and the move into it takes that ease (any key ease name: `smooth`, `easeInOut`, `snappy`, `linear` …). It goes on the key the move starts from (the frame's key before `at`, or the 0 s key the fit adds). |
 | `frame.cut at=2.4` | Two keys: the frame's place one frame before `at` with the Hold ease, and the same place at `at`. Then move the frame to the next shot: that sets the key at `at`. |
 | `frame.cut at=2.4 to=view rect=[…]` / `to=items ids=[…]` | The jump and the next shot in one step. |
-| `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. |
+| `frame.home at=2` | Back home (centre at home, zoom 1, no turn): a still field changes, an animated one gets a key. Already home there: x, y and zoom are keyed there (a hold). |
 
 In a script: `f.fit(["hills", "tree"], at=4, ease="easeInOut")`, `f.cut(at=6, to="rect", rect=(3200, 0, 1920, 1080))`, `f.home(at=8)`. A key you write yourself at the same time as a cut or fit replaces that key (the later call wins).
-A fit where the frame already is changes nothing and is no error: at 0 s, or on a still frame, nothing is keyed; on an
-animated frame after 0 s its place is keyed there, a hold the next fit moves on from. So shots can be written in time
-order — `f.fit(rect=wide, at=0)`, `f.fit(rect=wide, at=2)` (hold until 2 s), `f.fit(["tree"], at=5, ease="easeInOut")`
-(an eased push from 2 s to 5 s).
+A fit where the frame already is is no error. After 0 s its place is keyed there all the same (and at 0 s where it
+was, if that field had no keys yet): a hold the next fit moves on from. Only at 0 s on a still frame is nothing keyed.
+`f.home(at=…)` on a frame already home holds it the same way (x, y and zoom keyed there), never a refusal. So shots
+can be written in time order — `f.fit(rect=wide, at=0)`, `f.fit(rect=wide, at=2)` (hold until 2 s),
+`f.fit(["tree"], at=5, ease="easeInOut")` (an eased push from 2 s to 5 s); `f.home(at=22)` then `f.fit(rect, at=30)`
+holds at home until 22 s, then pushes in. A frame holds its first key's value before it, so a move written alone
+(one fit at 30 s) runs from 0 s: key where it should start.
 
 **On the canvas.** The canvas shows the world around the frame; inside the frame is exactly the export. Pick the frame
 (**C**, its name tab, or its row pinned at the top of the layers) and drag it: inside moves it, a corner zooms it, just
@@ -59,8 +63,8 @@ outside a corner turns it (see [the-screen.md](the-screen.md) part 2). You also 
 it will show there; a push in draws smaller outlines), and its keys as squares. Drag a square to move the frame at
 that key (one undo step; it snaps like any dragged thing, **Ctrl** or **Alt** frees it); click a square and drag
 its handles to curve the move. So a push along a curve is two or three keys and a few drags, no typed numbers. A cut
-shows as a dashed line with no dots. The faint path and outlines also show while something else is picked; switch
-them off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
+shows as a dashed line with no dots. The faint path (without the outlines) also shows while something else is picked; switch
+it off with **Show the frame's path** in the **Fit · %** menu (a view setting, not saved in the project).
 
 **Framing by clicks.** With the frame picked, the top of the settings panel has **Frame the view** and **Cut here**, and
 its **More** has **Frame home** (only when the frame is away from home at the playhead). **Lock** is the padlock on the Frame row (and in right-click). The same are on
@@ -191,6 +195,36 @@ to choose another part. **Fill the frame** and **Align to the frame** use the fr
 the frame moves, More › **Cover the frame's move** sizes a layer for the whole move (`painted-backgrounds`).
 
 
+## Depth of field
+
+The frame can blur each layer by how far it is from a **focus depth**, as a lens does: layers at the focus are sharp,
+those behind or in front of it get softer. It reads the same **Depth** the parallax uses, so it works on the scene's
+own layers (not inside a group: a group blurs as one, at its depth); a layer that **sticks to the shot** is never
+blurred. Each layer is blurred once per frame, so it costs about what one Blur effect per layer costs. The canvas,
+Quick preview and the export show the same blur.
+
+| Field | What it does |
+|---|---|
+| `dof` | **Depth of field** on or off. Its two rows below show only while it is on. |
+| `focus` | **Focus depth**: the depth that is sharp (0 = the layers as placed, 1 = twice as far, -0.5 = nearer). Keyable. |
+| `focusBlur` | **Blur** (px): how soft a layer far behind the focus gets; a layer twice as near as the focus gets as much, nearer ones more. Keyable. |
+
+How soft a layer gets: `focusBlur × |(1 + focus) / (1 + depth) − 1|` px of the layer's own size (the frame's zoom
+grows it with the layer, as it grows a Blur effect). With the focus at 0 and Blur 20: a layer at depth 1 gets 10 px,
+depth 3 gets 15 px, far away almost 20 px; a layer at depth -0.5 (twice as near) gets 20 px.
+
+**A rack focus** is two keys on the focus: sharp on the foreground, then on the background.
+
+```python
+f = frame()
+f.set(dof=True, focusBlur=24)
+f.key("focus", {10.5: -0.4, 13.5: 2.5}, ease="easeInOut")   # from the near layers to the far ones
+```
+
+From an agent: `value.set target=frame prop=dof v=true`, then `value.set target=frame prop=focus v=2.5 at=13.5` (or
+`key.add`). On the screen: pick the frame (**C**), turn on **Depth of field** in its settings, and type or key
+**Focus depth** and **Blur** like any field.
+
 ## Motion blur (shutter)
 
 Two fields on the **composition** (set with `comp.set`, or `comp("main", shutter=180)`; not animatable). On the screen:
@@ -248,5 +282,5 @@ the group. Text length is estimated (0.6 × size per letter) before layout; `amo
 
 ## Not yet
 
-Looking through a turned frame straight (the canvas turning with it). Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), depth of field, a frame with perspective in depth (depth is parallax
+Looking through a turned frame straight (the canvas turning with it). Handheld shake or frame noise, a look-at target that follows a layer (it can ride a path, see "A layer riding a path" in `shape-and-path-animation`), focus picked by clicking a layer (type its depth into Focus depth), a frame with perspective in depth (depth is parallax
 scaling, not 3D).

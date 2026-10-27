@@ -75,6 +75,10 @@ def qt_app():
         fmt = QSurfaceFormat.defaultFormat()
         fmt.setSwapInterval(0)                     # a frame shown never waits for the screen's refresh: see background()
         QSurfaceFormat.setDefaultFormat(fmt)
+        # File and folder dialogs open inside the window (Qt Quick's own), not as Windows' dialogs: those jump in front
+        # of the person's work and a check's keys and clicks can't reach them.
+        from PySide6.QtCore import QCoreApplication, Qt
+        QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_DontUseNativeDialogs, True)
     sys.setswitchinterval(SWITCH_S)
     return QGuiApplication.instance() or QGuiApplication(sys.argv)
 

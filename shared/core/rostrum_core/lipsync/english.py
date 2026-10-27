@@ -73,6 +73,15 @@ def key(word: str) -> str:
     return re.sub(r"[^\w']", "", word.lower().replace("’", "'")).strip("'_")
 
 
+def _guess(w: str, cmu: dict) -> str:
+    """A start for a missing word's sound: a known word plus its 's / s ending ("clockmaker's" = clockmaker + Z),
+    else the form to fill in. Never another word's phones."""
+    for end, add in (("'s", "Z"), ("s'", "Z"), ("s", "Z"), ("es", "IH0 Z")):
+        if w.endswith(end) and cmu.get(w[:-len(end)]):
+            return " ".join(cmu[w[:-len(end)]] + add.split())
+    return "<phones, e.g. K L AA1 K for clock>"
+
+
 def words(text: str, pronounce: dict | None = None, where: str = "lipsync") -> list[tuple[str, list[Unit]]]:
     """Each word of `text` with its labels. A word in neither `pronounce` nor CMUdict is a loud error."""
     own = {key(w): p.split() for w, p in (pronounce or {}).items()}
@@ -85,7 +94,8 @@ def words(text: str, pronounce: dict | None = None, where: str = "lipsync") -> l
         phones = own.get(w) or cmu.get(w)
         if not phones:
             raise RostrumError(codes.BAD_ARGUMENT, where, f'the word "{w}"', "is not in CMUdict",
-                               hint=f'Give its sound: pronounce={{"{w}": "R AA1 S T R AH0 M"}} (ARPAbet).')
+                               hint=f'Give its sound in ARPAbet (the dictionary’s phones, vowels with stress 0/1/2): '
+                                    f'pronounce={{"{w}": "{_guess(w, cmu)}"}}.')
         try:
             out.append((w, units(phones)))
         except ValueError as e:

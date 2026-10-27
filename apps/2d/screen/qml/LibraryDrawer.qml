@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import RostrumKit
 
 // The Library drawer (UX_SPEC 3.27), beside the tool rail over the canvas's left edge (AppShell.leftOver: the rail
@@ -41,6 +42,7 @@ Rectangle {
         Connections { target: search.input; function onTextChanged() { if (search.input.activeFocus) drawer.lib.setQuery(search.input.text) } }
     }
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: logoDialog
         title: "Choose a logo for the brand kit"
         nameFilters: ["Pictures (*.svg *.png *.jpg *.jpeg *.webp *.pdf *.psd)"]

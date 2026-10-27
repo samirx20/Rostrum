@@ -351,7 +351,28 @@ class DocBridge(SelectSlots, SectionSlots, EditSlots, ReviewSlots, HistoryParts,
         if self._kit.status == why:
             self._set_status("", False)
 
+    def say_with(self, text, label, fn):
+        """A message with one action beside it in the top bar (`label`, e.g. "Keep original size"; a click runs `fn()`),
+        until the next message replaces both."""
+        self._set_status(text)
+        self._status_action = (label, fn)
+        self.statusChanged.emit()
+
+    @Property(str, notify=statusChanged)
+    def statusAction(self):
+        """The words of the action beside the message ("" = none)."""
+        return (getattr(self, "_status_action", None) or ("",))[0]
+
+    @Slot()
+    def runStatusAction(self):
+        """The action beside the message was clicked: run it once; the message stays until the next one."""
+        action, self._status_action = getattr(self, "_status_action", None), None
+        self.statusChanged.emit()
+        if action:
+            action[1]()
+
     def _set_status(self, text, failed=None):
+        self._status_action = None
         self._kit.status = text
         self._failed = text.startswith("Error") if failed is None else failed
         self.statusChanged.emit()

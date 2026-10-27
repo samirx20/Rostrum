@@ -110,3 +110,4 @@ EscCloses 1.0 EscCloses.qml
 singleton OpenPopups 1.0 OpenPopups.qml
 CatchUp 1.0 CatchUp.qml
 WorkingLine 1.0 WorkingLine.qml
+WheelScroll 1.0 WheelScroll.qml

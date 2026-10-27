@@ -25,6 +25,7 @@ from rostrum_gui.screen_images import ScreenImages
 from rostrum_paint import canvas
 
 from .wet_ink import WetInk
+from .wet_kept import Kept
 from .wet_tip import picture_of
 
 MOST_REVEAL = 8192           # the engine's largest picture side
@@ -45,6 +46,10 @@ class WetProvider(ScreenImages):
         with self._lock:
             return self._images.get(id_.split("-")[0], QImage())
 
+    def drop(self, part: str):
+        with self._lock:
+            self._images.pop(part, None)
+
 
 class WetView(QObject):
     """The screen's wet ink, read in QML as `painter.wet`: the stroke's `serial` (0: none showing) and `box`, a flat
@@ -60,6 +65,7 @@ class WetView(QObject):
         self._copies, self._copies_of = [], None        # a seamless painting's wrapped copies (wet_wrap.py)
         self._uses = []                                 # ink in a painting's px, on every layer using it (wet_uses.py)
         self._layered, self._layer_n = {}, 0            # the world under the stroke and the layers above (wet_layers.py)
+        self._kept, self._lifted_sid = Kept(self.provider), ""   # lifted strokes' pictures until shown (wet_kept.py)
         frame_changed.connect(self._frame)
         self._dried.connect(self.show)
 
@@ -77,11 +83,22 @@ class WetView(QObject):
     layered = Property("QVariantMap", lambda self: self._layered, notify=layeredChanged)   # {under, above: {serial, x, y, w, h}}
     usesChanged = Signal()          # its own: the uses are laid out once a stroke, not at each move
     uses = Property("QVariantList", lambda self: self._uses, notify=usesChanged)    # [{own, w, h, pw, ph, inner, offsets, clip}]
+    keptChanged = Signal()          # its own: once a stroke starts, and as the canvas's picture catches up
+    kept = Property("QVariantList", lambda self: self._kept.rows, notify=keptChanged)  # [{sid, part, x, y, w, h}]
+
+    def settle(self, holds):
+        """The picture on screen changed: the kept pictures of strokes it holds (`holds(sid)`) go."""
+        if self._kept.settle(holds):
+            self.keptChanged.emit()
 
     def start(self, ink: WetInk, copies_of=None, settled=None, uses=None):
         """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else.
         `settled()`: whether the picture with the saved stroke is shown (default: the frame that lands has it).
-        `uses`: the ink is in a painting's px and shows on these layers (wet_uses.uses), not where it lies."""
+        `uses`: the ink is in a painting's px and shows on these layers (wet_uses.uses), not where it lies.
+        A lifted stroke whose saved picture hasn't landed yet keeps its picture (wet_kept.py), never dropped here."""
+        if self._lifted and self._serial and not self._copies and not self._uses:
+            self._kept.keep(self._lifted_sid, self.provider.picture("tip"), self._box)
+            self.keptChanged.emit()
         self._ink, self._ending, self._lifted, self._copies_of = ink, None, False, copies_of
         if self._layered:
             self._layered = {}
@@ -156,6 +173,7 @@ class WetView(QObject):
         stroke wasn't saved). Meanwhile the ink draws the points it hadn't yet and the stroke's end (`_ending`), so the
         whole stroke shows within a piece of the release, not when the saved stroke's frame lands."""
         ink, self._ink, self._lifted = self._ink, None, True
+        self._lifted_sid = ink.sid if ink is not None and saved else ""
         if not saved:
             self._clear()
         elif ink is not None:

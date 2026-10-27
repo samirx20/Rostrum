@@ -4,14 +4,18 @@
 //! calls `place`) when the frame ever leaves home (decided from the scene, so the page keeps its shape: keep.rs),
 //! never otherwise, so a scene whose frame stays home writes byte for byte the page it wrote before frames.
 //! `check` refuses a broken frame when the scene loads or is edited.
+//! Depth of field (`dof`, `focus`, `focusBlur`): each top-level layer's wrapper also blurs it by how far its depth is
+//! from the focus depth, one `filter: blur()` per layer per frame; with it on, every top-level layer is wrapped (at
+//! home too), so the page keeps its shape.
 
 use crate::rig::math::Aff;
 use crate::scene::eval::Item;
 use crate::scene::fields::Field;
-use crate::scene::fields::Kind::Number;
+use crate::scene::fields::Kind::{Number, Toggle};
 use crate::scene::{KeyValue, Node};
 
-pub const FIELDS: &[Field] = &[("x", Number), ("y", Number), ("zoom", Number), ("rotation", Number), ("homeX", Number), ("homeY", Number)];
+pub const FIELDS: &[Field] = &[("x", Number), ("y", Number), ("zoom", Number), ("rotation", Number), ("homeX", Number), ("homeY", Number),
+    ("dof", Toggle), ("focus", Number), ("focusBlur", Number)];
 /// The frame's fields keys never drive (home is written when the scene is made).
 pub const STILL: &[&str] = &["homeX", "homeY"];
 
@@ -22,6 +26,21 @@ type R<T> = Result<T, String>;
 pub struct View {
     lens: Option<Lens>,
     world: bool,
+    dof: Option<Dof>,
+}
+
+/// Depth of field at this time: the focus depth's scale (1 / (1 + focus)) and the blur, in a layer's own px.
+struct Dof {
+    focus: f64,
+    blur: f64,
+}
+
+impl Dof {
+    /// A layer's blur radius (its own px, so the frame's zoom grows it as it grows the layer): `blur` × |s / s_f − 1|,
+    /// s = 1 / (1 + depth): `blur` for a layer far behind the focus (never more), and as much for one twice as near.
+    fn radius(&self, depth: f64) -> f64 {
+        self.blur * ((1.0 + self.focus) / (1.0 + depth) - 1.0).abs()
+    }
 }
 
 struct Lens {
@@ -49,9 +68,10 @@ pub fn leaves_home(frame: &Node, comp: &Node) -> bool {
 impl View {
     /// Refuses a zoom at or below 0 or a depth at or below −1 at this time (keys whose ease swings past a limit).
     pub fn of(comp: &Item) -> R<View> {
-        let Some(frame) = comp.layers.iter().find(|l| l.kind == "camera") else { return Ok(View { lens: None, world: false }) };
+        let Some(frame) = comp.layers.iter().find(|l| l.kind == "camera") else { return Ok(View { lens: None, world: false, dof: None }) };
+        let dof = dof(comp, frame)?;
         if !leaves_home(frame.node, comp.node) {
-            return Ok(View { lens: None, world: false });
+            return Ok(View { lens: None, world: false, dof });
         }
         let (t, zoom) = (comp.t, frame.num("zoom"));
         if !(zoom > 0.0) {
@@ -67,7 +87,7 @@ impl View {
             zoom,
             roll: frame.num("rotation"),
         };
-        Ok(View { lens: Some(lens), world: false })
+        Ok(View { lens: Some(lens), world: false, dof })
     }
 
     /// The frame for the world view (`map` gives § 8.3's matrix).
@@ -108,16 +128,36 @@ impl View {
     /// One top-level layer's markup, seen through the frame. The wrapper carries the layer's blend so the layer
     /// still blends with the layers under it (a transformed div holds what is inside it apart).
     pub fn place(&self, layer: &Item, markup: String) -> String {
-        if self.lens.is_none() {
+        if self.lens.is_none() && self.dof.is_none() {
             return markup;
         }
-        let m = self.map(layer);
         let blend = crate::scene::blends::style(layer.str("blend"));
-        format!(
-            "<div id=\"cam~{}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;transform:matrix({:.6}, {:.6}, {:.6}, {:.6}, {:.3}, {:.3});{blend}\">{markup}</div>",
-            escape(layer.id), m.a, m.b, m.c, m.d, m.e, m.f
-        )
+        let blur = match &self.dof {
+            Some(d) if !layer.on("screenLock") => format!("filter:blur({:.3}px);", d.radius(layer.num("depth"))),
+            _ => String::new(),
+        };
+        let m = if self.lens.is_some() { format!("transform-origin:0 0;transform:{};", matrix(&self.map(layer))) } else { String::new() };
+        format!("<div id=\"cam~{}\" style=\"position:absolute;left:0;top:0;width:100%;height:100%;{m}{blur}{blend}\">{markup}</div>", escape(layer.id))
     }
+}
+
+fn matrix(m: &Aff) -> String {
+    format!("matrix({:.6}, {:.6}, {:.6}, {:.6}, {:.3}, {:.3})", m.a, m.b, m.c, m.d, m.e, m.f)
+}
+
+/// Depth of field at this time, when it is on; refuses a focus at or below −1 (as a depth) and a blur below 0.
+fn dof(comp: &Item, frame: &Item) -> R<Option<Dof>> {
+    if !frame.on("dof") {
+        return Ok(None);
+    }
+    let (t, focus, blur) = (comp.t, frame.num("focus"), frame.num("focusBlur"));
+    if !(focus > -1.0) {
+        return Err(format!("{}.focus: {focus} at {t} s; the focus is a depth, above -1", frame.id));
+    }
+    if !(blur >= 0.0) {
+        return Err(format!("{}.focusBlur: {blur} at {t} s; the blur is 0 or more", frame.id));
+    }
+    Ok(Some(Dof { focus, blur }))
 }
 
 /// The frame, when the scene loads or is edited: at most one, first in the comp's own layers (never inside a group or

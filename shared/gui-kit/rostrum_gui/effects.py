@@ -47,13 +47,14 @@ class EffectsPart(QObject):
     def __init__(self, bridge, spec: EffectsSpec):
         super().__init__(bridge)
         self.bridge, self.spec = bridge, spec
-        self.opened: set = set()
-        self._groups: list = []
-        self._opening = False
+        self.folded: set = set()                     # the effects the person folded; every other one shows its settings
+        self._groups: list = []                      # (one opened folded on a re-picked layer: its Blur amount was hidden,
+                                                     # typed values and diamond clicks went nowhere; critic 2d-final B24)
         self._told = None                            # (shown, found, count) as QML last heard them
         for sig in (bridge.docChanged, bridge.docStepped):     # an effect's values follow a drag live; a change
             sig.connect(lambda: self.bridge.reached(self.bridge._kit.selection) and self._sync())   # elsewhere: nothing
         bridge.panelShown.connect(self._sync)          # the panel's own section: with the panel (a pick: the frame after)
+        bridge.rowsChanged.connect(self._sync)         # and with its rows at a new playhead: an effect's value and key mark there
         bridge.searchChanged.connect(self.changed)
         self._sync()
 
@@ -101,11 +102,8 @@ class EffectsPart(QObject):
         if item is None or type_ not in [a["value"] for a in self.addable()]:
             b._fail(f'Error: effects: "{label}" can\'t be added to this item.')
             return False
-        self._opening = True                     # the effect just added is open, so its settings are in reach
-        ok = b._guard(lambda: b._apply([{"op": self.spec.add_op, "target": [item["id"]], "args": {"type": type_}}],
-                                       f"Add {label}"))
-        self._opening = False
-        return ok
+        return b._guard(lambda: b._apply([{"op": self.spec.add_op, "target": [item["id"]], "args": {"type": type_}}],
+                                         f"Add {label}"))
 
     @Slot(str, result=bool)
     def remove(self, effect_id):
@@ -130,11 +128,8 @@ class EffectsPart(QObject):
         item = self._layer()
         ids = [e["id"] for e in item.get(self.spec.key, [])] if item else []
         old = {g.id: g for g in self._groups}
-        if self._opening:
-            self.opened |= set(ids) - set(old)
         groups = [old.get(i) or EffectGroup(self, i) for i in ids]
         gone = [g for i, g in old.items() if i not in ids]
-        self.opened &= set(ids)
         if [g.id for g in groups] != [g.id for g in self._groups]:
             self._groups = groups
             self.groupsChanged.emit()

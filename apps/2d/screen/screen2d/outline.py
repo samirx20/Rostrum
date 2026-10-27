@@ -4,7 +4,7 @@ Layers top of the stack first (as they look: the last drawn is on top). Each lay
 in composition seconds, clamped to the composition; `startMarker` / `endMarker`: the shared marker an end is tied to,
 or ""), all its keys as one summary line (its effects', masks' and a rig's bones' too) and, for a drawing, its frames
 (`frames`: where each starts and how long it is held). An open layer shows one row per animated field, then its
-effects and masks (their keys) and a rig's keyed bones and IK chains, then its own layers, indented. One fold state:
+effects and masks (their keys) and a rig's bones (all) and keyed IK chains, then its own layers, indented. One fold state:
 a layer with layers inside (a group) is open unless folded; any other layer is closed unless opened (`flipped`: the
 ids whose default was turned round).
 """
@@ -125,6 +125,23 @@ def _cuts(frame: dict) -> list[float]:
     return sorted(out)
 
 
+def _matte_marks(out: list[dict], comp: dict) -> list[dict]:
+    """A layer another one uses as its track matte hides itself (as in After Effects): its row says for whom
+    ("matteFor": the user's name), so a layer that vanished is found (critic 2d-final row 20). Done after the rows'
+    memory: the mark follows a sibling's `matte`, which the layer's own kept rows don't see; kept rows are never changed."""
+    users: dict[str, str] = {}
+
+    def look(layers):
+        for lay in layers:
+            if lay.get("matte"):
+                users.setdefault(lay["matte"], label_of(lay))
+            look(lay.get("layers", []))
+    look(comp.get("layers", []))
+    if not users:
+        return out
+    return [{**r, "matteFor": users[r["id"]]} if r["row"] == "layer" and r["id"] in users else r for r in out]
+
+
 def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept: dict | None = None) -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
     only their animated settings (theirs, their effects' and masks'), not their own layers.
@@ -154,7 +171,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         row = _row("layer", lay, depth, label_of(lay), summary)
         row["stretches"] = first["stretches"]
         row.update(past(fields))
-        if F.param(lay["type"], "start") is not None:   # a camera, a shape …: when it shows, as a bar
+        if F.param(lay["type"], "start") is not None:   # a camera, a shape â€¦: when it shows, as a bar
             row.update(bar=True, trim=True, start=min(max(lay.get("start", 0.0), 0.0), duration),
                        end=min(max(lay.get("end", duration), 0.0), duration),
                        startMarker=lay.get(FIELD) or "", endMarker=lay.get(END) or "")
@@ -170,13 +187,13 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
                 row["frames"] = framing.clipped(row["frames"], row["start"], row["end"])
             row["again"] = framing.again(lay, fps, duration)    # a looping drawing's later rounds, faint
         out.append(row)
-        out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC §9.4)
+        out.extend(lines)                      # overlapping animations: a line each under the layer (SPEC Â§9.4)
         if not is_open:
             return out
         out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past))
         for o in _owned(lay):
             keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
-            if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
+            if keys or not (only or o["type"] == "ik"):   # every bone (its row picks it to pose); an IK chain once keyed
                 out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
         if not only:
             out.extend(walk(lay.get("layers", []), depth + 1))
@@ -193,7 +210,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
             out.extend(got[2])
         return out
 
-    out = walk(comp.get("layers", []), 0)
+    out = _matte_marks(walk(comp.get("layers", []), 0), comp)
     if kept is not None:
         kept.clear()
         kept.update(fresh, state=state)

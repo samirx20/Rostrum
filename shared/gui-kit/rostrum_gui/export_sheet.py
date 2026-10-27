@@ -59,6 +59,7 @@ class ExportSheet(QObject):
     asked = Signal(str, bool)                  # (the name already there, whether it can be replaced): QML asks
     _landed = Signal("QVariantMap", str)       # (the result, the error line): from the worker thread
     _progressed = Signal(float)
+    _noted = Signal(str)                       # a phase of the work in words (`phase`): from the worker thread
 
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
@@ -74,6 +75,8 @@ class ExportSheet(QObject):
         self._stopping = False
         self._landed.connect(self._finish)
         self._progressed.connect(self._on_progress)
+        self._noted.connect(self._on_phase)
+        self._running_note = ""
 
     # ---- what an app fills in ---------------------------------------------------------------------------------
     def choices_list(self) -> list[dict]:
@@ -123,6 +126,11 @@ class ExportSheet(QObject):
         """On the worker thread: write the file(s). Return {"files": [...], "file": main path, "version"?: "v003"}.
         `progress(0..1)`; raise on failure (the old file stays: write under a temporary name, then rename)."""
         raise NotImplementedError
+
+    def phase(self, words: str):
+        """From `work` (any thread): what it is doing now, in words ("Preparing the painted pictures · 12 of 400"),
+        shown as the running note; "" goes back to "Exporting Main.mp4". A cancel's "Cancelling…" stays."""
+        self._noted.emit(words)
 
     def stop(self):
         """Cancel the running work (stop the engine). The default can't: Cancel is not offered."""
@@ -413,6 +421,7 @@ class ExportSheet(QObject):
         self._started = True
         self._result, self._progress, self._stopping = {}, 0.0, False
         self._state, self._note = "running", f"{self.VERBS[1]} {out.name if out else self.file_name()}"
+        self._running_note = self._note
         self.changed.emit()
         self.bridge._set_status(self._note + "…")
 
@@ -435,6 +444,11 @@ class ExportSheet(QObject):
         if not found:
             return name.replace("{frame}", "0001")
         return found[0] if len(found) == 1 else f"{len(found)} pictures, {found[0]} to {found[-1]}"
+
+    def _on_phase(self, words):
+        if self._state == "running" and not self._stopping:
+            self._note = words or self._running_note
+            self.changed.emit()
 
     def _on_progress(self, p):
         if self._state == "running":

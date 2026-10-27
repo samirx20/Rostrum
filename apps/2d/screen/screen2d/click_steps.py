@@ -1,5 +1,5 @@
 """Scripted steps that click any control the way a hand would (QTest, the real mouse path), found by its objectName:
-    clickobj <objectName> [fx fy] [right]   the control's point at fractions fx, fy of its box (default its centre);
+    clickobj <objectName> [fx fy] [right]   (or <outer>/<objectName>) the control's point at fractions fx, fy of its box (default its centre);
                                        `right`: a right-click; prints how long the click's work took
     hoverobj <objectName> [ms]         the pointer rests on the control (default 700 ms: past the hover-preview delay, then the preview is drawn)
     typekeys <text>                    type it on the keyboard into what has focus (_ for a space)
@@ -72,9 +72,15 @@ def do_click_step(win, word, rest, step):
 
 
 def _named(win, name, shown=True):
-    """The visible item called `name`, anywhere in the window's item tree (popups in the overlay included)."""
+    """The visible item called `name`, anywhere in the window's item tree (popups in the overlay included).
+    `row:paint/swatch`: the `swatch` inside `row:paint` (a name several controls share, e.g. every colour swatch)."""
     top = win.contentItem()
     todo = [top.parentItem() or top]
+    if "/" in name:
+        outer, name = name.split("/", 1)
+        todo = [_named(win, outer, shown)]
+        if todo[0] is None:
+            return None
     while todo:
         o = todo.pop()
         if o.objectName() == name and (o.isVisible() or not shown):

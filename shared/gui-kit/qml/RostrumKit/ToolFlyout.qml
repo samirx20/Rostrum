@@ -3,7 +3,8 @@ import QtQuick.Controls as QQC
 import "."
 
 // A rail group's flyout (design v2 §2.1, mockup 02): beside the rail at the group's icon, its entries as icon + name;
-// the key, where there is one, in the hover tip; no descriptions. An entry's icon is RailIcon's. A click picks one and
+// the key, where there is one, in the hover tip, with the entry's own `help` when it has one ("Soft light": the
+// photographers' softbox). An entry's icon is RailIcon's. A click picks one and
 // closes it; Esc or a click anywhere else closes it. ToolRail owns it.
 SmallPopup {
     id: fly
@@ -45,7 +46,7 @@ SmallPopup {
                     font.family: uiFont; font.pixelSize: Theme.body
                 }
                 HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-                HoverTip { hovered: hover.hovered; pressed: tap.pressed; text: cell.modelData.name     // its key, as every tile's
+                HoverTip { hovered: hover.hovered; pressed: tap.pressed; text: cell.modelData.name; help: cell.modelData.help || ""     // its key, as every tile's
                            key: cell.modelData.job && cell.Window.window && cell.Window.window.keyFor ? cell.Window.window.keyFor(cell.modelData.job) : "" }
                 MouseArea { id: tap; anchors.fill: parent; onClicked: fly.picked(cell.modelData) }
             }

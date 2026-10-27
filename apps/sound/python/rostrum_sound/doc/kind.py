@@ -46,11 +46,16 @@ def facts(item: dict, doc=None) -> dict:
     return {"vibratoLane": "vibrato" in lanes, "bendLane": "bend" in lanes, **_playing(item)}
 
 
-def elsewhere(id_: str) -> str | None:
-    """A target that is not in the song but is one of the project's markers (changed with edit_markers)."""
-    mark = next((r for r in markers.project_rows() if r["id"] == id_), None)
+def elsewhere(id_: str, data: dict | None = None) -> str | None:
+    """A target that is not in the song by that id: the song's own marker by its name (a script's `marker()` makes
+    one), or one of the project's markers (changed with edit_markers)."""
+    own = next((m for m in (data or {}).get("markers", []) if markers.key(m.get("name", "")) == markers.key(id_)), None)
+    if own:
+        return (f'"{id_}" is this song’s own marker; its id is "{own["id"]}": target that. If the song’s script '
+                f'made it (marker()), take the line out of the script too, or the next run makes it again.')
+    mark = next((r for r in markers.project_rows() if r["id"] == id_ or markers.key(r["name"]) == markers.key(id_)), None)
     return mark and (f'"{mark["name"]}" is a marker the whole project shares, not part of this song: change it with '
-                     f'edit_markers (marker.move / marker.rename), so 2D and the Editor see it too.')
+                     f'edit_markers (marker.move / marker.rename / marker.remove), so 2D and the Editor see it too.')
 
 
 KIND = DocKind("sound", ".trk", REGISTRY, lists=LISTS, version=migrations.FORMAT, migrations=migrations.STEPS, upgraded=migrations.upgraded, check=check, elsewhere=elsewhere, warn=lambda data: dropped.warn(data) + past_end.warn(data), new=blank, facts=facts, describe=describe.describe, upgrade=media.upgrade, tidy=media.tidy)

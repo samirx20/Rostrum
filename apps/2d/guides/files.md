@@ -20,6 +20,7 @@ Click the app's mark (the blue square with **▾**) at the top left.
 - **Save a version** (Ctrl+S): gives the project as it is now a name, in History, so you can come back to it. The time is filled in as the name; type another if you like.
 - **Show folder**: the project's folder on your computer.
 - **Start screen…**: the start screen (see 4).
+- **Add a song from RostrumSound…**: copies a song made in RostrumSound into this project, where it plays with the picture (see [timing-to-music.md](timing-to-music.md)).
 
 The same actions are in the command box (**Ctrl+K**).
 

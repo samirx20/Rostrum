@@ -13,7 +13,7 @@ def register(tools: Tools):
     @tools.tool("render_voice", {"properties": {**ITEM, "ids": {"type": "array", "items": {"type": "string"},
         "description": "Only these line ids; left out = every voice line of the document."}}})
     def render_voice(ctx, args):
-        """Make the missing takes of the document's voice lines (loads the voice model per line, about twice the line's length each). To fit a line to the music before making it, ask `render_voice` (what \"estimate\"). Answers per line: id, file, seconds, generated or cached, start and end in seconds (so the next line can be timed). Then render_mix and listen with the look_* tools."""
+        """Make the missing takes of the document's voice lines (loads the voice model per line, about twice the line's length each). To fit a line to the music before making it, ask `render_voice` (what \"estimate\"). Answers per line: id, file, seconds, generated or cached, start and end in seconds (so the next line can be timed). Then render_mix and listen with the look_* tools. On a busy computer each line waits its turn (one model job at a time on the machine) and for free memory, up to 5 min, then fails plainly saying what was free."""
         doc = ctx.document(args.get("item"))
         ids = args.get("ids") or None
 
@@ -29,7 +29,7 @@ def register(tools: Tools):
         "description": "Only these line ids; left out = every voice line of the document."},
         "read_only": {"type": "boolean", "description": "true = only read the stored words, never listen (fails loudly for a line not heard yet)."}}})
     def render_voice_words(ctx, args):
-        """Each spoken word's start and end, in song seconds, for the voice lines (lip sync, captions, timing a cut to a word). The made take is listened to once by the speech model (CPU, a few seconds per line) and the words are stored by content, so asking again reads them; read_only never runs the model. Make the takes first with render_voice. Answers per line: id, text, start, end and words [{word, start, end}]."""
+        """Each spoken word's start and end, in song seconds, for the voice lines (lip sync, captions, timing a cut to a word). The made take is listened to once by the speech model (CPU, a few seconds per line) and the words are stored by content, so asking again reads them; read_only never runs the model. Make the takes first with render_voice. The first time, it installs the program that runs the model (sherpa-onnx, Apache-2.0, ~19 MB) by itself. Answers per line: id, text, start, end and words [{word, start, end}]."""
         doc = ctx.document(args.get("item"))
         ids = args.get("ids") or None
         if args.get("read_only"):

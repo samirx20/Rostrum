@@ -57,7 +57,8 @@ def _make(tmp, wav, start, end, text, pronounce, where, progress=None):
         raise RostrumError(codes.BAD_ARGUMENT, where, "text", "has no words")
     labels = model.vocab(where)
     say(2, 3, "Listening to the line", 0.0)
-    logp, device = model.emissions(samples, where, lambda f: say(2, 3, "Listening to the line", f))
+    logp, device = model.emissions(samples, where, lambda f: say(2, 3, "Listening to the line", f),
+                                   waiting=(lambda w: say(2, 3, w[:1].upper() + w[1:], 0.0)) if progress else None)
     say(3, 3, "Placing the mouth shapes", 0.0)
     phones = _aligned(logp, said, labels, where) if said else _decoded(logp, labels)
     for p in phones:

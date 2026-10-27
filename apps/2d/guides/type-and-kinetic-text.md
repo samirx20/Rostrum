@@ -81,6 +81,8 @@ t.effect("gradient", id="fill", style="linear", angle=90, color1="#ffffff", colo
 
 Other effects work on text too: `glow`, `blur`, `shadow`, `backdrop` (see `ui-and-product-animation`). Effects have keys:
 `t.effect("glow", id="halo", radius=0).key("radius", {1.0: 0, 1.6: 60})`; `look_motion` names it `halo.radius`.
+On the screen, each effect setting in the settings panel has its own key diamond, as Position does: click it at the
+first moment, move the playhead and type the next value (a blur-in: Blur 30 at 0 s, 0 at 0.6 s).
 
 ## Reveal with a mask
 

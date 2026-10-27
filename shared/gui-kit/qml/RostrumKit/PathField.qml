@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Templates as T
 import "."
 
 // A file or folder path: the text field (type or paste a path; Enter commits) and a "…" (Browse) button that opens
@@ -51,6 +52,7 @@ Item {
         onClicked: f.folder ? folderDialog.open() : fileDialog.open()
     }
     FileDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: fileDialog
         title: "Choose a file"
         currentFolder: f.toUrl(f.value)
@@ -58,6 +60,7 @@ Item {
         onAccepted: f.edited(f.toPath(selectedFile))
     }
     FolderDialog {
+        popupType: T.Popup.Item     // inside the window, never a window of its own (a check window's dialog drew nowhere it could be seen or clicked)
         id: folderDialog
         title: "Choose a folder"
         currentFolder: f.toUrl(f.value)

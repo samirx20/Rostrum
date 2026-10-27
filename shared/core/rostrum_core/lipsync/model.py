@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, memory
 
 from .audio import RATE
 
@@ -73,37 +73,23 @@ def _session(where):
         raise RostrumError(codes.JOB_FAILED, where, "the phone model", f"could not be opened on the CPU: {e}") from e
 
 
-def _free_gb():
-    """Free memory in GB (Windows), else None. The same check as rostrum_sound/voice.py's: one shared helper in
-    rostrum_core is asked of Team Sam (LIPSYNC.md § Cost)."""
-    if os.name != "nt":
-        return None
-    import ctypes
-
-    class M(ctypes.Structure):
-        _fields_ = [("len", ctypes.c_ulong), ("load", ctypes.c_ulong), ("total", ctypes.c_ulonglong),
-                    ("avail", ctypes.c_ulonglong), *[(f"x{i}", ctypes.c_ulonglong) for i in range(5)]]
-    m = M()
-    m.len = ctypes.sizeof(M)
-    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
-    return m.avail / 2 ** 30
-
-
 def _normalized(x):
     import numpy as np
     return ((x - x.mean()) / np.sqrt(x.var() + 1e-7)).astype(np.float32)
 
 
-def emissions(samples, where="lipsync", progress=None):
+def emissions(samples, where="lipsync", progress=None, waiting=None):
     """(log probabilities frames × labels, device). Loads the model, runs it, releases it. `progress(fraction)` is called
-    when the model is open (0) and after each piece (a 20 s piece is the finest the model gives)."""
+    when the model is open (0) and after each piece (a 20 s piece is the finest the model gives). Before it loads it
+    waits its turn and for memory (rostrum_core.memory, bounded; `waiting(words)` told meanwhile)."""
+    with memory.turn(where, "the phone model", MIN_FREE_GB, waiting=waiting):
+        return _run(samples, where, progress)
+
+
+def _run(samples, where, progress):
     import numpy as np
     from .ctc import log_softmax
 
-    free = _free_gb()
-    if free is not None and free < MIN_FREE_GB:
-        raise RostrumError(codes.NO_MEMORY, where, "the phone model",
-                           f"needs about {MIN_FREE_GB} GB of free memory; {free:.1f} GB is free")
     session, dev = _session(where)
     if progress:
         progress(0.0)

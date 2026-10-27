@@ -24,7 +24,7 @@ def made():
 def test_add_and_remove_are_one_undoable_change_each(made):
     bridge, part = made
     assert part.add("shadow") and [g.id for g in part.groups] == ["blur_1", "glow_1", "shadow_1"]
-    assert len(bridge.doc.history.changes) == 1 and "shadow_1" in part.opened       # the new one is open
+    assert len(bridge.doc.history.changes) == 1 and all(g.open for g in part.groups)   # each shows its settings (not folded)
     assert part.remove("glow_1") and part.count == 2
     bridge.undo()
     bridge.undo()

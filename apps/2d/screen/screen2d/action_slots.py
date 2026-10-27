@@ -116,8 +116,9 @@ class ActionSlots(SlotMixin):
 
     def _act_do(self, name, entry):
         """2D's actions that are not operations by themselves."""
-        if name == "rename":
-            self.renameRequested.emit(self.selected_layers()[0])
+        if name == "rename":                                             # the rows told now: F2 right after Ctrl+G or a
+            self._outline_news.now()                                     # draw names the new layer, whose row is due the
+            self.renameRequested.emit(self.selected_layers()[0])         # frame after (LayerRows.rename builds it at once)
         elif name == "clip_copy" and self._strokes.count:                # strokes picked while painting: those (stroke_select.py)
             self._strokes.copy()
         elif name in ("paste", "paste_other") and not self.keys_copied() and self._strokes.has_clip():   # strokes copied (stroke_select.py)

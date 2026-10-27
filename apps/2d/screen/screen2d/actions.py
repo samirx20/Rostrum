@@ -84,7 +84,7 @@ DATA = [
     *[_a(f"mask_{m}", f"Mask: {words.lower()}", rank=20, importance="primary", group="mask", bar="Mask", min_targets=2, when=FACT("maskable"),
          calls=_MASK(m), promoted="picture_mix") for m, words in _MATTES.items()],
     _a("release_mask", "Release mask", rank=20, importance="primary", group="mask", bar="Mask", when=FACT("matted"), calls=_op("mask.release", "ids")),
-    *[_a(op, op.capitalize(), rank=5, importance="primary", group="shape", bar="Combine", job=op, min_targets=2,
+    *[_a(op, f"Combine: {op}", rank=5, importance="primary", group="shape", bar="Combine", job=op, min_targets=2,
          when=ALL("shapes", "same_parent"), promoted=True, calls=_op("shape.boolean", "stack", op=op, id="$new:path"), icon=op)
       for op in ("union", "subtract", "intersect", "exclude")],
     *[_a(f"align_{e}", _to_frame(words), rank=30, importance="primary", group="arrange", bar="Align", job=job, when=FACT("groupable"),

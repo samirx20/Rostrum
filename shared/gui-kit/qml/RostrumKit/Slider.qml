@@ -47,6 +47,13 @@ Item {
     function ratioAt(x) { return Math.max(0, Math.min(1, (x - knob.width / 2) / (width - knob.width))) }
     function unitFor(mods) { return mods & Qt.AltModifier ? showStep / 10 : mods & Qt.ShiftModifier ? showStep * 10 : showStep }
     function nudge(n, mods) { const u = unitFor(mods); edited(clamp(shown + n * u, u)) }
+    // A number typed while it has the keyboard (a click on the slider gave it) goes to the value box beside it
+    // (`typed`, the first key starting the typing), never nowhere: Drawn so far's typed 0 was lost (2D final critic).
+    signal typed(string text)
+    property bool forwardsTyping: false              // a row with a value box beside it says so (InspectorRow's amount)
+    function startsTyping(e) { return forwardsTyping && !(e.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) && /^[0-9.,+\-*\/=(]$/.test(e.text) }
+    Keys.onShortcutOverride: (e) => { if (startsTyping(e)) e.accepted = true }    // a typed digit is the row's, never a window key
+    Keys.onPressed: (e) => { if (startsTyping(e)) { s.typed(e.text); e.accepted = true } }
     Keys.onLeftPressed: (e) => nudge(-1, e.modifiers)
     Keys.onRightPressed: (e) => nudge(1, e.modifiers)
     WheelHandler {

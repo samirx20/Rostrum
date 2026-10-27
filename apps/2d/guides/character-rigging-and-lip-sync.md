@@ -43,7 +43,7 @@ show the same thing.
 ## 3. Pose with keys (FK)
 
 Bone fields that move: `rotation` (turn from rest, adds to the parent's turn), `scale`, `moveX`, `moveY`. Animate them
-like any layer field: `key.add target=thigh prop=rotation t=0.5 v=25`, `value.set` while a person drags. A root
+like any layer field: `key.add target=thigh prop=rotation t=0.5 v=25`; a person's pose drag on the canvas keys the same way at the playhead (`key.add` on a bone's `rotation`, or an IK chain's `targetX` / `targetY`). A root
 bone's `moveX/moveY` move the whole figure. Rest fields (x, y, angle, length) are not animatable: they describe the
 skeleton, not a moment.
 
@@ -156,8 +156,9 @@ with rig("puppet", w=1920, h=1080):
 ```
 
 Or as an operation: `lipsync.apply` with `target` = the rig or group, `source`, `at`, `text`, `shapeX` … `shapeH`, `leadFrames`.
-It only adds keys; to redo a mouth, `key.clear` its opacity first. Words the dictionary lacks need
-`pronounce={"rostrum": "R AA1 S T R AH0 M"}`. Check with `look_frame` on the mouth at a few word starts, then listen to a render.
+It only adds keys; to redo a mouth, `key.clear` its opacity first. Words the dictionary lacks are refused by name;
+give their sound in ARPAbet, in the script as `lipsync(..., pronounce={"rostrum": "R AA1 S T R AH0 M"})` or as the
+operation's `pronounce` (the refusal suggests one for a word like "clockmaker's"). Check with `look_frame` on the mouth at a few word starts, then listen to a render.
 The first run on a clip loads a speech model (a GPU job, a few seconds, longer on a busy computer); after that it reads the cache. On the screen the Lip sync sheet shows its progress (step 1 to 3 of 3, a moving bar) and the window stays free.
 
 Not yet: a shared marker as `at` (today `at` is seconds), languages other than English with words.
