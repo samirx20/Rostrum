@@ -7,7 +7,8 @@ import RostrumKit
 // automation lane. Selection, hover and the row's height never move them: only their colour changes. (Lock is in the
 // header's right-click menu and Ctrl+Shift+L; a locked track shows a small padlock by its name.)
 // A click takes only the drawn square (HeaderButton); the 2 px between them and the gap before the name select the
-// track. A mute or solo is never silent: the top bar's message line names it and how to take it back.
+// track. A mute or solo is never silent: the top bar's message line names it and how to take it back (a moment after
+// the button lights: the top bar's new text costs ~50 ms, never inside the click).
 Row {
     id: r
     property var track
@@ -17,7 +18,7 @@ Row {
     function toggle(field, was) {
         const name = r.track.name
         backend.toggleTrack(r.track.id, field)
-        backend.say(field === "mute" ? (was ? name + " heard again" : name + " muted — click M again or Ctrl+Z")
+        Qt.callLater(backend.say, field === "mute" ? (was ? name + " heard again" : name + " muted — click M again or Ctrl+Z")
                                      : (was ? name + ": solo off" : name + " soloed: only soloed tracks play — click S again or Ctrl+Z"))
     }
     Item {
