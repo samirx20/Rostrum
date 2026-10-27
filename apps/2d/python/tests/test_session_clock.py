@@ -26,7 +26,7 @@ def test_the_line_counts_time_calls_and_edits_since_the_last_look():
     clock.noted("run_script", {}, Reply("x", changed={"seq": 1}))
     clock.noted("run_script", {}, Reply("x", changed={"seq": 2}))
     assert clock.line() == ("Session 6 min 12 s (since your first call this session) · 2 calls · no look at the picture yet"
-                            " · 8 min 48 s of your 15 min left")
+                            " · 8 min 48 s of your 15 min left (time to look and refine)")
     clock.noted("look_frame", {}, Reply("x", {"result": {"time": 1.0}}))
     clock.noted("run_script", {}, Reply("x", changed={"seq": 3}))
     assert "last look at the picture 1 edit ago" in clock.line()
