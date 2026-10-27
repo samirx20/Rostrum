@@ -103,6 +103,33 @@ FieldFrame {
         const lo = Number(showRange[0].toFixed(decimals)), hi = Number(showRange[1].toFixed(decimals))
         return (unitFirst ? unitShown : "") + String(lo).replace("-", "−") + "–" + String(hi).replace("-", "−") + (unitFirst ? "" : u)
     }
+    // A letter the box can't hold that no shortcut took either (typed_word.say_unheard) never vanishes: one line under the
+    // box (and in the top bar where the app has one) and one shake (none with Theme.reduceMotion), the typing kept.
+    readonly property string letterWords: "Type a number, like 12 or +5"
+    function saysLetter(k) {
+        letterTip.open(); letterGone.restart()
+        if (typeof backend !== "undefined" && backend && backend.tell) backend.tell(letterWords)
+        if (Theme.shake > 0) shake.restart()
+    }
+    Connections {   // a letter that got in as typed (no shortcut took it): taken out again, and said
+        target: f.input
+        function onTextEdited() {
+            const t = f.input.text, at = f.input.cursorPosition, k = t.charAt(at - 1)
+            if (f.numeric && /[A-Za-z]/.test(k) && !/[eE]/.test(k) && !f.starts.test(k) && t.indexOf("=") < 0) {
+                f.input.remove(at - 1, at); f.saysLetter(k)
+            }
+        }
+    }
+    HoverTip { id: letterTip; text: f.letterWords }
+    Timer { id: letterGone; interval: 2500; onTriggered: letterTip.close() }
+    transform: Translate { id: nudge }
+    SequentialAnimation {
+        id: shake
+        NumberAnimation { target: nudge; property: "x"; to: 4; duration: Theme.shake / 6 }
+        NumberAnimation { target: nudge; property: "x"; to: -4; duration: Theme.shake / 3 }
+        NumberAnimation { target: nudge; property: "x"; to: 2; duration: Theme.shake / 4 }
+        NumberAnimation { target: nudge; property: "x"; to: 0; duration: Theme.shake / 4 }
+    }
     onArrow: (d, big) => f.edited(clamp(shownFrom() + d * (big ? 10 : 1) * showStep))
     function shownFrom() { return isFinite(shown) ? shown : showRange[0] }     // −∞ dB steps up from the floor
 

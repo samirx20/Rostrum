@@ -5,7 +5,8 @@ import "."
 // Repeat…, Start a bar here…). Its rows are the operation's own parameters as the settings panel's rows
 // (rostrum_gui/amounts.py; the session: amounts_page.py, `hub.amounts`), titled "<Action> · <what>". It opens when the
 // hub asks (`amountsWanted`: under the ▾, the button or the menu's button that opened it, else at the top of the window).
-// Live: every change runs the action again on the original items. Enter or a click away keeps it as ONE undo step
+// Live: every change runs the action again on the original items; resting on a choice in an open list shows it too, and
+// closing the list with no pick puts it back (ChoiceField tried / untried → page.tryValue / untry). Enter or a click away keeps it as ONE undo step
 // named with the amounts; Esc puts everything back. Each row's control is "amount_<param>"; "Another take" (a seed)
 // is "amountsAnotherTake".
 //   AmountsPopover { hub: backend.actions }

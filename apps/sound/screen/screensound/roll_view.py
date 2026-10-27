@@ -6,6 +6,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal
 
 from . import block_patch, drum_rows, key_lock, lanes, timeline
+from .roll_hover import RollHover
 
 
 def shape(part: dict) -> dict:
@@ -13,7 +14,7 @@ def shape(part: dict) -> dict:
     return {**{k: v for k, v in part.items() if k != "blocks"}, "sound": bool(part.get("blocks"))}
 
 
-class RollView:
+class RollView(RollHover):      # (what the pointer over the roll would do: roll_hover.py)
     blocksTempoChanged = Signal()
 
     @Property("QVariantList", notify=blocksTempoChanged)
@@ -66,6 +67,8 @@ class RollView:
             self._roll_picks()
         if relaid:
             self.rollChanged.emit()
+        if moved:
+            self._roll_follow()             # a Paste / Duplicate on this track: shown (roll_hover.py)
 
     def _played_again(self, root):
         """Only the Editor's playing lane made again (a change no row shows: a point on the track's sustain lane)."""
@@ -88,7 +91,9 @@ class RollView:
             self.rollPickedChanged.emit()
 
     def _roll(self, rows) -> dict:
-        """The Editor's piano roll of the current track (`_track`), in its row's colour."""
+        """The Editor's piano roll of the current track (`_track`), in its row's colour. (The song's first one puts
+        back the view it was closed with first: view_slots._kept_view.)"""
+        self._kept_view()
         root = self.doc.data
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None

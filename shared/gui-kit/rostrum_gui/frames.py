@@ -5,7 +5,8 @@ Newest request wins: `post_latest` replaces a job still waiting (stale pictures 
 jobs (picks) keep their order and run before the next picture. Inside `asking()` a picture asked waits until the
 block ends, so a question the same action asks right after its change (where the new layer sits) goes to the engine
 first instead of queueing behind that picture. A failure is reported (`failed`, and on stderr),
-never shown as if it worked; the next job tries again. `close` ends the engine.
+never shown as if it worked; the next job tries again. `close` ends the engine. `behind` says a picture asked is not
+served yet (the canvas's CatchUp mark), so an older picture is never presented as now.
 
 An app subclasses `PictureWorker` and gives only its differences: `open_engine` (the engine to start), `handle`
 (do one job on the engine) and `describe` (the words for a failed job).
@@ -17,7 +18,7 @@ import threading
 from collections import deque
 from contextlib import contextmanager
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import Property, QObject, Signal
 from PySide6.QtGui import QImage
 
 from .screen_images import ScreenImages
@@ -78,6 +79,7 @@ def image_from_pixels(view, w: int, h: int, stride: int, fmt: str = "rgba8") -> 
 
 class PictureWorker(QObject):
     failed = Signal(str)
+    behindChanged = Signal()       # `behind` changed (sent from the worker's thread too: Qt carries it to the screen's)
 
     def __init__(self, thread_name: str, parent=None):
         super().__init__(parent)
@@ -86,6 +88,7 @@ class PictureWorker(QObject):
         self._cv = threading.Condition()
         self._latest, self._ordered, self._busy, self._stop = None, deque(), False, False
         self._asking = 0                         # inside asking(): pictures wait, questions go
+        self._behind = False                     # a picture asked is not on screen yet (CatchUp.qml marks it after 0.2 s)
         self._thread = threading.Thread(target=self._run, name=thread_name, daemon=True)
 
     def start(self):
@@ -103,9 +106,21 @@ class PictureWorker(QObject):
 
     # -- asking ------------------------------------------------------------------------------------------
     def post_latest(self, job):
+        self._set_behind(True)                   # before the job is there: the worker can only say caught up after it
         with self._cv:
             self._latest = job
             self._cv.notify()
+
+    @Property(bool, notify=behindChanged)
+    def behind(self):
+        """The picture shown is older than the one asked (INTERACTION.md 1.21 rule 7: the screen never lies): the
+        canvas puts a soft "Updating" mark on it after 0.2 s (CatchUp.qml), never presenting it as now."""
+        return self._behind
+
+    def _set_behind(self, on: bool):
+        if on != self._behind:
+            self._behind = on
+            self.behindChanged.emit()
 
     def post_ordered(self, job):
         with self._cv:
@@ -164,6 +179,9 @@ class PictureWorker(QObject):
                 finally:
                     with self._cv:
                         self._busy = False
+                        caught_up = self._latest is None
+                    if caught_up:
+                        self._set_behind(False)
         finally:
             if eng is not None:
                 eng.close()

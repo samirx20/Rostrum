@@ -11,6 +11,8 @@ import "MenuPlace.js" as Place
 // (a 13-key list shows whole). The list opens under the field (above it when it fits only there; beside neither: it takes the
 // roomier side and scrolls), is sized and placed before it shows, and never covers the field: the entry that was under the
 // pointer is never another one a moment later, and a click where the field was cannot pick an entry.
+// Try before you keep (INTERACTION.md 1.21 rule 6): while the list is open, the option under the pointer (or ↑ ↓) is
+// `tried`; closing with no pick is `untried`. A bridge with `tryValue` / `untry` (the amounts box) shows it live.
 FieldFrame {
     id: f
     property var options: []              // [{value, label}] or plain strings: the field shows the label, sends the value
@@ -19,6 +21,8 @@ FieldFrame {
     readonly property bool opened: pop.item ? pop.item.opened : false
     signal moreChosen()
     signal picked(var value)              // the option's own value, type kept (a number stays a number)
+    signal tried(var value)               // the list is open and the pointer (or ↑ ↓) rests on this option: show it, set nothing
+    signal untried()                      // the list closed: what was only tried goes back (after a pick: the pick stays)
     function valueAt(i) { const o = options[i]; return typeof o === "string" ? o : o.value }
     function labelAt(i) { const o = options[i]; return typeof o === "string" ? o : o.label }
     function detailAt(i) { const o = options[i]; return typeof o === "string" ? "" : (o.detail || "") }   // an option's longer words: shown in the open list under its name, never in the closed field
@@ -41,7 +45,9 @@ FieldFrame {
             if (p && p.opened) { p.takeKeys(); return }
         }
     }
-    function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
+    property var atOpen: undefined        // the value set when the list opened: a pick is compared with it, not with `current`,
+                                          // which shows the option only hovered (tried) — a click on it must still be sent
+    function open() { atOpen = current; query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: f.opened
@@ -63,6 +69,7 @@ FieldFrame {
         id: menu
         ownKeys: ["Up", "Down", "Enter"]
         property int highlighted: 0
+        onHighlightedChanged: if (opened && highlighted >= 0 && highlighted < f.shown.length) f.tried(f.valueAt(f.shown[highlighted]))
         width: f.width
         property bool up: false              // opens above the field (only when it does not fit below and fits above)
         y: up ? -height - 2 : f.height + 2
@@ -88,7 +95,7 @@ FieldFrame {
         exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
         onOpened: if (f.searchable) search.forceActiveFocus()
         onAboutToHide: f.handKeysBack()        // at once, not after the fade: a Return right after a pick is the popover's
-        onClosed: f.handKeysBack()             // and again once closed: Qt gives the keys to the window as it finishes closing
+        onClosed: { f.handKeysBack(); f.untried() }   // and again once closed: Qt gives the keys to the window as it finishes closing
         contentItem: Column {
             id: list
             focus: true
@@ -96,7 +103,7 @@ FieldFrame {
             Keys.onDownPressed: menu.highlighted = Math.min(f.shown.length - 1, menu.highlighted + 1)
             Keys.onReturnPressed: pickShown(menu.highlighted)
             Keys.onEnterPressed: pickShown(menu.highlighted)
-            function pick(i) { menu.close(); if (!f.same(f.valueAt(i), f.current)) f.picked(f.valueAt(i)) }
+            function pick(i) { const v = f.valueAt(i); if (!f.same(v, f.atOpen)) f.picked(v); menu.close() }   // sent before the close (its untried)
             function pickShown(k) { if (k >= 0 && k < f.shown.length) pick(f.shown[k]) }
             Rectangle {   // the search line (a long list or a font list): type to keep only what matches
                 visible: f.searchable

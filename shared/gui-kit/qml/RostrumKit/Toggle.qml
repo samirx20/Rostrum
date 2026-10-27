@@ -9,7 +9,7 @@ Item {
     signal toggled(bool value)
     implicitWidth: 32; implicitHeight: Theme.field
     activeFocusOnTab: true
-    Keys.onSpacePressed: t.toggled(!t.checked)
+    Keys.onSpacePressed: { if (typeof ack !== "undefined" && ack) ack.by(t); t.toggled(!t.checked) }
 
     HoverHandler { id: hoverHandler; cursorShape: Qt.PointingHandCursor }
     Rectangle {
@@ -18,12 +18,10 @@ Item {
         width: 32; height: 18; radius: 9
         color: t.checked ? (t.hovered ? Theme.accentHover : Theme.accent) : (t.hovered ? Theme.lineHover : Theme.active)
         border.width: t.activeFocus ? 1 : 0; border.color: Theme.fg2
-        Behavior on color { ColorAnimation { duration: Theme.fast } }
-        Rectangle {
+        Rectangle {     // on / off is a pick: drawn at once, colour and knob alike (INTERACTION principle 10)
             y: 2; width: 14; height: 14; radius: 7; color: "white"
             x: t.checked ? track.width - width - 2 : 2
-            Behavior on x { NumberAnimation { duration: Theme.fast; easing.type: Easing.OutCubic } }
         }
     }
-    MouseArea { anchors.fill: parent; onClicked: t.toggled(!t.checked) }
+    MouseArea { anchors.fill: parent; onClicked: { if (typeof ack !== "undefined" && ack) ack.by(t); t.toggled(!t.checked) } }
 }

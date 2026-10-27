@@ -11,7 +11,8 @@ sees another's Open recent, saved brushes or remembered places.
 
 `batch(app, states_file, out, open_, steps, window, ready, ignore)`: open_(start args) shows the state's document;
 steps(list) runs its steps; window() is the current window; ready() the app's "newest frame has landed"; ignore the
-app's deliberate faults.
+app's deliberate faults. After a state's sizes, the stability pass (layout_stable.py) clicks a few of its controls at
+the last size; it opens the state again (open_, steps) when a click left it.
 """
 from __future__ import annotations
 
@@ -61,14 +62,40 @@ def batch(app, states_file, out, open_, steps, window, ready, ignore=()) -> None
             open_(start)
         except Exception as e:  # noqa: BLE001  a state that cannot open is reported; the parent goes on with the rest
             return fail(name, e)
-        QTimer.singleShot(400, lambda: go(name, run))
+        QTimer.singleShot(400, lambda: go(name, start, run))
 
-    def go(name, run):
+    def go(name, start, run):
         try:
             steps(run)
-            layout_run.sweep(app, window(), out, name, ready, ignore, then=lambda code: done(name, code))
+            layout_run.sweep(app, window(), out, name, ready, ignore, then=lambda code: stable(name, start, run, code))
         except Exception as e:  # noqa: BLE001
             fail(name, e)
+
+    def stable(name, start, run, code):
+        from . import layout_stable, pointer
+        if layout_stable.wanted():
+            def again():
+                size = window().size()
+                clear_home()                  # (as for a new state: its steps make their files again)
+                open_(start)
+                pointer.wait(400)
+                steps(run)
+                window().resize(size)
+                pointer.wait(layout_run.RESIZE_PAUSE_MS)
+                return window()
+            try:
+                lines = layout_stable.run_state(window(), out, name, again)
+            except Exception as e:  # noqa: BLE001
+                return fail(name, e)
+            if lines and layout_stable.strict():
+                layout_run.add(out, name, "stable", lines)
+                code = max(code, 5)
+            elif lines:                       # reported, not failed, until the apps' first finds are fixed
+                with open(Path(out) / "stable-finds.txt", "a", encoding="utf-8") as f:
+                    f.write("".join(f"{name}: {ln}\n" for ln in lines))
+            if lines:
+                print("\n".join(f"  {k:2}. {ln}" for k, ln in enumerate(lines, 1)))
+        done(name, code)
 
     def done(name, code):
         print(f"layout-done {name}", flush=True)

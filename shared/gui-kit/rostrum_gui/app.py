@@ -110,6 +110,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     from .incubation import install
     install(engine)                    # rows made ahead are built in idle time, never inside a drag's frames (incubation.py)
     engine.addImportPath(str(KIT_QML))
+    from . import cursor_item          # noqa: F401  registers CanvasCursor (import RostrumCursors 1.0; CURSORS.md)
     for folder in imports:
         engine.addImportPath(str(folder))
     from .screen_images import ScreenImages
@@ -138,6 +139,10 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     words = typed_word.make()                         # KeyShortcut tells it when a shortcut ran
     words.setParent(engine)
     ctx.setContextProperty("typedWord", words)
+    from rostrum_gui import ack                       # paint, then run (ack.py); Windows' "animation effects" (Theme.reduceMotion)
+    from rostrum_gui.drag_esc import ESC
+    ctx.setContextProperty("dragEsc", ESC)                    # a QML drag owns Esc while it runs (drag_esc.py)
+    ctx.setContextProperty("ack", ack.ACK); ctx.setContextProperty("systemReduceMotion", ack.system_reduce_motion())
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))
@@ -147,6 +152,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     win.resize(*size)
     if background():
         show_behind(win)
+    ack.PopupPresses(win)                             # (before the area watcher, so after it: a press in a popup is its opener's)
     from rostrum_gui.focus_areas import watch         # the area last pressed takes the keys (AppShell.pressedAt)
     watch(win)
     words.watch(win)

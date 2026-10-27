@@ -153,7 +153,7 @@ def _tame(goal, limit, short, r, root, engine, scratch, track=None):
         seen = t.seen[(tuple(whos), depth)]
         got, m = seen["got"], seen["got"].get("master") or {}
         names = " and ".join(whos)
-        how = "; ".join(f"{w}: threshold {t.settings(w, depth)['threshold']:g} dB ({depth:g} dB under its peak), makeup {seen['makeup'][w]:+.1f} dB, "
+        how = "; ".join(f"{w}: threshold {t.threshold(w, depth):g} dB ({t.peak[w] - t.threshold(w, depth):.1f} dB under its peak), makeup {seen['makeup'][w]:+.1f} dB, "
                         f"kept {seen['drift'][w]:+.1f} dB from its place" for w in whos)
         return {"name": "tame_peaks", "tracks": whos, "depth_db": depth, "renders": t.renders, "lufs": round(got["lufs"], 2),
                 "limit_db": round(m.get("limiterMaxReductionDb") or 0, 2), "ops": t.ops(whos, depth),
@@ -178,8 +178,18 @@ def best(options: list[dict], need: float, limit: float) -> dict | None:
     return next((o for o in ok if o["name"] == first_choice(need, limit)), ok[0] if ok else None)
 
 
-def plan(r: dict, master: dict, tracks: dict, root: dict, engine, scratch: Path, track: str | None = None) -> dict:
-    """The options for the last render `r`. `master`: the document's master fields; `tracks`: {id: track}."""
+def _alone(name: str, search) -> dict:
+    """One option's search; its failure is that option's "impossible" with the reason, never the whole plan's (a
+    tame_peaks that can't be worked out still leaves keep_balance and trim_track to choose)."""
+    try:
+        return search()
+    except Exception as e:   # noqa: BLE001 - any failure of this one search; the others stand
+        return {"name": name, "impossible": True, "failed": str(e), "words": f"Could not be worked out here ({e}); the other options stand."}
+
+
+def plan(r: dict, master: dict, tracks: dict, root: dict, engine, scratch: Path, track: str | None = None, only: str | None = None) -> dict:
+    """The options for the last render `r`. `master`: the document's master fields; `tracks`: {id: track}.
+    `only="keep_balance"`: just that option (no search renders)."""
     goal = master.get("loudness") if master.get("normalize") else None
     limit = master.get("maxLimit", 2) if master.get("gentle") else None
     out = {"target": goal, "lufs": r["lufs"], "need_db": need_db(r), "max_limit": limit}
@@ -190,10 +200,12 @@ def plan(r: dict, master: dict, tracks: dict, root: dict, engine, scratch: Path,
     short = goal - r["lufs"]
     if limit is None or short < SHORT_OK:
         return {**out, "state": "on target", "words": f"The render is on the {goal:g} LUFS target ({r['lufs']:.1f}); nothing to fit.", "options": []}
-    options = [_keep_balance(goal, out["need_db"], limit), _tame(goal, limit, short, r, root, engine, scratch, track)]
-    who = track or peakiest_track(r)
-    if who in tracks:
-        options.append(_trim(goal, limit, short, who, tracks, root, engine, scratch))
+    options = [_keep_balance(goal, out["need_db"], limit)]
+    if only != "keep_balance":                   # keep_balance needs no render: asking only for it never waits on the searches
+        options.append(_alone("tame_peaks", lambda: _tame(goal, limit, short, r, root, engine, scratch, track)))
+        who = track or peakiest_track(r)
+        if who in tracks:
+            options.append(_alone("trim_track", lambda: _trim(goal, limit, short, who, tracks, root, engine, scratch)))
     pick = best(options, out["need_db"], limit)
     return {**out, "state": "under target", "short_db": round(short, 2), "options": options, "best": pick["name"] if pick else None,
             "words": f"The render landed {short:.1f} dB under the {goal:g} LUFS target: the limiter's need is {out['need_db']:g} dB and the master allows {limit:g}."}

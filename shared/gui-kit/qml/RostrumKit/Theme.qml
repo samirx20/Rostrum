@@ -10,7 +10,7 @@ QtObject {
     readonly property color panel: "#1c1c1c"
     readonly property color raised: "#262626"
     readonly property color hover: "#303030"
-    readonly property color active: "#333333"
+    readonly property color active: "#3d3d3d"         // pressed / open: a clear step past hover, seen in the press frame
     readonly property color sunken: "#101010"       // viewer and timeline track wells
     readonly property color border: "#2e2e2e"
     readonly property color line: "#3a3a3a"         // field underline at rest
@@ -86,11 +86,25 @@ QtObject {
     readonly property int radiusCtl: 6
     readonly property int radiusPanel: 8
 
-    // motion
-    readonly property int fast: 120       // hover and colour changes
-    readonly property int reveal: 160     // a control appearing or leaving (height + opacity)
+    // motion (INTERACTION.md principle 10): few movements, short, always from where the thing came from. A press, a pick,
+    // the playhead and anything dragged never animate (0 ms: a pressed look is drawn in the frame of the press).
+    // `reduceMotion` sets every duration to 0; it starts from Windows' own "Animation effects" (ack.system_reduce_motion,
+    // the `systemReduceMotion` context value) and an app's Preferences may set it: Theme.reduceMotion = true.
+    property bool reduceMotion: typeof systemReduceMotion !== "undefined" && !!systemReduceMotion
+    readonly property int fast: reduceMotion ? 0 : 120          // hover and colour changes
+    readonly property int popupIn: reduceMotion ? 0 : 120       // a popup or menu: fades in ...
+    readonly property int popupShift: reduceMotion ? 0 : 4      // ... moving this many px from its anchor's side
+    readonly property int rowEase: reduceMotion ? 0 : 140       // a row added, removed or opened: its height eases
+    readonly property int sheetSlide: reduceMotion ? 0 : 160    // a sheet or drawer slides from its edge
+    readonly property int press: 0                              // press, pick, playhead, drag: never animated
+    readonly property int reveal: reduceMotion ? 0 : 160        // a control appearing or leaving (height + opacity)
     readonly property int revealEasing: Easing.OutCubic
+    readonly property int shake: reduceMotion ? 0 : 240         // a refused entry shakes once (NumberField); still, it only says
     readonly property real scrubPixels: 4 // mouse pixels per step when dragging a number
+
+    // canvas pointers (CURSORS.md); must match rostrum_gui/cursors.py (tests/test_cursors.py checks)
+    readonly property var cursorKinds: ["pick", "resize", "rotate", "anchor", "text", "text-box", "make", "pen", "fill", "dropper", "hand", "hand-grab", "zoom-plus", "zoom-minus", "no", "none"]
+    readonly property var cursorBadges: ["copy", "remove", "deep", "point", "bend", "radius", "shape", "close", "x", "caret", "slash", "wrap", "centre"]
 
     // words as a person reads them: first letter up, the rest as written ("next stroke" → "Next stroke", never
     // "Next Stroke"; Font.Capitalize upper-cases every word)

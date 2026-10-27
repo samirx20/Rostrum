@@ -34,8 +34,7 @@ SmallPopup {
     focus: true
     dim: false                                      // a small popover is light: even a modal one never dims the window
     background: MenuBackground { radius: Theme.radiusPanel }
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.fast } }
-    exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.fast } }
+    // its motion is SmallPopup's: from its anchor's side (`shiftY`, set by place(): from below when it opens above)
 
     function openAt(item) { anchor = item; place(); open() }
     function openAtPoint(px, py) { anchor = null; point = Qt.point(px, py); place(); open() }
@@ -57,16 +56,21 @@ SmallPopup {
         const ov = parent
         if (!ov) return
         settle()
+        shiftX = 0
         let p = anchor ? anchor.mapToItem(ov, 0, anchor.height + Theme.grid) : point
         let y0 = p.y
-        if (y0 + height > ov.height - Theme.grid && anchor)      // no room below: above the anchor
+        shiftY = Theme.popupShift
+        if (y0 + height > ov.height - Theme.grid && anchor) {    // no room below: above the anchor
             y0 = anchor.mapToItem(ov, 0, 0).y - height - Theme.grid
+            shiftY = -Theme.popupShift
+        }
         let x0 = p.x
         if (anchor && x0 + width > ov.width - Theme.grid) {      // it would slide left over the settings panel's labels under
             for (let it = anchor.parent; it; it = it.parent) if (it.popupsBeside === true) {     // its button: beside the panel instead
                 const s = it.mapToItem(ov, 0, 0)
                 x0 = s.x - width - Theme.gap
                 y0 = anchor.mapToItem(ov, 0, 0).y
+                shiftY = 0; shiftX = -Theme.popupShift                  // beside the panel: from its side
                 break
             }
         }

@@ -12,6 +12,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from rostrum_gui import commands
 from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.action_views import commands as do_commands
+from rostrum_core import edits as E
 from rostrum_gui.edits import Drag
 from rostrum_sound.doc import musical
 from rostrum_sound.doc import select_time as ST
@@ -35,6 +36,7 @@ KINDS = {"track": "Track", "bus": "Group", "marker": "Marker", "section": "Secti
 
 MAKES = ("note.duplicate", "hit.duplicate", "clip.duplicate", "clip.split", "section.add", "track.duplicate",
          "section.duplicate")          # what these made is selected afterwards
+GROWS = ("note.chord",)                # these add to the selected notes: the selection keeps them and takes the new ones
 
 
 class SoundHub(ActionHub):
@@ -144,6 +146,11 @@ class ActionSlots:
     def _amounts_kept(self, change, label):
         """The amounts popover kept its session (one change, named with its amounts): said in the message line."""
         self._done(change, f"{label}: already so, nothing changed", said=True)
+        new = [i for i in ST.inserted(change) if self.doc.has(i)] if change else []
+        if new and any(isinstance(e, E.Remove) for e in E.flat(change.edits)):     # Arpeggio…: what replaced the chord
+            with self._picks_after():                                              # is selected (Humanise acts on all of it)
+                self._pick([i for i in self._picks.ids if self.doc.has(i)] + new, later=True)
+                self._settle()
 
     def _act_do(self, name, entry):
         """Sound's actions that are not operations by themselves."""
@@ -332,8 +339,9 @@ class ActionSlots:
             made = [i for i in made if self.doc.item(i)["type"] == "section"] or made   # a new section stands for what
             # it holds: it alone is selected, so its own actions show (Duplicate section, Ctrl+D again)
             kept = [i for i in picked if self.doc.has(i)]
-            if not made and new and len(kept) < len(picked):
-                made = kept + new               # one rule: what replaced selected items is selected (Arpeggio, then Humanise)
+            if not made and new and (len(kept) < len(picked) or any(c["op"] in GROWS for c in calls)):
+                made = kept + new               # one rule: what replaced selected items is selected (Arpeggio, then Humanise);
+                # a chord keeps its roots too: the whole chords are selected, so Arpeggio… is offered at once
             if made:                            # the outlines with the change, the panel once both are drawn
                 self._pick(made, later=True)
                 self._settle()

@@ -1,13 +1,17 @@
 import QtQuick
 import RostrumKit
 import "Picks.js" as Picks
+import "Pointers.js" as Pointers
+import "Tempo.js" as Tempo
 
 // Every click and drag on the arrangement's lanes, in one place (select first, then act: INTERACTION.md §1.3, §1.10).
 // On an item: click selects it alone, Ctrl+click adds / removes, Shift+click takes the run between on its track;
 // double-click selects it and opens the Editor. A press that moves 4 px or more drags every selected item (Ctrl: no
 // snapping, Shift: only in time, Alt: a copy; clips also go to the track under the pointer; one undo step).
-// A selected clip's handles (handles.py): edges trim, top corners fade, bottom-right stretches, the level line sets
-// its volume; the pointer shape says which. On empty lane space: a click clears the selection and makes that track
+// A selected clip's handles (handles.py): edges trim (Alt on the right edge: stretch), top corners fade, bottom-right
+// stretches, the level line sets its volume. The pointer says what a press does there (CANVAS.md §4, Pointers.js:
+// pick on a body, copy with Alt, trim, stretch, fade, level), and a chip beside it says the amount while dragging
+// ("−1 bar 2", "Fade 120 ms", "−3.0 dB", "Stretch 125 %"). On empty lane space: a click clears the selection and makes that track
 // the Editor's (the playhead stays: only the ruler moves it); a drag draws a box that selects what it touches across tracks (Ctrl
 // adds). Right-click: an item's actions (selected alone first unless already selected), or the lane's own menu.
 // An open automation lane keeps its own clicks (backend.laneBegin …). `tl` is the Timeline, `bars` its ruler.
@@ -28,13 +32,24 @@ MouseArea {
     property real rowH: 1
     property string hit: ""
     property string handle: ""
-    property string hover: ""
+    property string hover: ""           // the zone under the pointer: a handle's name, "body" (an item), "" (empty)
+    property bool altHeld: false
+    property string handleTrack: ""     // a handle drag's row and its block at the press (the chip's "from")
+    property var handleFrom: null
+    property string chip: ""
     property int row0: -1
     property string mode: ""            // "press" (on an item) | "hpress" (on a handle) | "drag" | "handle" | "empty" | "box" | "point"
     readonly property bool busy: mode === "drag" || mode === "box" || mode === "handle"
     readonly property real snapPx: 6     // snapping catches within 6 px (INTERACTION.md §1.11)
-    cursorShape: ({ start: Qt.SizeHorCursor, end: Qt.SizeHorCursor, fadeIn: Qt.SizeBDiagCursor,
-                    fadeOut: Qt.SizeFDiagCursor, stretch: Qt.SizeFDiagCursor, level: Qt.SizeVerCursor })[mode === "handle" ? handle : hover] || Qt.ArrowCursor
+    readonly property var zones: ({ start: "trim", end: "trim", fadeIn: "fade", fadeOut: "fadeOut", stretch: "stretch", level: "level" })
+    function pointerOf(zone, alt) {
+        if (zone === "body") return alt ? "copy" : "pick"
+        if (zone === "end" && alt) return "stretch"          // Alt on the right edge stretches in time
+        return zones[zone] || ""
+    }
+    cursorShape: Pointers.of(mode === "drag" || mode === "press" ? (altHeld ? "copy" : "moving")
+                             : mode === "handle" || mode === "hpress" ? pointerOf(handle, false)
+                             : mode === "" ? pointerOf(hover, altHeld) : "")
     function yFrac(y) { return Math.max(0, Math.min(1, (y - laneTop - 8) / (tl.laneH - 16))) }
     function ctrl(e) { return (e.modifiers & Qt.ControlModifier) !== 0 }
     function shift(e) { return (e.modifiers & Qt.ShiftModifier) !== 0 }
@@ -50,6 +65,29 @@ MouseArea {
         if (s.i < 0) return null
         var r = tl.rows[s.i]
         return { r: r, s: s, t: bars.tOf(e.x), lane: Math.max(0, Math.min(1, (e.y - s.top - 3) / Math.max(1, tl.hOf(r) - 8))) }
+    }
+    function zoneAt(e) {   // what a press here would take: a handle, an item's body, or nothing
+        var h = handleUnder(e)
+        if (h.handle) return h.handle
+        var u = under(e)
+        return u && !u.r.mix && !(u.s.lane && tl.autoOf(u.r)) && backend.blockAt(u.r.id, u.t, u.lane, snapPx / bars.perSec) !== "" ? "body" : ""
+    }
+    function chipNow() {   // the handle drag's amount, from the block as its lane draws it now against the press
+        var b = tl.blockOf(handleTrack, hit), f = handleFrom, song = bars.song
+        if (!b || !f) return ""
+        if (handle === "start" || handle === "end") {
+            var was = handle === "start" ? f.t : f.t + f.dur, now = handle === "start" ? b.t : b.t + b.dur
+            return Tempo.amount(Tempo.along(song.beats, now, song.spb) - Tempo.along(song.beats, was, song.spb), song.barBeats)
+        }
+        if (handle === "fadeIn" || handle === "fadeOut") {
+            var ms = Math.round((b[handle] || 0) * 1000)
+            return "Fade " + (ms < 1000 ? ms + " ms" : (ms / 1000).toFixed(2) + " s")
+        }
+        if (handle === "level") {
+            var db = 20 * Math.log((b.volume || 1e-4)) / Math.LN10
+            return (db < -0.05 ? "−" : db > 0.05 ? "+" : "") + Math.abs(db).toFixed(1) + " dB"
+        }
+        return "Stretch " + Math.round(b.dur / Math.max(1e-6, f.dur) * 100) + " %"
     }
     function handleUnder(e) {
         var u = under(e)
@@ -85,13 +123,19 @@ MouseArea {
             return
         }
         var h = handleUnder(e)
-        if (h.id) { hit = h.id; handle = h.handle; rowH = Math.max(1, tl.hOf(u.r) - 8); mode = "hpress"; return }
+        if (h.id) {
+            hit = h.id; handle = h.handle === "end" && alt(e) ? "stretch" : h.handle     // Alt on the right edge: stretch
+            rowH = Math.max(1, tl.hOf(u.r) - 8); mode = "hpress"; handleTrack = u.r.id
+            var b = tl.blockOf(u.r.id, hit)
+            handleFrom = b ? { t: b.t, dur: b.dur, volume: b.volume || 1 } : null
+            return
+        }
         if (hit !== "" && !ctrl(e) && !shift(e) && !Picks.all(backend, backend.pickStamp)[hit]) backend.pressSelect(hit)
         mode = hit !== "" ? "press" : "empty"
     }
     onPositionChanged: (e) => {
-        x1 = e.x; y1 = e.y
-        if (!pressed) { var h = handleUnder(e); hover = h.handle || ""; return }
+        x1 = e.x; y1 = e.y; altHeld = alt(e)
+        if (!pressed) { hover = zoneAt(e); return }
         if (mode === "press" && far(e)) {
             if (!Picks.all(backend, backend.pickStamp)[hit]) backend.clickSelect(hit, ctrl(e), false)
             mode = backend.beginDrag(hit) ? "drag" : ""
@@ -105,7 +149,7 @@ MouseArea {
             backend.dragTrack(r >= 0 && !shift(e) && !tl.rows[r].mix ? tl.rows[r].id : "")
             backend.dragTo((e.x - x0) / bars.perSec, 0, ctrl(e), shift(e), alt(e), bars.perSec)
         }
-        else if (mode === "handle") backend.handleTo((e.x - x0) / bars.perSec, (e.y - y0) / rowH, ctrl(e))
+        else if (mode === "handle") { backend.handleTo((e.x - x0) / bars.perSec, (e.y - y0) / rowH, ctrl(e)); chip = chipNow() }
         else if (mode === "point") backend.laneDrag(bars.tOf(e.x), yFrac(e.y), shift(e))
         else if (mode === "box") {
             var a = boxRow(y0), b = boxRow(y1), ids = []                 // every row the box crosses
@@ -122,7 +166,7 @@ MouseArea {
         }
         else if (mode === "drag" || mode === "point" || mode === "handle") backend.endDrag()
         else if (mode === "box") backend.endBox()
-        mode = ""
+        mode = ""; chip = ""
     }
     onDoubleClicked: (e) => {   // goes in: the item selected, the Editor open on it
         var u = under(e)
@@ -130,8 +174,9 @@ MouseArea {
         if (id === "" && u && editorSide.isVoiceTrack(u.r.id)) { editorSide.startTyping(u.r.id, bars.tOf(e.x)); return }
         if (id !== "") { backend.select(id); workspace.setDock("editor") }
     }
-    onCanceled: { if (mode === "drag" || mode === "point" || mode === "handle") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = "" }
+    onCanceled: { if (mode === "drag" || mode === "point" || mode === "handle") backend.cancelDrag(); if (mode === "box") backend.endBox(); mode = ""; chip = "" }
 
+    DragLabel { text: m.mode === "handle" ? m.chip : ""; at: Qt.point(m.x1, m.y1) }   // the handle drag's amount
     Rectangle {   // the box being dragged
         visible: m.mode === "box"
         x: Math.min(m.x0, m.x1); y: Math.min(m.y0, m.y1); width: Math.abs(m.x1 - m.x0); height: Math.abs(m.y1 - m.y0)

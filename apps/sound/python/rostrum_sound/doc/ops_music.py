@@ -6,7 +6,7 @@ from rostrum_core import Param, codes
 from rostrum_core import ids as core_ids
 
 from . import fields as FD
-from . import sections
+from . import sections, tempo
 from . import values as V
 from .registry import REGISTRY, set_fields, taken
 
@@ -17,7 +17,9 @@ LABELS = {"tempo": ("tempos", "tempo change", "Add a tempo change: the tempo fro
                                                        "unit (6 and 8: 6/8) from that beat (or moment) on, starting a new bar there."),
           "key": ("keys", "key change", 'Add a key change ("D minor") from a time on: for agents and the screen, '
                                         "not heard."),
-          "section": ("sections", "section", 'Add a named part of the song ("verse"): where it starts and ends.')}
+          "section": ("sections", "section", 'Add a named part of the song ("verse"): where it starts and ends. A time in '
+                                             'seconds is kept as the beat it falls on, so the section stays on its bars '
+                                             'when the tempo changes; a marker reference ("#cut") follows the marker.')}
 
 
 def _id(type_, args, ctx):
@@ -28,19 +30,35 @@ def _id(type_, args, ctx):
     return id_
 
 
+def _on_bars(ctx, args: dict) -> dict:
+    """A section is part of the song's music, so it follows its bars: a plain seconds `at` / `end` (a time range
+    drawn on the ruler) is kept as the beat it falls on today, so a later tempo change moves it with its notes. A
+    marker reference ("#drop") stays: it follows its marker on purpose."""
+    out = dict(args)
+    for k in ("at", "end"):
+        v = out.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            out[k] = {"beat": round(tempo.beat_at(ctx.doc, float(v)), 6)}
+    return out
+
+
+def _set_section(ctx, targets, args):
+    set_fields(ctx, targets, _on_bars(ctx, args))
+
+
 def register(type_):
     key, label, summary = LABELS[type_]
 
     @REGISTRY.operation(f"{type_}.add", summary, label=f"Add {label}",
                         params=[ID, *FD.params(type_, required=True)], importance="secondary")
     def add(ctx, targets, args):
-        args = dict(args)
+        args = _on_bars(ctx, args) if type_ == "section" else dict(args)
         id_ = _id(type_, args, ctx)
         args.pop("id", None)
         ctx.insert("root", key, {"id": id_, "type": type_, **FD.DEFAULTS[type_], **args})
 
     REGISTRY.operation(f"{type_}.set", f"Change {label}s.", target=type_, params=FD.params(type_),
-                       label=f"Edit {label}", fields=True)(set_fields)
+                       label=f"Edit {label}", fields=True)(_set_section if type_ == "section" else set_fields)
 
     @REGISTRY.operation(f"{type_}.remove", f"Delete {label}s.", target=type_, label=f"Delete {label}",
                         importance="secondary")

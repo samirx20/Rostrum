@@ -60,3 +60,35 @@ def test_taming_the_peaks_reaches_the_target_within_the_limit_with_the_balance_k
     assert after["master"]["limiterMaxReductionDb"] <= 2.1, after["master"]
     for w in tame["tracks"]:
         assert abs(rel(after)[w] - rel(first)[w]) <= 0.5, (w, rel(first), rel(after))
+
+
+def test_a_track_whose_own_peak_stands_over_0_dbfs_still_gets_every_option(tmp_path):
+    """Critic r12: a quiet fader on a loud part puts the track's own peak (before its fader) over 0 dBFS; the first trial
+    threshold (that peak minus the depth) was outside the compressor's -80…0 and sank the whole plan, keep_balance too."""
+    from rostrum_sound import fit_peaks as peaks
+    doc = Document.new(KIND)
+    doc.run_script("song.py", run_source(SONG, "song.py"))
+    doc.apply([{"op": "master.set", "target": ["master"], "args": {"maxLimit": 2}},
+               {"op": "track.set", "target": ["piano"], "args": {"volume": 0.05}}], Who.person())   # -26 dB: its own peak far over 0
+    master = doc.data["master"][0]
+    with Engine() as e:
+        first = e.request("render", schedule=compile(doc.data), out=str(tmp_path / "a.wav"), stems=[])
+        t = peaks.Tamer(doc.data, e, tmp_path, first)
+        assert t.peak["piano"] > 0, t.peak                                       # the case: its own peak over 0 dBFS
+        assert all(peaks.LOWEST <= t.threshold("piano", d) <= peaks.HIGHEST for d in (0, 1, 4, 18, 200))
+        p = fit.plan(first, master, {tr["id"]: tr for tr in doc.data["tracks"]}, doc.data, e, tmp_path, "piano")
+        quick = fit.plan(first, master, {tr["id"]: tr for tr in doc.data["tracks"]}, doc.data, e, tmp_path, only="keep_balance")
+    keep = next(o for o in p["options"] if o["name"] == "keep_balance")
+    assert keep.get("ops"), p["words"]
+    assert [o["name"] for o in quick["options"]] == ["keep_balance"] and quick["options"][0]["ops"] == keep["ops"]
+    for o in p["options"]:                                                  # every compressor setting proposed is one it takes
+        for op in o.get("ops") or []:
+            if op["op"] in ("effect.add", "effect.set") and "threshold" in op["args"]:
+                assert peaks.LOWEST <= op["args"]["threshold"] <= peaks.HIGHEST, op
+
+
+def test_one_option_that_fails_leaves_the_others():
+    def boom():
+        raise RuntimeError("engine said no")
+    got = fit._alone("tame_peaks", boom)
+    assert got["impossible"] and "engine said no" in got["words"] and not got.get("ops")

@@ -6,7 +6,7 @@ import RostrumKit
 // ghost style, the play button the one accent — + Add, ⏮ ▶ loop (always there), Record (always there; Take, the level
 // and Record keys join it while a track is armed), the metronome, the position and tempo · beats · key (click: the tempo / key popover), then at the right
 // the picture's switch (while the song has one), Grid ▾ and Snap, and the zoom (− + Fit) — then the Timeline (ruler, sections,
-// markers, track headers and lanes, + Track, the Master row last). A new song shows one button, Add a track. The picture floats at the top right while it is open.
+// markers, track headers and lanes, + Track, the Master row last). A new song shows one button, Add a track. The picture sits under the last row while it fits there, else docked in its own column at the right: never over a lane.
 Rectangle {
     id: a
     objectName: "soundArrangement"              // a press in it makes Ctrl+A the arrangement's (press_area.py)
@@ -134,7 +134,9 @@ Rectangle {
         id: timeline
         headerWidth: Math.max(a.headerWidth, a.minHeader)
         slack: a.dockSlack
-        anchors { left: parent.left; right: parent.right; top: strip.bottom; bottom: parent.bottom }
+        // the picture docked beside the lanes takes its own column: no bar is ever under it (critic r12 should-fix 9)
+        anchors { left: parent.left; right: corner.docked ? corner.left : parent.right; top: strip.bottom; bottom: parent.bottom
+                  rightMargin: corner.docked ? Theme.gap : 0 }
         onAddTrack: a.addTrack()
     }
     Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest)
@@ -147,11 +149,13 @@ Rectangle {
         id: corner
         visible: backend.pictureOpen
         width: Math.min(340, a.width * 0.4); z: 5
-        // under the last row when it fits there (the empty space a folded dock leaves), else at the top right: it
-        // covered bars of every track at each open, the flash and the ending too (critic r9 + r10)
-        readonly property real atTop: strip.height + timeline.rulerBottom + Theme.grid
+        // Never over a lane, so every bar stays reachable by click (critic r9, r10, r12; PLAN S6): under the last row
+        // when it fits there (the empty space a folded dock leaves), else docked in its own column at the right, the
+        // lanes narrowing beside it (the ruler and the rows fit the bars into what is left)
         readonly property real under: timeline.y + timeline.rowsBottom + Theme.grid
-        y: under + height + Theme.gap <= a.height ? under : atTop
+        readonly property bool fitsUnder: under + height + Theme.gap + 12 <= a.height     // (the slim scrollbar stays clear)
+        readonly property bool docked: visible && !fitsUnder
+        y: fitsUnder ? under : strip.height
         anchors { right: parent.right; rightMargin: Theme.gap }
     }
 }
