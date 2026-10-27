@@ -29,6 +29,9 @@ WHERE = {"view": "The view", "items": "These layers", "rect": "A rectangle"}
 TO = [Param.choice("to", list(WHERE), label="To", labels=WHERE,
                    help="Where to: the view's rectangle, the layers `ids`, or the rectangle `rect`"),
       Param.list("ids", "id", label="Layers", help='For to "items": the layers to frame, as they show in the export at `at`'),
+      Param.list("keep", "id", label="Keep whole", importance="deep",
+                 help='For to "items": layers (or rig parts) that must stay whole in the frame too: the frame fits `ids` and `keep` together, '
+                      'so a face with keep ["robot"] still shows the body (a tight close-up of `ids` alone cuts the rest)'),
       Param.list("rect", "number", label="Rectangle", min_items=4, max_items=4,
                  help='For to "view" / "rect": [x, y, w, h] in world px (the screen sends its visible view)'),
       Param.number("pad", label="Room", min=0, max=0.45, display="percent",
@@ -72,11 +75,12 @@ def _goal(ctx, frame, timed, t, args, roll) -> dict:
         got = FIT.rect((x, y, w, h), size, roll, args.get("pad", 0.0))
     else:
         ids = args.get("ids") or []
+        keep = [k for k in args.get("keep", []) if k not in ids]
         if not ids:
             ctx.fail(codes.BAD_ARGUMENT, '"ids"', 'is empty: to "items" frames one or more layers', hint="Give layer ids.")
         rows = {r["id"]: r for r in flatten({**timed, "layers": [l for l in timed["layers"] if l["type"] != TYPE]}, t)}
         groups = []
-        for i in ids:
+        for i in [*ids, *keep]:
             if i not in rows and i in rigged(timed):        # a part of a rig: where it is posed (the engine's place)
                 groups.append((rigged(timed)[i], posed_corners(ctx, i, t)))
                 continue
@@ -138,7 +142,7 @@ def _ease_into(ctx, frame, fid, f, t, ease):
 
 @R.operation("frame.fit", "Frame something: `to` view or rect (the largest frame-shaped box inside `rect` [x, y, w, h], "
              "world px, keeping the frame's turn), or items (the layers `ids` as they show in the export at `at`, depth "
-             "included, with `pad` room). Keys x, y, zoom at `at`; a field with no keys yet is also keyed at 0 s where "
+             "included, with `pad` room; `keep` lists layers that stay whole in the frame as well). Keys x, y, zoom at `at`; a field with no keys yet is also keyed at 0 s where "
              "it was. `ease` (a key ease name) shapes the move into it. Already framed there after 0 s: its place is keyed "
              "anyway (a hold the next fit moves on from); at 0 s on a still frame nothing changes. `cut`: jump there (as "
              "frame.cut).", target=TYPE, label="Frame the view",
