@@ -486,10 +486,29 @@ def _parts(occ, node_of, groups, grid, half) -> dict:
         other = int(round(-2 * origin / cell - 1))              # cell i's mirror is cell other − i
         for i in np.nonzero(xs < -0.5 * cell - 1e-9)[0]:
             m = other - i
-            src = cells[m] if 0 <= m < occ.shape[0] else np.zeros_like(cells[i])
-            cells[i] = np.where(occ[i], np.where(src == 255, 0, lut[src]), 255)
+            src = cells[m] if 0 <= m < occ.shape[0] else np.full_like(cells[i], 255)
+            cells[i] = np.where(occ[i], np.where(src == 255, 254, lut[src]), 255)
+        _fill_strays(cells)
     return {"origin": [float(x) for x in grid.get("origin", (0, 0, 0))], "cell": float(grid.get("cell", 1.0)),
             "dims": list(occ.shape), "cells": cells, "groups": out}
+
+
+def _fill_strays(cells: np.ndarray) -> None:
+    """Inside cells on the mirrored half whose twin is outside (254: the clay's sampling is not exactly symmetric)
+    take the piece of the inside cells beside them, the most common of their 26 (an arm's skin cell was the body's,
+    and a raised arm left it behind); one with none beside it, after a few rounds, the body's."""
+    for _ in range(4):
+        todo = np.argwhere(cells == 254)
+        if not len(todo):
+            return
+        p = np.pad(cells, 1, constant_values=255)
+        got = []
+        for c in todo:
+            near = p[c[0]:c[0] + 3, c[1]:c[1] + 3, c[2]:c[2] + 3].ravel()
+            near = near[near < 254]
+            got.append(int(np.bincount(near).argmax()) if len(near) else 254)
+        cells[tuple(todo.T)] = got
+    cells[cells == 254] = 0
 
 
 def pack_parts(parts: dict) -> str:
