@@ -75,3 +75,7 @@ leaving that key, `in` the one arriving at it, in px from the key's place; `null
 when both ends of a stretch have none). Give the x and y keys the same ease for a true curve. The speed along the
 curve follows the ease, not the distance. `look_motion (what "path") {layer}` reads the path back: per sample its own x / y and where it
 is seen on screen, the keys with their handles, the path's length and its peak speed.
+
+## Overlap and follow-through on a rig
+
+Parts of a body do not stop together. When the body stops, an arm, a tail or hair carries on, swings a little past, and settles. On a rig, `rig.follow` makes that: the bones below the target bone lag behind its turn (`lag`, seconds, growing along the chain), swing past by `overshoot` and settle, scaled by `amount`. It is baked to `rotation` keys you can edit; see "Staging a character" in `character-rigging-and-lip-sync`. For layers without bones, `layer.stagger` starts them one after another, and a key ease that overshoots gives the same settle on one field.

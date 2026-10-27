@@ -77,6 +77,9 @@ def _goal(ctx, frame, timed, t, args, roll) -> dict:
         rows = {r["id"]: r for r in flatten({**timed, "layers": [l for l in timed["layers"] if l["type"] != TYPE]}, t)}
         groups = []
         for i in ids:
+            if i not in rows and i in rigged(timed):        # a part of a rig: where it is posed (the engine's place)
+                groups.append((rigged(timed)[i], posed_corners(ctx, i, t)))
+                continue
             if i not in rows:
                 ctx.fail(codes.NOT_FOUND, f'ids "{i}"', f'is not a layer of scene "{timed["id"]}"', sorted(rows))
             top = rows[(rows[i]["within"] or (i,))[0]]
@@ -96,6 +99,24 @@ def _goal(ctx, frame, timed, t, args, roll) -> dict:
                  hint="Frame a smaller or larger area.")
     out = {"x": got[0], "y": got[1], "zoom": got[2]}
     return out if args.get("keepRotation", True) else {**out, "rotation": 0.0}
+
+
+def rigged(timed: dict) -> dict[str, float]:
+    """{id of a layer inside a rig: its rig's depth}: flatten stops at a rig, because the engine poses what is inside."""
+    out, stack = {}, [(l, l.get("depth", 0.0)) for l in timed["layers"] if l["type"] == "rig"]
+    while stack:
+        node, depth = stack.pop()
+        for child in node.get("layers", []):
+            out[child["id"]] = depth
+            stack.append((child, depth))
+    return out
+
+
+def posed_corners(ctx, layer_id: str, t: float) -> list:
+    """The corners of a rig's part as it is posed at t, in px (frame at home: the same as world px)."""
+    from . import placement
+    p = placement.place_at(ctx.doc, layer_id, t)
+    return [placement.comp_point(p, x, y) for x, y in ((0, 0), (p["w"], 0), (p["w"], p["h"]), (0, p["h"]))]
 
 
 def _key(ctx, fid, field, at, v, **extra):
