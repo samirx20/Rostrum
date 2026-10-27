@@ -137,7 +137,7 @@ QQC.ApplicationWindow {
     visible: !backgroundWindow   // a check's window is shown by rostrum_gui/app.py › show_behind instead
     width: 1600; height: 960
     minimumWidth: 1100; minimumHeight: 680
-    title: documentName ? documentName + " — " + appName : appName
+    title: (backgroundWindow ? "Test · " : "") + (documentName ? documentName + " — " + appName : appName)   // a check's window says so
     color: Theme.app
 
     function openAbout() { noticesDialog.get().open() }
