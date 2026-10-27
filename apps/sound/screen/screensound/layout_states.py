@@ -25,7 +25,8 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "library-key-picture", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
-         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu")
+         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu",
+         "key-picker-minor", "go-to-bar")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -177,6 +178,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("chord-menu", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "bar-menu Chord Make_a_chord"]),
         ("amounts-strum", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask strum"]),
         ("amounts-arpeggio", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask arpeggio"]),
+        # production round 2: Ramp velocity… (start %, end % from the selection's ends), the strip dragged tall
+        ("amounts-ramp-velocity", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
+                                                 "ask ramp_velocity"]),
+        ("velocity-tall", ["--sample"], ["select melody", "dock editor", "velocity-height 240"]),
+        # the key picker open (no key: "No key" first; a key: the Major / Minor grid; Other modes), Go to bar (Ctrl+B)
+        ("key-picker", ["--sample"], ["key-open"]),
+        ("key-picker-minor", ["--sample"], [DKEY, "key-open"]),
+        ("go-to-bar", ["--sample"], ["gotobar-open"]),
         # a drum row's name menu (SPEC 3.8): Hear, Select all, Fill ▸ (open), Clear, Change drum ▸; Fill row… in the amounts popover
         ("drum-row-menu", ["--sample"], ["dock editor", "select drums", "drum-menu hat"]),
         ("drum-row-fill-menu", ["--sample"], ["dock editor", "select drums", "drum-fill-menu hat"]),

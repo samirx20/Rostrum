@@ -64,7 +64,19 @@ Column {
     Add { visible: sl.st.canMeter; text: "+ Time signature change"; onClicked: backend.songDo("add_meter", "") }
 
     Head { text: "Key"; visible: sl.lists.key.length > 0 || (sl.st.hasKey && !sl.st.keyAtPlayhead) }
-    Repeater { model: sl.lists.key.length; delegate: Entry { of: sl.lists.key } }
+    Repeater {      // a change's value is the key picker: tonic and mode in one click, as in the header
+        model: sl.lists.key.length
+        delegate: Entry {
+            id: ke
+            of: sl.lists.key
+            picker: true
+            KeyPicker {
+                x: sl.fieldX; width: sl.fieldW; height: parent.height - 4; anchors.verticalCenter: parent.verticalCenter
+                key: ke.modelData.value === songPanel.noKey ? "" : (ke.modelData.value || "")
+                onPicked: (t, m) => { backend.select(ke.modelData.id); songPanel.setKey(t, m, ke.modelData.id) }
+            }
+        }
+    }
     Add { visible: sl.st.hasKey && !sl.st.keyAtPlayhead; text: "+ Key change"
           onClicked: backend.songDo("add_key", sl.st.tonic + " " + sl.st.mode) }
 

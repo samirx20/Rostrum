@@ -73,11 +73,15 @@ class RollHover:
     altWatch = Property(QObject, _alt_watch, constant=True)     # Alt's changes with the pointer still (roll_keys.py)
 
     @Slot(float, float, float, float, bool, result="QVariantMap")
-    def rollHover(self, t, row, tol, px, draw):
+    @Slot(float, float, float, float, bool, bool, result="QVariantMap")
+    def rollHover(self, t, row, tol, px, draw, grid_only=False):
         """The pointer at `t` seconds on roll row `row` (a key, or a drum row's index), `tol`: how near a block counts (on
         the drum rows, how wide the diamond is at the pointer's height: <0 off it), `px`: one screen pixel in seconds.
         {"id", "part" ("length" / "noteStart" / "body"), "t", "dur", "keys", "row"} for the block under it, else with
-        `draw`: {"ghost": {"t", "end", "keys" | "row"}} where a click would put a note or a hit; {} for nothing."""
+        `draw`: {"ghost": {"t", "end", "keys" | "row", "snap"}} where a click would put a note or a hit, `snap` the words
+        for what it lands on ("Bar 15", "Beat 15.3", "Marker: Flash": the snap line shows them before the click; "" with
+        Snap off); `grid_only` (Alt on the notes' empty space): the grid alone, markers and section edges let go (the
+        click then sends no pixel size, so it lands the same way). {} for nothing."""
         roll = self._view.get("roll") or {}
         kind = roll.get("kind")
         if kind not in ("notes", "drums") or not self._track:
@@ -99,12 +103,22 @@ class RollHover:
             at = D.cell_of(t, root, grid, px)
             if any(b["type"] == "hit" and b["drum"] == drums[i] and abs(b["t"] - at) <= D.SAME for b in roll.get("blocks", [])):
                 return {}                  # a click there adds nothing (the step has its hit)
-            return {"ghost": {"t": at, "end": at, "row": i}}
+            return {"ghost": {"t": at, "end": at, "row": i, "snap": self._snap_said(t, at, px, grid)}}
+        if grid_only:
+            px = 0.0                                  # (timing.catch: no pixel size, no marker caught)
         at = timing.snap(t, root, False, grid, "cell", px)
         key = int(round(row))
         key = key_lock.snapped(root, at, key) if self.keepInKey else key
         end = tempo.seconds_at(root, timing.beat(at, root) + self._draw_beats(timing.beat(t, root)))
-        return {"ghost": {"t": at, "end": end, "keys": self._stamped(key, at, root)}}
+        return {"ghost": {"t": at, "end": end, "keys": self._stamped(key, at, root), "snap": self._snap_said(t, at, px, grid)}}
+
+    def _snap_said(self, t, at, px, grid) -> str:
+        """The snap line's words for a Draw click at `t` landing at `at`: the marker or section edge it caught (the same
+        timing.catch the click runs), else the grid line; "" with Snap off."""
+        if not grid.on:
+            return ""
+        caught = timing.catch(t, grid, px) if px > 0 else None
+        return timing.snap_words(at, self.doc.data, caught if caught is not None and abs(caught.value - at) < 1e-6 else None)
 
     def _stamped(self, key, at, root) -> list[int]:
         """The keys a Draw click stamps on `key` (Note ▾ › Draw: a single note, or a chord shape: note.chord's tones in

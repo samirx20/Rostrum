@@ -149,8 +149,12 @@ Panel {
         Item {   // what a drag snapped to: the kit's snap line over the roll
             x: p.keysWidth; width: bars.width; height: well.height
             readonly property var s: backend.snapLine
-            SnapLine { visible: !!parent.s.name && (input.busy || bars.snapping) && bars.visibleX(bars.xOf(parent.s.t))
-                       at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
+            SnapLine { visible: parent.s.t !== undefined && (input.busy || bars.snapping) && bars.visibleX(bars.xOf(parent.s.t))
+                       at: bars.xOf(parent.s.t || 0); name: parent.s.t !== undefined ? backend.snapWords(parent.s.t, parent.s.name || "") : "" }
+            // Draw, before the click: where it lands and on what (RollInput's ghost; Alt on the notes: the grid alone)
+            readonly property var g: input.ghost
+            SnapLine { objectName: "drawSnapLine"; visible: !input.busy && !!parent.g && !!parent.g.snap && bars.visibleX(bars.xOf(parent.g.t))
+                       at: bars.xOf(parent.g ? parent.g.t : 0); name: parent.g ? parent.g.snap || "" : "" }
         }
     }
     VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d); at the bottom
@@ -158,6 +162,7 @@ Panel {
         visible: p.hasStrip
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth
+        roomMax: Math.max(52, p.height - bars.y - bars.height - 150 - 2 * Theme.grid - (p.laneShown ? played.height + Theme.grid : p.foldShown ? laneFold.height + Theme.grid : 0))   // the notes keep 150 px
     }
     // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
     readonly property var playedLane: backend.rollPlayed        // its own property: a point added redraws only the lane

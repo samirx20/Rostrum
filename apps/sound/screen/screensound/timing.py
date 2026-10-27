@@ -26,6 +26,8 @@ The ruler, the arrangement and the Editor all land a pointer through this one ru
 """
 from __future__ import annotations
 
+import re
+
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import meter, musical, tempo, times
 from rostrum_sound.doc.shift import spb, write_like
@@ -150,6 +152,29 @@ def line_name(t: float, root: dict) -> str:
     pos = musical.position(t, root)
     bar, beat, *rest = pos.split(".")
     return f"bar {bar}" if beat == "1" and not rest else pos
+
+
+_GRID_NAME = re.compile(r"^(?:bar \d+|\d+(?:\.\d+)+)$")
+
+
+def snap_words(t: float, root: dict, caught=None, kinds: dict | None = None) -> str:
+    """What the snap line's chip calls the place a pointer lands on, before and during the click: a marker
+    "Marker: Flash", a section edge "Section: Verse" / "Section: Verse end", the playhead "Playhead", else the grid
+    line "Bar 15" / "Beat 15.3" (a finer step: its place, "15.3.2"). `caught`: the kit's Caught (or a name: a drag's
+    `snapLine`, its kind then looked up in `kinds`, {name: kind})."""
+    name = caught if isinstance(caught, str) else (caught.name if caught is not None else "")
+    kind = (kinds or {}).get(name, "") if isinstance(caught, str) else (caught.target.kind if caught is not None and caught.target else "")
+    if name and not kind and _GRID_NAME.match(name):
+        name = ""                                   # the ruler's own grid words ("bar 9", "9.3"): said as a grid line
+    if name:
+        if kind == "marker":
+            return f"Marker: {name[:1].upper() + name[1:]}"
+        if kind == "section":
+            return f"Section: {name}"
+        return name[:1].upper() + name[1:]          # "Playhead", "Frame 120", a grid line's own words ("bar 9")
+    pos = musical.position(t, root)
+    bar, beat, *rest = pos.split(".")
+    return f"Bar {bar}" if beat == "1" and not rest else f"Beat {bar}.{beat}" if not rest else pos
 
 
 def frame(t: float, start: float, fps: float) -> tuple[float, int]:

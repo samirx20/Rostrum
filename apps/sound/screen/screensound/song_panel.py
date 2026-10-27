@@ -179,10 +179,14 @@ class SongPanel(QObject):
                                   f"Time signature {per}/{unit}"))
 
     @Slot(str, str)
-    def setKey(self, tonic, mode):
-        """The key playing at the playhead (none yet: a first key at the start)."""
+    @Slot(str, str, str)
+    def setKey(self, tonic, mode, target=""):
+        """The key playing at the playhead (none yet: a first key at the start), or the key change `target` (its id:
+        the song panel's list, KeyPicker), tonic and mode in one step."""
         b = self.bridge
-        b._guard(lambda: b._apply([song_edit.key_call(self.doc.data, b._t, tonic, mode, False)], "Set key"))
+        call = ({"op": "key.set", "target": [target], "args": {"key": f"{tonic} {mode}"}} if target
+                else song_edit.key_call(self.doc.data, b._t, tonic, mode, False))
+        b._guard(lambda: b._apply([call], f"Key {tonic} {mode}"))
 
     # ---- the header's tempo: the tempo playing at the playhead (the song's own, or the change in force there) ---
     def _tempo_here(self) -> tuple[str, str]:

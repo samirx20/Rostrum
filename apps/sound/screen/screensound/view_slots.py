@@ -3,6 +3,8 @@ is the kit's `TimeView` (`backend.timeView`, a `TimeViewObject`: HScroll binds t
 it, and the playhead's page-follow."""
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import Property, QCoreApplication, QObject, Slot
 from rostrum_sound.doc import musical
 
@@ -10,6 +12,7 @@ from . import timeline, timing
 from .view_kept import ViewKept
 from .signals import SoundSignals as S
 
+_GO_WORDS = re.compile(r"^(?:go\s+to\s+)?(?:bar\s+)?", re.I)     # Go to bar's words before the number ("bar 24")
 WORK_BARS = 8       # the Editor opens on this many bars when the view shows more (a whole song: a quarter note ~8 px)
 
 
@@ -34,6 +37,24 @@ class ViewSlots:
             return str(e)
         if t > self._view["song"]["length"] + 1e-6:
             return f"The song is {musical.clock(self._view['song']['length'])} long: {musical.clock(t)} is past its end"
+        self.setTime(t)
+        return ""
+
+    @Slot(str, result=str)
+    def goToBar(self, text):
+        """Go to bar (Ctrl+B): "24", "bar 24", "24.3" or a clock ("1:02.5") moves the playhead there and turns the view
+        (the arrangement's and the roll's: one view) so it shows. "" when it did; else the refusal, in words."""
+        words = _GO_WORDS.sub("", text.strip())
+        if not words:
+            return 'Type a bar ("24", "bar 24", "24.3") or a time ("1:02.5")'
+        try:
+            t = musical.parse(words, self.doc.data)
+        except ValueError:
+            return f'"{text.strip()}" is not a bar: type a bar ("24", "bar 24", "24.3") or a time ("1:02.5")'
+        end = self._view["song"]["length"]
+        if t > end + 1e-6:
+            last = musical.position(end, self.doc.data).split(".")[0]
+            return f"The song's room ends at bar {last}: {words} is past it"
         self.setTime(t)
         return ""
 
