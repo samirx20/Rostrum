@@ -110,6 +110,7 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     from .incubation import install
     install(engine)                    # rows made ahead are built in idle time, never inside a drag's frames (incubation.py)
     engine.addImportPath(str(KIT_QML))
+    from . import cursor_item          # noqa: F401  registers CanvasCursor (import RostrumCursors 1.0; CURSORS.md)
     for folder in imports:
         engine.addImportPath(str(folder))
     from .screen_images import ScreenImages

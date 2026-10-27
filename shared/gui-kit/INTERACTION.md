@@ -754,7 +754,8 @@ app gets them by using the kit, not by re-making them.*
 ## 1.22 The pointer and the canvas
 
 *Added 2026-10-27 (the canvas plan). The pointer set is drawn by us: `shared\gui-kit\icons\cursors\`, used through
-`CanvasCursor` (`CURSORS.md`).*
+`CanvasCursor { kind; angle; badge }` (`import RostrumCursors 1.0`; how to use it, the names and the angle rule:
+[`CURSORS.md`](CURSORS.md)). The whole set on one sheet: `demo\cursor_sheet.py`.*
 
 **The pointer.**
 - **The shape is the next press.** The pointer shows what a press *here, now* does. It changes the moment the pointer
