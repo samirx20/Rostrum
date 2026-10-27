@@ -156,3 +156,19 @@ def test_paint_rides_over_a_bulge_raised_under_it(tmp_path):
     laid = [q for s_ in clay_paint.lay(clay_paint.Surface(path), STROKE) for q in s_["points"]]
     mid_px = _one_chart([W / 2, 0.03])[0] * SIZE
     assert min(abs(q[0] - mid_px) for q in laid) < 0.01 * SIZE          # the ridge's top is painted, middle included
+
+
+def test_paint_spilled_into_another_piece_is_trimmed(tmp_path):
+    """A brush near a cut spills over its piece's edge in the picture, onto a piece that is another place on the
+    clay: only paint within reach of the stroke on the clay itself stays."""
+    surf = clay_paint.Surface(_write(tmp_path / "t" / "surface.cls", 0.0, None))      # two pieces, the right one flipped
+    alpha = np.zeros((SIZE, SIZE, 1), np.float32)
+    def px(p, left):
+        u, v = _two_charts(p, left)
+        return int(u * SIZE), int((1 - v) * SIZE)
+    on = px([0.03, 0.03], True)                     # on the stroke (it runs 0.02..0.08 along y = 0.03)
+    off = px([0.07, 0.09], False)                   # 6 cm from it on the clay
+    for x, y in (on, off):
+        alpha[y - 2:y + 3, x - 2:x + 3] = 1
+    out = clay_paint.trim(surf, [{"strokes": [STROKE]}], alpha)
+    assert out[on[1], on[0], 0] == 1 and out[off[1], off[0], 0] == 0

@@ -58,14 +58,15 @@ def _under(channel: str, mat: dict) -> tuple:
     if channel == "glow":
         return "value", _rgb(mat["emissionColor"]) if mat["emissionStrength"] else [0.0, 0.0, 0.0]
     if own is None:
-        return "value", [0.0]                       # height: flat
+        return "value", [0.5]                       # Relief: unpainted is middle grey, flat (black sinks, white raises)
     return "value", [float(mat[own])] if raw else _rgb(mat[own])
 
 
-def _picture(held: dict, channel: str, layers: list, size: int, under: tuple, surface: str = "") -> Path:
+def _picture(held: dict, channel: str, layers: list, size: int, under: tuple, surface: str = "", trim=None) -> Path:
     raw = CHANNELS[channel][3]
     held = {"id": held["id"], "paints": layers, "paintmasks": held.get("paintmasks", [])}
-    settings = {"size": size, "channel": channel, "under": list(under), **({"surface": surface} if surface else {})}
+    settings = {"size": size, "channel": channel, "under": list(under),
+                **({"surface": surface, "trim": clay_paint.TRIM} if surface else {})}
     key = cache_key("paint.surface", VERSION, [canvas.content_key(held, size, size)], settings)
     if CACHE.get("paint", key):
         return CACHE.path("paint", key) / "surface.png"
@@ -74,6 +75,8 @@ def _picture(held: dict, channel: str, layers: list, size: int, under: tuple, su
         from PIL import Image
         px = canvas.rgba8(held, size, size).astype(np.float32) / 255
         a, rgb = px[..., 3:], px[..., :3]
+        if trim is not None:
+            a = trim(a)                                              # a clay's: no spill into other pieces
         paint = rgb.mean(axis=2, keepdims=True) if raw else rgb      # raw channels: the brush colour's grey
         if under[0] == "file":
             with Image.open(under[1]) as im:
@@ -125,9 +128,15 @@ def _apply(scene: dict, node: dict, job: dict) -> None:
         by_channel.setdefault(layer.get("channel", "colour"), []).append(layer)
     props = dict(base["props"])
     size = item.get("paintSize", 2048)
+    own_layers: dict[str, list] = {}
+    for layer in item.get("paints", []):
+        own_layers.setdefault(layer.get("channel", "colour"), []).append(layer)
     for channel, layers in by_channel.items():
+        trim = None
+        if surface is not None:
+            trim = lambda a, ls=own_layers.get(channel, []): clay_paint.trim(surface, ls, a)  # noqa: E731
         props[CHANNELS[channel][1]] = str(_picture(held, channel, layers, size, _under(channel, mat),
-                                                   surface.key if surface is not None else ""))
+                                                   surface.key if surface is not None else "", trim))
     if "glow" in by_channel and not props.get("emissionStrength"):
         props["emissionStrength"] = 1.0            # painted glow shows at strength 1 on a material that had none
     new = {"id": f"{item['id']}__paint", "props": props}
