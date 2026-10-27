@@ -274,3 +274,22 @@ def held_bones(clay: dict) -> list[str]:
     """The ids of the bones under the clay's holds (its `holds`: rest spots in its own space)."""
     r = rig(clay, 0.0)
     return [r.ids[n] for n in sorted(r.held(clay.get("holds") or []))]
+
+
+def drag_keys(clay: dict, turns: dict, t: float) -> list[tuple[str, str, float, float]]:
+    """The keys a drag at time t writes: (bone id, rx|ry|rz, time, degrees). A drag changes only its own moment: a
+    bone keyed for the first time also gets its turn from before the drag keyed at every other time the clay's bones
+    have Turn keys (else its one key would hold for the whole shot, and the pose already keyed there would change)."""
+    bones, stack = [], list(clay.get("bones", []))
+    while stack:
+        b = stack.pop()
+        bones.append(b)
+        stack += b.get("bones", [])
+    times = sorted({float(k["t"]) for b in bones for k in b.get("keys", [])
+                    if k.get("prop") in TURN and abs(float(k["t"]) - t) > 1e-9})
+    out = []
+    for b in bones:
+        if b["id"] in turns and not any(k.get("prop") in TURN for k in b.get("keys", [])):
+            out += [(b["id"], p, T, float(b.get(p, 0.0))) for T in times for p in TURN]
+    out += [(id_, p, t, float(turn[p])) for id_, turn in turns.items() for p in TURN]
+    return out

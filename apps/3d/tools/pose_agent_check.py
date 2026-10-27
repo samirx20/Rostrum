@@ -130,6 +130,8 @@ c.draw(here({foot}), name="foot")
         keyed = {k: sorted({round(kk["t"], 3) for kk in b.get("keys", [])}) for k, b in bones().items() if b.get("keys")}
         report["keys"] = keyed
         check(any(v == [0.0, 1.0] for v in keyed.values()), f"two drags at two times keyed 0 s and 1 s ({keyed})")
+        check(all(v == [0.0, 1.0] for v in keyed.values()),
+              "a joint first moved at 1 s keeps its old turn at 0 s (the drag changes only its own moment)")
         for f in (0, 6, 12, 18, 24):
             look(f"03-anim-f{f:02d}", frame=f)
 

@@ -240,9 +240,8 @@ def pose_drag(ctx, targets, args):
     except ValueError as e:
         ctx.fail(codes.BAD_ARGUMENT, "holds", str(e))
     out = pose_ik.solve_rig(r, g, spot, _to_clay(ctx, clay["id"], args["to"], t), held)
-    for id_, turn in out["turns"].items():
-        for p in TURN:
-            put_key(ctx, id_, p, t, {"v": turn[p]})
+    for id_, p, at, v in pose_ik.drag_keys(clay, out["turns"], t):
+        put_key(ctx, id_, p, at, {"v": v})
     joint = {i: j or i for i, j in zip(r.ids, r.joint)}
     scale = _scale(ctx, clay["id"], t)
     return {"moved": [{"id": i, "joint": joint[i], "turn": [out["turns"][i][p] for p in TURN]} for i in out["moved"]],
