@@ -106,3 +106,4 @@ NameBox 1.0 NameBox.qml
 SmallPopup 1.0 SmallPopup.qml
 EscCloses 1.0 EscCloses.qml
 singleton OpenPopups 1.0 OpenPopups.qml
+CatchUp 1.0 CatchUp.qml
