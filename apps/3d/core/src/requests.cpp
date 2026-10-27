@@ -1,4 +1,5 @@
 #include "requests.h"
+#include "sim.h"
 
 #include <windows.h>
 #include <psapi.h>
@@ -391,7 +392,7 @@ JsObject Core::info() {
   return JsObject{{"ok", JsValue(true)}, {"renderers", JsValue(renderers)}, {"display", JsValue(color_.display())},
                   {"views", JsValue(vmap)}, {"gpu", JsValue(hydra().gl_renderer())},
                   {"adapter", JsValue(mem_.adapter())}, {"usd", JsValue(int(PXR_VERSION))},
-                  {"ocio", JsValue(color_.config())}};
+                  {"ocio", JsValue(color_.config())}, {"jolt", JsValue(sim::jolt_version())}, {"sim", JsValue(sim::kVersion)}};
 }
 
 }  // namespace r3d

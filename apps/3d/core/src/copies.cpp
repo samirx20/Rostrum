@@ -15,6 +15,8 @@
 #include <pxr/usd/usdGeom/xformCache.h>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -461,6 +463,26 @@ void write(const UsdStageRefPtr& stage, State& s) {
   pi.CreateProtoIndicesAttr().Set(protos);
   pi.CreateIdsAttr().Set(ids);
 
+  if (s.sim.on()) {  // a stored fall: each simulated copy's place per frame; its size and the rest as laid out
+    const Arrays still = arrays(s.laid, nullptr);
+    scl.Set(still.scales);
+    s.animated = true;
+    const int m = std::min<int>(int(n), s.sim.rows);
+    for (int f = s.start; f <= s.end; ++f) {
+      VtVec3fArray p = still.positions;
+      VtQuathArray q = still.orientations;
+      for (int c = 0; c < m; ++c) {
+        GfVec3f at;
+        GfQuatf turn;
+        s.sim.pose(c, f, s.start, &at, &turn);
+        p[size_t(c)] = at;
+        q[size_t(c)] = GfQuath(turn);
+      }
+      pos.Set(p, UsdTimeCode(f));
+      rot.Set(q, UsdTimeCode(f));
+    }
+    return;
+  }
   const std::vector<GfVec3f> grey(n, GfVec3f(kNoMaterialGrey));
   const auto at = [&](size_t k) {
     std::vector<Copy> c = s.laid;
@@ -494,7 +516,56 @@ void write(const UsdStageRefPtr& stage, State& s) {
 
 }  // namespace
 
-void build(Item& it, const JsArray& children, const JsArray& held, const JsArray& effectors, const SdfPath& path) {
+namespace {
+SimTrack read_sim(const JsObject& o, const std::string& where) {
+  Reader r(o, where);
+  SimTrack t;
+  t.file = r.str("file");
+  t.row = r.count("row", 0, 1 << 30);
+  t.rows = r.count("rows", 0, 1 << 30);
+  t.of = r.count("of", 1, 1 << 30);
+  t.start = int(r.num("start"));
+  t.end = int(r.num("end"));
+  t.step = r.count("step", 1, 3);
+  t.smooth = r.count("smooth", 1, 100);
+  r.finish();
+  if (t.end < t.start || t.row + t.rows > t.of) fail(where, "rows or frames don't fit", "row + rows <= of, start <= end");
+  const size_t want = size_t(t.end - t.start + 1) * size_t(t.of) * 7;
+  std::ifstream f(std::filesystem::u8path(t.file), std::ios::binary | std::ios::ate);
+  if (!f) fail(where + ".file", "no file " + t.file, "the stored simulation's bodies.bin (simulate again)");
+  const auto bytes = size_t(f.tellg());
+  if (bytes != want * sizeof(float))
+    fail(where + ".file", t.file + " holds " + std::to_string(bytes) + " bytes, not " + std::to_string(want * sizeof(float)),
+         "the stored simulation's bodies.bin (simulate again)");
+  t.data.resize(want);
+  f.seekg(0);
+  f.read(reinterpret_cast<char*>(t.data.data()), std::streamsize(bytes));
+  return t;
+}
+}  // namespace
+
+void SimTrack::pose(int c, int f, int shot_start, GfVec3f* pos, GfQuatf* rot) const {
+  const int last = end - start;
+  const int held = shot_start + (f - shot_start) / step * step;  // On 2s / On 3s, from the shot's start
+  const int i = std::clamp(held - start, 0, last);
+  const int a = i / smooth * smooth, b = std::min(a + smooth, last);  // Simplify: every nth pose, blended between
+  const auto at = [&](int k, GfVec3f* p, GfQuatf* q) {
+    const float* v = &data[(size_t(k) * size_t(of) + size_t(row + c)) * 7];
+    *p = GfVec3f(v[0], v[1], v[2]);
+    *q = GfQuatf(v[6], v[3], v[4], v[5]);
+  };
+  GfVec3f pa, pb;
+  GfQuatf qa, qb;
+  at(a, &pa, &qa);
+  if (b == a || i == a) { *pos = pa; *rot = qa; return; }
+  at(b, &pb, &qb);
+  const float u = float(i - a) / float(b - a);
+  *pos = pa + (pb - pa) * u;
+  *rot = GfSlerp(double(u), qa, qb).GetNormalized();
+}
+
+void build(Item& it, const JsArray& children, const JsArray& held, const JsArray& effectors, const JsObject* sim,
+           const SdfPath& path) {
   ItemsContext& ctx = it.ctx;
   const UsdGeomPointInstancer pi = UsdGeomPointInstancer::Define(ctx.stage, path);
   author_transform(it, pi.GetPrim());
@@ -507,6 +578,7 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   if (it.props.has("onlySeen")) set_param(s.p, "onlySeen", it.props.get("onlySeen", "true or false"), it.props.at("onlySeen"));
   s.held = read_held(held, it.id + ".held");
   s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
+  if (sim) s.sim = read_sim(*sim, it.id + ".sim");
   const std::string accepted = "one or more mesh, combine, import, group or clay items (the copies' sources)";
   if (children.empty()) fail(it.id + ".children", "no source", accepted);
   SdfPathVector protos;
@@ -576,7 +648,6 @@ double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const
   return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 }
 
-namespace {
 std::vector<Copy> at_frame(const UsdStageRefPtr& stage, const State& s, int frame, GfMatrix4d* world) {
   UsdGeomXformCache xc{UsdTimeCode(frame)};
   *world = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path));
@@ -584,7 +655,6 @@ std::vector<Copy> at_frame(const UsdStageRefPtr& stage, const State& s, int fram
   apply(s.effectors, size_t(std::clamp(frame - s.start, 0, s.end - s.start)), *world, c, nullptr);
   return c;
 }
-}  // namespace
 
 std::vector<GfVec3d> seen_points(const UsdStageRefPtr& stage, const State& s, int frame) {
   GfMatrix4d world;

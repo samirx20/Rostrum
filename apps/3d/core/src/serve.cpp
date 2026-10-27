@@ -15,6 +15,7 @@
 #include "error.h"
 #include "inspect.h"
 #include "requests.h"
+#include "sim.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
@@ -80,6 +81,7 @@ std::string answer(Core& core, const std::string& line, const std::function<void
       {"material", [&](const JsObject& a) { return core.material(a); }},
       {"sees", [&](const JsObject& a) { return core.sees(a); }},
       {"texels", [&](const JsObject& a) { return core.texels(a); }},
+      {"simulate", [&](const JsObject& a) { return core.simulate(a, step); }},
       {"info", [&](const JsObject&) { return core.info(); }},
   };
   try {
@@ -98,6 +100,9 @@ std::string answer(Core& core, const std::string& line, const std::function<void
     }
     if (!body.IsObject()) throw Error(name + ": its value must be an object");
     return line_of(h->second(body.GetJsObject()));
+  } catch (const sim::Failure& e) {  // which body, which frame, what to do
+    return line_of(JsObject{{"ok", JsValue(false)}, {"error", JsValue(std::string(e.what()))}, {"item", JsValue(e.item)},
+                            {"copy", JsValue(e.copy)}, {"frame", JsValue(e.frame)}, {"fix", JsValue(e.fix)}});
   } catch (const std::exception& e) {
     return line_of(JsObject{{"ok", JsValue(false)}, {"error", JsValue(std::string(e.what()))}});
   }
