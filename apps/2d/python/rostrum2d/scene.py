@@ -14,6 +14,7 @@ import math
 from functools import lru_cache
 
 from . import drawing, drawing_loop, group_bg, missing_font, exprbake, fields as F, fill_fields, fill_paint, layoutbake, looping, media, paint_fields, painted_fill, project_sound, render3d, retime, stepped, swap, video, write_on
+from .frame import fields as _frame_fields
 from .layout_fields import py_only
 from rostrum_core import RostrumError, plugin_parts
 from rostrum_core.errors import codes
@@ -32,7 +33,7 @@ def python_only(kind: str) -> frozenset[str]:
     applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and work area (the screen's) and a text's style link (its values are
     already on the text: text_styles.py). Fixed per type: worked out once (a scene asks for it per field)."""
     return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle", "workStart", "workEnd"} | ({"loop", *drawing_loop.FIELDS} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
-            | paint_fields.NAMES | fill_fields.NAMES)
+            | paint_fields.NAMES | fill_fields.NAMES | _frame_fields.NOT_IN_ENGINE_YET.get(kind, set()))
 
 
 def _key(key: dict) -> dict:
@@ -201,7 +202,8 @@ def _placeholder(node: dict, item: dict, name: str) -> dict:
 
 
 def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
-             span: tuple[float, float] | None = None, later: list | None = None, frames: list[int] | None = None) -> dict:
+             span: tuple[float, float] | None = None, later: list | None = None, frames: list[int] | None = None,
+             progress=None, stopped=None) -> dict:
     """The scene description of one composition (the first when not named). `markers`: the project's shared
     markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
     project folder, where 3D render layers find their item's renders. `span`: (first, last) seconds that will be drawn,
@@ -211,14 +213,15 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     makes them off its thread, then describes again and draws: the same pictures export makes at once. The screen
     describes through scene_keep.Keeper: the same description, reusing the nodes a change didn't touch. `frames`
     (with `span`): the only frame numbers that will be drawn (a contact sheet's tiles): Drawn so far pictures are made
-    for those (and the motion blur's reach round them), not for every frame between the first and the last."""
+    for those (and the motion blur's reach round them), not for every frame between the first and the last.
+    `progress(done, total)` / `stopped()`: the pictures made first (drawing.make_all), for an export's job."""
     if later is None:       # the paint pictures not made yet are made first, side by side (drawing.make_all)
         jobs: list = []
         comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, jobs, frames=frames)
         node = _node(comp, fps, baked, where)
         if not jobs:        # every picture was made already: that description is the final one
             return finish(node, where)
-        drawing.make_all(jobs)
+        drawing.make_all(jobs, progress, stopped)
     comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, later, frames=frames)
     return finish(_node(comp, fps, baked, where), where)
 

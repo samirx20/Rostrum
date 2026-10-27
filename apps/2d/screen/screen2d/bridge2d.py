@@ -457,6 +457,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._ahead_at = self._t                                       # pictures are made, those nearest the
             self._ahead_jobs.sort(key=lambda job: abs(job.at - self._t))   # playhead first (made ones are only read)
             self._pictures.make(list(self._ahead_jobs), self._ahead)
+        self._paint_note()
         if self._scene and self._waiting is None and self._ghost is not None and self._ghost.moved:
             self._ghost.draw()                              # a drag of many layers: drawn where they are now (ghost_move.py)
             return True
@@ -469,6 +470,16 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._shown = None
             self.shownChanged.emit()
         return False
+
+    PAINT_NOTE = "Drawing this moment's paint-on picture…"
+
+    def _paint_note(self):
+        """Said while the playhead's Drawn so far picture is still being made (a less drawn one stands in: write_on.Ahead),
+        so nobody times a paint-on by the stand-in; taken back once it shows."""
+        half = 0.5 / float(self.comp().get("fps", 30))
+        here = self._ahead is not None and any(abs(job.at - self._t) < half for job in self._ahead_jobs)
+        if here != (self._kit.status == self.PAINT_NOTE):
+            self._set_status(self.PAINT_NOTE if here else "", False)
 
     def _pictures_made(self, token):
         """The paint pictures of the state described last are made: described again (now with them) and drawn. A scene with
