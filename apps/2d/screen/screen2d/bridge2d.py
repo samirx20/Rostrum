@@ -489,6 +489,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             else:                                           # the frame after (outline_news.py); a change elsewhere
                 self._outline_paced.cancel()                # (an agent's, an undo): only the timeline's rows; the
                 self._outline_news.soon(bool(reached))      # canvas overlays follow the new picture (shownChanged)
+                if self.doc._gesture is None:               # the gesture ended (kept, or put back): Esc is free again
+                    self._esc.disarm()
         if event.kind != "preview":                         # (a step's picture was asked before: _before_followers)
             with STATS.stage("doc.render"):
                 self._render()

@@ -189,6 +189,7 @@ class DragSlots(SlotMixin):
         if ghost is not None and ghost.moved and self._drag is not None:   # refused after all: the picture the engine was told goes back
             redraw = not self._guard(lambda: self._drag.preview(ghost.calls()))
         d, g, self._drag, self._grab = self._drag, self._grab, None, None
+        self._esc.disarm()
         held, self.held_view = self.held_view, None     # a camera-key drag held the view: it follows the camera again
         self._snap.end()                                # the snap lines go with the drag
         self.timeSnap.clear()                           # and the "+6 f" label
@@ -209,6 +210,7 @@ class DragSlots(SlotMixin):
             return False
         ghost, self._ghost = self._ghost, None          # a ghost move told the engine only: it draws the press again
         d, self._drag, self._grab = self._drag, None, None
+        self._esc.disarm()
         held, self.held_view = self.held_view, None
         self._snap.end()
         self.timeSnap.clear()

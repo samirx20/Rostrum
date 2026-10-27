@@ -10,8 +10,9 @@ other jobs (close a panel, back to Select) wait until no drag is held.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import QObject, Qt
 from PySide6.QtGui import QGuiApplication
+from rostrum_gui.drag_esc import ESC
 from rostrum_gui.edits import Drag
 
 KEEP = ("painter",)                 # owners whose drag is a paint stroke (see above)
@@ -57,37 +58,25 @@ def cancel(b) -> bool:
     return False
 
 
-class EscCancels(QObject):
-    """Watches the app's keys while a drag is open (armed by `arm`, gone the first event after the drag closed: a Python
-    call on every event of the app, kept for the whole session, slowed every drag and click). Esc while a mouse button
-    is held cancels the drag and goes no further. Only while a button is held: a scrub the panel keeps open between
-    typed values, or a popover's live box, is no drag."""
+class EscHold(QObject):
+    """This bridge's door to the kit's one Esc holder (rostrum_gui/drag_esc.py): held while a drag is open with a mouse
+    button down (armed on a drag's start, drags._begin, and on any drag's first step, the bridge's _on_doc), let go when
+    the document says the gesture ended ("change" or "reset") or the bridge's own drag ends. Not while no button is held:
+    a scrub the panel keeps open between typed values, or a popover's live box, is no drag, and its own Esc stays."""
 
     def __init__(self, bridge):
         super().__init__(bridge)
-        self.b, self.on = bridge, False
+        self.b = bridge
+
+    def cancel(self):
+        cancel(self.b)
 
     def arm(self):
-        app = QGuiApplication.instance()
-        if not self.on and app is not None:
-            app.installEventFilter(self)
-            self.on = True
+        if QGuiApplication.mouseButtons() != Qt.MouseButton.NoButton:
+            ESC.hold(self.cancel)
 
-    def eventFilter(self, obj, ev):
-        b = self.b
-        if b._drag is None and b.doc._gesture is None:          # the drag is over: stop watching
-            QGuiApplication.instance().removeEventFilter(self)
-            self.on = False
-            return False
-        t = ev.type()
-        if t not in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) or ev.key() != Qt.Key.Key_Escape                 or QGuiApplication.mouseButtons() == Qt.MouseButton.NoButton:
-            return False
-        if t == QEvent.Type.ShortcutOverride:          # asked first: a drag open takes the key from every shortcut
-            if drag_open(b):
-                ev.accept()
-                return True
-            return False
-        return cancel(b)
+    def disarm(self):
+        ESC.let_go(self.cancel)
 
 
 def drag_open(b) -> bool:
@@ -97,7 +86,6 @@ def drag_open(b) -> bool:
     return any(_open(getattr(p, "_drag", None)) for p in _owners(b))
 
 
-def watch(b) -> EscCancels:
-    """Esc-cancel for this bridge (kept by the caller). It arms on a drag's start (drags._begin) and on any drag's first
-    step (the bridge's _on_doc sees a "preview"), so no part needs to know about it."""
-    return EscCancels(b)
+def watch(b) -> EscHold:
+    """Esc-cancel for this bridge (kept by the caller)."""
+    return EscHold(b)
