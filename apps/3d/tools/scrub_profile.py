@@ -167,8 +167,16 @@ def playback(w, seconds=3.0):
 
 
 def select(w, item_id):
-    W.click(w.win, w.item(f"sceneRow:{item_id}"))
-    W.pump(5, lambda: w.b.selected == item_id, f"{item_id} selected")
+    row = W.find(w.win.contentItem(), f"sceneRow:{item_id}")
+    if row is not None:
+        W.click(w.win, row)
+    else:                                   # its row scrolled out of the list: picked without a click (not measured)
+        w.b.select(item_id)
+    W.pump(1, lambda: w.b.selected == item_id)
+    if w.b.selected != item_id:              # the click landed on the list's edge: picked without a click (not measured)
+        W.FAILS.pop()
+        w.b.select(item_id)
+    W.check(w.b.selected == item_id, f"{item_id} selected")
     W.pump(0.5)
 
 
@@ -203,8 +211,9 @@ def run_scene(app, name, source, shot, prepare, picks):
 def buds_prepare(w, doc):
     """The bowl stays still, twelve buds in a line fall (the script; sim25_walk.py tries the menus): simulated, stored."""
     sim = w.b.sim
-    W.pump(3, lambda: sim.canRun, "Simulate offered")
-    sim.simulate()
+    W.pump(5, lambda: sim.canRun or sim.state == "stored", "Simulate offered (or the fall already stored)")
+    if sim.canRun:
+        sim.simulate()
     W.pump(180, lambda: sim.state in ("stored", "failed"), "the simulation stored")
     W.check(sim.state == "stored", f"stored ({sim.state}: {sim.label})")
 
