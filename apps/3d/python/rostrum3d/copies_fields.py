@@ -21,6 +21,7 @@ BY_DENSITY = {"all": [SURFACE, IS("amountBy", "density")]}
 LINE_OR_GRID = {"any": [LINE, GRID]}
 VARIED = {"any": [NOT("varyMove", 0.0), NOT("varyTurn", 0.0), NOT("varyScale", 0.0)]}
 HELD = "held"                                  # rows [copy, x, y, z, rx, ry, rz, s] in the copies item's own space
+COPY_KEYS, COPY_KEYS_FROM = "copyKeys", "copyKeysFrom"   # keyed copies (copy_keys.py)
 
 COPIES = [
     CH("layout", LAYOUTS, "Layout", "Copies", "line", P,
@@ -56,6 +57,11 @@ COPIES = [
     Param.points(HELD, label="Held copies", group="Copies data", importance=D, min=8, max=8, default=None, nullable=True, shown="script",
                  help="Rows [copy, x, y, z, rx, ry, rz, scale] in the copies item's own space: a copy put by hand. "
                       "A layout change never moves it; copies.release lets it go. Set by copies.hold"),
+    Param.points(COPY_KEYS, label="Keyed copies", group="Copies data", importance=D, min=6, max=6, default=None, nullable=True,
+                 shown="script", help="Rows [copy, prop 0-5 (x y z rx ry rz), t (s), v, ease (0 linear, 1 hold, 2 smooth), "
+                                      "1 when Turn into keys wrote it]: copies that move by keys. Set by sim.to_keys and copies.key"),
+    Param.text(COPY_KEYS_FROM, label="Keyed from", group="Copies data", importance=D, default="", shown="script",
+               help="The simulation that wrote the keyed copies' keys (sim.to_keys)"),
 ] + TRANSFORM
 
 # what the effector does, in the words the screen shows

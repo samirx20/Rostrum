@@ -77,13 +77,18 @@ class CopiesTool(QObject):
 
     def place(self) -> dict | None:
         """The picked copy's x y z rx ry rz s in its copies item's space: where it is held (the document), else the
-        engine's `place` on the pick reply; None when neither is known."""
+        engine's `place` on the pick reply; a keyed copy's keyed fields at the playhead over that (where it is seen).
+        None when it is not known. A copy still simulating gets its laid-out place (where its fall starts: what a move
+        changes), not where it fell."""
         c = self.copy
         if c is None or not self.b.doc.has(c["item"]):
             return None
         held = CF.held_map(self.b.doc.item(c["item"])).get(c["index"])
-        from .copies_gizmo import layout_place
+        from .copies_gizmo import keyed_now, layout_place
         got = held or c.get("place") or layout_place(self.b.doc.item(c["item"]), c["index"])
+        now = keyed_now(self.v.sent()[0], c["item"], c["index"], self.b.frame)
+        if now and (got or len(now) == 6):
+            got = {"s": 1.0, **(got or {}), **now}
         return dict(got) if got else None
 
     def _selection(self, *_):

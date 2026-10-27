@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, copies_fields, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_scene, copies_fields, copy_keys, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -23,7 +23,7 @@ CONSTRAINTS = {"follow", "followAmount", "followPose", "stick"}             # fo
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
 POSE = {p.name for p in clay_fields.POSE}  # a clay's joint settings and data: the document's alone (ops_pose.py; skinned goes as its `skin`)
 FILE_UNIT = "fileUnit"                         # an import's: what its file was in, for Keep original size (ops_import.py)
-COPIES_DATA = {copies_fields.HELD}              # a copies item's held copies go as `held` rows, never as a prop
+COPIES_DATA = {copies_fields.HELD, copies_fields.COPY_KEYS, copies_fields.COPY_KEYS_FROM}   # held / keyed copies go as `held` rows, never as props
 SIMULATION = SIM_FIELDS.NAMES                   # what a body is made of: the simulation reads it (sim/), never sent as a prop
 RESOLVED = SIMULATION | COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
@@ -108,12 +108,12 @@ def _effector(item: dict, copies: dict, fr: _Frames) -> dict:
 
 
 def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
-    """A copies item: its source children, its effectors, its held copies, and the camera that must see them."""
+    """A copies item: its source children, its effectors, its held and keyed copies, and the camera that must see them."""
     kids = item.get("children", [])
     node["children"] = [_node(c, fr) for c in kids if c["type"] != "effector"]
     node["effectors"] = [_effector(c, item, fr) for c in kids if c["type"] == "effector"]
-    node["held"] = [{"copy": int(r[0]), **dict(zip(("x", "y", "z", "rx", "ry", "rz", "s"), r[1:]))}
-                    for r in item.get(copies_fields.HELD) or []]
+    node["held"] = copy_keys.held_nodes(item, copies_fields.held_map(item),
+                                        [fr.held(item["id"], f) / fr.fps for f in fr.frames])
     camera, size = getattr(fr, "shot_camera", ""), getattr(fr, "shot_size", [0, 0])
     seen = node["props"]["layout"] == "surface" and node["props"]["onlySeen"] and camera
     node["props"]["seenBy"], node["props"]["seenSize"] = (camera, size) if seen else ("", size)

@@ -122,7 +122,10 @@ void set_param(Params& p, const std::string& key, const JsValue& v, const std::s
   }
 }
 
-std::vector<Held> read_held(const JsArray& list, const std::string& where) {
+const char* const kHeldKeys[] = {"x", "y", "z", "rx", "ry", "rz", "s"};
+
+// `frames`: the shot's frame count (a keyed copy's tracks hold one value per frame)
+std::vector<Held> read_held(const JsArray& list, const std::string& where, size_t frames) {
   std::vector<Held> out;
   for (size_t i = 0; i < list.size(); ++i) {
     const std::string w = where + "[" + std::to_string(i) + "]";
@@ -130,11 +133,25 @@ std::vector<Held> read_held(const JsArray& list, const std::string& where) {
     Reader r(list[i].GetJsObject(), w);
     Held h;
     h.copy = r.count("copy", 0, 9999);
-    h.x = r.num("x"), h.y = r.num("y"), h.z = r.num("z");
-    h.rx = r.num("rx"), h.ry = r.num("ry"), h.rz = r.num("rz");
-    h.s = r.num_min("s", 0, true);
+    const bool keyed = r.has("anim");
+    for (int k = 0; k < 7; ++k) {
+      h.given[k] = !keyed || r.has(kHeldKeys[k]);  // a plain held copy gives all seven
+      if (h.given[k]) h.v[k] = k == 6 ? r.num_min("s", 0, true) : r.num(kHeldKeys[k]);
+    }
+    if (keyed) {
+      Reader anim(r.object("anim"), w + ".anim");
+      for (int k = 0; k < 6; ++k) {
+        if (!anim.has(kHeldKeys[k])) continue;
+        const JsArray& a = anim.list(kHeldKeys[k]);
+        if (a.size() != frames)
+          fail(anim.at(kHeldKeys[k]), std::to_string(a.size()) + " values", std::to_string(frames) + " values, one per frame");
+        for (size_t f = 0; f < a.size(); ++f)
+          h.track[k].push_back(number(a[f], anim.at(kHeldKeys[k]) + "[" + std::to_string(f) + "]"));
+      }
+      anim.finish();
+    }
     r.finish();
-    out.push_back(h);
+    out.push_back(std::move(h));
   }
   return out;
 }
@@ -296,6 +313,25 @@ void scatter(const State& s, std::vector<GfVec3f>* pos, std::vector<GfVec3f>* nr
   }
 }
 
+// A held (or keyed) copy at frame index k: what it gives replaces the layout's (turns: rotate X, then Y, then Z; a turn
+// given in part keeps the rest of the layout's).
+void place(Copy& c, const Held& h, size_t k) {
+  const auto has = [&](int i) { return h.given[i] || (i < 6 && !h.track[i].empty()); };
+  const auto val = [&](int i) {
+    return i < 6 && !h.track[i].empty() ? h.track[i][std::min(k, h.track[i].size() - 1)] : h.v[i];
+  };
+  for (int i = 0; i < 3; ++i)
+    if (has(i)) c.pos[i] = float(val(i));
+  if (has(3) || has(4) || has(5)) {
+    GfVec3d e(0.0);
+    if (!(has(3) && has(4) && has(5))) e = rotation(c.rot).Decompose(GfVec3d::XAxis(), GfVec3d::YAxis(), GfVec3d::ZAxis());
+    for (int i = 0; i < 3; ++i)
+      if (has(3 + i)) e[i] = val(3 + i);
+    c.rot = quat(GfRotation(GfVec3d::XAxis(), e[0]) * GfRotation(GfVec3d::YAxis(), e[1]) * GfRotation(GfVec3d::ZAxis(), e[2]));
+  }
+  if (h.given[6]) c.scale = float(h.v[6]);
+}
+
 // The copies before effectors: the layout, the seed's variations, then the held ones in their own places.
 std::vector<Copy> lay_out(const State& s) {
   const Params& p = s.p;
@@ -346,14 +382,19 @@ std::vector<Copy> lay_out(const State& s) {
     c.rot = quat(r);
     c.proto = sources == 1 ? 0 : std::min(sources - 1, int(rnd(p.seed, i, 6) * sources));
   }
-  for (const Held& h : s.held) {
-    if (h.copy >= int(out.size())) continue;  // that copy doesn't exist at this count
-    Copy& c = out[h.copy];
-    c.pos = GfVec3f(float(h.x), float(h.y), float(h.z));
-    c.rot = quat(GfRotation(GfVec3d::XAxis(), h.rx) * GfRotation(GfVec3d::YAxis(), h.ry) * GfRotation(GfVec3d::ZAxis(), h.rz));
-    c.scale = float(h.s);
-  }
+  for (const Held& h : s.held)
+    if (h.copy < int(out.size())) place(out[h.copy], h, 0);  // a held copy beyond the count doesn't exist
   return out;
+}
+
+// Keyed copies at frame index k, over the layout (the effectors come after).
+void keyed_at(const std::vector<Held>& held, size_t k, std::vector<Copy>& copies) {
+  for (const Held& h : held)
+    if (h.keyed() && h.copy < int(copies.size())) place(copies[size_t(h.copy)], h, k);
+}
+
+bool any_keyed(const State& s) {
+  return std::any_of(s.held.begin(), s.held.end(), [](const Held& h) { return h.keyed(); });
 }
 
 // The effectors at frame index k: `world` is the copies item's place then.
@@ -429,6 +470,7 @@ std::vector<GfMatrix4d> places(const UsdStageRefPtr& stage, const State& s, bool
 }
 
 bool moves(const UsdStageRefPtr& stage, const State& s) {
+  if (any_keyed(s)) return true;
   for (const Effector& e : s.effectors)
     if (e.moves()) return true;
   if (s.effectors.empty()) return false;
@@ -438,7 +480,8 @@ bool moves(const UsdStageRefPtr& stage, const State& s) {
   return false;
 }
 
-// Writes the copies onto the instancer: plain values, or (an effector moving) per-frame samples of what it changes.
+// Writes the copies onto the instancer: plain values, or (an effector or a keyed copy moving) per-frame samples of what
+// they change.
 void write(const UsdStageRefPtr& stage, State& s) {
   const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
   const size_t n = s.laid.size();
@@ -487,6 +530,7 @@ void write(const UsdStageRefPtr& stage, State& s) {
   const auto at = [&](size_t k) {
     std::vector<Copy> c = s.laid;
     std::vector<GfVec3f> colours = grey;
+    keyed_at(s.held, k, c);
     apply(s.effectors, k, world[std::min(k, world.size() - 1)], c, coloured ? &colours : nullptr);
     return arrays(c, coloured ? &colours : nullptr);
   };
@@ -498,8 +542,10 @@ void write(const UsdStageRefPtr& stage, State& s) {
     if (col) col.Set(a.colours);
     return;
   }
-  // only what an effector changes gets samples; the rest is the layout's plain value
-  const bool by_pos = has_kind(s, Effector::Push), by_rot = has_kind(s, Effector::Turn), by_scl = has_kind(s, Effector::Scale);
+  // only what an effector or a keyed copy changes gets samples; the rest is the layout's plain value
+  const bool keyed = any_keyed(s);
+  const bool by_pos = keyed || has_kind(s, Effector::Push), by_rot = keyed || has_kind(s, Effector::Turn),
+             by_scl = has_kind(s, Effector::Scale);
   const Arrays still = arrays(s.laid, nullptr);
   if (!by_pos) pos.Set(still.positions);
   if (!by_rot) rot.Set(still.orientations);
@@ -544,6 +590,10 @@ SimTrack read_sim(const JsObject& o, const std::string& where) {
 }
 }  // namespace
 
+bool Held::keyed() const {
+  return std::any_of(std::begin(track), std::end(track), [](const std::vector<double>& t) { return !t.empty(); });
+}
+
 void SimTrack::pose(int c, int f, int shot_start, GfVec3f* pos, GfQuatf* rot) const {
   const int last = end - start;
   const int held = shot_start + (f - shot_start) / step * step;  // On 2s / On 3s, from the shot's start
@@ -576,7 +626,7 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   s.end = ctx.end;
   for (const char* key : kKeys) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
   if (it.props.has("onlySeen")) set_param(s.p, "onlySeen", it.props.get("onlySeen", "true or false"), it.props.at("onlySeen"));
-  s.held = read_held(held, it.id + ".held");
+  s.held = read_held(held, it.id + ".held", size_t(ctx.end - ctx.start + 1));
   s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
   if (sim) s.sim = read_sim(*sim, it.id + ".sim");
   const std::string accepted = "one or more mesh, combine, import, group or clay items (the copies' sources)";
@@ -625,7 +675,7 @@ double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const
   std::vector<Held> h = s.held;
   if (held) {
     if (!held->IsArray()) fail("copies.held", "is " + held->GetTypeName(), "a list of held copies");
-    h = read_held(held->GetJsArray(), "copies.held");
+    h = read_held(held->GetJsArray(), "copies.held", size_t(s.end - s.start + 1));
   }
   const Surface had = s.surf;
   const Params was = s.p;
@@ -652,13 +702,25 @@ std::vector<Copy> at_frame(const UsdStageRefPtr& stage, const State& s, int fram
   UsdGeomXformCache xc{UsdTimeCode(frame)};
   *world = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path));
   std::vector<Copy> c = s.laid;
-  apply(s.effectors, size_t(std::clamp(frame - s.start, 0, s.end - s.start)), *world, c, nullptr);
+  const size_t k = size_t(std::clamp(frame - s.start, 0, s.end - s.start));
+  keyed_at(s.held, k, c);
+  apply(s.effectors, k, *world, c, nullptr);
+  return c;
+}
+
+std::vector<Copy> drawn_at(const UsdStageRefPtr& stage, const State& s, int frame, GfMatrix4d* world) {
+  if (!s.sim.on()) return at_frame(stage, s, frame, world);
+  UsdGeomXformCache xc{UsdTimeCode(frame)};
+  *world = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path));
+  std::vector<Copy> c = s.laid;  // as `write` draws a stored fall: no keys, no effectors on it
+  const int m = std::min<int>(int(c.size()), s.sim.rows);
+  for (int i = 0; i < m; ++i) s.sim.pose(i, frame, s.start, &c[size_t(i)].pos, &c[size_t(i)].rot);
   return c;
 }
 
 std::vector<GfVec3d> seen_points(const UsdStageRefPtr& stage, const State& s, int frame) {
   GfMatrix4d world;
-  const std::vector<Copy> copies = at_frame(stage, s, frame, &world);
+  const std::vector<Copy> copies = drawn_at(stage, s, frame, &world);
   std::vector<GfVec3d> out;
   out.reserve(copies.size() * 2);
   for (const Copy& c : copies) {
@@ -684,7 +746,7 @@ void write_shown(const UsdStageRefPtr& stage, const State& s) {
 
 int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3d& point, int hint, int proto) {
   GfMatrix4d world;
-  const std::vector<Copy> copies = at_frame(stage, s, frame, &world);
+  const std::vector<Copy> copies = drawn_at(stage, s, frame, &world);
   const GfVec3f local(world.GetInverse().Transform(point));
   // how far inside copy i's bounds the point is (< 1 inside, as a share of their half size); -1 = not a candidate
   const auto score = [&](int i) -> double {

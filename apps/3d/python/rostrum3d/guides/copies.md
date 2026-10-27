@@ -34,6 +34,11 @@ and a copy somebody put by hand stays where it is. Change anything with `copies.
 (count, spacing, a re-run) never moves it. `copies.release` lets one (`copy`) or all go back to their place in the layout.
 Copies are counted from 0 in the order the layout makes them. A person does the same by dragging a copy with the gizmo.
 
+`copies.key` {copy, prop (x y z rx ry rz), t, v, ease?} keys one copy: it moves between its keys like any keyed field, the rest
+of it stays as laid out. Turn into keys on a falling copies item keys every copy (`sim.to_keys`, the Simulate guide);
+`copies.release` lets a keyed copy go back too. In the window, dragging a keyed copy with the gizmo keys it at the
+playhead's frame (the handles stand where the copy is then); a copy still simulating is moved where its fall starts.
+
 ## Scatter over a surface, and what the camera sees
 
 `surface` can be a plane, a mesh, a clay or an import; copies are spread over its area evenly, `minSpacing` keeps them apart (a scatter starts at the source's own width, so they lie side by side; 0 lets them touch and pile; when the surface is full at that distance the rest come closer, so the count is always met), and
