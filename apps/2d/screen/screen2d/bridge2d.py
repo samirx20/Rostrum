@@ -485,6 +485,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
                 self._layers_check()                        # dragged) at once, the parts that follow the outline
                 if reached:                                 # (panels, overlays) once per screen refresh
                     self._outline_paced.ask()
+                self._esc.arm()                             # Esc now puts the drag back (drag_cancel.py)
             else:                                           # the frame after (outline_news.py); a change elsewhere
                 self._outline_paced.cancel()                # (an agent's, an undo): only the timeline's rows; the
                 self._outline_news.soon(bool(reached))      # canvas overlays follow the new picture (shownChanged)

@@ -228,4 +228,5 @@ class DragSlots(SlotMixin):
         def go():
             self._drag, self._grab = Drag(self.doc, self.who, label), grab
             self._picked_at_press = list(self.selected_layers())     # Esc picks these again (an Alt+drag picked its copies)
+            self._esc.arm()                                  # Esc mid-drag puts it back (drag_cancel.py)
         return self._guard(go)

@@ -58,23 +58,36 @@ def cancel(b) -> bool:
 
 
 class EscCancels(QObject):
-    """Watches the whole app's keys: Esc while a mouse button is held on a drag cancels it and goes no further. Only
-    while a button is held: a scrub the panel keeps open between typed values, or a popover's live box, is no drag."""
+    """Watches the app's keys while a drag is open (armed by `arm`, gone the first event after the drag closed: a Python
+    call on every event of the app, kept for the whole session, slowed every drag and click). Esc while a mouse button
+    is held cancels the drag and goes no further. Only while a button is held: a scrub the panel keeps open between
+    typed values, or a popover's live box, is no drag."""
 
     def __init__(self, bridge):
         super().__init__(bridge)
-        self.b = bridge
+        self.b, self.on = bridge, False
+
+    def arm(self):
+        app = QGuiApplication.instance()
+        if not self.on and app is not None:
+            app.installEventFilter(self)
+            self.on = True
 
     def eventFilter(self, obj, ev):
+        b = self.b
+        if b._drag is None and b.doc._gesture is None:          # the drag is over: stop watching
+            QGuiApplication.instance().removeEventFilter(self)
+            self.on = False
+            return False
         t = ev.type()
-        if t in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) and ev.key() == Qt.Key.Key_Escape                 and QGuiApplication.mouseButtons() != Qt.MouseButton.NoButton:
-            if t == QEvent.Type.ShortcutOverride:      # asked first: a drag open takes the key from every shortcut
-                if drag_open(self.b):
-                    ev.accept()
-                    return True
-                return False
-            return cancel(self.b)
-        return False
+        if t not in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) or ev.key() != Qt.Key.Key_Escape                 or QGuiApplication.mouseButtons() == Qt.MouseButton.NoButton:
+            return False
+        if t == QEvent.Type.ShortcutOverride:          # asked first: a drag open takes the key from every shortcut
+            if drag_open(b):
+                ev.accept()
+                return True
+            return False
+        return cancel(b)
 
 
 def drag_open(b) -> bool:
@@ -85,9 +98,6 @@ def drag_open(b) -> bool:
 
 
 def watch(b) -> EscCancels:
-    """Esc-cancel on for this bridge's window (kept by the caller; the app may be absent in a bare test)."""
-    esc = EscCancels(b)
-    app = QGuiApplication.instance()
-    if app is not None:
-        app.installEventFilter(esc)
-    return esc
+    """Esc-cancel for this bridge (kept by the caller). It arms on a drag's start (drags._begin) and on any drag's first
+    step (the bridge's _on_doc sees a "preview"), so no part needs to know about it."""
+    return EscCancels(b)
