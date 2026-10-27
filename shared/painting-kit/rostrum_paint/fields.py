@@ -117,6 +117,10 @@ FIELDS: dict[str, list[Param]] = {
         Param.toggle("wrap", label="Seamless", group="Path", importance=D,
                      help="The canvas's opposite edges are joined: paint that crosses an edge comes back on the other "
                           "side (wrap.py). Set when the stroke is made on a seamless canvas; left out = off"),
+        Param.toggle("by_dab", label="Per-dab draws", default=True, group="Path", importance=D,
+                     help="The brush's random numbers (bristles, jitter, colour drift) are drawn per dab, so the stroke "
+                          "so far is the start of the finished one and the live ink can lay it in pieces "
+                          "(brush.plan). On for new strokes; left out = the older draws, kept by strokes made before"),
     ],
     "fill": [       # a closed area filled with one colour, kept as its outline (fill.py): it stays sharp
         Param.points("points", label="Outline", min=2, max=3, importance=D, group="Path",

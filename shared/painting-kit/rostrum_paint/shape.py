@@ -28,14 +28,16 @@ def points(raw) -> np.ndarray:
     return out
 
 
-def steady(pts: np.ndarray, amount: float) -> np.ndarray:
+def steady(pts: np.ndarray, amount: float, by_dab: bool = False, open_: bool = False) -> np.ndarray:
     """The lazy brush: the line is pulled behind the pen on a string `amount * STEADY_PX` long, so wobbles shorter
     than the string never reach the line; at the end it catches up to where the pen lifted. Causal: what is drawn
-    never changes as the pen goes on, so the live stroke and its replay agree."""
+    never changes as the pen goes on, so the live stroke and its replay agree. `by_dab` (the stroke's `by_dab`
+    draws): the path is made denser a segment at a time, so the line so far stays as it was when more points come
+    (the whole path at once spaces its samples by the whole length). `open_`: the pen is still down, no catch-up yet."""
     r = amount * STEADY_PX
     if r <= 0 or len(pts) < 2:
         return pts
-    dense = _densify(pts, 1.0)
+    dense = _densify_each(pts, 1.0) if by_dab else _densify(pts, 1.0)
     cur, out = dense[0, :2].copy(), [dense[0]]
     for q in dense[1:]:
         d = q[:2] - cur
@@ -43,8 +45,18 @@ def steady(pts: np.ndarray, amount: float) -> np.ndarray:
         if dist > r:
             cur = cur + d * ((dist - r) / dist)
             out.append(np.concatenate([cur, q[2:]]))
-    out.append(dense[-1])
+    if not open_:
+        out.append(dense[-1])
     return np.array(out)
+
+
+def _densify_each(pts, step):
+    """`_densify` a segment at a time: each segment's samples depend on that segment alone."""
+    out = [pts[:1]]
+    for a, b in zip(pts[:-1], pts[1:]):
+        k = max(1, int(math.hypot(*(b[:2] - a[:2])) / step))
+        out.append(a + (b - a) * (np.arange(1, k + 1) / k)[:, None])
+    return np.concatenate(out)
 
 
 def _densify(pts, step):
@@ -76,9 +88,11 @@ def lean(t, L, pts):
     return np.arctan2(ty, tx), np.clip(np.hypot(tx, ty) / TILT_FULL, 0, 1)
 
 
-def dabs(p, th, R, t, L, pts, size, seed):
+def dabs(p, th, R, t, L, pts, size, seed, by_dab=False, length=None):
     """Each dab's turn and radius after tilt, taper and jitter (th, R arrays, same length). Jitter draws from its
-    own stream of the seed, so turning it on never moves the bristles or drift the stroke already had."""
+    own stream of the seed, so turning it on never moves the bristles or drift the stroke already had. `by_dab`:
+    the angle jitter has a stream of its own too, so dab i draws the same however many dabs follow. `length`: what
+    the taper is sized by (an open stroke's is endless: its start tapers as the finished stroke's will)."""
     n = len(th)
     if p["tilt_angle"] > 0 or p["tilt_size"] > 0:
         az, amount = lean(t, L, pts)
@@ -87,11 +101,12 @@ def dabs(p, th, R, t, L, pts, size, seed):
         th = np.where(has, th + p["tilt_angle"] * turn, th)
         R = R * (1 + TILT_WIDEN * p["tilt_size"] * amount)
     if p["taper_start"] > 0 or p["taper_end"] > 0:
-        R = R * taper(t, L[-1], size, p["taper_start"], p["taper_end"])
+        R = R * taper(t, L[-1] if length is None else length, size, p["taper_start"], p["taper_end"])
     if p["size_jitter"] > 0 or p["angle_jitter"] > 0:
         rng = np.random.default_rng([int(seed), 1])
         R = R * (1 - p["size_jitter"] * rng.random(n))
-        th = th + math.radians(p["angle_jitter"]) * rng.uniform(-1, 1, n)
+        turn = np.random.default_rng([int(seed), 9]) if by_dab else rng
+        th = th + math.radians(p["angle_jitter"]) * turn.uniform(-1, 1, n)
     return th, R
 
 

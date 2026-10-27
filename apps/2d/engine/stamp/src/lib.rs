@@ -2,12 +2,17 @@
 //! random draws and the tip profiles stay in numpy) laid into a layer with the same pixels as numpy's, bit for bit, so
 //! the kit's replay and cache stay exact whichever lays them. The Python side is the kit's `native.py` (ctypes).
 //!
-//! `rostrum2d_stamp_dabs(params, dabs, n, profiles, layer, cov, mask, paper_g, paper_f, tex, under, under_row, err,
-//! err_len)`:
+//! `rostrum2d_stamp_dabs(params, dabs, n, profiles, layer, cov, res, mask, paper_g, paper_f, tex, under, under_row,
+//! err, err_len)`:
 //! `params` (P_* below), `dabs` n rows of D_* f64, `profiles` four rows of `kr` f64 (prof, start, end, streak), `layer`
-//! H×W×4 f32 changed in place, `cov` the stroke's bbox of f32 zeros (filled), `mask` / `paper_g` / `paper_f` H×W f32
+//! H×W×4 f32 changed in place, `cov` the stroke's coverage so far over its bbox (f32, grown in place), `res` the wet
+//! reservoir (D×D×4 f32) or null: with P_RES_IN it starts as `res` (a stroke laid in pieces goes on from the last),
+//! else as the first wet dab's pick-up; after the last dab it is written back. `mask` / `paper_g` / `paper_f` H×W f32
 //! or null, `tex` the tip picture (P_TEX x P_TEX f32) or null, `under` the composite below (RGB f32, `under_row` floats a row, 4 a pixel) or null. 0, or 1 with a
 //! message in `err`.
+//!
+//! `rostrum2d_stamp_straight8(px, px_row, out, out_row, h, w)`: premultiplied f32 RGBA (`px_row` floats a row) as
+//! straight RGBA8 (`out_row` bytes a row), the kit's `compose.straight8` byte for byte.
 
 mod paint;
 mod tip;
@@ -17,7 +22,7 @@ use tip::Tip;
 
 /// The layout of `params` and `dabs` and the meaning of the tip / mode ids (the kit's native.py writes the same).
 /// Bump it with any change to the call: native.py reads `rostrum2d_stamp_layout` on load and refuses another build.
-pub const LAYOUT: f64 = 4.0;
+pub const LAYOUT: f64 = 5.0;
 const P_LAYOUT: usize = 0;
 const P_TIP: usize = 1;
 const P_MODE: usize = 2;
@@ -37,7 +42,8 @@ const P_H: usize = 18;
 const P_W: usize = 19;
 const P_TEX: usize = 20; // the tip picture's side; 0: none
 const P_WRAP: usize = 21; // 1: a seamless canvas, its opposite edges joined (the kit's wrap.py)
-pub const PARAMS: usize = 22;
+const P_RES_IN: usize = 22; // 1: the reservoir goes on from `res`
+pub const PARAMS: usize = 23;
 pub const DAB: usize = 22; // x y r a cos sin t s lay take take_weak wv x0 x1 y0 y1 oy ox r g b again
 
 pub struct Stroke<'a> {
@@ -147,7 +153,7 @@ pub extern "C" fn rostrum2d_stamp_layout() -> f64 {
 #[no_mangle]
 #[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn rostrum2d_stamp_dabs(
-    params: *const f64, dabs: *const f64, n: usize, profiles: *const f64, layer: *mut f32, cov: *mut f32,
+    params: *const f64, dabs: *const f64, n: usize, profiles: *const f64, layer: *mut f32, cov: *mut f32, res: *mut f32,
     mask: *const f32, paper_g: *const f32, paper_f: *const f32, tex: *const f32, under: *const f32, under_row: usize,
     err: *mut u8, err_len: usize,
 ) -> i32 {
@@ -160,12 +166,45 @@ pub unsafe extern "C" fn rostrum2d_stamp_dabs(
         let cov = std::slice::from_raw_parts_mut(cov, (bbox[3] - bbox[1]) * (bbox[2] - bbox[0]));
         let under = (!under.is_null()).then(|| (std::slice::from_raw_parts(under, (h - 1) * under_row + w * 4), under_row));
         let rows: Vec<Dab> = std::slice::from_raw_parts(dabs, n * DAB).chunks(DAB).map(Dab::from).collect();
-        lay(&st, &rows, (h, w), bbox, p[P_D] as usize, layer, cov, under)
+        let d = p[P_D] as usize;
+        let res = (!res.is_null()).then(|| (std::slice::from_raw_parts_mut(res, d * d * 4), p[P_RES_IN] != 0.0));
+        if res.is_none() && p[P_RES_IN] != 0.0 {
+            return Err("a reservoir to go on from needs its pixels".into());
+        }
+        lay(&st, &rows, (h, w), bbox, d, layer, cov, under, res)
     };
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)) {
         Ok(Ok(())) => 0,
         Ok(Err(e)) => message(&e, err, err_len),
         Err(_) => message("the native stamper failed (a panic; see stderr)", err, err_len),
+    }
+}
+
+/// # Safety
+/// `px` points at `h` rows of `w` RGBA f32 pixels `px_row` floats apart, `out` at `h` rows of `w` RGBA u8 `out_row`
+/// bytes apart.
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_straight8(px: *const f32, px_row: usize, out: *mut u8, out_row: usize, h: usize, w: usize) -> i32 {
+    for y in 0..h {
+        let src = std::slice::from_raw_parts(px.add(y * px_row), w * 4);
+        let dst = std::slice::from_raw_parts_mut(out.add(y * out_row), w * 4);
+        straight8_row(src, dst);
+    }
+    0
+}
+
+/// compose.straight8, one pixel at a time in its precision (f32): colour / max(alpha, 1e-6) (0 where alpha <= 1e-6),
+/// alpha as it is, clipped to 0..1, × 255, + 0.5, cut to a byte (numpy's cast truncates; NaN gives 0).
+fn straight8_row(src: &[f32], dst: &mut [u8]) {
+    const TINY: f32 = 1e-6;
+    let byte = |v: f32| (v.max(0.0).min(1.0) * 255.0f32 + 0.5f32) as u8;
+    for (p, q) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+        let a = p[3];
+        let m = a.max(TINY);
+        for ch in 0..3 {
+            q[ch] = if a <= TINY { 0 } else { byte(p[ch] / m) };
+        }
+        q[3] = byte(a);
     }
 }
 
