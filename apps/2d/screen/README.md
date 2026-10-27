@@ -110,8 +110,8 @@ bottom           Timeline = the layers list: a name column (fold, rename, drag t
   shipped brushes (`brush_presets.py`: only existing brush settings, never a colour) as real strokes painted by the
   kit's engine (`image://brushes/<id>`). No context bar while painting (only the picked strokes' StrokeBar).
 - **The settings panel** (`brush_panel.py`, the kit Inspector on the painter): "Painting · <layer> · <kind>", the
-  brush's name (`BrushHead.qml`: a plain label ▾ that opens the panel, the one place a brush is chosen), the quick rows (`brush.QUICK`, per tool in `brush.TOOL_PARTS`: the Eraser has no Colour, Fill is Colour + Close gaps, Pick and Select none; Size, Opacity, Colour,
-  Pressure → size / opacity), "Edit brush ›" (every setting, `Brush.editing`), then "Painting on" (`PaintTarget.qml`:
+  brush's name (`BrushHead.qml`: a plain label ▾ that opens the panel, the one place a brush is chosen), the quick rows (`brush.QUICK`, per tool in `brush.TOOL_PARTS`: the Eraser has no Colour or tapers, Fill is Colour + Close gaps, Pick and Select none; Size, Opacity, Colour,
+  Taper start / end, Pressure → size / opacity), "Edit brush ›" (every setting, `Brush.editing`), then "Painting on" (`PaintTarget.qml`:
   Layer ▾, Inside the outline, Draw each frame, from the first moment) and the paint layers (`PaintOn.qml`).
 - **On the canvas**: the target's edge dashed; the pointer is the brush ring; `[` `]` size, Shift+`[` `]` hardness,
   Alt + right-drag sizes (left–right) and softens (up–down). Steps: `preset`, `painttool`, `brushedit`, `keytap`,
@@ -474,7 +474,7 @@ processes on one file (each saves; reopen to see the other's).
 
 ## Characters (H32: `rig_view.py`, `rig_drag.py`, `rig_poses.py`, `rig_lipsync.py`, `rig_blinks.py`, `rig_mouths.py`)
 
-- **Make rig** is the context bar's first button on a group (or layers) whose parts are named like a body, outside a rig
+- **Make a puppet (for bones)** (Make rig, `rig.make`) is the context bar's first button on a group (or layers) whose parts are named like a body, outside a rig
   (fact `body_parts`; `promoted` in `actions.py`: a secondary action promoted now joins the bar on its own).
 - **Bones from part names** on the context bar for a rig with no bones whose parts are named like a body (`rig.guess_bones`).
 - **Attach to bone** (`rig_attach.py`): select a part of the rig, Ctrl+click a bone on the overlay (Ctrl read at the press or the release); one change (`bind.set` to

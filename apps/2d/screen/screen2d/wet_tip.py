@@ -30,11 +30,12 @@ class Tip:
         """The points not yet drawn stamped in (`ink`: the WetInk, its brush and box)."""
         if len(points) <= self.done:
             return self
-        new = points[max(self.start, self.done - 1):]
+        at = max(self.start, self.done - 1)
+        new = points[at:]
         box = ink._box(new)
         if box is not None:
             self._room(box, ink)
-            ink._stamp(self.px, self.at, new, self.cov)
+            ink._stamp(self.px, self.at, new, self.cov, first=at == 0)
             ax, ay = self.at
             self.u8[box[1] - ay:box[3] - ay, box[0] - ax:box[2] - ax] = ink.straight(
                 self.px, (box[0] - ax, box[1] - ay, box[2] - ax, box[3] - ay), box[:2])
@@ -45,18 +46,25 @@ class Tip:
         return self
 
     def _room(self, box, ink):
-        x0, y0, x1, y1 = box
+        bx0, by0, bx1, by1 = box
         if self.px is not None:
             ax, ay = self.at
             h, w = self.cov.shape
-            if x0 >= ax and y0 >= ay and x1 <= ax + w and y1 <= ay + h:
+            if bx0 >= ax and by0 >= ay and bx1 <= ax + w and by1 <= ay + h:
                 return
-            x0, y0, x1, y1 = min(x0, ax), min(y0, ay), max(x1, ax + w), max(y1, ay + h)
+            x0, y0, x1, y1 = min(bx0, ax), min(by0, ay), max(bx1, ax + w), max(by1, ay + h)
+        else:
+            ax, ay, w, h = bx0, by0, 0, 0
+            x0, y0, x1, y1 = box
         # room for the line to go on: half the canvas, at most a few brush widths (half of everything each time made a
-        # long stroke's canvas double: 6184 x 4417 px for an 1800 px sweep), never past a smear's canvas
+        # long stroke's canvas double: 6184 x 4417 px for an 1800 px sweep), never past a smear's canvas; only on the
+        # sides the points left it by (room on every side at each growth made a level sweep's canvas 4288 px tall, and
+        # each growth copied all of it: a 260 px brush's piece took 145-520 ms, so the ink trailed the pen)
         most = max(GROW, int(4 * ink.reach))
         gx, gy = max(GROW, min(most, (x1 - x0) // 2)), max(GROW, min(most, (y1 - y0) // 2))
-        nx, ny, ex, ey = x0 - gx, y0 - gy, x1 + gx, y1 + gy
+        first = self.px is None
+        nx, ny = x0 - gx if first or bx0 < ax else x0, y0 - gy if first or by0 < ay else y0
+        ex, ey = x1 + gx if first or bx1 > ax + w else x1, y1 + gy if first or by1 > ay + h else y1
         if ink.bounds is not None:
             nx, ny, ex, ey = max(0, nx), max(0, ny), min(ink.bounds[0], ex), min(ink.bounds[1], ey)
         px = (np.zeros((ey - ny, ex - nx, 4), np.float32) if self.base is None else self.base(nx, ny, ex, ey))
