@@ -6,7 +6,7 @@ import RostrumKit
 // import's parts indented under their item. Each row is its name (SceneName.qml) and the kit's track (LayerTrack.qml:
 // the bar from first key to last, the keys as diamonds, the stretches between two keys to click). The track sits under
 // the ruler, at ruler.x - 8 like the ruler's 8 px room for a key at 0. Under the rows, while the scene has bodies, the
-// Simulate row (SimRow.qml, placed by SceneList.qml over the rows' fade).
+// Simulate row (SimRow.qml, placed by SceneList.qml under the rows' box).
 ListView {
     id: list
     property Item ruler
@@ -25,7 +25,6 @@ ListView {
     function boxTo(p) { keyBox.to(p) }
     function boxEnd(how) { keyBox.end(how) }
     KeyBox { id: keyBox; list: list; ruler: list.ruler }
-    bottomMargin: backend.sim.shown ? Theme.button + 4 : 0     // the Simulate row (SceneList.qml) sits over the last rows: they scroll above it
     ContextMenu3D { id: itemMenu }
     Connections {   // the selected item's row scrolls into view (picked in the viewport, by a stretch, by a step)
         target: backend
