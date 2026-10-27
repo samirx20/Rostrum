@@ -5,7 +5,8 @@ settings panel's own rows.
 Changes land once per frame (a slider drag's many moves: the action re-runs for the last value, after the frame the
 pointer's own move drew). Opening starts ONE gesture (edits.Drag): the action runs at once with the amounts shown, and every change runs it
 again on the ORIGINAL items (a fresh preview: Humanise twice never loosens twice). `keep()` (Enter, a click away)
-ends it as ONE change named with the amounts ("Humanise · 12 notes · 15 ms, 8 %"); `cancel()` (Esc) puts everything
+ends it as ONE change named with the amounts; resting on a choice in an open list shows it the same way
+(`tryValue`, put back by `untry` when the list closes with no pick) ("Humanise · 12 notes · 15 ms, 8 %"); `cancel()` (Esc) puts everything
 back and records nothing. The amounts kept are remembered per action for this window (screen state, never saved):
 the action's button and key run with them next time. The hub (action_hub.py) opens it; the app gives `drag_fn(label)`
 (its document's Drag), `kept_fn(change, label)` (its message line and selection) and `say_fn(line)`.
@@ -37,6 +38,7 @@ class AmountsPage(QObject):
         self._static: list[dict] = []
         self._later = AfterFrame(self._refresh, self)     # a slider drag's moves: one re-run per frame, the last value
         self._ahead, self._todo, self._made = AfterFrame(self._make_one, self, ahead=True), [], set()
+        self._trying = None                 # (amount, its set value) while a choice is only hovered (tryValue)
         self._aside = PlanAside(self)       # a big step (a whole song's Repeat) planned on a worker: the window goes on
 
     # ---- what the popover (and InspectorRow) reads -------------------------------------------------------------
@@ -89,6 +91,7 @@ class AmountsPage(QObject):
     @Slot()
     def keep(self):
         """Enter or a click away: the session is ONE change, named with its amounts."""
+        self.untry()                           # a choice only hovered is not kept (its list closes as Enter lands)
         self._later.flush()                    # a change still waiting for its frame lands first
         self._aside.finish()                   # and the plan of the amounts shown, if it is still being made
         d, self._drag = self._drag, None
@@ -131,6 +134,7 @@ class AmountsPage(QObject):
     # ---- InspectorRow's calls ----------------------------------------------------------------------------------
     @Slot(str, "QVariant")
     def setValue(self, name, value):
+        self._trying = None                    # a pick (or a typed value) ends any hover try: what is set stays
         p = next((p for p in self._found if p.name == name), None)
         if p is not None and p.type == "number" and isinstance(value, (int, float)) and not isinstance(value, bool):
             value = int(round(value)) if p.integer else round(float(value), 6)
@@ -138,6 +142,26 @@ class AmountsPage(QObject):
             return
         self._vals[name] = value
         self._later.ask()
+
+    @Slot(str, "QVariant")
+    def tryValue(self, name, value):
+        """The pointer (or an arrow key) rests on a choice in an open list: the work shows it, live, as if picked
+        (INTERACTION.md 1.21 rule 6). Nothing is set: `untry()` (the list closed with no pick) puts the amount back."""
+        if self._drag is None:
+            return
+        if self._trying is None or self._trying[0] != name:
+            self._trying = (name, self._vals.get(name))
+        if self._vals.get(name) != value:
+            self._vals[name] = value
+            self._later.ask()
+
+    @Slot()
+    def untry(self):
+        """The list closed without a pick: the amount it showed on hover goes back to the one set."""
+        t, self._trying = self._trying, None
+        if t is not None and self._drag is not None and self._vals.get(t[0]) != t[1]:
+            self._vals[t[0]] = t[1]
+            self._later.ask()
 
     @Slot(str)
     def beginScrub(self, name):

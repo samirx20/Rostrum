@@ -380,7 +380,9 @@ Item {
                 onTypingEnded: row.hold(false) } }
             Component { id: choice; ChoiceField { options: row.model.options; current: row.model.value ?? ""; atRest: row.mixed
                                                   more: row.model.more || ""; onMoreChosen: moreDialog.open()
-                                                  onPicked: (v) => row.set(v) } }
+                                                  onPicked: (v) => row.set(v)
+                                                  onTried: (v) => { if (row.bridge.tryValue) row.bridge.tryValue(row.model.id, v) }
+                                                  onUntried: if (row.bridge.untry) row.bridge.untry() } }
             Component { id: noColour; Text {    // a colour that may be none, while it is: its "+" sets one
                 objectName: "noColour"
                 text: "no colour  +"; color: noArea.containsMouse ? Theme.fg : Theme.fg3
