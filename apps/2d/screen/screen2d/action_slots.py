@@ -13,7 +13,7 @@ from rostrum_gui.selection_rules import esc_step
 
 from . import frame_actions, job_when, keyed_note
 from .action_rules import said
-from .actions import LIST, Facts
+from .actions import LIST, PANEL_TWIN, Facts
 from .key_routes import KeyHub
 from .keys2d import HAVE_ROWS, KEYS2D, ROUTES, SHELL, WINDOW
 
@@ -31,6 +31,7 @@ def _covered(key: str) -> bool:
     return any(key == o or key.startswith(o + ":") for o in COVERED) or any(key.endswith(f".set:{f}") for f in COVERED_FIELDS)
 
 
+TWINS = "layer:" + PANEL_TWIN                                       # the panel's Order ▾ twins: not in Ctrl+K (actions.py)
 MAKES = ("group.make", "rig.make", "mask.make", "shape.boolean")        # operations that make a layer: it is selected after
 
 
@@ -139,7 +140,8 @@ class ActionSlots(SlotMixin):
         if f.facts.get("any_locked"):               # a locked pick: only Unlock-like commands; the rest would refuse
             out = [c for c in out if not _needs_unlock(c)]
         mine = [{**({**c, "do": lambda k=c["key"]: self._hub.run(k)} if "do" in c else c), "own": True}
-                for c in do_commands(LIST.available(f), self._what(f)) if c.get("do") or not c.get("calls") or commands.runs(self.doc, c["calls"])]
+                for c in do_commands(LIST.available(f), self._what(f)) if not c["key"].startswith(TWINS)
+                and (c.get("do") or not c.get("calls") or commands.runs(self.doc, c["calls"]))]
         taken = {LIST.job_of(a) for a in LIST.actions} | set(HAVE_ROWS) | {"select_all"}    # select_all: the row just below
         jobs = job_rows.rows(KEYS2D, set(ROUTES) | set(WINDOW) | set(SHELL) | {"play"}, taken,
                              state={"selected": bool(self.selected_layers()) and not self._keys.count and not self._stretch.shown,

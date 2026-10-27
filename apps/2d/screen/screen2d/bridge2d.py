@@ -127,6 +127,8 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.marks.changed.connect(lambda: self.model.update(self._rows()))   # the marker picks list them
         self._marker_saved()                                # (remembers the last change: only later ones are announced)
         self.marks.changed.connect(self._marker_saved)
+        self.marks.changed.connect(self._work.marks_changed)   # a marker added at the playhead is said (work_area.py)
+        self._work.marks_changed()
         self.join_history(self.marks)                       # marker edits undo with the screen's one history
         self._host = placement.Host(self.frames.place, lambda: self.marks.times, lambda: doc.folder)
         placement.use(self._host)                           # comp-px strokes and spatial staggers ask the canvas's engine
@@ -344,7 +346,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         if tool not in TOOLS:
             return self._fail(f"Error: tool: {tool!r} is not a tool ({', '.join(TOOLS)}).")
         if tool == "bone" and not self._bone_tool.available:
-            return self._fail("Error: bone: select a rig first (Make rig on a character's parts).")
+            return self._fail("Error: bone: select a rig first (More › Make › Make a puppet, on a character's parts).")
         if tool != self._tool:
             if self._tool == "pen":
                 self._pen.finish()

@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// 2D's part of the kit Export sheet (AppShell.exportSettings): the scene (only when there is more than one), the
+// 2D's part of the kit Export sheet (AppShell.exportSettings): a typed range's From and To (only for From – to…), the scene (only when there is more than one), the
 // chosen format's settings (only the ones that apply: backend.exporter.settings, screen2d/export_rows.py; a GIF's ends
 // with what it comes to), and after it is done, what the file holds beyond the kit's result line and, for Lottie, what it couldn't carry.
 Column {
@@ -38,6 +38,12 @@ Column {
                 Text { id: note; visible: srow.modelData.kind === "note"; width: parent.width; anchors.verticalCenter: parent.verticalCenter
                        text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; wrapMode: Text.Wrap
                        font.family: uiFont; font.pixelSize: Theme.body }
+                NumberField { visible: srow.modelData.kind === "number"; anchors.verticalCenter: parent.verticalCenter   // From / To of a typed range
+                              objectName: "exportRange_" + srow.modelData.key; width: 120
+                              value: srow.modelData.kind === "number" ? srow.modelData.value : 0; from: 0; step: 0.04; typeStep: 0.001
+                              unit: srow.modelData.unit || ""; label: srow.modelData.label
+                              onEdited: (v) => root.job.setSetting(srow.modelData.key, v)
+                              onScrubbed: (v) => root.job.setSetting(srow.modelData.key, v) }
                 ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
                               options: srow.modelData.options || []; current: String(srow.modelData.value)
                               onPicked: (v) => root.job.setSetting(srow.modelData.key, v) }

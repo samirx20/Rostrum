@@ -1,13 +1,15 @@
-"""The status line after Fill the frame, Fit inside the frame, Stay put when the frame moves and Crop to a box, in plain
-words (action_rules.said reads `told`): what was done and to how many layers, and for the pin whether anything shows yet.
-No Qt."""
+"""The status line after Fill the frame, Fit inside the frame, Stay put when the frame moves, Crop to a box, Auto layout,
+Show one at a time, Make a puppet and Match width / height / size, in plain words (action_rules.said reads `told`): what
+was done, to how many layers, and where to change it; for the pin whether anything shows yet. No Qt."""
 from __future__ import annotations
 
 from rostrum_core.keys import keys_of
 
 from rostrum2d.frame import view as frame_view
+from rostrum2d.names import display_name
 
 FRAME_FIELDS = ("x", "y", "zoom", "rotation")
+_MATCHED = {"w": "as wide as", "h": "as tall as", "both": "the same size as"}
 
 
 def _layers(n: int) -> str:
@@ -30,6 +32,16 @@ def told(calls: list[dict], doc) -> str:
             return f"Filled the frame with {n}" if args.get("mode", "cover") == "cover" else f"Fitted {n} inside the frame"
         if op == "group.make" and args.get("as") == "clip":
             return f"Cropped {_layers(len(c['target']))} to a box: what is outside it is hidden"
+        if op == "group.make" and args.get("as") == "layout":
+            return (f"Put {_layers(len(c['target']))} in a row, {doc.item(args['id']).get('gap', 16):g} px apart: "
+                    "Row or column, Gap and Padding are in its settings")
+        if op == "group.make" and args.get("as") == "swap":
+            return f"Made a set of {_layers(len(c['target']))} that shows one at a time: pick which under Shows"
+        if op == "rig.make":
+            return f"Made a puppet of {len(c['target'])} parts: draw its bones with the Bone tool (J)"
+        if op == "layer.match_size":
+            n = len(c["target"])
+            return f"Made {_layers(n)} {_MATCHED[args.get('dims', 'both')]} {display_name(doc.item(args['to']))}"
         if op == "layer.pin":
             n, on = _layers(len(c["target"])), bool(args.get("on"))
             if not on:

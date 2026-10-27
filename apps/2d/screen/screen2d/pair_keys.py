@@ -9,7 +9,9 @@ half that holds one value while its partner moves needs no keys, so:
   key.clear keeps that value as its still value), so a Tilt Y flip leaves no Tilt X keys holding 0;
 - a typed value on the still half of an animated pair keys it, with its old value at the partner's key times first, so
   it changes from here on as if it had been keyed all along (never its value everywhere at once).
-Position and Size are moved and resized on the canvas, which writes both halves at once: they stay keyed together.
+Position follows the same rules for a typed value (the diamond keys X and Y; type a new Y at another time and the X keys,
+all holding one value, go: only Y is keyed). A drag on the canvas still writes both halves, as a move in two directions.
+Size stays keyed together: resizing on the canvas writes width and height at once.
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ from rostrum_core.keys import key_value, keys_of
 from rostrum_core.keys.marked import marked
 from rostrum_gui.pairs import PAIRS
 
-TOGETHER = {"x", "y", "w", "h", "width", "height"}
+TOGETHER = {"w", "h", "width", "height"}
 PARTNER = {**{a: b for a, b in PAIRS}, **{b: a for a, b in PAIRS}}
 
 

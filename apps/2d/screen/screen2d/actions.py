@@ -50,6 +50,7 @@ def _to_frame(words: str):
     return lambda f, w=words: w + " to the frame" if f.count == 1 else w
 
 
+PANEL_TWIN = "arrange_"                                     # the panel's own Order ▾ entries (layer:arrange_front …)
 _ORDER = {"front": "Bring to front", "forward": "Bring forward", "backward": "Send backward", "back": "Send to back"}
 _DEPTHS = {"far": 3.0, "middle": 1.0, "near": 0.25}        # the depths background.add's defaults use (far → near)
 _MASK = lambda m: _op("mask.make", "stack_but_top", cutter="$top", mode=m, id="$new:group", at="$at")   # noqa: E731
@@ -63,9 +64,9 @@ DATA = [
        calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "clip"})),
     _a("layout", "Auto layout (a row)", rank=60, group="make", bar="Make", job="auto_layout", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "layout"})),
-    _a("swap", "Make swap set", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
+    _a("swap", "Make a set that shows one at a time", rank=60, group="make", bar="Make", min_targets=2, when=FACT("groupable"),
        calls=_op("group.make", "stack", id="$new:group", at="$at", **{"as": "swap"})),
-    _a("rig", "Make rig", rank=60, group="make", bar="Make", when=ALL("groupable", "rigable"), promoted="body_parts",
+    _a("rig", "Make a puppet (for bones)", rank=60, group="make", bar="Make", when=ALL("groupable", "rigable"), promoted="body_parts",
        calls=_op("rig.make", "stack", id="$new:rig")),
     # a character (UX_SPEC 3.23): a rig with no bones named like a body; a mouth or an eyes swap set
     _a("guess_bones", "Bones from part names", rank=8, importance="primary", group="make", max_targets=1,
@@ -145,6 +146,11 @@ DATA = [
     _a("duplicate", "Duplicate", rank=100, group="edit", job="duplicate", calls={"rule": "duplicate"}),
     _a("delete", "Delete", rank=100, group="edit", job="delete", calls=_op("layer.remove", "ids")),
     *[_a(k, label, rank=110, group="order", bar="Order", job=k, calls={"rule": "order", "how": k}, panel=False) for k, label in _ORDER.items()],
+    # the same four moves as the settings panel's Order ▾, beside Set depth (as Figma's and After Effects' Arrange): the
+    # kit's panel leaves out every job of the right-click menu, so these twins carry no job (keys and right-click use
+    # the ones above; Ctrl+K lists only those: PANEL_TWINS). Only the moves that would move something are listed.
+    *[_a(PANEL_TWIN + k, label, rank=74, importance="primary", group="order", bar="Order", calls={"rule": "order", "how": k})
+      for k, label in _ORDER.items()],
     _a("rename", "Rename", rank=110, group="order", job="rename", max_targets=1, do="rename"),
     # the flip (rostrum2d/ops_flip.py): around the picked layers' centre; under the order moves in the right-click menu
     *[_a(f"flip_{ax}", f"Flip {ax}", rank=112, group="order", job=f"flip_{ax}", kinds=F.PLACED,
