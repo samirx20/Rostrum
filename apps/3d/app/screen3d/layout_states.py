@@ -23,7 +23,7 @@ QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "ca
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
-         "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-render-sheet", "sim-context", "sim-body-selected")
+         "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-stylize", "sim-render-sheet", "sim-context", "sim-body-selected")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -186,6 +186,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("sim-stored", drop(), ["deselect", "sim-demo stored", "settled"]),
         ("sim-out-of-date", drop(), ["deselect", "sim-demo out of date", "settled"]),
         ("sim-failed", drop(), ["deselect", "sim-demo failed", "settled"]),
+        ("sim-stylize", drop(), ["deselect", "sim-demo stored", "settled"]),     # 26a: Timing, Simplify, Turn into keys
         ("sim-render-sheet", drop(), ["sim-demo out of date", "estimate-recorded", "render-sheet"]),
         ("sim-context", drop(), ["context buds"]),
         ("sim-flyout", drop(), ["select set", "rail simulate"]),

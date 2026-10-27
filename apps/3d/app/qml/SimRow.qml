@@ -18,14 +18,14 @@ Item {
     readonly property var info: backend.shotInfo
     height: sim.shown ? Theme.button + 4 : 0
     visible: sim.shown
-    Rectangle { anchors.fill: parent; color: Theme.panel }        // over the rows it is pinned on (ListView.OverlayFooter)
+    Rectangle { anchors.fill: parent; color: Theme.panel }        // over the rows it is pinned on (SceneList.qml)
     Rectangle { width: parent.width; height: 1; color: Theme.line }
 
     Text {
         x: Theme.gap + 16; width: row.labelWidth - x - simulate.width - 2 * Theme.gap
         anchors.verticalCenter: parent.verticalCenter
         text: "Simulation"; elide: Text.ElideRight
-        color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
+        color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
     }
     Button {
         id: simulate
@@ -34,7 +34,7 @@ Item {
         width: visible ? implicitWidth : 0
         x: row.labelWidth - width - Theme.gap; anchors.verticalCenter: parent.verticalCenter
         text: row.failed ? "Try again" : "Simulate"
-        kind: row.stale || row.failed ? "normal" : "primary"
+        kind: "primary"         // the row's one action: the kit's filled button in every state it is offered
         help: "Computes how the bodies fall over the shot's frames and stores it; scrubbing and renders read it."
         onClicked: row.sim.simulate()
     }

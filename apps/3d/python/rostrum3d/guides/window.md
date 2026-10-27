@@ -240,6 +240,11 @@ tool). By hand, twelve buds dropping into a bowl:
   Asleep until hit"), until you try again.
 - **Nothing selected,** the Scene panel's **Simulation** group says the same in a line ("Drop 03: 12 bodies · stored · up
   to date"), with Simulate and the **Ground** switch. Ctrl+K: "Simulate Drop 03", and Falls / Stays still / Off.
+- **Stylize it** (the same group): **Timing** Every frame · On 2s · On 3s moves the bodies in steps like hand animation
+  while the camera stays smooth; **Simplify** keeps every nth frame of the result and moves smoothly between them. Neither
+  makes the result out of date. **Turn into keys** (while it is stored; also in Ctrl+K) gives each falling item the result
+  as ordinary keys and sets it Off, one undo step: nudge a key by hand after it. A copies item keeps simulating (its copies
+  have no keys of their own).
 
 ## The settings panel (right)
 

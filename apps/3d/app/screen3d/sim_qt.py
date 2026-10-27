@@ -15,10 +15,12 @@ from rostrum3d.sim.state, read again a moment after each change (one read per bu
 from __future__ import annotations
 
 import copy
+import re
 import threading
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from . import outline
 from .sim_actions import KINDS, at_top, kind_of
 
 RUNNING, FAILED = "running", "failed"
@@ -37,6 +39,26 @@ def _sim():
         pass
     Sim.state, Sim.compute = staticmethod(state), staticmethod(compute)
     return Sim
+
+
+_PREFIX = re.compile(r"^(?:Error:\s*)?(?:(?:simulate|sim\.run|engine)\s*:\s*)*", re.I)
+_BODY = re.compile(r"^([\w.-]+)(?: (copy \d+))?\b")
+_INSIDE = re.compile(r"\b(inside|on|into) ([\w.-]+)\b")
+
+
+def readable(doc, line: str) -> str:
+    """The core's failure for the row, in the screen's words: without the "Error: simulate:" prefix (the status bar keeps
+    it), the body's id at its start and the one it starts inside named as the scene list names them ("copies_1 copy 3
+    starts inside bowl …" -> "Bud copies, copy 3 starts inside Bowl …"). The copy number stays as the core gives it."""
+    text = _PREFIX.sub("", line or "").strip()
+
+    def name(id_):
+        return outline.label_of(doc.item(id_)) if id_ and doc.has(id_) else id_
+    m = _BODY.match(text)
+    if m and doc.has(m.group(1)):
+        text = name(m.group(1)) + (f", {m.group(2)}" if m.group(2) else "") + text[m.end():]
+    text = _INSIDE.sub(lambda m: f"{m.group(1)} {name(m.group(2))}" if doc.has(m.group(2)) else m.group(0), text, count=1)
+    return text[:1].upper() + text[1:]
 
 
 def _progress_of(*a, **k) -> tuple[int, int]:
@@ -170,7 +192,8 @@ class SimJob(QObject):
             st = sim.state(b.doc.data, b.shot_id, b.doc.folder) if sim else {}
         except Exception as e:  # noqa: BLE001  loudly: the row says why rather than vanishing
             st = {"bodies": self._st.get("bodies", 0) or 1, "state": "not computed"}
-            self._failure = f"Error: simulate: {e}"
+            self._failure = readable(b.doc, str(e))
+            b.fail_line(f"Error: simulate: {e}")
         self._st = st or {}
         if not self._st.get("bodies"):
             self._failure = ""                     # no bodies: nothing to say any more
@@ -188,12 +211,31 @@ class SimJob(QObject):
         self._kind = kind_of(self._b.doc, list(self._b.selection))
         self.changed.emit()
 
+    @Property(bool, notify=changed)
+    def canKeys(self):
+        """Turn into keys is offered: the stored result is up to date (brief 26a)."""
+        return self.state == "stored"
+
+    @Slot()
+    def turnIntoKeys(self):
+        """The stored result becomes ordinary keys on each falling item, which is then Off (sim.to_keys: one undo step)."""
+        b = self._b
+        if not self.canKeys:
+            return
+        if b._guard(lambda: b._done(b.doc.apply([{"op": "sim.to_keys", "target": [b.shot_id], "args": {}}], b.who,
+                                                label="Turn into keys"), "")):
+            b.say(f"{self._shot_label()}'s simulation turned into keys")
+
     def commands(self) -> list[dict]:
-        """Ctrl K: Simulate the shot, while the row offers it (the same job as its button)."""
-        if not self.canRun:
-            return []
-        return [{"key": "sim:run", "label": f"Simulate {self._shot_label()}", "hint": self.line, "words": "simulation physics",
-                 "do": self.simulate}]
+        """Ctrl K: Simulate the shot while the row offers it, Turn into keys while the result is stored."""
+        out = []
+        if self.canRun:
+            out.append({"key": "sim:run", "label": f"Simulate {self._shot_label()}", "hint": self.line,
+                        "words": "simulation physics", "do": self.simulate})
+        if self.canKeys:
+            out.append({"key": "sim:keys", "label": f"Turn {self._shot_label()}'s simulation into keys", "hint": self.line,
+                        "words": "simulation keys bake", "do": self.turnIntoKeys})
+        return out
 
     # ---- the job ---------------------------------------------------------------------------------------------
     def running(self) -> bool:
@@ -237,8 +279,8 @@ class SimJob(QObject):
         self._running = False
         b = self._b
         if error:
-            self._failure = error
-            b.fail_line(error)
+            self._failure = readable(b.doc, error)       # the row: plain words, the items by name
+            b.fail_line(error)                           # the status bar: the kit's "Error: …" line
         else:
             ok = b._guard(lambda: b._done(b.doc.apply([{"op": "sim.run", "target": [b.shot_id], "args": {}}], b.who,
                                                       label=f"Simulate {self._shot_label()}"), ""))
@@ -255,7 +297,7 @@ class SimJob(QObject):
         self._running, self._failure = state == RUNNING, ""
         self._done, self._of = (48, 120) if state == RUNNING else (0, 0)
         if state == FAILED:
-            self._failure = ("Error: simulate: buds copy 7 starts inside bowl at frame 0: move it up 4 mm "
+            self._failure = ("Buds, copy 7 starts inside Ground at frame 0: move it up 4 mm "
                              "or set Starts: Asleep until hit")
         shown = state if state not in (RUNNING, FAILED) else "out of date"
         label = self._shot_label()
