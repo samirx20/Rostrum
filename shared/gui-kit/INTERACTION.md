@@ -771,6 +771,9 @@ app gets them by using the kit, not by re-making them.*
 - **Drawn for our look:** 24 px, white body, a near-black edge that reads on any picture, badges in the accent colour
   (remove in red); 1×, 1.5× and 2× from one drawing, with an exact hotspot. Windows and macOS get the same set.
 - **Hidden only for the brush:** a painting tool shows its ring at the true brush size plus a centre dot.
+- **Hover over hover (build note).** A `HoverHandler` lying over a MouseArea with `hoverEnabled` takes all of
+  that area's hover, even with `blocking: false`: the area under it never sees `containsMouse` or its hover moves.
+  Give each zone one hover source (the MouseArea's, or the handler's), never both stacked.
 
 **Canvas feel rules** (they add to 1.21; each is checked with real mouse input):
 1. **16 ms while dragging.** Every handle and move follows the pointer every frame; a heavy result moves a quick

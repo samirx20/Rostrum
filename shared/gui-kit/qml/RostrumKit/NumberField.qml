@@ -64,10 +64,19 @@ FieldFrame {
     }
     // The room its widest value needs (either end of its range), so an amount whose words widen as it moves ("8 %" ->
     // "100 %") never squeezes the slider beside it (InspectorRow; the stability pass caught a 5 px shrink under a click).
-    readonly property real widestNeeds: {
+    // It only grows while the field shows the same kind of value: a value wider than either end of the range widened
+    // it, and the next, shorter one gave the room back, so the slider beside it grew under the click (2D's stability
+    // pass). Another kind of value (a reused row) starts again from its own room.
+    readonly property real needsNow: {
         const now = metrics.advanceWidth(text) + unitRoom          // the words and unit shown now
         return restNeeds - now + Math.max(now, widestText())
     }
+    readonly property string needsKind: display + "|" + from + "|" + to + "|" + unit + "|" + words.length
+    property real widestNeeds: 0
+    function _grow() { widestNeeds = Math.max(widestNeeds, needsNow) }    // read once the text and its room agree
+    onNeedsNowChanged: Qt.callLater(_grow)
+    onNeedsKindChanged: { widestNeeds = 0; Qt.callLater(_grow) }
+    Component.onCompleted: _grow()
     function endText(v) { return display ? VK.parts(display, v, step).text : Number(v).toFixed(decimals).replace("-", "−") }
     function widestText() {      // either end of the range with its unit, and each word it may show ("Auto" -> "100 %")
         let w = 0
