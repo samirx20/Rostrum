@@ -103,6 +103,12 @@ How to: a wrinkle across a forehead.
    larger Size, and drag along just above the line.
 5. Shift+F (Final): the wrinkle catches the light. Too deep: undo, lower Opacity, paint again.
 
+## Posing
+
+Any clay can bend: select it, click **Pose** on the tool rail and drag a hand (holds keep the feet still). The joints
+are found from the shape, and found again when you sculpt it further (joints you placed and bends you keyed stay).
+Sculpting a posed clay sculpts it as it stands. Guide `posing` has all of it, for people and agents.
+
 ## How it is kept
 
 A drawn shape is kept as its outline on a flat plane; a spun one as its profile and axis; a clay turned from an item

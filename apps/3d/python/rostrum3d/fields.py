@@ -29,7 +29,7 @@ HOLDERS = ("group", "import", "rig", "combine")
 LISTS = {"doc": ["items", "materials", "shots", "poses"], "group": ["children", "keys"],     # where child items live
          "import": ["children", "parts", "keys"], "mesh": ["bones", "keys", "paints", "paintmasks"], "light": ["keys"],
          "camera": ["keys"],
-         "clay": ["steps", "keys", "paints", "paintmasks"],   # its steps build its shape, in order (clay_fields.py)
+         "clay": ["steps", "bones", "keys", "paints", "paintmasks"],   # its steps build its shape, in order (clay_fields.py); its joints (ops_pose.py)
          "combine": ["children", "keys"],
          "rig": ["children", "keys"],
          "bone": ["bones", "keys"]}                     # a chain: mesh › bone › bone … (ops_bones.py); a mesh paints (paint_fields.py)

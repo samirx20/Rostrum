@@ -173,6 +173,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_sheet` shows whether the rider stays put after it is let go.
+- **Posing a clay.** Any clay bends: `pose.find_joints` finds its joints from its shape (body, chest, arm.L,
+  forearm.L, foot.R …), `pose.hold` keeps spots still, `pose.drag(part="hand.R", to=[x, y, z], at=t)` bends the chain
+  back to the body and keys the Turn of every joint that moved, `pose.rest` takes the pose off, `pose.move_joint`
+  places a joint by hand. Guide `posing` has the details (names, holds, keys, sculpting while posed).
 - **Bones.** `bone.chain` (target: one mesh; `points`: two or more `[x, y, z]`, root first, world positions at time 0,
   or the mesh's own space with `space: "mesh"`) lays len(points) − 1 bones, each from one point to the next, nested
   (mesh › `<mesh>_bone1` › `_bone2` …), and binds the mesh (`skinned`), in one undo step; a chain the mesh had is

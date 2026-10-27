@@ -19,7 +19,8 @@ ROTATION = ("rx", "ry", "rz")
 FOCUS_ITEM = "focusItem"                       # a camera's: the compiler turns it into focusDistance per frame
 CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resolved into x … sz
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
-RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | {FOCUS_ITEM, TIMING, SKINNED}   # fields the compiler resolves, never sent
+POSE = {"jointNames", "holds", "jointsKey"}    # a clay's joint settings: the document's alone (ops_pose.py)
+RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | {FOCUS_ITEM, TIMING, SKINNED}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
@@ -124,7 +125,7 @@ def _node(item: dict, fr: _Frames) -> dict:
             anim["focusDistance"] = [_out(p, x) for x in focus]
     if anim:
         node["anim"] = anim
-    if type_ == "mesh" and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]))):
+    if type_ in ("mesh", "clay") and v0[SKINNED] and (bent := skin.skin(item, skin.frame_times(fr, item["id"]))):
         node["skin"] = bent                                    # its bones go only as the skin (skin.py), never as nodes
     if type_ == "clay":
         clay_scene.finish(node, item, fr.folder, fr.data)      # its steps, keyed, and its cache (clay_scene.py)
