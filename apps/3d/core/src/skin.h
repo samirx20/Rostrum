@@ -33,9 +33,13 @@ BoneMove read_bone_move(const PXR_NS::JsValue& v, const std::string& where);
 
 // Automatic weights: each point leans on its nearest kSkinMost bones by 1 / distance⁴ to their rest segments,
 // normalised. `xyz`: n points, 3 floats each; `idx` / `w`: n × skin_influences(bones) each, filled.
+// `behind` (CL5c, clay only; 0 = the mesh's rule exactly): a point behind a bone's head (its projection on the bone's
+// axis before the head) counts as farther from that bone by `behind` × that distance along the axis, so a limb whose
+// head sits on a body's surface doesn't pull the body behind it along.
 constexpr int kSkinMost = 4;
 inline int skin_influences(size_t bones) { return int(bones < size_t(kSkinMost) ? bones : size_t(kSkinMost)); }
-void skin_weights(const float* xyz, size_t n, const std::vector<std::array<double, 6>>& rest, int* idx, float* w);
+void skin_weights(const float* xyz, size_t n, const std::vector<std::array<double, 6>>& rest, int* idx, float* w,
+                  double behind = 0.0);
 
 // Writes points, normals and extent per frame from `start`. `where` names the field in errors.
 void skin_mesh(PXR_NS::UsdGeomMesh m, const MeshData& d, const PXR_NS::JsObject& skin, int start,

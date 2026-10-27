@@ -28,6 +28,19 @@ float prune_share() {
   return v;
 }
 
+// CL5c: a clay point behind a bone's head counts as farther from that bone by this × how far behind (skin.h
+// skin_weights `behind`): a limb whose head sits on the body's surface no longer drags the body's side along (the
+// agent's wave: the raised arm pulled the body's upper side into a heart shape). 3: a body point 3 cm behind the
+// shoulder and 7 cm off the arm's axis drops from ~42 % arm to ~3 %; the bend stays over about the limb's thickness
+// at the joint (points beside the head, not behind it, are unchanged). ROSTRUM3D_CLAY_SKIN_BEHIND sets it (0..10).
+double behind_head() {
+  static const double v = [] {
+    const char* env = std::getenv("ROSTRUM3D_CLAY_SKIN_BEHIND");
+    return env ? std::clamp(std::atof(env), 0.0, 10.0) : 3.0;
+  }();
+  return v;
+}
+
 // the zero-area placeholder prims (an emptied block, the ring kept ready: clay_usd.h): one triangle, its 3 points
 // the same. Never kept, posed or cast against
 bool placeholder(const VtVec3fArray& p, const VtIntArray& i) {
@@ -125,7 +138,8 @@ void Skinning::weigh(Block& b) const {
   b.w.assign(n * k, 0.0f);
   const float* xyz = reinterpret_cast<const float*>(b.rest.cdata());
   tbb::parallel_for(tbb::blocked_range<size_t>(0, n, 512), [&](const tbb::blocked_range<size_t>& r) {
-    skin_weights(xyz + 3 * r.begin(), r.size(), rig_->rest, b.idx.data() + r.begin() * k, b.w.data() + r.begin() * k);
+    skin_weights(xyz + 3 * r.begin(), r.size(), rig_->rest, b.idx.data() + r.begin() * k, b.w.data() + r.begin() * k,
+                 behind_head());
     const float cut = prune_share();  // the weights are normalised: a share is the weight itself
     for (size_t i = r.begin(); i < r.end(); ++i) {
       float* w = b.w.data() + i * k;

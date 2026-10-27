@@ -115,7 +115,7 @@ c.draw(here({foot}), name="foot")
         ops({"op": "pose.hold", "target": ["buddy"], "args": {"bone": "foot.L"}},
             {"op": "pose.hold", "target": ["buddy"], "args": {"bone": "foot.R"}}, label="Hold both feet")
         before = {k: [b.get(f) for f in ("rx", "ry", "rz")] for k, b in bones().items()}
-        hand_up = [-0.24, 0.56, 0.06]
+        hand_up = [-0.20, 0.50, 0.06]
         ops({"op": "pose.drag", "target": ["buddy"], "args": {"part": "forearm.R", "to": hand_up, "at": 0}},
             label="Wave")
         moved = {k for k, b in bones().items() if b.get("keys")}

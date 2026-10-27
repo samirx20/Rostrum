@@ -80,7 +80,8 @@ SkinRig read_skin(const JsObject& skin, const std::string& where) {
 
 // Automatic weights: each point leans on its nearest bones by 1 / distance⁴, so a point beside one bone follows it
 // and a point at a joint shares it between both bones: the bend is smooth over about the item's thickness.
-void skin_weights(const float* xyz, size_t n, const std::vector<std::array<double, 6>>& rest, int* idx, float* w) {
+void skin_weights(const float* xyz, size_t n, const std::vector<std::array<double, 6>>& rest, int* idx, float* w,
+                  double behind) {
   const int bones = int(rest.size()), k = skin_influences(rest.size());
   if (k == 0) return;
   std::vector<std::pair<double, int>> closest(bones);
@@ -88,7 +89,13 @@ void skin_weights(const float* xyz, size_t n, const std::vector<std::array<doubl
     const GfVec3d p(xyz[3 * i], xyz[3 * i + 1], xyz[3 * i + 2]);
     for (int b = 0; b < bones; ++b) {
       const auto& r = rest[b];
-      const double dist = segment_distance(p, GfVec3d(r[0], r[1], r[2]), GfVec3d(r[3], r[4], r[5]));
+      const GfVec3d a(r[0], r[1], r[2]), t(r[3], r[4], r[5]);
+      double dist = segment_distance(p, a, t);
+      if (behind > 0) {  // behind the head: how far back along the axis (metres), added `behind` times
+        const GfVec3d ab = t - a;
+        const double len = ab.GetLength();
+        if (len > 0) dist += behind * std::max(0.0, -GfDot(p - a, ab) / len);
+      }
       closest[b] = {1.0 / (std::pow(dist, 4) + 1e-12), b};
     }
     std::partial_sort(closest.begin(), closest.begin() + k, closest.end(), std::greater<>());
