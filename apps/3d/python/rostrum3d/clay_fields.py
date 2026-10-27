@@ -73,7 +73,9 @@ CLAY = [
            "from the camera)"),
     dataclasses.replace(CH("detailMode", DETAIL_MODES, "Detail", "Clay", "auto", D,
                            help="Auto: worked out from the shot cameras that see the clay, about one grain per "
-                                "1.5 pixels at the closest one (clay_detail.py). Fixed: the Detail size you type"),
+                                "1.5 pixels at the closest one (clay_detail.py), never finer than the clay's size "
+                                "allows in memory (about half a GB of work); look_shape says when it is held. "
+                                "Fixed: the Detail size you type"),
                         labels={"auto": "Follows the camera", "fixed": "Fixed"}),
     N("detail", "Detail size", "Clay", 0.0002, 0.05, 0.0001, "m", D, FIXED, default=0.002,
       help="How fine the clay is when Detail is Fixed: the size of its smallest grain. Smaller = finer, slower and "

@@ -13,6 +13,7 @@
 #include "clay_box.h"
 #include "clay_coarse.h"
 #include "clay_shapes.h"
+#include "error.h"
 
 namespace r3d::clay {
 
@@ -319,6 +320,18 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   b.cnx = b.nx / 8;
   b.cny = b.ny / 8;
   b.cnz = b.nz / 8;
+  // CL7b: a step's box is worked in 7 buffers of 4 bytes a grain, allocated whole. Past this it fails loudly, saying
+  // why, instead of the bare "bad allocation" a 0.2 mm drawn shape gave (21 GB a buffer)
+  constexpr double kMostBoxBytes = 4.0e9;
+  const double boxBytes = 28.0 * double(b.size());
+  if (boxBytes > kMostBoxBytes) {
+    char msg[320];
+    std::snprintf(msg, sizeof msg,
+                  "clay: this step at %.2g mm detail needs %.1f GB of work memory (the most is %.0f GB). Set a coarser "
+                  "detail (Detail: Fixed, a bigger size), or let Detail follow the camera (it keeps a clay within this)",
+                  voxel_ * 1e3, boxBytes / 1e9, kMostBoxBytes / 1e9);
+    throw Error(msg);
+  }
   S.fit(b.size());
   float* V = S.a.get();
   float* NX = S.b.get();

@@ -177,7 +177,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   own space; `symmetry: "x"` (the default) mirrors across its X = 0. Each step is one undo step; `claystep.remove` takes
   one out, `claystep.set` renames it (`name`), hides it (`hidden`) or changes its numbers (`puff`, `blend`). Detail (the smallest grain) follows the shot cameras:
   about one grain per 1.5 pixels at the closest shot that sees the clay, so frame your shots and the clay is as fine as
-  they need; `clay.set detailMode=fixed detail=0.001` fixes it (finer is slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
+  they need, never finer than the clay's size allows in memory (a 50 cm clay stops near 1.4 mm; `look_shape`
+  says "Detail held at …" when a close shot asks for more); `clay.set detailMode=fixed detail=0.001` fixes it (finer is
+  slower and uses more memory). A person's strokes are recorded as dab files (`dabs: "clay/<hash>.dabs"`); a script re-run
   keeps them. Look with `look_frame` from two sides after each few steps, and `look_shape` for the numbers: is it as
   tall as meant, are the arms the same length (a step with Mirror off, a one-sided stroke shows as a left–right
   difference at that height), is a neck or wrist thinner than a few grains (a thin spot: it may break up). `look_at`
