@@ -155,18 +155,23 @@ Item {
                 readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
                 // The names stay where they are while the same item stays selected: a name whose group was just opened
                 // (its fields open below this row, sections.py) keeps its place, quiet and without "+", instead of the
-                // names after it closing up and moving under the pointer. A name coming back (a group folded or
+                // names after it closing up and moving under the pointer. Only the name clicked is held: a group an edit
+                // opened (a Simulate menu, a script) just leaves the row. A name coming back (a group folded or
                 // removed) or another selection lays the row out afresh, in panel order.
                 property var held: []
                 property string heldFor: "-"
+                property string clicked: ""       // the name the pointer just opened
                 function sync() {
                     const now = names.entries
                     const item = row.bridge && row.bridge.selectedItem ? row.bridge.selectedItem.id || "" : ""
                     const was = names.held.map(e => e.group)
                     const fewer = item === names.heldFor && now.every(e => was.includes(e.group))
-                    names.held = fewer ? names.held.map(e => now.find(n => n.group === e.group) || Object.assign({}, e, { opened: true }))
+                    names.held = fewer ? names.held.map(e => now.find(n => n.group === e.group)
+                                                         || (e.opened || e.group === names.clicked ? Object.assign({}, e, { opened: true }) : null))
+                                                   .filter(e => e !== null)
                                        : now
                     names.heldFor = item
+                    names.clicked = ""
                 }
                 onEntriesChanged: sync()
                 Component.onCompleted: sync()
@@ -192,7 +197,7 @@ Item {
                                 anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
                             MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true; enabled: !nameItem.opened
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: { row.bridge.toggleGroup(nameItem.modelData.group); row.groupOpened(nameItem.modelData.group) } }
+                                        onClicked: { names.clicked = nameItem.modelData.group; row.bridge.toggleGroup(nameItem.modelData.group); row.groupOpened(nameItem.modelData.group) } }
                         }
                     }
                 }
