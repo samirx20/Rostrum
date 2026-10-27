@@ -106,7 +106,7 @@ class Engine:
             e = reply["error"]
             code = e["code"] if e["code"] in vars(codes).values() else codes.INTERNAL
             raise RostrumError(code, plain_where(e["where"], req), e["subject"], e["problem"], e.get("accepted") or (), e.get("hint") or None)
-        if do == "render":                   # the engine's cache files grew: keep the one cache under its cap
+        if do in ("render", "measure"):      # the engine's cache files grew: keep the one cache under its cap
             from . import cache_cap
             cache_cap.after_render()
         return reply["result"]
@@ -177,6 +177,14 @@ class Engine:
             except (OSError, subprocess.TimeoutExpired):
                 p.kill()
                 p.wait(timeout=5)
+
+    def can(self, do: str) -> bool:
+        """Whether this engine answers the request `do` (its `describe` lists `requests`; an engine older than that
+        list answers only what every engine did). Asked once per engine process."""
+        if getattr(self, "_can", (None,))[0] != self.pid or self.pid is None:
+            got = self.request("describe").get("requests")
+            self._can = (self.pid, set(got) if got else {"describe", "check", "render", "range", "plugins", "pluginWindow", "quit"})
+        return do in self._can[1]
 
     def check_names(self) -> list[str]:
         """Differences between names.py and the engine's `describe` (the authority); empty when they agree."""
