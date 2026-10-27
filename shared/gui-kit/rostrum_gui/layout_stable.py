@@ -86,7 +86,7 @@ def candidates(win, spots: dict, tried: set) -> list:
             and layout_check.near(s.node.seen, s.rect) and s.rect.width() * s.rect.height() <= AREA_MAX * whole
             and min(s.rect.width(), s.rect.height()) >= layout_check.MIN_CLICK
             and s.node.item.property("danger") is not True and not typing(s.node.item) and not SKIP.search(words(s.node.item))]
-    full = [s for s in full if on_top(win, s.node.item, s.rect.center())]      # (a menu over it would take the click)
+    full = [s for s in full if on_top(s, spots)]      # (a menu over it would take the click)
     layers = {s.node.layer for s in full}
     top = max(layers, key=lambda la: (la != "page", la.count("/")), default="page")
     full = [s for s in full if s.node.layer == top and sig(s) not in tried]     # an open popup takes the clicks
@@ -99,21 +99,34 @@ def candidates(win, spots: dict, tried: set) -> list:
     return order
 
 
-def on_top(win, item, at) -> bool:
-    """`item` (or something inside it) is the topmost thing at window point `at`: a click there reaches it. An open
-    menu drawn over a page control would take the click (2026-10-27: a File menu's New, read as the page's button
-    moving everything)."""
-    it, p = win.contentItem(), at
-    while True:
-        c = it.childAt(p.x(), p.y())
-        if c is None:
-            break
-        p, it = it.mapToItem(c, p), c
-    while it is not None:
-        if it is item:
-            return True
-        it = it.parentItem()
-    return False
+def _chain(item) -> list:
+    out = []
+    while item is not None:
+        out.append(item)
+        item = item.parentItem()
+    return out[::-1]
+
+
+def stacked_above(a, b) -> bool:
+    """Item `a` is drawn over item `b` (neither inside the other): at the first parent they part, a's branch comes
+    later in z, then in child order."""
+    ca, cb = _chain(a), _chain(b)
+    n = 0
+    while n < min(len(ca), len(cb)) and ca[n] is cb[n]:
+        n += 1
+    if n == 0 or n == len(ca) or n == len(cb):
+        return False
+    kids = ca[n - 1].childItems()
+    rank = lambda k: (k.z(), next((i for i, x in enumerate(kids) if x is k), -1))
+    return rank(ca[n]) > rank(cb[n])
+
+
+def on_top(s, spots) -> bool:
+    """No other control is drawn over this one's centre: a click there reaches it. An open menu drawn over a page
+    control would take the click (2026-10-27: a File menu's New, read as the page's button moving everything)."""
+    at = s.rect.center()
+    return not any(o is not s and o.rect.contains(at) and pressable(o.node.item) and stacked_above(o.node.item, s.node.item)
+                   for o in spots.values())
 
 
 def sig(s) -> str:
