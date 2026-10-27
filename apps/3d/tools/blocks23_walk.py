@@ -2,17 +2,19 @@
 # never focused): real mouse and keys (QTest) on visible controls found by objectName; the document is only READ, to
 # check, never changed by bridge calls. From a new project:
 #   1. Shapes › Sphere, a click on the ground: a sphere, selected ......................... "1-sphere"
-#   2. its Material ▾, a starting point (Matte plastic): its own material .................. "2-material"
-#   3. Edit as blocks (the material's last row): the bottom panel is the block view, Surface in it, "‹ Back · … blocks"
-#      ...................................................................................... "3-blocks-open"
-#   4. the add list (+ Add block), "noi" typed, Enter: a Noise block in the document ........ "4-noise-added"
-#   5. a drag from Noise's value port to Surface's Roughness port: the wire in the document, one undo step
-#      ...................................................................................... "5-wired"
-#   6. the look menu: Quick, then Final (Cycles, waited for) ............................ "6-quick", "6-final"
+#   2. its Material ▾, a starting point (Glossy plastic): its own material; its Radius typed (0.35 m) .. "2-material"
+#   3. Edit as blocks (the material's last row): the bottom panel is the block view at 100 %, Surface in it,
+#      "‹ Back · … blocks" .................................................................. "3-blocks-open"
+#   4. the add list (+ Add block), "noi" typed, Enter: a Noise block in the document, left of Surface and level with it
+#      ...................................................................................... "4-noise-added"
+#   5. a drag from Noise's value port to Surface's Roughness port: the wire in the document, one undo step; Surface
+#      picked: Base colour #2f6fd6 typed in its row; Noise picked: Scale 20 typed in its row ........ "5-wired"
 #   7. a block dragged by its header (~60 moves) and a wire (Noise colour -> Surface Base colour, ~60 moves); each move
 #      timed on the window thread in real ms (perf_counter_ns around the move and its events): median / p95 / max;
-#      each release one undo step ......................................................... "7-dragged"
+#      each release one undo step; Ctrl+Z takes the second wire back ........................ "7-dragged"
 #   8. Esc: the timeline again ............................................................ "8-timeline"
+#   6. (last, so nothing covers the sphere) Esc again lets go of it; the look menu: Quick, then Final waited to its
+#      last sample: the window and the viewport alone ....... "6-quick", "6-quick-view", "6-final", "6-final-view"
 # Every check, the times and the document's graph go to blocks23_walk.json in the out folder, with the pictures.
 # The lead runs it:
 #   heavy.ps1 run "hem: 3d-23 blocks walk" gpu <venv python> apps\3d\tools\blocks23_walk.py <out folder>
@@ -114,6 +116,37 @@ def type_text(win, text):
     for ch in text:
         QTest.keyClick(win, ch)
         W.pump(0.02)
+
+
+def type_into(win, field, text, what):
+    """A click on a number or hex field (a click types, a drag scrubs), all of it selected, `text` typed, Enter."""
+    from PySide6.QtTest import QTest
+    chk(field is not None, f"{what} is on screen")
+    if field is None:
+        return False
+    click(win, field)
+    W.pump(0.2)
+    QTest.keyClick(win, Qt.Key_A, Qt.ControlModifier)
+    type_text(win, text)
+    QTest.keyClick(win, Qt.Key_Return)
+    W.pump(0.4)
+    return True
+
+
+def field_of(win, panel_name, row_name, inner="grid:field"):
+    panel = by_name(win, panel_name)
+    row = W.find(panel, row_name) if panel is not None else None
+    return W.find(row, inner) if row is not None else None
+
+
+def view_crop(win, vp, name):
+    """The viewport alone (the window's own pixels), as <name>.png."""
+    from PySide6.QtCore import QRect
+    img = win.grabWindow()
+    k = img.width() / win.width()
+    a = vp.mapToScene(QPointF(0, 0))
+    img.copy(QRect(round(a.x() * k), round(a.y() * k), round(vp.width() * k), round(vp.height() * k))).save(str(OUT / f"{name}.png"))
+    REPORT["pictures"][name] = str(OUT / f"{name}.png")
 
 
 def shot(win, v, name):
@@ -218,7 +251,7 @@ def main():
         field = control(win, "materialField", "the Material field")
         if field is not None:
             click(win, field)
-        start = control(win, "matstart:matte plastic", "the picker's Matte plastic")
+        start = control(win, "matstart:glossy plastic", "the picker's Glossy plastic")
         if start is not None:
             click(win, start)
         W.pump(5, lambda: material_of(D, sphere) is not None, "the sphere's material")
@@ -227,9 +260,13 @@ def main():
         if mat is None:
             raise RuntimeError("no material to open as blocks")
         mid = mat["id"]
-        if by_name(win, "matstart:matte plastic") is not None:      # the picker still open: put it away
+        if by_name(win, "matstart:glossy plastic") is not None:      # the picker still open: put it away
             QTest.keyClick(win, Qt.Key_Escape)
         W.pump(0.3)
+        radius = reveal(win, "row:radius", "the sphere's Radius row")
+        type_into(win, W.find(radius, "grid:field") if radius is not None else None, "0.35", "Radius's number field")
+        W.pump(3, lambda: abs(D.item(sphere).get("radius", 0) - 0.35) < 1e-6, "Radius 0.35")
+        chk(abs(D.item(sphere).get("radius", 0) - 0.35) < 1e-6, f"Radius typed: 0.35 m ({D.item(sphere).get('radius')})")
         shot(win, v, "2-material")
 
         # 3. Edit as blocks
@@ -271,7 +308,11 @@ def main():
         noise = (blocks_of(material_of(D, sphere), "noise") or [{}])[0].get("id", "")
         chk(bool(noise), f"a Noise block is in the document ({noise or 'none'})")
         chk(len(D.history.changes) == n0 + 1, f"adding it was one undo step ({n0} -> {len(D.history.changes)})")
-        chk(search is None or not search.isVisible(), "the add list closed")
+        chk(wait_for(2, lambda: not visible(win, by_name(win, "blockAddList"))), "the add list closed")
+        nb = next((x for x in blocks_of(material_of(D, sphere)) if x["id"] == noise), {})
+        sf = G.graph_of(material_of(D, sphere))["surface"]
+        chk(nb.get("x", 0) + 180 <= sf.get("x", 0) and nb.get("y") == sf.get("y", 0),
+            f"Noise lands left of Surface, level with it ({nb.get('x')},{nb.get('y')} vs {sf})")
         if not noise:
             raise RuntimeError("no Noise block to wire")
         W.pump(0.5)
@@ -300,26 +341,19 @@ def main():
         panel = by_name(win, "blockSettings")
         rough = W.find(panel, "row:roughness") if panel is not None else None
         chk(rough is not None and CP.find_text(rough, "Set by a wire") is not None, "Surface's Roughness row says a wire sets it")
+        type_into(win, field_of(win, "blockSettings", "row:baseColor", "hexField"), "2f6fd6", "Surface's Base colour hex")
+        W.pump(3, lambda: str(material_of(D, sphere).get("baseColor", "")).lower() == "#2f6fd6", "Base colour #2f6fd6")
+        chk(str(material_of(D, sphere).get("baseColor", "")).lower() == "#2f6fd6",
+            f"Base colour typed in Surface's row ({material_of(D, sphere).get('baseColor')})")
+        head = control(win, f"blockHeader:{noise}", "Noise's header")
+        if head is not None:
+            click(win, head)
+        W.pump(2, lambda: b.blocks.selected == noise, "Noise picked")
+        type_into(win, field_of(win, "blockSettings", "row:scale"), "20", "Noise's Scale field")
+        sc = lambda: next((x.get("values", {}).get("scale") for x in blocks_of(material_of(D, sphere)) if x["id"] == noise), None)  # noqa: E731
+        W.pump(3, lambda: sc() == 20, "Noise Scale 20")
+        chk(sc() == 20, f"Noise's Scale typed in its settings row: 20 ({sc()})")
         shot(win, v, "5-wired")
-
-        # 6. Quick, then Final
-        step("6 looks")
-        chk(pick_look(win, v, "quick"), f"the look menu's Quick ({v.look})")
-        W.pump(0.5)
-        chk(not v.status.startswith("Error") and not b.status.startswith("Error"), f"Quick draws the blocks ({v.status or b.status or '-'})")
-        shot(win, v, "6-quick")
-        t0 = time.perf_counter()
-        chk(pick_look(win, v, "final"), f"the look menu's Final ({v.look})")
-        W.pump(240, lambda: v.look == "final" and (v.final.fraction >= 0.5 or v.finalLine.startswith("Final · done")),
-               "Final to converge")
-        REPORT["timesMs"]["final-converge"] = round((time.perf_counter() - t0) * 1000)
-        chk(v.look == "final" and not v.status.startswith("Error"), f"Final draws the blocks ({v.finalLine})")
-        QTest.mouseMove(win, QPoint(8, 8))
-        W.pump(0.5)
-        path = OUT / "6-final.png"
-        win.grabWindow().save(str(path))
-        REPORT["pictures"]["6-final"] = str(path)
-        pick_look(win, v, "quick")
 
         # 7. a block drag and a wire drag, timed per move
         step("7 drags")
@@ -350,6 +384,11 @@ def main():
             f"the second wire is in the document ({wires_of(material_of(D, sphere))})")
         chk(len(D.history.changes) == n0 + 1, f"the second wire was one undo step ({n0} -> {len(D.history.changes)})")
         shot(win, v, "7-dragged")
+        QTest.keyClick(win, Qt.Key_Z, Qt.ControlModifier)     # the pictures show Noise -> Roughness alone
+        W.pump(3, lambda: (f"{noise}.colour", "surface.baseColor") not in wires_of(material_of(D, sphere)), "Ctrl+Z")
+        chk((f"{noise}.colour", "surface.baseColor") not in wires_of(material_of(D, sphere))
+            and (f"{noise}.value", "surface.roughness") in wires_of(material_of(D, sphere)),
+            f"Ctrl+Z takes back only the second wire ({wires_of(material_of(D, sphere))})")
 
         # 8. Esc: the timeline again
         step("8 esc")
@@ -363,6 +402,31 @@ def main():
             "the timeline is back")
         chk(b.selected == sphere, f"the sphere is still selected ({b.selected})")
         shot(win, v, "8-timeline")
+        # 6. Quick, then Final, nothing selected (no gizmo over the sphere)
+        step("6 looks")
+        QTest.keyClick(win, Qt.Key_Escape)
+        W.pump(3, lambda: b.selected == "", "Esc to let go of the sphere")
+        chk(b.selected == "", f"a second Esc lets go of the sphere ({b.selected!r})")
+        chk(pick_look(win, v, "quick"), f"the look menu's Quick ({v.look})")
+        W.pump(0.5)
+        chk(not v.status.startswith("Error") and not b.status.startswith("Error"), f"Quick draws the blocks ({v.status or b.status or '-'})")
+        shot(win, v, "6-quick")
+        view_crop(win, vp, "6-quick-view")
+        t0 = time.perf_counter()
+        chk(pick_look(win, v, "final"), f"the look menu's Final ({v.look})")
+        W.pump(400, lambda: v.look == "final" and (v.final.fraction >= 1.0 or v.finalLine.startswith("Final · done")),
+               "Final to finish its samples")
+        REPORT["timesMs"]["final-done"] = round((time.perf_counter() - t0) * 1000)
+        REPORT["finalLine"] = v.finalLine
+        chk(v.look == "final" and v.finalLine.startswith("Final · done") and not v.status.startswith("Error"),
+            f"Final draws the blocks to its last sample ({v.finalLine})")
+        QTest.mouseMove(win, QPoint(8, 8))
+        W.pump(0.5)
+        path = OUT / "6-final.png"
+        win.grabWindow().save(str(path))
+        REPORT["pictures"]["6-final"] = str(path)
+        view_crop(win, vp, "6-final-view")
+        pick_look(win, v, "quick")
         REPORT["graph"] = G.graph_of(material_of(D, sphere) or {})
         REPORT["graphProblems"] = G.problems(material_of(D, sphere) or {})
         chk(not REPORT["graphProblems"], f"the graph has no problems ({REPORT['graphProblems']})")

@@ -1,5 +1,6 @@
 """A material's block view (brief 23b) would break silently: each request from the kit's view is one operation, one
-undo step (add, add from a dropped wire = add + wire, wire, move, remove); a block's own setting dragged is written
+undo step (add, add from a dropped wire = add + wire, wire, move, remove), and a block added with no point chosen
+lands left of Surface, never on it; a block's own setting dragged is written
 once, at the release; the view is told the blocks again only when the graph changed (a frame or a selection change
 leaves its data alone, so nothing resets under a drag); Esc closes it. No viewport or engine."""
 import sys
@@ -51,9 +52,11 @@ def test_requests_are_one_operation_each(bridge):
     assert {r["id"] for r in bk.rows.rows if r.get("row") == "param"} >= {"baseColor", "roughness"}
 
     n = steps(b)
-    bk.add("noise", -300, 20, "")
+    bk.add("noise", 0, 0, "", False)                    # + Add block: left of Surface, level with it
     assert [x["type"] for x in graph(b)["blocks"]] == ["noise"] and steps(b) == n + 1
     nid = graph(b)["blocks"][0]["id"]
+    surf = graph(b)["surface"]
+    assert graph(b)["blocks"][0]["x"] + 180 < surf.get("x", 0) and graph(b)["blocks"][0]["y"] == surf.get("y", 0)
     assert bk.selected == nid and any(r["id"] == "scale" for r in bk.rows.rows if r.get("row") == "param")
 
     bk.wire(f"{nid}.value", "surface.roughness")
@@ -62,7 +65,7 @@ def test_requests_are_one_operation_each(bridge):
     rough = next(r for r in bk.rows.rows if r.get("id") == "roughness")
     assert (rough.get("note") or {}).get("text") == "Set by a wire"
 
-    bk.add("mix", -300, 200, f"{nid}.colour")          # dropped from a wire: the block and its wire, one step
+    bk.add("mix", -300, 200, f"{nid}.colour", True)          # dropped from a wire: the block and its wire, one step
     mix = next(x for x in graph(b)["blocks"] if x["type"] == "mix")
     assert any(w["from"] == f"{nid}.colour" and w["to"].startswith(mix["id"] + ".") for w in graph(b)["wires"])
     assert steps(b) == n + 3
@@ -78,7 +81,7 @@ def test_requests_are_one_operation_each(bridge):
 def test_a_block_setting_drag_is_written_once_at_the_release(bridge):
     b, bk = bridge, bridge.blocks
     bk.edit("shell")
-    bk.add("noise", 0, 0, "")
+    bk.add("noise", 0, 0, "", True)
     nid = bk.selected
     n = steps(b)
     bk.beginScrub("scale")
@@ -99,7 +102,7 @@ def test_the_view_data_stays_put_until_the_graph_changes(bridge):
     b.select("case")
     b.outlineChanged.emit()
     assert told == []
-    bk.add("noise", 0, 0, "")
+    bk.add("noise", 0, 0, "", True)
     assert told
 
 

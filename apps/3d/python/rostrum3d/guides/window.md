@@ -336,8 +336,9 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
 
 A material's last settings row, **Edit as blocks**, turns the bottom panel into that material's blocks (taller, in the
 timeline's place): a header **‹ Back · <material> blocks**, then the blocks and their wires, the material's own
-settings as one **Surface** block. **+ Add block** (or Tab, a double-click or right-click on empty space) opens the list
-to add one by typing its name; drag from an output to an input to wire them; drag a block by its title to move it;
+settings as one **Surface** block, at 100 % on the right of the panel. **+ Add block** (or Tab, a double-click or
+right-click on empty space) opens the list to add one by typing its name (from + Add block or Tab it lands left of the
+others, level with Surface); drag from an output to an input to wire them; drag a block by its title to move it;
 Delete removes the picked block. The picked block's settings show in the settings panel. While the keyboard is in the
 blocks, Delete, Tab, Space, F and Esc are theirs. **‹ Back** or **Esc** goes back to the timeline, and so does picking
 an item with another material. Every change is one undo step. How each block works: *Materials › Blocks*.

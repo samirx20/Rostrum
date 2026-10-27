@@ -24,6 +24,7 @@ from rostrum3d import fields as F
 from rostrum3d import graph as G
 from rostrum3d import graph_blocks as GB
 from rostrum_gui import rows, sections
+from rostrum_gui import blocks as KB
 from rostrum_gui.blocks import KIND_COLOURS
 from rostrum_gui.edits import Scrub
 from rostrum_gui.model import RowsModel
@@ -31,6 +32,7 @@ from rostrum_gui.model import RowsModel
 from . import material_live, outline, route
 
 SURFACE = G.SURFACE
+GAP = 60                                        # canvas units between a new block and the leftmost one
 CONVERTS = {}                                   # the view's `converts`: {output kind: [input kinds it also feeds]}
 for _a, _b in G.CAST:
     CONVERTS.setdefault(_a, []).append(_b)
@@ -118,6 +120,10 @@ class Blocks3D(QObject):
     def kindColours(self):
         return dict(KIND_COLOURS)
 
+    @Property(int, constant=True)
+    def blockWidth(self):
+        return KB.WIDTH
+
     @Property("QVariantMap", constant=True)
     def converts(self):
         return dict(CONVERTS)
@@ -200,15 +206,20 @@ class Blocks3D(QObject):
             n += 1
         return f"{type_}_{n}"
 
-    @Slot(str, float, float, str)
-    def add(self, type_, x, y, from_port=""):
+    @Slot(str, float, float, str, bool)
+    def add(self, type_, x, y, from_port, placed):
         """A block from the add list at (x, y); opened from a dropped wire (`from_port` "id.output"): the new block's
-        first input that output may feed is wired to it, in the same undo step."""
+        first input that output may feed is wired to it, in the same undo step. `placed` False (+ Add block, Tab: no
+        point was chosen): it goes left of the leftmost block, level with Surface (wires run left to right), so it
+        never lands on another block."""
         if not self._mat:
             return
         kind = GB.get(type_)
         if kind is None:
             return self.b.fail_line(f"Error: blocks: there is no block type {type_!r}.")
+        if not placed and not from_port and self._blocks:
+            surf = self._block(SURFACE) or self._blocks[0]
+            x, y = min(b["x"] for b in self._blocks) - KB.WIDTH - GAP, surf["y"]
         bid = self._new_id(type_)
         calls = [self._call("graph.add", {"type": type_, "id": bid, "x": round(x), "y": round(y)})]
         if from_port:
@@ -245,6 +256,15 @@ class Blocks3D(QObject):
         word = self._block(ids[0]).get("label", ids[0]) + " block" if len(ids) == 1 and self._block(ids[0]) else f"{len(ids)} blocks"
         if self._run([self._call("graph.remove", {"blocks": list(ids)})], f"Remove {word}") and self._picked in ids:
             self.pick(SURFACE)
+
+    @Slot(str, result="QVariantMap")
+    def box(self, block_id):
+        """The canvas box {x0, y0, x1, y1} of one block ("" = all of them), for the view's first placing (BlocksPanel)."""
+        shown = [b for b in self._blocks if not block_id or b["id"] == block_id]
+        if not shown:
+            return {}
+        return {"x0": min(b["x"] for b in shown), "y0": min(b["y"] for b in shown),
+                "x1": max(b["x"] + KB.WIDTH for b in shown), "y1": max(b["y"] + KB.height(b) for b in shown)}
 
     @Slot(str)
     def pick(self, block_id):

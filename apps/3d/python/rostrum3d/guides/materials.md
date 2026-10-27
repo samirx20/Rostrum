@@ -31,12 +31,14 @@ Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished m
 ### Blocks (on the screen)
 
 The bottom panel shows the material as blocks joined by wires, in the timeline's place; its header reads **‹ Back ·
-Brass blocks**. Today's settings are one **Surface** block; its ports on the left are what a wire may set: Base colour,
+Brass blocks**. It opens at full size (100 %) with Surface on the right, room on the left for what feeds it. Today's settings are one **Surface** block; its ports on the left are what a wire may set: Base colour,
 Roughness, Metallic, Glow colour, Normal, Style.
 
 - **Add a block:** **+ Add block**, Tab, a double-click or a right-click on empty space opens the list; type to filter
   ("noi" finds Noise), then Enter or a click. Image, Noise, Mix, Ramp, Curve, Colour adjust, Bevel shading, Ambient
-  occlusion, and the stylized Lines, Light to colour and Halftone.
+  occlusion, and the stylized Lines, Light to colour and Halftone. From **+ Add block** or Tab the new block lands left
+  of the leftmost block, level with Surface (wires run left to right); from a double-click or right-click, where you
+  clicked.
 - **Wire:** drag from a block's output (right side) to an input (left side). The ports a wire may reach light up; colour
   and number join either way (a number as grey, a colour as its brightness), a normal and a style only their own kind.
   An input takes one wire: a new one replaces it. Drop a wire on empty space to add a block it feeds.
