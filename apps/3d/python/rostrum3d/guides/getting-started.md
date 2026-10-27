@@ -30,9 +30,13 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
 4. **Shape it.** Pick a brush in the panel and drag over the clay: **Smooth** evens out lumps, **Add** builds clay
    up (a brow), **Carve** takes it away (a mouth). Hold **Shift** to smooth with any brush, **Ctrl** for the opposite.
    **Size** is the brush's radius. Each stroke is one undo step.
-5. **Eyes.** **Shapes › Sphere**, then click on the face where one eye goes. A small ball sits on the face, and its
-   mirrored copy appears on the other side and follows it. Drag it with the arrows, or type its size in the panel.
-6. **Colour.** Select the body and click the small coloured square beside **Base colour**: pick an orange. Select an
+5. **Eyes.** **Shapes › Sphere**, then click on the face where one eye goes, a little off the middle. A small ball
+   sits on the face, sized for it (about a ninth of the face's width there), and its mirrored copy appears on the
+   other side and follows it. Drag it with the arrows, or type its size in the panel. Both stay on the face when
+   you pose the body later.
+6. **Colour.** Select the body and click the small coloured square beside **Base colour** (under its **Material ▾**):
+   pick an orange. New clays share the project's grey "Clay"; the first colour change gives this clay its own copy, so
+   other clays stay grey. Select an
    eye, click its material ball, choose **Glossy plastic** under **Start from**, then set its Base colour to black.
    Both eyes change, because the copy follows the original.
 7. **A wave.** Select the body and click **Pose** in the rail (Shift+P). Click each foot once (an orange ring: it
@@ -44,7 +48,8 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
 9. **A good light.** **Lights › Soft light**, then click the cheek where you want it brightest. The light is placed
    so its shine lands there, at a sensible brightness. **Shift+F** shows the view in Final quality, with real soft
    shadows (Shift+F again goes back to Quick).
-10. **The picture.** Click **Render** at the right of the top bar. The sheet says how long it will take; start it.
+10. **The picture.** Click **Render** at the right of the top bar. It starts at once at final quality and says how long
+    it will take; the picture shows when done, saved in the project's Renders folder (**Show in folder**).
     When it is done: **Show in folder**.
 
 ## As an agent
@@ -92,7 +97,9 @@ height, widths and how even its two sides are. Sculpt with `clay.stroke` (guide 
 Make the eye at its size in the script (`mesh("eye", shape="sphere", radius=0.012, material=…)`; 2–3 cm across suits a
 26 cm body), then `edit_place_on` with `mesh: "eye"` and `x`, `y` a pixel of the face in the picture `look_frame` gave
 (and its `width`). It stands the eye on the surface there, and because the body's Mirror is on, makes its mirrored
-copy `eye_mirrored`, which follows it. Change the original only.
+copy `eye_mirrored`, which follows it. Change the original only. Both also follow the body's pose (each rides the
+bone nearest it), so they stay on the face when the body bends. If the eye's size is far from what a click there
+would make, the reply says so (`spotSize`, about a ninth of the body's width at that spot).
 
 - Not sure a pixel is on the face? `look_at` with `points` answers what is at each pixel; pick one a few pixels inside
   the surface, away from edges (`edit_place_on` checks two neighbours too).
@@ -105,16 +112,20 @@ copy `eye_mirrored`, which follows it. Change the original only.
 
 All through `edit_document`:
 
-1. `pose.find_joints` (`target: ["buddy"]`). The reply lists the joints it found. Use **those names**: a short arm
-   has only `arm.R` and `forearm.R` (no `hand.R`). `.R` is the character's right, the −x side, on the picture's left.
-2. `pose.drag` with `part` the last joint of the arm (`forearm.R`; its end is the hand), `to` a world point
-   (up and a little out: about 15 cm above the shoulder) and `holds`.
-3. **Hold the feet and the chest**: `holds: ["foot.L", "foot.R", "chest"]`. Feet alone still let the chest turn,
-   and the whole top of the body leans with the arm (the eyes, being separate parts, then stay behind).
+1. `pose.find_joints` (`target: ["buddy"]`). The reply lists the joints it found, each with where it is (and
+   `dropped`: old joints the new shape no longer has). An arm gets `arm.R` (shoulder) and `forearm.R` (elbow, at
+   its middle when it is straight). `.R` is the character's right, the −x side, on the picture's left. An arm
+   drawn hanging down must not touch the body's side (leave a gap of about a centimetre), or it is read as part of
+   the body.
+2. `pose.drag` with `part: "hand.R"` (the end of the arm, whatever its last joint is), `to` a world point (up and a
+   little out: about 15 cm above the shoulder) and `holds`.
+3. **Hold the feet**: `holds: ["foot.L", "foot.R"]`. The chest then leans a little with the arm, and the eyes lean
+   with it (parts placed on a clay follow its pose). Add `"chest"` to keep the body upright and bend only the arm.
+   Only the arm and the shoulder round it move: the body's side stays where it is.
 
 ```json
-{"op": "pose.drag", "target": ["buddy"], "args": {"part": "forearm.R", "to": [-0.16, 0.30, 0.04], "at": 0,
- "holds": ["foot.L", "foot.R", "chest"]}}
+{"op": "pose.drag", "target": ["buddy"], "args": {"part": "hand.R", "to": [-0.16, 0.30, 0.04], "at": 0,
+ "holds": ["foot.L", "foot.R"]}}
 ```
 
 The reply names the joints that moved. `miss` above 0 means the hand could not reach `to`: bring it closer.

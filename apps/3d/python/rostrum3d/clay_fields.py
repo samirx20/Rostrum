@@ -44,6 +44,9 @@ POSE = [
     Param.text("jointsKey", label="Joints found for", group="Pose data", importance=D, default="", shown="script",
                help="The clay's last step key when its joints were found; another key = the shape changed since "
                     "(pose_joints.out_of_date)"),
+    Param.text("jointParts", label="Pieces", group="Pose data", importance=D, default="", shown="script",
+               help="Which piece (the body, an arm, a leg …) each spot of the clay belongs to, found with its joints "
+                    "(packed; skin_parts.py): each piece bends with its own bones, shared only round its joint"),
 ]
 
 CLAY = [

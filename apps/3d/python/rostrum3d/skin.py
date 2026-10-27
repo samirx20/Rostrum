@@ -66,8 +66,13 @@ def skin(mesh: dict, times: list[float]) -> dict | None:
     if not chain or not mesh.get("skinned", True):
         return None
     rest = transforms(chain)
-    return {"rest": [[round(x, 6) for x in segment(m, b)] for m, (b, _) in zip(rest, chain)],
-            "pose": [[_deform(n, r) for n, r in zip(transforms(chain, t), rest)] for t in times]}
+    segs = [[round(x, 6) for x in segment(m, b)] for m, (b, _) in zip(rest, chain)]
+    out = {"rest": segs, "pose": [[_deform(n, r) for n, r in zip(transforms(chain, t), rest)] for t in times]}
+    if mesh.get("jointParts"):                                 # a clay's pieces (skin_parts.py): each bends with its own
+        from . import skin_parts
+        if parts := skin_parts.for_core(mesh["jointParts"], chain, segs):
+            out["parts"] = parts
+    return out
 
 
 def frame_times(fr, id_: str) -> list[float]:
