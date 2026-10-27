@@ -22,7 +22,7 @@ from rostrum_gui.markers import MarkerWatch
 from rostrum_gui.time_snap import TimeSnap
 
 from rostrum3d.light_fields import FINAL_ONLY as LIGHT_FINAL
-from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL, QUICK_APPROX as MATERIAL_APPROX
+from rostrum3d.material_fields import FINAL_ONLY as MATERIAL_FINAL, FINAL_STYLIZED, QUICK_APPROX as MATERIAL_APPROX, STYLIZED_ONLY
 
 from . import job_when3d, lipsync3d, outline, route
 from .action_preview3d import ActionPreview3D
@@ -60,6 +60,8 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     sections = True                     # the kit's open-if-changed settings panel (rostrum_gui/sections.py)
     FINAL_ONLY = {"light": LIGHT_FINAL, "material": MATERIAL_FINAL}      # fields the quick view can't show: a "Final" tag
     QUICK_APPROX = {"material": MATERIAL_APPROX}                         # fields it only hints at: a "Final" tag too
+    STYLIZED_ONLY = {"material": STYLIZED_ONLY}                          # fields only the Stylized look shows: a "Stylized" tag
+    FINAL_STYLIZED = {"material": FINAL_STYLIZED}                        # Final and Stylized, not Quick: "Final · Stylized"
 
     def __init__(self, doc, shot_id=None, autosave=False, viewport=_viewport, render_engine=None, parent=None):
         shots = doc.data.get("shots", [])

@@ -1,5 +1,6 @@
-// P-3D-3: the stylized render pass. Draws with OpenGL on the host's current context:
-// shadow maps -> G-buffer -> shade (per-light ramps + brush strokes) -> ink edges -> ink -> AOVs.
+// The stylized render pass. Draws with OpenGL on the host's current context:
+// shadow maps -> G-buffer (+ material row) -> shade (light, then the material: plain / light to
+// colour / halftone) -> ink edges (materials with Lines) -> ink -> AOVs.
 #pragma once
 
 #include "gl.h"

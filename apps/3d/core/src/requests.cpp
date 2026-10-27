@@ -89,6 +89,7 @@ JsObject Core::scene(const JsObject& a) {
   const auto t0 = Clock::now();
   built_ = build_stage(a, stage_);  // throws with the held stage untouched
   scene_ = a;
+  material_props_.clear();  // live material changes end with the scene that carries them
   announce_light_extras();
   loaded_ = true;
   const double build_ms = ms_since(t0);
@@ -109,7 +110,7 @@ JsObject Core::scene(const JsObject& a) {
 
 JsObject Core::render(const JsObject& o, const std::function<void(const JsObject&)>& progress) {
   Args a(o, "render", {"camera", "renderer", "frame", "frames", "width", "height", "samples", "denoise", "exr",
-                       "png", "view", "exposure", "timeoutS", "progress", "passes"});
+                       "png", "view", "exposure", "timeoutS", "progress", "passes", "stylized"});
   need_scene("render");
   if (clay_->previewing())  // 3d-cl4: the stage holds the stroke's coarse preview, never rendered
     throw Error("render: a clay stroke is being drawn (on its quick preview); render once it has ended");
@@ -144,6 +145,15 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   s.denoise = a.flag("denoise", s.denoise);
   s.timeoutS = a.num("timeoutS", s.timeoutS);
   if (s.samples < 1 || s.samples > 65536) throw Error("render.samples: must be 1..65536");
+  if (a.has("stylized")) {  // the stylized renderer's own settings
+    if (renderer != "stylized") throw Error("render.stylized: only for renderer stylized, not " + renderer);
+    const JsValue& sv = a.need("stylized");
+    if (!sv.IsObject()) throw Error("render.stylized: needs an object. Accepted: {\"supersample\": 1..4}");
+    const Args st(sv.GetJsObject(), "render.stylized", {"supersample"});
+    s.supersample = st.whole("supersample", s.supersample);
+    if (s.supersample < 1 || s.supersample > 4)
+      throw Error("render.stylized.supersample: " + std::to_string(s.supersample) + " is out of range. Accepted: 1..4");
+  }
   const std::vector<std::string> passes = a.has("passes") ? read_passes(a.need("passes"), "render.passes")
                                                           : std::vector<std::string>{};
   if (!passes.empty() && exr.empty()) throw Error("render.passes: passes are layers of the EXR; give exr too");

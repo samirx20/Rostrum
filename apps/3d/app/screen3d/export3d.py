@@ -26,7 +26,8 @@ from rostrum3d.engine import Engine
 from rostrum3d.mcp.estimate import scale
 from rostrum3d.mcp.render import DocView, still
 from rostrum3d.mcp.sequence import sequence
-from rostrum3d.render_fields import FORMATS, PASS_HELP, PASSES, QUALITIES, SIZES, settings
+from rostrum3d.material_fields import any_stylized
+from rostrum3d.render_fields import FORMATS, PASS_HELP, PASSES, QUALITIES, SIZES, engine_fields, settings
 
 from .estimate_sheet import Estimate
 
@@ -34,6 +35,7 @@ FRAME, SHOT = "frame", "shot"
 FORMAT_ROWS = [{"value": "png", "label": "PNG picture"}, {"value": "exr", "label": "EXR (for the Editor)"},
                {"value": "both", "label": "PNG and EXR"}]
 QUALITY_ROWS = [{"value": q, "label": q.capitalize()} for q in QUALITIES]
+STYLIZED_ROW = {"value": "stylized", "label": "Stylized"}       # offered while a material has Lines or Halftone on
 
 
 class Export3D(ExportSheet):
@@ -145,9 +147,11 @@ class Export3D(ExportSheet):
                 out.append({"field": field, "value": value, "text": f'{word} · {e["text"].split(" · ")[0].lower()}'})
         return out
 
-    @Property("QVariantList", constant=True)
+    @Property("QVariantList", notify=own)
     def qualities(self):
-        return QUALITY_ROWS
+        """Draft · Good · Final, and Stylized while a material has Lines or Halftone on (or the shot is set to it)."""
+        stylized = any_stylized(self.bridge.doc.data) or self._shot().get("renderQuality") == "stylized"
+        return QUALITY_ROWS + ([STYLIZED_ROW] if stylized else [])
 
     @Property(str, notify=own)
     def quality(self):
@@ -156,6 +160,8 @@ class Export3D(ExportSheet):
     @Property(str, notify=own)
     def qualityText(self):
         s = self._settings()
+        if s["renderer"] == "stylized":
+            return "Stylized renderer · drawn at twice the size for smooth edges"
         return f'{s["samples"]} samples' + (" · noise cleaned" if s["denoise"] else "")
 
     @Property("QVariantList", notify=own)
@@ -199,8 +205,8 @@ class Export3D(ExportSheet):
     @Property("QVariantList", notify=own)
     def passes(self):
         """The Passes row: only while the shot saves an EXR (absent for PNG, never greyed); Beauty is always in it."""
-        if "exr" not in self._settings()["formats"]:
-            return []
+        if "exr" not in self._settings()["formats"] or self._settings()["renderer"] != "cycles":
+            return []                  # the passes are Cycles' (a Stylized render's EXR is the picture alone)
         on = set(self._settings()["passes"])
         return [{"value": field, "label": label, "on": name in on, "help": PASS_HELP[name]} for name, (field, label, _) in PASSES.items()]
 
@@ -221,7 +227,7 @@ class Export3D(ExportSheet):
             raise RuntimeError("a render is already running; wait for it or cancel it first")
         scene, info, s, _ = self.plan_now()             # the shot's render settings: what the estimate measured
         info = {**info, "start": s["start"], "end": s["end"]}
-        return {"info": info, "cycles": {"samples": s["samples"], "denoise": s["denoise"]}, "scene": scene, "doc": DocView.of(b.doc),
+        return {"info": info, "renderer": s["renderer"], "cycles": engine_fields(s), "scene": scene, "doc": DocView.of(b.doc),
                 "frame": b.frame, "folder": b.doc.folder, "out": out, "size": (s["width"], s["height"]),
                 "shot": self._choice == SHOT, "formats": s["formats"], "passes": s["passes"], "stem": self._stem(),
                 "main": s["formats"][0]}
@@ -244,14 +250,15 @@ class Export3D(ExportSheet):
 
     @staticmethod
     def _frame(plan, engine, progress, stopped):
-        done, files, _ = still("export", plan["doc"], plan["info"], plan["scene"], engine, plan["frame"], "cycles",
+        done, files, _ = still("export", plan["doc"], plan["info"], plan["scene"], engine, plan["frame"], plan["renderer"],
                                plan["size"], plan["formats"], 0, plan["cycles"], plan["folder"], plan["passes"], stopped)
         return done, files
 
     @staticmethod
     def _sequence(plan, engine, progress, stopped):
         return sequence("export", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
-                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"], stopped)
+                        plan["cycles"], plan["folder"], plan["stem"], lambda i, n: progress(i / max(n, 1)), plan["passes"], stopped,
+                        renderer=plan["renderer"])
 
     @staticmethod
     def _copy(plan, files):

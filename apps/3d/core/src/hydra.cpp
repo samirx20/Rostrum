@@ -23,6 +23,7 @@
 #include "cycles_lights.h"
 #include "dome_cycles.h"
 #include "error.h"
+#include "light_to_color.h"
 #include "sky.h"
 #include "storm_lights.h"
 #include "storm_programs.h"
@@ -90,6 +91,22 @@ void cycles_settings(UsdImagingGLEngine& e, const DrawSettings& s, const UsdStag
   }
 }
 
+// The stylized renderer's settings (apps/3d/stylized, renderPass.cpp): `rostrum:ss` x the picture's size (1 in the
+// viewport for video memory, the render's `stylized.supersample`), its shadow maps 2048 square. Set only on a change.
+void stylized_settings(UsdImagingGLEngine& e, int supersample) {
+  const auto set = [&](const char* key, const VtValue& v) {
+    if (e.GetRendererSetting(TfToken(key)) != v) e.SetRendererSetting(TfToken(key), v);
+  };
+  set("rostrum:ss", VtValue(supersample));
+  set("rostrum:shadow:size", VtValue(2048));
+}
+
+// what a white floor shows under the viewport's studio (Rec.709 luminance)
+double studio_floor_level(double strength) {
+  const GfVec3f l = dome_floor_level(studio_texture(strength));
+  return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+}
+
 UsdGeomCamera camera_at(const UsdStageRefPtr& stage, const SdfPath& path) {
   UsdGeomCamera cam(stage->GetPrimAtPath(path));
   if (!cam) throw Error("render.camera: no camera at " + path.GetString());
@@ -104,15 +121,18 @@ class Hydra::Engine : public UsdImagingGLEngine {
   void show_sky(bool visible) {
     SetRendererSetting(HdRenderSettingsTokens->domeLightCameraVisibility, VtValue(visible));
   }
-  // Storm and the stylized renderer read a dome only as a picture handed over as a viewport light (sky.h), for the
-  // quick view and a final render alike; without a scene dome, `fallback` lights (the studio, or none for a render).
+  // Storm reads a dome only as a picture handed over as a viewport light (sky.h), for the quick view and a final
+  // render alike; without a scene dome, `fallback` lights (the studio, or none for a render).
   // Storm also gets the dome's sun as a distant light with a shadow over what `view` sees (storm_sun.h).
+  // The stylized renderer reads every scene light, its dome too, as the UsdLux light it is (real brightness; a dome's
+  // picture level from primvars:rostrum:domeLevel, light_to_color.h): handed the dome again as a viewport light it
+  // would light twice, so it gets a viewport light only when no scene dome lights (the studio, a dome, in the view).
   // Returns whether a scene dome is in use, and the sun when Storm drew one.
   bool light_raster(const UsdStageRefPtr& stage, int frame, bool scene_lights, GlfSimpleLightVector fallback,
                     const GfFrustum& view, std::optional<StormSun>* sun_out = nullptr) {
     const auto sky = scene_lights ? scene_sky(stage, frame, storm) : std::nullopt;
-    SetLightingState(sky ? GlfSimpleLightVector{sky->dome} : std::move(fallback), GlfSimpleMaterial(),
-                     GfVec4f(0, 0, 0, 1));
+    SetLightingState(sky ? (stylized ? GlfSimpleLightVector{} : GlfSimpleLightVector{sky->dome}) : std::move(fallback),
+                     GlfSimpleMaterial(), GfVec4f(0, 0, 0, 1));
     show_sky(sky && sky->seen);  // a dome the camera doesn't see still lights (its seenByCamera)
     if (storm) {
       const std::optional<StormSun> sun = sky ? sky->sun : std::nullopt;
@@ -123,6 +143,7 @@ class Hydra::Engine : public UsdImagingGLEngine {
     return bool(sky);
   }
   bool storm = false;  // set when made: Storm alone gets the sun light (storm_sun.h)
+  bool stylized = false;  // set when made: reads the scene's dome itself (light_raster)
   // after a live picture: Storm's programs held, so a dab's clean-up doesn't drop the glass pass's (storm_programs.h)
   void keep_programs() {
     if (storm) programs_.keep(_renderer.Get(), _renderDelegate.Get());
@@ -227,6 +248,7 @@ std::unique_ptr<Hydra::Engine> Hydra::make_engine(const std::string& renderer) {
                 ") is not installed on this machine. Available: " + join(have));
   auto e = std::make_unique<Engine>();
   e->storm = renderer == "storm";
+  e->stylized = renderer == "stylized";
   if (!e->SetRendererPlugin(id)) throw Error("render.renderer: Hydra could not start " + id.GetString());
   // Draw into Hydra's own colour picture, then composite it into the framebuffer we bind. Storm starts without one
   // (hdx/taskController.cpp: "AOVs are OFF by default for Storm"), and its sky task draws only into a colour picture
@@ -263,6 +285,7 @@ Picture Hydra::draw(const std::string& renderer, const SdfPath& camera, int fram
     cycles_settings(e, s, stage_, camera, false);
     e.use_aovs(s.aovs);
   }
+  if (renderer == "stylized") stylized_settings(e, s.supersample);
   if (renderer != "cycles")  // a render never sees the studio
     e.light_raster(stage_, frame, true, {}, cam.GetCamera(UsdTimeCode(frame)).GetFrustum());
   e.SetCameraPath(camera);
@@ -308,6 +331,7 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     throw Error("view.renderer: \"" + renderer + "\" is not a live viewport renderer. Accepted: storm, stylized");
   TfErrorMark mark;
   auto& e = engine(renderer, true);
+  if (renderer == "stylized") stylized_settings(e, 1);
   e.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
   e.SetRenderBufferSize(GfVec2i(w, h));
   e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
@@ -315,6 +339,12 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   std::optional<StormSun> sun;
   const auto tl = std::chrono::steady_clock::now();
   const bool scene_dome = e.light_raster(stage_, frame, look.sceneLights, studio_lights(look.studio), frustum, &sun);
+  if (renderer == "stylized") {  // the studio's light when it lights: its picture's floor level (a viewport light
+    // carries only the picture), as "how lit" counts a dome (light_to_color.h dome_floor_level); 0 = no studio
+    const VtValue level(scene_dome || look.studio <= 0 ? 0.0 : studio_floor_level(look.studio));
+    if (e.GetRendererSetting(TfToken("rostrum:studio:level")) != level)
+      e.SetRendererSetting(TfToken("rostrum:studio:level"), level);
+  }
   const double light_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tl).count();
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);

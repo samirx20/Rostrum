@@ -3,15 +3,20 @@
 One physically based material type (Cycles' principled BSDF, with a UsdPreviewSurface for Storm). H22 added the
 controls product films need: the direction metal is brushed in (`brushDirection`), sheen (fabric, velvet, peach fuzz),
 a tinted clear coat over paint (`coatTint`, `coatIor`) and a screen showing a picture or a 2D item's render
-(`emissionTexture`, `emissionRender`). What each renderer does with them: ENGINE_CONTRACT.md § 2, guides/materials.md.
+(`emissionTexture`, `emissionRender`). Brief 22 added the stylized blocks (SPEC §6.4): Lines and Halftone (the Stylized
+look only) and Light to colour (Final and Stylized), each a group its toggle turns on (one click on its name in the
+material's row of names). What each renderer does with them: ENGINE_CONTRACT.md § 2, guides/materials.md.
 """
 from __future__ import annotations
 
-from .field_kit import CH, C, D, IS, N, NOT, S, X
+import dataclasses
+
+from .field_kit import CH, C, D, IS, N, NOT, S, T, X
 
 GLOWS = NOT("emissionStrength", 0)
 UNDER = NOT("subsurface", 0)
 BRUSH = ["uv", "around x", "around y", "around z"]
+LINES, TONE, HALF = IS("lines", True), IS("lightToColor", True), IS("halftone", True)
 DOC_ONLY = {"emissionRender"}       # the compiler turns it into emissionTexture, one picture per frame (screen.py)
 
 
@@ -69,6 +74,62 @@ MATERIAL = [
       help="The id of a 2D item of this project: its newest PNG-sequence render plays on the surface, its frame "
            "at each moment of the shot (held at the ends). Read-only: change it in Rostrum2D and render again"),
     N("thinFilm", "Thin film", "Coat", 0, 2000, 1, "nm", D, help="Rainbow coating thickness (anodizing, soap); 0 = off (Cycles)"),
+    T("lines", "Lines", "Lines", False, S,
+      help="Ink lines along the outline and the creases of every surface with this material (Stylized look)"),
+    N("linesWidth", "Width", "Lines", 0.25, 12, 0.05, "px", S, LINES, default=1.5,
+      help="How thick a line is, in pixels of the finished picture"),
+    C("linesColor", "Colour", "Lines", "#1a1a1a", S, LINES),
+    N("linesTaper", "Taper", "Lines", 0, 1, 0.01, "", S, LINES, default=0.5,
+      help="Lines get thinner where the surface is lit: 0 = the same width everywhere, 1 = thinnest in full light"),
+    N("linesWobble", "Wobble", "Lines", 0, 1, 0.01, "", S, LINES, default=0.3,
+      help="How much the width changes along a line, like a hand-held pen: 0 = steady"),
+    N("linesCreaseAngle", "Crease angle", "Lines", 1, 180, 1, "°", S, LINES, default=40,
+      help="A fold sharper than this angle gets a line too; 180 = the outline only"),
+    T("lightToColor", "Light to colour", "Light to colour", False, S,
+      help="Colours the surface by how much light reaches it (the scene's real lights and cast shadows): one colour "
+           "where it is lit, one in between, one in shadow. Final and Stylized looks"),
+    C("litColor", "Lit colour", "Light to colour", "#ffffff", S, TONE,
+      help="Where the surface is lit. Multiplies the base colour (or base colour image): white = the base colour itself"),
+    C("midColor", "Middle colour", "Light to colour", "#b3b3b3", S, TONE,
+      help="Between shadow and lit. Multiplies the base colour"),
+    C("shadowColor", "Shadow colour", "Light to colour", "#4d4d4d", S, TONE,
+      help="In shadow. Multiplies the base colour"),
+    N("shadowBelow", "Shadow below", "Light to colour", 0, 1, 0.01, "", S, TONE, default=0.15,
+      help="How lit a point is, from 0 (no light) to 1 (white paper under these lights looks white): below this it "
+           "takes the shadow colour"),
+    N("litFrom", "Lit from", "Light to colour", 0, 1, 0.01, "", S, TONE, default=0.5,
+      help="From this much light up the surface takes the lit colour; between Shadow below and this, the middle "
+           "colour. Below Shadow below, Lit from counts for both"),
+    dataclasses.replace(CH("lightEdges", ["steps", "smooth"], "Edges", "Light to colour", "steps", S, TONE,
+                           help="Steps = hard edges between the colours; Smooth = each edge blends over Softness"),
+                        labels={"steps": "Steps", "smooth": "Smooth"}),
+    N("lightSoftness", "Softness", "Light to colour", 0.01, 0.5, 0.01, "", S, ALL(TONE, IS("lightEdges", "smooth")),
+      default=0.1, help="How far each edge blends, on the same 0–1 scale of how lit: either side of Shadow below and Lit from"),
+    T("halftone", "Halftone", "Halftone", False, S,
+      help="Printed dots or lines over the surface, bigger where it is darker: none in full light, solid in full "
+           "shadow (Stylized look)"),
+    dataclasses.replace(CH("halftoneShape", ["dots", "lines"], "Shape", "Halftone", "dots", S, HALF),
+                        labels={"dots": "Dots", "lines": "Lines"}),
+    N("halftoneSize", "Size", "Halftone", 2, 40, 0.5, "px", S, HALF, default=6,
+      help="The spacing of the dots or lines, in pixels of the finished picture"),
+    N("halftoneAngle", "Angle", "Halftone", -90, 90, 1, "°", S, HALF, default=45,
+      help="The screen's turn: the rows of dots or the lines run at this angle"),
+    C("halftoneColor", "Colour", "Halftone", "#1a1a1a", S, HALF),
 ]
 FINAL_ONLY = {"coatTint", "coatIor", "sheen", "anisotropy", "thinFilm", "subsurfaceRadius"}   # Cycles only (see each help); the panel tags their rows "Final"
 QUICK_APPROX = {"subsurface", "subsurfaceColor"}   # Final shows them fully, the quick view only a tint (ENGINE_CONTRACT § 2); also tagged "Final"
+# The stylized blocks' tags go on each group's switch and its first row only (the row right under the group's heading):
+# one tag says it for the whole group, the same word on every row would only repeat it.
+STYLIZED_ONLY = {"lines", "linesWidth", "halftone", "halftoneShape"}   # the Stylized look only: tagged "Stylized"
+FINAL_STYLIZED = {"lightToColor", "litColor"}                           # Final and Stylized: tagged "Final · Stylized"
+
+
+def stylized(material: dict) -> bool:
+    """The material uses a block only the Stylized look shows (Lines or Halftone on): the Look offers Stylized while
+    any material of the project does (SPEC §6.4)."""
+    return bool(material.get("lines")) or bool(material.get("halftone"))
+
+
+def any_stylized(data: dict) -> bool:
+    """A material of the document uses a Stylized-only block: the Look and the render sheet's Quality offer Stylized."""
+    return any(stylized(m) for m in data.get("materials", []))

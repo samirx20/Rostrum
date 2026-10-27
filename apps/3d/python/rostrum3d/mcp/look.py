@@ -41,7 +41,8 @@ def _through(ctx, scene: dict, light: str, frame: int, aspect: float) -> str:
 @tools.tool("look_frame", {"properties": {**ITEM_SHOT, **TIME, **LOOK, **THROUGH, **onion_look.ONION, **step_look.HIGHLIGHT}})
 def look_frame(ctx, args):
     """One rendered frame of a shot, seen through the SHOT's camera by the same render path as export: a PNG file and an image you
-    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). through = a light's
+    can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). stylized = the
+    stylized look: the only one that draws materials' Lines and Halftone (Light to colour shows in final too). through = a light's
     id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped
     (blown out) and which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known.
     onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc

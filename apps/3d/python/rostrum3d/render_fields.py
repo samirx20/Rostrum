@@ -3,7 +3,9 @@ and `settings()`, the one reading of them: the Render button, render_still / ren
 ask it, so what the estimate measures is what the render draws (preview ≡ export, SPEC §11.2–11.3).
 
 Quality is a preset of the numbers (Draft 32 samples, Good 128, Final 512, noise clean-up on); Custom shows the
-numbers themselves. Size is the shot's own frame size, half or double. Range: the whole shot or a stretch of it.
+numbers themselves; Stylized renders with the stylized renderer (lines, halftone, light to colour: brief 22) at 2×
+supersampling, the same renderer as the viewport's Look: Stylized (screens offer it while a material has Lines or
+Halftone on; agents may always ask for it). Size is the shot's own frame size, half or double. Range: the whole shot or a stretch of it.
 Save as: PNG, EXR (for the Editor) or both; with an EXR, the Passes it carries as layers (SPEC §11.2, core passes.h),
 each a switch that exists only while the shot saves an EXR (absent for PNG, never greyed).
 """
@@ -13,6 +15,7 @@ from .field_kit import ANY, CH, D, IS, N, S, T
 
 QUALITIES = {"draft": {"samples": 32, "denoise": True}, "good": {"samples": 128, "denoise": True},
              "final": {"samples": 512, "denoise": True}}
+STYLIZED = {"supersample": 2}      # a stylized render's own settings (ENGINE_CONTRACT § 4: render's `stylized`)
 SIZES = {"full": 1.0, "half": 0.5, "double": 2.0}
 CUSTOM, RANGE = IS("renderQuality", "custom"), IS("renderRange", "range")
 BLUR = IS("motionBlur", True)
@@ -28,8 +31,9 @@ PASS_HELP = {"light": "Light on matte surfaces. Light + Reflections + Rest (writ
              "depth": "Distance from the camera in metres", "normal": "Which way each surface faces (world space)"}
 
 RENDER = [
-    CH("renderQuality", [*QUALITIES, "custom"], "Quality", "Render", "good", S,
-       help="Draft 32 samples, Good 128, Final 512, each with noise clean-up; Custom sets the numbers"),
+    CH("renderQuality", [*QUALITIES, "stylized", "custom"], "Quality", "Render", "good", S,
+       help="Draft 32 samples, Good 128, Final 512, each with noise clean-up (Cycles); Custom sets the numbers; "
+            "Stylized renders the stylized look (lines, halftone, light to colour) instead of Cycles"),
     N("renderSamples", "Samples", "Render", 1, 8192, 1, "", D, CUSTOM, integer=True, default=128,
       help="Cycles samples per pixel: time grows in step with them"),
     T("renderDenoise", "Noise clean-up", "Render", True, D, CUSTOM),
@@ -61,10 +65,14 @@ def passes(shot: dict) -> list[str]:
 
 def settings(shot: dict, info: dict) -> dict:
     """{renderer, samples, denoise, width, height, start, end (shot frames, inclusive), formats, passes} from a shot's
-    fields (defaults filled) and its compile.shot_info. Frames outside the shot are clamped into it; a range running backwards is one frame."""
+    fields (defaults filled) and its compile.shot_info (renderer "stylized" for Quality Stylized: no samples, no
+    passes; engine_fields gives its request's settings). Frames outside the shot are clamped into it; a range running backwards is one frame."""
     get = lambda name, default: shot.get(name, default)  # noqa: E731
     q = get("renderQuality", "good")
-    nums = QUALITIES.get(q) or {"samples": int(get("renderSamples", 128)), "denoise": bool(get("renderDenoise", True))}
+    if q == "stylized":
+        nums = {"samples": 0, "denoise": False}          # no samples: the estimate scales with pixels only
+    else:
+        nums = QUALITIES.get(q) or {"samples": int(get("renderSamples", 128)), "denoise": bool(get("renderDenoise", True))}
     k = SIZES[get("renderSize", "full")]
     w, h = max(2, round(info["width"] * k / 2) * 2), max(2, round(info["height"] * k / 2) * 2)   # even, for H.264
     f0, f1 = info["start"], info["end"]
@@ -72,5 +80,15 @@ def settings(shot: dict, info: dict) -> dict:
         fps = info["fps"]
         f0 = min(max(info["start"] + round(get("renderStart", 0.0) * fps), info["start"]), info["end"])
         f1 = min(max(info["start"] + round(get("renderEnd", 1.0) * fps), f0), info["end"])
-    return {"renderer": "cycles", "quality": q, **nums, "width": w, "height": h, "start": f0, "end": f1,
-            "formats": (fmts := FORMATS[get("renderFormat", "png")]), "passes": passes(shot) if "exr" in fmts else []}
+    renderer = "stylized" if q == "stylized" else "cycles"
+    fmts = FORMATS[get("renderFormat", "png")]
+    return {"renderer": renderer, "quality": q, **nums, "width": w, "height": h, "start": f0, "end": f1,
+            "formats": fmts, "passes": passes(shot) if "exr" in fmts and renderer == "cycles" else []}
+
+
+def engine_fields(s: dict) -> dict:
+    """What a render request adds for `settings()`'s renderer: Cycles' samples and noise clean-up, the stylized
+    renderer's `stylized` settings (ENGINE_CONTRACT § 4), nothing for Storm."""
+    if s["renderer"] == "cycles":
+        return {"samples": s["samples"], "denoise": s["denoise"]}
+    return {"stylized": dict(STYLIZED)} if s["renderer"] == "stylized" else {}

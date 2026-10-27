@@ -7,7 +7,10 @@ The picker shows them in this order, the clay work's four first (SPEC §5): a ne
 carry light under the surface; its distances are measured ones (Jensen et al. 2001, the diffuse mean free path per
 colour: skin about 3.7 / 1.4 / 0.7 mm for red / green / blue, marble 8.5 / 5.6 / 4.0 mm), written as the farthest
 distance (`subsurfaceRadius`) and the colour whose channels are the others' share of it (`subsurfaceColor`, sRGB).
-"Painted (ramp)" and "Ink & flat" (SPEC §6.1) wait for the stylized blocks.
+"Painted (ramp)" and "Ink & flat" (SPEC §6.1) are the stylized blocks' settings switched on over a matte surface:
+Light to colour with its bands in neutral greys (white lit, so the base colour itself shows where it is lit), and for
+Ink & flat lines on too. Their bands are physical settings (how much light makes a band), never a colour scheme: a
+person or an agent picks the colours afterwards.
 """
 from __future__ import annotations
 
@@ -35,6 +38,14 @@ STARTS: dict[str, dict] = {
     "wood": {"label": "Wood", "values": {"baseColor": "#8a5a36", "roughness": 0.55}},
     "car paint": {"label": "Car paint", "values": {"baseColor": "#8c8c8c", "roughness": 0.4, "coat": 1,
                                                    "coatRoughness": 0.03}},
+    "painted": {"label": "Painted (ramp)", "values": {"baseColor": "#b3b3b3", "roughness": 0.7, "lightToColor": True,
+                                                      "lightEdges": "smooth", "lightSoftness": 0.12,
+                                                      "litColor": "#ffffff", "midColor": "#b3b3b3",
+                                                      "shadowColor": "#4d4d4d", "shadowBelow": 0.15, "litFrom": 0.5}},
+    "ink and flat": {"label": "Ink & flat", "values": {"baseColor": "#b3b3b3", "roughness": 0.7, "lightToColor": True,
+                                                       "lightEdges": "steps", "litColor": "#ffffff",
+                                                       "midColor": "#808080", "shadowColor": "#808080",
+                                                       "shadowBelow": 0.3, "litFrom": 0.3, "lines": True}},
     "screen": {"label": "Screen", "values": {"baseColor": "#0a0a0a", "roughness": 0.1, "emissionStrength": 2,
                                              "emissionColor": "#ffffff"}},
 }
