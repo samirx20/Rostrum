@@ -113,16 +113,19 @@ class ViewSlots:
                 v = self._zoom
                 self._tv.zoomAt(v.length / t["span"], 0.0)      # from the whole song (a new view's fit) to its span
                 self._tv.setStart(t["start"])
-                self.__dict__["_editor_view_back"] = bool(t.get("editor"))
+                self.__dict__["_editor_view_back"] = t["span"] if t.get("editor") else False
             self._tv.changed.connect(self._keep_time)
             QCoreApplication.instance().aboutToQuit.connect(kept.flush)
         return kept
 
     def _keep_time(self):
         v = self._zoom
-        if self.workspace.dock != "editor":       # the person moved the view since: the Editor's working zoom applies again
-            self.__dict__.pop("_editor_view_back", None)
-        self._kept_view().keep_time(v.start, v.span, v.fit, self.workspace.dock == "editor")
+        back = self.__dict__.get("_editor_view_back")
+        if back and self.workspace.dock != "editor" and abs(v.span - back) > back * 0.01:
+            self.__dict__.pop("_editor_view_back", None)  # the person zoomed since: the Editor's working zoom applies again
+            # (only a zoom: the window settling or a scroll on open must not lose the kept view, the real-window r1 check)
+        editor = self.workspace.dock == "editor" or bool(self.__dict__.get("_editor_view_back"))   # put back, not yet left
+        self._kept_view().keep_time(v.start, v.span, v.fit, editor)
 
     def _close_view(self):
         """The song closes: a kept view still waiting is written."""
