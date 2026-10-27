@@ -5,7 +5,9 @@ import "."
 // "moving" for ~0.75 s after the last notch, and a press while it moves only stops it: the first click after a scroll
 // was eaten ("+ Add an effect" at the panel's end showed only its tooltip, × left the effect; critic 2d-final row 9).
 // Put one inside the Flickable: WheelScroll { flick: scroller }. A child that takes the wheel itself (a number box with
-// the caret in it) still gets it first.
+// the caret in it, a slider the keyboard stepped to) still gets it first, but only until the panel scrolls: each scroll
+// counts in WheelLatch.moves, and a box or slider that kept the keyboard from before it gives the wheel back, so a field
+// clicked once and scrolled under the pointer never stops the panel halfway (3D brief 22's kit ask: "+ Lines" out of reach).
 WheelHandler {
     property Flickable flick
     parent: flick
@@ -20,5 +22,6 @@ WheelHandler {
         if (y === f.contentY && dy !== 0) { e.accepted = false; return }      // at its end: the wheel is the next one's
         f.cancelFlick()
         f.contentY = y
+        WheelLatch.moves++
     }
 }

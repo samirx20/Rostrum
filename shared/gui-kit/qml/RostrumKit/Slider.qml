@@ -7,7 +7,8 @@ import "ValueKinds.js" as VK
 // Keys held while dragging: Alt = fine (the drag moves the value at a tenth of the speed, from where Alt went down; no
 // jump on press), Shift = coarse (the value lands on every 10th step). Same for Left / Right and the wheel.
 // Double-click puts it back to `defaultValue` (edited(default); none set: nothing happens). The wheel changes it only
-// while it has keyboard focus, so the panel scrolls past it otherwise.
+// while the keyboard stepped to it (Tab) and the panel has not scrolled since: a slider you merely pressed or dragged keeps
+// the keyboard for its arrows, but the wheel over it scrolls the panel past it.
 // `display` (ValueKinds.js): the travel and the steps are in the shown units (a gain's slider runs in dB, −60 to the
 // top, like the Mixer's fader); what goes out is always the stored value.
 Item {
@@ -56,8 +57,11 @@ Item {
     Keys.onPressed: (e) => { if (startsTyping(e)) { s.typed(e.text); e.accepted = true } }
     Keys.onLeftPressed: (e) => nudge(-1, e.modifiers)
     Keys.onRightPressed: (e) => nudge(1, e.modifiers)
+    property bool byPointer: false                   // the keyboard came with a press, not by Tab
+    property int tabMoves: 0                         // the panel's scroll count when it got the keyboard (WheelLatch)
+    onActiveFocusChanged: { if (activeFocus) tabMoves = WheelLatch.moves; else byPointer = false }
     WheelHandler {
-        enabled: s.activeFocus
+        enabled: s.activeFocus && !s.byPointer && s.tabMoves === WheelLatch.moves
         acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => s.nudge((e.angleDelta.y || e.angleDelta.x) / 120, e.modifiers)
     }
@@ -107,7 +111,7 @@ Item {
         property bool resetting: false
         readonly property bool hasDefault: s.defaultValue !== null && s.defaultValue !== undefined
         onPressed: (m) => {
-            s.forceActiveFocus()
+            s.byPointer = true; s.forceActiveFocus()
             resetting = hasDefault && Date.now() - lastUp < Qt.styleHints.mouseDoubleClickInterval && Math.abs(m.x - lastX) < 5   // same spot, quickly
             if (resetting) return
             s.scrubStarted()
