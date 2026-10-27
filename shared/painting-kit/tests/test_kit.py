@@ -94,3 +94,30 @@ def test_script_rerun_removes_its_dropped_strokes_but_keeps_a_persons_edit():
     assert "s2" in left and d.item("s2")["color"] == "#ff0000"          # the person's stroke stays, as they left it
     assert [h["key"] for h in report.held] == ["s2"]                    # and the script says it kept it
     assert C.render(d.item("c"), *WH).order == left                     # the pixels follow the document
+
+
+def test_a_grown_drawing_keeps_its_pixels_and_stamps_only_the_new_stroke(monkeypatch):
+    """A drawing that grows left / up moves its strokes and paper by whole px (paint_grow.py) and right / down only gets
+    bigger: its kept pixels move with it (canvas._grown_from) instead of every stroke being stamped again, and they
+    are the pixels a fresh replay makes (a wash that grew at each sweep froze the press for seconds: critic r12)."""
+    def stroke(i, dx=0, dy=0, **brush):
+        pts = [[40.37 + 30 * k + dx, 50.11 + 12 * i + 6 * np.sin(k) + dy, 0.5 + 0.05 * k] for k in range(9)]
+        return ops.build("stroke", f"s{i}", {"points": [[round(x, 2), round(y, 2), p] for x, y, p in pts], "size": 26,
+                                             "color": "#406080", "grain": 0.3, **brush})
+    wet = dict(brush="bristle", smudge=True, wet=0.35, hardness=0.6)
+    old = [stroke(0), stroke(1, **wet), stroke(2, brush="chalk")]
+    small = {"id": "d", "paints": [{"id": "p", "mode": "normal", "opacity": 1, "visible": True, "strokes": old}]}
+    C.forget()
+    C.render(small, 320, 200)
+    dx, dy = 64, 32                         # grown left and up (strokes and paper moved), and right too
+    moved = [{**s, "points": [[round(p[0] + dx, 2), round(p[1] + dy, 2), *p[2:]] for p in s["points"]]} for s in old]
+    grown = {**small, "paperX": dx, "paperY": dy,
+             "paints": [{**small["paints"][0], "strokes": moved + [stroke(3, dx, dy, **wet)]}]}
+    stamped = []
+    real = C.stamp
+    monkeypatch.setattr(C, "stamp", lambda *a, **k: stamped.append(a[1]["id"]) or real(*a, **k))
+    live = C.render(grown, 320 + dx + 40, 200 + dy).rgba.copy()
+    assert stamped == ["s3"]                # only the new stroke
+    C.forget()
+    fresh = C.render(grown, 320 + dx + 40, 200 + dy).rgba
+    assert np.abs(fresh - live).max() < 1 / 255     # the same picture (points rounded to 0.01 px: last-bit floats)

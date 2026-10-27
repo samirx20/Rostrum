@@ -4,7 +4,9 @@ the truth; pixels are only ever a cache of them, and a look never replays from s
 Each paint layer's state after its first i strokes has a **chain key** (the key after i-1 strokes + stroke i's
 JSON + what it reads: its mask, and the layers below when it picks them up). A render finds the longest prefix it
 already holds and stamps only the strokes after it: a new stroke costs one stroke, undo / redo / a redrawn frame
-cost the strokes after the nearest kept state. Kept states live in memory (LRU, `BUDGET` bytes); finished canvases
+cost the strokes after the nearest kept state; a drawing that grew (its strokes moved by whole px, the paper with them)
+keeps its kept states, moved (`_grown_from`), and a render already running on another thread is waited for, not
+stamped twice (`render`). Kept states live in memory (LRU, `BUDGET` bytes); finished canvases
 are PNG files in the shared cache (rostrum_core.cache, kind "paint"), keyed by their content (`png`), which is all
 the 2D engine reads. Keys include `ENGINE_VERSION`
 (a hash of the brush code), so a brush change never serves stale pixels.
@@ -167,15 +169,63 @@ def _chain(paint, w, h, masks, below_key, at=(0, 0)) -> list[str]:
     return keys
 
 
+MOVED_PX = 0.006                 # a grown drawing's points are moved and rounded to 0.01 px (paint_grow.shifted)
+
+
+def _moved(old: dict, new: dict, dx: int, dy: int) -> bool:
+    """Whether `new` is `old` moved by whole px (dx, dy), as a drawing's growth moves its strokes, and stamps the same
+    marks moved (no fill, mask, pickup of the layers below or seamless edge: those read the canvas's edges or more)."""
+    if new.get("type") != "stroke" or new.get("mask") or new.get("wrap") or new.get("smudge") and new.get("pickup"):
+        return False
+    if len(old) != len(new) or any(old.get(k) != v for k, v in new.items() if k != "points"):
+        return False
+    a, b = old["points"], new["points"]
+    return len(a) == len(b) and all(len(p) == len(q) and abs(p[0] + dx - q[0]) <= MOVED_PX and abs(p[1] + dy - q[1]) <= MOVED_PX
+                                    and p[2:] == q[2:] for p, q in zip(a, b))
+
+
+def _grown_from(paint, w, h, at, keys):
+    """A kept state of this paint layer from before its drawing grew (bigger, its strokes moved right / down by whole
+    px with the paper's origin), placed in the canvas it has now: (stroke count, pixels, top) or None. A drawing that
+    grows at each sweep of a wash then stamps only its new stroke, not all of them again (it froze the pen's press for
+    seconds: critic r12). The marks are the old ones moved; a stroke whose marks read the canvas's edges is stamped
+    again (`_moved`)."""
+    strokes = paint["strokes"]
+    with _LOCK:
+        olds = [(k, v) for k, v in _CHAINS.items() if k[0] == paint["id"] and k[1:] != (w, h, at)]
+    best = None
+    for (_, ow, oh, oat), (old, _, okeys) in reversed(olds):
+        dx, dy = at[0] - oat[0], at[1] - oat[1]
+        if dx < 0 or dy < 0 or ow + dx > w or oh + dy > h:
+            continue
+        same = 0
+        while same < min(len(old), len(strokes)) and _moved(old[same], strokes[same], dx, dy):
+            same += 1
+        kept = next((i for i in range(same, 0, -1) if KEPT.get(okeys[i]) is not None), 0)
+        if kept and (best is None or kept > best[0]):
+            best = (kept, KEPT.get(okeys[kept]), dx, dy, ow, oh)
+    if best is None or best[1] is None:
+        return None
+    kept, (opx, otop), dx, dy, ow, oh = best
+    px, top = np.zeros((h, w, 4), np.float32), np.full((h, w), -1, np.int32)
+    px[dy:dy + oh, dx:dx + ow], top[dy:dy + oh, dx:dx + ow] = opx, otop
+    KEPT.put(keys[kept], px, top)
+    return kept, px, top
+
+
 def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
-    """(pixels, top, end key) of one paint layer, from the longest kept prefix. Returned arrays are shared: copy
-    before changing them."""
+    """(pixels, top, end key) of one paint layer, from the longest kept prefix (or one kept before the drawing grew:
+    `_grown_from`). Returned arrays are shared: copy before changing them."""
     keys = _chain(paint, w, h, masks, below_key, at)
     n = len(keys) - 1
     start = next(i for i in range(n, -1, -1) if i == 0 or KEPT.get(keys[i]) is not None)
     got = KEPT.get(keys[start])
     if start == n and got is not None:
         return got[0], got[1], keys[n]
+    if start == 0 and n and (grown := _grown_from(paint, w, h, at, keys)) is not None:
+        start, got = grown[0], grown[1:]
+        if start == n:
+            return got[0], got[1], keys[n]
     px = got[0].copy() if got else np.zeros((h, w, 4), np.float32)
     top = got[1].copy() if got else np.full((h, w), -1, np.int32)
     last, copy_s, spent = start, 0.0, 0.0       # the stroke a state was last kept at; what a copy of this canvas costs; stamping since
@@ -215,13 +265,30 @@ _SEEN: OrderedDict = OrderedDict()     # content key -> (Pixels, rgba8 or None):
 SEEN_KEEP = 6
 
 
+_MAKING: dict = {}                     # content key -> threading.Event: a render running on some thread
+
+
 def render(canvas: dict, w: int, h: int) -> Pixels:
+    """The canvas's pixels (shared: never change them). Asked on two threads at once (a screen's picture job and a
+    smudge's press), the second waits for the first's pixels instead of stamping the same strokes again."""
     key = (content_key(canvas, w, h), w, h)
-    got = _seen(key)
-    if got is not None and got[0] is not None:
-        return got[0]
-    pix = _render(canvas, w, h)
-    _remember(key, pix, got[1] if got else None)
+    while True:
+        got = _seen(key)
+        if got is not None and got[0] is not None:
+            return got[0]
+        with _LOCK:
+            making = _MAKING.get(key)
+            if making is None:
+                _MAKING[key] = threading.Event()
+        if making is None:
+            break
+        making.wait()
+    try:
+        pix = _render(canvas, w, h)
+        _remember(key, pix, got[1] if got else None)
+    finally:
+        with _LOCK:
+            _MAKING.pop(key).set()
     return pix
 
 

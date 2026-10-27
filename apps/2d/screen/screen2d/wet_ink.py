@@ -2,16 +2,20 @@
 stroke gets), in world px (the endless canvas: anywhere, the frame at home or not, negative px too), so no pointer move
 waits for the scene to be described and drawn again. Only the stroke's own box is ever held, never the composition.
 
-Two parts. The tip, the newest points, is drawn on the screen's thread piece by piece (wet_tip.py): each look
-stamps only the points that came since the last, carrying on the stroke's coverage, so a move costs its own few px
-however long the tip is. The dry part is the whole stroke so far stamped again as the saved stroke will be (a
+Two parts. The tip, the newest points, is drawn piece by piece (wet_tip.py) on its own thread (`_TIP`): each piece
+stamps only the points that came since the last, carrying on the stroke's coverage, so a piece costs its own few dabs
+however long the tip is, and the screen's thread only shows the newest finished one. The dry part is the whole stroke so far stamped again as the saved stroke will be (a
 brush's dabs depend on the whole stroke: its noise and tapers are sized by its length), so the tip never leaves a
 seam. That costs the whole stroke, so it runs on a worker thread (`_DRY`): once the tip is CHUNK points long the
 next restamp starts, and the screen takes it in at the first look after it is done (`settle`), with the tip from
 there already drawn by the worker (the points that came meanwhile). The pen never waits for it.
 
 `under`: a smudging brush smears the layer's own paint (premultiplied, its canvas px: `bounds` is the canvas size and
-the smear stays inside it, points in canvas px, `place` = (x, y, x scale, y scale) puts canvas px on the world).
+the smear stays inside it, points in canvas px, `place` = (x, y, x scale, y scale) puts canvas px on the world). It is
+only read, never copied whole (a big drawing's copy at each press cost tens of ms): the tip smears a copy of the boxes
+it reaches (wet_tip.Tip's `base`), piece by piece like any tip, over the dry part's last restamp (`_part`). `under`
+may be a Future (the paint still being made off the screen's thread: wet.smear_ink): the smear shows once it is done
+(`ready`), the points that came meanwhile with it, so the press never waits for a drawing's pixels.
 Normal ink has no bounds (None). `reveal`: the eraser. Its ink is the eraser's coverage, and where it lies the picture
 shows the world drawn without the layer being erased (straight RGBA8 at 1 px per world px, its top-left at world px
 `origin`: `reveal_with`): over the canvas that is (1 - e) × with + e × without, exactly what erasing e of a layer's
@@ -20,7 +24,7 @@ paint gives (its blend is linear in the paint's alpha). Until that picture comes
 from __future__ import annotations
 
 import math
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 
 import numpy as np
 from PySide6.QtGui import QImage
@@ -32,6 +36,7 @@ from .wet_tip import Tip, picture_of
 PAD = 4                     # px round the stroke's box, for the brush's soft edge and jitter
 CHUNK = 12                  # tip points before the dry part is stamped again (off the screen's thread)
 _DRY = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-dry")
+_TIP = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-tip")     # the tip's pieces (`tip`)
 
 
 class WetInk:
@@ -44,16 +49,27 @@ class WetInk:
         self.reach = self.size / 2 + PAD + 3 * brush.get("jitter", 0) * self.size
         self.points: list[list[float]] = []
         self.smears, self.place, self.reveal, self._origin = under is not None, place, None, (0, 0)
+        self._coming = under if isinstance(under, Future) else None    # the paint under a smear, still being made
+        if self._coming is not None:
+            under = None
+            if done is not None:
+                self._coming.add_done_callback(lambda _f: done())
         self.shift = (0.0, 0.0)                                         # added to each point (a smear's tile: wet_through.py)
-        self._base = under                                              # what the stroke starts on (None: nothing)
-        self._dry = under.copy() if under is not None else None        # a smear's paint so far (its tip smears it)
+        self._base = under                                              # what the stroke starts on (None: nothing; read only)
+        self._part = None                                               # a smear's last dry restamp: (box, its px)
         self._settled, self._dry_box, self._dry_pic = 0, None, None     # points in the dry part; its box; its picture
         self._job, self._done = None, done                              # the restamp running; called when it is done
         self._tip_now = None                                            # the tip drawn so far (wet_tip.Tip)
+        self._tip_pic, self._tip_job = None, None                       # its newest picture (tip, picture); its piece running
 
     @property
     def ready(self) -> bool:
-        """Whether there is anything to show yet (an eraser waits for the frame without its layer)."""
+        """Whether there is anything to show yet (an eraser waits for the frame without its layer, a smear for the
+        paint it smears: a failure to make it raises here, on the screen's thread)."""
+        if self._coming is not None:
+            if not self._coming.done():
+                return False
+            self._base, self._coming = self._coming.result(), None
         return not self.erasing or self.reveal is not None
 
     def reveal_with(self, frame: np.ndarray, origin: tuple[int, int]):
@@ -85,8 +101,24 @@ class WetInk:
         x0, y0, x1, y1 = box
         part = base if base is not None else np.zeros((y1 - y0, x1 - x0, 4), np.float32)
         self._stamp(part, (x0, y0), pts)
-        tip = None if self.smears else Tip(len(pts) - 1).drawn(self, self.points[:])
-        return part, self._placed(*self._picture(part, (0, 0, x1 - x0, y1 - y0), (x0, y0))), tip
+        tip = Tip(len(pts) - 1, self._smeared((box, part))).drawn(self, self.points[:])
+        return part, self._placed(*self._picture(part, (0, 0, x1 - x0, y1 - y0), (x0, y0))), (tip, tip.picture(self))
+
+    def _smeared(self, part):
+        """A smear's paint as its tip finds it, by box (canvas px; nothing outside the canvas): the paint under the
+        stroke with the dry part `part` (box, px) over it. None for ink that smears nothing."""
+        if not self.smears:
+            return None
+        under = self._base
+
+        def base(x0, y0, x1, y1):
+            out = np.zeros((y1 - y0, x1 - x0, 4), np.float32)
+            for (bx0, by0, bx1, by1), px in (((0, 0, under.shape[1], under.shape[0]), under), *([part] if part else [])):
+                cx0, cy0, cx1, cy1 = max(x0, bx0), max(y0, by0), min(x1, bx1), min(y1, by1)
+                if cx1 > cx0 and cy1 > cy0:
+                    out[cy0 - y0:cy1 - y0, cx0 - x0:cx1 - x0] = px[cy0 - by0:cy1 - by0, cx0 - bx0:cx1 - bx0]
+            return out
+        return base
 
     def settle(self) -> bool:
         """Takes in a finished restamp of the dry part (True: it changed), and starts the next one once the tip is
@@ -96,11 +128,10 @@ class WetInk:
             future, box, n = self._job
             self._job = None
             x0, y0, x1, y1 = box
-            part, self._dry_pic, tip = future.result()
-            if tip is not None:
-                self._tip_now = tip
-            if self._dry is not None:
-                self._dry[y0:y1, x0:x1] = part
+            part, self._dry_pic, (self._tip_now, pic) = future.result()
+            self._tip_pic = (self._tip_now, pic)
+            if self.smears:
+                self._part = (box, part)
             self._dry_box, self._settled, changed = box, n, True
         if self._job is None and len(self._tip()) >= CHUNK:
             pts, box = [list(p) for p in self.points], self._box(self.points)
@@ -117,20 +148,26 @@ class WetInk:
         return self._dry_pic
 
     def tip(self) -> tuple[QImage, dict] | None:
-        if not self.smears:                 # a smudge's tip smears the dry paint afresh (its reservoir runs the tip)
-            start = max(0, self._settled - 1)
-            if self._tip_now is None or self._tip_now.start != start:
-                self._tip_now = Tip(start)
-            return self._tip_now.drawn(self, self.points[:]).picture(self)
-        tip = self._tip()
-        box = self._box(tip) if tip else None
-        if box is None:
-            return None
-        x0, y0, x1, y1 = box
-        px = (self._dry[y0:y1, x0:x1].copy() if self.smears        # a smudge's tip: the picture there, smeared
-              else np.zeros((y1 - y0, x1 - x0, 4), np.float32))
-        self._stamp(px, (x0, y0), tip)
-        return self._placed(*self._picture(px, (0, 0, x1 - x0, y1 - y0), (x0, y0)))
+        """The tip's newest picture. Its pieces are stamped on their own thread (`_TIP`), one at a time, each with the
+        points that came since the last: a big brush's dabs cost milliseconds each, so the pen's moves never wait for
+        them (a 260 px brush cost 40-80 ms a move on the screen's thread: critic r12). A finished piece shows at the
+        next look (it asks for one: `done`). A piece that failed raises here, on the screen's thread."""
+        start = max(0, self._settled - 1)
+        if self._tip_now is None or self._tip_now.start != start:
+            self._tip_now = Tip(start, self._smeared(self._part))
+        job, tip = self._tip_job, self._tip_now
+        if job is not None and job.done():
+            self._tip_job = None
+            got = job.result()
+            if got[0] is tip:                       # (a piece of a tip a restamp since replaced: dropped)
+                self._tip_pic = got
+        if self._tip_job is None and len(self.points) > tip.done:
+            pts = self.points[:]
+            self._tip_job = _TIP.submit(lambda: (tip, tip.drawn(self, pts).picture(self)))
+            if self._done is not None:
+                self._tip_job.add_done_callback(lambda _f: self._done())
+        shown = self._tip_pic
+        return shown[1] if shown is not None and shown[0] is tip else None
 
     def _picture(self, px, box, at=None) -> tuple[QImage, dict]:
         """The part `box` (x0, y0, x1, y1) of premultiplied pixels as a straight-alpha picture, and where it goes; an
