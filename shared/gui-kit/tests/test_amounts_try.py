@@ -92,22 +92,17 @@ ApplicationWindow { width: 400; height: 400; visible: true
 """
 
 
-def test_a_click_on_the_hovered_choice_is_kept():
+def test_a_click_on_the_hovered_choice_is_kept(tmp_path):
     """Rest on a choice (it shows, tried), then pick that same choice: it is kept, never put back (member A's real-window
     find: a click on the hovered option was lost, since `current` already showed it)."""
     from PySide6.QtCore import QPoint, Qt
-    from PySide6.QtGui import QGuiApplication
-    from PySide6.QtQml import QQmlApplicationEngine
     from PySide6.QtQuick import QQuickItem
     from PySide6.QtTest import QTest
-    from rostrum_gui.app import KIT_QML
     from rostrum_gui.pointer import hover, wait
-    _app = QGuiApplication.instance() or QGuiApplication([])
-    engine = QQmlApplicationEngine()
-    engine.addImportPath(str(KIT_QML))
-    engine.rootContext().setContextProperty("uiFont", "Segoe UI")
-    engine.loadData(CHOICE)
-    win = engine.rootObjects()[0]
+    from rostrum_gui.app import start, stop
+    main = tmp_path / "Main.qml"
+    main.write_bytes(CHOICE)
+    app, engine, win = start(main, {}, (400, 400))      # the kit's own start: a plain engine first breaks later windows
     wait(50)
     field = win.findChild(QQuickItem, "grid")
     c = field.mapToScene(field.boundingRect().center())
@@ -128,4 +123,4 @@ def test_a_click_on_the_hovered_choice_is_kept():
     wait(300)
     assert list(win.property("picks").toVariant() if hasattr(win.property("picks"), "toVariant") else win.property("picks")) == ["1/8"]
     assert field.property("current") == "1/8"
-    engine.deleteLater()
+    stop(engine, win)

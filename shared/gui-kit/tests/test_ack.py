@@ -46,16 +46,13 @@ def _window(slow_fn, heavy=False):
     hub = ActionHub(ActionList(acts, KeyMap("test")), lambda: SimpleNamespace(ids=["a"] * 5, items=[]),
                     lambda f: "5 layers", None, lambda d, e: (ran.append(d), _slow(slow_fn) if d == "slow" else None),
                     lambda line: None)
-    engine = QQmlApplicationEngine()
-    engine.addImportPath(str(KIT_QML))
-    ctx = engine.rootContext()
-    words = typed_word.make()
-    for k, v in {"uiFont": "Segoe UI", "monoFont": "Consolas", "ack": ack.ACK, "hub": hub, "typedWord": words,
-                 "kitDir": (KIT_QML / "RostrumKit").as_uri()}.items():
-        ctx.setContextProperty(k, v)
-    engine.loadData(WINDOW)
-    win = engine.rootObjects()[0]
-    words.watch(win)
+    import tempfile
+    from pathlib import Path
+    from rostrum_gui.app import start
+    main = Path(tempfile.mkdtemp(prefix="test-ack-")) / "Main.qml"
+    main.write_bytes(WINDOW)
+    # the kit's own start (ack, typedWord, fonts): a plain engine first leaves later test windows' popups unopened
+    app, engine, win = start(main, {"hub": hub, "kitDir": (KIT_QML / "RostrumKit").as_uri()}, (400, 200))
     QTest.qWait(30)
     return app, engine, win, hub, ran
 
@@ -100,7 +97,8 @@ def test_press_shows_in_its_own_frame_and_a_slow_action_shows_life_and_keeps_the
         QTest.qWait(20)
     assert ran == ["slow", "quick"], "the click made during the wait was lost"
     assert not button.property("working") and not line.isVisible()
-    engine.deleteLater()
+    from rostrum_gui.app import stop
+    stop(engine, win)
 
 
 def test_a_plain_action_known_to_be_slow_shows_its_line_before_it_starts():
@@ -115,7 +113,8 @@ def test_a_plain_action_known_to_be_slow_shows_its_line_before_it_starts():
     assert ran == ["slow"] and line.isVisible() and ack.ACK.property("lineAfter") == 0
     ack.ACK.flush()
     assert ran == ["slow", "slow"]
-    engine.deleteLater()
+    from rostrum_gui.app import stop
+    stop(engine, win)
 
 
 def test_a_letter_in_a_number_box_says_so():
@@ -131,4 +130,5 @@ def test_a_letter_in_a_number_box_says_so():
     QTest.qWait(30)
     assert tip.property("shown"), "a letter in a number box vanished without a word"
     assert win.activeFocusItem().property("text") == "1", "the letter stayed in the number, or the typing was lost"
-    engine.deleteLater()
+    from rostrum_gui.app import stop
+    stop(engine, win)

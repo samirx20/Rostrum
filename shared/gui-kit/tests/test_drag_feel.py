@@ -54,6 +54,10 @@ def _window(tmp_path):
     return app, engine, win
 
 
+def _close(win, engine):
+    win.close(); win.deleteLater(); engine.deleteLater(); wait(30)    # gone, so no later window waits on it
+
+
 def test_esc_cancels_the_drag_first_and_is_the_windows_after(tmp_path):
     app, engine, win = _window(tmp_path)
     doc = Drag()
@@ -69,6 +73,7 @@ def test_esc_cancels_the_drag_first_and_is_the_windows_after(tmp_path):
     assert d2.release() == "change" and d2.grabbed(5, 5) == (25, 5)
     QTest.keyClick(win, Qt.Key_Escape)
     assert win.property("escs") == 2               # a released drag lets Esc go
+    _close(win, engine)
 
 
 def test_value_chip_places_flips_and_lingers(tmp_path):
@@ -88,6 +93,7 @@ def test_value_chip_places_flips_and_lingers(tmp_path):
     wait(600)
     assert not chip.property("visible")
     assert hint_of(Mods(straight=True, copy=True), "resize") == "keep ratio · from centre"
+    _close(win, engine)
 
 
 def test_a_qml_drag_owns_esc_and_beats_read_plainly(tmp_path):
@@ -105,3 +111,4 @@ def test_a_qml_drag_owns_esc_and_beats_read_plainly(tmp_path):
     QTest.keyClick(win, Qt.Key_Escape)
     assert win.property("escs") == 2
     assert [words_beats(6), words_beats(-3), words_beats(0.5)] == ["+1 bar 2 beats", "−3 beats", "+½ beat"]
+    _close(win, engine)
