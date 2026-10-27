@@ -4,8 +4,12 @@ its row), so a click lands where it did before the close. Screen state, not an e
 the document; a song with no folder keeps it only while it is open.
 
     <project>/.rostrum/<item>.view-sound.json   {"time": {"start", "span", "fit", "editor"},
-                                                 "rolls": {"<track id>/<kind>[/rows]": [key, into]}}
+                                                 "rolls": {"<track id>/<kind>[/rows]": [key, into]},
+                                                 "export": {"format", "rate", "trim", "stems", "markers"}}
 
+`export`: the Export sheet's own choices as the person left them (export.py), so stems chosen and the sheet closed
+without exporting are still chosen at the next open, in this window or after a restart, and cleaning the renders
+folder doesn't lose them (critic r12 should-fix 2).
 `editor`: the view was set while the Editor showed, so the Editor's working zoom (view_slots._editor_zoom) leaves it.
 Written at most every WRITE_S while it changes (a wheel turn moves it many times), and once more when the song closes.
 """
@@ -42,8 +46,9 @@ class ViewKept:
     def __init__(self, folder, item, parent=None):
         self.folder, self.item = folder, item
         got = read(folder, item)
-        t, r = got.get("time"), got.get("rolls")
+        t, r, e = got.get("time"), got.get("rolls"), got.get("export")
         self.time: dict = t if isinstance(t, dict) else {}
+        self.export: dict = e if isinstance(e, dict) else {}
         self.rolls: dict = {k: v for k, v in (r if isinstance(r, dict) else {}).items()
                             if isinstance(v, list) and len(v) == 2}
         self._last = 0.0
@@ -61,6 +66,11 @@ class ViewKept:
         now = [int(key), round(float(into), 2)]
         if self.rolls.get(shown) != now:
             self.rolls[shown] = now
+            self._later()
+
+    def keep_export(self, choices: dict):
+        if choices != self.export:
+            self.export = dict(choices)
             self._later()
 
     def _later(self):
@@ -88,6 +98,7 @@ class ViewKept:
             return
         self._last = time.monotonic()
         try:
-            write_atomic(path(self.folder, self.item), json.dumps({"time": self.time, "rolls": self.rolls}))
+            write_atomic(path(self.folder, self.item), json.dumps({"time": self.time, "rolls": self.rolls,
+                                                                    **({"export": self.export} if self.export else {})}))
         except OSError:
             pass            # a read-only project still works; its view just isn't kept
