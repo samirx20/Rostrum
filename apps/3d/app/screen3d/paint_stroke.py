@@ -39,11 +39,26 @@ class PaintStroke:
 
     @Slot()
     def release(self):
+        if self._up and self._scene is None and not self._busy and not self._pts:
+            return                                    # a stroke Esc cancelled (cancel()): its release changes nothing
         self._up = True
         if self._where == "view" and self._scene is not None:
             return self._finish_view()
         if not self._busy:
             self._finish()
+
+    @property
+    def stroking(self) -> bool:
+        """A drag is under way (pressed, not yet let go): what Esc cancels (esc3d.py)."""
+        return self._on and not self._up and self._scene is not None
+
+    def cancel(self):
+        """Esc in the middle of a stroke: drop it (nothing painted, no history step); Paint stays on. Moves until the
+        release are ignored, and an engine answer still on its way is dropped (a new drag number)."""
+        self._drag += 1
+        self._up, self._scene, self._busy, self._next = True, None, False, None
+        self._pts, self._anchors = [], []
+        self._clear_trail()
 
     def _finish_view(self):
         """(From the view) one texels request for the drawn path's view: the items it crosses, then one change."""
