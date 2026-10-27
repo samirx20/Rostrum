@@ -93,15 +93,34 @@ def handles(view: View, origin, axes, own_axes, show="all", aimed=False, px=1.0)
             if end:
                 out.append({"id": f"move{i}", "kind": "move", "axis": i, "a": o[:2], "b": end[:2]})
         if "turn" in SHOWS[show] and not aimed:
-            u, v = axes[(i + 1) % 3], axes[(i + 2) % 3]
-            pts = [view.project(_add(_add(origin, u, arm * 0.8 * math.cos(t)), v, arm * 0.8 * math.sin(t)))
-                   for t in (2 * math.pi * k / 48 for k in range(49))]
-            if all(pts):
-                out.append({"id": f"turn{i}", "kind": "turn", "axis": i, "points": [p[:2] for p in pts]})
+            pts = _ring(view, origin, axes[(i + 1) % 3], axes[(i + 2) % 3], arm * 0.8)
+            if pts:
+                out.append({"id": f"turn{i}", "kind": "turn", "axis": i, "points": pts})
         if "scale" in SHOWS[show]:
             end = view.project(_add(origin, own_axes[i], arm * SCALE_AT))
             if end:
                 out.append({"id": f"scale{i}", "kind": "scale", "axis": i, "a": o[:2], "b": end[:2]})
+    return out
+
+
+_CIRCLE = [(math.cos(2 * math.pi * k / 48), math.sin(2 * math.pi * k / 48)) for k in range(49)]
+
+
+def _ring(view: View, origin, u, v, r):
+    """A turn ring's 49 points in picture px (None if part of it is behind the camera): View.project of origin +
+    r·(u cos t + v sin t), worked out from nine dot products (a scrub step redraws the rings: ~1.5 ms point by point)."""
+    c = _sub(origin, view.eye)
+    cz, uz, vz = _dot(c, view.fwd), r * _dot(u, view.fwd), r * _dot(v, view.fwd)
+    cx, ux, vx = _dot(c, view.right), r * _dot(u, view.right), r * _dot(v, view.right)
+    cy, uy, vy = _dot(c, view.up), r * _dot(u, view.up), r * _dot(v, view.up)
+    hw, hh, s = view.w / 2, view.h / 2, view.h / 2 / view.tan_v
+    out = []
+    for co, si in _CIRCLE:
+        z = cz + uz * co + vz * si
+        if z <= 1e-6:
+            return None
+        k = s / z
+        out.append((hw + (cx + ux * co + vx * si) * k, hh - (cy + uy * co + vy * si) * k))
     return out
 
 

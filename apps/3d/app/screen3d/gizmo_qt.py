@@ -110,17 +110,24 @@ class Gizmo(live.LiveDrag, CopyGizmo, QObject):
             self.bridge.fail_line(f"Error: gizmo: {e}")
         self._place()
 
-    def _place(self):
+    def _place(self, force=False):
         c = getattr(self, "_ctx", None)
         show = "turn" if c and c["it"]["type"] == "bone" else "move" if self._pivot else self._show    # a bone only turns
+        sig = None if c is None else (c["origin"], c["axes"], c["own"], vars(c["view"]), show, c["v"].get("aim"), c["px"],
+                                      self.vp._size)
+        if sig is not None and sig == getattr(self, "_sig", None) and not force:
+            return                                # the same item at the same place seen the same way: the same handles
+        self._sig = sig
         hs = [] if c is None else G.handles(c["view"], c["origin"], c["axes"], c["own"], show,
                                             c["v"].get("aim", "none") != "none", c["px"])
         w, h = self.vp._size or (1, 1)
         frac = lambda p: [p[0] / w, p[1] / h]          # noqa: E731
         self._raw = hs
-        self._hs = [{**x, **({"points": [frac(p) for p in x["points"]]} if "points" in x else
-                             {"a": frac(x["a"]), "b": frac(x["b"])})} for x in hs]
-        self.changed.emit()
+        shown = [{**x, **({"points": [frac(p) for p in x["points"]]} if "points" in x else
+                          {"a": frac(x["a"]), "b": frac(x["b"])})} for x in hs]
+        if shown != self._hs or force:            # a scrub step that leaves the item in place moves no handle
+            self._hs = shown
+            self.changed.emit()
 
     # --- slots for QML (positions in parts of the viewport, 0..1)
     def _pt(self, fx, fy):
@@ -131,13 +138,13 @@ class Gizmo(live.LiveDrag, CopyGizmo, QObject):
     def setShow(self, show):
         if show in SHOWN and show != self._show:
             self._show = show
-            self._place()
+            self._place(force=True)
 
     @Slot(bool)
     def setPivot(self, on):
         if bool(on) != self._pivot:
             self._pivot = bool(on)
-            self._place()
+            self._place(force=True)
 
     @Slot(float, float, result=str)
     def hitAt(self, fx, fy):

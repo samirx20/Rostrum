@@ -2,6 +2,8 @@
 the frame, play / pause, the ruler's length and markers, keys in time, one drag = one change (timeline3d.py)."""
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import Property, QObject, Slot
 
 from rostrum_gui import row_facts
@@ -40,8 +42,11 @@ class TimeMixin:
         frame = min(max(int(frame), self._info["start"]), self._info["end"])
         if frame == self._frame:
             return
+        was = self._at_playhead()
         self._frame = frame
-        self.model.update(self._rows())
+        now = self._at_playhead()
+        if now != was and not self._patch_playhead(was, now):      # the panel shows values at the playhead
+            self.model.update(self._rows())
         self.frameChanged.emit()
 
     @Slot()
@@ -49,12 +54,17 @@ class TimeMixin:
         if self._timer.isActive():
             self._timer.stop()
         else:
-            self._timer.start(round(1000 / self._info["fps"]))
+            self._played = (time.perf_counter(), self._frame)
+            self._timer.start(max(1, int(1000 / self._info["fps"] / 2)))
         self.playingChanged.emit()
 
     def _tick(self):
-        nxt = self._frame + 1
-        self.setFrame(self._info["start"] if nxt > self._info["end"] else nxt)
+        """Playback follows the clock (frames since Play at the shot's rate, wrapping at its end): a slow frame never
+        makes the shot run long, it shows the frame that is due."""
+        t0, f0 = self._played
+        start, end = self._info["start"], self._info["end"]
+        due = f0 + int((time.perf_counter() - t0) * self._info["fps"])
+        self.setFrame(start + (due - start) % (end - start + 1))
 
     @Property("QVariantMap", notify=S.outlineChanged)
     def frameInfo(self):
