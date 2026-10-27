@@ -9,7 +9,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum_gui import snap
 
-from . import key_lock, music_map, timing
+from . import key_lock, music_map, timing, view_kept
 from .timing import Grid
 
 WORDS = {"auto": "Auto", "bar": "Bar", "1/2": "1/2", "beat": "1/4", "1/8": "1/8", "1/16": "1/16", "1/32": "1/32",
@@ -31,7 +31,19 @@ class GridSlots:
         if g is None:
             g = self.__dict__["_grid_state"] = Grid()
             g.marks = self._land_marks
+            kept = view_kept.read(self.doc.folder, self.doc.item_id).get("tools") or {}     # as the person left them
+            if kept.get("grid") in Grid.CHOICES:
+                g.value = kept["grid"]
+            if kept.get("note") in NOTE_CHOICES:
+                self._note_len = kept["note"]
+            if kept.get("draw") in {c[0] for c in DRAW_CHOICES}:
+                self._draw_chord = kept["draw"]
         return g
+
+    def _keep_tools(self):
+        """The Grid, Note ▾ and Draw choices go with the song's view (view_kept.py `tools`)."""
+        self._kept_view().keep_tools({"grid": self._grid_now.value, "note": self.noteLength,
+                                      "draw": self.__dict__.get("_draw_chord", "")})
 
     def _land_marks(self, skip=""):
         """What a pointer's time catches before the grid: the markers (`skip`: one being dragged), then the sections'
@@ -72,6 +84,7 @@ class GridSlots:
             return self._fail(f'Error: grid: "{value}" is not a grid ({", ".join(Grid.CHOICES)}).')
         self._grid_now.value = value
         self._follow_zoom()
+        self._keep_tools()
         self.gridChanged.emit()
 
     @Property(str, notify=gridChanged)
@@ -112,6 +125,7 @@ class GridSlots:
         if v not in {c[0] for c in DRAW_CHOICES}:
             return self._fail(f'Error: draw: "{value}" is not a Draw choice (single, key, major, minor, power).')
         self._draw_chord = v
+        self._keep_tools()
         self.gridChanged.emit()
 
     @Slot(str)
@@ -119,6 +133,7 @@ class GridSlots:
         if value not in NOTE_CHOICES:
             return self._fail(f'Error: note length: "{value}" is not a length ({", ".join(NOTE_CHOICES)}).')
         self._note_len = value
+        self._keep_tools()
         self.gridChanged.emit()
 
     def _draw_beats(self, at_beat: float = 0.0) -> float:

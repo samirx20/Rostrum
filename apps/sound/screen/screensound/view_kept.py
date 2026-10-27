@@ -6,7 +6,11 @@ the document; a song with no folder keeps it only while it is open.
     <project>/.rostrum/<item>.view-sound.json   {"time": {"start", "span", "fit", "editor"},
                                                  "rolls": {"<track id>/<kind>[/rows]": [key, into]},
                                                  "lanes": {"<track id>": [target, lane]},
-                                                 "export": {"format", "rate", "trim", "stems", "markers"}}
+                                                 "export": {"format", "rate", "trim", "stems", "markers"},
+                                                 "tools": {"grid", "note", "draw"}}
+
+`tools`: the Grid, Note ▾'s length and what Draw stamps, as the person left them (grid_slots.py): a 1/4 grid chosen
+for a piano piece is still 1/4 the next day (production round: every session started with the grid menu).
 
 `lanes`: the automation lanes open under the track rows (lane_slots.openLane), put back on the song's first build.
 
@@ -56,7 +60,8 @@ class ViewKept:
     def __init__(self, folder, item, parent=None):
         self.folder, self.item = folder, item
         got = read(folder, item)
-        t, r, e = got.get("time"), got.get("rolls"), got.get("export")
+        t, r, e, tl = got.get("time"), got.get("rolls"), got.get("export"), got.get("tools")
+        self.tools: dict = tl if isinstance(tl, dict) else {}
         self.lanes: dict = lanes_of(got)
         self.time: dict = t if isinstance(t, dict) else {}
         self.export: dict = e if isinstance(e, dict) else {}
@@ -90,6 +95,11 @@ class ViewKept:
             self.export = dict(choices)
             self._later()
 
+    def keep_tools(self, tools: dict):
+        if tools != self.tools:
+            self.tools = dict(tools)
+            self._later()
+
     def _later(self):
         if not self.folder or self._timer.isActive():
             return
@@ -117,6 +127,7 @@ class ViewKept:
         try:
             write_atomic(path(self.folder, self.item), json.dumps({"time": self.time, "rolls": self.rolls,
                                                                     **({"lanes": self.lanes} if self.lanes else {}),
-                                                                    **({"export": self.export} if self.export else {})}))
+                                                                    **({"export": self.export} if self.export else {}),
+                                                                    **({"tools": self.tools} if self.tools else {})}))
         except OSError:
             pass            # a read-only project still works; its view just isn't kept
