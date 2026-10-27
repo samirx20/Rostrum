@@ -100,6 +100,14 @@ def clay_mpp(scene: dict, item_id: str, anchor: list) -> float | None:
     return clay_paint.metres_per_px(clay_paint.read(f), anchor[:3], anchor[3:6]) if f else None
 
 
+def clay_rest_normal(scene: dict, item_id: str, rest: list, posed_normal: list) -> list:
+    """The rest surface's normal at `rest` (a spot picked on a posed clay, carried to its rest shape); while the clay
+    has no unfolded surface yet, the drawn (posed) normal: the stroke's point is on the surface, so only the side it
+    faces is read from it."""
+    f = paint_scene.surface_of(scene, item_id)
+    return clay_paint.rest_normal(clay_paint.read(f), rest) if f else list(posed_normal)
+
+
 def clay_reach(size_px: float, mpp_canvas: float | None, mpp_screen: float | None) -> float:
     """A clay stroke's reach (brush radius, metres): the brush size (canvas px across) on the surface where it landed;
     with no surface yet, the brush's px are the screen's there."""

@@ -337,3 +337,13 @@ def metres_per_px(surface: Surface, local, normal) -> float:
     """The surface's metres per canvas pixel at the point nearest `local` (the clay's own space)."""
     tri, _ = surface.nearest(np.asarray([local], np.float64), np.asarray([normal], np.float64))
     return float(surface.mpp[tri[0]])
+
+
+def rest_normal(surface: Surface, rest) -> list[float]:
+    """The rest surface's direction (unit, out of the clay) at the point nearest `rest` (the clay's own space): a spot
+    picked on a posed clay is kept on the rest shape (the pick's `rest`), and its normal must be the rest one too."""
+    tri, bary = surface.nearest(np.asarray([rest], np.float64), np.zeros((1, 3)))
+    n = bary[0] @ surface.normals[surface.tris[tri[0]]]
+    length = float(np.linalg.norm(n))
+    return [float(v) for v in (n / length if length > 1e-12 else surface.facing[tri[0]])]
+

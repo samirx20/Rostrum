@@ -77,7 +77,9 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
   path (several `look_at` points in one call), or space them evenly along a line you work out on the clay's shape;
   between anchors the path is a straight line taken to the nearest surface. Strokes by anchors stay on the same spots
   through reshapes; pixel `points` on a clay (from its `uv`) would slide when its shape changes. A clay with no paint
-  layer yet gives no `uv`, only `local`.
+  layer yet gives no `uv`, only `local`. On a **posed** clay `look_at` also gives `rest`, the same spot on the clay's
+  rest shape: anchor there (`[*rest, *normal, 1]`, the normal from the rest shape; `localNormal` is close enough on
+  parts the pose hardly turns). Paint is kept on the rest shape, so it rides with every pose, as the screen does.
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.
 
