@@ -21,6 +21,9 @@ Rectangle {
     EscCloses { when: start.visible; covers: true; escCloses: !!start.source && start.source.hasProject; area: start
                 onAsked: start.source.setStart(false) }   // over the work: its keys wait (OpenPopups.covered); Esc: back to the project
     MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.AllButtons }   // nothing under it is reached
+    // It covers the merged top bar too: the window buttons stay, in the same place, and the strip's empty part is still
+    // the window's drag room (the bar's zones tell Windows; nothing here sits in the top Theme.topBar px)
+    WindowButtons { visible: windowChrome.merged; anchors { right: parent.right; top: parent.top } height: Theme.topBar; z: 5 }
 
     readonly property var rows: source ? source.recent : []
     readonly property bool launching: !!source && !source.hasProject && rows.length > 0      // "Continue" the last one

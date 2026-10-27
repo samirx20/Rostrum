@@ -328,7 +328,9 @@ Item {
     // Every clickable thing in the bar, in window pixels, handed to windowChrome once after any layout change; the
     // maximise button apart (Windows treats it as its own, for the snap layouts).
     function slotItems(row) { const out = []; for (let i = 0; i < row.children.length; i++) out.push(row.children[i]); return out }
-    function zoneItems() {
+    function zoneItems() {   // under the start screen (OpenPopups.covered) only its window buttons, in the same place: the
+                             // rest of the strip is drag room there
+        if (OpenPopups.covered) return [windowButtons.minButton, windowButtons.closeButton]
         return [mark].concat(slotItems(leadingSlot), [tab], slotItems(crumbSlot), slotItems(toolsSlot),
                              [agentChip, problemsChip, jobChip], slotItems(chipsSlot), [undoButton, redoButton, historyButton, command],
                              slotItems(actionsSlot), [help, windowButtons.minButton, windowButtons.closeButton])
@@ -342,7 +344,7 @@ Item {
     }
     // what moves a zone: the bar's size, each group's place and each clickable thing's place, size and visibility
     readonly property string zoneKey: !merged ? "" : [width, leftGroup.x, leftGroup.width, crumbSlot.x, toolsSlot.x, rightGroup.x, chipsRow.width,
-                                                      actionsSlot.width, windowButtons.x]
+                                                      actionsSlot.width, windowButtons.x, OpenPopups.covered]
         .concat(zoneItems().map(it => it ? [it.x, it.y, it.width, it.height, it.visible, it.parent ? it.parent.x : 0].join(",") : "")).join(" ")
     onZoneKeyChanged: Qt.callLater(pushZones)
 
