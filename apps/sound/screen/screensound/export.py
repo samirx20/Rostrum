@@ -482,8 +482,8 @@ class RenderExport(ExportSheet):
         the one click that takes the peaks off first (export_tame.py), offered beside Push / Keep it dynamic."""
         land = self._landing()
         shown = bool(land) and (land.get("need_db") or 0) > fit.LOT_DB and not self.running()
-        return {"shown": shown or self._tame.busy, "busy": self._tame.busy,
-                "said": self._tame.said if self._tame.busy else
+        return {"shown": shown or self._tame.busy or bool(self._tame.said), "busy": self._tame.busy,
+                "said": self._tame.said if self._tame.said else
                         f"{land.get('need_db', 0):.1f} dB of limiting flattens the loudest parts."}
 
     @Slot()

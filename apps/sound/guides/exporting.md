@@ -49,7 +49,10 @@ to flatten acoustic drums and piano." Under it, one click:
 (measured by rendering the song a few times in the background; the top bar says what it is doing), adds it first in
 that track's chain with its makeup set so the track sits where it did, and says how much limiting is left ("Peaks tamed
 on Piano … The master now needs 3.8 dB of limiting (was 9.8)"). It is one undo step ("Tame the peaks"); the compressor
-stays in the track's chain to see and change. Then Push to −14 needs far less. *Why not lift the quiet parts instead?*
+stays in the track's chain to see and change. Then Push to −14 needs far less. When no gentle compressor gets under
+~3 dB, it tries once more half way to what the push alone needs and takes that; when taming would save less than 1 dB,
+or the peaks come from too many tracks at once, it changes nothing and says why under the button (with the tracks'
+names), until the song changes. *Why not lift the quiet parts instead?*
 The loudness measure leaves out passages more than 10 LU quieter than the loud ones, so raising a soft intro does not
 lower the limiting a loud climax needs; it only makes the intro less soft (an agent can still ask for it: `edit_loudness`
 `lift_quiet`, which says what it would change before anything is changed).
