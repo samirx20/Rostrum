@@ -33,6 +33,9 @@ Open **≡**, then **New** (Ctrl+N). It is called "Untitled song" and lives in y
 Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose. Ctrl+S
 (**≡ › Save a version**) saves a named version you can go back to from History. (The song's own file is brought fully up to date when
 you close the window and every 20 changes; the change log beside it always has the latest, and opening the song plays it.)
+**History** (Ctrl+H, or click the top bar's change count) lists every step, newest first, with who made it. Click a
+step's words to go back to right after it: the steps after it are taken back, not lost (faint, "taken back"), and
+clicking one of them brings the song forward again (so does Redo, one step at a time; Ctrl+Z goes on back).
 
 ## 2. Add a track
 

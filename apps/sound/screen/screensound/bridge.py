@@ -37,6 +37,7 @@ from .edit_slots import EditSlots
 from .grid_slots import GridSlots
 from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
+from .history_slots import HistorySlots
 from .velocity_slots import VelocitySlots
 from .key_slots import KeySlots
 from .key_lock_slots import KeyLockSlots
@@ -54,7 +55,7 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, DrumStepSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, MarkerSlots, ActionSlots, KeySlots, KeyLockSlots, SelectSlots, RowsView, S, DocBridge):
+class SoundBridge(AgentDemo, HistorySlots, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, DrumStepSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, MarkerSlots, ActionSlots, KeySlots, KeyLockSlots, SelectSlots, RowsView, S, DocBridge):
     songChanged = Signal()                  # the ruler's song (length, grid): its own signal, a drag's step rarely moves it
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name

@@ -10,5 +10,5 @@ OPS = ModuleList("rostrum_sound.doc", [      # each registers its operations whe
 
 TOOLS = ModuleList("rostrum_sound.mcp", [   # each has `register(tools)`
     ".tools_render", ".tools_audition", ".tools_look", ".tools_arrangement", ".tools_inspect", ".tools_sfx", ".tools_voice", ".tools_motion",
-    ".tools_plugins", ".tools_midi", ".tools_cleanup", ".tools_ears", ".tools_project", ".tools_main_mix", ".tools_notes", ".tools_note_diff",
+    ".tools_plugins", ".tools_midi", ".tools_cleanup", ".tools_ears", ".tools_project", ".tools_main_mix", ".tools_notes", ".tools_note_diff", ".tools_history_go",
 ])
