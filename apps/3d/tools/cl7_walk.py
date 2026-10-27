@@ -7,18 +7,25 @@
 #   3. an arm from the body's side (joins, mirrored)     8. Pose: both feet held, the right hand dragged up
 #   4. a foot (one oval; Mirror makes the other)         9. Lights › Soft light, a click on the cheek
 #   5. Smooth over the shoulders, Add a brow, Carve a   10. a right-drag to a side-above view, Make this the shot
-#      mouth (the panel's brush buttons)                11. Render (the blue button) until the picture shows
+#      mouth (the panel's brush buttons)                11. Render (the blue button): started, its time shown
 #   6. Shapes › Sphere, one click on the face: an eye and its mirrored copy
 # Each step: its time from its first input until the app showed its result (SPEC slot = budget), the app's own waits
-# inside it, every release timed (an outline's puff, each brush stroke, the pose drag), discrete clicks that show nothing
-# for > 0.2 s flagged, and its checks read from the document. Where SPEC § 1 can't be followed as written, the walk works
-# around it (only to continue) and records a STUMBLE. One picture per step (the window's own pixels) and cl7_walk.json
-# go to the out folder; the walk is recorded (grabWindow ~15 fps, the hand's pointer and the step drawn on) into
-# cl7-five-minutes.mp4 and cl7-five-minutes-share.mp4 (~8 Mbit/s). The lead runs it:
-#   heavy.ps1 run "sam: cl7 walk" gpu <venv python> apps\3d\tools\cl7_walk.py <out folder>
+# inside it, the first visible reaction to an input (an outline filled where it lands, Finding joints…, a hold's ring,
+# Render running) apart from the result landing, every release timed (a puff, a stroke, the pose drag), discrete clicks
+# that show nothing for > 0.2 s flagged, and its checks read from the document (the eye ~2 cm with a mirrored copy, both
+# following the pose and still on the head after the wave; the body's own orange; the character inside Shot 1's frame).
+# Render's step ends when the render has started with its time shown; its own run time is `render.renderSeconds` in the
+# json, beside the table. A step SPEC § 1 can't do as written is a failed check or a STUMBLE (no workarounds). One
+# picture per step (the window's own pixels) and cl7_walk.json go to the out folder. Recorded (default): grabWindow
+# ~15 fps with the hand's pointer and the step drawn on, into cl7-five-minutes.mp4 and cl7-five-minutes-share.mp4
+# (~8 Mbit/s); the recorder costs the window time, so CL7_RECORD=0 is the timing-only run. CL7_UNTIL=n stops after step
+# n, CL7_SKIP=8,9 leaves steps out of a try, CL7_ANGLE="140,10" is step 10's right-drag (px left, down). The lead runs:
+#   heavy.ps1 run "sam: cl7 walk" gpu <venv python> apps\3d\tools\cl7_walk.py <out folder>            (video)
+#   CL7_RECORD=0 heavy.ps1 run "sam: cl7 timing" gpu <venv python> apps\3d\tools\cl7_walk.py <out folder>   (timing)
 # Exit 0 = every check passed and every step was within its budget; else they are printed and it exits 1.
 import json
 import math
+import re
 import os
 import shutil
 import sys
@@ -31,6 +38,7 @@ OUT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Sam\.rostrum\waves\r
 SCRATCH = Path(os.environ.get("CL7_SCRATCH", r"C:\Users\Sam\.rostrum\waves\scratch\sam-cl7-memberA"))
 RECORD = os.environ.get("CL7_RECORD", "1") != "0"
 UNTIL = int(os.environ.get("CL7_UNTIL", "11"))              # stop after this step (short tries while developing)
+SKIP = {int(n) for n in os.environ.get("CL7_SKIP", "").split(",") if n}   # steps left out of a try (marked in the json)
 sys.argv = sys.argv[:1]
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -38,14 +46,15 @@ import clay_draw_walk as D  # noqa: E402  (its helpers; puts this checkout's cod
 import clay_walk as W  # noqa: E402
 from cl7_record import Clock, Hand, Recorder  # noqa: E402
 
-from PySide6.QtCore import QPointF, Qt  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QPoint, QPointF, Qt  # noqa: E402
+from PySide6.QtGui import QWheelEvent  # noqa: E402
 from rostrum_gui.app import qt_app  # noqa: E402
 from screen3d import files_3d  # noqa: E402
 
 BUDGET = [("Clay", 10), ("Body", 30), ("Arm", 60), ("Feet", 30), ("Smooth, brow, mouth", 90), ("Eye", 30),
           ("Colour", 50), ("Wave", 40), ("Light", 20), ("Angle", 30), ("Render", 30)]
 EYE = (0.3, -0.42)                                         # where the left eye goes, in the body's half-axes
-EYE_AGAIN = (0.52, -0.42)                                  # (the workaround's second click, farther out)
+ANGLE = tuple(float(v) for v in os.environ.get("CL7_ANGLE", "140,10").split(","))   # the right-drag: px left, down
 
 
 def items_of(doc, kind):
@@ -178,6 +187,8 @@ class Walk:
         """A drawn outline, released: timed until its change and its picture (the puff)."""
         n0, before = self.changes(), {c["id"] for c in items_of(self.doc, "clay")}
         t = self.hand.drag(pts, secs, rest=0.35)
+        landing = lambda: bool(self.v.clay.drawObj.landing) or self.changes() > n0  # noqa: E731  filled where it lands
+        self.clock.reaction(f"{what}: the outline filled (clayDrawLanding)", t, landing)
         self.clock.release(f"{what}: the puff (change)", t, lambda: self.changes() > n0 or self.v.status.startswith("Error"))
         self.clock.release(f"{what}: the puff (picture)", t, self.settled)
         self.clock.check(not self.v.status.startswith("Error"), f"{what}: no error ({self.v.status or '-'})")
@@ -218,8 +229,32 @@ class Walk:
         if sw is None:
             self.clock.cur.setdefault("onScreen", named(self.root))
             return False
+        self.into_view(sw)
         t = self.hand.click_item(sw)
-        return self.clock.feedback("the colour picker opens", t, lambda: W.find(self.root, "colourSquare") is not None) < 1e9
+        self.clock.feedback("the colour picker opens", t, lambda: W.find(self.root, "colourSquare") is not None)
+        return W.find(self.root, "colourSquare") is not None
+
+    def into_view(self, item):
+        """A control below the settings panel's fold: the wheel over the panel (as a person scrolls) until it shows."""
+        panel = W.find(self.root, "inspectorScroll")
+        if panel is None:
+            return
+        bottom = panel.mapToScene(QPointF(0, panel.height())).y()
+        below = lambda: item.mapToScene(QPointF(0, item.height())).y() > bottom - 4  # noqa: E731
+        if not below():
+            return
+        self.clock.stumble(f"{item.parentItem().objectName() or 'a row'}'s colour square is below the settings panel's "
+                           "fold (cut off): scrolled to it", "the settings panel's row order (Follow opens above Material)", 1)
+        at = QPointF(W.centre(panel))
+        self.hand.glide(at, 0.4)
+        for _ in range(12):
+            if not below():
+                break
+            ev = QWheelEvent(at, QPointF(self.win.mapToGlobal(at.toPoint())), QPoint(0, 0), QPoint(0, -120),
+                             Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+            QCoreApplication.sendEvent(self.win, ev)
+            W.pump(0.12)
+        W.pump(0.3)
 
     def pick(self, h, s, v):
         """In the open picker: a click on the hue strip at hue `h` (0-1), then on the square at saturation s, value v."""
@@ -241,14 +276,29 @@ class Walk:
             self.hand.click(QPointF(x + w + 40, y + h_ - 30), 0.4)
         return True
 
-    def open_material(self, mat_id):
-        """The rail's Materials ball, then the material's row: the settings panel shows the material (Base colour)."""
-        if self.click("rail_materials", "the rail's Materials") is None or not mat_id:
-            return
-        row = self.control(f"matlist:{mat_id}", "the material in the Materials list")
-        if row is not None:
-            t = self.hand.click_item(row, 0.5)
-            self.clock.feedback("the material's panel", t, lambda: W.find(self.root, "row:baseColor") is not None)
+    def world_of(self, item_id):
+        """An item's world point now, as the view draws it (its follow / pose resolved)."""
+        from rostrum3d import aim, through
+        scene = self.v.sent()[0]
+        return aim.point(through.find_item(scene, item_id, self.b.frame)[0], [0.0, 0.0, 0.0])
+
+    def framed(self, ids, margin=0.03):
+        """The items' points (their reach) projected through the shot's camera: their box as shares of the picture,
+        and whether it sits inside with `margin` to spare."""
+        from rostrum3d.item_bounds import _own_points
+        from rostrum3d.resolve import Frames
+        from screen3d.gizmo import View
+        shot = next(x for x in self.doc.data["shots"] if x["id"] == self.b.shot_id)
+        scene, pw, ph = self.v.sent()[0], 1600, 900
+        view = View.of({"camera": shot["camera"]}, scene, self.b.frame, pw, ph)
+        fr = Frames(self.doc.data, range(0, 1), 1000.0)
+        pts = [view.project(p) for i in ids for p in _own_points(self.doc.data, fr, i, 0)]
+        pts = [p for p in pts if p]
+        if not pts:
+            return {"inside": False, "box": None}
+        bx = [min(p[0] for p in pts) / pw, min(p[1] for p in pts) / ph, max(p[0] for p in pts) / pw, max(p[1] for p in pts) / ph]
+        return {"inside": bx[0] > margin and bx[1] > margin and bx[2] < 1 - margin and bx[3] < 1 - margin,
+                "box": [round(v, 3) for v in bx]}
 
     def material(self, item_id):
         it = self.doc.item(item_id)
@@ -323,37 +373,17 @@ class Walk:
         t = self.hand.click(self.at(*EYE), 0.7)
         self.clock.feedback("the eye placed", t, lambda: self.changes() > n0 or self.v.status.startswith("Error"))
         self.clock.wait(self.settled, "the eye drawn")
-        sp = [m for m in items_of(self.doc, "mesh") if m["id"] not in before and m.get("shape") == "sphere"]
-        self.clock.cur["firstEye"] = [{k: m.get(k) for k in ("id", "name", "radius", "x", "y", "z", "mirror")} for m in sp]
-        body = self.doc.item(self.clay)
-        if len(sp) == 1:
-            self.clock.stumble(f"one click on the face where an eye goes made ONE sphere, no mirrored copy (radius "
-                               f"{sp[0].get('radius')} m, x {sp[0].get('x'):.3f} m from the middle; the body's x "
-                               f"{body.get('x', 0):.3f}); undone and clicked again farther out",
-                               "apps/3d/python/rostrum3d/surface_place.py:54 mirrors (ON_THE_MIRROR x the part's size) "
-                               "with apps/3d/app/screen3d/placing.py:20 size_class (a fifth of the whole clay)", 3)
-            self.click("undoButton", "the header's undo")
-            self.clock.wait(lambda: not self.doc.has(sp[0]["id"]), "the undo", 5)
-            self.click("rail_shapes", "the rail's Shapes")
-            tile = self.control("fly_mesh:sphere", "Shapes › Sphere")
-            if tile is None:
-                return
-            self.hand.click_item(tile, 0.4)
-            t = self.hand.click(self.at(*EYE_AGAIN), 0.5)
-            self.clock.feedback("the eye placed (again)", t, lambda: self.spheres(before) or self.v.status.startswith("Error"))
-            self.clock.wait(self.settled, "the eye drawn")
-            sp = self.spheres(before)
-            self.clock.cur["secondEye"] = [{k: m.get(k) for k in ("id", "name", "radius", "x", "y", "z", "mirror")} for m in sp]
+        sp = self.spheres(before)
+        self.clock.cur["eyes"] = [{k: m.get(k) for k in ("id", "name", "radius", "x", "y", "z", "mirror", "followPose")}
+                                  for m in sp]
         r = next((m.get("radius", 0) for m in sp if not m.get("mirror")), 0)      # (a copy keeps only its link)
-        self.clock.cur["eyeRadius"] = r
-        if sp and r > 0.025:
-            self.clock.stumble(f"the eye is not 'sized for the face': radius {r} m, a fifth of the whole clay",
-                               "apps/3d/app/screen3d/placing.py:20 size_class", 2)
         mir = [m for m in sp if m.get("mirror")]
         self.clock.check(len(sp) == 2, f"two spheres: the eye and its mirrored copy ({len(sp)})")
         self.clock.check(len(mir) == 1 and any(m["id"] == mir[0]["mirror"] for m in sp), "the copy mirrors the other")
+        self.clock.check(0 < r < 0.04, f"the eye is sized for the face (radius {r} m, under 4 cm)")
+        self.clock.check(any(m.get("followPose") for m in sp if not m.get("mirror")), "the eye follows the pose (followPose)")
+        self.clock.check(self.changes() == n0 + 1, f"one undo step ({n0} -> {self.changes()})")
         self.eyes = [m["id"] for m in sp]
-        self.eye_at = EYE_AGAIN if len(self.clock.cur["firstEye"]) == 1 else EYE
         self.eye = next((m["id"] for m in sp if not m.get("mirror")), sp[0]["id"] if sp else "")
 
     def s7_colour(self):
@@ -362,22 +392,21 @@ class Walk:
         self.clock.feedback("the body selected", t, lambda: self.b.selected == self.clay)
         self.clock.check(self.b.selected == self.clay, f"a click on the body selects it ({self.b.selected})")
         W.pump(0.3)
-        if W.find(self.root, "row:baseColor") is None:
-            self.clock.stumble("with the clay selected the panel shows only 'Material: Clay ▾', no Base colour square; "
-                               "went through the rail's Materials list › Clay (the material's own panel)",
-                               "apps/3d/app/screen3d/bridge_rows.py:49 (a clay is not in materials.USERS, so no "
-                               "MaterialRow / colour row for its material)", 2)
-            self.open_material(self.material(self.clay).get("id", ""))
+        mat0, n0 = self.material(self.clay).get("id"), self.changes()
+        shared = sum(1 for k in ("clay", "mesh") for it in items_of(self.doc, k) if it.get("material") == mat0) > 1
         if self.swatch("row:baseColor"):
             self.pick(25 / 360, 0.85, 0.9)
         mat = self.material(self.clay)
         h, s, v = hue(mat.get("baseColor", "#ffffff"))
         self.clock.check(h is not None and 12 <= h <= 40 and s > 0.5, f"the body is orange ({mat.get('baseColor')})")
-        self.clock.cur["bodyColour"] = mat.get("baseColor")
+        if shared:
+            self.clock.check(mat.get("id") != mat0, f"the first change gave the body its own material ({mat0} -> {mat.get('id')})")
+        self.clock.cur["bodyColour"] = {"material": [mat0, mat.get("id")], "baseColor": mat.get("baseColor"),
+                                        "undoSteps": self.changes() - n0}
         # the eye: a click on it, Material ▾ Glossy, then black
         if not getattr(self, "eye", ""):
             return
-        t = self.hand.click(self.at(*self.eye_at), 0.7)
+        t = self.hand.click(self.at(*EYE), 0.7)
         self.clock.feedback("the eye selected", t, lambda: self.b.selected in self.eyes)
         self.clock.check(self.b.selected in self.eyes, f"a click on the eye selects it ({self.b.selected})")
         W.pump(0.3)
@@ -412,14 +441,17 @@ class Walk:
         if t is None:
             return
         pose = self.v.pose
-        self.clock.feedback("Pose on (joints shown)", t, lambda: pose.on and len(pose.dots) > 0, 20)
+        self.clock.reaction("Pose on (Finding joints… or the joints)", t,
+                            lambda: W.find(self.root, "poseFinding") is not None or (pose.on and len(pose.dots) > 0))
+        self.clock.feedback("Pose ready (joints shown)", t, lambda: pose.on and len(pose.dots) > 0, 20)
         self.clock.check(pose.on and pose.joints > 0, f"Pose on, the joints found ({pose.joints})")
         self.clock.cur["joints"] = sorted(bones(self.doc.item(self.clay)))
         for side in (1, -1):
             at = QPointF(self.cx + side * 0.45 * self.rx, self.cy + self.ry + 0.005 * self.h)
             n0 = len(self.doc.item(self.clay).get("holds") or [])
             t = self.hand.click(at, 0.6)
-            self.clock.feedback("a foot held (ring)", t, lambda: len(self.doc.item(self.clay).get("holds") or []) > n0)
+            self.clock.reaction("a foot held: its ring", t, lambda: len(pose.rings) > n0)
+            self.clock.feedback("a foot held (in the document)", t, lambda: len(self.doc.item(self.clay).get("holds") or []) > n0)
         holds = self.doc.item(self.clay).get("holds") or []
         self.clock.cur["holds"] = holds
         self.clock.check(len(holds) == 2, f"both feet held ({holds})")
@@ -433,6 +465,7 @@ class Walk:
         if fr is not None:
             x, y, w, h = self.vp
             hand = QPointF(x + fr["b"][0] * w, y + fr["b"][1] * h)
+        eyes0 = {e: self.world_of(e) for e in self.eyes}
         n0 = self.changes()
         pts = [QPointF(hand.x() + 0.05 * self.h * i / 30, hand.y() - 0.28 * self.h * i / 30) for i in range(31)]
         chips = []
@@ -446,13 +479,12 @@ class Walk:
         self.clock.check({"arm.R", "forearm.R"} <= set(moved), f"the right arm bends at the shoulder and elbow ({moved})")
         self.clock.check(not ({"foot.L", "foot.R"} & set(moved)), "the held feet stay")
         self.clock.check(self.changes() == n0 + 1, f"the wave is one undo step ({n0} -> {self.changes()})")
-        if {"chest", "body"} & set(moved):
-            stuck = [e for e in self.eyes if self.doc.item(e).get("stick") or self.doc.item(e).get("parent")]
-            if not stuck:
-                self.clock.stumble(f"the wave also bends the upper body ({sorted({'chest', 'body'} & set(moved))}) but the eyes "
-                                   "(separate spheres) stay where they were: they float off the tilted face",
-                                   "apps/3d/app/screen3d/adding.py:147 place_at (a part placed on a clay is not stuck to it, "
-                                   "so the clay's pose doesn't carry it)", 2)
+        eyes1 = {e: self.world_of(e) for e in self.eyes}
+        shift = {e: round(math.dist(eyes0[e], eyes1[e]) * 1000, 1) for e in self.eyes}
+        self.clock.cur["eyeShiftMm"] = shift
+        if {"chest", "body"} & set(moved):              # the head moved: the eyes must have gone with it
+            self.clock.check(all(v > 2 for v in shift.values()),
+                             f"the upper body bent and the eyes went with it, still on the head (moved mm: {shift})")
 
     def s9_light(self):
         self.hand.key(Qt.Key_Escape)                       # (leaves Pose, as a person would before the next tool)
@@ -481,7 +513,7 @@ class Walk:
         cams = {c["id"]: json.dumps(c, sort_keys=True) for c in items_of(self.doc, "camera")}
         x, y, w, h = self.vp
         p0 = QPointF(x + 0.85 * w, y + 0.3 * h)                 # a short turn: a little to the side, a little above
-        pts = [QPointF(p0.x() - 2.5 * i, p0.y() + 1.2 * i) for i in range(31)]
+        pts = [QPointF(p0.x() - ANGLE[0] * i / 30, p0.y() + ANGLE[1] * i / 30) for i in range(31)]
         t = self.hand.drag(pts, 1.0, button=Qt.RightButton, rest=0.2)
         self.clock.feedback("the view turned", t, lambda: self.v.mode == "free")
         self.clock.check(self.v.mode == "free", f"a right-drag turned the view ({self.v.mode})")
@@ -499,61 +531,52 @@ class Walk:
         self.clock.check(self.v.mode == "shot", f"the view is on the shot again ({self.v.mode})")
         cam = next((json.loads(now[k]) for k in now if now[k] != cams.get(k)), {})
         self.clock.cur["camera"] = {k: cam.get(k) for k in ("x", "y", "z", "rx", "ry", "rz")}
+        box = self.framed([self.clay] + list(getattr(self, "eyes", [])))
+        self.clock.cur["inFrame"] = box
+        self.clock.check(box["inside"], f"the character is well inside Shot 1's frame (its box in the picture: {box['box']})")
+        if box["box"] and abs((box["box"][0] + box["box"][2]) / 2 - 0.5) > 0.15:
+            self.clock.stumble(f"after the turn the character sits off to one side of the picture (box {box['box']}): "
+                               "the right-drag turns round the view's middle, not the character",
+                               "apps/3d/app/screen3d (the view turn's pivot)", 1)
 
     def s11_render(self):
-        x, y, w, h = self.vp
-        heads = [c for c in all_items(self.root) if c.property("text") == "Render" and visible(c)
-                 and c.mapToScene(QPointF(0, 0)).y() < y]
-        btn = max(heads, key=lambda c: c.mapToScene(QPointF(0, 0)).x(), default=None)   # the blue button, not the page tab
-        if not self.clock.check(btn is not None, "the header's Render button is on screen"):
+        """The header's Render: one click starts the Final picture with its time shown (the person's part ends there);
+        the render's own run time is measured after the steps (render_done) as renderSeconds."""
+        job = self.b.renderJob
+        btn = self.control("renderButton", "the header's Render")
+        if btn is None:
             return
-        if not btn.objectName():
-            self.clock.stumble("the header's Render button has no objectName (found by its text)",
-                               "apps/3d/app/qml/RenderButton.qml:15", 1)
-        ex = self.b.exporter
         t = self.hand.click_item(btn)
-        self.clock.feedback("the render sheet", t, lambda: ex.open)
-        est = W.find(self.root, "estimateText")
-        t = time.perf_counter()
-        told = W.pump(30, lambda: est is not None and "measur" not in str(est.property("text")).lower(), "the estimate")
-        if not told:
-            W.FAILS.pop()                                   # (a slow estimate is a stumble, not a failed check)
-        self.clock.cur["appWait"] += time.perf_counter() - t
-        self.clock.cur["estimate"] = str(est.property("text")) if est is not None else ""
-        if not told:
-            self.clock.stumble(f"the sheet still says {self.clock.cur['estimate']!r} after 30 s: no time before it starts",
-                               "apps/3d/app/screen3d/estimate_sheet.py (waits for a free graphics card)", 2)
-        W.pump(0.5)
-        go = by_text(self.root, ex.actionText)
-        if not self.clock.check(go is not None, f"the sheet's {ex.actionText!r} button"):
+        self.clock.reaction("Render: running at once", t, lambda: job.state == "running")
+        shown = lambda: W.find(self.root, "renderProgress") is not None and bool(job.clock)  # noqa: E731
+        self.clock.feedback("Render: started, its time shown", t, lambda: shown() or job.state in ("done", "failed"))
+        self.clock.check(shown(), f"the render started with its time shown ({job.clock!r}: {job.note})")
+        self.clock.cur["renderClock"], self.clock.cur["renderNote"] = job.clock, job.note
+        self.render_t0 = t
+
+    def render_done(self, report):
+        """After the steps: the render's own run time; the picture shown with Show in folder and Close."""
+        job = self.b.renderJob
+        if getattr(self, "render_t0", None) is None:
             return
-        self.clock.stumble(f"Render opens a sheet first; the picture needs a second click ({ex.actionText!r})",
-                           "apps/3d/app/screen3d/export3d.py:63 openFor (SPEC § 1: Render makes the picture)", 1)
-        quality = next((x.get("renderQuality", "") for x in self.doc.data.get("shots", []) if x["id"] == self.b.shot_id), "")
-        self.clock.cur["quality"] = quality or "(the default)"
-        if quality != "final":
-            self.clock.stumble(f"Render makes a {quality or 'default (Good)'} picture, not the final quality SPEC § 1 says",
-                               "apps/3d/python/rostrum3d/render_fields.py (the shot's default renderQuality)", 1)
-        started = lambda: ex.state in ("running", "done", "failed") or self.b.renderJob.state == "running"  # noqa: E731
-        for attempt in range(2):
-            go = by_text(self.root, ex.actionText) or go
-            p = go.mapToScene(QPointF(0, 0))
-            self.clock.cur.setdefault("goAt", []).append([round(p.x()), round(p.y()), round(go.width()), round(go.height()),
-                                                           go.metaObject().className()])
-            t = self.hand.click_item(go)
-            if W.pump(4, started):
-                break
-            self.clock.stumble("a click on the sheet's Render button started nothing (clicked again)",
-                               "shared/gui-kit/qml/RostrumKit/ExportSheet.qml:134 (footer Button)", 3)
-        self.clock.feedback("the render started", t, started, 5)
-        self.clock.wait(lambda: ex.state in ("done", "failed", "cancelled"), "the render", 600)
-        self.clock.check(ex.state == "done", f"the render finished ({ex.state}: {ex.note})")
-        path = ex.path
-        self.clock.cur["render"] = {"path": path, "note": ex.note}
-        self.clock.check(bool(path) and Path(path).exists(), f"the render file exists ({path})")
-        self.clock.check(by_text(self.root, "Show in folder") is not None, "Show in folder is one click away")
-        if path and Path(path).exists():
-            shutil.copyfile(path, OUT / ("11-render-file" + Path(path).suffix))
+        ok = W.pump(600, lambda: job.state in ("done", "failed", ""), "the render")
+        secs = time.perf_counter() - self.render_t0
+        W.pump(0.5)
+        report["render"] = {"renderSeconds": round(secs, 1), "state": job.state, "note": job.note, "path": job.path,
+                            "said": self.clock.steps[-1].get("renderClock", "") if self.clock.steps else ""}
+        W.check(ok and job.state == "done", f"the render finished ({job.state}: {job.note})")
+        W.check(bool(job.path) and Path(job.path).exists(), f"the render file exists ({job.path})")
+        W.check(W.find(self.root, "renderShowInFolder") is not None and W.find(self.root, "renderClose") is not None,
+                "the picture shows with Show in folder and Close")
+        m = re.search(r"/ *([0-9.]+) *(s|min)", str(report["render"]["said"]))
+        said = float(m.group(1)) * (60 if m.group(2) == "min" else 1) if m else 0.0
+        if said and secs > 1.5 * said + 5:
+            report["render"]["stumble"] = (f"the render said about {said:.0f} s and took {secs:.0f} s "
+                                           "(apps/3d/app/screen3d/render_guess.py)")
+            print("STUMBLE 11. " + report["render"]["stumble"])
+        if job.path and Path(job.path).exists():
+            shutil.copyfile(job.path, OUT / ("12-render-file" + Path(job.path).suffix))
+        self.win.grabWindow().save(str(OUT / "12-rendered.png"))
 
     def run(self):
         steps = [self.s1_clay, self.s2_body, self.s3_arm, self.s4_feet, self.s5_shape, self.s6_eye, self.s7_colour,
@@ -561,6 +584,9 @@ class Walk:
         for n, (fn, (name, budget)) in enumerate(zip(steps, BUDGET), 1):
             if n > UNTIL:
                 break
+            if n in SKIP:
+                self.report.setdefault("skipped", []).append(name)
+                continue
             self.clock.begin(n, name, budget)
             try:
                 fn()
@@ -591,6 +617,7 @@ def main():
             rec.start()
         W.pump(1.0)
         walk.run()
+        walk.render_done(report)
         W.pump(2.0)                                          # the picture stays on screen a moment in the video
     except Exception as e:  # noqa: BLE001  a crash is a failed walk, said with its reason
         W.FAILS.append(f"the walk stopped: {type(e).__name__}: {e}")
@@ -607,6 +634,8 @@ def main():
         report["underFiveMinutes"] = report["totalS"] < 300
         report["releases"] = [{"step": s["n"], **r} for s in steps for r in s["releases"]]
         report["quiet"] = [{"step": s["n"], **f} for s in steps for f in s["feedback"] if f["quiet"]]
+        report["slowReactions"] = [{"step": s["n"], **f} for s in steps for f in s["reactions"] if f["quiet"]]
+        report["mode"] = "recorded (timings include the recorder's cost)" if RECORD else "timing only (CL7_RECORD=0)"
         report["slowReleases"] = [{"step": s["n"], **r} for s in steps for r in s["releases"] if r["slow"]]
         report["stumbles"] = sorted(({"step": s["n"], **x} for s in steps for x in s["stumbles"]), key=lambda x: -x["weight"])
         if steps and len(steps) == len(BUDGET) and not report["underFiveMinutes"]:
@@ -622,7 +651,9 @@ def main():
     for r in report["table"]:
         print(f"{r['n']:>2} {r['step']:<19}{r['budgetS']:>7}s{r['realS']:>7}s{r['appWaitS']:>9}s  {r['checks']}"
               f"{'  stumbles: ' + str(r['stumbles']) if r['stumbles'] else ''}")
-    print(f"total {report['totalS']} s (app waits {report['appWaitTotalS']} s)")
+    print(f"total {report['totalS']} s (app waits {report['appWaitTotalS']} s), {report['mode']}")
+    if report.get("render"):
+        print(f"render: {report['render']['renderSeconds']} s (it said {report['render']['said']}), {report['render']['state']}")
     print(f"{len(W.FAILS)} failed check(s); pictures and cl7_walk.json in {OUT}")
     for f in W.FAILS:
         print("  " + f)

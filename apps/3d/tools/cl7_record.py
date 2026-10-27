@@ -83,7 +83,7 @@ class Clock:
 
     def begin(self, n, name, budget):
         self.cur = {"n": n, "name": name, "budget": budget, "t0": None, "appWait": 0.0, "waits": [], "releases": [],
-                    "feedback": [], "checks": [], "stumbles": []}
+                    "feedback": [], "reactions": [], "checks": [], "stumbles": []}
         if self.rec:
             self.rec.caption = f"{n} · {name}"
 
@@ -120,6 +120,16 @@ class Clock:
         self.cur["feedback"].append({"what": what, "ms": round(ms), "quiet": ms > QUIET_MS, "ok": ok})
         if not ok:
             self.check(False, f"nothing showed after {what}")
+        return ms
+
+    def reaction(self, what, t0, cond, timeout=10.0):
+        """The first visible reaction to an input (an outline filled, a pill, a ring), apart from the result landing;
+        over QUIET_MS is flagged."""
+        ok = W.pump(timeout, cond, what)
+        ms = (time.perf_counter() - t0) * 1000
+        self.cur["reactions"].append({"what": what, "ms": round(ms), "quiet": ms > QUIET_MS, "ok": ok})
+        if not ok:
+            self.check(False, f"no visible reaction: {what}")
         return ms
 
     def check(self, ok, line):
