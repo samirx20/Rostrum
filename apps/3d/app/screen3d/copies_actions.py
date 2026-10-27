@@ -112,7 +112,8 @@ def near_calls(f, kind: str) -> list[dict]:
     if other is None:                                  # a new small sphere to move: the change follows it
         ball = counted(f.doc, "mesh")
         x, y, z = beside(copies)
-        args = {"id": ball, "shape": "sphere", "name": "Near", "radius": BALL, "x": x, "y": y, "z": z}
+        args = {"id": ball, "shape": "sphere", "name": "Near", "radius": BALL, "x": x, "y": y, "z": z,
+                "guide": True}                         # a handle in the view, never in the shot or a render
         parent = f.doc.parent_of(copies["id"])[0]
         if parent and f.doc.has(parent) and f.doc.item(parent)["type"] in F.HOLDERS:
             args["into"] = parent

@@ -351,6 +351,7 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   params.colorCorrectionMode = TfToken("disabled");  // scene-linear out; OpenColorIO makes the picture
   params.clearColor = GfVec4f(0, 0, 0, 0);
   params.enableSceneLights = look.sceneLights;
+  params.showGuides = true;  // a guide-only mesh (Change near's ball) is a handle: the view shows it, draw() never
   auto& fb = framebuffer(w, h);
   const auto t0 = std::chrono::steady_clock::now();
   double finish_ms = 0;
@@ -451,6 +452,7 @@ ViewDrawn Hydra::view_final(const SdfPath& camera, const GfFrustum& frustum, int
   params.frame = UsdTimeCode(frame);
   params.colorCorrectionMode = TfToken("disabled");
   params.clearColor = GfVec4f(0, 0, 0, 0);
+  params.showGuides = true;  // as view(): guides are the view's handles
   auto& fb = framebuffer(w, h);
   fb.bind_and_clear();
   e.Render(stage_->GetPseudoRoot(), params);
@@ -481,6 +483,7 @@ SdfPath Hydra::pick(const GfFrustum& f, int frame, int w, int h, double x, doubl
   GfFrustum narrow = f.ComputeNarrowedFrustum(ndc, GfVec2d(1.0 / w, 1.0 / h));
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
+  params.showGuides = true;  // a guide the view shows can be clicked
   TfErrorMark mark;
   auto& e = engine("storm", true);  // picking is the viewport's Storm; the answer is the same whatever drew the picture
   SdfPath hit, by;
