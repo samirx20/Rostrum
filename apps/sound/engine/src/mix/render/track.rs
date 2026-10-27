@@ -62,7 +62,7 @@ fn sum(track: &Track, clips: &[Vec<Vec<f32>>], feeders: &[&Tape], chans: usize, 
 /// One track from its clips (and the layers feeding it) to its place in the bed, reverb send included, on a tape.
 /// A feeder stays stereo: its bus places the sum. With it, the tap before the fader when the track sends from
 /// there (buses.rs).
-pub(super) fn track_out(s: &Schedule, track: &Track, clips: Vec<Vec<Vec<f32>>>, feeders: Vec<&Tape>, buf: usize) -> Result<(TapeWriter, Option<TapeWriter>), String> {
+pub(super) fn track_out(s: &Schedule, track: &Track, clips: &[Vec<Vec<f32>>], feeders: Vec<&Tape>, buf: usize) -> Result<(TapeWriter, Option<TapeWriter>), String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let named = |e: String| format!("track \"{}\": {e}", track.name);
     let (chans, chain_layout) = if track.bed { (layout.channels(), layout) } else { (2, Layout::Stereo) };
@@ -83,7 +83,7 @@ pub(super) fn track_out(s: &Schedule, track: &Track, clips: Vec<Vec<Vec<f32>>>, 
     for t0 in (0..buf).step_by(step) {
         let n = step.min(buf - t0);
         // A bed track is played as it is: no layers feed it.
-        let mut st = sum(track, &clips, if track.bed { &[] } else { &feeders }, chans, t0, n)?;
+        let mut st = sum(track, clips, if track.bed { &[] } else { &feeders }, chans, t0, n)?;
         if track.bed {
             chain.block(&mut crate::bed::slices(&mut st), t0).map_err(named)?;
             if let Some(p) = &mut pre {

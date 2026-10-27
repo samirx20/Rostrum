@@ -28,7 +28,7 @@ from rostrum_sound.doc import ops_mix
 
 from . import voice_card
 from .plain_errors import refusal as say_refusal, say as say_error
-from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline, velocity
+from . import block_patch, cleanable, feel_rows, inspect, many_rows, onpage, output_pick, picture, pick, screen_seen, timeline, velocity, view_kept
 from .action_slots import ActionSlots
 from .agent_demo import AgentDemo
 from .drum_rows import DrumRowSlots
@@ -37,6 +37,7 @@ from .edit_slots import EditSlots
 from .grid_slots import GridSlots
 from .group_slots import GroupSlots
 from .handle_slots import HandleSlots
+from .history_slots import HistorySlots
 from .velocity_slots import VelocitySlots
 from .key_slots import KeySlots
 from .key_lock_slots import KeyLockSlots
@@ -54,7 +55,7 @@ from .workspace import Workspace
 SOUNDING = ("notes", "hits", "clips", "sounds")       # what makes a compiled track last (engine contract/track.rs)
 
 
-class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, DrumStepSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, MarkerSlots, ActionSlots, KeySlots, KeyLockSlots, SelectSlots, RowsView, S, DocBridge):
+class SoundBridge(AgentDemo, HistorySlots, ViewSlots, PictureSlots, SongSlots, LaneSlots, DrumRowSlots, DrumStepSlots, EditSlots, HandleSlots, VelocitySlots, GridSlots, GroupSlots, MarkerSlots, ActionSlots, KeySlots, KeyLockSlots, SelectSlots, RowsView, S, DocBridge):
     songChanged = Signal()                  # the ruler's song (length, grid): its own signal, a drag's step rarely moves it
     def __init__(self, doc, name="Untitled song", parent=None):
         self.name = name
@@ -63,6 +64,8 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
         # the dock changed what the inspector leaves out (onpage.py): its rows change in place, each keeping the
         # delegate that showed the same setting (a reset made every row's control again: ~45 ms per dock switch)
         self.workspace = Workspace(lambda line: self._fail(line), self._dock_changed)
+        self.workspace.restore(view_kept.read(doc.folder, doc.item_id).get("tools") or {})   # the dock as left
+        self.workspace.heightsChanged.connect(lambda: self._kept_view().keep_tools({"heights": self.workspace.heights}))
         self._drag = self._grab = None
         self._span = ("", 0, 0)             # the piano roll's keys shown (track, lo, hi): they only grow while a track stays open
         self._view: dict = {}
@@ -142,6 +145,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
     def _dock_changed(self):
         self.model.update(self._rows(), instant=True)
         self._editor_zoom()                 # the Editor opens at a working zoom (view_slots.py)
+        self._kept_view().keep_tools({"dock": self.workspace.dock})      # a reopen shows the same tool (view_kept.py)
 
     @Property("QVariantList", notify=S.timelineChanged)
     def tracks(self):

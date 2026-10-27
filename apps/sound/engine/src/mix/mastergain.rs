@@ -9,6 +9,9 @@ use crate::fx::master::Dynamics;
 use crate::mix::schedule::Param;
 use crate::mix::schedule::Schedule;
 
+/// How long the end of a ring-out fades (seconds): only what still rings RING_MAX s past the end hears it.
+const TAIL_FADE_S: f64 = 1.5;
+
 #[derive(Clone)]
 pub struct MasterGain {
     fader: Param,
@@ -17,6 +20,8 @@ pub struct MasterGain {
     fade_out: usize,
     /// Frames in the song (where its fade-out ends).
     song: usize,
+    /// A ring-out's last frame (song + RING_MAX): what still rings there fades out over TAIL_FADE_S, never a cut.
+    ring_end: Option<usize>,
     /// The song frame the file starts at (a range), and the frames in the file.
     pub offset: usize,
     pub total: usize,
@@ -29,7 +34,7 @@ pub struct MasterGain {
 impl MasterGain {
     pub fn new(s: &Schedule) -> MasterGain {
         let (offset, end) = s.range.unwrap_or((0, s.total_samples));
-        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.song_samples.unwrap_or(s.total_samples), offset, total: end - offset, norm: 1.0, dynamics: None }
+        MasterGain { fader: crate::mix::buses::master_fader(s), sr: s.sample_rate as f64, fade_in: s.fade_in_samples, fade_out: s.fade_out_samples, song: s.song_samples.unwrap_or(s.total_samples), ring_end: s.song_samples.map(|_| s.total_samples), offset, total: end - offset, norm: 1.0, dynamics: None }
     }
 
     /// The fades' envelope at song frame `i`.
@@ -44,6 +49,13 @@ impl MasterGain {
         } else if fo > 0 && i + fo >= total {
             let rem = (total as f64 - 1.0 - i as f64) / (fo.max(2) - 1) as f64;
             env = f64::min(env, (0.5 * (1.0 - (std::f64::consts::PI * rem).cos())).powf(2.2));
+        }
+        if let Some(last) = self.ring_end {       // a cymbal still ringing when the ring-out runs out fades, not cut
+            let tf = (TAIL_FADE_S * self.sr) as usize;
+            if i + tf >= last {
+                let rem = (last as f64 - 1.0 - i as f64).max(0.0) / tf.max(2) as f64;
+                env = f64::min(env, 0.5 * (1.0 - (std::f64::consts::PI * rem).cos()));
+            }
         }
         env
     }

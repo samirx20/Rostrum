@@ -125,6 +125,7 @@ A second verse or a "B" that answers "A": copy the section with everything in it
    one step): `note.set` (`pitch`, `vel`, `dur`; a chord takes a list of pitches), `note.transpose`, `note.remove`, `note.thin` (every Nth, or the soft ones),
    `hit.add` / `hit.remove` for a busier or sparser groove, `track.set` to change a sound only for the whole track.
    On the screen, **Select inside** on the copy's section selects everything in it to move or change at once.
+   `inspect_note_changes {"since": {"mine": 1}, "section": "A-2"}` then lists what that call changed, note by note.
 
 Writing the song with `run_script` instead? A script can also just write the second section itself (a loop over the
 first one's notes with changes); `section.duplicate` is for a section you or a person already have in the document.

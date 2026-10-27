@@ -31,7 +31,7 @@ from .live_transport import LivePlay
 from .playback import Renderer
 
 DEBOUNCE_MS = 300
-CATCH_UP_S = 0.15          # the engine starting behind the press: the playhead waits this out in place, never a step back
+CATCH_UP_S = 0.15          # the engine's reports a little behind what was shown: the playhead waits in place, never a step back
 UPDATING = "Updating the sound…"      # the state line while a render is on its way and the last good one plays
 
 
@@ -197,14 +197,15 @@ class Transport(QObject):
     def _advance(self):
         t = self.player.position()
         if self.player.playing and self.player.alive:
-            ahead = self._press[0] + time.monotonic() - self._press[1]
-            if not self.player.rolled:          # before the engine's first report: from the press, on its own clock
-                t = self._ran = ahead
-            elif self._ran is not None:        # the engine starts a little behind the press: the playhead waits for it
-                if t < self._ran and self._ran - t < CATCH_UP_S:    # in place, never a step back
-                    t = self._ran
-                else:
-                    self._ran = None
+            if not self.player.rolled:          # before the sound starts: the playhead stays at the press (the button
+                t = self._ran = self._press[0]  # says playing). Running ahead on a clock meant a step back when the
+                                                # engine started 0.3-0.6 s late on a big song (production round)
+            elif self._ran is not None and t < self._ran and self._ran - t < CATCH_UP_S:
+                t = self._ran                   # the engine's reports a little behind what was shown (its first
+                                                # "rolling" is ahead of the speaker by the output delay): the playhead
+                                                # waits in place, never a small step back
+            else:
+                self._ran = t
         if self.loop and self.player.playing and t >= self.loop[1]:   # ⟳ Loop: back to the range's start
             self.player.seek(self.loop[0])
             t = self.loop[0]

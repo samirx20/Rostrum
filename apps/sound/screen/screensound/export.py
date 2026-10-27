@@ -15,7 +15,9 @@ from __future__ import annotations
 import copy
 import os
 import shutil
+import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 from PySide6.QtCore import Property, Signal, Slot
 from rostrum_core import RostrumError, project
@@ -205,9 +207,9 @@ class RenderExport(ExportSheet):
                     "root": copy.deepcopy(doc.data), "out": out}
         # A preset's own render choice (the Editor's: the mix before mastering), while the sheet still shows it chosen.
         master = presets.PRESETS.get(self.preset, {}).get("master", True)
-        land = self._landing()
-        if master and land.get("push") and not self._dynamic:     # a named target is reached unless kept dynamic (one undo step)
-            self.bridge._apply(land["push"]["ops"], "Push loudness to target")
+        # A named target is reached unless kept dynamic: the job measures the song it writes and sets the limit from that
+        # (fit_loudness.reach), never from the screen's last render, which can be from before the newest edit.
+        push = master and not self._dynamic and self._choice not in ("", MIDI)
         try:
             schedule = compile_doc(doc, master=master)
         except RostrumError as e:
@@ -225,7 +227,8 @@ class RenderExport(ExportSheet):
             versions.append({"schedule": schedule_for(doc, r["target"]), "stems": [], "markers": False,
                              "options": {**base, "format": r["format"], "sampleRate": rate or doc.data.get("sampleRate", 48000)}})
         return {"doc": doc, "versions": versions, "who": f"{self.bridge.who.kind}:{self.bridge.who.name}", "out": out,
-                "name": "" if self.stem() == self.default_stem() else self.stem()}
+                "name": "" if self.stem() == self.default_stem() else self.stem(), "span": span, "master": master,
+                "push": SimpleNamespace(data=copy.deepcopy(doc.data), folder=doc.folder) if push else None}
 
     def _say(self, words):
         """What the running export is doing, in the sheet's line and the top bar (the kit's line says only the file)."""
@@ -238,8 +241,10 @@ class RenderExport(ExportSheet):
         if "midi" in p:
             return self._write_midi(p)
         progress(-1.0)                                     # the engine can't say how far it is
-        eng, made, n = self._open_engine(), [], len(p["versions"])
+        eng, made, n, pushed = self._open_engine(), [], len(p["versions"]), {}
         try:
+            if p["push"] is not None:
+                pushed = self._pushed(p, eng)
             for i, v in enumerate(p["versions"]):
                 of = f"Version {i + 1} of {n}: " if n > 1 else ""
                 made.append(handoff.render(p["doc"].folder, p["doc"], eng, v["schedule"], p["who"], stems=v["stems"], options=v["options"],
@@ -259,8 +264,33 @@ class RenderExport(ExportSheet):
             shutil.copyfile(r["file"], part)
             os.replace(part, out)
             main, files = str(out), [str(out), *files]
-        return {**r, "file": main, "files": files, "version": f"v{int(r['version']):03d}",
+        return {**r, "file": main, "files": files, "version": f"v{int(r['version']):03d}", "pushed": pushed,
                 "summary": " | ".join(summary(m) for m in made), "versions": [f"v{int(m['version']):03d}" for m in made]}
+
+    def _pushed(self, p, eng) -> dict:
+        """The song measured as it will be written and, when it lands under its target, the limit that reaches it
+        (fit_loudness.reach): the first version is then compiled at that limit, so the file is written once, right."""
+        self._said.emit("Measuring the mix against the target")
+        song = p["push"]
+        renders = Path(song.folder) / "renders"
+        renders.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="push_", dir=renders) as tmp:
+            got = fit.reach(song, eng, Path(tmp), p["span"])
+        if got.get("ops"):
+            song.data["master"][0].update(got["ops"][0]["args"])
+            p["versions"][0]["schedule"] = compile_doc(song, master=p["master"])
+        return got
+
+    def _finish(self, result, error):
+        """The kit's end of the job; a pushed limit becomes the song's own (one undo step, "Push loudness to target") once
+        the file is written, and the status line says so in words."""
+        pushed = (result or {}).get("pushed") or {}
+        done = pushed.get("ops") and not error and (result or {}).get("files")
+        if done:
+            self.bridge._apply(pushed["ops"], "Push loudness to target")
+        super()._finish(result, error)
+        if done and self._state == "done":
+            self.bridge._set_status(f"{self._done_message} · {pushed['words']} Ctrl+Z takes the limit back.")
 
     def _write_midi(self, p):
         skipped = midi.export(p["root"], p["midi"])
@@ -438,8 +468,8 @@ class RenderExport(ExportSheet):
         if not land.get("push"):
             return {"shown": False}
         goal = delivery._n(land["target"])
-        said = (f"Export raises Most limiting to {land['push']['max_limit_db']:g} dB; the loudest peak stays under the ceiling."
-                if not self._dynamic else "")
+        said = ("Export measures the mix and raises Most limiting as far as reaching the target takes; the loudest peak "
+                "stays under the ceiling." if not self._dynamic else "")
         return {"shown": True, "current": "dynamic" if self._dynamic else "push", "said": said,
                 "options": [{"value": "push", "label": f"Push to {goal}"}, {"value": "dynamic", "label": "Keep it dynamic"}]}
 

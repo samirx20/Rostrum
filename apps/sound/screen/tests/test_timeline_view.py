@@ -16,9 +16,9 @@ def test_song_keeps_room_to_write():
     bar = 4 * 0.6                                           # 100 bpm, 4/4
     root = {"tempo": 100, "beatsPerBar": 4, "tracks": [{"id": "t", "notes": [
         {"id": "n", "type": "note", "pitch": "C4", "at": {"beat": 0}, "dur": {"beats": 1}}]}]}
-    assert timeline.song(root)["length"] == pytest.approx(8 * bar)       # a short phrase: still 8 bars to write in
-    root["tracks"][0]["notes"][0]["at"] = {"beat": 40}                  # 10 bars in: the last bar + 2 spare bars
-    assert timeline.song(root)["length"] == pytest.approx(13 * bar)
+    assert timeline.song(root)["length"] == pytest.approx(9 * bar)       # a short phrase: its bar + 8 to write in
+    root["tracks"][0]["notes"][0]["at"] = {"beat": 40}                  # 10 bars in: the last bar + 8 spare bars
+    assert timeline.song(root)["length"] == pytest.approx(19 * bar)
 
 
 def test_automation_drag_is_one_undo_step_in_time_order(bridge):  # noqa: F811

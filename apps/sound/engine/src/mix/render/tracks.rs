@@ -23,7 +23,8 @@ pub(super) fn job_bytes(s: &Schedule, buf: usize) -> usize {
     buf * s.layout.channels().max(2) * 4 * 3
 }
 
-pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize) -> Result<Tracks, String> {
+/// `held`: a `measure` request's run (held.rs): a track's clips rendered before in the run are used again.
+pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize, held: bool) -> Result<Tracks, String> {
     let n = s.tracks.len();
     let t0 = std::time::Instant::now();
     let cache = cache.filter(|_| s.track_keys.len() == n);
@@ -44,9 +45,9 @@ pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize
         let level: Vec<usize> = (0..n).filter(|&k| want[k] && feeds(k) == buses).collect();
         let done = &outs;
         let rendered = crate::mix::par::map_n(level, threads, |k| -> Result<(usize, Tape, Option<Tape>), String> {
-            let clips = render_track_clips(s, k)?;
+            let clips = clips_of(s, k, held)?;
             let feeders: Vec<&Tape> = s.tracks.iter().enumerate().filter(|(_, t)| t.into == Some(k)).filter_map(|(j, _)| done[j].as_deref()).collect();
-            let (out, pre) = track_out(s, &s.tracks[k], clips, feeders, buf)?;
+            let (out, pre) = track_out(s, &s.tracks[k], &clips, feeders, buf)?;
             let tape = out.finish(cache.map(|c| (c, s.track_keys[k].as_str())))?;
             Ok((k, tape, pre.map(|p| p.finish(None)).transpose()?))
         });
@@ -58,4 +59,18 @@ pub(super) fn render_tracks(s: &Schedule, cache: Option<&TrackCache>, buf: usize
     }
     prof("tracks", t0);
     Ok(Tracks { outs: outs.into_iter().map(|t| t.expect("every track rendered")).collect(), pres })
+}
+
+/// Track `k`'s rendered clips: from the run's memory when `held` and rendered before (held.rs), else rendered (and,
+/// when `held`, kept for the run's next request).
+fn clips_of(s: &Schedule, k: usize, held: bool) -> Result<crate::mix::held::Clips, String> {
+    let key = s.clip_keys.get(k).filter(|_| held);
+    if let Some(c) = key.and_then(|key| crate::mix::held::clips(key)) {
+        return Ok(c);
+    }
+    let clips = Arc::new(render_track_clips(s, k)?);
+    if let Some(key) = key {
+        crate::mix::held::keep_clips(key, clips.clone());
+    }
+    Ok(clips)
 }

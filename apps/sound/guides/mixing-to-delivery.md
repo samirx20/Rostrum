@@ -28,7 +28,7 @@ peaked when one is not enough; a track's own compressor is set instead of adding
 so each tamed track keeps its loudness against the mix: the target inside the master's own `maxLimit`, the balance as written)
 and `trim_track` (the smallest cut, at most 12 dB, to the most peaked track, found by re-rendering, that reaches the target inside the master's
 own `maxLimit`; the balance moves; if no cut of that track is enough it says so, and `track` tries another). One call applies one:
-`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. An option that can't be worked out on a song says why and the others still come back; `{"apply": "keep_balance"}` needs no search renders. The
+`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. An option that can't be worked out on a song says why and the others still come back; `{"apply": "keep_balance"}` needs no search renders. tame_peaks first tries the most it may do (the three most peaked tracks, 18 dB under their peaks): when even that leaves the song under the target it says so at once, with how far under, instead of searching. The whole answer comes back as a job in about 15 s for a one-minute song of six to ten tracks (the searches' trial mixes keep the instruments in memory and write no files), so ask `inspect_job` with `wait_s` rather than waiting in one call. The
 trade-off is **tamed** (`tame_peaks`: only the peaky track is squeezed, the master stays transparent, the balance does not move), **cleaner** (`trim_track`: nothing is squeezed, the balance moves) or **louder** (`keep_balance`: the balance does not move, the whole master is squeezed). With the master's
 loudness target off, `edit_loudness` answers the `master.set` that turns it on.
 Songs saved before 2026-10-25 open with it
@@ -43,7 +43,7 @@ off, so they sound as they did.
   `inspect_engine`, and the table in `inspect_guide 'script'` ("Effects and the master"). On screen an effect's amounts (mix,
   feedback, drive, width, damping) read in percent (stored 0–1: type "20 %" or 0.2) and a ratio reads "3 :1". Plug-ins (CLAP / VST3) go in the same
   chain (inspect_engine (what "plugins")).
-- **Ducks:** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue), and `depth`,
+- **Ducks (sidechain):** `duck.add` on a track with `under` = the tracks that push it down (music under dialogue; for a dance track's pumping, a bass or pad under the kick), and `depth`,
   `attack`, `release`, `hold`. The `voice` setting listens for speech only. On the screen: **+ Dip under…** on a strip.
 - **A bed under a voice:** `look_sound` (`what: "loudness"` or `"levels"`) gives the **room for speech**: how many dB a
   voice at the mix's own loudness would stand over the music in the 1–4 kHz bands where words are understood (a

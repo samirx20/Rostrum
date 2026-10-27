@@ -12,6 +12,7 @@ mod error;
 mod expression;
 mod hit;
 mod instrument;
+mod measure;
 mod media;
 pub mod names;
 mod names_instruments;
@@ -43,12 +44,19 @@ pub fn answer(req: &Value) -> Value {
     }
 }
 
+/// Every request this engine answers (`describe` lists them, so a host can tell what an older engine lacks).
+const REQUESTS: &[&str] = &["describe", "check", "render", "measure", "range", "plugins", "pluginWindow", "quit"];
+
 fn handle(req: &Value) -> Result<Value, Error> {
     let mut o = read::Obj::new(req, "")?;
     let _ = o.raw("id");
-    let what = o.name("do", &["describe", "check", "render", "range", "plugins", "pluginWindow", "quit"], None)?;
+    let what = o.name("do", REQUESTS, None)?;
+    if what != "measure" {
+        crate::mix::held::clear();             // a run of `measure` requests ends: what it held is let go
+    }
     // Every field is read (and unknown ones refused) before anything is rendered, scanned or opened.
     let job = if what == "render" { Some(render::read(&mut o)?) } else { None };
+    let trials = if what == "measure" { Some(measure::read(&mut o)?) } else { None };
     let scan = if what == "plugins" { Some(plugin_requests::read_paths(&mut o)?) } else { None };
     let window = if what == "pluginWindow" { Some(plugin_requests::read_window(&mut o)?) } else { None };
     let result = match what.as_str() {
@@ -56,6 +64,7 @@ fn handle(req: &Value) -> Result<Value, Error> {
             let mut d = names::describe();
             d["contract"] = json!(schedule::CONTRACT);
             d["engine"] = json!(env!("CARGO_PKG_VERSION"));
+            d["requests"] = json!(REQUESTS);
             d
         }
         "check" => {
@@ -63,7 +72,7 @@ fn handle(req: &Value) -> Result<Value, Error> {
             json!({ "resolved": c.resolved, "length": c.seconds, "tracks": c.ids.len(), "credits": c.credits })
         }
         "range" => range::range(o.required("instrument")?, "instrument")?,
-        "render" | "plugins" | "pluginWindow" => json!(null),
+        "render" | "measure" | "plugins" | "pluginWindow" => json!(null),
         _ => json!({ "bye": true }),
     };
     o.done()?;
@@ -72,6 +81,9 @@ fn handle(req: &Value) -> Result<Value, Error> {
     }
     if let Some(p) = window {
         return plugin_requests::open(p);
+    }
+    if let Some(t) = trials {
+        return measure::run(t);
     }
     match job {
         Some(job) => render::run(job),

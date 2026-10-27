@@ -93,3 +93,23 @@ def test_one_option_that_fails_leaves_the_others():
         raise RuntimeError("engine said no")
     got = fit._alone("tame_peaks", boom)
     assert got["impossible"] and "engine said no" in got["words"] and not got.get("ops")
+
+
+def test_a_measure_gives_the_numbers_a_render_gives(tmp_path):
+    """The loudness search measures its trials with `measure` (no files, instruments held between trials): its numbers
+    must be the render's, or every fit would be off without a word. A second trial reuses the held instruments."""
+    import pytest
+    root = run_source(SONG, "fit.py")
+    data = getattr(root, "data", root)
+    data["master"][0]["maxLimit"] = 4.4
+    trimmed = fit.trimmed(data, data["tracks"][0]["id"], 3.0)
+    with Engine() as e:
+        if not e.can("measure"):
+            pytest.skip("this engine has no `measure` yet (built before it)")
+        got = e.request("measure", schedules=[compile(data), compile(trimmed)])["results"]
+        again = e.request("measure", schedule=compile(trimmed))["results"][0]          # its instruments held from above
+        for sched, m in ((data, got[0]), (trimmed, got[1]), (trimmed, again)):
+            r = e.request("render", schedule=compile(sched), out=str(tmp_path / "r.wav"), stems=[])
+            assert abs(m["lufs"] - r["lufs"]) < 1e-6 and abs(m["truePeak"] - r["truePeak"]) < 1e-6, (m["lufs"], r["lufs"])
+            assert m["master"] == {k: r["master"][k] for k in m["master"]}
+            assert [(t["id"], round(t["lufs"], 6)) for t in m["tracks"]] == [(t["id"], round(t["lufs"], 6)) for t in r["tracks"]]

@@ -166,7 +166,13 @@ Item {
     }
 
     Repeater {   // what an agent just changed here: the 1-second outline (only the flashed blocks get an item)
-        model: { const f = backend.agent.flash; return f.length ? lane.shown.filter(b => f.indexOf(b.id) >= 0) : [] }   // one read, not one a block
+        model: {    // one read of the list into a lookup, then one pass over the blocks (indexOf per block was blocks × ids)
+            const f = backend.agent.flash
+            if (!f.length) return []
+            const m = {}
+            for (let i = 0; i < f.length; i++) m[f[i]] = true
+            return lane.shown.filter(b => m[b.id] === true)
+        }
         ChangeOutline {
             required property var modelData
             x: Math.round(lane.ruler.xOf(modelData.t)); y: lane.pad; height: lane.height - 2 * lane.pad

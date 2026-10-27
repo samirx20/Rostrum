@@ -39,8 +39,28 @@ def on(kinds, op):
                                for k, ids in f.by_kind(kinds).items()])         # no amounts: the defaults
 
 
+def _screen_grid(f) -> float:
+    """The grid the screen snaps to now, in beats (the top bar's Grid; Auto: the step it is on at this zoom)."""
+    return min(16.0, max(0.0625, float(f.grid or 0.25)))
+
+
+def _grids(f) -> list:
+    g = _screen_grid(f)
+    known = any(abs(v - g) < 1e-6 for v, _ in GRIDS)
+    return GRIDS if known else [(g, "Bar" if abs(g - 4) < 1e-6 else f"{g:g} beats"), *GRIDS]
+
+
+def quantize_on():
+    """Quantise snaps to the grid the person sees and draws on (Logic / Ableton do): a 16th-late note with the
+    Grid on 1/4 goes to the beat; Quantise ▾ starts on that grid each time and may pick another for one run (production
+    round: "already so" on a 1/4 grid because Quantise kept its own 1/16)."""
+    valid, calls = on(NOTE_HIT, "quantize")
+    return valid, lambda f, a=None: calls(f, {"grid": _screen_grid(f), **(a or {})})
+
+
 def quantize_fit(f, a):
-    return {"grid": {"type": "choice", "options": [{"value": v, "label": w} for v, w in GRIDS]}}
+    return {"grid": {"type": "choice", "default": _screen_grid(f), "fresh": True,     # always the top bar's grid
+                     "options": [{"value": v, "label": w} for v, w in _grids(f)]}}
 
 
 # ---- Transpose › By… -------------------------------------------------------------------------------------------

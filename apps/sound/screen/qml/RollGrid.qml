@@ -61,6 +61,11 @@ Item {
         readonly property var look: [g.roll, g.rowH, g.count, g.keyed, g.rowInKey, g.keyRoot, g.keysWidth, Theme.app]
         onLookChanged: requestPaint()
         onHeightChanged: requestPaint()
+        // made while the Editor is still hidden (or 0 wide), its paint is dropped and nothing asks again: the roll showed
+        // no keys and no row stripes (production round). Paint again when it is shown, gets its width, or can paint.
+        onWidthChanged: requestPaint()
+        onVisibleChanged: if (visible) requestPaint()
+        onAvailableChanged: if (available) requestPaint()
         onPaint: {
             var ctx = getContext("2d"); ctx.reset()
             var h = g.rowH, kw = g.keysWidth, n = g.count, W = width

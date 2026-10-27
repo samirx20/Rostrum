@@ -30,6 +30,9 @@ use stats::Mix;
 /// long soundtrack's peak memory near the sequential one's (a measure alone holds a chunk).
 const MEASURE_THREADS: usize = 3;
 
+/// The most one mastering pass may hold in memory in a `measure` run (bus.rs `in_memory`): about 20 minutes of stereo.
+const HELD_MASTER_BYTES: usize = 256 << 20;
+
 /// ROSTRUM_SOUND_PROFILE=1: each stage's time on stderr.
 pub fn prof(what: &str, since: std::time::Instant) {
     if std::env::var_os("ROSTRUM_SOUND_PROFILE").is_some() {
@@ -49,10 +52,20 @@ pub fn render_with(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
 /// The mix, and the tracks marked in `keep` (by schedule index) kept as stems: each as it reaches the master
 /// (after its effects, fader and ducks), on disk; `stems::write` writes them through the master's gain.
 pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCache>, keep: &[bool]) -> Result<Mix, String> {
+    render_run(s, cache, keep, false)
+}
+
+/// The mix as `render_keep` makes it, for a `measure` request (contract/measure.rs): the instruments and the measures
+/// of tracks rendered before in the run are used again (held.rs), never stems. The same numbers as a render.
+pub fn render_held(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCache>) -> Result<Mix, String> {
+    render_run(s, cache, &[], true)
+}
+
+fn render_run(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCache>, keep: &[bool], held: bool) -> Result<Mix, String> {
     let buf = s.total_samples + s.tail_samples;
-    let rendered = tracks::render_tracks(s, cache, buf)?;
+    let rendered = tracks::render_tracks(s, cache, buf, held)?;
     let t2 = std::time::Instant::now();
-    let placed = placed::place_all(s, &rendered.outs, keep, buf)?;
+    let placed = placed::place_all(s, &rendered.outs, keep, buf, held)?;
     prof("ducks and track stats", t2);
     // What reaches the master bus, in the order it is summed (the same sum every run): the direct tracks in schedule
     // order, then the buses (bus.rs sums them block by block from disk).
@@ -89,7 +102,9 @@ pub fn render_keep(s: &Schedule, cache: Option<&crate::mix::trackcache::TrackCac
         names.extend(s.buses.iter().filter(|b| b.output.is_none()).map(|b| (true, b.name.clone())));
     }
     let t3 = std::time::Instant::now();
-    let mut mix = crate::mix::bus::master(s, &inputs)?;
+    // A `measure` run keeps the mastering passes in memory while a pass of the song is small (a few minutes).
+    let small = s.total_samples.saturating_mul(s.layout.channels()).saturating_mul(4) <= HELD_MASTER_BYTES;
+    let mut mix = crate::mix::bus::master(s, &inputs, held && small)?;
     prof("master", t3);
     mix.buses = bus_stats;
     mix.ducks = ducks;
