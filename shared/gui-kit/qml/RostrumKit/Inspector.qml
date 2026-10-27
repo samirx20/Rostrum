@@ -116,7 +116,7 @@ Panel {
                     readonly property alias rowsView: rowsView
                     // the rows' `instant`, read once here: each row reading it (two Python reads a row, twice a pick)
                     // cost ~8 ms a pick over a panel's rows
-                    readonly property bool instant: rowsModel.instant
+                    readonly property bool instant: !!rowsModel && rowsModel.instant      // (null while another song swaps in)
                     width: list.width
                     visible: !panel.pages || index === panel.pages.shown
                     Repeater {

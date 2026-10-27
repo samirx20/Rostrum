@@ -72,6 +72,8 @@ FieldFrame {
     function widestText() {      // either end of the range with its unit, and each word it may show ("Auto" -> "100 %")
         let w = 0
         for (const x of words) w = Math.max(w, metrics.advanceWidth(x.label))
+        if (display === "db")   // a level is widest in the middle ("−30.0"), not at its ends ("−∞", "+6.0")
+            w = Math.max(w, metrics.advanceWidth("−88.8") + metrics.advanceWidth("dB") + 4)
         if (!isFinite(from) || !isFinite(to) || Math.abs(from) >= 1e8 || Math.abs(to) >= 1e8) return w
         const u = unitShown && !unitFirst ? metrics.advanceWidth(unitShown) + (/^[a-z]/i.test(unitShown) ? 4 : 1) : 0
         return Math.max(w, metrics.advanceWidth(endText(from)) + u, metrics.advanceWidth(endText(to)) + u)

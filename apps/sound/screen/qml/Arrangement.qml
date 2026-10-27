@@ -109,6 +109,10 @@ Rectangle {
             Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
                 id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
                 text: "Grid " + backend.gridLabel; chevron: true
+                // as wide as its widest label ("Grid Auto · 1/16"): Auto's step changing with the zoom never moves
+                // Snap, − + and Fit beside it
+                width: Math.max(implicitWidth, gridWide.advanceWidth("Grid Auto · 1/32") + implicitWidth - gridWide.advanceWidth(text))
+                FontMetrics { id: gridWide; font.family: uiFont; font.pixelSize: Theme.body }
                 onClicked: { const p = gridBtn.mapToItem(null, 0, gridBtn.height + 2); gridMenu.openAt(p.x, p.y) }
                 HoverTip { text: "The grid notes, clips and ranges snap to (Auto follows the zoom)"; hovered: parent.hovered && !gridMenu.visible }
                 ActionMenu { id: gridMenu; entries: backend.gridChoices; onPicked: (v) => backend.setGrid(v) }

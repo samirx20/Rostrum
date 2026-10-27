@@ -86,6 +86,7 @@ def candidates(win, spots: dict, tried: set) -> list:
             and layout_check.near(s.node.seen, s.rect) and s.rect.width() * s.rect.height() <= AREA_MAX * whole
             and min(s.rect.width(), s.rect.height()) >= layout_check.MIN_CLICK
             and s.node.item.property("danger") is not True and not typing(s.node.item) and not SKIP.search(words(s.node.item))]
+    full = [s for s in full if on_top(win, s.node.item, s.rect.center())]      # (a menu over it would take the click)
     layers = {s.node.layer for s in full}
     top = max(layers, key=lambda la: (la != "page", la.count("/")), default="page")
     full = [s for s in full if s.node.layer == top and sig(s) not in tried]     # an open popup takes the clicks
@@ -96,6 +97,23 @@ def candidates(win, spots: dict, tried: set) -> list:
     while any(rows):
         order += [r.pop(0) for r in rows if r]
     return order
+
+
+def on_top(win, item, at) -> bool:
+    """`item` (or something inside it) is the topmost thing at window point `at`: a click there reaches it. An open
+    menu drawn over a page control would take the click (2026-10-27: a File menu's New, read as the page's button
+    moving everything)."""
+    it, p = win.contentItem(), at
+    while True:
+        c = it.childAt(p.x(), p.y())
+        if c is None:
+            break
+        p, it = it.mapToItem(c, p), c
+    while it is not None:
+        if it is item:
+            return True
+        it = it.parentItem()
+    return False
 
 
 def sig(s) -> str:
