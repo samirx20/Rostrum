@@ -86,6 +86,14 @@ class AgentWatch(QObject):
         self._state, self._text, self._message = state, text, text
         self.changed.emit()
 
+    @Slot("QVariantList")
+    def flashItems(self, ids):
+        """Flash these items once, as the person's own (accent): an app's own edit that a person should see land (a
+        copy made off screen, a track added from the Library). Every view that outlines `flash` shows it."""
+        self._flash, self._mine = [str(i) for i in ids], True
+        self._fade.start()
+        self.changed.emit()
+
     # ---- QML ------------------------------------------------------------------------------------------------------
     @Slot(str)
     def askHistory(self, session):

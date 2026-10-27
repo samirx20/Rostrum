@@ -10,12 +10,13 @@ Item {
     property int pad: 2                      // a little outside the item, so the item itself stays readable
     // whose change it shows: bound to the app's bridge (`backend` in both apps); no bridge (a kit demo): the agent's
     property bool mine: typeof backend !== "undefined" && backend && backend.agent ? backend.agent.flashMine === true : false
+    property color tint: "transparent"     // an app's own colour for this outline (unset: accent for the person's, agent's colour)
     enabled: false                           // never takes a click: it is only a sign
     function again() { fade.restart() }
     Component.onCompleted: fade.start()
     Rectangle {
         anchors.fill: parent; anchors.margins: -o.pad
-        color: "transparent"; border.width: 2; border.color: o.mine ? Theme.accent : Theme.agent; radius: Theme.radiusCtl - 2
+        color: "transparent"; border.width: 2; border.color: o.tint.a > 0 ? o.tint : o.mine ? Theme.accent : Theme.agent; radius: Theme.radiusCtl - 2
     }
     NumberAnimation { id: fade; target: o; property: "opacity"; from: 1; to: 0; duration: 1000
                       easing.type: Easing.InQuad

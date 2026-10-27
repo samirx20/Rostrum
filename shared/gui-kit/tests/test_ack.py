@@ -77,14 +77,14 @@ def test_press_shows_in_its_own_frame_and_a_slow_action_shows_life_and_keeps_the
     QTest.mouseMove(win, at)
     QTest.qWait(200)                    # the hover has faded in
     QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, at)
-    assert win.grabWindow().pixelColor(at.x(), at.y() - 8).name() == "#333333", "the press was not drawn in its frame"
+    assert win.grabWindow().pixelColor(at.x(), at.y() - 8).name() == "#3d3d3d", "the press was not drawn in its frame"
     QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, at)
     line = win.findChild(QQuickItem, "line")
     assert ran == [] and button.property("working") and line.isVisible(), "the action ran before its press was drawn"
     assert ack.ACK.property("note") == "Group · 5 layers…"
     _, quick = _centre(win, "quick")
     QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, quick)      # a second click while the first waits
-    assert win.grabWindow().pixelColor(at.x(), at.y() - 8).name() == "#333333", "the working button lost its pressed look"
+    assert win.grabWindow().pixelColor(at.x(), at.y() - 8).name() == "#3d3d3d", "the working button lost its pressed look"
     words = line.findChild(QQuickItem, "workingWords")
     spot = words.mapToScene(words.boundingRect().topLeft())
     seen = {}

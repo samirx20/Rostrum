@@ -88,3 +88,20 @@ def test_value_chip_places_flips_and_lingers(tmp_path):
     wait(600)
     assert not chip.property("visible")
     assert hint_of(Mods(straight=True, copy=True), "resize") == "keep ratio · from centre"
+
+
+def test_a_qml_drag_owns_esc_and_beats_read_plainly(tmp_path):
+    from rostrum_gui.drag import words_beats
+    from rostrum_gui.drag_esc import ESC
+    app, engine, win = _window(tmp_path)
+    got = []
+    ESC.cancelled.connect(lambda: got.append(1))
+    ESC.holdEsc()                                  # a QML drag started (dragEsc.holdEsc())
+    QTest.keyClick(win, Qt.Key_Escape)
+    assert got == [1] and win.property("escs") == 0
+    QTest.keyClick(win, Qt.Key_Escape)             # cancelled: Esc is the window's again
+    assert got == [1] and win.property("escs") == 1
+    ESC.holdEsc(); ESC.letEsc()                    # a drag that ended lets Esc go
+    QTest.keyClick(win, Qt.Key_Escape)
+    assert win.property("escs") == 2
+    assert [words_beats(6), words_beats(-3), words_beats(0.5)] == ["+1 bar 2 beats", "−3 beats", "+½ beat"]

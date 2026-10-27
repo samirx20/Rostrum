@@ -73,8 +73,9 @@ Item {
         words.visible = chipBox.visible = on        // (in the overlay: not hidden with this item)
         if (!on) return
         place()
-        lineIn.start(); chipIn.start(); chipLive.start()
+        chipIn.start(); chipLive.start()
         if (!Theme.reduceMotion) running.start()
-        wordsIn.start()
+        if (w.after === 0) { line.opacity = 1; words.opacity = 1 }   // known long: shown in the very frame ack waits for
+        else { lineIn.start(); wordsIn.start() }                      // (a window drawn on the GUI thread can't fade during the run)
     }
 }

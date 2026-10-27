@@ -76,3 +76,5 @@ def test_the_persons_undo_flashes_what_it_took_back():
     bridge.undo()
     assert bridge.agent.flash == ["cam_1"] and bridge.agent.flashMine
     assert bridge.status.startswith("Undid")
+    bridge.agent.flashItems(["cam_1"])            # an app's own edit it wants seen: the same outline
+    assert bridge.agent.flash == ["cam_1"] and bridge.agent.flashMine

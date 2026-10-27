@@ -61,6 +61,27 @@ CanvasCursor { kind: altHeld ? "dropper" : "none" }     // a held key can change
 - An unknown `kind` or `badge` raises (a scripted run fails) and the pointer shows Qt's "forbidden" shape meanwhile; it never quietly shows nothing.
 - From Python: `cursors.cursor(kind, angle, badge, scale, dpr)` gives the `QCursor` (made once, kept); `cursors.picture(...)` the image and hotspot.
 
+## Moving Sound's stand-in over (`apps\sound\screen\qml\Pointers.js`)
+
+A QML `cursorShape` takes only Qt's stock shapes, so a drawn pointer can't come back from `Pointers.of(name)`. The
+swap is: `Pointers.js` gives each of its names a kit pointer, and the five places that bind `cursorShape:
+Pointers.of(…)` (LaneInput, RollInput, SectionBand, …) put one `CanvasCursor` over their area instead:
+
+```qml
+// Pointers.js
+var kit = { pick: ["pick", ""], moving: ["hand-grab", ""], copy: ["pick", "copy"], trim: ["resize", ""],
+            stretch: ["resize", "centre"], fade: ["resize", ""], fadeOut: ["resize", ""], level: ["resize", ""],
+            draw: ["make", ""], erase: ["pick", "remove"], point: ["pick", "point"] }
+var angle = { fade: -45, fadeOut: 45, level: 90 }        // trim / stretch: 0 (left-right); level: up-down
+// the input area (import RostrumCursors 1.0): instead of  cursorShape: Pointers.of(name)
+CanvasCursor { anchors.fill: parent; kind: Pointers.kit[name][0]; badge: Pointers.kit[name][1]
+               angle: Pointers.angle[name] || 0; altBadge: name === "pick" ? "copy" : "" }
+```
+
+Alt as a held key then shows the copy badge the moment it goes down, mouse still (`altBadge`), so `LaneInput`'s own
+`altHeld ? "copy" : …` is no longer needed. One meaning each (the rules above): `moving` is the closed hand only
+while a move runs; a body you can press is `pick`, not the open hand (the hand means "move the view").
+
 ## How it works
 - **Drawn from SVG** (24 px design: white body, ~1.2 px near-black edge, badges in Theme's accent, `remove` in Theme's danger; the colours are read from `Theme.qml` when drawn). Hotspots live in `cursors.KINDS`, not in the files.
 - **Size:** 1x, 1.5x or 2x, the screen's step (the kit draws its windows at 1x, so the step comes from the screen's dpi: a 150 % screen gets 1.5x pointers, the size of the system's own arrow).

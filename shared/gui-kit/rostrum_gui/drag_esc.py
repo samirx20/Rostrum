@@ -4,6 +4,7 @@ cancels the drag (the document as before, no undo step) and the press's release 
 
     ESC.hold(cancel)       # a drag started (PointerDrag does this itself once the press moves 4 px)
     ESC.let_go(cancel)     # it ended (release or cancel)
+    QML: dragEsc.holdEsc() / dragEsc.letEsc(), and Connections { target: dragEsc; function onCancelled() { … } }
 
 One application event filter, installed on the first hold. Holding again replaces the drag held (a new press can
 only start after the last one ended). A cancel that raises is reported (qt_faults), never swallowed, and the hold is
@@ -11,11 +12,13 @@ let go either way, so Esc is never left eaten.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import QEvent, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
 
 class EscCancels(QObject):
+    cancelled = Signal()          # a drag QML holds (`hold()`) was cancelled by Esc: put it back, record nothing
+
     def __init__(self):
         super().__init__()
         self._cancel, self._installed = None, False
@@ -35,6 +38,18 @@ class EscCancels(QObject):
         """The drag ended. `cancel`: only if it is still the one held (a late release of an older drag lets go nothing)."""
         if cancel is None or cancel == self._cancel:     # (== : a bound method is a new object each read)
             self._cancel = None
+
+    @Slot()
+    def hold_qml(self):
+        """QML's door (the `dragEsc` context value): `dragEsc.holdEsc()` when a QML drag starts, `dragEsc.letEsc()` when
+        it ends; Esc meanwhile sends `cancelled` (the drag puts itself back) and nothing else hears it."""
+        self.hold(self.cancelled.emit)
+
+    @Slot()
+    def let_qml(self):
+        self.let_go(self.cancelled.emit)
+
+    holdEsc, letEsc = hold_qml, let_qml
 
     def press(self) -> bool:
         """Esc pressed: cancel the drag held (True), or nothing held (False). The event filter's work, callable alone."""

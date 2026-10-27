@@ -140,6 +140,8 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     words.setParent(engine)
     ctx.setContextProperty("typedWord", words)
     from rostrum_gui import ack                       # paint, then run (ack.py); Windows' "animation effects" (Theme.reduceMotion)
+    from rostrum_gui.drag_esc import ESC
+    ctx.setContextProperty("dragEsc", ESC)                    # a QML drag owns Esc while it runs (drag_esc.py)
     ctx.setContextProperty("ack", ack.ACK); ctx.setContextProperty("systemReduceMotion", ack.system_reduce_motion())
     for k, v in context.items():
         ctx.setContextProperty(k, v)

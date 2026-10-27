@@ -135,6 +135,20 @@ def words_span(start: float, end: float) -> str:
     return f"{_n(start, 2)} s → {_n(end, 2)} s"
 
 
+def words_beats(beats: float, per_bar: int = 4, signed: bool = True) -> str:
+    """A length or a move in musical time for the value chip: "+1 bar 2 beats", "−3 beats", "+½ beat", "2 bars"."""
+    sign = "−" if beats < 0 else "+" if signed and beats > 0 else ""
+    b = abs(beats)
+    bars, rest = divmod(round(b * 4) / 4, per_bar)
+    frac = {0.25: "¼", 0.5: "½", 0.75: "¾"}
+    whole, part = int(rest), rest - int(rest)
+    beat_words = (f"{whole or ''}{frac[part]}" if part else f"{whole}") if rest else ""
+    out = [f"{int(bars)} bar{'s' if bars != 1 else ''}"] if bars else []
+    if beat_words:
+        out.append(f"{beat_words} beat{'s' if rest > 1 else ''}")
+    return sign + (" ".join(out) or "0 beats")
+
+
 def words_db(db: float) -> str:
     return f"{_n(db, 1)} dB"
 

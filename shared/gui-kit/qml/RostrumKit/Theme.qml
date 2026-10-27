@@ -10,7 +10,7 @@ QtObject {
     readonly property color panel: "#1c1c1c"
     readonly property color raised: "#262626"
     readonly property color hover: "#303030"
-    readonly property color active: "#333333"
+    readonly property color active: "#3d3d3d"         // pressed / open: a clear step past hover, seen in the press frame
     readonly property color sunken: "#101010"       // viewer and timeline track wells
     readonly property color border: "#2e2e2e"
     readonly property color line: "#3a3a3a"         // field underline at rest
