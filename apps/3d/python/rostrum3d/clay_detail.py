@@ -28,12 +28,27 @@ def _clamp(v: float) -> float:
 def bounds(item: dict) -> tuple[list[float], float] | None:
     """(centre, radius) in the clay's own space of a sphere round its added pieces (all pieces when none adds);
     None for a clay with no pieces."""
+    own = balls(item)
+    if not own:
+        return None
+    lo, hi = _box(own)
+    centre = [(a + b) / 2 for a, b in zip(lo, hi)]
+    return centre, max(math.dist(centre, p) + r for p, r in own)
+
+
+def _box(bs):
+    return [min(p[i] - r for p, r in bs) for i in range(3)], [max(p[i] + r for p, r in bs) for i in range(3)]
+
+
+def balls(item: dict) -> list:
+    """[(centre, radius), …] in the clay's own space round its added pieces (all pieces when none adds), mirrored
+    pieces on both sides: what `bounds` measures a clay by (generous: an outline's points get its whole thickness)."""
     pieces = [s for s in item.get("steps", []) if s.get("step") == "piece" and not s.get("hidden")
               and (s.get("at") or s.get("plane"))]
     pieces = [s for s in pieces if s.get("mode", "add") == "add"] or pieces
     if not pieces:
-        return None
-    balls = []
+        return []
+    out = []
     for s in pieces:
         if s.get("plane"):                                            # drawn or spun (CL3): balls round its points
             own = clay_shapes.balls(s)
@@ -42,13 +57,29 @@ def bounds(item: dict) -> tuple[list[float], float] | None:
             own = [(p, s.get("radius", 0.1)) for p in ends]
         if s.get("symmetry") == "x":
             own += [([-p[0], p[1], p[2]], r) for p, r in own]
-        balls += [([float(v) for v in p], float(r)) for p, r in own]
-    if not balls:
-        return None
-    lo = [min(p[i] - r for p, r in balls) for i in range(3)]
-    hi = [max(p[i] + r for p, r in balls) for i in range(3)]
-    centre = [(a + b) / 2 for a, b in zip(lo, hi)]
-    return centre, max(math.dist(centre, p) + r for p, r in balls)
+        out += [([float(v) for v in p], float(r)) for p, r in own]
+    return out
+
+
+def reach(item: dict) -> list[list[float]]:
+    """Points in the clay's own space that reach as far as its added pieces do (all pieces when none adds), mirrored
+    pieces on both sides: what framing measures a clay by (item_bounds). Tighter than `balls`, which stay generous
+    for the detail rule."""
+    pieces = [s for s in item.get("steps", []) if s.get("step") == "piece" and not s.get("hidden")
+              and (s.get("at") or s.get("plane"))]
+    pieces = [s for s in pieces if s.get("mode", "add") == "add"] or pieces
+    out = []
+    for s in pieces:
+        if s.get("plane"):
+            own = clay_shapes.reach(s)
+        else:
+            r = s.get("radius", 0.1)
+            ends = [s["at"]] + ([s["to"]] if s.get("shape") == "capsule" and s.get("to") else [])
+            own = [[c[k] + (sg * r if k == axis else 0.0) for k in range(3)] for c in ends for axis in range(3) for sg in (-1.0, 1.0)]
+        if s.get("symmetry") == "x":
+            own += [[-p[0], p[1], p[2]] for p in own]
+        out += [[float(x) for x in p] for p in own]
+    return out
 
 
 def _frames(start: int, end: int) -> list[int]:

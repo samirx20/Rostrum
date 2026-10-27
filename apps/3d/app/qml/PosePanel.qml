@@ -26,7 +26,7 @@ Item {
             Text { width: panel.labelW; text: "Joints"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body
                    anchors.verticalCenter: parent.verticalCenter }
             Text { objectName: "poseJointCount"; width: parent.width - panel.labelW - findBtn.width - 2 * Theme.grid
-                   text: panel.p.joints; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                   text: panel.p.finding ? "Finding…" : panel.p.joints; color: panel.p.finding ? Theme.fg3 : Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
                    font.features: { "tnum": 1 }; anchors.verticalCenter: parent.verticalCenter }
             Button { id: findBtn; objectName: "poseFindAgain"; text: "Find again"; kind: "ghost"
                      help: "Find the joints from the clay's shape again; joints you placed and bends stay."

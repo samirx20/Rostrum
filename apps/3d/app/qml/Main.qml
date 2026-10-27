@@ -10,7 +10,7 @@ import RostrumKit
 // own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
 // animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
 // same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
-// nothing to reopen. The render sheet (F12, Render, Ctrl+E) is the kit's export sheet in the settings panel's place.
+// nothing to reopen. The render sheet (the ▾ beside Render, Ctrl+E; Render itself and F12 make the Final picture at once) is the kit's export sheet in the settings panel's place.
 // The Render page (Alt+3): the shots and the render queue at the bottom (RenderPage), the shot's render settings on
 // the right (RenderSettings), no header Render (a control never shows twice).
 AppShell {

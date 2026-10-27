@@ -81,6 +81,28 @@ Item {
         }
     }
 
+    Rectangle {     // Pose just chosen on a clay with no joints yet: what it is doing, from the click's own frame
+        objectName: "poseFinding"
+        visible: pl.tool.finding
+        anchors.horizontalCenter: parent.horizontalCenter; y: Math.round(parent.height * 0.42)
+        width: findRow.implicitWidth + 2 * Theme.pad; height: Theme.button
+        radius: Theme.radiusCtl; color: Theme.raised; border.color: Theme.popupEdge; border.width: 1
+        Row {
+            id: findRow
+            anchors.centerIn: parent; spacing: Theme.gap
+            Rectangle {  // a slow pulse: it is working
+                width: 8; height: 8; radius: 4; color: Theme.accent; anchors.verticalCenter: parent.verticalCenter
+                SequentialAnimation on opacity {
+                    running: pl.tool.finding; loops: Animation.Infinite
+                    NumberAnimation { from: 1; to: 0.3; duration: 500 }
+                    NumberAnimation { from: 0.3; to: 1; duration: 500 }
+                }
+            }
+            Text { text: "Finding joints of " + pl.tool.itemName + "…"; color: Theme.fg; font.family: uiFont
+                   font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
+        }
+    }
+
     MouseArea {
         id: area
         objectName: "poseArea"

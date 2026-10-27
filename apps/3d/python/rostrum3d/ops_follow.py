@@ -20,6 +20,8 @@ UNTIL = Param.number("until", label="Until", min=0, max=36000, unit="s",
 AT = Param.number("at", label="At", min=0, max=36000, unit="s", required=True, help="The time, in seconds")
 HEIGHT = Param.number("height", label="Height", min=-1e5, max=1e5, unit="m",
                       help="How far above the surface its Position stands (its Y). Left out: 0, on the surface")
+POSE = Param.toggle("pose", label="Follow the pose", help="Ride the bone of the posed clay (or mesh with bones) "
+                     "nearest where it sits, so it bends with the pose there (an eye on a face). Default: the whole item")
 MOVABLE = tuple(t for t in F.ITEMS if F.param(t, "follow"))       # what can follow or stick (not a rig)
 
 
@@ -41,8 +43,9 @@ def _amount(ctx, id_: str, t: float, value: float):
 
 @R.operation("follow.add", "Make the items ride on another item (a bud on an opening lid): they move and turn with it "
              "from where they stand. With `from` / `until` they are picked up and let go then (followAmount keyed "
-             "1 and 0, held): let go, they stay where they are, never jumping back.",
-             target=MOVABLE, label="Follow", params=[ITEM, FROM, UNTIL])
+             "1 and 0, held): let go, they stay where they are, never jumping back. `pose`: on a posed clay, ride the "
+             "bone nearest where each sits (an eye stays on a turning head); a mirrored copy rides its own side.",
+             target=MOVABLE, label="Follow", params=[ITEM, FROM, UNTIL, POSE])
 def follow_add(ctx, targets, args):
     target = _target(ctx, targets, args)
     start, end = args.get("from"), args.get("until")
@@ -50,6 +53,8 @@ def follow_add(ctx, targets, args):
         ctx.fail(codes.BAD_ARGUMENT, "until", f"is at {end} s, not after from ({start} s)")
     for t in targets:
         ctx.set(t, "follow", target)
+        if args.get("pose") or ctx.item(t).get("followPose"):
+            ctx.set(t, "followPose", bool(args.get("pose")))
         if start:
             _amount(ctx, t, 0.0, 0.0)
             _amount(ctx, t, start, 1.0)

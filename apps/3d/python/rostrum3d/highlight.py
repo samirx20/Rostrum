@@ -89,6 +89,32 @@ def place(kind: str, eye, point, normal, distance: float) -> dict:
             "roll": UPRIGHT.get(kind, 0.0)}
 
 
+PANEL_TIMES = 0.6            # a new panel is at most 0.6 × its distance across: a softbox's size, still soft
+SIZES = {"rect": ("width", "height"), "strip": ("length", "width"), "disk": ("radius",)}
+
+
+def fit_panel(kind: str, v: dict, values: dict, distance: float) -> dict:
+    """A new panel's size fields for where `place` put it (`values`): no wider than PANEL_TIMES × the distance, and
+    its lowest edge above the floor (y 0, as `place` takes it). A 1 m starting panel 0.3 m from a small character
+    reached under the floor, and the floor right beside it glowed in a hard-edged wedge where its plane met the ground
+    (CL7). The panel's proportions stay; {} when nothing changes (a bulb, spot or sun, or a panel already small)."""
+    keys = SIZES.get(kind)
+    if not keys:
+        return {}
+    half = max(v.get(k, 1.0) for k in keys) * (1.0 if kind == "disk" else 0.5)
+    most = PANEL_TIMES * distance / 2
+    pos = [values["x"], values["y"], values["z"]]
+    to = [values["aimX"], values["aimY"], values["aimZ"]]
+    way = _unit(_sub(to, pos)) if math.dist(pos, to) > 1e-9 else [0.0, -1.0, 0.0]
+    tilt = math.sqrt(max(0.0, 1.0 - way[1] ** 2))      # how far the panel's face leans out of level: its edges dip
+    if pos[1] > 0 and to[1] >= 0 and tilt > 1e-6:
+        most = min(most, 0.9 * pos[1] / (math.sqrt(2.0) * tilt))   # a corner's dip at most √2 × half × tilt
+    if half <= most:
+        return {}
+    s = most / half
+    return {k: round(v.get(k, 1.0) * s, 4) for k in keys}
+
+
 def item_size(world, v: dict) -> float | None:
     """A mesh's largest extent in metres (its shape's size times its world scale); None when the shape has no size."""
     size = shape_size.extent(v)

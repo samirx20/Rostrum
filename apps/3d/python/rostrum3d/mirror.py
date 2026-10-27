@@ -59,10 +59,19 @@ def values(fr, id_: str, f: int) -> dict:
     item = fr.items[id_]
     orig, clay = targets(fr.items, id_)
     v = dict(fr.values(orig, f))
-    world = mirrored(fr.world(orig, f), fr.world(clay, f), v["shape"])
+    if posed(fr.items[orig]):                         # it rides its own side's bone: unridden, mirrored at rest, ridden
+        still = aim.compose(aim.invert(follow.ride(fr, orig, f)), fr.world(orig, f))
+        world = aim.compose(follow.ride(fr, id_, f), mirrored(still, fr.world(clay, 0), v["shape"]))
+    else:
+        world = mirrored(fr.world(orig, f), fr.world(clay, f), v["shape"])
     v.update(follow.decompose(aim.compose(aim.invert(_parent(fr, id_, f)), world)))
-    v.update(px=0.0, py=0.0, pz=0.0, aim="none", follow="", stick="", **{k: item[k] for k in FIELDS})
+    v.update(px=0.0, py=0.0, pz=0.0, aim="none", follow="", followPose=False, stick="", **{k: item[k] for k in FIELDS})
     return v
+
+
+def posed(orig: dict) -> bool:
+    """The original follows a pose (follow.py followPose): its copy rides the bone on its own side."""
+    return bool(orig.get("follow") and orig.get("followPose"))
 
 
 def stored(orig: dict) -> dict:
@@ -126,7 +135,7 @@ def redirect(data: dict, id_: str, args: dict) -> list[tuple[str, str, object]]:
 def _moved_back(fr, id_, orig, clay, moved: dict) -> dict:
     """The original's x … sz that put the copy where `moved` says (time 0)."""
     o = fr.items[orig]
-    worked = [w for w, on in (("its aim", o.get("aim", "none") != "none"), ("Follow", o.get("follow")),
+    worked = [w for w, on in (("its aim", o.get("aim", "none") != "none"), ("Follow", o.get("follow") and not posed(o)),
                               ("Stick to", o.get("stick")), ("a pivot", any(o.get(p) for p in ("px", "py", "pz"))),
                               ("keys", any(k.get("prop") in TRS for k in o.get("keys", []))))
               if on]
@@ -135,6 +144,8 @@ def _moved_back(fr, id_, orig, clay, moved: dict) -> dict:
                          f"move {orig} instead (its copy follows)")
     want = {**fr.values(id_, 0), **moved}
     world = aim.compose(_parent(fr, id_, 0), aim.local(want))
+    if posed(o):                                      # the copy rides its bone: take the ride off first
+        world = aim.compose(aim.invert(follow.ride(fr, id_, 0)), world)
     back = mirrored(world, fr.world(clay, 0), o.get("shape", "box"))      # a mirror twice is no mirror
     new = follow.decompose(aim.compose(aim.invert(_parent(fr, orig, 0)), back))
     return {k: round(v, 6) for k, v in new.items() if abs(v - o.get(k, 1.0 if k[0] == "s" else 0.0)) > 1e-7}

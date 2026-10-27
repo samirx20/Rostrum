@@ -126,7 +126,12 @@ std::vector<Step> stroke_along(Volume& v, const Brush& b, const std::vector<V3>&
   for (const V3& p : points) rs.push(p, samples);
   StrokeDabs sd(v, b);
   v.begin_stroke();
-  for (const V3& p : samples) sd.add(sub(p, mul(dir, back)), dir, 2 * back);
+  // each point first looks for the surface within `back` of itself (a path traced on the clay); a point that misses
+  // (CL7: an agent's path a little in front of the clay, e.g. z 0.3 over a face at z 0.08) follows its ray on, along
+  // dir, to wherever it meets the clay (the cast stops at the clay's box, so the far reach costs nothing)
+  constexpr float kFar = 1.0e4f;
+  for (const V3& p : samples)
+    if (!sd.add(sub(p, mul(dir, back)), dir, 2 * back)) sd.add(p, dir, kFar);
   v.end_stroke(sd.dabs());
   return sd.dabs();
 }

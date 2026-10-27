@@ -35,11 +35,12 @@ def place_highlight(ctx, targets, args):
             values = H.place(kind, eye, point, normal, dist)
         except ValueError as e:
             ctx.fail(codes.BAD_ARGUMENT, f'light "{t}"', str(e))
+        if args.get("brightness"):                      # a light just added: a panel sized for here, then its brightness
+            values.update(H.fit_panel(kind, item, values, dist))
+            values["intensity"] = H.start_intensity(kind, {**item, **values}, dist)
         parent = _parent(ctx.doc, t)
         if parent:
             values = H.to_parent(C.world_at_start(ctx.doc, parent), values)
-        if args.get("brightness"):
-            values["intensity"] = H.start_intensity(kind, item, dist)
         for k, v in values.items():
             ctx.set(t, k, round(v, 6) if isinstance(v, float) else v)
     return ctx.item(targets[0])

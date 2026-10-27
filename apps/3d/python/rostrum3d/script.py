@@ -104,8 +104,9 @@ class Item:
         mesh's top, over its middle (move it along the top afterwards with .set(x=…, z=…)); both unturned. With
         `at=(x, y, z)`, a point in the world on `other`'s surface (a clay or a mesh made earlier anywhere): its base
         on the surface there, standing along `normal` (left out: straight out from `other`'s upright middle line).
-        On a clay whose Mirror is on, a point off its middle also makes the mesh's mirrored copy, which follows it
-        (mesh.mirror; edit_place_on does the same from a pixel of a look)."""
+        On a clay whose Mirror is on, a point off its middle (farther than the mesh's half size) also makes the
+        mesh's mirrored copy, which follows it (mesh.mirror; edit_place_on does the same from a pixel of a look). On a
+        clay the mesh also follows its pose (follow=<clay>, followPose): posed, it moves with the bone nearest it."""
         if at is not None:
             return self._place_at(other, [float(c) for c in at], normal)
         o = other.node if isinstance(other, Item) else next(
@@ -133,6 +134,8 @@ class Item:
             normal = normal if math.hypot(*normal) > 1e-9 else [0.0, 1.0, 0.0]
         placed = surface_place.stand(self.node, at, [float(c) for c in normal])
         self.set(**surface_place.into_parent(placed, fr.world(holder, 0) if holder else aim.IDENTITY))
+        if self._b.taken[oid] == "clay":    # it bends with the clay's pose there (follow.py followPose)
+            self.set(follow=oid, followPose=True)
         if surface_place.mirrors(fr.items[oid], world, at, shape_size.extent(self.node) or 0.0):
             self._b.item("mesh", f"{self.id}_mirrored", name=f"{self.node['name']}{mirror.SUFFIX}", **mirror.stored(self.node), mirror=self.id,
                          mirrorOn=oid)
@@ -155,6 +158,15 @@ class Item:
         return self._step(piece_values(self.node, {"at": list(at), "radius": radius,
                                                    "to": list(to) if to is not None else None, **values},
                                        "capsule" if to is not None else "sphere"))
+
+    def shape(self, shape: str, at, radius: float = 0.15, to=None, **values) -> "Item":
+        """An exact piece, as clay.shape: shape="sphere" or "capsule" (to its other end `to`); mode, blend, symmetry,
+        name. The same piece `lump` makes, with the shape said out loud."""
+        if shape not in ("sphere", "capsule"):
+            raise ValueError(f'clay shape "{shape}": sphere or capsule')
+        if shape == "capsule" and to is None:
+            raise ValueError("a capsule needs `to`, its other end")
+        return self.lump(at, radius, to if shape == "capsule" else None, **values)
 
     def stroke(self, **values) -> "Item":
         """A clay's brush stroke: path=[(x, y, z) …] + dir=(x, y, z) (each dab where a ray along dir meets the clay),

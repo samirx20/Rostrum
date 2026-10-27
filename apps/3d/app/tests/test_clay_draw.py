@@ -1,6 +1,7 @@
 """Clay's Draw (clay_draw_qt.py, ClayDraw.qml), by real mouse input on the drawn layer: what would break silently is an
 outline drawn on the picture landing as points off one plane (a twisted or flattened shape), the plane not standing on
-the ground under the outline, a drag making more than one change, and Esc mid-drag leaving something behind. No engine:
+the ground under the outline, a drag making more than one change, the release not showing at once (the outline is
+kept, filled, until the clay is built), and Esc mid-drag leaving something behind. No engine:
 its pick answers "nothing here" (the ground rule); the operation is recorded, not run."""
 import os
 import sys
@@ -89,7 +90,8 @@ def test_a_drawn_outline_is_one_new_clay_on_one_upright_plane_on_the_ground(draw
     last = _drag(win, pts)
     assert drawer.chip.endswith("cm"), drawer.chip                       # the size while drawing
     QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, last)
-    QTest.qWait(10)
+    assert len(drawer.landing) > 20 and tool.calls == []                 # at once: the outline kept, filled; the change a frame later
+    QTest.qWait(80)
     assert not tool.fails, tool.fails
     assert len(tool.calls) == 1 and len(tool.calls[0][0]) == 1           # one change, one operation
     call = tool.calls[0][0][0]
@@ -112,5 +114,5 @@ def test_esc_mid_drag_drops_the_outline_and_changes_nothing(drawing):
     assert esc3d.step(b) == "draw"
     assert drawer.line == [] and not drawer.drawing
     QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, last)
-    QTest.qWait(10)
-    assert tool.calls == [] and tool.fails == []
+    QTest.qWait(80)
+    assert tool.calls == [] and tool.fails == [] and drawer.landing == []

@@ -52,10 +52,66 @@ def into_parent(args: dict, parent_world) -> dict:
 
 
 def mirrors(clay: dict | None, clay_world, point, size: float) -> bool:
-    """Whether a part of `size` put at world `point` on `clay` gets a mirrored copy: the clay's Mirror is on and the
-    point is off its mirror (on it, the part sits across the middle: a nose, not an eye)."""
+    """Whether a part `size` across put at world `point` on `clay` gets a mirrored copy: the clay's Mirror is on and the
+    point is farther from its mirror than the part's own half size, so the two don't overlap (on the middle, the part
+    sits across it: a nose, not an eye)."""
     if not clay or clay.get("type") != "clay" or clay.get("symmetry", "x") != "x":
         return False
     local = aim.point(aim.invert(clay_world), list(point))
-    scale = math.hypot(*(clay_world[0][r][0] for r in range(3))) or 1.0
-    return abs(local[0]) * scale > ON_THE_MIRROR * size
+    return abs(local[0]) * _scale(clay_world) > ON_THE_MIRROR * size
+
+
+# ---- a part's size from the spot (SPEC §1 at 3:40: "a small ball sits on the face, sized for the face") ------------
+SHARE = 0.16                         # a part on a clay: this share of the clay's width at the spot (an eye: ~1/6 face)
+SMALLEST = 0.004                     # metres: never smaller than this
+
+
+def _scale(world) -> float:
+    return math.hypot(*(world[0][r][0] for r in range(3))) or 1.0
+
+
+def _chord(poly, x: float, y: float) -> float | None:
+    """The length of the piece of the horizontal line through (x, y) inside the closed 2-D outline, around x."""
+    xs = sorted(a[0] + (y - a[1]) * (b[0] - a[0]) / (b[1] - a[1])
+                for a, b in zip(poly, [*poly[1:], poly[0]]) if (a[1] > y) != (b[1] > y))
+    return next((r - l for l, r in zip(xs[::2], xs[1::2]) if l <= x <= r), None)
+
+
+def _width(step: dict, p) -> float | None:
+    """How wide the step's own shape is at the clay-space point p (across, through p); None when p isn't in it."""
+    shape = step.get("shape", "sphere")
+    if shape in ("sphere", "capsule"):
+        return 2 * float(step.get("radius", 0.1))
+    pl = step.get("plane") or []
+    if len(pl) != 9:
+        return None
+    o, u, v = pl[:3], pl[3:6], pl[6:]
+    w = [a - b for a, b in zip(p, o)]
+    x, y = sum(a * b for a, b in zip(w, u)), sum(a * b for a, b in zip(w, v))
+    if shape == "outline" and len(step.get("outline") or []) >= 3:
+        poly = step["outline"]
+        found = [c for c in (_chord(poly, x, y), _chord([q[::-1] for q in poly], y, x)) if c]
+        return min(found) if found else None
+    if shape == "spin" and len(step.get("profile") or []) >= 2:
+        r = math.sqrt(max(0.0, sum(c * c for c in w) - y * y))
+        prof = step["profile"]
+        c = _chord([[0.0, prof[0][1]], *prof, [0.0, prof[-1][1]]], min(r, 1e-6), y)
+        return 2 * c if c else None
+    return None
+
+
+def part_size(clay: dict | None, clay_world, point) -> float | None:
+    """How big (across, metres) a part placed at world `point` on `clay` is: SHARE of the clay's width there (the
+    width of the drawn or spun shape, or the lump, that made that spot, across through it: a face's width on a
+    head, a belly's on a body). None for anything else (the caller keeps its own size rule)."""
+    if not clay or clay.get("type") != "clay":
+        return None
+    from . import step_find
+    steps = [s for s in step_find.live(clay.get("steps", [])) if s.get("step") != "stroke" and s.get("mode") != "carve"]
+    p = aim.point(aim.invert(clay_world), list(point))
+    i, _ = step_find.owners(steps, [p])
+    if i[0] < 0:
+        return None
+    step = steps[int(i[0])]
+    width = _width(step, p) or (_width(step, [-p[0], p[1], p[2]]) if step.get("symmetry") == "x" else None)
+    return max(SMALLEST, round(width * _scale(clay_world) * SHARE, 4)) if width else None

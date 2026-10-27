@@ -8,19 +8,23 @@
 - Release: the press's pick decides the plane (clay_draw.plane_for) and the pixels become points on it: on a clay,
   `clay.draw` / `clay.spin` on that clay in its own space; elsewhere `clay.add(draw=…)` / `clay.add(spin=…)` in the
   scene. One change, one undo step; the clay is selected after. (A click or a scribble: the operation makes a lump.)
+- From the release until the new clay is in the picture (the engine builds it: a second or two), the outline stays on
+  the viewport, closed and filled with a clay grey (`landing`), so the release reacts at once (common brief, speed vs.
+  interaction); the operation runs a frame after the release, once that is drawn.
 - Esc mid-drag (esc3d.py), or the drag taken away: the line goes, nothing changes, no undo step.
 The whole drag uses the scene and camera of its press; the press's pick is asked at once and the release waits for it.
 Picks go to the viewport's engine thread, the newest hover only (as the brush ring's).
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from . import clay_draw as D
 from . import clay_ring as R
 from .gizmo import View
 
 MIN_STEP = 2.0               # logical px between kept points of the line
+LANDING_MAX_MS = 8000        # the filled outline goes then at the latest (a picture that never comes is said elsewhere)
 
 
 class ClayDraw(QObject):
@@ -35,8 +39,12 @@ class ClayDraw(QObject):
         self._hover, self._hover_busy, self._hover_next = 0, False, None
         self._join, self._axis, self._chip, self._dpr = "", [], "", 1.0
         self._scene = self._cam = self._view = None
+        self._landing, self._landed_wait = [], False
+        self._landing_max = QTimer(self, singleShot=True, interval=LANDING_MAX_MS, timeout=self._landing_gone)
         self.answered.connect(self._on_answer)
         tool.changed.connect(self.changed)
+        if (pictures := getattr(tool.v, "serialChanged", None)) is not None:     # (a test's stand-in viewport has none)
+            pictures.connect(self._on_picture)
 
     # --- what QML reads
     on = Property(bool, lambda s: s.t.draws, notify=changed)
@@ -45,6 +53,8 @@ class ClayDraw(QObject):
     chip = Property(str, lambda s: s._chip, notify=lineChanged)
     axis = Property("QVariantList", lambda s: s._axis, notify=lineChanged)      # Spin: parts of the picture
     joining = Property(str, lambda s: s._join, notify=lineChanged)               # the clay under the pointer
+    landing = Property("QVariantList", lambda s: [list(p) for p in s._landing], notify=lineChanged)   # released, not yet built
+    landingFilled = Property(bool, lambda s: s.t.tool != "spin", notify=lineChanged)                 # Draw fills; Spin is a profile
 
     @property
     def drawing(self) -> bool:
@@ -197,8 +207,9 @@ class ClayDraw(QObject):
         return D.size_text(D.lift(self._view, pts_px, plane[0], plane[1]), plane[1])
 
     def _finish(self):
-        """The release, its press's pick known: one operation, then the clay selected."""
-        b, mode, pts_px = self.t.b, self.t.tool, self._px()
+        """The release, its press's pick known: the operation worked out now (the drag's own scene and view), the
+        outline kept on screen filled, and the operation applied a frame later, once that is drawn."""
+        b, mode, pts_px, line = self.t.b, self.t.tool, self._px(), list(self._pts)
         self._pts, self._chip = [], ""
         self.lineChanged.emit()
         if isinstance(self._start, str):
@@ -211,12 +222,33 @@ class ClayDraw(QObject):
         if not pts:
             return b.fail_line("Error: clay: that outline is off the plane it would stand on; draw it over the ground.")
         call, label = self.calls(mode, pts, normal, clay)
+        self._landing, self._landed_wait = line, False
+        self._landing_max.start()
+        self.lineChanged.emit()
+        QTimer.singleShot(30, lambda: self._make(call, label, clay))
+
+    def _make(self, call, label, clay):
+        """One operation, one undo step; then the clay selected, the outline kept until the picture shows it."""
+        b = self.t.b
         before = set(self.t._all_clays())
         if not b._guard(lambda: b._apply([call], label)):
-            return
+            return self._landing_gone()
+        self._landed_wait = True                            # the next settled picture takes the outline away
         new = clay or next((c for c in self.t._all_clays() if c not in before), "")
         if new and b.doc.has(new):
             b.select(new)
+
+    def _landing_gone(self):
+        self._landing_max.stop()
+        if self._landing:
+            self._landing, self._landed_wait = [], False
+            self.lineChanged.emit()
+
+    def _on_picture(self):
+        """A new viewport picture: once the engine holds no newer scene to load, the new clay is in it."""
+        r = getattr(self._v(), "_r", None)
+        if self._landed_wait and not getattr(r, "_loading", False) and getattr(r, "_want", None) is None:
+            self._landing_gone()
 
     def calls(self, mode, pts, normal, clay):
         """(the operation, its History name) for world points `pts` on a plane facing `normal`, joining `clay` or new."""

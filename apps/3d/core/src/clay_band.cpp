@@ -325,6 +325,7 @@ void run_dabs(const DabUnit& du) {
         if (m >= 1.0f) V[i] = old;
         else if (m > 0.0f) V[i] = old + (V[i] - old) * (1.0f - m);
       }
+      if (du.moved) du.moved[i] += V[i] - old;  // (each voxel is listed once per dab: no two threads write it)
     });
     // back to the stored band, on the narrow band only: unchanged band voxels stay; changed ones next to the
     // surface are re-scaled by their own gradient; the rest of the band is re-levelled from them

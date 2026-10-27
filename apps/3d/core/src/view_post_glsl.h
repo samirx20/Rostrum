@@ -26,6 +26,11 @@ bool empty(ivec2 p) { return texelFetch(depthTex, clamp(p, ivec2(0), isize - 1),
 
 // Contact shading: how much of the hemisphere over each point nearby surfaces hide, within `radius` scene units
 // (24 samples on a spiral turned per pixel; the combine pass smooths the grain). 1 = open, 0 = closed in.
+// The samples crowd towards the point (distance ~ t^1.5, not the even spread of sqrt t): where a thing touches the
+// floor the darkness lives in the last few centimetres, and evenly spread samples (up to 160 px out) all but missed
+// it, so a ball on the ground looked lit underneath and floating (3d-cl7). Squared at the end: Storm's sky light is
+// unshadowed, so this pass is the only thing that takes it away, and a straight estimate came out about half as dark
+// as Cycles at a contact.
 constexpr const char* kAo = R"(
 uniform float radius;     // scene units
 uniform float pxPerUnit;  // picture pixels per scene unit at distance 1
@@ -46,12 +51,13 @@ void main() {
   float occ = 0.0, r2 = radius * radius;
   for (int i = 0; i < n; ++i) {
     float t = (float(i) + 0.5) / float(n), a = float(i) * 2.3999632 + turn;
-    vec3 v = viewPos(p + ivec2(round(vec2(cos(a), sin(a)) * rpx * sqrt(t)))) - P;
+    vec3 v = viewPos(p + ivec2(round(vec2(cos(a), sin(a)) * max(rpx * t * sqrt(t), 1.0)))) - P;
     float vv = dot(v, v);
     float near = vv / r2;
     occ += max(0.0, 1.0 - near * near) * max(0.0, dot(v, N) * inversesqrt(vv + 1e-12) - 0.05) / 0.95;
   }
-  ao = clamp(1.0 - 2.0 * occ / float(n), 0.0, 1.0);
+  float open = clamp(1.0 - 2.0 * occ / float(n), 0.0, 1.0);
+  ao = open * open;
 })";
 
 // The colour with the contact shading laid in: the shading smoothed over 5 x 5 pixels of about the same depth,
