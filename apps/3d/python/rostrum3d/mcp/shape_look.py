@@ -97,7 +97,7 @@ def look_shape(ctx, args):
                            "is not a clay or a mesh" if item else "is not an item of this document",
                            sorted(i["id"] for i in doc.items() if i.get("type") in ("clay", "mesh", "combine")))
     engine = draw.engine_of(ctx)
-    dest = look_path(f'{doc.item_id or "doc"}_{item["id"]}_shape')
+    dest = look_path(f'{doc.item_id or "doc"}_{item["id"]}_shape', project=doc.folder)
 
     def job_fn(job):
         if item["type"] == "clay":

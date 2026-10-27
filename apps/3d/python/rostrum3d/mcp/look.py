@@ -57,7 +57,7 @@ def look_frame(ctx, args):
         info = {**info, "camera": _through(ctx, scene, args["through"], frame, w / h)}
     wanted = step_look.chosen(ctx, doc, args["highlight"]) if args.get("highlight") else None
     ghosts = onion_look.ghosts_of(ctx, doc, info, frame, args["onion"], renderer) if args.get("onion") else None
-    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_f{frame}_{renderer}' + ("_onion" if args.get("onion") else ""))
+    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_f{frame}_{renderer}' + ("_onion" if args.get("onion") else ""), project=doc.folder)
 
     def job_fn(job):
         what = f"frame {frame} of {info['id']}"
@@ -115,7 +115,7 @@ def look_sheet(ctx, args):
     w, h = size_of(info, {"width": tile_w})
     cols = args.get("cols", min(3, len(frames)))
     scene, engine = draw.scene_of(doc, info["id"]), draw.engine_of(ctx)
-    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_sheet_{renderer}')
+    dest = look_path(f'{doc.item_id or "doc"}_{info["id"]}_sheet_{renderer}', project=doc.folder)
 
     def job_fn(job):
         with tempfile.TemporaryDirectory(prefix="rostrum3d_sheet_") as tmp:

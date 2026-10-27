@@ -17,6 +17,9 @@ and framed before you add anything; change or delete any of them like any item (
 2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
+   Every look picture is saved in the project's `looks` folder (the reply gives its full path); it stays after the session.
+   A look that takes longer than a moment (a `final` one, a busy machine) answers "Job … is running" with a `job_id`:
+   ask `inspect_job` with it (and `wait_s`) for the picture. Read the picture only from the finished reply.
    - `look_frame` — one frame. Quality `fast` (Storm) tells you composition, scale, framing and motion in about a second;
      `final` (Cycles) tells you light, glass, shadows, reflections. Use `renderer: "stylized"` to see the stylized look. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only

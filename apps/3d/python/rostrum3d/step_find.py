@@ -141,11 +141,16 @@ def owners(steps: list[dict], p, dabs=None) -> tuple[np.ndarray, np.ndarray]:
     if not steps:
         return np.full(len(p), -1), np.full(len(p), INF)
     d = np.abs(np.stack([distance(p, s, dabs) for s in steps]))          # (steps, N)
-    best = d.min(axis=0)
     size = float(np.ptp(p, axis=0).max()) if len(p) > 1 else 0.0
     from .clay_detail import bounds
     ball = bounds({"steps": steps})
     tie = max(TIE_MIN, TIE * (ball[1] * 2 if ball else size))
+    # A step reaches only as far as its blend (plus a close call) from its own shape: the shapes here are estimates,
+    # and a body's can sit centimetres off the real surface, so a small brow 2 cm away mustn't claim half the head.
+    reach = np.array([float(s.get("blend") or 0.0) for s in steps])[:, None] + tie
+    within = np.where(d <= reach, d, INF)
+    d = np.where(np.isfinite(within).any(axis=0)[None, :], within, d)    # no step in reach: the nearest, as before
+    best = d.min(axis=0)
     close = d <= (best + tie)[None, :]
     idx = len(steps) - 1 - np.argmax(close[::-1], axis=0)               # the latest close step
     idx = np.where(np.isfinite(best), idx, -1)
