@@ -1,4 +1,5 @@
 import QtQuick
+import RostrumCursors 1.0
 
 // How the pointer moves the canvas's view (INTERACTION 1.12), over every tool: Ctrl+wheel and pinch zoom around the
 // pointer, the wheel scrolls (Shift: sideways), Space held + drag pans (middle-drag: Stage's well, a DragHandler there,
@@ -13,7 +14,7 @@ Item {
         visible: spaceKey.held                  // there only while Space is down (else it is no click target at all)
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
-        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        CanvasCursor { anchors.fill: parent; kind: parent.pressed ? "hand-grab" : "hand" }     // the hand: moving the view, nothing else (CURSORS.md)
         property point last
         onPressed: (m) => { spaceKey.use(); last = Qt.point(m.x, m.y) }
         onPositionChanged: (m) => { vi.view.panBy(m.x - last.x, m.y - last.y); last = Qt.point(m.x, m.y) }

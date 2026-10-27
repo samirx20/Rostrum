@@ -13,8 +13,9 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import Property, QObject, Slot
 from rostrum2d.evaluate import resolve
+from rostrum_gui.drag import words_angle, words_size
 
-from . import bounds, exprs, layout_drag, line_ends, route, transform as T
+from . import bounds, drag_chip, exprs, layout_drag, line_ends, picking, route, transform as T
 from .shape_handle_slots import wraps
 
 OWN_SIZE = ("shape", "image")                 # types whose Width / Height can be keyed (fields.py); a group is resized by Scale, so what is in it grows with it
@@ -39,14 +40,35 @@ class HandleSlots:
         """The layers selected together (multi.py)."""
         return self._multi
 
+    @Property(QObject, constant=True)
+    def dragChip(self):
+        """The value chip by the pointer during a canvas drag (drag_chip.py; the kit's DragLabel in Stage.qml)."""
+        return drag_chip.view_of(self)
+
     @Slot(float, float, result=str)
     def layerAt(self, x, y):
         """What a click at (x, y) composition px would select (picking.py), without selecting it ("" for none)."""
         return self._multi.target(x, y, "click")
 
-    @Slot(int, int, float, result=str)
+    @Slot(float, float, bool, result="QVariantMap")
+    def hoverAt(self, x, y, deep):
+        """The Move tool's hover (Stage.qml's hover outline and pointer badges): what a press at (x, y) composition px
+        would pick, by the press's own rule (multi.target: "click", or "deep" with Ctrl), with its box on screen
+        ({x, y, w, h, rot, ax, ay}); `grouped`: Ctrl would pick a deeper piece there; `picked`: it is picked already.
+        {} = nothing painted there. One look at the kept boxes, no picture made (~1 ms a move at 200 layers)."""
+        chain = bounds.pick_chain(self.placed(), self._t, x, y)
+        sel = self._multi.layers()[0] if self._multi.layers() else ""
+        click = picking.choose(chain, sel, picking.groups_of(self.doc, sel) if sel else [], "click")
+        hit = chain[-1] if deep and chain else click
+        box = next(iter(self.shown_boxes([hit])), None) if hit else None
+        if box is None:
+            return {}
+        return {**{k: box.get(k, 0) for k in ("x", "y", "w", "h", "rot", "ax", "ay")},
+                "id": hit, "grouped": bool(chain) and chain[-1] != click, "picked": self._multi.has(hit)}
+
+    @Slot(int, int, float, result=float)
     def resizeCursor(self, hx, hy, rot):
-        """The arrow a resize knob shows on a layer turned `rot` degrees (transform.resize_cursor)."""
+        """The angle of the `resize` pointer a knob shows on a layer turned `rot` degrees (transform.resize_cursor)."""
         return T.resize_cursor(hx, hy, rot)
 
     def _handle_grab(self, label, fields_of):
@@ -115,6 +137,7 @@ class HandleSlots:
                 sets[axis] = -sets.get(axis, p[axis])
         if not g.placed:
             sets.update({"x": r["x"], "y": r["y"]})
+        drag_chip.say(self, words_size(abs(r["w"]), abs(r["h"])), "resize", shift, alt)
         # fresh: on the values from before the drag, so a Stretch mirrored on one step and not on the next goes back
         self._guard(lambda: self._drag.preview([route.value_call(item, k, round(v, 2), self.own_t(item["id"])) for k, v in sets.items()], fresh=True))
 
@@ -145,4 +168,5 @@ class HandleSlots:
         g.last = a
         item = self.doc.item(g.layer)
         turned = -g.turned if b.get("pm") else g.turned            # in a mirrored group, a turn on screen is the other way round in it
+        drag_chip.say(self, words_angle(round(T.rotate(g.p["rotation"], turned, shift), 1)), "turn", shift)
         self._guard(lambda: self._drag.preview([route.value_call(item, "rotation", round(T.rotate(g.p["rotation"], turned, shift), 2), self.own_t(g.layer))]))

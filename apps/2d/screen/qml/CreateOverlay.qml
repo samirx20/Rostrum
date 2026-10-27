@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import RostrumCursors 1.0
 
 // The creation tools over the canvas (screen2d/create.py does the work; the tool rail, R, O and T turn them on).
 // A shape kind (Rectangle, Ellipse, Star, … backend.create.kinds): press-drag-release draws one (Shift = square / round,
@@ -12,6 +13,7 @@ import RostrumKit
 // the Stage's mapping only (compScale, fromComp, toComp), turned and scaled as the text is. Until the engine's picture of
 // a key lands, the box draws the typed words itself in the text's font and colour (backend.create.ink, typed_ink.py),
 // so a letter shows under the caret at once and the picture takes over unseen. It lies in the canvas (Stage.qml).
+// Pointers (CURSORS.md): a shape tool `make`; the Text tool `text-box` (a click: words there, a drag: a box to wrap in).
 Item {
     id: ov
     property Item stage
@@ -32,7 +34,7 @@ Item {
         anchors.fill: parent
         enabled: (ov.creating || ov.create.typing) && !backend.playing && !spaceKey.held   // Space held: the view pans (ViewInput.qml)
         visible: enabled                                  // out of the way (and of the layout check) unless a creation tool is on
-        cursorShape: Qt.CrossCursor
+        CanvasCursor { anchors.fill: parent; kind: ov.shapeTool ? "make" : "text-box" }
         preventStealing: true
         property point p0
         property real px: 0

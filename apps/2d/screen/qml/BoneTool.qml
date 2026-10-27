@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import RostrumCursors 1.0
 
 // The Bone tool over the canvas (screen2d/bone_tool.py does the work; J or the tool rail, only with a rig in hand).
 // Click joint after joint, or press at a joint and drag to the bone's tip: each bone is one change, and the next starts
@@ -20,8 +21,8 @@ Item {
         enabled: ov.on && !spaceKey.held         // Space held: the view pans (ViewInput.qml)
         visible: enabled
         hoverEnabled: true
-        cursorShape: Qt.CrossCursor
         preventStealing: true
+        CanvasCursor { anchors.fill: parent; kind: "make" }        // a new bone (CURSORS.md)
         property bool going: false
         onPressed: (m) => { const p = ov.toComp(m.x, m.y); going = ov.tool.press(p.x, p.y, ov.near) }
         onPositionChanged: (m) => { const p = ov.toComp(m.x, m.y); ov.tool.hover(p.x, p.y) }

@@ -221,21 +221,33 @@ class MotionPath(QObject):
         """Ctrl+click on a shown path's line (canvas point x, y, world px; within `limit` world px): a position key at
         the time of the frame dot under the pointer, holding the place the path has there (After Effects), so the
         path keeps its course. One undo step, the same value.set x, y {at} an agent calls. False: no line there."""
+        hit = self._line_at(x, y, limit)
+        if hit is None:
+            return False
+        oid, owner, t = hit
+        if self._owner_ok(oid) is None:
+            return True
+        at, (vx, vy) = self.b.own_t(oid, t), G.position(owner)(t)
+        calls = [{"op": "value.set", "target": [oid], "args": {"prop": f, "at": at, "v": round(v, 2)}}
+                 for f, v in (("x", vx), ("y", vy))]
+        self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label="Add a path key"), ""))
+        return True
+
+    @Slot(float, float, float, result=bool)
+    def onLine(self, x: float, y: float, limit: float) -> bool:
+        """A Ctrl+click at (x, y) would add a key (addKeyAt's own test): the canvas pointer's "+" while Ctrl is held."""
+        return self._line_at(x, y, limit) is not None
+
+    def _line_at(self, x, y, limit):
+        """(owner id, owner, time) of the shown path line within `limit` world px of (x, y); None: none there."""
         for p in self.paths:
             if p["faint"]:
                 continue
             owner = self.b.placed_item(p["id"])
             t = G.time_near(owner, self.b.comp()["fps"], G.mapping(self.b.placed(), owner, self.b._t), x, y, limit)
-            if t is None:
-                continue
-            if self._owner_ok(p["id"]) is None:
-                return True
-            at, (vx, vy) = self.b.own_t(p["id"], t), G.position(owner)(t)
-            calls = [{"op": "value.set", "target": [p["id"]], "args": {"prop": f, "at": at, "v": round(v, 2)}}
-                     for f, v in (("x", vx), ("y", vy))]
-            self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label="Add a path key"), ""))
-            return True
-        return False
+            if t is not None:
+                return p["id"], owner, t
+        return None
 
     @Slot(float, float, bool)
     def drag(self, dx: float, dy: float, alt: bool):

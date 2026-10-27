@@ -11,7 +11,7 @@ import math
 
 from PySide6.QtCore import Slot
 
-from . import bounds, route, transform as T
+from . import bounds, drag_chip, route, transform as T
 from .handle_kinds import KITS, SHAPE_HANDLES
 from .shape_handle_geom import HANDLES, Grab
 
@@ -106,6 +106,7 @@ class ShapeHandleSlots:
         hd, t = HANDLES[g.name], self.own_t(g.layer)
         sets = hd.drag(g, *own(g.state["box"], g.p, u, v), shift, alt)
         g.state["chip"] = hd.chip({**g.p, **sets})
+        drag_chip.say(self, g.state["chip"])          # the kit's chip by the pointer (Stage.qml)
         # fresh: on the values from before the drag, so Alt let go mid-drag puts the other corners back
         # (edit_call: value.set on a field keys may drive, the shape's own .set on a still one: Each corner, the kind)
         self._guard(lambda: self._drag.preview([route.edit_call(self.doc, g.layer, k, val, t) for k, val in sets.items()], fresh=True))
@@ -119,6 +120,7 @@ class ShapeHandleSlots:
         r = T.resize({"x": p["x"], "y": p["y"], "w": b["lw"], "h": b["lh"], "ax": ax, "ay": ay, "rot": b["lrot"]},
                      hx, hy, dx, dy, False, alt)
         sets = {"boxWidth": round(max(1.0, r["w"] / (abs(p["scale"] * p["scaleX"]) or 1.0)), 1)}
+        drag_chip.say(self, f"Wrap {sets['boxWidth']:g}", "resize", False, alt)
         if not g.placed and not r["cx"]:
             sets.update({"x": round(r["x"], 2), "y": round(r["y"], 2)})
         self._guard(lambda: self._drag.preview([route.value_call(item, k, v, self.own_t(item["id"])) for k, v in sets.items()], fresh=True))

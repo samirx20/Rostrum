@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
 
-from . import bounds, transform as T
+from . import bounds, drag_chip, transform as T
 
 SNAP_PX = 5.0              # a screen distance: the anchor catches the edges and the middle (0, 50, 100 %) this close
 CATCH = (0.0, 0.5, 1.0)
@@ -43,6 +43,7 @@ class AnchorSlots:
         ax, ay = p["anchorX"] + sx * ldx / b["lw"], p["anchorY"] + sy * ldy / b["lh"]
         if not free:
             ax, ay = self._caught(ax, b["lw"]), self._caught(ay, b["lh"])
+        drag_chip.say(self, f"{ax * 100:.0f} %, {ay * 100:.0f} %")      # where in the layer: 50 %, 50 % = its middle
         call = {"op": "layer.anchor", "target": [item["id"]],
                 "args": {"x": round(ax, 4), "y": round(ay, 4), "keep_place": True, "at": self.own_t(item["id"])}}
         self._guard(lambda: self._drag.preview([call]))

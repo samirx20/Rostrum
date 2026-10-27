@@ -1,11 +1,15 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 
 // One selected layer's outline (or, with `group`, the one box round several, whose handles act on all of them) on the canvas, turned with the layer (about its anchor). With `editable` it also has
 // 4 corner + 4 edge resize knobs and a turn zone just outside each corner (screen2d/handle_slots.py: one gesture =
 // one undo step each; Shift = same proportion / 15° steps, Alt = from the centre). `box` is a bounds.boxes entry in
 // composition px; `fit` is canvas px per composition px; `space` is the (unturned) item the pointer is read in.
 // While the Fill row's picker is open on a gradient, the kit's GradientHandles lie over the box (backend scrub "paint").
+// Pointers (the kit's set, shared/gui-kit/CURSORS.md): a knob `resize` along its direction plus the box's turn (Alt: from
+// the centre; a text's side: its wrap width), a turn zone `rotate` towards its corner, the anchor ring `anchor` while it
+// can be dragged, else `pick` (a press there moves the layer).
 Item {
     id: h
     property var box: ({})
@@ -34,9 +38,9 @@ Item {
             y: (modelData[1] + 1) / 2 * h.bh + modelData[1] * 11 - 14
             MouseArea {
                 anchors.fill: parent
-                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 preventStealing: true
                 property bool on: false
+                CanvasCursor { anchors.fill: parent; kind: "rotate"; angle: Math.atan2(zone.modelData[1], zone.modelData[0]) * 180 / Math.PI + (h.box.rot || 0) }
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
                 onPressed: (m) => { on = (h.group ? backend.beginGroupRotate() : backend.beginRotate()); if (on) { var q = at(m); h.group ? backend.groupRotateTo(q.x, q.y, false) : backend.rotateTo(q.x, q.y, false) } }
                 onPositionChanged: (m) => { if (on) { var q = at(m); var sh = (m.modifiers & Qt.ShiftModifier) !== 0; h.group ? backend.groupRotateTo(q.x, q.y, sh) : backend.rotateTo(q.x, q.y, sh) } }
@@ -74,9 +78,12 @@ Item {
             y: (hy + 1) / 2 * h.bh - height / 2 + (outY ? hy * h.tinyOut : 0)
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
-                cursorShape: ({"hor": Qt.SizeHorCursor, "ver": Qt.SizeVerCursor, "fdiag": Qt.SizeFDiagCursor,
-                               "bdiag": Qt.SizeBDiagCursor})[(h.box.cursors || [])[knob.index] || "hor"]
                 preventStealing: true
+                CanvasCursor { anchors.fill: parent;      // a text's side sets the wrap width (¶); Alt on any knob: from the centre
+                    kind: "resize"; angle: (h.box.angles || [])[knob.index] || 0
+                    readonly property bool wrap: h.kit.sides === "wrap" && knob.edge
+                    badge: wrap ? "wrap" : ""; altBadge: wrap ? "" : "centre"
+                }
                 property bool on: false
                 property point p0
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }
@@ -105,10 +112,10 @@ Item {
         width: 19; height: 19; radius: 10; color: "transparent"; border.width: 2; border.color: Theme.accent
         x: (h.box.ax || 0) * h.bw - width / 2; y: (h.box.ay || 0) * h.bh - height / 2
         Rectangle { anchors.centerIn: parent; width: 3; height: 3; radius: 2; color: Theme.accent }
-        MouseArea {
+        MouseArea {     // only while the Anchor group is open; shut, it is out of the way: the canvas below takes the press (and shows its pointer)
             anchors.fill: parent
-            enabled: backend.anchorOpen
-            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            visible: backend.anchorOpen
+            CanvasCursor { anchors.fill: parent; kind: "anchor" }
             preventStealing: true
             property bool on: false
             property point p0

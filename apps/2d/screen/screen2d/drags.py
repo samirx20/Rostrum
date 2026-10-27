@@ -10,7 +10,7 @@ from rostrum2d.retime import END_OF_COMP
 from rostrum_gui.edits import Drag
 from rostrum_gui.parts import SlotMixin
 
-from . import bounds, exprs, key_moves, layout_drag, route, time_snap
+from . import bounds, drag_chip, exprs, key_moves, layout_drag, route, time_snap
 from .bar_drag import PARTS, BarGrab
 from .ghost_move import GhostMove
 
@@ -98,6 +98,7 @@ class DragSlots(SlotMixin):
         if not isinstance(self._grab, dict):
             dx, dy = self._snap.move(dx, dy)            # Shift: straight; then snapping (snapper.py)
         ox, oy = dx, dy
+        drag_chip.say(self, drag_chip.words_offset(ox, oy))          # "+48, −12" by the pointer
         if isinstance(self._grab, list) and self._ghost is not None:
             self._ghost.move(ox, oy)
             return
@@ -193,6 +194,7 @@ class DragSlots(SlotMixin):
         held, self.held_view = self.held_view, None     # a camera-key drag held the view: it follows the camera again
         self._snap.end()                                # the snap lines go with the drag
         self.timeSnap.clear()                           # and the "+6 f" label
+        drag_chip.clear(self)                           # the canvas's value chip lingers, then goes (DragLabel)
         if d is not None and isinstance(g, BarGrab) and g.tie_calls():      # let go on a marker: the layer is tied to it
             self._guard(lambda: d.preview(g.tie_calls()))
         if d is not None:
@@ -214,6 +216,7 @@ class DragSlots(SlotMixin):
         held, self.held_view = self.held_view, None
         self._snap.end()
         self.timeSnap.clear()
+        drag_chip.clear(self)
         self._guard(lambda: d.end(cancel=True))
         picked = getattr(self, "_picked_at_press", [])
         if picked and list(self.selected_layers()) != picked:

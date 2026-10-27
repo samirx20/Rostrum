@@ -44,12 +44,12 @@ SHAPE_HANDLES = {
 
 def dressed(box: dict) -> dict:
     """The box as the canvas draws its knobs (Handles.qml): its kit (`kit`, by its `handles`; a group's box: "box") and
-    each knob's two-way arrow (`cursors`, by the box's turn: transform.resize_cursor), in the box itself. Asked of
+    each knob's `resize` pointer angle (`angles`, the knob's direction plus the box's turn: transform.resize_cursor), in the box itself. Asked of
     Python per knob, each box change made ~8 calls back from the screen (~1.5 ms a Ctrl+G)."""
     from .transform import resize_cursor
     kit = KITS.get(box.get("handles") or "box", KITS["box"])
     rot = box.get("rot") or 0
-    return {**box, "kit": kit, "cursors": [resize_cursor(k["hx"], k["hy"], rot) for k in kit["knobs"]]}
+    return {**box, "kit": kit, "angles": [resize_cursor(k["hx"], k["hy"], rot) for k in kit["knobs"]]}
 
 
 def kit_of(layer_type: str, p: dict) -> str:

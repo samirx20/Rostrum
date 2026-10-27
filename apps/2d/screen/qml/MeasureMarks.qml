@@ -3,7 +3,7 @@ import RostrumKit
 
 // Alt measuring (CANVAS.md §2 row 23): with one layer picked, holding Alt shows red lines and their numbers from it to
 // the layer under the pointer, or to the frame's edges over nothing (backend.measure: measure_view.py, measure.py).
-// Over the canvas's well, it tells the pointer's place in composition px (a HoverHandler: it never takes a press), and
+// Over the canvas's well, it tells the pointer's place in composition px (read from the canvas's hover, Stage.qml: it never takes a press or a hover), and
 // draws the lines through the view's mapping (fit, ox, oy); the numbers are screen-sized at any zoom. Nothing in the
 // document changes. `busy`: a press is under way (an Alt-drag copies, an Alt+click picks behind): no lines then.
 Item {
@@ -15,15 +15,16 @@ Item {
     property bool busy: false
     readonly property color red: "#e0381c"      // local until the kit has a measuring colour (white words on it: 4.3:1)
     readonly property var lines: busy ? [] : backend.measure.lines
-    HoverHandler {
-        id: hover
-        onPointChanged: if (hovered && backend.measure.alt) marks.tell()     // no Python call per move without Alt
-        onHoveredChanged: if (!hovered) backend.measure.leave()
-    }
-    function tell() { backend.measure.hover((hover.point.position.x - ox) / fit, (hover.point.position.y - oy) / fit) }
+    // The pointer, from the canvas's own hover reader (Stage.qml's hoverPick): a HoverHandler here, over the canvas, took
+    // every hover from the canvas below (its hover outline and pointer badges went blind).
+    property bool hovered: false
+    property point at: Qt.point(0, 0)            // in this item's px
+    onAtChanged: if (hovered && backend.measure.alt) marks.tell()          // no Python call per move without Alt
+    onHoveredChanged: if (!hovered) backend.measure.leave()
+    function tell() { backend.measure.hover((at.x - ox) / fit, (at.y - oy) / fit) }
     Connections {   // Alt pressed with the pointer resting: the lines come on the key, not on the next move
         target: backend.measure
-        function onAltChanged() { if (backend.measure.alt && hover.hovered) marks.tell() }
+        function onAltChanged() { if (backend.measure.alt && marks.hovered) marks.tell() }
     }
     KeptRepeater {   // kept: each move updates the lines in place, never remakes them
         id: kept

@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import RostrumKit as Kit
+import RostrumCursors 1.0
 import "Mods.js" as Mods
 
 // The canvas: the engine's world picture at the playhead (image://frame, rendered off the GUI thread) on a neutral backdrop,
@@ -215,10 +217,19 @@ Rectangle {
                     painter.setValue("hardness", Math.max(0, Math.min(1, Math.round((hard0 - translation.y / 200) * 100) / 100)))
                 }
             }
+            CanvasCursor { anchors.fill: parent;      // the kit's pointers (CURSORS.md): Brush / Eraser hide it for their ring; Alt (or Pick): the dropper;
+                id: paintPointer   // picked strokes: their corner `resize`, their knob `rotate`, their box `pick` (a drag moves them)
+                readonly property var sb: backend.strokeSelect.box
+                readonly property point at: hover.hovered ? panel.inWell(hover.point.position.x, hover.point.position.y) : Qt.point(0, 0)
+                readonly property string zone: backend.strokeSelect.count === 0 || !hover.hovered ? ""
+                    : backend.strokeSelect.handleAt(at.x, at.y, view.zoom) || (backend.strokeSelect.hits(at.x, at.y) ? "body" : "")
+                kind: sizing.sizingNow ? "none" : backend.colourPick.alt || altHeld ? "dropper"
+                    : zone === "scale" ? "resize" : zone === "turn" ? "rotate" : zone === "body" ? "pick" : parent.noErase ? "no"
+                    : backend.paintTool.now === "fill" ? "fill" : backend.paintTool.now === "select" ? "pick" : "none"
+                angle: zone === "" ? 0 : Math.atan2(at.y - (sb.y || 0) - (sb.h || 0) / 2, at.x - (sb.x || 0) - (sb.w || 0) / 2) * 180 / Math.PI
+            }
             HoverHandler {      // Alt held: the pointer picks a colour (the swatch beside it shows the colour under it)
                 id: hover
-                cursorShape: backend.colourPick.alt ? Qt.PointingHandCursor : parent.noErase ? Qt.ForbiddenCursor
-                           : parent.ringTool ? Qt.BlankCursor : Qt.CrossCursor
                 onPointChanged: { const p = panel.inWell(point.position.x, point.position.y); backend.colourPick.look(p.x, p.y) }
             }
             PointHandler {
@@ -281,6 +292,22 @@ Rectangle {
             property point b0
             property point b1
             function comp(m) { return panel.inWell(m.x, m.y) }
+            // The Move tool's hover: what a press here would pick (backend.hoverAt: the press's own rule, Ctrl = the
+            // deepest piece), outlined when not picked yet (hoverOutline), and the pointer's badges: Alt + over a layer
+            // (drag a copy), Ctrl + over a grouped piece (pick inside), Ctrl + over the motion path's line (add a key).
+            HoverHandler { id: hoverPick; enabled: backend.tool === "move" }
+            readonly property point hoverAt: hoverPick.hovered ? panel.inWell(hoverPick.point.position.x, hoverPick.point.position.y) : Qt.point(0, 0)
+            readonly property var over: { backend.multi.count; backend.selBox
+                                          return !hoverPick.hovered || pressed || hidden(hoverPick.point.position) ? ({})
+                                              : backend.hoverAt(hoverAt.x, hoverAt.y, canvasPointer.ctrlHeld) }
+            readonly property bool onLine: canvasPointer.ctrlHeld && hoverPick.hovered && motionPath.visible && motionPath.interactive
+                                           && backend.motionPath.onLine(hoverAt.x, hoverAt.y, 5 / view.zoom)
+            CanvasCursor { anchors.fill: parent;
+                id: canvasPointer
+                kind: "pick"
+                altBadge: canvas.over.id ? "copy" : ""
+                ctrlBadge: canvas.onLine ? "copy" : canvas.over.grouped ? "deep" : ""
+            }
             function stop() { if (moving) backend.endDrag(); if (band) backend.multi.endBand(); moving = false; band = false; held = "" }
             function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
             property string held: ""        // an Alt press on a layer: a click picks behind, a drag past 4 px makes a copy (decided on the first move)
@@ -335,10 +362,12 @@ Rectangle {
         BoneTool { anchors.fill: parent; stage: panel }        // J: draw a rig's bones joint by joint (bone_tool.py)
         CreateOverlay { anchors.fill: parent; stage: panel }   // R / O / T: drag a shape, click or drag and type
         MotionPath {    // where the selection (or the frame) travels: dots per frame, key squares, handles (motion_path.py)
+            id: motionPath
             anchors.fill: parent
             visible: !backend.playing && !well.drawing && !backend.pen.on && !panel.opened
             interactive: backend.tool === "move"
             noFrame: look.on
+            pointerAlt: canvasPointer.altBadge; pointerCtrl: canvasPointer.ctrlBadge   // its line catcher covers the canvas: the same pointer
             fit: view.zoom; ox: view.ox; oy: view.oy
         }
         Item {  // outlines of the selected layers (turned with them) and the handles of a single one; over the pen's overlay
@@ -427,6 +456,16 @@ Rectangle {
                 transform: Rotation { origin.x: (peek.b.ax || 0) * peek.width; origin.y: (peek.b.ay || 0) * peek.height; angle: peek.b.rot || 0 }
                 Rectangle { anchors.fill: parent; color: "transparent"; border.width: 2; border.color: Theme.accent }
             }
+            Item {  // the Move tool's hover: a 1 px accent outline round what a click would pick (canvas.over), not yet picked
+                id: hoverOutline
+                objectName: "hoverOutline"
+                readonly property var b: canvas.over
+                visible: b.id !== undefined && !b.picked && !canvas.pressed && !canvas.banding && !well.drawing
+                x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
+                width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
+                transform: Rotation { origin.x: (hoverOutline.b.ax || 0) * hoverOutline.width; origin.y: (hoverOutline.b.ay || 0) * hoverOutline.height; angle: hoverOutline.b.rot || 0 }
+                Rectangle { anchors.fill: parent; anchors.margins: -1; color: "transparent"; border.width: 1; border.color: Theme.accent }
+            }
             Shape {   // the rubber band growing: the layers letting go would pick, outlined live (multi.bandPath: band.py)
                 id: bandOutline
                 objectName: "bandOutline"
@@ -460,7 +499,10 @@ Rectangle {
             }
         }
         MeasureMarks {  // Alt with one layer picked: red lines and numbers to the hovered layer or the frame (measure_view.py)
+            id: measureMarks
             anchors.fill: parent
+            hovered: hoverPick.hovered
+            at: { hoverPick.point.position; return canvas.mapToItem(measureMarks, hoverPick.point.position.x, hoverPick.point.position.y) }
             visible: marks.visible && backend.tool === "move"
             busy: canvas.pressed
             fit: view.zoom; ox: view.ox; oy: view.oy
@@ -499,6 +541,11 @@ Rectangle {
             dragging: canvas.pressed || backend.playing || !panel.strokesPicked
         }
         Component { id: strokesComponent; StrokeBar { } }
+        Kit.DragLabel {    // a canvas drag's value by the pointer ("+48, −12", "320 × 180", "35°", "Radius 24"): drag_chip.py
+            readonly property var v: backend.dragChip
+            text: v.text; hint: v.hint
+            at: { v.x; v.y; return well.mapFromGlobal(v.x, v.y) }
+        }
     }
     // Select layer ▸ (first row, only where two or more layers overlap: backend.multi.underMenu): a row's layer is outlined while the
     // pointer rests on it, and a click picks it
