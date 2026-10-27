@@ -23,6 +23,11 @@ class WindowCore {
   // one ENGINE_CONTRACT request line -> its reply line (never throws). Puts GL's state the way Hydra expects first
   // (Qt Quick leaves its own behind) and keeps no framebuffer of its own bound after.
   std::string answer(const std::string& line);
+  // The same with no GL at all, for a request that needs none and is slow: a clay stroke's end (the stroke applied
+  // again as one unit, 50-600 ms). Any thread, as long as nothing else uses this core meanwhile (the view item holds
+  // its other requests and draws nothing until it is answered).
+  std::string answer_without_gl(const std::string& line);
+  static bool is_stroke_end(const std::string& line);
   // clear the texture (no scene drawn yet)
   void clear();
   std::string gl_renderer() const;

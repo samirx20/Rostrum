@@ -63,6 +63,14 @@ std::string WindowCore::answer(const std::string& line) {
   return reply;
 }
 
+std::string WindowCore::answer_without_gl(const std::string& line) { return r3d::answer(*core_, line, nullptr); }
+
+bool WindowCore::is_stroke_end(const std::string& line) {
+  // {"sculpt": {... "phase": "end" ...}} as Python's json.dumps writes it (with or without the space)
+  return line.rfind("{\"sculpt\"", 0) == 0 &&
+         (line.find("\"phase\": \"end\"") != std::string::npos || line.find("\"phase\":\"end\"") != std::string::npos);
+}
+
 void WindowCore::clear() {
   if (!fbo_) return;
   GLint prev = 0;

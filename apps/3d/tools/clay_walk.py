@@ -173,8 +173,17 @@ def stroke(screen, win, name, want, at, radius, mods, core, invert=False, frm=(-
                       "engineMs": last.get("engineMs"), "coreCpuMs": round(proc_cpu_ms(core) - e0, 2),
                       "dabs": last.get("dabs")})
     worker.ready.disconnect(on_ready)
+    t0 = time.perf_counter()
     QTest.mouseRelease(win, Qt.LeftButton, mods, p)
-    pump(10, lambda: not tool._ending and len(doc.item(clay_id)["steps"]) > before, "the stroke's step")
+    blocks = [(time.perf_counter() - t0) * 1000]          # the GUI thread held by the release, then by each event pass
+
+    def landed():
+        t = time.perf_counter()
+        QCoreApplication.processEvents()
+        blocks.append((time.perf_counter() - t) * 1000)
+        return not tool._ending and len(doc.item(clay_id)["steps"]) > before
+    pump(10, landed, "the stroke's step")
+    release = {"stepMs": round((time.perf_counter() - t0) * 1000, 1), "longestGuiBlockMs": round(max(blocks), 1)}
     steps = doc.item(clay_id)["steps"]
     check(len(steps) == before + 1, f"{name}: one new step on the clay ({before} -> {len(steps)})")
     check(steps[-1].get("brush") == want and str(steps[-1].get("dabs", "")).startswith("clay/"),
@@ -191,7 +200,8 @@ def stroke(screen, win, name, want, at, radius, mods, core, invert=False, frm=(-
     check(len(doc.item(clay_id)["steps"]) == before + 1, f"{name}: Ctrl+Shift+Z puts it back")
     worst = max(m["wallMs"] for m in moves)
     check(worst <= BUDGET_MS * 2, f"{name}: slowest dab answered in {worst:.1f} ms (budget ~{BUDGET_MS:.0f} ms a dab)")
-    return {"stroke": name, "brush": want, "invert": invert, "moves": moves, "timings": tool.timings, "viewMs": views}
+    return {"stroke": name, "brush": want, "invert": invert, "moves": moves, "timings": tool.timings, "viewMs": views,
+            "release": release}
 
 
 def pick_tile(win, tool, label, value):

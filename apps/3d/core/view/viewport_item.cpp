@@ -8,6 +8,7 @@
 #include <rhi/qrhi.h>  // Qt 6.12: in the versioned headers (Qt6::GuiPrivate)
 
 #include <chrono>
+#include <future>
 #include <memory>
 
 #include "window_core.h"
@@ -31,6 +32,7 @@ class Renderer : public QQuickRhiItemRenderer {
  public:
   ~Renderer() override {
     QObject::disconnect(swapped_);
+    if (ending_.valid()) ending_.wait();  // the worker uses the core
     core_.reset();  // render thread, the window's context current (the renderer is destroyed there)
   }
 
@@ -71,15 +73,36 @@ class Renderer : public QQuickRhiItemRenderer {
     const bool fresh = core_->set_texture(unsigned(colorTexture()->nativeTexture().object), sz.width(), sz.height());
     const int before = core_->views_drawn();
     std::vector<std::pair<int, QString>> answers;
-    for (const auto& [id, line] : in_) {
+    if (ending_.valid() && ending_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+      answers.emplace_back(endingId_, stamped(ending_.get(), frame, endingT0_, now_ms()));
+      ending_ = {};
+    }
+    size_t done = 0;
+    for (; done < in_.size() && !ending_.valid(); ++done) {
+      const auto& [id, line] = in_[done];
       const double t0 = now_ms();
+      if (r3d::WindowCore::is_stroke_end(line)) {  // the slow one, on a worker: the window keeps going meanwhile
+        endingId_ = id;
+        endingT0_ = t0;
+        r3d::WindowCore* core = core_.get();
+        QPointer<Rostrum3DView> i = item_;
+        ending_ = std::async(std::launch::async, [core, line, i] {
+          std::string r = core->answer_without_gl(line);
+          if (Rostrum3DView* v = i.data())  // a frame to collect it
+            QMetaObject::invokeMethod(v, [i] { if (i) i->update(); }, Qt::QueuedConnection);
+          return r;
+        });
+        continue;
+      }
       const std::string r = core_->answer(line);
       answers.emplace_back(id, stamped(r, frame, t0, now_ms()));
     }
-    in_.clear();
+    in_.erase(in_.begin(), in_.begin() + done);
     QString drawn;
-    // the newest picture; the last one again on a new texture (a resize) unless a request (a dab) just drew one
-    if (!view_.empty() && (newView_ || (fresh && core_->views_drawn() == before))) {
+    // the newest picture; the last one again on a new texture (a resize) unless a request (a dab) just drew one.
+    // Nothing while a stroke's end runs on its worker: the core is its alone (the texture keeps the last picture)
+    if (ending_.valid()) {
+    } else if (!view_.empty() && (newView_ || (fresh && core_->views_drawn() == before))) {
       const double t0 = now_ms();
       const std::string r = core_->answer(view_);
       if (newView_) drawn = stamped(r, frame, t0, now_ms());
@@ -112,6 +135,9 @@ class Renderer : public QQuickRhiItemRenderer {
 
   std::unique_ptr<r3d::WindowCore> core_;
   std::vector<std::pair<int, std::string>> in_;
+  std::future<std::string> ending_;  // a stroke's end running on its worker (WindowCore::answer_without_gl)
+  int endingId_ = 0;
+  double endingT0_ = 0;
   std::string view_;
   bool newView_ = false, blank_ = false;
   int frame_ = 0;
