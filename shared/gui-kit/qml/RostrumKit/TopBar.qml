@@ -112,7 +112,10 @@ Item {
     // (not while the agent chip shows: its words are in the chip; nor while the job chip says the export finished)
     readonly property string messageText: bridge && bridge.status && !agentShown && !jobDone ? bridge.status : ""
     TextMetrics { id: messageOneLine; font: message.font; text: bar.messageText }
-    readonly property real messageNeed: messageText ? Math.ceil(messageOneLine.advanceWidth) : 0
+    // an action beside the message (bridge.say_with): its button's room is part of the message's
+    readonly property string actionText: messageText && bridge.statusAction ? bridge.statusAction : ""
+    readonly property real actionRoom: actionText ? statusAction.implicitWidth + Theme.gap : 0
+    readonly property real messageNeed: messageText ? Math.ceil(messageOneLine.advanceWidth) + actionRoom : 0
     // longer than that (a refusal, a failure): it takes the command box's room (the box folds to its icon) and the
     // name's, until the next message
     readonly property bool messageLong: messageNeed > messageSlot
@@ -138,7 +141,7 @@ Item {
     // still too long for one line in that room: two lines (the bar holds two at the label size), whole words
     readonly property bool messageWraps: messageNeed > 0 && messageFits > 0 && !messageOneFits
                                          && twoLines.lineCount <= 2 && twoLines.implicitHeight <= height - 4
-    Text { id: twoLines; visible: false; width: bar.messageFits; wrapMode: Text.WordWrap
+    Text { id: twoLines; visible: false; width: bar.messageFits - bar.actionRoom; wrapMode: Text.WordWrap
            text: bar.messageText; font: message.font; lineHeight: message.lineHeight }
     readonly property bool messageShown: messageOneFits || messageWraps
     // the message fades 4 s after it came; a failure stays until the next message. Pictures and layout checks (drawn
@@ -227,6 +230,16 @@ Item {
         text: bar.messageText
         color: bar.bridge.statusFailed ? Theme.danger : Theme.fg3
         font.family: uiFont; font.pixelSize: Theme.label
+    }
+    Button {  // the message's one action ("Keep original size"): beside it, there and gone with it
+        id: statusAction
+        objectName: "statusAction"
+        x: message.x + message.width + Theme.gap; anchors.verticalCenter: parent.verticalCenter
+        visible: bar.messageShown && bar.actionText !== ""
+        opacity: message.opacity
+        enabled: bar.messageLit
+        text: bar.actionText
+        onClicked: bar.bridge.runStatusAction()
     }
     Row {  // the app's pages (3D: Build / Animate / Render): centred in the window, else midway between the groups
         id: toolsSlot

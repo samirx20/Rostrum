@@ -45,7 +45,7 @@ KINDS = {                     # name: hotspot (x, y) in the 24 px design
 BADGES = {                    # name: where it sits
     "copy": "corner", "remove": "corner", "deep": "corner", "point": "corner", "bend": "corner",
     "radius": "corner", "shape": "corner", "close": "corner", "x": "corner", "caret": "corner",
-    "slash": "corner", "wrap": "corner", "centre": "hotspot",
+    "slash": "corner", "wrap": "corner", "alt": "corner", "centre": "hotspot",
 }
 BADGE_SIZE, BADGE_AT = 10, 14          # a badge is 10 px, its corner at (14, 14) in the design
 

@@ -281,8 +281,13 @@ def zones(win, nodes: list[Node], say) -> None:
     if bar is None:
         return
     buttons = next((n for n in nodes if is_under(n, bar) and "WindowButtons" in cls(n.item)), None)
+    # a screen over the whole window (the start screen) covers the bar: its things can't be clicked, so the bar hands
+    # Windows only its window buttons (TopBar.zoneItems) and the rest of the strip is drag room, as it should be
+    covered = any("StartScreen" in cls(n.item) and inside(bar.rect, n.seen) for n in nodes)
     for n in nodes:
         if n is bar or n.layer != bar.layer or not is_under(n, bar) or not clickable(n) or n.seen.top() >= bar.rect.bottom() - SLACK:
+            continue
+        if covered and not (buttons is not None and is_under(n, buttons)):
             continue
         if maxr is not None and inside(n.seen, maxr):
             continue
