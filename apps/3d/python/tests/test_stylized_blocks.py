@@ -57,3 +57,11 @@ def test_a_stylized_render_asks_for_the_stylized_renderer():
     assert s["renderer"] == "stylized" and s["passes"] == []
     assert engine_fields(s) == {"stylized": {"supersample": 2}}
     assert engine_fields(settings({"renderQuality": "good"}, INFO)) == {"samples": 128, "denoise": True}
+
+
+def test_render_tools_follow_the_shots_quality_unless_told():
+    from rostrum3d.mcp.render import _renderer
+    stylized, good = settings({"renderQuality": "stylized"}, INFO), settings({"renderQuality": "good"}, INFO)
+    assert _renderer({}, stylized) == "stylized" and _renderer({}, good) == "cycles"
+    assert _renderer({"quality": "final"}, stylized) == "cycles" and _renderer({"quality": "fast"}, stylized) == "storm"
+    assert _renderer({"renderer": "stylized"}, good) == "stylized"

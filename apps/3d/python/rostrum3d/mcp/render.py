@@ -30,7 +30,8 @@ from .shot import ITEM_SHOT, QUALITY, RENDERERS, TIME, check_frame, doc_and_shot
 
 tools = Tools()
 FIRST = 1001                                   # the first frame of every picture hand-off (shared/HANDOFFS.md § 6)
-QUALITY_ARG = {"enum": list(QUALITY), "default": "final", "description": "final = Cycles (path traced), fast = Storm (a draft)."}
+QUALITY_ARG = {"enum": list(QUALITY), "description": "final = Cycles (path traced), fast = Storm (a draft). Default: the shot's render Quality "
+                                                    "(Stylized there renders Stylized, every other Quality renders Final)."}
 SETTINGS = {
     "renderer": {"enum": list(RENDERERS), "description": "Overrides quality: storm, cycles or stylized (materials' Lines, Halftone and Light to colour; drawn at twice the size and smoothed down; no passes)."},
     "width": {"type": "integer", "minimum": 64, "maximum": 8192, "description": "Picture width in px. Default: the shot's render size (renderSize); the height follows."},
@@ -53,6 +54,11 @@ class DocView:
     @classmethod
     def of(cls, doc) -> "DocView":
         return doc if isinstance(doc, cls) else cls(doc.item_id, doc.seq, copy.deepcopy(doc.data))
+
+
+def _renderer(args: dict, s: dict) -> str:
+    """The call's renderer, else its quality, else the shot's render Quality (render_fields.settings: stylized or cycles)."""
+    return renderer_of(args) if "renderer" in args or "quality" in args else s["renderer"]
 
 
 def _cycles(args: dict, renderer: str, s: dict) -> dict:
@@ -127,11 +133,12 @@ def _renumber(folder: Path, name: str, ext: str, start: int, first_file: int):
 
 
 def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer: str, size: tuple[int, int], formats: list[str],
-          exposure: float = 0, settings: dict | None = None, folder=None, passes: list[str] | None = None, stopped=None) -> tuple[Path, list[Path], dict]:
+          exposure: float = 0, settings: dict | None = None, folder=None, passes: list[str] | None = None, stopped=None,
+          step=None) -> tuple[Path, list[Path], dict]:
     """One picture of a shot frame through its camera, as a whole project render version (or in the render cache without a
     project folder). The one code path of the render_still tool and the 3D screen's Render button. Blocking: call it from a job.
     Returns (the finished folder, its files, the engine's reply); a failure raises RENDER_FAILED and leaves only a .partial
-    (`stopped()`: the caller cancelled it, so not even that)."""
+    (`stopped()`: the caller cancelled it, so not even that). `step(line)`: how far Cycles has got (Engine.render)."""
     doc = DocView.of(doc)
     scene = ready_for_render(where, doc.data, info["id"], folder, scene)     # a falling thing: its simulation, computed first if needed
     partial, is_version = _folder(folder, doc, info)
@@ -140,7 +147,7 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
     req = {f: str(partial / f"{name}.{f}") for f in formats}
     with kept_unless_stopped(partial, stopped):
         out = draw.render(where, f"frame {frame} of {info['id']}", engine, scene, camera=info["camera"], renderer=renderer, frame=frame,
-                          width=w, height=h, exposure=exposure, **req, **(settings or {}), **({"passes": passes} if passes else {}))
+                          width=w, height=h, exposure=exposure, step=step, **req, **(settings or {}), **({"passes": passes} if passes else {}))
     done = _finish(partial, is_version, _manifest(item, doc, info, partial, renderer, (w, h), [frame], [Path(p).name for p in req.values()], FIRST,
                                                   out.get("channels")))
     return done, [done / Path(p).name for p in req.values()], out
@@ -150,20 +157,24 @@ def still(where: str, doc, info: dict, scene: dict, engine, frame: int, renderer
                                              "formats": {"type": "array", "items": {"enum": ["png", "exr"]}, "minItems": 1, "uniqueItems": True,
                                                          "default": ["png", "exr"], "description": "png = 8-bit sRGB picture, exr = scene-linear half-float for the Editor."}}})
 def render_still(ctx, args):
-    """One final picture of a shot through the shot camera (Cycles by default), as a project render with a manifest: png (sRGB, through
-    OpenColorIO) and/or exr (scene-linear, for the Editor; its passes as named layers, listed in the manifest's `exr`). Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25)."""
+    """One final picture of a shot through the shot camera (the shot's render Quality by default: Cycles, or Stylized when the Quality is Stylized), as a project render with a manifest: png (sRGB, through
+    OpenColorIO) and/or exr (scene-linear, for the Editor; its passes as named layers, listed in the manifest's `exr`). Always a job: it returns a job id at once; ask with inspect_job (wait_s up to 25), whose note shows how far Cycles has got and the time left measured on this frame ("drawing 40% · about 12 s left")."""
     doc, info = doc_and_shot(ctx, args)
     scene, doc = draw.scene_of(doc, info["id"]), DocView.of(doc)
-    frame, renderer = frame_of(ctx, info, args), renderer_of(args, "final")
-    s = render_settings(doc, info)
+    frame, s = frame_of(ctx, info, args), render_settings(doc, info)
+    renderer = _renderer(args, s)
     w, h = size_of(info, args, s["width"])
     formats = args.get("formats", ["png", "exr"])
     passes = layers.chosen(ctx.tool, args, _shot(doc, info), renderer, "exr" in formats)
     engine, item = draw.engine_of(ctx), doc.item_id
 
     def job_fn(job):
+        def drawn(line):                     # Cycles' share of the frame so far: the time left, measured on this frame
+            f, ms = line["fraction"], line["ms"]
+            left = f" · about {ms * (1 - f) / f / 1000:.0f} s left" if f >= 0.03 and ms >= 800 else ""
+            job.progress(round(f * 100), 100, f"drawing {f:.0%}{left}")
         done, files, out = still(ctx.tool, doc, info, scene, engine, frame, renderer, (w, h), formats, args.get("exposure", 0),
-                                 _cycles(args, renderer, s), ctx.app.folder, passes)
+                                 _cycles(args, renderer, s), ctx.app.folder, passes, step=drawn)
         return Reply(f'Rendered frame {frame} ({seconds(info, frame):.3f} s) of {info["id"]}: {w}×{h}, {renderer}, {out["frames"][0]["ms"] / 1000:.1f} s.',
                      {"frame": frame, "time": seconds(info, frame), "renderer": out.get("renderer", renderer), "timing": out.get("timing", {}),
                       "vram": out.get("vram", {}), "folder": str(done)}, files, warnings=engine.take_notices())
@@ -178,8 +189,8 @@ def render_still(ctx, args):
                                              "budget_min": {"type": "number", "exclusiveMinimum": 0, "description": "Minutes you can spend. One probe frame is timed first; if the estimate is over this, nothing is rendered and the error names settings that should fit."},
                                              "estimate_only": {"type": "boolean", "default": False, "description": "Time one probe frame (the middle one) and return the estimate; render no video."}}})
 def render_video(ctx, args):
-    """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (Cycles by default;
-    quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
+    """An mp4 (H.264, bt709) of a shot, or of a time range of it, through the shot camera: every frame is rendered (the shot's render Quality by default:
+    Cycles, or Stylized when the Quality is Stylized; quality fast = Storm for a draft), then encoded by ffmpeg. A project render with a manifest; `exr` keeps the EXR frames too. Always a
     job: returns a job id at once; ask with inspect_job (wait_s up to 25), which shows 'frames n of m'."""
     return ctx.job(*video_job(ctx, args))
 
@@ -187,7 +198,8 @@ def render_video(ctx, args):
 def video_job(ctx, args):
     """render_video's work as (label, job function, key), checked now (the shot, the range, ffmpeg): render_send_shot renders through it."""
     doc, info = doc_and_shot(ctx, args)
-    fps, renderer, s = info["fps"], renderer_of(args, "final"), render_settings(doc, info)
+    fps, s = info["fps"], render_settings(doc, info)
+    renderer = _renderer(args, s)
     f0 = s["start"] if "start" not in args else info["start"] + round(args["start"] * fps)          # default: the shot's render range
     f1 = s["end"] if "end" not in args else info["start"] + round(args["end"] * fps)
     if f0 > f1:
