@@ -150,7 +150,7 @@ Name = `rostrum:<group>:<name>`; in the shaders it becomes `u_<group>_<name>`. A
 | `rostrum:ss` | 2 | Supersampling: renders at this multiple of the size (1–4) and filters down. The viewport sends 1; a render sends its `supersample` (default 2). Higher = smoother lines, slower, more video memory (section 7). |
 | `rostrum:shadow:size` | 2048 | Shadow-map size in pixels (256–8192), one square map per shadowed light. |
 | `rostrum:shadow:soft` | 1.5 | Shadow edge softness, in shadow-map texels (a 5×5 blur). |
-| `rostrum:shadow:offset` | 0.15 | Pushes the shadow lookup off the surface, in scene units. Raise if surfaces speckle with their own shadow; lower if shadows detach. |
+| `rostrum:shadow:offset` | auto | Pushes the shadow lookup off the surface, in scene units. Unset (or below 0): 8 shadow-map texels of the lit scene's size, so a 25 cm product and a room both work. Raise if surfaces speckle with their own shadow; lower if shadows detach. |
 | `rostrum:bg:color` | (0, 0, 0) | Colour where nothing is drawn. |
 | `rostrum:brush:amount` | 0 | Brush strokes push "how lit" up and down (Light to colour and legacy ramps; plain shading is not changed). 0 = off. |
 | `rostrum:brush:length` / `:width` | 18 / 3 | Stroke size, output pixels. |

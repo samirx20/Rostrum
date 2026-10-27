@@ -144,6 +144,16 @@ void HdRostrumLight::Sync(HdSceneDelegate *sd, HdRenderParam *, HdDirtyBits *bit
         SdfAssetPath tex = r.Typed<SdfAssetPath>(HdLightTokens->textureFile, SdfAssetPath());
         std::string file = tex.GetResolvedPath().empty() ? tex.GetAssetPath() : tex.GetResolvedPath();
         auto [up, down] = DomeBrightness(file);
+        // the core's own floor level for this dome (light_to_color.cpp, what Cycles' Light to colour counts) wins,
+        // so "how lit" is the same number in both; the picture's up / down balance is kept
+        GfVec3f level = r.Typed<GfVec3f>("rostrum:domeLevel", GfVec3f(-1.0f));
+        if (level[0] >= 0.0f) {
+            for (int c = 0; c < 3; ++c) {
+                float k = up[c] > 1e-6f ? level[c] / up[c] : 1.0f;
+                up[c] *= k;
+                down[c] *= k;
+            }
+        }
         l.domeUp = up;
         l.domeDown = down;
     }

@@ -12,7 +12,8 @@ uniform float u_brush_width = 3.0;     // stroke width, output pixels
 uniform float u_brush_angle = 35.0;    // stroke angle on screen (degrees) where the form gives none
 uniform float u_brush_follow = 0.7;    // 0 = all strokes at the angle, 1 = strokes follow the form
 uniform float u_shadow_soft = 1.5;     // shadow edge softness (shadow-map texels)
-uniform float u_shadow_offset = 0.15;  // push the lookup off the surface (scene units)
+uniform float u_shadow_offset = -1.0;  // push the lookup off the surface (scene units); < 0 = auto: 8 shadow-map
+                                       // texels of the lit scene's size (u_shadowAuto), so it fits a case or a room
 uniform float u_bg_color_x = 0.0, u_bg_color_y = 0.0, u_bg_color_z = 0.0;  // where nothing is drawn
 
 uniform sampler2D u_albedo, u_normal, u_world, u_ramps, u_mats;
@@ -22,6 +23,7 @@ uniform int u_lightCount;
 uniform vec4 u_lightPos[8], u_lightAxis[8], u_lightColor[8], u_lightExtra[8];
 uniform mat4 u_shadowMat[4];
 uniform float u_shadowTexel, u_ss;
+uniform float u_shadowAuto;
 uniform mat4 u_camView;
 out vec4 oColor;
 
@@ -31,7 +33,7 @@ const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
 
 float shadowAt(int layer, vec3 P, vec3 N)
 {
-    vec4 c = u_shadowMat[layer] * vec4(P + N * u_shadow_offset, 1.0);
+    vec4 c = u_shadowMat[layer] * vec4(P + N * (u_shadow_offset < 0.0 ? u_shadowAuto : u_shadow_offset), 1.0);
     vec3 q = c.xyz / c.w * 0.5 + 0.5;
     if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q, vec3(1.0)))) return 1.0;
     float s = 0.0;

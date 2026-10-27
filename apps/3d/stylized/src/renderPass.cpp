@@ -468,6 +468,25 @@ void HdRostrumRenderPass::_Draw(HdRenderPassStateSharedPtr const &state, int w, 
     glUniform4fv(glGetUniformLocation(g.shade, "u_lightExtra"), kMaxLights, L.extra[0].data());
     glUniformMatrix4fv(glGetUniformLocation(g.shade, "u_shadowMat"), kMaxShadows, GL_FALSE, L.shadowMat[0].data());
     U(g.shade, "u_shadowTexel", 1.0f / float(size));
+    U(g.shade, "u_shadowAuto", float(8.0 * 2.0 * radius / double(size)));
+    // where nothing is drawn: the scene's dome when the camera sees it (as Storm and Cycles show it: its colour x
+    // intensity; a dome picture as its average), else rostrum:bg:color
+    VtValue seen = _delegate->GetRenderSetting(HdRenderSettingsTokens->domeLightCameraVisibility);
+    if (!seen.IsHolding<bool>() || seen.UncheckedGet<bool>()) {
+        float best = -1.0f;
+        GfVec3f sky(0.0f);
+        for (auto const &[path, l] : scene.lights) {
+            if (l.type != HdPrimTypeTokens->domeLight || !l.enabled) continue;
+            GfVec3f c = GfCompMult(l.color, (l.domeUp + l.domeDown) * 0.5f) * l.intensity;
+            float y = 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];
+            if (y > best) { best = y; sky = c; }
+        }
+        if (best >= 0.0f) {
+            U(g.shade, "u_bg_color_x", sky[0]);
+            U(g.shade, "u_bg_color_y", sky[1]);
+            U(g.shade, "u_bg_color_z", sky[2]);
+        }
+    }
     draw();
     clock.Mark("shade");
 
