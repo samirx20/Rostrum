@@ -29,7 +29,7 @@ Rectangle {
     readonly property real rowGap: 2
     readonly property real laneH: 76         // an open automation lane
     readonly property real laneGap: 2
-    readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end (the picture corner floats below)
+    readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
@@ -102,9 +102,11 @@ Rectangle {
             z: 1      // above the lanes' mouse area: the chips and headers take their own clicks, the rest falls through
             width: list.width; spacing: tl.rowGap
             Repeater {   // keyed by track id (backend.trackRows): a change redraws a row in place, never makes every row again
+                id: rowItems
                 model: backend.trackRows
                 delegate: Item {
                     id: row
+                    readonly property alias lane: laneBlocks
                     required property var track
                     required property var blocks
                     required property int index
@@ -151,7 +153,24 @@ Rectangle {
                         x: bars.x - list.x; y: row.top0; width: bars.width; height: row.h
                         radius: Theme.radiusCtl - 2; color: Theme.sunken; clip: true
                         BeatGrid { anchors.fill: parent; ruler: bars; slot: row.index }
-                        LaneBlocks { anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars; slot: row.index }
+                        LaneBlocks { id: laneBlocks; anchors.fill: parent; track: row.modelData; blocks: row.blocks; ruler: bars; slot: row.index }
+                        Loader {   // a section being dragged (SectionBand.shift): its stretch of this lane, taken once at the press,
+                            // rides the pointer; the place it leaves is dimmed. Pictures only: the notes are written on release
+                            id: slice
+                            readonly property var sh: sectionBand.shift
+                            active: !!sh && !row.modelData.mix
+                            anchors.fill: parent
+                            sourceComponent: Item {
+                                readonly property real x0: slice.sh ? Math.max(0, slice.sh.x0) : 0
+                                readonly property real w: Math.max(1, Math.min(width, slice.sh ? slice.sh.x1 : 0) - x0)
+                                Rectangle { x: parent.x0; width: parent.w; height: parent.height; color: Theme.sunken; opacity: 0.7 }
+                                ShaderEffectSource {
+                                    sourceItem: laneBlocks; live: false; hideSource: false
+                                    sourceRect: Qt.rect(parent.x0, 0, parent.w, parent.height)
+                                    x: parent.x0 + sectionBand.dx; width: parent.w; height: parent.height
+                                }
+                            }
+                        }
                         DuckDips { anchors.fill: parent; trackId: row.modelData.id; ruler: bars }
                         Loader {   // the take growing while this track records (made only on the armed row)
                             anchors.fill: parent; active: recorder.take.track === row.modelData.id
@@ -220,6 +239,13 @@ Rectangle {
             var h = hOf(rows[i]), lane = autoOf(rows[i]) ? laneGap + laneH : 0
             if (rows[i].id === id) return { top: list.y + top - list.contentY, bottom: list.y + top + h - list.contentY }
             top += h + lane + rowGap
+        }
+        return null
+    }
+    function blockOf(trackId, id) {   // a block as its lane draws it now (a handle drag's chip reads what is shown)
+        for (var i = 0; i < rowItems.count; i++) {
+            var r = rowItems.itemAt(i)
+            if (r && r.track.id === trackId) return r.lane.shown.find(b => b.id === id) || null
         }
         return null
     }
