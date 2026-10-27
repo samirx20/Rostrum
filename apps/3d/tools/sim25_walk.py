@@ -12,6 +12,10 @@
 #      (the engine reading the stored result); three moments of the fall ............................... "5-fall-a/b/c"
 #   5. the bowl moved (its X typed): the row "Out of date", striped; the viewport keeps the old result
 #      (the shot's simKey unchanged) .................................................................... "6-out-of-date"
+#   4b. (26a) nothing selected (Esc): the Scene panel's Timing set On 2s by real clicks (the result read back holds each
+#      pose 2 frames: the copies' `sim` step and the ball's keys-to-be, bridge read only); Turn into keys by a real click
+#      (one undo step: the ball has keys and is Off; the buds, a copies item, keep simulating); the ball's last y key
+#      nudged (a document operation), Simulate again: the nudge stays .......................... "5d-on-2s", "5e-keys"
 #   6. the buds moved down into the bowl's bottom (the copies' Y typed), Simulate: the core's failure in red in the row
 #      (which body, which frame, what to do) ............................................................ "7-failed"
 # Numbers and checks to sim25_walk.json. Needs the core built with brief 25 (Jolt). The lead runs it:
@@ -33,6 +37,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "app" / "tests"))
 import clay_walk as W  # noqa: E402  (puts this checkout's code first; its real-input helpers and thread-cycle timers)
 import copies_walk as CW  # noqa: E402  (right-click, menus, typing into a row)
+import clay_paint_walk as CP  # noqa: E402  (find_text)
 
 from PySide6.QtCore import QPoint, QPointF, Qt  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
@@ -42,6 +47,7 @@ from rostrum3d.script import run_source  # noqa: E402
 from rostrum_gui.app import qt_app  # noqa: E402
 
 import main as app3d  # noqa: E402
+from screen3d import outline  # noqa: E402
 
 SIZE = (1646, 900)
 SPACING = 0.07                  # metres between buds (typed into Space X): apart, so none starts inside another
@@ -51,6 +57,7 @@ budmat = material("budmat", baseColor="#e0a43a", roughness=0.5)
 cam = camera("cam", focalLength=35, x=0, y=2.35, z=1.25).aim((0, 0.3, 0))
 light("key", kind="rect", x=-1.2, y=2.2, z=1.6)
 mesh("bud", shape="sphere", radius=0.03, x=-0.385, y=1.1, material=budmat, name="Bud")
+mesh("ball", shape="sphere", radius=0.04, x=0.15, y=1.3, z=0.12, material=budmat, name="Ball")
 with combine("bowl", op="subtract", name="Bowl", material=bowlmat):
     mesh("bowl_outer", shape="sphere", radius=0.45, y=0.45)
     mesh("bowl_inner", shape="sphere", radius=0.42, y=0.46)
@@ -184,6 +191,65 @@ def simulate_click(w, timeout=180):
     return seen
 
 
+def shot_of(doc):
+    return next(s for s in doc.data["shots"] if s["id"] == "drop03")
+
+
+def stylize(w, doc, buds):
+    """26a: Timing On 2s by real clicks in the Scene panel, read back as 2-frame holds; Turn into keys by a real click; a
+    nudged key survives Simulate again."""
+    b, sim = w.b, w.b.sim
+    for _ in range(4):                                 # Esc steps back until nothing is selected: the Scene panel
+        if b.selected == "":
+            break
+        QTest.keyClick(w.win, Qt.Key_Escape)
+        W.pump(0.3)
+    W.check(b.selected == "", f"nothing selected: the Scene panel ({b.selected!r})")
+    row = w.item("row:simTiming")
+    field = CW.field_of(row) if row is not None else None
+    if field is not None:
+        W.click(w.win, field)
+        W.pump(3, lambda: W.find(w.win.contentItem(), "choiceList") is not None, "the Timing list")
+        lst = W.find(w.win.contentItem(), "choiceList")
+        entry = CP.find_text(lst, "On 2s") if lst is not None else None
+        W.check(entry is not None, "the Timing list offers On 2s")
+        if entry is not None:
+            n = changes(doc)
+            W.click(w.win, entry)
+            W.pump(3, lambda: shot_of(doc).get("simTiming") == "2s", "Timing On 2s")
+            W.check(changes(doc) == n + 1, f"Timing: one undo step ({n} -> {changes(doc)})")
+    W.check(sim.state == "stored", f"Timing doesn't make the result out of date ({sim.state!r})")
+    scene = b.scene()                                  # read only: the result as the viewport gets it
+    nodes = {n["id"]: n for n in scene["items"]}
+    W.check((nodes.get(buds, {}).get("sim") or {}).get("step") == 2, f"the buds' result is read on 2s ({nodes.get(buds, {}).get('sim')})")
+    ys = (nodes.get("ball", {}).get("anim") or {}).get("y") or []
+    held = len(ys) >= 4 and all(ys[i] == ys[i + 1] for i in range(0, len(ys) - 1, 2))
+    W.check(held, f"the ball holds each pose 2 frames ({[round(y, 3) for y in ys[:6]]})")
+    snap(w, "5d-on-2s")
+
+    btn = w.item("sceneSimKeys")
+    if btn is not None:
+        n = changes(doc)
+        W.click(w.win, btn)
+        W.pump(5, lambda: doc.item("ball").get("simulate") == "off", "the ball Off after Turn into keys")
+        W.check(changes(doc) == n + 1, f"Turn into keys: one undo step ({n} -> {changes(doc)})")
+        keys = [k for k in doc.item("ball").get("keys", []) if k.get("prop") == "y"]
+        W.check(len(keys) > 1, f"the ball has y keys ({len(keys)})")
+        W.check(doc.item(buds).get("simulate") == "falls", "the buds (a copies item) keep simulating")
+        snap(w, "5e-keys")
+        if keys:
+            last = max(keys, key=lambda k: k["t"])
+            nudged = round(last["v"] + 0.05, 6)
+            doc.apply([{"op": "key.set", "target": [last["id"]], "args": {"v": nudged}}], b.who, label="Nudge the ball")
+            W.pump(1.0)
+            if sim.canRun:
+                simulate_click(w)
+            W.check(sim.state == "stored", f"simulated again ({sim.state!r}: {sim.label!r})")
+            now = next((k["v"] for k in doc.item("ball").get("keys", []) if k["id"] == last["id"]), None)
+            W.check(now == nudged, f"the nudge survives a re-run ({nudged} -> {now})")
+            W.check(doc.item("ball").get("simulate") == "off", "the ball stays Off")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     project = Path(tempfile.mkdtemp(prefix="rostrum-sim25walk-"))
@@ -210,6 +276,9 @@ def main():
         W.check(changes(doc) == n0 + 1, f"Simulate › Stays still: one undo step ({n0} -> {changes(doc)})")
         W.check(w.item("simBadge:bowl") is not None, "the bowl's row has the body badge")
         snap(w, "1-bowl-still")
+        right_click_row(w, "ball")       # a plain item that falls too (Turn into keys gives it keys, 26a); its row is
+        w.choose("menu:Simulate", "sim:falls")      # last, in sight while the buds are one row
+        W.pump(5, lambda: doc.item("ball").get("simulate") == "falls", "the ball: Falls")
 
         # 2. twelve buds in a line, falling
         right_click_row(w, "bud")
@@ -249,6 +318,10 @@ def main():
             go_to(w, f, fps, frames)
             snap(w, f"5-fall-{name}-f{f}")
 
+        # 4b. (26a) Timing On 2s, Turn into keys, a nudge that survives a re-run
+        stylize(w, doc, buds)
+        key = next(s for s in doc.data["shots"] if s["id"] == "drop03").get("simKey", "")   # re-simulated in 4b
+
         # 5. the bowl moved: out of date, striped; the old result still shown
         go_to(w, MOMENTS[1], fps, frames)
         W.click(w.win, row_of(w, "bowl"))
@@ -268,7 +341,9 @@ def main():
         W.pump(3, lambda: sim.canRun, "Simulate offered again")
         seen = simulate_click(w)
         W.check(sim.state == "failed", f"a bud inside the bowl fails ({sim.state!r}: {sim.label!r})")
-        W.check("frame" in sim.failure and buds in sim.failure, f"the failure names the body and the frame ({sim.failure!r})")
+        name = outline.label_of(doc.item(buds))
+        W.check("frame" in sim.failure and name in sim.failure and not sim.failure.startswith("Error"),
+                f"the failure names the body by its name and the frame, without the Error prefix ({sim.failure!r})")
         NUMBERS["failure"] = sim.failure
         snap(w, "7-failed")
     finally:
