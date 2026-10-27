@@ -10,6 +10,8 @@ from rostrum_core.errors import RostrumError, codes
 
 from rostrum2d.scene import describe
 
+from . import edge_cut
+
 
 SLOW_PICTURES_S = 5.0
 
@@ -42,6 +44,11 @@ def scene_later(doc, comp_id: str, span: tuple[float, float] | None = None, fram
         if spent >= SLOW_PICTURES_S:    # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
             scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "
                                  "them, not when a script adds them. They are kept, so the next look at the same paint is quick."]
+        if span and span[0] == span[1] and comp and not frames:      # one frame (look_frame): a subject cut by the frame edge is said in its reply
+            try:
+                scene["warnings"] = [*scene.get("warnings", []), *edge_cut.warnings_at(data, comp, span[0])]
+            except Exception as e:      # noqa: BLE001  (the look still stands; the check's failure is said)
+                scene["warnings"] = [*scene.get("warnings", []), f"(The frame-edge check could not run: {e}.)"]
         return scene
     return make
 

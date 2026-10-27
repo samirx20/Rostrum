@@ -22,7 +22,7 @@ from rostrum_core.mcp import App, Guides, Runtime, build_server
 
 from rostrum2d import run_source
 from rostrum2d.modules import TOOLS
-from . import inspect_keys, project_tool, tool_groups
+from . import inspect_keys, project_tool, session_clock, tool_groups
 from .project_tool import open_documents, start_choice, with_no_project_sentence   # noqa: F401  (open_documents: its old import path)
 
 GUIDES = Path(__file__).resolve().parents[3] / "guides"
@@ -31,8 +31,10 @@ INSTRUCTIONS = ("rostrum-2d makes motion graphics: compositions of shape / text 
                 "Paint on any shape, text, picture or path, or on a drawing, with paint.stroke (its paint stays inside the outline and "
                 "moves with it; one call list = one undo step), fill a closed area with paint.fill {at, color, gap} (paint layers, shared by "
                 "all of a layer's drawings: paint.add, paint.set, paint.move, paint.duplicate, paint.remove; saved brushes: run_brush) and check with look_drawing "
-                "(what \"at\", \"landed\", \"change\"); read inspect_guide 'drawing'. Frame by frame: draw a cycle once and repeat it with the drawing layer's "
+                "(what \"at\", \"landed\", \"change\", \"coverage\": what is painted and where bare paper shows); a wash to the canvas's or a region's edges: paint.wash; read inspect_guide 'drawing'. Frame by frame: draw a cycle once and repeat it with the drawing layer's "
                 "loop, loopTimes and loopStepX / loopStepY (inspect_guide 'drawing-and-frame-by-frame'); to paint strokes on over time (write on), key drawnSoFar 0 → 1 on the drawing layer or painted element (strokes in painting order, each along its path); a filled polygon (a ridge, a silhouette) is fill.add or ink.fill in a script. A painting (painting.add) is a canvas many shapes and paths can use as one shared fill (layer.fill type \"painted\"): paint.stroke on it (its own px, or `through` a layer using it, in that layer's px; on a seamless painting a stroke over an edge comes back on the opposite side), look_painting (repeats: 1 shows it 3 × 3), look_painting what \"facts\" (with a seam check), look_at (where a point lands in it); to make it boil, frame.add on the painting (eachFrame turns on; every use boils from its own start, always looping, `phase` in layer.fill starts a use on another drawing). "
+                "Every reply ends with a clock line (time since your first call; the minutes left when you have a budget): the time is "
+                "for making, looking and refining in passes, and inspect_project what \"session\" lists what is still unchecked. "
                 "The server opens the person's last project; run_open_project lists the recent ones (what \"recent\") and switches.")
 
 
@@ -41,7 +43,8 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "box); item.key(field, {time: value}, ease=\"easeOut\"), times in comp seconds or a marker (\"#beat-0.2\"); "
                "item.effect(\"shadow\" | \"glow\" | \"blur\" | \"gradient\" | …, **fields); item.mask(x=, y=, w=, h=); "
                "item.pivot(x, y): the anchor on that comp point, nothing moves (a grown drawing's turning point); "
-               "w, h = t.measure(): a text's real box in its own px (before scale), to place things by its width. "
+               "w, h = t.measure(): a text's real box in its own px (before scale), to place things by its width; "
+               "w, h = measure_text(\"words\", size=64, font=\"…\") measures a text you have not made (no probe layer, nothing left in the picture). "
                "The scene's frame (what is exported): f = frame(); f.key(\"x\", {0: 960, 4: 2600}); "
                "f.fit([\"hills\", \"tree\"], at=4) frames layers as they show then (depth counted), f.fit(rect=(x, y, w, h), at=4, "
                "ease=\"easeInOut\") (ease: how it moves into that framing; a fit where it already is changes nothing), "
@@ -81,6 +84,7 @@ def make_runtime(app: App) -> Runtime:
     runtime = Runtime(app, app_tools())
     with_no_project_sentence(runtime)
     inspect_keys.with_key_summary(runtime)          # a layer's keys as a summary unless asked for all
+    session_clock.with_clock(runtime)                # last: every reply ends with the session's clock line
     return runtime
 
 

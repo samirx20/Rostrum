@@ -12,7 +12,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from .. import settings
-from . import render
+from . import edge_cut, render
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -124,7 +124,8 @@ def tell(rows: list[dict], start: float, end: float, every: float = EVERY) -> st
 def look_empty(ctx, args):
     """Find blank, pale and standing-still stretches: samples tiny pictures every `every` seconds (seconds to run) and names, with
     times and numbers, the stretches that are near-empty (almost nothing but background), washed out (everything pale, low contrast),
-    or unchanged for `min_still` seconds or more, and whether the film ends on one. Facts, not verdicts: a held title or a planned
+    or unchanged for `min_still` seconds or more, and whether the film ends on one. Also names a subject (layer, group, a rig's
+    whole posed body) cut by the frame edge: which, which edge, how much of it is outside, when (a composition only, not `video`). Facts, not verdicts: a held title or a planned
     quiet beat is yours to judge; look at a named time with look_frame. render_video runs this on every export."""
     every, start = args.get("every", EVERY), args.get("start", 0.0)
     if "video" in args:
@@ -149,6 +150,9 @@ def look_empty(ctx, args):
             items = [(t, Path(tmp) / f"s{i}.png") for i, t in enumerate(times)]
             render.small_stills(ctx.tool, scene, items, SAMPLE_W, job.progress)
             rows = scan_pngs(items, every, end, args.get("min_still", 2.0))
-        return Reply(tell(rows, start, end, every), {"stretches": rows, "every": every, "samples": len(times)}, warnings=scene.get("warnings", []))
+        rigs, notes = edge_cut.rig_boxes(doc.data, comp, times)
+        cuts = edge_cut.scan(comp, times, rigs, every)
+        say = " ".join(s for s in (tell(rows, start, end, every), edge_cut.tell(cuts)) if s)
+        return Reply(say, {"stretches": rows, "edge_cuts": cuts, "every": every, "samples": len(times)}, warnings=[*scene.get("warnings", []), *notes])
 
     return ctx.long(f'look_frame (what: empty) {comp["id"]}', job_fn)

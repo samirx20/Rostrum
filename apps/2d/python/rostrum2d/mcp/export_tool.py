@@ -1,6 +1,7 @@
 """render_export: any export format of a composition, always a job. The screen's Export button runs the same code (exporting.py)."""
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 
 from rostrum_core.errors import RostrumError, codes
@@ -8,7 +9,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from rostrum2d import project_sound
 
-from . import export_area, export_name, exporting
+from . import export_area, export_name, exporting, video
 from .pick import ITEM_COMP, doc_and_comp
 
 tools = Tools()
@@ -36,7 +37,8 @@ def render_export(ctx, args):
     returns a job id at once; ask with inspect_job (wait_s up to 25). The file is written under a .partial name and renamed once it
     read back right (frame count, size, alpha, bit depth); a failure names what failed and leaves nothing under the final name.
     A composition with nothing showing (no layer, or every layer hidden; its frame alone draws nothing) is refused at once,
-    before any job, as the Export button refuses it."""
+    before any job, as the Export button refuses it. An mp4's reply also names blank, washed-out and unchanged stretches
+    (`quiet_stretches`) and subjects cut by the frame edge (`edge_cuts`), as render_video's does."""
     doc, comp = doc_and_comp(ctx, args)
     fmt = args["format"]
     s = exporting.settings(ctx.tool, fmt, comp.get("duration", 5.0), args.get("alpha"), args.get("depth"), args.get("start"), args.get("end"),
@@ -60,6 +62,7 @@ def render_export(ctx, args):
     scene = exporting.snapshot(doc, comp["id"], fmt, args.get("layers"))   # the job gets a copy, never the document
     folder, item, seq = ctx.app.folder, doc.item_id, doc.seq
     name, overwrite = (export_name.clean(args.get("name") or "") or export_name.stem_of(doc, comp["id"])), bool(args.get("overwrite"))
+    data_now = copy.deepcopy(doc.data) if fmt == "mp4" else None        # the edge check reads the scene as exported
 
     def job_fn(job):
         facts = exporting.run(ctx.tool, scene, fmt, s, folder, item, seq, out, job.progress, name=name, overwrite=overwrite, on_stop=job.on_cancel)
@@ -73,6 +76,11 @@ def render_export(ctx, args):
         if fmt == "motion":
             say = f'Wrote the motion samples of {comp["id"]}: {len(facts["checked"]["layers"])} moving layers ({", ".join(facts["checked"]["layers"])}), {facts["checked"]["samples"]} samples each at {facts["checked"]["rate"]}/s, to {facts["file"]}. Hand it to RostrumSound: edit_sounds_from_motion samples="{facts["file"]}"'
             return Reply(say + ".", data)
+        if fmt == "mp4":            # the same checks as render_video's reply, on the finished file
+            quiet = video._quiet_stretches(Path(facts["file"]), s["start"])
+            cuts = video._edge_cuts(data_now, next(c for c in data_now["comps"] if c["id"] == comp["id"]), s["start"], s["end"])
+            data.update(quiet_stretches=quiet[1], edge_cuts=cuts[1])
+            say += f'. {quiet[0]}{" " + cuts[0] if cuts[0] else ""} Before calling it done, look at it: look_frame what "sheet" with video "{facts["file"]}"'
         return Reply(say + ".", data, [Path(f) for f in facts["files"][:50]])
 
     return ctx.job(f'render_export {comp["id"]} {fmt}', job_fn,

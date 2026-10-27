@@ -1,6 +1,7 @@
 """render_video: an mp4 of a composition, always a job (CONVENTIONS § 7)."""
 from __future__ import annotations
 
+import copy
 import shutil
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ from rostrum_core.mcp.files import render_path
 
 from rostrum2d import project_sound
 
-from . import exporting, look_empty, render
+from . import edge_cut, exporting, look_empty, render
 from .geometry import comp_size
 from .pick import ITEM_COMP, doc_and_comp
 
@@ -43,6 +44,17 @@ def _quiet_stretches(mp4: Path, start: float) -> tuple[str, list]:
     return look_empty.tell(rows, start, start).replace("Stretches to look at", "Stretches to check").replace("look_frame at those times", "look_frame at those times (look_frame what \"empty\" re-checks)"), rows
 
 
+def _edge_cuts(data: dict, comp: dict, start: float, end: float) -> tuple[str, list]:
+    """Subjects cut by the frame edge across the render (edge_cut, every look_empty.EVERY s), from the scene as rendered."""
+    try:
+        times = [start + i * look_empty.EVERY for i in range(int((end - start) / look_empty.EVERY + 1e-9))]
+        rigs, _ = edge_cut.rig_boxes(data, comp, times)
+        rows = edge_cut.scan(comp, times, rigs, look_empty.EVERY)
+    except Exception as e:      # noqa: BLE001  (the render is done; the check's failure is reported, not hidden)
+        return f"(The frame-edge check could not run: {e}.)", []
+    return edge_cut.tell(rows), rows
+
+
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
@@ -55,7 +67,7 @@ def render_video(ctx, args):
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
-    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file for blank, washed-out and unchanged stretches (look_frame what \"empty\") and names them with times and numbers (`quiet_stretches`); look at those times with look_frame."""
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file for blank, washed-out and unchanged stretches (look_frame what \"empty\") and names them with times and numbers (`quiet_stretches`), and any subject cut by the frame edge (`edge_cuts`); look at those times with look_frame."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
@@ -75,6 +87,8 @@ def render_video(ctx, args):
             out = copy_to
     whole = start <= 0 and end >= duration - 1e-9        # the whole film is a deliverable: a 3D layer not rendered yet refuses (scene.describe)
     scene = render.scene_of(doc, comp["id"], None if whole else (start, end))     # the job gets a copy of the scene, never the document
+    data = copy.deepcopy(doc.data)
+    comp_now = next(c for c in data["comps"] if c["id"] == comp["id"])
 
     def job_fn(job):
         partial = project.begin_render(folder, item) if folder and item else None
@@ -82,6 +96,7 @@ def render_video(ctx, args):
         info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"], job.on_cancel)
         exporting.with_sound(ctx.tool, info, target, s, folder or doc.folder)      # before it is finished or copied
         quiet = _quiet_stretches(target, start)       # of the file itself, before it is finished
+        cuts = _edge_cuts(data, comp_now, start, end)
         files = [target]
         if partial:
             if info["frames"] != round((end - start) * info["fps"]):      # fail loudly: the .partial stays, nothing is finished
@@ -102,11 +117,11 @@ def render_video(ctx, args):
         also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
                      f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said} '
-                     f'{quiet[0]} Before calling it done, look at it: look_frame what "sheet", start {start:g}, end {end:g}.',
+                     f'{quiet[0]}{" " + cuts[0] if cuts[0] else ""} Before calling it done, look at it: look_frame what "sheet", start {start:g}, end {end:g}.',
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
-                      "timing": info["timing"], "workers": info.get("workers"), "quiet_stretches": quiet[1]}, files,
+                      "timing": info["timing"], "workers": info.get("workers"), "quiet_stretches": quiet[1], "edge_cuts": cuts[1]}, files,
                      warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}")

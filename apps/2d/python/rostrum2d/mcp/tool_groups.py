@@ -18,9 +18,10 @@ GROUPS = [
      {"layers": "look_at", "colour": "inspect_colour_at"}, "layers"),
     ("look_drawing", "See and check a drawing layer in its own canvas pixels: the drawing at a frame (default), before | "
      "after of the last change, what is at one canvas pixel, whether a stroke landed on its path, a big drawing tile by "
-     "tile, or the composition's drawing layers by depth. Use \"change\" or \"landed\" right after paint.stroke.",
+     "tile, the composition's drawing layers by depth, or how much is painted and where bare paper shows (\"coverage\", "
+     "at a time while drawnSoFar paints on). Use \"change\" or \"landed\" right after paint.stroke.",
      {"drawing": "look_drawing", "change": "look_drawing_change", "at": "inspect_drawing_at", "landed": "inspect_stroke_landed",
-      "tiles": "look_background", "depths": "inspect_background"}, "drawing"),
+      "tiles": "look_background", "depths": "inspect_background", "coverage": "look_coverage"}, "drawing"),
     ("look_painting", "See and check a painting (a canvas shapes share as their fill): the painting in its own pixels "
      "(default), or the facts of every painting (size, paint layers, drawings, who uses it, a seam check).",
      {"picture": "look_painting", "facts": "inspect_painting"}, "picture"),

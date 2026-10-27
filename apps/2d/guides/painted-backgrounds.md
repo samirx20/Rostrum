@@ -77,6 +77,7 @@ depth just above it ("'Far' is at its largest; this stroke started 'Far 2'"), on
 | `look_drawing` (`what: "depths"`) | Every drawing layer by depth: how much it moves, its canvas, and whether it covers the frame's move, in words ("312 px short on the right from 1.7 s"). |
 | `look_drawing` (`zoom`, `crop`, `paint`, `sampling`) | Any box of a layer, a part at 100 % (`crop: [x, y]`, to judge grain), or one paint layer alone. `look_drawing` (`what: "at"`) / `look_drawing` (`what: "landed"`) as for any drawing. |
 | `look_frame`, `look_frame` (`what: "sheet"`) | The layers together, through the frame, rendered by the engine: what the film shows. Check the first and last frame of the move. |
+| `look_drawing` (`what: "coverage"`, `time`) | How much of the layer is painted at that time, per paint layer, and every bare area as a box in canvas and composition px ("bare paper: a 1920×104 px strip along the bottom edge …"); bare paper tinted magenta in the picture. Run it between passes, and at a few times while `drawnSoFar` paints on. |
 
 Coordinates in strokes are the layer's own canvas px. With scale 1 (what `background.add` sets), canvas px =
 composition px minus the canvas's top-left; the reply of `look_drawing` (`what: "tiles"`) and the layer's `x`, `y`, `w`, `h` give it.
@@ -125,6 +126,11 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
   ones. Overlapping strokes each keep their own rim, which is how separate passes read as separate. `granulation`
   lays more paint in the paper's valleys, a speckle that follows the `paper` and `paper_scale` and stays put on the
   canvas; it reads on flat areas and on a dark ground.
+- **A wash to the edges.** `paint.wash` (script `p.wash(...)`) covers the whole canvas, a `box` or an `outline` with
+  passes that run past every side, with a crisp, soft (`edge`) or running (`bleed`) edge, flat or graded (`to`,
+  `bands`); drawing-and-frame-by-frame.md › A wash to the edges lists every setting. Hand-laid rows leave bare strips
+  where a stroke stops short or a ragged `flat` / `bristle` end falls inside the area; the brush settings for each
+  kind of wash by hand are in drawing-and-frame-by-frame.md › Brush settings by technique.
 - **A line that reads as inked.** A ruled line has one width and a perfect path. A hand's line drifts, swells and
   loads: `wobble` drifts the path smoothly (around 0.2-0.5 of the size reads as a confident hand; jittering the
   points yourself gives a jagged line instead), `swell` varies the width along it without pressure in the points,
@@ -134,6 +140,13 @@ How watercolour-and-ink painting works with the kit; what to paint and in which 
 
 ## Ways of working (techniques, not rules)
 
+- **Build the picture in passes**, checking between them. A common order: the paper or a toned `ground` → big washes
+  over whole areas, to the canvas's edges (`paint.wash`) → mid values that model the forms → the darkest darks → the
+  line → lights and glows last (`screen` / `add`, on their own layer). After each pass, `look_drawing` (`what:
+  "coverage"`) says what share is painted and where bare paper still shows; with `drawnSoFar` keyed, ask at a few
+  times, because the reveal order decides what is bare mid-way (the last areas painted are bare the longest).
+- **Repeated things** (windows, lanterns, trees): make each a little different in size, spacing, colour and value,
+  and leave space between some, so the row reads as many things rather than one stamp repeated; group them unevenly.
 - **Plan the move first.** Key the frame, then `background.add`; check with `look_drawing` (`what: "tiles"`) which parts each layer
   shows at the start and end. Detail goes where the frame sees.
 - **Block in big shapes** with large opaque strokes before any detail; a base that covers the whole shape stops sky

@@ -13,11 +13,11 @@ def _ids(items) -> list[str]:
     return [getattr(i, "id", i) for i in ([items] if isinstance(items, str) or hasattr(items, "id") else items)]
 
 
-def args_of(items=None, *, at=None, to=None, rect=None, pad=None, cut=None, keep_rotation=None, ease=None) -> dict:
+def args_of(items=None, *, at=None, to=None, rect=None, pad=None, cut=None, keep_rotation=None, ease=None, keep=None) -> dict:
     """An operation's args from a script call: `to` is "items" with layers, "rect" with a rectangle, unless given."""
     out = {"to": to or ("items" if items is not None else "rect" if rect is not None else None),
            "ids": None if items is None else _ids(items), "rect": None if rect is None else [float(v) for v in rect],
-           "at": at, "pad": pad, "cut": cut, "keepRotation": keep_rotation, "ease": ease}
+           "at": at, "pad": pad, "cut": cut, "keepRotation": keep_rotation, "ease": ease, "keep": None if keep is None else _ids(keep)}
     return {k: v for k, v in out.items() if v is not None}
 
 

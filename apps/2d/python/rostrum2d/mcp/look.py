@@ -8,7 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from . import render
+from . import render, video_frames
 from .geometry import comp_size, flatten, problems_showing
 from .pick import ITEM_COMP, TIME, doc_and_comp, time_of
 
@@ -33,7 +33,7 @@ AREA = {"area": {"type": "array", "items": {"type": "number"}, "minItems": 4, "m
                                                                                 "(fewer when there are fewer times)."}}
 
 
-@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, **AREA, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
+@tools.tool("look_frame", {"properties": {**ITEM_COMP, **TIME, **TIMES, **AREA, **video_frames.VIDEO, "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": FRAME_WIDTH,
                                                                           "description": "Picture width in px (never larger than the composition; with `area`, any up to 4096: the zoom). Default 960; with `times`, the width of the whole sheet, which its tiles share (default 1600: ~390 px tiles 4 across; fewer times give bigger tiles)."}}})
 def look_frame(ctx, args):
     """One rendered frame of a composition at a time (seconds) or frame number, as a PNG file and as an image you can see.
@@ -42,7 +42,13 @@ def look_frame(ctx, args):
     one frame (960 px, or `width` up to the comp's), a sheet of 2-4 moments, or `area` [x, y, w, h] (comp px): only that
     part, drawn sharp at `width` (a zoom: a mouth, a hand, an edge).
     Also lists which layers are on screen then (approximate: judged from their values, not from pixels). A frame the engine
-    can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait."""
+    can't finish (stuck about 2 minutes) fails with an error naming it, never a silent wait.
+    `video`: the path of a finished mp4 (render_video's `video`) with `times` (or one `time`): the sheet is made of the film's
+    own frames, so you look at the export itself."""
+    if "video" in args:
+        if "area" in args or "frame" in args:
+            raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, '"video" with "area" or "frame"', "is not supported", ["times", "time"], "A film is looked at by seconds: times [..] (or one time).")
+        return video_frames.video_sheet(ctx, args, args["times"] if "times" in args else [args.get("time", 0.0)])
     doc, comp = doc_and_comp(ctx, args)
     if "times" in args:
         if "area" in args:
@@ -106,7 +112,7 @@ def _times_sheet(ctx, doc, comp, args: dict):
     return _sheet_of(ctx, doc, comp, sorted(set(frames)), args)
 
 
-@tools.tool("look_sheet", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
+@tools.tool("look_sheet", {"properties": {**ITEM_COMP, **video_frames.VIDEO, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                            "end": {"type": "number", "minimum": 0, "description": "Seconds. Default (and the comp's duration): the last frame."},
                                            "count": {"type": "integer", "minimum": 2, "maximum": 24, "default": 8, "description": "Frames in the sheet, evenly spaced from start to end."},
                                            "cols": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Tiles per row. Default 4 (fewer when count is small)."},
@@ -116,7 +122,11 @@ def look_sheet(ctx, args):
     """A contact sheet: `count` frames spread over a time range (`start`, `end` in seconds) in one image `width` px wide,
     each tile labelled with its time and frame, e.g. {"what": "sheet", "start": 2, "end": 5, "count": 12}. Use it to check
     a whole motion at a glance; look_frame for detail. Tiles are drawn at their own size, so a big sheet stays quick.
-    For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet."""
+    For moments you choose (not evenly spaced) give look_frame `times` instead: the same sheet.
+    `video`: the path of a finished mp4 (render_video's `video`): the sheet is made of the film's own frames (start / end /
+    count in the film's seconds), so you look at the export itself, not the composition."""
+    if "video" in args:
+        return video_frames.video_sheet(ctx, args, None)
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     last = (round(duration * fps) - 1) / fps

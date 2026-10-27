@@ -37,7 +37,7 @@ from rostrum_core.keys import key_id, marked
 from rostrum_core.keys.ops import SHAPE_EASE
 from rostrum_core.seeded import SeededRandom, no_classes
 
-from . import fields as F, fontlist, paint_grow, pathdata, plot, script_frame, script_words as W, text_anchor
+from . import fields as F, fontlist, paint_grow, pathdata, plot, script_frame, script_words as W, text_anchor, text_measure
 from .expr import ExprError, parse
 from .frame import make as frame_make, view as frame_view
 from .group_fit import fit
@@ -65,7 +65,7 @@ class Item:
     """A handle on one item the script made. Its fields read and write as attributes through the one field check:
     `title.end = 4` is `title.set(end=4)` and `title.end` reads it back; a name that is not a field fails loudly, so no
     write is ever dropped."""
-    _OWN = ("_b", "node", "id", "d_shift", "drawings")      # the handle's own attributes, not the item's fields
+    _OWN = ("_b", "node", "id", "d_shift", "drawings", "holder", "frame_node")      # the handle's own attributes, not the item's fields
 
     def __init__(self, build: "Build", node: dict):
         object.__setattr__(self, "_b", build)
@@ -185,12 +185,12 @@ class Item:
                 raise ValueError(f'{self.id} already has a drawing at frame {at} ("{same["id"]}"); '
                                  f"{self.id}.frame({at}) gives it again, or use another frame")
             item = Item(self._b, same)
-            item.drawings = frames
+            item.drawings, item.holder = frames, self.node
             return item
         node = {"id": self._b.new_id("frame", id), "type": "frame", "at": at, "paints": [], "paintmasks": []}
         frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
         item = Item(self._b, node)
-        item.drawings = frames
+        item.drawings, item.holder = frames, self.node
         return item
 
     def paint(self, id: str | None = None, **values) -> "Item":
@@ -203,7 +203,9 @@ class Item:
                         and len(f["paints"]) > len(paints)), None)
             if ref is not None:
                 values["layer"] = ref.get("layer") or ref["id"]
-        return self._b.add_kit("paint", id, values, paints)
+        item = self._b.add_kit("paint", id, values, paints)
+        item.frame_node, item.holder = self.node, self.__dict__.get("holder")
+        return item
 
     def paintmask(self, points, id: str | None = None, **values) -> "Item":
         self._need("frame", "paintmask")
@@ -216,6 +218,31 @@ class Item:
         if "mask" in brush:             # mask=f.paintmask(...): the object it gave, or its id
             brush["mask"] = getattr(brush["mask"], "id", brush["mask"])
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
+
+    def wash(self, box=None, outline=None, id: str | None = None, **values) -> list:
+        """A wash to the edges on this paint layer (paint_wash.py, the same as paint.wash): `p.wash(color="#1b2a5c")` covers
+        the whole canvas; box=[x0, y0, x1, y1] or outline=[[x, y], …] a region, with bleed= / edge= px; to= and bands=
+        a graded wash; any brush setting. Gives its strokes (a flat wash is one)."""
+        from .drawing import canvas_size
+        from .paint_wash import plan
+        self._need("paint", "wash")
+        if self.__dict__.get("frame_node") is None or self.__dict__.get("holder") is None:
+            raise ValueError(f"{self.id}: .wash() needs the paint layer as frame.paint() gave it")
+        w, h = canvas_size(self.holder)
+        mask, strokes = plan(outline or box or "whole", w, h, values)
+        from rostrum_paint.ops import build
+        base = self._b.new_id("wash", id)       # the first stroke's id; the others <id>_2 …, the mask <id>_edge
+        if mask:
+            mask = self._b.add_kit("paintmask", f"{base}_edge", mask, self.frame_node["paintmasks"]).id
+        out = []
+        for i, s in enumerate(strokes):
+            s = {**s, **({"mask": mask} if mask else {})}
+            if i:
+                out.append(self._b.add_kit("stroke", f"{base}_{i + 1}", s, self.node["strokes"]))
+            else:
+                self.node["strokes"].append(build("stroke", base, s, f"wash {base}"))
+                out.append(Item(self._b, self.node["strokes"][-1]))
+        return out
 
     def fill(self, points, id: str | None = None, **values) -> "Item":
         """A filled polygon on this paint layer, sharp-edged, in painting order (the kit's fill: what paint.fill makes
@@ -230,7 +257,11 @@ class Item:
         frames = self.node["frames"]
         frame = Item(self._b, frames[0]) if frames else self.frame(0)
         paints = frame.node["paints"]
-        return Item(self._b, paints[0]) if paints else frame.paint(name="Ink")
+        if not paints:
+            return frame.paint(name="Ink")
+        item = Item(self._b, paints[0])
+        item.frame_node, item.holder = frame.node, self.node
+        return item
 
     def _need(self, type_, what):
         types = (type_,) if isinstance(type_, str) else type_
@@ -281,12 +312,12 @@ class Painted:
 class FrameItem(Item):
     """The scene's frame: an Item that also frames and cuts, through the operations (script_frame.py)."""
 
-    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None, ease=None) -> "FrameItem":
-        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation, ease=ease))
+    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None, ease=None, keep=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation, ease=ease, keep=keep))
         return self
 
-    def cut(self, at, to=None, items=None, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
-        script_frame.run(self._b, self.node, "frame.cut", script_frame.args_of(items, at=at, to=to, rect=rect, pad=pad, keep_rotation=keep_rotation))
+    def cut(self, at, to=None, items=None, rect=None, pad=None, keep_rotation=None, keep=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.cut", script_frame.args_of(items, at=at, to=to, rect=rect, pad=pad, keep_rotation=keep_rotation, keep=keep))
         return self
 
     def home(self, at=0) -> "FrameItem":
@@ -467,7 +498,7 @@ def run_source(source: str, name: str, doc=None) -> dict:
              **{t: (lambda id=None, _t=t, **v: b.layer(_t, id, **v)) for t in F.PLACED}, "frame": b.frame, "camera": b.camera, "painting": b.painting, "painted": Painted,
              "pin": lambda layer, on=True, at=0, keep="shown": script_frame.pin(b, layer, on, at, keep),
              "set_depth": lambda layer, depth, at=0, keep="shown": script_frame.set_depth(b, layer, depth, at, keep),
-             **pathdata.for_script(b.layer), **plot.for_script(), **rig_script.for_script(b),
+             **pathdata.for_script(b.layer), **plot.for_script(), **text_measure.for_script(), **rig_script.for_script(b),
              **lipsync_script.for_script(b)}
     try:
         exec(compile(source, name, "exec"), scope)
@@ -481,8 +512,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
-       "frame().fit(layers | rect=(x, y, w, h), at=, ease=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "frame().fit(layers | rect=(x, y, w, h), at=, ease=, keep=[layers kept whole too]) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
+       "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "measure_text(body, size=, font=, …): (w, h) a text would have, no layer made","item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",

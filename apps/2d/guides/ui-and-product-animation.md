@@ -125,7 +125,9 @@ A track matte uses another whole layer as the mask: its shape, letters or pictur
 | `lumaInverted` | as dark as it is |
 
 The matte layer is not drawn on its own; it moves, scales and fades like any layer, and the matted layer follows that.
-Two layers may share one matte. A matte layer can be a shape, path, text, image, video, drawing or a group of these, but
+Two layers may share one matte. The matted layer may be a **group** too (the whole group, its children and their effects, shows
+only through the matte), also inside another group and with a matte that moves; a group may be the matte (its children
+together are the shape). Both were drawn and checked. A matte layer can be a shape, path, text, image, video, drawing or a group of these, but
 has no effects, masks or tilt of its own (refused by name). `look_at` and the motion checks list it as "drawn only as
 the track matte of …", and a `matte` id that is no layer beside it is named there and refused by the engine.
 
