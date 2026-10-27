@@ -62,6 +62,14 @@ FieldFrame {
         while (d > 0 && !fits(Number(v).toFixed(d).replace("-", "−"))) d--
         return Number(v).toFixed(d).replace("-", "−")      // a real minus, like the rest of the app
     }
+    // The room its widest value needs (either end of its range), so an amount whose words widen as it moves ("8 %" ->
+    // "100 %") never squeezes the slider beside it (InspectorRow; the stability pass caught a 5 px shrink under a click).
+    readonly property real widestNeeds: restNeeds + Math.max(0, widestText() - metrics.advanceWidth(text))
+    function endText(v) { return word ? "" : display ? VK.parts(display, v, step).text : Number(v).toFixed(decimals).replace("-", "−") }
+    function widestText() {
+        if (!isFinite(from) || !isFinite(to) || Math.abs(from) >= 1e8 || Math.abs(to) >= 1e8) return 0
+        return Math.max(metrics.advanceWidth(endText(from)), metrics.advanceWidth(endText(to)))
+    }
     // FontMetrics.advanceWidth(text) reads without writing: a TextMetrics' text set inside the `text` binding looped on itself
     function fits(t) { return metrics.advanceWidth(t) <= roomForText }
     FontMetrics { id: metrics; font: f.input.font }
