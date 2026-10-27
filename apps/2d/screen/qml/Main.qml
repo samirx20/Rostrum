@@ -10,6 +10,7 @@ AppShell {
     id: shell
     bridge: backend
     appName: "Rostrum2D"
+    appIcon: "app-2d"                   // the kit's stand-in mark (shapes on blue) until the real icon is drawn
     helpEntries: guides                 // Help's guides (screen2d/session.py), in the kit's guide viewer
     documentName: files.hasProject ? files.name : "Untitled"   // the project (the kit's files: rostrum_gui/project_files.py)
     leftWidth: backend.library.open ? Theme.sidePanel : 0      // the Library drawer (LibraryDrawer.qml), beside the rail
@@ -18,7 +19,9 @@ AppShell {
     left: [ LibraryDrawer { anchors.fill: parent; visible: backend.library.open } ]
     onPressedIn: (area) => { if ((area === "right" || area === "bottom") && backend.create.typing) backend.create.commitText(backend.create.body) }   // a click in the settings or the timeline ends typing
     areaNames: ({ centre: "canvas", right: "settings", bottom: "timeline" })   // inspect_screen's words for the focused area
-    saveWord: backend.isLive ? "Saved" : ""      // a project is live: every change is already on disk
+    // a project is live: every change is already on disk (the bar says nothing); a file outside a project is not
+    saveState: backend.isLive ? "" : "unsaved"
+    saveWords: "Changes here are not kept: this file is not in a project folder."
     // The frame drives the layout (the kit's FrameLayout.js, SPEC 2d-design-v2 §1.2): the settings panel's width and
     // the timeline's size and place (below the frame, or beside it for tall and square scenes) follow the scene's
     // aspect and the window; a panel edge dragged by hand wins (remembered in the person's settings). The canvas fits
@@ -143,7 +146,7 @@ AppShell {
                        Component.onCompleted: stage.viewControls = viewControls },   // "Fit · 57 % ▾", off the canvas
         Button { text: "Export"; kind: "primary"; down: backend.exporter.open; onClicked: shell.setExportOpen(!backend.exporter.open) }
     ]
-    // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
+    // the start screen (kit): at launch with nothing to reopen, or the menu › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     Connections { target: startScreen; function onVisibleChanged() { if (startScreen.visible) shell.closeGuides() } }   // the start screen is over everything: no drawer left open beside it
@@ -160,7 +163,7 @@ AppShell {
         }
     ]
     crumb: SceneCrumb { id: sceneCrumb }   // › Main ▾: the scene shown; its list switches scene or makes a New scene (scenes.py)
-    menu: FilesMenu { id: fileMenu }    // ≡: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
+    menu: FilesMenu { id: fileMenu }    // the app mark's menu: New, Open, Open recent, Duplicate, Save a version … (kit; saving is automatic)
     right: [
         Inspector { id: settingsMove; anchors.fill: parent; bridge: backend; keyMarks: true; effects: true; actions: backend.actions
                     visible: backend.tool !== "draw" && !backend.stretch.shown   // typing: the text's settings (typing_session.py selects it)

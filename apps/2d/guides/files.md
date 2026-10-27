@@ -4,13 +4,13 @@ Starting, opening and copying projects. Your work is saved as you go: there is n
 
 ## 1. Saving is automatic
 
-1. Every change is on disk the moment you make it. The top bar says **Saved** and how many changes you made.
-2. There is no unsaved dot and no "Save changes?" question when you close or open something else.
+1. Every change is on disk the moment you make it, so the top bar says nothing about saving. Only when saving is not happening does an amber dot sit after the project's name (red if saving failed); point at the name to read why. The window's title then starts with "● " too.
+2. There is no "Save changes?" question when you close or open something else. Every change is in History (the clock at the top right, or **Ctrl+H**).
 3. An agent working on the same project saves the same way. You see its changes in your window as they happen.
 
-## 2. The ≡ menu
+## 2. The file menu
 
-Click **≡** at the top left.
+Click the app's mark (the blue square with **▾**) at the top left.
 
 - **New** (Ctrl+N): a new project, made at once in your projects folder.
 - **Open…** (Ctrl+O): pick a project folder to open.
