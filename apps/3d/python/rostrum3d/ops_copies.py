@@ -14,7 +14,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.tree import index, subtree_ids
 
-from . import copies_fields as CF, fields as F
+from . import copies_fields as CF, fields as F, item_bounds
 from .kind import REGISTRY as R
 from .ops_items import ID, NAME, new_item
 
@@ -37,6 +37,18 @@ def _apply(ctx, copies_id: str, given: dict) -> None:
 
 def _given(args: dict) -> dict:
     return {p.name: args[p.name] for p in FIELDS if p.name in args}
+
+
+def _footprint(doc: dict, targets: list[str]) -> float:
+    """The widest source's width across the ground (x or z), for a scatter's Keep apart; 0 when it can't be measured."""
+    widths = []
+    for t in targets:
+        try:
+            lo, hi = item_bounds.world_box(doc, [t])
+        except ValueError:
+            continue
+        widths.append(max(hi[0] - lo[0], hi[2] - lo[2]))
+    return round(max(widths, default=0.0), 4)
 
 
 def _make(ctx, targets, args, layout: str | None = None):
@@ -66,6 +78,8 @@ def _make(ctx, targets, args, layout: str | None = None):
         if any(surface in subtree_ids(locs[t].item, ctx.kind.lists) for t in targets):
             ctx.fail(codes.BAD_ARGUMENT, f'surface "{surface}"', "is one of the items being copied (or inside one)")
     given.setdefault("layout", "line")
+    if given["layout"] == "surface" and "minSpacing" not in given:     # side by side, never piled into each other
+        given["minSpacing"] = _footprint(ctx.doc, targets)
     if given["layout"] == "surface" and not given.get("surface"):
         ctx.fail(codes.BAD_ARGUMENT, '"surface"', "is needed for a surface layout: the id of the item the copies stand on")
     here = [[locs[t].item.get(k, 0.0) for k in "xyz"] for t in targets]
@@ -94,7 +108,8 @@ def copies_make(ctx, targets, args):
 
 @R.operation("copies.scatter", "Scatter items over another item's surface: copies.make with layout surface. `surface` is the "
              "item the copies stand on (a plane, a mesh, a clay, an import). By default only the copies the shot camera sees "
-             "are drawn (onlySeen); amountBy density gives a count per square metre; minSpacing keeps them apart; "
+             "are drawn (onlySeen) and only the faces that look up are used (onTop); amountBy density gives a count per square metre; "
+             "minSpacing keeps them apart (default: the widest source's width, so they lie side by side); "
              "alongSurface stands each one along the surface's direction there.",
              target=SOURCES, label="Scatter on a surface", params=[ID, NAME, *(dataclasses.replace(p, required=p.name == "surface") for p in FIELDS if p.name != "layout")])
 def copies_scatter(ctx, targets, args):

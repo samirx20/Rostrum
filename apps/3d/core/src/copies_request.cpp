@@ -2,6 +2,7 @@
 // like `xform`: no new scene), `sees` (which points a camera sees: the minimum of brief 21a's camera-sees request),
 // the seen test after each scene (a copies item seen by the shot's camera draws only the copies it sees) and a pick
 // that hit a copy.
+#include <pxr/base/gf/rotation.h>
 #include <pxr/usd/usdGeom/camera.h>
 
 #include <algorithm>
@@ -144,6 +145,14 @@ bool Core::pick_copy(const SdfPath& hit, const SdfPath& instancer, int instance,
     (*out)["copy"] = copy >= 0 ? JsValue(copy) : JsValue();
     const int src = proto >= 0 ? proto : copy >= 0 ? s.laid[size_t(copy)].proto : -1;
     (*out)["source"] = src >= 0 && src < int(s.sources.size()) ? JsValue(s.sources[size_t(src)]) : JsValue();
+    if (copy >= 0) {  // where the layout put it (held, varied, on a surface), before effectors: the gizmo's start
+      const copies::Copy& c = s.laid[size_t(copy)];
+      const GfVec3d r = GfRotation(GfQuatd(c.rot.GetReal(), GfVec3d(c.rot.GetImaginary())))
+                            .Decompose(GfVec3d::XAxis(), GfVec3d::YAxis(), GfVec3d::ZAxis());
+      (*out)["place"] = JsValue(JsObject{{"x", JsValue(double(c.pos[0]))}, {"y", JsValue(double(c.pos[1]))},
+                                         {"z", JsValue(double(c.pos[2]))}, {"rx", JsValue(r[0])}, {"ry", JsValue(r[1])},
+                                         {"rz", JsValue(r[2])}, {"s", JsValue(double(c.scale))}});
+    }
     return true;
   }
   return false;
