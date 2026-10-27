@@ -51,6 +51,8 @@ SCRIPT_HELP = ("The 2D script layer: comp(id, width=, height=, fps=, duration=, 
                "(every drawing's paint joins the layer's one set of paint layers). "
                "No import except math and random (seeded: the same numbers every run; random(7) is your own seeded generator "
                "with .uniform/.randint/.choice/.random) and no classes: use functions and dicts. "
+               "Equations, graphs and charts: plot_area, curve_points, param_points, polar_points, line_d, lines_d, "
+               "nice_ticks, tick_label, view3d, surface_lines, parse_table (inspect_guide 'data-math-and-graphs'). "
                "Before a field's first key it holds that key's value. Every field and the first-time surprises: "
                "inspect_guide 'start-here'. An error names the line and what to write instead.")
 
