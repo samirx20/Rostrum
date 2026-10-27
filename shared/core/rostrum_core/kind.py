@@ -61,8 +61,8 @@ class DocKind:
     # `edit_document` replies list what a change added, changed and removed, each item through it (mcp/edit_summary.py);
     # `data` is the document after the change (the tempo and keys an item's times need).
     describe: Callable[[dict, dict], str | None] | None = None
-    # elsewhere(id) -> a plain hint, or None: what to say when a target id isn't in this document but names something
-    # that lives outside it (Sound: a project marker, changed with edit_markers).
+    # elsewhere(id, data) -> a plain hint, or None: what to say when a target id isn't in this document but names
+    # something it can be found as (Sound: a project marker, changed with edit_markers; the song's own marker by name).
     elsewhere: Callable[[str], str | None] | None = None
     new: Callable[[], dict] | None = None               # a fresh document's root
     # The app's upgrade: upgrade(data, lists[, folder]) -> (new data, label) for what an older file holds that Rostrum

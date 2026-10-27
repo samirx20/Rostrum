@@ -4,7 +4,7 @@ Layers top of the stack first (as they look: the last drawn is on top). Each lay
 in composition seconds, clamped to the composition; `startMarker` / `endMarker`: the shared marker an end is tied to,
 or ""), all its keys as one summary line (its effects', masks' and a rig's bones' too) and, for a drawing, its frames
 (`frames`: where each starts and how long it is held). An open layer shows one row per animated field, then its
-effects and masks (their keys) and a rig's keyed bones and IK chains, then its own layers, indented. One fold state:
+effects and masks (their keys) and a rig's bones (all) and keyed IK chains, then its own layers, indented. One fold state:
 a layer with layers inside (a group) is open unless folded; any other layer is closed unless opened (`flipped`: the
 ids whose default was turned round).
 """
@@ -176,7 +176,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         out.extend(_setting_rows(lay, [p for o, p in fields if o is lay], depth + 1, fps, past))
         for o in _owned(lay):
             keys = sorted((k for p in animated(o) for k in _keys(o, p)), key=lambda k: k["t"])
-            if keys or not (only or o["type"] in ("bone", "ik")):   # unkeyed bones would only crowd the list
+            if keys or not (only or o["type"] == "ik"):   # every bone (its row picks it to pose); an IK chain once keyed
                 out.append({**_row("owned", o, depth + 1, label_of(o), keys), **past((o, p) for p in animated(o))})
         if not only:
             out.extend(walk(lay.get("layers", []), depth + 1))

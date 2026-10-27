@@ -46,4 +46,9 @@ The voice model is not installed with the app (about 1.9 GB). When it is missing
 step: the `run_model_install` tool with model `voice` (a job; `inspect_job` shows how far it is). Two of its three files
 are not published yet: until they are, the tool fails at once and names the files and the folder to copy them into. `render_voice` (`what: "words"`)
 (each spoken word's start and end, for captions or placing a hit on a word) needs the speech model: model `speech`
-(about 670 MB).
+(about 670 MB). The program that runs it (sherpa-onnx, Apache-2.0, about 19 MB) installs itself the first time.
+
+**On a busy computer** voice making, word listening and lip sync wait their turn: one model job runs at a time on the
+computer, and each starts only when enough memory is free (voice about 2.5 GB). A job waits up to 5 minutes, saying
+"waiting for memory" or "waiting for its turn", then fails plainly with what was free; ask again when other work is done
+(`ROSTRUM_MODEL_WAIT_S` sets the wait).

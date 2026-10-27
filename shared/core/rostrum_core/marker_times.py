@@ -44,10 +44,22 @@ _TIMES: dict = {}       # path -> (file time, {name: seconds}); a frame-by-frame
 
 
 def times(folder) -> dict[str, float]:
-    """{name: seconds} for every marker, by time; what expressions, flags and snapping read. Cheap to call often:
-    the file is read again only when it changed. No project folder or no markers yet = {}."""
+    """{name: seconds} for every marker, by time; what expressions, flags and snapping read: the project's markers and,
+    as read-only context, the songs' own markers (song_markers.py; a name in both is the project's). Cheap to call
+    often: the files are read again only when they changed. No project folder or no markers yet = {}."""
     if folder is None:
         return {}
+    out = _project_times(folder)
+    from . import song_markers
+    songs = song_markers.times(folder)
+    if not songs:
+        return out
+    out.update({n: t for n, t in songs.items() if lookup(out, n) is None})
+    return dict(sorted(out.items(), key=lambda p: p[1]))
+
+
+def _project_times(folder) -> dict[str, float]:
+    """{name: seconds} of the project's own markers (markers.mkr), by time."""
     path = str(folder)                            # (not resolved: that asked the disk on every call)
     stamp = _stamp(folder)
     if not stamp:
@@ -73,12 +85,18 @@ def version(folder) -> int:
 
 
 def refuse_clashes(times_: dict[str, float], local_names, where: str):
-    """An app's own (local) markers may not share a name with a project marker (manager, S11): a loud error."""
-    shared = {_key(n): n for n in times_}
-    clash = sorted(n for n in local_names if _key(n) in shared)
+    """An app's own (local) markers may not share a name with a project marker at another time (manager, S11; one
+    namespace: the same name at the same time is one marker, song_markers.py): a loud error. `local_names`: names, or
+    {name: seconds} (a None time is a clash whatever it is)."""
+    shared = {_key(n): t for n, t in times_.items()}
+    at = local_names if isinstance(local_names, dict) else dict.fromkeys(local_names)
+    clash = sorted(n for n, t in at.items() if _key(n) in shared and (t is None or abs(shared[_key(n)] - t) > 1e-3))
     if clash:
-        raise RostrumError(codes.CHECK_FAILED, where, f'marker "{clash[0]}"', "is both a project marker and this "
-                           "document's own marker", clash, hint="Rename or delete one of them.")
+        n, t = clash[0], at[clash[0]]
+        mine = f" at {t:g} s" if t is not None else ""
+        raise RostrumError(codes.CHECK_FAILED, where, f'marker "{n}"', f"is a project marker at {shared[_key(n)]:g} s and "
+                           f"this document's own marker{mine}: one name is one marker", clash,
+                           hint="Put it at the project marker's time (then they are one marker), or rename one.")
 
 
 def used(times_: dict[str, float], names) -> dict[str, float]:

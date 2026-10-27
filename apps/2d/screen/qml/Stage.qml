@@ -350,7 +350,9 @@ Rectangle {
                 altBadge: canvas.over.id ? "copy" : ""
                 ctrlBadge: canvas.onLine ? "copy" : canvas.over.grouped ? "deep" : ""
             }
-            function stop() { if (moving) backend.endDrag(); if (band) backend.multi.endBand(); moving = false; band = false; held = "" }
+            function stop() { if (moving) backend.endDrag(); if (band) backend.multi.endBand(); moving = false; band = false; held = ""; posing = "" }
+            property string posing: ""      // a press on a bound part of the rig in hand: the bone it poses (rig_view.pressAt; an arm bends as a chain)
+            property bool posed: false      // its pose drag began (backend.rig.dragger)
             function hidden(m) { return look.on && !worldFrame.inside(m.x, m.y) }
             property string held: ""        // an Alt press on a layer: a click picks behind, a drag past 4 px makes a copy (decided on the first move)
             property bool lined: false      // Alt+Shift: the same, but a click leaves the pick alone and the copy goes along a line
@@ -367,13 +369,17 @@ Rectangle {
                 sx = m.x; sy = m.y; band = false; moving = false; held = ""; lined = Mods.alt(m) && Mods.shift(m)
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (Mods.alt(m)) { held = hit; return }                                          // Alt (and Shift: on a line): click or copy-drag, not yet known
-                if (Mods.shift(m)) { backend.keys.clear(); backend.multi.toggle(hit) }        // Shift+click: add / remove
-                else begin(hit, p, false)
+                if (Mods.shift(m)) { backend.keys.clear(); backend.multi.toggle(hit); return }   // Shift+click: add / remove
+                const rigged = deep || backend.rig.rig === "" ? "" : backend.rig.pressAt(p.x, p.y)   // a part of the rig in hand: its bone poses
+                if (rigged === "rig") { backend.keys.clear(); moving = backend.beginMove(); return }    // the body: the whole rig moves
+                if (rigged !== "") { backend.keys.clear(); posing = rigged; posed = backend.rig.dragger.beginPose(rigged, p.x, p.y); return }
+                begin(hit, p, false)
             }
             onDoubleClicked: (m) => { var p = comp(m); if (hidden(m)) return; if (!backend.create.editAt(p.x, p.y)) backend.multi.pick(p.x, p.y, "in") }   // a text: type in it; else one level into the group
             onPositionChanged: (m) => {
                 if (held !== "" && Math.abs(m.x - sx) + Math.abs(m.y - sy) >= 4) { const h = held; held = ""; begin(h, comp({ x: sx, y: sy }), true) }
-                if (moving) {
+                if (posing !== "") { if (posed) { const q = comp(m); backend.rig.dragger.moveTo(q.x, q.y) } }
+                else if (moving) {
                     backend.snap.keys(Mods.ctrl(m) && !deep, Mods.shift(m))
                     backend.moveBy((m.x - sx) / view.zoom, (m.y - sy) / view.zoom)
                 } else if (band) {
@@ -382,6 +388,11 @@ Rectangle {
                 }
             }
             onReleased: (m) => {
+                if (posing !== "") {        // a pose drag is one undo step; a click (or a drag) picks the bone
+                    const still = Math.abs(m.x - sx) + Math.abs(m.y - sy) < 3
+                    if (posed) { if (still) backend.rig.dragger.cancel(); else backend.rig.dragger.end() }
+                    backend.rig.pickBone(posing, false); posing = ""; posed = false; return
+                }
                 if (held !== "") { const p = comp({ x: sx, y: sy }); if (!lined) { backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click") }; held = "" }   // Alt+click: the layer behind (Alt+Shift+click: the pick stays)
                 if (band) {
                     if (Math.abs(m.x - sx) + Math.abs(m.y - sy) < 4) {                   // a click: the composition
@@ -392,7 +403,7 @@ Rectangle {
                 }
                 stop()
             }
-            onCanceled: stop()
+            onCanceled: { if (posed) backend.rig.dragger.cancel(); posed = false; stop() }
         }
         Item { anchors.fill: parent; visible: !panel.opened
                FrameHandles { world: worldFrame; stage: panel } }   // the frame: its tab picks it; picked, drag inside / corners / turn zones (frame_drag.py)

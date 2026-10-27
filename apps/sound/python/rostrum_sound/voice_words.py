@@ -74,16 +74,9 @@ def _read_wav(path: str):
 
 
 def _runtime(where: str):
-    """sherpa-onnx, the program that runs the speech model: a Python package, not a model file."""
-    try:
-        import sherpa_onnx
-    except ImportError as e:
-        import sys
-        raise RostrumError(codes.MODEL_MISSING, where, "sherpa-onnx (the program that runs the speech model)",
-                           "is not installed in the Python this app runs on",
-                           hint=f'Install it with: "{sys.executable}" -m pip install sherpa-onnx==1.13.8 (Apache-2.0), '
-                                "then call render_voice (what: words) again.") from e
-    return sherpa_onnx
+    """sherpa-onnx, the program that runs the speech model: a Python package, installed on demand (sherpa.py)."""
+    from . import sherpa
+    return sherpa.module(where)
 
 
 def recognise(wav: str) -> list[dict]:
@@ -97,16 +90,16 @@ def recognise(wav: str) -> list[dict]:
         raise RostrumError(codes.MODEL_MISSING, where, "the speech model", f"is not installed in {d} (missing {', '.join(missing)})",
                            hint=fetch.next_step("speech"))
     sherpa_onnx = _runtime(where)
-    memory.gate(where, "the speech model", MIN_FREE_GB)
     samples, rate = _read_wav(wav)
-    rec = sherpa_onnx.OfflineRecognizer.from_transducer(
-        encoder=str(d / FILES[0]), decoder=str(d / FILES[1]), joiner=str(d / FILES[2]), tokens=str(d / FILES[3]),
-        num_threads=2, model_type="nemo_transducer", provider="cpu")
-    stream = rec.create_stream()
-    stream.accept_waveform(rate, samples)
-    rec.decode_stream(stream)
-    res = stream.result
-    del rec                                          # the model is released with the recogniser
+    with memory.turn(where, "the speech model", MIN_FREE_GB):       # waits its turn and for memory, bounded
+        rec = sherpa_onnx.OfflineRecognizer.from_transducer(
+            encoder=str(d / FILES[0]), decoder=str(d / FILES[1]), joiner=str(d / FILES[2]), tokens=str(d / FILES[3]),
+            num_threads=2, model_type="nemo_transducer", provider="cpu")
+        stream = rec.create_stream()
+        stream.accept_waveform(rate, samples)
+        rec.decode_stream(stream)
+        res = stream.result
+        del rec                                      # the model is released with the recogniser
     words = _pieces_to_words(list(res.tokens), list(res.timestamps), len(samples) / rate)
     if not words:
         raise RostrumError(codes.JOB_FAILED, where, "the speech model", f"heard no words in {Path(wav).name}")

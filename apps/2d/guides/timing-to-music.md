@@ -56,6 +56,8 @@ A layer has a bar once it has keys (see [the-screen.md](the-screen.md)).
 
 Markers made in RostrumSound (for example "drop") are shared with the whole project and show as flags on the ruler.
 
+A song's own markers (made in its script with `marker()`, or in RostrumSound's window) count as markers here too: a layer's timing, a key, an expression, `look_frame` and the export find them by name, and `inspect_markers` lists them as the songs' own (read-only in 2D: move them in RostrumSound). One name is one marker: a project marker may have the same name as a song's marker only at the same time; at another time it is refused when you make it, and an export says so before it draws anything.
+
 ![The title's end tied to the "drop" marker: a small yellow mark at the tied end, and Ends at marker shows drop in the settings panel](pictures/tied-to-marker.png)
 
 1. Drag the start or the end of a layer's bar towards the marker's line (every layer has a bar; the pointer turns into a two-way arrow over an end). A small label by the pointer names what it would snap to.

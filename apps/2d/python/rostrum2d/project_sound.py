@@ -97,6 +97,23 @@ def for_export(folder, chosen: str, fmt: str, asked: bool | None) -> str | None:
     return s["id"] if s else None
 
 
+def check_before_export(folder, item: str | None, where: str) -> None:
+    """What an export reads besides the picture, checked before a frame is drawn (fail loudly, early): the project's
+    markers against the songs' own (one namespace: rostrum_core.song_markers.check) and the song it mixes, read whole
+    with every marker it names. An agent's export used to fail on the song after drawing every frame (F7-2)."""
+    if not folder:
+        return
+    from rostrum_core import marker_times, song_markers
+    song_markers.check(folder, marker_times._project_times(folder), where)
+    if item:
+        from rostrum_sound import soundtrack
+        from rostrum_sound.doc import markers as own
+        with own.project(folder):
+            root = soundtrack.read(folder, item)
+            own.all(root)
+            own.used(root)
+
+
 _SONGS: dict = {}       # (folder, item) -> the song's live Document: one copy per process (cues, video sound, Undo)
 
 

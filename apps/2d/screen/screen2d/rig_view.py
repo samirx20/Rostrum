@@ -5,6 +5,8 @@ state; every change goes through rig_drag.py's operations. Bones and joints are 
 """
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 
 from .rig_drag import RigDrag
@@ -43,6 +45,13 @@ def joints_of(rig: dict, posed: dict) -> list[dict]:
             if b["id"] not in kids:
                 add(p["tipX"], p["tipY"], b["id"], "tip", ends.get(b["id"], ""))
     return out
+
+
+def _off(bone: dict, x: float, y: float) -> float:
+    """How far (x, y) is from a posed bone, joint to tip (comp px)."""
+    ax, ay, dx, dy = bone["x"], bone["y"], bone["tipX"] - bone["x"], bone["tipY"] - bone["y"]
+    f = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy or 1.0)))
+    return math.hypot(x - ax - f * dx, y - ay - f * dy)
 
 
 class RigView(QObject):
@@ -156,6 +165,30 @@ class RigView(QObject):
         self._posed = rigs.get(self._rig, {}).get("bones", {})
         self._place = places.get(self._rig)
         self.changed.emit()
+
+    @Slot(float, float, result=str)
+    def pressAt(self, x, y):
+        """A Move-tool press at (x, y) comp px on the rig in hand (the rig or one of its bones picked): the posed bone
+        nearest the press (its part follows it), which the press then poses (rig_drag.beginPose: an arm or leg bends as
+        a chain, any other bone turns), or "rig" when that is the root bone (the body: the whole rig moves, and is
+        picked). "" = the canvas's own pick (not on this rig, or a part of it is picked: Ctrl+click picks a part).
+        Before this a press on an arm moved the whole puppet; only the thin bone wedges posed (2D final critic row 3).
+        The parts' own outlines are posed by the engine, so the canvas's pick sees the rig as one piece: the bones are
+        what the press is measured against."""
+        doc = self.b.doc
+        if not self._rig or not doc.has(self._rig) or not self._posed:
+            return ""
+        if any(doc.has(i) and doc.item(i)["type"] not in ("rig", "bone", "ik") for i in self.b._kit.selection):
+            return ""
+        from . import bounds
+        if self._rig not in bounds.pick_chain(self.b.placed(), self.b._t, x, y):
+            return ""
+        parent = {b["id"]: b["parent"] for b in doc.item(self._rig).get("bones", [])}
+        near = min((b for b in self.bones if b["id"] in parent), key=lambda b: _off(b, x, y), default=None)
+        if near is None or not parent[near["id"]]:
+            self.b.select(self._rig)
+            return "rig"
+        return near["id"]
 
     @Slot(str)
     @Slot(str, bool)
