@@ -7,7 +7,7 @@ logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.s
 (send_qt.py; agents: render_send_shot). And the edit block every app has (Duplicate, Delete, Copy / Paste material),
 Make copies / Scatter / Change near (copies_actions.py), what a light, a mouth group or empty space offers (Look through, Pick what it lights, Lip sync…, New shot from this
 view, Back to the shot's view). Right-click is this list (the kit's ActionMenu fed by the hub's `menu()`), so it never
-holds an action the panel, Ctrl+K or a key wouldn't run; six entries at most. No Qt.
+holds an action the panel, Ctrl+K or a key wouldn't run; eight entries at most (six, Make copies ›, Simulate ›). No Qt.
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from rostrum_gui.actions import Action, ActionList
 from .copies_actions import ACTIONS as COPIES_ACTIONS
 from .keys3d import KEYS3D
 from .shots import FRAMED, framed
+from .sim_actions import ACTIONS as SIM_ACTIONS
 
 WORDS = {"union": "Union", "subtract": "Subtract", "intersect": "Intersect"}
 
@@ -173,6 +174,8 @@ ACTIONS += [
 ]
 # Copies and scatter (brief 24; copies_actions.py): Make copies ›, Scatter on, Change near ›
 ACTIONS += COPIES_ACTIONS
+# Simulate › Falls · Stays still · Off (brief 25; sim_actions.py): one folded row on right-click
+ACTIONS += SIM_ACTIONS
 # Project a picture from <shot> (brief 21b; project_qt.py): onto the selected shapes, from the shown shot's camera.
 # Offered while painting, or with several shapes selected (walls, a set): a single shape's menu is full otherwise
 # (the menu holds seven at most; while painting Make copies steps back for it).

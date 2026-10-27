@@ -48,12 +48,21 @@ Rectangle {
     Text {
         id: name
         anchors { left: icon.left; leftMargin: row.field ? 0 : icon.width + Theme.gap; verticalCenter: parent.verticalCenter
-                  right: matName.visible ? matName.left : parent.right; rightMargin: Theme.gap }
+                  right: badge.visible ? badge.left : matName.visible ? matName.left : parent.right; rightMargin: Theme.gap }
         text: (row.modelData.cutter ? "− " : "") + row.modelData.label; elide: Text.ElideRight; font.family: uiFont
         font.pixelSize: row.field ? Theme.label + 1 : Theme.body
         color: row.field || row.modelData.row === "part" && !row.selected ? Theme.fg2 : Theme.fg
         HoverHandler { id: nameHover }
         HoverTip { text: name.truncated ? name.text : ""; hovered: nameHover.hovered }
+    }
+    Icon3D {    // a body (Simulate): a falling arrow, or a block on the ground for one that stays still (sim_actions.py)
+        id: badge
+        objectName: row.field ? "" : "simBadge:" + row.modelData.id
+        visible: !row.field && !!row.modelData.sim && row.modelData.sim !== "off"
+        name: row.modelData.sim === "falls" ? "sim-falls" : "sim-still"
+        ink: row.selected ? Theme.accentHover : Theme.fg3
+        scale: 0.7; transformOrigin: Item.Center
+        anchors { right: matName.visible ? matName.left : parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }
     }
     Text {  // its material: click to edit it (only while the name has its whole room: the name comes first)
         id: matName

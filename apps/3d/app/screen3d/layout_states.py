@@ -22,7 +22,8 @@ IGNORE = ()
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
-         "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added")
+         "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added",
+         "sim-not-computed", "sim-filling", "sim-stored", "sim-out-of-date", "sim-failed", "sim-render-sheet", "sim-context", "sim-body-selected")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -113,6 +114,17 @@ def buds(layout: str = "line") -> list[str]:
     return ["--script", str(script)]
 
 
+def drop() -> list[str]:
+    """Start args for the sample with twelve buds that fall (a copies item set to Falls) and the ground plane set to Stays still
+    (brief 25): the Simulate row, the bodies' badges, the Scene panel's Simulation group."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "drop.py"
+    bud = 'bud = mesh("bud", shape="sphere", radius=0.03, x=-0.5, y=0.6, z=0, material=clay)'
+    source = SOURCE.replace('mesh("ground", ', 'mesh("ground", simulate="still", ')
+    script.write_text(f'{source}{bud}\ncopies("buds", source=bud, layout="line", count=12, spacingX=0.09, simulate="falls")\n',
+                      encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -167,6 +179,17 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("copies-scatter-menu", s, ["select vase", "context block"]),                      # Scatter 'vase' on 'block'
         ("copies-near-added", buds(), ["select buds", "action copies:near:scale", "settled"]),
         ("copies-effector-selected", buds(), ["select buds", "action copies:near:turn", "select effector_1", "settled"]),
+        # Simulate (brief 25; sim_qt.py, SimRow.qml): the row under the timeline in each state (never a simulation), the
+        # Scene panel's Simulation group, the render sheet's line, right-click › Simulate, the rail's flyout, a body's settings
+        ("sim-not-computed", drop(), ["deselect", "sim-demo not computed", "settled"]),
+        ("sim-filling", drop(), ["deselect", "sim-demo running", "settled"]),
+        ("sim-stored", drop(), ["deselect", "sim-demo stored", "settled"]),
+        ("sim-out-of-date", drop(), ["deselect", "sim-demo out of date", "settled"]),
+        ("sim-failed", drop(), ["deselect", "sim-demo failed", "settled"]),
+        ("sim-render-sheet", drop(), ["sim-demo out of date", "estimate-recorded", "render-sheet"]),
+        ("sim-context", drop(), ["context buds"]),
+        ("sim-flyout", drop(), ["select set", "rail simulate"]),
+        ("sim-body-selected", drop(), ["select buds", "settled"]),
         ("text-typing", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "type AURORA", "wait 600"]),
         ("drawings-list", s, ["drawings"]),
         ("bevel-too-big", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "typeend", "set bevel 0.01", "wait 2500"]),

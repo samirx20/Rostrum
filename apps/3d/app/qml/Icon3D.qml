@@ -37,7 +37,10 @@ Item {
         "pose-drag": "M3.5 15.5L7 10.5l5 1L15 4.5M12.4 4.3l2.6.2.3 2.6" + e(3.5, 15.5, 1.3, 1.3) + e(7, 10.5, 1.3, 1.3)
                      + e(12, 11.5, 1.3, 1.3),                                    // Pose: a jointed limb pulled by its tip
         bone: e(4, 14, 2, 2) + "M5.5 12.5L8 7.5 15 3 10.5 10z",                                  // a bone: head and diamond
-        material: e(9, 9, 6.5, 6.5) + "M5.6 7.6a3.8 3.8 0 0 1 2.6-2.8"                              // a material ball and its shine
+        material: e(9, 9, 6.5, 6.5) + "M5.6 7.6a3.8 3.8 0 0 1 2.6-2.8",                             // a material ball and its shine
+        "sim-falls": e(9, 4.5, 2.8, 2.8) + "M9 9v6.5M6 12.8l3 3 3-3",                              // Simulate › Falls: a ball, an arrow down
+        "sim-still": "M5 5.5h8v6H5zM2 14.5h14M4 16.5l1.5-2M8 16.5l1.5-2M12 16.5l1.5-2",              // Stays still: a block on the ground
+        "sim-off": e(9, 9, 5.5, 5.5) + "M5.1 12.9l7.8-7.8"                                         // Off: a ball, crossed out
     })
     Shape {
         x: 1; y: 1

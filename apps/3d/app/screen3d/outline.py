@@ -30,7 +30,8 @@ def label_of(item: dict, owner: dict | None = None) -> str:
 
 def _row(item: dict, depth: int, fold: str = "", row: str = "item") -> dict:
     return {"row": row, "id": item["id"], "label": label_of(item), "kind": item["type"], "depth": depth, "fold": fold,
-            "animated": bool(item.get("keys")), "material": item.get("material", "")}
+            "animated": bool(item.get("keys")), "material": item.get("material", ""),
+            "sim": item.get("simulate", "off") if row in ("item", "layer") else "off"}     # a body's badge (Falls / Stays still)
 
 
 def named(data: dict, key: str) -> list[dict]:
