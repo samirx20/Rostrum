@@ -69,6 +69,32 @@ def _own_points(doc: dict, fr: Frames, id_: str, f: int) -> list[list[float]]:
     return [aim.point(world, c) for c in _corners(*box)] if box else []
 
 
+SHAPES = ("mesh", "combine", "clay")
+
+
+def solid(doc: dict, fr: Frames, id_: str, f: int, built: dict):
+    """(corners, axes) of one shape item at frame f, for overlap tests: a mesh or combine's own box carried into the world
+    (an oriented box: its 8 corners and its 3 edge directions), a clay's reach as a world-aligned box; None when it has no
+    shape yet (an empty clay or mesh). `built` keeps the engine-built boxes asked once per item. ValueError for an item
+    that is not a shape (SHAPES)."""
+    kind = fr.items[id_]["type"]
+    if kind not in SHAPES:
+        raise ValueError(f'"{id_}" is a {kind}: only {", ".join(SHAPES)} have a shape to measure here')
+    if kind == "clay":
+        pts = _own_points(doc, fr, id_, f)
+        if not pts:
+            return None
+        lo, hi = [min(p[k] for p in pts) for k in range(3)], [max(p[k] for p in pts) for k in range(3)]
+        return _corners(lo, hi), aim.IDENTITY[0]
+    box = _shape_box(fr.values(id_, f)) if kind == "mesh" else None
+    if box is None:
+        box = built[id_] if id_ in built else built.setdefault(id_, _built(doc, id_))
+    if not box:
+        return None
+    world = fr.world(id_, f)
+    return [aim.point(world, c) for c in _corners(*box)], [[row[k] for row in world[0]] for k in range(3)]
+
+
 def world_box(doc: dict, ids: list[str], t: float = 0.0):
     """(lo, hi) of everything in `ids` at `t` seconds; ValueError when there is nothing to measure."""
     f = round(t * 1000)

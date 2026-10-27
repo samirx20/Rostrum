@@ -134,3 +134,6 @@ The sheet is built on the same pieces agents use: `render_estimate` (the same te
 `render_still`, `render_send_shot` and the shot's render fields (`renderQuality`, `renderSize`, `renderRange`, `renderFormat`,
 and the pass switches `passLight`, `passShadow`, `passReflections`, `passMasks`, `passDepth`, `passNormal`). See
 [Working with an AI agent](agents.md), "Render settings and the time estimate".
+
+Looking before you render: `look_frame` (one frame, with its clipped share and the text reading direction), `look_sheet` (one shot over
+time), `look_shots` (several shots, a row each) and `look_material` (one material on a ball, under the scene's lights).

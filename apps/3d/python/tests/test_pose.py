@@ -216,6 +216,10 @@ def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
     assert all(not set(w) & arm for w in SP.weights(far, rest, P))
     near = pts[off < blend]                                               # and the shoulders themselves are shared
     assert any(set(w) & arm and set(w) - arm for w in SP.weights(near, rest, P))
+    limb = np.array(P["origin"]) + (np.argwhere(np.isin(parts["cells"], [P["bone"][b] for b in arm])) + 0.5) * P["cell"]
+    off = np.min([np.linalg.norm(limb - rest[names.index(f"arm.{s}")][:3], axis=1) for s in "LR"], axis=0)
+    assert all(set(w) <= arm for w in SP.weights(limb[off > 2 * blend], rest, P))   # an arm is all arm past its
+    # shoulder's band (3d-28: the body spread back into it, and the raised upper arm came apart from the shoulder)
 
 
 def test_a_part_on_the_body_rides_a_body_bone_not_the_arm_beside_it():

@@ -26,8 +26,24 @@ and framed before you add anything; change or delete any of them like any item (
      material's Lines and Halftone show only there, its Light to colour there and in `final` (guide `materials`, "Stylized
      blocks"); it fails, naming what to build, when the stylized renderer isn't built. `onion` adds the person's onion-skin ghosts of one item (quick looks only).
      Its reply says how much of the picture is clipped (blown to white) and, for a quick look, which lighting settings only
-     Final applies ("Applied in Final: spread on rim, linking on rim").
+     Final applies ("Applied in Final: spread on rim, linking on rim"). For every text in the picture it also says which way
+     it reads from this camera: left to right, mirrored (seen from behind), upside down, tilted (its angle to the horizontal)
+     or edge-on; a text behind the camera or outside the picture is not listed. Fix a text that reads wrong by turning it
+     (`ry` 180 turns its back to the camera) or moving the camera, then look again.
    - `look_sheet` — the whole shot in six frames. Ask for it after every change to motion: does the thing arrive, hold, leave?
+   - `look_motion` — the motion in numbers, every frame, read from the document (no picture, no renderer): per moving item
+     its path (world metres and px on the picture), peak speed and stops; then what to fix: two shapes passing through each
+     other (both named, the frames, how deep), sudden jumps (a snap or teleport between two frames), an item partly or
+     wholly out of the picture. Overlap is judged by each shape's own box, so a hollow case counts as full: check a
+     "passes through" with `look_frame` at those frames. `items` for a few, `frames` [first, last] for part of the shot,
+     `full` for the speed on every frame.
+   - `look_shots` — one sheet for several shots, a row per shot (`shots` by id or name, default all; `count` frames per row,
+     each tile labelled with the shot's name, frame and time; `quality` / `renderer` as look_sheet). Use it to compare the
+     framing of a sequence or two ends of a cut; an unknown shot fails and lists the document's shots.
+   - `look_material material=<id or name>` — that material on a ball (`shape: "plane"` for a flat square) turned through 4–8
+     angles in one strip, lit by the scene's own lights with everything else hidden. It picks Final (Cycles) by itself for
+     glass, metal, clear coat and Final-only settings and the reply says which renderer drew it and why; `quality: "fast"`
+     forces Storm. Judge a material's highlight and colour here before assigning it; an unknown material lists the known ones.
    - `edit_place_highlight` — put a light's highlight on what is at a pixel of that picture (`fresh=true` for a light just
      added: distance and a starting brightness too). The lighting guide explains it.
    - `look_at` — "what is at this pixel?" Give x, y of the picture you were just shown (same width). It answers with the item id,
@@ -144,6 +160,7 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
 - **Time.** `at` is seconds from the start of the shot; `frame` is the shot's own frame number. Both are valid in every tool; the
   replies carry both `time` and `frame`.
 - **Check the ends of a move.** First and last frame of a move, and the middle: `look_sheet` with `start` / `end` zoomed to that range.
+  `look_motion` after each change to keys: it names the frames where something passes through another thing, snaps or leaves the picture.
 - **A word or a logo.** `mesh.add shape=text text="Rostrum" font=Inter size=0.2 depth=0.03 bevel=0.002` makes a word 0.2 m
   tall (the em), pushed out 0.03 m; it is centred on its origin, so spinning it turns it around its middle. `size`, `depth`
   and `bevel` are metres; try a depth of about a tenth of the size and a bevel a tenth of the depth. A bevel too big for

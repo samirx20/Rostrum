@@ -202,7 +202,8 @@ void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
     if (joint[size_t(n)][3] > 0) {
       // spread through the inside round the joint only: each step an inside cell there takes the mean of itself and
       // its inside neighbours (a blur of about sqrt(2 × steps / 7) cells along the clay, never across air); the
-      // cells beyond the reach stay as they are
+      // cells beyond the reach stay as they are, and so do the limb's own (3d-28: the spread goes out into the body
+      // only; spreading the body back into a thin arm left the upper arm a third the body's, torn from the shoulder)
       const double* at_joint = joint[size_t(n)].data();
       const double sigma = std::max(kShareWidth * pc.blend / cell, 0.5), reach = at_joint[3];
       const int steps = std::min(kShareMost, int(std::lround(3.5 * sigma * sigma)));
@@ -222,7 +223,7 @@ void SkinParts::make_shares(const std::vector<std::array<double, 6>>& rest) {
           for (int y = lo[1]; y <= hi[1]; ++y)
             for (int x = lo[0]; x <= hi[0]; ++x) {
               const size_t i = at(x, y, z);
-              if (cells[i] == 255 || !by_joint(x, y, z)) continue;
+              if (cells[i] == 255 || cells[i] == n || !by_joint(x, y, z)) continue;
               double sum = f[i];
               int cnt = 1;
               const int nb[6][3] = {{x - 1, y, z}, {x + 1, y, z}, {x, y - 1, z},
@@ -306,18 +307,13 @@ double SkinParts::gate_in(int piece, int b, const double p[3], const std::vector
   const int mine = bone[size_t(b)];
   if (mine == piece) return 1;
   const Piece& own = pieces[size_t(piece)];
-  const Piece& other = pieces[size_t(mine)];
-  const double* joint = nullptr;
-  double blend = 0;
-  if (piece > 0 && b == own.from && own.first >= 0) {  // the body bone this limb hangs from
-    joint = rest[size_t(own.first)].data(), blend = own.blend;
-  } else if (mine > 0 && b == other.first && other.from >= 0 && bone[size_t(other.from)] == piece) {
-    joint = rest[size_t(b)].data(), blend = other.blend;  // a limb hanging from this piece, at its joint
-  } else {
-    return 0;
-  }
+  // only the body bone a limb hangs from, seen from the limb (3d-28: a limb's first bone seen from the body is not
+  // gated in; it is so much nearer than the body's middle bones that the body round the joint turned rigidly with the
+  // arm and left a dented rim; the shares bring the limb into the body smoothly instead)
+  if (!(piece > 0 && b == own.from && own.first >= 0)) return 0;
+  const double* joint = rest[size_t(own.first)].data();
   const double dx = p[0] - joint[0], dy = p[1] - joint[1], dz = p[2] - joint[2];
-  return fade(std::sqrt(dx * dx + dy * dy + dz * dz) / std::max(blend, 1e-9));
+  return fade(std::sqrt(dx * dx + dy * dy + dz * dz) / std::max(own.blend, 1e-9));
 }
 
 BoneMove read_bone_move(const JsValue& v, const std::string& where) {
