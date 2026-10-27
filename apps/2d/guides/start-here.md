@@ -181,7 +181,9 @@ Things that surprise people the first time:
   on top of it (inside a group the same, among its children). Make the background first; `layer.arrange` with `index`
   (0 = bottom) moves one later.
 - **A text's real width:** `w, h = title.measure()` in a script gives its box in its own px (before `scale`), measured
-  by the code that draws it; place by it (`note.x = title.x + title.measure()[0] / 2 * title.scale + 24`).
+  by the code that draws it; place by it (`note.x = title.x + title.measure()[0] / 2 * title.scale + 24`). To measure
+  words you have **not** made a layer for, `w, h = measure_text("SIGNAL", size=120, weight=700, font="…")` takes the same
+  text fields and makes no layer, so nothing is left in the picture (never make a probe text just to measure it).
 - **Text sits on its anchor too, and its anchor follows its alignment:** every text, made by a script, an operation
   or a person's Text tool, starts centred on `x`, `y` (anchor 0.5, `align="center"`). Without a `boxWidth`, changing
   `align` moves the across anchor with it, as After Effects' point text: `align="left"` makes `x` the left edge (anchor
@@ -208,7 +210,7 @@ You can't judge motion from the script. Look.
 | Tool | Use it to |
 |---|---|
 | `look_motion` | Read **what moves and when** from the keys, no rendering: each layer's moves, path, peak speed, ease, overshoot, holds; entrances that overlap; where nothing moves; layers off screen at the end; keys that do nothing. Facts only. On screen means the engine draws it into the picture (groups, frame / camera, depth, tilt, drawing cycles counted). Short by default: a line a moving layer; identical findings (a hundred windows entering together) one line with a count and examples, the ones that matter first (never on screen, not on screen at the end, keys after the end, keys that do nothing, quiet stretches, overlapping entrances); at most 20 layers and 20 finding lines, then how many more; pass `layers` for just those, `limit` for more, `all` for no cap, `full` (with `layers`) for every move. Run it after every script. |
-| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. |
+| `look_frame` (`what: "sheet"`) | See the **whole motion at a glance**: `count` frames (2–24) from `start` to `end` (seconds) in one labelled image `width` px wide (default 1600, the whole sheet: ~390 px tiles 4 across), `cols` tiles a row. For moments you pick (not evenly spaced) give `look_frame` `times: [0.5, 1.2, 3.0]`: the same sheet. For detail, one `look_frame`. With `video: "<mp4 path>"` (with `sheet`, or `times`) the sheet is made of a **finished mp4's own frames**: the export itself, no item needed. |
 | `look_frame` | See **one moment** in detail, at a time or frame number. Look at the landing frames and the hold frames. `area: [x, y, w, h]` (comp px) draws only that part, sharp at `width` (a zoom on a mouth or an edge); `times` + `cols` for a sheet of chosen moments. |
 | `look_at` | Ask **what is at a point** (x, y, time; `space` frame or world): layers covering it, top first, with values (boxes are approximate). |
 | `look_frame` (`what: "world"`) | See the **whole canvas** with the frame and its path drawn on it (a dot per frame, keys, cuts), and a ruler of world px. |
@@ -217,8 +219,26 @@ You can't judge motion from the script. Look.
 | `render_video` | Export an mp4. Always a job: `inspect_job` with `wait_s` to follow it. The finished reply names the one deliverable (`video`: your `path` copy, else the project render) and says whether it has sound (`has_sound`). It also checks the finished file as `look_frame` `what: "empty"` does and names any blank, washed-out or unchanged stretches with times (`quiet_stretches`): look at those times with `look_frame`. |
 
 **Last step, every time: look at the export itself.** When `render_video` finishes, look at a sheet of the finished
-piece (`look_frame` `what: "sheet"` over the whole duration, after your last edit) and fix what is wrong before you call
+piece (`look_frame` `what: "sheet"` with `video` = the mp4's path, over the whole duration, after your last edit) and fix what is wrong before you call
 it done. A sheet from before your last edit doesn't count.
+
+### Using your time
+
+Every reply ends with a clock line, e.g. *Session 6 min 12 s (since your first call this session) · 23 calls · last look at
+the picture 4 edits ago*. The session starts at your first call; if `ROSTRUM_SESSION_BUDGET_MIN` is set it also says how many
+minutes are left. The clock is the only time you have: a long stretch without a reply is not time used up, and the time
+you were given is for making **and looking**.
+
+`inspect_project` with `what: "session"` says what is still unchecked: edits since you last looked at the picture, times
+of the piece you have never looked at (a look at a time covers 2 s either side of it, a sheet covers each of its tiles),
+whether the export was looked at, and the stretches the last empty check named. A technique for the time you have:
+
+- Work in **passes**, not one long build: structure and timing first, then look at sheets of the whole span, then refine what the
+  sheets show (a moment looks different at 100 % in one frame than in a tile, so also look at single frames and `area` zooms).
+- Use the time to look: a sheet of the whole span after each pass, a sheet of the **export** after each render, a zoom on
+  anything small. A piece you have not looked at is not finished, however long the script is.
+- Stop when the checks say nothing is unchecked **and** the picture at every time looks as you mean it, not when a count of
+  calls or minutes feels enough.
 
 Look pictures go to the project's `looks` folder (`<project folder>\looks\`; with no project open, to Rostrum's look cache); every reply gives the full path in `files`. `look_frame` and `look_frame` (`what: "sheet"`) use the
 same engine as export, so what you see is what the file will be.
