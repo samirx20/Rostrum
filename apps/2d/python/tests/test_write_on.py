@@ -34,3 +34,30 @@ def test_a_keyed_amount_sends_a_picture_per_frame_it_changes():
     shown = scene._pictures(d, 10, {"until": 1.0})
     assert [e["at"] for e in shown] == [0, 1, 2]                         # 0 %, 50 %, then whole and held
     assert len({e["src"] for e in shown}) == 3
+
+
+def test_the_screen_shows_the_exports_pictures_after_a_stroke_is_added():
+    """The screen (`later`: pictures made off its thread) ends on the very entries the export uses, also after an edit;
+    a drawing's own picture is asked for once, so it isn't held up behind the in-between ones (2D r12 must-fix 1)."""
+    def drawn(f):
+        return {"id": "d", "type": "drawing", "w": W, "h": H, "frames": [f],
+                "keys": [{"prop": "drawnSoFar", "t": 0.0, "v": 0.0}, {"prop": "drawnSoFar", "t": 0.4, "v": 1.0}]}
+
+    def on_screen(d):
+        for _ in range(3):                      # the waits, then the in-between pictures, then nothing left
+            later = []
+            shown = scene._pictures(d, 10, {"until": 1.0, "later": later})
+            waits = [j for j in later if not getattr(j, "ahead", False)]
+            assert len(waits) <= 1
+            for job in waits or later:
+                job()
+        assert not later
+        return shown
+
+    before = frame()
+    assert on_screen(drawn(before)) == scene._pictures(drawn(before), 10, {"until": 1.0})
+    after = {**before, "paints": [{**before["paints"][0], "strokes": before["paints"][0]["strokes"] + [
+        ops.build("stroke", "s2", {"points": [[20, 40], [180, 40]], "size": 12, "brush": "round", "color_jitter": 0.0})]}]}
+    shown = on_screen(drawn(after))
+    assert shown == scene._pictures(drawn(after), 10, {"until": 1.0})
+    assert shown != on_screen(drawn(before))     # the added stroke makes new pictures at every in-between time

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 
 import numpy as np
 from PySide6.QtCore import Property, QObject, Signal
@@ -199,6 +200,18 @@ def smear_ink(view: WetView, brush: dict, stroke, box: dict, n: int) -> WetInk:
     item = stroke.item
     w, h = paint_size(item, stroke.props)
     here = frame_at(item, n) if item.get("frames") else None
-    paint = canvas.render(here, w, h).rgba.copy() if here else np.zeros((h, w, 4), np.float32)
     place = (box.get("x", 0), box.get("y", 0), box.get("w", w) / w, box.get("h", h) / h)
-    return view.ink(brush, stroke.sid, 1.0, (w, h), np.ascontiguousarray(paint, np.float32), place)
+    return view.ink(brush, stroke.sid, 1.0, (w, h), paint_under(here, w, h), place)
+
+
+_UNDER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-under")
+
+
+def paint_under(frame: dict | None, w: int, h: int) -> Future:
+    """A smear's paint (a drawing's frame, premultiplied, only read) made off the screen's thread: a press never waits
+    for a drawing's pixels (they are usually kept already; just after a stroke they may still be being made)."""
+    if frame is None:
+        done = Future()
+        done.set_result(np.zeros((h, w, 4), np.float32))
+        return done
+    return _UNDER.submit(lambda: np.ascontiguousarray(canvas.render(frame, w, h).rgba, np.float32))

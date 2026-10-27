@@ -65,3 +65,37 @@ fn a_painted_fill_shows_the_drawing_of_its_frame() {
     assert_eq!((pic(0.0), pic(3.0 / 30.0), pic(4.0 / 30.0)), (a.clone(), a, b));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A red card under one mask (`mask` props over the neutral ones), drawn at 0.5 s over the frame's black: the red in the card's middle.
+fn masked_red(mask: &[(&str, Value)]) -> u8 {
+    let mut p = super::measure::neutral("shape");
+    for (k, v) in [("x", json!(200)), ("y", json!(150)), ("anchorX", json!(0.5)), ("anchorY", json!(0.5)), ("w", json!(300)), ("h", json!(200)),
+                   ("filled", json!(true)), ("fill", json!("#ff0000")), ("fillOpacity", json!(1.0))] {
+        p.insert(k.into(), v);
+    }
+    let mut mp = super::measure::neutral("mask");
+    for (k, v) in mask {
+        mp.insert((*k).into(), v.clone());
+    }
+    let card = json!({"id": "card", "type": "shape", "props": p, "masks": [{"id": "reveal", "type": "mask", "props": mp}]});
+    let scene = Scene::load(&scene(card)).unwrap();
+    let px = draw(&stage::stage(&eval::at(&scene.comp, 0.5).unwrap()).unwrap(), 400, 300, &[]);
+    px[(150 * 400 + 200) * 4]
+}
+
+#[test]
+fn a_mask_of_width_or_height_zero_shows_nothing() {
+    // The guides' reveal starts at W 0 (start-here.md): before it moves, nothing of the layer shows (2D r12).
+    let at = |w: f64, h: f64, more: &[(&str, Value)]| {
+        let mut m = vec![("x", json!(0)), ("y", json!(0)), ("w", json!(w)), ("h", json!(h))];
+        m.extend(more.iter().cloned());
+        masked_red(&m)
+    };
+    assert_eq!(at(300.0, 200.0, &[]), 255, "a mask over the whole card shows it");
+    assert_eq!(at(0.0, 200.0, &[]), 0, "W 0 hides the card");
+    assert_eq!(at(300.0, 0.0, &[]), 0, "H 0 hides the card");
+    assert_eq!(at(-20.0, 200.0, &[]), 0, "a negative W hides it too");
+    assert_eq!(at(0.0, 200.0, &[("feather", json!(30))]), 0, "a soft W 0 hides it");
+    assert_eq!(at(0.0, 200.0, &[("shape", json!("ellipse"))]), 0, "an ellipse of W 0 hides it");
+    assert_eq!(at(0.0, 200.0, &[("invert", json!(true))]), 255, "inverted, an empty mask hides nothing");
+}

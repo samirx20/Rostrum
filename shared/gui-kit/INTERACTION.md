@@ -132,7 +132,10 @@ Every pattern below follows the same layout:
 5. An action with an amount (stagger by, transpose by, fade length) opens a small popover or an inline field in the
    bar. It remembers the last amount, and is one undo step when you click away or press Enter (Enter keeps it wherever
    the keyboard is, also right after picking from one of its lists with the mouse). Any other command while it is open
-   (Ctrl+G, Ctrl+Z, Delete …) keeps it first, then runs; Ctrl+Z then takes it back.
+   (Ctrl+G, Ctrl+Z, Delete …) keeps it first, then runs; Ctrl+Z then takes it back. Picking from one of its lists takes the text
+   cursor out of the number box, so those keys work right after. With the cursor still in a number box, a key it cannot use
+   (Delete with nothing after the cursor, a letter) is the window's: it runs the command. Any command run by a key also
+   closes the menus and lists still open (the Ease list, More ▾), so none stays floating over a changed document.
 
 **Why (3E).**
 - *Effective:* every relating action (group, mask, combine, send to a group, layer as one sound) takes the right

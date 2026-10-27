@@ -74,6 +74,7 @@ FieldFrame {
     function reset() { if (hasDefault) { f.input.focus = false; f.edited(Math.max(from, Math.min(to, Number(defaultValue)))) } }
 
     editable: true
+    numeric: display === "" || display === "percent"            // dB takes "-inf", pan "L 30" (FieldFrame.cannotUse)
     starts: /^[0-9.,+\-*\/=(]$/                                  // the keys that start typing a number (FieldFrame.typeToStart)
     keepOnRefusal: true
     engaged: scrub.scrubbing

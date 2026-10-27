@@ -90,6 +90,11 @@ pub fn mask(layer: &Item, index: usize, m: &Item, defs: &mut String) -> R<String
     let (x, y, w, h, r) = (m.num("x"), m.num("y"), m.num("w"), m.num("h"), m.num("radius"));
     let ellipse = m.str("shape") == "ellipse";
     let (feather, angle, invert) = (m.num("feather"), m.num("angle"), m.on("invert"));
+    if w <= 0.0 || h <= 0.0 {
+        // An empty mask shows nothing of the layer (inverted: all of it), as in After Effects. Written as a clip it
+        // would be an empty inset, which the renderer draws as no clip at all (a reveal from W 0 showed everything).
+        return Ok(if invert { String::new() } else { "opacity:0;".into() });
+    }
     if feather == 0.0 && angle == 0.0 && !invert {
         if ellipse {
             return Ok(format!("clip-path:ellipse({}px {}px at {}px {}px);", w / 2.0, h / 2.0, x + w / 2.0, y + h / 2.0));

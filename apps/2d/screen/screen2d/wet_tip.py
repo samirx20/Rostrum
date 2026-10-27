@@ -5,6 +5,8 @@ carrying on the stroke's coverage (`carry`: where a piece overlaps the last noth
 brush shows no beads at the joins). A move costs its own few px, never the whole tip again. The canvas lies in world
 px from `at` and grows (by half its size a side, at least GROW px) when a point leaves it, so it is rarely made again. Its picture is made only
 when something was drawn since the last, from its straight pixels (`u8`), which each piece updates only where it lies.
+A smudge's tip (`base`) smears the paint under it: its canvas starts as that paint (base(x0, y0, x1, y1): premultiplied
+px of that box), so each piece smears what the last one left, and a move costs its own dabs however long the tip is.
 """
 from __future__ import annotations
 
@@ -15,8 +17,9 @@ GROW = 64                   # the least px of room the canvas gains round the po
 
 
 class Tip:
-    def __init__(self, start: int):
+    def __init__(self, start: int, base=None):
         self.start, self.done = start, start        # the stroke's points from `start` on; how many are drawn
+        self.base = base                            # a smudge's: the paint it smears, by box (None: nothing)
         self.px = self.cov = self.u8 = None         # the canvas (premultiplied), the stroke's coverage, the straight px
         self.at = (0, 0)                            # the canvas's top-left, world px
         self.used = None                            # (x0, y0, x1, y1) world px drawn on so far
@@ -50,7 +53,8 @@ class Tip:
             x0, y0, x1, y1 = min(x0, ax), min(y0, ay), max(x1, ax + w), max(y1, ay + h)
         gx, gy = max(GROW, (x1 - x0) // 2), max(GROW, (y1 - y0) // 2)      # room for the line to go on
         nx, ny = x0 - gx, y0 - gy
-        px = np.zeros((y1 - y0 + 2 * gy, x1 - x0 + 2 * gx, 4), np.float32)
+        px = (np.zeros((y1 - y0 + 2 * gy, x1 - x0 + 2 * gx, 4), np.float32) if self.base is None
+              else self.base(nx, ny, x1 + gx, y1 + gy))
         cov, u8 = np.zeros(px.shape[:2], np.float32), np.zeros(px.shape[:2] + (4,), np.uint8)
         if self.px is not None:
             (ax, ay), (h, w) = self.at, self.cov.shape

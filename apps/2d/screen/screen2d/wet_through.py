@@ -7,9 +7,8 @@ from __future__ import annotations
 import numpy as np
 from rostrum2d import drawing as D
 from rostrum2d.placement import comp_point
-from rostrum_paint import canvas
 
-from .wet import reveal_rect
+from .wet import paint_under, reveal_rect
 
 BARE = (16, 16, 16)             # the canvas well under an opened painting (Theme.sunken)
 STRAIGHT = 1e-3                 # comp px: how far off a straight, unturned mapping may be and still take a smear
@@ -32,8 +31,7 @@ def smear(view, brush: dict, stroke, painting: dict, n: int):
     if abs(ax[1] - o[1]) > STRAIGHT or abs(ay[0] - o[0]) > STRAIGHT:
         return None
     here = D.frame_at(painting, n) if D.each_frame(painting) else (painting["frames"] or [None])[0]
-    paint = canvas.render(here, pw, ph).rgba.copy() if here else np.zeros((ph, pw, 4), np.float32)
-    ink = view.ink(brush, stroke.sid, 1.0, (pw, ph), np.ascontiguousarray(paint, np.float32),
+    ink = view.ink(brush, stroke.sid, 1.0, (pw, ph), paint_under(here, pw, ph),
                    (o[0], o[1], ax[0] - o[0], ay[1] - o[1]))
     ink.shift = (-ox, -oy)
     return ink

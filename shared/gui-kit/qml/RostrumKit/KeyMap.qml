@@ -39,7 +39,7 @@ Instantiator {
         sequences: modelData.sequences || modelData.keys      // every spelling a key may arrive in (keymap.typed: Ctrl+Shift+= is Ctrl++)
         autoRepeat: !modelData.hold
         readonly property bool passes: !km.textKey(modelData.keys)       // answers even in a kit field (above)
-        enabled: km.enabled && !OpenPopups.takes(modelData.keys) && (!km.typing || km.whileTyping.indexOf(modelData.job) >= 0 || (passes && km.inField)) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
+        enabled: km.enabled && !OpenPopups.takes(modelData.keys) && (!km.typing || km.whileTyping.indexOf(modelData.job) >= 0 || (km.inField && (passes || OpenPopups.focused.cannotUse(modelData.keys)))) && km.skip.indexOf(modelData.job) < 0 && km.shell.indexOf(modelData.job) < 0
         onActivated: {
             if (km.inField) OpenPopups.focused.focus = false     // the field lets go first: what was typed is kept (FieldFrame)
             km.hub.key(modelData.job)
