@@ -25,6 +25,7 @@ class RowDrag(QObject):
 
         def go():
             self._drag, self._layer = Drag(b.doc, b.who, f"Move {b.label_of(b.doc.item(layer_id))}"), layer_id
+            b._esc.arm()            # it changes nothing until the drop, so no step arms Esc: this does (drag_cancel.py)
         return b._guard(go)
 
     @Slot(str, str, result=bool)
@@ -42,6 +43,7 @@ class RowDrag(QObject):
     @Slot()
     def cancelDrag(self):
         d, self._drag = self._drag, None
+        self.b._esc.disarm()
         if d is not None:
             self.b._guard(lambda: d.end(cancel=True))
             self.cancelled.emit()
