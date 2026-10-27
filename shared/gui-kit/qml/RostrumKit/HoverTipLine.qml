@@ -54,5 +54,10 @@ QQC.Popup {
         KeyHint { id: keyHint; visible: owner.key !== ""; text: owner.key.replace(/\+/g, " ")
                   anchors.verticalCenter: parent.verticalCenter }
     }
+    // A line to read, never a target: a popup takes every press inside its own box, so a tip still up over the row
+    // below (a number box's "Type a number" line, shown without a hover) ate the click meant for that row's box. Its
+    // box holds no point (an empty mask), so the press goes through to what is under the line.
+    readonly property Item noPoint: Item { width: 0; height: 0 }   // kept out of the line's Row
+    Component.onCompleted: background.parent.containmentMask = pop.noPoint
     function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;") }
 }
