@@ -128,7 +128,7 @@ instrument can use are offered (the screen hides the rest). On the screen a note
   while you draw ("Velocity 80 %", with "every note" or "the selected note" under it). The value of the bar under the pointer (or of the selected
   notes) is written beside it ("70 %").
 - **Playing lane** (between the notes and the velocity strip, for an instrument that plays notes; folded to one line "› Sustain · Expression · Bend" while the track has none of them: click it to open: it opens upward, the notes giving the room): the picker at its head (it names the lane, "Sustain ▾") chooses **Sustain** (the pedal: up
-  at the bottom, down at the top; a note let go while it is down rings on until it lifts), **Expression** (how loud
+  at the bottom, down at the top; a note let go while it is down rings on until it lifts; Chord ▾ › **Pedal each chord** writes it for you, lifting on every chord change), **Expression** (how loud
   the whole part plays, like a swell on the strings) or **Bend** (the pitch wheel: the middle is no bend, the top
   and bottom are up and down by the track's **Bend range**, 2 semitones unless you change it in the settings panel).
   Click to add a point, drag it, Delete removes it (or right-click it: **Delete point**); ← / → move the selected point

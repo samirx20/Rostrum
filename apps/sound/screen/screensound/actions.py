@@ -70,7 +70,7 @@ ACTIONS = [
       for k, n, label, keys in _STEPS],
     act("transpose_by", "Transpose by…", lambda f: bool(f.by_kind(NOTE)), A.transpose_calls, importance="primary", group="pitch",
         menu="Transpose", on=NOTE, amounts=("semitones", "steps", A.ALONG), asks=True, fit=A.transpose_fit),
-    # Chord ▾ (chord_actions.py): Make a chord ▸, Invert (Alt+↑ / ↓), Strum…, Arpeggio…; each only when it applies
+    # Chord ▾ (chord_actions.py): Make a chord ▸, Invert (Alt+↑ / ↓), Strum…, Arpeggio…, Pedal each chord; each only when it applies
     *[act(f"chord_{k}", f"Make a chord: {label}", K.shape_valid(needs_key), K.shape_calls(k), importance="primary",
           group="chord", menu=K.MAKE, on=NOTE) for k, label, needs_key in K.SHAPES],
     act("invert_up", "Invert up", K.has_chord, K.invert_calls(1), "Alt+Up", "primary", "invert", "Chord", on=NOTE,
@@ -81,6 +81,8 @@ ACTIONS = [
         asks=True, amounts=("gap", K.UP, "soften"), fit=K.strum_fit),
     act("arpeggio", "Arpeggio…", K.has_chord, K.arp_calls, importance="primary", group="shape", menu="Chord", on=NOTE,
         asks=True, amounts=("rate", "mode", "octaves", "gate", "seed"), fit=K.arp_fit),
+    act("pedal", "Pedal each chord", *A.on(NOTE, "pedal"), importance="primary", group="pedal", menu="Chord", on=NOTE,
+        needs="Pedal needs notes selected"),     # the sustain lane: up on each new chord, down a 16th later (ops_pedal.py)
     act("fit_key", "Fit to key", lambda f: bool(f.by_kind(NOTE)) and key_lock.has_key(f.doc.data), *A.on(NOTE, "fit_key")[1:],
         importance="primary", group="pitch", on=NOTE,      # always a button, in its own place: a row that came and went moved the panel's fields 36 px
         needs="Fit to key needs notes selected, in a song with a key"),
