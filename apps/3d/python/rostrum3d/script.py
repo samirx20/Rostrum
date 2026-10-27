@@ -224,7 +224,8 @@ def _clay(b: "Build", id_=None, draw=None, spin=None, facing=None, axis=None, pu
 
 def _copies(b: "Build", id_=None, source=None, **values) -> Item:
     """copies(id, source, layout=…, count=…): `source` (an item or a list of them, made earlier in the same list) goes inside
-    the new copies item, which takes its place (it stands at the copies item's origin, keeping its turn and size). Without
+    the new copies item, which takes its place (it stands at the copies item's origin, keeping its turn and size; an x / y / z
+    given here places the copies item instead). Without
     `source`, it is a holder: `with copies("buds", layout="circle", count=8): mesh(…)`."""
     mine = list(source) if isinstance(source, (list, tuple)) else [] if source is None else [source]
     it = b.item("copies", id_, **values)
@@ -234,7 +235,7 @@ def _copies(b: "Build", id_=None, source=None, **values) -> Item:
     nodes = [m.node if isinstance(m, Item) else next((n for n in siblings if n["id"] == m), None) for m in mine]
     if None in nodes or any(n not in siblings for n in nodes):
         raise ValueError(f"{it.id}: its source must be made earlier in the same list (the same group or the top level)")
-    it.node.update({k: round(sum(n.get(k, 0.0) for n in nodes) / len(nodes), 6) for k in "xyz"})
+    it.node.update({k: round(sum(n.get(k, 0.0) for n in nodes) / len(nodes), 6) for k in "xyz" if k not in values})
     siblings.remove(it.node)
     siblings[siblings.index(nodes[0]):siblings.index(nodes[0])] = [it.node]     # takes the first source's place
     for n in nodes:
