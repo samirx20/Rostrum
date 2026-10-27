@@ -20,6 +20,8 @@ QUIET_MS = 5000      # no change for this long: the run has ended (or paused) an
 FLASH_MS = 1000      # how long a changed item's outline fades (ChangeOutline.qml)
 HOLD_MS = 250        # it shows whole this long first: the new picture lands after the change is heard (2D's engine frame)
 KEEP_MS = HOLD_MS + FLASH_MS + 250      # the ids stay this long, so the outline is never taken away mid-fade
+MOST = 400           # a step touching more items than this (a whole-song duplicate or its undo) outlines none: the top
+                     # bar names it, thousands of outlines say nothing, and every view would search the list per item
 
 
 class AgentWatch(QObject):
@@ -67,7 +69,8 @@ class AgentWatch(QObject):
 
     def _flashed(self, doc, change, mine=False):
         """The items `change` touched get the 1-second outline (`mine`: the person's own undo, in the accent colour)."""
-        self._flash = list(dict.fromkeys(k[0] for k in sorted(doc.history.keys(change), key=str)))
+        ids = list(dict.fromkeys(k[0] for k in sorted(doc.history.keys(change), key=str)))
+        self._flash = ids if len(ids) <= MOST else []
         self._mine = mine
         self._fade.start()
         self.changed.emit()
@@ -92,7 +95,7 @@ class AgentWatch(QObject):
     def flashItems(self, ids):
         """Flash these items once, as the person's own (accent): an app's own edit that a person should see land (a
         copy made off screen, a track added from the Library). Every view that outlines `flash` shows it."""
-        self._flash, self._mine = [str(i) for i in ids], True
+        self._flash, self._mine = [str(i) for i in ids] if len(ids) <= MOST else [], True
         self._fade.start()
         self.changed.emit()
 
