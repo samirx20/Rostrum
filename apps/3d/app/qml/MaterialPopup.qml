@@ -5,12 +5,20 @@ import RostrumKit
 // The shell of the material popups (MaterialPicker, MaterialsList, Edit mesh's face material): opens just under an
 // anchor, its left edge on the anchor's, kept inside the window. Built on the kit's one popup (SmallPopup), so it is in
 // OpenPopups: the window's one Esc closes it (wherever the keyboard is), a click outside closes it, and the window's
-// other keys keep working while it is open (a plain Popup with its own Esc stopped every window shortcut). Too tall for
-// the window: `fit` is the room it may use, so the content inside scrolls instead. openFrom(anchor).
+// other keys keep working while it is open (a plain Popup with its own Esc stopped every window shortcut). When its
+// whole list doesn't fit under the anchor and there is more room above (a Material row low in a long settings panel),
+// it opens upward instead, so the list is never squeezed to a sliver at the window's bottom. Still too tall: `fit` is
+// the room it may use, so the content inside scrolls. `natural`: the content's whole height (set by each popup).
+// openFrom(anchor).
 SmallPopup {
     id: pop
     property Item anchorItem: null
-    readonly property real fit: parent ? parent.height - 2 * Theme.grid - (anchorItem ? anchorItem.mapToItem(parent, 0, 0).y + anchorItem.height + Theme.grid : 0) : 400
+    property real natural: 0
+    readonly property real anchorTop: anchorItem && parent ? anchorItem.mapToItem(parent, 0, 0).y : 0
+    readonly property real below: parent ? parent.height - 2 * Theme.grid - (anchorItem ? anchorTop + anchorItem.height + Theme.grid : 0) : 400
+    readonly property real above: anchorItem ? anchorTop - 2 * Theme.grid - Theme.grid : 0
+    readonly property bool upward: natural > below && above > below
+    readonly property real fit: upward ? above : below
     parent: QQC.Overlay.overlay
     padding: Theme.gap
     focus: true
@@ -24,7 +32,8 @@ SmallPopup {
         if (!ov || !anchorItem) return
         const p = anchorItem.mapToItem(ov, 0, 0)
         x = Math.max(Theme.grid, Math.min(p.x, ov.width - width - Theme.grid))
-        y = Math.max(Theme.grid, Math.min(p.y + anchorItem.height + Theme.grid, ov.height - height - Theme.grid))
+        y = upward ? Math.max(Theme.grid, p.y - Theme.grid - height)
+                   : Math.max(Theme.grid, Math.min(p.y + anchorItem.height + Theme.grid, ov.height - height - Theme.grid))
     }
     onHeightChanged: if (visible) place()
     onClosed: anchorItem = null
