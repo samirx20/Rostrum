@@ -61,3 +61,13 @@ def test_measure_text_leaves_no_layer_and_matches_a_real_texts_measure():
                           'assert (w, h) == t.measure()\nshape("w", w=w, h=h)', "m.py")
     ids = [layer["id"] for comp in tree["comps"] for layer in comp["layers"]]
     assert ids == ["frame", "real", "w"] and "measure_text" not in ids
+
+
+def test_after_an_export_the_line_names_the_looks_not_done_yet():
+    clock = Clock(lambda: 0.0, budget_min=15)
+    clock.begin()
+    clock.noted("render_export", {"format": "mp4"}, Reply("job"))
+    assert "not looked at yet: a full-size single frame (look_frame time), the motion (look_motion)" in clock.line()
+    clock.noted("look_frame", {}, Reply("x", {"time": 1.0}))
+    clock.noted("look_motion", {}, Reply("x", {}))
+    assert "not looked at yet" not in clock.line() and "the export has not been looked at" in clock.line()

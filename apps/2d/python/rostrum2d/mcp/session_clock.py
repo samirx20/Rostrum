@@ -12,7 +12,9 @@ import time
 from rostrum_core.mcp import Reply
 from rostrum_core.mcp.tools import _schema_of
 
-SEES_PICTURE = {"look_motion", "look_drawing", "look_painting"}     # looks that reset "edits since the last look"
+SEES_PICTURE = {"look_motion", "look_drawing", "look_painting"}
+EXPORTS = {"render_video", "render_export"}        # an export the agent should look at (render_export: an mp4's reply has `quiet_stretches`)
+KINDS = {"full-size frame": "a full-size single frame (look_frame time)", "motion": "the motion (look_motion)"}     # named after an export until done     # looks that reset "edits since the last look"
 MOMENT = 2.0                  # a looked-at time stands for this many seconds either side of it
 SESSION_ARG = {"what": {"enum": ["project", "session"], "default": "project", "description":
                '"project" (default): the project\'s items. "session": the clock: time since your first call, calls, edits since you last '
@@ -44,6 +46,7 @@ class Clock:
         self.covered: list[tuple[float, float]] = []
         self.exported = self.export_looked = False
         self.quiet: list[str] = []
+        self.seen: set[str] = set()
 
     def begin(self) -> None:
         self.started = self.started if self.started is not None else self.now()
@@ -61,16 +64,20 @@ class Clock:
         if reply.changed is not None:
             self.edits += 1
             self.edits_since_look += 1
-        if who == "render_video":
+        if who in EXPORTS and (who == "render_video" or "quiet_stretches" in payload or args.get("format") == "mp4"):
             self.exported = True
-            self.export_looked = self.export_looked and tool != "render_video"       # a new render: not looked at yet
+            self.export_looked = self.export_looked and tool not in EXPORTS          # a new render: not looked at yet
         if who == "look_frame" and "video" in payload:
             self.export_looked = True
         elif who == "look_frame" and ("time" in payload or "times" in payload):
             self.looked, self.edits_since_look = True, 0
+            if "times" not in payload:
+                self.seen.add("full-size frame")
             self.covered += [(t - MOMENT, t + MOMENT) for t in payload.get("times") or [payload["time"]]]
         elif who in SEES_PICTURE and data.get("status", "done") == "done":
             self.looked, self.edits_since_look = True, 0
+            if who == "look_motion":
+                self.seen.add("motion")
         rows = payload.get("stretches") or payload.get("quiet_stretches")
         if who in ("look_frame", "render_video") and rows is not None:
             self.quiet = [r["text"] for r in rows]
@@ -94,6 +101,9 @@ class Clock:
             parts.append("the picture was looked at since your last edit")
         if self.exported and not self.export_looked:
             parts.append("the export has not been looked at")
+        missing = [KINDS[k] for k in KINDS if k not in self.seen]
+        if self.exported and missing and (self.budget_min is None or self.budget_min * 60 - self.elapsed() > 120):
+            parts.append("not looked at yet: " + ", ".join(missing))
         if self.budget_min is not None:
             left = self.budget_min * 60 - self.elapsed()
             parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to look and refine)" if left > 60 else "")
