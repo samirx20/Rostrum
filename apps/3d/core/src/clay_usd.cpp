@@ -85,15 +85,32 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   const SdfLayerHandle layer = p_->layer;
   const SdfPath path = clay.AppendChild(block_name(key));
   const bool exists = have.count(key) != 0;
+  const auto attr = [&](const char* name) { return path.AppendProperty(TfToken(name)); };
   if (m.empty()) {
+    // An emptied block keeps its prim (3d-v4): a prim removed or added makes Storm rebuild its draw batches
+    // (rebuildBatches; 15-25 ms when a stroke's preview took 8 fine blocks down for each of its own), and the same
+    // block is often filled again soon (the fine blocks come back at the stroke's end). It holds one triangle of no
+    // area, which draws nothing: with no points at all Storm asked GL for buffers of size 0 (GL_INVALID_VALUE, and
+    // the view was refused)
     if (!exists) return;
-    if (SdfPrimSpecHandle spec = layer->GetPrimAtPath(path))
-      if (SdfPrimSpecHandle parent = layer->GetPrimAtPath(clay)) parent->RemoveNameChild(spec);
-    have.erase(key);
-    check(mark, "removing " + path.GetString());
+    const TfToken& dflt = SdfFieldKeys->Default;
+    GfVec3f at(0.0f);  // where the block was (its old extent's corner), so bounds and framing don't move
+    const VtValue was = layer->GetField(attr("extent"), dflt);
+    if (was.IsHolding<VtVec3fArray>() && !was.UncheckedGet<VtVec3fArray>().empty())
+      at = was.UncheckedGet<VtVec3fArray>()[0];
+    layer->SetField(attr("points"), dflt, VtValue(VtVec3fArray{at, at, at}));
+    layer->SetField(attr("normals"), dflt, VtValue(VtVec3fArray(3, GfVec3f(0, 0, 1))));
+    layer->SetField(attr("faceVertexCounts"), dflt, VtValue(VtIntArray{3}));
+    layer->SetField(attr("faceVertexIndices"), dflt, VtValue(VtIntArray{0, 1, 2}));
+    layer->SetField(attr("extent"), dflt, VtValue(VtVec3fArray{at, at}));
+    if (layer->HasSpec(attr(kShade))) {
+      SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
+      for (const SdfPath& q : {attr(kShade), attr(kDisplayColor)})
+        if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(q)) prim->RemoveProperty(a);
+    }
+    check(mark, "emptying " + path.GetString());
     return;
   }
-  const auto attr = [&](const char* name) { return path.AppendProperty(TfToken(name)); };
   if (!exists) {  // a new prim: its specs, the uniform values once
     SdfPrimSpecHandle parent = SdfCreatePrimInLayer(layer, clay);  // `over` specs down to the clay's Xform
     SdfPrimSpecHandle prim = SdfPrimSpec::New(parent, path.GetName(), SdfSpecifierDef, "Mesh");
