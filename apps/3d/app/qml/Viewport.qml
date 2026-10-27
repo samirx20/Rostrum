@@ -84,7 +84,7 @@ Rectangle {
         onTurned: (dx, dy) => viewport.orbit(dx, dy)
         onRightClicked: (x, y) => {
             if (backend.adder.armed) return backend.adder.disarm()   // a right-click lets go of the shape waiting to be placed
-            backend.rightClickStarts(); pending = true; viewport.click(x * vp.dpr, y * vp.dpr)        // the menu opens at (px, py)
+            backend.rightClickStarts(); pending = true; viewport.rightClick(x * vp.dpr, y * vp.dpr)   // the menu opens at (px, py); the floor = empty space
         }
         Connections {
             target: viewport

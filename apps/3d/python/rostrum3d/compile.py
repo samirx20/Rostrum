@@ -26,7 +26,7 @@ FILE_UNIT = "fileUnit"                         # an import's: what its file was 
 COPIES_DATA = {copies_fields.HELD, copies_fields.COPY_KEYS, copies_fields.COPY_KEYS_FROM}   # held / keyed copies go as `held` rows, never as props
 SIMULATION = SIM_FIELDS.NAMES                   # what a body is made of: the simulation reads it (sim/), never sent as a prop
 RESOLVED = SIMULATION | COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
-DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
+DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize", "backdrop"}   # words, font, file, a floor's backdrop mark … never sent
 
 
 def _shot(data: dict, shot_id: str) -> dict:

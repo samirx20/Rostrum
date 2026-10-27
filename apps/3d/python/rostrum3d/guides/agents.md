@@ -7,9 +7,11 @@ scene from the document each time you look. One `edit_document` call is one undo
 `{"ops": [{"op": "mesh.add", "args": {"id": "ball", "shape": "sphere", "radius": 0.1}},
 {"op": "mesh.set", "target": ["ball"], "args": {"y": 0.1}}]}` (`op`, then `target` (ids) and `args` (the fields)). Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
-A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`), the sky `sky` (a dome light
+A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`, `backdrop=True`: a
+right-click on it in the window is a right-click on empty space), the sky `sky` (a dome light
 showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
-`shot_1_camera`, looking at the middle of the ground, framed for things a hand to an arm tall. So the first look is lit
+`shot_1_camera`, low and looking a little down at the middle of the ground (the horizon a band across the top fifth),
+framed for things a hand to an arm tall. So the first look is lit
 and framed before you add anything; change or delete any of them like any item (your script's own ids must differ).
 
 ## The loop

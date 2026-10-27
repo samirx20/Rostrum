@@ -42,8 +42,9 @@ def _in_copies(f) -> bool:
 
 
 def _make_valid(f) -> bool:
-    # a copies item holds sources and effectors only: not another copies item; while painting the menu is Paint's
-    return not _in_copies(f) and not f.screen.get("paint")
+    # a copies item holds sources and effectors only: not another copies item; while painting the menu is Paint's;
+    # never copies of the floor the scene stands on (a backdrop: start_scene.py)
+    return not _in_copies(f) and not f.screen.get("paint") and not any(it.get("backdrop") for it in f.items)
 
 
 def _scatter_sources(f) -> list[str]:

@@ -39,10 +39,13 @@ sits on top of it.
   field), Send to 2D (a shot), Lip sync… (a mouth group: a group whose children are mouth shapes named like `mouth_rest`,
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
   mesh each shape shows, Apply: one undo step, keys on the timeline), **Make copies ›** (a shape, group, import or clay),
-  **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected) and **Change near ›** (a
+  **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected; onto the ground: Make
+  copies › On a surface…, then click the ground) and **Change near ›** (a
   copies item), see *Copies and scatter* below, **Simulate ›** (Falls, Stays still, Cloth on a shape, Off; the ✓ is what it is now), see
   *Simulate* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
-  outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
+  outside the selection is selected alone first. Right-click empty space (nothing there, or the ground a new scene
+  stands on: a right-click never picks it; click it or its scene-list row to change it, and selected it offers no Turn
+  into clay or Make copies): Make this the shot (Ctrl+Alt+0),
   Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
   while something is selected.
 
