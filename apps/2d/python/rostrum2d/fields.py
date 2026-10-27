@@ -221,6 +221,12 @@ FIELDS: dict[str, list[Param]] = {
         X("soundtrack", "Soundtrack", "Sound", "", S, control="pick", words={"": "Main mix"},       # screens: the project's Sound items
           help="The RostrumSound item of this project that plays with this "
           "scene: the project's main mix by default (empty). Rendered by Sound's engine"),
+        # the work area (the screen's ruler band; the Export sheet's "Work area" range): a span to work on, saved with the
+        # scene, never drawn (scene.python_only). workEnd 0 = none.
+        N("workStart", "Work area start", "Work area", 0, 3600, 0.01, "s", shown="script",
+          help="Where the scene's work area starts (s). The screen shows it as a band on the time ruler and Export offers it as a range"),
+        N("workEnd", "Work area end", "Work area", 0, 3600, 0.01, "s", shown="script",
+          help="Where the work area ends (s); 0 = no work area. Agents export a part with render_export start / end"),
     ],
     "shape": [
         CH("shape", SHAPE_KINDS, "Shape", "Shape", "rect", labels=SHAPE_WORDS),
@@ -475,7 +481,7 @@ FIELDS["swatch"] = [C("color", "Colour", "Colour", "#ffffff")]     # a project c
 EFFECTS = ("blur", "glow", "gradient", "backdrop", "shadow", "grain", *_motion.EFFECTS)
 ANIMATED_OWNERS = LAYERS + EFFECTS + ("mask", "stop") + _rig.OWNED_KEYS
 FIXED = {**_frame.FIXED}     # fields no <type>.set takes: the document writes them itself (the frame's home)
-STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h", "loopTimes", "loopStepX", "loopStepY"}, "path": {"w", "h"},
+STILL = {"painting": {"w", "h", "newHold"}, "comp": {"width", "height", "fps", "duration", "background", "workStart", "workEnd", *(p.name for p in _motion.COMP)}, "drawing": {"w", "h", "loopTimes", "loopStepX", "loopStepY"}, "path": {"w", "h"},
          "group": {"columns"},
          "video": {"w", "h", "offset", "speed"},
          "render3d": {"w", "h", "offset", "speed", "version"},

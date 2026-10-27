@@ -53,7 +53,7 @@ class Exporter(ExportSheet):
 
     def ranges_list(self):
         """Everything, the work area (when the ruler has one: work_area.py), marker to marker (the project's markers
-        inside the composition, in time order), then From – to… (typed: the From and To rows, `settings`)."""
+        inside the composition, in time order), then From – to… (typed: the From and To rows, `typedRange`)."""
         if not self._row()["range"]:
             return []
         d = self._duration()
@@ -174,8 +174,12 @@ class Exporter(ExportSheet):
             p, span = self._comp(), self.range_times() or (0.0, self._duration())
             v = {**v, "file": export_rows.gif_line(p.get("width", 1920), p.get("height", 1080), p.get("fps", 30),
                                                    span[1] - span[0], v, self._gif_bytes(span))}
-        typed = export_rows.typed_range(*self._custom()) if self._range == "custom" else []
-        return typed + export_rows.settings(self._row(), {**v, **({"area": self._area()} if "area" in v else {})}, bool(self._picked()))
+        return export_rows.settings(self._row(), {**v, **({"area": self._area()} if "area" in v else {})}, bool(self._picked()))
+
+    @Property("QVariantList", notify=own)
+    def typedRange(self):
+        """From and To (seconds) while the range is From – to…, else none: shown right under the range picker."""
+        return export_rows.typed_range(*self._custom()) if self._range == "custom" else []
 
     def _gif_bytes(self, span):
         """The GIF's measured size for the document as it is now and these choices (gif_guess; None while working)."""

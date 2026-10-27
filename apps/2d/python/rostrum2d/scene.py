@@ -29,9 +29,9 @@ KEY_FIELDS = ("t", "v", "c", "d", "ease", "x1", "y1", "x2", "y2", "stiffness", "
 @lru_cache(maxsize=None)
 def python_only(kind: str) -> frozenset[str]:
     """The fields of an item type the engine never sees: auto layout's, stepped timing's and swap sets' (all
-    applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and a text's style link (its values are
+    applied here), the scene's soundtrack (Sound's engine plays it, not 2D's) and work area (the screen's) and a text's style link (its values are
     already on the text: text_styles.py). Fixed per type: worked out once (a scene asks for it per field)."""
-    return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle"} | ({"loop", *drawing_loop.FIELDS} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
+    return frozenset(py_only(kind) | {stepped.FIELD, retime.FIELD, retime.END, "locked", "hidden", "eachFrame", "newHold", "soundtrack", "textStyle", "workStart", "workEnd"} | ({"loop", *drawing_loop.FIELDS} if kind == "drawing" else set()) | (group_bg.NAMES if kind == "group" else set()) | swap.PY_ONLY.get(kind, set())
             | paint_fields.NAMES | fill_fields.NAMES)
 
 

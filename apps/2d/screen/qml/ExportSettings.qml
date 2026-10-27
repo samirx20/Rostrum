@@ -1,7 +1,8 @@
 import QtQuick
 import RostrumKit
 
-// 2D's part of the kit Export sheet (AppShell.exportSettings): a typed range's From and To (only for From – to…), the scene (only when there is more than one), the
+// 2D's part of the kit Export sheet (AppShell.exportSettings): a typed range's From and To (only for From – to…: they
+// sit right under the kit's range picker, `typed`), the scene (only when there is more than one), the
 // chosen format's settings (only the ones that apply: backend.exporter.settings, screen2d/export_rows.py; a GIF's ends
 // with what it comes to), and after it is done, what the file holds beyond the kit's result line and, for Lottie, what it couldn't carry.
 Column {
@@ -14,6 +15,40 @@ Column {
     component Label: Text {
         width: root.labelW; height: Theme.row; verticalAlignment: Text.AlignVCenter
         color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; elide: Text.ElideRight
+    }
+    // From and To of the range From – to…, right under the kit's range picker (the sheet's "exportRange" column; the kit
+    // has no place for a range's own rows: kit find for Hem), else first here. One change per typed or dragged value.
+    function rangeColumn() {
+        let sheet = root.parent
+        while (sheet && !("summary" in sheet && "settings" in sheet)) sheet = sheet.parent     // the kit's ExportSheet (its slots)
+        const todo = sheet ? [sheet] : []
+        while (todo.length) {
+            const it = todo.shift()
+            if (it.objectName === "exportRange") return it.parent
+            for (let i = 0; i < it.children.length; i++) todo.push(it.children[i])
+            if (it.contentItem) todo.push(it.contentItem)
+        }
+        return null
+    }
+    Column {
+        id: typed
+        objectName: "exportTypedRange"
+        width: root.width
+        spacing: Theme.grid
+        visible: root.job.typedRange.length > 0
+        Component.onCompleted: Qt.callLater(() => { const c = root.rangeColumn(); if (c) typed.parent = c })
+        Repeater {
+            model: root.job.typedRange
+            delegate: Row {
+                required property var modelData
+                Label { text: modelData.label }
+                NumberField { objectName: "exportRange_" + modelData.key; width: 120; anchors.verticalCenter: parent.verticalCenter
+                              value: modelData.value; from: 0; step: 0.04; typeStep: 0.001
+                              unit: modelData.unit || ""; label: modelData.label
+                              onEdited: (v) => root.job.setSetting(modelData.key, v)
+                              onScrubbed: (v) => root.job.setSetting(modelData.key, v) }
+            }
+        }
     }
     Row {
         visible: root.job.comps.length > 0
@@ -38,12 +73,6 @@ Column {
                 Text { id: note; visible: srow.modelData.kind === "note"; width: parent.width; anchors.verticalCenter: parent.verticalCenter
                        text: srow.modelData.kind === "note" ? srow.modelData.value : ""; color: Theme.fg; wrapMode: Text.Wrap
                        font.family: uiFont; font.pixelSize: Theme.body }
-                NumberField { visible: srow.modelData.kind === "number"; anchors.verticalCenter: parent.verticalCenter   // From / To of a typed range
-                              objectName: "exportRange_" + srow.modelData.key; width: 120
-                              value: srow.modelData.kind === "number" ? srow.modelData.value : 0; from: 0; step: 0.04; typeStep: 0.001
-                              unit: srow.modelData.unit || ""; label: srow.modelData.label
-                              onEdited: (v) => root.job.setSetting(srow.modelData.key, v)
-                              onScrubbed: (v) => root.job.setSetting(srow.modelData.key, v) }
                 ChoiceField { visible: srow.modelData.kind === "choice"; anchors.verticalCenter: parent.verticalCenter; width: parent.width
                               options: srow.modelData.options || []; current: String(srow.modelData.value)
                               onPicked: (v) => root.job.setSetting(srow.modelData.key, v) }

@@ -4,7 +4,8 @@ The menu at a time t on the ruler: Add a marker here… (a name field, then one 
 folder, where markers live), Work area starts here / ends here (and Clear the work area once there is one), Go to here,
 Go to the start / end. The work area is a span of the scene the person works on, as in After Effects: it shows as a band
 on the ruler (drag it to change it, double-click it to clear it) and the Export sheet offers it as a time range
-(exporter.py). Screen state per scene, kept while the window is open; never in the document, so never undone.
+(exporter.py). It is the scene's own `workStart` / `workEnd` (fields.py; workEnd 0 = none), so it is saved with the
+project, and each change is one comp.set on the scene: Ctrl+Z takes it back, like a marker edit.
 """
 from __future__ import annotations
 
@@ -22,7 +23,8 @@ class WorkArea(QObject):
     def __init__(self, bridge):
         super().__init__(bridge)
         self.b = bridge
-        self._spans: dict[str, tuple[float, float]] = {}      # {scene id: (start, end)} in seconds
+        self._last = None                                     # the span last announced (changed only when it differs)
+        bridge.docChanged.connect(self._doc_changed)          # an undo, a script, another scene: the band follows
         self._known: set | None = None                        # the marker ids last seen (None: not read yet)
         self._quiet = False                                   # addMarker says its own words
 
@@ -45,12 +47,16 @@ class WorkArea(QObject):
 
     def span(self) -> tuple[float, float] | None:
         """(start, end) of the shown scene's work area, inside its length; None when it has none."""
-        got = self._spans.get(self.b.comp_id)
-        if not got:
-            return None
-        d = float(self._comp()["duration"])
-        a, b = max(0.0, min(got[0], d)), max(0.0, min(got[1], d))
+        c = self._comp()
+        d = float(c["duration"])
+        a, b = max(0.0, min(float(c.get("workStart", 0.0)), d)), max(0.0, min(float(c.get("workEnd", 0.0)), d))
         return (a, b) if b > a else None
+
+    def _doc_changed(self):
+        now = self.span()
+        if now != self._last:
+            self._last = now
+            self.changed.emit()
 
     @Property("QVariant", notify=changed)
     def range(self):
@@ -61,10 +67,17 @@ class WorkArea(QObject):
         fps = self._comp()["fps"]
         return round(max(0.0, min(float(t), float(self._comp()["duration"]))) * fps) / fps
 
+    def _write(self, a: float, b: float, label: str, words: str) -> None:
+        """One change on the scene: its workStart / workEnd (undone as one, like a marker edit)."""
+        cid = self.b.comp_id
+        calls = [{"op": "comp.set", "target": [cid], "args": {"workStart": round(a, 6), "workEnd": round(b, 6)}}]
+        if self.b.guard(lambda: self.b.done(self.b.doc.apply(calls, self.b.who, label=label), "")):
+            self._doc_changed()
+            self.b._set_status(words)
+
     def _put(self, a: float, b: float, words: str):
-        self._spans[self.b.comp_id] = (a, b)
-        self.changed.emit()
-        self.b._set_status(f"{words}: work area {_s(a)} – {_s(b)} (Export can use it; drag its band on the ruler to change it)")
+        self._write(a, b, "Set the work area",
+                    f"{words}: work area {_s(a)} – {_s(b)} (Export can use it; drag its band on the ruler to change it; Ctrl+Z takes it back)")
 
     @Slot(float, float)
     def set(self, a, b):
@@ -89,9 +102,8 @@ class WorkArea(QObject):
 
     @Slot()
     def clear(self):
-        if self._spans.pop(self.b.comp_id, None) is not None:
-            self.changed.emit()
-            self.b._set_status("Cleared the work area")
+        if self.span() is not None:
+            self._write(0.0, 0.0, "Clear the work area", "Cleared the work area (Ctrl+Z brings it back)")
 
     # ---- the ruler's right-click ------------------------------------------------------------------------------
     @Slot(float, result="QVariantList")

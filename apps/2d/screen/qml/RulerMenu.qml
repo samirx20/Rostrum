@@ -13,7 +13,7 @@ Item {
     parent: ruler
     anchors.fill: parent
 
-    Binding { target: rm.ruler; property: "rangeBand"; value: rm.wa.range !== null }
+    Binding { target: rm.ruler; property: "rangeBand"; value: !!rm.wa.range }
     Binding { target: rm.ruler; property: "range"; value: rm.wa.range }
     Connections {
         target: rm.ruler
