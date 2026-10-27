@@ -10,7 +10,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools, sheet
 from rostrum_core.mcp.files import look_path
 
-from rostrum3d import aim, build, ops_paint
+from rostrum3d import aim, build, graph, ops_paint
 from rostrum3d.compile import describe
 from rostrum3d.material_ball import BALL_SHAPE, final_reasons
 
@@ -86,14 +86,16 @@ def look_material(ctx, args):
     own lights (the document's lights, its sky; everything else hidden), not a studio. Drawn with Storm unless the material needs Cycles
     (glass / transmission, metal, clear coat, Final-only settings): then Final is picked for you, and the reply says which renderer drew it
     and why (ask quality fast to force Storm). Use it to judge a material's look, how its highlight travels, before putting it on a shot.
-    An unknown material fails, listing the document's materials; a scene with no light fails (the ball would be black)."""
+    A material with blocks (graph.add / graph.connect) is drawn with them, and the reply lists its blocks and wires (`blocks`:
+    graph.describe's blocks and wires). An unknown material fails, listing the document's materials; a scene with no light fails
+    (the ball would be black)."""
     doc, info = doc_and_shot(ctx, args)
     mat = find(ctx, doc, args["material"])
     lights = [it["id"] for it in _walk(doc.data.get("items", [])) if it["type"] == "light" and it.get("visible", True)]
     if not lights:
         raise RostrumError(codes.BAD_ARGUMENT, ctx.tool, "scene", "has no visible light, so the material would show black",
                            hint="Add a light (or a sky dome) to the document, then look again.")
-    reasons = final_reasons(mat)
+    reasons = final_reasons(mat) + graph.final_only(mat)
     renderer, why = renderer_for(args, reasons)
     shape, count, tile_w, radius = args.get("shape", "ball"), args.get("count", 6), args.get("tile_width", 256), args.get("radius", 0.15)
     scene, cams, angles = staged(doc, info, mat, shape, radius, count)
@@ -112,9 +114,11 @@ def look_material(ctx, args):
             sw, sh = sheet.contact_sheet(tiles, tile_w, len(tiles), dest)
         said = (f'Material {mat["id"]} ("{mat.get("name") or mat["id"]}") on a {shape} of {radius * 100:g} cm, {count} angles from the shot\'s view '
                 f'in {360 / count:g}° steps, {ELEVATION:g}° above level, under the scene\'s lights ({", ".join(lights)}), everything else hidden. '
-                f'Drawn with {"Cycles (Final)" if renderer == "cycles" else renderer.capitalize()}, {sw}×{sh}: {why}.')
+                f'Drawn with {"Cycles (Final)" if renderer == "cycles" else renderer.capitalize()}, {sw}×{sh}: {why}.'
+                + (f" {graph.text(mat)}" if graph.has_graph(mat) else ""))
         return Reply(said, {"material": mat["id"], "shape": shape, "angles": angles, "renderer": renderer, "why": why, "needsFinal": reasons,
-                            "lights": lights, "width": sw, "height": sh}, [dest], [dest], engine.take_notices())
+                            "lights": lights, "width": sw, "height": sh,
+                            **({"blocks": graph.describe(mat, catalogue=False)} if graph.has_graph(mat) else {})}, [dest], [dest], engine.take_notices())
 
     return ctx.long(f'look_material {mat["id"]}', job_fn)
 

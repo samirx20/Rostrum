@@ -26,10 +26,11 @@ Rectangle {
     property Item curves                        // the app's curve view, in the same place while Curves is on
     property Item overlay                       // drawn over the rows, under the markers and the playhead (2D: BeatLines.qml)
     property real compactExtra: 0               // rows that stay in compact too (2D: the Sound row)
+    property real footer: 0                     // room the app keeps under the rows for a row of its own (3D: the Simulate row)
     property bool frameTicks: false             // one tick per frame on the ruler (2D: a drawing selected)
     readonly property alias ruler: ruler
     readonly property real compactHeight: rowsTop + Theme.rowDense + 2 * Theme.gap + compactExtra
-    readonly property real wantedHeight: rowsTop + (rows ? rows.contentHeight : 0) + 2 * Theme.gap   // header, ruler and every row: the app's default height, up to its cap
+    readonly property real wantedHeight: rowsTop + (rows ? rows.contentHeight : 0) + 2 * Theme.gap + footer   // header, ruler and every row: the app's default height, up to its cap
     function openMenu(id, px, py) { rows.openMenu(id, px, py) }
     function plug(item, into, z) { if (item) { item.parent = into; item.z = z; item.anchors.fill = into } }
     onRowsChanged: plug(rows, rowsBox, -1)          // under the fade and scroll bar that share its box
@@ -105,13 +106,13 @@ Rectangle {
         id: curvesBox
         visible: tl.curvesOn
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
-                  topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
+                  topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap + tl.footer }   // x as the ruler's
     }
     Item {   // where `rows` lies, with its fade and scroll bar
         id: rowsBox
         visible: !tl.curvesOn
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; top: parent.top
-                  topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap }   // x as the ruler's
+                  topMargin: tl.rowsTop; rightMargin: Theme.gap; bottomMargin: Theme.gap + tl.footer }   // x as the ruler's
         EdgeFade { flick: tl.rows; anchors.fill: parent; color: Theme.panel }   // a half-shown row fades, never a sliver
         VScrollBar { flick: tl.rows; visible: !!tl.rows && needed }
     }

@@ -15,10 +15,9 @@ LayerTimeline {
     canCurves: false; canCompact: false; canResize: false
     emptyText: "Your scene's items appear here, their keys on the same rows."
     rows: SceneRows { ruler: tl.ruler; labelWidth: tl.labelWidth }
-    // the Simulate row (SimRow.qml) at the bottom while the scene has bodies, under the rows' box: the box (the kit's, where
-    // `rows` is plugged in, with its fade and scroll bar) ends above it, so no row ever passes under it
+    // the Simulate row (SimRow.qml) at the bottom while the scene has bodies, under the rows' box: the kit's `footer` keeps
+    // its room, so no row ever passes under it
     SimRow { id: simRow; x: 0; width: tl.width - Theme.gap; z: 4; anchors.bottom: parent.bottom; anchors.bottomMargin: Theme.gap
              ruler: tl.ruler; labelWidth: tl.labelWidth }
-    Binding { target: tl.rows ? tl.rows.parent : null; property: "anchors.bottomMargin"
-              value: Theme.gap + (simRow.visible ? simRow.height + Theme.gap : 0) }
+    footer: simRow.visible ? simRow.height + Theme.gap : 0
 }

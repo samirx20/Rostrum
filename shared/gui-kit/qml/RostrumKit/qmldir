@@ -112,3 +112,8 @@ singleton WheelLatch 1.0 WheelLatch.qml
 CatchUp 1.0 CatchUp.qml
 WorkingLine 1.0 WorkingLine.qml
 WheelScroll 1.0 WheelScroll.qml
+BlockView 1.0 BlockView.qml
+BlockItem 1.0 BlockItem.qml
+BlockPort 1.0 BlockPort.qml
+BlockWire 1.0 BlockWire.qml
+BlockAddList 1.0 BlockAddList.qml

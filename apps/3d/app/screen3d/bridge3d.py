@@ -37,6 +37,7 @@ from .key_routes3d import KeyRoutes3D
 from .poses_qt import Poses
 from .material_balls import BallRenderer, MaterialBalls
 from .materials import Materials3D
+from .blocks_qt import Blocks3D
 from .key_pick3d import KeyBar3D, KeyPick3D, Multi3D
 from .queue import RenderQueue
 from .render_job import RenderJob
@@ -97,6 +98,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.viewport = viewport(self) if viewport else None
         self.balls = MaterialBalls(BallRenderer() if self.viewport is not None else None)   # rendered preview balls
         self._mats = Materials3D(self, self.balls)   # the picker, the chip, the inline rows
+        self._blocks = Blocks3D(self)                # a material as blocks: the bottom panel's block view (blocks_qt.py)
         from .importing import Importer
         self._importer = Importer(self)        # the rail's Import group, files dropped on the viewport (importing.py)
         from .assets_qt import Assets
@@ -123,6 +125,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     actions = Property(QObject, lambda self: self._hub, constant=True)     # the panel's actions (action_preview3d.py)
     poses = Property(QObject, lambda self: self._poses, constant=True)  # QML: backend.poses (poses_qt.py)
     mats = Property(QObject, lambda self: self._mats, constant=True)    # QML: backend.mats (materials.py)
+    blocks = Property(QObject, lambda self: self._blocks, constant=True)   # QML: backend.blocks (blocks_qt.py)
     lipsync = Property(QObject, lambda self: self._lipsync, constant=True)   # QML: backend.lipsync (the kit's LipSyncSheet)
     importer = Property(QObject, lambda self: self._importer, constant=True)   # QML: backend.importer (importing.py)
     assets = Property(QObject, lambda self: self._assets, constant=True)   # QML: backend.assets (assets_qt.py)

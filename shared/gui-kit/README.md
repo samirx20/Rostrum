@@ -27,6 +27,7 @@ qml/RostrumKit/         the QML module (import RostrumKit; add shared/gui-kit/qm
   IconButton / LevelMeter / VScrollBar                 square glyph button; sideways level meter (value, peak); thin scroll bar
   Button has `danger: true` (red text, Theme.danger); Inspector scrolls when long (VScrollBar, in the panel margin)
   Panel / ItemList / Inspector / InspectorRow / CommandBar / TopBar / AppShell
+  BlockView (+ BlockItem / BlockPort / BlockWire / BlockAddList, Blocks.js)   blocks joined by wires, data in, requests out (BLOCKS.md)
   ToolRail / ToolFlyout / RailIcon   the tool rail: icons only; the app gives `groups` (id, items with icon / key job / tool or act;
                         `panel: true` opens the app's own panel; `kind` for icons the app draws), `current`, `iconKinds`; it picks
                         by signal. 2D: apps/2d/screen/qml/Rail2D.qml; the small 3D-style list: demo/rail_preview.py

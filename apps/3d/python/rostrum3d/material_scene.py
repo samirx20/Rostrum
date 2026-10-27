@@ -9,6 +9,7 @@ newest finished "pictures" render (rostrum_core.project.latest_render) playing o
 first + floor((f / fps − start) × fps2), held at the first and last file. The read-only reverse of 2D's render3d
 layer (P17). Loud: no project folder, no such item, not a 2D item, no render, a render that isn't PNG pictures, a
 frame file that is missing.
+A material with a blocks graph also gets "blocks": its MaterialX document's absolute path (blocks(), graph_mtlx.py).
 """
 from __future__ import annotations
 
@@ -71,12 +72,26 @@ def prop_out(name: str, value):
     return _out(next(p for p in MATERIAL if p.name == name), value)
 
 
+def blocks(m: dict, props: dict, folder) -> None:
+    """A material's blocks graph (graph.py) into its scene props: its MaterialX document written
+    (graph_mtlx.write_document) and its absolute path as "blocks"; a stylized block wired into Surface's Style switches
+    its setting on (the graph ops keep the fields so; this holds for a hand-written file too)."""
+    from . import graph, graph_mtlx
+    if not graph.has_graph(m):
+        return
+    for toggle, on in graph.toggles(graph.graph_of(m)).items():
+        props[toggle] = props[toggle] or on
+    if path := graph_mtlx.write_document(m, folder):
+        props["blocks"] = path
+
+
 def materials(data: dict, shot_frames: range, fps: float, folder, out_value) -> list[dict]:
     """The scene's material list for one shot. `out_value(param, value)`: the compiler's one way a value is sent."""
     out = []
     for m in data.get("materials", []):
         props = {p.name: out_value(p, m.get(p.name, p.default)) for p in MATERIAL if p.name not in DOC_ONLY}
         node = {"id": m["id"], "props": props}
+        blocks(m, props, folder)
         ref = m.get("emissionRender", "")
         if ref and m.get("emissionStrength", 0) and not m.get("emissionTexture", ""):
             files = frames_for(f'{m["id"]}.emissionRender', ref, folder, shot_frames, fps)

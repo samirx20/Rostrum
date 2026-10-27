@@ -75,7 +75,7 @@ naming, compact) at the four sizes, with long texts. Results: `C:\Users\Sam\.ros
 `LayerTimeline` is 2D's bottom timeline, now the kit's: header (play, time, Add marker, Keys | Curves, the height switch),
 `TimeRuler` (seconds, marker flags; `frameTicks` for a tick per frame), the playhead, marker lines, snap line, drag label
 and the key's Ease menu. The rows are the app's, plugged in: `rows` (a Flickable, laid under the ruler with the kit's edge
-fade and scroll bar), `curves` (shown while Curves is on), `overlay` (drawn over the rows: 2D's beat lines), `compactExtra`
+fade and scroll bar), `curves` (shown while Curves is on), `overlay` (drawn over the rows: 2D's beat lines), `footer` (room kept under the rows for an app's own row: 3D's Simulate row), `compactExtra`
 (rows that stay in compact). A row's time side is `LayerTrack` (bar, `KeyDot` diamonds merged by `KeyGroups.js`,
 `StretchBand` stretches, spring tails, repeat ghosts) with `cells` for the app's own marks (2D: `FrameMarks`, a drawing's
 cells). `AnimPanel` is the picked animation over the settings (`allowed` hides it: 2D while drawing); `EaseCurve` its curve.

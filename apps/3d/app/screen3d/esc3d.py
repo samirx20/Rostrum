@@ -42,6 +42,8 @@ ORDER = (
      lambda b, v: v is not None and v.clay_tool.on, lambda b, v: v.clay_tool.leave()),
     ("pose", "the Pose tool: back to Select",
      lambda b, v: v is not None and getattr(v, "pose_tool", None) is not None and v.pose_tool.on, lambda b, v: v.pose_tool.leave()),
+    ("blocks", "a material's blocks in the bottom panel: back to the timeline",
+     lambda b, v: getattr(b, "_blocks", None) is not None and b._blocks.open, lambda b, v: b._blocks.close()),
     ("stretch", "an animation picked on the timeline: back to its item",
      lambda b, v: b._stretch.shown, lambda b, v: b._stretch.clear()),
     ("keys", "several keys picked: let go of them",

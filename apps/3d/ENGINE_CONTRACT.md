@@ -1,6 +1,6 @@
 # Rostrum3D engine contract — the scene description
 
-*Team Hem, brief H12, 2026-10-21. Version **1.24** (§ 5). Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
+*Team Hem, brief H12, 2026-10-21. Version **1.26** (§ 5). Between the Python layer (`apps/3d/python/rostrum3d/`) and the C++ core (`apps/3d/core/`, program `rostrum3d-core`).*
 
 ## 0. The document and USD: who owns what
 
@@ -142,6 +142,25 @@ One physically based material type, written as Cycles' `principled_bsdf` (on `ou
 | `halftone`, `halftoneShape`, `halftoneSize`, `halftoneAngle`, `halftoneColor` | bool, `"dots"` / `"lines"`, px 2..40, degrees −90..90, [r,g,b] linear | (v1.23) **Halftone** (Stylized only): dots or lines over the surface, coverage = 1 − how lit (fully lit: none, full shadow: solid) |
 
 Every one of these fields is always sent (defaults filled in), like every material field.
+
+**Blocks (v1.26, Hem brief 23; core/src/material_blocks.*).** `blocks`: `""` or the absolute path of the material's
+MaterialX 1.39 document (written by `python/rostrum3d/graph_mtlx.py`, named by its content: `<id>-<hash>.mtlx`, so a
+changed graph is a new path). Read with USD's MaterialX reader (usdMtlx); the document's material must use a nodegraph
+`NG_blocks` whose outputs are named after the Surface inputs they feed: `baseColor`, `roughness`, `metallic`,
+`emissionColor` (× `emissionStrength`), `normal`. Each node in `NG_blocks` is a Rostrum block (nodedef id
+`ND_rostrum_<type>…`: `noise`, `image`, `mix`, `ramp`, `curve`, `colour_adjust`, `bevel`, `occlusion`, from
+`core/mtlx/rostrum_blocks.mtlx`, found through `PXR_MTLX_PLUGIN_SEARCH_PATHS`, which the runtime sets). **Cycles:**
+each block becomes its own nodes (`noise_texture` on object coordinates, `image_texture`, `mix_color`, `rgb_ramp` /
+`float_curve` sampled at 256, `hsv` + `brightness_contrast`, `bevel`, `ambient_occlusion`) wired into the principled
+BSDF. **Storm:** `NG_blocks` referenced under `/World/Looks/<id>/Blocks` and an `ND_UsdPreviewSurface_surfaceshader`
+(`MtlxSurface`, the Preview's values and pictures as MaterialX images) on `outputs:mtlx:surface`, so Storm's MaterialX
+code draws the blocks from their nodedefs' nodegraphs; `normal` is Final only (Bevel shading, Ambient occlusion are
+Cycles nodes; their Storm nodegraphs give a flat normal / no darkening). Noise in Storm is MaterialX's fractal noise,
+in Cycles Cycles' own: the same scale and detail, not the same pattern. **Fails loudly:** a path that isn't absolute or
+doesn't exist; a document without `NG_blocks` in a material; a node that isn't a Rostrum block (named); a wire from an
+output a block doesn't have or into an input that takes none; an `NG_blocks` output that isn't a Surface input.
+Stylized blocks (Lines, Light to colour, Halftone) are the material's own fields above; the document only carries them
+for other programs.
 
 **Stylized blocks (v1.23, Sam brief 22; core/src/material_stylized.*, light_to_color.*).** What each renderer shows: **Storm** only the base colour, image and glow (it ignores all three blocks); **Cycles** shows Light to colour (not Lines or Halftone); **Stylized** shows all three. Every material gets `/World/Looks/<id>/Stylized` (`info:id = "rostrum_stylized"`) on `outputs:rostrum:surface`, inputs all authored as plain values: `baseColor` (color3f; linked to the `PreviewBaseColor` UsdUVTexture's `rgb` when a base colour image is set, the value still authored), `emission` (color3f = `emissionColor` × `emissionStrength`), `opacity` (the UsdPreviewSurface's), `lines` (bool), `linesWidth`, `linesColor` (color3f), `linesTaper`, `linesWobble`, `linesCreaseAngle`, `lightToColor` (bool), `litColor` / `midColor` / `shadowColor` (color3f), `shadowBelow`, `litFrom`, `lightSoftness`, `lightSmooth` (bool: `lightEdges` is `"smooth"`), `halftone` (bool), `halftoneLines` (bool: `halftoneShape` is `"lines"`), `halftoneSize`, `halftoneAngle`, `halftoneColor` (color3f); floats unless named. The stylized renderer asks for the `rostrum` render context; a material without the shader (another USD file) falls back to its UsdPreviewSurface.
 
@@ -391,4 +410,5 @@ header is an error naming `<id>.cloth.file`.
 - **v1.22** (Hem brief 21): request `texels` (§ Texels: which texel of which item each pixel of a camera's picture sees, a float file); `sees` draws through the same Storm id + depth pass.
 - **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).
 - **v1.24** (Sam brief 25): request `simulate` (§ Simulation: rigid bodies with Jolt Physics 5.6.0, `bodies.bin`, loud failures with `item`, `copy`, `frame`, `fix`); a `copies` node's `sim` (a stored fall); `info` gives `jolt` and `sim`.
+- **v1.26** (Hem brief 23): material `blocks` (a MaterialX document: Storm through MaterialX, Cycles through its own nodes; § Materials › Blocks).
 - **v1.25** (Sam brief 26b): cloth (§ Simulation › Cloth): `simulate` body kind `cloth` (Jolt soft bodies: `weight`, `stiffness`, `pinned`, `friction`), `cloth_<item>.bin`, reply `cloth`; a `mesh` node's `cloth` (a stored drape, read per frame); `sim` 2.

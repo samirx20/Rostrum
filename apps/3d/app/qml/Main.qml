@@ -9,7 +9,9 @@ import RostrumKit
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
 // own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
 // animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
-// same rows (SceneList), taller on the Animate page. The start screen (kit) covers it all at a launch with
+// same rows (SceneList), taller on the Animate page; after a material's "Edit as blocks" (its last settings row), its
+// blocks instead (BlocksPanel; ‹ Back or Esc: the timeline again) and the picked block's settings on the right
+// (BlockSettings). The start screen (kit) covers it all at a launch with
 // nothing to reopen. The render sheet (the ▾ beside Render, Ctrl+E; Render itself and F12 make the Final picture at once) is the kit's export sheet in the settings panel's place.
 // The Render page (Alt+3): the shots and the render queue at the bottom (RenderPage), the shot's render settings on
 // the right (RenderSettings), no header Render (a control never shows twice).
@@ -25,7 +27,8 @@ AppShell {
     documentName: backend.docName
     leftWidth: 0
     rightWidth: width >= 1920 ? 340 : width >= 1646 ? 300 : 280
-    bottomHeight: backend.page === "build" ? 204 : 284   // Animate: more key rows; Render: the shots and the queue
+    bottomHeight: backend.blocks.open && backend.page !== "render" ? 340   // a material's blocks: room for a few rows of them
+                : backend.page === "build" ? 204 : 284   // Animate: more key rows; Render: the shots and the queue
     Behavior on bottomHeight { NumberAnimation { duration: Theme.reveal; easing.type: Theme.revealEasing } }
     exporter: backend.exporter
     exportSettings: ExportSettings3D { }
@@ -51,7 +54,11 @@ AppShell {
     // action, or one of the window's own jobs below. Esc: the kit's one Esc closes the newest popup or sheet first (its
     // KeyMap shortcut waits meanwhile), then the hub takes one step of 3D's written order (screen3d/esc3d.py).
     readonly property bool typing: activeFocusItem !== null && activeFocusItem.cursorPosition !== undefined
-    KeyMap { hub: backend.actions; typing: shell.typing; skip: backend.actions.skip }
+    // While the keyboard is in a material's block view, its own keys (Delete a block, Tab / Space / F, Esc) are the view's
+    readonly property bool inBlocks: blocksPanel.visible && blocksPanel.holds(activeFocusItem)
+    KeyMap { hub: backend.actions; typing: shell.typing
+             skip: shell.inBlocks ? backend.actions.skip.concat(["step_back", "delete", "next_item", "prev_item", "fit", "clay_size", "play"])
+                                  : backend.actions.skip }
     readonly property var windowJobs: ({
         clay_tool: () => viewport.clay.toggle(),
         shapes_menu: () => rail.openGroup("shapes"), type_menu: () => rail.openGroup("type"),
@@ -140,6 +147,18 @@ AppShell {
                     model: backend.mats.rows
                     delegate: InspectorRow { bridge: backend.mats; instant: backend.mats.rows.instant }
                 }
+                Item {          // the material's last row: Edit as blocks (the bottom panel shows its blocks: BlocksPanel)
+                    width: parent.width; height: visible ? Theme.row : 0
+                    visible: backend.blocks.target !== ""
+                    Text {
+                        objectName: "editAsBlocks"
+                        x: Theme.labelColumnFor(parent.width); anchors.verticalCenter: parent.verticalCenter
+                        text: "Edit as blocks"
+                        color: asBlocks.containsMouse ? Theme.accentHover : Theme.accent; font.family: uiFont; font.pixelSize: Theme.body
+                        MouseArea { id: asBlocks; anchors.fill: parent; anchors.margins: -Theme.grid; hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor; onClicked: backend.blocks.edit(backend.blocks.target) }
+                    }
+                }
             }
         }
         ScenePanel { anchors.fill: parent; visible: backend.selected === "" && backend.page !== "render" && !viewport.clay.on }
@@ -150,10 +169,12 @@ AppShell {
         PosePanel { anchors.fill: parent; visible: viewport.pose.on }  // Pose: Joints, Names, Holds
         FirstUse { anchors.fill: parent; visible: backend.lipsync.open; when: visible; sourceComponent: Component { LipSyncSheet { } } }   // Lip sync… on a mouth group (the kit's sheet)
         FirstUse { anchors.fill: parent; visible: backend.assets.shown; when: visible; sourceComponent: Component { AssetSheet { } } }   // Import › Asset library
+        BlockSettings { anchors.fill: parent }     // a material's blocks open: the picked block's settings
         AnimPanel { anchors.fill: parent; allowed: !meshEdit.on && !paintMode.on && !viewport.clay.on && !viewport.pose.on }      // a stretch picked on the timeline: that animation (‹ or Esc: back)
     }
     bottom: [
-        SceneList { anchors.fill: parent; visible: backend.page !== "render" },
+        SceneList { objectName: "sceneList"; anchors.fill: parent; visible: backend.page !== "render" && !backend.blocks.open },
+        BlocksPanel { id: blocksPanel; anchors.fill: parent; visible: backend.page !== "render" && backend.blocks.open },   // Edit as blocks
         RenderPage { anchors.fill: parent; visible: backend.page === "render" }   // the shots and the render queue
     ]
 }
