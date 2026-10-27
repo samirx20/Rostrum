@@ -5,6 +5,8 @@ then every live dab request is one record (ms on one clock, time.perf_counter):
   tEng0/1 around the engine request (its reply: dabMs, drawMs, totalMs, perf: Storm's counters)
   tCopy0/1 the picture copied out of shared memory       serial  the picture's number
   tReady  the GUI thread told the picture is in          tSwap   the window's first frame shown after that
+In the window's own view (view_item.py) there is no picture copy: tRender0/1 are the render thread's dab + draw and
+`frame` the frame that drew it; tSwap is when that frame's swap returned.
 and Python's garbage collections (start, ms, generation)."""
 from __future__ import annotations
 
@@ -53,6 +55,14 @@ def ready(serial: int):
             if r.get("serial") == serial and "tReady" not in r:
                 r["tReady"] = now()
                 return
+
+
+def shown(frame: int, t_ms: float):
+    """The window's own view: its frame `frame` is on screen since t_ms (view_item.ViewLink.shown)."""
+    if RECORDS is not None:
+        for r in reversed(RECORDS):
+            if r.get("frame") is not None and "tSwap" not in r and r["frame"] <= frame:
+                r["tSwap"] = t_ms
 
 
 def swapped(serial: int):

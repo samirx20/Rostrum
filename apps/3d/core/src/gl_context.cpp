@@ -60,6 +60,7 @@ GlContext::GlContext() {
 }
 
 GlContext::~GlContext() {
+  if (!rc_) return;  // borrowed: the owner keeps it
   wglMakeCurrent(nullptr, nullptr);
   if (rc_) wglDeleteContext(static_cast<HGLRC>(rc_));
   if (dc_) ReleaseDC(static_cast<HWND>(wnd_), static_cast<HDC>(dc_));

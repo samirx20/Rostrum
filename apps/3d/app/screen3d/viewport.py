@@ -23,6 +23,8 @@ from .gizmo import View
 from .final_look import NEXT_MS, FinalLook
 from .render_job import cycles_of
 from .frames import EngineVia, ViewRenderer
+from . import view_item
+from .view_item import ViewLink
 from .viewcam import ViewCam
 
 MAX_WIDTH = 1600             # pictures wider than this are drawn smaller and scaled up on screen
@@ -49,9 +51,10 @@ class Viewport(QObject):
     def __init__(self, bridge, parent=None):
         super().__init__(parent or bridge)
         self.bridge, self.cam = bridge, ViewCam()
-        self._r = ViewRenderer(self)
+        self.link = ViewLink(self) if view_item.on() else None   # the window draws the live view (view_item.py)
+        self._r = ViewRenderer(self, link=self.link)
         self.provider = self._r.provider
-        self._serial, self._ms, self._status = 0, 0.0, ""
+        self._serial, self._ms, self._status, self._picture = 0, 0.0, "", 0
         self._exposure, self._studio, self._lights = 0.0, 1.0, True
         self._dome = False                           # the engine said the scene's own dome lit the last picture
         self._ao_on, self._ao, self._dof = True, 1.0, True    # contact shading (on, strength) and depth of field
@@ -63,6 +66,8 @@ class Viewport(QObject):
         self.final = FinalLook()
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
+        if self.link is not None:
+            self.link.shown.connect(dab_trace.shown)
         self._r.picked.connect(self._on_picked)
         self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
@@ -93,6 +98,10 @@ class Viewport(QObject):
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
+    pictureSerial = Property(int, lambda s: s._picture, notify=serialChanged)   # the newest engine picture (image://view)
+    # the live view is drawn in the window (LiveView.qml), not served as pictures; the Final look stays a picture
+    inWindow = Property(bool, lambda s: s.link is not None, constant=True)
+    viewLink = Property(QObject, lambda s: s.link, constant=True)
     ms = Property(float, lambda s: s._ms, notify=serialChanged)
     status = Property(str, lambda s: s._status, notify=statusChanged)
     mode = Property(str, lambda s: s.cam.mode, notify=settingsChanged)
@@ -355,6 +364,19 @@ class Viewport(QObject):
         self._drop = material_id
         self.click(x, y)
 
+    def picture(self):
+        """The viewport's picture as on screen now (a QImage): the window's own view grabbed from the window, else the
+        newest engine picture."""
+        item = self.link.item if self.link is not None else None
+        if item is None or self.final.on:
+            return self.provider.requestImage("", None, None)
+        from PySide6.QtCore import QPointF, QRectF
+        win = item.window()
+        dpr = win.devicePixelRatio()
+        top = item.mapToScene(QPointF(0, 0))
+        r = QRectF(top.x() * dpr, top.y() * dpr, item.width() * dpr, item.height() * dpr).toRect()
+        return win.grabWindow().copy(r)
+
     def close(self):
         if _ENGINE_FOR_OPS[0] is self:
             ops_mesh.use_engine(None)
@@ -365,6 +387,8 @@ class Viewport(QObject):
     # --- answers from the worker
     def _on_ready(self, serial, ms, dome, cam_dof=False, extra=None):
         self._serial, self._ms = serial, ms
+        if (extra or {}).get("frame") is None:              # an engine picture, not a frame of the window's own view
+            self._picture = serial
         dab_trace.ready(serial)                          # (nothing unless tools/clay_hops.py traces dabs)
         if self.final.on and (extra or {}).get("final") is not None:
             step = self.final.take(extra)

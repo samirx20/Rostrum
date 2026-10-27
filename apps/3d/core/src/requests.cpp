@@ -57,8 +57,10 @@ void background(const UsdStageRefPtr& stage, float rgb[3]) {
 
 Core::Core() : stage_(UsdStage::CreateInMemory()) { clay_ = std::make_unique<clay::Store>(stage_); }
 
+Core::Core(GlContext::Borrow) : Core() { borrow_gl_ = true; }
+
 Hydra& Core::hydra() {
-  if (!hydra_) hydra_ = std::make_unique<Hydra>(stage_);
+  if (!hydra_) hydra_ = borrow_gl_ ? std::make_unique<Hydra>(stage_, GlContext::Borrow{}) : std::make_unique<Hydra>(stage_);
   return *hydra_;
 }
 
@@ -262,14 +264,19 @@ JsObject Core::view(const JsObject& o) {
     post.ghosts.push_back(g);
   }
   const double draw_ms = ms_since(t0);
-  const size_t bytes = size_t(w) * h * 4;
-  if (!shm_ || shm_->slot_bytes() != bytes) {
-    shm_.reset();
-    shm_ = std::make_unique<Shm>(bytes);
-  }
   JsObject info;
   if (!post_) post_ = std::make_unique<ViewPost>();
-  post_->run(post, shm_->next(w, h, &info));
+  ++views_drawn_;
+  if (target_.fbo) {  // inside the window: into its texture, no read-back
+    post_->run(post, nullptr, &target_);
+  } else {
+    const size_t bytes = size_t(w) * h * 4;
+    if (!shm_ || shm_->slot_bytes() != bytes) {
+      shm_.reset();
+      shm_ = std::make_unique<Shm>(bytes);
+    }
+    post_->run(post, shm_->next(w, h, &info));
+  }
   JsValue sun;  // null: no sun light (no scene dome, no sun in its picture, or not Storm)
   if (pic.sun)
     sun = JsValue(JsObject{{"toward", vec3(GfVec3d(pic.sun->toward[0], pic.sun->toward[1], pic.sun->toward[2]))},
@@ -283,13 +290,15 @@ JsObject Core::view(const JsObject& o) {
   const GpuMem now = mem_.sample();
   JsArray missing;  // product lighting the quick view can't show (light_extras.h): said, never faked
   for (const std::string& note : light_extras().stormNotes) missing.push_back(JsValue(note));
-  JsObject reply{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)}, {"shm", JsValue(info)},
+  JsObject reply{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)},
                   {"sceneDome", JsValue(pic.sceneDome)}, {"sun", sun}, {"cameraDof", JsValue(bool(lens))},
                   {"notInQuickView", JsValue(missing)}, {"final", final},
                   {"vram", JsValue(JsObject{{"processMb", JsValue(r1(now.processMb))},
                                             {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
                                             {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
-                  {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
+                  {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))},
+                                              {"lightMs", JsValue(r1(pic.lightMs))}, {"stormMs", JsValue(r1(pic.renderMs))}})}};
+  if (!target_.fbo) reply["shm"] = JsValue(info);
   if (perf_on()) reply["perf"] = JsValue(perf_moved());  // ROSTRUM3D_PERF=1: Storm's counters that moved
   return reply;
 }

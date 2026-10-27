@@ -29,7 +29,9 @@ from rostrum3d.script import run_source  # noqa: E402
 from screen3d import dab_trace  # noqa: E402
 
 HOPS = [("before send", "tMove", "tSend"), ("wait for engine thread", "tSend", "tJob"),
-        ("engine round trip", "tEng0", "tEng1"), ("picture copy", "tCopy0", "tCopy1"),
+        ("engine round trip", "tEng0", "tEng1"), ("  in window: to render thread", "tEng0", "tRender0"),
+        ("  in window: dab + draw", "tRender0", "tRender1"), ("  in window: drawn -> on screen", "tRender1", "tSwap"),
+        ("picture copy", "tCopy0", "tCopy1"),
         ("to GUI thread", "tCopy1", "tReady"), ("to screen", "tReady", "tSwap"), ("TOTAL move -> on screen", "tMove", "tSwap")]
 
 
@@ -50,6 +52,8 @@ def table(recs):
     rows["    dab: blocks changed"] = stats([r.get("blocks") for r in recs])
     rows["    dab: new dabs"] = stats([b.get("dabs", 0) - a.get("dabs", 0) for a, b in zip(recs, recs[1:])])
     rows["  engine: Storm draw (+mask)"] = stats([r.get("drawMs") for r in recs])
+    rows["    draw: lights set up"] = stats([r.get("lightMs") for r in recs])
+    rows["    draw: Storm render + GPU finish"] = stats([r.get("stormMs") for r in recs])
     rows["  engine: finishing + read back"] = stats([r["totalMs"] - r["drawMs"] for r in recs if r.get("totalMs") is not None])
     rows["  engine: pipe + JSON"] = stats([(r["tEng1"] - r["tEng0"]) - r["totalMs"] - (r.get("dabMs") or 0)
                                           for r in recs if r.get("totalMs") is not None and "tEng1" in r])

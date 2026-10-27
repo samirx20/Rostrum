@@ -20,6 +20,9 @@ namespace r3d {
 class Core {
  public:
   Core();
+  explicit Core(GlContext::Borrow);  // inside a window: its GL context, current on the calling thread, is Hydra's
+  void set_target(const ViewTarget& t) { target_ = t; }
+  int views_drawn() const { return views_drawn_; }  // `view` pictures drawn so far (into the target or shared memory)
   PXR_NS::JsObject scene(const PXR_NS::JsObject& a);
   PXR_NS::JsObject render(const PXR_NS::JsObject& a, const std::function<void(const PXR_NS::JsObject&)>& progress);
   PXR_NS::JsObject view(const PXR_NS::JsObject& a);
@@ -41,6 +44,9 @@ class Core {
   PXR_NS::UsdGeomMesh built_mesh(const std::string& id, const char* request) const;
 
   PXR_NS::UsdStageRefPtr stage_;
+  bool borrow_gl_ = false;
+  ViewTarget target_;
+  int views_drawn_ = 0;
   std::unique_ptr<Hydra> hydra_;
   ColorOut color_;
   GpuMemWatch mem_;

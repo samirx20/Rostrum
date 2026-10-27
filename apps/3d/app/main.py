@@ -35,8 +35,10 @@ from screen3d.files_3d import FILES_3D  # noqa: E402
 from screen3d.sample import SOURCE  # noqa: E402
 from screen3d.scratch_doc import isolated  # noqa: E402
 from screen3d.steps import do_step, step_waits_ms  # noqa: E402
+from screen3d import view_item  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
+IMPORTS: list = []           # extra QML import folders: the Rostrum3DView module when the window draws the live view
 GUIDES = guides.entries(HERE.parent / "python" / "rostrum3d" / "guides", [      # Help's guides (also the agents' guides)
     ("window.md", "The Rostrum3D window"), ("rendering.md", "Rendering"),
     ("agents.md", "Working with an AI agent"), ("script.md", "Building a scene with a script"), ("materials.md", "Materials"),
@@ -68,6 +70,8 @@ class Screen:
 
     def __init__(self, size):
         self.size, self.engine, self.win, self.bridge = size, None, None, None
+        if not IMPORTS and view_item.wanted():     # (after qt_app) a real window draws the live view itself (view_item.py)
+            IMPORTS.append(view_item.prepare())
         self.files = ProjectFiles(FILES_3D, self)      # the file menu, start screen, Open recent (kit; saving is automatic)
 
     def show(self, doc, shot_id=None, autosave=None):
@@ -78,7 +82,8 @@ class Screen:
         self.bridge = bridge = Bridge3D(doc, shot_id, autosave=autosave)
         _, self.engine, self.win = start(HERE / "qml" / "Main.qml",
                                          {"backend": bridge, "sender": bridge.send_to, "viewport": bridge.viewport, "gizmo": bridge.viewport.gizmo, "meshEdit": bridge.viewport.mesh_edit, "paintMode": bridge.viewport.paint, "guides": GUIDES, "files": self.files}, self.size,
-                                         providers={"view": bridge.viewport.provider, "ball": bridge.balls.provider})
+                                         providers={"view": bridge.viewport.provider, "ball": bridge.balls.provider},
+                                         imports=IMPORTS)
         if old[0] is not None:
             stop(old[0], old[1], then=lambda: self._free(old[2]))
         self.files.setStart(False)                      # a document shown, by the kit or straight here: no start screen over it

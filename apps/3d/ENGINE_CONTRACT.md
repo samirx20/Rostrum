@@ -185,6 +185,13 @@ A clay is a narrow-band distance volume (OpenVDB 13, values in grains, half-widt
 - `ghosts` (v1.9, onion skin, brief 17; core/src/ghosts.*): at most 8, each `{"frame"` (a frame of the shot), `"items"` (one or more item ids), `"tint"` ([r, g, b] linear, each 0..1, default white), `"opacity"` (0..1, default 0.35)`}`. Each ghost's items are drawn alone at its frame, lit like the picture, into a picture of their own; it is laid over the scene see-through in its tint (its own light and shade kept as brightness), in the order given, before depth of field, the colour transform and the selection ring. No depth test: a ghost shows over what stands in front of it. A frame outside the shot, an unknown item, an empty `items`, a tint or opacity out of range, or an unknown field is an error naming `view.ghosts[i].<field>`. **Quick look only:** with `renderer: "cycles"` (Final) `ghosts` is an error; renders never take it. The screen sends ghosts only while onion skin is on (an older core refuses the unknown argument loudly).
 - The pixels (straight-alpha RGBA8, top row first, background laid in; read straight from the graphics card into the slot) are written into a named shared-memory block with two slots used in turn, as in Rostrum2D's `pixels` (`Local\rostrum3d-<pid>-<n>`; Python: `mmap.mmap(-1, size, tagname=name, access=mmap.ACCESS_READ)`). The reader must be done with a slot before it asks for the view after next. Windows only for now.
 - **`pick`** takes the same camera choice: `camera`, or `eye` + `target` + `fov`.
+- **In the window (v1.14, 3d-v1):** the screen's live view is the same core inside the app's own window (the
+  `Rostrum3DView` QML module, core/view/viewport_item.*; Python side app/screen3d/view_item.py), answering the same
+  request lines through the same handler (core/src/serve.h `answer`) on Qt Quick's render thread. Its `view` pictures
+  are drawn straight into the view's texture (same view post, pixel-identical to the engine's pictures), so its reply
+  has no `shm`; replies there add `frame`, `tRender0` and `tRender1` (steady-clock ms: the frame that drew it). Pictures
+  for checks (offscreen windows), the Final look, `render`, `geometry`, `unfold`, `save`, `inspect_usd` and everything
+  agents and MCP ask stay with the engine program, which loads the same scene JSON.
 
 ## 5. Change log
 

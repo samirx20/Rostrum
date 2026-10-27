@@ -1,8 +1,9 @@
 import QtQuick
 import RostrumKit
 
-// The live 3D viewport: the engine's Storm picture (Look: Quick), or progressive Cycles in place with the Render
-// button's settings (Look: Final, Shift+F; a thin line along the bottom shows how far it has got) (image://view, drawn off the GUI thread at this item's size),
+// The live 3D viewport: Storm drawn inside the window (Look: Quick; LiveView.qml, or the engine's picture in offscreen
+// runs), or progressive Cycles in place with the Render button's settings (Look: Final, Shift+F; a thin line along the
+// bottom shows how far it has got) (image://view, drawn off the GUI thread at this item's size),
 // (its viewport-only settings live in the Scene panel, ScenePanel.qml). Left drag orbits, middle drag or Shift + left drag pans, the wheel
 // zooms, a click (press and release without dragging) selects what is there, a double click goes home. In the shot
 // camera, or looking through a light, any camera move continues freely from its view. None of this touches the
@@ -23,9 +24,16 @@ Rectangle {
     onHeightChanged: resize()
     Component.onCompleted: resize()
 
+    Loader {   // the live view drawn in the window itself (LiveView.qml); offscreen pictures and Final use the Image
+        anchors.fill: parent
+        active: viewport.inWindow
+        visible: !vp.final
+        source: "LiveView.qml"
+    }
     Image {
         anchors.fill: parent
-        source: viewport.serial > 0 ? "image://view/" + viewport.serial : ""
+        visible: !viewport.inWindow || vp.final
+        source: visible && viewport.pictureSerial > 0 ? "image://view/" + viewport.pictureSerial : ""
         cache: false; smooth: true
     }
 

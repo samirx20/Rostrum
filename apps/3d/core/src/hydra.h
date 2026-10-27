@@ -51,6 +51,7 @@ struct ViewDrawn {
   bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
   std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
   std::optional<FinalPass> final; // the Final look's progress (Cycles only)
+  double lightMs = 0, renderMs = 0;  // where the time went: the lights set up, Storm's draw (GPU work finished)
 };
 
 struct DrawSettings {
@@ -64,6 +65,7 @@ struct DrawSettings {
 class Hydra {
  public:
   explicit Hydra(PXR_NS::UsdStageRefPtr stage);
+  Hydra(PXR_NS::UsdStageRefPtr stage, GlContext::Borrow);  // on the context current now (the window's view)
   ~Hydra();
   // "storm" | "cycles" | "stylized" -> Hydra plug-in id; unknown names are an error listing the accepted ones
   static PXR_NS::TfToken plugin_for(const std::string& name);

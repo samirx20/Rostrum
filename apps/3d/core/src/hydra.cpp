@@ -143,12 +143,18 @@ class Hydra::Engine : public UsdImagingGLEngine {
   std::vector<std::string> aovs_;  // the extra outputs set now (use_aovs)
 };
 
-Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) {
+namespace {
+void register_scene_fixes() {
   register_cycles_dome_fix();
   register_cycles_lights();
   register_storm_sun();
   register_storm_lights();
 }
+}  // namespace
+
+Hydra::Hydra(UsdStageRefPtr stage) : stage_(std::move(stage)) { register_scene_fixes(); }
+
+Hydra::Hydra(UsdStageRefPtr stage, GlContext::Borrow b) : stage_(std::move(stage)), gl_(b) { register_scene_fixes(); }
 
 Hydra::~Hydra() {
   engines_.clear();  // release Hydra while the GL context is still there
@@ -290,7 +296,9 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
   // the scene's own dome is its sky and light; without one the studio lights the scene and is never seen
   std::optional<StormSun> sun;
+  const auto tl = std::chrono::steady_clock::now();
   const bool scene_dome = e.light_raster(stage_, frame, look.sceneLights, studio_lights(look.studio), frustum, &sun);
+  const double light_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tl).count();
   UsdImagingGLRenderParams params;
   params.frame = UsdTimeCode(frame);
   params.colorCorrectionMode = TfToken("disabled");  // scene-linear out; OpenColorIO makes the picture
@@ -310,6 +318,8 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     if (!first) std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
   ViewDrawn out{fb.color_texture(), fb.depth_texture()};
+  out.lightMs = light_ms;
+  out.renderMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   out.sceneDome = scene_dome;
   if (sun) out.sun = SunSeen{{sun->toward[0], sun->toward[1], sun->toward[2]}, sun->share, sun->angleDeg};
   // The selection's mask: the selected items alone, unlit, in the same frustum, in a framebuffer of its own (Storm
