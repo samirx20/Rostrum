@@ -79,11 +79,11 @@ Item {
             MouseArea {
                 anchors.fill: parent; anchors.margins: -4
                 preventStealing: true
-                CanvasCursor { anchors.fill: parent;      // a text's side sets the wrap width (¶); Alt on any knob: from the centre
-                    kind: "resize"; angle: (h.box.angles || [])[knob.index] || 0
-                    readonly property bool wrap: h.kit.sides === "wrap" && knob.edge
-                    badge: wrap ? "wrap" : ""; altBadge: wrap ? "" : "centre"
-                }
+                // a text's side sets the wrap width (¶); Alt on any knob: from the centre. (A pointer item declares no
+                // properties of its own: that makes a QML subtype of the kit's item, which the kit neither sizes nor reads.)
+                readonly property bool wrap: h.kit.sides === "wrap" && knob.edge
+                CanvasCursor { anchors.fill: parent; kind: "resize"; angle: (h.box.angles || [])[knob.index] || 0
+                               badge: parent.wrap ? "wrap" : ""; altBadge: parent.wrap ? "" : "centre" }
                 property bool on: false
                 property point p0
                 function at(m) { var q = mapToItem(h.space, m.x, m.y); return Qt.point(q.x / h.fit, q.y / h.fit) }

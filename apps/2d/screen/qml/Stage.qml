@@ -217,16 +217,21 @@ Rectangle {
                     painter.setValue("hardness", Math.max(0, Math.min(1, Math.round((hard0 - translation.y / 200) * 100) / 100)))
                 }
             }
-            CanvasCursor { anchors.fill: parent;      // the kit's pointers (CURSORS.md): Brush / Eraser hide it for their ring; Alt (or Pick): the dropper;
-                id: paintPointer   // picked strokes: their corner `resize`, their knob `rotate`, their box `pick` (a drag moves them)
-                readonly property var sb: backend.strokeSelect.box
-                readonly property point at: hover.hovered ? panel.inWell(hover.point.position.x, hover.point.position.y) : Qt.point(0, 0)
-                readonly property string zone: backend.strokeSelect.count === 0 || !hover.hovered ? ""
-                    : backend.strokeSelect.handleAt(at.x, at.y, view.zoom) || (backend.strokeSelect.hits(at.x, at.y) ? "body" : "")
+            // the kit's pointers (CURSORS.md): Brush / Eraser hide it for their ring; Alt (or Pick): the dropper; picked strokes:
+            // their corner `resize`, their knob `rotate`, their box `pick` (a drag moves them). The zone is worked out here: a
+            // pointer item declares no properties of its own (that makes a QML subtype the kit neither sizes nor reads).
+            readonly property var paintSb: backend.strokeSelect.box
+            readonly property point paintAt: hover.hovered ? panel.inWell(hover.point.position.x, hover.point.position.y) : Qt.point(0, 0)
+            readonly property string paintZone: backend.strokeSelect.count === 0 || !hover.hovered ? ""
+                : backend.strokeSelect.handleAt(paintAt.x, paintAt.y, view.zoom) || (backend.strokeSelect.hits(paintAt.x, paintAt.y) ? "body" : "")
+            CanvasCursor {
+                id: paintPointer
+                anchors.fill: parent
                 kind: sizing.sizingNow ? "none" : backend.colourPick.alt || altHeld ? "dropper"
-                    : zone === "scale" ? "resize" : zone === "turn" ? "rotate" : zone === "body" ? "pick" : parent.noErase ? "no"
-                    : backend.paintTool.now === "fill" ? "fill" : backend.paintTool.now === "select" ? "pick" : "none"
-                angle: zone === "" ? 0 : Math.atan2(at.y - (sb.y || 0) - (sb.h || 0) / 2, at.x - (sb.x || 0) - (sb.w || 0) / 2) * 180 / Math.PI
+                    : parent.paintZone === "scale" ? "resize" : parent.paintZone === "turn" ? "rotate" : parent.paintZone === "body" ? "pick"
+                    : parent.noErase ? "no" : backend.paintTool.now === "fill" ? "fill" : backend.paintTool.now === "select" ? "pick" : "none"
+                angle: parent.paintZone === "" ? 0 : Math.atan2(parent.paintAt.y - (parent.paintSb.y || 0) - (parent.paintSb.h || 0) / 2,
+                                                                parent.paintAt.x - (parent.paintSb.x || 0) - (parent.paintSb.w || 0) / 2) * 180 / Math.PI
             }
             HoverHandler {      // Alt held: the pointer picks a colour (the swatch beside it shows the colour under it)
                 id: hover
