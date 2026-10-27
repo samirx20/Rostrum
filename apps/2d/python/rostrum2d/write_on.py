@@ -91,14 +91,24 @@ def _path(s: dict) -> tuple:
     return X, Y, np.maximum(size / 2 * (1 - sp * (1 - P)), 0.5), ts, step, float(L[-1])
 
 
-def _cover(s: dict, box: tuple, upto: float) -> np.ndarray:
-    """Per px of `box`: how much of the brush's soft tip has passed over it by `upto` px along the path (the most any
-    one place gave: 0..1, the tip's own edge as the brush draws it), so what shows is soft where the brush is soft."""
+SNAPS = 16 << 20         # bytes of a stroke's kept covers (`_covers`): at most 32 along it, fewer for a big box
+
+
+def _cover(s: dict, box: tuple, upto: float, start: tuple = (None, 0), snaps: int = 0) -> tuple[np.ndarray, list]:
+    """(per px of `box`: how much of the brush's soft tip has passed over it by `upto` px along the path, 0..1, the
+    most any one place gave: the tip's own edge as the brush draws it; the cover kept at `snaps` places along the way,
+    [(index of the next place, cover as uint8)]). `start`: (a kept cover, its index) to go on from, so a picture adds
+    only the few places since (each place is a few small array steps the screen's thread can hold up)."""
     X, Y, R, ts, _, _ = _path(s)
     soft = max(1 - float(s.get("hardness", 0.5)), 0.03)
     x0, y0, x1, y1 = box
-    cover = np.zeros((y1 - y0, x1 - x0), np.float32)
-    for x, y, r, t in zip(X.tolist(), Y.tolist(), R.tolist(), ts.tolist()):
+    kept, first = start
+    cover = kept.astype(np.float32) / 255 if kept is not None else np.zeros((y1 - y0, x1 - x0), np.float32)
+    every, out = max(1, -(-len(ts) // snaps)) if snaps else 0, []
+    for i in range(first, len(ts)):
+        if every and i % every == 0:
+            out.append((i, np.rint(cover * 255).astype(np.uint8)))
+        x, y, r, t = float(X[i]), float(Y[i]), float(R[i]), float(ts[i])
         if t > upto:
             break
         bx0, bx1, by0, by1 = max(x0, math.floor(x - r)), min(x1, math.ceil(x + r) + 1), max(y0, math.floor(y - r)), min(y1, math.ceil(y + r) + 1)
@@ -107,12 +117,12 @@ def _cover(s: dict, box: tuple, upto: float) -> np.ndarray:
         d = np.hypot(np.arange(bx0, bx1)[None, :] - x, np.arange(by0, by1)[:, None] - y)
         sub = cover[by0 - y0:by1 - y0, bx0 - x0:bx1 - x0]
         np.maximum(sub, _ss((r - d) / max(1.0, soft * r)).astype(np.float32), out=sub)
-    return cover
+    return cover, out
 
 
-def _order(s: dict, box: tuple, changed: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, float]:
+def _order(s: dict, box: tuple, changed: np.ndarray) -> tuple[np.ndarray, np.ndarray, list, float, float]:
     """(per px of `box` [x0, y0, x1, y1]: how far along the path, in px, the pen is when its tip first reaches it; the
-    whole stroke's `_cover`; the step between the path's points looked at; the path's length). Its reach grows until it
+    whole stroke's `_cover` and the covers kept along it; the step between the path's points looked at; the path's length). Its reach grows until it
     covers every px the stroke `changed` (a soft or wet brush's halo spreads past the tip: cut at a fixed reach, the
     halo came in square at the end, 2D r12); px still beyond come in at the end."""
     key = (hashlib.sha1(json.dumps(s, sort_keys=True).encode("utf-8")).hexdigest(), box)
@@ -138,7 +148,8 @@ def _order(s: dict, box: tuple, changed: np.ndarray) -> tuple[np.ndarray, np.nda
             break
         pad *= 2
     order[np.isinf(order)] = length
-    out = (order, _cover(s, box, math.inf), step, length)
+    whole, kept = _cover(s, box, math.inf, snaps=int(np.clip(SNAPS // max(1, order.size), 2, 32)))
+    out = (order, whole, kept, step, length)
     with _LOCK:
         _ORDERS[key] = out
         while len(_ORDERS) > 8:
@@ -176,10 +187,13 @@ def pixels(frame: dict, w: int, h: int, amount: float) -> np.ndarray:
     li, si, _ = got[k]
     s = frame["paints"][li]["strokes"][si]
     if s.get("type") == "stroke":
-        order, whole, step, length = _order(s, box, changed[box[1]:box[3], box[0]:box[2]])
-        shown = np.clip((f * length - order) / step + 1, 0.0, 1.0)        # where the tip reached (its halo past it)
+        order, whole, kept, step, length = _order(s, box, changed[box[1]:box[3], box[0]:box[2]])
+        upto = f * length
+        shown = np.clip((upto - order) / step + 1, 0.0, 1.0)              # where the tip reached (its halo past it)
+        ts = _path(s)[3]
+        start = max(((c, i) for i, c in kept if i == 0 or ts[i - 1] <= upto), key=lambda ci: ci[1], default=(None, 0))
         under = whole > 0.02                                                # under the tip: as much as its soft edge
-        shown[under] = np.clip(_cover(s, box, f * length)[under] / whole[under], 0.0, 1.0)  # has given so far
+        shown[under] = np.clip(_cover(s, box, upto, start)[0][under] / whole[under], 0.0, 1.0)  # has given so far
     else:                               # a fill fades in over its share
         shown = np.full((box[3] - box[1], box[2] - box[0]), f, np.float32)
     x0, y0, x1, y1 = box

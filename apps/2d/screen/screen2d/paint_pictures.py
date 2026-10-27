@@ -11,7 +11,6 @@ import threading
 import time
 
 from PySide6.QtCore import QObject, Signal
-from rostrum2d import drawing
 
 
 ROUND = 0.1     # s of Drawn so far pictures made before the screen draws them (each round describes the scene again)
@@ -43,9 +42,9 @@ class PaintPictures(QObject):
                 (jobs, token), self._next = self._next, None
             try:
                 ahead = all(getattr(job, "ahead", False) for job in jobs)
-                start, each = time.perf_counter(), drawing.WORKERS if ahead else len(jobs)
-                for i in range(0, len(jobs), max(1, each)):
-                    drawing.make_all(jobs[i:i + each])
+                start = time.perf_counter()
+                for job in jobs:            # one at a time: side by side they redo the same stroke's work (~9 s for 4)
+                    job()
                     if ahead and (time.perf_counter() - start > ROUND or self._next is not None):
                         break               # pictures the screen draws without waiting for (write_on.Ahead): those
                         #                     made show each round, and the screen asks again for the rest (nearest first)
