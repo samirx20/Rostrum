@@ -137,7 +137,7 @@ def look_sheet(ctx, args):
 @tools.tool("look_at", {"properties": {**ITEM_SHOT, **TIME, "x": {"type": "number", "minimum": 0, "description": "Pixels from the left of the picture."},
                                         "y": {"type": "number", "minimum": 0, "description": "Pixels from the top of the picture."},
                                         "points": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 2, "maxItems": 2},
-                                                   "description": "Several points as [[x, y], …] (instead of x and y)."},
+                                                   "description": "Several points as [[x, y], …] (instead of x and y), up to 64 in one call."},
                                         "width": {"type": "integer", "minimum": 64, "maximum": 4096, "default": 960, "description": "Width of the picture the pixels count in (the one look_frame gave). Default 960."},
                                         "height": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Height of that picture. Default: follows the shot's shape."}}})
 def look_at(ctx, args):
