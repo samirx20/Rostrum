@@ -17,6 +17,7 @@ MaterialPopup {
 
     contentItem: Flickable {
         id: flick
+        objectName: "materialPickerScroll"
         // when it scrolls, it ends at a whole row of starting points (or above "Start from" when none fits), so no
         // label shows as a sliver at the bottom
         readonly property real room: picker.fit - 2 * picker.padding

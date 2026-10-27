@@ -234,17 +234,21 @@ class Walk:
         self.clock.feedback("the colour picker opens", t, lambda: W.find(self.root, "colourSquare") is not None)
         return W.find(self.root, "colourSquare") is not None
 
-    def into_view(self, item):
-        """A control below the settings panel's fold: the wheel over the panel (as a person scrolls) until it shows."""
-        panel = W.find(self.root, "inspectorScroll")
-        if panel is None:
+    def into_view(self, item, scroller="inspectorScroll", where="the settings panel"):
+        """A control below a scrolling list's fold (the settings panel, the material picker): the wheel over the list
+        (as a person scrolls) until it shows."""
+        panel = W.find(self.root, scroller)
+        if panel is None or item is None:
             return
         bottom = panel.mapToScene(QPointF(0, panel.height())).y()
         below = lambda: item.mapToScene(QPointF(0, item.height())).y() > bottom - 4  # noqa: E731
         if not below():
             return
-        self.clock.stumble(f"{item.parentItem().objectName() or 'a row'}'s colour square is below the settings panel's "
-                           "fold (cut off): scrolled to it", "the settings panel's row order (Follow opens above Material)", 1)
+        if scroller == "inspectorScroll":
+            self.clock.stumble(f"{item.parentItem().objectName() or 'a row'}'s colour square is below the settings panel's "
+                               "fold (cut off): scrolled to it", "the settings panel's row order (Follow opens above Material)", 1)
+        else:
+            self.clock.cur.setdefault("scrolled", []).append(f"{item.objectName()} below {where}'s fold: the wheel")
         at = QPointF(W.centre(panel))
         self.hand.glide(at, 0.4)
         for _ in range(12):
@@ -423,6 +427,7 @@ class Walk:
             glossy = next((n for n in starts if "gloss" in n.lower()), "")
             self.clock.check(bool(glossy), f"Glossy is in the Material list ({sorted(starts)})")
             if glossy:
+                self.into_view(W.find(self.root, glossy), "materialPickerScroll", "the picker's list")
                 self.click(glossy, "Glossy")
                 self.clock.wait(self.settled, "the glossy eye drawn")
         if W.find(self.root, "row:baseColor") is None:
