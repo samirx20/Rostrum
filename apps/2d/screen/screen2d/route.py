@@ -42,8 +42,14 @@ class Route2D(KeyRoute):
         if written is not None:
             args = {k: v for k, v in call["args"].items() if k != "at"}
             call = {"op": "key.add", "target": call["target"], "args": {**args, "t": written}}
-        elif _holds_here(item, prop, value, t):     # the value it already shows here, on an animated field: a hold key,
-            args = {k: v for k, v in call["args"].items() if k != "at"}       # as After Effects writes (never "nothing changed")
+        return call
+
+    def edit_call(self, doc, item_id: str, prop: str, value, t: float) -> dict:
+        """A typed value: the value an animated field already shows here (no key here) is a hold key there, as After
+        Effects writes (never "nothing changed", with the move starting from the earlier key)."""
+        call = super().edit_call(doc, item_id, prop, value, t)
+        if call.get("op") == "value.set" and "at" in call["args"] and _holds_here(doc.item(item_id), prop, value, t):
+            args = {k: v for k, v in call["args"].items() if k != "at"}
             call = {"op": "key.add", "target": call["target"], "args": {**args, "t": t}}
         return call
 
