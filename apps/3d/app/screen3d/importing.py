@@ -191,7 +191,7 @@ class Importer(QObject):
         for tool in (v.pose_tool, v.clay_tool, v.paint):    # (Pose, Clay, Paint end as V would end them)
             if tool.on:
                 tool.leave()
-        into = add._holder("import")
+        into = self._group()
         moved = placing.into_parent({"x": point[0], "y": point[1], "z": point[2]}, add._world(into))
         at = {k: moved[k] for k in "xyz"}                  # where its base lands; no turn (a Z-up file stands itself up)
         taken, made, calls = index(b.doc.data, KIND.lists), [], []
@@ -206,6 +206,16 @@ class Importer(QObject):
             return
         b.select(made[-1])
         self._tell(made[-1])
+
+    def _group(self) -> str:
+        """The group a new import goes into: the selected group, or the group holding the selection; never another
+        import (a file dropped while an import is selected is a thing of its own, not a piece of that file)."""
+        doc, here = self.b.doc, self.b.selected
+        while here and here != doc.data["id"]:
+            if doc.item(here)["type"] == "group":
+                return here
+            here = doc.parent_of(here)[0]
+        return ""
 
     def _tell(self, new):
         """The unit message, once, and Keep original size offered for this import."""
