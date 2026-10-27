@@ -91,9 +91,21 @@ class MarkerWatch(QObject):
     @Slot(float, result=str)
     def add(self, at):
         """A new marker at `at` seconds, named "Marker n" (the first free n); returns its id ("" if refused)."""
+        return self.addNamed(self.free_name(), at)
+
+    def free_name(self) -> str:
+        """"Marker n", the first n no marker is called yet (what the ruler's name box starts from)."""
         taken = {n.strip().lower() for n in self.times}
-        n = next(i for i in range(1, len(taken) + 2) if f"marker {i}" not in taken)
-        args = {"name": f"Marker {n}", "at": round(max(at, 0.0), 6), **({"owner": self.owner} if self.owner else {})}
+        return f"Marker {next(i for i in range(1, len(taken) + 2) if f'marker {i}' not in taken)}"
+
+    @Property(str, notify=changed)
+    def freeName(self):
+        return self.free_name()
+
+    @Slot(str, float, result=str)
+    def addNamed(self, name, at):
+        """A new marker called `name` at `at` seconds (the ruler's name box, Enter); its id ("" if refused: said)."""
+        args = {"name": name, "at": round(max(at, 0.0), 6), **({"owner": self.owner} if self.owner else {})}
         before = {m["id"] for m in self._rows}
         if not self._edit([{"op": "marker.add", "args": args}], "Add marker"):
             return ""

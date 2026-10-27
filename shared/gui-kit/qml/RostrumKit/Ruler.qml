@@ -83,8 +83,9 @@ Item {
         mm.entries = markerSource.menu(marker.id, sec, marker.shared !== false).filter(e => canShare || e.value !== "share")   // "Shared / Only here" only where the app flips it
         if (mm.entries.length) mm.openAt(x, y)
     }
+    property string nextMarkerName: "Marker " + (markers.length + 1)   // what the name box starts from (TimeRuler: the first free)
     function newMarker() { namer.x = Math.max(0, Math.min(xOf(value) - 8, width - namer.width))
-                           namer.ask("Marker " + (markers.length + 1)) }
+                           namer.ask(nextMarkerName) }
 
     // the bands, top down; the scale takes the rest (an app's fixed height under the natural one squeezes the
     // labels up beside the flags, as before)

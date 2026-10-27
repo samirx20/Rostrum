@@ -8,7 +8,7 @@ piano roll, later 3D and the Editor). Snapping and drag feel are piece 9 (`drag.
 | Piece | Does |
 |---|---|
 | `rostrum_gui/timeview.py` | **`TimeView`**: which stretch of time is on screen. `start`, `span`, `fit`, `length`; `x_of(t, width)` / `t_of(x, width)`; `zoom(factor, frac)` keeps the moment under the pointer; `zoom_step` (Ctrl+= / Ctrl+−, around the playhead); `scroll`, `set_start`; `show_all` (Ctrl+0); `fit_to(a, b)` (F); `wheel(...)` (Ctrl zooms, Shift or a sideways swipe scrolls); `follow(t)` turns the page while playing. Never leaves the timeline; zooming out all the way is fit again. Bad input raises `ValueError`. **`TimeViewObject`**: the same for QML (`start`, `span`, `fit`, `length`, one `changed` signal; slots `zoomAt`, `zoomStep`, `scrollBy`, `setStart`, `showAll`, `fitTo`, `wheel`, `follow`, `setLength`). Screen state: no undo step, agents never move it. |
-| `Ruler.qml` | Top to bottom, each band only when it has a use: the **range band** (`rangeBand`, `range`; drag → one `rangeSet(a, b)`, double-click → `rangeCleared()`), the **marker band** (`MarkerFlag.qml`: shared markers solid with a chain, own markers hollow; a name stops before the next flag and shows whole on hover), the **time scale** (first label inside the left edge, a label that would be cut is left out; `upper: [{at, text}]` adds a second line above, e.g. bars). Press / drag on the scale → `scrubbed(t)`. `view:` a `TimeViewObject` for zoom, scroll and the wheel. `newMarker()` (the app's M) opens `MarkerNamer.qml`: "Marker N" selected, a **Shared** switch when `canShare`, Enter → `markerAdded(name, shared, at)`. The ruler only emits; the app's operations do the work. |
+| `Ruler.qml` | Top to bottom, each band only when it has a use: the **range band** (`rangeBand`, `range`; drag → one `rangeSet(a, b)`, double-click → `rangeCleared()`), the **marker band** (`MarkerFlag.qml`: shared markers solid with a chain, own markers hollow; a name stops before the next flag and shows whole on hover), the **time scale** (first label inside the left edge, a label that would be cut is left out; `upper: [{at, text}]` adds a second line above, e.g. bars). Press / drag on the scale → `scrubbed(t)`. `view:` a `TimeViewObject` for zoom, scroll and the wheel. `newMarker()` (the app's M, the kit's Add marker button) opens `MarkerNamer.qml`: `nextMarkerName` selected ("Marker N"; TimeRuler: the first free name), a **Shared** switch when `canShare`, Enter → `markerAdded(name, shared, at)`. The ruler only emits; the app's operations do the work. |
 | `TimelineHeader.qml` | Three slots, `transport` (▶, time, ⟳ Loop), `context` (the key bar, frame tools) and `view` (◇ Marker, snap, zoom, fit), and **⊟** (`foldClicked`, `compact`). Too narrow: the context slot gives way first (`contextFolded`: put those actions in the app's ⋯). |
 | `HScroll.qml` | The slim scroll bar for a `TimeViewObject`, only while zoomed in (drawn 8 px, clickable 16 px). |
 
@@ -43,7 +43,10 @@ naming, compact) at the four sizes, with long texts. Results: `C:\Users\Sam\.ros
   - give it `view: backend.timeView` (a `TimeViewObject` with `setLength(duration)` on load or edit) for Ctrl+wheel zoom
     at the pointer, Shift+wheel scroll and page-follow;
   - `rangeBand: true` with the 2D time range;
-  - `canShare`, and `onMarkerAdded` → the marker add operation (today `markerEdit.add(at)` takes only the time: it needs the name and Shared too);
+  - the kit's `TimeRuler` now adds the marker itself on the name box's Enter (`markerEdit.addNamed(name, at)`, on the
+    playhead's frame), and the kit's Add marker button (`AddMarker { askOn: ruler }`, as LayerTimeline does) asks the name
+    first; an app that adds markers itself from `markerAdded` sets `addsMarkers: false`;
+  - `canShare` (Shared / own markers) is still open;
   - per marker, `shared: false` for the scene's own markers.
 - Move the header row of `LayerTimeline.qml` (play, time, Preview size, Keys / Curves, the hint and its fold chevron) into
   `TimelineHeader`:

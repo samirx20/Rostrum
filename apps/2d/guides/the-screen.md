@@ -110,7 +110,7 @@ The whole list: Group, Ungroup, Crop to a box, Auto layout, Make swap set, Make 
 ## 6. Markers
 
 1. A marker is a named flag on the ruler for a moment you care about.
-2. Click **Add marker** (the flag beside the time) to put one at the playhead.
+2. Click **Add marker** (the flag beside the time): a name box opens under the playhead with the next free name ("Marker 3") selected. Type a name and press Enter to put the marker at the playhead; Esc adds nothing.
 3. Drag a flag to move it. Double-click it to rename it. Point at it and its **×** appears: click it to remove the marker. Right-click it for a short menu: **Rename marker**, **Move to playhead**, **Colour**, **Delete marker**.
 4. A layer's bar that you let go of on a marker snaps to it and stays tied to it: when the marker moves, the layer follows. A key snaps to a marker too. Other Rostrum apps can follow the same marker, so a sound can be placed on it.
 

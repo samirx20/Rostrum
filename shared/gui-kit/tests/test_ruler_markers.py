@@ -23,6 +23,8 @@ def test_ruler_edits_are_marker_operations(tmp_path):
     assert w.remove(a)
     assert [(m["name"], m["at"]) for m in listing(tmp_path)] == [("Marker 2", 3.5)]
     assert [str(c.who) for c in open_markers(tmp_path).history.changes] == ["person:sam"] * 5
+    assert w.freeName == "Marker 1"                         # the name box (Add marker, M) starts from the first free one
+    assert w.addNamed("Drop", 4.0) and not w.addNamed("drop", 5.0) and len(failed) == 2   # its Enter: one operation
     w.close()
 
 
