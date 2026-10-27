@@ -107,7 +107,7 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
   gap, or raise Close gaps." A point outside the canvas: "That click is outside the drawing."
 - Paint layers: `paint.add {name}` adds one on top (the screen's **Paint layers +**); on a layer that draws each frame
   it adds it to every drawing at once (empty in the others). `stroke.add`/`paint.stroke` with `layer: "new"` starts one
-  with the stroke; `paint.set` (name, mode, opacity, visible, locked), `paint.move {index}` (0 = bottom),
+  with the stroke; `paint.set` (name, mode, opacity, visible, locked, ground), `paint.move {index}` (0 = bottom),
   `paint.duplicate` (a copy just above with every stroke and fill, "<name> copy", the same pixels; the screen's
   right-click **Duplicate**), `paint.remove`, `paint.unlock`. On one drawing's paint layer these act on all its copies
   in every drawing; each copy of a duplicate holds that drawing's own strokes. One edit is one undo step.
@@ -127,10 +127,16 @@ drawing layer (w × h canvas, placed like any layer) ─ frames ─ frame (at = 
 | `steady` | Steadiness: the line trails the pen and smooths a shaky hand (0 = raw) |
 | `size_pressure`, `opacity_pressure`, `tilt_angle`, `tilt_size` | what a pen's pressure and lean change (a stroke's points may carry tilt: `[x, y, pressure, tiltX, tiltY]`) |
 | `taper_start`, `taper_end` | the stroke starts / ends thin over this many tip sizes |
+| `wobble`, `swell`, `pool` | a hand's line from plain x, y points: the path drifts side to side (up to `wobble` × size, smoothly), the width breathes along it (thinning by up to `swell`), and ink gathers where the brush lands and lifts (`pool`, 0..2: the ends wider and denser over about half a size). Each 0 = off |
+| `edge_darken`, `granulation` | how a wash dries: a darker rim just inside its edge (about a fifth of the size wide), and pigment settled in the paper's valleys (the `paper` and `paper_scale` pick the tooth). Laid once the stroke is done, in the stroke's own `mode` |
 | `texture` | tip picture: `none`, `sponge`, `speckle`, `streaks`, `ragged`, `charcoal`, or a picture in the project's library; it turns with the tip |
 | `paper`, `paper_scale`, `grain` | the paper's tooth (`tooth`, `canvas`, `cold press`, `laid`, `rough`, or the project's own) and how much it breaks up the paint; it stays put on the canvas |
 | `color_jitter`, `hue_jitter`, `jitter`, `size_jitter`, `angle_jitter`, `spacing`, `even` | colour drift along the stroke, scatter, random size and turn per dab, dab spacing, softer tips closer together |
 | `follow` / `angle` | the tip turns with the stroke, or keeps a fixed angle |
+
+A paint layer's `ground` (a colour; `paint.add {ground}` / `paint.set {ground}`, or `frame.paint("wash", ground="#2c3552")` in a script) fills that
+layer with the colour before its first stroke: a toned paper the strokes go on. See painted-backgrounds.md › Washes,
+glazes and an inked line for how these work together.
 
 The screen's 19 shipped brushes (Sketch, Ink, Paint, Light, Texture) are only ready-made sets of these settings; a stroke
 records what it was drawn with, so an agent sets the same ones.

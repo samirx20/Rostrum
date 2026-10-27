@@ -19,7 +19,7 @@ LISTS = {"paint": ["strokes"], "stroke": [], "fill": [], "paintmask": []}
 HOLDS = {"paints": ("paint",), "strokes": ("stroke", "fill"), "paintmasks": ("paintmask",)}   # a fill is laid in order too
 P, S, D = "primary", "secondary", "deep"
 IS = lambda name, value: {"is": [name, value]}  # noqa: E731
-GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}]}   # the paper shows: chalk, or any grain
+GRAINY = {"any": [IS("brush", "chalk"), {"not": IS("grain", 0.0)}, {"not": IS("granulation", 0.0)}]}   # the paper shows
 TURNS = {"any": [{"not": {"any": [IS("brush", t) for t in ("round", "chalk", "line")]}},   # tips whose turn shows,
                  {"not": IS("texture", "none")}]}                                         # or a tip picture's
 
@@ -53,6 +53,14 @@ BRUSH = [
     A("tilt_size", "Tilt → size", 0.0, D, group="Pen", help="The tip widens as the pen leans (shading on its side)"),
     N("taper_start", "Taper start", 0, 20, 0.1, 0.0, D, "× size", group="Pen", help="Starts thin over this many tip sizes"),
     N("taper_end", "Taper end", 0, 20, 0.1, 0.0, D, "× size", group="Pen", help="Ends thin over this many tip sizes"),
+    A("wobble", "Wobble", 0.0, D, group="Pen",
+      help="The line drifts side to side, smoothly, up to this share of the tip's size: a hand's line, not a ruled one"),
+    A("swell", "Swell", 0.0, D, group="Pen",
+      help="The width breathes along the stroke, thinning by up to this much and back, as a hand's press does; "
+           "works on points with no pressure"),
+    N("pool", "Ink pool", 0, 2, 0.01, 0.0, D, group="Pen", display="percent",
+      help="Ink gathers where the brush lands and lifts: the ends this much wider and denser, over about half a "
+           "brush size (use with Taper for a pointed but loaded stroke)"),
     N("spacing", "Spacing", 0.02, 2, 0.01, 0.1, D, display="percent", help="Distance between dabs, as a share of the tip's length"),
     Param.toggle("even", label="Even soft edge", group="Brush", default=True, importance=D,
                  help="Dabs come closer the softer the tip, so a soft stroke stays smooth (no rings)"),
@@ -62,6 +70,12 @@ BRUSH = [
     Param.toggle("follow", label="Tip follows stroke", group="Brush", default=True, importance=D),
     N("angle", "Tip angle", -360, 360, 1, 0.0, D, "°", IS("follow", False)),
     A("grain", "Paper grain", 0.0, D, help="How much the paper's tooth breaks up the paint"),
+    A("edge_darken", "Edge darkening", 0.0, D, group="Wash",
+      help="Pigment gathers at the wash's wet edge as it dries: a darker rim just inside the stroke's edge, about a "
+           "fifth of the brush size wide (laid once the stroke is done)"),
+    A("granulation", "Granulation", 0.0, D, group="Wash",
+      help="Pigment settles in the paper's tooth: more paint in the paper's valleys, a speckled wash (the Paper "
+           "and Paper scale choose the tooth)"),
     Param.choice("paper", PAPERS, label="Paper", group="Brush", default="tooth", importance=D, valid_when=GRAINY,
                  help="The paper's tooth; it stays put on the canvas (or moves with the layer), never with the stroke"),
     N("paper_scale", "Paper scale", 0.25, 4, 0.05, 1.0, D, "×", when=GRAINY, help="How big the paper's tooth is"),
@@ -103,6 +117,9 @@ FIELDS: dict[str, list[Param]] = {
         N("opacity", "Opacity", 0, 1, 0.01, 1.0, group="Layer"),
         Param.toggle("visible", label="Visible", default=True),
         Param.toggle("locked", label="Locked", default=False, importance=S, help="A locked layer refuses paint"),
+        Param.color("ground", label="Ground", group="Layer", importance=S,
+                    help="A toned paper: the layer starts filled with this colour, opaque, and its strokes go on it "
+                         "(multiply glazes darken it, granulation settles in it). Left out = see-through"),
         Param.text("layer", label="Shared key", importance=D,
                    help="Links this paint layer's copies in the drawings that share paint layers (linked.py); set by "
                         "Rostrum, left out = its own id"),

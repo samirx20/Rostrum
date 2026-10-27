@@ -30,7 +30,7 @@ import numpy as np
 
 from rostrum_core.cache import CACHE, cache_key
 
-from . import brush, compose, fill, marks, native, shape
+from . import brush, compose, fill, marks, native, shape, wash
 
 BUDGET = 1200 << 20              # bytes of kept layer states in memory
 CHECKPOINT = 24                  # during a long replay, keep a state at least every N strokes ...
@@ -39,7 +39,7 @@ _HERE = Path(__file__).resolve().parent
 _LOCK = threading.RLock()        # the kept states, the memos and the paper: shared by a screen's threads
 ENGINE_VERSION = hashlib.sha1(b"".join((_HERE / f).read_bytes() for f in ("marks.py", "brush.py", "canvas.py",
                                                                            "compose.py", "fill.py", "shape.py", "pictures.py",
-                                                                           "wrap.py"))).hexdigest()[:12]
+                                                                           "wrap.py", "wash.py"))).hexdigest()[:12]
 
 
 @dataclass
@@ -134,7 +134,7 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0), carry=Non
                   seed=s["seed"], angle=None if s["follow"] else s["angle"], grain=s["grain"], mode=s["mode"],
                   color_jitter=s["color_jitter"], hue_jitter=s["hue_jitter"], size_pressure=s["size_pressure"],
                   opacity_pressure=s["opacity_pressure"], wet=s["wet"] if s["smudge"] else 0.0,
-                  sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS},
+                  sample_all=bool(s["smudge"] and s["pickup"]), **{k: s.get(k, 0.0) for k in shape.KEYS + wash.KEYS},
                   even=s.get("even", False), texture=s.get("texture", "none"),   # absent: made before they were
                   wrap=bool(s.get("wrap")),     # seamless: the canvas's edges joined (wrap.py)
                   by_dab=bool(s.get("by_dab")))     # absent: made before per-dab draws, its older draws kept
@@ -144,16 +144,28 @@ def stamp(layer_px, s: dict, w, h, masks: dict, under=None, at=(0, 0), carry=Non
                               piece=piece, **params)
 
 
+def blank(paint, w, h) -> np.ndarray:
+    """A paint layer before its first stroke: see-through, or its `ground` (a toned paper: the colour fills the
+    layer, opaque, so washes glaze onto it and a dark ground makes night read as night)."""
+    px = np.zeros((h, w, 4), np.float32)
+    if paint.get("ground"):
+        g = paint["ground"]
+        px[...] = [int(g[i:i + 2], 16) / 255 for i in (1, 3, 5)] + [1.0]
+    return px
+
+
 _CHAINS: OrderedDict = OrderedDict()     # (paint id, w, h) -> (its strokes, what they read, their chain keys)
 CHAINS_KEEP = 256
 
 
 def _chain(paint, w, h, masks, below_key, at=(0, 0)) -> list[str]:
     strokes, mine = paint["strokes"], (paint["id"], w, h, at)
-    reads_of = json.dumps([masks.get(s.get("mask")) for s in strokes if s.get("mask")], sort_keys=True) + below_key
+    reads_of = (json.dumps([masks.get(s.get("mask")) for s in strokes if s.get("mask")], sort_keys=True) + below_key
+                + str(paint.get("ground") or ""))
     with _LOCK:
         got = _CHAINS.get(mine)
-    keys, done = [_h(ENGINE_VERSION, str(w), str(h), *([f"{at[0]},{at[1]}"] if any(at) else []))], 0
+    keys, done = [_h(ENGINE_VERSION, str(w), str(h), *([f"{at[0]},{at[1]}"] if any(at) else []),
+                     *([f"ground {paint['ground']}"] if paint.get("ground") else []))], 0
     if got is not None and got[1] == reads_of:
         old = got[0]
         while done < min(len(old), len(strokes)) and old[done] is strokes[done]:
@@ -210,7 +222,7 @@ def _grown_from(paint, w, h, at, keys):
     if best is None or best[1] is None:
         return None
     kept, (opx, otop), dx, dy, ow, oh = best
-    px, top = np.zeros((h, w, 4), np.float32), np.full((h, w), -1, np.int32)
+    px, top = blank(paint, w, h), np.full((h, w), -1, np.int32)
     px[dy:dy + oh, dx:dx + ow], top[dy:dy + oh, dx:dx + ow] = opx, otop
     KEPT.put(keys[kept], px, top)
     return kept, px, top
@@ -229,7 +241,7 @@ def _layer(paint, w, h, masks, below_key, under_fn, at=(0, 0)):
         start, got = grown[0], grown[1:]
         if start == n:
             return got[0], got[1], keys[n]
-    px = got[0].copy() if got else np.zeros((h, w, 4), np.float32)
+    px = got[0].copy() if got else blank(paint, w, h)
     top = got[1].copy() if got else np.full((h, w), -1, np.int32)
     last, copy_s, spent = start, 0.0, 0.0       # the stroke a state was last kept at; what a copy of this canvas costs; stamping since
     for i in range(start, n):
