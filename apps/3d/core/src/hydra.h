@@ -24,6 +24,7 @@ struct ViewLook {
   double studio = 1.0;      // studio environment strength, 0 = off
   bool sceneLights = true;  // the scene's own lights
   PXR_NS::SdfPathVector selected;  // drawn with an outline
+  PXR_NS::SdfPathVector hovered;   // drawn with the thin hover outline (3d-v4: the clay under the pointer)
   std::vector<Ghost> ghosts;       // onion skin: items at other frames, tinted and see-through (ghosts.h)
 };
 
@@ -47,6 +48,7 @@ struct FinalPass {
 struct ViewDrawn {
   unsigned color = 0, depth = 0;  // scene-linear RGBA32F and Storm's depth, GL rows bottom up
   unsigned mask = 0;              // the selected items alone (alpha > 0.5 where they are); 0 = nothing selected
+  unsigned hoverMask = 0;         // the hovered items alone, the same way; 0 = nothing hovered
   std::vector<unsigned> ghosts;   // one picture per ViewLook ghost: its items alone, lit, at its frame
   bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
   std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
@@ -102,7 +104,7 @@ class Hydra {
   PXR_NS::UsdStageRefPtr stage_;
   GlContext gl_;  // before the engines: made first, destroyed last
   std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
-  std::unique_ptr<Framebuffer> fb_, mask_fb_;
+  std::unique_ptr<Framebuffer> fb_, mask_fb_, hover_fb_;  // hover_fb_: the hover outline's mask (3d-v4)
   std::vector<std::unique_ptr<Framebuffer>> ghost_fbs_;  // one per onion-skin ghost
 };
 

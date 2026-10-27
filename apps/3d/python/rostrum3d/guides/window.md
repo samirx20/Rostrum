@@ -7,18 +7,16 @@ sits on top of it.
 
 | Piece | What it does |
 |---|---|
-| **≡** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E: the render sheet) |
-| **Rostrum3D**, then the project's name | Click the name to rename the project |
+| **The 3D mark ▾** | The File menu: New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen, Export… (Ctrl+E: the render sheet) |
+| **The project's name** | Click it to rename the project. A scene in a project folder saves after every change; an amber dot on the name means it is not being saved (the sample), red that saving failed (its hover says why) |
 | **› Hero 01 ▾** | The shot this window shows. Click for the list of shots (the one shown is ticked): pick one and the window shows it (its time, its frame size, its camera in the viewport). In the free camera the list ends with **New shot from this view**: a camera where you are looking from and a shot through it, named "Shot 3" (the first shot's size, frame rate and length), one undo step; the window then shows it through its camera. Through the shot camera it ends with **New shot** instead (same camera). The shot's own settings: with nothing selected, click a line under **Shot** in the settings panel |
-| **Saved · 4 changes** | A scene in a project folder saves after every change. Click the count for History (Ctrl+H) |
 | **Build · Animate · Render** | The pages (Alt+1, Alt+2, Alt+3). It is the same scene, camera and selection on every page. Animate gives the keys more rows. Render shows the shots and the render queue at the bottom and the shot's render settings on the right ([Rendering](rendering.md), "The Render page and its queue") |
-| **↶ ↷** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z) |
-| **Search or run a command** | Ctrl+K: every action and setting by name |
-| **View: Shot camera** | Which camera the viewport looks through: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is) |
-| **Look: Quick · Final** | Quick is the live view. Final draws the render's own picture in place (Shift+F) |
-| **Materials** | The project's materials, each a rendered ball with how many items use it. Click one to edit it in the settings panel, drag one onto an item to give it that material, or make a **New material** (materials.md) |
+| **Undo, Redo, History** | Undo and redo (Ctrl+Z, Ctrl+Shift+Z); the clock opens History (Ctrl+H) |
+| **Search** | Ctrl+K: every action and setting by name |
+| **Shot camera · Quick ▾** | How the viewport shows the scene, in one menu. **Camera**: the shot camera, a free camera, or through the selected light. \` switches between the shot and the free camera. Orbiting in the shot camera turns it into **Free camera** (the shot's own camera stays where it is). **Look**: Quick is the live view; Final draws the render's own picture in place (Shift+F). In a narrow window it reads **Shot · Quick** |
 | **Render** | Opens the render sheet (F12) in the settings panel's place: this frame or the shot, quality, size, what file, and how long it will take, measured. Not on the Render page, whose settings panel has its own Render. See [Rendering](rendering.md) |
 | **?** | Guides (F1), keys (Ctrl+/), Connect an AI agent, About |
+| **– ▢ ✕** | Minimise, maximise and close the window. Drag the bar's empty parts to move the window; double-click them to maximise |
 
 ## The viewport (middle)
 
@@ -72,12 +70,12 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
 - **Select**: click a thing in the viewport or in the scene list.
 - **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Draw: drag an outline and it puffs into
   clay, on a clay it joins; Spin: drag half a profile beside the vertical line; Lump: a click drops a ball of clay;
-  Turn into clay, with an exact part or import selected) and, with a clay selected, the **Steps** list (an eye hides a
-  step, double-click names it, a click shows its settings), **Brush** (Add, Carve, Smooth, Pull, Flatten, Crease, and Mask on its own
-  row), then Size, Strength, Mirror, Falloff, Spacing and Front faces only. A drag on the clay sculpts (Ctrl: the
+  Turn into clay, with an exact part or import selected) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull,
+  Flatten, Crease, and Mask on its own row), Size and Strength, the **Steps** list (an eye hides a step, double-click
+  names it, a click shows its settings), then **More** (closed at first: Falloff, Spacing, Front faces only, Mirror). A drag on the clay sculpts (Ctrl: the
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
-  the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select. The
-  guide `sculpting` has it all.
+  the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select, and so does picking a shape from
+  Shapes (the next click places it). The guide `sculpting` has it all.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
   along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
@@ -239,8 +237,8 @@ then several picked keys are let go; then the selection is let go (the Scene pan
 
 ## Files
 
-- The ≡ menu and the start screen work the same in every Rostrum app.
+- The mark's menu (top left) and the start screen work the same in every Rostrum app.
 - A new scene is "Untitled scene" in your projects folder. It saves after every change, so there is no Save and no
   question when you close.
-- **Export** (≡ › Export…, or Ctrl+E) opens the render sheet, the same as Render and F12 (see [Rendering](rendering.md)).
+- **Export** (the mark's menu › Export…, or Ctrl+E) opens the render sheet, the same as Render and F12 (see [Rendering](rendering.md)).
   It renders through the same path as agents' renders, so the file matches what you see in Final.

@@ -2,7 +2,7 @@ import QtQuick
 import "."
 
 // A small square button with a glyph (a short text such as "+", "×", "⋯"), a drawn `mark` ("loop": a font's ↻ draws
-// thin and faint) or a kit `icon` (a ToolIcon name, 18 px), all in the one icon colour.
+// thin and faint) or a kit `icon` (a ToolIcon name, `iconSize` 18 px), all in the one icon colour.
 // Same hover and press as Button; `kind`: "normal" (raised) or "ghost" (no box until hovered); `danger` colours the
 // glyph red. Click, Space or Enter: one clicked().
 Item {
@@ -10,6 +10,7 @@ Item {
     property string glyph: ""
     property string mark: ""             // a drawn mark instead of the glyph: "loop"
     property string icon: ""             // a ToolIcon instead of the glyph ("align-left")
+    property int iconSize: 18            // the ToolIcon's size (the top bar's are 16)
     property string kind: "normal"
     property bool danger: false
     property bool down: false            // shown pressed (e.g. a toggled-on tool)
@@ -58,7 +59,7 @@ Item {
             g.beginPath(); g.moveTo(10.6, 0.6); g.lineTo(10.8, 4.6); g.lineTo(6.9, 3.6); g.closePath(); g.fill()
         }
     }
-    ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: 18; height: 18 }
+    ToolIcon { anchors.centerIn: parent; visible: b.icon !== ""; name: b.icon; ink: b.ink; width: b.iconSize; height: b.iconSize }
     MouseArea { id: area; anchors.fill: parent; onClicked: { if (typeof ack !== "undefined" && ack) ack.by(b); b.clicked() } }
     HoverTip { text: b.tip; help: b.help; key: b.job && b.Window.window && b.Window.window.keyFor ? b.Window.window.keyFor(b.job) : ""
                hovered: b.hovered; pressed: area.pressed || b.down }

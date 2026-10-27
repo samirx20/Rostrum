@@ -377,7 +377,7 @@ Steps: `select`, `selectmany`, `act`, `nudge`, `tool move|pen|draw`, `time`, `se
 
 A step that leaves an error in the status line fails the run.
 
-## Files (≡ menu, Ctrl+N / Ctrl+O / Ctrl+Shift+S / Ctrl+S; the kit's one model: shared/gui-kit/FILES.md)
+## Files (the app menu: the top bar's mark ▾, Ctrl+N / Ctrl+O / Ctrl+Shift+S / Ctrl+S; the kit's one model: shared/gui-kit/FILES.md)
 
 - **Saving is automatic.** Every project window is live (`rostrum_core.live` + `LiveLink` in `Bridge2D`, for any
   document with a folder, however it was opened): each change is on disk at once, through the same door as the agent
@@ -408,7 +408,7 @@ A step that leaves an error in the status line fails the run.
   settings that apply (transparency where the format can carry it, bit depth, quality), the range (everything, or marker to
   marker), where it goes (the project's `renders/<item>/vNNN/` with a manifest; Browse for a folder: a file there is never
   replaced without Replace / Keep both / Cancel), Export. It runs as a background job (the top bar's job chip, Cancel); done,
-  the message line says "Exported <file> · Play · Show in folder", the sheet shows what was read back (Lottie: what it
+  the top bar's job chip says "Exported <file> ▾" (Play, Show in folder) until the next message, the sheet shows what was read back (Lottie: what it
   couldn't carry), and the document gets a version "Exported v003". A failure is red, in words (the kit's `export_errors.said`: an OS
   error names what could not be saved and where; the full line goes to the console); no unfinished file is left. A scene
   with nothing showing is refused before anything starts (`exporting.nothing_showing`, the agent tool's rule too). Ctrl+Shift+E

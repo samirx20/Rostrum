@@ -116,6 +116,21 @@ class Volume {
   size_t active_voxels() const;
   openvdb::FloatGrid::Ptr copy() const;  // a deep copy (the cache writer saves it on its own thread)
   openvdb::FloatGrid::Ptr copy_mask() const;  // the mask's deep copy, or null when the clay has no mask
+  // 3d-v4: the clay at twice the grain (a live stroke's preview, clay_preview.h), with step buffers of its own; only
+  // reads this one, so it may run on another thread while nothing writes this volume
+  std::unique_ptr<Volume> coarse_copy() const;
+  // this coarse copy brought up to date with `fine` (its coarse_copy source) in the chunks over `fineChunks` (fine
+  // chunk origins) and `coarseChunks` (its own, e.g. written by preview dabs); the result equals a new coarse_copy
+  void refresh_coarse(const Volume& fine, const std::vector<openvdb::Coord>& fineChunks,
+                      const std::vector<openvdb::Coord>& coarseChunks);
+  // The chunks written since the last call (origins, maybe repeated; every step, restore and put-back), so a coarse
+  // copy can be refreshed instead of made again. False: too many to list, or a load (anything may differ).
+  bool take_changes(std::vector<openvdb::Coord>& out);
+  // ends a live stroke keeping what its dabs did (a preview's: it is no stroke of the clay's own)
+  void forget_stroke() {
+    live_.on = false;
+    live_.clear();
+  }
   // `mask` (or null: no mask) is written beside the clay as the grid "mask"
   static bool save(const openvdb::FloatGrid::ConstPtr& grid, const std::string& path, std::string* error,
                    const openvdb::FloatGrid::ConstPtr& mask = nullptr);
@@ -130,6 +145,9 @@ class Volume {
   ChunkRecord* record_ = nullptr;  // the undo record being filled, if any
   std::unique_ptr<detail::Buffers> bufs_;  // own step buffers (own_buffers), or null: the shared ones
   bool coarse_ = true;
+  std::vector<openvdb::Coord> changes_;  // take_changes
+  bool changesAll_ = false;
+  void note_change(const openvdb::Coord& o);
   // one piece, or dabs as one unit (clay_volume.cpp); bufs / lock: a parallel replay's (else the volume's own)
   StepTiming run(const Step* steps, size_t n, detail::Buffers* bufs = nullptr, std::shared_mutex* lock = nullptr);
   StepTiming units(const std::vector<Step>& dabs, detail::Buffers* bufs, std::shared_mutex* lock);  // a stroke's

@@ -1,5 +1,6 @@
 """The Clay tool on screen, for QML as `viewport.clay` (3d-simplicity SPEC § 3, 3d-visual DESIGN § 2, CL1 CONTRACT § 5).
-Q (or the rail's Clay button) turns it on; Q again, V or Esc goes back to Select. It is a tool, like Paint: the panel,
+Q (or the rail's Clay button) turns it on; Q again, V or Esc goes back to Select; so does a shape picked from the rail
+(Box, Ball, …: the next press places it). It is a tool, like Paint: the panel,
 the timeline and every other control stay where they are; only the settings panel shows the Clay group (ClayPanel.qml).
 
 What a drag does is one choice of tiles: Make (Draw, chosen when the tool turns on; Spin; Lump) or a Brush (the six
@@ -139,6 +140,8 @@ class ClayTool(ClayStroke, QObject):
         bridge.docChanged.connect(self._refresh)
         bridge.selectionChanged.connect(self._refresh)
         bridge.pageChanged.connect(lambda *_: self.leave() if bridge.page != "build" else None)
+        # a shape picked from the rail (Box, Ball, …) leaves Clay: the next press places it, not a Draw or a stroke
+        bridge.add.armedChanged.connect(lambda: self.leave() if bridge.add.armed else None)
 
     # --- what QML reads
     on = Property(bool, lambda s: s._on, notify=changed)

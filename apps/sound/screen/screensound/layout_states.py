@@ -26,7 +26,7 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "library-key-picture", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
          "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu",
-         "key-picker-minor", "go-to-bar")
+         "key-picker-minor", "go-to-bar", "bar-busy", "bar-message")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -131,6 +131,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("swap-stepping", ["--sample"], ["select-clip door", "swap-demo", "swap-step 1", "swap-step 1"]),                    # P29: Trying in place
         ("problems-chip", long_project(), [*busy, "problems-demo", "problems open"]),
         ("job-chip", long_project(), [*busy, "job-show 42"]),
+        # the merged top bar busy (SPEC header-design §4): the agent chip, 2 problems, an export running; then a message
+        ("bar-busy", long_project(), [*busy, "agent-run 3", "problems-demo", "job-show 42"]),
+        ("bar-message", ["--sample"], ["problems-demo", "job-show 42", "say Moved the melody up a bar"]),
         ("long-editor", long_project(), [*busy, "dock editor"]),
         ("long-mixer", long_project(), [*busy, "dock mixer"]),
         ("long-library", long_project(), [*busy, "library"]),

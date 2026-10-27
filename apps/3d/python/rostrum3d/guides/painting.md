@@ -27,7 +27,7 @@ nothing is lost when you save and open the scene again.
 Paint sits over the material's own value: where you haven't painted, the surface is exactly its material (its colour,
 its roughness, its own pictures). A layer painting Roughness changes only roughness: the colour stays.
 
-Look at paint with **Look: Final** (Shift+F): Cycles shows roughness, height and metal the way the render will. Quick
+Look at paint with **Final** (Shift+F, or Final in the top bar's **Shot camera · Quick ▾**): Cycles shows roughness, height and metal the way the render will. Quick
 shows colour, roughness, metal and glow; Height only shows in Final.
 
 ## How to: a roughness scuff on a glossy lid

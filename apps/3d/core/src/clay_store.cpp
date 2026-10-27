@@ -7,11 +7,15 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <deque>
 #include <filesystem>
 #include <map>
+#include <set>
+#include <thread>
 
 #include "clay_cache.h"
+#include "clay_preview.h"
 #include "clay_replay.h"
 #include "clay_shapes.h"
 #include "clay_stroke.h"
@@ -52,7 +56,35 @@ struct Entry {
   std::deque<Pending> pending;    // applied after `keys`, oldest first
   std::set<BlockKey> blocks;      // block prims authored
   bool full = false;              // re-author every block (a new volume, a cache load, a new path)
+  // 3d-v4: the coarse copy kept ready for the next preview stroke (clay_preview.h), as `vol` (coarseOf) was when the
+  // copy was last brought up to date; kept up to date after every change once a preview stroke ran on the clay
+  std::unique_ptr<Volume> coarse;
+  const Volume* coarseOf = nullptr;
+  bool wantsCoarse = false;
 };
+
+// What a kept coarse copy needs to be up to date: the clay's chunks changed since (all: anything may differ), and a
+// preview handed back by a stroke with the chunks its own dabs changed
+struct CoarseTask {
+  Entry* e = nullptr;
+  std::vector<openvdb::Coord> fine, own;
+  bool all = false;
+  std::unique_ptr<Volume> back;
+};
+
+// the clay's coarse copy brought up to date (the preview handed back, else the kept one, refreshed; or a new copy).
+// Reads the clay and moves the entry's kept copy out: nothing else may touch either meanwhile.
+std::unique_ptr<Volume> bring_coarse(CoarseTask& t) {
+  Entry& e = *t.e;
+  std::unique_ptr<Volume> c = std::move(t.back);
+  if (!c && e.coarse && e.coarseOf == e.vol.get()) c = std::move(e.coarse);
+  e.coarse.reset();
+  e.coarseOf = nullptr;
+  if (c && !t.all) c->refresh_coarse(*e.vol, t.fine, t.own);
+  else c = e.vol->coarse_copy();
+  c->take_dirty();
+  return c;
+}
 
 // records the volume's replaced chunks into `rec` while it lives
 struct Recording {
@@ -80,9 +112,65 @@ struct Store::Impl {
     std::unique_ptr<StrokeDabs> dabs;
     std::unique_ptr<Resampler> rs;  // made by the first points (the spacing needs the brush's size on screen)
     double sampleMs = 0;            // what one sample's dabs cost so far (a running average; the event budget)
+    // 3d-v4, a stroke with the coarse preview (clay_preview.h): the preview (made on the catch-up thread at begin),
+    // how many dabs were handed to the catch-up, the samples that cast a ray (the clay's cost per sample), the clay's
+    // blocks taken down and the preview's prims shown, and the catch-up applying the stroke's dabs to the clay.
+    // `fine` is declared after everything its thread uses, so it is stopped first.
+    std::unique_ptr<Volume> pv;
+    size_t sent = 0, samples = 0;
+    std::set<BlockKey> hidden, shown;
+    std::unique_ptr<Catchup> fine;
   };
   std::unique_ptr<Live> live;
+  std::map<BlockKey, BlockMesh> kept;  // a live stroke's meshes waiting for sculpt_publish (empty: take the prim down)
   CacheWriter cache;
+
+  // 3d-v4: the kept coarse copies brought up to date after a change, on a thread of their own (low priority, half the
+  // cores), so a stroke's begin finds its preview ready. Joined before anything changes a clay or its kept copy.
+  std::thread coarseJob;
+  ~Impl() { join_coarse(); }
+  void join_coarse() {
+    if (coarseJob.joinable()) coarseJob.join();
+  }
+  // what clay `e` changed since its copy was brought up to date (taken from the clay), with a preview handed back
+  CoarseTask task_for(Entry& e, std::unique_ptr<Volume> back) {
+    CoarseTask t;
+    t.e = &e;
+    t.all = !e.vol->take_changes(t.fine);
+    if (back) {
+      back->forget_stroke();
+      t.all = !back->take_changes(t.own) || t.all;
+      t.back = std::move(back);
+    }
+    return t;
+  }
+  void start_coarse(std::vector<CoarseTask> tasks) {
+    join_coarse();
+    if (tasks.empty()) return;
+    coarseJob = std::thread([tasks = std::move(tasks)]() mutable {
+      tbb::task_arena arena(std::max(2, int(std::thread::hardware_concurrency()) / 2), 1,
+                            tbb::task_arena::priority::low);
+      for (CoarseTask& t : tasks) {
+        Entry& e = *t.e;
+        try {
+          arena.execute([&] {
+            e.coarse = bring_coarse(t);
+            e.coarseOf = e.vol.get();
+          });
+        } catch (...) {  // (out of memory) the next preview stroke makes its copy at its begin
+          e.coarse.reset();
+          e.coarseOf = nullptr;
+        }
+      }
+    });
+  }
+  // after a change to `e`: its copy brought up to date, when it keeps one
+  void refresh_coarse_of(Entry& e, std::unique_ptr<Volume> back = nullptr) {
+    if (!e.wantsCoarse) return;
+    std::vector<CoarseTask> tasks;
+    tasks.push_back(task_for(e, std::move(back)));
+    start_coarse(std::move(tasks));
+  }
 
   Entry& entry(const std::string& item, const char* where) {
     auto it = clays.find(item);
@@ -135,8 +223,69 @@ struct Store::Impl {
     blocks.end();
   }
 
+  // 3d-v4: a live stroke's meshing and writing, apart (sculpt_compute / sculpt_publish)
+  static void mesh_blocks(const Volume& v, const std::vector<BlockKey>& keys, std::map<BlockKey, BlockMesh>& out,
+                          bool preview) {
+    std::vector<BlockMesh> m(keys.size());
+    tbb::parallel_for(size_t(0), keys.size(), [&](size_t i) {
+      v.mesh(keys[i], m[i]);
+      if (preview && !m[i].empty()) add_skirts(m[i], kSkirtGrains * v.voxel());
+    });
+    for (size_t i = 0; i < keys.size(); ++i) out[preview ? preview_key(keys[i]) : keys[i]] = std::move(m[i]);
+  }
+  void write(Entry& e, const std::map<BlockKey, BlockMesh>& m) {
+    if (m.empty()) return;
+    blocks.begin();
+    try {
+      for (const auto& kv : m) blocks.set(e.path, kv.first, kv.second, e.blocks);
+    } catch (...) {
+      blocks.end();
+      throw;
+    }
+    blocks.end();
+  }
+  // the clay's changed blocks (no preview), kept
+  int mesh_changed(Entry& e) {
+    const std::set<BlockKey> d = e.vol->take_dirty();
+    const std::vector<BlockKey> keys(d.begin(), d.end());
+    mesh_blocks(*e.vol, keys, kept, false);
+    return int(keys.size());
+  }
+  // the preview's changed blocks, kept, and the 8 blocks of the clay under each taken down (once)
+  int mesh_preview(Live& l) {
+    const std::set<BlockKey> d = l.pv->take_dirty();
+    const std::vector<BlockKey> keys(d.begin(), d.end());
+    mesh_blocks(*l.pv, keys, kept, true);
+    for (const BlockKey& k : keys) {
+      l.shown.insert(preview_key(k));
+      for (int i = 0; i < 8; ++i) {
+        const BlockKey f{2 * k.x + (i & 1), 2 * k.y + ((i >> 1) & 1), 2 * k.z + (i >> 2)};
+        if (l.hidden.insert(f).second) kept[f] = BlockMesh{};
+      }
+    }
+    return int(keys.size());
+  }
+  // a stroke's end or cancel: the meshes not yet published, the clay's changed blocks and the ones taken down meshed
+  // again, the preview's prims taken down; written at once
+  void settle(Entry& e, Live& l) {
+    std::map<BlockKey, BlockMesh> out;
+    out.swap(kept);
+    std::set<BlockKey> fine = e.vol->take_dirty();
+    fine.insert(l.hidden.begin(), l.hidden.end());
+    for (const BlockKey& k : l.shown) out[k] = BlockMesh{};
+    const auto t0 = std::chrono::steady_clock::now();
+    mesh_blocks(*e.vol, std::vector<BlockKey>(fine.begin(), fine.end()), out, false);
+    last_blocks = int(fine.size());
+    last_mesh_ms = ms_since(t0);
+    const auto t1 = std::chrono::steady_clock::now();
+    write(e, out);
+    last_usd_ms = ms_since(t1);
+  }
+
   void fresh(Entry& e) {
     e.vol = std::make_unique<Volume>(e.detail);
+    e.coarse.reset();  // made again from the new volume (callers have joined the coarse job)
+    e.coarseOf = nullptr;
     e.keys.clear();
     e.undo.clear();
     e.pending.clear();
@@ -290,14 +439,22 @@ struct Store::Impl {
 
   void cancel_live() {
     if (!live) return;
+    struct Drop {
+      Impl& s;
+      ~Drop() {
+        s.kept.clear();
+        s.live.reset();
+      }
+    } drop{*this};
+    if (live->fine) live->fine->cancel();  // the clay is this thread's again
     auto it = clays.find(live->item);
     if (it != clays.end()) {
       it->second.vol->record_into(nullptr);
       it->second.vol->cancel_stroke();
       it->second.vol->restore(*live->rec);  // the stroke's dabs wrote only chunks the record holds
-      publish(it->second);
+      settle(it->second, *live);
+      refresh_coarse_of(it->second, std::move(live->pv));  // the preview handed back, brought up to date
     }
-    live.reset();
   }
 };
 
@@ -311,6 +468,7 @@ std::string Store::sculpt_item() const { return p_->live ? p_->live->item : std:
 void Store::sync(const std::vector<Node>& nodes) {
   Impl& s = *p_;
   s.cancel_live();  // a scene in the middle of a stroke: the stroke is dropped
+  s.join_coarse();  // nothing reads a clay behind this
   std::set<std::string> ids;
   for (const Node& n : nodes) ids.insert(n.id);
   for (auto it = s.clays.begin(); it != s.clays.end();) {
@@ -354,11 +512,24 @@ void Store::sync(const std::vector<Node>& nodes) {
     if (changed && !n.cache.empty() && e.keys.size() == n.steps.size() && !fs::exists(fs::u8path(n.cache)))
       s.cache.request(n.id, e.vol->copy(), n.cache, e.vol->copy_mask());
   }
+  // the kept coarse copies of the clays that changed, brought up to date behind
+  std::vector<CoarseTask> tasks;
+  for (auto& kv : s.clays) {
+    Entry& e = kv.second;
+    // a clay fine enough that its brushes usually preview (a 25 mm brush is 16 grains at 1.56 mm) gets its copy
+    // made now, behind, so even its first stroke starts without the full copy (~15-25 ms at 1 mm)
+    if (e.vol && e.vol->voxel() <= 0.0016f) e.wantsCoarse = true;
+    if (!e.wantsCoarse) continue;
+    CoarseTask t = s.task_for(e, nullptr);
+    if (t.all || !t.fine.empty() || !e.coarse || e.coarseOf != e.vol.get()) tasks.push_back(std::move(t));
+  }
+  s.start_coarse(std::move(tasks));
 }
 
 void Store::sculpt_begin(const std::string& item, const Brush& brush) {
   Impl& s = *p_;
   s.cancel_live();
+  s.join_coarse();  // the stroke writes the clay, and its preview starts from the kept copy
   Entry& e = s.entry(item, "sculpt.item");
   auto live = std::make_unique<Impl::Live>();
   live->item = item;
@@ -366,17 +537,33 @@ void Store::sculpt_begin(const std::string& item, const Brush& brush) {
   live->rec = std::make_unique<ChunkRecord>();
   e.vol->record_into(live->rec.get());
   e.vol->begin_stroke();
-  live->dabs = std::make_unique<StrokeDabs>(*e.vol, brush);
+  if (preview_stroke(brush, e.vol->voxel())) {
+    // the preview is the kept copy (round 2: making it here took 14-18 ms of the first event), brought up to date with
+    // what changed since, or a new copy the first time: on the catch-up thread (the first event waits for it); from
+    // then on that thread owns the clay
+    e.wantsCoarse = true;
+    auto task = std::make_shared<CoarseTask>(s.task_for(e, nullptr));
+    Impl::Live* l = live.get();
+    live->fine = std::make_unique<Catchup>(*e.vol, [task, l] {
+      l->pv = bring_coarse(*task);
+      l->pv->begin_stroke();  // Build up off reads where the stroke began, on the preview too
+    });
+  } else {
+    live->dabs = std::make_unique<StrokeDabs>(*e.vol, brush);
+  }
   s.live = std::move(live);
 }
 
-SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
-                                 const PixelsPerMetreFn& ppm) {
+SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
+                                  const PixelsPerMetreFn& ppm) {
   Impl& s = *p_;
   if (!s.live) throw Error("sculpt.phase: no stroke begun; send phase \"begin\" first");
   const auto t0 = std::chrono::steady_clock::now();
   Impl::Live& l = *s.live;
   Entry& e = s.entry(l.item, "sculpt.item");
+  if (l.fine) l.fine->wait_ready();       // the preview (made from the begin on; counted in applyMs)
+  Volume& shown = l.pv ? *l.pv : *e.vol;  // what the rays meet and the dabs are shown on
+  if (!l.dabs) l.dabs = std::make_unique<StrokeDabs>(shown, l.brush, e.vol->voxel());
   SculptReply r;
   std::vector<V3> samples;
   std::vector<float> pressures;
@@ -387,7 +574,7 @@ SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, co
       // pixels piled up and grew towards the camera, each landing on the one before)
       V3 o, d, on, nrm;
       float depth = 0;
-      if (ray(x, y, o, d)) depth = e.vol->cast(o, d, 1e4f, on, nrm) ? len(sub(on, o)) : len(o);
+      if (ray(x, y, o, d)) depth = shown.cast(o, d, 1e4f, on, nrm) ? len(sub(on, o)) : len(o);
       const float radiusPx = depth > 0 ? l.brush.radius * ppm(depth) : 3.0f;
       l.rs = std::make_unique<Resampler>(l.brush.spacing * std::max(radiusPx, 3.0f));
     }
@@ -397,13 +584,34 @@ SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, co
   // even share of them, the last always. Without it a slow event let more pointer moves pile up, the next event
   // carried more dabs and was slower again (Pull: 62 dabs, 240 ms an event). The dabs kept are the stroke: what is
   // stored and replayed, so live = replay still holds; a fast pointer on a slow machine gets slightly wider spacing.
-  constexpr double kEventBudgetMs = 6.0;
+  // 3d-v4: the first event has no cost measured yet; it kept every sample since the press (part of the start-of-stroke
+  // spike), now kFirstSamples. With the preview the budget is the preview's, and the clay's own work an event adds is
+  // held to what the catch-up does in an event (kCatchupMs, less what still waits): a drag faster than the clay keeps
+  // up with gets wider spacing, as above, never a long wait at the end. Over kBacklogMs waiting, the event adds no dab
+  // (its samples are dropped; the next event's start where this one's ended).
+  // ROSTRUM3D_CLAY_EVENT_MS sets kEventBudgetMs (to measure; fewer dabs an event, wider spacing on a fast drag)
+  static const double kEventBudgetMs = [] {
+    const char* env = std::getenv("ROSTRUM3D_CLAY_EVENT_MS");
+    const double v = env ? std::atof(env) : 0.0;
+    return v > 0 ? v : 6.0;
+  }();
+  constexpr size_t kFirstSamples = 2;
+  constexpr double kCatchupMs = 12.0, kBacklogMs = 50.0;
   std::vector<size_t> keep;
   const size_t n = samples.size();
-  const size_t most = l.sampleMs > 0 ? std::max<size_t>(1, size_t(kEventBudgetMs / l.sampleMs)) : n;
+  size_t most = l.sampleMs > 0 ? std::max<size_t>(1, size_t(kEventBudgetMs / l.sampleMs)) : std::min(n, kFirstSamples);
+  if (l.fine) {
+    const double dabMs = l.fine->dab_ms(), backlog = l.fine->backlog_ms();
+    if (dabMs > 0 && l.samples > 0) {
+      const double perSample = dabMs * double(l.dabs->dabs().size()) / double(l.samples);
+      const double room = kCatchupMs - backlog;
+      most = std::min(most, room > perSample ? size_t(room / perSample) : size_t(1));
+    }
+    if (backlog > kBacklogMs) most = 0;
+  }
   if (n <= most) {
     for (size_t i = 0; i < n; ++i) keep.push_back(i);
-  } else {
+  } else if (most > 0) {
     for (size_t k = 1; k <= most; ++k) keep.push_back((k * n) / most - 1);  // evenly, ending on the newest
   }
   bool any = false;
@@ -419,17 +627,41 @@ SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, co
   if (done) {
     const double per = ms_since(ta) / double(done);
     l.sampleMs = l.sampleMs > 0 ? 0.7 * l.sampleMs + 0.3 * per : per;
+    l.samples += done;
+  }
+  if (l.fine) {  // the new dabs, to the clay
+    const std::vector<Step>& all = l.dabs->dabs();
+    l.fine->push(all.data() + l.sent, all.size() - l.sent);
+    l.sent = all.size();
   }
   r.applyMs = ms_since(t0);
-  s.publish(e);
-  r.meshMs = s.last_mesh_ms;
-  r.usdMs = s.last_usd_ms;
-  r.blocks = s.last_blocks;
+  const auto tm = std::chrono::steady_clock::now();
+  r.blocks = l.pv ? s.mesh_preview(l) : s.mesh_changed(e);
+  r.meshMs = ms_since(tm);
   r.dabs = int(l.dabs->dabs().size());
-  r.hit = any && l.dabs->hit;
+  r.hit = keep.empty() ? l.dabs->hit : any && l.dabs->hit;
   r.point = l.dabs->point;
   r.normal = l.dabs->normal;
   r.ms = ms_since(t0);
+  return r;
+}
+
+void Store::sculpt_publish(SculptReply& r) {
+  Impl& s = *p_;
+  if (s.kept.empty() || !s.live) return;
+  const auto t0 = std::chrono::steady_clock::now();
+  Entry& e = s.entry(s.live->item, "sculpt.item");
+  std::map<BlockKey, BlockMesh> m;
+  m.swap(s.kept);
+  s.write(e, m);
+  r.usdMs = ms_since(t0);
+  r.ms += r.usdMs;
+}
+
+SculptReply Store::sculpt_points(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
+                                 const PixelsPerMetreFn& ppm) {
+  SculptReply r = sculpt_compute(px, ray, ppm);
+  sculpt_publish(r);
   return r;
 }
 
@@ -439,8 +671,17 @@ SculptReply Store::sculpt_end(const std::string& folder, const std::string& wher
   const auto t0 = std::chrono::steady_clock::now();
   Impl::Live& l = *s.live;
   Entry& e = s.entry(l.item, "sculpt.item");
+  const double waitBacklog = l.fine ? l.fine->backlog_ms() : 0.0;
+  if (l.fine) {  // the dabs the clay hasn't caught up with yet (then the thread is joined: the clay is this one's again)
+    try {
+      l.fine->finish();
+    } catch (...) {
+      s.cancel_live();
+      throw;
+    }
+  }
   SculptReply r;
-  const std::vector<Step> dabs = l.dabs->dabs();
+  const std::vector<Step> dabs = l.dabs ? l.dabs->dabs() : std::vector<Step>();
   r.dabs = int(dabs.size());
   if (dabs.empty()) {
     s.cancel_live();
@@ -456,11 +697,25 @@ SculptReply Store::sculpt_end(const std::string& folder, const std::string& wher
     s.cancel_live();  // no file, no stroke: the clay goes back as it was
     throw;
   }
+  const double tFinish = ms_since(t0);
+  const auto tEnd = std::chrono::steady_clock::now();
   {
     Recording rec(*e.vol, l.rec.get());  // still recording: the unit may write chunks no dab touched
     e.vol->end_stroke(dabs);
   }
-  s.publish(e);
+  const double tEndMs = ms_since(tEnd);
+  s.settle(e, l);  // the clay's blocks (and any not yet published) replace the preview's
+  // ROSTRUM3D_CLAY_PROFILE=1: where the release went (the catch-up's wait and what it expected, the end's own unit:
+  // a whole replay with ROSTRUM3D_CLAY_VERIFY=1, the blocks meshed and written)
+  static const bool prof = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
+  if (prof)
+    std::fprintf(stderr, "clayend wait=%.1f (backlog %.1f) end=%.1f mesh=%.1f usd=%.1f blocks=%d hidden=%zu dabs=%zu\n",
+                 tFinish, waitBacklog, tEndMs, s.last_mesh_ms, s.last_usd_ms, s.last_blocks, l.hidden.size(),
+                 dabs.size());
+  r.blocks = s.last_blocks;
+  r.meshMs = s.last_mesh_ms;
+  r.usdMs = s.last_usd_ms;
+  s.refresh_coarse_of(e, std::move(l.pv));  // behind: the preview handed back, brought up to date with the clay
   e.pending.push_back(Pending{name.substr(name.find('/') + 1), std::move(l.rec)});
   s.live.reset();
   r.file = name;

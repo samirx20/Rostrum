@@ -42,6 +42,8 @@ ActionsSection 1.0 ActionsSection.qml
 ItemList 1.0 ItemList.qml
 CommandBar 1.0 CommandBar.qml
 TopBar 1.0 TopBar.qml
+WindowButtons 1.0 WindowButtons.qml
+AppMark 1.0 AppMark.qml
 AppShell 1.0 AppShell.qml
 Ruler 1.0 Ruler.qml
 PanelEdge 1.0 PanelEdge.qml

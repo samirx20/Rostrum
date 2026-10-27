@@ -159,7 +159,27 @@ void Volume::record_into(ChunkRecord* rec) {
 
 void Volume::restore(const ChunkRecord& rec) { put_back(rec); }
 
+void Volume::note_change(const Coord& o) {
+  constexpr size_t kMostChanges = size_t(1) << 20;  // ~12 MB of origins; past it a coarse copy is made again
+  if (changesAll_) return;
+  changes_.push_back(o);
+  if (changes_.size() > kMostChanges) {
+    changesAll_ = true;
+    std::vector<Coord>().swap(changes_);
+  }
+}
+
+bool Volume::take_changes(std::vector<Coord>& out) {
+  out.clear();
+  const bool listed = !changesAll_;
+  out.swap(changes_);
+  changesAll_ = false;
+  if (!listed) out.clear();
+  return listed;
+}
+
 void Volume::keep(const Coord& o) {
+  note_change(o);
   (tl_start ? *tl_start : live_).keep(grid_->tree(), &mask_->tree(), o);
   if (record_) record_->keep(grid_->tree(), &mask_->tree(), o);
 }
@@ -184,6 +204,7 @@ void Volume::put_back(const ChunkRecord& rec) {
         maskTree.addTile(1, c.o, 0.0f, false);
       }
     }
+    note_change(c.o);
     const int lo[3] = {c.o[0], c.o[1], c.o[2]}, hi[3] = {c.o[0] + 7, c.o[1] + 7, c.o[2] + 7};
     mark_dirty(lo, hi);  // chunk by chunk, as a step marks them
   }
@@ -362,6 +383,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
 
   const double tpC = prof_on() ? ms_since(t0) : 0;
   double tpE = 0;
+  // 3d-v4: where the stroke began, taken here on the calling thread. C reads it inside a parallel loop, and read there
+  // tl_start was the worker thread's own (null): a replay's chunks done by other threads used live_ (off: none) and
+  // took the current values as the start, so a Build up off stroke replayed differently from live, and differently
+  // run to run ("live stroke != replay" with ROSTRUM3D_CLAY_VERIFY=1)
+  const ChunkRecord* const startRec = tl_start ? tl_start : &live_;
   // C. fill the listed chunks from the grid (and, for strokes without accumulate, where the stroke began: a live
   //    stroke's chunks as they were before its first dab, kept aside)
   par(extList, [&](int ci) {
@@ -375,7 +401,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
       b.each(ci, [&](int, int, int, size_t i) { V[i] = u; });
     }
     if (needStart) {
-      const ChunkRecord::Chunk* kept = (tl_start ? tl_start : &live_)->find(b.lo + Coord(x, y, z));
+      const ChunkRecord::Chunk* kept = startRec->find(b.lo + Coord(x, y, z));
       if (!kept) b.copy(ci, V, St);
       else if (kept->leaf) b.each(ci, [&](int xx, int yy, int zz, size_t i) { St[i] = kept->values[leaf_offset(xx, yy, zz)]; });
       else b.each(ci, [&](int, int, int, size_t i) { St[i] = kept->value; });

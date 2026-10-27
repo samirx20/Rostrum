@@ -317,10 +317,10 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     fb.bind_and_clear();
     e.Render(stage_->GetPseudoRoot(), params);
     const auto tf = std::chrono::steady_clock::now();
-    gl_.finish();
+    if (!gl_.borrowed() || !e.IsConverged()) gl_.finish();  // in the window: ordered on its context, no wait
     finish_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tf).count();
     e.keep_programs();
-    mem.sample();
+    mem.recent();
     throw_usd_errors(mark, "view (" + renderer + ", frame " + std::to_string(frame) + ")");
     if (e.IsConverged()) break;
     if (std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() > 10)
@@ -347,6 +347,25 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     for (const auto& path : look.selected) m.Render(stage_->GetPrimAtPath(path), solo);
     throw_usd_errors(mark, "view (selection mask)");
     out.mask = mf.color_texture();
+  }
+  // The hover's mask (3d-v4): the hovered items alone, the same way, in a framebuffer of its own (view_post.h draws a
+  // 1 px, softer outline from it). The selection's engine: the screen sent the hovered clay as `selected` before, so
+  // its roots per picture are as many as before.
+  if (!look.hovered.empty()) {
+    UsdImagingGLRenderParams solo = params;
+    solo.enableLighting = false;
+    auto& m = mask_engine();
+    m.SetCameraState(frustum.ComputeViewMatrix(), frustum.ComputeProjectionMatrix());
+    m.SetRenderBufferSize(GfVec2i(w, h));
+    m.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
+    if (!hover_fb_ || hover_fb_->width() != w || hover_fb_->height() != h) {
+      hover_fb_.reset();
+      hover_fb_ = std::make_unique<Framebuffer>(w, h);
+    }
+    hover_fb_->bind_and_clear();
+    for (const auto& path : look.hovered) m.Render(stage_->GetPrimAtPath(path), solo);
+    throw_usd_errors(mark, "view (hover mask)");
+    out.hoverMask = hover_fb_->color_texture();
   }
   // Onion skin: each ghost's items alone at the ghost's frame, lit like this picture, in a framebuffer of its own
   // (view_post.h tints them and lays them over the picture). The ghost's frame is a time change for the engine; the

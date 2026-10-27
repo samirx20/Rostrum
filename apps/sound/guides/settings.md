@@ -1,6 +1,6 @@
 # Preferences
 
-For a person using the RostrumSound app. Open with **≡**, then **Preferences…**, or Ctrl+, (the window is titled **Preferences**). These are your machine's choices, kept the moment you make them (they are not part of any song or its history). Click **Done** to close.
+For a person using the RostrumSound app. Open with the menu (the app's mark at the top left), then **Preferences…**, or Ctrl+, (the window is titled **Preferences**). These are your machine's choices, kept the moment you make them (they are not part of any song or its history). Click **Done** to close.
 
 Preferences show only what applies now, most important first. 
 ## Sound device

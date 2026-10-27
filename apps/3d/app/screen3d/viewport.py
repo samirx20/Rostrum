@@ -214,13 +214,16 @@ class Viewport(QObject):
             fw, fh = self.final.size((w, h))
             return {**cam, "width": fw, "height": fh, **self.final.fields(cycles_of(self.bridge.doc.data, self.bridge.shot_id, self.bridge.shot_info()))}
         drawn = scene_ids(self._scene)
+        # Draw / Spin armed: the clay under the pointer (a drag from there joins it) gets the thin hover outline;
+        # sent only when there is one (an older core refuses the field)
+        hovered = [c for c in self.clay_tool.drawer.outlined() if c in drawn and c != sel]
         return {**cam, "renderer": "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
                 "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
-                "selected": ([sel] if sel in drawn and not self.clay_tool.sculpting(sel) else [])   # a material or key
+                "selected": ([sel] if sel in drawn and not self.clay_tool.sculpting(sel) else []),  # a material or key
                 #   has no outline; nor the clay being sculpted (the brush ring is its mark; CL1b: its outline doubled
-                #   every picture's time while sculpting); Draw / Spin armed: the clay under the pointer (it joins it)
-                + [c for c in self.clay_tool.drawer.outlined() if c in drawn and c != sel],
+                #   every picture's time while sculpting)
+                **({"hovered": hovered} if hovered else {}),
                 **self.onion.request(drawn)}                   # onion skin's ghosts, when on (quick look only)
 
     @Slot()

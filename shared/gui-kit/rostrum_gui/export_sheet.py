@@ -9,7 +9,7 @@ the default folder, the file's name, and the work itself (`begin` on the GUI thr
 - Export: a file already there is never replaced without asking: `asked(name, canReplace)` → `answer(replace|both|
   cancel)`; Keep both writes "name 2.ext" (`free_path`);
 - the job in the background, progress, Cancel; a failure is red, in words, and the old file stays;
-- done: the message line says "Exported Main.mp4" (Play · Show in folder beside it) and the version is marked
+- done: the job chip says "Exported Main.mp4 ▾" (its list: Play, Show in folder) and the version is marked
   ("Exported v003", `doc.mark_version`);
 - again (Ctrl+Shift+E): the last settings, without opening the sheet.
 """
@@ -232,8 +232,8 @@ class ExportSheet(QObject):
 
     @Property(str, notify=changed)
     def doneMessage(self):
-        """The message line's words when it finished ("Exported Main.mp4"): Play · Show in folder show beside it
-        while the message still says this."""
+        """The message line's words when it finished ("Exported Main.mp4"): the job chip shows it, with Play and
+        Show in folder in its list, until the next message."""
         return self._done_message
 
     @Property(str, notify=changed)

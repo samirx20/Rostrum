@@ -31,9 +31,12 @@ class Resampler {
 };
 
 // One stroke while it is drawn: dabs land where their rays meet the clay, and are shown at once.
+// 3d-v4: `v` may be a coarse preview of the clay (clay_preview.h) whose grain `grain` is the clay's own. The rays then
+// meet the preview and the dabs are applied to it; the dabs kept (dabs()) are cut by the clay's grain, as a stroke on
+// the clay itself would be, so they are the stroke to store and to apply to the clay.
 class StrokeDabs {
  public:
-  StrokeDabs(Volume& v, const Brush& b) : vol_(v), brush_(b) {}
+  StrokeDabs(Volume& v, const Brush& b, float grain = 0) : vol_(v), brush_(b), grain_(grain > 0 ? grain : v.voxel()) {}
   // a sample's ray (clay space, `dir` unit) and the pen's pressure there (1 without a pen); true when a dab landed
   bool add(V3 origin, V3 dir, float maxDist, float pressure = 1.0f);
   const std::vector<Step>& dabs() const { return dabs_; }
@@ -43,6 +46,7 @@ class StrokeDabs {
  private:
   Volume& vol_;
   Brush brush_;
+  float grain_;  // the stored clay's grain (a Pull drag is cut by it)
   std::vector<Step> dabs_;
   V3 prev_;
   bool havePrev_ = false;

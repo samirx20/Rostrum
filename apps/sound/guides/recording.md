@@ -4,7 +4,7 @@ For a person using the RostrumSound app: record your voice or an instrument onto
 
 ## 1. Choose the microphone
 
-1. **≡**, then **Preferences…** (or Ctrl+,).
+1. The menu (the app's mark at the top left), then **Preferences…** (or Ctrl+,).
 2. Under **Sound device**, set **Microphone**. Empty means Windows' default microphone.
 3. Click **Done**. Preferences are kept at once.
 
