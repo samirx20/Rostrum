@@ -2,7 +2,7 @@
 
 A shape of fixed form (box, sphere, cylinder, cone, capsule, plane, disc, torus) is measured from its fields; an
 editable mesh, an outline (text, logo, drawing) or a combine asks the engine for its built mesh (the same hook
-mesh.edit uses: ops_mesh.use_engine); a clay is the sphere round its pieces (clay_detail.bounds); a light or a camera
+mesh.edit uses: ops_mesh.use_engine); a clay is the points its pieces reach (clay_detail.reach); a light or a camera
 is its place; a group or a rig is everything in it. Each box goes through the item's world transform at the time asked,
 so a moving item is framed where it is then. An imported file has no size the Python side knows: refused loudly.
 """
@@ -58,9 +58,8 @@ def _own_points(doc: dict, fr: Frames, id_: str, f: int) -> list[list[float]]:
         return [p for c in item.get("children", []) for p in _own_points(doc, fr, c["id"], f)]
     if kind in POINTS:
         return [aim.point(world, [0.0, 0.0, 0.0])]
-    if kind == "clay":
-        ball = clay_detail.bounds(item)
-        box = ([c - ball[1] for c in ball[0]], [c + ball[1] for c in ball[0]]) if ball else None
+    if kind == "clay":                       # its pieces' own reach, not a box's corners: framed snugly from any side
+        return [aim.point(world, p) for p in clay_detail.reach(item)]
     elif kind == "mesh":
         box = _shape_box(fr.values(id_, f)) or _built(doc, id_)
     elif kind == "combine":

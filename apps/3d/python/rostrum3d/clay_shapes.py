@@ -166,6 +166,26 @@ def balls(step) -> list[tuple[list[float], float]]:
     return out
 
 
+def reach(step) -> list[list[float]]:
+    """Points that reach as far as an outline or spin piece does, in the clay's own space, for framing it snugly: a
+    drawn outline's own points (its edge is thin) and its middle puffed out both ways by its thickness (inner_radius ×
+    Puff); a spun profile's points turned round the axis four ways. [] when the piece has no plane."""
+    plane = step.get("plane") or []
+    if len(plane) != 9:
+        return []
+    o, u, v = plane[:3], plane[3:6], plane[6:]
+    if step.get("shape") == "outline":
+        pts = step.get("outline") or []
+        if not pts:
+            return []
+        n, mid = unit(cross(u, v)), mean([[a, b, 0.0] for a, b in pts])
+        half = (inner_radius(pts) or 0.0) * float(step.get("puff", 1.0))
+        c = add(o, add(mul(u, mid[0]), mul(v, mid[1])))
+        return [add(o, add(mul(u, a), mul(v, b))) for a, b in pts] + [add(c, mul(n, half)), add(c, mul(n, -half))]
+    w = unit(cross(u, v))
+    return [add(o, add(mul(v, h), mul(d, k * r))) for r, h in step.get("profile") or [] for d in (u, w) for k in (1.0, -1.0)]
+
+
 def source_key(item: dict) -> str:
     """A short hash of an item's own fields (its subtree; its name and Visible left out: hiding it for Turn into clay
     changes nothing), so a clay made from it is rebuilt when it changes."""
