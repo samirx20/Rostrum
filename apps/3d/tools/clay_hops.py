@@ -100,6 +100,9 @@ def main():
         vp = W.find(win.contentItem(), "viewport3d")
         QTest.keyClick(win, Qt.Key_Q)
         W.pump(0.5)
+        lump = W.find(win.contentItem(), "clayMakeLump")      # (3d-v3) the tool starts on Draw now: Lump, chosen
+        W.click(win, lump)
+        W.pump(0.5)
         ground = vp.mapToScene(QPointF(vp.width() * 0.5, vp.height() * 0.85)).toPoint()
         QTest.mouseMove(win, ground)
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, ground)
@@ -112,6 +115,10 @@ def main():
             screen.bridge._apply([{"op": "clay.set", "target": [clay], "args": args}], "Grain and brush for the hops")
             W.pump(30, lambda: False)                                   # the clay rebuilt at its grain
         report.update(grain=GRAIN, brush=BRUSH)
+        from rostrum3d import clay_detail                       # (3d-v3) the grain the core really builds at
+        it = screen.bridge.doc.item(clay)
+        report.update(detail=clay_detail.detail(screen.bridge.doc.data, it, project), brushSize=it.get("brushSize"))
+        print(f"clay {clay}: grain {report['detail'] * 1000:.2f} mm, brush {report['brushSize'] * 1000:.1f} mm")
         at, radius = W.clay_on_screen(screen, clay, vp)
         win.frameSwapped.connect(lambda: dab_trace.swapped(v.serial))
         for brush in ("Add", "Pull", "Smooth"):

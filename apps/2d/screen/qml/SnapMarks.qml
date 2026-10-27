@@ -1,8 +1,9 @@
 import QtQuick
 import RostrumKit
 
-// What a canvas drag's snap lines say (2d-pro-workflows SPEC 3.3), over the canvas while the drag lasts: an equal-gap
-// bracket's two short ends, and a gap's size ("48") in screen-sized words beside its line or bracket. The lines
+// What a canvas drag's snap lines say (2d-pro-workflows SPEC 3.3, CANVAS.md §2 row 24), over the canvas while the drag
+// lasts: an equal-gap bracket's two short ends, a gap's size ("48") in screen-sized words beside its line or bracket,
+// and what a line caught ("centre", "edge": snap.py's `what`) by the line's far end. The lines
 // themselves are Stage.qml's (the kit's SnapLine); both read backend.snap.lines (snapper.py: `gap`, `gapAt` 0..1 along
 // the line, `mark`) and place them through the stage's one composition mapping (compOrigin, compScale).
 Item {
@@ -22,7 +23,7 @@ Item {
             readonly property bool upright: e.axis === "x"                     // a vertical line or bracket
             readonly property real k: marks.stage.compScale
             readonly property point o: marks.stage.compOrigin
-            visible: index < kept.needed && (!!e.mark || !!e.gap)
+            visible: index < kept.needed && (!!e.mark || !!e.gap || !!e.what)
             x: o.x - marks.well.x + (upright ? Math.round(e.at * k) : e.from * k)
             y: o.y - marks.well.y + (upright ? e.from * k : Math.round(e.at * k))
             width: upright ? 1 : (e.to - e.from) * k
@@ -35,6 +36,21 @@ Item {
                     width: one.upright ? 7 : 1; height: one.upright ? 1 : 7
                     x: one.upright ? -3 : (index ? one.width - 1 : 0)
                     y: one.upright ? (index ? one.height - 1 : 0) : -3
+                }
+            }
+            Rectangle {   // what the line caught, by its far end (below a level line, beside an upright one)
+                objectName: "snapWhat"
+                visible: !!one.e.what
+                width: caught.implicitWidth + 8; height: caught.implicitHeight + 2
+                radius: 3
+                color: Theme.snap
+                x: one.upright ? 6 : one.width - width
+                y: one.upright ? one.height - height : 5
+                Text {
+                    id: caught
+                    anchors.centerIn: parent
+                    text: one.e.what || ""
+                    color: Theme.snapText; font.family: uiFont; font.pixelSize: Theme.label
                 }
             }
             Rectangle {   // the gap's size

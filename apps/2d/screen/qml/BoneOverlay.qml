@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Shapes
 import RostrumKit
+import RostrumCursors 1.0
 
 // The rig in hand's bones over the canvas (UX_SPEC 3.23; backend.rig: screen2d/rig_view.py, rig_drag.py). Thin tapered
 // bones from joint to tip, a circle at each joint. Drag a bone: it turns about its joint, or, in an IK chain (an arm, a
@@ -8,6 +9,7 @@ import RostrumKit
 // bone). Drag a circle: the joint moves (at rest).
 // Right-click the end of a chain (a wrist, an ankle) › Pin / Unpin. Each drag is one undo step. Positions are
 // composition px; `fit` is canvas px per composition px; `space` is the item the pointer is read in (Stage's marks).
+// Pointers (CURSORS.md): a bone `rotate` towards its tip (it turns about its joint), a joint `pick` + point.
 Item {
     id: ov
     property real fit: 1
@@ -44,7 +46,7 @@ Item {
                 x: bone.wide; y: -bone.wide; width: Math.max(4, bone.len - bone.wide * 1.5); height: 2 * bone.wide
                 enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
-                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                CanvasCursor { kind: "rotate"; angle: bone.rotation }
                 property bool on: false
                 property point p0
                 property bool ctrl: false       // Ctrl at the press or the release: a window that was not active at the press may only report it later
@@ -77,7 +79,7 @@ Item {
                 enabled: ov.posing
                 hoverEnabled: true; preventStealing: true
                 acceptedButtons: Qt.LeftButton | (joint.modelData.ik !== "" ? Qt.RightButton : 0)
-                cursorShape: Qt.SizeAllCursor
+                CanvasCursor { kind: "pick"; badge: "point" }
                 property bool on: false
                 onPressed: (m) => {
                     if (m.button === Qt.RightButton) { const g = jarea.mapToItem(null, m.x, m.y); pinMenu.ik = joint.modelData.ik

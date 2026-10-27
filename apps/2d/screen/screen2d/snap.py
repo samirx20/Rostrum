@@ -11,8 +11,8 @@ and centre lines come first; then the same group's layers, then the rest). `thre
 px, i.e. DISTANCE screen px / the view's zoom (threshold()). `xs` / `ys`: which of the box's lines may snap, 0 the start
 edge, 1 the centre, 2 the end edge (a move: all; a resize: the dragged edge only; () = that axis doesn't snap).
 Returns the offset to add to the move (0 when nothing is near) and the lines caught, for the magenta feedback:
-[{"axis": "x" | "y", "at": px, "from": px, "to": px}] (an "x" line is vertical at x = at, from y = from to y = to),
-at most one per axis (the nearest caught layer). A line to a neighbour in line also has `gap` (its words, "24") and
+[{"axis": "x" | "y", "at": px, "from": px, "to": px, "what": "centre" | "edge"}] (an "x" line is vertical at x = at,
+from y = from to y = to; `what` is the word on it, what it caught), at most one per axis (the nearest caught layer). A line to a neighbour in line also has `gap` (its words, "24") and
 `gapAt` (where along the line the gap's middle is, 0..1). `spaced` (spacing(targets), worked out once at the press) adds
 equal gaps to a move: the box may also land where its gap to a neighbour equals a gap between two other layers in its
 row or column, or midway between its two neighbours; that ranks with the other layers (2). Each gap shown is then a
@@ -167,16 +167,24 @@ def _axis(box, targets, limit, which, a):
     if best is None:
         return None
     d = best[2]
-    hits = sorted({(n, k): (at, t) for _, m in mine for at, n, k, _, t in index.near(a, m + d - _SAME, m + d + _SAME)}.items())
+    hits = sorted({(n, k): (at, t, k) for _, m in mine for at, n, k, _, t in index.near(a, m + d - _SAME, m + d + _SAME)}.items())
     return best[:2], d, [h for _, h in hits]
 
 
-def _line(at, t, moved, a):
-    """The magenta line at `at` on axis a (0: a vertical line) from the moved box to t, with the gap between them along
-    it when they don't overlap there."""
+def _what(at, t, k, moved, a) -> str:
+    """The word a caught line says (CANVAS.md §2 row 24): "centre" when it is the caught box's middle (`k` 1, or a
+    box of no size there: the turned frame's centre point) or the moving box's own middle; else "edge"."""
+    lo, hi = (0, 2) if a == 0 else (1, 3)
+    mid = moved[hi] - moved[lo] > _SAME and abs(at - (moved[lo] + moved[hi]) / 2) < _SAME
+    return "centre" if k == 1 or t[hi] - t[lo] <= _SAME or mid else "edge"
+
+
+def _line(at, t, k, moved, a):
+    """The magenta line at `at` on axis a (0: a vertical line) from the moved box to t, saying what it caught (`what`),
+    with the gap between them along it when they don't overlap there."""
     j = 1 - a
     lo, hi = min(moved[j], t[j]), max(moved[j + 2], t[j + 2])
-    out = {"axis": "xy"[a], "at": at, "from": lo, "to": hi}
+    out = {"axis": "xy"[a], "at": at, "from": lo, "to": hi, "what": _what(at, t, k, moved, a)}
     start, end = (moved[j + 2], t[j]) if t[j] >= moved[j + 2] else (t[j + 2], moved[j])
     if end - start > _SAME and hi > lo:
         out.update(gap=_words(end - start), gapAt=((start + end) / 2 - lo) / (hi - lo))
@@ -185,7 +193,7 @@ def _line(at, t, moved, a):
 
 def _nearest(hits, moved, a):
     """The one line of an axis: to the nearest caught box (one it touches or overlaps along the line is nearest)."""
-    lines = [_line(at, t, moved, a) for at, t in hits]
+    lines = [_line(at, t, k, moved, a) for at, t, k in hits]
     return [min(lines, key=lambda l: l[1])[0]] if lines else []
 
 

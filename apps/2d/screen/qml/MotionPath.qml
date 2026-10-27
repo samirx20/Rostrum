@@ -1,14 +1,16 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "Mods.js" as Mods
 
 // The motion path over the canvas (screen2d/motion_path.py does the work): where the selected layer travels, a dot per
 // frame (close dots: slow, far apart: fast), a square per key (filled when picked) and the picked or bent keys' handles;
 // a jump (for the frame, a cut) is a dashed line with no dots; for the frame, a faint outline of it at each key. Drag a
 // square: the key moves, snapping as a layer does (Ctrl or Alt: free); drag a handle end: the path bends, the opposite
-// handle mirrored (Alt: not). One drag = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
+// handle mirrored (Alt: not); Ctrl+click the line: a new key there. One drag (or click) = one change. Hidden while playing. Positions come in world px; fit / ox / oy are
 // the Stage's one mapping (canvas px = o + world px × fit), so a pan or zoom only repaints. `noFrame`: the frame's own
-// path left out (looking through the frame: it is the canvas's edge then).
+// path left out (looking through the frame: it is the canvas's edge then). Pointers (CURSORS.md): a key square `pick` +
+// point, a handle end `pick` + bend; the line with Ctrl held shows the canvas's `pick` + "+" (Stage.qml, onLine).
 Item {
     id: mp
     property real fit: 1
@@ -16,6 +18,8 @@ Item {
     property real oy: 0
     property bool interactive: true
     property bool noFrame: false
+    property string pointerAlt: ""      // the canvas's own pointer badges under the line catcher (Stage.qml: what a press there does)
+    property string pointerCtrl: ""
     // The layer's path and the frame's come apart (each sent only when it changed): a layer's drag never converts or
     // redraws the frame's path, and each is drawn on its own canvas.
     readonly property var layerRows: backend.motionPath.layerRows
@@ -76,6 +80,18 @@ Item {
                       function onLayerRowsChanged() { if (!ink.frame) ink.requestPaint() } }
     }
 
+    // Ctrl+click on the path's line (5 screen px either side): a new key there, at the time of the dot under the
+    // pointer (motion_path.addKeyAt: value.set x, y {at}, one undo step). Any other press, or a Ctrl+press away from a
+    // line, passes on to the canvas below (its Ctrl+press picks the deepest piece).
+    MouseArea {
+        objectName: "motionPathLine"
+        anchors.fill: parent
+        enabled: mp.interactive && mp.layerRows.length + mp.frameRows.length > 0 && !spaceKey.held
+        visible: enabled        // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
+        CanvasCursor { kind: "pick"; altBadge: mp.pointerAlt; ctrlBadge: mp.pointerCtrl }   // on: it covers the canvas, so it shows the canvas's pointer
+        onPressed: (m) => { m.accepted = Mods.ctrl(m) && backend.motionPath.addKeyAt((m.x - mp.ox) / mp.fit, (m.y - mp.oy) / mp.fit, 5 / mp.fit) }
+    }
+
     // Key squares and handle ends: a small mark with a larger invisible target. The Repeaters keep their marks
     // (KeptRepeater), so a drag's changes update the marks in place and the pressed one keeps its drag.
     readonly property var squares: {
@@ -122,7 +138,7 @@ Item {
         MouseArea {
             anchors.fill: parent
             enabled: mp.interactive && !spaceKey.held
-            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+            CanvasCursor { kind: "pick"; badge: mark.knob ? "bend" : "point" }
             preventStealing: true
             property bool going: false
             property real sx: 0

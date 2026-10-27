@@ -6,6 +6,8 @@ import RostrumKit
 // Flatten, Crease: two full rows of three) and Mask on a row of its own a little apart (it protects, it does not shape).
 // One choice across all of them: what a drag in the viewport does. Then the brush's rows, the clay's own fields drawn by
 // the kit's rows (clay.set, one undo step each): Size, Strength, Mirror, then Falloff, Spacing, Front faces only.
+// After a Draw, the drawn shape's Puff sits under the name until the next stroke (claystep.set puff on that step); with
+// a clay selected, Steps lists its steps (ClaySteps.qml).
 // Nothing else: no helper text (the tiles' hover says what each does, Ctrl's opposite included). Q, V or Esc leaves.
 Item {
     id: panel
@@ -33,6 +35,18 @@ Item {
             Text {
                 visible: viewport.clay.itemName !== ""
                 text: "Clay"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label
+            }
+
+            Column {    // the last drawn shape's Puff, until the next stroke (clay_steps_qt.py)
+                objectName: "clayPuff"
+                width: parent.width
+                visible: viewport.clay.stepsObj.hasPuff
+                Item { width: 1; height: Theme.gap }
+                Repeater {
+                    model: viewport.clay.stepsObj.puff.rows
+                    delegate: InspectorRow { width: col.width; bridge: viewport.clay.stepsObj.puff
+                                             instant: viewport.clay.stepsObj.puff.rows.instant }
+                }
             }
 
             Item { width: 1; height: panel.groupSpace }
@@ -70,6 +84,8 @@ Item {
                     delegate: InspectorRow { width: col.width; bridge: viewport.clay.brushObj
                                              instant: viewport.clay.brushObj.rows.instant }
                 }
+                Item { width: 1; height: panel.groupSpace }
+                ClaySteps { width: col.width; inner: col.width - Theme.keyGutter }   // the list ends where the fields do
             }
         }
     }

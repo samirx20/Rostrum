@@ -2,16 +2,21 @@
 operation, so one undo step in the one history; a step's settings are `claystep.set` and the clay's own (brush,
 detail, material) are `clay.set`, both from the fields table (kind.py). The core builds the shape from the steps.
 
+Drawing and spinning (clay.draw, clay.spin, clay.add's draw= / spin=) and Turn into clay are ops_clay_make.py; what a
+new step holds is clay_steps.py, the one rule for operations and scripts.
+
 Step ids: an operation counts `<clay>.step_N`; a script counts `<clay>.sN` (script.py), so a person's steps and a
 script's never take each other's ids, and a script re-run keeps the person's steps (rostrum_core.merge).
 """
 from __future__ import annotations
 
+import dataclasses
+
 from rostrum_core import Param, ids
 from rostrum_core.errors import codes
 
-from . import build, fields as F
-from .clay_fields import BRUSHES, CLAY, SYMMETRY
+from . import build, clay_detail, clay_steps as CS
+from .clay_fields import BRUSHES, SYMMETRY
 from .kind import REGISTRY as R
 from .ops_items import PLACE, _holder, new_item
 
@@ -19,7 +24,7 @@ V3 = lambda name, label, required=False, help="": Param.list(name, "number", lab
                                                             min_items=3, max_items=3, required=required, help=help)
 AT = V3("at", "At", True, "The centre, in the clay's own space (clay.add: in the scene, or inside `into`)")
 TO = V3("to", "To", help="Give it to make a capsule from `at` to here")
-RADIUS = Param.number("radius", label="Radius", min=0.0001, max=100, unit="m", default=0.15)
+RADIUS = Param.number("radius", label="Radius", min=0.0001, max=100, unit="m", default=CS.RADIUS)
 MODE = Param.choice("mode", ["add", "carve"], label="Mode", default="add", help="Add joins it on; Carve cuts it out")
 BLEND = Param.number("blend", label="Blend", min=0, max=100, unit="m",
                      help="How softly it joins (metres); half the radius when left out")
@@ -38,53 +43,66 @@ def add_step(ctx, clay: str, values: dict) -> dict:
     return step
 
 
-def piece_values(clay: dict, args: dict, shape: str) -> dict:
-    """A piece step's values: what was given, else the blend at half the radius and the clay's own mirror (the one
-    rule for operations and scripts)."""
-    r = args.get("radius", RADIUS.default)
-    values = {"step": "piece", "shape": shape, "at": args["at"], "radius": r, "mode": args.get("mode") or "add",
-              "blend": args["blend"] if args.get("blend") is not None else round(r * 0.5, 6),
-              "symmetry": args.get("symmetry") or clay["symmetry"], "name": args.get("name") or ""}
-    if shape == "capsule":
-        values["to"] = args["to"]
-    return values
+piece_values, stroke_values, PATHS = CS.piece_values, CS.stroke_values, CS.PATHS    # script.py's too
 
 
-STROKE_FROM_CLAY = {"brush": "brush", "size": "brushSize", "strength": "brushStrength", "symmetry": "symmetry",
-                    "accumulate": "accumulate", "falloff": "brushFalloff", "spacing": "brushSpacing",
-                    "frontOnly": "frontOnly"}
-PATHS = ("dabs", "dabList", "path")
-_CLAY_DEFAULT = {p.name: p.default for p in CLAY}
-
-
-def stroke_values(clay: dict, args: dict) -> dict:
-    """A stroke step's values: the settings given, else the clay's brush settings (a CL1 clay without the CL2 ones:
-    their defaults); `invert` only as given; its one path (dabs or path + dir)."""
-    values = {k: args[k] if args.get(k) is not None else clay.get(own, _CLAY_DEFAULT[own])
-              for k, own in STROKE_FROM_CLAY.items()}
-    values["invert"] = bool(args.get("invert"))
-    values.update({k: args[k] for k in (*PATHS, "dir") if args.get(k)})
-    return {"step": "stroke", "name": args.get("name") or "", **values}
+def grain(ctx, clay: dict) -> float:
+    """The clay's detail now (its smallest grain): what makes a drawing tiny."""
+    return clay_detail.detail(ctx.doc, clay)
 
 
 def _piece(ctx, clay: str, args: dict, shape: str):
     return add_step(ctx, clay, piece_values(ctx.item(clay), args, shape))
 
 
-@R.operation("clay.add", "Add a clay: a lump to sculpt, starting as one sphere of `radius` at `at`. Its detail (the "
-             "smallest grain) follows the shot cameras (clay.set detailMode=fixed detail=… fixes it), its brush a quarter of the radius. Then clay.lump joins more, clay.stroke sculpts it.", label="Add clay",
-             params=[*PLACE, AT, RADIUS, SYM, Param.text("material", label="Material", kind="material")])
+PTS = lambda name, label, help: Param.points(name, label=label, min=3, max=3, help=help)  # noqa: E731
+DRAW = PTS("draw", "Draw", "[[x, y, z], …] an outline (4 points or more; closed last → first) in the scene, or "
+           "inside `into`: the clay starts as it, puffed up (instead of a ball at `at`)")
+SPIN = PTS("spin", "Spin", "[[x, y, z], …] half a profile (2 points or more): the clay starts as it, spun round `axis`")
+FACING = V3("facing", "Facing", help="A drawing's plane normal, pointing at the viewer: the side drawn on becomes the "
+            "clay's front (its +Z). Left out: the outline's own plane")
+AXIS = PTS("axis", "Axis", "[[x, y, z], [x, y, z]] two points on the spin axis; left out: straight up through the "
+           "profile's first point")
+PUFF = Param.number("puff", label="Puff", min=0.1, max=3, default=1.0,
+                    help="How thick a drawn shape is: 1 = round (as thick in the middle as the outline is wide "
+                         "there), less is flatter, more is fatter")
+
+
+@R.operation("clay.add", "Add a clay: a lump to sculpt. It starts as one of: a sphere of `radius` at `at`; a drawn "
+             "outline puffed up (`draw`: scene points, + `facing`, `puff`); or half a profile spun round an axis "
+             "(`spin`, + `axis`). Drawn or spun, the clay stands at the drawing's middle (horizontally centred, at "
+             "its lowest point), turned about Y so its X runs along the drawing: Mirror's X = 0 runs down its "
+             "middle. A tiny drawing (under 4 points, or thinner than 1.5 grains) makes a lump of `radius` (else "
+             "3 cm) instead. Its detail (the smallest grain) follows the shot cameras (clay.set detailMode=fixed "
+             "detail=… fixes it); its brush is a quarter of its size. Then clay.draw / clay.spin / clay.lump join "
+             "more, clay.stroke sculpts it.", label="Add clay",
+             params=[*PLACE, dataclasses.replace(AT, required=False), RADIUS, DRAW, SPIN, FACING, AXIS, PUFF, SYM,
+                     Param.text("material", label="Material", kind="material")])
 def clay_add(ctx, targets, args):
-    r = args.get("radius", RADIUS.default)
-    x, y, z = (float(v) for v in args["at"])
-    fields = {"x": x, "y": y, "z": z, "symmetry": args.get("symmetry") or "x",
-              "brushSize": round(max(r / 4, 0.0005), 4),          # a quarter of the clay: big enough to shape it,
-                                                                   # small enough to stay within a frame (proof: medium dab)
+    sym = args.get("symmetry") or "x"
+    given = [k for k in ("at", "draw", "spin") if args.get(k)]
+    if len(given) != 1:
+        ctx.fail(codes.BAD_ARGUMENT, "the clay", f"starts from exactly one of at, draw or spin; got "
+                 f"{', '.join(given) or 'none'}", hint="at=[x, y, z] for a ball, draw=[[x, y, z], …] for a drawn shape.")
+    if args.get("at"):
+        r = args.get("radius") or CS.RADIUS
+        x, y, z = (float(v) for v in args["at"])
+        placed, size = {"x": x, "y": y, "z": z}, r
+        made = piece_values({"symmetry": sym}, {"at": [0.0, 0.0, 0.0], "radius": r}, "sphere")
+    else:
+        placed, local = CS.standing(args)
+        start = {"symmetry": sym, "brushSize": args.get("radius") or CS.DEFAULT["brushSize"]}
+        made = (CS.draw_values if args.get("draw") else CS.spin_values)(start, local, local["points"],
+                                                                         CS.DEFAULT["detail"])
+        size = CS.size_of(made)
+    fields = {**placed, "symmetry": sym,
+              "brushSize": round(max(size / 4, 0.0005), 4),     # a quarter of the clay: big enough to shape it,
+                                                                 # small enough to stay within a frame (proof: medium dab)
               "material": args.get("material") or ""}
     item = new_item(ctx, "clay", args, fields)
     parent, key = _holder(ctx, args.get("into"))
     ctx.insert(parent, key, item, args.get("index"))
-    _piece(ctx, item["id"], {"at": [0.0, 0.0, 0.0], "radius": r, "symmetry": fields["symmetry"]}, "sphere")
+    add_step(ctx, item["id"], made)
     return item
 
 

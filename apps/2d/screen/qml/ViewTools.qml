@@ -1,14 +1,17 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 
 // The view tools (rail › Hand / Zoom): only while one is on. Hand (H): drag moves the view. Zoom (Z): a click zooms
-// in one step around the pointer, Alt+click out. Screen state only (CanvasView.qml), never the document.
+// in one step around the pointer, Alt+click out. Screen state only (CanvasView.qml), never the document. Pointers
+// (CURSORS.md): the open / closed hand; the magnifier with + (Alt held, mouse still: −).
 MouseArea {
     id: tools
     property var view
     readonly property bool hand: backend.tool === "hand"
     enabled: hand || backend.tool === "zoom"
-    cursorShape: hand ? (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor) : Qt.CrossCursor
+    visible: enabled            // off: out of the way (a disabled but shown full-canvas area wins the pointer over the canvas)
+    CanvasCursor { id: pointer; visible: tools.enabled; kind: tools.hand ? (tools.pressed ? "hand-grab" : "hand") : pointer.altHeld ? "zoom-minus" : "zoom-plus" }
     property point was
     onPressed: (m) => was = Qt.point(m.x, m.y)
     onPositionChanged: (m) => { if (hand && pressed) { view.panBy(m.x - was.x, m.y - was.y); was = Qt.point(m.x, m.y) } }

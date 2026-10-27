@@ -36,7 +36,7 @@ ToolRail {
     ] : [
         rail.selectGroup,
         { id: "clay", items: [{ name: "Clay", icon: "clay", kind: "shape3d", tool: "clay", job: "clay_tool",
-                                help: "Make clay with Lump, then sculpt it: Add, Carve, Smooth." }] },
+                                help: "Draw an outline: it puffs into clay. Then sculpt it: Add, Carve, Smooth." }] },
         { id: "shapes", name: "Shapes", job: "shapes_menu", items: rail.entries(backend.adder.rail.shapes) },
         { id: "type", name: "Type & logo", job: "type_menu", items: rail.entries(backend.adder.rail.type) },
         { sep: true },

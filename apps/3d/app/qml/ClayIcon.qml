@@ -4,7 +4,8 @@ import RostrumKit
 
 // A Clay tile's picture (3d-visual DESIGN § "Brushes you can tell apart"): a cut through the clay in grey, and what the
 // tool does to it in `ink` (white, blue when chosen). Filled shapes, not thin lines, so they read apart at a glance.
-// Drawn on a 40 × 30 box: lump (a ball on the ground), add (a round bump), carve (a wide groove), smooth (a bar planing
+// Drawn on a 40 × 30 box: draw (a pear-shaped body standing on the ground, the pencil that drew it beside it), spin (a
+// vase, its axis a line through it), turn (a crisp box, an arrow, a soft lump: an exact part made clay), lump (a ball on the ground), add (a round bump), carve (a wide groove), smooth (a bar planing
 // it flat), pull (a peak drawn up and over to one side), flatten (a mound with its top cut flat), crease (a narrow blade
 // pressed into a slit), mask (a striped band of tape lying on the surface: the part kept as it is). Each a different
 // outline, so the seven read apart at a glance and at 0.8 scale.
@@ -15,6 +16,9 @@ Item {
     property color clay: Theme.lineHover
     width: 40; height: 30
     readonly property var base: ({
+        draw: "M0 26H40V30H0Z",
+        spin: "M0 26H40V30H0Z",
+        turn: "M0 26H40V30H0Z M2 13H14V25H2Z",
         lump: "M0 24H40V30H0Z",
         add: "M0 20H40V30H0Z",
         carve: "M0 12H11L20 23L29 12H40V30H0Z",
@@ -25,6 +29,9 @@ Item {
         mask: "M0 20H40V30H0Z"
     })
     readonly property var mark: ({
+        draw: "M15 5C20 5 22 10 20 14C25 17 26 22 23 26H7C4 22 5 17 10 14C8 10 10 5 15 5Z M35 3L39 7L31 15L27 16L28 12Z",
+        spin: "M16 4H24V7C24 9 29 12 29 18C29 23 26 26 23 26H17C14 26 11 23 11 18C11 12 16 9 16 7Z M19.3 1H20.7V29H19.3Z",
+        turn: "M16 17H21V14L25 19L21 24V21H16Z M27 19a6 6 0 1 0 12 0a6 6 0 1 0 -12 0Z",
         lump: "M11 14a9 9 0 1 0 18 0a9 9 0 1 0 -18 0Z",
         add: "M5 20C11 20 13 7 20 7S29 20 35 20Z",
         carve: "M9 9.5H12.2L20 19.2L27.8 9.5H31L20 23Z",

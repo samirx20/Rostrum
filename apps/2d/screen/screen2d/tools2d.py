@@ -16,12 +16,14 @@ from .importer import Importer
 from .brand_view import LibraryView
 from .key_bar import KeyBar
 from .key_select import KeySelect
+from .measure_view import Measure
 from .motion_path import MotionPath
 from .multi import Multi
 from .paint_layers import PaintLayers
 from .paint_pick import ColourPick
 from .paint_tool import PaintTool
 from .pen import Pen
+from .row_drag import RowDrag
 from .problems import Problems
 from .rig_blinks import BlinkSheet
 from .rig_lipsync import LipSyncSheet
@@ -57,10 +59,12 @@ class ToolSlots(SlotMixin):
         self._frame_drag = FrameDrag(self)                  # picking the frame, moving, zooming, turning it (frame_drag.py): backend.frameDrag
         self._motion = MotionPath(self)                     # the selection's motion path on the canvas (motion_path.py): backend.motionPath
         self._create = Create(self)                         # R / O / T and typing on the canvas (create.py): backend.create
+        self._row_drag = RowDrag(self)                      # a layer row pulled to reorder: one gesture (row_drag.py): backend.rowDrag
         self._snap = Snapper(self)                          # canvas drags snap (snapper.py): backend.snap
         self._paint_layers = PaintLayers(self)              # Draw's "Paint on …" group (paint_layers.py): backend.paintLayers
         self._filler = Filler(self)                         # Fill, G while Draw is on (filler.py): backend.fill
         self._pick = ColourPick(self)                       # Alt picks a colour (paint_pick.py): backend.colourPick
+        self._measure = Measure(self)                       # Alt measures from the picked layer (measure_view.py): backend.measure
         self._strokes = StrokeSelect(self)                  # lasso, move, copy, delete strokes (stroke_select.py): backend.strokeSelect
         self._paint_tool = PaintTool(self)                  # Brush, Eraser, Fill, Pick, Select: which is on (paint_tool.py): backend.paintTool
         self._rig = RigView(self)                           # the rig in hand's bones on the canvas (rig_view.py): backend.rig
@@ -87,6 +91,11 @@ class ToolSlots(SlotMixin):
     def boneTool(self):
         """The Bone tool: draw a rig's bones joint by joint (bone_tool.py)."""
         return self._bone_tool
+
+    @Property(QObject, constant=True)
+    def rowDrag(self):
+        """A layer row pulled up or down in the list: one undo step, Esc puts it back (row_drag.py)."""
+        return self._row_drag
 
     @Property(QObject, constant=True)
     def create(self):
@@ -152,6 +161,11 @@ class ToolSlots(SlotMixin):
     def colourPick(self):
         """Hold Alt while Draw is on: pick the colour under the pointer (paint_pick.py)."""
         return self._pick
+
+    @Property(QObject, constant=True)
+    def measure(self):
+        """Hold Alt with one layer picked: red lines and numbers to the layer under the pointer or the frame (measure_view.py)."""
+        return self._measure
 
     @Property(QObject, constant=True)
     def paintTool(self):

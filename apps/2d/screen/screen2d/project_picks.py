@@ -41,6 +41,11 @@ def fonts() -> list[dict]:
         return _faces
 
 
+def face_of(family: str) -> str:
+    """The family Qt draws the engine's `family` in ("" = unknown, or the list isn't made yet: never waits for it)."""
+    return next((f["face"] for f in _faces or () if f["value"] == family), "")
+
+
 def warm() -> None:
     """Make the font list now, on a thread of its own (the app's start): reading the engine's list and adding the
     shipped fonts to Qt took ~170-230 ms of the first text pick. Qt's font database may be used from any thread. A

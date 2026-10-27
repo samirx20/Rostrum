@@ -281,7 +281,6 @@ void run_coarse(CoarseUnit& u) {
   // H. written back (uniform chunks become tiles), kept first; then the blocks marked
   std::vector<Leaf*> leaves(nf, nullptr);
   std::vector<int> mixed;
-  int wlo[3] = {1 << 30, 1 << 30, 1 << 30}, whi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
   {
     GridLock<false> wl(u.lock);
     for (size_t k = 0; k < nf; ++k) {
@@ -295,7 +294,8 @@ void run_coarse(CoarseUnit& u) {
         tree.addTile(1, o, cls[k] * kBand, false);
       }
       ++u.written;
-      for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+      const int lo[3] = {o[0], o[1], o[2]}, hi[3] = {o[0] + 7, o[1] + 7, o[2] + 7};
+      u.dirty(lo, hi);  // per chunk: a mirrored dab's two sides, not the whole box between them (3d-v3)
     }
     par(mixed, [&](int k) {
       Leaf* lf = leaves[k];
@@ -306,7 +306,6 @@ void run_coarse(CoarseUnit& u) {
         else lf->setValueOff(off, sgn(v) * kBand);
       }
     });
-    if (wlo[0] <= whi[0]) u.dirty(wlo, whi);
   }
 }
 

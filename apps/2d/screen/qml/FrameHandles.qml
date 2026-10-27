@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "Mods.js" as Mods
 
 // Picking and moving the frame on the canvas (camera spec 4.4, issues 6, 9, 10; screen2d/frame_drag.py does the work).
@@ -9,6 +10,8 @@ import "Mods.js" as Mods
 // just outside a corner turns it (Shift: 15° steps). Everything is turned with the frame. One drag = one change.
 // None of it while looking through the frame (the frame is the canvas's edge then; its settings panel still works).
 // `world` is WorldFrame.qml (the box in well px, the tab); `stage` gives world px (Stage.inWell).
+// Pointers (CURSORS.md): the tab `pick`, a corner square `resize` along its diagonal, a turn zone `rotate`, both
+// turned with the frame; inside the picked frame the canvas's own `pick` shows.
 Item {
     id: fh
     required property Item world
@@ -57,11 +60,14 @@ Item {
             }
             onCanceled: { if (going) backend.frameDrag.end(); going = false }
         }
-        Mover { anchors.fill: parent; enabled: fh.picked }
+        Mover {     // the picked frame's body; off (not picked): out of the way, so the canvas below shows its own pointer
+            anchors.fill: parent; enabled: fh.picked; visible: enabled
+            CanvasCursor { kind: "pick" }
+        }
         Mover {     // over the tab (WorldFrame.qml draws it on the top-left corner)
             tab: true
             x: 0; y: -fh.world.tab.height; width: fh.world.tab.width; height: fh.world.tab.height
-            cursorShape: Qt.PointingHandCursor
+            CanvasCursor { kind: "pick" }
         }
 
         // a corner's drag: zoom (the square) or turn (the zone just outside it)
@@ -91,7 +97,7 @@ Item {
                 width: 28; height: 28
                 x: (modelData[0] + 1) / 2 * box.width + modelData[0] * 11 - 14
                 y: (modelData[1] + 1) / 2 * box.height + modelData[1] * 11 - 14
-                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                CanvasCursor { kind: "rotate"; angle: Math.atan2(modelData[1], modelData[0]) * 180 / Math.PI + (fh.world.box.rot || 0) }
             }
         }
         Repeater {      // the corner squares
@@ -107,8 +113,7 @@ Item {
                 CornerDrag {
                     anchors.fill: parent; anchors.margins: -4
                     kind: "zoom"; corner: knob.index
-                    cursorShape: ({"hor": Qt.SizeHorCursor, "ver": Qt.SizeVerCursor, "fdiag": Qt.SizeFDiagCursor,
-                                   "bdiag": Qt.SizeBDiagCursor})[backend.resizeCursor(knob.modelData[0], knob.modelData[1], fh.world.box.rot || 0)]
+                    CanvasCursor { kind: "resize"; angle: backend.resizeCursor(knob.modelData[0], knob.modelData[1], fh.world.box.rot || 0) }
                 }
             }
         }

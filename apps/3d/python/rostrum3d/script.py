@@ -16,6 +16,9 @@ person moved stays where they put it).
     head = clay("head", y=1.6)                 # a clay: its shape is its steps, in order (ops_clay.py)
     head.lump((0, 0, 0), 0.1).lump((0, -0.02, 0.09), 0.03, name="nose")          # pieces: spheres, capsules (to=)
     head.stroke(path=[(0.03, 0.02, 0.2), (0.05, 0.02, 0.2)], dir=(0, 0, -1), brush="carve", size=0.01)
+    buddy = clay("buddy", draw=[(-.1, 0, 0), (.1, 0, 0), (.08, .3, 0), (-.08, .3, 0)], facing=(0, 0, 1))  # drawn
+    buddy.draw([(.07, .2, 0), (.2, .25, 0), (.2, .28, 0), (.07, .26, 0)], name="arm")   # joined; its own space
+    vase = clay("vase", spin=[(0, 0, 0), (.05, 0, 0), (.04, .1, 0), (0, .12, 0)])          # spun round +Y
 
 Ids: the first argument; left out, they are counted per type (mesh_1, mesh_2 …), skipping every quoted word in the
 script, so adding one item never renames another. An item's name (what the screen shows) is its id unless `name=` says. Unknown fields and bad values fail loudly, naming the line.
@@ -29,10 +32,10 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import build, fields as F, shape_size
+from . import build, clay_detail, clay_steps, fields as F, shape_size
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
-from .ops_clay import piece_values, stroke_values
+from .clay_steps import piece_values, stroke_values
 
 SAFE = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
         for n in ("range", "len", "min", "max", "abs", "round", "enumerate", "zip", "list", "dict", "float", "int",
@@ -133,9 +136,22 @@ class Item:
         return self._step(stroke_values(self.node, {k: ([list(q) for q in v] if k in ("path", "dabList") else
                                                         list(v) if k == "dir" else v) for k, v in values.items()}))
 
+    def draw(self, outline, **values) -> "Item":
+        """A clay's drawn shape (clay.draw): outline=[(x, y, z) …] in the clay's own space, puffed up; facing, puff,
+        mode, blend, symmetry, name. A tiny one is a lump."""
+        pts, node = [list(p) for p in outline], self.node
+        return self._step(clay_steps.draw_values(node, _vec(values), pts, clay_detail.detail(self._b.root, node)))
+
+    def spin(self, profile, **values) -> "Item":
+        """A clay's spun shape (clay.spin): profile=[(x, y, z) …] in the clay's own space, turned round axis=
+        ((x, y, z), (x, y, z)) (left out: up through the first point); mode, blend, symmetry, name."""
+        pts, node = [list(p) for p in profile], self.node
+        return self._step(clay_steps.spin_values(node, _vec(values), pts, clay_detail.detail(self._b.root, node)))
+
     def _step(self, values: dict) -> "Item":
         if self.node["type"] != "clay":
-            raise ValueError(f"{self.id} is a {self.node['type']}; .lump() and .stroke() are for a clay")
+            raise ValueError(f"{self.id} is a {self.node['type']}; .lump(), .draw(), .spin() and .stroke() are for "
+                             "a clay")
         step_id = self._b.new_id(f"{self.id}.s{len(self.node['steps']) + 1}", loose=True)   # an operation's: .step_N
         self.node["steps"].append(build.make("claystep", step_id, values, f"script › {self.id}"))
         return self
@@ -148,6 +164,26 @@ class Item:
 
     def __exit__(self, *exc):
         self._b.holders.pop()
+
+
+def _vec(values: dict) -> dict:
+    """Tuples → lists in a drawing's settings (facing, axis)."""
+    return {k: ([list(p) for p in v] if k == "axis" else list(v) if k == "facing" else v) for k, v in values.items()}
+
+
+def _clay(b: "Build", id_=None, draw=None, spin=None, facing=None, axis=None, puff=None, **values) -> Item:
+    """clay(id, **fields), or clay(id, draw=[…] / spin=[…]) made from a drawing in the scene (as clay.add's)."""
+    if draw is None and spin is None:
+        return b.item("clay", id_, **values)
+    args = _vec({k: v for k, v in (("facing", facing), ("axis", axis), ("puff", puff)) if v is not None})
+    args.update({"draw" if draw is not None else "spin": [list(p) for p in (draw if draw is not None else spin)],
+                 "symmetry": values.get("symmetry") or "x"})
+    placed, local = clay_steps.standing(args)
+    it = b.item("clay", id_, **{**placed, **values})
+    make = clay_steps.draw_values if draw is not None else clay_steps.spin_values
+    first = make(it.node, local, local["points"], clay_steps.DEFAULT["detail"])
+    it.set(brushSize=values.get("brushSize") or round(max(clay_steps.size_of(first) / 4, 0.0005), 4))
+    return it._step(first)
 
 
 def _id_of(v):
@@ -219,10 +255,10 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "clay(id, **fields)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh)",
        "import.part(path, material=, visible=)",
-       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
+       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
 
 
 def run_source(source: str, name: str) -> dict:
@@ -232,7 +268,8 @@ def run_source(source: str, name: str) -> dict:
              "material": lambda id=None, start=None, **v: b.add("material", id, _start(start, v), b.root["materials"]),
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
-             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig", "clay")}}
+             "clay": lambda id=None, **v: _clay(b, id, **v),
+             **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)
     except Exception as e:

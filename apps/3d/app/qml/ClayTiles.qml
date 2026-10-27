@@ -36,6 +36,9 @@ Grid {
             }
             Text {
                 anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: grid.tight ? 4 : 7 }
+                width: Math.min(implicitWidth, tile.width - 6)
+                fontSizeMode: Text.HorizontalFit; minimumPixelSize: Theme.label    // "Turn into clay" in a narrow panel
+                horizontalAlignment: Text.AlignHCenter
                 text: tile.modelData.label
                 color: tile.on ? Theme.fg : Theme.fg2
                 font.family: uiFont; font.pixelSize: Theme.body; font.weight: tile.on ? Font.DemiBold : Font.Normal

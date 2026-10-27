@@ -8,6 +8,7 @@ starts a final render (that is the GPU's heavy job): the render's own lines are 
 """
 from __future__ import annotations
 
+import re
 import tempfile
 from pathlib import Path
 
@@ -19,7 +20,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-mask",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-mask", "clay-drawn", "clay-turn-into",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "page-render", "render-queue-two", "render-queue-finished")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
@@ -59,6 +60,17 @@ def mouth_group() -> list[str]:
     return ["--script", str(script)]
 
 
+def drawn_clay() -> list[str]:
+    """Start args for the sample with a clay drawn from an outline (CL3), an arm joined to it by a second drawing."""
+    script = Path(tempfile.mkdtemp(dir=SCRATCH.name)) / "drawn_clay.py"
+    source = re.sub(r'(?<!")\bclay\b(?!")', "clay_mat", SOURCE)     # the sample's material is called clay
+    script.write_text(source + 'buddy = clay("buddy", draw=[(0.5, 0, 0.3), (0.62, 0, 0.3), (0.66, 0.12, 0.3), '
+                      '(0.6, 0.24, 0.3), (0.52, 0.24, 0.3), (0.46, 0.12, 0.3)], facing=(0, 0, 1))\n'
+                      'buddy.draw([(0.04, 0.14, 0), (0.12, 0.17, 0), (0.12, 0.2, 0), (0.04, 0.19, 0)], name="arm")\n',
+                      encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -95,7 +107,7 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("lights-flyout", s, ["rail lights"]),
         ("camera-flyout", s, ["rail camera"]),
         ("rig-orbit-armed", s, ["rail camera", "click Orbit"]),                # waiting for the click on what to circle
-        ("rig-selected", s, ["rail camera", "click Crane"]),                   # the camera on a new crane: its settings
+        ("rig-selected", s, ["rail camera", "wait 300", "click Crane"]),                   # the camera on a new crane: its settings
         ("type-flyout", s, ["rail type"]),
         ("text-typing", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "type AURORA", "wait 600"]),
         ("drawings-list", s, ["drawings"]),
@@ -163,6 +175,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("clay-made", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled"]),
         ("clay-brush", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled", "wait 300", "click Carve", "settled"]),
         ("clay-mask", s, ["settled", "press Q", "settled", "mouseclick 640 560", "settled", "wait 300", "click Mask", "settled"]),
+        # CL3: a drawn clay (Puff on top until the next stroke; the Steps list is under the brush rows, below the fold
+        # at 900 high), and Turn into clay on the Make tiles while an exact part is selected
+        ("clay-drawn", drawn_clay(), ["select buddy", "settled", "press Q", "settled"]),
+        ("clay-turn-into", s, ["select block", "settled", "press Q", "settled"]),
         ("long-name-paint", long_names(), [f"select {LONG_NAME}", "paint-b", "wait 1500", "paint-layer"]),
         ("long-name", long_names(), [f"select {LONG_NAME}"]),
         ("long-name-light", long_names(), [f"select {LONG_NAME}_key"]),

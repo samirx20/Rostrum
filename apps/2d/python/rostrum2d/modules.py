@@ -13,6 +13,7 @@ OPS = ModuleList("rostrum2d", [
     ".ops_background",   # background.add, background.move: painted backgrounds
     ".ops_cover",   # background.fit: Cover the frame's move
     ".ops_group", ".ops_mask", ".ops_state", ".ops_align", ".ops_look", ".ops_flip",   # select first, then act
+    ".ops_anchor",   # layer.anchor: move the anchor point, keeping the layer in place
     ".ops_clip",   # layer.paste: copy / cut / paste of layers
     ".ops_paint", ".ops_fill", ".paint_transform",   # paint.stroke, paint.fill, stroke.transform: paint, fill and move paint on any element or drawing
     ".ops_frame",   # comp.size, layer.fill_frame
