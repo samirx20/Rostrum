@@ -14,6 +14,7 @@ from PySide6.QtTest import QTest  # noqa: E402
 from rostrum_core import Document  # noqa: E402
 from rostrum_gui import qt_faults  # noqa: E402
 from rostrum_sound import KIND, run_source  # noqa: E402
+from rostrum_gui.meta import class_name  # noqa: E402
 from screensound import playback  # noqa: E402
 from screensound.files_sound import ITEM  # noqa: E402
 from test_screen import FakeEngine  # noqa: E402
@@ -38,7 +39,7 @@ def rolls(win):
 
     def walk(it):
         for c in it.childItems():
-            if "RollInput" in c.metaObject().className() and c.isVisible():
+            if "RollInput" in class_name(c) and c.isVisible():
                 found.append(c)
             walk(c)
     walk(win.contentItem())

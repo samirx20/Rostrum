@@ -20,13 +20,15 @@ from __future__ import annotations
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject
 from PySide6.QtGui import QGuiApplication
 
+from .meta import has_method
+
 WORDS = ("guides", "keylist", "panels", "area", "hover", "name", "click", "mouseclick", "mousedrag")
 
 
 def window():
     """The open AppShell window (the newest, when a session opened several)."""
     wins = [w for w in QGuiApplication.topLevelWindows()
-            if w.isVisible() and w.metaObject().indexOfMethod("openGuides()") >= 0]
+            if w.isVisible() and has_method(w, "openGuides()")]
     if not wins:
         raise RuntimeError("no Rostrum window (AppShell) is open")
     return wins[-1]

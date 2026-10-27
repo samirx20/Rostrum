@@ -19,15 +19,16 @@ import time
 from PySide6.QtCore import QTimer
 
 from .after_frame import AfterFrame
+from .meta import meta
 
 
 def _names(part, signal: str) -> list[str]:
-    mo = part.metaObject()
     out = []
-    for i in range(mo.propertyOffset(), mo.propertyCount()):
-        p = mo.property(i)
-        if p.hasNotifySignal() and bytes(p.notifySignal().name()).decode() == signal:
-            out.append(p.name())
+    with meta(part) as mo:
+        for i in range(mo.propertyOffset(), mo.propertyCount()):
+            p = mo.property(i)
+            if p.hasNotifySignal() and bytes(p.notifySignal().name()).decode() == signal:
+                out.append(p.name())
     return out
 
 
