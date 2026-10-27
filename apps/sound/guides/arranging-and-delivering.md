@@ -125,3 +125,22 @@ A second verse or a "B" that answers "A": copy the section with everything in it
 
 Writing the song with `run_script` instead? A script can also just write the second section itself (a loop over the
 first one's notes with changes); `section.duplicate` is for a section you or a person already have in the document.
+
+## 10. Move a section, trim a clip
+
+- **Drag a section's band** on the ruler to move it with everything that starts inside it. While you drag, the band,
+  its outline and a picture of the notes and clips under it move with the pointer, and the place they leave is dimmed.
+  Nothing in the song changes until you let go, so the drag keeps up with the pointer. The chip beside the pointer
+  names where the section's start will land ("bar 9.3"). It lands on the nearest beat; hold **Ctrl** to put it
+  exactly where you let go. Letting go makes one `section.move`, one undo step. Press **Esc** before letting go to put
+  it back. Drag a band's left or right edge to move that edge only; the section's contents stay where they are.
+- **A section stays on its bars when the tempo changes.** A section made from a time range ("Make a section") or
+  given in seconds is kept on the beat it falls on, so a tempo change moves it with its notes. A section that starts
+  on a marker (`"#cut"`) keeps following the marker.
+- **A clip's zones** (a selected clip; the pointer shows what a press does):
+  - **body**: an open hand. Drag to move it (a closed hand while it moves). Hold **Alt** to copy it.
+  - **left or right edge**: a sideways arrow. Drag to trim. The chip says by how much ("−1 bar 2" is a bar and two beats shorter).
+  - **Alt on the right edge**: stretch in time; the chip says "Stretch 125 %".
+  - **top-left or top-right corner**: the fade in or fade out ("Fade 120 ms").
+  - **level line**: an up-down arrow. Drag to set the clip's volume ("−3.0 dB").
+

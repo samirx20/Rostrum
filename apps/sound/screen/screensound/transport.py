@@ -19,6 +19,8 @@ the playhead runs on a clock.
 """
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from rostrum_sound import settings
@@ -29,6 +31,7 @@ from .live_transport import LivePlay
 from .playback import Renderer
 
 DEBOUNCE_MS = 300
+CATCH_UP_S = 0.15          # the engine starting behind the press: the playhead waits this out in place, never a step back
 UPDATING = "Updating the sound…"      # the state line while a render is on its way and the last good one plays
 
 
@@ -46,6 +49,8 @@ class Transport(QObject):
         self.last: dict = {}
         self.state, self.stale, self._want, self._at = "Making the sound…", True, False, 0.0
         self.failure = ""          # the newest render's error line ("" once one lands): the one source for every "it failed"
+        self._press = (0.0, 0.0)                           # (play's start, when it was pressed): the playhead before the first report
+        self._ran: float | None = None                    # where that clock had the playhead: it never steps back from there
         self._warm = False                                 # open the player (stopped) once the render's news is out
         self.loop: tuple[float, float] | None = None      # ⟳ Loop: (start, end) of the time range while on
         self.renderer = Renderer(self)
@@ -62,7 +67,9 @@ class Transport(QObject):
 
     @property
     def playing(self) -> bool:
-        return self.player.playing
+        """What the Play button shows: playing, or asked to play and waiting for the first render to land (the press is
+        answered in its own frame, never after the engine has warmed up)."""
+        return self.player.playing or self._want
 
     def busy(self) -> bool:
         """A render is waiting or running (screenshots wait for it)."""
@@ -99,6 +106,7 @@ class Transport(QObject):
             self.playingChanged.emit()
         elif self.busy() and (not self.last or self.player.state.get("record")):
             self._want, self._at = True, t    # nothing to play yet, or a take: starts when the render lands
+            self.playingChanged.emit()        # the button shows "playing" now, the state line says why it is quiet
         elif not self.last:
             self.failed.emit("Error: play: nothing to play, the render failed (the reason is above)")
         else:
@@ -112,6 +120,8 @@ class Transport(QObject):
         if self.loop and not self.loop[0] <= t < self.loop[1]:
             t = self.loop[0]                    # looping: play starts inside the loop
         self.player.play(t)
+        self._press = (t, time.monotonic())     # the playhead runs from the press, whenever the engine's first report comes
+        self._ran = None
         self._tick.start()
         self.playingChanged.emit()
 
@@ -149,6 +159,9 @@ class Transport(QObject):
         if self._want and self.last:
             self._want = False
             self._play(self._at)
+        elif self._want:                       # nothing to play: the button must not stay on "playing"
+            self._want = False
+            self.playingChanged.emit()
 
     def _set_failure(self, line):
         """The newest render failed (its line) or did not (""): the state line, the loudness chip and Problems read it
@@ -180,6 +193,15 @@ class Transport(QObject):
 
     def _advance(self):
         t = self.player.position()
+        if self.player.playing and self.player.alive:
+            ahead = self._press[0] + time.monotonic() - self._press[1]
+            if not self.player.rolled:          # before the engine's first report: from the press, on its own clock
+                t = self._ran = ahead
+            elif self._ran is not None:        # the engine starts a little behind the press: the playhead waits for it
+                if t < self._ran and self._ran - t < CATCH_UP_S:    # in place, never a step back
+                    t = self._ran
+                else:
+                    self._ran = None
         if self.loop and self.player.playing and t >= self.loop[1]:   # ⟳ Loop: back to the range's start
             self.player.seek(self.loop[0])
             t = self.loop[0]

@@ -4,6 +4,7 @@ import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
 import "Picks.js" as Picks
+import "Pointers.js" as Pointers
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
@@ -159,7 +160,9 @@ Item {
         enabled: !s.folded
         onExited: s.hoverId = ""
         x: s.keysWidth; width: s.width - x; height: s.height
-        preventStealing: true; cursorShape: s.hoverId !== "" ? Qt.SizeVerCursor : Qt.CrossCursor;   // the stem under the pointer (set as it moves: an edit never re-reads every stem)
+        // a bar's top: `level` (drag it); empty: `draw` (a line across). The stem under the pointer is set as it moves (an
+        // edit never re-reads every stem); during a drag, what the press began
+        preventStealing: true; cursorShape: Pointers.of(s.mode === "bar" || (s.mode !== "line" && s.hoverId !== "") ? "level" : "draw")
                     hoverEnabled: true
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true)

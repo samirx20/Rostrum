@@ -186,16 +186,27 @@ class LibraryPanel(QObject):
 
     @Slot(str)
     def auditionEntry(self, key):
-        """Hear a Library entry (adder key): an instrument plays the selected track's notes, else a short phrase.
-        Hearing only: nothing is written to the song and the selected track's sound never changes (that is the track's
-        own Sound picker; Add makes a new track). Esc, ■ Stop, another pick and closing the Library end it."""
+        """Hear a Library entry (adder key): an instrument plays a short phrase in the song's key and tempo, a kit its
+        one-bar pattern. Hearing only: nothing is written to the song and the selected track's sound never changes
+        (that is the track's own Sound picker; Add makes a new track). Esc, ■ Stop, another pick and closing the
+        Library end it."""
+        self._hear(key, again=False)
+
+    @Slot(str)
+    def toggleEntry(self, key):
+        """A click on a row: it plays at once; the same row clicked again stops it."""
+        self._hear(key, again=True)
+
+    def _hear(self, key, again):
         e = next((x for x in ENTRIES if x["key"] == key), None)
         if e is None:
             return self._say(f'Error: audition: no sound "{key}".')
         b = self.bridge
         track = b._track if getattr(b, "_track", "") else None
         self._heard_problem = ""
-        self._heard.start({k: v for k, v in e["fields"].items() if k != "name"}, e["label"], track)
+        entry = {k: v for k, v in e["fields"].items() if k != "name"}
+        (self._heard.toggle if again else self._heard.start)(entry, e["label"], track, phrase=True)
+        self.changed.emit()
 
     @Slot()
     def stopAudition(self):
