@@ -196,3 +196,6 @@ class EngineVia:
 
     def unfold(self, item, size):
         return self.worker.wait_for(lambda e: _program(e).unfold(item, size))
+
+    def inspect_usd(self, file):            # import.add reads a file's unit, size and parts (ops_import.py)
+        return self.worker.wait_for(lambda e: _program(e).inspect_usd(file))

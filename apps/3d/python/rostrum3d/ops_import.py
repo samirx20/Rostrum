@@ -32,6 +32,7 @@ FORMATS = [
 EXTENSIONS = tuple(e for f in FORMATS for e in f["extensions"])
 UNIT_NAMES = {0.001: "millimetres", 0.01: "centimetres", 0.1: "decimetres", 0.0254: "inches", 0.3048: "feet",
               0.9144: "yards", 1000.0: "kilometres"}
+SHAPES = {"Mesh", "Cube", "Sphere", "Cylinder", "Cone", "Capsule", "Plane", "BasisCurves", "NurbsPatch", "Points"}   # USD's drawn prims
 MAX_PARTS = 64                  # more meshes than this: the file's top-level pieces are listed instead
 
 _INSPECT = None                 # file path -> the engine's inspect_usd answer (ENGINE_CONTRACT.md)
@@ -72,7 +73,7 @@ def _parts(info: dict) -> list[str]:
     if not root:
         return []
     below = [p for p in info.get("prims", []) if p["path"].startswith(root + "/")]
-    meshes = [p for p in below if p["type"] == "Mesh"]
+    meshes = [p for p in below if p["type"] in SHAPES]
     if len(meshes) > MAX_PARTS:
         meshes = [p for p in below if p["path"].count("/") == root.count("/") + 1][:MAX_PARTS]
     return [p["path"][len(root) + 1:] for p in meshes if "/Materials" not in p["path"][len(root):]]
