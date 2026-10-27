@@ -40,6 +40,11 @@ and framed before you add anything; change or delete any of them like any item (
      scale, with its measures in numbers (height, width, depth, the width at every tenth of its height, the widest, the
      left–right difference and, on a clay, thin spots). Check proportions and symmetry here after every few modelling
      steps: "51 cm tall … widest 75 cm at 59 % height … left and right differ by up to 3.6 cm at 70 % height".
+   - Paint: `look_paint target=<mesh or clay>` (the paint picture, a layer or a channel, zoom and grid in canvas px),
+     `inspect_paint_strokes` (each stroke: where it landed, on which items, how many px off), `look_coverage` (how much
+     of each item the shot sees is painted, unpainted hatched orange) and `look_where` (a canvas spot or uv → its pixel
+     on the shot and its world point). `look_at` adds `normal`, `faceSet` and `painted` (the top paint layer there).
+     Guide `painting`.
 4. **Fix the cause, not the picture.** If a shadow is wrong, look at the light's position and size, not at the surface it falls on.
    If something is too small in frame, check the camera's focal length and the distance before scaling the object.
 5. **Render last.** `render_still` (png for people, exr for the Editor, its `passes` as layers) and `render_video` are jobs: they return a job id at once;
@@ -181,7 +186,9 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   metal, glow) and `stroke.add` batches in the paint picture's pixels, through `edit_document`; `look_at` gives the
   `uv` under a pixel. A clay: no unfold; `stroke.add` with `anchors` (from `look_at`'s `local` and `localNormal`) and
   `reach` (metres), so the paint stays on its spots when the clay is reshaped. Fine detail on clay: a Relief layer.
-  Guide `painting`.
+  From the shot instead: `stroke.add` with `viewPoints` in a `look_frame` picture's px plus the camera fields from
+  `look_at`'s `view`, one per item the path crosses, in one call list. Check with `inspect_paint_strokes` and
+  `look_coverage`. Guide `painting`.
 - **Timing a move.** Key with `item.key("rx", {0.8: 0, 1.6: -105})` in a script (or `key.add`). `inspect_animations`
   lists an item's animations as the timeline shows them: Position (x, y, z) is one animation, a "Move"; Turn (rx, ry, rz)
   one "Turn"; Scale (sx, sy, sz) one "Scale"; any other field its own. Each has its stretches (the time between two

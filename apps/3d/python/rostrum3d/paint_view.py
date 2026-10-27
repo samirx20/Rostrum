@@ -25,7 +25,7 @@ import numpy as np
 
 VIEW_KEYS = ("eye", "target", "fov", "frame", "width", "height")
 JUMP, JUMP_PX = 3.0, 4.0           # a seam: a canvas step over JUMP × (screen step × scale) + JUMP_PX
-HOLES = 3                          # projection: fill holes up to this many texels across
+HOLES = 1                          # projection: then fill holes up to this many texels across
 MOST_PROJECT = 4096                # the texel picture for a projection: its long side at most this
 _LOCK = threading.RLock()
 _SPLATS: OrderedDict = OrderedDict()   # splat key -> (size, size, 4) float32, the last few
@@ -246,8 +246,12 @@ def requests(item: dict) -> list[dict]:
 
 def splat(pic, item_id: str, rgba: np.ndarray, size: int, key: str = "") -> np.ndarray:
     """(size, size, 4) float32 straight RGBA 0..1: the picture `rgba` (float, any size: laid over the texel picture's
-    frame) given to each texel the camera sees on `item_id`, averaged; holes up to HOLES texels across filled. Kept by
-    `key` (the caller's: texel picture + picture file) when given."""
+    frame) given to every texel the camera sees on `item_id`. Each square of four neighbouring pixels that shows one
+    piece of the item (all four on it, no seam: `_quads`) is filled with samples between them, as many as its texels
+    across (a wall seen at a steep angle: many along it), so the picture is solid wherever the surface is seen; a square
+    with a pixel of something else in it (the edge of what hides it) is not, so nothing lands behind it. Texels of a
+    piece's edge no square reaches take their pixel's colour; holes up to HOLES texels across are filled. Kept by `key`
+    (the caller's: texel picture + picture file) when given."""
     if key:
         with _LOCK:
             if key in _SPLATS:
@@ -258,18 +262,33 @@ def splat(pic, item_id: str, rgba: np.ndarray, size: int, key: str = "") -> np.n
         from PIL import Image
         rgba = np.asarray(Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
                           .resize((w, h), Image.BILINEAR), np.float32) / 255
-    cpx = _canvas(pic, size)
+    pre = rgba.astype(np.float32).copy()
+    pre[..., :3] *= pre[..., 3:]                          # averaged premultiplied
+    cpx = _canvas(pic, size).astype(np.float32)
     on = (pic.item == _index(pic, item_id)) & np.isfinite(cpx[..., 0])
-    tx = np.clip(cpx[..., 0][on].astype(int), 0, size - 1)
-    ty = np.clip(cpx[..., 1][on].astype(int), 0, size - 1)
-    flat = ty * size + tx
-    src = rgba[on].astype(np.float64)
-    src[:, :3] *= src[:, 3:]                             # averaged premultiplied
-    acc = np.zeros((size * size, 4))
-    np.add.at(acc, flat, src)
-    count = np.bincount(flat, minlength=size * size).astype(np.float64)
-    acc, count = acc.reshape(size, size, 4), count.reshape(size, size)
-    out = _fill(acc, count)
+    flats, colss = [], []
+
+    def put(pts, cols):                                    # gathered, then counted once (a whole-canvas count each
+        tx = np.clip(pts[:, 0].astype(np.int32), 0, size - 1)          # time cost seconds)
+        ty = np.clip(pts[:, 1].astype(np.int32), 0, size - 1)
+        flats.append(ty * size + tx)
+        colss.append(cols.astype(np.float32))
+    put(cpx[on], pre[on])                                  # every seen pixel, its own texel
+    for kx, ky, ys, xs in _quads(cpx, on, size):           # and the texels between seen pixels
+        fx, fy = np.meshgrid((np.arange(kx, dtype=np.float32) + 0.5) / kx, (np.arange(ky, dtype=np.float32) + 0.5) / ky)
+        fx, fy = fx.ravel()[None, :, None], fy.ravel()[None, :, None]
+        w00, w10, w01, w11 = (1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy
+        step = max(1, 200000 // (kx * ky))                  # bounded memory: ~200 000 samples at a time
+        for i in range(0, len(ys), step):
+            y, x = ys[i:i + step], xs[i:i + step]
+            corners = [(y, x), (y, x + 1), (y + 1, x), (y + 1, x + 1)]
+            pts = sum(wt * cpx[cy, cx][:, None, :] for wt, (cy, cx) in zip((w00, w10, w01, w11), corners))
+            cols = sum(wt * pre[cy, cx][:, None, :] for wt, (cy, cx) in zip((w00, w10, w01, w11), corners))
+            put(pts.reshape(-1, 2), cols.reshape(-1, 4))
+    flat, cols = np.concatenate(flats), np.concatenate(colss)
+    acc = np.stack([np.bincount(flat, cols[:, c], size * size) for c in range(4)], -1)
+    count = np.bincount(flat, minlength=size * size)
+    out = _fill(acc.reshape(size, size, 4), count.reshape(size, size))
     a = out[..., 3:]
     out[..., :3] = np.where(a > 1e-6, out[..., :3] / np.maximum(a, 1e-6), 0)
     out = out.astype(np.float32)
@@ -281,23 +300,44 @@ def splat(pic, item_id: str, rgba: np.ndarray, size: int, key: str = "") -> np.n
     return out
 
 
+MOST_ACROSS = 24                    # a pixel square is filled with at most this many samples each way
+
+
+def _quads(cpx: np.ndarray, on: np.ndarray, size: int):
+    """The squares of four seen pixels on one piece: (kx, ky, ys, xs) groups, kx × ky the samples each needs (its
+    canvas steps right and down, rounded up). A square is one piece when its four corners lie as on a flat patch (the
+    far corner within half the steps of where the two near steps put it) and no step is a seam's jump."""
+    q = on[:-1, :-1] & on[:-1, 1:] & on[1:, :-1] & on[1:, 1:]
+    c00, c10, c01, c11 = cpx[:-1, :-1], cpx[:-1, 1:], cpx[1:, :-1], cpx[1:, 1:]
+    dx, dy = np.nan_to_num(c10 - c00), np.nan_to_num(c01 - c00)
+    lx, ly = np.linalg.norm(dx, axis=-1), np.linalg.norm(dy, axis=-1)
+    flat = np.linalg.norm(np.nan_to_num(c11 - c00) - dx - dy, axis=-1) <= 0.5 * (lx + ly) + 2
+    q &= flat & (lx < max(16.0, size / 16)) & (ly < max(16.0, size / 16)) & ((lx > 1) | (ly > 1))
+    kx = np.clip(np.ceil(np.maximum(lx, np.linalg.norm(np.nan_to_num(c11 - c01), axis=-1))), 1, MOST_ACROSS)
+    ky = np.clip(np.ceil(np.maximum(ly, np.linalg.norm(np.nan_to_num(c11 - c10), axis=-1))), 1, MOST_ACROSS)
+    ys, xs = np.nonzero(q)
+    if not len(ys):
+        return
+    key = (kx[ys, xs].astype(int) * 100 + ky[ys, xs].astype(int))
+    order = np.argsort(key, kind="stable")
+    key, ys, xs = key[order], ys[order], xs[order]
+    bounds = np.flatnonzero(np.diff(key)) + 1
+    for a, b in zip([0, *bounds], [*bounds, len(key)]):
+        yield int(key[a] // 100), int(key[a] % 100), ys[a:b], xs[a:b]
+
+
 def _fill(acc: np.ndarray, count: np.ndarray) -> np.ndarray:
-    """Averaged texels; an empty texel with filled ones on at least 2 of its 8 sides takes their mean, HOLES times."""
+    """Averaged texels; an empty texel with filled ones on at least 2 of its 4 sides takes their mean, HOLES times."""
     have = count > 0
-    val = np.where(have[..., None], acc / np.maximum(count, 1)[..., None], 0.0)
+    val = np.where(have[..., None], acc / np.maximum(count, 1)[..., None], 0.0).astype(np.float32)
+    H, W = have.shape
     for _ in range(HOLES):
-        s = np.zeros_like(val)
-        n = np.zeros(have.shape)
-        p = np.pad(val, ((1, 1), (1, 1), (0, 0)))
-        ph = np.pad(have, 1)
-        H, W = have.shape
-        for dy in (0, 1, 2):
-            for dx in (0, 1, 2):
-                if dx == dy == 1:
-                    continue
-                m = ph[dy:dy + H, dx:dx + W]
-                s += p[dy:dy + H, dx:dx + W] * m[..., None]
-                n += m
+        p, ph = np.pad(val, ((1, 1), (1, 1), (0, 0))), np.pad(have, 1)
+        s, n = np.zeros_like(val), np.zeros(have.shape, np.float32)
+        for dy, dx in ((0, 1), (2, 1), (1, 0), (1, 2)):
+            m = ph[dy:dy + H, dx:dx + W]
+            s += p[dy:dy + H, dx:dx + W] * m[..., None]
+            n += m
         grow = ~have & (n >= 2)
         if not grow.any():
             break

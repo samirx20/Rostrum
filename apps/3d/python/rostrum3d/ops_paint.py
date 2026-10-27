@@ -22,24 +22,32 @@ from .resolve import Frames
 XYZ = dict(min_items=3, max_items=3, unit="m")
 
 
-def _shot_view(ctx, shot_id: str, frame) -> dict:
-    """{eye, target, fov, width, height, frame} of a shot's camera at `frame` (the shot's frames; default its start)."""
-    shot = ctx.item(shot_id)
-    if shot.get("type") != "shot":
-        ctx.fail(codes.BAD_ARGUMENT, '"shot"', f'"{shot_id}" is a {shot.get("type")}, not a shot')
+def shot_pose(data: dict, shot: dict, frame=None, width=None, height=None) -> dict:
+    """{eye, target, fov, width, height, frame} of `shot`'s camera at `frame` (the shot's frames; default its start) as
+    a free camera, for a `width` × `height` picture (default the shot's size): what a view stroke or a projection keeps.
+    The one way a shot camera becomes a view (paint.project here, look_at's `view` for agents). ValueError: no camera."""
     cam = shot.get("camera")
     if not cam:
-        ctx.fail(codes.BAD_ARGUMENT, f'shot "{shot_id}"', "has no camera", hint="Give it one with shot.set camera.")
+        raise ValueError(f'shot "{shot["id"]}" has no camera')
     fps = float(shot.get("fps", 24))
     f = round(shot.get("start", 0.0) * fps) if frame is None else int(frame)
     at = round(f / fps * 1000)
-    fr = Frames(ctx.doc, range(at, at + 1), 1000.0)
+    fr = Frames(data, range(at, at + 1), 1000.0)
     world, v = fr.world(cam, at), fr.values(cam, at)
-    w, h = int(shot.get("width", 1920)), int(shot.get("height", 1080))
+    w, h = int(width or shot.get("width", 1920)), int(height or shot.get("height", 1080))
     eye = aim.point(world, [0.0, 0.0, 0.0])
     fov = math.degrees(2 * math.atan(v["sensorWidth"] * h / w / 2 / v["focalLength"]))
     return {"eye": [round(x, 6) for x in eye], "target": [round(x, 6) for x in aim.point(world, [0.0, 0.0, -1.0])],
             "fov": round(fov, 4), "width": w, "height": h, "frame": f}
+
+
+def _shot_view(ctx, shot_id: str, frame) -> dict:
+    shot = ctx.item(shot_id)
+    if shot.get("type") != "shot":
+        ctx.fail(codes.BAD_ARGUMENT, '"shot"', f'"{shot_id}" is a {shot.get("type")}, not a shot')
+    if not shot.get("camera"):
+        ctx.fail(codes.BAD_ARGUMENT, f'shot "{shot_id}"', "has no camera", hint="Give it one with shot.set camera.")
+    return shot_pose(ctx.doc, shot, frame)
 
 
 def _check_picture(ctx, picture: str) -> None:

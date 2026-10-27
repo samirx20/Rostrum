@@ -37,11 +37,12 @@ class Coverage(QObject):
         if not self.p._on or it is None:
             return ""
         name = self._shot_name()
+        busy = " · tinting…" if self._busy and self._on else ""      # a new view's first tint takes seconds
         if self._percent is None:
-            return ""
+            return f"Measuring what {name} sees…" if self._busy else ""
         if it["id"] not in self._seen:
-            return f"Not seen by {name}"
-        return f"Seen by {name}: {self._percent.get(it['id'], 0.0):.0f} % painted"
+            return f"Not seen by {name}{busy}"
+        return f"Seen by {name}: {self._percent.get(it['id'], 0.0):.0f} % painted{busy}"
 
     def _shot_name(self) -> str:
         sid = self.b.shot_id
@@ -74,6 +75,7 @@ class Coverage(QObject):
         h = max(16, round(WIDTH * info["height"] / info["width"]))
         req = {"camera": info["camera"], "frame": frame, "width": WIDTH, "height": h}
         self._busy = True
+        self.changed.emit()
 
         def job(eng):
             from rostrum3d import coverage, paint_scene, texels

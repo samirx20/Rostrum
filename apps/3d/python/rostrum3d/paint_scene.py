@@ -275,15 +275,42 @@ def _pic_id(pic) -> str:
     return hashlib.sha1(np.ascontiguousarray(pic.uv).tobytes() + np.ascontiguousarray(pic.item).tobytes()).hexdigest()
 
 
+def _laid(job: dict, surface, pics: dict) -> tuple[dict, dict, dict]:
+    """(the kit canvas as drawn, {layer id: projected picture laid on the canvas}, their cache keys) for a job."""
+    held = clay_paint.laid(job["item"], surface) if surface is not None else job["item"]
+    if pics:
+        held = paint_view.laid(held, pics, job["item"].get("paintSize", 2048))
+    splats, keys = _splats(job, pics, held) if job.get("sources") else ({}, {})
+    return held, splats, keys
+
+
+def laid_canvas(item: dict, surface_file=None, texels_fn=None, folder=None, scene: dict | None = None) -> tuple[dict, dict]:
+    """(canvas, splats): `item`'s paint as the renderer lays it, for agents' looks (rostrum3d.mcp.paint_canvas): a
+    clay's strokes on its unfolded surface (`surface_file`, surface_of), strokes from the view and projected pictures
+    through their texel pictures (texels.cached on `scene`'s geometry, drawn by `texels_fn` when missing). `canvas_rgba`
+    composes it."""
+    sources = {layer["id"]: _source(f'{item["id"]}.{layer["id"]}.projectSource', p["source"], folder)
+               for layer in item.get("paints", []) if (p := paint_view.projected_of(layer)) is not None}
+    job = {"item": item, "texels": paint_view.requests(item), **({"sources": sources} if sources else {})}
+    pics = _pictures(scene, job, texels_fn) if job["texels"] else {}
+    if pics is None:
+        raise ValueError(f'{item["id"]}: a texel picture its paint needs is not drawn yet')
+    held, splats, _ = _laid(job, clay_paint.read(surface_file) if surface_file else None, pics)
+    return held, splats
+
+
+def canvas_rgba(canvas: dict, size: int, splats: dict) -> np.ndarray:
+    """size × size × 4 straight RGBA uint8 of a laid canvas's layers (its projected layers' pictures under their
+    strokes), as one channel's picture is made."""
+    return _paint_rgba(canvas, size, splats)
+
+
 def _apply(scene: dict, node: dict, job: dict, pics: dict) -> None:
     """One painted item's pictures and its `<id>__paint` material(s) (job: `_job`'s recipe; pics: its texel pictures)."""
     item = job["item"]
     size = item.get("paintSize", 2048)
     surface = clay_paint.read(node["paint"]["file"]) if "paint" in node else None
-    held = clay_paint.laid(item, surface) if surface is not None else item
-    if pics:
-        held = paint_view.laid(held, pics, size)
-    splats, splat_keys = _splats(job, pics, held) if job.get("sources") else ({}, {})
+    held, splats, splat_keys = _laid(job, surface, pics)
     pieces = paint_bleed.pieces(item, surface, size)
     extra = {"projected": splat_keys, "bleed": paint_bleed.key(item, surface, size)}
     by_channel: dict[str, list] = {}
