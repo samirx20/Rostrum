@@ -6,10 +6,13 @@ import "."
 // step newest first, "who · what · when". An agent's run is one folded row with Keep and Undo all (Bring back once
 // taken back); unfolded, each step has Undo this where it can be taken back (not after a later change to the same thing). Taken-back rows are faint and say so. Every button is one new
 // change by the person (or, Keep, none); refusals show in the top bar's message in words.
+// In an app with goToStep (Sound), a click on a step's words goes back to right after it (taken-back rows: forward to it).
 // Reads bridge.historyRows(show), bridge.versions, bridge.agent; `focusSession`: show only that run (Review).
 Panel {
     id: sheet
     property var bridge
+    // an app that can go back to a step (Sound: goToStep): a click on a step row's words goes back to right after it
+    readonly property bool canGo: !!bridge && typeof bridge.goToStep === "function"
     property string focusSession: ""
     property string show: "everyone"
     property var open: ({})                    // which runs are unfolded (screen state): {"<doc>:<seq>": true}
@@ -128,8 +131,10 @@ Panel {
                             opacity: row.modelData.undone ? 0.5 : 1      // taken back: faint, its buttons stay clear
                             text: row.modelData.who + " · " + row.modelData.label + (row.modelData.when ? " · " + row.modelData.when : "")
                                   + (row.modelData.undone ? " · taken back" : "")
-                            HoverHandler { id: whatHover }
+                            HoverHandler { id: whatHover; cursorShape: sheet.canGo && !row.isRun ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             HoverTip { text: what.truncated ? what.text : ""; hovered: whatHover.hovered }
+                            TapHandler { enabled: sheet.canGo && !row.isRun      // go back (or forward) to right after this step
+                                         onTapped: sheet.bridge.goToStep(row.modelData.seq, row.modelData.doc) }
                         }
                         Act { id: stepUndo; visible: !row.isRun && row.modelData.undoable; anchors.right: parent.right; y: 2   // only where it can: a later change to the same thing keeps it
                               text: "Undo this"; onClicked: sheet.bridge.undoStep(row.modelData.seq, row.modelData.doc) }
@@ -153,8 +158,9 @@ Panel {
                                     width: parent.width - x - (undoOne.visible ? undoOne.width + Theme.gap : 0)
                                     textFormat: Text.PlainText
                                     text: modelData.label + (modelData.when ? " · " + modelData.when : "") + (modelData.undone ? " · taken back" : "")
-                                    HoverHandler { id: stepHover }
-                                    HoverTip { text: stepWhat.truncated ? stepWhat.text : ""; hovered: stepHover.hovered } }
+                                    HoverHandler { id: stepHover; cursorShape: sheet.canGo ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                                    HoverTip { text: stepWhat.truncated ? stepWhat.text : ""; hovered: stepHover.hovered }
+                                    TapHandler { enabled: sheet.canGo; onTapped: sheet.bridge.goToStep(modelData.seq, modelData.doc) } }
                             Act { id: undoOne; visible: modelData.undoable; anchors.right: parent.right; text: "Undo this"
                                   onClicked: sheet.bridge.undoStep(modelData.seq, modelData.doc) }
                         }

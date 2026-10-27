@@ -103,7 +103,9 @@ fn wrapped(s: &Schedule, pre: &Tape, at: usize, n: usize) -> Result<Vec<Vec<f32>
 /// mastergain.rs), the mastering stage when there is one, then the safety clip, and the file's measures on the way.
 /// A range: the file is that stretch of the song (the stages before the gain ran over the song, so it starts with
 /// their state: a reverb tail, a compressor's gain), mastered and measured on its own. Block by block throughout.
-pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
+/// `in_memory`: the mastering stage's passes kept in memory instead of on disk (a `measure` run on a short song: the
+/// same samples, read back without the disk).
+pub fn master(s: &Schedule, inputs: &[Arc<Tape>], in_memory: bool) -> Result<Mix, String> {
     let (sr, layout) = (s.sample_rate as f64, s.layout);
     let nch = layout.channels();
     let pre = summed(s, inputs)?;
@@ -120,7 +122,7 @@ pub fn master(s: &Schedule, inputs: &[Arc<Tape>]) -> Result<Mix, String> {
     let weights = layout.weights();
     let (mastered, report) = match &s.master {
         Some(m) => {
-            let (sp, r, d) = crate::fx::master::master_blocks(&gained, nch, total, &weights, m, sr, true)?;
+            let (sp, r, d) = crate::fx::master::master_blocks(&gained, nch, total, &weights, m, sr, !in_memory)?;
             gain.dynamics = Some(Arc::new(d));
             (Some(sp), r)
         }

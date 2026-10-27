@@ -39,6 +39,9 @@ Saving is automatic: every change is on disk as you make it. There is no Save bu
 outside a project folder is not kept: an amber dot after its name says so). Ctrl+S
 (**menu › Save a version**) saves a named version you can go back to from History. (The song's own file is brought fully up to date when
 you close the window and every 20 changes; the change log beside it always has the latest, and opening the song plays it.)
+**History** (Ctrl+H, or click the top bar's change count) lists every step, newest first, with who made it. Click a
+step's words to go back to right after it: the steps after it are taken back, not lost (faint, "taken back"), and
+clicking one of them brings the song forward again (so does Redo, one step at a time; Ctrl+Z goes on back).
 
 ## 2. Add a track
 
@@ -119,7 +122,9 @@ The **Colour** row shows the colour the track is drawn in.
    every change plays straight away on the notes; **Enter** or a click away keeps it as one undo step, **Esc** puts
    everything back; any other command while it is open (Ctrl+Z included) keeps it first. **Humanise** loosens the selected notes a little (writes it into them): its **▾** sets how much,
    timing in milliseconds, velocity and length, and **Another take** gives a new result with the same amounts.
-   **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
+   **Quantise** snaps to the grid you see (the top bar's **Grid**; on Auto, the step it shows at this zoom): set Grid to
+   1/4 and Q puts every selected note on the beat. **Quantise ▾** starts on that grid each time and can pick another
+   for one run. **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
    track without moving its notes, use the track's **Feel**). **Transpose ▾ › By…** moves the selected notes any number
    of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
    **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
@@ -128,7 +133,7 @@ The **Colour** row shows the colour the track is drawn in.
    **Make a chord** step in between). When the selection holds a chord (notes that start together),
    the menu also has **Invert up / down** (**Alt+↑ / Alt+↓**: the lowest note goes up an octave, or the top one down),
    **Strum…** (each note of a chord starts a little after the one below, like a guitar; Up: from the top) and
-   **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves; the new notes stay selected, so Humanise or Quantise act on all of them).
+   **Arpeggio…** (each chord becomes its notes one after another: choose how fast, the order and how many octaves; the new notes stay selected, so Humanise or Quantise act on all of them). **Pedal each chord** writes the sustain pedal for the selected notes: up on each new chord (notes that start together, a single bass note too), down again a 16th later, up at the end of the last one, as clean steps in the track's Sustain lane (the pedal you drew before or after them stays).
    Both open the small box of amounts and play live while it is open. The less used ones sit behind **› More** under the
    fields (a clip has **⋯** at the end of its button row instead); when only those fit, there is no row: use right-click or **Ctrl+K**. There is no bar floating over the arrangement: the
    actions live there. **Right-click** is a short menu: Cut, Copy, Paste, Duplicate, Repeat… (on notes, hits and clips), Delete, and for tracks Group,
@@ -155,9 +160,11 @@ The **Colour** row shows the colour the track is drawn in.
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
    - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and opens its name instead of adding a second. Single keys like M, R and Space are commands only when pressed on their own: a word typed with no box focused ("drums") runs nothing after its first letter. **Right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it (only the rows that make sense for that marker show). Paste here and Add marker here land on the grid line under the pointer while Snap is on.
-7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
+7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. After the last sound there are always 8 empty
+   bars to scroll into and write on. **Fit** (Ctrl+0) shows the music, from the start to a bar past the last sound
+   (with a typed length, or nothing written yet, the whole song). An
    edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
-   (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.
+   (after a delete, empty room shows past the end), and **Fit** is lit only while the whole length is in view.
 8. A mistake? **Ctrl+Z** undoes it (**Ctrl+Shift+Z** redoes). Every drag is one step.
 
 ## 5. Play it
@@ -196,8 +203,10 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 - With nothing selected, the settings panel is titled **Song** and lists only the song's changes, never the first
   tempo, time signature and key (those are edited in the top bar's fields above, once): **Tempo**, **Time signature**
   and **Key** (each shown once it has a change), **Sections** and **Markers**, then the song's **Length** (a picker: **Until the
-  last sound**, the default, or a number of bars: playback and the playhead stop where the sound ends, with its tail; the ruler keeps
-  room to write in) and **More**. With a number of bars, **Ring out** (right under **Length**, on at first) lets what still
+  last sound**, the default, a number of bars, or **Type a length…**: type `23 bars`, the bar it ends on (`bar 24`), seconds
+  (`62.5 s`) or a clock (`1:02.5`) and press Enter (Esc leaves it as it was). Bars follow a tempo change; seconds stay put, for a
+  cut to picture. Playback and the playhead stop where the sound ends, with its tail; the ruler keeps
+  room to write in. Agents: `doc.set` `length` with seconds, `{"beat": n}` or a marker `"#end"`) and **More**. With a set length, **Ring out** (right under **Length**, on at first) lets what still
   rings at the end (a held chord's release, a cymbal, an echo) die away before the song stops (agents: `doc.set` `ringOut`).
   Switch it off to stop at the length; then **Soft end** appears below it (on at first) and fades the last tenth of a second so the stop has no
   click; switch that off too for a dead stop (`endFade`). Every change is a row ("Bar 5 · drop", its value at the right): click a row and the
@@ -206,7 +215,8 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**
   add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
   (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's
-  own tempo and time signature) and not where one already sits.
+  own tempo and time signature) and not where one already sits. From anywhere, **Ctrl+K** › "tempo" (Add tempo change
+  here) or "time signature" does the same.
 - A new section is named for its next musical role (intro, verse, chorus …); rename it in the settings panel.
 - Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**

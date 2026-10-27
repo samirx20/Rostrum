@@ -4,13 +4,15 @@ time before the engine's first report; a refused render does not leave the butto
 stops (the second press is a stop, whatever the engine has done by then)."""
 import sys
 import time
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_play_after_edit import bridge, pump  # noqa: E402,F401  (a song, a slow stand-in engine, a stand-in player)
 
 
-def test_the_press_shows_playing_and_the_playhead_runs_from_it_before_the_engine_reports(bridge):  # noqa: F811
+def test_the_press_shows_playing_and_the_playhead_waits_for_the_sound(bridge):  # noqa: F811
     tr = bridge.transport
     t0 = bridge._t
     bridge.togglePlay()
@@ -18,7 +20,8 @@ def test_the_press_shows_playing_and_the_playhead_runs_from_it_before_the_engine
     tr.player.rolled = False                                   # the engine has not said it is rolling
     time.sleep(0.12)
     tr._advance()
-    assert bridge._t >= t0 + 0.1                               # the playhead left the press time on its own clock
+    assert bridge._t == pytest.approx(t0)                      # it stays at the press until the sound starts: running
+                                                               # ahead on a clock stepped back 0.2-0.6 s (production round)
     bridge.togglePlay()
     assert not tr.playing and not bridge.playing               # Stop lands at once
 

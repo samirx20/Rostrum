@@ -35,8 +35,11 @@ moments down by at most **Most limiting** (2 dB in a new song); a mix with tall 
 sheet says so before you save, in amber, with what the file will measure and what reaching the target takes:
 "Will land at −16.4 LUFS: reaching −14 needs 4.4 dB of limiting (Most limiting allows 2). Over ~3 dB of limiting starts
 to flatten acoustic drums and piano." Under it, one click:
-- **Push to −14** (chosen by default): Export raises Most limiting to what the target needs (one undo step, "Push loudness
-  to target") and the file reaches the target; the loudest peak still stays under the ceiling.
+- **Push to −14** (chosen by default): Export first measures the mix exactly as it will write it (your newest edit
+  included; the sheet's number is only the last playback's estimate, and deep limiting needs more than it says), raises
+  Most limiting as far as reaching the target takes, then writes the file once. The top bar says what it did ("Exported
+  song_mix.wav · Most limiting raised to 9.4 dB to reach −14 LUFS"); it is one undo step ("Push loudness to target",
+  Ctrl+Z puts the limit back; the file stays). The loudest peak still stays under the ceiling.
 - **Keep it dynamic**: Export writes the mix at the level it reaches, and the sheet says that instead of "Loudness set to
   −14": "Kept dynamic: the file will measure −16.4 LUFS, 2.4 dB under Streaming's −14". Streaming services play a
   quieter file as it is, so the dynamics stay.

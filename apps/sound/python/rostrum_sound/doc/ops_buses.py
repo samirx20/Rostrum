@@ -93,7 +93,7 @@ def send_add(ctx, targets, args):
         ctx.insert(t, "sends", {"id": id_, "type": "send", **FD.DEFAULTS["send"], **args, "automation": []})
 
 
-@REGISTRY.operation("duck.add", "Duck a track under other tracks: it dips while they sound (music under a voice). "
+@REGISTRY.operation("duck.add", "Duck a track under other tracks: it dips while they sound (music under a voice; sidechain pumping: the bass or a pad under the kick). "
                     "To duck a bus, duck each track that feeds it.", target="track", label="Add duck",
                     params=FD.params("duck", required=True))
 def duck_add(ctx, targets, args):

@@ -15,6 +15,7 @@ import math
 from .compile import compile as compile_doc
 from .doc import effects as FX
 from .doc import ids
+from .trials import Trials
 
 RATIO, ATTACK, RELEASE, KNEE = 4.0, 0.005, 0.12, 6.0   # peak control: catches a hit's front, lets go before the next beat
 MAX_DEPTH_DB = 18.0       # the threshold at most this far under the track's own peak
@@ -56,17 +57,29 @@ class Tamer:
     """Tries and measures compressor settings on copies of the document data (the document is never touched)."""
 
     def __init__(self, root: dict, engine, scratch, r: dict):
-        self.root, self.engine, self.out, self.r = root, engine, str(scratch / "tame.wav"), r
+        self.root, self.trials, self.r = root, Trials(engine, scratch), r
         self.tracks = {t["id"]: t for t in root.get("tracks", [])}
         self.rel0 = {t["id"]: t["lufs"] - r["lufs"] for t in r.get("tracks") or []}   # each track against the mix, as written
-        self.renders, self.makeup, self.seen = 0, {}, {}
+        self.makeup, self.seen = {}, {}
         dry = self._render(compile_doc(root, master=False))         # the tracks' own peaks, before the master's gain
         self.peak = {t["id"]: db(t["peak"]) - db(self.tracks[t["id"]].get("volume", 0.85)) for t in dry["tracks"] if t["id"] in self.tracks}
         self.ids = _ids(root, set())
 
+    @property
+    def renders(self) -> int:
+        return self.trials.renders
+
     def _render(self, schedule):
-        self.renders += 1
-        return self.engine.request("render", schedule=schedule, out=self.out, stems=[])
+        return self.trials.one(schedule)
+
+    def probe(self, whos, goal: float) -> float:
+        """How far under `goal` the most taming the search may try lands (`whos` at MAX_DEPTH_DB), the search's own
+        state left as it was (its makeups and tries): when even that is under the target, nothing it tries reaches it."""
+        kept = (dict(self.makeup), dict(self.seen))
+        try:
+            return self.measure(whos, MAX_DEPTH_DB, goal)
+        finally:
+            self.makeup, self.seen = kept
 
     def top(self, who: str) -> float:
         """Where the depth counts down from: the track's own peak, or the compressor's highest threshold when that peak

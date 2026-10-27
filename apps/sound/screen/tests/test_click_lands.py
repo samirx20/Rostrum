@@ -67,7 +67,7 @@ def test_a_click_lands_where_the_person_aims(tmp_path, monkeypatch):
         assert b.viewSpan > bars[16] - bars[0]                         # the whole song shows
         QTest.keyClick(win, Qt.Key_E)                                  # the Editor opens ...
         QTest.qWait(300)
-        assert b.viewSpan <= (bars[8] - bars[0]) * 1.3, b.viewSpan     # ... on about 8 bars
+        assert b.viewSpan <= (bars[8] - bars[0]) * 1.3 + 1e-6, b.viewSpan     # ... on about 8 bars (and 15 % each side)
         assert b.viewStart <= b.time <= b.viewStart + b.viewSpan
         QTest.keyClick(win, Qt.Key_B)                                  # Draw
         QTest.qWait(50)

@@ -14,10 +14,12 @@ from __future__ import annotations
 import copy
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 from .compile import compile as compile_doc
 from .doc.fields import FIELDS
 from . import fit_peaks as peaks
+from .trials import Trials
 
 SHORT_OK = 0.3                 # a render within this many dB under the target has reached it (the engine itself settles within 0.2)
 STEP_DB = 0.1                  # the search stops at this fineness
@@ -76,6 +78,44 @@ def landing(master: dict, r: dict | None) -> dict:
                      + a_lot(need)}
 
 
+def reach(doc, engine, scratch: Path, span=None, most: int = 4) -> dict:
+    """The `maxLimit` that lands this song on its master's loudness target, measured on the song as it is now (never
+    predicted from another render): the song is measured, then each try at the limit it says it needs, until it lands
+    within SHORT_OK of the target (the need grows faster than dB for dB under deep limiting: a peaky solo piano), or the
+    master's top MAX_LIMIT. {} when there is no target to push to or the song already reaches it; else
+    {max_limit_db, was_db, target, lufs, limit_db, reaches, renders, ops, words}. `doc`: anything with `data` (and
+    `folder`, for the project's markers); never changed. `span`: the exported stretch, measured alone."""
+    data = copy.deepcopy(doc.data)
+    m = (data.get("master") or [{}])[0]
+    if not (m.get("normalize") and m.get("gentle", True)):
+        return {}
+    goal, was = m.get("loudness", -16), m.get("maxLimit", 2)
+    trials = Trials(engine, scratch, span)
+    view = SimpleNamespace(data=data, folder=getattr(doc, "folder", None))
+
+    def try_at(limit):
+        m["maxLimit"] = limit
+        return trials.one(compile_doc(view))
+    r = try_at(was)
+    land = landing(m, r)
+    if not land or land["reaches"]:
+        return {}
+    ask = land["push"]["max_limit_db"] if land.get("push") else MAX_LIMIT
+    for _ in range(most):
+        r = try_at(ask)
+        short = goal - r["lufs"]
+        if short < SHORT_OK or ask >= MAX_LIMIT:
+            break
+        ask = min(MAX_LIMIT, math.ceil((ask + short + 0.05) * 10) / 10)
+    lim = (r.get("master") or {}).get("limiterMaxReductionDb") or 0
+    reaches = goal - r["lufs"] < REACH_OK
+    words = (f"Most limiting raised to {ask:g} dB to reach {_n(goal)} LUFS" if reaches else
+             f"Most limiting raised to {ask:g} dB, the most it goes: the file measures {_n(r['lufs'])} LUFS, under {_n(goal)}")
+    return {"max_limit_db": ask, "was_db": was, "target": goal, "lufs": round(r["lufs"], 2), "limit_db": round(lim, 2),
+            "reaches": reaches, "renders": trials.renders, "words": words + "." + a_lot(lim),
+            "ops": [{"op": "master.set", "target": ["master"], "args": {"maxLimit": ask, "gentle": True}}]}
+
+
 def peakiest_track(r: dict) -> str | None:
     """The track whose peaks stand highest over its own average (peak / rms): the one a limiter works on."""
     t = max(r.get("tracks") or [], key=lambda t: (t.get("peak") or 0) / max(t.get("rms") or 0, 1e-9), default=None)
@@ -94,11 +134,18 @@ def trimmed(root: dict, track: str, db: float) -> dict:
     return data
 
 
-def solve(measure, short0: float, cap: float = MAX_TRIM_DB, step: float = STEP_DB):
+def solve(measure, short0: float, cap: float = MAX_TRIM_DB, step: float = STEP_DB, ahead=None):
     """The smallest trim (dB, to `step`) after which `measure(db)` -> how far under the target the render lands (dB) is
     under SHORT_OK; None when `cap` is not enough. The shortfall only falls as the trim grows: first try the shortfall
-    itself, double until it is met, then halve."""
+    itself, double until it is met, then halve. `ahead(dbs)` (a measure with no state between tries): the doubling
+    tries measured side by side up front; the walk and the answer are the same."""
     lo, hi = 0.0, max(step, short0)
+    if ahead:
+        tries = [hi]
+        while tries[-1] < cap:
+            tries.append(min(tries[-1] * 2, cap))
+        known, one = dict(zip(tries, ahead(tries))), measure
+        measure = lambda d: known[d] if d in known else one(d)   # noqa: E731
     while (got := measure(hi)) >= SHORT_OK:
         if hi >= cap or math.isinf(got):        # inf: past what the change may do at all; going further only gets worse
             return None
@@ -120,20 +167,18 @@ def _keep_balance(goal, need, limit):
 
 
 def _trim(goal, limit, short, who, tracks, root, engine, scratch):
-    renders = [0]
+    trials = Trials(engine, scratch)
 
-    def measure(db):
-        renders[0] += 1
-        got = engine.request("render", schedule=compile_doc(trimmed(root, who, db)), out=str(scratch / "fit.wav"), stems=[])
-        return goal - got["lufs"]
+    def ahead(dbs):
+        return [goal - got["lufs"] for got in trials.many([compile_doc(trimmed(root, who, db)) for db in dbs])]
 
-    db = solve(measure, short)
+    db = solve(lambda d: ahead([d])[0], short, ahead=ahead)
     if db is None:
         return {"name": "trim_track", "track": who, "impossible": True,
                 "words": f"Lowering {who} by up to {MAX_TRIM_DB:g} dB does not reach the target within {limit:g} dB: the peaks come from more than {who} (pass `track` to try another)."}
     was = tracks[who].get("volume", 0.85)
     vol = trimmed_volume(tracks[who], db)
-    return {"name": "trim_track", "track": who, "trim_db": db, "volume": vol, "was": was, "renders": renders[0],
+    return {"name": "trim_track", "track": who, "trim_db": db, "volume": vol, "was": was, "renders": trials.renders,
             "ops": [{"op": "track.set", "target": [who], "args": {"volume": vol}}],
             "words": f"Reach {goal:g} LUFS inside the {limit:g} dB limit by lowering {who} by {db:.1f} dB (volume {was:g} -> {vol:g}); the balance moves: "
                      f"{who} sits {db:.1f} dB lower against the rest."}
@@ -143,6 +188,9 @@ def _tame(goal, limit, short, r, root, engine, scratch, track=None):
     t = peaks.Tamer(root, engine, scratch, r)
     order = [w for w in ([track] if track else []) + peaks.peaked(r) if w in t.peak]
     order = list(dict.fromkeys(order))
+    most = order[:peaks.MAX_TRACKS]
+    if most and (far := t.probe(most, goal)) >= SHORT_OK and not math.isinf(far):   # known at once: the most it may tame is not enough
+        return _untamed(goal, limit, most, t.renders, f" Even all {len(most)} at {peaks.MAX_DEPTH_DB:g} dB under their peaks land {far:.1f} dB under.")
     for n in range(1, min(peaks.MAX_TRACKS, len(order)) + 1):
         whos = order[:n]
         depth = solve(lambda d: t.measure(whos, d, goal), short, cap=peaks.MAX_DEPTH_DB, step=peaks.STEP_DB)
@@ -160,9 +208,13 @@ def _tame(goal, limit, short, r, root, engine, scratch, track=None):
                 "words": f"Reach {goal:g} LUFS inside the {limit:g} dB limit with the balance as written: a gentle compressor first on {names} "
                          f"(ratio {peaks.RATIO:g}:1, attack {peaks.ATTACK * 1000:g} ms, release {peaks.RELEASE * 1000:g} ms unless it has its own; {how}). "
                          f"Measured: {got['lufs']:.1f} LUFS, the limiter pulls {m.get('limiterMaxReductionDb') or 0:.1f} dB."}
-    return {"name": "tame_peaks", "tracks": order[:peaks.MAX_TRACKS], "impossible": True, "renders": t.renders,
-            "words": f"Taming up to {min(peaks.MAX_TRACKS, len(order))} of the most peaked tracks ({', '.join(order[:peaks.MAX_TRACKS])}) gently (at most "
-                     f"{peaks.MAX_DEPTH_DB:g} dB under their peaks, {peaks.MAX_MAKEUP_DB:g} dB given back) does not reach the target within {limit:g} dB."}
+    return _untamed(goal, limit, most, t.renders)
+
+
+def _untamed(goal, limit, most, renders, why=""):
+    return {"name": "tame_peaks", "tracks": most, "impossible": True, "renders": renders,
+            "words": f"Taming up to {len(most)} of the most peaked tracks ({', '.join(most)}) gently (at most "
+                     f"{peaks.MAX_DEPTH_DB:g} dB under their peaks, {peaks.MAX_MAKEUP_DB:g} dB given back) does not reach the target within {limit:g} dB.{why}"}
 
 
 def first_choice(need: float, limit: float) -> str:

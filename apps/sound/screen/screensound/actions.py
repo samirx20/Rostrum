@@ -31,7 +31,7 @@ from rostrum_gui.actions import SHORT_MENU, ActionList
 from . import action_calls as C
 from . import amount_actions as A
 from . import chord_actions as K
-from . import key_lock
+from . import key_lock, song_edit, song_list
 from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
@@ -63,14 +63,14 @@ ACTIONS = [
         lambda f: [C.call("track.unlock", [it["id"] for it in f.items if it.get("locked")])], "Ctrl+Shift+L",
         group="order"),
     # notes and drum hits
-    act("quantize", "Quantise", *A.on(NOTE_HIT, "quantize"), "Q", "primary", "time",
+    act("quantize", "Quantise", *A.quantize_on(), "Q", "primary", "time",
         needs="Quantise needs notes or drum hits selected", on=NOTE_HIT, amounts=("grid", "strength", "swing", "ends"),
         fit=A.quantize_fit),
     *[act(f"transpose_{k}", label, *on(NOTE, "transpose", semitones=n), keys, "primary", "pitch", "Transpose", on=NOTE)
       for k, n, label, keys in _STEPS],
     act("transpose_by", "Transpose by…", lambda f: bool(f.by_kind(NOTE)), A.transpose_calls, importance="primary", group="pitch",
         menu="Transpose", on=NOTE, amounts=("semitones", "steps", A.ALONG), asks=True, fit=A.transpose_fit),
-    # Chord ▾ (chord_actions.py): Make a chord ▸, Invert (Alt+↑ / ↓), Strum…, Arpeggio…; each only when it applies
+    # Chord ▾ (chord_actions.py): Make a chord ▸, Invert (Alt+↑ / ↓), Strum…, Arpeggio…, Pedal each chord; each only when it applies
     *[act(f"chord_{k}", f"Make a chord: {label}", K.shape_valid(needs_key), K.shape_calls(k), importance="primary",
           group="chord", menu=K.MAKE, on=NOTE) for k, label, needs_key in K.SHAPES],
     act("invert_up", "Invert up", K.has_chord, K.invert_calls(1), "Alt+Up", "primary", "invert", "Chord", on=NOTE,
@@ -81,6 +81,8 @@ ACTIONS = [
         asks=True, amounts=("gap", K.UP, "soften"), fit=K.strum_fit),
     act("arpeggio", "Arpeggio…", K.has_chord, K.arp_calls, importance="primary", group="shape", menu="Chord", on=NOTE,
         asks=True, amounts=("rate", "mode", "octaves", "gate", "seed"), fit=K.arp_fit),
+    act("pedal", "Pedal each chord", *A.on(NOTE, "pedal"), importance="primary", group="pedal", menu="Chord", on=NOTE,
+        needs="Pedal needs notes selected"),     # the sustain lane: up on each new chord, down a 16th later (ops_pedal.py)
     act("fit_key", "Fit to key", lambda f: bool(f.by_kind(NOTE)) and key_lock.has_key(f.doc.data), *A.on(NOTE, "fit_key")[1:],
         importance="primary", group="pitch", on=NOTE,      # always a button, in its own place: a row that came and went moved the panel's fields 36 px
         needs="Fit to key needs notes selected, in a song with a key"),
@@ -107,6 +109,12 @@ ACTIONS = [
     # the song itself (nothing selected): absent once it is the main mix
     act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix",
         panel=False),                                   # the Song panel has its own button for it
+    # the song's changes at the playhead, found by name in Ctrl+K ("tempo" + Return did nothing: production round);
+    # the Song panel's + Tempo change / + Time signature change are the same calls (song_slots.songDo)
+    act("add_tempo", "Add tempo change here", lambda f: song_list.can(f.doc.data, f.playhead)["tempo"],
+        lambda f: [song_edit.add_tempo_call(f.doc.data, f.playhead)], group="song", panel=False),
+    act("add_meter", "Add time signature change here", lambda f: song_list.can(f.doc.data, f.playhead)["meter"],
+        lambda f: [song_edit.add_meter_call(f.doc.data, f.playhead)], group="song", panel=False),
     # clips
     act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean",
         panel=False),                                   # the panel's Cleanup group is the one place (its fields are right there); keys and Ctrl+K jump to it

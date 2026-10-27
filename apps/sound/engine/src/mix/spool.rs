@@ -42,7 +42,15 @@ impl Spool {
     /// Frames `at .. at + n` of every channel (past the end: 0).
     pub fn read(&self, at: usize, n: usize) -> Result<Vec<Vec<f32>>, String> {
         match self {
-            Spool::Mem(chs) => Ok(chs.iter().map(|c| (at..at + n).map(|i| c.get(i).copied().unwrap_or(0.0)).collect()).collect()),
+            Spool::Mem(chs) => Ok(chs
+                .iter()
+                .map(|c| {
+                    let end = (at + n).min(c.len());
+                    let mut v = if at < end { c[at..end].to_vec() } else { Vec::with_capacity(n) };
+                    v.resize(n, 0.0);
+                    v
+                })
+                .collect()),
             Spool::Disk(t) => t.read(at, n),
             Spool::Writing(_) => Err("a spool was read before it was finished (an engine fault)".into()),
         }
