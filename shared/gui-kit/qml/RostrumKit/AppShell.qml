@@ -184,6 +184,7 @@ QQC.ApplicationWindow {
         return false
     }
     Binding { target: OpenPopups; property: "focused"; value: win.activeFocusItem }   // a focused control's own keys (OpenPopups.takes)
+    onClosing: OpenPopups.windowClosing()        // a popup still open ends as a click away ends it: its change is kept
     // The window's ONE Esc: it closes the newest open popup, dialog, drawer or sheet (OpenPopups.top), one per press,
     // wherever the keyboard is. An application shortcut: a modal dialog's scrim stops the window's own shortcuts.
     KeyShortcut { objectName: "escCloses"; sequence: "Escape"; context: Qt.ApplicationShortcut; enabled: OpenPopups.escWanted

@@ -533,6 +533,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
             self._asked_from, self.placed_index(), self.touched(), self._t, self.doc.kind.lists, blur)
 
     def close(self):
+        self.endScrub()        # a field or picker change still open is kept, as its let-go keeps it (before anything closes)
         if self.link:
             self.link.close()
         self.play.stop()
