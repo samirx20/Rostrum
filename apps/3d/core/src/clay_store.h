@@ -58,7 +58,8 @@ class Store {
   // A live stroke on `item` (begin, points…, end or cancel). Points are pixels; `ray` turns them into clay-space rays.
   // 3d-v4: a brush of kPreviewFrom grains or more (clay_preview.h) is shown on a coarse preview while it is drawn, and
   // the clay itself catches up on a thread of the store's own; the end puts the clay's own blocks back.
-  void sculpt_begin(const std::string& item, const Brush& brush);
+  // `preview` false (3d-cl4: the Final look or a render is shown): never the coarse preview, so Cycles never draws it.
+  void sculpt_begin(const std::string& item, const Brush& brush, bool preview = true);
   // A dab event in two parts (3d-v4), so its work can run off the thread that owns the stage:
   //  - sculpt_compute: resamples px (x, y and the pen pressure 0..1), applies the dabs, and meshes the changed blocks
   //    into meshes the store keeps. It never reads or writes the stage; `ray` and `ppm` must not either. Fills dabs,
@@ -79,6 +80,7 @@ class Store {
   SculptReply sculpt_end(const std::string& folder, const std::string& where);
   void sculpt_cancel();
   bool sculpting() const;
+  bool previewing() const;  // 3d-cl4: a live stroke shown on its coarse preview (its prims are on the stage)
   std::string sculpt_item() const;
 
   ClayInfo info(const std::string& item) const;

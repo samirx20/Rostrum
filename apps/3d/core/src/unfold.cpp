@@ -1,6 +1,12 @@
 #include "unfold.h"
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <chrono>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <map>
 #include <memory>
 
@@ -98,6 +104,60 @@ std::vector<GfVec2f> per_corner(const xatlas::Mesh& out, const Fan& t, size_t fa
   return r;
 }
 
+// Meshes laid out together in one square picture of `size` px: their charts (flat pieces) made once (xatlas works on
+// separate meshes in parallel), then packed, again at a smaller texel scale while the pieces spill into a second
+// picture. `fast` (the clay's big, smooth surfaces): no chart grows past `max_area` (m^2; xatlas's slow solve is for
+// big curved charts, small ones lay flat as they are), and pieces sit on 4-pixel steps (fewer places to try packing).
+AtlasPtr atlas_many(const std::vector<xatlas::MeshDecl>& decls, int size, bool fast, float max_area,
+                    const std::string& where) {
+  if (size < 64 || size > 16384) throw Error(where + ".size: " + std::to_string(size) + " is out of range. Accepted: 64..16384");
+  AtlasPtr atlas(xatlas::Create(), xatlas::Destroy);
+  for (const xatlas::MeshDecl& decl : decls) {
+    const xatlas::AddMeshError e = xatlas::AddMesh(atlas.get(), decl, uint32_t(decls.size()));
+    if (e != xatlas::AddMeshError::Success) throw Error(where + ": " + add_error(e));
+  }
+  uint32_t tris = 0;
+  for (const xatlas::MeshDecl& decl : decls) tris += decl.indexCount / 3;
+  xatlas::ChartOptions chart;
+  // measuring knobs (3d-cl4): ROSTRUM3D_UNFOLD_COST (maxCost), ROSTRUM3D_UNFOLD_AREA (maxChartArea, m^2)
+  auto knob = [](const char* name, float dflt) { const char* v = std::getenv(name); return v ? float(std::atof(v)) : dflt; };
+  if (fast) {
+    chart.maxCost = knob("ROSTRUM3D_UNFOLD_COST", 2.0f);
+    chart.maxChartArea = knob("ROSTRUM3D_UNFOLD_AREA", max_area);
+  }
+  using clock = std::chrono::steady_clock;
+  const auto t0 = clock::now();
+  xatlas::ComputeCharts(atlas.get(), chart);
+  const auto t1 = clock::now();
+  const bool profile = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
+  auto ms = [](auto a, auto b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
+  xatlas::PackOptions pack;
+  pack.resolution = uint32_t(size);
+  pack.padding = uint32_t(std::clamp(size / 256, 2, 16));
+  pack.bilinear = true;
+  pack.blockAlign = fast;
+  float texels = 0.0f;
+  for (int attempt = 0; attempt < 6; ++attempt) {
+    pack.texelsPerUnit = texels;
+    xatlas::PackCharts(atlas.get(), pack);
+    if (atlas->meshCount != decls.size() || atlas->width == 0 || atlas->height == 0)
+      throw Error(where + ": xatlas made no picture for the mesh");
+    if (atlas->atlasCount <= 1) {
+      if (profile)
+        std::fprintf(stderr, "unfold charts=%u tris=%u meshes=%zu cost=%.2f area=%g chartsMs=%.1f packMs=%.1f packs=%d\n",
+                     atlas->chartCount, tris, decls.size(), chart.maxCost, chart.maxChartArea, ms(t0, t1),
+                     ms(t1, clock::now()), attempt + 1);
+      return atlas;
+    }
+    texels = atlas->texelsPerUnit * 0.85f;
+  }
+  throw Error(where + ": the mesh's pieces don't fit one " + std::to_string(size) + " px picture");
+}
+
+AtlasPtr atlas_one(const xatlas::MeshDecl& decl, int size, const std::string& where) {
+  return atlas_many({decl}, size, false, 0.0f, where);
+}
+
 }  // namespace
 
 Unfolded unfold_mesh(const VtArray<GfVec3f>& points, const VtArray<int>& counts, const VtArray<int>& indices, int size,
@@ -115,35 +175,89 @@ Unfolded unfold_mesh(const VtArray<GfVec3f>& points, const VtArray<int>& counts,
   decl.indexCount = uint32_t(t.points.size());   // triangles only: no faceVertexCount (see the top of this file)
   decl.epsilon = 1e-6f;  // the core's shapes split points at hard edges; xatlas joins them back by position
 
-  xatlas::PackOptions pack;
-  pack.resolution = uint32_t(size);
-  pack.padding = uint32_t(std::clamp(size / 256, 2, 16));
-  pack.bilinear = true;
-  // Pieces that don't fit one picture spill into a second: shrink the texel scale until all fit in one.
-  float texels = 0.0f;
-  for (int attempt = 0; attempt < 6; ++attempt) {
-    AtlasPtr atlas(xatlas::Create(), xatlas::Destroy);
-    const xatlas::AddMeshError e = xatlas::AddMesh(atlas.get(), decl);
-    if (e != xatlas::AddMeshError::Success) throw Error(where + ": " + add_error(e));
-    pack.texelsPerUnit = texels;
-    xatlas::Generate(atlas.get(), xatlas::ChartOptions(), pack);
-    if (atlas->meshCount != 1 || atlas->width == 0 || atlas->height == 0)
-      throw Error(where + ": xatlas made no picture for the mesh");
-    if (atlas->atlasCount > 1) {
-      texels = atlas->texelsPerUnit * 0.85f;
-      continue;
-    }
-    const xatlas::Mesh& out = atlas->meshes[0];
-    if (out.indexCount != t.points.size())
-      throw Error(where + ": xatlas gave " + std::to_string(out.indexCount) + " triangle corners back for " +
-                  std::to_string(t.points.size()));
-    Unfolded r;
-    r.st = per_corner(out, t, counts.size(), indices.size(), float(atlas->width), float(atlas->height), &r.split);
-    r.charts = int(atlas->chartCount);
-    r.used = atlas->utilization ? atlas->utilization[0] : 0.0f;
-    return r;
+  const AtlasPtr atlas = atlas_one(decl, size, where);
+  const xatlas::Mesh& out = atlas->meshes[0];
+  if (out.indexCount != t.points.size())
+    throw Error(where + ": xatlas gave " + std::to_string(out.indexCount) + " triangle corners back for " +
+                std::to_string(t.points.size()));
+  Unfolded r;
+  r.st = per_corner(out, t, counts.size(), indices.size(), float(atlas->width), float(atlas->height), &r.split);
+  r.charts = int(atlas->chartCount);
+  r.used = atlas->utilization ? atlas->utilization[0] : 0.0f;
+  return r;
+}
+
+UnfoldedTris unfold_triangles(const float* points, size_t npoints, const int32_t* tris, size_t ntris, int size,
+                              const std::string& where) {
+  if (ntris == 0) throw Error(where + ": the surface has no triangles to unfold");
+  if (npoints > UINT32_MAX || 3 * ntris > UINT32_MAX) throw Error(where + ": the surface is too big to unfold");
+  // Regions: the surface cut by a coarse grid (about 3 cells along its longest side) by triangle middle, each region a
+  // mesh of its own with its own points, so xatlas charts them in parallel. A region's edge is a seam, like a chart's.
+  float lo[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, hi[3] = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
+  for (size_t i = 0; i < npoints; ++i)
+    for (int a = 0; a < 3; ++a) lo[a] = std::min(lo[a], points[3 * i + a]), hi[a] = std::max(hi[a], points[3 * i + a]);
+  const float cell = std::max({hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1e-6f}) / 3.0f;
+  double area = 0;
+  std::map<uint64_t, std::vector<uint32_t>> regions;      // cell -> its triangles, in order
+  for (size_t t = 0; t < ntris; ++t) {
+    const float* p[3] = {points + 3 * tris[3 * t], points + 3 * tris[3 * t + 1], points + 3 * tris[3 * t + 2]};
+    uint64_t key = 0;
+    for (int a = 0; a < 3; ++a)
+      key = key * 8 + uint64_t(std::clamp(int(((p[0][a] + p[1][a] + p[2][a]) / 3 - lo[a]) / cell), 0, 7));
+    regions[key].push_back(uint32_t(t));
+    const float u[3] = {p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]};
+    const float v[3] = {p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]};
+    const float c[3] = {u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]};
+    area += 0.5 * std::sqrt(double(c[0]) * c[0] + double(c[1]) * c[1] + double(c[2]) * c[2]);
   }
-  throw Error(where + ": the mesh's pieces don't fit one " + std::to_string(size) + " px picture");
+  struct Region { std::vector<float> pts; std::vector<uint32_t> idx; const std::vector<uint32_t>* tris; };
+  std::vector<Region> parts;
+  std::vector<xatlas::MeshDecl> decls;
+  parts.reserve(regions.size());
+  for (const auto& [key, list] : regions) {
+    Region r{{}, {}, &list};
+    std::map<int32_t, uint32_t> local;
+    for (const uint32_t t : list)
+      for (int k = 0; k < 3; ++k) {
+        const int32_t g = tris[3 * t + k];
+        if (g < 0 || size_t(g) >= npoints) throw Error(where + ": triangle " + std::to_string(t) + " names a missing point");
+        auto [it, made] = local.emplace(g, uint32_t(r.pts.size() / 3));
+        if (made) r.pts.insert(r.pts.end(), points + 3 * g, points + 3 * g + 3);
+        r.idx.push_back(it->second);
+      }
+    parts.push_back(std::move(r));
+  }
+  for (const Region& r : parts) {
+    xatlas::MeshDecl decl;
+    decl.vertexPositionData = r.pts.data();
+    decl.vertexPositionStride = 3 * sizeof(float);
+    decl.vertexCount = uint32_t(r.pts.size() / 3);
+    decl.indexData = r.idx.data();
+    decl.indexFormat = xatlas::IndexFormat::UInt32;
+    decl.indexCount = uint32_t(r.idx.size());
+    decls.push_back(decl);
+  }
+  // charts no bigger than about 1/200 of the surface: measured on a 109k-triangle clay, 30 s -> 2.6 s in one mesh
+  const AtlasPtr atlas = atlas_many(decls, size, true, float(area / 200.0), where);
+  const float w = float(atlas->width), h = float(atlas->height);
+  UnfoldedTris r;
+  r.st.resize(6 * ntris);
+  for (size_t m = 0; m < parts.size(); ++m) {
+    const xatlas::Mesh& out = atlas->meshes[m];
+    const std::vector<uint32_t>& list = *parts[m].tris;
+    if (out.indexCount != 3 * list.size())
+      throw Error(where + ": xatlas gave " + std::to_string(out.indexCount) + " triangle corners back for " +
+                  std::to_string(3 * list.size()));
+    for (size_t j = 0; j < list.size(); ++j)
+      for (int k = 0; k < 3; ++k) {  // corner k of the region's triangle j is corner k of surface triangle list[j]
+        const xatlas::Vertex& v = out.vertexArray[out.indexArray[3 * j + k]];
+        r.st[6 * size_t(list[j]) + 2 * k] = v.uv[0] / w;
+        r.st[6 * size_t(list[j]) + 2 * k + 1] = 1.0f - v.uv[1] / h;  // t counts up
+      }
+  }
+  r.charts = int(atlas->chartCount);
+  r.used = atlas->utilization ? atlas->utilization[0] : 0.0f;
+  return r;
 }
 
 }  // namespace r3d

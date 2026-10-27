@@ -19,6 +19,7 @@
 #include "clay_replay.h"
 #include "clay_shapes.h"
 #include "clay_stroke.h"
+#include "clay_surface.h"
 #include "clay_usd.h"
 #include "clay_volume.h"
 #include "error.h"
@@ -56,6 +57,7 @@ struct Entry {
   std::deque<Pending> pending;    // applied after `keys`, oldest first
   std::set<BlockKey> blocks;      // block prims authored
   bool full = false;              // re-author every block (a new volume, a cache load, a new path)
+  std::string surface;            // 3d-cl4: the CLS1 file whose st the blocks were last given ("" none; clay_surface.h)
   // 3d-v4: the coarse copy kept ready for the next preview stroke (clay_preview.h), as `vol` (coarseOf) was when the
   // copy was last brought up to date; kept up to date after every change once a preview stroke ran on the clay
   std::unique_ptr<Volume> coarse;
@@ -221,6 +223,58 @@ struct Store::Impl {
       throw;
     }
     blocks.end();
+    std::vector<std::pair<BlockKey, const BlockMesh*>> filled;
+    for (size_t i = 0; i < keys.size(); ++i) filled.emplace_back(keys[i], &meshes[i]);
+    reserve_ring(e, filled);
+  }
+
+  // 3d-cl4: empty prims kept ready one ring out around the blocks with a surface, and (a clay that previews) the
+  // preview's coarse blocks over them and one ring of those, so a stroke that grows the clay into the next block, or a
+  // preview that shows a coarse block for the first time, fills a prim that is there instead of adding one: Storm
+  // rebuilds its draw batches for a prim added (part of 3d-v4's 30-75 ms start-of-stroke spikes). Each is what an
+  // emptied block is (clay_usd.h): one triangle of no area, here at a vertex of the block beside it, so the clay's
+  // bounds don't move and nothing draws (Storm, Cycles). Made where the stage changes anyway (a scene's publish, a
+  // stroke's end), never between a stroke's dabs. `madeEmpty`: how many so far (ROSTRUM3D_CLAY_PROFILE).
+  // ROSTRUM3D_CLAY_RING=0 turns it off (an A/B on one build).
+  size_t madeEmpty = 0;
+  void reserve_ring(Entry& e, const std::vector<std::pair<BlockKey, const BlockMesh*>>& filled) {
+    static const bool on = [] {
+      const char* v = std::getenv("ROSTRUM3D_CLAY_RING");
+      return !(v && std::string(v) == "0");
+    }();
+    if (!on) return;
+    const bool coarse = e.wantsCoarse || e.vol->voxel() <= kKeepCopyGrain;
+    std::map<BlockKey, std::array<float, 3>> want;  // the first block beside it gives the point
+    for (const auto& [k, m] : filled) {
+      if (is_preview_key(k) || m->empty()) continue;
+      const std::array<float, 3> at{m->points[0], m->points[1], m->points[2]};
+      for (int dz = -1; dz <= 1; ++dz)
+        for (int dy = -1; dy <= 1; ++dy)
+          for (int dx = -1; dx <= 1; ++dx) {
+            const BlockKey n{k.x + dx, k.y + dy, k.z + dz};
+            if (!e.blocks.count(n)) want.emplace(n, at);
+            if (!coarse) continue;
+            const BlockKey c = preview_key({(k.x >> 1) + dx, (k.y >> 1) + dy, (k.z >> 1) + dz});  // floor(k / 2)
+            if (!e.blocks.count(c)) want.emplace(c, at);
+          }
+    }
+    if (want.empty()) return;
+    BlockMesh m;
+    m.points.resize(9);
+    m.normals = {0, 0, 1, 0, 0, 1, 0, 0, 1};
+    m.indices = {0, 1, 2};
+    blocks.begin();
+    try {
+      for (const auto& [k, at] : want) {
+        for (int v = 0; v < 3; ++v) std::copy(at.begin(), at.end(), m.points.begin() + 3 * v);
+        blocks.set(e.path, k, m, e.blocks);
+      }
+    } catch (...) {
+      blocks.end();
+      throw;
+    }
+    blocks.end();
+    madeEmpty += want.size();
   }
 
   // 3d-v4: a live stroke's meshing and writing, apart (sculpt_compute / sculpt_publish)
@@ -279,6 +333,9 @@ struct Store::Impl {
     last_mesh_ms = ms_since(t0);
     const auto t1 = std::chrono::steady_clock::now();
     write(e, out);
+    std::vector<std::pair<BlockKey, const BlockMesh*>> filled;
+    for (const auto& kv : out) filled.emplace_back(kv.first, &kv.second);
+    reserve_ring(e, filled);  // the blocks this stroke grew into get their ring before the next stroke
     last_usd_ms = ms_since(t1);
   }
 
@@ -437,6 +494,47 @@ struct Store::Impl {
     return true;
   }
 
+  // 3d-cl4: a painted clay at its steps gets its unfolding as st on its full-detail blocks (clay_surface.h: read from
+  // the node's paint file, else made and written there); a clay with no paint has none. A block re-written since
+  // (Blocks::set) lost its st; the blocks are looked at as drawn, so nothing is done when all still hold this file's.
+  void unfold(Entry& e, const Node& n) {
+    const bool want = !n.paintFile.empty() && e.keys.size() == n.steps.size() && e.pending.empty();
+    if (!want && e.surface.empty()) return;
+    std::vector<SurfaceBlock> surf;
+    bool current = want && e.surface == n.paintFile;
+    for (const BlockKey& k : e.blocks) {  // BlockKey order; the preview's prims (all after the fine ones) never
+      if (is_preview_key(k)) continue;
+      SurfaceBlock b;
+      b.key = k;
+      if (!blocks.get(e.path, k, b.points, b.normals, b.indices)) continue;
+      current = current && blocks.has_st(e.path, k);
+      surf.push_back(std::move(b));
+    }
+    if (current) return;
+    const auto t0 = std::chrono::steady_clock::now();
+    std::vector<VtVec2fArray> st;
+    SurfaceStats stats;
+    if (want) st = clay_surface(surf, n.paintSize, n.paintFile, n.id + ".paint", &stats);
+    blocks.begin();
+    try {
+      for (size_t i = 0; i < surf.size(); ++i) {
+        if (want) blocks.set_st(e.path, surf[i].key, std::move(st[i]));
+        else blocks.clear_st(e.path, surf[i].key);
+      }
+    } catch (...) {
+      blocks.end();
+      e.surface.clear();
+      throw;
+    }
+    blocks.end();
+    e.surface = want ? n.paintFile : std::string();
+    static const bool prof = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
+    if (prof && want)
+      std::fprintf(stderr, "claysurf %s %s points=%zu tris=%zu charts=%d weld=%.1f unfold=%.1f file=%.1f all=%.1f ms\n",
+                   n.id.c_str(), stats.made ? "made" : "read", stats.points, stats.triangles, stats.charts,
+                   stats.weldMs, stats.unfoldMs, stats.fileMs, ms_since(t0));
+  }
+
   void cancel_live() {
     if (!live) return;
     struct Drop {
@@ -463,6 +561,7 @@ Store::~Store() = default;
 
 bool Store::has(const std::string& item) const { return p_->clays.count(item) != 0; }
 bool Store::sculpting() const { return p_->live != nullptr; }
+bool Store::previewing() const { return p_->live && p_->live->fine; }
 std::string Store::sculpt_item() const { return p_->live ? p_->live->item : std::string(); }
 
 void Store::sync(const std::vector<Node>& nodes) {
@@ -511,6 +610,7 @@ void Store::sync(const std::vector<Node>& nodes) {
     namespace fs = std::filesystem;
     if (changed && !n.cache.empty() && e.keys.size() == n.steps.size() && !fs::exists(fs::u8path(n.cache)))
       s.cache.request(n.id, e.vol->copy(), n.cache, e.vol->copy_mask());
+    s.unfold(e, n);
   }
   // the kept coarse copies of the clays that changed, brought up to date behind
   std::vector<CoarseTask> tasks;
@@ -526,7 +626,7 @@ void Store::sync(const std::vector<Node>& nodes) {
   s.start_coarse(std::move(tasks));
 }
 
-void Store::sculpt_begin(const std::string& item, const Brush& brush) {
+void Store::sculpt_begin(const std::string& item, const Brush& brush, bool preview) {
   Impl& s = *p_;
   s.cancel_live();
   s.join_coarse();  // the stroke writes the clay, and its preview starts from the kept copy
@@ -537,7 +637,7 @@ void Store::sculpt_begin(const std::string& item, const Brush& brush) {
   live->rec = std::make_unique<ChunkRecord>();
   e.vol->record_into(live->rec.get());
   e.vol->begin_stroke();
-  if (preview_stroke(brush, e.vol->voxel())) {
+  if (preview && preview_stroke(brush, e.vol->voxel())) {
     // the preview is the kept copy (round 2: making it here took 14-18 ms of the first event), brought up to date with
     // what changed since, or a new copy the first time: on the catch-up thread (the first event waits for it); from
     // then on that thread owns the clay
@@ -589,6 +689,8 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
   // held to what the catch-up does in an event (kCatchupMs, less what still waits): a drag faster than the clay keeps
   // up with gets wider spacing, as above, never a long wait at the end. Over kBacklogMs waiting, the event adds no dab
   // (its samples are dropped; the next event's start where this one's ended).
+  // 3d-cl4: the catch-up runs narrow while the brush moves and lets up to Catchup::kWidenMs wait (at the wide pace)
+  // before it goes wide, so only the wait past that counts against an event's room: no fewer dabs than before.
   // ROSTRUM3D_CLAY_EVENT_MS sets kEventBudgetMs (to measure; fewer dabs an event, wider spacing on a fast drag)
   static const double kEventBudgetMs = [] {
     const char* env = std::getenv("ROSTRUM3D_CLAY_EVENT_MS");
@@ -604,7 +706,7 @@ SculptReply Store::sculpt_compute(const std::vector<std::array<float, 3>>& px, c
     const double dabMs = l.fine->dab_ms(), backlog = l.fine->backlog_ms();
     if (dabMs > 0 && l.samples > 0) {
       const double perSample = dabMs * double(l.dabs->dabs().size()) / double(l.samples);
-      const double room = kCatchupMs - backlog;
+      const double room = kCatchupMs - std::max(0.0, backlog - Catchup::kWidenMs);
       most = std::min(most, room > perSample ? size_t(room / perSample) : size_t(1));
     }
     if (backlog > kBacklogMs) most = 0;
@@ -709,9 +811,11 @@ SculptReply Store::sculpt_end(const std::string& folder, const std::string& wher
   // a whole replay with ROSTRUM3D_CLAY_VERIFY=1, the blocks meshed and written)
   static const bool prof = std::getenv("ROSTRUM3D_CLAY_PROFILE") != nullptr;
   if (prof)
-    std::fprintf(stderr, "clayend wait=%.1f (backlog %.1f) end=%.1f mesh=%.1f usd=%.1f blocks=%d hidden=%zu dabs=%zu\n",
+    std::fprintf(stderr,
+                 "clayend wait=%.1f (backlog %.1f) end=%.1f mesh=%.1f usd=%.1f blocks=%d hidden=%zu dabs=%zu narrow=%d"
+                 " made=%zu\n",
                  tFinish, waitBacklog, tEndMs, s.last_mesh_ms, s.last_usd_ms, s.last_blocks, l.hidden.size(),
-                 dabs.size());
+                 dabs.size(), l.fine ? l.fine->narrow_dabs() : 0, s.madeEmpty);
   r.blocks = s.last_blocks;
   r.meshMs = s.last_mesh_ms;
   r.usdMs = s.last_usd_ms;
@@ -727,6 +831,9 @@ void Store::sculpt_cancel() { p_->cancel_live(); }
 
 ClayInfo Store::info(const std::string& item) const {
   Entry& e = p_->entry(item, "clay_info.item");
+  // 3d-cl4: mid-stroke the clay catches up behind the preview (narrow while the brush moves): it is hashed once it
+  // has every dab so far, so the hash is the clay the stroke has made, whatever the pace
+  if (p_->live && p_->live->item == item && p_->live->fine) p_->live->fine->drain();
   ClayInfo i;
   char hex[17];
   std::snprintf(hex, sizeof hex, "%016llx", static_cast<unsigned long long>(e.vol->hash()));

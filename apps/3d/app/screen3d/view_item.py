@@ -24,7 +24,7 @@ from pathlib import Path
 
 from PySide6.QtCore import Q_ARG, QMetaObject, QObject, Qt, Signal, Slot
 
-from rostrum3d import runtime
+from rostrum3d import paint_scene, runtime
 
 MODULE = runtime.REPO / "apps" / "3d" / "core" / ".build" / "install" / "qml"   # the Rostrum3DView module (build.bat)
 ANSWER_S = 120.0             # a request the window doesn't answer in this long fails loudly (a scene of many clays)
@@ -120,7 +120,7 @@ class ViewLink(QObject):
             if h == self._hash:
                 return None
             self._hash = h
-        return json.dumps({"scene": scene})
+        return json.dumps({"scene": {k: v for k, v in scene.items() if k != "paintLater"}})   # its pictures: ensure_scene
 
     def _forget_scene(self):
         with self._lock:
@@ -208,7 +208,7 @@ class ItemEngine:
         if line is None:
             return False
         try:
-            self.link.ask({"scene": scene})
+            paint_scene.send(scene, lambda s: self.link.ask({"scene": s}))    # painted clays: twice (its doc)
         except Exception:
             self.link._forget_scene()
             raise

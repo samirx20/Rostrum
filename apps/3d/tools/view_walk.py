@@ -220,14 +220,14 @@ def main():
         win.grabWindow().save(str(OUT / "view-walk-menu.png"))
         QTest.keyClick(win, Qt.Key_Escape)
         W.pump(0.5)
-        chip = next((c for c in all_items(win.contentItem()) if c.property("text") == "Materials"), None)
+        chip = W.find(win.contentItem(), "rail_materials")          # Materials lives on the tool rail (merged top bar)
         if chip is not None:
             W.click(win, chip)
             W.pump(1.0)
             win.grabWindow().save(str(OUT / "view-walk-materials.png"))
             QTest.keyClick(win, Qt.Key_Escape)
             W.pump(0.5)
-        W.check(chip is not None, "the Materials button is there (its list: view-walk-materials.png)")
+        W.check(chip is not None, "the rail's Materials button is there (its list: view-walk-materials.png)")
 
         # orbit: a left drag on empty space (Escape first: nothing selected, no gizmo in the way)
         QTest.keyClick(win, Qt.Key_Escape)

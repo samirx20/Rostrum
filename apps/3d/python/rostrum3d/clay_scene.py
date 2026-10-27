@@ -97,7 +97,7 @@ def finish(node: dict, item: dict, folder=None, data: dict | None = None):
     """Turn a compiled clay node into the contract's: no brush settings, `detail` the number to build at (worked out
     from `data`'s shots when it follows the camera, clay_detail.py), smooth normals, its keyed steps (a dabs file as
     its absolute path in the project, inline dabs as `dabList`), and its cache file."""
-    for name in BRUSH | {"detailMode"}:
+    for name in BRUSH | {"detailMode", "paintSize"}:       # paintSize: sent as the node's `paint` (paint_scene.py)
         node["props"].pop(name, None)
     node["props"]["detail"] = clay_detail.detail(data or {}, item, folder)
     node["props"]["smooth"] = True

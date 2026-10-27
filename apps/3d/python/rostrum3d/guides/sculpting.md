@@ -87,6 +87,22 @@ Box", "Lump", "Stroke · Add").
   (Add or Carve), a lump's Radius, a stroke's Size and Strength. Changing an old step rebuilds the clay from there on,
   with every later step on top. Each change is one undo step.
 
+## Fine detail: Relief
+
+The clay's grain sets how small a sculpted detail can be. For what is finer (wrinkles, pores, scratches, the weave of
+cloth) don't make the clay finer: paint it as **Relief**. It shows in Final and in the render as real light and shadow
+on the surface, and it stays put when you sculpt the clay again (guide `painting`, "Painting on clay").
+
+How to: a wrinkle across a forehead.
+
+1. Sculpt the forehead's shape first (Add, Smooth). Turn the view so you look at it straight on.
+2. Select the clay and press **B** (Paint). Click **+** next to Paint layers and set **Paints** to **Relief**.
+3. Brush: tip **round**, **Colour** a dark grey (#404040: black sinks, white raises, middle grey leaves it flat),
+   **Opacity** about 50 %, **Size** small (8–16 px).
+4. Drag one slow line where the fold sinks. For the soft ridge above it, set Colour to a light grey (#b0b0b0) and a
+   larger Size, and drag along just above the line.
+5. Shift+F (Final): the wrinkle catches the light. Too deep: undo, lower Opacity, paint again.
+
 ## How it is kept
 
 A drawn shape is kept as its outline on a flat plane; a spun one as its profile and axis; a clay turned from an item

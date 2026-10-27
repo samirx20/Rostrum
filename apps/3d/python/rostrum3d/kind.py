@@ -5,7 +5,7 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
                     ─ import ─ children, parts ─ keys
                     ─ combine ─ children (2+ meshes / combines) ─ keys
                     ─ mesh ─ bones (a chain: bone ─ bones …, keys) ─ keys
-                    ─ clay ─ steps (claystep: pieces and strokes, in order) ─ keys
+                    ─ clay ─ steps (claystep: pieces and strokes, in order), paints (as a mesh's) ─ keys
                     ─ light | camera ─ keys
         ─ materials ─ material
         ─ shots     ─ shot
@@ -47,7 +47,7 @@ def facts(item: dict) -> dict:
         return {"animated": F.animated_fact(item), "animating": True,    # a screen overrides animating with its page
                 "sculpting": True,                                       # and sculpting with its Clay tool being on
                 "boned": bool(item.get("bones")),                         # a mesh with a chain: Bend with bones shows
-                "painted": bool(item.get("paints"))}                      # a mesh with paint layers: Paint size shows
+                "painted": bool(item.get("paints"))}                      # a mesh / clay with paint layers: Paint size shows
     return {}
 
 
@@ -131,6 +131,8 @@ def check(data: dict) -> list[str]:
             by_id = {i["id"]: i for i in everything}               # a step made from an item names it (CL3)
             for step in item.get("steps", []):
                 clay_fields.check_step(item, step, problems, by_id)
+        if t in ("mesh", "clay"):
+            paint_fields.check_strokes(item, problems)
         if t in ("mesh", "combine", "import", "part", "clay"):
             _ref(problems, item, "material", item.get("material"), materials, "material")
         if t == "mesh":
@@ -146,8 +148,10 @@ def check(data: dict) -> list[str]:
 KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts, tidy=clay_dabs.tidy,
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
-# painting on meshes (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one channel
-rostrum_paint.register(REGISTRY, canvas_types=("mesh",), layer_fields=paint_fields.LAYER)
+# painting on meshes and clays (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one
+# channel; a clay's strokes are kept on its surface (anchors, reach: paint_fields.STROKE, clay_paint.py)
+rostrum_paint.register(REGISTRY, canvas_types=("mesh", "clay"), layer_fields=paint_fields.LAYER,
+                       stroke_fields=paint_fields.STROKE)
 
 from .modules import OPS  # noqa: E402
 OPS.load()  # noqa: E402  (they register on REGISTRY: rostrum3d/modules.py)

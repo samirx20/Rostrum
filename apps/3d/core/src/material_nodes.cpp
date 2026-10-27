@@ -37,8 +37,17 @@ UsdShadeShader cycles_image(const UsdStageRefPtr& stage, const SdfPath& mat, con
                             bool colour) {
   UsdShadeShader t = shader(stage, mat, name, "cycles_image_texture");
   set_files(t, "filename", pic);
-  set(t, "colorspace", SdfValueTypeNames->String, std::string(colour ? "__builtin_srgb" : "data"));
-  return t;
+  set(t, "colorspace", SdfValueTypeNames->String, std::string("data"));
+  const std::string& f = pic.files.front();
+  const std::string ext = f.size() > 4 ? f.substr(f.size() - 4) : f;
+  if (!colour || ext == ".exr" || ext == ".hdr" || ext == ".EXR" || ext == ".HDR") return t;  // float: linear already
+  // 3d-cl4: this Cycles reads an 8-bit colour picture as it is, never sRGB-decoded, whether asked "__builtin_srgb" or
+  // left to auto (a painted beige came out pale and grey in Final, beside the right beige in Quick). So it is read
+  // as data and decoded here: gamma 2.2, within a few levels of sRGB's curve. The caller links this node's "color".
+  UsdShadeShader g = shader(stage, mat, (std::string(name) + "Decode").c_str(), "cycles_gamma");
+  set(g, "gamma", SdfValueTypeNames->Float, 2.2f);
+  link(g, "color", SdfValueTypeNames->Color3f, t, "color", SdfValueTypeNames->Color3f);
+  return g;
 }
 
 UsdShadeShader preview_image(const UsdStageRefPtr& stage, const SdfPath& mat, const char* name, const Picture& pic,

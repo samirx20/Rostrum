@@ -56,7 +56,7 @@ NOT_HERE = ("preferences",                  # no setting of 3D is a person's to 
             "actual_size", "fit", "fit_all",                # the viewport has no 100 % and no framing yet (` is the shot's view)
             "find_item", "library", "add_file", "notes_tool")
 KEYS3D = KeyMap("Rostrum3D", OWN, drop=NOT_HERE, words={
-    "move_tool": "Select (all handles; leaves Paint and Clay)", "paint_tool": "Paint on the mesh",
+    "move_tool": "Select (all handles; leaves Paint and Clay)", "paint_tool": "Paint on the mesh or clay",
     "go_in": "Go in (Edit mesh; cut with the Knife; make the bones)",
     "go_out": "Go out (leave Edit mesh; pick the group)",
     "copy_style": "Copy material", "paste_style": "Paste material",

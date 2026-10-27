@@ -4,6 +4,10 @@
 # (ROSTRUM3D_PERF=1). It says nothing about Qt: the real-window numbers are clay_hops.py's.
 #   <venv python> apps\3d\tools\clay_dab_bench.py [--detail 0.002] [--size 0.03] [--brush add] [--moves 120]
 #                                               [--mirror 1] [--out file.json]   (through heavy.ps1 ... gpu)
+# 3d-cl4: --strokes N (default 2), each a little further across the ball; "start" is each stroke's first two dabs
+# (the start-of-stroke spike) with Storm's counters on them (rebuildBatches: a prim added), and "clayBlocks" the clay's
+# block prims before and after (the empty ones kept ready count too). ROSTRUM3D_CLAY_RING=0 /
+# ROSTRUM3D_CLAY_CATCHUP_MOVING_THREADS=0 switch 3d-cl4's two changes off for an A/B on the same build.
 import argparse
 import collections
 import json
@@ -50,6 +54,7 @@ def main():
     ap.add_argument("--drop", default="", help="item ids left out of the scene (comma separated), e.g. vase")
     ap.add_argument("--png", default="", help="the last picture saved there")
     ap.add_argument("--wide", type=int, default=0, help="1: the camera far enough to see the whole set (the glass)")
+    ap.add_argument("--strokes", type=int, default=2, help="strokes, each 20 px further down the ball")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     folder = Path(tempfile.mkdtemp(prefix="rostrum-dabbench-"))
@@ -69,7 +74,7 @@ def main():
            "width": W, "height": H}
     view = {**cam, "renderer": "storm", "view": "", "exposure": 0.0, "studio": 1.0, "sceneLights": bool(a.lights),
             "ao": 1.0, "dof": True, "selected": ["lump"] if a.selected else []}
-    recs, perf = [], collections.defaultdict(list)
+    recs, perf, starts = [], collections.defaultdict(list), []
     import rostrum3d
     assert Path(rostrum3d.__file__).resolve().is_relative_to(HERE.parents[2]), rostrum3d.__file__
     with Engine() as eng:
@@ -88,7 +93,7 @@ def main():
             for k, x in (pic[4].get("perf") or {}).items():
                 perf[k].append(x)
             del pic
-        for stroke in range(0 if a.static else 2):
+        for stroke in range(0 if a.static else a.strokes):
             pts = []
             for i in range(a.moves):
                 k = i % 48
@@ -96,7 +101,7 @@ def main():
                 pts.append([round(W / 2 - r_px + 2 * r_px * u, 1),
                             round(H / 2 + 0.3 * r_px * ((i // 48) % 3 - 1) + 20 * stroke, 1)])
             eng.sculpt(item="lump", phase="begin", points=[pts[0]], **cam, **brush)
-            for p in pts[1:]:
+            for j, p in enumerate(pts[1:]):
                 rep, pic = eng.sculpt_view(view, item="lump", phase="dab", points=[p], **cam)
                 v = pic[4] if pic else {}
                 if pic:
@@ -108,8 +113,11 @@ def main():
                 recs.append(rec)
                 for k, x in (v.get("perf") or {}).items():
                     perf[k].append(x)
+                if j < 2:
+                    starts.append({"stroke": stroke, "dab": j, **rec, "perf": v.get("perf") or {}})
             eng.sculpt(item="lump", phase="end", folder=str(folder), points=[], **cam)
         eng._request({"info": {}})                       # ROSTRUM3D_TRACE: the dabs' trace
+        info_after = eng.clay_info("lump")
         if a.png:
             from PySide6.QtGui import QImage
             mv, w, h, stride, _ = eng.view(**view)
@@ -117,6 +125,10 @@ def main():
             mv.release()
     report = {"args": vars(a), "clay": info, "scene": {k: out.get(k) for k in ("items", "prims")} if isinstance(out, dict) else None,
               "hops": {k: stats([r.get(k) for r in recs]) for k in KEYS},
+              "clayBlocks": {"before": (info or {}).get("blocks"), "after": (info_after or {}).get("blocks")},
+              "start": {"roundPlusTotalMs": stats([(r.get("roundMs") or 0) + (r.get("totalMs") or 0) for r in starts]),
+                        "rebuildBatches": sum((r["perf"].get("rebuildBatches") or 0) for r in starts),
+                        "dabs": starts},
               "perf": {k: stats(v) | {"n": len(v)} for k, v in sorted(perf.items())}}
     print(json.dumps(report, indent=1))
     if a.out:

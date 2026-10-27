@@ -42,9 +42,10 @@ def build(type_: str, id_: str, values: dict, where: str = "", extra=()) -> dict
     for key in F.LISTS[type_]:
         item[key] = []
     if type_ == "stroke":
-        if "points" not in item:
+        if "points" not in item and not any(p.name in values for p in extra):   # a host's own path (3D: anchors)
             raise RostrumError(codes.BAD_ARGUMENT, where, '"points"', "is required", ["[[x, y, pressure], …]"])
-        item["points"] = with_pressure(item["points"])
+        if "points" in item:
+            item["points"] = with_pressure(item["points"])
         if "seed" not in values:
             item["seed"] = seed_of(id_)
     return item
@@ -88,13 +89,15 @@ def _never(ctx, canvas):
     return False
 
 
-def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=(), seamless=_never):
+def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=(), seamless=_never, stroke_fields=()):
     """Add the kit's operations to an app's registry. `canvas_types`: the host item types that are canvases;
     `peers(ctx, canvas_id)`: the canvases sharing paint layers with it (linked.py), itself included;
     `layer_fields`: the host's own paint layer fields (Params), on paint.add and paint.set (3D: which surface
     channel a layer paints); `seamless(ctx, canvas)`: whether a canvas's opposite edges are joined (2D: a seamless
-    painting's; 3D: a texture that repeats), so a stroke made on it gets `wrap` (wrap.py) unless it says."""
-    canvas_types, extra = tuple(canvas_types), tuple(layer_fields)
+    painting's; 3D: a texture that repeats), so a stroke made on it gets `wrap` (wrap.py) unless it says;
+    `stroke_fields`: the host's own stroke fields, on stroke.add and stroke.set (3D: a clay stroke's `anchors` on
+    the surface, from which the host lays its `points`; a stroke given one of them may leave `points` out)."""
+    canvas_types, extra, own = tuple(canvas_types), tuple(layer_fields), tuple(stroke_fields)
 
     def every(ctx, targets):
         """Each target paint layer with its copies in the canvases sharing with it, each once, in order."""
@@ -103,7 +106,8 @@ def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=(), s
             out += [c for c in linked.copies(ctx, t, canvas_of(ctx.doc, ctx.kind.lists, t)["id"], peers) if c not in out]
         return out
     _field_op(registry, "paint", every, extra)
-    for type_ in ("stroke", "fill", "paintmask"):
+    _field_op(registry, "stroke", extra=own)
+    for type_ in ("fill", "paintmask"):
         _field_op(registry, type_)
 
     @registry.operation("paint.add", "Add a paint layer to a canvas (on top unless index is given); where canvases share paint "
@@ -163,11 +167,14 @@ def register(registry, canvas_types=("frame",), peers=_alone, layer_fields=(), s
 
     @registry.operation("stroke.add", "Paint one stroke into a paint layer: a path of points and a brush. Several "
                         "stroke.add calls in one call list are one undo step. On a seamless canvas the stroke wraps: paint "
-                        "that crosses an edge comes back on the opposite side.", target="paint", label="Paint",
-                        params=[ID, *(_required(p) if p.name == "points" else p for p in F.FIELDS["stroke"])])
+                        "that crosses an edge comes back on the opposite side." + (
+                            f" Instead of points, the app's own path ({', '.join(p.name for p in own)}: see each "
+                            "field) may be given." if own else ""), target="paint", label="Paint",
+                        params=[ID, *(_required(p) if p.name == "points" and not own else p for p in F.FIELDS["stroke"]),
+                                *own])
     def stroke_add(ctx, targets, args):
         for t in targets:
-            item = _new(ctx, "stroke", args if len(targets) == 1 else {**args, "id": None})
+            item = _new(ctx, "stroke", args if len(targets) == 1 else {**args, "id": None}, own)
             if "wrap" not in args and seamless(ctx, canvas_of(ctx.doc, ctx.kind.lists, t)):
                 item["wrap"] = True
             _check_mask(ctx, t, item["mask"], item["id"])

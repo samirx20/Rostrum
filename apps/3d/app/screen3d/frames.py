@@ -40,6 +40,7 @@ class ViewRenderer(PictureWorker):
         self._final = False                          # the last view was the Final look (Cycles), worker thread only
         self.link = link                             # the window's own view (view_item.ViewLink), or None: pictures
         self._want, self._loading = None, False      # its newest (scene, view) waiting for the scene in flight
+        self._later = None                           # (scene, view) whose painted clays wait for their surface
         if link is not None:
             link.drawn.connect(self._drawn)
         self.start()
@@ -60,16 +61,34 @@ class ViewRenderer(PictureWorker):
         line = self.link.needs(scene)
         if line is not None:
             self._loading = True
+            self._later = (scene, req) if scene.get("paintLater") else None
             self.link._post_line(line, self._loaded)
         self.link.show(req)
 
     def _loaded(self, out):
         self._loading = False
+        later, self._later = self._later, None
         if isinstance(out, str):
             self.link._forget_scene()
             self.failed.emit(f"Error: viewport scene: {out}")
+        elif later is not None:
+            self.call(lambda _engine: self._paint_later(*later))
         if self._want is not None:
             self._push()
+
+    def _paint_later(self, scene: dict, req: dict):
+        """(worker) The painted clays' surfaces are made now (the scene's load wrote them): lay their paint and send
+        the scene again with its pictures, then draw. Only while the window still holds that scene."""
+        from rostrum3d import paint_scene
+        if self.link._last is not scene:
+            return                                   # a newer scene went in meanwhile: it carries its own paint
+        try:
+            first = {k: v for k, v in scene.items() if k != "paintLater"}
+            self.link.ask({"scene": paint_scene.finish(first, scene["paintLater"])})
+            self.link.show(req)
+        except Exception as e:  # noqa: BLE001  shown, never silent
+            self.link._forget_scene()
+            self.failed.emit(f"Error: viewport paint: {e}")
 
     def pick(self, scene: dict, req: dict):
         """What is at req's x, y (Engine.pick's fields); answered by `picked`."""

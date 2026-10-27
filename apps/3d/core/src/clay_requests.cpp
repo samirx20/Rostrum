@@ -176,7 +176,7 @@ JsObject Core::sculpt(const JsObject& o) {
     if (b.spacing < 0.05f || b.spacing > 1) throw Error("sculpt.spacing: must be 0.05..1 (a share of the brush radius)");
     b.frontOnly = a.flag("frontOnly", false);
     b.invert = a.flag("invert", false);
-    clay_->sculpt_begin(a.str("item"), b);
+    clay_->sculpt_begin(a.str("item"), b, !final_look_);  // Cycles never draws the coarse preview (3d-cl4)
   } else if (!clay_->sculpting()) {
     throw Error("sculpt.phase: no stroke begun; send phase \"begin\" first");
   }

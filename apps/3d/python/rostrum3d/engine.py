@@ -136,12 +136,20 @@ class Engine:
         return out
 
     def ensure_scene(self, scene: dict) -> bool:
-        """Send the scene only when it differs from the one the engine holds. True when it was sent."""
+        """Send the scene only when it differs from the one the engine holds. True when it was sent. A scene with
+        painted clays whose surface isn't made yet (`paintLater`) is loaded twice: without their pictures, then with
+        them (paint_scene.send)."""
         with self._lock:
             self._ensure_running()
-            if hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest() == self._hash:
+            h = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
+            if h == self._hash:
                 return False
-            self.load(scene)
+            if scene.get("paintLater"):
+                from . import paint_scene
+                paint_scene.send(scene, self.load)
+                self._hash = h                          # this scene, as asked, is what the engine holds
+            else:
+                self.load(scene)
             return True
 
     def render(self, progress=None, timeout_s: float | None = None, **req) -> dict:

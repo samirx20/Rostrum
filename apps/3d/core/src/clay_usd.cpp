@@ -35,9 +35,16 @@ constexpr float kMaskDarken = 0.6f;
 constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no material and no displayColor
 const char* const kShade = "primvars:rostrumMaskShade";
 const char* const kDisplayColor = "primvars:displayColor";
+const char* const kSt = "primvars:st";  // 3d-cl4: a painted clay's unfolding (clay_surface.h)
 
 std::string coord(int v) { return v < 0 ? "n" + std::to_string(-v) : std::to_string(v); }
 TfToken block_name(const BlockKey& k) { return TfToken("clay_" + coord(k.x) + "_" + coord(k.y) + "_" + coord(k.z)); }
+
+// a block's st taken off (it changed: its unfolding no longer fits it)
+void drop_st(const SdfLayerHandle& layer, const SdfPath& prim) {
+  if (SdfAttributeSpecHandle a = layer->GetAttributeAtPath(prim.AppendProperty(TfToken(kSt))))
+    layer->GetPrimAtPath(prim)->RemoveProperty(a);
+}
 
 void check(const TfErrorMark& mark, const std::string& where) {
   if (mark.IsClean()) return;
@@ -86,6 +93,7 @@ void Blocks::set(const SdfPath& clay, const BlockKey& key, const BlockMesh& m, s
   const SdfPath path = clay.AppendChild(block_name(key));
   const bool exists = have.count(key) != 0;
   const auto attr = [&](const char* name) { return path.AppendProperty(TfToken(name)); };
+  if (exists) drop_st(layer, path);
   if (m.empty()) {
     // An emptied block keeps its prim (3d-v4): a prim removed or added makes Storm rebuild its draw batches
     // (rebuildBatches; 15-25 ms when a stroke's preview took 8 fine blocks down for each of its own), and the same
@@ -180,6 +188,49 @@ void Blocks::remove_all(const SdfPath& clay, std::set<BlockKey>& have) {
   }
   have.clear();
   check(mark, "removing the blocks of " + clay.GetString());
+}
+
+bool Blocks::get(const SdfPath& clay, const BlockKey& key, VtVec3fArray& points, VtVec3fArray& normals,
+                 VtIntArray& indices) const {
+  const SdfLayerHandle layer = p_->layer;
+  const SdfPath path = clay.AppendChild(block_name(key));
+  const TfToken& dflt = SdfFieldKeys->Default;
+  const VtValue p = layer->GetField(path.AppendProperty(TfToken("points")), dflt);
+  const VtValue n = layer->GetField(path.AppendProperty(TfToken("normals")), dflt);
+  const VtValue i = layer->GetField(path.AppendProperty(TfToken("faceVertexIndices")), dflt);
+  if (!p.IsHolding<VtVec3fArray>() || !n.IsHolding<VtVec3fArray>() || !i.IsHolding<VtIntArray>()) return false;
+  points = p.UncheckedGet<VtVec3fArray>();
+  normals = n.UncheckedGet<VtVec3fArray>();
+  indices = i.UncheckedGet<VtIntArray>();
+  // an emptied block (set): one triangle of no area, its 3 points the same
+  if (indices.size() == 3 && points.size() == 3 && points[0] == points[1] && points[1] == points[2]) return false;
+  return !indices.empty();
+}
+
+bool Blocks::has_st(const SdfPath& clay, const BlockKey& key) const {
+  return p_->layer->HasSpec(clay.AppendChild(block_name(key)).AppendProperty(TfToken(kSt)));
+}
+
+void Blocks::set_st(const SdfPath& clay, const BlockKey& key, VtVec2fArray st) {
+  TfErrorMark mark;
+  const SdfLayerHandle layer = p_->layer;
+  const SdfPath path = clay.AppendChild(block_name(key));
+  const SdfPath stPath = path.AppendProperty(TfToken(kSt));
+  if (!layer->HasSpec(stPath)) {
+    SdfPrimSpecHandle prim = layer->GetPrimAtPath(path);
+    if (!prim) throw Error("clay: no block " + path.GetString() + " to unfold");
+    SdfAttributeSpec::New(prim, kSt, SdfValueTypeNames->TexCoord2fArray)
+        ->SetInfo(UsdGeomTokens->interpolation, VtValue(UsdGeomTokens->faceVarying));
+  }
+  layer->SetField(stPath, SdfFieldKeys->Default, VtValue::Take(st));
+  check(mark, "writing the unfolding of " + path.GetString());
+}
+
+void Blocks::clear_st(const SdfPath& clay, const BlockKey& key) {
+  TfErrorMark mark;
+  const SdfPath path = clay.AppendChild(block_name(key));
+  drop_st(p_->layer, path);
+  check(mark, "taking the unfolding off " + path.GetString());
 }
 
 }  // namespace r3d::clay

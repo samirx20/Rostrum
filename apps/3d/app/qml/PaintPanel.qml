@@ -3,7 +3,7 @@ import RostrumKit
 
 // The settings panel while Paint is on (SPEC §5, mockup 06; screen3d/paint_mode_qt.py). "Painting on Lid", then Brush:
 // the kit's bar settings (tip, size, colour, opacity) as the kit's own rows, and Paints (what the active layer paints:
-// Colour, Roughness, Height, Metal, Glow); then Paint layers, top first, + for a new one; each row: its eye, its name
+// Colour, Roughness, Relief, Metal, Glow); then Paint layers, top first, + for a new one; each row: its eye, its name
 // (click: paint on it), what it paints. A drag on the viewport paints on the active layer, one undo step per stroke.
 // Only what applies now is shown: Paints only with a layer to set it on. B or Esc leaves.
 Item {
