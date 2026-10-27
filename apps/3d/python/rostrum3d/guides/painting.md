@@ -12,11 +12,18 @@ sculpt the clay again afterwards (see "Painting on clay").
    for painting by itself (the message line says "Unfolding Lid…" for a moment). Nothing is asked. Unfolding is one
    undo step of its own. A clay needs nothing: it is laid flat by itself each time its shape changes.
 3. The settings panel now shows the brush and the paint layers:
+   - **On the surface | From the view**: where a stroke lands. *On the surface* paints the selected item where you
+     drag. *From the view* keeps the drag exactly as you drew it on the picture and paints every item under it (a stroke
+     across a case and its lid lands on both, one undo step); its **Size** is in pixels of the screen. A view stroke
+     stays editable: it is laid on the surfaces each time the paint is made, from the view it was drawn in.
    - **Brush**: the tip (round, bristle, chalk, flat, block, line), **Size** (in pixels of the paint picture, which is
      2048 px across unless you change it), **Colour** and **Opacity**.
    - **Paints**: what the active layer paints. **Colour**; **Roughness** (white = rough and dull, black = mirror);
      **Relief** (middle grey = flat, white = raised, black = sunk: fine detail such as wrinkles, pores and scratches); **Metal** (white =
      metal); **Glow** (its colours give off light).
+   - **▨** beside the layers' **+**: the coverage tint. Every surface the shot's camera sees and nothing paints yet
+     gets a faint orange hatch (on the screen only, never in Final or a render), and the line under it says how much
+     is done: "Seen by Hero 01: 62 % painted". The first tint from a new view takes a few seconds ("tinting…").
    - **Paint layers**, top first. **+** adds a layer painting the same as the active one. Click a layer's name to
      paint on it; its dot shows or hides it. With no layer yet, your first stroke makes a Colour layer. A layer is
      named after what it paints ("Roughness 1") and its name follows when you change Paints, until you rename it.
@@ -24,7 +31,12 @@ sculpt the clay again afterwards (see "Painting on clay").
    **Each stroke is one undo step** (Ctrl+Z takes back exactly that stroke). The disc at the pointer is the brush's
    size as it lands on the surface. Right-drag (or middle-drag) turns the view, Shift-drag pans, so you can turn the model between
    strokes. The move handles are hidden while you paint.
-5. **B** or **Esc** leaves Paint. Selecting something else leaves it too.
+5. **B** or **Esc** leaves Paint (Bones is **Shift+B**). Selecting something else leaves it too.
+6. **Project a picture**: select the shapes (Ctrl+click their names in the scene list), right-click one ›
+   **Project a picture from Hero 01…** › a rendered 2D item of the project, or **A picture file…**. Each shape gets a
+   layer with the picture laid on it from the shot's camera, like a slide projector: what the camera can't see (behind
+   the case, facing away) stays unpainted, so turning the view shows the depth. A 2D item stays linked: render it again
+   in Rostrum2D and the 3D view follows by itself. Paint over it on the same layer or on layers above.
 
 Paint sits over the material's own value: where you haven't painted, the surface is exactly its material (its colour,
 its roughness, its own pictures). A layer painting Roughness changes only roughness: the colour stays.
@@ -83,11 +95,92 @@ tool, then paint Relief for what is smaller than its grain (guide `sculpting`).
 - `paintSize` on the mesh (256..8192, default 2048) is the picture's side. Paint strokes are kept in its pixels, so set
   it before painting.
 
+## For agents: seeing and checking paint
+
+Five tools look at paint. Canvas coordinates are always pixels of the item's paint picture (0..paintSize, x right,
+y down) or a `uv` (x = u × paintSize, y = (1 − v) × paintSize).
+
+- `look_paint target=<mesh or clay>`: the paint picture itself, flat. All layers together, one `layer`, or one
+  `channel` (`roughness`, …); `zoom` [x0, y0, x1, y1] and `grid` label canvas pixels, the same numbers `stroke.add`'s
+  `points` use. Unpainted shows as a checkerboard. A clay's anchored strokes, strokes from the view and projected
+  pictures are shown laid, as the render gets them. The reply gives each layer and the box that holds paint.
+- `inspect_paint_strokes target=<mesh, clay or paint layer>`: one line per stroke, where it landed and how far off:
+  `stroke s3 (From the view, layer paint_1): landed on case and lid, 1.2 screen px off (canvas x 410–980, y 220–260)`.
+  A stroke on the surface is measured on the canvas (canvas px between its paint's centre and its path); a stroke from
+  the view through its own camera (screen px between where the paint shows and where you drew it). Each row also has
+  `uvBox`, and for a view stroke `share` (how much of the drawn path is on this item).
+- `look_coverage shot=<id> frame=<n>`: through the shot camera, how much of each mesh and clay it sees is painted
+  ("lid: 62 % painted (41 000 of 66 000 px seen)"), and the frame with what is seen but unpainted hatched orange. A
+  spot counts as painted where any shown layer is at least half opaque, as the screen counts. A mesh seen but never
+  unfolded is named: `mesh.unfold` it first.
+- `look_where target=<item> px=[x, y]` (or `uv=[u, v]`): the reverse of `look_at`. Where that canvas spot shows on
+  the shot's picture (its pixel), the world point and which way the surface faces there; or that it isn't seen (behind
+  something, facing away, out of frame), with the nearest pixel where the item is seen.
+- `look_at` gives on every hit `normal` (the surface direction, "facing [0, 1, 0]" is a top), `faceSet` on a mesh
+  with face materials (that face's own material), `uv`, and where something is painted `painted`: the topmost shown
+  layer with paint there, its channel, colour and how opaque. Its reply's `view` is the picture's camera as
+  `stroke.add`'s From the view fields.
+
+## For agents: painting from the view
+
+A stroke from the view is drawn on a picture of the shot, the way a person drags across the viewport: the path is
+kept in that picture's pixels with the camera it was seen through, and laid on whatever the camera sees there each
+time the paint is made. One stroke can cross several items.
+
+1. `look_frame` (the width you want, e.g. 960) shows the picture. Choose the path's pixels on it.
+2. `look_at` with those pixels as `points` (same width): each hit names the item under it. Its reply's `view` holds
+   `viewEye`, `viewTarget`, `viewFov`, `viewSize`, `viewFrame`: the camera as stroke.add takes it.
+3. One `stroke.add` per item the path crosses, all in one `edit_document` call list (one undo step), each on a paint
+   layer of that item (`paint.add` first if it has none), each with the same view fields and the same `viewPoints`:
+
+   ```json
+   [{"op": "stroke.add", "target": ["case_colour"], "args": {"viewPoints": [[300, 410, 1], [520, 380, 1], [700, 300, 0.6]],
+     "viewEye": [1.2, 0.9, 2.4], "viewTarget": [1.0, 0.75, 1.5], "viewFov": 28.2, "viewSize": [960, 540], "viewFrame": 0,
+     "size": 14, "color": "#c23b22", "brush": "round"}},
+    {"op": "stroke.add", "target": ["lid_colour"], "args": {"viewPoints": [[300, 410, 1], [520, 380, 1], [700, 300, 0.6]],
+     "viewEye": [1.2, 0.9, 2.4], "viewTarget": [1.0, 0.75, 1.5], "viewFov": 28.2, "viewSize": [960, 540], "viewFrame": 0,
+     "size": 14, "color": "#c23b22", "brush": "round"}}]
+   ```
+
+   `size` is in pixels of that picture (screen px), not of the paint picture. Leave out `points`.
+4. Check: `inspect_paint_strokes` on each item says it landed there and how far off; `look_frame` shows it;
+   `look_coverage` shows what the shot still sees unpainted.
+
+A stroke on the surface (`points` in canvas px) is the other way: work out the canvas pixels from `look_at`'s `uv`,
+or read them off `look_paint` with a `grid`.
+
+## How view strokes, projected pictures and coverage are kept
+
+- **A stroke from the view** keeps its path as drawn: `viewPoints` in pixels of a `viewSize` [width, height] picture
+  from the camera `viewEye` → `viewTarget` with `viewFov` (vertical, degrees) at `viewFrame`, and `viewShot` when it
+  was drawn through a shot. `stroke.add` also takes them as one `view` {eye, target, fov, frame, width, height,
+  points, shot}; they are stored as the flat fields. Each time the paint is made it is laid from the camera's texel
+  picture (which spot of which item every pixel sees): every screen pixel of the path takes the canvas pixel under it,
+  the brush `size` goes from screen px to canvas px by how big the surface looks there, pressure is kept, and the path
+  is cut where it leaves the item or crosses a seam (a jump on the canvas). Move or reshape the item and the stroke
+  lands where the camera now sees it. A path that the camera sees on none of the item paints nothing there.
+- **A projected picture** is a paint layer with `projectSource` (a picture file, or `2d:<2D item id>`: that item's
+  newest pictures render, its first frame) and the projector's camera (`projectEye`, `projectTarget`, `projectFov`,
+  `projectSize`, `projectFrame`). `paint.project` makes one on each target, on top, in one change: `{"op":
+  "paint.project", "target": ["wall_a", "wall_b", "wall_c"], "args": {"shot": "hero", "picture": "2d:poster"}}` (the
+  shot's camera at its start, or `frame`; or a free camera: `eye`, `target`, `fov`, `width`, `height`; optional `name`,
+  `channel`). Each texel the camera sees gets the picture's colour there; what is hidden or faces away stays
+  unpainted, so another camera sees the picture lying on the surfaces, with their depth. The layer's own strokes
+  paint over the picture. Render the 2D item again and the projection follows at the next look.
+- **Coverage** counts, through a shot camera's picture, the pixels showing each painted item (`seen`) and those on
+  paint that is at least half opaque in any shown layer (`painted`), and their share. The orange hatch is laid only in
+  the screen's view, never in a render or export.
+- The first stroke from a new camera (or a projection) waits for its texel picture: the scene is loaded once without
+  that paint, the picture is drawn, then the paint is laid and the scene loaded again. Later strokes from the same
+  camera on the same shapes go in at once (the picture is kept until the shapes or the camera change).
+- Paint pictures bleed a few texels past each piece's edge of the unfolded surface, so no line shows at a seam, and an
+  editable mesh's faces with their own material show the paint too (over that material's own colour or value).
+
 ## What it doesn't do yet
 
-- Painting from the camera (strokes projected through the view), projecting a picture onto shapes, and the coverage
-  tint come next.
+- A projected 2D render shows its first frame (a still), not the animation.
+- Only plain over-painting is kept across a projected layer: a layer above it that multiplies, screens or smudges the
+  layers below mixes with them as if the projected layer weren't there.
 - Seams: the unfold cuts where it must. A stroke that crosses a cut continues as a second stroke on the other side,
   in the same undo step (on a clay, each time it is laid); its two halves may not meet exactly.
-- Faces with their own material (an editable mesh's face materials, a logo's sides) show their own material, not the
-  paint.
+- A logo's or an outline's front and sides show their own material, not the paint.

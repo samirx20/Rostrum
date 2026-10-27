@@ -17,7 +17,9 @@ Item {
         const g = source.mapToItem(null, x, y)
         menu.entries = list
         menu.openAt(g.x, g.y)
+        project.openAt(g.x, g.y)          // Project a picture… opens its own short menu at the same place
     }
+    ProjectPicture { id: project }
     ActionMenu {
         id: menu
         objectName: "contextMenu3d"

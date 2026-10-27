@@ -22,7 +22,7 @@ from rostrum_core.tree import walk
 
 from rostrum_core.errors import codes
 
-from . import clay_dabs, clay_fields, copies_fields, fields as F, mirror, paint_fields
+from . import clay_dabs, clay_fields, copies_fields, fields as F, mirror, paint_fields, paint_view
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
 HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",),
@@ -168,7 +168,8 @@ def check(data: dict) -> list[str]:
     return problems
 
 
-KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts, tidy=clay_dabs.tidy,
+KIND = DocKind("3d", ".trd", REGISTRY, lists=LISTS, check=check, facts=facts,
+               tidy=lambda calls, folder=None: paint_view.tidy(clay_dabs.tidy(calls, folder)),   # view strokes: flat
                new=lambda: {"id": "root", "type": "doc", "items": [], "materials": [], "shots": [], "poses": []})
 
 # painting on meshes and clays (SPEC §5): the shared kit's paint layers, strokes and masks, each layer painting one

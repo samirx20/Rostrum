@@ -148,7 +148,7 @@ class Engine:
                 return False
             if scene.get("paintLater"):
                 from . import paint_scene
-                paint_scene.send(scene, self.load)
+                paint_scene.send(scene, self.load, self.texels_reply)
                 self._hash = h                          # this scene, as asked, is what the engine holds
             else:
                 self.load(scene)
@@ -166,6 +166,17 @@ class Engine:
     def pick(self, **req) -> dict:
         """`camera`, or a free camera `eye` + `target` + `fov` (§ 4)."""
         return self._request({"pick": req})
+
+    def texels_reply(self, req: dict) -> dict:
+        """The `texels` request (v1.22) as sent: camera fields as `pick`, frame, width, height and the `file` it writes
+        (u, v, item, distance a pixel; texels.read reads it). texels.cached takes this as its `ask`."""
+        return self._request({"texels": req})
+
+    def texels(self, **req):
+        """Which texel of which item each pixel of a camera's picture sees, as a texels.Picture (uv, item, items,
+        distance, of(id)). Camera fields as `pick`; without a `file` a temporary one, read and removed."""
+        from . import texels
+        return texels.fetch(self.texels_reply, req)
 
     def geometry(self, item: str) -> dict:
         """The built mesh of a `mesh` or `combine` item in its own space: points, faceCounts, faceIndices."""

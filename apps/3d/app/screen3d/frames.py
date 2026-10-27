@@ -87,7 +87,8 @@ class ViewRenderer(PictureWorker):
             return                                   # a newer scene went in meanwhile: it carries its own paint
         try:
             first = {k: v for k, v in scene.items() if k != "paintLater"}
-            out = self.link.ask({"scene": paint_scene.finish(first, scene["paintLater"])})
+            out = self.link.ask({"scene": paint_scene.finish(first, scene["paintLater"],
+                                                             lambda r: self.link.ask({"texels": r}))})
             self.copiesInfo.emit(out.get("copies") or {})
             self.link.show(req)
         except Exception as e:  # noqa: BLE001  shown, never silent

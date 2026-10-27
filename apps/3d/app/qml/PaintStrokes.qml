@@ -2,8 +2,9 @@ import QtQuick
 import RostrumKit
 
 // Paint on the viewport (SPEC §5; screen3d/paint_mode_qt.py, paint_stroke.py): while Paint is on, a left drag paints on
-// the mesh (each point picked by the engine; the paint lands on release, one undo step), the drag's trail is drawn
-// thin over the picture until then, and the brush shows as a disc at the pointer, its size as it lands on the surface.
+// the mesh (On the surface: each point picked by the engine; From the view: kept as drawn; the paint lands on release, one
+// undo step), the drag's trail is drawn in the brush's colour and width over the picture until the painted picture is on
+// screen, and the brush shows as a disc at the pointer, its size as it lands on the surface.
 // Right drag turns the view, middle drag too, Shift + drag pans (they fall through to the viewport); right-click is its menu.
 Item {
     id: ps
@@ -17,10 +18,12 @@ Item {
             var c = getContext("2d"), t = paintMode.trail
             c.clearRect(0, 0, width, height)
             if (t.length > 1) {
-                c.strokeStyle = Theme.accent; c.lineWidth = 2; c.lineCap = "round"; c.lineJoin = "round"
+                c.strokeStyle = paintMode.brushObj.colour; c.globalAlpha = 0.85
+                c.lineWidth = Math.max(2, 2 * paintMode.cursorRadius / ps.dpr); c.lineCap = "round"; c.lineJoin = "round"
                 c.beginPath(); c.moveTo(t[0][0] * width, t[0][1] * height)
                 for (var i = 1; i < t.length; ++i) c.lineTo(t[i][0] * width, t[i][1] * height)
                 c.stroke()
+                c.globalAlpha = 1
             }
             if (area.inside) {
                 var r = paintMode.cursorRadius / ps.dpr

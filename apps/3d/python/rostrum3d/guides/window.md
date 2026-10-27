@@ -104,9 +104,17 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   **Handheld** start at once and run the way the camera looks. The new rig is selected: its Distance, Angle, Lift …
   are in the settings panel (guides/camera-rigs.md).
 
-- **Paint** (B), at the bottom while one mesh or clay is selected: paint on it (colour, roughness, relief, metal, glow). The
-  settings panel becomes Brush and Paint layers; a drag on it paints, one undo step per stroke; B or Esc leaves.
-  The guide `painting` has it all.
+- **Paint** (B; Bones is Shift+B), at the bottom while one mesh or clay is selected: paint on it (colour, roughness,
+  relief, metal, glow). The settings panel becomes Brush and Paint layers; a drag on it paints, one undo step per
+  stroke; B or Esc leaves. On top of Brush, **On the surface | From the view**: On the surface paints the selected item
+  where you drag; From the view keeps the drag as drawn on the picture and paints every item it crosses (a stroke across
+  a case and its lid lands on both, still one undo step). The trail stays drawn in the brush's colour until the paint
+  is in the picture. Beside Paint layers' +, **▨** tints what the shot camera sees and isn't painted yet (a faint
+  orange hatch, on the screen only) and the line under it says "Seen by Hero 01: 62 % painted".
+- **Project a picture from <shot>…** (right-click, with several shapes selected or while painting): a rendered 2D item
+  of the project (it follows the 2D item: render it again in 2D and the 3D view updates) or a picture file, laid on the
+  selected shapes from the shot's camera like a projector; what the camera doesn't see stays unpainted, so turning the
+  view shows depth. The guide `painting` has it all.
 - **Pose** (Shift+P), on the Build and Animate pages while one clay is selected: bend the clay by dragging its parts. The
   first time (or after the shape changed) it finds the joints from the shape, one undo step ("Finding joints…" shows
   meanwhile). While Pose is on, the clay's bones are thin lines with a small dot on each joint, posed at the playhead;

@@ -20,7 +20,7 @@ LONG_STATUS = ("Error: render: the picture was not written: the engine said done
 IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
-         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
+         "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "paint-view-coverage", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
          "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished", "render-running", "render-done", "clay-selected",
          "import-menu", "import-unit-note", "copies-selected", "copies-context-shape", "copies-scatter-menu", "copies-near-added")
 BATCH = 6
@@ -225,6 +225,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("paint-mode", s, ["select block", "paint-b", "wait 1500"]),                    # Brush, Paint layers (none yet)
         ("paint-layers", s, ["select block", "paint-b", "wait 1500", "paint-layer", "paint-channel roughness",
                              "paint-drag 0.42 0.5 0.58 0.55", "wait 1500"]),            # a roughness stroke, its layer
+        # brief 21: From the view (a drag kept as drawn, laid on what it crosses) with the coverage tint on and its line
+        ("paint-view-coverage", s, ["select block", "paint-b", "wait 1500", "paint-where view", "paint-tint",
+                                    "paint-drag 0.35 0.5 0.65 0.5", "wait 2500"]),
         # Clay (Q, clay_tool_qt.py): Make only, nothing to sculpt yet; then a real Lump click on the ground makes a clay
         # (clay.add: the core's clay must be built), its Brush tiles and rows; then Carve picked by a real click
         # (`settled` before and after Q: Q's action runs a frame later, and a click in the same instant met Select; after the click: the picture

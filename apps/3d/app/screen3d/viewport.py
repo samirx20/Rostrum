@@ -172,6 +172,17 @@ class Viewport(QObject):
         self._pivots = {}
         self.redraw()
 
+    def swap_scene(self, drawn: dict, other: dict) -> bool:
+        """Draw `other` instead of `drawn` (the scene sent now; the coverage tint's copy, coverage_qt.py) while the
+        document is unchanged; False when `drawn` is no longer the one sent."""
+        if self._wide is drawn:
+            self._wide = other
+        elif self._scene is drawn and self.cam.mode != "shot":
+            self._scene = other
+        else:
+            return False
+        return True
+
     def _on_shot(self):
         """Another shot is shown: look through its camera, its frame size."""
         self.cam.camera, self._started = "", False
@@ -220,6 +231,20 @@ class Viewport(QObject):
         if self._wide is None:
             self._fit()
         return self._wide, {**cam, "camera": shot_frame.VIEW_CAMERA}
+
+    def drawn_pose(self) -> dict:
+        """The view the picture is drawn through as a free camera (eye, target, vertical fov, frame and picture size):
+        a stroke From the view is kept with it (paint_mode.view_pose). Through the shot it is the shot camera made as
+        wide as the viewport (its overscan copy: same eye and aim, sensor × the fit's factor)."""
+        w, h = self._size
+        if self.cam.mode != "shot":
+            return {"eye": list(self.cam.eye), "target": list(self.cam.target), "fov": self.cam.fov,
+                    "frame": self.bridge.frame, "width": w, "height": h}
+        tmp = ViewCam()
+        tmp.home(self._compiled(), self._shot["camera"], self.bridge.frame, w / h)
+        factor = w / self._frame_fit()[2]
+        fov = math.degrees(2 * math.atan(math.tan(math.radians(tmp.fov) / 2) * factor))
+        return {"eye": tmp.eye, "target": tmp.target, "fov": fov, "frame": self.bridge.frame, "width": w, "height": h}
 
     def _home(self):
         w, h = self._size or (16, 9)
