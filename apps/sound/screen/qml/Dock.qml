@@ -45,11 +45,12 @@ Item {
         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: tabs.verticalCenter }
         onClicked: workspace.setDock(d.tool !== "" ? "" : "editor")
     }
-    MouseArea {   // the top edge (the gap above the open tool): drag to resize it
+    MouseArea {   // the top edge (the gap above the open tool, a little over each side): drag to resize it
         id: edge
         visible: d.tool !== ""
-        anchors { left: parent.left; right: parent.right; top: parent.top }
-        height: Theme.grid; cursorShape: Qt.SizeVerCursor; preventStealing: true
+        z: 1
+        anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: -6 }
+        height: 16; cursorShape: Qt.SizeVerCursor; preventStealing: true
         property real y0: 0
         property real h0: 0
         onPressed: (m) => { y0 = mapToItem(null, m.x, m.y).y; h0 = d.height }
