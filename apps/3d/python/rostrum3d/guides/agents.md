@@ -198,6 +198,8 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   later. Part-way amounts ride that share of each frame's move. `stick.add` (`item`: a plane, disc, box, sphere,
   cylinder, cone, capsule or editable mesh; optional `height`) stands them on its surface straight below; their `y` is
   then the height above it. Each is one undo step; the fields are `follow`, `followAmount`, `stick` (`<type>.set`).
+  `follow.add` with `pose: true` on a posed clay (or a mesh with bones) rides the bone nearest each rider instead
+  (`followPose`): an eye on a turning head. Parts placed on a clay get it already (`place_on`, `edit_place_on`).
   A hinge is a pivot: put `px py pz` on the lid's back edge (`x y z` is then where that edge stands) and key `rx`.
   `look_sheet` shows whether the rider stays put after it is let go.
 - **Posing a clay.** Any clay bends: `pose.find_joints` finds its joints from its shape (body, chest, arm.L,
