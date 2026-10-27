@@ -16,7 +16,8 @@ from rostrum_sound.doc import select_time as ST
 from . import drum_steps as D, key_lock, moves, pick, timing
 
 FOLLOWED = ("Paste", "Duplicate")      # a step that makes notes the person didn't place by hand: the roll shows them
-MARGIN = 0.08                           # of the view's width, kept clear round what it slides to show
+PITCHED = ("Change Pitch", "Pitch ", "Transpose")   # a typed or keyed pitch on the selected notes: the roll goes to where they are now
+MARGIN = 0.08                         # of the view's width, kept clear round what it slides to show
 END_PX = 6.0         # a note's end handle: its last 6 px (RollInput.snapPx)
 
 
@@ -43,11 +44,14 @@ class RollHover:
         up or down the same way and flashes them once). Its undo and redo move nothing."""
         hist = self.doc.history.changes
         c = hist[-1] if hist else None
-        if c is None or not c.original or c.seq <= self.__dict__.get("_followed", 0) or not c.label.startswith(FOLLOWED):
+        if c is None or not c.original or c.seq <= self.__dict__.get("_followed", 0) or not c.label.startswith(FOLLOWED + PITCHED):
             return
         self.__dict__["_followed"] = c.seq
         by, drums = self.__dict__.get("_roll_by", {}), self._view["roll"].get("drums") or []
-        made = [by[i] for i in ST.inserted(c) if i in by and by[i]["type"] in ("note", "hit")]
+        if c.label.startswith(PITCHED):      # the notes it moved (still selected): the roll follows them to their new keys
+            made = [by[i] for i in self._picks.ids if i in by and by[i]["type"] == "note"]
+        else:
+            made = [by[i] for i in ST.inserted(c) if i in by and by[i]["type"] in ("note", "hit")]
         if not made:
             return
         t0, t1 = min(b["t"] for b in made), max(b["t"] + b.get("dur", 0.0) for b in made)
