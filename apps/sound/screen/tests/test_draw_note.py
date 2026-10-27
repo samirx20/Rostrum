@@ -106,3 +106,29 @@ def test_the_screens_blocks_follow_every_edit(bridge):  # noqa: F811
         same()
         g.cancel()
     same()
+
+
+def test_a_draw_click_lands_where_its_faint_note_and_snap_line_showed(bridge):  # noqa: F811
+    """The hover's faint note and snap line ("Bar 13") and the note the click then draws are one place, at every grid
+    and pointer offset (hand composer r2 #6: at 1/16, 66 px a bar, a click 4 px past bar 13 drew a 16th late); a bar
+    line within 7 px is the place, and the 16ths beside a beat stay reachable."""
+    from screensound import timing
+    b, root = bridge, bridge.doc.data
+    b.select("lead")
+    b.setTool("draw")
+    px = 2.0 / 66.15                                            # 66 px a bar (120 bpm: 2 s a bar)
+    for g in ("1/16", "1/8", "beat", "auto"):
+        b.setGrid(g)
+        for off in range(-9, 40):
+            t = 8.0 + off * px                                  # around bar 5's line
+            ghost = b.rollHover(t, 62, 0.0001, px, True)["ghost"]
+            nid = b.drawAt(t, 62, px)
+            b.endDrag()
+            at = timing.sec(b.doc.item(nid)["at"], root)
+            assert abs(at - ghost["t"]) < 1e-4, (g, off, ghost, at)
+            assert ghost["snap"] == timing.snap_words(at, root)
+            b.undo()
+    b.setGrid("1/16")
+    for off in (-6, -2, 0, 3, 4, 6):                            # aimed at the bar: the bar
+        assert b.rollHover(8.0 + off * px, 62, 0.0001, px, True)["ghost"]["snap"] == "Bar 5", off
+    assert b.rollHover(8.5 + 4 * px, 62, 0.0001, px, True)["ghost"]["snap"] == "5.2.2"   # a 16th past beat 2

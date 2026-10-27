@@ -13,7 +13,7 @@ import "Pointers.js" as Pointers
 // a double-click adds a note (or, on the drum rows, a hit). The Draw tool (B; V is Select): a click on empty space adds
 // a note Note ▾ long (drag on: longer) or a hit; on the drum rows Draw is the step tool: a click on an empty step adds a hit,
 // a click on a hit removes it, a drag along a row paints (or, from a hit, erases) every grid step it passes (Shift+click an accent,
-// Alt+click soft; one undo step per stroke: backend.stepPress / stepTo / stepEnd). A new note or hit goes in the grid cell under the pointer (timing.snap). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
+// Alt+click soft; one undo step per stroke: backend.stepPress / stepTo / stepEnd). A new hit goes in the grid cell under the pointer, a new note on the nearest grid line, a bar line within 7 px first (timing.snap: the faint note shows the same place). The two tools' buttons are on the dock's top line (EditorHeader). A note's right end (its last 6 px, inside the note: a click
 // just past it is empty space, so Draw adds the next note there) sets its length (every selected note by the same amount, one undo
 // step; a chip beside the pointer says the length, "1/8"); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
 // Right-click: the item's actions (the kit's short menu, then Quantise, Humanise, Transpose ▸), or on empty space what
@@ -23,7 +23,9 @@ import "Pointers.js" as Pointers
 // badge while Alt copies), its ends `resize` sideways (the length), empty space with Draw `make`, and what a Draw click
 // would remove `pick` with the red remove badge, lit red (a hit; a note with Alt: Draw+Alt click erases it, Draw+Alt
 // drag still copies). With Draw, a faint note or hit sits where a click would put it (backend.rollHover: the click's
-// own snap, key lock and length), its key lit on the keyboard (PLAN S1). Locked during a drag (the mode says it).
+// own snap, key lock and length), its key lit on the keyboard (PLAN S1), and the snap line at its start names what the
+// click lands on ("Bar 15", "Beat 15.3", "Marker: Flash"): a marker within 6 px catches before the grid, so it is seen
+// before the click; Alt on the notes' empty space lets markers go (the grid alone). Locked during a drag (the mode says it).
 // A drag shows the kit's value chip by the pointer: a move "+1 bar 2 beats · +3 semitones" (what the dragged note
 // moved, snap included), a length "1/8". Esc during a drag (after the 4 px) puts everything back, no undo step
 // (dragEsc; the drum stroke and a note's end too). A box has no chip; Esc gives back the selection as it was before the box.
@@ -77,14 +79,14 @@ MouseArea {
     function endUnder(e) { return kind === "notes" ? backend.rollHandleAt(bars.tOf(e.x), grid.rowAt(e.y), snapPx / bars.perSec) : ({}) }
     function hoverAt(x, y, e) {         // one answer a move; the ghost's key lit on the keyboard
         altHeld = !!e && alt(e)
-        over = backend.rollHover(bars.tOf(x), grid.rowAt(y), tol(y), 1 / bars.perSec, drawTool)
+        over = backend.rollHover(bars.tOf(x), grid.rowAt(y), tol(y), 1 / bars.perSec, drawTool, gridOnly(altHeld))
         var g = over.ghost
         grid.hoverKey = g && g.keys ? g.keys[0] : -1
     }
     function leave() { over = ({}); grid.hoverKey = -1 }
     Connections {   // Alt pressed or let go with the pointer still: the pointer and the red light follow at once
         target: backend.altWatch
-        function onChanged(held) { if (m.containsMouse && !m.pressed) m.altHeld = held }
+        function onChanged(held) { if (m.containsMouse && !m.pressed) { m.altHeld = held; if (m.drawTool && m.kind === "notes") m.over = backend.rollHover(m.bars.tOf(m.x1), m.grid.rowAt(m.y1), m.tol(m.y1), 1 / m.bars.perSec, true, m.gridOnly(held)) } }
     }
     onExited: leave()
     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -101,6 +103,7 @@ MouseArea {
     function ctrl(e) { return (e.modifiers & Qt.ControlModifier) !== 0 }
     function shift(e) { return (e.modifiers & Qt.ShiftModifier) !== 0 }
     function alt(e) { return (e.modifiers & Qt.AltModifier) !== 0 }
+    function gridOnly(a) { return a && kind === "notes" }     // Draw + Alt on the notes' empty space: the grid alone, no marker
     function far(e) { return Math.abs(e.x - x0) >= 4 || Math.abs(e.y - y0) >= 4 }
 
     onWheel: (w) => {   // Ctrl zooms, Shift / sideways scrolls in time (the Timeline's view); else up and down
@@ -146,7 +149,7 @@ MouseArea {
         if (h.id) { hit = h.id; handle = h.handle; mode = "hpress"; return }
         if (hit !== "" && backend.tool === "draw" && kind === "notes" && alt(e)) { mode = "erase"; return }   // a click erases, a drag copies
         if (hit === "" && backend.tool === "draw") {          // Draw: a click on empty space adds a note / hit there
-            hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), 1 / bars.perSec)
+            hit = backend.drawAt(bars.tOf(e.x), grid.rowAt(e.y), gridOnly(alt(e)) ? 0 : 1 / bars.perSec)   // (no pixel size: no marker caught)
             mode = hit !== "" && kind === "notes" ? "hpress" : ""   // dragging on sets the new note's length
             drawn = true
             handle = "length"
@@ -210,7 +213,7 @@ MouseArea {
             visible: !!m.ghost && m.grid.shows(key)
             x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
             width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
-            color: m.grid.roll.hue; opacity: 0.55       // faint, still seen on the dark rows (real-window check)
+            color: m.ghost && m.ghost.out ? Theme.danger : m.grid.roll.hue; opacity: 0.55   // faint, still seen on the dark rows; red: a row its sound can't play (the click is refused)
         }
     }
     Diamond {   // a hit

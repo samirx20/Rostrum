@@ -32,6 +32,8 @@ AppShell {
     function openInKey() { dock.openInKey() }                // (`inkey-open`: the In key menu, open)
     function openNote() { dock.openNote() }                  // (`note-open`: the Note menu, open)
     function openGrid() { arrangement.openGrid() }          // (`grid-open`: the Grid menu, open)
+    function openKey() { if (shell.timeBox) shell.timeBox.openKey() }        // (`key-open`: the key picker, open)
+    function openGoToBar() { if (shell.timeBox) shell.timeBox.askBar() }     // (`gotobar-open`: Go to bar, open)
     function openPicturePick() { backend.setPictureOpen(true); arrangement.picture.openItems() }     // (`picture-pick`)
     function openExport() { if (shell.hasSound) mixer.export.setOpen(true) }
     // Export: the kit's sheet in the settings panel's place (Ctrl+E; Ctrl+Shift+E again: AppShell), filled with Sound's
@@ -53,6 +55,7 @@ AppShell {
         else if (job === "sample_rate") settingsPanel.open()           // Preferences: where it is set
         else if (job === "tempo") openSong()
         else if (job === "grid") openGrid()
+        else if (job === "go_to_bar") { if (shell.timeBox) shell.timeBox.askBar() }     // Ctrl+B: the Go to bar field (SongReadout)
         else shell.runJob(job)
     }
     Connections { target: backend; function onJobWanted(job) { shell.runSoundJob(job) } }
@@ -62,6 +65,7 @@ AppShell {
     KeyShortcut { sequence: "Ctrl+,"; enabled: !OpenPopups.takes(["Ctrl+,"]); onActivated: settingsPanel.open() }
     KeyShortcut { sequence: "Ctrl+Q"; enabled: !OpenPopups.takes(["Ctrl+Q"]); onActivated: Qt.quit() }
     KeyShortcut { sequence: "R"; enabled: !OpenPopups.takes(["R"]); onActivated: recorder.toggleRecord() }
+    KeyShortcut { sequence: "Ctrl+B"; enabled: !OpenPopups.takes(["Ctrl+B"]); onActivated: shell.runSoundJob("go_to_bar") }
 
     // ONE key map for the window (the kit's KeyMap, INTERACTION.md Part 2): every shared key and Sound's own
     // (screensound/keys.py) call backend.actions.key(job): an action on the selection when it applies (else the

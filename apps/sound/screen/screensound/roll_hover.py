@@ -9,16 +9,18 @@ from __future__ import annotations
 from fractions import Fraction
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
-from rostrum_core import RostrumError
+from rostrum_core import RostrumError, codes, run
+from rostrum_sound import note_ranges
 from rostrum_sound.doc import chords, keys as K, meter, tempo
 from rostrum_sound.doc import select_time as ST
 
-from . import drum_steps as D, key_lock, moves, pick, timing
+from . import drum_steps as D, key_lock, moves, pick, roll_range, timing
 
 FOLLOWED = ("Paste", "Duplicate")      # a step that makes notes the person didn't place by hand: the roll shows them
 PITCHED = ("Change Pitch", "Pitch ", "Transpose")   # a typed or keyed pitch on the selected notes: the roll goes to where they are now
 MARGIN = 0.08                         # of the view's width, kept clear round what it slides to show
 END_PX = 6.0         # a note's end handle: its last 6 px (RollInput.snapPx)
+PITCH_OPS = ("note.add", "note.add_many", "note.transpose", "note.chord", "note.fit_key", "note.invert", "note.duplicate")   # may put a note on another key
 
 
 def length_words(beats: float, bar: float) -> str:
@@ -37,6 +39,61 @@ def length_words(beats: float, bar: float) -> str:
 
 class RollHover:
     rollShow = Signal(float, float, "QVariantList")     # Paste / Duplicate made these on the roll: its time span, its keys or drum rows
+    rollPlayableChanged = Signal()
+
+    @Property("QVariantList", notify=rollPlayableChanged)
+    def rollPlayable(self):
+        """[lowest, highest] key the Editor's track's recorded sound plays: the roll shades the rows outside it (roll_range.py).
+        [] for a sound that plays any key (synths, models), a drum or clip track, or while the engine is still asked."""
+        return list(self.__dict__.get("_playable") or [])
+
+    def _playable_check(self):
+        """After the roll is sent (another track, another sound) or an answer came: the range again, from what was kept;
+        a sound not asked yet is asked once, off the window's thread."""
+        roll, now = self._view.get("roll") or {}, None
+        if roll.get("kind") == "notes" and self._track and self.doc.has(self._track):
+            inst = note_ranges.sound_of(self.doc.data, self._track)
+            if inst is not None:
+                asked, now = note_ranges.kept(inst)
+                if not asked:
+                    self._range_asker().want(inst)
+        if now != self.__dict__.get("_playable"):
+            self.__dict__["_playable"] = now
+            self.rollPlayableChanged.emit()
+
+    def _range_asker(self):
+        if "_asker" not in self.__dict__:
+            a = self.__dict__["_asker"] = roll_range.Asker(self)
+            a.answered.connect(self._playable_check)
+        return self.__dict__["_asker"]
+
+    def _range_refusal(self, track_id, keys) -> str:
+        """The top bar's words when `keys` (MIDI) on `track_id` are outside its sound's kept range, else ""."""
+        rng = roll_range.playable(self.doc.data, track_id)
+        bad = [k for k in keys if rng and not rng[0] <= k <= rng[1]]
+        return note_ranges.words(roll_range.name_of(self.doc.data, track_id), *rng, bad) if bad else ""
+
+    def _range_guard(self, calls):
+        """Before an edit on notes is applied (Transpose, ↑ ↓, a double-click's note, a paste): refused in words when it
+        would take notes outside their track's recorded range (planned once, not kept; only what was kept is read)."""
+        tracks = set()
+        for c in calls:
+            if not (c.get("op") in PITCH_OPS or "pitch" in (c.get("args") or {})):
+                continue                                # (Quantise, Humanise, velocity…: no key changes, no plan)
+            for i in c.get("target") or []:
+                if isinstance(i, str) and self.doc.has(i):
+                    tracks.add(i if self.doc.item(i)["type"] == "track" else self.doc.parent_of(i)[0])
+        ranges = {t: r for t in tracks if (r := roll_range.playable(self.doc.data, t))}
+        if not ranges:
+            return
+        try:
+            work = run.plan_indexed(self.doc.kind, self.doc.data, [dict(c) for c in calls], check=False)[0]
+        except RostrumError:
+            return                                      # the edit's own refusal says it
+        out = roll_range.outside(self.doc.data, work, ranges)
+        if out:
+            words = note_ranges.words(roll_range.name_of(self.doc.data, out[0]), out[1], out[2], out[3])
+            raise RostrumError(codes.BAD_ARGUMENT, "notes", "", words, plain=words)
 
     def _roll_follow(self):
         """A Paste or Duplicate (Ctrl+V, Ctrl+D) put notes or hits on the roll's track: the view slides just enough in time
@@ -73,11 +130,15 @@ class RollHover:
     altWatch = Property(QObject, _alt_watch, constant=True)     # Alt's changes with the pointer still (roll_keys.py)
 
     @Slot(float, float, float, float, bool, result="QVariantMap")
-    def rollHover(self, t, row, tol, px, draw):
+    @Slot(float, float, float, float, bool, bool, result="QVariantMap")
+    def rollHover(self, t, row, tol, px, draw, grid_only=False):
         """The pointer at `t` seconds on roll row `row` (a key, or a drum row's index), `tol`: how near a block counts (on
         the drum rows, how wide the diamond is at the pointer's height: <0 off it), `px`: one screen pixel in seconds.
         {"id", "part" ("length" / "noteStart" / "body"), "t", "dur", "keys", "row"} for the block under it, else with
-        `draw`: {"ghost": {"t", "end", "keys" | "row"}} where a click would put a note or a hit; {} for nothing."""
+        `draw`: {"ghost": {"t", "end", "keys" | "row", "snap"}} where a click would put a note or a hit, `snap` the words
+        for what it lands on ("Bar 15", "Beat 15.3", "Marker: Flash": the snap line shows them before the click; "" with
+        Snap off); `grid_only` (Alt on the notes' empty space): the grid alone, markers and section edges let go (the
+        click then sends no pixel size, so it lands the same way). {} for nothing."""
         roll = self._view.get("roll") or {}
         kind = roll.get("kind")
         if kind not in ("notes", "drums") or not self._track:
@@ -99,12 +160,25 @@ class RollHover:
             at = D.cell_of(t, root, grid, px)
             if any(b["type"] == "hit" and b["drum"] == drums[i] and abs(b["t"] - at) <= D.SAME for b in roll.get("blocks", [])):
                 return {}                  # a click there adds nothing (the step has its hit)
-            return {"ghost": {"t": at, "end": at, "row": i}}
-        at = timing.snap(t, root, False, grid, "cell", px)
+            return {"ghost": {"t": at, "end": at, "row": i, "snap": self._snap_said(t, at, px, grid)}}
+        if grid_only:
+            px = 0.0                                  # (timing.catch: no pixel size, no marker caught)
+        at = timing.snap(t, root, False, grid, "draw", px)          # the click's own snap (moves_add.add_note_call)
         key = int(round(row))
         key = key_lock.snapped(root, at, key) if self.keepInKey else key
         end = tempo.seconds_at(root, timing.beat(at, root) + self._draw_beats(timing.beat(t, root)))
-        return {"ghost": {"t": at, "end": end, "keys": self._stamped(key, at, root)}}
+        keys = self._stamped(key, at, root)
+        rng = self.__dict__.get("_playable")
+        out = bool(rng) and any(not rng[0] <= k <= rng[1] for k in keys)      # a click there is refused (lit red)
+        return {"ghost": {"t": at, "end": end, "keys": keys, "snap": self._snap_said(t, at, px, grid), "out": out}}
+
+    def _snap_said(self, t, at, px, grid) -> str:
+        """The snap line's words for a Draw click at `t` landing at `at`: the marker or section edge it caught (the same
+        timing.catch the click runs), else the grid line; "" with Snap off."""
+        if not grid.on:
+            return ""
+        caught = timing.catch(t, grid, px) if px > 0 else None
+        return timing.snap_words(at, self.doc.data, caught if caught is not None and abs(caught.value - at) < 1e-6 else None)
 
     def _stamped(self, key, at, root) -> list[int]:
         """The keys a Draw click stamps on `key` (Note ▾ › Draw: a single note, or a chord shape: note.chord's tones in

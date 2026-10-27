@@ -24,7 +24,7 @@ The values, exactly as written (anything else is refused with this list):
 The audio is not made by editing: call the `render_voice` tool (optional `ids`). It makes each missing take, one at a time (a
 job: ask `inspect_job` if it did not finish), and answers per line with `file`, `seconds`, `generated` or cached, and
 `start` / `end` in seconds, so the next line can be placed after this one. Then `render_mix` and listen with the look
-tools. Rendering with an unmade line fails and names the line. Words, voice, style, language or seed changed = make again.
+tools. **How long before it is made:** `render_voice` (`what: "estimate"`, optional `ids`, or just `text` and `language`) answers `estimated_seconds` with a range, e.g. "about 3.2 s (2.5-3.9)", and `ends_about`; a made line gives its exact `made_seconds`. Counted from syllables and pauses and measured on the real voice (17 takes: 13 % off on average): the same words come out 10-25 % faster or slower on another take, so leave that much room, then place the next line from the made `end`. Rendering with an unmade line fails and names the line. Words, voice, style, language or seed changed = make again.
 
 The voice model is not installed with the app (about 1.9 GB). When it is missing, `render_voice` says so and names the
 step: the `run_model_install` tool with model `voice` (a job; `inspect_job` shows how far it is). Two of its three files

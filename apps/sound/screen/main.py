@@ -174,6 +174,12 @@ def file_step(screen, step) -> bool:
         QMetaObject.invokeMethod(screen.win, "openNote")
     elif word == "grid-open":                 # the header strip's Grid ▾ menu, open
         QMetaObject.invokeMethod(screen.win, "openGrid")
+    elif word == "key-open":                  # the header strip's key picker, open (KeyPicker)
+        QMetaObject.invokeMethod(screen.win, "openKey")
+    elif word == "gotobar-open":              # Go to bar (Ctrl+B), open
+        QMetaObject.invokeMethod(screen.win, "openGoToBar")
+    elif word == "velocity-height":           # velocity-height <px>: the velocity strip as its top edge dragged
+        screen.bridge.setVelocityHeight(float(rest))
     elif word == "file-in":                   # + Add › From a file… (a sound, a MIDI file or a video)
         screen.ctx_file_in.add(rest)
     elif word == "settings":

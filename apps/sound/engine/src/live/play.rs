@@ -4,7 +4,8 @@
 //!   {"metronome": true} {"countIn": 1} {"record": true} {"record": {"punch": [8, 12]}} {"record": false}
 //!   {"on": 60, "velocity": 0.8} {"off": 60} {"load": "<new mix.wav>"} {"quit": true}
 //! Out on stdout, one JSON object per line: {"ready": …}, {"pos": {t, playing}} every 50 ms while it
-//! changes (the mix time at the speaker), {"rolling": t}, {"wrapped": t}, {"end": t}, {"note": {key,
+//! changes (the mix time at the speaker), {"rolling": t} (once the first played block reaches the speaker: the sound
+//! starts now, at mix time t; within 5 ms), {"wrapped": t}, {"end": t}, {"note": {key,
 //! velocity, start, end}} (recorded, in mix seconds), {"levels": {t, strips: {<track | bus id | "master">: [peakDb,
 //! rmsDb]}}} ~30 times a second while rolling (each strip's loudest 1/30 s window since the last line, at the speaker's
 //! mix time, read from the render's `<mix>.levels.json`: mix/render/levels.rs) and {"levels": null} once when it stops,
@@ -17,9 +18,10 @@
 //! --until-end (quit when playback ends), --measure <notes> (a test pattern on the instrument),
 //! --monitor auto|surround|binaural|stereo (a surround mix on this output: monitor.rs; `ready.monitor` says
 //! which and why), --master <json> (the mastering spec a fold-down or binaural render is held to).
-//! The commands are play/protocol.rs; the microphone takes play/takes.rs.
+//! The commands are play/protocol.rs; the microphone takes play/takes.rs. A {"load"} is read off the command thread
+//! (protocol.rs `loader`) and swapped in at the playhead when it is read; a Play with recording armed waits for it.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -29,6 +31,7 @@ mod meters;
 mod protocol;
 mod takes;
 
+use crate::live::frames::Frames;
 use crate::live::instrument::{Instrument, LiveSpec, Report};
 use crate::live::play::mix::Monitoring;
 use crate::live::transport::{Clock, Cmd, Out, Transport};
@@ -84,6 +87,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
         s.slot = Some(p.slot());
     }
     let chosen = monitoring.clone();
+    // The mixes the stream has played: dropped here, never on the audio thread (freeing ~70 MB there costs a block).
+    let (ftx, frx) = channel::<Arc<Frames>>();
+    let mut kept: Vec<Arc<Frames>> = vec![];
     let make = move |dev: &crate::live::monitor::Device| -> Result<Transport, String> {
         let rate = dev.rate;
         let inst = match &spec {
@@ -93,9 +99,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             None => None,
         };
-        Ok(Transport::new(Arc::new(chosen.first(&mix, mix_rate, dev)?), rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_bars(&bar_times).with_hear(hear).with_chirp(calibrate))
+        let first = Arc::new(chosen.first(mix, mix_rate, dev)?);
+        let _ = ftx.send(first.clone());
+        Ok(Transport::new(first, rate, bpm, beats, inst, crx, nrx, otx).with_beats(&beat_times).with_bars(&bar_times).with_hear(hear).with_chirp(calibrate))
     };
     let (opened, audio) = wasapi::start_on(make, stop.clone(), !flag("--shared"), Some(mix_rate as u32))?;
+    kept.extend(frx.try_recv());
     if let Some(p) = plugin.as_mut() {
         p.activate(opened.rate)?;
     }
@@ -119,7 +128,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
             "monitor": monitoring.report(Some(opened.channels as usize)), "midiDevices": devices, "mic": mic.as_ref().map(|(m, _)| serde_json::json!({ "rate": m.rate, "device": m.device, "name": m.name, "raw": m.raw, "inputOffsetMs": input_offset.map(|o| (o * 1e5).round() / 100.0) })) } })
     );
     let until_end = flag("--until-end") || calibrate;
-    let input = protocol::read_input(mtx.clone(), ntx.clone(), rate, monitoring.clone(), arg::<usize>(args, "--measure", 0)?, until_end);
+    // Loads asked for (protocol.rs counts them) and read; a Play while recording is armed waits for the newest.
+    let (asked, mut loaded, mut waiting) = (Arc::new(AtomicU64::new(0)), 0u64, None::<Cmd>);
+    let input = protocol::read_input(mtx.clone(), ntx.clone(), rate, monitoring.clone(), arg::<usize>(args, "--measure", 0)?, until_end, asked.clone());
     let mic_rate = mic.as_ref().map_or(48000.0, |(m, _)| m.rate as f64);
     let calibrating = calibrate.then(|| Calibrating { beat: 60.0 / bpm, device: opened.device.clone(), mic_device: mic.as_ref().map(|(m, _)| m.device.clone()).unwrap_or_default(), raw: mic.as_ref().is_some_and(|(m, _)| m.raw) });
     let mut takes = Takes::new(takes_dir.clone().unwrap_or_else(|| ".".into()), mic_rate, input_offset, calibrating);
@@ -127,6 +138,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mic_open = mic.is_some();
     let (mut input_peak, mut input_shown) = (0f32, Instant::now());
     let (mut latencies, mut notes, mut last_pos, mut shown) = (vec![], 0usize, None::<f64>, Instant::now());
+    // The mix rolled (Out::Rolling: when it was told, at mix time t) and when its first block reaches the speaker (QPC
+    // seconds), once the clock knows: the `rolling` line waits for that, so the playhead starts with the sound, not an
+    // output delay early (~250 ms on Bluetooth headphones).
+    let mut rolled: Option<(Instant, Option<f64>, f64)> = None;
     'main: loop {
         if let Some(p) = plugin.as_mut() {
             p.idle();
@@ -140,11 +155,26 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     println!("{}", serde_json::json!({ "error": "hear: no microphone is open (start play with --mic <takes folder>)" }));
                 }
             }
-            Ok(Msg::Load(c, levels, s)) => {
-                meters = Meters::new(levels);
-                seconds = s;
-                let _ = ctx.send(c);
+            Ok(Msg::Load(n, read)) => {
+                loaded = n;
+                if let Some((c, levels, s)) = read {
+                    meters = Meters::new(levels);
+                    seconds = s;
+                    if let Cmd::Load(f) = &c {
+                        kept.push(f.clone());
+                    }
+                    let _ = ctx.send(c);
+                    // The stream lets go of the one before at its next block; the ones before that are freed here.
+                    let old = kept.len().saturating_sub(2);
+                    kept.drain(..old);
+                }
+                if loaded >= asked.load(Ordering::SeqCst) {
+                    if let Some(c) = waiting.take() {
+                        let _ = ctx.send(c);
+                    }
+                }
             }
+            Ok(Msg::Cmd(c @ Cmd::Play(_))) if armed.is_some() && loaded < asked.load(Ordering::SeqCst) => waiting = Some(c),
             Ok(Msg::Cmd(c)) => {
                 if let Cmd::Record(r) = &c {
                     armed = *r;
@@ -154,6 +184,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
                 if matches!(c, Cmd::Stop | Cmd::Seek(_)) {
                     takes.finish();
+                }
+                if c == Cmd::Stop {
+                    waiting = None;
+                    rolled = None;
                 }
                 let _ = ctx.send(c);
             }
@@ -165,12 +199,22 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         while let Ok(o) = orx.try_recv() {
             match o {
-                Out::Clock { at, t } => clock.push(at, t),
+                Out::Clock { at, t } => {
+                    if let (Some(r), Some(_)) = (rolled.as_mut(), t) {
+                        if r.1.is_none() {
+                            r.1 = Some(at);
+                        }
+                    }
+                    clock.push(at, t)
+                }
                 Out::Note { key, velocity, start, end } => {
                     notes += 1;
                     println!("{}", serde_json::json!({ "note": { "key": key, "velocity": velocity, "start": start, "end": end } }));
                 }
-                Out::Rolling(t) => println!("{}", serde_json::json!({ "rolling": t })),
+                Out::Rolling(t) => {
+                    last_pos = None;
+                    rolled = Some((Instant::now(), None, t));
+                }
                 Out::Wrapped => println!("{}", serde_json::json!({ "wrapped": true })),
                 Out::End => {
                     takes.finish();
@@ -190,6 +234,15 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 Report::Ignored { key } => println!("{}", serde_json::json!({ "ignored": { "key": key } })),
                 Report::Failed { what } => println!("{}", serde_json::json!({ "error": what })),
                 _ => {} // its own notes: the transport records them, in mix time
+            }
+        }
+        if let Some((told, heard, t)) = rolled {
+            // Without a clock from the device (none in 1 s): said then, at the time it rolled from.
+            let now = wasapi::now();
+            if heard.is_some_and(|at| now >= at) || told.elapsed() >= Duration::from_secs(1) {
+                rolled = None;
+                let t = clock.mix_at(now).unwrap_or(t);
+                println!("{}", serde_json::json!({ "rolling": (t * 1000.0).round() / 1000.0 }));
             }
         }
         if mic_open && input_shown.elapsed() >= Duration::from_millis(100) {

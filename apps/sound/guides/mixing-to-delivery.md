@@ -28,9 +28,16 @@ peaked when one is not enough; a track's own compressor is set instead of adding
 so each tamed track keeps its loudness against the mix: the target inside the master's own `maxLimit`, the balance as written)
 and `trim_track` (the smallest cut, at most 12 dB, to the most peaked track, found by re-rendering, that reaches the target inside the master's
 own `maxLimit`; the balance moves; if no cut of that track is enough it says so, and `track` tries another). One call applies one:
-`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. An option that can't be worked out on a song says why and the others still come back; `{"apply": "keep_balance"}` needs no search renders. tame_peaks first tries the most it may do (the three most peaked tracks, 18 dB under their peaks): when even that leaves the song under the target it says so at once, with how far under, instead of searching. The whole answer comes back as a job in about 15 s for a one-minute song of six to ten tracks (the searches' trial mixes keep the instruments in memory and write no files), so ask `inspect_job` with `wait_s` rather than waiting in one call. The
+`edit_loudness {"apply": "best"}` (the reply's pick: keep_balance when it raises `maxLimit` by 1 dB or less and leaves at most ~3 dB of limiting, else tame_peaks), `{"apply": "tame_peaks"}`, or `{"apply": "trim_track", "track": "drums"}`, then `render_mix` again: the second render is on the target. An option that can't be worked out on a song says why and the others still come back; `{"apply": "keep_balance"}` needs no search renders. tame_peaks first tries the most it may do (the three most peaked tracks, 18 dB under their peaks): when even that leaves the song under the target it says so at once, with how far under, instead of searching. The whole answer comes back as a job in about 15 s for a one-minute song of six to ten tracks (the searches' trial mixes keep the instruments in memory and write no files), so ask `inspect_job` with `wait_s` rather than waiting in one call. The
 trade-off is **tamed** (`tame_peaks`: only the peaky track is squeezed, the master stays transparent, the balance does not move), **cleaner** (`trim_track`: nothing is squeezed, the balance moves) or **louder** (`keep_balance`: the balance does not move, the whole master is squeezed). With the master's
 loudness target off, `edit_loudness` answers the `master.set` that turns it on.
+When the target needs more than ~3 dB of limiting, the reply adds **`lift_quiet`**: a slow ride on the master's volume
+lane that raises every passage more than 6 dB under the loudest by half that distance (at most 4 dB, at most 1.5 dB a
+second, no lifted peak above the song's loudest, fades and the ring-out never lifted on their own; loud and soft keep
+their order). It is measured before it is offered (`need_before`, `need_after`: the limiting the target needs now and
+after it). It helps where the quieter passages are still within ~10 LU of the loud ones (they count toward the
+loudness); passages quieter than that are left out of the loudness measure, so lifting them never lowers the limiting
+(a solo piano that goes −27 → −13 LUFS: 9.8 dB before, 10.0 after). For those, tame the peaks.
 Songs saved before 2026-10-25 open with it
 off, so they sound as they did.
 
@@ -120,7 +127,7 @@ An open effect's settings or a duck sit at the right end while they are open.
 (Ctrl+E) has a "What for" picker with published targets (Streaming: Spotify, YouTube, Tidal; Apple Music, Broadcast = EBU R128, US TV = ATSC A/85, Podcast; each
 row cites its source in `screensound/delivery.py`) that sets both in one step (and says so on the sheet), and a "Right for the target" / "Misses the target" line from the sound
 that plays now; when the master can't reach the target it says where the file will land and offers **Push to −14** (the default: Export raises
-Most limiting, one undo step) or **Keep it dynamic** (the file stays at the level it reaches, and the sheet says so). The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
+Most limiting, one undo step) or **Keep it dynamic** (the file stays at the level it reaches, and the sheet says so). When reaching it takes over ~3 dB of limiting, **Tame the peaks first** adds a measured gentle compressor to the peakiest track (one undo step), so the push needs far less. The top bar's Loudness chip shows the song's loudness against the target; it opens the Mixer.
 
 Normalizing makes the number right; it does not make the mix right. With gentle limiting on, a mix denser than the
 target allows comes out under the target (the reply says how far; `edit_loudness` gives the exact edit) rather than squeezed; with it off the limiter works

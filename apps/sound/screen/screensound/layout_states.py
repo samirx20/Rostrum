@@ -25,7 +25,8 @@ BATCH = 1        # one state to a process: measured, Sound opens a song slower t
                  # batched took 95 s, one each 83 s); its time goes to opening the song and its steps, not to starting
 QUICK = ("empty-song", "editor", "mixer", "master-selected", "library", "library-voice", "library-key-picture", "long-editor", "long-mixer", "long-library", "export-sheet", "solo-on", "export-solo", "file-menu",
          "start-screen", "song", "settings", "commands", "guide", "about", "group-open", "voice-lines", "clean-before-after",
-         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu", "bar-busy", "bar-message")
+         "grid-menu", "in-key-menu", "problems-chip", "feel-drums-swing", "amounts-humanize", "amounts-repeat-range", "marker-menu", "drum-row-fill-menu", "chord-menu",
+         "key-picker-minor", "go-to-bar", "bar-busy", "bar-message")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -36,6 +37,9 @@ SONG_FLAGS = ('agent Tempo glide, a 3/4 bar, 6/8 and a key|[{"op":"tempo.add","t
               '{"op":"key.add","target":[],"args":{"at":{"beat":15},"key":"D minor"}}]')
 
 PICTURE = 'agent A picture|[{"op":"doc.set","target":["root"],"args":{"picture":"film.mp4"}}]'   # its button shows (no file needed)
+VIB = ('agent A vibraphone|[{"op":"track.add","target":[],"args":{"id":"vib","instrument":"builtIn","builtIn":"vibraphone"}},'
+       '{"op":"note.add","target":["vib"],"args":{"pitch":"E3","at":{"beat":0},"dur":{"beats":1}}},'
+       '{"op":"note.add","target":["vib"],"args":{"pitch":"A3","at":{"beat":1},"dur":{"beats":1}}}]')
 DKEY = 'agent A key|[{"op":"key.add","target":[],"args":{"at":0,"key":"D minor"}}]'
 CHORD = ('agent A chord|[' + ",".join('{"op":"note.add","target":["melody"],"args":{"id":"%s","pitch":"%s","at":{"beat":16},"dur":{"beats":4}}}'
                                        % (i, p) for i, p in (("c1", "D4"), ("c2", "F4"), ("c3", "A4"))) + "]")
@@ -102,6 +106,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("group-folded", ["--sample"], [GROUP.format(name=LONG_TRACK), "fold bus_1"]),
         ("timeline-zoomed", ["--sample"], ["zoom 4 0.5"]),
         ("draw", ["--sample"], ["select melody", "dock editor", "tool draw"]),
+        # the rows a recorded sound can't play, tinted red (roll_range.py; vibraphone F3-F6, a note at E3 under it)
+        ("roll-out-of-range", ["--sample"], [VIB, "select vib", "dock editor", "tool draw", "wait 2"]),
         ("voice-lines", ["--sample"], ["add-track voice:ryan", "dock editor"]),
         ("voice-typed-lines", ["--sample"], ["add-track voice:ryan", "dock editor", "line-type Welcome to the show",
                                               "line-type And now, the news from the whole second verse and bridge"]),
@@ -180,6 +186,14 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("chord-menu", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "bar-menu Chord Make_a_chord"]),
         ("amounts-strum", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask strum"]),
         ("amounts-arpeggio", ["--sample"], [DKEY, CHORD, "select melody", "dock editor", "select-many c1 c2 c3", "ask arpeggio"]),
+        # production round 2: Ramp velocity… (start %, end % from the selection's ends), the strip dragged tall
+        ("amounts-ramp-velocity", ["--sample"], ["select melody", "dock editor", "select-many melody.n9600 melody.n10200 melody.n10800",
+                                                 "ask ramp_velocity"]),
+        ("velocity-tall", ["--sample"], ["select melody", "dock editor", "velocity-height 240"]),
+        # the key picker open (no key: "No key" first; a key: the Major / Minor grid; Other modes), Go to bar (Ctrl+B)
+        ("key-picker", ["--sample"], ["key-open"]),
+        ("key-picker-minor", ["--sample"], [DKEY, "key-open"]),
+        ("go-to-bar", ["--sample"], ["gotobar-open"]),
         # a drum row's name menu (SPEC 3.8): Hear, Select all, Fill ▸ (open), Clear, Change drum ▸; Fill row… in the amounts popover
         ("drum-row-menu", ["--sample"], ["dock editor", "select drums", "drum-menu hat"]),
         ("drum-row-fill-menu", ["--sample"], ["dock editor", "select drums", "drum-fill-menu hat"]),

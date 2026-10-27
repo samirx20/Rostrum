@@ -15,7 +15,9 @@ import "Picks.js" as Picks
 // `resize` up-down, empty space `make` (draw a line); kept while a drag runs. The fold arrow at the bottom left folds
 // it to one thin row (the person's own screen state: backend.velocityFolded); the arrow stays under the pointer (the
 // strip opens upward from it) and the roll takes the room. The value of the stem under the pointer, else of the
-// selected one (several: their range), is written beside it ("70 %").
+// selected one (several: their range), is written beside it ("70 %"). Its top edge drags it taller (52 … 240 px, never
+// leaving the roll under `roomMax`; the roll gives the room): a crescendo over 8 bars needs the height to aim. The
+// height is the person's screen state too (backend.velocityHeight), kept with the song like the fold.
 Item {
     id: s
     property var roll
@@ -23,7 +25,10 @@ Item {
     property var ruler
     property int keysWidth: 52
     readonly property bool folded: backend.velocityFolded
-    readonly property real fullHeight: 52
+    property real roomMax: 240                 // the most the strip may take here (the host keeps the roll usable)
+    readonly property real edgeIn: 12          // how far the top edge's grip reaches into the strip (a press there resizes)
+    property real dragH: -1                    // the height while its top edge is dragged, else -1 (the kept one)
+    readonly property real fullHeight: Math.max(52, Math.min(dragH >= 0 ? dragH : backend.velocityHeight, roomMax))
     readonly property real foldedHeight: 18
     readonly property real padTop: 6
     readonly property real plotH: height - padTop - 4
@@ -85,7 +90,7 @@ Item {
                text: "Velocity"; color: Theme.fg4; font.family: uiFont; font.pixelSize: Theme.label }
         MouseArea { id: vh; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: backend.toggleVelocityFold() }
-        HoverTip { text: s.folded ? (backend.rollPlayed ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across: it sets the selected notes, or every note when none is. Click to fold it away" + (backend.rollPlayed ? " (with the playing lane under it)" : "")
+        HoverTip { text: s.folded ? (backend.rollPlayed ? "Show the velocity strip and the playing lane" : "Show the velocity strip") : "Velocity: how hard each note plays. Drag a bar, or draw a line across: it sets the selected notes, or every note when none is. Drag its top edge to make it taller. Click to fold it away" + (backend.rollPlayed ? " (with the playing lane under it)" : "")
                    hovered: vh.containsMouse; pressed: vh.pressed }
     }
     Rectangle { visible: !s.folded; x: s.keysWidth; width: s.width - x; height: s.height; radius: Theme.radiusCtl; color: Theme.sunken
@@ -161,7 +166,7 @@ Item {
         id: m
         enabled: !s.folded
         onExited: s.hoverId = ""
-        x: s.keysWidth; width: s.width - x; height: s.height
+        x: s.keysWidth; width: s.width - x; y: s.folded ? 0 : s.edgeIn; height: s.height - y   // (under the top edge's grip)
         // a bar's top: `level` (drag it); empty: `draw` (a line across). The stem under the pointer is set as it moves (an
         // edit never re-reads every stem); during a drag, what the press began
         preventStealing: true; hoverEnabled: true
@@ -177,19 +182,34 @@ Item {
         }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true)
-        onPressed: (e) => { backend.focusArea("roll"); s.hit = s.nearest(e.x); s.mode = "press"; s.x0 = s.px = e.x; s.y0 = s.py = e.y }
+        onPressed: (e) => { backend.focusArea("roll"); s.hit = s.nearest(e.x); s.mode = "press"; s.x0 = s.px = e.x; s.y0 = s.py = (e.y + m.y) }
         onPositionChanged: (e) => {
             if (!pressed) { s.hoverId = s.nearest(e.x); return }
-            s.px = e.x; s.py = e.y; s.v = s.vAt(e.y)
-            if (s.mode === "press" && (Math.abs(e.x - s.x0) >= 4 || Math.abs(e.y - s.y0) >= 4))
+            s.px = e.x; s.py = (e.y + m.y); s.v = s.vAt((e.y + m.y))
+            if (s.mode === "press" && (Math.abs(e.x - s.x0) >= 4 || Math.abs((e.y + m.y) - s.y0) >= 4))
             { s.mode = backend.beginVelocity(s.hit) ? (s.hit !== "" ? "bar" : "line") : ""; if (s.mode !== "") dragEsc.holdEsc() }
             altAll = (e.modifiers & Qt.AltModifier) !== 0
             if (s.mode === "bar") backend.velocityBar(s.v, altAll)
             else if (s.mode === "line") {
-                backend.velocityLine(s.ruler.tOf(s.x0), s.vAt(s.y0), s.ruler.tOf(e.x), s.v); ln.requestPaint()
+                backend.velocityLine(s.ruler.tOf(s.x0), s.vAt(s.y0), s.ruler.tOf(e.x), s.v, 4 / s.ruler.perSec); ln.requestPaint()
             }
         }
         onReleased: { if (s.mode === "bar" || s.mode === "line") { dragEsc.letEsc(); backend.endVelocity() } s.mode = "" }
         onCanceled: { if (s.mode === "bar" || s.mode === "line") { dragEsc.letEsc(); backend.cancelDrag() } s.mode = "" }
+    }
+    MouseArea {   // the top edge: drag up for a taller strip (down to make it short again); the roll gives the room
+        id: edge
+        objectName: "velocityEdge"
+        visible: !s.folded
+        x: s.keysWidth; width: s.width - x; y: s.edgeIn - 16; height: 16; z: 2     // the gap above and the strip's top 12 px
+        hoverEnabled: true; preventStealing: true; cursorShape: Qt.SizeVerCursor
+        property real y0: 0
+        property real h0: 0
+        onPressed: (e) => { y0 = mapToItem(null, e.x, e.y).y; h0 = s.fullHeight; s.dragH = h0 }
+        onPositionChanged: (e) => { if (pressed) s.dragH = Math.max(52, Math.min(s.roomMax, h0 - (mapToItem(null, e.x, e.y).y - y0))) }
+        onReleased: { backend.setVelocityHeight(s.dragH); s.dragH = -1 }
+        onCanceled: s.dragH = -1
+        Rectangle { anchors.horizontalCenter: parent.horizontalCenter; anchors.verticalCenter: parent.verticalCenter
+                    visible: edge.containsMouse || edge.pressed; width: 32; height: 3; radius: 1.5; color: Theme.fg3 }
     }
 }

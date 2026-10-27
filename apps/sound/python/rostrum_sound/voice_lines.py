@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from rostrum_core import RostrumError, codes
 
-from . import voice
+from . import voice, voice_estimate
 from .doc import times
 
 CLIP_KEYS = ("volume", "fadeIn", "fadeOut")
@@ -47,6 +47,21 @@ def lines(doc, ids=None) -> list[tuple[dict, dict]]:
 
 def is_made(doc, ids=None) -> bool:
     return all(take_of(t, ln) for t, ln in lines(doc, ids))
+
+
+def estimates(doc, ids=None) -> list[dict]:
+    """How long each line will take, before it is made: id, track, text, estimated_seconds with low and high
+    (`voice_estimate`), and `made_seconds` when its take already exists (then that is exact, and so is `end`)."""
+    root, out = getattr(doc, "data", doc), []
+    for t, ln in lines(doc, ids):
+        e = voice_estimate.estimate(ln["text"], t.get("language", "auto"))
+        take = take_of(t, ln)
+        start = times.seconds(ln["at"], root, f"line {ln['id']}")
+        row = {"id": ln["id"], "track": t["id"], "text": ln["text"], "start": round(start, 3),
+               "estimated_seconds": e["seconds"], "low": e["low"], "high": e["high"], "made_seconds": round(take.seconds, 3) if take else None}
+        row["ends_about"] = round(start + (take.seconds if take else e["seconds"]), 2)
+        out.append(row)
+    return out
 
 
 def make_lines(doc, ids=None, progress=None) -> list[dict]:

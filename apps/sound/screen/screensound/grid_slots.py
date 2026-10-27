@@ -182,6 +182,13 @@ class GridSlots:
         self._set_snap(caught)
         self.setTime(at)
 
+    @Slot(float, str, result=str)
+    def snapWords(self, t, name):
+        """The snap line's chip for a drag's `snapLine` ({t, name}: a marker's or section edge's name, "" for the grid):
+        "Marker: Flash", "Section: Verse", "Bar 15", "Beat 15.3" (timing.snap_words)."""
+        kinds = {m.name: m.kind for m in self._land_marks()}
+        return timing.snap_words(t, self.doc.data, name, kinds)
+
     @Slot()
     def endTimeSnap(self):
         """The ruler's press ended: no snap line."""

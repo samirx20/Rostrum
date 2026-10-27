@@ -16,7 +16,7 @@ def _row(value, label, keys="", group="clip"):
     return {"value": value, "label": label, "keys": keys, "group": group, "sub": []}
 
 
-NOTE_GROUPS = ("time", "pitch", "marker")    # the action list's groups of what notes, hits and markers do (actions.py)
+NOTE_GROUPS = ("time", "pitch", "velocity", "marker")    # the action list's groups of what notes, hits and markers do (actions.py)
 
 
 def selection_entries(entries) -> list[dict]:

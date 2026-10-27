@@ -21,7 +21,7 @@ BUILT_IN_GROUPS = {
     "Guitar and bass": ["guitar", "acousticGuitar", "electricGuitar", "bass", "uprightBass"],
     "Strings": ["strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp"],
     "Brass and winds": ["brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba", "flute", "piccolo", "oboe", "clarinet",
-                        "bassoon", "saxophone"],
+                        "bassoon", "saxophone", "harmonica"],
     "Mallets and drums": ["marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani"],
     "Synth": ["warmPad", "subBass", "pluck", "choirPad"],
     "Classic (synthesized)": ["classic.feltPiano", "classic.grandPiano", "classic.warmPad", "classic.analogStrings",

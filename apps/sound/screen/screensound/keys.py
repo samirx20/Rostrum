@@ -10,6 +10,7 @@ from rostrum_gui.keymap import KeyMap
 SOUND_KEYS = [
     {"job": "record", "keys": ["R"], "label": "Record on the armed track", "area": "Play"},
     {"job": "click", "keys": ["Shift+K"], "label": "Click (metronome) on / off", "area": "Play"},
+    {"job": "go_to_bar", "keys": ["Ctrl+B"], "label": "Go to bar…", "area": "Play"},     # (Ctrl+G is Group)
     {"job": "pitch_scale_up", "keys": ["Ctrl+Up"], "label": "Pitch up a scale step", "area": "Edit"},
     {"job": "pitch_scale_down", "keys": ["Ctrl+Down"], "label": "Pitch down a scale step", "area": "Edit"},
     {"job": "invert_up", "keys": ["Alt+Up"], "label": "Invert the chord up", "area": "Edit"},
@@ -63,7 +64,7 @@ ROUTES = {
     "editor_dock": ("dock", "editor"), "mixer_dock": ("dock", "mixer"), "library": ("dock", "library"),
 }
 SKIP = ["new", "open", "save_version", "duplicate_file", "add_file", "preferences", "quit", "export", "export_again",
-        "undo", "redo", "command_box", "guides", "record", "go_to_time"]
+        "undo", "redo", "command_box", "guides", "record", "go_to_time", "go_to_bar"]
 SHELL_RUN = ("undo", "redo", "export", "export_again", "history", "guides", "key_list", "fold_panels", "next_area", "preferences", "quit",
-             "add_file", "record", "problems", "loudness", "sample_rate", "go_to_time")       # the window runs these (Main.qml › runSoundJob, the kit's AppShell.runJob)
+             "add_file", "record", "problems", "loudness", "sample_rate", "go_to_time", "go_to_bar")       # the window runs these (Main.qml › runSoundJob, the kit's AppShell.runJob)
 FILE_JOBS = ("new", "open", "save_version", "duplicate_file")   # the ≡ menu's rows are in Ctrl+K from the project files (file:*)

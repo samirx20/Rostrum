@@ -18,12 +18,12 @@ def add_hit_call(doc, track_id, t: float, drum: str, free: bool = False, grid=No
 
 def add_note_call(doc, track_id, t: float, key: int, free: bool = False, beats: float = 1.0, grid=None,
                   px: float = 0.0, lock: bool = False) -> dict:
-    """A note `beats` long on `key` in the grid cell at `t` (`px`: one screen pixel in seconds, timing.snap), written in the form the track's
+    """A note `beats` long on `key` at the grid line nearest `t` (a bar line within reach first: timing.snap "draw"; `px`: one screen pixel in seconds, timing.snap), written in the form the track's
     notes already use (beats by default)."""
     root, track = doc.data, doc.item(track_id)
     first = next(iter(track.get("notes", [])), None)
     secs = first is not None and isinstance(first["at"], (int, float))
-    at = timing.snap(t, root, free, grid, "cell", px)
+    at = timing.snap(t, root, free, grid, "draw", px)     # the hover's faint note asks the same (roll_hover.py)
     key = key_lock.snapped(root, at, key) if lock and not free else key       # Keep notes in the key
     pitch = key if first is not None and isinstance(first["pitch"], int) else timing.name(key)
     if secs:

@@ -28,6 +28,7 @@ from rostrum_sound import fit_loudness as fit
 from rostrum_sound.doc import markers
 
 from . import delivery, export_stems, loudness, playback, strips
+from .export_tame import Tame
 from .export_versions import Versions, last_choices, ranges, schedule_for
 
 
@@ -84,6 +85,8 @@ class RenderExport(ExportSheet):
         self._dynamic = False                         # "Keep it dynamic": export at the level the master reaches, not pushed to the target
         self._choice = self._target_key()
         self._more = Versions()
+        self._tame = Tame(bridge, open_engine, self)
+        self._tame.changed.connect(self.own)
         self._watching, self._missed = False, False   # the sheet on screen (`watch`); news it missed meanwhile
         bridge.docChanged.connect(self._sync)
         bridge.historyChanged.connect(self._news)        # Undo beside the target's sentence follows the newest step
@@ -472,6 +475,21 @@ class RenderExport(ExportSheet):
                 "stays under the ceiling." if not self._dynamic else "")
         return {"shown": True, "current": "dynamic" if self._dynamic else "push", "said": said,
                 "options": [{"value": "push", "label": f"Push to {goal}"}, {"value": "dynamic", "label": "Keep it dynamic"}]}
+
+    @Property("QVariantMap", notify=own)
+    def tameOffer(self):
+        """{shown, busy, said}: reaching the target needs more than ~3 dB of limiting (it would flatten the loud parts):
+        the one click that takes the peaks off first (export_tame.py), offered beside Push / Keep it dynamic."""
+        land = self._landing()
+        shown = bool(land) and (land.get("need_db") or 0) > fit.LOT_DB and not self.running()
+        return {"shown": shown or self._tame.busy or bool(self._tame.said), "busy": self._tame.busy,
+                "said": self._tame.said if self._tame.said else
+                        f"{land.get('need_db', 0):.1f} dB of limiting flattens the loudest parts."}
+
+    @Slot()
+    def tamePeaks(self):
+        if not self.running():
+            self._tame.start()
 
     @Slot(str)
     def setLoudnessWay(self, way):

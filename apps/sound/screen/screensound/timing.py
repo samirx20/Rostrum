@@ -8,10 +8,11 @@ A `Grid` is a window's grid setting (Grid ▾ and Snap in the arrangement's head
 bridge holds one and passes it to every snap (drags, ends, the ruler's range, Draw, nudges); without one, the
 default (Auto, Snap on) is used. Auto follows the zoom: the finest step at least MIN_PX wide on screen.
 
-One snap, two ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
-NEAREST line; a click that makes
-something (a Draw note, a drum hit, a double-click, an automation point) takes the CELL under the pointer, the line
-at or before it. `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
+One snap, three ways (`snap(..., how=)`): a drag, a nudge, a note's end and both edges of a time range go to the
+NEAREST line; a click that makes something (a drum hit, an automation point, a paste) takes the CELL under the
+pointer, the line at or before it; a note drawn on the roll (Draw click, double-click) goes to the nearest line, a bar
+line within PULL_PX first (DRAW: at 1/16 a cell is ~4 px, so the cell rule put a click 4 px past the bar a 16th late
+while the person aimed at the bar; beat lines don't pull there, so the 16ths beside a beat stay reachable). `px` is one screen pixel in seconds: the screen draws a line on its nearest whole pixel, so a
 pointer on that pixel is on the line (a press exactly on a drawn line gives that line's time, a pixel before it the
 cell before).
 
@@ -25,6 +26,8 @@ for a drag or a range (critic r8: Snap ignored the picture's markers, so a hit a
 The ruler, the arrangement and the Editor all land a pointer through this one rule (`catch`, then the grid).
 """
 from __future__ import annotations
+
+import re
 
 from rostrum_sound.doc import keys as K
 from rostrum_sound.doc import meter, musical, tempo, times
@@ -104,16 +107,18 @@ def lines_around(t: float, root: dict, grid: Grid | None = None) -> tuple[float,
 def snap(t: float, root: dict, free: bool, grid: Grid | None = None, how: str = "nearest", px: float = 0.0) -> float:
     """`t` seconds onto `grid` (the window's; through the tempo map), unless free or its Snap is off. `how`:
     "nearest" (drags, ends, nudges, a range's edges), "cell" (a click that makes something: the cell under the
-    pointer). `px`: one screen pixel in seconds (0: not from the screen)."""
+    pointer), "draw" (a Draw click or double-click on the notes: the nearest line, a bar line within PULL_PX first; the
+    hover's faint note and its snap line ask the same, so the note lands where they showed). `px`: one screen pixel in
+    seconds (0: not from the screen)."""
     grid = grid or DEFAULT
     if free or not grid.on:
         return max(0.0, round(t, 4))
     caught = catch(t, grid, px)
     if caught is not None:
         return max(0.0, round(caught.value, 6))
-    if how == "nearest":
+    if how in ("nearest", "draw"):
         lo, hi = lines_around(t, root, grid)
-        at = strong_line(t, root, px * PULL_PX) if px > 0 else None
+        at = strong_line(t, root, px * PULL_PX, how == "nearest") if px > 0 else None
         at = at if at is not None else hi if hi - t < t - lo else lo
     else:
         at, _ = lines_around(t + px / 2, root, grid)          # the pointer's pixel holds the line drawn on it
@@ -131,14 +136,14 @@ def catch(t: float, grid: Grid, px: float, skip: str = "", extra=()):
     return caught if caught.target is not None else None
 
 
-def strong_line(t: float, root: dict, reach: float) -> float | None:
-    """The bar line within `reach` seconds of `t`, else the beat line within it, else None (the grid decides)."""
+def strong_line(t: float, root: dict, reach: float, beats: bool = True) -> float | None:
+    """The bar line within `reach` seconds of `t`, else (`beats`) the beat line within it, else None (the grid decides)."""
     b = max(0.0, tempo.beat_at(root, max(0.0, t)))
     s = meter.seg_at(root, b)
     bar0 = s.start + ((b - s.start + EPS) // s.bar) * s.bar
     count = meter.count(s)
     beat0 = bar0 + ((b - bar0 + EPS) // count) * count
-    for lo, step in ((bar0, s.bar), (beat0, count)):
+    for lo, step in ((bar0, s.bar), (beat0, count))[:2 if beats else 1]:
         near = min((tempo.seconds_at(root, x) for x in (lo, lo + step)), key=lambda x: abs(x - t))
         if abs(near - t) <= reach:
             return near
@@ -150,6 +155,29 @@ def line_name(t: float, root: dict) -> str:
     pos = musical.position(t, root)
     bar, beat, *rest = pos.split(".")
     return f"bar {bar}" if beat == "1" and not rest else pos
+
+
+_GRID_NAME = re.compile(r"^(?:bar \d+|\d+(?:\.\d+)+)$")
+
+
+def snap_words(t: float, root: dict, caught=None, kinds: dict | None = None) -> str:
+    """What the snap line's chip calls the place a pointer lands on, before and during the click: a marker
+    "Marker: Flash", a section edge "Section: Verse" / "Section: Verse end", the playhead "Playhead", else the grid
+    line "Bar 15" / "Beat 15.3" (a finer step: its place, "15.3.2"). `caught`: the kit's Caught (or a name: a drag's
+    `snapLine`, its kind then looked up in `kinds`, {name: kind})."""
+    name = caught if isinstance(caught, str) else (caught.name if caught is not None else "")
+    kind = (kinds or {}).get(name, "") if isinstance(caught, str) else (caught.target.kind if caught is not None and caught.target else "")
+    if name and not kind and _GRID_NAME.match(name):
+        name = ""                                   # the ruler's own grid words ("bar 9", "9.3"): said as a grid line
+    if name:
+        if kind == "marker":
+            return f"Marker: {name[:1].upper() + name[1:]}"
+        if kind == "section":
+            return f"Section: {name}"
+        return name[:1].upper() + name[1:]          # "Playhead", "Frame 120", a grid line's own words ("bar 9")
+    pos = musical.position(t, root)
+    bar, beat, *rest = pos.split(".")
+    return f"Bar {bar}" if beat == "1" and not rest else f"Beat {bar}.{beat}" if not rest else pos
 
 
 def frame(t: float, start: float, fps: float) -> tuple[float, int]:

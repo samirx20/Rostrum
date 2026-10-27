@@ -218,10 +218,11 @@ def _untamed(goal, limit, most, renders, why=""):
 
 
 def first_choice(need: float, limit: float) -> str:
-    """The option to take first, from the last render alone: a raise of `maxLimit` by at most SMALL_RAISE dB is barely more
-    limiting, so keep_balance; past that the master would stop being transparent, so tame the peaks (balance and limit both
-    kept). trim_track moves the balance: never first."""
-    return "keep_balance" if need - limit <= SMALL_RAISE and need <= MAX_LIMIT else "tame_peaks"
+    """The option to take first, from the last render alone: a raise of `maxLimit` by at most SMALL_RAISE dB that ends at
+    no more than LOT_DB of limiting is barely more, so keep_balance; past that the master would stop being transparent
+    (over LOT_DB flattens acoustic drums and piano), so tame the peaks (balance and limit both kept). trim_track moves the
+    balance: never first."""
+    return "keep_balance" if need - limit <= SMALL_RAISE and need <= min(MAX_LIMIT, LOT_DB) else "tame_peaks"
 
 
 def best(options: list[dict], need: float, limit: float) -> dict | None:

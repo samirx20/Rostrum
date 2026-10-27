@@ -59,6 +59,7 @@ ROLES: dict[str, Role] = {
     "builtIn:clarinet": Role(("lead",), "D3", "F#6", "a recorded clarinet"),
     "builtIn:bassoon": Role(("lead", "bass"), "A#1", "D#5", "a recorded bassoon"),
     "builtIn:saxophone": Role(("lead",), "G#2", "F6", "a recorded tenor saxophone"),
+    "builtIn:harmonica": Role(("lead",), "B2", "D7", "a recorded chromatic harmonica (Hohner Super 64): reedy and breathy, plain, accented or with vibrato"),
     "builtIn:marimba": Role(("lead", "comp"), "F2", "C#7", "a recorded marimba"),
     "builtIn:vibraphone": Role(("lead", "comp"), "F3", "F6", "a recorded vibraphone"),
     "builtIn:xylophone": Role(("lead",), "G3", "C#7", "a recorded xylophone"),
