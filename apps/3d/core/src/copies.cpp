@@ -5,6 +5,7 @@
 #include <pxr/base/gf/rotation.h>
 #include <pxr/base/gf/vec3d.h>
 #include <pxr/base/gf/vec3h.h>
+#include <pxr/base/gf/vec4f.h>
 #include <pxr/usd/sdf/changeBlock.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/bboxCache.h>
@@ -204,7 +205,7 @@ const GfVec3d kAxes[3] = {GfVec3d::XAxis(), GfVec3d::YAxis(), GfVec3d::ZAxis()};
 // The surface's triangles in the copies item's space at the shot's start (a moving surface: its first frame).
 void read_surface(const UsdStageRefPtr& stage, State& s) {
   const std::string where = s.id + ".surface";
-  const std::string accepted = "the id of a mesh, combine or import item outside this copies item";
+  const std::string accepted = "the id of a mesh, combine, import or clay item outside this copies item";
   if (s.p.surface.empty()) fail(where, "is empty", accepted);
   const SdfPath sp = item_path(stage, s.p.surface);
   if (sp.IsEmpty()) fail(where, "no item \"" + s.p.surface + "\" in the scene", accepted);
@@ -254,7 +255,7 @@ void read_surface(const UsdStageRefPtr& stage, State& s) {
     }
   }
   if (out.empty())
-    fail(where, "\"" + s.p.surface + "\" has no mesh to scatter on" + std::string(s.p.onTop ? " facing up (onTop: off scatters on every side)" : " (a clay can't be scattered on yet)"), accepted);
+    fail(where, "\"" + s.p.surface + "\" has no mesh to scatter on" + std::string(s.p.onTop ? " facing up (onTop: off scatters on every side)" : " (an empty clay or shape has none)"), accepted);
   s.surf = std::move(out);
 }
 
@@ -397,9 +398,11 @@ bool any_keyed(const State& s) {
   return std::any_of(s.held.begin(), s.held.end(), [](const Held& h) { return h.keyed(); });
 }
 
-// The effectors at frame index k: `world` is the copies item's place then.
+// The effectors at frame index k: `world` is the copies item's place then. `tints`: each copy's colour change as
+// (rgb already times its share, the share 0..1): each colour effector lays its colour over what is there by
+// amount x falloff, so the copy's colour = what it had x (1 - share) + rgb (Storm's grey, Cycles' material colour).
 void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& world, std::vector<Copy>& copies,
-           std::vector<GfVec3f>* colours) {
+           std::vector<GfVec4f>* tints) {
   if (effectors.empty()) return;
   const GfMatrix4d to_local = world.GetInverse();
   for (size_t i = 0; i < copies.size(); ++i) {
@@ -421,9 +424,12 @@ void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& w
           break;
         }
         case Effector::Colour:
-          if (colours) {
+          if (tints) {
             const float m = float(std::clamp(amount * w, 0.0, 1.0));
-            (*colours)[i] += (pick(e.colour, k) - (*colours)[i]) * m;
+            const GfVec3f c3 = pick(e.colour, k);
+            GfVec4f& t = (*tints)[i];
+            t = GfVec4f(t[0] * (1 - m) + c3[0] * m, t[1] * (1 - m) + c3[1] * m, t[2] * (1 - m) + c3[2] * m,
+                        1 - (1 - t[3]) * (1 - m));
           }
           break;
       }
@@ -433,10 +439,11 @@ void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& w
 
 struct Arrays {
   VtVec3fArray positions, scales, colours;
+  VtVec4fArray tints;  // rostrumTint: the change's own colour and its share (Cycles' material mixes it in)
   VtQuathArray orientations;
 };
 
-Arrays arrays(const std::vector<Copy>& copies, const std::vector<GfVec3f>* colours) {
+Arrays arrays(const std::vector<Copy>& copies, const std::vector<GfVec4f>* tints) {
   Arrays a;
   const size_t n = copies.size();
   a.positions.resize(n);
@@ -447,7 +454,16 @@ Arrays arrays(const std::vector<Copy>& copies, const std::vector<GfVec3f>* colou
     a.scales[i] = GfVec3f(copies[i].scale);
     a.orientations[i] = GfQuath(copies[i].rot);
   }
-  if (colours) a.colours.assign(colours->begin(), colours->end());
+  if (tints) {
+    a.colours.resize(n);
+    a.tints.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+      const GfVec4f& t = (*tints)[i];
+      const float share = t[3], keep = (1 - share) * kNoMaterialGrey;
+      a.colours[i] = GfVec3f(keep + t[0], keep + t[1], keep + t[2]);
+      a.tints[i] = share > 1e-6f ? GfVec4f(t[0] / share, t[1] / share, t[2] / share, share) : GfVec4f(0);
+    }
+  }
   return a;
 }
 
@@ -495,14 +511,19 @@ void write(const UsdStageRefPtr& stage, State& s) {
   s.animated = moves(stage, s);
   const std::vector<GfMatrix4d> world = places(stage, s, s.animated);
   UsdAttribute pos = pi.CreatePositionsAttr(), rot = pi.CreateOrientationsAttr(), scl = pi.CreateScalesAttr();
-  UsdAttribute col;
-  if (coloured)
+  UsdAttribute col, tint;
+  static const TfToken kTint("rostrumTint");  // read by our Cycles patch (libs/cycles-rostrum.patch, instancer.cpp)
+  if (coloured) {
     col = UsdGeomPrimvarsAPI(pi).CreatePrimvar(UsdGeomTokens->primvarsDisplayColor, SdfValueTypeNames->Color3fArray,
                                               UsdGeomTokens->vertex).GetAttr();  // vertex on an instancer = per copy
-  else if (UsdAttribute old = pi.GetPrim().GetAttribute(TfToken("primvars:displayColor")))
-    old.Clear();
+    tint = UsdGeomPrimvarsAPI(pi).CreatePrimvar(kTint, SdfValueTypeNames->Color4fArray, UsdGeomTokens->vertex).GetAttr();
+  } else {
+    for (const char* name : {"primvars:displayColor", "primvars:rostrumTint"})
+      if (UsdAttribute old = pi.GetPrim().GetAttribute(TfToken(name))) old.Clear();
+  }
   for (UsdAttribute a : {pos, rot, scl}) a.Clear();
   if (col) col.Clear();
+  if (tint) tint.Clear();
   pi.CreateProtoIndicesAttr().Set(protos);
   pi.CreateIdsAttr().Set(ids);
 
@@ -526,13 +547,13 @@ void write(const UsdStageRefPtr& stage, State& s) {
     }
     return;
   }
-  const std::vector<GfVec3f> grey(n, GfVec3f(kNoMaterialGrey));
+  const std::vector<GfVec4f> untinted(n, GfVec4f(0));
   const auto at = [&](size_t k) {
     std::vector<Copy> c = s.laid;
-    std::vector<GfVec3f> colours = grey;
+    std::vector<GfVec4f> tints = untinted;
     keyed_at(s.held, k, c);
-    apply(s.effectors, k, world[std::min(k, world.size() - 1)], c, coloured ? &colours : nullptr);
-    return arrays(c, coloured ? &colours : nullptr);
+    apply(s.effectors, k, world[std::min(k, world.size() - 1)], c, coloured ? &tints : nullptr);
+    return arrays(c, coloured ? &tints : nullptr);
   };
   if (!s.animated) {
     const Arrays a = at(0);
@@ -540,6 +561,7 @@ void write(const UsdStageRefPtr& stage, State& s) {
     rot.Set(a.orientations);
     scl.Set(a.scales);
     if (col) col.Set(a.colours);
+    if (tint) tint.Set(a.tints);
     return;
   }
   // only what an effector or a keyed copy changes gets samples; the rest is the layout's plain value
@@ -557,6 +579,7 @@ void write(const UsdStageRefPtr& stage, State& s) {
     if (by_rot) rot.Set(a.orientations, t);
     if (by_scl) scl.Set(a.scales, t);
     if (col) col.Set(a.colours, t);
+    if (tint) tint.Set(a.tints, t);
   }
 }
 
@@ -650,7 +673,7 @@ void build(Item& it, const JsArray& children, const JsArray& held, const JsArray
   ctx.copies.push_back(std::move(s));
 }
 
-void lay_out_all(const UsdStageRefPtr& stage, std::vector<State>& all) {
+void lay_out_all(const UsdStageRefPtr& stage, std::vector<State>& all, const SdfPathVector& clays) {
   for (State& s : all) {
     if (!s.p.seenBy.empty()) {
       const UsdPrim cam = stage->GetPrimAtPath(item_path(stage, s.p.seenBy));
@@ -662,10 +685,20 @@ void lay_out_all(const UsdStageRefPtr& stage, std::vector<State>& all) {
     s.bounds.clear();
     for (const std::string& src : s.sources)
       s.bounds.push_back(bb.ComputeRelativeBound(self.GetChild(TfToken(src)), self).ComputeAlignedRange());
+    s.late = s.p.layout == "surface" &&
+             std::find(clays.begin(), clays.end(), item_path(stage, s.p.surface)) != clays.end();
+    if (s.late) continue;  // its clay's blocks are written on the held stage by the clay store, after this build
     if (s.p.layout == "surface") read_surface(stage, s);
     s.laid = lay_out(s);
     write(stage, s);
   }
+}
+
+void lay_out_late(const UsdStageRefPtr& stage, State& s) {
+  read_surface(stage, s);
+  s.laid = lay_out(s);
+  write(stage, s);
+  s.late = false;
 }
 
 double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const JsValue* held) {
@@ -728,6 +761,22 @@ std::vector<GfVec3d> seen_points(const UsdStageRefPtr& stage, const State& s, in
     const GfRange3d& b = s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
     const GfVec3f mid = b.IsEmpty() ? GfVec3f(0.f) : GfVec3f(b.GetMidpoint());
     out.push_back(world.Transform(GfVec3d(c.pos + c.rot.Transform(mid * c.scale))));
+  }
+  return out;
+}
+
+GfRange3d world_box(const UsdStageRefPtr& stage, const State& s, int frame) {
+  GfMatrix4d world;
+  const std::vector<Copy> copies = drawn_at(stage, s, frame, &world);
+  GfRange3d out;
+  for (const Copy& c : copies) {
+    const GfRange3d& b = s.bounds.empty() ? GfRange3d() : s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
+    if (b.IsEmpty()) {
+      out.UnionWith(world.Transform(GfVec3d(c.pos)));
+      continue;
+    }
+    for (int i = 0; i < 8; ++i)
+      out.UnionWith(world.Transform(GfVec3d(c.pos + c.rot.Transform(GfVec3f(b.GetCorner(i)) * c.scale))));
   }
   return out;
 }

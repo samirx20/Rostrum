@@ -44,6 +44,7 @@ class Core {
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject copies_live(const PXR_NS::JsObject& a); // copies_request.cpp (a Count / Spacing drag, a copy moved)
   PXR_NS::JsObject material(const PXR_NS::JsObject& a);    // material_request.cpp (a material field's drag, live)
+  PXR_NS::JsObject copies_box(const PXR_NS::JsObject& a);  // copies_request.cpp (a copies item's world box: framing)
   PXR_NS::JsObject sees(const PXR_NS::JsObject& a);        // copies_request.cpp (which points a camera sees)
   PXR_NS::JsObject texels(const PXR_NS::JsObject& a);      // texels_request.cpp (which texel each pixel sees)
   // sim_request.cpp (brief 25): rigid bodies with Jolt, written to <folder>/bodies.bin

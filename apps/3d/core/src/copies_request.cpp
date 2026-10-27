@@ -1,7 +1,7 @@
 // Copies on the held stage (copies.h): the live `copies` request (a Count or Spacing drag, a copy moved by the gizmo,
 // like `xform`: no new scene), `sees` (which points a camera sees: the minimum of brief 21a's camera-sees request),
 // the seen test after each scene (a copies item seen by the shot's camera draws only the copies it sees) and a pick
-// that hit a copy.
+// that hit a copy, and `copies_box` (what a copies item takes in the world at a frame: framing it).
 #include <pxr/base/gf/rotation.h>
 #include <pxr/usd/usdGeom/camera.h>
 
@@ -52,6 +52,20 @@ JsObject Core::copies_live(const JsObject& o) {
   if (!props.IsObject()) throw Error("copies.props: needs an object of copies fields, got " + props.GetTypeName());
   const double ms = copies::relay(stage_, it->second, props.GetJsObject(), a.has("held") ? &a.need("held") : nullptr);
   return JsObject{{"ok", JsValue(true)}, {"count", JsValue(int(it->second.laid.size()))}, {"ms", JsValue(r1(ms))}};
+}
+
+JsObject Core::copies_box(const JsObject& o) {
+  Args a(o, "copies_box", {"item", "frame"});
+  need_scene("copies_box");
+  const std::string id = a.str("item");
+  auto it = copies_.find(id);
+  if (it == copies_.end()) throw Error("copies_box.item: no copies item \"" + id + "\" in the scene");
+  const int f = a.whole("frame", it->second.start);
+  check_frame(f, "copies_box.frame");
+  const GfRange3d r = copies::world_box(stage_, it->second, f);
+  const auto vec = [](const GfVec3d& v) { return JsValue(JsArray{JsValue(v[0]), JsValue(v[1]), JsValue(v[2])}); };
+  if (r.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"lo", JsValue()}, {"hi", JsValue()}};
+  return JsObject{{"ok", JsValue(true)}, {"lo", vec(r.GetMin())}, {"hi", vec(r.GetMax())}};
 }
 
 JsObject Core::sees(const JsObject& o) {

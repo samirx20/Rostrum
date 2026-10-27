@@ -65,7 +65,9 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   ctx.shutter = shutter;
   ctx.materials = build_materials(built, s.list("materials"), start, end);
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
-  copies::lay_out_all(built, ctx.copies);  // a surface may come after its copies item
+  SdfPathVector clays;
+  for (const clay::Node& c : ctx.clays) clays.push_back(c.path);
+  copies::lay_out_all(built, ctx.copies, clays);  // a surface may come after its copies item; a clay one waits
   link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists
   build_light_to_color(built, start, end);  // Light to colour materials' Cycles graphs, once the lights exist
   publish_dome_levels(built);               // each dome's picture level, for the stylized renderer

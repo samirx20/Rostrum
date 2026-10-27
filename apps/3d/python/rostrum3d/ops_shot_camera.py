@@ -117,7 +117,7 @@ def slide(base, axes, corners, tan_w: float, tan_h: float, near: float) -> float
              "is made sharp. One undo takes it back. To turn the camera too, use shot.take_view.",
              target="shot", label="Frame the selection",
              params=[Param.list("items", "text", label="Items", min_items=1, required=True,
-                                help="The ids of the items to frame (shapes, clay, groups, lights …)"), AT])
+                                help="The ids of the items to frame (shapes, clay, groups, copies, lights …)"), AT])
 def shot_frame(ctx, targets, args):
     shot, cam = _shot_camera(ctx, targets)
     at, f, fr = _frames(ctx, shot, args)

@@ -3,8 +3,9 @@
 A shape of fixed form (box, sphere, cylinder, cone, capsule, plane, disc, torus) is measured from its fields; an
 editable mesh, an outline (text, logo, drawing) or a combine asks the engine for its built mesh (the same hook
 mesh.edit uses: ops_mesh.use_engine); a clay is the points its pieces reach (clay_detail.reach); a light or a camera
-is its place; a group or a rig is everything in it. Each box goes through the item's world transform at the time asked,
-so a moving item is framed where it is then. An imported file has no size the Python side knows: refused loudly.
+is its place; a group or a rig is everything in it; a copies item is what its copies take as the engine draws them then
+(laid out, held, keyed or fallen: the core's `copies_box`). Each box goes through the item's world transform at the time
+asked, so a moving item is framed where it is then. An imported file has no size the Python side knows: refused loudly.
 """
 from __future__ import annotations
 
@@ -13,6 +14,35 @@ from .resolve import Frames
 
 POINTS = ("light", "camera")
 HOLDERS = ("group", "rig")
+MEASURED = ("group", "rig", "mesh", "combine", "clay", "copies", "light", "camera")   # what world_box can measure
+
+_COPIES = None            # (doc, copies id, t seconds) -> (lo, hi) world, or None when it has no copies (use_engine)
+
+
+def use_engine(engine, folder=None):
+    """Let framing ask this engine where a copies item's copies are (through the document's first shot's scene)."""
+    global _COPIES
+    if engine is None:
+        _COPIES = None
+        return
+
+    def box(doc: dict, id_: str, t: float):
+        from . import compile as C
+        shots = doc.get("shots") or []
+        if not shots:
+            raise ValueError("the document has no shot yet, so the engine can't build the scene (shot.add first)")
+        engine.ensure_scene(C.describe(doc, shots[0]["id"], folder))
+        info = C.shot_info(doc, shots[0]["id"])
+        frame = min(max(round(t * info["fps"]), info["start"]), info["end"])
+        out = engine.copies_box(id_, frame)
+        return (out["lo"], out["hi"]) if out.get("lo") is not None else None
+    _COPIES = box
+
+
+def use_copies_box(fn):
+    """Tests: any (doc, id, t) -> (lo, hi) | None function."""
+    global _COPIES
+    _COPIES = fn
 
 
 def _shape_box(v: dict):
@@ -60,6 +90,11 @@ def _own_points(doc: dict, fr: Frames, id_: str, f: int) -> list[list[float]]:
         return [aim.point(world, [0.0, 0.0, 0.0])]
     if kind == "clay":                       # its pieces' own reach, not a box's corners: framed snugly from any side
         return [aim.point(world, p) for p in clay_detail.reach(item)]
+    if kind == "copies":                     # the engine lays copies out: its box is world already
+        if _COPIES is None:
+            raise ValueError(f'"{id_}" is measured from the copies the engine lays out, and no engine is running here')
+        box = _COPIES(doc, id_, f / fr.fps)
+        return _corners(*box) if box else []
     elif kind == "mesh":
         box = _shape_box(fr.values(id_, f)) or _built(doc, id_)
     elif kind == "combine":

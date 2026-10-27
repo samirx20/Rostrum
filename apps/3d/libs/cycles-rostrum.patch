@@ -1,5 +1,5 @@
 diff --git a/src/hydra/geometry.h b/src/hydra/geometry.h
-index 5ac38e6d..f9b10e02 100644
+index 5ac38e6..f9b10e0 100644
 --- a/src/hydra/geometry.h
 +++ b/src/hydra/geometry.h
 @@ -8,6 +8,7 @@
@@ -20,7 +20,7 @@ index 5ac38e6d..f9b10e02 100644
  
  HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/geometry.inl b/src/hydra/geometry.inl
-index 9c1f3e45..f8d3ec3e 100644
+index 9c1f3e4..dcad380 100644
 --- a/src/hydra/geometry.inl
 +++ b/src/hydra/geometry.inl
 @@ -111,8 +111,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
@@ -41,7 +41,18 @@ index 9c1f3e45..f8d3ec3e 100644
      }
    }
  
-@@ -158,6 +167,17 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+@@ -127,8 +136,10 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+            _instances[0]->attributes.front().name() == HdAovTokens->instanceId.GetString());
+ 
+     VtMatrix4dArray transforms;
++    VtVec4fArray tints; /* Rostrum: each copy's colour and how much of it (rgb, a) */
+     if (instancer) {
+       transforms = instancer->ComputeInstanceTransforms(id);
++      tints = instancer->ComputeInstanceTints(id);
+       _instances[0]->attributes.front() = ParamValue(HdAovTokens->instanceId.GetString(), +0.0f);
+     }
+     else {
+@@ -158,6 +169,28 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
        const Transform tfm = transform_scale(make_float3(metersPerUnit)) *
                              convert_transform(_geomTransform * transforms[i]);
        _instances[i]->set_tfm(tfm);
@@ -56,10 +67,21 @@ index 9c1f3e45..f8d3ec3e 100644
 +        }
 +      }
 +      _instances[i]->set_motion(motion);
++
++      /* Rostrum: a copy's tint reaches its material as Object Info colour and alpha (alpha 0: no tint). */
++      if (i < tints.size()) {
++        const GfVec4f &t = tints[i];
++        _instances[i]->set_color(make_float3(t[0], t[1], t[2]));
++        _instances[i]->set_alpha(t[3]);
++      }
++      else {
++        _instances[i]->set_color(make_float3(0.8f, 0.8f, 0.8f));
++        _instances[i]->set_alpha(0.0f);
++      }
      }
    }
  
-@@ -167,6 +187,19 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
+@@ -167,6 +200,19 @@ void HdCyclesGeometry<Base, CyclesBase>::Sync(HdSceneDelegate *sceneDelegate,
      }
    }
  
@@ -79,6 +101,75 @@ index 9c1f3e45..f8d3ec3e 100644
    // Must happen after material ID update, so that attribute decisions can be made
    // based on it (e.g. check whether an attribute is actually needed)
    bool rebuild = false;
+diff --git a/src/hydra/instancer.cpp b/src/hydra/instancer.cpp
+index ad0772e..2fe6f6b 100644
+--- a/src/hydra/instancer.cpp
++++ b/src/hydra/instancer.cpp
+@@ -58,6 +58,9 @@ void HdCyclesInstancer::SyncPrimvars()
+   read_array_primvar(HdInstancerTokens->instanceTranslations, _translate);
+   read_array_primvar(HdInstancerTokens->instanceScales, _scale);
+   read_array_primvar(HdInstancerTokens->instanceTransforms, _instanceTransform);
++  static const TfToken tintToken("rostrumTint");
++  _tint.clear();
++  read_array_primvar(tintToken, _tint);
+ 
+   /* Accept different array types for quaternions. */
+   if (HdPrimvarSchema pv = primvars.GetPrimvar(HdInstancerTokens->instanceRotations)) {
+@@ -169,4 +172,32 @@ VtMatrix4dArray HdCyclesInstancer::ComputeInstanceTransforms(const SdfPath &prot
+   return transforms;
+ }
+ 
++VtVec4fArray HdCyclesInstancer::ComputeInstanceTints(const SdfPath &prototypeId)
++{
++  if (_tint.empty()) {
++    return VtVec4fArray();
++  }
++  HdSceneDelegate *const sceneDelegate = GetDelegate();
++  const HdSceneIndexPrim prim = GetPrim(sceneDelegate, GetId());
++  HdInstancedBySchema instancedBy = HdInstancedBySchema::GetFromParent(prim.dataSource);
++  if (auto pathsDs = instancedBy.GetPaths()) {
++    if (!pathsDs->GetTypedValue(0.0f).empty()) {
++      return VtVec4fArray(); /* nested: the transforms multiply out, a tint per copy has no one place */
++    }
++  }
++  if (!GetParentId().IsEmpty()) {
++    return VtVec4fArray();
++  }
++  HdInstancerTopologySchema topology = HdInstancerTopologySchema::GetFromParent(prim.dataSource);
++  const VtIntArray instanceIndices = topology ?
++                                         topology.ComputeInstanceIndicesForProto(prototypeId) :
++                                         VtIntArray();
++  VtVec4fArray out;
++  out.reserve(instanceIndices.size());
++  for (const int index : instanceIndices) {
++    out.push_back(index < int(_tint.size()) ? _tint[index] : GfVec4f(0.8f, 0.8f, 0.8f, 0.0f));
++  }
++  return out;
++}
++
+ HDCYCLES_NAMESPACE_CLOSE_SCOPE
+diff --git a/src/hydra/instancer.h b/src/hydra/instancer.h
+index 844ca77..6da25ba 100644
+--- a/src/hydra/instancer.h
++++ b/src/hydra/instancer.h
+@@ -25,6 +25,9 @@ class HdCyclesInstancer final : public PXR_NS::HdInstancer {
+             PXR_NS::HdDirtyBits *dirtyBits) override;
+ 
+   PXR_NS::VtMatrix4dArray ComputeInstanceTransforms(const PXR_NS::SdfPath &prototypeId);
++  /* Rostrum: the primvar rostrumTint (rgb, a) of each instance of `prototypeId`, in the order of
++   * ComputeInstanceTransforms; empty when the instancer has none or is itself instanced. */
++  PXR_NS::VtVec4fArray ComputeInstanceTints(const PXR_NS::SdfPath &prototypeId);
+ 
+  private:
+   void SyncPrimvars();
+@@ -33,6 +36,7 @@ class HdCyclesInstancer final : public PXR_NS::HdInstancer {
+   PXR_NS::VtVec4fArray _rotate;
+   PXR_NS::VtVec3fArray _scale;
+   PXR_NS::VtMatrix4dArray _instanceTransform;
++  PXR_NS::VtVec4fArray _tint;
+ };
+ 
+ HDCYCLES_NAMESPACE_CLOSE_SCOPE
 diff --git a/src/hydra/light.cpp b/src/hydra/light.cpp
 index 1457e775..39b31f7a 100644
 --- a/src/hydra/light.cpp
