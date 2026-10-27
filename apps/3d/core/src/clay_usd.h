@@ -4,8 +4,15 @@
 // only the blocks it changed. Written straight as Sdf specs inside one change block (the proof's fast path: one
 // SetField per attribute, the arrays moved in). The clay's Xform (root layer) carries its transform and material;
 // the blocks inherit both. Storm and Cycles read the same prims.
+//
+// CL5: a skinned clay (clay_skin.h) has its blocks written POSED: set() keeps each block's rest surface in the clay's
+// Skinning and writes its posed points, normals and extent; pose() re-writes only the blocks whose bones moved. get()
+// still gives the rest surface. Nothing of the skinning is in the stage: a stroke's worker may read it (skinning()).
 #pragma once
+#include <memory>
 #include <set>
+#include <string>
+#include <vector>
 
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/base/gf/vec3f.h>
@@ -16,8 +23,12 @@
 #include <pxr/usd/usd/stage.h>
 
 #include "clay_mesh.h"
+#include "clay_skin.h"
 
 namespace r3d::clay {
+
+// a block prim's name ("clay_3_n1_0") -> its key; false for any other name
+bool block_key_of(const std::string& name, BlockKey& key);
 
 class Blocks {
  public:
@@ -37,6 +48,17 @@ class Blocks {
   void clear_st(const PXR_NS::SdfPath& clay, const BlockKey& key);                         // between begin() and end()
   void begin();
   void end();
+
+  // CL5. The clay's bones (null: none, its blocks written at rest again). A rig of the same rest only takes the new
+  // pose table; a new rest re-weighs every block of `have` (their rest surfaces from the old skinning, else the
+  // layer). Call between begin() and end().
+  void set_skin(const PXR_NS::SdfPath& clay, std::shared_ptr<const SkinRig> rig, const std::set<BlockKey>& have);
+  // the clay's blocks posed with `moves` (one per bone): only those whose bones moved are written; how many. Between
+  // begin() and end(). 0 for a clay with no skin.
+  // `skinMs` / `usdMs` (optional): the bending (parallel) and the Sdf writes (serial)
+  int pose(const PXR_NS::SdfPath& clay, const std::vector<BoneMove>& moves, double* skinMs = nullptr,
+           double* usdMs = nullptr);
+  const Skinning* skinning(const PXR_NS::SdfPath& clay) const;  // null: no skin
 
  private:
   struct Impl;

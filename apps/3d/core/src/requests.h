@@ -38,6 +38,8 @@ class Core {
   PXR_NS::JsObject sculpt(const PXR_NS::JsObject& a);     // clay_requests.cpp
   PXR_NS::JsObject clay_info(const PXR_NS::JsObject& a);  // clay_requests.cpp
   PXR_NS::JsObject clay_bench(const PXR_NS::JsObject& a); // clay_requests.cpp (a check: the replay bench)
+  PXR_NS::JsObject clay_pose(const PXR_NS::JsObject& a);  // clay_requests.cpp (CL5: a pose drag's live bone moves)
+  PXR_NS::JsObject clay_grid(const PXR_NS::JsObject& a);  // clay_requests.cpp (CL5: the rest clay's inside, sampled)
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject info();
 

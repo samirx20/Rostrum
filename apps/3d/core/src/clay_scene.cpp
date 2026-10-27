@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <memory>
 
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdShade/tokens.h>
@@ -218,6 +219,10 @@ clay::Node build_clay(Item& it, Reader& node, const SdfPath& path) {
       fail(paint.at("file"), "\"" + n.paintFile + "\" is not an absolute path", "the surface file's absolute path");
     n.paintSize = paint.count("size", 64, 16384);
     paint.finish();
+  }
+  if (node.has("skin")) {  // CL5: the clay bends with its bones (clay_skin.h)
+    n.skin = std::make_shared<SkinRig>(read_skin(node.object("skin"), it.id + ".skin"));
+    n.skinStart = it.ctx.start;
   }
   const JsArray& steps = node.list("steps");
   for (size_t i = 0; i < steps.size(); ++i)

@@ -14,6 +14,7 @@
 
 #include "args.h"
 #include "clay_replay.h"
+#include "skin.h"
 #include "error.h"
 #include "inspect.h"
 #include "requests.h"
@@ -207,6 +208,7 @@ JsObject Core::sculpt(const JsObject& o) {
     const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
     check_frame(f, "sculpt.frame");
     if (w < 16 || h < 16 || w > 8192 || h > 8192) throw Error("sculpt.width/height: each must be 16..8192");
+    clay_->pose_frame(f);  // CL5: a skinned clay posed for the stroke's frame: its rays meet it as drawn
     const SdfPath path = item_path(stage_, item);
     if (path.IsEmpty()) throw Error("sculpt.item: no item \"" + item + "\" in the scene");
     auto sv = std::make_shared<StrokeView>();
@@ -278,6 +280,52 @@ JsObject Core::clay_bench(const JsObject& o) {
                   {"bigSerial", JsValue(hex(r.bigSerial))},
                   {"bigParallel", JsValue(hex(r.bigParallel))},
                   {"bigSame", JsValue(r.bigLive == r.bigSerial && r.bigSerial == r.bigParallel)}};
+}
+
+namespace {
+std::string base64(const std::vector<uint8_t>& b) {
+  static const char* abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string out;
+  out.reserve((b.size() + 2) / 3 * 4);
+  for (size_t i = 0; i < b.size(); i += 3) {
+    const uint32_t v = uint32_t(b[i]) << 16 | (i + 1 < b.size() ? uint32_t(b[i + 1]) << 8 : 0u) |
+                       (i + 2 < b.size() ? uint32_t(b[i + 2]) : 0u);
+    out += abc[(v >> 18) & 63];
+    out += abc[(v >> 12) & 63];
+    out += i + 1 < b.size() ? abc[(v >> 6) & 63] : '=';
+    out += i + 2 < b.size() ? abc[v & 63] : '=';
+  }
+  return out;
+}
+}  // namespace
+
+// CL5: a pose drag's live bone moves on a skinned clay, drawn until the next scene (clay_store.h Store::pose)
+JsObject Core::clay_pose(const JsObject& o) {
+  Args a(o, "clay_pose", {"item", "pose"});
+  need_scene("clay_pose");
+  const JsValue& list = a.need("pose");
+  if (!list.IsArray()) throw Error("clay_pose.pose: needs a list of bone moves. Accepted: one [12 numbers] per bone");
+  std::vector<BoneMove> moves;
+  for (size_t i = 0; i < list.GetJsArray().size(); ++i)
+    moves.push_back(read_bone_move(list.GetJsArray()[i], "clay_pose.pose[" + std::to_string(i) + "]"));
+  const clay::PoseReply r = clay_->pose(a.str("item"), moves);
+  return JsObject{{"ok", JsValue(true)}, {"blocks", JsValue(r.blocks)}, {"ms", JsValue(r1(r.ms))},
+                  {"skinMs", JsValue(r1(r.skinMs))}, {"usdMs", JsValue(r1(r.usdMs))}};
+}
+
+// CL5: the rest clay's inside on a grid, for the joint finder (clay_store.h Store::grid)
+JsObject Core::clay_grid(const JsObject& o) {
+  Args a(o, "clay_grid", {"item", "cells"});
+  need_scene("clay_grid");
+  const int cells = a.whole("cells", 48);
+  if (cells < 8 || cells > 128) throw Error("clay_grid.cells: " + std::to_string(cells) + " is out of range. Accepted: 8..128");
+  const clay::GridReply g = clay_->grid(a.str("item"), cells);
+  return JsObject{{"ok", JsValue(true)},
+                  {"origin", vec3(GfVec3d(g.origin[0], g.origin[1], g.origin[2]))},
+                  {"cell", JsValue(g.cell)},
+                  {"dims", JsValue(JsArray{JsValue(g.dims[0]), JsValue(g.dims[1]), JsValue(g.dims[2])})},
+                  {"inside", JsValue(base64(g.inside))},
+                  {"ms", JsValue(r1(g.ms))}};
 }
 
 JsObject Core::clay_info(const JsObject& o) {

@@ -154,6 +154,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   JsArray channels;  // the EXR's channel names, the same for every frame
   for (int f = first; f <= last; ++f) {
     const auto tf = Clock::now();
+    clay_->pose_frame(f);  // CL5: each skinned clay posed for this frame
     Aovs lit, unshadowed;
     Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_, &lit);
     if (needs_unshadowed(passes)) {  // the Shadow pass: the same frame again with no shadows
@@ -216,6 +217,7 @@ JsObject Core::view(const JsObject& o) {
   const int f = a.whole("frame"), w = a.whole("width"), h = a.whole("height");
   check_frame(f, "view.frame");
   if (w < 16 || h < 16 || w > 4096 || h > 4096) throw Error("view.width/height: each must be 16..4096");
+  clay_->pose_frame(f);  // CL5: each skinned clay posed for the frame shown (a clay_pose's moves while they hold)
   ViewLook look;
   look.studio = a.num("studio", 1.0);
   if (look.studio < 0 || look.studio > 4) throw Error("view.studio: must be 0..4");
@@ -323,6 +325,7 @@ JsObject Core::pick(const JsObject& o) {
                                                       std::to_string(w) + "x" + std::to_string(h) + " picture");
   GfVec3d point, normal;
   const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
+  clay_->pose_frame(f);  // CL5: a skinned clay is picked as drawn at this frame
   const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point, &normal);
   if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
   JsObject out{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
@@ -335,6 +338,9 @@ JsObject Core::pick(const JsObject& o) {
     if (clay_->has(out["item"].GetString())) {  // 3d-cl4: where on the clay, in its own space (a stroke's anchors)
       out["local"] = vec3(spot->local);
       out["localNormal"] = vec3(spot->localNormal);
+      // CL5: a clay with bones: the same spot on its rest shape (clay space), `local` staying the drawn one
+      if (const auto rest = clay_->rest_spot(out["item"].GetString(), hit, spot->face, spot->local))
+        out["rest"] = vec3(*rest);
     }
   }
   return out;
