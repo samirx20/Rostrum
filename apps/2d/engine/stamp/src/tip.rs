@@ -36,6 +36,38 @@ pub fn across(st: &Stroke, d: &Dab, out: &mut Vec<f64>) {
     }
 }
 
+/// The columns of row `y` where the dab's shape can cover anything (`coverage` is 0 outside them before grain,
+/// chalk and the mask, which only scale it). The shape lies inside an ellipse turned with the dab: a circle for the
+/// round tips, the bristle's own ellipse, the ellipse round the flat's and the block's rectangle (their corners on it).
+/// One px bigger each way and 2 px wider for rounding.
+pub fn reach(st: &Stroke, d: &Dab, y: usize) -> std::ops::Range<usize> {
+    let r = d.r;
+    let sq2 = std::f64::consts::SQRT_2;
+    let (along, across) = match st.tip {
+        Tip::Round | Tip::Chalk => (r, r),
+        Tip::Line => (r + 0.5, r + 0.5),
+        Tip::Bristle => (r * st.along, r),
+        Tip::Flat => (r * st.along * sq2, r * sq2),
+        Tip::Block => (r * st.along * sq2, r * d.wv.abs() * sq2),
+    };
+    let (p, q) = (along.abs() + 1.0, across.abs() + 1.0);
+    let round = matches!(st.tip, Tip::Round | Tip::Chalk | Tip::Line); // by distance alone, whatever the turn
+    let (c, s, dy) = if round { (1.0, 0.0, y as f64 - d.y) } else { (d.cos, d.sin, y as f64 - d.y) };
+    // (dx c + dy s)² / p² + (dy c - dx s)² / q² < 1, a quadratic in dx
+    let a = c * c / (p * p) + s * s / (q * q);
+    let b = 2.0 * dy * c * s * (1.0 / (p * p) - 1.0 / (q * q));
+    let k = dy * dy * (s * s / (p * p) + c * c / (q * q)) - 1.0;
+    let disc = b * b - 4.0 * a * k;
+    if !(a > 0.0 && disc.is_finite() && p.is_finite() && q.is_finite()) {
+        return 0..usize::MAX; // no shape to trust: every pixel
+    }
+    if disc < 0.0 {
+        return 0..0;
+    }
+    let (lo, hi) = ((-b - disc.sqrt()) / (2.0 * a), (-b + disc.sqrt()) / (2.0 * a));
+    (d.x + lo - 2.0).floor().max(0.0) as usize..(d.x + hi + 2.0).ceil().max(0.0) as usize + 1
+}
+
 /// The dab's coverage at (x, y), with its strength, grain and mask; `idx` its place across the tip profile; `across`
 /// the dab's profile (`across`).
 pub fn coverage(st: &Stroke, d: &Dab, across: &[f64], x: usize, y: usize) -> (f64, usize) {

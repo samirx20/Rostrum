@@ -67,3 +67,27 @@ def test_native_equals_numpy_on_a_seamless_canvas():
                for layer, lay in ((ours, native.lay), (theirs, B.dabs))]
         assert got[0].bbox == got[1].bbox and got[0].a.tobytes() == got[1].a.tobytes(), f"{tip}: coverage"
         assert ours.tobytes() == theirs.tobytes(), f"{tip}: pixels"
+
+
+@needs_native
+def test_native_equals_numpy_for_big_overlapping_dabs():
+    """Big brushes take the native stamper's fast paths (several threads, pixels a dab can't change skipped): the
+    same pixels still, dry and wet, in the modes that step by their own rounding, with a mask, grain and a tip picture."""
+    h, w = 260, 420
+    rng = np.random.default_rng(2)
+    base = (rng.random((h, w, 4)) * 0.6).astype(np.float32)
+    base[..., :3] = np.minimum(base[..., :3], base[..., 3:])
+    under = np.ascontiguousarray(rng.random((h, w, 4)), np.float32)[..., :3]
+    ours, theirs = base.copy(), base.copy()
+    mask = compose.mask_array({"points": [[0, 0], [420, 40], [300, 260], [0, 200]], "feather": 6, "invert": False}, w, h)
+    cases = [("round", dict(hardness=1.0)), ("round", dict(hardness=0.3, mode="multiply")),
+             ("bristle", dict(wet=0.4, hardness=0.6)), ("round", dict(wet=0.6, sample_all=True, mode="screen")),
+             ("chalk", dict(grain=0.5, mode="overlay")), ("flat", dict(texture=pictures.TEXTURES[2])),
+             ("block", dict(mode="add")), ("line", dict(mode="erase"))]
+    for k, (tip, s) in enumerate(cases):
+        pts = [[30, 60 + 15 * k, 0.6], [200, 180 - 10 * k, 1.0], [400, 90 + 12 * k, 0.8]]
+        got = [B.stamp_stroke(layer, pts, (0.3, 0.6, 0.2), 140, tip, paper=marks.Paper(h, w), lay=lay, seed=k,
+                              mask=mask if k % 3 == 1 else None, under=under, spacing=0.06, **s)
+               for layer, lay in ((ours, native.lay), (theirs, B.dabs))]
+        assert got[0].a.tobytes() == got[1].a.tobytes(), f"{tip} {s}: coverage"
+        assert ours.tobytes() == theirs.tobytes(), f"{tip} {s}: pixels"

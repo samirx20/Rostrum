@@ -18,8 +18,8 @@ says which (`take_weak`).
 | File | Job |
 |---|---|
 | `src/lib.rs` | the C entry `rostrum2d_stamp_dabs`, the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
-| `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`) |
-| `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask |
+| `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`); the fast paths below |
+| `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask; `reach`, the columns of a row the tip's shape can cover |
 | `src/paint.rs` | paint meets the layer (normal, multiply, erase, screen, add) |
 
 ## Build
@@ -46,6 +46,31 @@ No dependencies; builds in seconds. The kit looks for it at `ROSTRUM_STAMP_LIB`,
 
 What is left in the native time: about a quarter is the plan in Python (path resampling, random draws); the rest is
 the dabs. Wet strokes lay three times as many dabs, each also reading and updating the brush's reservoir.
+
+## Big brushes: the same pixels, less work
+
+A 260 px brush lays dabs of ~70,000 px, and a hard one lays 1,200 of them a stroke. Three things make that fast
+without changing a pixel (`stroke.rs`):
+
+- **Only the tip's shape.** A row's pixels outside the ellipse round the tip's shape (`tip::reach`: the circle of a
+  round tip, the bristle's own narrow ellipse) get coverage 0, which leaves the pixel as it is: skipped. Not for the
+  modes where coverage 0 still rounds the pixel (multiply and screen over coverage already laid, add).
+- **Nothing to add.** A dry dab in a mode that steps by the coverage's growth (normal, erase, overlay, soft light,
+  colour) leaves a pixel the stroke already covers at least as much as the dab can (its strength × tip picture ×
+  mask; 1 with grain) as it is: skipped without working out the coverage. Dense dabs change only a thin crescent.
+- **Threads.** A stroke with enough work (64k px, dabs over 2k px) is laid by up to 8 threads, each owning every
+  T-th band of 4 rows: a pixel's result depends only on itself, so dry dabs never wait; a wet dab's pick-up, laying
+  and take-up wait for each other (a short spin, twice a dab).
+
+`shared/painting-kit/tests/test_native.py` checks big overlapping dabs (threads, both skips) against numpy byte for
+byte. One stroke of 100 points across a 2560 × 768 layer, stamping only:
+
+| Brush | before | after |
+|---|---|---|
+| hard round 260 px (1,205 dabs) | 2,084 ms | 44–60 ms |
+| wet bristle 260 px (287 dabs) | 684 ms | 78–90 ms |
+| soft round 260 px | 207 ms | 26–30 ms |
+| hard round 40 px | 180 ms | 30 ms |
 
 ## Judged
 

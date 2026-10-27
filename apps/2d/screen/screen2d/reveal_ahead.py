@@ -1,4 +1,4 @@
-"""The eraser's reveal, drawn ahead: while the Eraser is on and the selection holds paint, the world the canvas shows
+"""The eraser's reveal, drawn ahead: while the Eraser (or a smudging brush) is on and the selection holds paint, the world the canvas shows
 without the layer it would erase (wet.py `without_paint`, `reveal_rect`) is asked of the canvas's engine before the pen
 goes down, so the first eraser stroke shows at once like every brush's wet ink (it waited ~70-170 ms for this picture
 at the press). Asked again, when the pointer is quiet, after anything it depends on changes: the document (a new
@@ -33,7 +33,7 @@ class RevealAhead(QObject):
     def _target(self) -> tuple[str, bool] | None:
         """(the layer an eraser stroke would erase, through a painted fill?), or None when no stroke would erase."""
         p = self.p
-        if self.b.tool != "draw" or not p._erasing() or not p.canErase or self.b.opened.on or p._stroke is not None:
+        if self.b.tool != "draw" or not p._covering() or not p.canErase or self.b.opened.on or p._stroke is not None:
             return None
         through = p.through()
         d = through if through is not None else p._aim()

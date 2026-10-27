@@ -4,7 +4,8 @@ The pen's stroke goes into the document once, when it lifts (strokes.StrokeDrag,
 it with the painting kit's own brush (wet_ink.py), so no move waits for the scene to be described and drawn again. The
 saved stroke is then drawn by the one render path (preview ≡ export); the wet picture goes when that frame lands.
 A smudging brush smears the layer's own paint: its wet ink works on that paint (`under`, in the paint canvas's px,
-laid over the layer's box like the onion skin) and shows the region smeared. The eraser's wet ink shows, where it
+laid on the world by the stroke's own place) and shows the region smeared, over the world without the layer (as the
+eraser's does: the smear holds the layer's paint, so it replaces it rather than lying on it again). The eraser's wet ink shows, where it
 lies, the world drawn without the layer it erases (asked of the canvas's engine at the press: the part of the world
 the canvas shows, at 1 px per world px, at most MOST_REVEAL px a side round the press: `reveal_rect`). Wet ink lies
 in world px, anywhere on the endless canvas, the frame at home or not.
@@ -51,6 +52,7 @@ class WetView(QObject):
     def __init__(self, frame_changed, parent=None):
         super().__init__(parent)
         self.provider, self._ink, self._serial, self._box, self._lifted = WetProvider(), None, 0, {}, False
+        self._ending = None                             # a lifted stroke's ink, drawing the points it hadn't yet
         self._dry_serial, self._dry_box, self._settled = 0, {}, lambda: True
         self._copies, self._copies_of = [], None        # a seamless painting's wrapped copies (wet_wrap.py)
         self._uses = []                                 # ink in a painting's px, on every layer using it (wet_uses.py)
@@ -74,7 +76,7 @@ class WetView(QObject):
         """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else.
         `settled()`: whether the picture with the saved stroke is shown (default: the frame that lands has it).
         `uses`: the ink is in a painting's px and shows on these layers (wet_uses.uses), not where it lies."""
-        self._ink, self._lifted, self._copies_of = ink, False, copies_of
+        self._ink, self._ending, self._lifted, self._copies_of = ink, None, False, copies_of
         if self._uses or uses:
             self._uses = list(uses or [])
             self.usesChanged.emit()
@@ -101,34 +103,41 @@ class WetView(QObject):
             self.show()
 
     def show(self):
-        if self._ink is None or not self._ink.ready:
+        ink = self._ink or self._ending
+        if ink is None or not ink.ready:
             return
-        if self._ink.settle():
-            got = self._ink.dry()
+        if ink.settle(more=ink is self._ink):
+            got = ink.dry()
             if got is not None:
                 self.provider.put("dry", got[0])
                 self._dry_serial, self._dry_box = self._dry_serial + 1, got[1]
-        got = self._ink.tip()
+        got = ink.tip()
         if got is not None and got[0] is not self.provider.picture("tip"):     # (unchanged: the same picture)
             self.provider.put("tip", got[0])
             self._serial, self._box = self._serial + 1, got[1]
+        if ink is self._ending and ink.whole:
+            self._ending = None
         if self._copies_of is not None:
             self._copies = self._copies_of()
-            if self._ink.erasing:           # each copy shows what is under it there, not what is under the pen
+            if ink.erasing:           # each copy shows what is under it there, not what is under the pen
                 self._copies = [{**c, "own": i} for i, c in enumerate(self._copies)]
                 for i, c in enumerate(self._copies):
                     for part, box in (("dry", self._dry_box), ("tip", self._box)):
                         image = self.provider._images.get(part)
                         if box and image is not None and not image.isNull():
-                            self.provider.put(f"{part}c{i}", self._ink.moved(image, box, c["x"], c["y"]))
+                            self.provider.put(f"{part}c{i}", ink.moved(image, box, c["x"], c["y"]))
         self.changed.emit()
 
     def lift(self, saved: bool):
         """The pen is up: the wet picture stays until the frame with the saved stroke lands (or goes now, if the
-        stroke wasn't saved)."""
-        self._ink, self._lifted = None, True
+        stroke wasn't saved). Meanwhile the ink draws the points it hadn't yet (`_ending`), so the whole stroke shows
+        within a piece of the release, not when the saved stroke's frame lands (a big brush's pieces trail the pen)."""
+        ink, self._ink, self._lifted = self._ink, None, True
         if not saved:
             self._clear()
+        elif ink is not None:
+            self._ending = ink
+            self.show()
 
     def flat(self, got, settled=lambda: True):
         """A Fill's or a paste's flat colour (flat_cue.draw's (image, box)) shows at once; the frame with the real paint
@@ -148,7 +157,7 @@ class WetView(QObject):
         self._frame()
 
     def _clear(self):
-        self._lifted = False
+        self._lifted, self._ending = False, None
         self._copies_of = None
         if self._serial or self._dry_serial or self._copies or self._uses:
             self._serial, self._box, self._dry_serial, self._dry_box, self._copies = 0, {}, 0, {}, []
@@ -193,15 +202,20 @@ def without_paint(scene: dict, layer_id: str, fill: bool = False) -> dict | None
     return None if comp is None else {**scene, "comp": comp}
 
 
-def smear_ink(view: WetView, brush: dict, stroke, box: dict, n: int) -> WetInk:
+def smear_ink(view: WetView, brush: dict, stroke, n: int) -> WetInk:
     """A smudging stroke's wet ink: on the layer's own paint at the playhead (its drawing there, in canvas px), laid
-    over the layer's box on the composition (`box`: the bridge's selBox), as the onion skin is."""
+    on the world where the stroke's own place (strokes.StrokeDrag.place, the one mapping its points went through) puts
+    the canvas: a drawing the stroke just made has no box on screen yet. A drawing's smear goes past its canvas (the
+    drawing grows with the stroke: rostrum2d/paint_grow.py); an element's paint stays in its box."""
     from rostrum2d.drawing import frame_at, paint_size
-    item = stroke.item
+    from rostrum2d.placement import comp_point
+    item, place = stroke.item, stroke.place
     w, h = paint_size(item, stroke.props)
     here = frame_at(item, n) if item.get("frames") else None
-    place = (box.get("x", 0), box.get("y", 0), box.get("w", w) / w, box.get("h", h) / h)
-    return view.ink(brush, stroke.sid, 1.0, (w, h), paint_under(here, w, h), place)
+    (ox, oy), (ax, _), (_, ay) = (comp_point(place, 0, 0), comp_point(place, place["w"] / w, 0),
+                                  comp_point(place, 0, place["h"] / h))
+    bounds = None if item["type"] == "drawing" else (w, h)
+    return view.ink(brush, stroke.sid, 1.0, bounds, paint_under(here, w, h), (ox, oy, ax - ox, ay - oy))
 
 
 _UNDER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="wet-under")

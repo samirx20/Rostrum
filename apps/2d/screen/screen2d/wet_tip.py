@@ -3,7 +3,8 @@
 Each look stamps only the points that came since the last one (from the last drawn point on, so the line joins),
 carrying on the stroke's coverage (`carry`: where a piece overlaps the last nothing is laid twice, so a see-through
 brush shows no beads at the joins). A move costs its own few px, never the whole tip again. The canvas lies in world
-px from `at` and grows (by half its size a side, at least GROW px) when a point leaves it, so it is rarely made again. Its picture is made only
+px from `at` and grows (by half its size a side, at least GROW px, at most a few brush widths; a smear's within its
+canvas) when a point leaves it, so it is rarely made again. Its picture is made only
 when something was drawn since the last, from its straight pixels (`u8`), which each piece updates only where it lies.
 A smudge's tip (`base`) smears the paint under it: its canvas starts as that paint (base(x0, y0, x1, y1): premultiplied
 px of that box), so each piece smears what the last one left, and a move costs its own dabs however long the tip is.
@@ -32,7 +33,7 @@ class Tip:
         new = points[max(self.start, self.done - 1):]
         box = ink._box(new)
         if box is not None:
-            self._room(box)
+            self._room(box, ink)
             ink._stamp(self.px, self.at, new, self.cov)
             ax, ay = self.at
             self.u8[box[1] - ay:box[3] - ay, box[0] - ax:box[2] - ax] = ink.straight(
@@ -43,7 +44,7 @@ class Tip:
         self.done = len(points)
         return self
 
-    def _room(self, box):
+    def _room(self, box, ink):
         x0, y0, x1, y1 = box
         if self.px is not None:
             ax, ay = self.at
@@ -51,10 +52,14 @@ class Tip:
             if x0 >= ax and y0 >= ay and x1 <= ax + w and y1 <= ay + h:
                 return
             x0, y0, x1, y1 = min(x0, ax), min(y0, ay), max(x1, ax + w), max(y1, ay + h)
-        gx, gy = max(GROW, (x1 - x0) // 2), max(GROW, (y1 - y0) // 2)      # room for the line to go on
-        nx, ny = x0 - gx, y0 - gy
-        px = (np.zeros((y1 - y0 + 2 * gy, x1 - x0 + 2 * gx, 4), np.float32) if self.base is None
-              else self.base(nx, ny, x1 + gx, y1 + gy))
+        # room for the line to go on: half the canvas, at most a few brush widths (half of everything each time made a
+        # long stroke's canvas double: 6184 x 4417 px for an 1800 px sweep), never past a smear's canvas
+        most = max(GROW, int(4 * ink.reach))
+        gx, gy = max(GROW, min(most, (x1 - x0) // 2)), max(GROW, min(most, (y1 - y0) // 2))
+        nx, ny, ex, ey = x0 - gx, y0 - gy, x1 + gx, y1 + gy
+        if ink.bounds is not None:
+            nx, ny, ex, ey = max(0, nx), max(0, ny), min(ink.bounds[0], ex), min(ink.bounds[1], ey)
+        px = (np.zeros((ey - ny, ex - nx, 4), np.float32) if self.base is None else self.base(nx, ny, ex, ey))
         cov, u8 = np.zeros(px.shape[:2], np.float32), np.zeros(px.shape[:2] + (4,), np.uint8)
         if self.px is not None:
             (ax, ay), (h, w) = self.at, self.cov.shape

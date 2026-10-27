@@ -16,6 +16,11 @@ only read, never copied whole (a big drawing's copy at each press cost tens of m
 it reaches (wet_tip.Tip's `base`), piece by piece like any tip, over the dry part's last restamp (`_part`). `under`
 may be a Future (the paint still being made off the screen's thread: wet.smear_ink): the smear shows once it is done
 (`ready`), the points that came meanwhile with it, so the press never waits for a drawing's pixels.
+A smear's pictures hold the layer's paint with the smear in it, so they replace that paint rather than lie on it:
+laid on the frame that shows it already, see-through paint would count twice (a brighter box: critic r12). Once its
+layer holds paint (`covers`, set by the screen when it asks for the reveal) a smear shows over the world drawn without
+its layer, as the eraser does, and waits for that picture. Points past a drawing's canvas are fine: a drawing grows
+with the stroke (no `bounds`); what lies outside the paint under it is empty.
 Normal ink has no bounds (None). `reveal`: the eraser. Its ink is the eraser's coverage, and where it lies the picture
 shows the world drawn without the layer being erased (straight RGBA8 at 1 px per world px, its top-left at world px
 `origin`: `reveal_with`): over the canvas that is (1 - e) × with + e × without, exactly what erasing e of a layer's
@@ -49,6 +54,7 @@ class WetInk:
         self.reach = self.size / 2 + PAD + 3 * brush.get("jitter", 0) * self.size
         self.points: list[list[float]] = []
         self.smears, self.place, self.reveal, self._origin = under is not None, place, None, (0, 0)
+        self.covers = erasing                                           # shows over the world without its layer
         self._coming = under if isinstance(under, Future) else None    # the paint under a smear, still being made
         if self._coming is not None:
             under = None
@@ -70,7 +76,7 @@ class WetInk:
             if not self._coming.done():
                 return False
             self._base, self._coming = self._coming.result(), None
-        return not self.erasing or self.reveal is not None
+        return not self.covers or self.reveal is not None
 
     def reveal_with(self, frame: np.ndarray, origin: tuple[int, int]):
         self.reveal, self._origin = frame, origin
@@ -92,8 +98,9 @@ class WetInk:
     def _stamp(self, into, origin, pts, carry=None):
         item = build("stroke", self.sid, {**self.brush, "size": self.size, "seed": seed_of(self.sid),
                                           "points": [[x - origin[0], y - origin[1], p] for x, y, p in pts]})
-        canvas.stamp(into, item, into.shape[1], into.shape[0], {}, into[..., :3].copy() if item["smudge"] else None,
-                     carry=carry)
+        # what is under the stroke, only for a brush that picks it up (a copy of the canvas: a big tip's cost tens of ms)
+        under = into.copy()[..., :3] if item["smudge"] and item["pickup"] else None
+        canvas.stamp(into, item, into.shape[1], into.shape[0], {}, under, carry=carry)
 
     def _restamp(self, pts, box, base):
         """(worker thread) The whole stroke `pts` stamped again into its box, on what it starts on, and its picture;
@@ -120,9 +127,9 @@ class WetInk:
             return out
         return base
 
-    def settle(self) -> bool:
+    def settle(self, more: bool = True) -> bool:
         """Takes in a finished restamp of the dry part (True: it changed), and starts the next one once the tip is
-        CHUNK points long. A restamp that failed raises here, on the screen's thread."""
+        CHUNK points long (`more`: the pen is still down). A restamp that failed raises here, on the screen's thread."""
         changed = False
         if self._job is not None and self._job[0].done():
             future, box, n = self._job
@@ -133,16 +140,23 @@ class WetInk:
             if self.smears:
                 self._part = (box, part)
             self._dry_box, self._settled, changed = box, n, True
-        if self._job is None and len(self._tip()) >= CHUNK:
+        if more and self._job is None and len(self._tip()) >= CHUNK:
             pts, box = [list(p) for p in self.points], self._box(self.points)
             if box is not None:
                 x0, y0, x1, y1 = box
-                base = self._base[y0:y1, x0:x1].copy() if self._base is not None else None
+                base = self._smeared(None)(*box) if self._base is not None else None
                 future = _DRY.submit(self._restamp, pts, box, base)
                 self._job = (future, box, len(pts))
                 if self._done is not None:
                     future.add_done_callback(lambda _f: self._done())
         return changed
+
+    @property
+    def whole(self) -> bool:
+        """Every point is drawn and shown (nothing running): a lifted stroke's ink has nothing more to draw."""
+        shown = self._tip_pic
+        return (self._job is None and self._tip_job is None and shown is not None and shown[0] is self._tip_now
+                and self._tip_now.done >= len(self.points))
 
     def dry(self) -> tuple[QImage, dict] | None:
         return self._dry_pic
@@ -183,6 +197,10 @@ class WetInk:
             u8 = self._revealed(at[0], at[1], x1 - x0, y1 - y0)
             u8[..., 3] = np.minimum(u8[..., 3], np.clip(px[y0:y1, x0:x1, 3] * 255 + 0.5, 0, 255).astype(np.uint8))
             return u8
+        if self.covers:                     # a smear: its paint over the world without its layer (premultiplied)
+            part, world = px[y0:y1, x0:x1], self._revealed(at[0], at[1], x1 - x0, y1 - y0).astype(np.float32) / 255
+            world[..., :3] *= world[..., 3:]
+            return compose.straight8(part + (1 - part[..., 3:]) * world)
         return compose.straight8(px[y0:y1, x0:x1])
 
     def moved(self, image: QImage, box: dict, dx: float, dy: float) -> QImage:
@@ -195,14 +213,17 @@ class WetInk:
         return QImage(u8.data, w, h, w * 4, QImage.Format.Format_RGBA8888).copy()
 
     def _revealed(self, x: int, y: int, w: int, h: int) -> np.ndarray:
-        """The reveal picture over world px x, y, w × h; where it doesn't reach, see-through (alpha 0)."""
+        """The reveal picture under the ink's px x, y, w × h (laid on the world by `place`: the eraser's px are world
+        px, a smear's its canvas's), the nearest world px to each; where it doesn't reach, see-through (alpha 0)."""
         out = np.zeros((h, w, 4), np.uint8)
-        rx, ry = x - self._origin[0], y - self._origin[1]
+        ox, oy, kx, ky = self.place
         H, W = self.reveal.shape[:2]
-        sx0, sy0, sx1, sy1 = max(0, rx), max(0, ry), min(W, rx + w), min(H, ry + h)
-        if sx1 > sx0 and sy1 > sy0:
-            out[sy0 - ry:sy1 - ry, sx0 - rx:sx1 - rx, :3] = self.reveal[sy0:sy1, sx0:sx1, :3]
-            out[sy0 - ry:sy1 - ry, sx0 - rx:sx1 - rx, 3] = 255
+        cols = np.floor(ox + (x + np.arange(w) + 0.5) * kx).astype(np.int64) - self._origin[0]
+        rows = np.floor(oy + (y + np.arange(h) + 0.5) * ky).astype(np.int64) - self._origin[1]
+        ci, ri = np.flatnonzero((cols >= 0) & (cols < W)), np.flatnonzero((rows >= 0) & (rows < H))
+        if len(ci) and len(ri):
+            out[ri[0]:ri[-1] + 1, ci[0]:ci[-1] + 1, :3] = self.reveal[rows[ri][:, None], cols[ci]][..., :3]
+            out[ri[0]:ri[-1] + 1, ci[0]:ci[-1] + 1, 3] = 255
         return out
 
     def _placed(self, image, box):
