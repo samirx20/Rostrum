@@ -342,6 +342,7 @@ class SoundBridge(AgentDemo, ViewSlots, PictureSlots, SongSlots, LaneSlots, Drum
             self.transport.changed()
 
     def close(self):
+        self._close_view()          # a kept view still waiting is written (view_kept.py)
         if self.link:
             self.link.close()
         self.endDrag()

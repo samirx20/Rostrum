@@ -88,7 +88,9 @@ class RollView:
             self.rollPickedChanged.emit()
 
     def _roll(self, rows) -> dict:
-        """The Editor's piano roll of the current track (`_track`), in its row's colour."""
+        """The Editor's piano roll of the current track (`_track`), in its row's colour. (The song's first one puts
+        back the view it was closed with first: view_slots._kept_view.)"""
+        self._kept_view()
         root = self.doc.data
         hue = next((r["hue"] for r in rows if r["id"] == self._track), timeline.HUES[0])
         track = self.doc.item(self._track) if self._track and self.doc.has(self._track) else None
