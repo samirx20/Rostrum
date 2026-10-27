@@ -27,3 +27,23 @@ def test_turn_scale_move_is_one_step_in_composition_px():
     assert s["size"] == 5
     d.undo(SAM)
     assert d.item("s1")["points"] == before and d.item("s1")["size"] == 10
+
+
+def test_moving_strokes_past_a_drawings_edge_grows_it_and_loses_nothing():
+    """Dragging picked paint past the edge cut it off for good (the drawing stayed its size); now the canvas grows, as
+    painting past the edge does, and undo takes the move and the growth back together."""
+    d = Document.new(KIND)
+    d.apply([{"op": "comp.add", "args": {"id": "film", "width": 400, "height": 300, "duration": 1}},
+             {"op": "layer.add", "target": "film", "args": {"type": "drawing", "id": "sky", "name": "sky"}},
+             {"op": "drawing.set", "target": "sky", "args": {"w": 200, "h": 100}}], SAM)
+    d.apply({"op": "paint.stroke", "target": "sky", "args": {"points": [[50, 40], [150, 60]], "size": 10, "id": "s1", "space": "canvas"}}, SAM)
+    d.apply({"op": "stroke.transform", "target": ["s1"], "args": {"dx": -80, "space": "canvas"}}, SAM)     # left past x 0
+    sky, s = d.item("sky"), d.item("s1")
+    assert sky["w"] > 200 and all(0 <= p[0] <= sky["w"] and 0 <= p[1] <= sky["h"] for p in s["points"])
+    assert s["points"][1][0] - s["points"][0][0] == 100                                                   # shape kept
+    w_now = sky["w"]
+    d.apply({"op": "stroke.transform", "target": ["s1"], "args": {"dx": 400, "space": "canvas"}}, SAM)    # right past the edge
+    sky, s = d.item("sky"), d.item("s1")
+    assert sky["w"] > w_now and max(p[0] for p in s["points"]) <= sky["w"]
+    d.undo(SAM)
+    assert d.item("sky")["w"] == w_now
