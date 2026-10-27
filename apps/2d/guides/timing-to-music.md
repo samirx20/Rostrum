@@ -28,7 +28,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 
 1. Click an empty part of the canvas (outside every layer). The settings panel shows the scene's settings.
 2. Click **+ Sound** under the scene's settings. The **Soundtrack** setting appears, showing **Main mix:** and the name of the project's main song.
-3. Click **Soundtrack** to open its list. The first choice is **Main mix: <song>** (the project's main RostrumSound song, the one that plays unless you pick another); under it comes every RostrumSound song of the project, each by its name. Click one to play that song with this scene.
+3. Click the choice beside **Soundtrack** (it reads **Main mix:** and the song's name) to open its list. The first choice is **Main mix: <song>** (the project's main RostrumSound song, the one that plays unless you pick another); under it comes every RostrumSound song of the project, each by its name. Click one to play that song with this scene.
 
 **+ Sound** and the Soundtrack setting are there only when the project has at least one RostrumSound song.
 

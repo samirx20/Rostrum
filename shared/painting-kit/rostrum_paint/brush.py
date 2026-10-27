@@ -53,7 +53,7 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
     `from_t` px along the stroke) are laid, the reservoir going on from the last piece, so the pieces lay the pixels
     the whole stroke laid at once does. `open`: the pen is still down: its last dab (at the pen, where the finished
     stroke has none) waits, and the end has no raggedness or taper yet; the last piece (open False) lays the end. Needs the
-    stroke's `by_dab` draws. The start's raggedness is sized by the stroke so far.
+    stroke's `by_dab` draws. The start's raggedness is sized in brush sizes, as the finished stroke's.
     Returns Coverage (or None if the stroke, or the piece, is entirely off the layer)."""
     check(brush, params)
     if params.get("sample_all") and under is None:
@@ -103,7 +103,9 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
     random number of dab i is drawn the same however many dabs the stroke has, from a stream of its own, and the tip
     profile before any of them, so the stroke so far is the start of the whole stroke (the older draws come after a
     draw per dab: each extra dab moved the bristles). The tip's samples across (Kr) and the reservoir's side (D) are
-    sized by the biggest the tip can be, not the biggest it was so far.
+    sized by the biggest the tip can be, not the biggest it was so far. A bristle or flat tip's ragged start and end
+    reach about a brush size into the stroke (shape.fray), not a share of its length, so the start doesn't change as
+    the stroke goes on.
     piece: (first dab, from_t, open), stamp_stroke's: the plan is of the whole stroke so far, but only its dabs from
     `first` on and at least `from_t` along are kept (P.next: the next piece's first dab; P.n 0: none to lay, P.bbox
     None: none on the layer)."""
@@ -178,6 +180,8 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
     streak = (_up(_noise1(K, 2 if tip == "bristle" else 6, rng), Kr) - 0.5) * 2
     if open_:           # the pen is still down: no ragged end yet
         end = np.full(Kr, -1e6)
+    if by_dab and tip in ("bristle", "flat"):       # the ragged ends sized in brush sizes, not shares of the stroke
+        S = shaping.fray(t, L[-1], size, rag, open_)
     if by_dab:
         noise = lambda salt: _noise1_by_dab(n, max(2, size / step), np.random.default_rng([int(seed), salt]))  # noqa: E731
         hn, sn, vn = ((noise(salt) - 0.5) * 2 for salt in (5, 6, 7))

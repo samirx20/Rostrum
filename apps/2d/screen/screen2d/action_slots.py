@@ -64,7 +64,7 @@ class ActionSlots(SlotMixin):
                                                          "key_clip": bool(self.keys_copied()),          # Ctrl+Shift+V's words
                                                          "sound": self._soundtrack.present, "picked": list(self._kit.selection),
                                                          "frame": frame_actions.state(self),
-                                                         "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip())})
+                                                         "clipboard": bool(self.keys_copied() or self._clip_text() or self._strokes.has_clip() or self._clip_outside())})
 
     def _hub_at(self):
         """The playhead or the markers moved: the frame's actions follow in the frame after (not while playing: nothing

@@ -3,7 +3,7 @@ import QtQuick.Controls as QQC
 import RostrumKit
 
 // Add a sound here… (UX_SPEC 3.28 Sync sound): one layer selected → this popover under the context bar lists a note / hit
-// on the song's instruments first, then the person's recordings (typed words search Sound's library too); type words to narrow it (Enter); a click ties the sound to the
+// on the song's instruments first, then the person's recordings (typed words search Sound's library too); typed words narrow it as you type; a click ties the sound to the
 // layer's start (backend.cuePick, screen2d/sound_cue_pick.py) and closes it. Esc or a click outside closes it.
 SmallPopup {     // Esc: the window's one Esc (OpenPopups); a click outside closes it
     id: pop
@@ -19,7 +19,9 @@ SmallPopup {     // Esc: the window's one Esc (OpenPopups); a click outside clos
         Text { width: parent.width; text: "Add a sound to " + pop.cp.what; color: Theme.fg; font.family: uiFont
                font.pixelSize: Theme.body; font.weight: Font.DemiBold; elide: Text.ElideRight }
         TextField { id: search; objectName: "cueSearch"; width: parent.width; value: pop.cp.words; placeholder: "Search recordings (cello, tap …)"
-                    onEdited: (v) => pop.cp.search(v) }
+                    onEdited: (v) => pop.cp.search(v)
+                    // as you type, like the Library's search: the worker keeps only the newest words (sound_cue_pick.py)
+                    Connections { target: search.input; function onTextChanged() { if (search.input.activeFocus) pop.cp.search(search.input.text) } } }
         Text { objectName: "cueStatus"; visible: pop.cp.searching || pop.cp.sounds.length === 0; width: parent.width; wrapMode: Text.Wrap
                text: pop.cp.searching ? "Searching…" : "No sounds match. Try fewer words, or add a sound folder in RostrumSound."
                color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.label }

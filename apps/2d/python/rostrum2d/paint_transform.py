@@ -15,7 +15,7 @@ import math
 from rostrum_core import Param
 from rostrum_core.errors import codes
 
-from . import drawing as D, placement
+from . import drawing as D, paint_grow, placement
 from .evaluate import resolve
 from .kind import REGISTRY as R
 from .ops_paint import _fps, _place
@@ -68,14 +68,43 @@ def stroke_transform(ctx, targets, args):
         pts[t] = placement.comp_points(*maps[owner], p) if comp else p
     around = tuple(args["around"][0][:2]) if args.get("around") else centre(list(pts.values()))
     k, turn = args.get("scale", 1), args.get("turn", 0)
+    news = {}
     for t in targets:
-        new = moved(transformed(pts[t], around, k, turn), args.get("dx", 0), args.get("dy", 0))
+        news[t] = moved(transformed(pts[t], around, k, turn), args.get("dx", 0), args.get("dy", 0))
         if comp:
-            new = placement.canvas_points(*maps[_owner(ctx, t)[0]], new)
-        ctx.set(t, "points", new)
+            news[t] = placement.canvas_points(*maps[_owner(ctx, t)[0]], news[t])
+    shift = _grow_drawings(ctx, targets, news, k)
+    for t in targets:
+        dx, dy = shift.get(_owner(ctx, t)[0], (0, 0))
+        ctx.set(t, "points", paint_grow.shifted(news[t], dx, dy) if dx or dy else news[t])
         item = ctx.item(t)
         if k != 1 and item["type"] == "stroke":
             ctx.set(t, "size", round(item["size"] * k, 3))
+
+
+def _grow_drawings(ctx, targets, news, k) -> dict:
+    """{drawing: (dx, dy)}: each drawing the strokes are painted on grows to hold them where they now are, as painting
+    past its edge does (paint_grow.py), or the change is refused: moved past the canvas they would be cut off and lost.
+    (dx, dy): how far its canvas moved, to add to the new points. Paint on an element lives in its box and never grows."""
+    boxes = {}
+    for t in targets:
+        owner = _owner(ctx, t)[0]
+        if ctx.item(owner).get("type") != "drawing":
+            continue
+        item = ctx.item(t)
+        brush = {**item, "size": item.get("size", 0) * k} if item["type"] == "stroke" else {}
+        b = paint_grow.reach(news[t], brush)
+        o = boxes.get(owner)
+        boxes[owner] = b if o is None else (min(o[0], b[0]), min(o[1], b[1]), max(o[2], b[2]), max(o[3], b[3]))
+    shift = {}
+    for owner, box in boxes.items():
+        item = ctx.item(owner)
+        w, h = int(item.get("w", 1920)), int(item.get("h", 1080))
+        if not paint_grow.fits(w, h, box):
+            ctx.fail(codes.BAD_ARGUMENT, f'"{owner}"', f"can't hold the strokes there: a drawing is at most {paint_grow.MOST} px a side",
+                     hint="Move them less, or start the part on a drawing of its own.")
+        shift[owner] = paint_grow.grow(ctx, owner, box)
+    return shift
 
 
 def _owner(ctx, stroke_id: str) -> tuple[str, int]:

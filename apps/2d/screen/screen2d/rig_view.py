@@ -47,6 +47,7 @@ def joints_of(rig: dict, posed: dict) -> list[dict]:
 
 class RigView(QObject):
     changed = Signal()
+    setsChanged = Signal()                            # the bones or joints there are changed (not where they are): QML's delegates follow this
     _answer = Signal(object, object, object)          # (key, answer, error) from the engine's thread
 
     def __init__(self, bridge, parent=None):
@@ -54,6 +55,8 @@ class RigView(QObject):
         self.b, self._rig, self._posed, self._place, self._key, self._picked = bridge, "", {}, None, None, ""
         self._drag = RigDrag(self)
         self._answer.connect(self._got)
+        self._ids, self._keys = [], []
+        self.changed.connect(self._sets)
         for s in (bridge.selectedItemsChanged, bridge.docChanged, bridge.timeChanged, bridge.toolChanged, bridge.frameChanged):
             s.connect(self.refresh)
 
@@ -71,6 +74,24 @@ class RigView(QObject):
     def rig(self):
         """The rig in hand ("" = no overlay)."""
         return self._rig
+
+    @Property("QVariantList", notify=setsChanged)
+    def boneIds(self):
+        """The ids of the bones drawn. The overlay keeps one delegate per id, so a bone being dragged is not rebuilt
+        under the pointer each time the engine answers a new pose (its release never came: the drag stayed open)."""
+        return self._ids
+
+    @Property("QVariantList", notify=setsChanged)
+    def jointKeys(self):
+        """"bone|end" of each joint circle: the same, for the joints."""
+        return self._keys
+
+    def _sets(self):
+        ids = [b["id"] for b in self.bones]
+        keys = [f'{j["bone"]}|{j["end"]}' for j in self.joints]
+        if ids != self._ids or keys != self._keys:
+            self._ids, self._keys = ids, keys
+            self.setsChanged.emit()
 
     @Property("QVariantList", notify=changed)
     def bones(self):

@@ -110,6 +110,35 @@ def dabs(p, th, R, t, L, pts, size, seed, by_dab=False, length=None):
     return th, R
 
 
+FRAY = (1.0, 1.0)       # by_dab strokes: a bristle or flat tip's ragged start and end reach at most this many brush sizes
+EDGE = 0.06             # brush.plan's soft edge of each bristle's start and end, in the units of `along`
+
+
+def fray(t, length, size, rag, open_=False):
+    """by_dab strokes: where each dab lies for the ragged ends (brush.plan's S, its only use: a bristle starts where S
+    passes its `start` and stops where 1 - S passes its `end`, with `rag` the most of each), measured in brush sizes
+    from each end, not as a share of the stroke. So the start is the same whatever the stroke's length, and an open
+    stroke (the pen still down, no end yet) lays it as the finished stroke will. A stroke too short for both ends
+    shortens its end first (to a quarter), then both share it."""
+    t = np.asarray(t, float)
+    if length <= 0:
+        return np.zeros_like(t)
+    ks, ke = FRAY[0] * size / rag[0], FRAY[1] * size / rag[1]      # px a unit of S spans at each end
+    cs, ce = rag[0] + EDGE, rag[1] + EDGE                          # where each end's raggedness is over
+    if not open_:
+        room = length - cs * ks                                    # what the start leaves the end
+        if room < 0.25 * ce * ke:
+            f = length / (cs * ks + 0.25 * ce * ke)
+            ks, ke = ks * f, 0.25 * ke * f
+        else:
+            ke = min(ke, room / ce)
+    s = np.minimum(t / ks, cs)                                     # past the start: cs, every bristle on
+    if open_:
+        return s
+    e = (length - t) / ke
+    return np.where(e < ce, 1 - e, s)                              # 1 - ce: every bristle still on, till the end's
+
+
 def step_scale(t, L, size, p) -> float:
     """How much closer the next dab comes where the taper thins the tip (1 elsewhere). Asked once per dab, so it is
     `taper` worked out on one number with `math` (the same numbers: tests/test_kit.py checks them against `taper`)."""

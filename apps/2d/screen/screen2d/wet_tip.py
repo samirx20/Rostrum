@@ -1,55 +1,61 @@
-"""The wet ink's tip (wet_ink.py): the stroke's newest points, from `start` on, drawn piece by piece.
-
-Each look stamps only the points that came since the last one (from the last drawn point on, so the line joins),
-carrying on the stroke's coverage (`carry`: where a piece overlaps the last nothing is laid twice, so a see-through
-brush shows no beads at the joins). A move costs its own few px, never the whole tip again. The canvas lies in world
-px from `at` and grows (by half its size a side, at least GROW px, at most a few brush widths; a smear's within its
-canvas) when a point leaves it, so it is rarely made again. Its picture is made only
+"""The wet ink's stroke (wet_ink.py), drawn piece by piece as the pen goes: the painting kit lays one stroke in pieces
+(brush.stamp_stroke's `piece`, one `brush.Carry` from piece to piece), each piece the dabs not laid yet, so the pieces
+give the pixels the saved stroke gets (its draws are per dab: `by_dab`) and a move costs its own few dabs however long
+the stroke is. While the pen is down the dab at the pen waits (`held`: world px; the next piece's room reaches back to
+it) and the end has no taper or raggedness; the closing piece (`drawn(..., open_=False)`, at the lift) lays them.
+The canvas lies in world px from `at` and grows (by half its size a side, at least GROW px, at most a few brush
+widths; a smear's within its canvas) when a point leaves it, so it is rarely made again. Its picture is made only
 when something was drawn since the last, from its straight pixels (`u8`), which each piece updates only where it lies.
 A smudge's tip (`base`) smears the paint under it: its canvas starts as that paint (base(x0, y0, x1, y1): premultiplied
-px of that box), so each piece smears what the last one left, and a move costs its own dabs however long the tip is.
+px of that box), so each piece smears what the last one left.
 """
 from __future__ import annotations
 
 import numpy as np
 from PySide6.QtGui import QImage
+from rostrum_paint import brush
 
 GROW = 64                   # the least px of room the canvas gains round the points when it grows
 
 
 class Tip:
-    def __init__(self, start: int, base=None):
-        self.start, self.done = start, start        # the stroke's points from `start` on; how many are drawn
-        self.base = base                            # a smudge's: the paint it smears, by box (None: nothing)
-        self.px = self.cov = self.u8 = None         # the canvas (premultiplied), the stroke's coverage, the straight px
+    def __init__(self, base=None):
+        self.done, self.closed = 0, False           # how many of the stroke's points are drawn; the end laid
+        self.base = base                            # a smear's: the paint it smears, by box (None: nothing)
+        self.carry = brush.Carry()                  # the coverage laid, the wet reservoir, the next dab
+        self.held = None                            # world px of the next dab (up to a spacing behind the pen)
+        self.px = self.u8 = None                    # the canvas (premultiplied), the straight px
         self.at = (0, 0)                            # the canvas's top-left, world px
         self.used = None                            # (x0, y0, x1, y1) world px drawn on so far
         self._pic = None
 
-    def drawn(self, ink, points: list) -> "Tip":
-        """The points not yet drawn stamped in (`ink`: the WetInk, its brush and box)."""
-        if len(points) <= self.done:
+    def drawn(self, ink, points: list, open_: bool = True) -> "Tip":
+        """The dabs not laid yet stamped in (`ink`: the WetInk, its brush and box); `open_` False: the stroke's end."""
+        if self.closed or (open_ and len(points) <= self.done):
             return self
-        at = max(self.start, self.done - 1)
-        new = points[at:]
-        box = ink._box(new)
+        new = points[max(0, self.done - 1):]
+        box = ink._box(([self.held] if self.held else []) + new)
         if box is not None:
             self._room(box, ink)
-            ink._stamp(self.px, self.at, new, self.cov, first=at == 0)
             ax, ay = self.at
-            self.u8[box[1] - ay:box[3] - ay, box[0] - ax:box[2] - ax] = ink.straight(
-                self.px, (box[0] - ax, box[1] - ay, box[2] - ax, box[3] - ay), box[:2])
-            u = self.used
-            self.used = box if u is None else (min(u[0], box[0]), min(u[1], box[1]), max(u[2], box[2]), max(u[3], box[3]))
-            self._pic = None
-        self.done = len(points)
+            got = ink._stamp(self.px, self.at, points, self.carry, (0, open_))
+            ahead = self.carry.ahead
+            self.held = None if ahead is None else [ahead[0] + ax, ahead[1] + ay]
+            if got is not None:
+                x0, y0, x1, y1 = got.bbox                           # canvas px, where this piece laid
+                ink.straight(self.px, got.bbox, (x0 + ax, y0 + ay), self.u8[y0:y1, x0:x1])
+                w = (x0 + ax, y0 + ay, x1 + ax, y1 + ay)
+                u = self.used
+                self.used = w if u is None else (min(u[0], w[0]), min(u[1], w[1]), max(u[2], w[2]), max(u[3], w[3]))
+                self._pic = None
+        self.done, self.closed = len(points), not open_
         return self
 
     def _room(self, box, ink):
         bx0, by0, bx1, by1 = box
         if self.px is not None:
             ax, ay = self.at
-            h, w = self.cov.shape
+            h, w = self.px.shape[:2]
             if bx0 >= ax and by0 >= ay and bx1 <= ax + w and by1 <= ay + h:
                 return
             x0, y0, x1, y1 = min(bx0, ax), min(by0, ay), max(bx1, ax + w), max(by1, ay + h)
@@ -67,13 +73,24 @@ class Tip:
         ex, ey = x1 + gx if first or bx1 > ax + w else x1, y1 + gy if first or by1 > ay + h else y1
         if ink.bounds is not None:
             nx, ny, ex, ey = max(0, nx), max(0, ny), min(ink.bounds[0], ex), min(ink.bounds[1], ey)
-        px = (np.zeros((ey - ny, ex - nx, 4), np.float32) if self.base is None else self.base(nx, ny, ex, ey))
-        cov, u8 = np.zeros(px.shape[:2], np.float32), np.zeros(px.shape[:2] + (4,), np.uint8)
+        # the canvas so far copied in, only the strips round it made: empty, a smear's its paint (a long stroke's canvas
+        # is tens of MB, so a growth is this piece's biggest cost)
+        W, H = ex - nx, ey - ny
+        px, cov, u8 = np.empty((H, W, 4), np.float32), np.empty((H, W), np.float32), np.empty((H, W, 4), np.uint8)
+        ox0, oy0, ox1, oy1 = ax - nx, ay - ny, ax - nx + w, ay - ny + h
         if self.px is not None:
-            (ax, ay), (h, w) = self.at, self.cov.shape
-            for new, old in ((px, self.px), (cov, self.cov), (u8, self.u8)):
-                new[ay - ny:ay - ny + h, ax - nx:ax - nx + w] = old
-        self.px, self.cov, self.u8, self.at = px, cov, u8, (nx, ny)
+            px[oy0:oy1, ox0:ox1], u8[oy0:oy1, ox0:ox1] = self.px, self.u8
+            cov[oy0:oy1, ox0:ox1] = 0 if self.carry.cov is None else self.carry.cov    # (None: no dab laid yet)
+        for x0, y0, x1, y1 in ((0, 0, W, oy0), (0, oy1, W, H), (0, oy0, ox0, oy1), (ox1, oy0, W, oy1)):
+            if x1 > x0 and y1 > y0:
+                cov[y0:y1, x0:x1] = 0
+                if self.base is None:
+                    px[y0:y1, x0:x1], u8[y0:y1, x0:x1] = 0, 0
+                else:                               # a smear's picture is its paint where no piece has laid yet
+                    px[y0:y1, x0:x1] = self.base(nx + x0, ny + y0, nx + x1, ny + y1)
+                    ink.straight(px, (x0, y0, x1, y1), (nx + x0, ny + y0), u8[y0:y1, x0:x1])
+        self.px, self.u8, self.at = px, u8, (nx, ny)
+        self.carry.cov = cov
 
     def picture(self, ink):
         """(picture, where it goes) of what is drawn, or None."""

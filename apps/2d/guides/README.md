@@ -27,6 +27,7 @@ How-to pages for the tools and the document. They assume MCP tools and operation
 - [easing-and-overlap.md](easing-and-overlap.md): how a key's ease shapes motion, and overlapping actions.
 - [curve-editor.md](curve-editor.md): the curve editor (also a people page above).
 - [expressions.md](expressions.md): fields that follow something instead of being keyed.
+- [data-math-and-graphs.md](data-math-and-graphs.md): equations, function plots, axes, 3D-looking surfaces, charts from a table, one design -> many videos.
 - [colour-and-blending.md](colour-and-blending.md): blend modes and colour adjustments.
 - [frame-parallax-motion-blur.md](frame-parallax-motion-blur.md): the frame, moving and cutting it, looking through it, pinned layers, depth and motion blur.
 - [drawing-and-frame-by-frame.md](drawing-and-frame-by-frame.md): drawing layers and frame-by-frame work, by tool.
