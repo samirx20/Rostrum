@@ -56,30 +56,16 @@ Item {                                     // a corner's turn zone
 }
 CanvasCursor { kind: altHeld ? "dropper" : "none" }     // a held key can change the kind too
 ```
-- It fills its parent and never takes a press or hover: the zone's own MouseArea / handlers work as before. The topmost item with a pointer under the mouse wins (Qt Quick's rule), so put one inside each zone instead of one big item on top.
+- It fills its parent (from the moment it is made, a Loader's or a delegate's item too) and never takes a press or hover: the zone's own MouseArea / handlers work as before. The topmost item with a pointer under the mouse wins (Qt Quick's rule), so put one inside each zone instead of one big item on top.
 - `badge` is the badge with no key held. `altBadge`, `ctrlBadge`, `shiftBadge` replace it while that key is held (the first held of Alt, Ctrl, Shift with a badge wins). `altHeld`, `ctrlHeld`, `shiftHeld` are there for bindings. `shown` says what it shows now (`"pick+copy@0"`), for checks.
 - An unknown `kind` or `badge` raises (a scripted run fails) and the pointer shows Qt's "forbidden" shape meanwhile; it never quietly shows nothing.
 - From Python: `cursors.cursor(kind, angle, badge, scale, dpr)` gives the `QCursor` (made once, kept); `cursors.picture(...)` the image and hotspot.
 
-## Moving Sound's stand-in over (`apps\sound\screen\qml\Pointers.js`)
+## Sound's canvases (moved over 2026-10-27)
 
-A QML `cursorShape` takes only Qt's stock shapes, so a drawn pointer can't come back from `Pointers.of(name)`. The
-swap is: `Pointers.js` gives each of its names a kit pointer, and the five places that bind `cursorShape:
-Pointers.of(…)` (LaneInput, RollInput, SectionBand, …) put one `CanvasCursor` over their area instead:
-
-```qml
-// Pointers.js
-var kit = { pick: ["pick", ""], moving: ["hand-grab", ""], copy: ["pick", "copy"], trim: ["resize", ""],
-            stretch: ["resize", "centre"], fade: ["resize", ""], fadeOut: ["resize", ""], level: ["resize", ""],
-            draw: ["make", ""], erase: ["pick", "remove"], point: ["pick", "point"] }
-var angle = { fade: -45, fadeOut: 45, level: 90 }        // trim / stretch: 0 (left-right); level: up-down
-// the input area (import RostrumCursors 1.0): instead of  cursorShape: Pointers.of(name)
-CanvasCursor { anchors.fill: parent; kind: Pointers.kit[name][0]; badge: Pointers.kit[name][1]
-               angle: Pointers.angle[name] || 0; altBadge: name === "pick" ? "copy" : "" }
-```
-
-Alt as a held key then shows the copy badge the moment it goes down, mouse still (`altBadge`), so `LaneInput`'s own
-`altHeld ? "copy" : …` is no longer needed. One meaning each (the rules above): `moving` is the closed hand only
+Sound's zones name what a press does (`apps\sound\screen\qml\Pointers.js`: `kit` = name → [kind, badge], `angle`),
+and each input area puts one `CanvasCursor` over itself (`laneCursor`, `rollCursor`, `velocityCursor`, `sectionCursor`,
+`markerCursor`, `songFlagCursor`, `punchCursor`, `playLaneCursor`; read `shown` in checks). `moving` (`hand-grab`) only
 while a move runs; a body you can press is `pick`, not the open hand (the hand means "move the view").
 
 ## How it works

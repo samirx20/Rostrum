@@ -152,6 +152,16 @@ class CanvasCursor(QQuickItem):
             self._shown = shown
             self.shownChanged.emit()
 
+    def componentComplete(self):            # noqa: N802 (Qt's name)
+        """Made: fill the parent and show the pointer now. In some places (a Loader's or a delegate's item, Sound's
+        roll) the parent was set before the parentChanged link or the window came first, which left the item 0×0
+        and `shown` empty until some value changed."""
+        super().componentComplete()
+        if self.parentItem() is not self._parent:
+            self._follow(self.parentItem())
+        if self.window() is not None:
+            self._window(self.window())
+
     def _held(self):
         self.heldChanged.emit()             # bindings on altHeld … may change kind first
         self._apply()
