@@ -44,7 +44,8 @@ pose at the playhead.
 - **Each piece bends with its own joints.** The joints come with the clay's pieces (the body, each limb): an arm's
   clay follows the arm's joints, the body's clay the body's, and the two share the bend only round the shoulder. So
   a raised arm stretches the shoulder and never pulls the body's side or hip along, even where the hanging arm was
-  close to it.
+  close to it. Where a limb meets the body the bend fades smoothly over about the limb's thickness, so the surface
+  stays closed: no crack across the chest, no marks where an arm rested on the belly.
 - **Humanoid** names (Hips, Spine, Head, LeftUpperArm, LeftLowerArm, LeftHand, LeftUpperLeg, LeftLowerLeg,
   LeftFoot …) are the ones Unity's Humanoid and VRM use, for motion capture and humanoid rigs. Only the names
   change; the bones and their keys stay.
