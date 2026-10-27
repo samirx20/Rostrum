@@ -127,9 +127,9 @@ class WetInk:
             return out
         return base
 
-    def settle(self) -> bool:
+    def settle(self, more: bool = True) -> bool:
         """Takes in a finished restamp of the dry part (True: it changed), and starts the next one once the tip is
-        CHUNK points long. A restamp that failed raises here, on the screen's thread."""
+        CHUNK points long (`more`: the pen is still down). A restamp that failed raises here, on the screen's thread."""
         changed = False
         if self._job is not None and self._job[0].done():
             future, box, n = self._job
@@ -140,7 +140,7 @@ class WetInk:
             if self.smears:
                 self._part = (box, part)
             self._dry_box, self._settled, changed = box, n, True
-        if self._job is None and len(self._tip()) >= CHUNK:
+        if more and self._job is None and len(self._tip()) >= CHUNK:
             pts, box = [list(p) for p in self.points], self._box(self.points)
             if box is not None:
                 x0, y0, x1, y1 = box
@@ -150,6 +150,13 @@ class WetInk:
                 if self._done is not None:
                     future.add_done_callback(lambda _f: self._done())
         return changed
+
+    @property
+    def whole(self) -> bool:
+        """Every point is drawn and shown (nothing running): a lifted stroke's ink has nothing more to draw."""
+        shown = self._tip_pic
+        return (self._job is None and self._tip_job is None and shown is not None and shown[0] is self._tip_now
+                and self._tip_now.done >= len(self.points))
 
     def dry(self) -> tuple[QImage, dict] | None:
         return self._dry_pic

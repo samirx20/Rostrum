@@ -52,6 +52,7 @@ class WetView(QObject):
     def __init__(self, frame_changed, parent=None):
         super().__init__(parent)
         self.provider, self._ink, self._serial, self._box, self._lifted = WetProvider(), None, 0, {}, False
+        self._ending = None                             # a lifted stroke's ink, drawing the points it hadn't yet
         self._dry_serial, self._dry_box, self._settled = 0, {}, lambda: True
         self._copies, self._copies_of = [], None        # a seamless painting's wrapped copies (wet_wrap.py)
         self._uses = []                                 # ink in a painting's px, on every layer using it (wet_uses.py)
@@ -75,7 +76,7 @@ class WetView(QObject):
         """`copies_of()`: where else the ink shows (wet_wrap.copies), asked at each look; None: nowhere else.
         `settled()`: whether the picture with the saved stroke is shown (default: the frame that lands has it).
         `uses`: the ink is in a painting's px and shows on these layers (wet_uses.uses), not where it lies."""
-        self._ink, self._lifted, self._copies_of = ink, False, copies_of
+        self._ink, self._ending, self._lifted, self._copies_of = ink, None, False, copies_of
         if self._uses or uses:
             self._uses = list(uses or [])
             self.usesChanged.emit()
@@ -102,34 +103,41 @@ class WetView(QObject):
             self.show()
 
     def show(self):
-        if self._ink is None or not self._ink.ready:
+        ink = self._ink or self._ending
+        if ink is None or not ink.ready:
             return
-        if self._ink.settle():
-            got = self._ink.dry()
+        if ink.settle(more=ink is self._ink):
+            got = ink.dry()
             if got is not None:
                 self.provider.put("dry", got[0])
                 self._dry_serial, self._dry_box = self._dry_serial + 1, got[1]
-        got = self._ink.tip()
+        got = ink.tip()
         if got is not None and got[0] is not self.provider.picture("tip"):     # (unchanged: the same picture)
             self.provider.put("tip", got[0])
             self._serial, self._box = self._serial + 1, got[1]
+        if ink is self._ending and ink.whole:
+            self._ending = None
         if self._copies_of is not None:
             self._copies = self._copies_of()
-            if self._ink.erasing:           # each copy shows what is under it there, not what is under the pen
+            if ink.erasing:           # each copy shows what is under it there, not what is under the pen
                 self._copies = [{**c, "own": i} for i, c in enumerate(self._copies)]
                 for i, c in enumerate(self._copies):
                     for part, box in (("dry", self._dry_box), ("tip", self._box)):
                         image = self.provider._images.get(part)
                         if box and image is not None and not image.isNull():
-                            self.provider.put(f"{part}c{i}", self._ink.moved(image, box, c["x"], c["y"]))
+                            self.provider.put(f"{part}c{i}", ink.moved(image, box, c["x"], c["y"]))
         self.changed.emit()
 
     def lift(self, saved: bool):
         """The pen is up: the wet picture stays until the frame with the saved stroke lands (or goes now, if the
-        stroke wasn't saved)."""
-        self._ink, self._lifted = None, True
+        stroke wasn't saved). Meanwhile the ink draws the points it hadn't yet (`_ending`), so the whole stroke shows
+        within a piece of the release, not when the saved stroke's frame lands (a big brush's pieces trail the pen)."""
+        ink, self._ink, self._lifted = self._ink, None, True
         if not saved:
             self._clear()
+        elif ink is not None:
+            self._ending = ink
+            self.show()
 
     def flat(self, got, settled=lambda: True):
         """A Fill's or a paste's flat colour (flat_cue.draw's (image, box)) shows at once; the frame with the real paint
@@ -149,7 +157,7 @@ class WetView(QObject):
         self._frame()
 
     def _clear(self):
-        self._lifted = False
+        self._lifted, self._ending = False, None
         self._copies_of = None
         if self._serial or self._dry_serial or self._copies or self._uses:
             self._serial, self._box, self._dry_serial, self._dry_box, self._copies = 0, {}, 0, {}, []
