@@ -48,17 +48,17 @@ SPACING = 0.07                  # metres between buds (typed into Space X): apar
 SCENE = '''
 bowlmat = material("bowlmat", baseColor="#5a7da8", roughness=0.35)
 budmat = material("budmat", baseColor="#e0a43a", roughness=0.5)
-cam = camera("cam", focalLength=35, x=0, y=1.35, z=2.5).aim((0, 0.5, 0))
+cam = camera("cam", focalLength=35, x=0, y=2.35, z=1.25).aim((0, 0.3, 0))
 light("key", kind="rect", x=-1.2, y=2.2, z=1.6)
+mesh("bud", shape="sphere", radius=0.03, x=-0.385, y=1.1, material=budmat, name="Bud")
 with combine("bowl", op="subtract", name="Bowl", material=bowlmat):
     mesh("bowl_outer", shape="sphere", radius=0.45, y=0.45)
     mesh("bowl_inner", shape="sphere", radius=0.42, y=0.46)
     mesh("bowl_lid", shape="box", width=1.2, height=0.6, depth=1.2, y=0.9)
-mesh("bud", shape="sphere", radius=0.03, x=-0.385, y=1.1, material=budmat, name="Bud")
 shot("drop03", name="Drop 03", camera=cam, fps=24, start=0, end=5)
 '''
 NUMBERS: dict = {"scrub": {}}
-MOMENTS = (12, 30, 90)          # frames of the three fall pictures
+MOMENTS = (6, 12, 60)           # frames of the three fall pictures
 
 
 def changes(doc):
@@ -117,6 +117,11 @@ def scrub(w, frames, fps):
     at = ruler_x(ruler, 0, fps, frames)
     QTest.mouseMove(w.win, at)
     QTest.mousePress(w.win, Qt.LeftButton, Qt.NoModifier, at)
+    prof = None
+    if os.environ.get("SIM25_PROFILE"):
+        import cProfile
+        prof = cProfile.Profile()
+        prof.enable()
     for f in range(2, frames, 2):
         serial, t0 = v.serial, time.perf_counter()
         c0 = W.gui_cycles_ms()
@@ -127,6 +132,13 @@ def scrub(w, frames, fps):
             pic.append((time.perf_counter() - t0) * 1000)
         else:
             W.FAILS.pop()                       # a move inside the same frame shows no new picture: not a failure
+    if prof is not None:
+        import io
+        import pstats
+        prof.disable()
+        out = io.StringIO()
+        pstats.Stats(prof, stream=out).sort_stats("cumulative").print_stats(40)
+        (OUT / "sim25-scrub-profile.txt").write_text(out.getvalue(), encoding="utf-8")
     QTest.mouseRelease(w.win, Qt.LeftButton, Qt.NoModifier, ruler_x(ruler, frames - 1, fps, frames))
     W.pump(0.3)
 
@@ -187,7 +199,7 @@ def main():
         W.pump(90, screen.ready, "the first picture")
         info = b.shot_info()
         fps, frames = info["fps"], info["end"] - info["start"] + 1
-        W.check(not sim.shown and w.item("simRun") is None, "no Simulate row before anything is a body")
+        W.check(not sim.shown and W.find(w.win.contentItem(), "simRun") is None, "no Simulate row before anything is a body")
 
         # 1. the bowl stays still
         n0 = changes(doc)
