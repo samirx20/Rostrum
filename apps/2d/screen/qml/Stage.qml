@@ -427,6 +427,7 @@ Rectangle {
                     required property int index
                     readonly property var modelData: backend.multi.knobBoxes[index] || ({})
                     box: modelData; fit: view.zoom; space: marks
+                    opacity: backend.keys.about === "keys" ? 0.4 : 1    // keys picked: Ctrl+C / X / D act on them, not the layer
                     visible: index < outlines.needed && !canvas.banding && !(well.drawing && backend.paintEdge.layer === modelData.id)   // painting: its true edge instead
                              && !(backend.create.typing && backend.selected === modelData.id)   // typing: the typing box instead
                     editable: backend.multi.count === 1 && !well.drawing && backend.tool !== "bone" && !(modelData.type === "path" && backend.pen.editing) && !backend.pen.on
@@ -435,6 +436,7 @@ Rectangle {
             Shape {   // several layers: their outlines as one shape (multi.outlinePath): a dark halo under the accent line, as HaloLine draws one
                 id: multiOutline
                 visible: backend.multi.count > 1 && !canvas.banding
+                opacity: backend.keys.about === "keys" ? 0.4 : 1
                 scale: view.zoom; transformOrigin: Item.TopLeft
                 asynchronous: true    // its 200 quads, twice, are laid into triangles off the screen thread
                 // groupBox: read for its news only (the boxes moved), a small map; reading `boxes` copied all of them
@@ -595,7 +597,7 @@ Rectangle {
     property string rowHover: ""
     ActionMenu {
         id: canvasMenu
-        onPicked: (v) => v.startsWith(panel.rowPrefix) ? backend.select(v.slice(panel.rowPrefix.length)) : backend.run(v)
+        onPicked: (v) => v.startsWith(panel.rowPrefix) ? backend.selectShown(v.slice(panel.rowPrefix.length)) : backend.run(v)
         onRested: (v) => panel.rowHover = v.startsWith(panel.rowPrefix) ? v.slice(panel.rowPrefix.length) : ""
     }
     // The canvas's right-click menu at (x, y) in the well's px (default: the middle of the selection, for scripts).

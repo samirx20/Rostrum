@@ -361,6 +361,17 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.play.toggle()
 
     @Slot(str)
+    def selectShown(self, item_id):
+        """Select layer ▸ : pick the layer and open the groups it is in that were folded, so the timeline brings its row
+        into view (a layer that can't be seen now is found only there)."""
+        parent = self.doc.parent_of(item_id)[0] if self.doc.has(item_id) else None
+        while parent is not None and self.doc.has(parent) and self.doc.item(parent).get("type") != "comp":
+            self._flipped.discard(parent)
+            parent = self.doc.parent_of(parent)[0]
+        self.outlineChanged.emit()
+        self.select(item_id)
+
+    @Slot(str)
     def toggleFold(self, item_id):
         """Fold an open row, open a closed one (a group starts open, any other layer closed)."""
         self._flipped ^= {item_id}

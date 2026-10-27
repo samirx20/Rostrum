@@ -8,9 +8,10 @@ PARENT, ROW = "selectLayerMenu", "selectLayer_"
 INDENT = " "      # an em space a level
 
 
-def entries(b, chains: list[list[str]], selected: str) -> list[dict]:
-    """[] unless two or more layers are under the pointer; else the one first row {value, label, sub}."""
-    if len(chains) < 2:
+def entries(b, chains: list[list[str]], selected: str, unseen: list[str] = ()) -> list[dict]:
+    """[] unless two or more layers are under the pointer, or one that can't be seen now (`unseen`: see-through at this
+    moment); else the one first row {value, label, sub}. The unseen ones come last, faint, "(not showing now)"."""
+    if len(chains) < 2 and not unseen:
         return []
     order: list[tuple[str, ...]] = []      # each layer and group once, a group before its pieces, the topmost first
     for c in chains:
@@ -24,4 +25,6 @@ def entries(b, chains: list[list[str]], selected: str) -> list[dict]:
         item = b.doc.item(path[-1])
         rows.append({"value": ROW + path[-1], "label": INDENT * (len(path) - 1) + b.label_of(item),
                      "checked": path[-1] == selected, "group": "layers"})
+    rows += [{"value": ROW + i, "label": b.label_of(b.doc.item(i)) + " (not showing now)", "faint": True,
+              "checked": i == selected, "group": "unseen"} for i in unseen]
     return [{"value": PARENT, "label": "Select layer", "group": "select", "sub": rows}]

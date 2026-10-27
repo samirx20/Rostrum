@@ -196,6 +196,13 @@ def under_chains(comp: dict, t: float, x: float, y: float) -> list[list[str]]:
     return [[*b["up"], b["id"]] for b in reversed(got[2]) if inside(b, x, y, b["paint"]) and _inked(comp, b, x, y)]
 
 
+def unseen_under(comp: dict, t: float, x: float, y: float) -> list[str]:
+    """Layers under (x, y) that a click can't pick because they can't be seen now (see-through at this moment), not
+    locked: Select layer lists them last, so a layer faded to 0 by mistake can still be found."""
+    return [b["id"] for b in reversed(boxes(comp, t)) if b["paint"] and not b["locked"] and not pickable(b)
+            and inside(b, x, y, b["paint"])]
+
+
 def under(comp: dict, t: float, x: float, y: float) -> list[str]:
     """The ids of every layer painted under (x, y), top first (the pieces themselves; picking.py's `behind` turns them
     into what a click picks at the open depth). The one list: a click, Alt+click and Select layer all read it."""
