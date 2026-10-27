@@ -8,6 +8,10 @@ The solve is damped CCD: from the grabbed bone back towards the body, each bone 
 that brings the grabbed spot towards the target (limbs half of it per pass, the body's own bones ~0.3 as much), pass
 after pass until the spot is there or stops getting closer. A held bone, and every bone that would carry a held one
 (its parents), never turns; with no holds the root never turns. So holds choose where the body bends.
+
+The limb's own chain (hand, forearm, upper arm: up to the body bone it hangs from) does a drag it can reach alone; the
+body's own bones join only for the part out of the limb's reach, and then gently: the first one at most TRUNK_MAX
+from where it was, each one nearer the root half as much (feet held, a wave never folds the upper body over).
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ TURN = ("rx", "ry", "rz")
 LIMB, TRUNK = 0.5, 0.15                 # share of the wanted turn per pass: limbs, the body's own bones (~0.3×)
 SPREAD = 6                              # damped passes before the finishing ones
 STEP_CAP = math.radians(40)             # never more than this per bone per pass (no flips on a far target)
+TRUNK_MAX = math.radians(8)             # a drag out of the limb's reach turns the body's first bone at most this much
 
 
 def _sub(a, b):
@@ -82,6 +87,12 @@ def _rot(rx, ry, rz):
     return [[cc * cb, cc * sb * sa - sc * ca, cc * sb * ca + sc * sa],
             [sc * cb, sc * sb * sa + cc * ca, sc * sb * ca - cc * sa],
             [-sb, cb * sa, cb * ca]]
+
+
+def _angle(a, b) -> float:
+    """The angle (radians) of the turn from rotation a to rotation b (aᵀ·b's angle)."""
+    tr = sum(a[i][j] * b[i][j] for i in range(3) for j in range(3))
+    return math.acos(max(-1.0, min(1.0, (tr - 1.0) / 2.0)))
 
 
 def _near(e, prev):
@@ -211,6 +222,9 @@ def solve_rig(r: Rig, grab: int, local, to, held: set[int] = frozenset(), iterat
     # the limbs first; the body's own bones join only when the limbs alone stop getting closer (out of their reach), so
     # a reachable drag never leans the body
     trunk_on = not any(not r.trunk[b] for b in movable)
+    # each body bone's room to turn: TRUNK_MAX for the first one up the chain, half as much for each nearer the root
+    room = {b: TRUNK_MAX / 2 ** k for k, b in enumerate(b for b in chain if r.trunk[b])}
+    start = {b: _rot(*r.turn[b]) for b in room}
     for n_pass in range(iterations if movable else 0):
         share = LIMB if n_pass < SPREAD else 1.0                # damped first (the bend spreads), then CCD finishes
         if best <= tolerance:
@@ -228,7 +242,12 @@ def solve_rig(r: Rig, grab: int, local, to, held: set[int] = frozenset(), iterat
             angle = math.atan2(s, _dot(a, c))
             if s < 1e-12 or angle < 1e-7:
                 continue
-            q = _turn([x / s for x in axis], min(angle * share * (TRUNK / LIMB if r.trunk[b] else 1.0), STEP_CAP))
+            step = min(angle * share * (TRUNK / LIMB if r.trunk[b] else 1.0), STEP_CAP)
+            if b in room:   # a turn this size moves the bone at most this far from its start (so it never leaves room)
+                step = min(step, room[b] - _angle(start[b], local_rot[b]))
+                if step < 1e-7:
+                    continue
+            q = _turn([x / s for x in axis], step)
             rot[b] = _mm(q, rot[b])
             p = r.parent[b]
             local_rot[b] = _mm(_t(rot[p]), rot[b]) if p >= 0 else rot[b]
