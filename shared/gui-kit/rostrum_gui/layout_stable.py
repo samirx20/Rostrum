@@ -135,11 +135,11 @@ def try_one(win, c, wait, hover) -> tuple[list, list, dict, set]:
     after = feel.spots(win)
     found = []
     dx, dy = slid(before, after, c.panel, alive)
-    if c.key in after and feel.shift(c.rect.translated(dx, dy), after[c.key].rect) > TOL:
+    if c.key in after and min(feel.shift(c.rect, after[c.key].rect), feel.shift(c.rect.translated(dx, dy), after[c.key].rect)) > TOL:
         found.append((c, after[c.key].rect, "itself"))
     for k, o in before.items():
         if k != c.key and k not in alive and o.panel == c.panel and k in after and before_it(o, c) \
-                and pressable(o.node.item) and corner(o.rect.translated(dx, dy), after[k].rect) > TOL:   # (words can't be mis-clicked)
+                and pressable(o.node.item) and min(corner(o.rect, after[k].rect), corner(o.rect.translated(dx, dy), after[k].rect)) > TOL:   # (words can't be mis-clicked)
             found.append((o, after[k].rect, "above"))
     layers = sorted({s.node.layer for s in after.values()} - {s.node.layer for s in before.values()})
     if layers:
@@ -157,7 +157,7 @@ def slid(before: dict, after: dict, panel: str, alive: set) -> tuple[float, floa
     """How far the panel's controls slid sideways as one, else (0, 0): a side panel the click opened (a Library) pushes
     the work area beside it, every left-anchored control by the same step (right-anchored ones stay), nothing moving
     within it, and what the click opened takes the next press. At least SLID of the controls that moved must share one
-    step of SLIDE_MIN px or more; moves are then judged against it. Only sideways and only that far: a panel growing up
+    step of SLIDE_MIN px or more; a control that stayed or took that step is then fine. Only sideways and only that far: a panel growing up
     under the pointer (a dock opening) or a row of buttons pushed by a widening label is still a find."""
     steps = [(round(after[k].rect.left() - o.rect.left()), round(after[k].rect.top() - o.rect.top()))
              for k, o in before.items() if o.panel == panel and k in after and k not in alive]
