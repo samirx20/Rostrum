@@ -13,6 +13,15 @@
 //!
 //! `rostrum2d_stamp_straight8(px, px_row, out, out_row, h, w)`: premultiplied f32 RGBA (`px_row` floats a row) as
 //! straight RGBA8 (`out_row` bytes a row), the kit's `compose.straight8` byte for byte.
+//!
+//! `rostrum2d_stamp_spacing(l, pr, n, k, out, cap)`: where a stroke's dabs go along its path, the kit's
+//! `brush._spacing` (with `shape.step_scale`) number for number; `l` the path's lengths so far and `pr` its pressure (n
+//! f64 each), `k` = step, size_pressure, size, the length the taper is sized by, taper start, taper end; the places
+//! written to `out` (at most `cap`); how many, or -1 when `cap` is too few.
+//!
+//! `rostrum2d_stamp_fill(region, row, h, w, c, col)`: a fill's coverage `c` (h×w f32) laid on `h` rows of `w`
+//! RGBA f32 (`row` floats apart) in one colour (`col`, 3 f32), the kit's `marks.apply_paint` (normal, from no coverage)
+//! number for number.
 
 mod paint;
 mod tip;
@@ -205,6 +214,83 @@ fn straight8_row(src: &[f32], dst: &mut [u8]) {
             q[ch] = if a <= TINY { 0 } else { byte(p[ch] / m) };
         }
         q[3] = byte(a);
+    }
+}
+
+/// # Safety
+/// `l` and `pr` point at `n` f64 (n >= 1), `k` at 6 f64, `out` at `cap` f64.
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_spacing(l: *const f64, pr: *const f64, n: usize, k: *const f64, out: *mut f64, cap: usize) -> i64 {
+    let (l, pr, k) = (std::slice::from_raw_parts(l, n), std::slice::from_raw_parts(pr, n), std::slice::from_raw_parts(k, 6));
+    spacing(l, pr, [k[0], k[1], k[2], k[3], k[4], k[5]], std::slice::from_raw_parts_mut(out, cap)).map_or(-1, |m| m as i64)
+}
+
+/// brush._spacing in its steps and order (f64 as Python's floats; Python's max / min keep their first argument on a
+/// tie). The sine and power are the C library's, as Python's math.sin and ** are.
+pub fn spacing(l: &[f64], pr: &[f64], k: [f64; 6], out: &mut [f64]) -> Option<usize> {
+    let [step, sp, size, sized, start, end] = k;
+    let (total, last) = (l[l.len() - 1], l.len() - 1);
+    let flat = pr.iter().all(|&v| v == pr[0]);
+    let (mut j, mut x, mut m) = (0usize, 0.0f64, 1usize);
+    *out.first_mut()? = 0.0;
+    while x < total {
+        let p = if flat {
+            pr[0]
+        } else {
+            while j < last && l[j + 1] <= x {
+                j += 1;
+            }
+            if j == last || l[j] == x { pr[j] } else { (pr[j + 1] - pr[j]) / (l[j + 1] - l[j]) * (x - l[j]) + pr[j] }
+        };
+        let v = step * (1.0 - sp * (1.0 - p)) * step_scale(x, sized, size, start, end);
+        x += if v > 0.3 { v } else { 0.3 };
+        *out.get_mut(m)? = x;
+        m += 1;
+    }
+    Some(m)
+}
+
+/// shape.step_scale.
+fn step_scale(t: f64, l: f64, size: f64, start: f64, end: f64) -> f64 {
+    if start <= 0.0 && end <= 0.0 {
+        return 1.0;
+    }
+    let mut f = 1.0f64;
+    for (amount, d) in [(start, t), (end, l - t)] {
+        if amount > 0.0 {
+            let (a, b) = (amount * size, l / 2.0);
+            let least = if b < a { b } else { a };
+            let span = if 1e-6 > least { 1e-6 } else { least };
+            let q = d / span;
+            let q = if 0.0 > q { 0.0 } else { q };
+            let q = if 1.0 < q { 1.0 } else { q };
+            f *= (q * std::f64::consts::PI / 2.0).sin().powf(0.8);
+        }
+    }
+    if 0.04 > f { 0.04 } else { f }
+}
+
+/// # Safety
+/// `region` points at `h` rows of `w` RGBA f32 pixels `row` floats apart, `c` at h×w f32, `col` at 3 f32.
+#[no_mangle]
+pub unsafe extern "C" fn rostrum2d_stamp_fill(region: *mut f32, row: usize, h: usize, w: usize, c: *const f32, col: *const f32) -> i32 {
+    let col = std::slice::from_raw_parts(col, 3);
+    for y in 0..h {
+        let px = std::slice::from_raw_parts_mut(region.add(y * row), w * 4);
+        fill_row(px, std::slice::from_raw_parts(c.add(y * w), w), [col[0], col[1], col[2]]);
+    }
+    0
+}
+
+/// marks.apply_paint, mode normal, k 1, from no coverage (c0 = 0) to `c`, in f32 as numpy: inc = 1 * (c - 0) /
+/// (1.0001 - 0); colour += inc * (col - colour); alpha += inc * (1 - alpha).
+fn fill_row(px: &mut [f32], c: &[f32], col: [f32; 3]) {
+    for (q, &c1) in px.chunks_exact_mut(4).zip(c) {
+        let inc = 1.0f32 * (c1 - 0.0f32) / (1.0001f64 as f32 - 0.0f32); // numpy: the Python float made f32
+        for ch in 0..3 {
+            q[ch] += inc * (col[ch] - q[ch]);
+        }
+        q[3] += inc * (1.0f32 - q[3]);
     }
 }
 

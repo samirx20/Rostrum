@@ -125,6 +125,19 @@ def _font_stand_in(node: dict, item: dict, font: str, where: dict) -> dict:
 
 
 SPARE = 2       # frames either side of a span whose drawings are sent too (a motion blur's samples reach past the frame)
+REACH = ("trail", "smear")      # effects that draw a layer at other times than the frame (motion/fields.py)
+
+
+def _spare(comp: dict, doc_data: dict | None = None) -> int:
+    """How many frames either side of a span reach into it: SPARE with motion blur (the composition's shutter) or a
+    trail or smear anywhere, else none. A look at one moment of a painted piece made a Drawn so far picture for 5 frames
+    of each drawing, 4 of them never drawn (production round: 6.8 s of a cold look, 3.2 s without)."""
+    if comp.get("shutter", 0.0) or any(c.get("shutter", 0.0) for c in (doc_data or {}).get("comps", [])):
+        return SPARE                     # (any composition's: one placed inside this one blurs its own frames)
+
+    def reaches(item: dict) -> bool:
+        return any(e.get("type") in REACH for e in item.get("effects", [])) or any(reaches(c) for c in item.get("layers", []))
+    return SPARE if reaches(comp) else 0
 
 
 def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
@@ -136,7 +149,8 @@ def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
     run = drawing.repeats(item, math.ceil(until * fps))
     first, last = 0, math.ceil(until * fps)
     if span is not None:                # a look or a part: only the drawings showing then (motion blur's reach spared)
-        first, last = math.floor(span[0] * fps) - SPARE, math.ceil(span[1] * fps) + SPARE
+        spare = where.get("spare", SPARE)
+        first, last = math.floor(span[0] * fps) - spare, math.ceil(span[1] * fps) + spare
         run = drawing.within(run, first, last) or run[:1]
     if item["type"] == "drawing":       # a drawing's picture holds only its ink, with where it goes (`crop`)
         full = lambda f: drawing.inked(item, f, later)                                  # noqa: E731
@@ -144,7 +158,8 @@ def _pictures(item: dict, fps: float, where: dict | None) -> list[dict]:
         full = lambda f: {"src": str(drawing.picture(item, f, later))}                  # noqa: E731
     if item.get(paint_fields.DRAWN, 1.0) >= 1 and not keys_of(item, paint_fields.DRAWN):
         return [{"at": n, **full(f)} for n, f in run]
-    return write_on.entries(item, run, fps, first, last, drawing.canvas_size(item), full, later)   # Drawn so far
+    return write_on.entries(item, run, fps, first, last, drawing.canvas_size(item), full, later,   # Drawn so far
+                            (where or {}).get("frames"))
 
 
 def _render3d(node: dict, item: dict, fps: float, where: dict) -> dict:
@@ -186,7 +201,7 @@ def _placeholder(node: dict, item: dict, name: str) -> dict:
 
 
 def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = None, folder=None,
-             span: tuple[float, float] | None = None, later: list | None = None) -> dict:
+             span: tuple[float, float] | None = None, later: list | None = None, frames: list[int] | None = None) -> dict:
     """The scene description of one composition (the first when not named). `markers`: the project's shared
     markers {name: seconds} (rostrum_core.markers.times(folder)), for expressions' marker("…"). `folder`: the
     project folder, where 3D render layers find their item's renders. `span`: (first, last) seconds that will be drawn,
@@ -194,19 +209,22 @@ def describe(doc_data: dict, comp_id: str | None = None, markers: dict | None = 
     (the scene's `warnings` name it); with no span (a whole-film export) it is refused. `later` (the screen): paint
     pictures not made yet are listed there instead of made (drawing.picture), with stand-ins in the scene; the screen
     makes them off its thread, then describes again and draws: the same pictures export makes at once. The screen
-    describes through scene_keep.Keeper: the same description, reusing the nodes a change didn't touch."""
+    describes through scene_keep.Keeper: the same description, reusing the nodes a change didn't touch. `frames`
+    (with `span`): the only frame numbers that will be drawn (a contact sheet's tiles): Drawn so far pictures are made
+    for those (and the motion blur's reach round them), not for every frame between the first and the last."""
     if later is None:       # the paint pictures not made yet are made first, side by side (drawing.make_all)
         jobs: list = []
-        comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, jobs)
+        comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, jobs, frames=frames)
         node = _node(comp, fps, baked, where)
         if not jobs:        # every picture was made already: that description is the final one
             return finish(node, where)
         drawing.make_all(jobs)
-    comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, later)
+    comp, fps, baked, where = prepare(doc_data, comp_id, markers, folder, span, later, frames=frames)
     return finish(_node(comp, fps, baked, where), where)
 
 
-def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: dict | None = None) -> tuple:
+def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: dict | None = None,
+            frames: list[int] | None = None) -> tuple:
     """(the composition in composition seconds, its fps, the baked expression / layout keys, `where`): what every
     node is made from. `timed_memo`: retime.timed's, kept by scene_keep.Keeper. A plugin's items are left out here,
     once for every path (rostrum_core.plugin_parts: kept in the file, never drawn)."""
@@ -225,7 +243,9 @@ def prepare(doc_data: dict, comp_id, markers, folder, span, later, timed_memo: d
     for item_id, fields in layoutbake.bake(comp, fps, baked).items():
         baked.setdefault(item_id, {}).update(fields)
     where = {"folder": folder, "markers": markers, "span": span, "until": comp.get("duration", F.defaults("comp")["duration"]),
-             "later": later, "paintings": {p["id"]: p for p in doc_data.get("paintings", [])}}
+             "later": later, "paintings": {p["id"]: p for p in doc_data.get("paintings", [])}, "spare": _spare(comp, doc_data)}
+    if frames is not None and span is not None:
+        where["frames"] = {n + k for n in frames for k in range(-where["spare"], where["spare"] + 1)}
     return comp, fps, baked, where
 
 

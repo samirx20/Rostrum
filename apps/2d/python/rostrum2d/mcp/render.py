@@ -18,15 +18,16 @@ def _fail(where: str, what: str, e: Exception) -> RostrumError:
     return RostrumError(codes.RENDER_FAILED, where, what, f"could not be drawn: {e}", hint="The engine's log path, if any, is in the message.")
 
 
-def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None) -> dict:
+def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None, frames: list[int] | None = None) -> dict:
     """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py).
-    `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe)."""
+    `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe); `frames`:
+    only these frame numbers in it will be drawn (a contact sheet)."""
     from rostrum2d import follow
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
     t0 = time.perf_counter()
-    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span)
+    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span, frames=frames)
     spent = time.perf_counter() - t0
     if spent >= SLOW_PICTURES_S:        # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
         scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "

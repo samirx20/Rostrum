@@ -95,7 +95,7 @@ def look_sheet(ctx, args):
 def _sheet_of(ctx, doc, comp, frames: list[int], args: dict):
     """The one contact-sheet path: the frames (whole numbers, sorted) of a composition as one labelled picture."""
     fps = comp.get("fps", 30)
-    scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps))
+    scene = render.scene_of(doc, comp["id"], (frames[0] / fps, frames[-1] / fps), frames)
     cols = min(args.get("cols", 4), len(frames))
     tile_w = sheet.tile_width(args.get("width", SHEET_WIDTH), cols)
     dest = look_path(f'{doc.item_id or "doc"}_{comp["id"]}_sheet', project=doc.folder)

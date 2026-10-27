@@ -168,6 +168,14 @@ def _straight8(px: np.ndarray) -> np.ndarray:
     return np.clip(np.rint(np.concatenate([rgb, a], -1) * 255), 0, 255).astype(np.uint8)
 
 
+def _differs(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """HxW: where two RGBA8 pictures differ, each px's 4 bytes compared as one word (numpy's any over the last 4
+    took ~65 ms on a 2900 x 1300 drawing, at every picture)."""
+    if a.flags.c_contiguous and b.flags.c_contiguous:
+        return a.view(np.uint32)[..., 0] != b.view(np.uint32)[..., 0]
+    return (a != b).any(-1)
+
+
 def pixels(frame: dict, w: int, h: int, amount: float) -> np.ndarray:
     """The drawing at `amount` (0..1) drawn so far, as HxWx4 uint8 straight alpha (shared with the kit's memo at 0 / 1 and
     between marks: copy before changing it)."""
@@ -179,7 +187,7 @@ def pixels(frame: dict, w: int, h: int, amount: float) -> np.ndarray:
     if f <= 0:
         return before
     after = canvas.rgba8(_prefix(frame, k + 1), w, h)
-    changed = (before != after).any(-1)
+    changed = _differs(before, after)
     cols, rows = np.flatnonzero(changed.any(0)), np.flatnonzero(changed.any(1))
     if not len(cols):
         return before
@@ -280,20 +288,29 @@ def _part(frame: dict, size: tuple, amount: float, cropped: bool, later: list | 
     if later is None:
         return png(frame, w, h, amount, cropped)
     later.append(Ahead(lambda: png(frame, w, h, amount, cropped), at))
-    return stand_in() if stand_in is not None else _part(frame, size, 0.0, cropped, None)
+    if stand_in is None:
+        return _part(frame, size, 0.0, cropped, None)
+    n = len(later)
+    got = stand_in()
+    del later[n:]       # the whole drawing only stands in: not made for it (a look made it beside its pictures, ~1/4 of its time)
+    return got
 
 
-def entries(item: dict, run: list, fps: float, first: int, last: int, size: tuple, full, later: list | None) -> list[dict]:
+def entries(item: dict, run: list, fps: float, first: int, last: int, size: tuple, full, later: list | None,
+            frames=None) -> list[dict]:
     """The layer's frame entries ({"at", "src", "crop"?}) with Drawn so far applied. `run`: [(frame number, drawing)]
     sorted (drawing.repeats / within), `first`..`last`: the frames to cover, `full(drawing)`: its entry when whole.
-    Unkeyed: each drawing as it is drawn so far. Keyed: an entry at each frame where what shows changes."""
+    Unkeyed: each drawing as it is drawn so far. Keyed: an entry at each frame where what shows changes. `frames`: only
+    these frame numbers will be drawn (a contact sheet's tiles and their motion blur's reach), so only their pictures
+    are made: a sheet over 30 s made every frame's between its first and last tile (~1000 pictures for its 30)."""
     from rostrum_core.keys import keys_of
     cropped = item["type"] == "drawing"
     if not keys_of(item, DRAWN):
         a = amount_at(item, 0.0)
         return [{"at": n, **(full(f) if a >= 1 else _part(f, size, a, cropped, later, lambda f=f: full(f), n / fps))} for n, f in run]
     out, i, shown = [], 0, None
-    for n in range(max(first, run[0][0]) if run else 0, last + 1 if run else 0):
+    lo, hi = (max(first, run[0][0]), last + 1) if run else (0, 0)
+    for n in (range(lo, hi) if frames is None else sorted({n for n in frames if lo <= n < hi})):
         while i + 1 < len(run) and run[i + 1][0] <= n:
             i += 1
         a = amount_at(item, n / fps)

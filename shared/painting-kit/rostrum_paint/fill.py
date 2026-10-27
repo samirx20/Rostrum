@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from . import native
 from .marks import Coverage, apply_paint
 
 GAPS = {"small": 3, "medium": 6, "large": 12}      # Close gaps: lines this far apart (twice the px) still close
@@ -234,5 +235,8 @@ def lay(layer_px, s: dict, rgb, mask=None):
         return None
     x0, y0, x1, y1 = bx + int(xs.min()), by + int(ys.min()), bx + int(xs.max()) + 1, by + int(ys.max()) + 1
     c1 = np.ascontiguousarray(a[y0 - by:y1 - by, x0 - bx:x1 - bx])
-    apply_paint(layer_px[y0:y1, x0:x1], np.zeros_like(c1), c1, np.asarray(rgb, np.float32), "normal")
+    if native.walks():      # the same numbers as apply_paint's (tests/test_native.py), in one pass without its temporaries
+        native.fill(layer_px[y0:y1, x0:x1], c1, np.asarray(rgb, np.float32))
+    else:
+        apply_paint(layer_px[y0:y1, x0:x1], np.zeros_like(c1), c1, np.asarray(rgb, np.float32), "normal")
     return Coverage(c1, (x0, y0, x1, y1))
