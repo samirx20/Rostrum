@@ -63,7 +63,7 @@ ACTIONS = [
         lambda f: [C.call("track.unlock", [it["id"] for it in f.items if it.get("locked")])], "Ctrl+Shift+L",
         group="order"),
     # notes and drum hits
-    act("quantize", "Quantise", *A.on(NOTE_HIT, "quantize"), "Q", "primary", "time",
+    act("quantize", "Quantise", *A.quantize_on(), "Q", "primary", "time",
         needs="Quantise needs notes or drum hits selected", on=NOTE_HIT, amounts=("grid", "strength", "swing", "ends"),
         fit=A.quantize_fit),
     *[act(f"transpose_{k}", label, *on(NOTE, "transpose", semitones=n), keys, "primary", "pitch", "Transpose", on=NOTE)

@@ -113,7 +113,9 @@ The **Colour** row shows the colour the track is drawn in.
    every change plays straight away on the notes; **Enter** or a click away keeps it as one undo step, **Esc** puts
    everything back; any other command while it is open (Ctrl+Z included) keeps it first. **Humanise** loosens the selected notes a little (writes it into them): its **▾** sets how much,
    timing in milliseconds, velocity and length, and **Another take** gives a new result with the same amounts.
-   **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
+   **Quantise** snaps to the grid you see (the top bar's **Grid**; on Auto, the step it shows at this zoom): set Grid to
+   1/4 and Q puts every selected note on the beat. **Quantise ▾** starts on that grid each time and can pick another
+   for one run. **Quantise ▾** has **Swing** too: the off-beat grid lines move late and the notes snap to them (to swing a whole
    track without moving its notes, use the track's **Feel**). **Transpose ▾ › By…** moves the selected notes any number
    of half steps; with **Along the key** on, by steps of the song's key (a third, a fifth), so they stay in the key.
    **Chord ▾** (with notes selected) › **Make a chord** builds a chord on each selected note: In key (the key's own
