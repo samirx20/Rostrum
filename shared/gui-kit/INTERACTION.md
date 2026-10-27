@@ -48,6 +48,9 @@ local choice.
 | 9 | **Nothing greyed out, and nothing silent.** A control that can't act now is absent. Errors are one plain sentence that says what failed and what to do, on the thing itself and in the message line. Red means an error, amber means "not there yet". | The screen only shows what you can use, and you can always trust it. |
 | 10 | **The agent is a co-worker, not a mode.** Its changes arrive live and never move your selection, playhead, zoom or the field you are typing in. You see a chip and a 1-second outline, and you can review or undo its work. A locked thing is locked for agents too. The agent reads what you see through `inspect_screen`. | People and agents share one document and never fight over it. |
 
+**How they feel** (answer on the press, nothing moves under the pointer, try before you keep, no press vanishes,
+every change seen): 1.21. **The pointer and the canvas:** 1.22.
+
 ---
 
 # Part 1 · The common patterns
@@ -412,7 +415,7 @@ cards.
 ## 1.10 Drag feel
 
 **How it works.**
-- **The pointer is the system's own**, and is never drawn by us.
+- **The pointer is our own drawn set** (1.22): it shows what a press there will do, and leans with the thing.
 - **A press that moves less than 4 px is a click**, not a drag.
 - **The grab point stays under the pointer** (no jump on press).
 - **The box, handles and guides move in the same frame as the content.** Overlays are drawn from the state of the
@@ -420,7 +423,7 @@ cards.
 - **While dragging:**
   - a small label by the pointer shows the value (X Y, W × H, angle, "+6 f", "1.20 s → 3.40 s", "−4.0 dB");
   - a faint copy stays where the item was until release.
-- **Esc during a drag** cancels it and puts everything back.
+- **Esc during a drag** cancels it and puts everything back exactly: the same picture and the same history count (1.22).
 - **Modifiers while dragging**, the same in every app:
   - **Ctrl:** no snapping;
   - **Alt:** drag a copy (from the centre on a resize handle);
@@ -436,7 +439,7 @@ cards.
 | A paint stroke under the pen | ≤ 16 / 25 ms |
 | Sound after a release (Sound re-renders what was touched) | target ≤ 150 ms; while playing, heard from the next block |
 | Highlight after a click / settings after a click | ≤ 16 ms / ≤ 50 ms |
-| A menu, popover, drawer or sheet opening | ≤ 50 ms; no interface animation longer than 120 ms; nothing blocks input |
+| A menu, popover, drawer or sheet opening | ≤ 50 ms; motion per 1.21 rule 10 (120–160 ms, 0 with Reduce motion); nothing blocks input |
 | Undo | ≤ 50 ms for the change |
 | Opening a project | ≤ 2 s to a usable screen |
 
@@ -713,6 +716,80 @@ the agent's `inspect_tools`.
   - two-finger pinch zooms, two-finger drag pans;
   - a long press is a right-click.
 - **Every mouse action is reachable from Ctrl+K,** and every shortcut is on its button's hover help and in Ctrl+/.
+
+
+## 1.21 How interactions feel
+
+*Added 2026-10-27 (interaction plan, round 1). The ten rules below are about **how** an interaction behaves, not about
+milliseconds: smoothness comes mostly from the behaviour. Both apps and 3D follow them. The kit gives the pieces, so an
+app gets them by using the kit, not by re-making them.*
+
+**Speed vs. feel.**
+- Only **direct handling** has a frame budget (one screen refresh, ~16 ms): drag, paint stroke, sculpt dab, scrub,
+  playback, orbit.
+- Every other action (a click, a key, a menu pick) needs two things: something **visibly answers at once**, and
+  **nothing waits more than ~0.2 s without saying so**. Shaving such an action below that is not the goal.
+
+| # | Rule | What it means | Kit piece |
+|---|---|---|---|
+| 1 | **Answer on the press.** | Every button, row, key, menu item and diamond looks pressed, lit or picked in the same frame as the mouse-down or key-down. The work may follow. The pressed look has no fade (only hover fades). | `ack.py`, the Button family |
+| 2 | **Show first, then do.** | First paint the cheap visible part (the highlight, the message "Grouping 200 layers…"), then do the heavy part. Past 0.2 s the control keeps a working look and a thin moving line runs under the top bar. Past 1 s a job chip shows, with Cancel. A press made during the wait runs afterwards, never dropped. | `ack.py`, `after_frame.py`, `TopBar`, `JobChip` |
+| 3 | **Direct handling follows the hand.** | A drag, stroke, scrub or orbit moves with the pointer every frame. A heavy result moves an outline or a quick picture now and fills in the detail on release. | `drag.py`, each app's canvas |
+| 4 | **Nothing moves under the pointer.** | While you aim at a control it doesn't move, resize or re-zoom. New rows appear below you or in kept space. A popup stays where it opened and grows down or scrolls. A button that changes its words keeps the width of its longest label. A move that must happen waits until the pointer leaves the panel (or 0.5 s after the last press). | the layout check's stability pass (`layout_stable.py`) |
+| 5 | **Hover tells you what a click will do.** | Draw tools show a faint copy of what a click makes; remove-on-click lights what it would remove in red; every zone shows its own pointer (1.22); the brush shows its true size. | `cursors.py` / `CanvasCursor` |
+| 6 | **Try before you keep.** | A box that changes things (Stagger, Repeat, Ease, Humanise, Loudness…) shows the result live while open; hovering a choice previews it. Enter keeps it as **one** undo step. Esc or a click outside puts everything back exactly (the same picture, the same history count). | `preview.py`, `AmountsPopover`, `EaseList` |
+| 7 | **The screen never lies.** | A picture or list that is catching up says so (a soft "updating" mark after 0.2 s); an old picture is never shown as now. Every list that shows the document follows every change, undo included. The canvas you see is the file you export. | `frames.py`, `ItemList`, `KeptRepeater` |
+| 8 | **No press vanishes.** | Every key or click either acts or says in one line why it can't ("Type a number, like 12 or +5"). A command closes any open menu or popup. A click inside a popup belongs to whatever opened it, so Ctrl+A and Delete act where the person was. | `NumberField`, `OpenPopups`, `typed_word.py` |
+| 9 | **Every change is seen.** | Each action says what it did and to how many ("Grouped 5 layers", "Picked 24 notes"). Undo says what it took back ("Undid: Move title") and flashes the thing once; it never moves the playhead or the zoom. | `actions.py`, `UndoKeys.js`, `ChangeOutline` |
+| 10 | **Motion only to explain.** | Popups and menus: 120 ms fade plus 4 px from their anchor. Rows added, removed or opened: 140 ms height ease. Sheets and drawers: 160 ms slide from their edge. Press, pick, playhead and anything you drag: 0 ms. Nothing animates during a drag. **Reduce motion** (and Windows' own "show animations" switched off) sets every one to 0. | `Theme` motion tokens |
+
+**How a checker judges feel** (real mouse and keys, in a background window; the tools are in `FEEL.md`):
+- **First-frame picture** (a grab one frame after the press): did the press show at once?
+- **Positions before and after** a click: did anything near it move?
+- **Picture strip** (a grab every 50 ms for 1 s): was there a frozen gap, and did a working mark show by 0.2 s?
+- **Pass:** the press shows in the first frame; nothing moves under the pointer; nothing is silent; every wait over
+  0.2 s shows life. **Fail** if a person would press twice, click the wrong thing, or wonder whether it worked.
+  Milliseconds are reported only for direct handling.
+
+## 1.22 The pointer and the canvas
+
+*Added 2026-10-27 (the canvas plan). The pointer set is drawn by us: `shared\gui-kit\icons\cursors\`, used through
+`CanvasCursor` (`CURSORS.md`).*
+
+**The pointer.**
+- **The shape is the next press.** The pointer shows what a press *here, now* does. It changes the moment the pointer
+  enters a zone **and the moment a key goes down or up, even with the mouse still.**
+- **One shape, one meaning, in every app.** Hand: move the view only (Space, H, middle button). Pointing hand: buttons
+  and links only, never on a canvas. Arrow: pick and move. Double arrow: change a size. Curved arrow: turn. Cross: make
+  something new. Circle with a slash: a press here would do nothing (the message line says why on the press).
+- **Leans with the thing.** Resize and rotate pointers turn with the layer and the handle, in 5° steps, so they point
+  the way the drag will go; during a turn the pointer keeps turning with the layer.
+- **Badges, not new shapes.** A held key adds a small badge at the bottom-right: + copy or add, − remove, ○ close the
+  path, two squares pick inside the group, a corner arc radius, a diamond a shape setting.
+- **Locked during a drag:** once a drag starts, the pointer keeps the drag's shape until release, even off the handle.
+- **Drawn for our look:** 24 px, white body, a near-black edge that reads on any picture, badges in the accent colour
+  (remove in red); 1×, 1.5× and 2× from one drawing, with an exact hotspot. Windows and macOS get the same set.
+- **Hidden only for the brush:** a painting tool shows its ring at the true brush size plus a centre dot.
+
+**Canvas feel rules** (they add to 1.21; each is checked with real mouse input):
+1. **16 ms while dragging.** Every handle and move follows the pointer every frame; a heavy result moves a quick
+   picture or an outline and finishes on release.
+2. **Hit areas are screen pixels, never picture pixels:** squares 9 px drawn / 17 px hit, rotate zones 28 px, dots and
+   diamonds 9 / 15 px, path lines 5 px either side; the same at 25 % and at 800 % zoom.
+3. **Handles never cover what they edit.** A box under 32 px puts its squares outside; under 60 px it drops the radius
+   dots; under 48 px the shape diamonds, then the anchor. A press in the middle always moves. When handles crowd:
+   move > resize corners > rotate > radius > shape settings > edge squares.
+4. **Nothing jumps on the press.** The grab point stays under the pointer; a turn starts from the angle grabbed; a new
+   key lands exactly where clicked.
+5. **Esc during a drag puts everything back exactly** (no undo step left behind) and the pointer returns to its hover
+   shape.
+6. **One gesture, one undo step,** named after what it did ("Undo Rotate Card"). A held arrow-key burst is one step.
+7. **Held keys work mid-drag:** pressing or letting go of Shift, Alt or Ctrl changes the drag at once.
+8. **The value chip** (`DragLabel`) sits 16 px below-right of the pointer, flips near the canvas edge, never covers the
+   thing, uses tabular figures and fades 600 ms after release. It shows the value ("35°", "Radius 24", "+48, −12")
+   and what a held key does ("15° steps", "keep ratio").
+9. **The pointer changes on the key, not on the next move.**
+10. **No pointer shape means two things**, in any app.
 
 ---
 
