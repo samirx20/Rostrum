@@ -6,7 +6,8 @@ import "Blocks.js" as Blocks
 // The block view's add list: a search line on top, the block types under it (by group while nothing is typed, best
 // match first while typing: label, then group and the type's `words`). Up / Down + Enter or a click picks one
 // (chosen(type)); Esc closes. `fromKind`: it opened from a wire dropped on nothing, so only the types that wire can
-// feed are listed. The app places it (BlockView.openAdd) and sizes nothing: it fits its rows, up to 340 px.
+// feed are listed. The app places it (BlockView.openAdd) and sizes nothing: it fits its rows, up to 340 px (less
+// where its parent is shorter), always ending on a whole row so the last one is never cut in half.
 SmallPopup {
     id: pop
     property var catalogue: []
@@ -16,6 +17,18 @@ SmallPopup {
     property var rows: []                   // [{heading}] or catalogue entries, in list order
     property int current: -1                // the row Enter picks (never a heading)
     property point at                       // where it opens (its top-left), in its parent; it stays inside the parent
+    readonly property int headingHeight: 24
+    // the list's height: as many whole rows (from the top) as fit in 340 px and in the parent
+    readonly property real listHeight: {
+        const room = Math.min(340, (parent ? parent.height : 340) - 16 - 2 * padding - Theme.button - 4)
+        let h = 0
+        for (const r of rows) {
+            const next = h + (r.heading ? headingHeight : Theme.popupRow)
+            if (next > room) break
+            h = next
+        }
+        return h
+    }
     signal chosen(string type)
     width: 248
     padding: 6
@@ -69,7 +82,8 @@ SmallPopup {
         ListView {
             id: list
             width: parent.width
-            height: Math.min(contentHeight, 340)
+            height: pop.listHeight
+            snapMode: ListView.SnapToItem         // a scrolled list rests on a row's top
             model: pop.rows
             clip: true
             boundsBehavior: Flickable.StopAtBounds
@@ -80,7 +94,7 @@ SmallPopup {
                 readonly property bool heading: !!modelData.heading
                 objectName: heading ? "" : "blockAddItem:" + modelData.type
                 width: ListView.view.width
-                height: heading ? 24 : Theme.popupRow
+                height: heading ? pop.headingHeight : Theme.popupRow
                 Text {
                     visible: row.heading
                     anchors.left: parent.left; anchors.leftMargin: 8; anchors.bottom: parent.bottom; anchors.bottomMargin: 4
