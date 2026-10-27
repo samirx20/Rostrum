@@ -55,7 +55,7 @@ FieldFrame {
         property int row: 0                // the cell ↑ ↓ ← → stand on: a pitch 0 … 11; -1 "No key"; 12 the bottom row
         property int col: 0
         readonly property int cols: other ? 5 : 2
-        readonly property real cellW: other ? 44 : 104
+        readonly property real cellW: other ? 208 / 5 : 104      // the same width either way: the popup never moves under the pointer
         readonly property real cellH: 22
         y: f.height + 2
         padding: Theme.grid; margins: Theme.gap
