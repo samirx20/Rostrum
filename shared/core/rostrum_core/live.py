@@ -99,11 +99,16 @@ class Live:
             first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
             w = self.doc._written                   # steps made before the door (an upgrade on open) go first:
             lacks = w is not None and w.n < len(self.doc.history.changes)   # no document file may count a step
-            if self._mine() != before or first or lacks:    # the history file lacks; a plain first look writes nothing
+            # a document file opening didn't trust (edited outside, or behind a step replaced since) is written whole
+            # at the first door: left as it was, a reopen or a crash before the quiet fold read it as an outside
+            # change again and took back every step made since (a muted, locked plugin track came back unmuted)
+            untrusted = not self._started and self.doc.file_at is None and self.p["doc"].exists()
+            if self._mine() != before or first or lacks or untrusted:   # (a plain first look writes nothing)
                 behind = not self._windowed and self.doc.seq - self._filed >= FOLD_STEPS
-                whole = first or behind or not self._doc_there and not self.p["doc"].exists()
+                whole = first or behind or untrusted or not self._doc_there and not self.p["doc"].exists()
                 if not whole and self._owe(before, w):
                     self._held, held = held, None   # the lock goes with the line owed (flush)
+                    pending.OWED[str(self.p["history"])] = self.flush
                     self.later()
                 else:
                     save(self.doc, document=whole, p=self.p)
@@ -139,6 +144,7 @@ class Live:
         held, self._held = self._held, None
         if held is None:
             return
+        pending.OWED.pop(str(self.p["history"]), None)
         with held:
             save(self.doc, document=False, p=self.p)
             self._doc_there = True

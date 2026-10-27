@@ -63,6 +63,7 @@ def open_doc(cls, folder, item, kind):
     then the app's own), else the file is refused in words and never half-opened. A document file still exactly as
     Rostrum wrote it (its hash) held only checked contents: then only the items the steps after it set are checked."""
     p = paths(folder, item, kind.ext)
+    pending.settle(p)                               # a line this program still owes the file goes first
     doc, items = _read_doc(cls, folder, item, kind, p)
     if _upgrade(doc, kind, p["doc"]):
         items = None                                # brought up to date: everything is checked, not just the later steps

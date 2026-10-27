@@ -18,6 +18,17 @@ from .userhome import held
 from .who import Who
 
 
+OWED: dict = {}         # history file -> the flush of a line this program still owes it (live.Live)
+
+
+def settle(p):
+    """Write the line this program still owes this history file, if any: opening or reading the file comes after it
+    (reopening the song in the same window waited on its own lock)."""
+    flush = OWED.get(str(p["history"]))
+    if flush is not None:
+        flush()
+
+
 def path(p):
     return p["history"].with_name(p["history"].name.replace(".history.jsonl", ".pending.json"))
 
