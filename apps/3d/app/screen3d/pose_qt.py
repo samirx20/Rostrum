@@ -270,12 +270,14 @@ class Pose(PoseDrag, QObject):
         self._draw(lit=self._lit)
 
     def _draw(self, turns=None, lit=()):
+        was = (self._lines, self._dots, self._rings, getattr(self, "_cursor", None))
         self._lines, self._dots, self._rings = [], [], []
         it = self._item() if self._on else None
         if it is not None and self.v._size is not None and it.get("bones"):
             self.b._guard(lambda: self._place(it, turns, lit))
         self._cursor_now()
-        self.drawn.emit()
+        if (self._lines, self._dots, self._rings, self._cursor) != was:     # a scrub step with Pose off draws nothing new
+            self.drawn.emit()
 
     def _place(self, it, turns, lit):
         from .gizmo import View

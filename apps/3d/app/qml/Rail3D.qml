@@ -32,8 +32,9 @@ ToolRail {
     readonly property var simulateGroup: backend.sim.can ? [{ id: "simulate", name: "Simulate", items: [
         { name: "Falls", icon: "sim-falls", kind: "shape3d", act: "sim:falls", help: "The selection falls and bumps when the shot is simulated." },
         { name: "Stays still", icon: "sim-still", kind: "shape3d", act: "sim:still", help: "Falling things land on the selection; it never moves." },
+        { name: "Cloth", icon: "sim-cloth", kind: "shape3d", act: "sim:cloth", help: "The selection drapes and folds over what is under it." },
         { name: "Off", icon: "sim-off", kind: "shape3d", act: "sim:off", help: "The selection is no longer part of the simulation." }
-    ].filter(e => e.act !== "sim:" + backend.sim.kind) }] : []      // what it is already is absent (Off only for a body)
+    ].filter(e => e.act !== "sim:" + backend.sim.kind && (e.act !== "sim:cloth" || backend.sim.canCloth)) }] : []      // what it is already is absent (Off only for a body); Cloth only for shapes
     readonly property var materialsGroup: ({ id: "materials", name: "Materials", panel: true, items: [{ name: "Materials", icon: "material",
         kind: "shape3d", job: "materials_list", help: "The project's materials: click one to edit it, drag one onto an item to give it that material." }] })
     // the Animate page (SPEC §2): Select, Poses (P), Onion skin (O), Bones (a mesh selected), Lights, Camera; Simulate joins when built

@@ -71,6 +71,8 @@ class MeshEdit(MeshActions, MeshKnife, MeshGizmo, QObject):
         return self.vp._scale * (screen.devicePixelRatio() if screen else 1.0)
 
     def _refresh(self, *_):
+        if not self._on and self._geo is None:       # off: a new picture (each scrub step) changes nothing here
+            return
         was, self._geo = self._geo, None
         it = self._poly() if self._on else None
         if it is not None and self.vp._size is not None:

@@ -1,4 +1,4 @@
-// Rigid bodies (brief 25; ENGINE_CONTRACT.md § Simulation): the `simulate` request's physics, with Jolt Physics
+// Rigid bodies (brief 25) and cloth (brief 26b; ENGINE_CONTRACT.md § Simulation): the `simulate` request's physics, with Jolt Physics
 // (third_party/jolt, MIT). This half knows nothing of USD: sim_request.cpp reads each body's shape and start pose from
 // the held stage and hands them here as plain numbers; the rows come back in world space.
 // One thread, Jolt's cross-platform determinism: the same bodies always give the same rows (the result is stored once,
@@ -13,7 +13,7 @@
 
 namespace r3d::sim {
 
-constexpr int kVersion = 1;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
+constexpr int kVersion = 3;  // this file's own behaviour; any change that moves a result bumps it (part of the key)
 std::string jolt_version();  // "5.6.0"
 
 using V3 = std::array<double, 3>;
@@ -35,6 +35,27 @@ struct Body {
   std::string name() const { return copy < 0 ? item : item + " copy " + std::to_string(copy); }
 };
 
+// A shape that drapes (brief 26b): a Jolt soft body, one particle per point, edges + bend constraints from its triangles.
+struct Cloth {
+  std::string item;
+  double weight = 0.2;          // kg per m² (each point carries a third of its triangles' weight)
+  double stiffness = 0.3;       // 0 folds like silk .. 1 bends like thin card
+  double friction = 0.6;
+  enum Pin { None, Top, Bottom, Left, Right, Front, Back } pinned = None;  // that side of its world bounds at the start
+  std::vector<V3> points;                       // world, at the start (after refine)
+  std::vector<std::array<int, 3>> triangles;    // into points
+  std::vector<std::array<float, 2>> st;         // per point (u v), carried to the stored file
+  bool refined = false;                         // refine made it finer
+  std::string name() const { return item; }
+};
+
+// Makes a cloth's mesh fine enough to fold, in whatever space its points are: a single four-point face (a plane) becomes a
+// 40 × 40 grid; anything else has every triangle split in four until no edge is longer than 1/40 of its size (at most
+// kMaxClothTriangles). Drops faces with no area and points no face uses. Deterministic.
+constexpr int kClothGrid = 40;
+constexpr size_t kMaxClothTriangles = 20000;
+void refine(Cloth& c, const std::vector<std::vector<int>>& faces);
+
 struct Setup {
   int start = 0, end = 0;
   double fps = 24;
@@ -47,6 +68,9 @@ struct Failure : Error {
   Failure(const Body& b, int frame_, const std::string& problem, const std::string& fix_)
       : Error(b.name() + " " + problem + " at frame " + std::to_string(frame_) + ": " + fix_),
         item(b.item), copy(b.copy), frame(frame_), fix(fix_) {}
+  Failure(const Cloth& c, int frame_, const std::string& problem, const std::string& fix_)
+      : Error(c.name() + " " + problem + " at frame " + std::to_string(frame_) + ": " + fix_),
+        item(c.item), copy(-1), frame(frame_), fix(fix_) {}
   std::string item;
   int copy;
   int frame;
@@ -61,12 +85,15 @@ struct Pose {
 struct Result {
   std::vector<int> rows;              // index into the bodies given, for each falling body (the rows' order)
   std::vector<std::vector<Pose>> frames;  // [frame - start][row], world
+  std::vector<std::vector<float>> cloth;  // [cloth] frames × points × xyz, world
   int atRest = 0;                     // falling bodies resting at the last frame
   double ms = 0, frameMs = 0;         // whole run, and per frame of the shot (mean)
 };
 
-// Runs the bodies from `start` to `end`. `progress(i, of, frame)` after each frame. Throws Failure (a body starts
-// inside another, flies away, falls past everything) or Error (a shape that can't be built).
-Result run(const Setup& setup, const std::vector<Body>& bodies, const std::function<void(int, int, int)>& progress);
+// Runs the bodies and cloths from `start` to `end`. `progress(i, of, frame)` after each frame. Throws Failure (a body
+// starts inside another, flies away, falls past everything; a cloth tears apart, flies apart, falls past everything, or its
+// pinned edge holds all of it) or Error (a shape that can't be built).
+Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vector<Cloth>& cloths,
+           const std::function<void(int, int, int)>& progress);
 
 }  // namespace r3d::sim

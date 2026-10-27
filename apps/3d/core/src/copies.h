@@ -37,10 +37,16 @@ struct Params {
   int seenW = 1920, seenH = 1080;
 };
 
-// a copy a person (or copies.hold) put somewhere: in the copies item's own space, never moved by the layout
+// a copy a person (or copies.hold) put somewhere: in the copies item's own space, never moved by the layout.
+// (v1.25) A keyed copy (Turn into keys on a falling copies item, copies.key) is a held one whose x y z rx ry rz may each be
+// left out (the layout's value) or move: `track[i]` one value per frame of the shot (empty: still). `s` left out: the
+// layout's size.
 struct Held {
   int copy = 0;
-  double x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1;
+  double v[7] = {0, 0, 0, 0, 0, 0, 1};    // x y z rx ry rz s
+  bool given[7] = {true, true, true, true, true, true, true};
+  std::vector<double> track[6];
+  bool keyed() const;
 };
 
 // "Change near": per frame, w = falloff(distance(copy, centre) / radius) changes each copy near the centre
@@ -111,8 +117,12 @@ void lay_out_all(const PXR_NS::UsdStageRefPtr& stage, std::vector<State>& all);
 // are laid out again and written on `stage` in one change. Returns the time taken, ms.
 double relay(const PXR_NS::UsdStageRefPtr& stage, State& s, const PXR_NS::JsObject& props, const PXR_NS::JsValue* held);
 
-// The copies at `frame` (layout + effectors, in the copies item's space) and the item's world place then.
+// The copies at `frame` (layout + keyed copies + effectors, in the copies item's space) and the item's world place then:
+// what a simulation starts from.
 std::vector<Copy> at_frame(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame, PXR_NS::GfMatrix4d* world);
+// The copies as drawn at `frame`: at_frame, or with a stored fall (s.sim) where each simulated copy fell (no effectors),
+// as `write` puts them on the stage. Pick and the seen test use this.
+std::vector<Copy> drawn_at(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame, PXR_NS::GfMatrix4d* world);
 // Each copy's points for the seen test at `frame` (world): its base and its bounds' centre, two per copy.
 std::vector<PXR_NS::GfVec3d> seen_points(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
 // Writes invisibleIds from s.shown.

@@ -49,11 +49,16 @@ def in_frame(data: dict, info: dict, res, folder=None) -> tuple[int, int]:
 @tools.tool("run_simulation", {"properties": {**ITEM_SHOT}})
 def run_simulation(ctx, args):
     """Simulate a shot: things set to Falls drop, bump and come to rest on things set to Stays still (and the ground, unless
-    the shot's simGround is off), over the whole shot. Set them up first with the sim.body and sim.set operations. Computed once
+    the shot's simGround is off), over the whole shot; shapes set to Cloth drape and fold over them (Weight, Stiffness, a
+    Pinned edge held in place). Set them up first with the sim.body and sim.set operations. Computed once
     and stored; nothing is computed again until something it depends on changes (a mass, a place, a key). Renders compute it
     first on their own when it is out of date. Always a job: returns a job id at once; inspect_job shows 'frame n of m'. When
-    done: the stored result's key, frames, how many fell, came to rest and end inside the camera's picture. A failure names the
-    thing, the frame and what to do (e.g. it starts inside another one: move it up or set Starts: asleep)."""
+    done: the stored result's key, frames, how many fell, came to rest and end inside the camera's picture, each cloth's point
+    count and the engine's time per frame (frameMs). A failure names the
+    thing, the frame and what to do (e.g. it starts inside another one: move it up or set Starts: asleep). To nudge the result
+    by hand, the sim.to_keys operation turns it into plain keys (a copies item: keys on every copy, copies.key nudges one);
+    cloth stays a simulation (its folds are not keys). A cloth that tears apart, flies apart or falls past everything fails
+    the same way, naming it and the frame."""
     doc, info = doc_and_shot(ctx, args)
     shot_id, folder = info["id"], ctx.app.folder
 
@@ -71,18 +76,22 @@ def run_simulation(ctx, args):
         res = read(CACHE.get(KIND, key))
         seen, total = in_frame(doc.data, info, res, folder)
         rest = res.reply.get("atRest", 0)
+        cloth = [{"item": c["item"], "points": c["points"], "triangles": c["triangles"]} for c in res.reply.get("cloth", [])]
+        drapes = "".join(f'; cloth {c["item"]}: {c["points"]} points' for c in cloth)
         return Reply(f'Simulated {shot_id}: {total} falling, {rest} at rest at the end, {seen} of {total} inside the camera\'s '
-                     f'picture at the last frame; frames {res.start}–{res.end}, stored.',
+                     f'picture at the last frame{drapes}; frames {res.start}–{res.end}, {res.reply.get("frameMs")} ms a frame, '
+                     'stored.',
                      {"key": key, "frames": [res.start, res.end], "bodies": total, "atRest": rest, "inFrame": seen,
-                      "ms": res.reply.get("ms")})
+                      "cloth": cloth, "ms": res.reply.get("ms"), "frameMs": res.reply.get("frameMs")})
 
     return ctx.job(f"simulate {shot_id}", job_fn, key=f"simulate|{doc.item_id}|{shot_id}|{doc.seq}")
 
 
 @tools.tool("inspect_simulation", {"properties": {**ITEM_SHOT}})
 def inspect_simulation(ctx, args):
-    """How a shot's simulation stands: none (nothing falls), not computed, stored (up to date) or out of date (something it
-    depends on changed; renders compute it again first), how many things fall, and any item set to simulate that can't
+    """How a shot's simulation stands: none (nothing falls or is cloth), not computed, stored (up to date) or out of date
+    (something it depends on changed, e.g. a cloth's Stiffness; renders compute it again first), how many things move (each
+    cloth counts one), and any item set to simulate that can't
     because it sits inside a group or copies."""
     doc, info = doc_and_shot(ctx, args)
     st = state(doc.data, info["id"], ctx.app.folder)

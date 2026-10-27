@@ -4,7 +4,8 @@ the item) is the generated field operation (kind.py); the layout itself is compu
 
 A copy someone put by hand (`copies.hold`, the gizmo's drop) is held: its row is [copy index, x, y, z, rx, ry, rz, scale] in the
 copies item's own space. A layout change (count, spacing, a re-run of the script's `copies.make`) never moves a held copy;
-only `copies.release` lets it go back to its place in the layout.
+only `copies.release` lets it go back to its place in the layout. A keyed copy (copy_keys.py: Turn into keys on a falling
+copies item, `copies.key`) moves by its own keys.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from rostrum_core import Param
 from rostrum_core.errors import codes
 from rostrum_core.tree import index, subtree_ids
 
-from . import copies_fields as CF, fields as F, item_bounds
+from . import copies_fields as CF, copy_keys as CK, fields as F, item_bounds
 from .kind import REGISTRY as R
 from .ops_items import ID, NAME, new_item
 
@@ -173,15 +174,42 @@ def copies_hold(ctx, targets, args):
         ctx.set(t, CF.HELD, CF.held_rows(held))
 
 
-@R.operation("copies.release", "Let a held copy go back to its place in the layout (`copy`), or every held copy (no `copy`).",
-             target="copies", label="Release copies",
+@R.operation("copies.release", "Let a held or keyed copy go back to its place in the layout (`copy`), or every one (no "
+             "`copy`): its keys go too.", target="copies", label="Release copies",
              params=[Param.number("copy", label="Copy", min=0, max=CF.MAX_COUNT - 1, integer=True,
                                   help="Left out: every held copy")])
 def copies_release(ctx, targets, args):
     for t in targets:
-        held = CF.held_map(ctx.item(t))
+        held, keyed = CF.held_map(ctx.item(t)), CK.keys_map(ctx.item(t))
         if "copy" in args:
             held.pop(int(args["copy"]), None)
+            keyed.pop(int(args["copy"]), None)
         else:
-            held = {}
+            held, keyed = {}, {}
         ctx.set(t, CF.HELD, CF.held_rows(held))
+        if ctx.item(t).get(CK.KEYS):
+            ctx.set(t, CK.KEYS, CK.rows(keyed))
+
+
+@R.operation("copies.key", "Key one copy: its x y z (metres, the copies item's own space) or rx ry rz (degrees) is `v` at "
+             "`t` seconds, and moves between its keys like any key. A key already there at `t` is changed (a nudge: Turn "
+             "into keys never undoes it). Turn into keys on a falling copies item keys every copy; copies.release lets a "
+             "copy go back to the layout.", target="copies", label="Key a copy", importance="secondary",
+             params=[Param.number("copy", label="Copy", min=0, max=CF.MAX_COUNT - 1, integer=True, required=True,
+                                  help="The copy's number, counted from 0"),
+                     Param.choice("prop", CK.PROPS, label="Field", required=True),
+                     Param.number("t", label="Time", min=0, max=1e5, unit="s", required=True),
+                     Param.number("v", label="Value", min=-1e5, max=1e5, required=True),
+                     Param.choice("ease", CK.EASES, label="Ease", help="Left out: the key's own, or smooth for a new one")])
+def copies_key(ctx, targets, args):
+    from rostrum_core.keys.marked import same_time
+    n, prop, t = int(args["copy"]), args["prop"], round(float(args["t"]), 4)
+    for target in targets:
+        keyed = CK.keys_map(ctx.item(target))
+        ks = keyed.setdefault(n, {}).setdefault(prop, [])
+        there = next((k for k in ks if same_time(k["t"], t)), None)
+        if there is None:
+            ks.append(there := {"t": t, "v": 0.0, "ease": "smooth", "sim": False})
+        there["v"] = float(args["v"])
+        there["ease"] = args.get("ease", there["ease"])
+        ctx.set(target, CK.KEYS, CK.rows(keyed))

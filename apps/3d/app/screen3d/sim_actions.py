@@ -16,7 +16,8 @@ from __future__ import annotations
 from rostrum_gui.actions import Action
 
 KINDS = ("mesh", "combine", "import", "group", "clay", "copies")      # what can be a body (the design note §1)
-WORDS = {"falls": "Falls", "still": "Stays still", "off": "Off"}
+CLOTH_KINDS = ("mesh",)                                               # what can be cloth (rostrum3d/sim/fields.py)
+WORDS = {"falls": "Falls", "still": "Stays still", "cloth": "Cloth", "off": "Off"}
 BAR = "Simulate"
 OP = "sim.body"
 
@@ -45,11 +46,14 @@ def _valid(f) -> bool:
     return top_level(f) and not f.screen.get("paint")
 
 
-DONE = {"falls": "{what} falls when simulated", "still": "{what} stays still when simulated", "off": "{what} is no longer simulated"}
+DONE = {"falls": "{what} falls when simulated", "still": "{what} stays still when simulated",
+        "cloth": "{what} drapes as cloth when simulated", "off": "{what} is no longer simulated"}
 ACTIONS = [
-    Action(f"sim:{k}", WORDS[k], kinds=KINDS, min_targets=1, importance="secondary", rank=56 + n, group="simulate",
+    Action(f"sim:{k}", WORDS[k], kinds=CLOTH_KINDS if k == "cloth" else KINDS, min_targets=1, importance="secondary", rank=56 + n, group="simulate",
            panel=False, bar=BAR, valid=_valid, calls=lambda f, k=k: calls(f.ids, k), done=DONE[k],
-           why="Simulate works on items in the scene's own list (shapes, combines, imports, groups, clay, copies); "
-               "move an item out of its group first.")
+           why="Cloth works on a shape in the scene's own list (a plane drapes best); move it out of its group first."
+           if k == "cloth" else
+           "Simulate works on items in the scene's own list (shapes, combines, imports, groups, clay, copies); "
+           "move an item out of its group first.")
     for n, k in enumerate(WORDS)
 ]

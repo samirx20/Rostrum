@@ -21,7 +21,7 @@ import threading
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from . import outline
-from .sim_actions import KINDS, at_top, kind_of
+from .sim_actions import CLOTH_KINDS, KINDS, at_top, kind_of
 
 RUNNING, FAILED = "running", "failed"
 ROW_STATES = ("not computed", RUNNING, "stored", "out of date", FAILED)
@@ -160,7 +160,7 @@ class SimJob(QObject):
 
     @Property(str, notify=changed)
     def kind(self):
-        """The selection's one Simulate kind ("off" | "falls" | "still"; "" when mixed): the menu's ✓."""
+        """The selection's one Simulate kind ("off" | "falls" | "still" | "cloth"; "" when mixed): the menu's ✓."""
         return self._kind
 
     @Property(bool, notify=changed)
@@ -206,6 +206,12 @@ class SimJob(QObject):
         that a body can be (shapes, combines, imports, groups, clay, copies)."""
         doc, ids = self._b.doc, [i for i in self._b.selection if self._b.doc.has(i)]
         return bool(ids) and all(doc.item(i)["type"] in KINDS and at_top(doc, i) for i in ids)
+
+    @Property(bool, notify=changed)
+    def canCloth(self):
+        """The selection can be cloth (the rail's Simulate › Cloth is there): shapes in the scene's own list."""
+        doc, ids = self._b.doc, [i for i in self._b.selection if self._b.doc.has(i)]
+        return bool(ids) and all(doc.item(i)["type"] in CLOTH_KINDS and at_top(doc, i) for i in ids)
 
     def _on_selection(self, *_):
         self._kind = kind_of(self._b.doc, list(self._b.selection))

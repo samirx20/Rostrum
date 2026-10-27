@@ -8,7 +8,9 @@
 
 A falling item gets `anim` x y z rx ry rz per frame of the shot (before the result's first frame it holds the first, after
 its last the last); a falling copies item gets `sim` (the core reads its copies' places from the file itself). Timing and
-Simplify, the shot's, are applied here (result.py).
+Simplify, the shot's, are applied here (result.py). A cloth item (brief 26b) gets `cloth` {"file", "start", "end", "step",
+"smooth"}: the core replaces its mesh's points and faces from the file per frame; its place is held at the shot's first
+frame (the stored points are in its own space as it stood then), so keys on its x … sz no longer move it.
 """
 from __future__ import annotations
 
@@ -17,7 +19,9 @@ from rostrum_core.cache import CACHE
 from . import fields as SF
 from .compute import SimError, needed
 from .inputs import KIND, shot_value, sim_inputs
-from .result import BIN, read, stylized, trs
+from .result import BIN, cloth_file, read, stylized, trs
+
+PLACE = ("x", "y", "z", "rx", "ry", "rz", "sx", "sy", "sz")
 
 MODES = ("use", "none", "strict")
 
@@ -51,6 +55,16 @@ def apply(scene: dict, data: dict, shot_id: str, folder=None, mode: str = "use")
     s0, s1 = scene["shot"]["start"], scene["shot"]["end"]
     frames = range(s0, s1 + 1)
     nodes = {n["id"]: n for n in scene["items"]}
+    for b in req["bodies"]:
+        node = nodes.get(b["item"])
+        if b["kind"] != "cloth" or node is None or not any(c["item"] == b["item"] for c in res.reply.get("cloth", [])):
+            continue
+        node["cloth"] = {"file": str(res.folder / cloth_file(b["item"])), "start": res.start, "end": res.end,
+                         "step": step, "smooth": simplify}
+        anim = node.get("anim") or {}
+        for k in PLACE:
+            if k in anim:
+                node["props"][k] = anim.pop(k)[0]
     falls = {b["item"] for b in req["bodies"] if b["kind"] == "falls"}
     for item in sorted(falls & {b["item"] for b in res.bodies}):
         node, rows = nodes.get(item), res.rows_of(item)

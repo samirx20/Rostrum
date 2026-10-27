@@ -137,12 +137,13 @@ class Bones(QObject):
         return sel if sel and self.b.doc.item(sel).get("type") == "mesh" else ""
 
     def _refresh(self, *_):
-        self._lines, self._dots = [], []
+        was, self._lines, self._dots = (self._lines, self._dots), [], []
         try:
             self._place(self._shown_mesh())
         except Exception as e:  # noqa: BLE001  no bones drawn when the mesh can't be placed; said, not hidden
             self.b.fail_line(f"Error: bones: {e}")
-        self.changed.emit()
+        if (self._lines, self._dots) != was:          # a scrub step with no bones in sight redraws nothing
+            self.changed.emit()
 
     def _place(self, mesh: str):
         if not mesh or self.v._size is None:

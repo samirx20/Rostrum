@@ -46,8 +46,46 @@ class RowsMixin:
     def rows_context(self):
         """What the rows read that no document change announces (the kit's kept rows are worked out again when it
         differs): the page (`animating`), the Clay tool (`sculpting`), the shot shown and the playhead (values are
-        shown at the playhead)."""
-        return self._page, self._sculpting(), getattr(self, "shot_id", None), getattr(self, "_frame", None)
+        shown at the playhead). Not the playhead itself: what the selection shows at it, so a scrub step works the rows
+        out again only when a shown value or a key's place under the playhead changed (a still item: never)."""
+        return self._page, self._sculpting(), getattr(self, "shot_id", None), self._at_playhead()
+
+    def _at_playhead(self) -> tuple:
+        """The selection's keyed values and key marks at the playhead, and a copies item's seen count."""
+        out = []
+        for i in getattr(self._kit, "selection", ()) or ():
+            if not self.doc.has(i):
+                continue
+            it = self.doc.item(i)
+            props = sorted({k["prop"] for k in it.get("keys", []) if "prop" in k})
+            shown = self.shown_values(it) if props else it
+            out += [(i, p, shown.get(p), self.anim_state(it, p)) for p in props]
+            if it.get("type") == "copies":
+                out.append((i, self.copies_note(i)))
+        return tuple(out)
+
+    def _patch_playhead(self, was: tuple, now: tuple) -> bool:
+        """A scrub step's panel: one item selected and only keyed numbers moved, so only those rows' value and key mark
+        are new (working out the whole panel again cost ~5 ms a frame). False: the caller works the rows out."""
+        if len(getattr(self._kit, "selection", ())) != 1 or len(was) != len(now):
+            return False
+        new = {}
+        for a, b in zip(was, now):
+            if len(b) != 4 or a[:2] != b[:2]:
+                return False
+            if a != b:
+                if not isinstance(b[2], (int, float)) or isinstance(b[2], bool):
+                    return False                   # a keyed choice or switch may show or hide other rows
+                new[b[1]] = b
+        rows = list(self.model.rows)
+        for n, r in enumerate(rows):
+            if r.get("row") == "param" and r.get("id") in new:
+                _, _, value, anim = new.pop(r["id"])
+                rows[n] = {**r, "value": value, "anim": anim}
+        if new:
+            return False
+        self.model.update(rows)
+        return True
 
     def on_page(self, item):
         """An item's material shows in its own Material row (MaterialRow.qml, the picker), not as a plain choice."""

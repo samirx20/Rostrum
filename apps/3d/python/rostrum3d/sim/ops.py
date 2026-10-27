@@ -1,6 +1,6 @@
 """The simulation's operations (brief 25 + 26a): what the screen's Simulate menu, the Simulation group and agents call.
 
-    sim.body    {kind: falls | still | off} on top-level items
+    sim.body    {kind: falls | still | cloth | off} on top-level items (cloth: shapes only)
     sim.set     the Simulation fields of items (Mass, Bounce …) and shots (Ground, Timing, Simplify), checked
     sim.run     compute the shot's simulation if needed and record it as the shot's stored result (simKey)
     sim.to_keys the stored result becomes ordinary keys on each falling item, which stops simulating (one undo step)
@@ -14,7 +14,7 @@ from rostrum_core.errors import codes
 from rostrum_core.keys.evaluate import keys_of
 from rostrum_core.keys.marked import same_time
 
-from .. import fields as F
+from .. import copy_keys as CK, fields as F
 from ..kind import REGISTRY as R
 from . import fields as SF
 from .compute import SimError, compute, needed
@@ -36,17 +36,21 @@ def _folder(ctx):
 
 
 @R.operation("sim.body", "Make items part of the shot's simulation: kind falls (moved by gravity and bumps), still (others "
-             "land on it and bounce off it; it never moves) or off. Only items directly in the scene (not inside a group, "
-             "copies or rig); a copies item makes every copy a falling thing. Then sim.set for Mass, Bounce, Friction, "
-             "Starts, Shape, and sim.run to compute.", target=SF.TYPES, label="Simulate",
-             params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True,
-                                  labels={"off": "Off", "falls": "Falls", "still": "Stays still"})])
+             "land on it and bounce off it; it never moves), cloth (a shape that drapes and folds over what is under it; a "
+             "plane is made fine enough to fold) or off. Only items directly in the scene (not inside a group, copies or "
+             "rig); a copies item makes every copy a falling thing; only a shape (mesh) can be cloth. Then sim.set for Mass, "
+             "Bounce, Friction, Starts, Shape (cloth: clothWeight, stiffness, pinned, friction), and sim.run to compute.",
+             target=SF.TYPES, label="Simulate",
+             params=[Param.choice("kind", SF.KINDS, label="Simulate", required=True, labels=SF.WORDS)])
 def sim_body(ctx, targets, args):
     for t in targets:
         loc = ctx.idx[t]
         if loc.parent != "root":
             ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f'is inside "{loc.parent}"; only things directly in the scene can '
-                     "fall or stay still", hint="Move it out first (item.arrange), then try again.")
+                     "fall, stay still or be cloth", hint="Move it out first (item.arrange), then try again.")
+        if args["kind"] == "cloth" and ctx.item(t)["type"] not in SF.CLOTH_TYPES:
+            ctx.fail(codes.BAD_ARGUMENT, f'target "{t}"', f'is a {ctx.item(t)["type"]}; only a shape can be cloth',
+                     hint="Make a plane (or another shape) and set it to cloth.")
         ctx.set(t, "simulate", args["kind"])
 
 
@@ -55,7 +59,10 @@ _SHOT = [p for p in F.unconditional("shot") if p.name in SF.SHOT_NAMES and p.nam
 
 
 @R.operation("sim.set", "Change Simulation settings. On an item: massFromSize, mass (kg), bounce (0–1), friction (0–2), "
-             "starts (moving | asleep: until something hits it), simShape (exact | box | sphere). On a shot: simGround (a "
+             "starts (moving | asleep: until something hits it), simShape (exact | box | sphere); on cloth: clothWeight "
+             "(kg per m²: silk 0.05, cotton 0.2, denim 0.4), stiffness (0 silk … 1 thin card), pinned (none | top | bottom | "
+             "left | right | front | back: that side, as seen in the scene at the first frame, held in place), friction. "
+             "On a shot: simGround (a "
              "floor at height 0), simTiming (every | 2s | 3s: steps like hand animation), simSimplify (keep every nth "
              "frame, smooth between). Timing and Simplify never need a new simulation.", target=(*SF.TYPES, "shot"),
              label="Simulation settings", importance="secondary", params=[*_ITEM, *_SHOT])
@@ -103,8 +110,9 @@ def _ours(k: dict, shot: str) -> bool:
 
 
 def _turned(ctx, shot: str) -> bool:
-    """Something carries keys this shot's simulation wrote (sim.to_keys ran)."""
-    return any(_ours(k, shot) for i in ctx.doc.get("items", []) for k in i.get("keys", []))
+    """Something carries keys this shot's simulation wrote (sim.to_keys ran): an item's, or a copies item's keyed copies."""
+    return any(_ours(k, shot) for i in ctx.doc.get("items", []) for k in i.get("keys", [])) or any(
+        _ours({"from": i.get(CK.FROM)}, shot) and i.get(CK.KEYS) for i in ctx.doc.get("items", []))
 
 
 def _key_frames(res, s0: int, s1: int, step: int, simplify: int) -> tuple[list[int], str]:
@@ -120,7 +128,8 @@ def _key_frames(res, s0: int, s1: int, step: int, simplify: int) -> tuple[list[i
              "(every frame; with Timing On 2s / On 3s a held key every 2 or 3 frames; with Simplify every nth frame) and "
              "stops simulating, in one undo step; then nudge any key by hand. Running it again never changes a key it "
              "already wrote for that result (a nudge stays) and never touches keys a person made. Computes first when "
-             "needed. A falling copies item is left simulating (its copies have no keys): it is not changed.",
+             "needed. A falling copies item gets keys on each copy instead (copies.key nudges one) and stops "
+             "simulating. Cloth is left (its folds are not keys: it stays a simulation).",
              target="shot", label="Turn into keys")
 def sim_to_keys(ctx, targets, args):
     from ..compile import _shot, shot_info
@@ -136,9 +145,12 @@ def sim_to_keys(ctx, targets, args):
         step, simplify = SF.TIMINGS[shot.get("simTiming", "every")], int(shot.get("simSimplify", 1))
         s0, s1, fps, tag = info["start"], info["end"], info["fps"], _tag(shot_id, key)
         frames, ease = _key_frames(res, s0, s1, step, simplify)
-        for item in [b for b in bodies(ctx.doc) if value(b, "simulate") == "falls" and b["type"] != "copies"]:
+        for item in [b for b in bodies(ctx.doc) if value(b, "simulate") == "falls"]:
             rows = res.rows_of(item["id"])
             if not rows:
+                continue
+            if item["type"] == "copies":
+                _copies_to_keys(ctx, item["id"], res, (s0, s1, fps), frames, ease, (step, simplify), tag)
                 continue
             per = trs(stylized(res, rows[0], range(s0, s1 + 1), s0, step, simplify))
             for prop in TRS:
@@ -153,3 +165,29 @@ def sim_to_keys(ctx, targets, args):
                     if _ours(k, shot_id) and k.get("from") != tag:
                         ctx.remove(k["id"])
             ctx.set(item["id"], "simulate", "off")
+
+
+def _copies_to_keys(ctx, copies_id: str, res, shot: tuple, frames: list[int], ease: str, style: tuple, tag: str):
+    """Every copy of a falling copies item gets keys on x y z rx ry rz (copy_keys.py), by the same rule as an item's: a
+    key already there that a person made, or that this result wrote (maybe nudged since), is kept; an older result's go."""
+    s0, s1, fps = shot
+    owner = ctx.item(copies_id)
+    keyed, mine = CK.keys_map(owner), owner.get(CK.FROM) == tag
+    times = [round(f / fps, 4) for f in frames]
+    new = set(times)
+    for body in (b for b in res.bodies if b["item"] == copies_id):
+        per = trs(stylized(res, body["row"], range(s0, s1 + 1), s0, *style))
+        props = keyed.setdefault(int(body["copy"]), {})
+        for prop in TRS:
+            there = {k["t"]: k for k in props.get(prop, [])}
+            if not mine:                                     # an older result's keys go; a person's stay
+                there = {t: k for t, k in there.items() if not k["sim"] or t in new}
+            for f, t in zip(frames, times):
+                k = there.get(t)
+                if k is not None and (not k["sim"] or mine):
+                    continue                                 # a person's key, or this result's (maybe nudged): kept
+                there[t] = {"t": t, "v": per[prop][f - s0], "ease": ease, "sim": True}
+            props[prop] = sorted(there.values(), key=lambda k: k["t"])
+    ctx.set(copies_id, CK.KEYS, CK.rows(keyed))
+    ctx.set(copies_id, CK.FROM, tag)
+    ctx.set(copies_id, "simulate", "off")

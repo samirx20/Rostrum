@@ -2,15 +2,19 @@
 // stage at `start` (send the scene without a stored result first), the bodies run through Jolt (sim.cpp), and the
 // falling ones' poses written to `<folder>/bodies.bin` — float32, frames × rows × [x y z qx qy qz qw]: a plain item's
 // translate and turn (world; it is top-level), a copy's position and orientation in its copies item's own space.
+// A cloth (brief 26b) is a top-level shape: its mesh refined (sim_cloth.cpp) and its points per frame written to
+// `<folder>/cloth_<item>.bin` in the item's own space as it stood at `start`, with the faces it was simulated with.
 #include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/quatd.h>
 #include <pxr/base/gf/rotation.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdGeom/xformCache.h>
 
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -92,6 +96,111 @@ sim::Body settings(const JsValue& v, size_t i) {
   return b;
 }
 
+bool is_cloth(const JsValue& v) {
+  if (!v.IsObject()) return false;
+  const auto it = v.GetJsObject().find("kind");
+  return it != v.GetJsObject().end() && it->second.IsString() && it->second.GetString() == "cloth";
+}
+
+sim::Cloth cloth_settings(const JsValue& v, size_t i) {
+  Reader r(v.GetJsObject(), "simulate.bodies[" + std::to_string(i) + "]");
+  sim::Cloth c;
+  c.item = r.str("item");
+  r.str("kind");
+  c.weight = r.num("weight");
+  c.stiffness = r.num("stiffness");
+  c.friction = r.num("friction");
+  const std::string pin = r.one_of("pinned", {"none", "top", "bottom", "left", "right", "front", "back"});
+  const char* pins[] = {"none", "top", "bottom", "left", "right", "front", "back"};
+  for (int k = 0; k < 7; ++k)
+    if (pin == pins[k]) c.pinned = sim::Cloth::Pin(k);
+  if (!(c.weight > 0)) fail(r.at("weight"), "is not above 0", "kg per m², e.g. 0.2 (cotton)");
+  if (c.stiffness < 0 || c.stiffness > 1) fail(r.at("stiffness"), "is outside 0..1", "0 (silk) .. 1 (thin card)");
+  r.finish();
+  return c;
+}
+
+// A cloth item's mesh at `t`, refined, its points in world space; `to_local` takes them back to the item's own space.
+sim::Cloth gather_cloth(sim::Cloth c, const UsdPrim& prim, UsdTimeCode t, UsdGeomXformCache& xc, GfMatrix4d* to_local) {
+  if (!prim.IsA<UsdGeomMesh>())
+    throw Error("simulate: " + c.item + " is not a shape, so it can't be cloth: make a plane (or another shape) the cloth");
+  const UsdGeomMesh mesh(prim);
+  VtVec3fArray points;
+  VtIntArray counts, index;
+  mesh.GetPointsAttr().Get(&points, t);
+  mesh.GetFaceVertexCountsAttr().Get(&counts, t);
+  mesh.GetFaceVertexIndicesAttr().Get(&index, t);
+  if (points.empty() || counts.empty())
+    throw Error("simulate: " + c.item + " has no surface to drape: give it a shape (a plane drapes best), or set Simulate to Off");
+  VtVec2fArray st;
+  TfToken interp;
+  if (const UsdGeomPrimvar pv = UsdGeomPrimvarsAPI(prim).GetPrimvar(TfToken("st"))) {
+    pv.Get(&st, t);
+    interp = pv.GetInterpolation();
+  }
+  c.points.resize(points.size());
+  c.st.assign(points.size(), {0.0f, 0.0f});
+  std::vector<bool> has_st(points.size(), false);
+  for (size_t i = 0; i < points.size(); ++i) c.points[i] = v3(GfVec3d(points[i]));
+  std::vector<std::vector<int>> faces;
+  size_t at = 0;
+  for (int n : counts) {
+    std::vector<int> f;
+    for (int k = 0; k < n && at + size_t(k) < index.size(); ++k) {
+      const int p = index[at + size_t(k)];
+      f.push_back(p);
+      if (p < 0 || size_t(p) >= points.size() || has_st[size_t(p)]) continue;
+      const size_t corner = at + size_t(k);  // a seam keeps the first corner's u v
+      if (interp == UsdGeomTokens->faceVarying && corner < st.size()) c.st[size_t(p)] = {st[corner][0], st[corner][1]};
+      else if (interp == UsdGeomTokens->vertex && size_t(p) < st.size()) c.st[size_t(p)] = {st[size_t(p)][0], st[size_t(p)][1]};
+      has_st[size_t(p)] = true;
+    }
+    faces.push_back(std::move(f));
+    at += size_t(std::max(0, n));
+  }
+  sim::refine(c, faces);
+  if (c.triangles.empty())
+    throw Error("simulate: " + c.item + " has no surface to drape (every face is flat to a line): give it a shape, or set Simulate to Off");
+  const GfMatrix4d m = xc.GetLocalToWorldTransform(prim);
+  if (std::abs(m.GetDeterminant()) < 1e-18)
+    throw Error("simulate: " + c.item + " is scaled to nothing, so it can't be cloth: give it a size");
+  *to_local = m.GetInverse();
+  for (sim::V3& p : c.points) p = v3(m.Transform(GfVec3d(p[0], p[1], p[2])));
+  return c;
+}
+
+template <class T>
+void put_raw(std::ofstream& f, const T* data, size_t n) {
+  f.write(reinterpret_cast<const char*>(data), std::streamsize(n * sizeof(T)));
+}
+
+// "RCL1", int32 points, triangles, frames, start; int32 × 3 × triangles; float32 × 2 × points (u v); then per frame
+// float32 × 3 × points in the item's own space (ENGINE_CONTRACT § Simulation).
+void write_cloth(const std::filesystem::path& file, const sim::Cloth& c, const std::vector<float>& world, int start, int frames,
+                 const GfMatrix4d& to_local) {
+  std::ofstream f(file, std::ios::binary);
+  const int32_t head[4] = {int32_t(c.points.size()), int32_t(c.triangles.size()), int32_t(frames), int32_t(start)};
+  f.write("RCL1", 4);
+  put_raw(f, head, 4);
+  std::vector<int32_t> tris;
+  tris.reserve(c.triangles.size() * 3);
+  for (const auto& t : c.triangles) tris.insert(tris.end(), {int32_t(t[0]), int32_t(t[1]), int32_t(t[2])});
+  put_raw(f, tris.data(), tris.size());
+  std::vector<float> st;
+  st.reserve(c.st.size() * 2);
+  for (const auto& uv : c.st) st.insert(st.end(), {uv[0], uv[1]});
+  put_raw(f, st.data(), st.size());
+  std::vector<float> local(world.size());
+  for (size_t i = 0; i + 2 < world.size(); i += 3) {
+    const GfVec3d p = to_local.Transform(GfVec3d(world[i], world[i + 1], world[i + 2]));
+    local[i] = float(p[0]);
+    local[i + 1] = float(p[1]);
+    local[i + 2] = float(p[2]);
+  }
+  put_raw(f, local.data(), local.size());
+  if (!f) throw Error("simulate: could not write " + file.u8string());
+}
+
 void put(std::vector<float>& out, const GfVec3d& p, const GfQuatd& q) {
   const GfVec3d im = q.GetImaginary();
   for (double x : {p[0], p[1], p[2], im[0], im[1], im[2], q.GetReal()}) out.push_back(float(x));
@@ -124,12 +233,33 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
   const UsdTimeCode t(setup.start);
   UsdGeomXformCache xc(t);
   std::vector<sim::Body> bodies;
+  std::vector<sim::Cloth> cloths;
+  std::vector<GfMatrix4d> cloth_local;  // each cloth: world → its own space at `start`
   struct CopiesOut { GfMatrix4d to_local; GfQuatd turn_back; };
   std::map<std::string, CopiesOut> copies_out;  // a falling copies item: world → its own space
+  const auto twice = [&](const std::string& item, size_t i) {
+    bool seen = false;
+    for (const sim::Body& b : bodies) seen = seen || b.item == item;
+    for (const sim::Cloth& c : cloths) seen = seen || c.item == item;
+    if (seen) throw Error("simulate.bodies[" + std::to_string(i) + "].item: \"" + item + "\" is given twice");
+  };
   for (size_t i = 0; i < list.GetJsArray().size(); ++i) {
+    if (is_cloth(list.GetJsArray()[i])) {
+      sim::Cloth c = cloth_settings(list.GetJsArray()[i], i);
+      twice(c.item, i);
+      const SdfPath path = item_path(stage_, c.item);
+      const UsdPrim prim = path.IsEmpty() ? UsdPrim() : stage_->GetPrimAtPath(path);
+      if (!prim) throw Error("simulate.bodies[" + std::to_string(i) + "].item: no item \"" + c.item + "\" in the scene");
+      if (prim.GetParent().GetPath() != SdfPath("/World"))
+        throw Error("simulate: " + c.item + " is inside " + prim.GetParent().GetName().GetString() +
+                    "; only items at the top of the scene can be cloth: take it out first");
+      GfMatrix4d back;
+      cloths.push_back(gather_cloth(std::move(c), prim, t, xc, &back));
+      cloth_local.push_back(back);
+      continue;
+    }
     const sim::Body base = settings(list.GetJsArray()[i], i);
-    for (const sim::Body& seen : bodies)
-      if (seen.item == base.item) throw Error("simulate.bodies[" + std::to_string(i) + "].item: \"" + base.item + "\" is given twice");
+    twice(base.item, i);
     const auto cs = copies_.find(base.item);
     if (cs != copies_.end()) {  // every copy is a body
       const copies::State& s = cs->second;
@@ -187,7 +317,7 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
   }
 
   const bool tell = a.flag("progress", false);
-  const sim::Result res = sim::run(setup, bodies, [&](int i, int of, int frame) {
+  const sim::Result res = sim::run(setup, bodies, cloths, [&](int i, int of, int frame) {
     if (tell && progress)
       progress(JsObject{{"progress", JsValue(i)}, {"of", JsValue(of)}, {"frame", JsValue(frame)}});
   });
@@ -213,6 +343,15 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
     f.write(reinterpret_cast<const char*>(data.data()), std::streamsize(data.size() * sizeof(float)));
     if (!f) throw Error("simulate: could not write " + file.u8string());
   }
+  JsArray cloth_out;
+  for (size_t c = 0; c < cloths.size(); ++c) {
+    const std::filesystem::path cf = folder / ("cloth_" + cloths[c].item + ".bin");
+    write_cloth(cf, cloths[c], res.cloth[c], setup.start, int(res.frames.size()), cloth_local[c]);
+    cloth_out.push_back(JsValue(JsObject{{"item", JsValue(cloths[c].item)}, {"file", JsValue(cf.u8string())},
+                                         {"points", JsValue(int(cloths[c].points.size()))},
+                                         {"triangles", JsValue(int(cloths[c].triangles.size()))},
+                                         {"refined", JsValue(cloths[c].refined)}}));
+  }
   JsArray rows;
   for (size_t j = 0; j < res.rows.size(); ++j) {
     const sim::Body& b = bodies[size_t(res.rows[j])];
@@ -221,7 +360,8 @@ JsObject Core::simulate(const JsObject& o, const std::function<void(const JsObje
   const auto r1 = [](double v) { return std::round(v * 10) / 10; };
   return JsObject{{"ok", JsValue(true)}, {"jolt", JsValue(sim::jolt_version())}, {"sim", JsValue(sim::kVersion)},
                   {"frames", JsValue(JsArray{JsValue(setup.start), JsValue(setup.end)})}, {"rows", JsValue(int(res.rows.size()))},
-                  {"file", JsValue(file.u8string())}, {"bodies", JsValue(rows)}, {"atRest", JsValue(res.atRest)},
+                  {"file", JsValue(file.u8string())}, {"bodies", JsValue(rows)}, {"cloth", JsValue(cloth_out)},
+                  {"atRest", JsValue(res.atRest)},
                   {"ms", JsValue(r1(res.ms))}, {"frameMs", JsValue(std::round(res.frameMs * 100) / 100)}};
 }
 

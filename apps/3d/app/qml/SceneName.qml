@@ -55,11 +55,11 @@ Rectangle {
         HoverHandler { id: nameHover }
         HoverTip { text: name.truncated ? name.text : ""; hovered: nameHover.hovered }
     }
-    Icon3D {    // a body (Simulate): a falling arrow, or a block on the ground for one that stays still (sim_actions.py)
+    Icon3D {    // a body (Simulate): a falling arrow, a block on the ground for one that stays still, a hanging cloth (sim_actions.py)
         id: badge
         objectName: row.field ? "" : "simBadge:" + row.modelData.id
         visible: !row.field && !!row.modelData.sim && row.modelData.sim !== "off"
-        name: row.modelData.sim === "falls" ? "sim-falls" : "sim-still"
+        name: row.modelData.sim === "falls" ? "sim-falls" : row.modelData.sim === "cloth" ? "sim-cloth" : "sim-still"
         ink: row.selected ? Theme.accentHover : Theme.fg3
         scale: 0.7; transformOrigin: Item.Center
         anchors { right: matName.visible ? matName.left : parent.right; rightMargin: Theme.grid; verticalCenter: parent.verticalCenter }

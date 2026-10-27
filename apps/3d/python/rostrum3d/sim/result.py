@@ -8,6 +8,11 @@ two frames.
 Timing and Simplify (brief 26a) are applied here, when reading, never stored: Simplify n keeps every nth sample from the
 result's first frame (and its last) and moves in a straight line between them (turns: the shortest way); Timing On 2s / On 3s
 holds each frame's value for 2 or 3 frames, counted from the shot's start, like hand animation.
+
+Cloth (brief 26b) is never read here: the core reads its `cloth_<item>.bin` itself when it builds the stage (the mesh node's
+`cloth`, overlay.py), Timing and Simplify included. Its layout (ENGINE_CONTRACT § Simulation), little-endian:
+"RCL1", int32 points, triangles, frames, start; int32 × 3 × triangles; float32 × 2 × points (u v); then
+float32 × 3 × points per frame (the item's own space).
 """
 from __future__ import annotations
 
@@ -22,6 +27,15 @@ from .. import aim, rigs
 
 BIN, JSON = "bodies.bin", "result.json"
 ROW = 7
+CLOTH_HEADER = 20
+
+
+def cloth_file(item: str) -> str:
+    return f"cloth_{item}.bin"
+
+
+def cloth_bytes(points: int, triangles: int, frames: int) -> int:
+    return CLOTH_HEADER + 12 * triangles + 8 * points + 12 * points * frames
 
 
 @dataclass

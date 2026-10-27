@@ -112,4 +112,4 @@ FIELDS: dict[str, list[Param]] = {
     ],
 }
 for _type in SIM.TYPES:                 # sim/fields.py: what a body is made of and how it starts (top-level items only)
-    FIELDS[_type] = FIELDS[_type] + SIM.ITEM
+    FIELDS[_type] = FIELDS[_type] + SIM.for_type(_type)

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QTimer, Slot
+from PySide6.QtCore import Property, QObject, Qt, QTimer, Slot
 from rostrum3d.compile import describe, shot_info
 from rostrum_gui import DocBridge, sections
 from rostrum_gui.markers import MarkerWatch
@@ -74,7 +74,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self._frame, self._folded = self._info["start"], set()
         self._page = "build"
         super().__init__(doc, parent=parent)
-        self._timer = QTimer(self)
+        self._timer = QTimer(self, timerType=Qt.TimerType.PreciseTimer)   # (a coarse timer played 24 fps at 21)
         self._timer.timeout.connect(self._tick)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "3d")   # shared markers: flags, edits, snapping
         self.marks.changed.connect(self.markersChanged)

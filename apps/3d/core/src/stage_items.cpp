@@ -17,6 +17,7 @@
 #include <cstdio>
 
 #include "clay_scene.h"
+#include "cloth_stage.h"
 #include "convert.h"
 #include "copies.h"
 #include "error.h"
@@ -91,16 +92,20 @@ void bind_parts(Item& it, const UsdGeomMesh& m, const FaceGroups& groups, const 
   api.SetMaterialBindSubsetsFamilyType(UsdGeomTokens->partition);
 }
 
-void build_mesh(Item& it, const SdfPath& path, const JsObject* skin) {
+// `cloth`: a stored cloth simulation (brief 26b, cloth_stage.h) replaces its faces and points; its skin and per-face
+// materials don't apply (the faces are the simulated ones), the item's own material does.
+void build_mesh(Item& it, const SdfPath& path, const JsObject* skin, const JsObject* cloth) {
   UsdGeomMesh m = UsdGeomMesh::Define(it.ctx.stage, path);
   author_transform(it, m.GetPrim());
   FaceGroups groups;
   MeshData d = shape(it.props, groups);
   own_uvs(it.props, d);
   write_mesh(m, d);
-  if (skin) skin_mesh(m, d, *skin, it.ctx.start, it.id + ".skin");
+  if (cloth) cloth_mesh(it, m, *cloth);
+  if (skin && !cloth) skin_mesh(m, d, *skin, it.ctx.start, it.id + ".skin");
   const std::string mat = it.props.str("material");
   bind_material(it, m.GetPrim(), mat, it.props.at("material"), UsdShadeTokens->fallbackStrength);
+  if (cloth) return;
   if (!groups[kFront].empty()) bind_parts(it, m, groups, mat);
   if (!d.base_face.empty()) bind_face_materials(it, m, d, mat);
 }
@@ -183,7 +188,8 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   Item it(ctx, id, r.object("props"), r.has("anim") ? &r.object("anim") : nullptr);
   ++ctx.items;
   if (type == "group") author_transform(it, UsdGeomXform::Define(ctx.stage, path).GetPrim());
-  if (type == "mesh") build_mesh(it, path, r.has("skin") ? &r.object("skin") : nullptr);
+  if (type == "mesh")
+    build_mesh(it, path, r.has("skin") ? &r.object("skin") : nullptr, r.has("cloth") ? &r.object("cloth") : nullptr);
   if (type == "combine") build_combine(it, r.list("children"), path);
   if (type == "import") build_import(it, path);
   if (type == "light") build_light(it, path);

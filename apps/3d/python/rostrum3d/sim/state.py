@@ -1,6 +1,6 @@
 """Where a shot's simulation stands, for the timeline's Simulate row, sim.status and the render paths.
 
-    none          nothing in the shot Falls
+    none          nothing in the shot Falls or is Cloth
     not computed  no stored result for these inputs, and none older to show
     stored        the result for the inputs as they are now is in the cache
     out of date   an input changed: the older result (the shot's simKey) is still shown, never rendered
@@ -13,7 +13,7 @@ from __future__ import annotations
 from rostrum_core.cache import CACHE
 
 from . import fields as SF
-from .inputs import KIND, bodies, falling, nested, sim_inputs, value
+from .inputs import KIND, MOVING, bodies, cloths, falling, nested, sim_inputs, value
 
 
 def _shot(data: dict, shot_id: str) -> dict:
@@ -22,13 +22,13 @@ def _shot(data: dict, shot_id: str) -> dict:
 
 
 def count(req: dict, scene: dict) -> int:
-    """How many things fall: a copies item counts each copy."""
+    """How many things move: a copies item counts each copy, a cloth counts one."""
     nodes = {n["id"]: n for n in scene["items"]}
     n = 0
     for b in falling(req):
         node = nodes.get(b["item"], {})
         n += int(node.get("props", {}).get("count", 1)) if node.get("type") == "copies" else 1
-    return n
+    return n + len(cloths(req))
 
 
 def state(data: dict, shot_id: str, folder=None, scene: dict | None = None) -> dict:
@@ -38,9 +38,9 @@ def state(data: dict, shot_id: str, folder=None, scene: dict | None = None) -> d
     shot, info = _shot(data, shot_id), shot_info(data, shot_id)
     name, frames, inside = shot.get("name") or shot_id, info["end"] - info["start"] + 1, nested(data)
     stored_key = shot.get(SF.KEY, "")
-    if not any(value(b, "simulate") == "falls" for b in bodies(data)):
+    if not any(value(b, "simulate") in MOVING for b in bodies(data)):
         return {"bodies": 0, "state": "none", "frames": frames, "key": "", "storedKey": stored_key, "inside": inside,
-                "line": f"{name}: nothing falls (Simulate › Falls on an item)"}
+                "line": f"{name}: nothing falls (Simulate › Falls or Cloth on an item)"}
     scene = scene if scene is not None else describe(data, shot_id, folder, sim="none")
     req, key = sim_inputs(data, shot_id, folder, scene)
     n = count(req, scene)
