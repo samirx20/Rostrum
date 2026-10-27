@@ -213,7 +213,7 @@ class ItemEngine:
         if line is None:
             return False
         try:
-            paint_scene.send(scene, lambda s: self.link.ask({"scene": s}))    # painted clays: twice (its doc)
+            paint_scene.send(scene, lambda s: self.link.ask({"scene": s}), self.texels_reply)   # twice (its doc)
         except Exception:
             self.link._forget_scene()
             raise
@@ -221,6 +221,13 @@ class ItemEngine:
 
     def pick(self, **req) -> dict:
         return self.link.ask({"pick": req})
+
+    def texels_reply(self, req: dict) -> dict:
+        return self.link.ask({"texels": req})
+
+    def texels(self, **req):
+        from rostrum3d import texels
+        return texels.fetch(self.texels_reply, req)
 
     def sculpt(self, **req) -> dict:
         return self.link.ask({"sculpt": req})
