@@ -111,6 +111,14 @@ void Framebuffer::bind_and_clear() const {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }
 
+std::vector<float> Framebuffer::read_depth() const {
+  std::vector<float> d(size_t(w_) * h_);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glReadPixels(0, 0, w_, h_, GL_DEPTH_COMPONENT, GL_FLOAT, d.data());
+  return d;
+}
+
 std::vector<float> Framebuffer::read_rgba() const {
   std::vector<float> px(size_t(w_) * h_ * 4), out(px.size());
   glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo_);

@@ -7,6 +7,7 @@
 #include <atomic>
 #include <exception>
 #include <functional>
+#include <map>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -41,6 +42,8 @@ class Core {
   PXR_NS::JsObject clay_pose(const PXR_NS::JsObject& a);  // clay_requests.cpp (CL5: a pose drag's live bone moves)
   PXR_NS::JsObject clay_grid(const PXR_NS::JsObject& a);  // clay_requests.cpp (CL5: the rest clay's inside, sampled)
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
+  PXR_NS::JsObject copies_live(const PXR_NS::JsObject& a); // copies_request.cpp (a Count / Spacing drag, a copy moved)
+  PXR_NS::JsObject sees(const PXR_NS::JsObject& a);        // copies_request.cpp (which points a camera sees)
   PXR_NS::JsObject info();
 
   // A live stroke's dab, its clay work started early (clay_requests.cpp). The window (view/viewport_item.cpp) calls
@@ -60,6 +63,11 @@ class Core {
   void check_frame(int frame, const char* where) const;
   // the built mesh of a top-level `mesh` or `combine` item (geometry, unfold); loud about anything else
   PXR_NS::UsdGeomMesh built_mesh(const std::string& id, const char* request) const;
+  // after a scene: each copies item seen by a camera keeps only the copies it sees (copies_request.cpp); its info
+  PXR_NS::JsObject seen_test(double* ms);
+  // a pick that hit a copy: `out` names the copies item, the copy and its source; false when it is no copy
+  bool pick_copy(const PXR_NS::SdfPath& hit, const PXR_NS::SdfPath& instancer, int instance, int frame,
+                 const PXR_NS::GfVec3d& point, PXR_NS::JsObject* out) const;
 
   PXR_NS::UsdStageRefPtr stage_;
   bool borrow_gl_ = false;
@@ -75,6 +83,7 @@ class Core {
   std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
   std::string xform_id_;  // the item the last `xform` moved, and its prim
   PXR_NS::SdfPath xform_path_;
+  std::map<std::string, copies::State> copies_;  // the copies items as laid out (copies.h), by id
   std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
   std::atomic<bool> final_look_{false};  // 3d-cl4: the last view was the Final look (Cycles): strokes begun get no coarse preview
   // the live stroke's camera and clay placement, from its begin (clay_requests.cpp: StrokeView)

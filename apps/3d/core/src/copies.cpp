@@ -1,0 +1,634 @@
+#include "copies.h"
+
+#include <pxr/base/gf/quatd.h>
+#include <pxr/base/gf/quath.h>
+#include <pxr/base/gf/rotation.h>
+#include <pxr/base/gf/vec3d.h>
+#include <pxr/base/gf/vec3h.h>
+#include <pxr/usd/sdf/changeBlock.h>
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/usdGeom/bboxCache.h>
+#include <pxr/usd/usdGeom/camera.h>
+#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/pointInstancer.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdGeom/xformCache.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <unordered_map>
+
+#include "inspect.h"
+#include "item_track.h"
+#include "json_read.h"
+#include "stage_items.h"
+
+PXR_NAMESPACE_USING_DIRECTIVE
+
+namespace r3d {
+namespace copies {
+namespace {
+
+constexpr double kPi = 3.14159265358979323846;
+constexpr float kNoMaterialGrey = 0.5f;  // Storm's colour for a mesh with no material and no displayColor (clay_usd.cpp)
+
+// The node's props besides the transform, all sent by the compiler.
+const char* const kKeys[] = {"layout", "count", "columns", "spacingX", "spacingY", "spacingZ", "radius", "faceOut",
+                             "surface", "amountBy", "density", "minSpacing", "alongSurface", "onTop", "seed", "varyMove",
+                             "varyTurn", "varyScale", "seenBy", "seenSize"};
+
+// A number from (seed, copy, channel), 0..1, the same on every run and machine: each copy's chances are its own, so
+// changing the count or the layout never reshuffles the others.
+uint64_t mix(uint64_t x) {
+  x += 0x9E3779B97F4A7C15ull;
+  x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
+  x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
+  return x ^ (x >> 31);
+}
+double rnd(unsigned seed, int copy, uint64_t channel) {
+  const uint64_t h = mix(mix((uint64_t(seed) << 32) | uint32_t(copy)) ^ mix(channel + 0x51ED27ull));
+  return double(h >> 11) * (1.0 / 9007199254740992.0);
+}
+double signed_rnd(unsigned seed, int copy, uint64_t channel) { return 2 * rnd(seed, copy, channel) - 1; }
+
+double number(const JsValue& v, const std::string& where) {
+  if (!is_number(v)) fail(where, "is " + v.GetTypeName(), "a number");
+  const double d = to_number(v);
+  if (!std::isfinite(d)) fail(where, "is not finite", "a finite number");
+  return d;
+}
+double at_least(const JsValue& v, const std::string& where, double lo) {
+  const double d = number(v, where);
+  if (d < lo) fail(where, std::to_string(d) + " is too small", "a number >= " + std::to_string(lo));
+  return d;
+}
+int whole(const JsValue& v, const std::string& where, double lo, double hi) {
+  const double d = number(v, where);
+  if (d != std::floor(d) || d < lo || d > hi)
+    fail(where, std::to_string(d) + " is out of range",
+         "a whole number " + std::to_string(int64_t(lo)) + " .. " + std::to_string(int64_t(hi)));
+  return int(d);
+}
+bool flag(const JsValue& v, const std::string& where) {
+  if (!v.IsBool()) fail(where, "is " + v.GetTypeName(), "true or false");
+  return v.GetBool();
+}
+std::string text(const JsValue& v, const std::string& where) {
+  if (!v.IsString()) fail(where, "is " + v.GetTypeName(), "a string");
+  return v.GetString();
+}
+std::string choice(const JsValue& v, const std::string& where, const std::vector<std::string>& accepted) {
+  const std::string s = text(v, where);
+  if (std::find(accepted.begin(), accepted.end(), s) == accepted.end()) fail(where, "\"" + s + "\" is unknown", join(accepted));
+  return s;
+}
+
+// One prop into p; the same checks for the scene and the live request.
+void set_param(Params& p, const std::string& key, const JsValue& v, const std::string& where) {
+  if (key == "layout") p.layout = choice(v, where, {"line", "grid", "circle", "surface"});
+  else if (key == "count") p.count = whole(v, where, 1, 10000);
+  else if (key == "columns") p.columns = whole(v, where, 1, 10000);
+  else if (key == "spacingX") p.spacing[0] = number(v, where);
+  else if (key == "spacingY") p.spacing[1] = number(v, where);
+  else if (key == "spacingZ") p.spacing[2] = number(v, where);
+  else if (key == "radius") p.radius = at_least(v, where, 0);
+  else if (key == "faceOut") p.faceOut = flag(v, where);
+  else if (key == "surface") p.surface = text(v, where);
+  else if (key == "amountBy") p.byDensity = choice(v, where, {"count", "density"}) == "density";
+  else if (key == "density") p.density = at_least(v, where, 0);
+  else if (key == "minSpacing") p.minSpacing = at_least(v, where, 0);
+  else if (key == "alongSurface") p.alongSurface = flag(v, where);
+  else if (key == "onTop") p.onTop = flag(v, where);
+  else if (key == "seed") p.seed = unsigned(whole(v, where, 0, 2147483647));
+  else if (key == "varyMove") p.varyMove = at_least(v, where, 0);
+  else if (key == "varyTurn") p.varyTurn = at_least(v, where, 0);
+  else if (key == "varyScale") {
+    p.varyScale = at_least(v, where, 0);
+    if (p.varyScale > 1) fail(where, std::to_string(p.varyScale) + " is too big", "0 .. 1");
+  } else if (key == "seenBy") p.seenBy = text(v, where);
+  else if (key == "onlySeen") flag(v, where);  // the document's switch; `seenBy` carries it
+  else if (key == "seenSize") {
+    if (!v.IsArray() || v.GetJsArray().size() != 2) fail(where, "is not a list of 2", "[width, height] in pixels");
+    p.seenW = whole(v.GetJsArray()[0], where + "[0]", 0, 65536);  // 0 x 0: no shot size (16:9 then)
+    p.seenH = whole(v.GetJsArray()[1], where + "[1]", 0, 65536);
+    if (p.seenW == 0 || p.seenH == 0) p.seenW = 16, p.seenH = 9;
+  } else {
+    std::vector<std::string> known(std::begin(kKeys), std::end(kKeys));
+    fail(where, "unknown field", join(known));
+  }
+}
+
+std::vector<Held> read_held(const JsArray& list, const std::string& where) {
+  std::vector<Held> out;
+  for (size_t i = 0; i < list.size(); ++i) {
+    const std::string w = where + "[" + std::to_string(i) + "]";
+    if (!list[i].IsObject()) fail(w, "is " + list[i].GetTypeName(), "{\"copy\", \"x\", \"y\", \"z\", \"rx\", \"ry\", \"rz\", \"s\"}");
+    Reader r(list[i].GetJsObject(), w);
+    Held h;
+    h.copy = r.count("copy", 0, 9999);
+    h.x = r.num("x"), h.y = r.num("y"), h.z = r.num("z");
+    h.rx = r.num("rx"), h.ry = r.num("ry"), h.rz = r.num("rz");
+    h.s = r.num_min("s", 0, true);
+    r.finish();
+    out.push_back(h);
+  }
+  return out;
+}
+
+template <class T, class F>
+std::vector<T> track(Reader& anim, const std::string& key, size_t frames, T single, F read) {
+  if (!anim.has(key)) return {single};
+  const JsArray& a = anim.list(key);
+  if (a.size() != frames)
+    fail(anim.at(key), std::to_string(a.size()) + " values", std::to_string(frames) + " values, one per frame");
+  std::vector<T> out;
+  for (size_t i = 0; i < a.size(); ++i) out.push_back(read(a[i], anim.at(key) + "[" + std::to_string(i) + "]"));
+  return out;
+}
+
+std::vector<Effector> read_effectors(const JsArray& list, const std::string& where, size_t frames) {
+  std::vector<Effector> out;
+  for (size_t i = 0; i < list.size(); ++i) {
+    const std::string w = where + "[" + std::to_string(i) + "]";
+    if (!list[i].IsObject()) fail(w, "is " + list[i].GetTypeName(), "an effector object");
+    Reader r(list[i].GetJsObject(), w);
+    Effector e;
+    e.id = r.str("id");
+    const std::string kind = r.one_of("kind", {"scale", "turn", "push", "colour"});
+    e.kind = kind == "scale" ? Effector::Scale : kind == "turn" ? Effector::Turn : kind == "push" ? Effector::Push
+                                                                                                  : Effector::Colour;
+    e.smooth = r.one_of("falloff", {"smooth", "linear"}) == "smooth";
+    const std::string axis = r.one_of("axis", {"x", "y", "z"});
+    e.axis = axis == "x" ? 0 : axis == "y" ? 1 : 2;
+    const double radius = r.num_min("radius", 0, true), amount = r.num("amount");
+    const GfVec3f colour = r.vec3("colour"), centre = r.vec3("centre");
+    static const JsObject none;
+    Reader anim(r.has("anim") ? r.object("anim") : none, w + ".anim");
+    const auto num = [](const JsValue& v, const std::string& at) { return number(v, at); };
+    e.centre = track<GfVec3f>(anim, "centre", frames, centre, Reader::vec3_of);
+    e.colour = track<GfVec3f>(anim, "colour", frames, colour, Reader::vec3_of);
+    e.amount = track<double>(anim, "amount", frames, amount, num);
+    e.radius = track<double>(anim, "radius", frames, radius, num);
+    anim.finish();
+    r.finish();
+    out.push_back(std::move(e));
+  }
+  return out;
+}
+
+GfQuatf quat(const GfRotation& r) { return GfQuatf(r.GetQuat()); }
+GfRotation rotation(const GfQuatf& q) { return GfRotation(GfQuatd(q)); }
+const GfVec3d kAxes[3] = {GfVec3d::XAxis(), GfVec3d::YAxis(), GfVec3d::ZAxis()};
+
+// The surface's triangles in the copies item's space at the shot's start (a moving surface: its first frame).
+void read_surface(const UsdStageRefPtr& stage, State& s) {
+  const std::string where = s.id + ".surface";
+  const std::string accepted = "the id of a mesh, combine or import item outside this copies item";
+  if (s.p.surface.empty()) fail(where, "is empty", accepted);
+  const SdfPath sp = item_path(stage, s.p.surface);
+  if (sp.IsEmpty()) fail(where, "no item \"" + s.p.surface + "\" in the scene", accepted);
+  if (sp.HasPrefix(s.path)) fail(where, "\"" + s.p.surface + "\" is inside this copies item", accepted);
+  UsdGeomXformCache xc{UsdTimeCode(s.start)};
+  const GfMatrix4d to_copies = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path)).GetInverse();
+  Surface out;
+  out.id = s.p.surface;
+  double area = 0;
+  const UsdTimeCode t(s.start);
+  for (const UsdPrim& q : UsdPrimRange(stage->GetPrimAtPath(sp), UsdTraverseInstanceProxies())) {
+    const UsdGeomMesh m(q);
+    if (!m) continue;
+    VtVec3fArray pts;
+    VtIntArray counts, idx;
+    m.GetPointsAttr().Get(&pts, t);
+    m.GetFaceVertexCountsAttr().Get(&counts, t);
+    m.GetFaceVertexIndicesAttr().Get(&idx, t);
+    TfToken orient = UsdGeomTokens->rightHanded;
+    m.GetOrientationAttr().Get(&orient);
+    const float flip = orient == UsdGeomTokens->leftHanded ? -1.f : 1.f;
+    const GfMatrix4d mw = xc.GetLocalToWorldTransform(q), mc = mw * to_copies;
+    size_t at = 0;
+    for (int n : counts) {
+      if (n < 3 || at + n > idx.size()) { at += std::max(n, 0); continue; }
+      for (int k = 1; k + 1 < n; ++k) {
+        const int i0 = idx[at], i1 = idx[at + k], i2 = idx[at + k + 1];
+        if (i0 < 0 || i1 < 0 || i2 < 0 || size_t(std::max({i0, i1, i2})) >= pts.size()) continue;
+        const GfVec3d w0 = mw.Transform(GfVec3d(pts[i0])), w1 = mw.Transform(GfVec3d(pts[i1])),
+                      w2 = mw.Transform(GfVec3d(pts[i2]));
+        const GfVec3d wn = GfCross(w1 - w0, w2 - w0) * double(flip);
+        const double a = 0.5 * wn.GetLength();
+        if (a <= 1e-14) continue;
+        if (s.p.onTop && wn[1] < 0.5 * wn.GetLength()) continue;  // a side or underside: nothing rests there
+        const GfVec3f c0(mc.Transform(GfVec3d(pts[i0]))), c1(mc.Transform(GfVec3d(pts[i1]))),
+                      c2(mc.Transform(GfVec3d(pts[i2])));
+        GfVec3f nrm = GfCross(c1 - c0, c2 - c0) * flip;
+        if (nrm.Normalize() < 1e-20f) continue;
+        out.a.push_back(c0);
+        out.b.push_back(c1);
+        out.c.push_back(c2);
+        out.normal.push_back(nrm);
+        area += a;
+        out.cumulative.push_back(area);
+      }
+      at += n;
+    }
+  }
+  if (out.empty())
+    fail(where, "\"" + s.p.surface + "\" has no mesh to scatter on" + std::string(s.p.onTop ? " facing up (onTop: off scatters on every side)" : " (a clay can't be scattered on yet)"), accepted);
+  s.surf = std::move(out);
+}
+
+// Places on the surface, area-weighted, each at least minSpacing from the ones before it (darts from the seed: the
+// first copies stay where they are when the count grows). Fewer than asked when the surface is full.
+void scatter(const State& s, std::vector<GfVec3f>* pos, std::vector<GfVec3f>* nrm) {
+  const Params& p = s.p;
+  const Surface& sf = s.surf;
+  const double total = sf.cumulative.back();
+  int want = p.byDensity ? int(std::lround(total * p.density)) : p.count;
+  want = std::clamp(want, 0, 10000);
+  const float gap = float(p.minSpacing);
+  std::unordered_map<int64_t, std::vector<int>> grid;  // minSpacing cells -> placed copies
+  const auto cell = [&](const GfVec3f& v, int dx, int dy, int dz) {
+    const int64_t x = int64_t(std::floor(v[0] / gap)) + dx, y = int64_t(std::floor(v[1] / gap)) + dy,
+                  z = int64_t(std::floor(v[2] / gap)) + dz;
+    return (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+  };
+  constexpr int kTries = 30;
+  int misses = 0;
+  for (int i = 0; int(pos->size()) < want && misses < 64; ++i) {
+    bool placed = false;
+    for (int t = 0; t < kTries && !placed; ++t) {
+      const uint64_t ch = 1000 + uint64_t(t) * 3;
+      const double r = rnd(p.seed, i, ch) * total;
+      const size_t tri = std::min(size_t(std::upper_bound(sf.cumulative.begin(), sf.cumulative.end(), r) -
+                                         sf.cumulative.begin()), sf.cumulative.size() - 1);
+      const double r1 = std::sqrt(rnd(p.seed, i, ch + 1)), r2 = rnd(p.seed, i, ch + 2);
+      const GfVec3f v = sf.a[tri] * float(1 - r1) + sf.b[tri] * float(r1 * (1 - r2)) + sf.c[tri] * float(r1 * r2);
+      bool clear = true;
+      if (gap > 0)
+        for (int dx = -1; dx <= 1 && clear; ++dx)
+          for (int dy = -1; dy <= 1 && clear; ++dy)
+            for (int dz = -1; dz <= 1 && clear; ++dz) {
+              auto it = grid.find(cell(v, dx, dy, dz));
+              if (it == grid.end()) continue;
+              for (int j : it->second)
+                if (((*pos)[j] - v).GetLengthSq() < gap * gap) { clear = false; break; }
+            }
+      if (!clear) continue;
+      if (gap > 0) grid[cell(v, 0, 0, 0)].push_back(int(pos->size()));
+      pos->push_back(v);
+      nrm->push_back(sf.normal[tri]);
+      placed = true;
+    }
+    misses = placed ? 0 : misses + 1;
+  }
+}
+
+// The copies before effectors: the layout, the seed's variations, then the held ones in their own places.
+std::vector<Copy> lay_out(const State& s) {
+  const Params& p = s.p;
+  const int sources = std::max<int>(1, int(s.sources.size()));
+  std::vector<Copy> out;
+  std::vector<GfVec3f> normals;
+  const GfRotation none(GfVec3d::YAxis(), 0);
+  std::vector<GfRotation> base;
+  if (p.layout == "surface") {
+    std::vector<GfVec3f> pos;
+    scatter(s, &pos, &normals);
+    for (size_t i = 0; i < pos.size(); ++i) {
+      Copy c;
+      c.pos = pos[i];
+      out.push_back(c);
+      base.push_back(p.alongSurface ? GfRotation(GfVec3d::YAxis(), GfVec3d(normals[i])) : none);
+    }
+  } else {
+    out.resize(size_t(p.count));
+    for (int i = 0; i < p.count; ++i) {
+      Copy& c = out[i];
+      GfRotation r = none;
+      if (p.layout == "line") {
+        c.pos = GfVec3f(float(i * p.spacing[0]), float(i * p.spacing[1]), float(i * p.spacing[2]));
+      } else if (p.layout == "grid") {
+        const int col = i % p.columns, row = i / p.columns;
+        c.pos = GfVec3f(float(col * p.spacing[0]), 0.f, float(row * p.spacing[2]));
+      } else {  // circle, round Y; facing out turns the source's +Z outward
+        const double a = 2 * kPi * i / p.count;
+        c.pos = GfVec3f(float(p.radius * std::sin(a)), 0.f, float(p.radius * std::cos(a)));
+        if (p.faceOut) r = GfRotation(GfVec3d::YAxis(), a * 180 / kPi);
+      }
+      base.push_back(r);
+    }
+  }
+  const bool on_surface = p.layout == "surface";
+  for (int i = 0; i < int(out.size()); ++i) {
+    Copy& c = out[i];
+    GfRotation r = base[i];
+    if (p.varyMove > 0) {
+      GfVec3f d(float(signed_rnd(p.seed, i, 1)), float(signed_rnd(p.seed, i, 2)), float(signed_rnd(p.seed, i, 3)));
+      d *= float(p.varyMove);
+      if (on_surface) d -= normals[i] * GfDot(d, normals[i]);  // slides along the surface, never into it
+      c.pos += d;
+    }
+    if (p.varyTurn > 0) r = GfRotation(GfVec3d::YAxis(), signed_rnd(p.seed, i, 4) * p.varyTurn) * r;  // round its own up
+    if (p.varyScale > 0) c.scale = float(std::max(0.01, 1 + signed_rnd(p.seed, i, 5) * p.varyScale));
+    c.rot = quat(r);
+    c.proto = sources == 1 ? 0 : std::min(sources - 1, int(rnd(p.seed, i, 6) * sources));
+  }
+  for (const Held& h : s.held) {
+    if (h.copy >= int(out.size())) continue;  // that copy doesn't exist at this count
+    Copy& c = out[h.copy];
+    c.pos = GfVec3f(float(h.x), float(h.y), float(h.z));
+    c.rot = quat(GfRotation(GfVec3d::XAxis(), h.rx) * GfRotation(GfVec3d::YAxis(), h.ry) * GfRotation(GfVec3d::ZAxis(), h.rz));
+    c.scale = float(h.s);
+  }
+  return out;
+}
+
+// The effectors at frame index k: `world` is the copies item's place then.
+void apply(const std::vector<Effector>& effectors, size_t k, const GfMatrix4d& world, std::vector<Copy>& copies,
+           std::vector<GfVec3f>* colours) {
+  if (effectors.empty()) return;
+  const GfMatrix4d to_local = world.GetInverse();
+  for (size_t i = 0; i < copies.size(); ++i) {
+    Copy& c = copies[i];
+    for (const Effector& e : effectors) {
+      const double r = pick(e.radius, k), amount = pick(e.amount, k);
+      if (r <= 0) continue;
+      const GfVec3d centre(pick(e.centre, k)), here = world.Transform(GfVec3d(c.pos));
+      const double t = std::clamp(1 - (here - centre).GetLength() / r, 0.0, 1.0);
+      const double w = e.smooth ? t * t * (3 - 2 * t) : t;
+      if (w <= 0) continue;
+      switch (e.kind) {
+        case Effector::Scale: c.scale *= float(std::max(0.0, 1 + amount * w)); break;
+        case Effector::Turn: c.rot = quat(GfRotation(kAxes[e.axis], amount * w) * rotation(c.rot)); break;
+        case Effector::Push: {
+          GfVec3d away = here - centre;
+          if (away.Normalize() < 1e-12) away = GfVec3d::YAxis();
+          c.pos += GfVec3f(to_local.TransformDir(away * (amount * w)));
+          break;
+        }
+        case Effector::Colour:
+          if (colours) {
+            const float m = float(std::clamp(amount * w, 0.0, 1.0));
+            (*colours)[i] += (pick(e.colour, k) - (*colours)[i]) * m;
+          }
+          break;
+      }
+    }
+  }
+}
+
+struct Arrays {
+  VtVec3fArray positions, scales, colours;
+  VtQuathArray orientations;
+};
+
+Arrays arrays(const std::vector<Copy>& copies, const std::vector<GfVec3f>* colours) {
+  Arrays a;
+  const size_t n = copies.size();
+  a.positions.resize(n);
+  a.scales.resize(n);
+  a.orientations.resize(n);
+  for (size_t i = 0; i < n; ++i) {
+    a.positions[i] = copies[i].pos;
+    a.scales[i] = GfVec3f(copies[i].scale);
+    a.orientations[i] = GfQuath(copies[i].rot);
+  }
+  if (colours) a.colours.assign(colours->begin(), colours->end());
+  return a;
+}
+
+bool has_kind(const State& s, Effector::Kind kind) {
+  for (const Effector& e : s.effectors)
+    if (e.kind == kind) return true;
+  return false;
+}
+
+// The copies item's world place at each frame of the shot (one entry when it never moves).
+std::vector<GfMatrix4d> places(const UsdStageRefPtr& stage, const State& s, bool every_frame) {
+  const UsdPrim prim = stage->GetPrimAtPath(s.path);
+  UsdGeomXformCache xc{UsdTimeCode(s.start)};
+  std::vector<GfMatrix4d> out{xc.GetLocalToWorldTransform(prim)};
+  for (int f = s.start + 1; every_frame && f <= s.end; ++f) {
+    xc.SetTime(UsdTimeCode(f));
+    out.push_back(xc.GetLocalToWorldTransform(prim));
+  }
+  return out;
+}
+
+bool moves(const UsdStageRefPtr& stage, const State& s) {
+  for (const Effector& e : s.effectors)
+    if (e.moves()) return true;
+  if (s.effectors.empty()) return false;
+  // the copies item (or what holds it) moving moves the copies through the effectors' fields
+  for (UsdPrim p = stage->GetPrimAtPath(s.path); p && !p.IsPseudoRoot(); p = p.GetParent())
+    if (UsdGeomXformable(p) && UsdGeomXformable(p).TransformMightBeTimeVarying()) return true;
+  return false;
+}
+
+// Writes the copies onto the instancer: plain values, or (an effector moving) per-frame samples of what it changes.
+void write(const UsdStageRefPtr& stage, State& s) {
+  const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
+  const size_t n = s.laid.size();
+  VtIntArray protos(n);
+  VtInt64Array ids(n);
+  for (size_t i = 0; i < n; ++i) {
+    protos[i] = s.laid[i].proto;
+    ids[i] = int64_t(i);
+  }
+  const bool coloured = has_kind(s, Effector::Colour);
+  s.animated = moves(stage, s);
+  const std::vector<GfMatrix4d> world = places(stage, s, s.animated);
+  UsdAttribute pos = pi.CreatePositionsAttr(), rot = pi.CreateOrientationsAttr(), scl = pi.CreateScalesAttr();
+  UsdAttribute col;
+  if (coloured)
+    col = UsdGeomPrimvarsAPI(pi).CreatePrimvar(UsdGeomTokens->primvarsDisplayColor, SdfValueTypeNames->Color3fArray,
+                                              UsdGeomTokens->vertex).GetAttr();  // vertex on an instancer = per copy
+  else if (UsdAttribute old = pi.GetPrim().GetAttribute(TfToken("primvars:displayColor")))
+    old.Clear();
+  for (UsdAttribute a : {pos, rot, scl}) a.Clear();
+  if (col) col.Clear();
+  pi.CreateProtoIndicesAttr().Set(protos);
+  pi.CreateIdsAttr().Set(ids);
+
+  const std::vector<GfVec3f> grey(n, GfVec3f(kNoMaterialGrey));
+  const auto at = [&](size_t k) {
+    std::vector<Copy> c = s.laid;
+    std::vector<GfVec3f> colours = grey;
+    apply(s.effectors, k, world[std::min(k, world.size() - 1)], c, coloured ? &colours : nullptr);
+    return arrays(c, coloured ? &colours : nullptr);
+  };
+  if (!s.animated) {
+    const Arrays a = at(0);
+    pos.Set(a.positions);
+    rot.Set(a.orientations);
+    scl.Set(a.scales);
+    if (col) col.Set(a.colours);
+    return;
+  }
+  // only what an effector changes gets samples; the rest is the layout's plain value
+  const bool by_pos = has_kind(s, Effector::Push), by_rot = has_kind(s, Effector::Turn), by_scl = has_kind(s, Effector::Scale);
+  const Arrays still = arrays(s.laid, nullptr);
+  if (!by_pos) pos.Set(still.positions);
+  if (!by_rot) rot.Set(still.orientations);
+  if (!by_scl) scl.Set(still.scales);
+  for (int f = s.start; f <= s.end; ++f) {
+    const Arrays a = at(size_t(f - s.start));
+    const UsdTimeCode t(f);
+    if (by_pos) pos.Set(a.positions, t);
+    if (by_rot) rot.Set(a.orientations, t);
+    if (by_scl) scl.Set(a.scales, t);
+    if (col) col.Set(a.colours, t);
+  }
+}
+
+}  // namespace
+
+void build(Item& it, const JsArray& children, const JsArray& held, const JsArray& effectors, const SdfPath& path) {
+  ItemsContext& ctx = it.ctx;
+  const UsdGeomPointInstancer pi = UsdGeomPointInstancer::Define(ctx.stage, path);
+  author_transform(it, pi.GetPrim());
+  State s;
+  s.id = it.id;
+  s.path = path;
+  s.start = ctx.start;
+  s.end = ctx.end;
+  for (const char* key : kKeys) set_param(s.p, key, it.props.get(key, "a value"), it.props.at(key));
+  if (it.props.has("onlySeen")) set_param(s.p, "onlySeen", it.props.get("onlySeen", "true or false"), it.props.at("onlySeen"));
+  s.held = read_held(held, it.id + ".held");
+  s.effectors = read_effectors(effectors, it.id + ".effectors", size_t(ctx.end - ctx.start + 1));
+  const std::string accepted = "one or more mesh, combine, import, group or clay items (the copies' sources)";
+  if (children.empty()) fail(it.id + ".children", "no source", accepted);
+  SdfPathVector protos;
+  for (size_t i = 0; i < children.size(); ++i) {
+    const std::string where = it.id + ".children[" + std::to_string(i) + "]";
+    if (!children[i].IsObject()) fail(where, "is " + children[i].GetTypeName(), accepted);
+    const JsObject& o = children[i].GetJsObject();
+    const auto type = o.find("type"), id = o.find("id");
+    const std::string t = type != o.end() && type->second.IsString() ? type->second.GetString() : "";
+    if (t == "light" || t == "camera" || t == "copies")
+      fail(where + ".type", "a " + t + " can't be a copies item's source", accepted);
+    if (id != o.end() && id->second.IsString()) {
+      s.sources.push_back(id->second.GetString());
+      protos.push_back(path.AppendChild(TfToken(id->second.GetString())));
+    }
+  }
+  build_items(ctx, children, path, it.id + ".children");  // checks every child fully (ids, types)
+  pi.CreatePrototypesRel().SetTargets(protos);  // under the instancer and targeted: drawn only as copies
+  ctx.copies.push_back(std::move(s));
+}
+
+void lay_out_all(const UsdStageRefPtr& stage, std::vector<State>& all) {
+  for (State& s : all) {
+    if (!s.p.seenBy.empty()) {
+      const UsdPrim cam = stage->GetPrimAtPath(item_path(stage, s.p.seenBy));
+      if (!cam || !cam.IsA<UsdGeomCamera>())
+        fail(s.id + ".seenBy", "no camera \"" + s.p.seenBy + "\" in the scene", "\"\" or a camera item's id");
+    }
+    const UsdPrim self = stage->GetPrimAtPath(s.path);
+    UsdGeomBBoxCache bb(UsdTimeCode(s.start), {UsdGeomTokens->default_, UsdGeomTokens->render});
+    s.bounds.clear();
+    for (const std::string& src : s.sources)
+      s.bounds.push_back(bb.ComputeRelativeBound(self.GetChild(TfToken(src)), self).ComputeAlignedRange());
+    if (s.p.layout == "surface") read_surface(stage, s);
+    s.laid = lay_out(s);
+    write(stage, s);
+  }
+}
+
+double relay(const UsdStageRefPtr& stage, State& s, const JsObject& props, const JsValue* held) {
+  const auto t0 = std::chrono::steady_clock::now();
+  Params p = s.p;  // checked whole before anything changes
+  for (const auto& [key, value] : props) set_param(p, key, value, "copies.props." + key);
+  std::vector<Held> h = s.held;
+  if (held) {
+    if (!held->IsArray()) fail("copies.held", "is " + held->GetTypeName(), "a list of held copies");
+    h = read_held(held->GetJsArray(), "copies.held");
+  }
+  const Surface had = s.surf;
+  const Params was = s.p;
+  s.p = p;
+  if (p.layout == "surface" && (s.surf.empty() || s.surf.id != p.surface || was.onTop != p.onTop)) {
+    try {
+      read_surface(stage, s);
+    } catch (...) {
+      s.p = was;
+      s.surf = had;
+      throw;
+    }
+  }
+  s.held = std::move(h);
+  s.laid = lay_out(s);
+  {
+    const SdfChangeBlock block;  // one change for Hydra
+    write(stage, s);
+  }
+  return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+}
+
+namespace {
+std::vector<Copy> at_frame(const UsdStageRefPtr& stage, const State& s, int frame, GfMatrix4d* world) {
+  UsdGeomXformCache xc{UsdTimeCode(frame)};
+  *world = xc.GetLocalToWorldTransform(stage->GetPrimAtPath(s.path));
+  std::vector<Copy> c = s.laid;
+  apply(s.effectors, size_t(std::clamp(frame - s.start, 0, s.end - s.start)), *world, c, nullptr);
+  return c;
+}
+}  // namespace
+
+std::vector<GfVec3d> seen_points(const UsdStageRefPtr& stage, const State& s, int frame) {
+  GfMatrix4d world;
+  const std::vector<Copy> copies = at_frame(stage, s, frame, &world);
+  std::vector<GfVec3d> out;
+  out.reserve(copies.size() * 2);
+  for (const Copy& c : copies) {
+    out.push_back(world.Transform(GfVec3d(c.pos)));
+    const GfRange3d& b = s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
+    const GfVec3f mid = b.IsEmpty() ? GfVec3f(0.f) : GfVec3f(b.GetMidpoint());
+    out.push_back(world.Transform(GfVec3d(c.pos + c.rot.Transform(mid * c.scale))));
+  }
+  return out;
+}
+
+void write_shown(const UsdStageRefPtr& stage, const State& s) {
+  const UsdGeomPointInstancer pi(stage->GetPrimAtPath(s.path));
+  VtInt64Array hidden;
+  for (size_t i = 0; i < s.shown.size(); ++i)
+    if (!s.shown[i]) hidden.push_back(int64_t(i));
+  if (hidden.empty()) {
+    if (UsdAttribute a = pi.GetInvisibleIdsAttr()) a.Clear();
+    return;
+  }
+  pi.CreateInvisibleIdsAttr().Set(hidden);
+}
+
+int copy_at(const UsdStageRefPtr& stage, const State& s, int frame, const GfVec3d& point, int hint, int proto) {
+  GfMatrix4d world;
+  const std::vector<Copy> copies = at_frame(stage, s, frame, &world);
+  const GfVec3f local(world.GetInverse().Transform(point));
+  // how far inside copy i's bounds the point is (< 1 inside, as a share of their half size); -1 = not a candidate
+  const auto score = [&](int i) -> double {
+    if (i < 0 || i >= int(copies.size())) return -1;
+    if (i < int(s.shown.size()) && !s.shown[i]) return -1;
+    const Copy& c = copies[i];
+    if (proto >= 0 && c.proto != proto) return -1;
+    if (c.scale <= 1e-6f) return -1;
+    const GfVec3f q = c.rot.GetInverse().Transform(local - c.pos) / c.scale;
+    const GfRange3d& b = s.bounds[std::min<size_t>(c.proto, s.bounds.size() - 1)];
+    if (b.IsEmpty()) return double(q.GetLength());  // no bounds (a clay): nearest copy
+    const GfVec3d half = b.GetSize() * 0.5 + GfVec3d(1e-3), d = GfVec3d(q) - b.GetMidpoint();
+    return std::max({std::abs(d[0]) / half[0], std::abs(d[1]) / half[1], std::abs(d[2]) / half[2]});
+  };
+  if (const double h = score(hint); h >= 0 && h <= 1.02) return hint;
+  int best = -1;
+  double best_score = 1e300;
+  for (int i = 0; i < int(copies.size()); ++i) {
+    const double v = score(i);
+    if (v >= 0 && v < best_score) best = i, best_score = v;
+  }
+  return best;
+}
+
+}  // namespace copies
+}  // namespace r3d

@@ -18,6 +18,7 @@
 
 #include "clay_scene.h"
 #include "convert.h"
+#include "copies.h"
 #include "error.h"
 #include "extrude.h"
 #include "item_track.h"
@@ -175,7 +176,7 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   if (!ctx.ids.insert(id).second) fail(where + ".id", "\"" + id + "\" is used twice", "ids unique in the scene");
   Reader r(value.GetJsObject(), id);
   r.str("id");
-  const std::string type = r.one_of("type", {"group", "mesh", "combine", "import", "light", "camera", "clay"});
+  const std::string type = r.one_of("type", {"group", "mesh", "combine", "import", "light", "camera", "clay", "copies"});
   const SdfPath path = parent.AppendChild(TfToken(id));
   if (ctx.stage->GetPrimAtPath(path))
     fail(r.at("id"), "\"" + id + "\" is the name of a prim inside the imported file", "an id the file doesn't use");
@@ -188,6 +189,7 @@ void build_item(ItemsContext& ctx, const JsValue& value, const SdfPath& parent, 
   if (type == "light") build_light(it, path);
   if (type == "camera") build_camera(it, path);
   if (type == "clay") ctx.clays.push_back(build_clay(it, r, path));
+  if (type == "copies") copies::build(it, r.list("children"), r.list("held"), r.list("effectors"), path);
   if ((type == "group" || type == "import") && r.has("children"))
     build_items(ctx, r.list("children"), path, id + ".children");
   // shape / kind fields the chosen shape or kind doesn't use (the compiler sends every field)

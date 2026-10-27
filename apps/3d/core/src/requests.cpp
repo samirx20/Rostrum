@@ -95,9 +95,16 @@ JsObject Core::scene(const JsObject& a) {
   const auto tc = Clock::now();
   clay_->sync(built_.clays);  // the clays brought to their steps (clay_store.h)
   built_.clays.clear();
+  const double clay_ms = ms_since(tc);
+  copies_.clear();
+  for (copies::State& c : built_.copies) copies_[c.id] = std::move(c);
+  built_.copies.clear();
+  double seen_ms = 0;
+  const JsObject copies_info = seen_test(&seen_ms);
   return JsObject{{"ok", JsValue(true)}, {"items", JsValue(built_.items)}, {"prims", JsValue(built_.prims)},
-                  {"frames", JsValue(JsArray{JsValue(built_.start), JsValue(built_.end)})},
-                  {"timing", JsValue(JsObject{{"buildMs", JsValue(r1(build_ms))}, {"clayMs", JsValue(r1(ms_since(tc)))}})}};
+                  {"frames", JsValue(JsArray{JsValue(built_.start), JsValue(built_.end)})}, {"copies", JsValue(copies_info)},
+                  {"timing", JsValue(JsObject{{"buildMs", JsValue(r1(build_ms))}, {"clayMs", JsValue(r1(clay_ms))},
+                                              {"seenMs", JsValue(r1(seen_ms))}})}};
 }
 
 JsObject Core::render(const JsObject& o, const std::function<void(const JsObject&)>& progress) {
@@ -329,11 +336,15 @@ JsObject Core::pick(const JsObject& o) {
   GfVec3d point, normal;
   const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
   clay_->pose_frame(f);  // CL5: a skinned clay is picked as drawn at this frame
-  const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point, &normal);
+  SdfPath instancer;
+  int instance = -1;
+  const SdfPath hit = hydra().pick(fr, f, w, h, x, y, &point, &normal, &instancer, &instance);
   if (hit.IsEmpty()) return JsObject{{"ok", JsValue(true)}, {"hit", JsValue(false)}};
   JsObject out{{"ok", JsValue(true)}, {"hit", JsValue(true)}, {"prim", JsValue(hit.GetString())},
                {"item", JsValue(item_of(stage_, hit))}, {"material", JsValue(material_of(stage_, hit))},
                {"point", vec3(point)}, {"normal", vec3(normal)}, {"distance", JsValue((point - fr.GetPosition()).GetLength())}};
+  // a copy: the copies item, which copy and its source (copies_request.cpp)
+  if (pick_copy(hit, instancer, instance, f, point, &out)) return out;
   const GfRay ray = fr.ComputeRay(GfVec2d(2.0 * (x + 0.5) / w - 1.0, 1.0 - 2.0 * (y + 0.5) / h));
   if (const auto spot = surface_spot(stage_, hit, f, ray)) {  // the face and its (u, v): where a brush lands
     out["face"] = JsValue(spot->face);

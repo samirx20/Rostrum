@@ -89,9 +89,15 @@ class Hydra {
                        int height, const DrawSettings& s, GpuMemWatch& mem);
   // the prim under pixel (x, y) of a width x height picture through `frustum`; empty path when nothing is there.
   // `point` is where the surface was hit and `normal` its direction there (world space, unit length, turned to face
-  // the camera, so a shape placed along it sits on the side that was clicked)
+  // the camera, so a shape placed along it sits on the side that was clicked). A copy drawn by a point instancer also
+  // gives the instancer's path and Hydra's instance index (`instancer`, `instance`).
   PXR_NS::SdfPath pick(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, double x, double y,
-                       PXR_NS::GfVec3d* point, PXR_NS::GfVec3d* normal);
+                       PXR_NS::GfVec3d* point, PXR_NS::GfVec3d* normal, PXR_NS::SdfPath* instancer = nullptr,
+                       int* instance = nullptr);
+  // For each world point: whether a width x height Storm picture through `frustum` at `frame`, with the prims at
+  // `hide` left out, shows it (inside the picture, give or take 5 %, and not behind anything drawn there).
+  std::vector<bool> sees(const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
+                         const PXR_NS::SdfPathVector& hide, const std::vector<PXR_NS::GfVec3d>& points);
 
  private:
   class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene
@@ -106,6 +112,7 @@ class Hydra {
   std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
   std::unique_ptr<Framebuffer> fb_, mask_fb_, hover_fb_;  // hover_fb_: the hover outline's mask (3d-v4)
   std::vector<std::unique_ptr<Framebuffer>> ghost_fbs_;  // one per onion-skin ghost
+  std::unique_ptr<Framebuffer> sees_fb_;  // the `sees` depth picture
 };
 
 }  // namespace r3d

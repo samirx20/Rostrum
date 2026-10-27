@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "clay_scene.h"
+#include "copies.h"
 
 namespace r3d {
 
@@ -21,6 +22,7 @@ struct ItemsContext {
   std::set<std::string> ids;            // item ids seen so far (unique across the scene)
   int items = 0;
   std::vector<clay::Node> clays;        // clay items, for the clay store (clay_store.h)
+  std::vector<copies::State> copies;    // copies items, laid out once every item exists (copies.h)
 };
 
 // Ids are prim names: [A-Za-z_][A-Za-z0-9_]*, and "Looks" is taken by /World/Looks.
