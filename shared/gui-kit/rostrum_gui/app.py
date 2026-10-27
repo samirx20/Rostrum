@@ -148,12 +148,16 @@ def start(main_qml: Path, context: dict, size=(1600, 960), providers: dict | Non
     from rostrum_gui.drag_esc import ESC
     ctx.setContextProperty("dragEsc", ESC)                    # a QML drag owns Esc while it runs (drag_esc.py)
     ctx.setContextProperty("ack", ack.ACK); ctx.setContextProperty("systemReduceMotion", ack.system_reduce_motion())
+    from rostrum_gui import window_chrome             # the merged title bar's window side (SHELL.md › Window frame)
+    chrome = window_chrome.make(app, background(), engine)
+    ctx.setContextProperty("windowChrome", chrome)    # before load: the bar binds to it
     for k, v in context.items():
         ctx.setContextProperty(k, v)
     engine.load(QUrl.fromLocalFile(str(main_qml)))
     if not engine.rootObjects():
         raise RuntimeError(f"QML failed to load: {main_qml} (errors above)")
     win = engine.rootObjects()[0]
+    chrome.attach(win)                                # natively: the caption goes before the window is shown
     win.resize(*size)
     if background():
         show_behind(win)

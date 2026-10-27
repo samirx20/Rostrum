@@ -11,7 +11,8 @@ import RostrumKit
 // then, like a shape, the next click in the viewport places it. A shape waits for a click in the viewport and lands on the surface
 // there (SPEC §4.1); a light or camera is added at once; both through the operations agents use, the new thing
 // selected, the tool Select again. Paint (B) shows while one mesh is selected (paint_mode_qt.py) and stays on while
-// painting. The groups that aren't built yet (Simulate, Import) are absent until they work (rule of individuality).
+// painting. Last on both pages, the Materials ball: the project's materials (MaterialsList) beside the rail, a library
+// of things to put in the scene like the rest of the rail (header SPEC §3; also Ctrl+K). The groups that aren't built yet (Simulate, Import) are absent until they work (rule of individuality).
 ToolRail {
     id: rail
     current: paintMode.on ? "paint" : viewport.clay.on ? "clay" : "select"
@@ -21,6 +22,8 @@ ToolRail {
     // groups, but the kit's rail shows a group's key only through its entries, which would put "R" on every shape)
     function entries(list) { return list.map(e => ({ name: e.name, icon: e.icon, kind: e.icon === "camera" ? "" : "shape3d", act: e.value })) }
     readonly property var selectGroup: ({ id: "select", items: [{ name: "Select", icon: "select", tool: "select", job: "move_tool", help: "Click a thing in the viewport or the scene list." }] })
+    readonly property var materialsGroup: ({ id: "materials", name: "Materials", panel: true, items: [{ name: "Materials", icon: "material",
+        kind: "shape3d", job: "materials_list", help: "The project's materials: click one to edit it, drag one onto an item to give it that material." }] })
     // the Animate page (SPEC §2): Select, Poses (P), Onion skin (O), Bones (a mesh selected), Lights, Camera; Simulate joins when built
     groups: backend.page === "animate" ? [
         rail.selectGroup,
@@ -32,7 +35,9 @@ ToolRail {
           help: "Click points along the selected mesh, root first, then Enter: a bone chain it bends with." }] : [] },   // only with a mesh selected
         { sep: true },
         { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
-        { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
+        { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) },
+        { sep: true },
+        rail.materialsGroup
     ] : [
         rail.selectGroup,
         { id: "clay", items: [{ name: "Clay", icon: "clay", kind: "shape3d", tool: "clay", job: "clay_tool",
@@ -42,16 +47,17 @@ ToolRail {
         { sep: true },
         { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
-    ].concat(paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh selected
-             ? [{ sep: true }, { id: "paint", items: [{ name: "Paint", icon: "brush", tool: "paint", job: "paint_tool",
-                                                       help: "Paint on the selected mesh: colour, roughness, height, metal or glow." }] }]
-             : [])
+    ].concat([{ sep: true }], paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh selected
+             ? [{ id: "paint", items: [{ name: "Paint", icon: "brush", tool: "paint", job: "paint_tool",
+                                         help: "Paint on the selected mesh: colour, roughness, height, metal or glow." }] }]
+             : [], [rail.materialsGroup])
     // Poses and Onion skin each open and close on their own (PosesPanel.qml, OnionPanel.qml): their button toggles its panel,
     // Esc closes the one with the keys, and clicking elsewhere leaves them open (you work in the viewport with the ghosts on).
     // `panelOpen` stays false so the kit's rail never closes one for the other's button.
     function panelOf(id) { return id === "poses" ? posesPanel : id === "onion" ? onionPanel : null }
     onPanelRequested: (g) => rail.openPanel(g.id)
     function openPanel(id) {        // the scripted `panel <id>` step, P, and the buttons: open it, or close it when it is open
+        if (id === "materials") return openMaterials()
         const pop = panelOf(id)
         if (!pop) return
         if (pop.visible) return pop.close()
@@ -60,6 +66,17 @@ ToolRail {
         const beside = pop === onionPanel && posesPanel.visible ? posesPanel.width + Theme.gap : 0     // both open: side by side
         pop.openAtPoint(x + beside, b ? b.mapToItem(null, 0, 0).y : rail.mapToItem(null, 0, 0).y)
     }
+    // Materials closes on a click outside like any list; the press on its own ball closes it first, so the click that
+    // follows must not open it again (closedAt)
+    function openMaterials() {
+        if (materialsList.visible) return materialsList.close()
+        if (Date.now() - materialsList.closedAt < 300) return
+        const b = rail.buttonOf("materials")
+        matSpot.y = (b ? b.mapToItem(rail, 0, 0).y : 0) - Theme.grid     // its top edge with the button's
+        materialsList.openFrom(matSpot)
+    }
+    Item { id: matSpot; x: rail.width + Theme.gap; width: 0; height: 0 }    // what the list opens under: beside the ball
+    MaterialsList { id: materialsList; property real closedAt: 0; onClosed: closedAt = Date.now() }
     PosesPanel { id: posesPanel; closePolicy: QQC.Popup.NoAutoClose }
     OnionPanel { id: onionPanel; closePolicy: QQC.Popup.NoAutoClose }
     Connections {       // they belong to the Animate page: leaving it closes them

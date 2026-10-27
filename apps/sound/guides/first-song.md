@@ -4,13 +4,18 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## The screen in one look
 
-- **Top bar:** **≡** (the menu), the song's name, **Search** (Ctrl+K: every action that fits now, every key on the Keys sheet, every setting of what is selected and every entry of the ≡ and Help menus; a word that starts a name finds that name first, and a word that only appears in a description never adds a track or group), the **loudness chip** (in words with a dot:
-  "Ready for streaming" in green, "Quieter than streaming wants" or "Louder than streaming wants" in amber, or "… the
-  target …" when the loudness target is not streaming's −14 LUFS ("Quieter than the target wants"); rest the pointer
-  on it for the number, click it to open the Mixer, which shows the same with its curve; it stays empty until the song
-  has about five seconds of sound in it (a note or two is too little to say anything about); while the newest render is
-  refused it stays empty: the **Problems** chip beside it says what is wrong, and a click on its line selects the track
-  to fix) and **Export** (both once the song makes a sound), and **?** (help).
+- **Top bar** (also the window's title bar: drag any empty part of it to move the window, double-click to maximise; the
+  window buttons are at its right end): the app's green mark with **▾** (the menu), the song's name, then what you did
+  last in small grey words (they fade after a few seconds; something that went wrong stays, in red), the **loudness
+  chip** (short words with a dot: "On target" in green, "Too quiet" or "Too loud" in amber; rest the pointer on it for
+  the sentence ("Quieter than streaming wants", or "… the target …" when the loudness target is not streaming's
+  −14 LUFS) and the number, click it to open the Mixer, which shows the same with its curve; it stays empty until the
+  song has about five seconds of sound in it (a note or two is too little to say anything about); while the newest
+  render is refused it stays empty: the **Problems** chip beside it says what is wrong, and a click on its line selects
+  the track to fix), **Undo**, **Redo** and **History** (the clock), **Search** (Ctrl+K: every action that fits now,
+  every key on the Keys sheet, every setting of what is selected and every entry of the app's and Help menus; a word
+  that starts a name finds that name first, and a word that only appears in a description never adds a track or
+  group), **Export** (once the song makes a sound), and **?** (help).
 - **Middle: the arrangement.** Every track is a row over time. Its header strip holds **+ Add**, then the transport, always
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
   the position ("3.2  0:04.80": bars.beats, then the time; click it and type **5.3** or **9.6 s** to jump there (**Alt+Shift+J** does the same from the keyboard); a beat the bar does not have, like 5.9 in 4/4, is refused with the reason), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
@@ -28,10 +33,11 @@ For a person using the RostrumSound app. This page takes you from an empty song 
 
 ## 1. Start a new song
 
-Open **≡**, then **New** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
+Open the menu (the app's mark at the top left), then **New** (Ctrl+N). It is called "Untitled song" and lives in your projects folder.
 
-Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose. Ctrl+S
-(**≡ › Save a version**) saves a named version you can go back to from History. (The song's own file is brought fully up to date when
+Saving is automatic: every change is on disk as you make it. There is no Save button and nothing to lose (only a song
+outside a project folder is not kept: an amber dot after its name says so). Ctrl+S
+(**menu › Save a version**) saves a named version you can go back to from History. (The song's own file is brought fully up to date when
 you close the window and every 20 changes; the change log beside it always has the latest, and opening the song plays it.)
 **History** (Ctrl+H, or click the top bar's change count) lists every step, newest first, with who made it. Click a
 step's words to go back to right after it: the steps after it are taken back, not lost (faint, "taken back"), and
@@ -226,6 +232,6 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 
 ## Finding your song again
 
-- **≡ › Open…** opens a song, and the recent songs are in the same menu.
-- **≡ › Duplicate…** (Ctrl+Shift+S) makes a separate copy to experiment with; this window stays on the original.
-- **≡ › Show folder** opens the song's folder.
+- **Menu › Open…** opens a song, and the recent songs are in the same menu.
+- **Menu › Duplicate…** (Ctrl+Shift+S) makes a separate copy to experiment with; this window stays on the original.
+- **Menu › Show folder** opens the song's folder.

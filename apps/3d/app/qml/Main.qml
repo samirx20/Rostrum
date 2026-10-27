@@ -1,9 +1,10 @@
 import QtQuick
 import RostrumKit
 
-// Rostrum3D's window (docs/3d-design/SPEC.md §1, mockup 01). Header: ≡ (the kit's File menu), Rostrum3D, the project ›
-// shot crumb, Saved · N changes, the Build | Animate | Render pages, ↶ ↷, Search, View (shot / free camera), Look
-// (Quick | Final, when the viewport offers it), Materials, Render (F12), ?. Left edge: the tool rail (Rail3D). Centre:
+// Rostrum3D's window (docs/3d-design/SPEC.md §1, mockup 01). Header (the kit's one merged bar, header-design SPEC §3):
+// the app mark ▾ (the kit's File menu), the project › shot crumb, the Build | Animate | Render pages (centred), Undo,
+// Redo, History, Search, the camera and look in one button ("Shot camera · Quick ▾": ViewLookButton), Render, ?.
+// Left edge: the tool rail (Rail3D; the Materials list opens from its ball). Centre:
 // the viewport, and over it the last render while one is shown. Right: the settings panel (the kit's grid: the kind's
 // own group open, changed groups open, the rest a row of names; while a stretch is picked on the timeline, the kit's
 // animation panel over it). Bottom, full width: the kit's key timeline, its rows the scene list with its keys on the
@@ -15,9 +16,12 @@ AppShell {
     id: shell
     bridge: backend
     appName: "Rostrum3D"
+    appIcon: "app-3d"                   // the kit's stand-in mark until the real icon is drawn
+    // a scene in a project folder saves after every change (the bar says nothing); the sample or a scratch scene does not
+    saveState: typeof files !== "undefined" && files.hasProject ? "" : "unsaved"
+    saveWords: "Changes to this scene are not kept: it is not in a project folder."
     helpEntries: guides                 // Help's guides (main.py), in the kit's guide viewer
     documentName: backend.docName
-    saveWord: typeof files !== "undefined" && files.hasProject ? "Saved" : ""   // a scene in a project folder saves after every change
     leftWidth: 0
     rightWidth: width >= 1920 ? 340 : width >= 1646 ? 300 : 280
     bottomHeight: backend.page === "build" ? 204 : 284   // Animate: more key rows; Render: the shots and the queue
@@ -31,18 +35,13 @@ AppShell {
     function openRailPanel(id) { rail.openPanel(id) }             // (the scripted `panel <id>` step)
     function openDrawings() { rail.openDrawings() }                // (the scripted `drawings` step)
     function openContext(id) { vp3d.openContext(id) }              // (the scripted `context <id | ->` step)
-    function openMaterials() { materialsList.openFrom(materialsChip) }
+    function openMaterials() { rail.openPanel("materials") }    // (the scripted `materials` step; Ctrl+K)
     function openPicker() { materialRow.openPicker() }           // (the scripted `picker` step)
     function openShots() {         // read as it opens: the shown shot checked, "from this view" only off the shot camera
         shotsMenu.entries = backend.shotEntries(viewport.mode)
         shotsMenu.openFrom(crumb, "left")
     }
-    function openView() {          // its choices are read as it opens (the light choice follows the selection)
-        viewMenu.entries = [{ value: "shot", label: "Shot camera", checked: viewport.mode === "shot" },
-                            { value: "free", label: "Free camera", checked: viewport.mode === "free" }]
-                           .concat(viewport.canThroughLight ? [{ value: "light", label: "Through the selected light", checked: viewport.mode === "light" }] : [])
-        viewMenu.openFrom(viewChip, "right")
-    }
+    function openView() { viewLook.openMenu() }                  // (the scripted `view` step)
 
     // Every key comes from the one key map (screen3d/keys3d.py: the shared keys mean what they mean in 2D and Sound, 3D's
     // own on keys no shared job uses), the same list as the Keys sheet (Ctrl+/) and Ctrl+K. A pressed key goes to the hub
@@ -56,11 +55,12 @@ AppShell {
         shapes_menu: () => rail.openGroup("shapes"), type_menu: () => rail.openGroup("type"),
         lights_menu: () => rail.openGroup("lights"), camera_menu: () => rail.openGroup("camera"),
         poses_panel: () => { if (backend.page === "animate") rail.openPanel("poses") },
+        materials_list: () => rail.openPanel("materials"),
         quit: () => Qt.quit()
     })
     Connections { target: backend.actions; function onWindowJob(job) { const run = shell.windowJobs[job]; if (run) run(); else shell.runJob(job) } }   // else the kit's (undo, Export, History, Guides, Keys …)
 
-    menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
+    menu: FilesMenu {    // the mark's menu (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Export
         id: fileMenu
         extra: [{ value: "export", label: "Export…", keys: "Ctrl+E", group: "app" }]
         onPicked: (v) => { if (v === "export") shell.exporter.setOpen(true) }
@@ -94,36 +94,7 @@ AppShell {
         onPicked: (v) => backend.setPage(v)
     }
     actions: [
-        Button {    // View: which camera the viewport looks through
-            id: viewChip
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "ghost"
-            text: "View  " + (({ shot: "Shot camera", free: "Free camera", light: "Through the light" })[viewport.mode] || "Shot camera")
-            onClicked: shell.openView()
-            Menu {
-                id: viewMenu
-                width: 210
-                onPicked: (v) => viewport.setMode(v)
-            }
-        },
-        Row {        // Look: Quick | Final (Shift+F)
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.gap
-            Text { text: "Look"; color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.body; anchors.verticalCenter: parent.verticalCenter }
-            Segmented {
-                anchors.verticalCenter: parent.verticalCenter
-                options: [{ value: "quick", label: "Quick" }, { value: "final", label: "Final" }]
-                current: viewport.look
-                onPicked: (v) => viewport.setLook(v)
-            }
-        },
-        Button {    // the project's materials: pick one to edit it, or make a new one
-            id: materialsChip
-            anchors.verticalCenter: parent.verticalCenter
-            kind: "ghost"; text: "Materials"
-            onClicked: shell.openMaterials()
-            MaterialsList { id: materialsList }    // ball, name, how many use it; click edits, drag gives
-        },
+        ViewLookButton { id: viewLook; anchors.verticalCenter: parent.verticalCenter },   // which camera, and Quick / Final
         RenderButton { anchors.verticalCenter: parent.verticalCenter; visible: backend.page !== "render" }   // the Render page has its own
     ]
     rail: Rail3D { id: rail; height: parent ? parent.height : 0 }

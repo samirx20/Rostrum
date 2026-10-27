@@ -4,11 +4,11 @@ import RostrumKit
 // The key timeline, bottom, full width, always there; it is also the layers list (apps/2d/DESIGN.md › The layer rows;
 // TIMELINE.md › The key timeline: what `backend` offers it). One header row: play and the time over the names, the
 // ruler over the rows (it scrubs; the project's marker flags sit on it), Keys | Curves and the height switch at its
-// right end. Under it one row per item, plugged in by the app (`rows`: a Flickable of rows, each a name and a
+// right end (the height switch is in the bottom-right corner). Under it one row per item, plugged in by the app (`rows`: a Flickable of rows, each a name and a
 // LayerTrack.qml); Curves (`curves`) shows the selected item's value curves in the same place; `overlay` draws over
 // the rows (2D: beat lines). The thin strip above the top edge drags to make the timeline taller.
 // Compact (DESIGN.md › two heights): only the selected layer's row; its name opens a list of every layer, so another
-// is one click away. The button at the ruler row's right end switches; the app remembers it per tool.
+// is one click away. The button in the bottom-right corner switches; the app remembers it per tool.
 Rectangle {
     id: tl
     property int labelWidth: 240
@@ -53,7 +53,9 @@ Rectangle {
     }
 
     // The header row (SPEC §9.5): over the layer names, play, the time, Add marker (in a project folder) and Keys | Curves;
-    // over the rows, the ruler, with the height switch at its right end. One row instead of two: the height is the rows'.
+    // over the rows, the ruler. One row instead of two: the height is the rows'. Right of the ruler, a column kept for the
+    // height switch, which sits at its foot: the timeline is anchored to the window's bottom, so the corner is the one
+    // place that stays put when the switch makes the timeline one row tall (at the ruler's end it jumped 122 px).
     readonly property real headY: Theme.gap                                   // room for the edge's grab above it
     readonly property real headH: Math.max(30, ruler.height)
     Row {
@@ -78,7 +80,7 @@ Rectangle {
     TimeRuler {
         id: ruler
         x: tl.labelWidth + Theme.gap + 8; y: tl.headY   // 8: room for a key at 0
-        width: (tl.canCompact ? parent.width - Theme.gap - compactSwitch.room - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
+        width: (tl.canCompact ? parent.width - Theme.gap - Theme.scrollWidth - compactSwitch.room - Theme.grid : parent.width - Theme.pad) - 8 - x; height: backend.markers.length > 0 ? 34 : 30   // 34: a row for marker flags
         duration: backend.frameInfo.duration; fps: backend.frameInfo.fps; time: backend.time; frameTicks: tl.frameTicks
         cuts: backend.rowFacts.cuts   // the frame's cuts (the Frame row is first; 3D has none)
     }
@@ -86,10 +88,12 @@ Rectangle {
         id: compactSwitch
         objectName: "timelineHeight"
         visible: tl.canCompact && tl.canPickRows
-        anchors { right: parent.right; rightMargin: Theme.gap; verticalCenter: ruler.verticalCenter }
+        // the corner, left of the rows' scroll bar; the column above it is the ruler's kept room, so it covers no row
+        anchors { right: parent.right; rightMargin: Theme.gap + Theme.scrollWidth; bottom: parent.bottom; bottomMargin: Theme.gap }
+        z: 3                              // over the rows' box, which spans this column too
         implicitHeight: 26; kind: "ghost"
         text: tl.compact ? "Show all layers" : "Only this layer"
-        // its room is kept whether it shows or not (and whichever words it has), so the ruler never changes scale when a layer is picked
+        // its room is kept whether it shows or not (and whichever words it has), so the ruler and the rows never change when a layer is picked
         readonly property real room: Math.max(wordsA.implicitWidth, wordsB.implicitWidth)
         width: room
         onClicked: tl.compactAsked(!tl.compact)
