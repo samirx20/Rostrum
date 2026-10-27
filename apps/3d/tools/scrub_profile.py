@@ -62,6 +62,18 @@ with bowl:
 bowl.simulate("still")
 shot("drop03", name="Drop 03", camera=cam, fps=24, start=0, end=5)
 '''
+CLOTH = '''
+stone = material("stone", baseColor="#9a948a", roughness=0.8)
+clothmat = material("clothmat", baseColor="#b8402f", roughness=0.9, sheen=0.5)
+floor = material("floor", baseColor="#5d6670", roughness=0.7)
+mesh("ground", shape="plane", width=6, depth=6, material=floor)
+mesh("plinth", shape="box", width=0.4, height=0.4, depth=0.4, y=0.2, material=stone, name="Plinth").simulate("still")
+mesh("sheet", shape="plane", width=0.8, depth=0.8, y=0.46, z=0.2, material=clothmat, name="Sheet").simulate(
+    "cloth", clothWeight=0.2, stiffness=0.2, pinned="back")
+light("key", kind="distant", intensity=2.5, angle=3).aim((-0.5, -1, -0.7))
+cam = camera("cam", focalLength=35, x=1.25, y=0.95, z=1.45).aim((0, 0.3, 0))
+shot("drape", name="Drape 01", camera=cam, fps=24, start=0, end=3)
+'''
 NUMBERS: dict = {}
 
 
@@ -208,6 +220,16 @@ def run_scene(app, name, source, shot, prepare, picks):
     return res
 
 
+def simulate_prepare(w, doc):
+    """Simulated and stored through the row's job (sim_qt), as a click on Simulate does."""
+    sim = w.b.sim
+    W.pump(5, lambda: sim.canRun or sim.state == "stored", "Simulate offered (or already stored)")
+    if sim.canRun:
+        sim.simulate()
+    W.pump(180, lambda: sim.state in ("stored", "failed"), "the simulation stored")
+    W.check(sim.state == "stored", f"stored ({sim.state}: {sim.label})")
+
+
 def buds_prepare(w, doc):
     """The bowl stays still, twelve buds in a line fall (the script; sim25_walk.py tries the menus): simulated, stored."""
     sim = w.b.sim
@@ -226,6 +248,9 @@ def main():
     print("cycles per ms", NUMBERS["cyclesPerMs"], flush=True)
     NUMBERS["keys"] = run_scene(app, "keys", KEYS, "hero", lambda w, d: None, [lambda d: "ball", lambda d: "plinth"])
     NUMBERS["buds"] = run_scene(app, "buds", BUDS, "drop03", buds_prepare, [lambda d: "buds", lambda d: "bowl"])
+    if "--no-cloth" not in sys.argv[1:] and os.environ.get("SCRUB_CLOTH", "1") == "1":
+        NUMBERS["cloth"] = run_scene(app, "cloth", CLOTH, "drape", simulate_prepare,
+                                     [lambda d: "sheet", lambda d: "plinth"])
     NUMBERS["fails"] = list(W.FAILS)
     (OUT / f"scrub-{LABEL}.json").write_text(json.dumps(NUMBERS, indent=2), encoding="utf-8")
     print("FAILS:" if W.FAILS else "ALL PASSED", *W.FAILS, sep="\n  ")
