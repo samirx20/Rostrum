@@ -5,7 +5,7 @@ Today: Combine, on two or more solids (meshes or combines) in the same list; the
 later one a cutter or partner. And "Bevel too big · use 1.84 mm (the largest that fits)": when the engine refused an outline's bevel (text,
 logo, drawing; SPEC §4.4), the largest bevel that fits, one click away (`mesh.set bevel`). And Send to 2D on a shot
 (send_qt.py; agents: render_send_shot). And the edit block every app has (Duplicate, Delete, Copy / Paste material),
-what a light, a mouth group or empty space offers (Look through, Pick what it lights, Lip sync…, New shot from this
+Make copies / Scatter / Change near (copies_actions.py), what a light, a mouth group or empty space offers (Look through, Pick what it lights, Lip sync…, New shot from this
 view, Back to the shot's view). Right-click is this list (the kit's ActionMenu fed by the hub's `menu()`), so it never
 holds an action the panel, Ctrl+K or a key wouldn't run; six entries at most. No Qt.
 """
@@ -20,6 +20,7 @@ from rostrum_core import ids
 from rostrum_core.tree import index
 from rostrum_gui.actions import Action, ActionList
 
+from .copies_actions import ACTIONS as COPIES_ACTIONS
 from .keys3d import KEYS3D
 from .shots import FRAMED, framed
 
@@ -170,6 +171,8 @@ ACTIONS += [
            else "Joint names: Humanoid", rank=5, do="pose-names", **_POSE,
            why="Joint names work on the clay being posed (choose Pose in the rail first)."),
 ]
+# Copies and scatter (brief 24; copies_actions.py): Make copies ›, Scatter on, Change near ›
+ACTIONS += COPIES_ACTIONS
 # Empty space (nothing selected): the view's own
 _NOTHING = dict(min_targets=0, max_targets=0, group="view")
 ACTIONS += [

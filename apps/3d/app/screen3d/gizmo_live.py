@@ -155,6 +155,8 @@ class LiveDrag:
         if sender is None or not sender.sent:
             return
         c = self._grab["ctx"]
+        if c.get("copy") is not None:                   # a picked copy (copies_gizmo.py)
+            return self._copy_put_back(sender)
         sender.send(c["it"]["id"], fields(c["it"], c["v"]))
         if c["it"].get("keys"):
             self.vp.link._forget_scene()

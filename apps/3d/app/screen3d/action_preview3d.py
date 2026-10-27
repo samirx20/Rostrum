@@ -38,7 +38,7 @@ class ActionPreview3D:
         vp = getattr(self, "viewport", None)
         screen = {"copied": self._copied, "shot_id": self.shot_id, "can_shot": self.add.canAddShot,
                   "mode": vp.mode if vp is not None else "", "has_shot": vp.hasShot if vp is not None else False,
-                  "camera": self._info.get("camera", ""),
+                  "camera": self._info.get("camera", ""), "scatter_from": list(self._scatter_from),
                   "pose": vp is not None and bool(getattr(vp, "pose_tool", None) and vp.pose_tool.on)}
         return Facts(self.doc, list(self.selection), self._fits, screen)
 
@@ -53,10 +53,16 @@ class ActionPreview3D:
     def _act_apply(self, calls, label):
         """An action's calls as one change; what it made is selected after."""
         self._preview_end()
-        made = [c["args"]["id"] for c in calls if c["op"] == "combine.make"]
+        made = [c["args"]["id"] for c in calls if c["op"] == "combine.make"] or [self.copies_selects(calls)]
         self._guard(lambda: self._apply(calls, label))
-        if made and self.doc.has(made[0]):
+        if made[0] and self.doc.has(made[0]):
             self.select(made[0])
+            if self.doc.item(made[0])["type"] == "copies":
+                self.revealField("count")              # the new copies item: its Count row focused, ready to type
+        near = next((c["args"] for c in calls if c["op"] == "effector.add"), None)
+        if near is not None and made[0] and self.doc.has(made[0]):
+            what = self.label_of(self.doc.item(made[0]))
+            self.say(f"Move {what} to change the copies near it")
 
     def _act_do(self, name, entry):
         if name == "edit-mesh" and getattr(self, "viewport", None) is not None:
@@ -65,6 +71,8 @@ class ActionPreview3D:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
         if name == "clay-from" and getattr(self, "viewport", None) is not None:
             return self.viewport.clay_tool.turnIntoClay()  # clay_tool_qt.py: one clay.from_item, the new clay selected
+        if name == "copies-surface" and getattr(self, "viewport", None) is not None:
+            return self.viewport.copies.start_surface([i for i in self.selection if self.doc.has(i)])   # copies_qt.py: the next click
         if name in ("pose-rest", "pose-find", "pose-names") and getattr(self, "viewport", None) is not None:
             p = self.viewport.pose_tool                     # pose_qt.py: one change each
             return p.rest() if name == "pose-rest" else p.findAgain() if name == "pose-find" else p.setNames(

@@ -21,6 +21,17 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   Explorer lands under the drop point (picked like a click; a ring shows the spot while it hovers). One `import.add`
   per file, one undo step, selected. A rescaled file: `unit_note` on the status line once and Keep original size
   (`import.keep_size`) in the panel until the next edit. Real-input walk: tests/import_walk.py.
+- **Copies and scatter** (brief 24; copies_actions.py, copies_qt.py, copies_live.py, copies_gizmo.py, bridge_copies.py).
+  Right-click a shape › Make copies › Line · Grid · Circle · On a surface… (`copies.make`; the last arms a click on the
+  surface); right-click a surface while something else was selected › Scatter '<it>' on '<surface>' (`copies.scatter`;
+  `bridge.menuSelect` keeps what was selected for that one menu); right-click a copies item › Change near › Scale · Turn ·
+  Push · Colour (`effector.add`, near = the other selected item, else a new small sphere beside the copies, selected).
+  The new copies item is selected with its Count row focused (`revealField`). The grey line under Count is the scene
+  reply's `copies` info ("212 of 400 in Hero 01"). Dragging Count or a Spacing / Radius amount sends the window's view one
+  `copies` request per pointer move (no document change, no scene) and writes the change on release (one undo step;
+  copies_live.Scrubs takes over the kit's scrub slots, which needs `kit_state.HOOKS` — see the report). A click on one copy
+  (the pick reply's `copy`, `source`, `place`) selects the copies item and that copy ("Copy 7 of Buds"); the gizmo moves it
+  live (`copies` with `held`) and the drop writes `copies.hold`. Real-input walk: tests/copies_walk.py.
 - **Scene list** (SceneList.qml). A group's or import's children sit indented under it (the arrow folds them); an
   import's parts too; a combine is a row with the Combine icon, its inputs under it, a minus before a Subtract's cutters.
   Click a row to select it; Ctrl+click adds, Shift+click picks a run. Two or more solids selected: the settings panel's
@@ -116,6 +127,8 @@ screen3d/sample.py      the small sample document (not a template)
 screen3d/layout_states.py  the screen states the layout check runs (add one with every new screen or panel)
 screen3d/scratch_doc.py    scripted runs open a scratch copy of --doc's project
 screen3d/viewport.py, viewcam.py, frames.py, qml/Viewport.qml    the live viewport
+screen3d/copies_*.py    copies: actions (right-click), the pick + the line under Count + On a surface, live Count / Spacing drags, one copy's gizmo
+screen3d/bridge_copies.py   Bridge3D's copies mix-in (right-click on a surface, the Count line)
 screen3d/adding.py      the rail's flyouts, New material / shot, Duplicate, Delete (operation calls, one undo step each)
 screen3d/files_3d.py, export3d.py   the kit's file pieces and Export sheet, filled for 3D
 qml/                    Main, Rail3D, Icon3D, SceneList, KindIcon, RenderButton, RenderView, Viewport, ExportSettings3D

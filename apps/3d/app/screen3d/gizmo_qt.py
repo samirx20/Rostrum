@@ -16,6 +16,7 @@ from rostrum_gui.snap import Target
 from rostrum3d import aim, fields as F, resolve
 
 from . import gizmo as G, gizmo_bone, gizmo_live as live, route
+from .copies_gizmo import CopyGizmo
 from .gizmo_drag import MOVE, TURN, SCALE, PIVOT, item_drag
 from .gizmo_hold import HoldD
 from .viewport import scene_ids
@@ -23,7 +24,7 @@ from .viewport import scene_ids
 SHOWN = ("all", "move", "turn", "scale")
 
 
-class Gizmo(live.LiveDrag, QObject):
+class Gizmo(live.LiveDrag, CopyGizmo, QObject):
     changed = Signal()
 
     def __init__(self, bridge, viewport):
@@ -82,6 +83,8 @@ class Gizmo(live.LiveDrag, QObject):
             pw, origin, turn = gizmo_bone.frame(self.bridge.doc, it, v, scene, self.bridge.frame, self.bridge.time)
             return {"it": it, "v": v, "view": view, "pw": pw, "origin": origin, "turn": turn, "axes": G.columns(pw[0]),
                     "own": G.columns(aim._mul(pw[0], turn)), "px": px, "scene": scene, "parent": None, "mesh": False}
+        if it["type"] == "copies" and self.vp.copies.copy is not None and self.vp.copies.copy["item"] == it["id"]:
+            return self._copy_setup(it)                 # a copy was picked: the handles stand on it (copies_gizmo.py)
         parent = self.bridge.doc.parent_of(it["id"])[0]
         parent = parent if parent in scene_ids(scene) else None        # a top-level item's parent is the document
         shot = self.bridge.shot_info()
@@ -156,7 +159,10 @@ class Gizmo(live.LiveDrag, QObject):
                       "line": next(((h["a"], h["b"]) for h in self._raw if h["id"] == handle and "a" in h), None)}
         if not self.bridge._guard(go):
             return False
-        self._live = None if live.why_not(self.bridge, self.vp, c) else live.Sender(self.vp.link, self._unlive)
+        if c.get("copy") is not None:
+            self._live = self._copy_live()
+        else:
+            self._live = None if live.why_not(self.bridge, self.vp, c) else live.Sender(self.vp.link, self._unlive)
         self.changed.emit()
         return True
 
@@ -168,6 +174,8 @@ class Gizmo(live.LiveDrag, QObject):
         c, v = g["ctx"], g["ctx"]["v"]
         if c["mesh"]:
             return self._mesh_drag(g, c, now, free)
+        if c.get("copy") is not None:
+            return self._copy_drag(g, c, now, free)
         out, self._label = item_drag(g, c, now, free, self._targets)
         has = {p.name for p in F.FIELDS[c["it"]["type"]]}
         out = {k: x for k, x in out.items() if k in has}

@@ -34,6 +34,7 @@ class ViewRenderer(PictureWorker):
     picked = Signal(str, object)  # item id under the click ("" for empty space), and the engine's whole reply (point,
     #   normal: where the surface was hit and which way it faces)
     notice = Signal(str)         # the engine was started again (never silent)
+    copiesInfo = Signal(object)  # the scene reply's copies info ({copies id: {count, seen, camera}}), when a scene was loaded
 
     def __init__(self, parent=None, link=None):
         super().__init__("view3d", parent)
@@ -71,8 +72,10 @@ class ViewRenderer(PictureWorker):
         if isinstance(out, str):
             self.link._forget_scene()
             self.failed.emit(f"Error: viewport scene: {out}")
-        elif later is not None:
-            self.call(lambda _engine: self._paint_later(*later))
+        else:
+            self.copiesInfo.emit(out.get("copies") or {})
+            if later is not None:
+                self.call(lambda _engine: self._paint_later(*later))
         if self._want is not None:
             self._push()
 
@@ -84,7 +87,8 @@ class ViewRenderer(PictureWorker):
             return                                   # a newer scene went in meanwhile: it carries its own paint
         try:
             first = {k: v for k, v in scene.items() if k != "paintLater"}
-            self.link.ask({"scene": paint_scene.finish(first, scene["paintLater"])})
+            out = self.link.ask({"scene": paint_scene.finish(first, scene["paintLater"])})
+            self.copiesInfo.emit(out.get("copies") or {})
             self.link.show(req)
         except Exception as e:  # noqa: BLE001  shown, never silent
             self.link._forget_scene()
@@ -134,7 +138,8 @@ class ViewRenderer(PictureWorker):
             eng.release()
         if kind == "view":
             self._final = final
-        eng.ensure_scene(scene)
+        if eng.ensure_scene(scene) and self.link is None:      # a scene was loaded by the engine program: its copies info
+            self.copiesInfo.emit(dict(getattr(_program(eng), "copies", None) or {}))
         if kind == "view" and self.link is not None and not final:
             eng.show(req)                            # drawn in the window; `_drawn` says when
         elif kind == "pick":

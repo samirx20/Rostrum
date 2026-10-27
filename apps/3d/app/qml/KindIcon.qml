@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// A small drawn icon per 3D thing: mesh (a cube), group, combine (two overlapping rounds), import (a file), part, light (a bulb), camera, rig (a camera on an arc), bone,
+// A small drawn icon per 3D thing: mesh (a cube), group, combine (two overlapping rounds), import (a file), part, light (a bulb), camera, rig (a camera on an arc), copies (squares in a row), effector (a ring round a dot), bone,
 // material (a shaded ball), shot (a frame with a play mark).
 Canvas {
     id: c
@@ -41,6 +41,10 @@ Canvas {
         } else if (kind === "bone") {    // a bone: a long diamond from a round head
             g.beginPath(); g.ellipse(1.5, 9.5, 3, 3); g.stroke()
             g.beginPath(); g.moveTo(4, 10); g.lineTo(6, 6); g.lineTo(12.5, 1.5); g.lineTo(8, 8); g.closePath(); g.stroke()
+        } else if (kind === "copies") {  // three small squares one after another, the last one lighter (the same thing many times)
+            rr(1.5, 4.5, 4, 4, 1); g.stroke(); rr(8, 4.5, 4, 4, 1); g.stroke(); g.globalAlpha = 0.5; rr(4.7, 9.2, 4, 4, 1); g.fill(); g.globalAlpha = 1
+        } else if (kind === "effector") {  // a ring round a dot: where the change is centred and how far it reaches
+            g.beginPath(); g.ellipse(1.5, 1.5, 11, 11); g.stroke(); g.beginPath(); g.ellipse(5.2, 5.2, 3.6, 3.6); g.fill()
         } else if (kind === "material") {  // a ball with a highlight
             g.beginPath(); g.ellipse(2, 2, 10, 10); g.stroke()
             g.beginPath(); g.ellipse(4.5, 4.5, 2.6, 2.6); g.fill()
