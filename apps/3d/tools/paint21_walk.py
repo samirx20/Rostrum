@@ -201,6 +201,23 @@ def main():
         settle(v, time.perf_counter(), what="the tint after the stroke")
         shot(win, v, "1-view-stroke-coverage")
 
+        # 2b. an On the surface stroke on the case's front: from the mouse-up to the paint in the picture
+        step("2b surface stroke timing")
+        word = CP.find_text(win.contentItem(), "On the surface")
+        if word is not None:
+            W.click(win, word)
+        W.pump(2, lambda: v.paint.where == "surface", "On the surface picked")
+        a = on_screen(screen, "case", vp, (-0.09, 0.0, 0.08))
+        c = on_screen(screen, "case", vp, (0.09, -0.02, 0.08))
+        n0 = len(D.history.changes)
+        t_up = CP.drag(win, CP.line((a.x(), a.y()), (c.x(), c.y()), n=40))
+        W.pump(30, lambda: len(D.history.changes) > n0 or v.status.startswith("Error"), "the surface stroke's change")
+        REPORT["timesMs"]["surface-stroke-doc-change"] = round((time.perf_counter() - t_up) * 1000)
+        REPORT["timesMs"]["surface-stroke-picture-settled"] = round(settle(v, t_up, what="the surface stroke's picture"))
+        chk(len(D.history.changes) == n0 + 1, "the surface stroke is one undo step")
+        chk(not v.status.startswith("Error"), f"no error after the surface stroke ({v.status or '-'})")
+        shot(win, v, "1b-surface-stroke")
+
         # 3. project the poster onto the three walls
         step("3 project a picture")
         QTest.keyClick(win, Qt.Key_B)

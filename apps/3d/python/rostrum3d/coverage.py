@@ -152,16 +152,19 @@ def _own_props(scene_mats: dict, node: dict) -> dict:
     return {p.name: _out(p, p.default) for p in MATERIAL if p.name not in DOC_ONLY}
 
 
-def for_screen(scene: dict, data: dict, shot_info: dict, texels_fn) -> tuple[dict, dict]:
+def for_screen(scene: dict, data: dict, shot_info: dict, texels_fn, tint: bool = True) -> tuple[dict, dict]:
     """({item: percent painted of what the shot's camera sees}, a copy of `scene` with the tint on every paintable
     item the shot sees) for the screen's coverage toggle. `shot_info`: {camera, frame, width, height};
     `texels_fn(req) -> reply`: the engine's texels request (Engine.texels_reply / ItemEngine.texels_reply) holding
     `scene`. A painted item's tint goes in its `<id>__paint` material; an item with no paint yet gets `<id>__cover`, a
     copy of its own material with the tinted picture. Items whose paint still waits (paintLater) are left out; send
-    the finished scene."""
+    the finished scene. `tint` False: the percents only (`scene` back as it is), cheap.
+    `texels_fn` None: the texel picture must be in the cache already (texels.cached), else ValueError."""
     from . import texels
     req = {k: shot_info[k] for k in REQ if k in shot_info}
     pic = texels.cached(paint_scene.geometry_scene(scene), req, texels_fn)
+    if pic is None:
+        raise ValueError("coverage: the shot camera's texel picture is not made yet")
     pic_key = cache_key("texels.seen", VERSION, [texels.geometry_key(paint_scene.geometry_scene(scene))], req)
     out = {**scene, "materials": list(scene["materials"]), "items": _copy_nodes(scene["items"])}
     by_id = {m["id"]: m for m in scene["materials"]}
@@ -182,10 +185,12 @@ def for_screen(scene: dict, data: dict, shot_info: dict, texels_fn) -> tuple[dic
         size = alpha.shape[0] if alpha is not None else min(UNPAINTED_SIZE, int(item.get("paintSize", 2048)))
         alpha = np.zeros((size, size), np.uint8) if alpha is None else alpha
         percent[item["id"]] = measure(pic, {item["id"]: alpha})[item["id"]]["percent"]
+        if not tint:
+            continue
         tinted = {"id": mid, "props": {**props, "baseColorTexture": _tinted(props, size, pic, item["id"], alpha, pic_key)}}
         if mid in mats:
             out["materials"][mats[mid]] = {**out["materials"][mats[mid]], **tinted}
         else:
             out["materials"].append(tinted)
             node["props"]["material"] = mid
-    return percent, out
+    return percent, (out if tint else scene)

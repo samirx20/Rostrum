@@ -9,6 +9,8 @@ tint is screen state only: never in Final, a render or an export (they compile t
 """
 from __future__ import annotations
 
+import threading
+
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 WIDTH = 960                      # the texel picture's width for coverage (the shot's shape)
@@ -79,19 +81,32 @@ class Coverage(QObject):
         self._busy = True
         self.changed.emit()
 
-        def job(eng):
+        tint = self._on
+
+        def work(done):
+            """(its own thread) the percents, and the tint when it shows: seconds for a new view, so never on the
+            engine's worker (a stroke's request goes first)."""
             from rostrum3d import coverage, paint_scene, texels
+            try:
+                percent, tinted = coverage.for_screen(done, data, req, None, tint)
+                pic = texels.cached(paint_scene.geometry_scene(done), req)
+                seen = {i for i in pic.items if pic.of(i).any()}
+                self.measured.emit((scene, percent, tinted if tint else None, seen))
+            except Exception as e:  # noqa: BLE001  said on the status line, never a silent miss
+                self.measured.emit((scene, str(e), None, set()))
+
+        def job(eng):
+            """(the engine's worker) only what needs the engine: the scene, its waiting paint, the texel picture."""
+            from rostrum3d import paint_scene, texels
             try:
                 eng.ensure_scene(scene)
                 done = scene                      # paint still waiting for its picture (a new view, a new clay): laid here
                 if scene.get(paint_scene.LATER):
                     first = {k: v for k, v in scene.items() if k != paint_scene.LATER}
                     done = paint_scene.finish(first, scene[paint_scene.LATER], eng.texels_reply)
-                percent, tinted = coverage.for_screen(done, data, req, eng.texels_reply)
-                pic = texels.cached(paint_scene.geometry_scene(done), req)
-                seen = {i for i in (pic.items if pic is not None else []) if pic.of(i).any()}
-                self.measured.emit((scene, percent, tinted, seen))
-            except Exception as e:  # noqa: BLE001  said on the status line, never a silent miss
+                texels.cached(paint_scene.geometry_scene(done), req, eng.texels_reply)
+                threading.Thread(target=work, args=(done,), daemon=True, name="coverage").start()
+            except Exception as e:  # noqa: BLE001
                 self.measured.emit((scene, str(e), None, set()))
         self.v._r.call(job)
 
