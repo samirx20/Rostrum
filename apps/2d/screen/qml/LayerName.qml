@@ -132,6 +132,7 @@ Rectangle {
         opacity: (name.rows.swipeField === "hidden" && name.rows.swipeIds[name.rowData.id] ? name.rows.swipeOn : name.rowData.hidden) ? 0.45 : 1
         x: icon.visible ? icon.x + icon.width + Theme.gap : name.indent + 16
         width: parent.width - x - Theme.gap - (name.isLayer ? 38 : 0) - (pin.visible ? pin.width + 4 : 0)
+               - (matteMark.visible ? Math.min(matteMark.implicitWidth, parent.width * 0.45) + 6 : 0)
         anchors.verticalCenter: parent.verticalCenter
         text: name.rowData.label; elide: Text.ElideRight; font.family: uiFont
         HoverTip { hovered: hover.containsMouse      // the whole name; the frame also says when Cut here is there
@@ -139,6 +140,16 @@ Rectangle {
                    help: name.isFrame ? "What the export shows. Cut here (a jump to the next shot) is there once the playhead is past 0 s." : "" }
         font.pixelSize: name.isLayer ? Theme.body : Theme.label + 1
         color: name.selected ? Theme.accentHover : name.isLayer ? Theme.fg : Theme.fg2
+    }
+    Text {  // a layer used as another's track matte hides itself (as in After Effects): its row says for whom (outline._matte_marks)
+        id: matteMark
+        visible: !!name.rowData.matteFor && !name.renaming
+        x: labelText.x + labelText.contentWidth + 6; anchors.verticalCenter: parent.verticalCenter
+        width: Math.min(implicitWidth, name.width * 0.45); elide: Text.ElideRight
+        text: visible ? "matte for " + name.rowData.matteFor : ""; color: Theme.fg3
+        font.family: uiFont; font.pixelSize: Theme.label
+        HoverHandler { id: matteHover }
+        HoverTip { hovered: matteHover.hovered; text: "Hidden in the picture: it is the track matte of " + (name.rowData.matteFor || "") }
     }
     LayerSwitchIcon {  // pinned to the frame: a quiet pin right after the name (it rides the frame, not the world)
         id: pin

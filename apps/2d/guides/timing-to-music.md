@@ -4,7 +4,7 @@ When your project has music, voice or sound made in RostrumSound, Rostrum2D play
 
 ## 1. Hearing the project's sound
 
-1. Open a project that has a RostrumSound song in it. Rostrum2D finds it by itself.
+1. Open a project that has a RostrumSound song in it. Rostrum2D finds it by itself. A song you made in its own RostrumSound project comes in with the menu (the app's mark at the top left) › **Add a song from RostrumSound…**: pick the song's `.trk` file (in that project's `docs` folder). It is copied into this project with its history; the original stays where it was, and later changes there don't come over. A project that already has a song of that name says so and changes nothing.
 2. Press **Space** (or the play button at the left of the timeline's header). The sound plays with the picture.
 3. Drag the playhead in the ruler. You hear a short burst of the sound wherever you let it rest, so you can find a beat or a word by ear.
 4. When the sound changes in RostrumSound (you or an agent edits the song, or a marker moves), 2D notices within a second and plays the new mix. While the new mix is being made, the Sound row says "Sound is rendering the mix…".

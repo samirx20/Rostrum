@@ -125,6 +125,23 @@ def _cuts(frame: dict) -> list[float]:
     return sorted(out)
 
 
+def _matte_marks(out: list[dict], comp: dict) -> list[dict]:
+    """A layer another one uses as its track matte hides itself (as in After Effects): its row says for whom
+    ("matteFor": the user's name), so a layer that vanished is found (critic 2d-final row 20). Done after the rows'
+    memory: the mark follows a sibling's `matte`, which the layer's own kept rows don't see; kept rows are never changed."""
+    users: dict[str, str] = {}
+
+    def look(layers):
+        for lay in layers:
+            if lay.get("matte"):
+                users.setdefault(lay["matte"], label_of(lay))
+            look(lay.get("layers", []))
+    look(comp.get("layers", []))
+    if not users:
+        return out
+    return [{**r, "matteFor": users[r["id"]]} if r["row"] == "layer" and r["id"] in users else r for r in out]
+
+
 def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept: dict | None = None) -> list[dict]:
     """`comp` as placed (every time in composition seconds): bridge.placed(). `anim_only`: layers opened by A, showing
     only their animated settings (theirs, their effects' and masks'), not their own layers.
@@ -193,7 +210,7 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
             out.extend(got[2])
         return out
 
-    out = walk(comp.get("layers", []), 0)
+    out = _matte_marks(walk(comp.get("layers", []), 0), comp)
     if kept is not None:
         kept.clear()
         kept.update(fresh, state=state)

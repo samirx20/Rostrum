@@ -16,7 +16,8 @@ FIELDS = {
         T("clip", "Clip to box", "Box", False, S, help="Hide parts outside the rig's box"),
     ] + TRANSFORM + GRADED,
     "bone": [
-        X("parent", "Parent bone", "Bone", "", help='Id of the bone it hangs from; empty = a root bone'),
+        X("parent", "Parent bone", "Bone", "", control="pick",     # screens: a list of the rig's other bones, by name
+          help='Id of the bone it hangs from; empty = a root bone'),
         N("rotation", "Turn", "Pose", -36000, 36000, 0.1, "°", help="Turn from rest; adds to the parent's turn"),
         N("scale", "Scale", "Pose", 0, 100, 0.01, "×", S, default=1.0, help="About the pivot; children and bound layers follow"),
         N("moveX", "Move X", "Pose", -20000, 20000, 1, "px", S, help="Shift of the pivot, in the parent's frame"),
