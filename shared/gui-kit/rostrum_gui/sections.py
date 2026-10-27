@@ -6,8 +6,11 @@ and `group` only, never per kind:
 - **Every other group by name**: one fold row per group with a non-primary param, then its `secondary` and `deep`
   params (rank, then data order). A kind's own group (`OWN`) is always open. Only an OPEN group shows (its fold row is its heading, a click folds it); a group
   with a value changed from its default is open until the person folds it (you see what you changed).
-- **One row of names** last (row "folds"): every group that applies to this item and is folded, "Depth · Timing ·
-  Blend"; a click on a name opens that group just above it. A group with nothing that applies is not named at all.
+- **One row of names** (row "folds"): every group that applies to this item and is folded, "Depth · Timing ·
+  Blend"; a click on a name opens that group BELOW the row, so the row itself never moves under the pointer (above it,
+  each opened group pushed the names down by its height: the next "+" was no longer where it was). The kind's own
+  group stays above the names (the thing itself first); every other group, open by hand or because it was changed,
+  follows them. A group with nothing that applies is not named at all.
 - **A group a switch turns on** (`switch_of`: a toggle that every other setting of the group needs on, an outline's
   Outline, a group's Background): its name in the row of names ADDS it, one change (the switch set on), and the group
   is open exactly while it is on, its heading carrying a remove control (the switch set off). A toggle switch is
@@ -55,15 +58,19 @@ def layout(op, kind: str = "") -> list[dict]:
         rows.append({**_param_row(p), "in": ""})
     if essentials and rest:
         rows.append({"row": "group", "id": "gap:folds", "label": "", "members": [p.name for p in rest], "by": "holds"})
+    own, others = [], []
     for g in dict.fromkeys(p.group for p in rest):
         members = sorted((p for p in rest if p.group == g), key=lambda p: RANK[p.importance])    # stable
         sw = switch_of(members)
         lead = next((p for p in members if p.name == sw), None)
-        rows.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members],
-                     "own": OWN.get(kind.lower()) == g, "switch": sw, **(dict(zip(("on", "off"), switch_values(lead))) if lead else {})})
-        rows += [{**_param_row(p), "in": g, **({"switches": g} if p is lead and p.type == "toggle" else {})} for p in members]
+        block = own if OWN.get(kind.lower()) == g else others
+        block.append({"row": "fold", "id": "fold:" + g, "label": WORDS.get((kind.lower(), g), g), "fold": g, "members": [p.name for p in members],
+                      "own": OWN.get(kind.lower()) == g, "switch": sw, **(dict(zip(("on", "off"), switch_values(lead))) if lead else {})})
+        block += [{**_param_row(p), "in": g, **({"switches": g} if p is lead and p.type == "toggle" else {})} for p in members]
+    rows += own                          # the kind's own group, then the names, then the groups they open (below them)
     if rest:
         rows.append({"row": "folds", "id": "folds", "label": "", "members": [p.name for p in rest]})
+    rows += others
     return _unsaid(pair_up(rows))
 
 

@@ -15,6 +15,9 @@ What counts as a fault (AGENTS.md › Rules: every look pass runs it, at several
   small     something clickable smaller than MIN_CLICK in either direction
   stray     text that shows as a mark, not words: a sliver of a half-scrolled line, or text elided to "…" or one character
             (see stray())
+  zone      the merged title bar (window_chrome.py): a clickable thing in the top bar outside every zone the bar handed to
+            `windowChrome.setZones` (on screen a click there would move the window: a dead button), or a zone over the
+            maximise button or reaching into the window buttons (see zones())
 A "control" is something clickable (a MouseArea, a tap/drag handler, a text field) or a line of text that is not
 inside one. `ignore`: item-path fragments an app knows are deliberate (e.g. the canvas' own drag handles).
 """
@@ -256,7 +259,40 @@ def check(win, ignore=()) -> list[Fault]:
         if clickable(a) and min(a.rect.width(), a.rect.height()) < MIN_CLICK:
             say("small", a, f"clickable area {a.rect.width():.0f}x{a.rect.height():.0f} px (under {MIN_CLICK} px)", a.rect)
     grid(nodes, say)
+    zones(win, nodes, say)
     return found
+
+
+def zones(win, nodes: list[Node], say) -> None:
+    """The merged title bar: Windows lets the pointer click only inside the rectangles the top bar pushed
+    (`windowChrome.zones()`: rects, maxRect, in window pixels); everything else in the bar moves the window. So every
+    visible clickable thing in the bar must lie inside one of them, and no zone may cover the maximise button (it is
+    Windows' own, for the snap layouts) or reach into the window buttons beside it. Nothing to check while the window
+    keeps Windows' own frame (`merged` false)."""
+    from PySide6.QtQml import QQmlEngine
+    ctx = QQmlEngine.contextForObject(win)
+    chrome = ctx.contextProperty("windowChrome") if ctx is not None else None
+    if chrome is None or not chrome.property("merged"):
+        return
+    pushed = chrome.zones()
+    rects = [QRectF(*r) for r in pushed.get("rects") or []]
+    maxr = QRectF(*pushed["maxRect"]) if len(pushed.get("maxRect") or []) == 4 else None
+    bar = next((n for n in nodes if n.item.objectName() == "topBar"), None)
+    if bar is None:
+        return
+    buttons = next((n for n in nodes if is_under(n, bar) and "WindowButtons" in cls(n.item)), None)
+    for n in nodes:
+        if n is bar or n.layer != bar.layer or not is_under(n, bar) or not clickable(n) or n.seen.top() >= bar.rect.bottom() - SLACK:
+            continue
+        if maxr is not None and inside(n.seen, maxr):
+            continue
+        if not any(inside(n.seen, z) for z in rects):
+            say("zone", n, "clickable in the title bar but in no zone given to windowChrome: a click there moves the window")
+    for z in rects:
+        if maxr is not None and z.intersected(maxr).width() > SLACK and z.intersected(maxr).height() > SLACK:
+            say("zone", buttons or bar, f"a zone {z.getRect()} covers the maximise button (Windows' snap layouts go)", z.getRect())
+        elif buttons is not None and z.intersected(buttons.rect).width() > SLACK and not inside(z, buttons.rect):
+            say("zone", buttons, f"a zone {z.getRect()} reaches into the window buttons", z.getRect())
 
 
 def grid(nodes: list[Node], say) -> None:

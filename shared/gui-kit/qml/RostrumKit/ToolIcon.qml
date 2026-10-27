@@ -6,7 +6,7 @@ import "."
 // Every app's tool rail and flyouts use these by `name` (2D's rail; Sound can reuse them). An unknown name draws
 // nothing, so a missing icon shows up at once.
 // select, rect, corners, ellipse, pen, text, brush, picture, video, render3d, import, library, sound, sound-off, camera, hand, zoom, bone,
-// menu, help,
+// menu, help, undo, redo, history, search,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude,
 // align-left / -hcenter / -right / -top / -vcenter / -bottom, distribute-x / -y, union, subtract, intersect, exclude, metronome
 Canvas {
@@ -81,6 +81,15 @@ Canvas {
         case "bone": line([6, 14, 14, 6]); ring(4.8, 15.2, 2); ring(15.2, 4.8, 2); break
         // the top bar's ≡ (the app's menu) and ? (Help)
         case "menu": line([4, 5.5, 16, 5.5]); line([4, 10, 16, 10]); line([4, 14.5, 16, 14.5]); break
+        // the top bar's Undo, Redo (a U-turn arrow; a font's ↶ ↷ differ per font), History (a clock going back) and Search
+        case "undo": line([7.5, 4.5, 4, 8, 7.5, 11.5])
+            g.beginPath(); g.moveTo(4, 8); g.lineTo(12, 8); g.arc(12, 12, 4, -Math.PI / 2, Math.PI / 2); g.lineTo(8, 16); g.stroke(); break
+        case "redo": line([12.5, 4.5, 16, 8, 12.5, 11.5])
+            g.beginPath(); g.moveTo(16, 8); g.lineTo(8, 8); g.arc(8, 12, 4, -Math.PI / 2, Math.PI / 2, true); g.lineTo(12, 16); g.stroke(); break
+        case "history":
+            g.beginPath(); g.arc(10.5, 10, 6.5, 0.9 * Math.PI, 2.6 * Math.PI); g.stroke()
+            line([2.6, 9.2, 4.3, 12.1, 7, 10.4]); line([10.5, 6.5, 10.5, 10, 13, 11.5]); break
+        case "search": ring(8.5, 8.5, 5); line([12.2, 12.2, 16.5, 16.5]); break
         case "help":
             ring(10, 10, 7.5)
             g.beginPath(); g.arc(10, 8, 2.4, Math.PI, 2.25 * Math.PI); g.quadraticCurveTo(10, 10, 10, 11.6); g.stroke()

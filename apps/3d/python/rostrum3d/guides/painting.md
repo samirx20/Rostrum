@@ -29,8 +29,8 @@ sculpt the clay again afterwards (see "Painting on clay").
 Paint sits over the material's own value: where you haven't painted, the surface is exactly its material (its colour,
 its roughness, its own pictures). A layer painting Roughness changes only roughness: the colour stays.
 
-Look at paint with **Look: Final** (Shift+F): Cycles shows roughness, relief and metal the way the render will. Quick
-shows colour, roughness, metal and glow; Relief only shows in Final.
+Look at paint with **Final** (Shift+F, or Final in the top bar's **Shot camera · Quick ▾**): Cycles shows roughness,
+relief and metal the way the render will. Quick shows colour, roughness, metal and glow; Relief only shows in Final.
 
 ## Painting on clay
 

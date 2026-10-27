@@ -9,8 +9,8 @@ operations and history that agents use through the MCP server (`rostrum3d.mcp`).
 The window of docs/3d-design/SPEC.md §1 (brief 1, 2026-10-24; the person's tour: `python/rostrum3d/guides/window.md`).
 
 ```
-top bar        ≡ Rostrum3D  project › shot ▾  Saved · N changes   Build|Animate|Render  ↶ ↷  Search  View  Look  Materials  Render  ?
-rail (left)    Select · Shapes · Lights · Camera (kit ToolRail, flyouts filled from adding.py's `rail`)
+top bar        mark ▾  project › shot ▾   Build|Animate|Render (centred)   ↶ ↷ History  Search  Shot camera · Quick ▾  Render  ?  – ▢ ✕
+rail (left)    Select · Shapes · Lights · Camera (kit ToolRail, flyouts filled from adding.py's `rail`) · Materials ball (MaterialsList)
 centre         the live viewport (Quick = Storm, Final = Cycles in place; through the shot camera or a free camera); the last render over it
 right          the settings panel: the kit's sections layout (the kind's own group open, changed groups open, a row of names)
 bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 284 on the Animate page
@@ -20,9 +20,9 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   import's parts too; a combine is a row with the Combine icon, its inputs under it, a minus before a Subtract's cutters.
   Click a row to select it; Ctrl+click adds, Shift+click picks a run. Two or more solids selected: the settings panel's
   Combine row (screen3d/actions3d.py, hover preview: action_preview3d.py). A row shows its material's name at the right (while the name has its
-  whole room): click it to edit the material. Materials and shots are not rows: the header's Materials chip and the
+  whole room): click it to edit the material. Materials and shots are not rows: the rail's Materials ball and the
   shot crumb list them.
-- **Files** (kit): ≡ menu, start screen, Open recent, document name (screen3d/files_3d.py); the render sheet
+- **Files** (kit): the mark's menu, start screen, Open recent, document name (screen3d/files_3d.py); the render sheet
   (F12, the top bar's Render, Ctrl+E) is the kit's export sheet (screen3d/export3d.py, qml/ExportSettings3D.qml; its
   measured time: screen3d/estimate_sheet.py, qml/RenderEstimate.qml).
 - **Inspector.** The kit's inspector, built from the selected type's field operation (`mesh.set`, `light.set` …):

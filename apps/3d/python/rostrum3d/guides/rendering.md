@@ -4,7 +4,7 @@ Rendering makes the final pictures of a shot with Cycles. The pictures look like
 
 ## Open the render sheet
 
-Press **F12**, or click **Render** at the right of the top bar. Ctrl+E and ≡ › Export… open the same sheet. The sheet
+Press **F12**, or click **Render** at the right of the top bar. Ctrl+E and the mark's menu › Export… open the same sheet. The sheet
 takes the settings panel's place, so the viewport stays in sight. Esc or × closes it.
 
 On the Build page it opens on **This frame**. On the Animate and Render pages it opens on the shot.

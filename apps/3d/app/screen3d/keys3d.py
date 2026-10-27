@@ -45,6 +45,7 @@ OWN = [
     {"job": "shot_view", "keys": ["`"], "label": "Shot camera / free camera", "area": "View"},
     {"job": "look", "keys": ["Shift+F"], "label": "Look: Quick / Final", "area": "View"},
     {"job": "render", "keys": ["F12"], "label": "Render", "area": "Files"},
+    {"job": "materials_list", "keys": [], "label": "Materials: the project's materials", "area": "Panels"},   # no key: the rail's ball, Ctrl+K
 ]
 
 NOT_HERE = ("preferences",                  # no setting of 3D is a person's to change: Ctrl+, would open an empty window
@@ -88,7 +89,7 @@ ROUTES = {
     "shot_view": ("shotViewKey",), "look": ("lookKey",), "render": ("renderKey",),
 }
 # the window's own (Main.qml `windowJobs`): they need the rail
-WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "quit")
+WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "materials_list", "quit")
 # held keys a tool watches itself (clay_tool_qt.SizeKey: F down and up while Clay is on): no shortcut, no Ctrl+K row
 TOOL = ("clay_size",)
 # bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the

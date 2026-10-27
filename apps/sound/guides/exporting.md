@@ -4,7 +4,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 ## Where
 
-- **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound; before that, Ctrl+E says "Nothing to export yet: add a sound first".
+- **Export** in the top bar, **menu › Export…** (the app's mark at the top left), or **Ctrl+E**. It appears once the song makes a sound; before that, Ctrl+E says "Nothing to export yet: add a sound first".
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
   closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type with **More** (its quality) under it, **+ Another version** (each extra version opens under it), **Stems**, **Cut the silence**, and the file's name (a box, the file type after it) with the folder under it, just above **Export**.
   The chosen target shows in the picker. The folder line shows exactly where the file will land, the new version folder included (`…\renders\song\v001`); a long path leaves its middle out, the whole of it on hover.
@@ -108,7 +108,7 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
 ## 6. Export
 
 1. Click **Export**. It says **Exporting…** and works in the background; you can keep working.
-2. When done, the sheet says "Exported · Play · Show in folder" (once; the top bar says it too). Click **Show in folder** to open it. While it says "Exported", the folder line shows where that file really went; change a choice and the line shows where the next export will go.
+2. When done, the sheet says "Exported · Play · Show in folder" (once). The top bar's chip says "Exported song.wav ▾" until your next change: click it for **Play** and **Show in folder**. Click **Show in folder** to open it. While it says "Exported", the folder line shows where that file really went; change a choice and the line shows where the next export will go.
 3. If something went wrong, the sheet says so in red, in one sentence.
 
 ## What files appear

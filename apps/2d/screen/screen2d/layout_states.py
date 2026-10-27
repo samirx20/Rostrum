@@ -43,7 +43,7 @@ IGNORE = ()
 QUICK = ("anchor-ring-arrow", "scene-menu-long", "export-area", "workspace", "frame-new", "frame-world-panned", "frame-off-view-long", "long-workspace", "rows-open", "two-selected", "draw-tool", "right-click", "canvas-menu-select-layer", "action-menu", "ctrl-k",
          "file-menu", "start-screen", "export-sheet", "guides-list", "guide", "help-menu", "about", "key-list", "time_box_typing", "view-menu",
          "panels-folded", "animation-picked", "key-bar-spring", "outline-added", "motion-blur-added", "picture-levels-added", "font-list", "key-curve-overshoot", "brush-panel", "paint-eraser", "paint-select", "paint-layers", "fill-gradient-handles", "fill-painted-tile-rows", "paint-in-place", "paint-in-place-seamless", "library-paintings", "library-paintings-menu", "library-paintings-open", "path-points", "painting-opened", "painting-opened-boil", "paint-in-place-select",
-         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "text-counter", "scene-1080x1920", "long-status-line", "import-report")
+         "sound-row", "rig-bones", "frame-picked", "frame-cut", "frame-turned", "frame-ride", "frame-pinned-title", "frame-look-through", "cover-band", "text-counter", "scene-1080x1920", "long-status-line", "import-report", "bar-busy", "bar-message")
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
 
@@ -218,6 +218,9 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("export-sheet", long(), [*busy, "exportsheet open png", f"exportwhere {LONG_FOLDER}"]),     # S34: the kit sheet
         ("export-area", long(), [*busy, "select card", "exportsheet open png", "exportarea items"]),   # F9: a picture's Area row, layers picked
         ("job-chip", long(), [*busy, "job-show 42"]),
+        # the merged top bar busy (SPEC header-design §4): the agent chip, 2 problems, an export running; then a message
+        ("bar-busy", long(), [*busy, "agent-run 3", "problems-demo", "job-show 42"]),
+        ("bar-message", ["--sample"], ["select title", "set x 512", "problems-demo", "job-show 42", "say Moved title 12 px"]),
         ("job-failed", long(), [*busy, "job-failed The engine stopped while drawing frame 112: the GPU ran out of memory. Try a smaller size."]),
         ("import-panel", ["--sample"], ["importpanel open"]),
         ("problems-chip", long(), [*busy, "problems-demo", "problems open"]),

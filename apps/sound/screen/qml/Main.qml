@@ -2,8 +2,8 @@ import QtQuick
 import RostrumKit
 
 // RostrumSound: one workspace (apps/sound/DESIGN.md §2, shared/gui-kit/INTERACTION.md §1.1). Top bar: project-wide
-// things only — ≡ (the menu), the song's name, the message and change count, the Loudness chip and Export once the
-// song makes a sound, Search, Help. Centre: the arrangement, always, with its header strip (+ Add, ⏮ ▶, Record while
+// things only — the app mark (the menu), the song's name, the message, the Loudness chip and Export once the song
+// makes a sound, Undo / Redo / History, Search, Help, the window buttons. Centre: the arrangement, always, with its header strip (+ Add, ⏮ ▶, Record while
 // armed, position, tempo · beats · key, zoom); under it the dock (Editor E / Mixer X; folds away). Left: the Library
 // (Ctrl+L), pushing the arrangement on a wide window and floating over it below 1500 px. Right: the settings panel —
 // the selection's settings, or the song while nothing is selected — or a kit sheet in its place (Export Ctrl+E, History Ctrl+H).
@@ -12,8 +12,11 @@ AppShell {
     id: shell
     bridge: backend
     appName: "RostrumSound"
+    appIcon: "app-sound"               // the kit's stand-in mark (a waveform on green) until the real icon is drawn
     documentName: backend.docName
-    saveWord: backend.isLive ? "All saved" : ""  // a song in a project folder is saved after every change ("All saved · 4 changes": the count is history, not unsaved work)
+    // a song in a project folder is saved after every change (the bar says nothing); one outside a project is not
+    saveState: backend.isLive ? "" : "unsaved"
+    saveWords: "Changes to this song are not kept: it is not in a project folder."
     helpEntries: guides
     readonly property bool wide: width >= 1500                       // the Library pushes instead of floating
     readonly property bool hasTracks: backend.tracks.some(r => !r.mix)
@@ -70,23 +73,25 @@ AppShell {
     // keys back to the work: a text field (the Library's search, a settings row) never keeps them silently.
     // (A name field opened in place — a new section, M, F2 — keeps them: it is the work.)
     Connections { target: backend; function onPicksChanged() { if (shell.typing && backend.renaming === "") shell.contentItem.forceActiveFocus() } }
-    menu: FilesMenu {    // ≡ (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Sound's own
+    menu: FilesMenu {    // the app mark's menu (kit): New, Open, Open recent, Duplicate, Save a version, Show folder, Start screen; then Sound's own
         id: fileMenu
         extra: (shell.hasSound ? [{ value: "export", label: "Export…", keys: "Ctrl+E", group: "app" }] : []).concat([
                 { value: "settings", label: "Preferences…", keys: "Ctrl+,", group: "app" },
                 { value: "quit", label: "Quit", keys: "Ctrl+Q", group: "app" }])
         onPicked: (v) => { if (v === "export") shell.exporter.setOpen(true); else if (v === "settings") settingsPanel.open(); else if (v === "quit") Qt.quit() }
     }
-    // the start screen (kit): at launch with nothing to reopen, or ≡ › Start screen…; over everything while shown
+    // the start screen (kit): at launch with nothing to reopen, or the menu › Start screen…; over everything while shown
     StartScreen { id: startScreen; anchors.fill: parent; z: 100; onGuideAsked: (url) => shell.openGuide(url)
                   anchors.leftMargin: shell.guidesOpen ? (shell.guidesWidth || 0) : 0 }   // a guide opened from it shows beside it
     SettingsPanel { id: settingsPanel }
-    actions: [          // the top bar's chips, then Export (kit TopBar: its `actions` slot sits before Search)
+    chips: [            // the top bar's own chips, after the agent's, Problems and the job's
         SoloChip { },   // only while a track or group is soloed: it holds the rest back from play and export
         Item {   // the chip's place is held too (an empty song leaves it empty), as Export's
             width: loudness.slotWidth; height: Theme.button
-            LoudnessReadout { id: loudness; visible: shell.hasSound; compact: shell.width < 1366; anchors.verticalCenter: parent.verticalCenter }
-        },
+            LoudnessReadout { id: loudness; visible: shell.hasSound; anchors.verticalCenter: parent.verticalCenter }
+        }
+    ]
+    actions: [          // Export, after the command box
         Item {   // Export's place is always held (an empty song leaves it empty), so it showing never moves the bar's other items
             width: exportButton.implicitWidth; height: Theme.button
             Button { id: exportButton; visible: shell.hasSound; text: "Export"; kind: "primary"; down: mixer.export.open

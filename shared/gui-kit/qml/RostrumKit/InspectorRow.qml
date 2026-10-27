@@ -8,7 +8,8 @@ import "ValueKinds.js" as VK
 // (bridge.toggleGroup(model.fold)); only an open group shows its fold row. The "folds" row is every folded group's
 // name, every one of them in one wrapping line ("+ Depth  + Timing  + Blend"; no "+ N more": a name behind a click was a
 // click to reach a click); a click on a
-// name opens that group (a group a switch turns on, model.switch, is added: "+ Outline" puts the outline on, one change, and
+// name opens that group below the row (its name keeps its place, quiet, while the item stays selected, so no name moves
+// under the pointer) (a group a switch turns on, model.switch, is added: "+ Outline" puts the outline on, one change, and
 // its heading has − to remove it; rows.py) (the "+" says it is a control, so a lone name never reads as an empty heading). `flash()` briefly marks the row and `focusWidget()` puts the keys in its widget
 // (revealField). Several items selected and their values differ (model.mixed): the field says "Mixed" until edited.
 // The widget comes from the param's `type` only. The row owns its reveal: when `valid` changes, height and
@@ -150,24 +151,44 @@ Item {
                           rightMargin: row.keyMarks ? row.gutter : 0 }     // ends with the fields, not under the key marks
                 spacing: Theme.pad
                 readonly property var entries: row.model.row === "folds" ? row.model.names || [] : []
+                // The names stay where they are while the same item stays selected: a name whose group was just opened
+                // (its fields open below this row, sections.py) keeps its place, quiet and without "+", instead of the
+                // names after it closing up and moving under the pointer. A name coming back (a group folded or
+                // removed) or another selection lays the row out afresh, in panel order.
+                property var held: []
+                property string heldFor: "-"
+                function sync() {
+                    const now = names.entries
+                    const item = row.bridge && row.bridge.selectedItem ? row.bridge.selectedItem.id || "" : ""
+                    const was = names.held.map(e => e.group)
+                    const fewer = item === names.heldFor && now.every(e => was.includes(e.group))
+                    names.held = fewer ? names.held.map(e => now.find(n => n.group === e.group) || Object.assign({}, e, { opened: true }))
+                                       : now
+                    names.heldFor = item
+                }
+                onEntriesChanged: sync()
+                Component.onCompleted: sync()
                 KeptRepeater {  // kept: another kind's names take the same items (a new list remade each name, ~3 ms a pick)
                     id: namesKept
-                    needed: names.entries.length
+                    needed: names.held.length
                     delegate: Row {
                         id: nameItem
                         required property int index
                         visible: index < namesKept.needed
-                        readonly property var modelData: names.entries[index] || ({})
+                        readonly property var modelData: names.held[index] || ({})
+                        readonly property bool opened: !!modelData.opened     // open below: its place held, not a control now
                         height: Theme.rowDense
                         Text {
-                            objectName: "fold:" + nameItem.modelData.group     // scripted steps open a group by it
-                            text: "+ " + (nameItem.modelData.label || nameItem.modelData.group) ; font.family: uiFont; font.pixelSize: Theme.body
-                            color: nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
-                            font.underline: nameArea.containsMouse
+                            objectName: nameItem.opened ? "" : "fold:" + nameItem.modelData.group     // scripted steps open a group by it
+                            text: (nameItem.opened ? "" : "+ ") + (nameItem.modelData.label || nameItem.modelData.group) ; font.family: uiFont; font.pixelSize: Theme.body
+                            leftPadding: nameItem.opened ? plusWidth.advanceWidth : 0    // the same width as with "+ ": nothing after it reflows
+                            TextMetrics { id: plusWidth; font.family: uiFont; font.pixelSize: Theme.body; text: "+ " }
+                            color: nameItem.opened ? Theme.fg4 : nameArea.containsMouse ? Theme.fg : Theme.fg2; anchors.verticalCenter: parent.verticalCenter
+                            font.underline: nameArea.containsMouse && !nameItem.opened
                             Rectangle {  // changed but folded by hand: a small dot says something in here differs from its default
-                                visible: !!nameItem.modelData.changed; width: 4; height: 4; radius: 2; color: Theme.accent
+                                visible: !!nameItem.modelData.changed && !nameItem.opened; width: 4; height: 4; radius: 2; color: Theme.accent
                                 anchors.left: parent.right; anchors.leftMargin: 2; anchors.top: parent.top; anchors.topMargin: 2 }
-                            MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true
+                            MouseArea { id: nameArea; anchors.fill: parent; anchors.margins: -3; hoverEnabled: true; enabled: !nameItem.opened
                                         cursorShape: Qt.PointingHandCursor; onClicked: row.bridge.toggleGroup(nameItem.modelData.group) }
                         }
                     }

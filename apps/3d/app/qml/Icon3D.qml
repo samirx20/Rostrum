@@ -3,7 +3,7 @@ import QtQuick.Shapes
 import RostrumKit
 
 // The rail's 3D icons (the kit ToolRail's `iconKinds`: an Item with `name` and `ink`), 18 px line drawings from the
-// mockups' set (docs/3d-design/mockups/icons3d.py): each shape, each light kind, the camera rig.
+// mockups' set (docs/3d-design/mockups/icons3d.py): each shape, each light kind, the camera rig, the Materials ball.
 Item {
     id: icon
     property string name: ""
@@ -34,7 +34,8 @@ Item {
         rig: e(9, 11, 7, 3.5) + "M5 3h7v5.5H5z",
         pose: e(9, 3.2, 1.7, 1.7) + "M9 5v6M4 6.5l5 1.5 4.5-3M9 11l-3 5M9 11l3.5 4.5",    // a figure mid-move
         onion: e(5.5, 9, 3.5, 3.5) + e(9, 9, 3.5, 3.5) + e(12.5, 9, 3.5, 3.5),               // three steps of one shape
-        bone: e(4, 14, 2, 2) + "M5.5 12.5L8 7.5 15 3 10.5 10z"                                   // a bone: head and diamond
+        bone: e(4, 14, 2, 2) + "M5.5 12.5L8 7.5 15 3 10.5 10z",                                  // a bone: head and diamond
+        material: e(9, 9, 6.5, 6.5) + "M5.6 7.6a3.8 3.8 0 0 1 2.6-2.8"                              // a material ball and its shine
     })
     Shape {
         x: 1; y: 1

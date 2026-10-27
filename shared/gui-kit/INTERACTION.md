@@ -44,7 +44,7 @@ local choice.
 | 5 | **Arrows move what you selected, in the place you are working.** Shift moves a big step, Alt a fine one. Ctrl+←/→ always move the playhead. `,` and `.` jump to the previous or next thing that happens. | One rule instead of a table to memorise, and it carries into 3D and the Editor. |
 | 6 | **One gesture is one undo step, and your undo is yours.** A whole drag, an action on 40 things, or a burst of nudges is one step. Ctrl+Z takes back only your own steps. An agent's run is one group you keep or undo whole. | You can let an agent work beside you without fear, and undo never surprises you. |
 | 7 | **Drags never lie.** The box and its content move as one, in the same frame. A press under 4 px is a click. Ctrl = no snapping, Alt = drag a copy, Shift = keep it straight. Things snap within 6 px, with a magenta line naming what they caught. | Trust in the picture, and the same modifier keys in every app. |
-| 8 | **Saving is automatic, and versions are named.** There is no Save and no "unsaved" state. Ctrl+S saves a named version. The top bar says "Saved" and how many changes are recorded, and that count is never cut. | Nothing is lost, agents and people edit the same file, and Ctrl+S gets a real meaning. |
+| 8 | **Saving is automatic, and versions are named.** There is no Save and no "unsaved" state. Ctrl+S saves a named version. The top bar says nothing about saving while it happens; only when it is not happening (a file outside a project, a full disk) an amber or red dot sits on the project's name and the window title starts with "● ". Every change is in History (the clock beside Undo / Redo). | Nothing is lost, agents and people edit the same file, and Ctrl+S gets a real meaning. |
 | 9 | **Nothing greyed out, and nothing silent.** A control that can't act now is absent. Errors are one plain sentence that says what failed and what to do, on the thing itself and in the message line. Red means an error, amber means "not there yet". | The screen only shows what you can use, and you can always trust it. |
 | 10 | **The agent is a co-worker, not a mode.** Its changes arrive live and never move your selection, playhead, zoom or the field you are typing in. You see a chip and a 1-second outline, and you can review or undo its work. A locked thing is locked for agents too. The agent reads what you see through `inspect_screen`. | People and agents share one document and never fight over it. |
 
@@ -63,7 +63,7 @@ Every pattern below follows the same layout:
 ## 1.1 The window's regions
 
 ```
-┌ ≡ App │ Project › Scene ▾ ····· message   Saved · 14 changes │ chips │ ↷ ↶ │ Search Ctrl K │ Export │ ? ┐  top bar
+┌ ◧▾ Project › Scene ▾  message ········ (pages) ········ chips │ ↶ ↷ ◷ │ Search Ctrl K │ Export │ ? │ – □ × ┐  top bar
 ├──┬───────────────────────────────────────────────────────────────────────────┬────────────────────────┤
 │T │            ┌ context bar: 3 layers · Group  Mask ▾  Align ▾ ⋯ ┐            │ SETTINGS               │
 │O │                                                                           │ name · Kind            │
@@ -80,7 +80,7 @@ Every pattern below follows the same layout:
 
 | Region | Where | Holds | When |
 |---|---|---|---|
-| **Top bar** | top row, 44 px, one line, never two | Fixed order, left to right: **≡** menu · **project › scene ▾** (or song name) · **message** (what just happened) · **Saved · N changes** · **chips**, each shown only while it has something to say (agent at work, Problems, a running job, an app's own chip such as Sound's loudness) · **↷ ↶** (only when they can act; Undo keeps its place, Redo sits left of it) · **Search Ctrl K** · **Export** (once there is something to export) · **?** | Always. Project-wide things only: nothing that makes or edits one item lives here. |
+| **Top bar** | top row, 40 px, one line, never two; it is also the window's title bar (header-design SPEC) | Fixed order, left to right: the **app mark ▾** (the app's coloured mark: the menu) · **project › scene ▾** (or song name; a dot on the name only while saving is not happening) · **message** (what just happened; fades after 4 s, a failure stays) · 3D's **pages**, centred · **chips**, each shown only while it has something to say (agent at work, Problems, a job running or just finished, an app's own chip such as Sound's loudness) · **Undo, Redo, History** (Undo and Redo only when they can act, their places kept) · **Search Ctrl K** (its icon below a 1400 px window) · **Export** (once there is something to export) · **?** · the three window buttons. Every empty part, the message included, drags the window (double-click maximises, right-click is Windows' window menu). | Always. Project-wide things only: nothing that makes or edits one item lives here. |
 | **Tool strip** | floating on the left edge of the view it acts on, 40 px wide | Tools that make or draw things, then tools that appear with their thing (Bone with a rig), then **+ Add** at the bottom | In apps and views with tools: the 2D canvas, the 3D view, the Editor's viewer. Sound's Editor has two tools (Select V, Draw B), so they sit at the left end of the Editor's header instead. |
 | **Context bar** | floating at the **top-centre of the main view** (for Sound, of the area that has focus: the arrangement or the Editor), one row, never wraps | With the Move / Select tool and a selection: what is selected ("3 layers") and its top actions, then **⋯** for the rest. With another tool: that tool's few options. | Only when there is something to say. Hidden while dragging. Never covers the tool strip. |
 | **Main view** | the middle | The work itself: the canvas (2D), the arrangement (Sound), the 3D view, the viewer (Editor). Bottom-right: **view controls** (Fit · zoom % ▾ · preview size · Fast / Final). Bottom-left: where you are (the group path "Logo › mark"). | Always. |
@@ -380,7 +380,7 @@ cards.
    - a whole drag, a box-move of 40 things, a typed value, a scrub, a stroke;
    - an action on the whole selection, a paste;
    - a burst of nudges, or of typing in one field (each under 1 s after the last).
-2. **Ctrl+Z / Ctrl+Shift+Z** (Ctrl+Y too), or **↶ ↷** in the top bar.
+2. **Ctrl+Z / Ctrl+Shift+Z** (Ctrl+Y too), or **Undo / Redo** in the top bar.
    - The buttons appear only when they can act, with the step's name on hover ("Undo: Move title").
    - The message line then says **"Undid: Move title"**, and the changed things flash once.
 3. **Your undo is yours.**
@@ -505,33 +505,35 @@ the selection (Sound P26), because F already means it in 2D curves and in 3D.
 **Why (3E).** *Efficient:* pros never leave the keyboard. *Easy:* beginners find what they can't see. The same list is
 the agent's `inspect_tools`.
 
-## 1.14 Status line and change count (never cut)
+## 1.14 Message line and save state (never cut)
 
-- The **message** in the top bar says what just happened, in words, with who: "You: Moved title", "Claude: added 12
-  notes to Strings", "Undid: Move title", "Exported Main.mp4". It is overwritten by the next change. History keeps
-  everything.
-- After it: **Saved · 14 changes**.
-  - "Saved" confirms the change is on disk. A key's own frame keeps only a small note of the change; its full
-    history line is written the frame after (a whole-song Ctrl+D's is ~1 MB). If Rostrum closes in between (a crash),
-    opening the song makes that step again from the note and the top bar says "The last step before Rostrum closed
-    (…) was brought back." (`rostrum_core/pending.py`).
-  - The count is the number of recorded steps since this window opened. **Click it to open History** (Ctrl+H).
-- **When the top bar runs short**, nothing is cut with "…" and nothing slides under anything. The room goes out by
-  priority:
+- The **message** in the top bar, right after the project › scene, says what just happened, in words, with who: "You:
+  Moved title", "Claude: added 12 notes to Strings", "Undid: Move title", "Exported Main.mp4". Small and grey (label
+  size), it fades after 4 s; a failure (red) stays until the next message. It is drag area: pressing on it moves the
+  window. History keeps everything (the clock beside Undo / Redo, Ctrl+H).
+- **Saving** is automatic, so the bar does not say "Saved". Only while it is not happening, a dot on the project's
+  name: amber ("unsaved": a file outside a project) or red ("failed": the disk is full), its words on the name's hover,
+  and "● " in front of the window title (taskbar, Alt+Tab). Apps set it with AppShell's `saveState` / `saveWords`.
+  A key's own frame keeps only a small note of the change; its full history line is written the frame after (a
+  whole-song Ctrl+D's is ~1 MB). If Rostrum closes in between (a crash), opening the song makes that step again from
+  the note and the top bar says "The last step before Rostrum closed (…) was brought back." (`rostrum_core/pending.py`).
+- **When the top bar runs short**, nothing is cut with "…" and nothing slides under anything. 3D's pages count as
+  fixed room (they leave the exact centre and sit midway between the groups rather than touch them). The rest goes
+  out by priority:
   1. the chips (else each shows only its dot and count);
-  2. the message, **whole, never cut and never dropped**. If it doesn't fit beside "Saved · 14 changes", the count
-     steps back to "Saved" (hover says "14 changes"). A message too long for its slot (a refusal, a failure: it must be
-     read where it happened) takes Search's room and the name's (Search folds to its icon) until the next message;
-     still too long, it is said on two lines. Only a window too narrow even for that leaves it to the hover on
-     "Saved" (and History);
-  3. Search (else its icon);
+  2. the message, **whole, never cut and never dropped**, in a fixed slot of up to 320 px (a usual message coming or
+     going moves nothing). A message too long for its slot (a refusal, a failure: it must be read where it happened)
+     takes Search's room and the name's (Search folds to its icon) until the next message; still too long, it is said
+     on two lines. Only a window too narrow even for that leaves it to the name's hover (and History);
+  3. Search: 200 px from a 1400 px window, else its icon;
   4. the project name beyond its first 160 px (the scene name never shortens).
-- **Never shrunk or hidden:** "Saved" (the door to History), ↶ ↷, Export, ?.
+- **Never shrunk or hidden:** the app mark, Undo / Redo / History, the pages, Export, ?, the window buttons.
 - **Chips** appear only while they have something to say:
   - **agent** ("● Claude is working · 6 changes", then "Claude: 12 changes · Review · Undo all");
   - **Problems** ("2 problems");
-  - a **job** ("Exporting Main.mp4 · 42 %", click to see it or cancel);
-  - an app's own chip (Sound: "Loudness −15.2 · target −14 ●").
+  - a **job** ("Exporting Main.mp4 · 42 %", click to see it or cancel; when done, "Exported Main.mp4 ▾" until the
+    next message, with Play and Show in folder);
+  - an app's own chip (Sound: "● Too quiet", the sentence and the number on hover).
 - Every state is checked by the layout check at 1280, 1366, 1646 and 1920 wide.
 
 **Why (3E).**
@@ -637,11 +639,12 @@ the agent's `inspect_tools`.
 ## 1.19 File actions and recovery
 
 1. **Saving is automatic.**
-   - Every change is saved as it happens. There is no Save, no "unsaved" dot and no "Save changes?" question.
+   - Every change is saved as it happens. There is no Save and no "Save changes?" question; a dot on the name shows
+     only when saving is not happening (a file outside a project, a failure: 1.14).
    - A new project or song is created at once in the Rostrum projects folder, named "Untitled …". Click the name in
      the top bar to rename it.
    - Agents edit the same file, and their changes are saved the same way.
-2. **The ≡ menu**, the same in every app:
+2. **The app menu** (the app's mark ▾ at the top bar's left; it was ≡), the same in every app:
    - New (Ctrl+N), Open… (Ctrl+O), Open recent ▸;
    - Duplicate… (Ctrl+Shift+S: a separate copy; the window stays on the original and says so, with "Open the copy");
    - Save a version (Ctrl+S);
@@ -682,7 +685,8 @@ the agent's `inspect_tools`.
      - where it goes (the project's Renders folder by default);
      - **Export**.
    - Sound's targets (Streaming −14 …) and "+ Another version" live here too.
-   - Export runs as a job in the background. When it is done: "Exported · **Play** · **Show in folder**".
+   - Export runs as a job in the background. When it is done: "Exported · **Play** · **Show in folder**" in the sheet,
+     and the top bar's job chip "Exported Main.mp4 ▾" (Play, Show in folder) until the next message.
    - **Ctrl+Shift+E** exports again with the last settings.
    - An existing file is never replaced without asking: Replace / Keep both / Cancel. This is the one blocking dialog.
 9. **Preferences** (Ctrl+,) are the person's machine choices: devices, folders, pen pressure, models, interface size.
@@ -692,7 +696,7 @@ the agent's `inspect_tools`.
 **Why (3E).**
 - *Effective:* nothing is lost, and nothing is overwritten.
 - *Efficient:* no Save, and export again is one key.
-- *Easy:* "Saved" is always true, and the start screen asks one thing.
+- *Easy:* nothing about saving to watch (the bar speaks only when it is not happening), and the start screen asks one thing.
 - *Rejected:*
   - **A classic Save with "unsaved changes"** (Sound's named-song dialog and 2D main's save flow). Agents edit the same
     file, so there would be two copies of the truth. PLAN: files hidden, saving automatic.

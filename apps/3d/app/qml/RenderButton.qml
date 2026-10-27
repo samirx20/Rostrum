@@ -1,7 +1,7 @@
 import QtQuick
 import RostrumKit
 
-// The header's Render (F12): opens the render sheet (the kit's export sheet in the settings panel's place: what, quality,
+// The header's Render (F12, in its hover): opens the render sheet (the kit's export sheet in the settings panel's place: what, quality,
 // size, save as, the measured time, Render). While a render runs, the button is replaced by what is happening (nothing
 // greyed out); the sheet's own job shows in the kit's job chip.
 Item {
@@ -12,7 +12,7 @@ Item {
     Button {
         id: button
         visible: !parent.running
-        text: "Render"; hint: "F12"; kind: "primary"
+        text: "Render"; kind: "primary"; job: "render"
         onClicked: backend.exporter.openFor()
     }
     Row {
