@@ -95,7 +95,9 @@ def test_drag_bends_shoulder_and_elbow_and_leaves_holds():
     clay = _clay(PJ.find(pear()))
     r = pose_ik.Rig(clay)
     hand = r.find("forearm.R")
-    tip = pose_ik.skin.segment(r.frames()[hand], r.bones[hand])[3:]
+    if "hand.R" not in r.joint:                                          # a short arm: its end is still the hand
+        assert r.find("hand.R") == hand and r.find("RightHand") == hand
+    tip =pose_ik.skin.segment(r.frames()[hand], r.bones[hand])[3:]
     to = [tip[0] + 0.15, tip[1] + 0.3, tip[2] + 0.05]                    # the right hand up and in
     start = time.perf_counter()
     out = pose_ik.solve(clay, PJ.bone_id("c", "forearm.R"), tip, to,

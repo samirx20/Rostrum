@@ -73,7 +73,8 @@ pose.names(target="c", names="humanoid")
   `look_shape` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
   limbs.
 - **Grab by name** (`part="hand.R"`, `"RightHand"` or the bone id `c_hand_R`): the grabbed spot is the end of that
-  bone. `grab` is a world point on the clay as it stands at `at`.
+  bone. A short arm found with no hand of its own still answers to `hand.R` (its last bone: the end is the hand); the
+  same for `foot` on a short leg. `grab` is a world point on the clay as it stands at `at`.
 - **Holds** (`holds`, names or bone ids) replace the clay's own holds for one drag; left out, the clay's holds
   (`pose.hold`) apply. A held joint and every joint that carries it (its parents) never turn, so holding both feet
   keeps the body still and only the arm bends. With no holds the body (root) doesn't turn.
