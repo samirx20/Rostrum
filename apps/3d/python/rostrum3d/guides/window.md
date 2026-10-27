@@ -70,11 +70,13 @@ page) shows only rings, on its head: a drag keys its Turn at the playhead (see B
 Icons only. Hover one to see its name. A small corner mark means it opens a list beside the rail.
 
 - **Select**: click a thing in the viewport or in the scene list.
-- **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Lump: a click drops a ball of clay, on a
-  clay it joins) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull, Flatten, Crease, and Mask on its own
+- **Clay** (Q): make clay and sculpt it. The settings panel shows **Make** (Draw: drag an outline and it puffs into
+  clay, on a clay it joins; Spin: drag half a profile beside the vertical line; Lump: a click drops a ball of clay;
+  Turn into clay, with an exact part or import selected) and, with a clay selected, the **Steps** list (an eye hides a
+  step, double-click names it, a click shows its settings), **Brush** (Add, Carve, Smooth, Pull, Flatten, Crease, and Mask on its own
   row), then Size, Strength, Mirror, Falloff, Spacing and Front faces only. A drag on the clay sculpts (Ctrl: the
-  opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; a drag on empty space turns
-  the view; F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select. The
+  opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
+  the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select. The
   guide `sculpting` has it all.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
@@ -229,7 +231,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | F12 | Render (on the Render page: the shown shot's render, next in the queue) |
 
 **Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
-newest one); then a gizmo drag or a clay stroke still under way is cancelled (the item or the clay goes back, nothing
+newest one); then a gizmo drag, a clay stroke or an outline being drawn (Draw, Spin) still under way is cancelled (the item or the clay goes back, nothing
 is recorded); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
 for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
 Knife's line is dropped; then Edit mesh, Paint or the Clay tool is left; then an animation picked on the timeline goes back to its item;

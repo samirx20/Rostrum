@@ -61,6 +61,8 @@ class ActionPreview3D:
             return self.viewport.mesh_edit.enter()          # Edit mesh is screen state (mesh_edit_qt.py)
         if name in ("focus-point", "focus-item") and getattr(self, "viewport", None) is not None:
             return self.viewport.focus.start(self.selected, name == "focus-item")   # the next click (focus_pick.py)
+        if name == "clay-from" and getattr(self, "viewport", None) is not None:
+            return self.viewport.clay_tool.turnIntoClay()  # clay_tool_qt.py: one clay.from_item, the new clay selected
         if name == "send-2d":
             return self.send_to.send(self.selected, "2d", "")          # send_qt.py: the scene sent to before, or the only one
         if name in ("duplicate", "delete"):

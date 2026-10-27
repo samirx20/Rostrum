@@ -2,9 +2,13 @@
 Q (or the rail's Clay button) turns it on; Q again, V or Esc goes back to Select. It is a tool, like Paint: the panel,
 the timeline and every other control stay where they are; only the settings panel shows the Clay group (ClayPanel.qml).
 
-What a drag does is one choice of tiles: Make (Lump; Draw and Spin come later) or a Brush (the six that shape: Add,
-Carve, Smooth, Pull, Flatten, Crease; then Mask, which protects). The brush is the selected clay's `brush` field (the
-next stroke's settings live on the clay, so an agent reads and sets them too); Lump is screen state.
+What a drag does is one choice of tiles: Make (Draw, chosen when the tool turns on; Spin; Lump) or a Brush (the six
+that shape: Add, Carve, Smooth, Pull, Flatten, Crease; then Mask, which protects). The brush is the selected clay's
+`brush` field (the next stroke's settings live on the clay, so an agent reads and sets them too); Make is screen state.
+- Draw, Spin: a left drag draws an outline (or half a profile) that puffs (or spins) into clay (clay_draw_qt.py,
+  `drawer`); it never turns the view.
+- Turn into clay: a tile shown only while an exact part or import is selected; one `clay.from_item`, the new clay
+  selected (the same as its right-click entry, actions3d.py).
 - Lump: a click on empty ground or on any other thing makes a new clay there (`clay.add`, the ball the size of the
   brush); a click on a clay joins a ball to it (`clay.lump`). A drag turns the view.
 - A brush, a clay selected: a drag on the clay sculpts it (clay_stroke.py), one undo step per stroke; Ctrl held = the
@@ -23,15 +27,22 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QEvent, QObject, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication, QKeySequence
 from rostrum3d import fields as F
+from rostrum3d.clay_fields import SOURCES
 from rostrum_gui.gui_filter import GuiFilter
 
 from . import clay_ring as R
 from .clay_brush_qt import ClayBrush
+from .clay_steps_qt import ClaySteps
+from .clay_draw_qt import ClayDraw
 from .clay_stroke import WORDS, ClayStroke
 
 # The tiles, in panel order: (value, name, one line of what it does). Make, then Brush (the six that shape), then Mask.
 NEW_CLAY = 0.1                  # a new clay's radius (m): hand-sized; its brush starts at a quarter of it (clay.add)
-MAKE = [("lump", "Lump", "Click on a clay to join a ball the size of the brush; elsewhere it starts a new clay.")]
+MAKE = [("draw", "Draw", "Drag an outline: it puffs into clay. Started on a clay, it joins it."),
+        ("spin", "Spin", "Drag half a profile from the line at the pointer: it spins into a round shape."),
+        ("lump", "Lump", "Click on a clay to join a ball the size of the brush; elsewhere it starts a new clay.")]
+TURN = ("turn", "Turn into clay", "A clay copy of the selected part to sculpt; the part is hidden, not deleted.")
+TURNS = SOURCES                            # what Turn into clay takes: exact parts (shapes, combines, an import's parts), imports
 BRUSHES = [("add", "Add", "Builds clay up under the brush. Hold Ctrl to carve."),
            ("carve", "Carve", "Takes clay away. Hold Ctrl to add."),
            ("smooth", "Smooth", "Evens bumps out. Hold Shift with any brush to smooth."),
@@ -115,6 +126,8 @@ class ClayTool(ClayStroke, QObject):
         self._keys = SizeKey(self)
         self._stroke_reset()
         self.brush = ClayBrush(self)
+        self.drawer = ClayDraw(self)
+        self.steps = ClaySteps(self)                                         # the Steps list and Puff (ClaySteps.qml)
         self.sculpted.connect(self._on_sculpted)
         self.hovered.connect(self._on_hover)
         self.lumped.connect(self._on_lump)
@@ -128,13 +141,17 @@ class ClayTool(ClayStroke, QObject):
     on = Property(bool, lambda s: s._on, notify=changed)
     clayId = Property(str, lambda s: s._clay_id(), notify=changed)
     itemName = Property(str, lambda s: s.b.label_of(s._item()) if s._item() else "", notify=changed)
-    tool = Property(str, lambda s: s._tool(), notify=changed)           # "lump" | a brush (clay_fields BRUSHES)
-    make = Property("QVariantList", lambda s: s._tiles(MAKE), notify=changed)
+    tool = Property(str, lambda s: s._tool(), notify=changed)           # "draw" | "spin" | "lump" | a brush
+    make = Property("QVariantList", lambda s: s._tiles(MAKE) + s._turn_tile(), notify=changed)
     brushes = Property("QVariantList", lambda s: s._tiles(BRUSHES) if s._item() else [], notify=changed)
     masks = Property("QVariantList", lambda s: s._tiles(MASKS) if s._item() else [], notify=changed)
     # F held: the pointer's moves size the brush (ClayStrokes sends them to sizeMove) and no stroke starts
     sizing = Property(bool, lambda s: s._sizing, notify=sizingChanged)
     brushObj = Property(QObject, lambda s: s.brush, constant=True)
+    drawObj = Property(QObject, lambda s: s.drawer, constant=True)        # Draw and Spin (ClayDraw.qml)
+    stepsObj = Property(QObject, lambda s: s.steps, constant=True)        # Steps list, Puff (ClaySteps.qml)
+    # a left drag on the viewport draws (Draw, Spin): never turns the view
+    draws = Property(bool, lambda s: s._on and s._make in ("draw", "spin"), notify=changed)
     # a left drag on the viewport goes to the brush (else it falls through: Lump's click, the view's turn)
     sculpts = Property(bool, lambda s: s._on and s._make == "" and s._item() is not None, notify=changed)
     ring = Property("QVariantList", lambda s: s._ring, notify=ringChanged)
@@ -182,6 +199,27 @@ class ClayTool(ClayStroke, QObject):
         now = self._tool()
         return [{"value": v, "label": n, "help": h, "on": v == now} for v, n, h in table]
 
+    def _turnable(self) -> list[str]:
+        doc = self.b.doc
+        return [i for i in self.b.selection if doc.has(i) and doc.item(i).get("type") in TURNS]
+
+    def _turn_tile(self):
+        return [{"value": TURN[0], "label": TURN[1], "help": TURN[2], "on": False}] if self._turnable() else []
+
+    @Slot()
+    def turnIntoClay(self):
+        """The selected exact parts and imports, each a clay copy (the originals hidden): one change; the new clay
+        selected, ready for the brushes."""
+        ids = self._turnable()
+        if not ids:
+            return
+        before = set(self._all_clays())
+        label = f"Turn {self.b.label_of(self.b.doc.item(ids[0]))} into clay" if len(ids) == 1 else "Turn into clay"
+        if self.b._guard(lambda: self.b._apply([{"op": "clay.from_item", "target": ids, "args": {}}], label)):
+            new = [c for c in self._all_clays() if c not in before]
+            if new:
+                self.b.select(new[0])
+
     def _refresh(self, *_):
         if self._item() is None and self._make == "":
             self._ring = []
@@ -207,7 +245,7 @@ class ClayTool(ClayStroke, QObject):
         self.b.add.disarm()
         self._on = True
         self._keys.watch_windows(QGuiApplication.instance())     # F for the size drag (each window once)
-        self._make = "" if self._item() is not None else "lump"      # nothing to sculpt yet: make one first
+        self._make = "draw"                                          # SPEC § 1 0:00: Draw is chosen
         self._rows_again()
         self._refresh()
         self.v.redraw()                                  # the sculpted clay's outline goes (sculpting())
@@ -217,6 +255,8 @@ class ClayTool(ClayStroke, QObject):
         if self._on:
             self.sizeCancel()
             self.cancel()
+            self.drawer.cancel()
+            self.drawer.unhover()
             self._on, self._ring = False, []
             self._rows_again()
             self.changed.emit()
@@ -229,8 +269,12 @@ class ClayTool(ClayStroke, QObject):
 
     @Slot(str)
     def choose(self, value):
-        """A tile: Lump, or a brush (the clay's `brush`, one undo step, as an agent's clay.set)."""
+        """A tile: Draw, Spin, Lump, Turn into clay, or a brush (the clay's `brush`, one undo step, as an agent's
+        clay.set)."""
+        if value == TURN[0]:
+            return self.turnIntoClay()
         if value in {v for v, *_ in MAKE}:
+            self.drawer.unhover()
             self._make = value
             self._ring = []
             self.ringChanged.emit()
