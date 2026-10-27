@@ -63,6 +63,8 @@ pub struct Ending {
     /// Still sounding `RING_MAX` s past the length: cut there.
     pub ran_out: bool,
     pub faded: bool,
+    /// The length was given (else it is the last note's end, and the song simply rings out from there).
+    pub given: bool,
 }
 
 fn peak_db(mix: &Mix, a: usize, b: usize) -> Result<f64, String> {
@@ -72,7 +74,7 @@ fn peak_db(mix: &Mix, a: usize, b: usize) -> Result<f64, String> {
 
 /// After the render: the level at the length; with ring-out, the file cut where the ring has died away (its measures
 /// and series with it; nothing past there is above -60 dBFS, so the loudness and peaks are the file's).
-pub fn finish(mix: &mut Mix, song: usize, ring: bool, fade_out: usize, held: usize, sr: f64) -> Result<Ending, String> {
+pub fn finish(mix: &mut Mix, song: usize, ring: bool, fade_out: usize, held: usize, given: bool, sr: f64) -> Result<Ending, String> {
     let total = mix.frames();
     let block = (0.01 * sr) as usize;
     let before = song.min(total).saturating_sub(fade_out);
@@ -90,7 +92,7 @@ pub fn finish(mix: &mut Mix, song: usize, ring: bool, fade_out: usize, held: usi
         trim(mix, end, sr);
     }
     let ran_out = ring && total > song && end + block >= total;
-    Ok(Ending { length: song as f64 / sr, end: end as f64 / sr, ring, level_db, held, ran_out, faded: fade_out as f64 >= FADE_S * sr })
+    Ok(Ending { length: song as f64 / sr, end: end as f64 / sr, ring, level_db, held, ran_out, faded: fade_out as f64 >= FADE_S * sr, given })
 }
 
 /// The file and every series the answer carries, cut to `end` frames.
@@ -131,8 +133,11 @@ impl Ending {
             out.push(format!("{} note(s) or clip(s) are held past the song's end ({:.2} s): they are let go there{}.", self.held, self.length,
                              if self.ring { " and ring out" } else { " and cut off" }));
         }
-        if self.ran_out {
-            out.push(format!("The last sounds still ring {RING_MAX:.0} s past the song's length ({:.2} s): the song is cut there, at {:.2} s. End the music earlier or shorten its last notes.", self.length, self.end));
+        if self.ran_out && !self.given {
+            out.push(format!("The last sounds still ring {RING_MAX:.0} s after the last note ends ({:.2} s): the song fades out there, ending at {:.2} s. Shorten or choke the last notes, or give the song a length.", self.length, self.end));
+        } else if !self.given {
+        } else if self.ran_out {
+            out.push(format!("The last sounds still ring {RING_MAX:.0} s past the song's length ({:.2} s): the song fades out there, ending at {:.2} s. End the music earlier or shorten its last notes.", self.length, self.end));
         } else if self.ring && self.end > self.length + 0.05 {
             out.push(format!("The song's length is {:.2} s; its last sounds ring out until {:.2} s, so the song ends there. For a hard stop at {:.2} s, turn Ring out off (ringOut: false).", self.length, self.end, self.length));
         } else if self.cut() {

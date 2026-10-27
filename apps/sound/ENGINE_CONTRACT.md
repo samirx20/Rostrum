@@ -41,7 +41,7 @@ The engine's code for this page lives in `engine/src/contract/`. Anything not on
 |---|---|---|---|
 | `contract` | string | required | `"rostrum-sound-schedule/1"` |
 | `sampleRate` | 22050 … 192000 | 48000 | The mix's rate |
-| `length` | time | end of the last sound + 2 s | Where the music stops being played: nothing starting at or after it is heard, and a note held past it is let go there (with `ringOut`; without, it is cut) |
+| `length` | time | the last note's end, ringing out | Where the music stops being played: nothing starting at or after it is heard, and a note held past it is let go there (with `ringOut`; without, it is cut). Not given: the song rings out from its last note's end until it has died away (−60 dBFS), up to 6 s; what still rings then fades out over its last 1.5 s |
 | `ringOut` | bool | false | With a `length`: what still rings there (releases, decays, reverb) plays on until it falls under −60 dBFS, at most 6 s, and the file ends there; recorded clips stop at the length with a 50 ms fade. The render's `ending` and `warnings` say where it ended (`engine/src/contract/ending.rs`, added 2026-10-25) |
 | `tempo` | number or list | 120 | A number (bpm), or tempo segments `[{"beat": b, "bpm": x}, …]` sorted by beat, the first at beat 0; tempo is constant inside a segment, or with `"ramp": true` glides evenly per beat to the next segment's bpm (exact: seconds = 60/k·ln(bpm/bpm₀), k bpm per beat; not on the last segment) |
 | `meter` | list | 4/4 throughout | The bar map the performance accents by: `[{"at": beat, "bar": beats in a bar, "beat": a main beat in beats}, …]`, the first at beat 0, in beat order (3/4: bar 3, beat 1; 6/8: bar 3, beat 1.5) |

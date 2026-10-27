@@ -22,7 +22,7 @@ pub struct Compiled {
     /// The distinct credit lines of the CC-BY instruments the tracks play (every export carries them).
     pub credits: Vec<&'static str>,
     /// A given length (ending.rs): its frame, whether the song rings out past it, and the notes and clips held past it.
-    pub ending: Option<(usize, bool, usize)>,
+    pub ending: Option<(usize, bool, usize, bool)>,
 }
 
 pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
@@ -63,10 +63,15 @@ pub fn compile(v: &Value, at: &str) -> Result<Compiled, Error> {
         None => return Err(Error::new("BAD_ARGUMENT", &tracks_at, "the schedule", "has no sound and no length").hint("Add notes, hits or clips, or give a length.")),
     };
     o.put("length", json!(seconds));
-    let song = (seconds * sr as f64).round() as usize;
-    let ending = length_given.map(|_| (song, ring, tracks.iter_mut().map(|t| ending::hold_to(&mut t.voices, &mut t.clips, song, sr as f64, ring)).sum()));
+    // With no length given the song rings out from its last note until the sound has died away (ending.rs), never a
+    // fixed 2 s after it: a ride cymbal or a held chord was cut at -17 dBFS (production round, the jazz trio).
+    let given = length_given.is_some();
+    let song = ((if given { seconds } else { end }) * sr as f64).round() as usize;
+    let ring = ring || !given;
+    let held = if given { tracks.iter_mut().map(|t| ending::hold_to(&mut t.voices, &mut t.clips, song, sr as f64, ring)).sum() } else { 0 };
+    let ending = Some((song, ring, held, given));
     // A song that rings out renders on past its length (the file is cut where the ring dies away: ending.rs).
-    let total = if ring && length_given.is_some() { song + (ending::RING_MAX * sr as f64).round() as usize } else { song };
+    let total = if ring { song + (ending::RING_MAX * sr as f64).round() as usize } else { song };
 
     let master_at = o.at("master");
     let empty = json!({});
