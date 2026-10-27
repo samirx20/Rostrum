@@ -69,6 +69,7 @@ class Catchup {
   void wait_ready();                   // until first() has run; rethrows what it or a dab threw
   void push(const Step* dabs, size_t n);
   void finish();                       // until every dab pushed is applied; joins; rethrows
+  void drain();                        // until every dab pushed so far is applied (the thread goes on); rethrows
   void cancel();                       // the dabs not applied yet are dropped; joins (never throws)
   // one dab on the clay at the wide pace, a running average (0: none yet; the first dab runs wide). The event budget
   // (Store::sculpt_compute) reads it: what the clay can catch up with when it needs to
@@ -89,7 +90,8 @@ class Catchup {
   mutable std::mutex m_;
   std::condition_variable work_, ready_;
   std::deque<Step> q_;
-  bool isReady_ = false, stop_ = false, cancel_ = false;
+  bool isReady_ = false, stop_ = false, cancel_ = false, busy_ = false;
+  std::condition_variable idle_;
   std::exception_ptr err_;
   double wideMs_ = 0, narrowMs_ = 0;
   int narrowDabs_ = 0;

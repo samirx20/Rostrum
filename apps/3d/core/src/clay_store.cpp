@@ -831,6 +831,9 @@ void Store::sculpt_cancel() { p_->cancel_live(); }
 
 ClayInfo Store::info(const std::string& item) const {
   Entry& e = p_->entry(item, "clay_info.item");
+  // 3d-cl4: mid-stroke the clay catches up behind the preview (narrow while the brush moves): it is hashed once it
+  // has every dab so far, so the hash is the clay the stroke has made, whatever the pace
+  if (p_->live && p_->live->item == item && p_->live->fine) p_->live->fine->drain();
   ClayInfo i;
   char hex[17];
   std::snprintf(hex, sizeof hex, "%016llx", static_cast<unsigned long long>(e.vol->hash()));

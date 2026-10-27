@@ -283,6 +283,7 @@ void Catchup::loop() {
       if (cancel_ || err_ || q_.empty()) return;  // cancelled, failed, or finished with every dab applied
       s = q_.front();
       q_.pop_front();
+      busy_ = true;
       // narrow while the brush moves and the clay keeps up (the dab just taken counts as waiting). The first dab runs
       // wide: the wide pace is what the waiting dabs and the event budget are measured in
       const double rest = ms_since(lastPush_);
@@ -292,16 +293,24 @@ void Catchup::loop() {
     try {
       (wide ? wide_ : narrow_).execute([&] { vol_.dab(s); });
     } catch (...) {
-      std::lock_guard<std::mutex> lk(m_);
-      err_ = std::current_exception();
-      q_.clear();
+      {
+        std::lock_guard<std::mutex> lk(m_);
+        err_ = std::current_exception();
+        q_.clear();
+        busy_ = false;
+      }
+      idle_.notify_all();
       return;
     }
     const double ms = ms_since(t0);
-    std::lock_guard<std::mutex> lk(m_);
-    double& avg = wide ? wideMs_ : narrowMs_;
-    avg = avg > 0 ? 0.8 * avg + 0.2 * ms : ms;
-    if (!wide) ++narrowDabs_;
+    {
+      std::lock_guard<std::mutex> lk(m_);
+      double& avg = wide ? wideMs_ : narrowMs_;
+      avg = avg > 0 ? 0.8 * avg + 0.2 * ms : ms;
+      if (!wide) ++narrowDabs_;
+      busy_ = false;
+    }
+    idle_.notify_all();
   }
 }
 
@@ -320,6 +329,15 @@ void Catchup::push(const Step* dabs, size_t n) {
     lastPush_ = std::chrono::steady_clock::now();
   }
   work_.notify_one();
+}
+
+void Catchup::drain() {
+  {
+    std::unique_lock<std::mutex> lk(m_);
+    lastPush_ = std::chrono::steady_clock::time_point{};  // nothing moving: what is left runs wide
+    idle_.wait(lk, [&] { return err_ || cancel_ || (q_.empty() && !busy_); });
+  }
+  if (err_) std::rethrow_exception(err_);
 }
 
 void Catchup::finish() {
