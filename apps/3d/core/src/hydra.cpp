@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <set>
 #include <thread>
 
 #include "clay_whole.h"
@@ -212,7 +213,9 @@ Hydra::Engine& Hydra::mask_engine() {
   if (it != engines_.end()) return *it->second;
   auto e = make_engine("storm");
   e->show_sky(false);
-  e->use_aovs({HdAovTokens->primId.GetString()});  // colour stays first: the masks are still presented as before
+  // colour stays first: the masks are still presented as before; depth is read from Storm's own output (ids()): with
+  // extra outputs the framebuffer's depth is not the one Storm drew
+  e->use_aovs({HdAovTokens->primId.GetString(), HdAovTokens->depth.GetString()});
   return *(engines_["mask:storm"] = std::move(e));
 }
 
@@ -495,6 +498,9 @@ IdPicture Hydra::ids(const GfFrustum& f, int frame, int w, int h, const SdfPathV
   params.enableLighting = false;
   params.colorCorrectionMode = TfToken("disabled");
   params.clearColor = GfVec4f(0, 0, 0, 0);
+  // the id picture without the scene's materials: a see-through one (glass) makes Storm's see-through pass end with a
+  // full-screen triangle that leaves every pixel's prim id the scene's first; drawn plain, glass is its front surface
+  params.enableSceneMaterials = !prim_ids;
   SdfPathVector roots;
   roots_without(stage_->GetPseudoRoot(), hide, &roots);
   if (!sees_fb_ || sees_fb_->width() != w || sees_fb_->height() != h) {
@@ -509,14 +515,24 @@ IdPicture Hydra::ids(const GfFrustum& f, int frame, int w, int h, const SdfPathV
   IdPicture out;
   out.width = w;
   out.height = h;
-  const std::vector<float> gl_rows = sees_fb_->read_depth();  // bottom row first
-  out.depth.resize(gl_rows.size());
-  for (int y = 0; y < h; ++y)
-    std::copy_n(gl_rows.begin() + size_t(h - 1 - y) * w, w, out.depth.begin() + size_t(y) * w);
+  std::vector<std::string> names{HdAovTokens->depth.GetString()};
+  if (prim_ids) names.push_back(HdAovTokens->primId.GetString());
+  Aovs read = read_aovs(e, names, w, h, [&](int id) { return e.rprim(id); });   // top row first
+  out.depth = std::move(read.planes[HdAovTokens->depth.GetString()]);
+  if (out.depth.size() != size_t(w) * h) throw Error("ids: Storm's depth output is not one value a pixel");
   if (prim_ids) {
-    Aovs read = read_aovs(e, {HdAovTokens->primId.GetString()}, w, h, [&](int id) { return e.rprim(id); });
     out.primIds = std::move(read.primIds);
-    out.prims = std::move(read.prims);
+    // (drawn without the scene's materials above: a see-through one would end Storm's pass with a full-screen triangle
+    // that leaves every pixel's id the scene's first prim)
+    std::set<int> shown;
+    for (size_t i = 0, last = size_t(-1); i < out.primIds.size(); ++i) {
+      const int id = out.primIds[i];
+      if (id >= 0 && size_t(id) != last) {  // runs of one id: one look-up each
+        shown.insert(id);
+        last = size_t(id);
+      }
+    }
+    for (int id : shown) out.prims[id] = read.prims[id];
     throw_usd_errors(mark, "ids (prim ids, frame " + std::to_string(frame) + ")");
   }
   return out;

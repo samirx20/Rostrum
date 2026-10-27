@@ -36,8 +36,20 @@ JsObject Core::texels(const JsObject& o) {
   const std::string file = a.str("file");
   clay_->pose_frame(f);  // a skinned clay is seen as drawn at this frame
   const GfFrustum fr = frustum_of(stage_, vc, f, w, h);
-  const IdPicture pic = hydra().ids(fr, f, w, h, {}, true);
+  // see-through meshes (glass) are left out of Storm's id pass, which they would spoil (Hydra::ids), and laid back
+  // over it here, each where it is nearer than what Storm drew
+  const SdfPathVector glass;  // drawn plain (Hydra::ids without materials): none left out now; see_through_meshes kept
+  IdPicture pic = hydra().ids(fr, f, w, h, glass, true);
   const PixelRays rays(fr, w, h);
+  const size_t n = size_t(w) * h;
+  std::vector<double> drawn(n, -1);  // metres from the eye to what each pixel shows, -1 = nothing
+  for (size_t i = 0; i < n; ++i)
+    if (pic.depth[i] < 1.f) drawn[i] = rays.distance(int(i % w), int(i / w), pic.depth[i]);
+  constexpr int kGlassIds = 1 << 30;  // above any Hydra prim id
+  for (size_t k = 0; k < glass.size(); ++k) {
+    pic.prims[kGlassIds + int(k)] = glass[k];
+    claim_pixels(stage_, glass[k], f, rays, kGlassIds + int(k), &pic.primIds, &drawn);
+  }
 
   // each prim id seen -> its item (anything a copies item draws is that item: no st) and its pixels
   struct Seen {
@@ -57,12 +69,11 @@ JsObject Core::texels(const JsObject& o) {
     if (!s.copy) s.item = item_of(stage_, path);
     seen[id] = std::move(s);
   }
-  const size_t n = size_t(w) * h;
   for (size_t i = 0; i < n; ++i)
     if (pic.primIds[i] >= 0) seen[pic.primIds[i]].pixels.push_back(int(i));
   std::map<std::string, int> index;  // item id -> its place in `items` (by name)
   for (const auto& [id, s] : seen)
-    if (!s.item.empty()) index[s.item] = 0;
+    if (!s.item.empty() && !s.pixels.empty()) index[s.item] = 0;
   JsArray items;
   for (auto& [item, at] : index) {
     at = int(items.size());
@@ -72,10 +83,8 @@ JsObject Core::texels(const JsObject& o) {
   // u, v, item, distance a pixel, rows top first; the distance Storm drew, then the surface's own where it has st
   const float nan = std::numeric_limits<float>::quiet_NaN();
   std::vector<float> out(n * 4);
-  std::vector<double> drawn(n, -1);
   for (size_t i = 0; i < n; ++i) {
     const int id = pic.primIds[i];
-    if (pic.depth[i] < 1.f) drawn[i] = rays.distance(int(i % w), int(i / w), pic.depth[i]);
     const auto s = id >= 0 ? seen.find(id) : seen.end();
     out[4 * i] = nan;
     out[4 * i + 1] = nan;
@@ -84,7 +93,7 @@ JsObject Core::texels(const JsObject& o) {
   }
   const auto tu = Clock::now();
   for (const auto& [id, s] : seen)
-    if (!s.copy && !s.item.empty()) mesh_texels(stage_, pic.prims.at(id), f, rays, pic.primIds, id, s.pixels, drawn, &out);
+    if (!s.copy && !s.item.empty() && !s.pixels.empty()) mesh_texels(stage_, pic.prims.at(id), f, rays, pic.primIds, id, s.pixels, drawn, &out);
   const double uv_ms = ms_since(tu);
 
   std::ofstream fh(std::filesystem::u8path(file), std::ios::binary | std::ios::trunc);
