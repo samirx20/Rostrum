@@ -155,6 +155,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   for (int f = first; f <= last; ++f) {
     const auto tf = Clock::now();
     clay_->pose_frame(f);  // CL5: each skinned clay posed for this frame
+    const double weldMs = renderer == "cycles" ? clay_->whole_for_cycles() : 0.0;  // CL6: one closed mesh per clay
     Aovs lit, unshadowed;
     Picture pic = hy.draw(renderer, cam, f, w, h, s, mem_, &lit);
     if (needs_unshadowed(passes)) {  // the Shadow pass: the same frame again with no shadows
@@ -163,6 +164,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
       hy.draw(renderer, cam, f, w, h, no_shadows, mem_, &unshadowed);
     }
     JsObject fo{{"frame", JsValue(f)}};
+    if (weldMs > 0) fo["clayWeldMs"] = JsValue(r1(weldMs));
     if (!exr.empty()) {
       const std::vector<ExrLayer> layers = pass_layers(passes, lit, unshadowed, stage_);
       check_beauty(pic, layers, f);
@@ -218,6 +220,7 @@ JsObject Core::view(const JsObject& o) {
   check_frame(f, "view.frame");
   if (w < 16 || h < 16 || w > 4096 || h > 4096) throw Error("view.width/height: each must be 16..4096");
   clay_->pose_frame(f);  // CL5: each skinned clay posed for the frame shown (a clay_pose's moves while they hold)
+  if (final_look) clay_->whole_for_cycles();  // CL6: Cycles draws each clay as one closed mesh (clay_whole.h)
   ViewLook look;
   look.studio = a.num("studio", 1.0);
   if (look.studio < 0 || look.studio > 4) throw Error("view.studio: must be 0..4");

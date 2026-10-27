@@ -1,6 +1,7 @@
 // Clay: a clay bent by its bones (CL5, ENGINE_CONTRACT.md § 2 clay `skin`). Each block's REST surface is kept here
 // with its automatic weights (skin.h, the mesh's rule: the 4 nearest bones by 1 / distance⁴), and its points and
-// normals posed by the clay's current bone moves (linear blend). The block prims (clay_usd.h) are written with the
+// normals posed by the clay's current bone moves (dual-quaternion blend, dual_quat.h; linear when a move isn't a
+// pure turn and shift, or with ROSTRUM3D_CLAY_SKIN_LINEAR=1). The block prims (clay_usd.h) are written with the
 // posed surface; Blocks::get still gives the rest one, so a painted clay's unfolding never depends on the pose.
 // A new pose re-poses only the blocks one of whose bones moved, never re-meshes. The posed triangles answer rays
 // (a stroke on a posed clay, cast()) from memory: nothing here reads or writes the stage.
@@ -20,6 +21,7 @@
 #include <pxr/base/vt/types.h>
 
 #include "clay_mesh.h"
+#include "dual_quat.h"
 #include "skin.h"
 
 namespace r3d::clay {
@@ -42,7 +44,7 @@ struct PosedHit {
   double t = 0;              // along the ray (its own units)
   double bary[3] = {0, 0, 0};
   PXR_NS::GfVec3d point;     // posed, clay space
-  Affine blend;              // Σ wᵢ Mᵢ there (the blended bone move, barycentric over the triangle's corners)
+  Affine blend;              // the blended bone move there (as drawn: weights barycentric over the corners)
 };
 
 class Skinning {
@@ -95,6 +97,8 @@ class Skinning {
   std::vector<BoneMove> moves_;   // what the blocks are posed with
   std::vector<Affine> aff_;       // the same, as Affine
   std::vector<std::array<double, 9>> nmat_;  // and each move's normal matrix (m⁻ᵀ, row by row)
+  std::vector<DualQuat> dq_;      // and as dual quaternions (CL6), when every move is rigid
+  bool dual_ = false;             // blend the moves as dual quaternions (every move rigid, not switched off)
   bool posed_ = false;
   std::map<BlockKey, Block> blocks_;
 };

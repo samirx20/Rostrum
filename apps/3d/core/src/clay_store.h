@@ -110,6 +110,9 @@ class Store {
   // start, clamped; a clay_pose's moves instead until the next scene): before a view, render or pick draws or picks
   // it, and before a stroke's rays. Only the blocks whose bones moved are written. Writes the stage. How many.
   int pose_frame(int frame);
+  // CL6: before Cycles draws (a cycles render's frame, the Final look's view, after pose_frame): every clay whose
+  // blocks changed since gets its welded whole again (clay_whole.h); ms spent (0: nothing to weld). Writes the stage.
+  double whole_for_cycles();
   // clay_pose: the clay drawn with these bone moves until the next sync (or the next pose). Loud when the clay has no
   // bones or the count differs. Writes the stage.
   PoseReply pose(const std::string& item, const std::vector<BoneMove>& moves);

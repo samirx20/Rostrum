@@ -3,11 +3,21 @@ only values of the one material type (material_fields.MATERIAL); a new material 
 and is then an ordinary material, edited field by field. Colour is neutral grey unless it is part of the substance
 (wood is brown; a screen's base is dark because it is glass over a black panel).
 
-The picker shows them in this order. "Painted (ramp)" and "Ink & flat" (SPEC §6.1) wait for the stylized blocks.
+The picker shows them in this order, the clay work's four first (SPEC §5): a new clay starts as Clay. Skin and wax
+carry light under the surface; its distances are measured ones (Jensen et al. 2001, the diffuse mean free path per
+colour: skin about 3.7 / 1.4 / 0.7 mm for red / green / blue, marble 8.5 / 5.6 / 4.0 mm), written as the farthest
+distance (`subsurfaceRadius`) and the colour whose channels are the others' share of it (`subsurfaceColor`, sRGB).
+"Painted (ramp)" and "Ink & flat" (SPEC §6.1) wait for the stylized blocks.
 """
 from __future__ import annotations
 
 STARTS: dict[str, dict] = {
+    "clay": {"label": "Clay", "values": {"baseColor": "#a6a6a6", "roughness": 0.55}},
+    "skin": {"label": "Skin", "values": {"baseColor": "#c49a84", "roughness": 0.45, "ior": 1.4, "subsurface": 1,
+                                         "subsurfaceColor": "#ffa477", "subsurfaceRadius": 3.7}},
+    "wax": {"label": "Wax / soap", "values": {"baseColor": "#e8e2d4", "roughness": 0.3, "ior": 1.45, "subsurface": 1,
+                                              "subsurfaceColor": "#ffe4cc", "subsurfaceRadius": 8}},
+    "stone": {"label": "Stone", "values": {"baseColor": "#8a8780", "roughness": 0.8}},
     "matte plastic": {"label": "Matte plastic", "values": {"baseColor": "#b3b3b3", "roughness": 0.7}},
     "glossy plastic": {"label": "Glossy plastic", "values": {"baseColor": "#b3b3b3", "roughness": 0.15}},
     "rubber": {"label": "Rubber", "values": {"baseColor": "#3a3a3a", "roughness": 0.85, "sheen": 0.15,
@@ -31,9 +41,10 @@ STARTS: dict[str, dict] = {
 
 
 def start_key(name: str) -> str | None:
-    """A start's key from its key or label, any case ("Brushed metal", "brushed metal"); None when there is none."""
+    """A start's key from its key or label, any case ("Brushed metal", "brushed metal", "Wax / soap", "wax"); None
+    when there is none."""
     n = str(name).strip().lower()
-    return n if n in STARTS else None
+    return n if n in STARTS else next((k for k, s in STARTS.items() if s["label"].lower() == n), None)
 
 
 def start_values(key: str, given: dict) -> dict:

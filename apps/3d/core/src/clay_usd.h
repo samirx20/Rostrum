@@ -60,6 +60,12 @@ class Blocks {
            double* usdMs = nullptr);
   const Skinning* skinning(const PXR_NS::SdfPath& clay) const;  // null: no skin
 
+  // CL6, the Cycles whole (clay_whole.h): true when a block of the clay was written, emptied, posed or given / lost
+  // its st since its whole was last made. make_whole() welds `have`'s blocks as drawn (posed too) into the clay's
+  // `whole` / `whole_painted` prims. Between begin() and end(); throws r3d::Error naming `where`.
+  bool whole_stale(const PXR_NS::SdfPath& clay) const;
+  void make_whole(const PXR_NS::SdfPath& clay, const std::set<BlockKey>& have, const std::string& where);
+
  private:
   struct Impl;
   Impl* p_;

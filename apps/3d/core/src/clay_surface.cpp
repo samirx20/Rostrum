@@ -66,12 +66,8 @@ bool read_file(const std::string& file, const std::vector<SurfaceBlock>& blocks,
   return uv.empty() || bool(in.read(reinterpret_cast<char*>(uv.data()), std::streamsize(4 * uv.size())));
 }
 
-struct Welded {
-  std::vector<float> points, normals;  // xyz each
-  std::vector<int32_t> tris;           // 3 per triangle, into points
-};
+}  // namespace
 
-// the blocks' points joined where they sit at exactly the same place (a seam's two sides are bit-identical)
 Welded weld(const std::vector<SurfaceBlock>& blocks, uint64_t tris, const std::string& where) {
   struct Key {
     uint32_t x, y, z;
@@ -117,6 +113,7 @@ Welded weld(const std::vector<SurfaceBlock>& blocks, uint64_t tris, const std::s
   return w;
 }
 
+namespace {
 void write_file(const std::string& file, int size, const Welded& w, const std::vector<float>& uv,
                 const std::vector<SurfaceBlock>& blocks, const std::string& where) {
   namespace fs = std::filesystem;
