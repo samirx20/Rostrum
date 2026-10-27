@@ -153,7 +153,7 @@ def main():
         chk(tint is not None, "the coverage tint button is on screen")
         if tint is not None:
             W.click(win, tint)
-        W.pump(20, lambda: percent(v.paint.coverage.line) is not None, "the coverage line")
+        W.pump(40, lambda: percent(v.paint.coverage.line) is not None and "tinting" not in v.paint.coverage.line, "the coverage line")
         line0 = v.paint.coverage.line
         REPORT["coverageBefore"] = line0
         chk(percent(line0) is not None and "Hero 01" in line0, f"the Layers header says what Hero 01 sees ({line0!r})")
@@ -182,6 +182,7 @@ def main():
         REPORT["timesMs"]["view-stroke-doc-change"] = round((time.perf_counter() - t_up) * 1000)
         ms = settle(v, t_up, what="the view stroke's picture")
         REPORT["timesMs"]["view-stroke-picture-settled"] = round(ms)
+        REPORT["perMoveGuiMsInOrder"] = [round(x, 2) for x in per_move]
         per_move.sort()
         REPORT["perMoveGuiMs"] = {"median": round(per_move[len(per_move) // 2], 2), "max": round(per_move[-1], 2),
                                   "moves": len(per_move)}
@@ -193,7 +194,7 @@ def main():
         chk(len(on_case) == 1 and len(on_lid) == 1, f"the stroke is on the case and on the lid ({len(on_case)}, {len(on_lid)})")
         if on_case and on_lid:
             chk(on_case[0]["viewPoints"] == on_lid[0]["viewPoints"], "both keep it as drawn (the same points)")
-        W.pump(20, lambda: (percent(v.paint.coverage.line) or 0) > (percent(line0) or 0), "the percent to rise")
+        W.pump(40, lambda: (percent(v.paint.coverage.line) or 0) > (percent(line0) or 0) and "tinting" not in v.paint.coverage.line, "the percent to rise")
         line1 = v.paint.coverage.line
         REPORT["coverageAfter"] = line1
         chk((percent(line1) or 0) > (percent(line0) or 0), f"the percent changes as you paint ({line0!r} -> {line1!r})")

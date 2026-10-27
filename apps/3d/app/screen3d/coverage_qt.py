@@ -62,6 +62,8 @@ class Coverage(QObject):
     def _measure(self):
         if not self.p._on or self.v._size is None:
             return
+        if not self.p._up:                       # while a stroke is drawn: after it
+            return self._timer.start()
         if self._busy:
             self._again = True
             return
@@ -96,6 +98,9 @@ class Coverage(QObject):
     def _on_measured(self, answer):
         self._busy = False
         scene, percent, tinted, seen = answer
+        if not self.p._up:                       # a stroke is being drawn: nothing changes under the pointer; the
+            self._timer.start()                  # measure is cached, so it is taken again (at once) after the stroke
+            return
         if isinstance(percent, str):
             self.b.fail_line(f"Error: coverage: {percent}")
         else:
