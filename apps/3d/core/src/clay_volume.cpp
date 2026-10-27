@@ -4,6 +4,8 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <mutex>
 
@@ -121,9 +123,19 @@ StepTiming Volume::dab(const Step& s) { return run(&s, 1); }
 StepTiming Volume::end_stroke(const std::vector<Step>& dabs) {
   const auto t0 = std::chrono::steady_clock::now();
   live_.on = false;
-  put_back(live_);  // the clay as it was before the stroke (the record, if one is on, already holds these chunks)
+  // 3d-v3: the live clay IS the stroke applied as one unit (units() runs the same dabs one by one from the same start,
+  // CL2b), so letting go keeps it: no put-back and no second pass over every dab (the release pause), and no block
+  // is re-meshed. ROSTRUM3D_CLAY_VERIFY=1 still does both and says on stderr when the two clays differ.
+  static const bool verify = std::getenv("ROSTRUM3D_CLAY_VERIFY") != nullptr;
+  StepTiming t;
+  if (verify) {
+    const uint64_t liveHash = hash();
+    put_back(live_);  // the clay as it was before the stroke (the record, if one is on, already holds these chunks)
+    live_.clear();
+    t = apply_stroke(dabs);
+    if (hash() != liveHash) std::fprintf(stderr, "clay: live stroke != replay (%zu dabs)\n", dabs.size());
+  }
   live_.clear();
-  StepTiming t = apply_stroke(dabs);
   t.ms = ms_since(t0);
   return t;
 }
@@ -149,7 +161,6 @@ void Volume::keep(const Coord& o) {
 void Volume::put_back(const ChunkRecord& rec) {
   Tree& tree = grid_->tree();
   Tree& maskTree = mask_->tree();
-  int lo[3] = {1 << 30, 1 << 30, 1 << 30}, hi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
   for (const ChunkRecord::Chunk& c : rec.chunks()) {
     if (c.leaf) {
       Leaf* l = tree.touchLeaf(c.o);
@@ -167,9 +178,9 @@ void Volume::put_back(const ChunkRecord& rec) {
         maskTree.addTile(1, c.o, 0.0f, false);
       }
     }
-    for (int a = 0; a < 3; ++a) lo[a] = std::min(lo[a], c.o[a]), hi[a] = std::max(hi[a], c.o[a] + 7);
+    const int lo[3] = {c.o[0], c.o[1], c.o[2]}, hi[3] = {c.o[0] + 7, c.o[1] + 7, c.o[2] + 7};
+    mark_dirty(lo, hi);  // chunk by chunk, as a step marks them
   }
-  if (lo[0] <= hi[0]) mark_dirty(lo, hi);
 }
 
 void Volume::mark_dirty(const int lo[3], const int hi[3]) {
@@ -456,7 +467,12 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   GridLock<false> writeLock(lock);
   std::vector<Leaf*> leaves(nch, nullptr);
   std::vector<int> mixed;
-  int wlo[3] = {1 << 30, 1 << 30, 1 << 30}, whi[3] = {-(1 << 30), -(1 << 30), -(1 << 30)};
+  // the blocks whose surface may have changed are marked chunk by chunk (3d-v3: a mirrored dab's bounding box marked
+  // every block between its two sides, 54 a dab)
+  auto dirty_chunk = [&](const Coord& o) {
+    const int lo[3] = {o[0], o[1], o[2]}, hi[3] = {o[0] + 7, o[1] + 7, o[2] + 7};
+    mark_dirty(lo, hi);
+  };
   for (int ci = 0; ci < nch; ++ci) {
     if (cls[ci] == 2) continue;
     int x, y, z;
@@ -472,7 +488,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
       keep(o);
       tree.addTile(1, o, val, false);
     }
-    for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+    dirty_chunk(o);
   }
   par(mixed, [&](int ci) {
     Leaf* lf = leaves[ci];
@@ -512,7 +528,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
         mleaves[ci] = mt.touchLeaf(o);
         mfill.push_back(ci);
       }
-      for (int a = 0; a < 3; ++a) wlo[a] = std::min(wlo[a], o[a]), whi[a] = std::max(whi[a], o[a] + 7);
+      dirty_chunk(o);
     }
     par(mfill, [&](int ci) {
       Leaf* lf = mleaves[ci];
@@ -520,8 +536,6 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     });
   }
 
-  // H. the blocks whose surface may have changed
-  if (wlo[0] <= whi[0]) mark_dirty(wlo, whi);
   writeLock.unlock();
 
   // a piece's buffers (a big box, wide blends) can be hundreds of MB: give them back rather than keep them for the dabs
