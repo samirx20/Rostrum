@@ -159,7 +159,8 @@ class Viewport(QObject):
             self._can_stylize = can
             if not can and self._stylized:
                 self._stylized = False
-                self.bridge.say("Look back to Quick: no material has Lines or Halftone on now")
+                # after the change's own status line (the bridge sets it when the same change reaches it), not under it
+                QTimer.singleShot(0, lambda: self.bridge.say("Look back to Quick: no material has Lines or Halftone on now"))
             self.settingsChanged.emit()
         self.redraw()
 
@@ -285,7 +286,9 @@ class Viewport(QObject):
         hovered = [c for c in self.clay_tool.drawer.outlined() if c in drawn and c != sel]
         return {**cam, "renderer": "stylized" if self._stylized else "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
-                "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
+                # Stylized: no contact shading or blur over it, so the live look is the Stylized render's picture
+                # (preview = export; the renderer draws its own shading and lines)
+                "ao": self._ao if self._ao_on and not self._stylized else 0.0, "dof": self._dof and not self._stylized,
                 "selected": ([sel] if sel in drawn and not self.clay_tool.sculpting(sel) else []),  # a material or key
                 #   has no outline; nor the clay being sculpted (the brush ring is its mark; CL1b: its outline doubled
                 #   every picture's time while sculpting)

@@ -77,3 +77,14 @@ def test_the_final_look_previews_in_the_document(bridge):
     bridge.scrub("linesWidth", 2.0)
     bridge.endScrub()
     assert link.link.sent == [] and bridge.doc.item("ink")["linesWidth"] == 2.0
+
+
+def test_a_block_name_under_an_item_turns_it_on(bridge):
+    bridge.select("case")
+    mats = bridge._mats
+    mats._refresh()
+    mats.toggleGroup("Halftone")                 # "+ Halftone" in the material's row of names under the case
+    assert bridge.doc.item("ink")["halftone"] is True
+    mats._refresh()
+    mats.toggleGroup("Halftone")                 # its heading's −
+    assert bridge.doc.item("ink")["halftone"] is False

@@ -217,6 +217,9 @@ class Materials3D(QObject):
         row = next((r for r in self.model.rows if r.get("fold") == group), None)
         if row and row.get("own"):
             return
+        if row and row.get("switch"):           # Lines, Halftone …: its name adds it (the switch on), its − removes it
+            self.setValue(row["switch"], row["off"] if row["open"] else row["on"])
+            return
         self._open[group] = not (row and row["open"])
         self._refresh()
 
