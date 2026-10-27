@@ -9,7 +9,8 @@ leaves nothing on disk (its half-made `.partial` folder is removed).
 A failure is reported (red status, the error line), never as success.
 
 Render always makes the Final picture (SPEC § 1 6:30): the Final preset whatever the shot's Quality says (a shot set to
-Custom samples keeps its own; other qualities are the render sheet's, the ▾ beside the button). The moment it starts,
+Custom samples keeps its own, a shot set to Stylized renders Stylized: its look is not a Cycles one; other qualities
+are the render sheet's, the ▾ beside the button). The moment it starts,
 its note says how long it will take (render_guess: the kept measurement, else a first guess) and counts the seconds
 against that; when it lands, the picture shows over the viewport (RenderView.qml) with Show in folder.
 """
@@ -25,7 +26,7 @@ from rostrum_gui.export_sheet import ExportSheet
 from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.render import DocView, still
-from rostrum3d.render_fields import passes, settings
+from rostrum3d.render_fields import engine_fields, passes, settings
 
 from . import render_guess
 
@@ -33,8 +34,13 @@ FORMATS = ["png", "exr"]
 
 
 def final_settings(shot: dict, info: dict) -> dict:
-    """The Render button's settings (render_fields.settings): the shot's, at the Final preset unless it has Custom samples."""
+    """The Final look's Cycles settings (render_fields.settings): the shot's, at the Final preset unless it has Custom samples."""
     return settings(shot if shot.get("renderQuality") == "custom" else {**shot, "renderQuality": "final"}, info)
+
+
+def button_settings(shot: dict, info: dict) -> dict:
+    """The Render button's settings: Final (final_settings), or Stylized when the shot's Quality is Stylized."""
+    return settings(shot, info) if shot.get("renderQuality") == "stylized" else final_settings(shot, info)
 
 
 def cycles_of(data: dict, shot_id: str, info: dict) -> dict:
@@ -124,15 +130,17 @@ class RenderJob(QObject):
         self._stop = stop = threading.Event()
         snap = DocView.of(b.doc)                      # what the manifest records: the same view the render_still tool takes
         shot = next(x for x in b.doc.data["shots"] if x["id"] == b.shot_id)
-        s, layers = final_settings(shot, info), passes(shot)   # Final, the shot's size and EXR passes, as render_still reads them
-        size, folder, cyc = (s["width"], s["height"]), b.doc.folder, {"samples": s["samples"], "denoise": s["denoise"]}
+        s = button_settings(shot, info)                # Final (or Stylized), the shot's size and EXR passes, as render_still reads them
+        layers = passes(shot) if s["renderer"] == "cycles" else []
+        size, folder, cyc = (s["width"], s["height"]), b.doc.folder, engine_fields(s)
         self._expect, self._measured = render_guess.guess(scene, s, getattr(self._make_engine, "exe", None))
         self._t0, self._s = time.monotonic(), s
         self._state = "running"
         self._note = self._running_note()
         self._tick.start()
         self.changed.emit()
-        b.say(f"Rendering frame {frame} at Final, {render_guess.words(self._expect, self._measured)}")
+        look = "Stylized" if s["renderer"] == "stylized" else "Final"
+        b.say(f"Rendering frame {frame} at {look}, {render_guess.words(self._expect, self._measured)}")
 
         def work():
             t0, engine = time.monotonic(), None
@@ -140,7 +148,7 @@ class RenderJob(QObject):
                 engine = self._engine = self._make_engine()
                 if stop.is_set():
                     raise RuntimeError(CANCELLED)
-                _, files, _ = still("render", snap, info, scene, engine, frame, "cycles", size, FORMATS, 0, cyc, folder, layers, stop.is_set)
+                _, files, _ = still("render", snap, info, scene, engine, frame, s["renderer"], size, FORMATS, 0, cyc, folder, layers, stop.is_set)
                 png = next(str(f) for f in files if f.suffix == ".png")
                 self._landed.emit(png, time.monotonic() - t0, "")
             except Exception as e:  # noqa: BLE001  fail loudly, whatever it was

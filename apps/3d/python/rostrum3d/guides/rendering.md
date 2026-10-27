@@ -1,12 +1,13 @@
 # Rendering
 
-Rendering makes the final pictures of a shot with Cycles. The pictures look like the viewport's Look: Final.
+Rendering makes the final pictures of a shot with Cycles. The pictures look like the viewport's Look: Final. A shot whose
+Quality is **Stylized** renders with the stylized renderer instead, and looks like the viewport's Look: Stylized.
 
 ## Render: the final picture, one click
 
 Click **Render** at the right of the top bar (or press **F12**). It starts at once and always makes the **final-quality**
 picture of the shot's current frame (the Final preset, whatever Quality the sheet shows; a shot set to Custom samples
-keeps its own). From the click, the button's place shows the seconds so far against the time it will take ("12 / 40 s";
+keeps its own, a shot set to Stylized renders Stylized). From the click, the button's place shows the seconds so far against the time it will take ("12 / 40 s";
 rest the pointer on it for the whole sentence); the time is the measured one when this scene was measured before, else
 a first guess from how fast this computer drew its last render, said as "a first guess". **×** beside it cancels. When
 it is done the picture shows over the viewport, saved in the project's Renders folder (`renders/<item>/vNNN/`, a PNG
@@ -25,7 +26,7 @@ On the Build page it opens on **This frame**. On the Animate and Render pages it
 | Row | What it does |
 |---|---|
 | **What** | **This frame**: one picture at the playhead. **Hero 01 · 120 frames**: every frame of the shot, as numbered pictures. The count follows the frames set on the shot (the whole shot, or a stretch of it: the shot's Render group, Frames) |
-| **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The numbers (samples, noise clean-up) are on the same line, at the right. Custom numbers are set on the shot (select the shot, then its Render group) |
+| **Quality** | **Draft** (32 samples), **Good** (128) or **Final** (512), each with noise clean-up. The numbers (samples, noise clean-up) are on the same line, at the right. Custom numbers are set on the shot (select the shot, then its Render group). **Stylized** is there while a material has Lines or Halftone on: the stylized renderer (lines, halftone, light to colour; guide `materials`), drawn at twice the size and smoothed down; its EXR holds the picture only (no passes) |
 | **Size** | The shot's own size, **½** or **× 2**. The size in pixels shows at the right of its name when it isn't the shot's own |
 | **Save as** | PNG picture, EXR (for the Editor), or both. Then the file's name and its folder (the project's next render version; Browse… picks another folder) |
 | **Passes** | Only while it saves an EXR. The extra layers inside the EXR, beside the picture (which is always there): **Light**, **Shadow**, **Reflections**, **Masks per item**, **Depth**, **Surface direction**. Click a name to add it (✓) or take it out (+). Masks are on to start with. See "Passes" below |

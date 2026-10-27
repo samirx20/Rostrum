@@ -5,7 +5,8 @@ import RostrumKit
 // "Shot camera · Quick ▾" ("Shot · Quick" in a window narrower than 1400 px). Its menu: Camera (the shot camera, a free
 // camera, through the selected light while one is selected; the one in use ticked; Make this the shot while the view
 // isn't the shot's), then Look
-// (Quick, the live view; Final, the render's own picture in place; Shift+F flips it). The choices are read as it opens.
+// (Quick, the live view; Final, the render's own picture in place; Shift+F flips those two; Stylized, the live view in
+// the stylized renderer, listed only while a material has Lines or Halftone on). The choices are read as it opens.
 // openMenu() is the scripted `view` step (Main.qml openView).
 Item {
     id: vl
@@ -13,7 +14,7 @@ Item {
     readonly property bool narrow: (vl.Window.window ? vl.Window.window.width : 1646) < 1400
     readonly property var cameras: narrow ? ({ shot: "Shot", free: "Free", light: "Light" })
                                           : ({ shot: "Shot camera", free: "Free camera", light: "Through the light" })
-    readonly property string lookWord: viewport.look === "final" ? "Final" : "Quick"
+    readonly property string lookWord: viewport.look === "final" ? "Final" : viewport.look === "stylized" ? "Stylized" : "Quick"
 
     function keyOf(job) { return vl.Window.window && vl.Window.window.keyFor ? vl.Window.window.keyFor(job) : "" }
     function entries() {
@@ -25,9 +26,11 @@ Item {
             out.push({ value: "cam:light", label: "Through the selected light", checked: m === "light" })
         if (viewport.hasShot && m !== "shot")      // the header's button too (Main.qml)
             out.push({ value: "take", label: "Make this the shot", keys: keyOf("take_view") })
-        const fin = viewport.look === "final"
-        out.push({ value: "look:quick", label: "Quick", checked: !fin, heading: "Look", group: "look", keys: fin ? keyOf("look") : "" })
+        const fin = viewport.look === "final", sty = viewport.look === "stylized"
+        out.push({ value: "look:quick", label: "Quick", checked: viewport.look === "quick", heading: "Look", group: "look", keys: fin ? keyOf("look") : "" })
         out.push({ value: "look:final", label: "Final", checked: fin, group: "look", keys: fin ? "" : keyOf("look") })
+        if (viewport.canStylize || sty)
+            out.push({ value: "look:stylized", label: "Stylized", checked: sty, group: "look" })
         return out
     }
     function openMenu() { spot.open(vl.entries()) }
@@ -44,11 +47,11 @@ Item {
         kind: "normal"; chevron: true
         text: (vl.cameras[viewport.mode] || vl.cameras.shot) + " · " + vl.lookWord
         tip: "Camera and look"
-        // its room is kept for the usual words (the shot or free camera, Quick or Final), so flipping them never moves
+        // its room is kept for the usual words (the shot or free camera, Quick, Final or Stylized when offered), so flipping them never moves
         // the bar beside it; only "Through the light" is wider
         width: Math.max(implicitWidth, room.implicitWidth)
         down: menu.opened
-        Button { id: room; visible: false; kind: "normal"; chevron: true; text: (vl.narrow ? "Free" : "Free camera") + " · Quick" }
+        Button { id: room; visible: false; kind: "normal"; chevron: true; text: (vl.narrow ? "Free" : "Free camera") + (viewport.canStylize ? " · Stylized" : " · Quick") }
         onClicked: vl.openMenu()
     }
     ActionMenu { id: menu; onPicked: (v) => vl.act(v) }

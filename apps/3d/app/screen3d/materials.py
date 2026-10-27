@@ -5,7 +5,8 @@ K3's rule: Surface open, changed groups open, the rest a row of names).
 
 Every click is an operation through the bridge (material.assign / material.from / material.split), one undo step each.
 The inline rows edit the MATERIAL (material.set through the bridge's edit_call), so every item sharing it changes:
-that is what sharing means. InspectorRow talks to this object as its `bridge` (setValue, scrubs, toggleGroup).
+that is what sharing means. InspectorRow talks to this object as its `bridge` (setValue, scrubs, toggleGroup). A drag of a number or a colour is
+drawn live in the window's view and written once at the release (material_live.py).
 
 A clay holds a material too (SPEC § 1 4:10: Base colour's square beside its Material ▾). New clays share the project's
 "Clay" material without anyone choosing that (ops_clay.clay_material), so the first change to it from a clay's panel
@@ -23,7 +24,7 @@ from rostrum_gui import rows, sections
 from rostrum_gui.edits import Scrub
 from rostrum_gui.model import RowsModel
 
-from . import outline, route
+from . import material_live, outline, route
 
 
 
@@ -35,6 +36,7 @@ class Materials3D(QObject):
         super().__init__(parent or bridge)
         self.b, self.balls = bridge, balls
         self._open, self._scrub, self._mat = {}, None, ""
+        self._live = None                               # a live drag (material_live.Drag): the view only, until the release
         self.model = RowsModel(rows.ROLES, self)
         bridge.outlineChanged.connect(self._refresh)
         bridge.frameChanged.connect(self._refresh)
@@ -159,24 +161,53 @@ class Materials3D(QObject):
     def beginScrub(self, param):
         self.endScrub()
         self._own_first()
-        if self._mat:
-            self.b._guard(lambda: setattr(self, "_scrub", Scrub(self.b.doc, self.b.who, [self._mat], param, self.b.edit_call)))
+        if not self._mat:
+            return
+        if material_live.ok(self.b, param):        # drawn live in the window's view, written once at the release
+            mat = self.b.doc.item(self._mat)
+            self._live = material_live.Drag(self.b, self._mat, param, mat.get(param, F.param("material", param).default),
+                                            lambda _why: self._live_refused())
+            return
+        self.b._guard(lambda: setattr(self, "_scrub", Scrub(self.b.doc, self.b.who, [self._mat], param, self.b.edit_call)))
 
     @Slot(str, "QVariant")
     def scrub(self, param, value):
+        if self._live is not None and self._live.param == param:
+            return self._live.send(value)
         if self._scrub is None or self._scrub.name != param:
             self.beginScrub(param)
+            if self._live is not None:
+                return self._live.send(value)
         if self._scrub is not None:
             self.b._guard(lambda: self._scrub.preview(value))
 
+    def _live_refused(self):
+        """The view refused the live request: the rest of this drag is previewed in the document."""
+        lv, self._live = self._live, None
+        if lv is not None and self._mat:
+            self.b._guard(lambda: setattr(self, "_scrub", Scrub(self.b.doc, self.b.who, [self._mat], lv.param,
+                                                                 self.b.edit_call)))
+            if lv.value is not None and self._scrub is not None:
+                self.b._guard(lambda: self._scrub.preview(lv.value))
+
+    def _live_end(self, cancel: bool):
+        lv, self._live = self._live, None
+        value = lv.end(cancel)
+        if value is not None:
+            self._run(self.b.edit_call(lv.material, lv.param, value), f"Material: {lv.param}")
+
     @Slot()
     def endScrub(self):
+        if self._live is not None:
+            return self._live_end(cancel=False)
         s, self._scrub = self._scrub, None
         if s is not None:
             self.b._guard(lambda: self.b._done(s.end(), ""))
 
     @Slot()
     def cancelScrub(self):
+        if self._live is not None:
+            return self._live_end(cancel=True)
         s, self._scrub = self._scrub, None
         if s is not None:
             self.b._guard(lambda: self.b._done(s.end(True), ""))

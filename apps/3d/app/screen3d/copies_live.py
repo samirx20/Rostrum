@@ -6,7 +6,8 @@ program draws the view), the drag previews each move in the document as it alway
 
 `Live` is the one sender: at most one request on its way, a newer move replaces the one waiting (newest wins), so the
 view never falls behind the pointer; `timings` keeps the engine's own ms per answer (the walk reads it). `Scrubs` is
-Bridge3D's mix-in: the kit's beginScrub / scrub / endScrub / cancelScrub, live where it can. No Qt beyond the link.
+Bridge3D's mix-in: the kit's beginScrub / scrub / endScrub / cancelScrub, live where it can; a selected material's
+numbers and colours go live the same way (a `material` request, material_live.py). No Qt beyond the link.
 """
 from __future__ import annotations
 
@@ -41,7 +42,10 @@ class Live:
         self.sent, self.timings, self.counts = 0, [], []
 
     def send(self, item: str, props: dict | None = None, held: list | None = None):
-        req = request(item, props, held)
+        self.post(request(item, props, held))
+
+    def post(self, req: dict):
+        """Any live request (a copies item's, a material's: material_live.py), newest wins."""
         if self._busy:
             self._next = req
         else:
@@ -59,8 +63,10 @@ class Live:
         self._busy = False
         if isinstance(out, str):
             self._next = None
-            print(f"rostrum3d: this copies drag previews in the document instead: {out}", file=sys.stderr)
+            print(f"rostrum3d: this drag previews in the document instead: {out}", file=sys.stderr)
             _REFUSED[0] = _REFUSED[0] or 'no request "copies"' in out
+            from . import material_live
+            material_live.REFUSED[0] = material_live.REFUSED[0] or 'no request "material"' in out
             if self.refused:
                 self.refused(out)
             return
@@ -87,26 +93,35 @@ class Scrubs:
     one `copies.set`-style change through the bridge's own edit call."""
     _live = None                       # the open live drag: {param, send, value, start, item}
 
-    def _live_ok(self, param: str) -> bool:
+    def _live_req(self, param: str):
+        """The live request maker for a drag of `param` on the one selected item: a copies item's numbers, a material's
+        numbers and colours (material_live.py); None when this drag can't be live."""
+        from . import material_live
         if len(self.selection) != 1 or not self.selected or not self.doc.has(self.selected):
-            return False
-        return self.doc.item(self.selected)["type"] == "copies" and param in LIVE_PARAMS and available(self)
+            return None
+        it = self.doc.item(self.selected)
+        if it["type"] == "copies" and param in LIVE_PARAMS and available(self):
+            return lambda v: request(it["id"], {param: v})
+        if it["type"] == "material" and material_live.ok(self, param):
+            return lambda v: material_live.request(it["id"], param, v)
+        return None
 
     @Slot(str)
     def beginScrub(self, param):
         self._live_end(commit=False)
-        if not self._live_ok(param):
+        req = self._live_req(param)
+        if req is None:
             return super().beginScrub(param)
         it = self.doc.item(self.selected)
-        self._live = {"param": param, "item": it["id"], "start": it.get(param), "value": None,
-                      "send": Live(self.viewport.link, lambda _why: self._live_refused())}
+        self._live = {"param": param, "item": it["id"], "start": it.get(param, F.param(it["type"], param).default),
+                      "value": None, "req": req, "send": Live(self.viewport.link, lambda _why: self._live_refused())}
 
     @Slot(str, "QVariant")
     def scrub(self, param, value):
         lv = self._live
         if lv is not None and lv["param"] == param:
             lv["value"] = value
-            lv["send"].send(lv["item"], {param: value})
+            lv["send"].post(lv["req"](value))
             return
         super().scrub(param, value)
 
@@ -139,7 +154,7 @@ class Scrubs:
         if value is None or value == lv["start"]:
             return
         if not commit:                 # Esc: the view goes back to what the document says
-            lv["send"].send(lv["item"], {lv["param"]: lv["start"]})
+            lv["send"].post(lv["req"](lv["start"]))
             return
         self._last_live = lv["send"]
         self._guard(lambda: self._done(self.doc.apply([self.edit_call(lv["item"], lv["param"], value)], self.who,

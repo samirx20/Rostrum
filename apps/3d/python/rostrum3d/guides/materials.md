@@ -24,7 +24,7 @@ The balls are real renders through the same fast view as the viewport, made once
 
 ### Starting points
 
-Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). A selected clay shows its **Material ▾** and, under it, the material's settings with **Base colour**'s square, as a mesh does; the first change there gives that clay its own copy of the shared "Clay" (one more undo step, "Make its own material"), so the other clays keep theirs. The rest of this guide explains each setting they use.
+Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished metal, Brushed metal, Glass, Frosted glass, Ceramic, Fabric, Wood, Car paint, Painted (ramp), Ink & flat, Screen. Each is the physical settings of a substance (glass = transmission 1, index of refraction 1.5, roughness 0), never a colour scheme or a lighting look; the colour is yours to set. The first four are for sculpting with clay (a new clay starts with the project's **Clay** material, grey; see "Light under the surface" below). A selected clay shows its **Material ▾** and, under it, the material's settings with **Base colour**'s square, as a mesh does; the first change there gives that clay its own copy of the shared "Clay" (one more undo step, "Make its own material"), so the other clays keep theirs. The rest of this guide explains each setting they use.
 
 ## For agents: the same, as operations
 
@@ -111,6 +111,82 @@ Bare metal shows only what it reflects. Metal lettering on a dark face in a dark
 - **`emissionRender`**: the id of a **2D item of the same project**. Its newest finished render plays on the surface: at every moment of the shot the screen shows the 2D frame of the same moment (second 1.5 of the 3D shot shows second 1.5 of the 2D render); before its first frame and after its last, the screen holds that first or last picture. It is read-only: to change the picture, change the 2D item and render it again (as a PNG sequence, `render_export` format `png`; an mp4 can't be put on a surface). A 3D render made before the new 2D render keeps the old picture until it is rendered again.
 - A screen is mostly its picture: give the screen surface a near-black `baseColor` and low `roughness` so it also reflects the room like real glass. For a cover glass over the screen, add a second, thin item with `transmission` 1 in front.
 - The picture is placed on the item's UVs. A `plane` shows the whole picture once (U along its width, V along its depth), so a screen is a plane laid on the device's face (`rx` 90 stands it up facing +Z). A `box`'s UVs wrap round its sides like a label on a can, so a picture on a box is stretched round all four sides. Check with `look_frame` that it reads the right way up; turn the plane (`rz` 180) if not.
+
+## Stylized blocks: Lines, Light to colour, Halftone
+
+Three groups of settings turn a material from a physical surface into a drawn or printed one. Each is off until you turn it
+on: in the material's row of names click **Lines**, **Light to colour** or **Halftone** (one click turns it on and opens its
+settings; the **×** on its heading turns it off again). Agents: `material.set` with `lines`, `lightToColor` or `halftone`
+`true`, then the group's other fields. The other fields of a group exist only while its switch is on.
+
+**Ink & flat** and **Painted (ramp)** in Start from are a matte surface with these switched on (below); like every start,
+they are settings, not a look: the colours are yours.
+
+### How lit: the one scale all three read
+
+Every stylized block reads **how lit** each point of the surface is, from 0 to 1, from the scene's real lights: their
+brightness (intensity and exposure), their falloff with distance, the angle the surface turns to each, and cast shadows.
+1 is the light that makes white paper look white on screen at exposure 0; 0 is no light. Coloured lights count by their
+brightness. A dome adds a soft light from above. So the same scene lit for Final gives the same "how lit" in Stylized:
+brighten a light and more of the surface crosses into the lit colour; move it and the shadow band follows.
+
+### Lines (Stylized look)
+
+Ink lines along the outline of every surface with this material and along its creases.
+
+- **Width** (`linesWidth`, 0.25–12 px): the line's thickness in pixels of the finished picture, so a render at double
+  size has lines of the same thickness in pixels (thinner in proportion).
+- **Colour** (`linesColor`).
+- **Taper** (`linesTaper`, 0–1): lines get thinner where the surface is lit; 0 keeps the width the same everywhere, 1
+  thins them most in full light.
+- **Wobble** (`linesWobble`, 0–1): how much the width changes along a line, like a hand-held pen; 0 is steady.
+- **Crease angle** (`linesCreaseAngle`, 1–180°): a fold sharper than this gets a line too (a box's edges at 40°); 180
+  draws the outline only. Lower values add lines on gentler folds.
+
+Dragging Width (or any number or colour of a material) in the settings panel redraws the live view as you drag; the
+change is written once, when you let go (one undo step).
+
+### Light to colour (Final and Stylized)
+
+Colours the surface by how lit it is: **Lit colour** (`litColor`) where it is lit, **Middle colour** (`midColor`) in
+between, **Shadow colour** (`shadowColor`) in shadow. Each **multiplies** the base colour (or the base colour image):
+white shows the base colour itself, grey darkens it, a colour tints it. So one base colour (or a painted image) keeps
+its own colours in every band.
+
+- **Shadow below** (`shadowBelow`, 0–1): below this much light, the shadow colour.
+- **Lit from** (`litFrom`, 0–1): from this much light up, the lit colour. Between the two, the middle colour. When Shadow
+  below is higher than Lit from, Lit from counts for both: two bands, no middle.
+- **Edges** (`lightEdges`): **Steps** = hard edges between the bands; **Smooth** = each edge blends over **Softness**
+  (`lightSoftness`, 0.01–0.5), measured on the same how-lit scale either side of Shadow below and Lit from.
+- The surface's own shading is replaced by the bands: no highlights or reflections (roughness, metal, coat and glass
+  don't show on it); glow still adds on top.
+- Final (Cycles) and Stylized compute the bands the same way, with Cycles' real cast shadows in Final.
+
+### Halftone (Stylized look)
+
+Printed dots or lines over the surface whose size follows how lit it is: none where it is fully lit, solid where it is in
+full shadow, in between in proportion.
+
+- **Shape** (`halftoneShape`): **Dots** or **Lines**.
+- **Size** (`halftoneSize`, 2–40 px): the spacing of the dots or lines, in pixels of the finished picture.
+- **Angle** (`halftoneAngle`, −90–90°): the turn of the rows of dots or of the lines.
+- **Colour** (`halftoneColor`): the ink's colour, over the surface's own colour.
+
+### What each Look shows
+
+- **Quick** (the live view, Storm) shows the material's physical settings only: no lines, no bands, no halftone.
+- **Final** (Cycles) shows Light to colour, not Lines or Halftone. The rows carry the tags **Final · Stylized** (Light to
+  colour) and **Stylized** (Lines, Halftone).
+- **Stylized** (the stylized renderer) shows all three, and draws every other material with plain light: its colour
+  times the light reaching it, with cast shadows, so the scene keeps the brightness it has in Final. It shows base colour,
+  base colour image, glow and see-through (opacity); not reflections, roughness, glass bending, coat, sheen, light under
+  the surface or bump.
+- **Look: Stylized** appears in the viewport's Camera and look menu (and **Stylized** in the render sheet's Quality) while
+  any material of the project has Lines or Halftone on. When the last one is turned off the view goes back to Quick and
+  says so. Shift+F still flips Quick and Final.
+- A render with Quality **Stylized** uses the same renderer as the view, drawn at twice the size and smoothed down for
+  clean edges, so the render is the view you saw. Agents: `look_frame` / `render_still` / `render_video` with
+  `renderer: "stylized"`.
 
 ## What the fast view can't show
 

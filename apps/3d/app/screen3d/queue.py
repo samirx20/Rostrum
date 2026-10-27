@@ -22,7 +22,7 @@ from rostrum3d.compile import describe, shot_info
 from rostrum3d.engine import Engine
 from rostrum3d.mcp.render import DocView
 from rostrum3d.mcp.sequence import sequence
-from rostrum3d.render_fields import passes, settings
+from rostrum3d.render_fields import engine_fields, passes, settings
 
 from . import queue_rows
 from .queue_view import QueueView
@@ -153,7 +153,7 @@ class RenderQueue(QObject):
         info = shot_info(b.doc.data, shot_id)
         s = settings(shot, info)
         plan = {"doc": DocView.of(b.doc), "scene": describe(b.doc.data, shot_id, b.doc.folder), "info": {**info, "start": s["start"], "end": s["end"]},
-                "size": (s["width"], s["height"]), "cycles": {"samples": s["samples"], "denoise": s["denoise"]},
+                "size": (s["width"], s["height"]), "renderer": s["renderer"], "cycles": engine_fields(s),
                 "formats": sorted(set(FORMATS[b.exporter.format]) | ({"exr"} if exr else set())), "folder": b.doc.folder,
                 "shot": shot}                           # its Passes go into an EXR (render_fields.passes)
         label = next((x["label"] for x in b.shots if x["value"] == shot_id), shot_id)
@@ -179,7 +179,8 @@ class RenderQueue(QObject):
             job.progress(0, meta["frames"], "starting")
             done, files = sequence("render queue", plan["doc"], plan["info"], plan["scene"], engine, plan["size"], plan["formats"],
                                    plan["cycles"], plan["folder"], progress=frames,
-                                   passes=passes(plan["shot"]) if "exr" in plan["formats"] else None, stopped=job.cancel_requested.is_set)
+                                   passes=passes(plan["shot"]) if "exr" in plan["formats"] and plan["renderer"] == "cycles" else None,
+                                   stopped=job.cancel_requested.is_set, renderer=plan["renderer"])
         finally:
             engine.close()
         pngs = [f for f in files if f.suffix == ".png"]

@@ -24,7 +24,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[4]
 LOG_DIR = Path.home() / ".rostrum" / "logs"
-from .runtime import find_exe, runtime_env             # where the libraries are and how the engine program finds them
+from .runtime import find_exe, need_stylized, runtime_env             # where the libraries are and how the engine program finds them
 
 
 class EngineError(RuntimeError):
@@ -156,6 +156,8 @@ class Engine:
 
     def render(self, progress=None, timeout_s: float | None = None, **req) -> dict:
         """One frame or `frames=[first, last]`; the files are checked here, so nothing is "done" without its file."""
+        if req.get("renderer") == "stylized":
+            need_stylized("render")
         out = self._request({"render": {**req, "progress": progress is not None}},
                             timeout_s or float(req.get("timeoutS", 600)) + 60, progress)
         missing = [f[k] for f in out.get("frames", []) for k in ("exr", "png") if f.get(k) and not Path(f[k]).is_file()]
@@ -210,6 +212,8 @@ class Engine:
     def view(self, **req) -> tuple[memoryview, int, int, int, dict]:
         """One live viewport picture (§ 4) as straight-alpha RGBA8 in the engine's shared memory (Windows):
         (view, width, height, stride, reply). The view is valid until the view after next is asked for; copy it."""
+        if req.get("renderer") == "stylized":
+            need_stylized("view")
         out = self._request({"view": req})
         return (*self._pixels(out["shm"]), out)
 
