@@ -14,11 +14,34 @@ import "."
 // dots set length as well as direction: the paint's span becomes "points" with x1, y1, x2, y2 (linear) or rx, ry
 // (radial), fractions of the box; a box-span paint is converted on its first such drag. Dots are named grad_start,
 // grad_end, grad_stop<i>, grad_centre, grad_arm, grad_rx, grad_ry (scripted drags: click_steps.py dragobj).
+// Every dot stays where it can be grabbed (hand maker rows 22-23: on a wide sky at Fit the ends lay past the canvas, and
+// one lay under the open picker): with `reach` (the item the canvas shows in) a dot outside it is drawn just inside its
+// edge, and one under `avoid` (a rect in reach's coordinates: the open picker) just beside it, each with a small arrow
+// towards where it really is (`pinned`). A drag from there works as from the dot: the end goes where the pointer goes.
+// `placed`: anything the host changes that moves the box on screen (a pan, a zoom), so the dots are placed again.
 Item {
     id: root
     property var paint: ({type: "linear", stops: [], angle: 90, cx: 0.5, cy: 0.5})
     property int selected: -1
     property bool points: true                 // the layer takes point-to-point spans (not a text's letters)
+    property Item reach: null
+    property rect avoid: Qt.rect(0, 0, 0, 0)
+    property var placed: 0
+    readonly property real edge: 12             // a pinned dot's centre this far inside the reach / beside `avoid`
+    function shown(d) {                         // the dot's centre as drawn (box px), whether it is pinned, the arrow's angle
+        if (!reach || !visible) return {x: d.x, y: d.y, pinned: false, angle: 0}
+        const q = root.mapToItem(reach, d.x, d.y), m = edge, A = avoid
+        const inside = (x, y) => x >= m && x <= reach.width - m && y >= m && y <= reach.height - m
+        let x = clamp(q.x, m, reach.width - m), y = clamp(q.y, m, reach.height - m)
+        if (A.width > 0 && x > A.x - m && x < A.x + A.width + m && y > A.y - m && y < A.y + A.height + m) {
+            const ways = [[A.x - m, y], [A.x + A.width + m, y], [x, A.y - m], [x, A.y + A.height + m]].filter(p => inside(p[0], p[1]))
+            ways.sort((a, b) => Math.hypot(a[0] - x, a[1] - y) - Math.hypot(b[0] - x, b[1] - y))
+            if (ways.length) { x = ways[0][0]; y = ways[0][1] }
+        }
+        if (Math.abs(x - q.x) < 0.5 && Math.abs(y - q.y) < 0.5) return {x: d.x, y: d.y, pinned: false, angle: 0}
+        const b = root.mapFromItem(reach, x, y)
+        return {x: b.x, y: b.y, pinned: true, angle: Math.atan2(d.y - b.y, d.x - b.x) * 180 / Math.PI}
+    }
     signal edited(var paint)
     signal began()
     signal ended()
@@ -141,8 +164,24 @@ Item {
             id: dot
             readonly property var d: root.dots[index] || ({x: 0, y: 0, color: 'white', index: -1, role: ''})
             objectName: "grad_" + dot.d.role + (dot.d.role === "stop" ? dot.d.index : "")
-            x: dot.d.x - 10; y: dot.d.y - 10; width: 20; height: 20
+            readonly property var s: (root.placed, root.avoid, root.width, root.height, root.reach ? root.reach.width + root.reach.height : 0, root.shown(dot.d))
+            readonly property bool pinned: dot.s.pinned
+            x: dot.s.x - 10; y: dot.s.y - 10; width: 20; height: 20
             property bool moved: false
+            Item {                                         // pinned: a small arrow towards where the dot really is
+                visible: dot.pinned; anchors.fill: parent; rotation: dot.s.angle
+                Shape {
+                    x: 17; y: 5; width: 8; height: 10
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath {
+                        strokeWidth: 1; strokeColor: Qt.rgba(0, 0, 0, 0.45); fillColor: "white"
+                        startX: 0; startY: 0
+                        PathLine { x: 7; y: 5 }
+                        PathLine { x: 0; y: 10 }
+                        PathLine { x: 0; y: 0 }
+                    }
+                }
+            }
             Rectangle {                                    // dark halo, white ring, the stop's colour: every dot alike
                 anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: Qt.rgba(0, 0, 0, 0.35)
                 Rectangle {

@@ -137,6 +137,11 @@ Item {
             paint: PaintSession.paint || ({})
             selected: PaintSession.selected
             points: h.box.type !== "text"            // a text's letters take no point-to-point span
+            // the canvas shows in the space's parent (the well): a dot past its edge or under the open picker is drawn
+            // where it can be grabbed (GradientHandles: pinned); it is placed again as the view pans or zooms
+            reach: h.space ? h.space.parent : null
+            avoid: (PaintSession.area, reach ? reach.mapFromItem(null, PaintSession.area.x, PaintSession.area.y, PaintSession.area.width, PaintSession.area.height) : Qt.rect(0, 0, 0, 0))
+            placed: [h.space ? h.space.x : 0, h.space ? h.space.y : 0, h.fit, h.box]
             onBegan: backend.beginScrub("paint")
             onEdited: (p) => backend.scrub("paint", p)
             onEnded: backend.endScrub()

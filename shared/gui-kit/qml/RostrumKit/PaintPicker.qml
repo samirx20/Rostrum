@@ -115,6 +115,49 @@ Column {
         onEdited: (arr) => pp.change({ stops: arr })
     }
 
+    // The gradient's direction and centre as numbers (the canvas handles set them too): Angle on a linear gradient across the
+    // box (from point to point, the handles' line is the direction) and on an angular one (where its sweep starts);
+    // Centre on a radial or angular one, in % of the box. A typed value is one change; a scrub is one, at its let-go.
+    Column {
+        id: geometry
+        objectName: "gradientGeometry"
+        readonly property bool angled: pp.coloured && (pp.type === "angular" || (pp.type === "linear" && pp.paint.span !== "points"))
+        readonly property bool centred: pp.coloured && (pp.type === "radial" || pp.type === "angular")
+        visible: angled || centred
+        spacing: Theme.gap
+        Row {
+            visible: geometry.angled; spacing: Theme.gap
+            Text { width: 44; anchors.verticalCenter: parent.verticalCenter; text: "Angle"
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+            NumberField {
+                objectName: "gradientAngle"; width: 72
+                label: "Angle"; value: pp.paint && pp.paint.angle !== undefined ? pp.paint.angle : 90
+                from: -360; to: 360; step: 1; typeStep: 0.1; unit: "°"; defaultValue: 90
+                onEdited: (v) => { pp.change({ angle: v }); pp.done() }
+                onScrubbed: (v) => pp.change({ angle: v })
+                onScrubEnded: pp.done()
+            }
+        }
+        Row {
+            visible: geometry.centred; spacing: Theme.gap
+            Text { width: 44; anchors.verticalCenter: parent.verticalCenter; text: "Centre"
+                   color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label }
+            Repeater {
+                model: geometry.centred ? ["cx", "cy"] : []
+                delegate: NumberField {
+                    required property string modelData
+                    objectName: "gradientCentre:" + modelData; width: 72
+                    label: modelData === "cx" ? "Centre X" : "Centre Y"
+                    value: pp.paint && pp.paint[modelData] !== undefined ? pp.paint[modelData] : 0.5
+                    from: -5; to: 6; step: 0.01; display: "percent"; defaultValue: 0.5
+                    onEdited: (v) => { const f = {}; f[modelData] = v; pp.change(f); pp.done() }
+                    onScrubbed: (v) => { const f = {}; f[modelData] = v; pp.change(f) }
+                    onScrubEnded: pp.done()
+                }
+            }
+        }
+    }
+
     function takeTyping() { if (pp.coloured) colour.takeTyping() }    // open: a hex typed at once lands in the hex box
     ColorPicker {
         id: colour

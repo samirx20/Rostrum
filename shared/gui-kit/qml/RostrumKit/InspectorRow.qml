@@ -463,6 +463,7 @@ Item {
     function focusWidget() {
         const w = parts ? parts.widgetItem : null
         if (!w) return
+        if (w.objectName === "paintField") { w.open(); return }   // a fill: its picker, where its kinds, stops and angle are
         if (w.input && w.editable) { w.input.forceActiveFocus(); w.input.selectAll() } else w.forceActiveFocus()
     }
     function loadChoice(path) { row.bridge.loadChoice(row.model.id, path) }    // (a scripted step hands a file in: 2D `choicefile`)

@@ -8,6 +8,7 @@ import QtQuick
 QtObject {
     property Item field: null
     property bool hold: false
+    property rect area: Qt.rect(0, 0, 0, 0)     // the open picker's place in the window (the field sets it): handles keep out from under it
     readonly property var paint: field ? field.cur : null
     readonly property int selected: field ? field.stop : -1
     readonly property bool gradient: !!paint && ["linear", "radial", "angular"].indexOf(paint.type) >= 0

@@ -77,6 +77,10 @@ SwatchHex {
         closePolicy: PaintSession.hold && PaintSession.field === f ? QQC.Popup.NoAutoClose : QQC.Popup.CloseOnPressOutside   // Esc: SmallPopup's
         onOpened: { PaintSession.field = f; body.takeTyping() }
         onClosed: { f.settle(); body.browsing = false; if (PaintSession.field === f) PaintSession.field = null }
+        Binding {   // where it lies over the window, so the canvas's gradient handles show beside it, never under it
+            target: PaintSession; property: "area"; when: PaintSession.field === f && picker.visible
+            value: Qt.rect(picker.x, picker.y, picker.width, picker.height)
+        }
         PaintPicker {
             id: body
             paint: f.cur; maxStops: f.maxStops; stopOpacity: f.stopOpacity
