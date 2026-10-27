@@ -19,10 +19,12 @@ import math
 
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from rostrum2d import fields as F
+from rostrum2d.evaluate import resolve
 from rostrum_gui.select_soon import SelectSoon
 
 from . import adding, bounds
 from .text_ink import ink_for
+from .typed_ink import TypedInk
 from .typing_session import Session
 
 DEFAULT_SIZE = 200.0                       # a click without a drag: this big
@@ -64,6 +66,7 @@ class Create(QObject):
         bridge.toolChanged.connect(self._tool_changed)
         bridge.selectedItemsChanged.connect(self.canEditChanged)        # canEdit follows the selection and the typing
         self.typingChanged.connect(self.canEditChanged)
+        self._typed = TypedInk(bridge, self)    # the typed words drawn until the engine's picture shows them (typed_ink.py)
 
     # ---- reads for QML ------------------------------------------------------------------------------------------
     @Property("QVariantList", constant=True)
@@ -75,6 +78,10 @@ class Create(QObject):
     def box(self):
         """The shape being dragged, or the text being typed in (see the module note); {} = nothing."""
         return self._box
+
+    @Property(QObject, constant=True)
+    def ink(self):
+        return self._typed
 
     @Property(bool, notify=typingChanged)
     def typing(self):
@@ -267,11 +274,14 @@ class Create(QObject):
         s = self._text
         mine = None
         if s is not None and self.b.doc.has(s.id):
-            mine = next((x for x in bounds.boxes(self.b.placed(), self.b._t) if x["id"] == s.id), None)
+            mine = next((x for x in bounds.boxes(self.b.placed(), self.b._t, {s.id}) if x["id"] == s.id), None)   # its own box only: every
+            # layer's walk after each key's change was ~6 ms of the key at 200 layers
         p = s.place if s else {}
         wrap = bool((self.b.doc.item(s.id).get("boxWidth") if s and s.layer else p.get("boxWidth")) or 0)
         if mine:
-            box = {"kind": "text", "x": mine["x"], "y": mine["y"], "w": mine["w"], "h": mine["h"], "wrap": wrap}
+            p = resolve(self.b.placed_item(s.id), self.b._t)        # its turn and scale too: the typed words lie as the engine draws them
+            box = {"kind": "text", "x": mine["x"], "y": mine["y"], "w": mine["w"], "h": mine["h"], "wrap": wrap, "rot": mine["rot"],
+                   "ax": mine["ax"], "ay": mine["ay"], "k": mine["h"] / (mine["lh"] or 1) * abs(p["scale"] * p["scaleY"])}
         else:
             d, w, h = F.defaults("text"), p.get("boxWidth", 0), self._start_size()     # around the point, as the text will be
             box = {"kind": "text", "x": p.get("x", 0) - w * d["anchorX"], "y": p.get("y", 0) - h * d["anchorY"], "w": w,

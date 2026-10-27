@@ -8,7 +8,7 @@ Paint always belongs to something. Paint on a shape, a text, a picture or a path
 
 ## 1. Pick the brush
 
-1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens beside the rail, so the settings column at the right (brush, size, colour) stays in view: click or drag on the canvas outside it and the panel closes and the stroke starts in that same press.
+1. Click **Brush** in the tool rail (the column of icons at the left of the canvas), or press **B**. The **brush panel** opens beside the rail, so the settings column at the right (brush, size, colour) stays in view: click or drag on the canvas outside it and the panel closes and the stroke starts in that same press (one **Ctrl+Z** takes that stroke back, nothing else).
 2. The top row of the panel holds the five paint tools:
 
    | Tool | Key | Does |

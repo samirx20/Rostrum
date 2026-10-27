@@ -100,10 +100,12 @@ class LayerOrder(SlotMixin):
     @Slot()
     def selectAllLayers(self):
         """Ctrl+A: every layer at the level you are in (levels.py: the group's layers once inside one, else the
-        composition's; not the camera)."""
+        composition's; not the camera). The rows and outlines light at once; the status line then says how many
+        (a stand-in for the kit's acknowledgement line, not in main yet)."""
         ids = levels.level_of(self.doc, self.selected_layers(), self.comp_id)
         if ids:
             self._select(ids)
+            self._set_status(f"Picked {len(ids)} layer{'' if len(ids) == 1 else 's'}")
 
     @Slot()
     def clearSelection(self):
@@ -129,16 +131,22 @@ class LayerOrder(SlotMixin):
     @Slot(str, str, str, result=bool)
     def moveLayer(self, layer_id, target_id, where):
         """Drag-to-reorder in the Layers panel: put the layer above / below the target row, or (a group) inside it on top.
-        One layer.arrange = one undo step; dropping on itself or inside itself changes nothing."""
+        One layer.arrange = one undo step; dropping on itself or inside itself changes nothing. (A person's row drag is
+        the same call inside its gesture: row_drag.py.)"""
+        call = self.arrange_call(layer_id, target_id, where)
+        return call is not None and self._guard(lambda: self._apply([call], f"Move {self.label_of(self.doc.item(layer_id))}"))
+
+    def arrange_call(self, layer_id, target_id, where):
+        """The layer.arrange that puts the layer above / below / into the target row, or None when it changes nothing."""
         doc = self.doc
         if layer_id == target_id or not (doc.has(layer_id) and doc.has(target_id)):
-            return False
+            return None
         types = self._layer_types()
         if doc.item(layer_id)["type"] not in types or doc.item(target_id)["type"] not in types:
-            return False
+            return None
         if where == "into":
             if doc.item(target_id)["type"] not in ("group", "rig"):
-                return False
+                return None
             into, rest = target_id, [c["id"] for c in doc.item(target_id)["layers"] if c["id"] != layer_id]
             at = len(rest)
         else:
@@ -146,11 +154,10 @@ class LayerOrder(SlotMixin):
             rest = [c["id"] for c in doc.item(into)["layers"] if c["id"] != layer_id]
             at = rest.index(target_id) + (1 if where == "above" else 0)       # the panel lists the top of the stack first
         if into == layer_id or into in subtree_ids(doc.item(layer_id), doc.kind.lists):
-            return False
+            return None
         if into == doc.parent_of(layer_id)[0] and rest[:at] + [layer_id] + rest[at:] == [c["id"] for c in doc.item(into)["layers"]]:
-            return False                                                      # dropped where it already is
-        return self._guard(lambda: self._apply([{"op": "layer.arrange", "target": [layer_id], "args": {"into": into, "index": at}}],
-                                               f"Move {self.label_of(doc.item(layer_id))}"))
+            return None                                                      # dropped where it already is
+        return {"op": "layer.arrange", "target": [layer_id], "args": {"into": into, "index": at}}
 
     @Slot(str, str, result=bool)
     def renameLayer(self, layer_id, name):

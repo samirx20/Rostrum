@@ -43,11 +43,11 @@ Rectangle {
         onPressed: (m) => { pressY = m.y; dropped = false }
         onPositionChanged: (m) => {
             if (!pressed || !name.isLayer || name.isFrame || !(m.buttons & Qt.LeftButton)) return
-            if (!dragging && Math.abs(m.y - pressY) > 6) { dragging = true; name.rows.dragId = name.rowData.id }
-            if (dragging) name.rows.dropAt(mapToItem(name.rows.contentItem, m.x, m.y).y)
+            if (!dragging && Math.abs(m.y - pressY) > 6) { dragging = true; name.rows.beginDrag(name.rowData, pressY) }
+            if (dragging && name.rows.dragId === name.rowData.id) name.rows.dropAt(mapToItem(name.rows.contentItem, m.x, m.y).y)   // (Esc ended it: dragId "")
         }
         onReleased: { if (dragging) { dragging = false; dropped = true; name.rows.finishDrag() } }
-        onCanceled: { dragging = false; name.rows.dragId = ""; name.rows.dropRow = "" }
+        onCanceled: { dragging = false; name.rows.cancelDrag() }
         onClicked: (m) => {
             if (dropped) return
             if (m.button === Qt.RightButton) {

@@ -15,6 +15,7 @@ from rostrum2d.scene_keep import Keeper
 
 from . import bounds, colour_feed, drag_cancel, outline, picture_change, route, screen_seen
 from .drags import DragSlots
+from .panel_hold import PanelHold
 from .command_words import CommandWords
 from .file_commands import FileCommands
 from .key_routes import KeyRoutes
@@ -23,8 +24,8 @@ from .frames import FrameRenderer
 from .group_slots import GroupSlots
 from .anchor_slots import AnchorSlots
 from .handle_slots import HandleSlots
-from .hooks import Hooks2D
 from .shape_handle_slots import ShapeHandleSlots
+from .hooks import Hooks2D
 from .action_slots import ActionSlots
 from .action_preview import PREVIEW_TAG, ActionPreview
 from .agent_view import AgentView
@@ -57,7 +58,7 @@ TOOLS = ("move", "pen", "draw", *F.SHAPE_KINDS, "text", "bone", "hand", "zoom") 
 
 
 
-class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, DragSlots, HandleSlots, ShapeHandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
+class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, SceneSlots, UndoState, ActionSlots, KeyRoutes, ActionPreview, LayerOrder, FileCommands, ViewCommands, CommandWords, PanelHold, DragSlots, HandleSlots, ShapeHandleSlots, AnchorSlots, GroupSlots, ToolSlots, TypedEdits, Hooks2D, DocBridge):
     timeChanged = Signal()
     toolChanged = Signal()
     frameChanged = Signal()

@@ -8,8 +8,10 @@ import RostrumKit
 // the pointer. A line or an arrow is dragged from its start to its end (Shift = 45° steps). Text: click and type, or drag a box to wrap in;
 // a click outside, Esc or Ctrl+Enter ends (the text stays selected; no Done), Enter is a new line. Double-click a text
 // (Stage.qml) or Enter with it selected (Main.qml) types in it again, on the canvas only.
-// While typing the engine's own picture shows the words; the box here is transparent text with the cursor, lined up
-// through the Stage's mapping only (compScale, fromComp, toComp). It lies in the canvas (Stage.qml).
+// While typing the engine's own picture shows the words; the box here is clear text with the cursor, lined up through
+// the Stage's mapping only (compScale, fromComp, toComp), turned and scaled as the text is. Until the engine's picture of
+// a key lands, the box draws the typed words itself in the text's font and colour (backend.create.ink, typed_ink.py),
+// so a letter shows under the caret at once and the picture takes over unseen. It lies in the canvas (Stage.qml).
 Item {
     id: ov
     property Item stage
@@ -102,15 +104,17 @@ Item {
         x: on ? ov.fromComp(ov.box.x, ov.box.y).x : 0; y: on ? ov.fromComp(ov.box.x, ov.box.y).y : 0
         width: on ? (ov.box.wrap ? ov.box.w * ov.scale : Math.max(ov.box.w * ov.scale, words.contentWidth) + 4) : 0     // the words' own width, measured apart: edit.contentWidth reads back this width (binding loop)
         height: on ? Math.max(ov.box.h * ov.scale, edit.contentHeight) : 0
+        transform: Rotation { origin.x: (ov.box.ax || 0) * (ov.box.w || 0) * ov.scale; origin.y: (ov.box.ay || 0) * (ov.box.h || 0) * ov.scale
+                              angle: ov.box.rot || 0 }      // a turned text is typed turned (the box: create.py _text_box)
         property alias text: edit.text
         Text { id: words; visible: false; text: edit.text; font: edit.font }     // the one place the typed width is measured
         HaloLine { anchors.fill: parent; anchors.margins: -4; radius: 2 }
         TextEdit {
             id: edit
             anchors.fill: parent
-            color: "transparent"; selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45); selectedTextColor: "transparent"
-            font.family: ov.look.font || uiFont
-            font.pixelSize: Math.max(4, (ov.look.size || 40) * ov.scale)
+            color: ov.create.ink.ahead && ov.look.color ? ov.look.color : "transparent"; selectionColor: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.45); selectedTextColor: "transparent"
+            font.family: ov.create.ink.face || ov.look.font || uiFont      // the face Qt draws the engine's font in
+            font.pixelSize: Math.max(4, (ov.look.size || 40) * ov.scale * (ov.box.k || 1))      // k: the text's own scale
             font.weight: Math.max(1, Math.min(1000, ov.look.weight || 600))
             wrapMode: ov.box.wrap ? TextEdit.Wrap : TextEdit.NoWrap
             horizontalAlignment: ov.look.align === "right" ? TextEdit.AlignRight : ov.look.align === "left" ? TextEdit.AlignLeft : TextEdit.AlignHCenter   // the lines line up as the text's do

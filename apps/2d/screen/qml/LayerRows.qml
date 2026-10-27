@@ -50,7 +50,9 @@ ListView {
         const i = sel.length === 1 ? list.model.indexOf(sel[0]) : -1
         if (i >= 0) list.positionViewAtIndex(i, ListView.Contain)
     }
-    Connections { target: backend; function onSelectedItemsChanged() { Qt.callLater(list.follow) } }
+    // With the pick's panel, not the pick: a press that picks and drags a layer scrolls the list at the drop (or a
+    // 0.1 s rest), never in the drag's first frames (panel_hold.py).
+    Connections { target: backend; function onPanelShown() { Qt.callLater(list.follow) } }
     function rowMid(id) {          // the middle of a row in the list's px (-1: not shown), for the drag label
         for (let i = 0; i < count; i++) {
             const item = itemAtIndex(i)
@@ -59,11 +61,22 @@ ListView {
         return -1
     }
 
-    // drag-to-reorder: the dragged row, and where it would land (the row, above | below | into a group)
+    // drag-to-reorder: the dragged row, and where it would land (the row, above | below | into a group). One gesture from
+    // the pull to the drop (backend.rowDrag, row_drag.py): one undo step; Esc while held puts it back.
     property string dragId: ""
     property string dropRow: ""
     property string dropWhere: ""
+    property var dragRow: null          // the pulled row's data (its ghost shows its icon and name)
+    property real grabDy: 0             // where in the row it was grabbed: the ghost keeps that point under the pointer
+    property real dragY: 0              // the pointer, in the list's content px
+    function beginDrag(r, pressY) {
+        if (!backend.rowDrag.begin(r.id)) return
+        dragRow = r; grabDy = pressY; dragId = r.id
+    }
+    function cancelDrag() { backend.rowDrag.cancelDrag(); dragId = ""; dropRow = ""; dragRow = null }
+    Connections { target: backend.rowDrag; function onCancelled() { list.dragId = ""; list.dropRow = ""; list.dragRow = null } }
     function dropAt(y) {
+        dragY = y
         let i = indexAt(labelWidth / 2, y)
         if (i < 0) i = indexAt(labelWidth / 2, y - 3)
         const item = i < 0 ? null : itemAtIndex(i)
@@ -75,8 +88,8 @@ ListView {
         dropWhere = holds && f > 0.25 && f < 0.75 ? "into" : f < 0.5 ? "above" : "below"
     }
     function finishDrag() {
-        if (dragId !== "" && dropRow !== "") backend.moveLayer(dragId, dropRow, dropWhere)
-        dragId = ""; dropRow = ""
+        if (dragId !== "") backend.rowDrag.drop(dropRow, dropWhere)      // no row under it: nothing changes
+        dragId = ""; dropRow = ""; dragRow = null
     }
     // press an eye or a lock and drag over more rows: the first row's new state shows on every row the pointer passed,
     // live (only here, in the list); ONE change on release (backend.setSwitches), so one Ctrl+Z puts them all back
@@ -106,7 +119,20 @@ ListView {
         if (swipeField !== "") backend.setSwitches(Object.keys(swipeIds), swipeField, swipeOn)
         swipeField = ""; swipeIds = ({}); swipeFrom = -1; swipeLast = -1
     }
-    Rectangle {  // the drop line (between rows), or an outline round a group the layer would go into
+    Rectangle {  // the pulled row, under the pointer where it was grabbed (its place in the list stays, dimmed)
+        objectName: "rowDragGhost"
+        visible: list.dragRow !== null
+        z: 6
+        x: Theme.gap; width: list.labelWidth - Theme.gap; height: Theme.row
+        y: list.dragY - list.grabDy          // (a list's own children lie in its content, as the drop line does)
+        radius: Theme.radiusCtl; color: Theme.raised; border.width: 1; border.color: Theme.accent; opacity: 0.92
+        LayerIcon { id: ghostIcon; x: Theme.gap + ((list.dragRow && list.dragRow.depth) || 0) * 16 + 16; anchors.verticalCenter: parent.verticalCenter
+                    kind: (list.dragRow && list.dragRow.kind) || "shape"; shape: (list.dragRow && list.dragRow.shape) || "rect"; ink: Theme.fg2 }
+        Text { x: ghostIcon.x + ghostIcon.width + Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: parent.width - x - Theme.gap
+               text: list.dragRow ? list.dragRow.label : ""; elide: Text.ElideRight; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label }
+    }
+    Rectangle {  // the drop line (between rows), or an outline round a group the layer would go into. A local stand-in
+        objectName: "rowInsertLine"    // for the kit's InsertLine (K5, not in main yet): swap it in here
         readonly property var target: list.dropRow === "" ? null : list.itemAtIndex(list.model.indexOf(list.dropRow))
         visible: target !== null
         z: 5
