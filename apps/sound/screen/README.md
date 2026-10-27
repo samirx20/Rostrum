@@ -53,7 +53,7 @@ Steps (`screensound/steps.py`): `dock editor|mixer|none` (old scripts' `page tim
 
 ## Songs as files, Settings (S34: the kit's one file model, shared/gui-kit/FILES.md)
 
-≡ menu (kit `FilesMenu.qml` + `rostrum_gui/project_files.py` = `files`; Sound's adapter `screensound/files_sound.py`):
+The app menu (the top bar's mark ▾; kit `FilesMenu.qml` + `rostrum_gui/project_files.py` = `files`; Sound's adapter `screensound/files_sound.py`):
 New, Open…, Open recent ▸, Open sample (the person's copy of Lull), Duplicate… (a separate copy; the window stays),
 Save a version (Ctrl+S: History's name field, the time as the name), Show folder, Start screen…, then Sound's own:
 Preferences… (Ctrl+,), Quit (Ctrl+Q). Saving is automatic: every song with a folder is live (`SoundBridge`:
