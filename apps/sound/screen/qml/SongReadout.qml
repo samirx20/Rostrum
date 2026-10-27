@@ -85,9 +85,11 @@ Row {
             onPicked: (v) => songPanel.setKey(ro.tonic, v)
         }
     }
-    Text { visible: text !== "" && (ro.room < 0 || width > 0); text: backend.soundState; anchors.verticalCenter: parent.verticalCenter
+    // "Updating the sound…" / "No sound output…"; a failed render is not repeated here: the Problems chip keeps it
+    Text { visible: text !== "" && (ro.room < 0 || width > 0); anchors.verticalCenter: parent.verticalCenter
+           text: /^Can't make the sound/.test(backend.soundState) ? "" : backend.soundState
            elide: Text.ElideRight; width: ro.room < 0 ? implicitWidth : Math.max(0, Math.min(implicitWidth, ro.room - x))
-           color: /^Can't make the sound/.test(text) ? Theme.danger : Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
+           color: Theme.fg3; font.family: uiFont; font.pixelSize: Theme.label
            MouseArea { id: stateHover; anchors.fill: parent; hoverEnabled: true }
            HoverTip { text: parent.truncated ? backend.soundState : ""; hovered: stateHover.containsMouse } }
 }
