@@ -51,6 +51,7 @@ struct ViewDrawn {
   bool sceneDome = false;         // the scene's own dome lit it (the studio light was not used)
   std::optional<SunSeen> sun;     // Storm drew the dome's sun as a light
   std::optional<FinalPass> final; // the Final look's progress (Cycles only)
+  double lightMs = 0, renderMs = 0;  // where the time went: the lights set up, Storm's draw (GPU work finished)
 };
 
 struct DrawSettings {

@@ -296,7 +296,8 @@ JsObject Core::view(const JsObject& o) {
                   {"vram", JsValue(JsObject{{"processMb", JsValue(r1(now.processMb))},
                                             {"gpuUsedMb", JsValue(r1(now.gpuUsedMb))},
                                             {"gpuTotalMb", JsValue(r1(now.gpuTotalMb))}})},
-                  {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))}})}};
+                  {"timing", JsValue(JsObject{{"drawMs", JsValue(r1(draw_ms))}, {"totalMs", JsValue(r1(ms_since(t0)))},
+                                              {"lightMs", JsValue(r1(pic.lightMs))}, {"stormMs", JsValue(r1(pic.renderMs))}})}};
   if (!target_.fbo) reply["shm"] = JsValue(info);
   if (perf_on()) reply["perf"] = JsValue(perf_moved());  // ROSTRUM3D_PERF=1: Storm's counters that moved
   return reply;

@@ -96,9 +96,10 @@ class ViewLink(QObject):
         self.item = None
         self._there = threading.Event()          # the item exists (LiveView.qml attached it)
         self._ids = itertools.count(1)
-        self._waiting: dict[int, list] = {}
+        self._waiting: dict[int, list] = {}      # ask(): id -> [event, reply]
+        self._calls: dict[int, object] = {}      # post(): id -> what to call with the reply (GUI thread)
         self._lock = threading.Lock()
-        self.gl = ""
+        self._hash = self._last = None           # the scene the item holds: its JSON's hash, the dict itself
 
     @Slot(QObject)
     def attach(self, item):
@@ -108,6 +109,39 @@ class ViewLink(QObject):
     def _wait_item(self):
         if not self._there.wait(ANSWER_S):
             raise RuntimeError("the window's view never appeared (LiveView.qml)")
+
+    def needs(self, scene: dict) -> str | None:
+        """The scene's request line when the item doesn't hold this scene yet (it is then counted as sent), else None."""
+        if scene is self._last:                  # the same dict as last time (a drag keeps its press's scene)
+            return None
+        h = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
+        with self._lock:
+            self._last = scene
+            if h == self._hash:
+                return None
+            self._hash = h
+        return json.dumps({"scene": scene})
+
+    def _forget_scene(self):
+        with self._lock:
+            self._hash = self._last = None
+
+    def post(self, req: dict, then, scene: dict | None = None):
+        """GUI thread, without waiting: `req` (after `scene` when the item doesn't hold it), and then(reply) on the GUI
+        thread when it is answered: the reply dict, or the error line (a str) when the item refused it. Requests are
+        answered in the order posted, the ones from ask() included."""
+        if self.item is None:
+            return then("the window's view isn't there yet")
+        line = self.needs(scene) if scene is not None else None
+        if line is not None:
+            self._post_line(line, lambda out: self._forget_scene() if isinstance(out, str) else None)
+        self._post_line(json.dumps(req), then)
+
+    def _post_line(self, line: str, then):
+        n = next(self._ids)
+        with self._lock:
+            self._calls[n] = then
+        QMetaObject.invokeMethod(self.item, "post", Qt.ConnectionType.DirectConnection, Q_ARG(int, n), Q_ARG(str, line))
 
     def ask(self, req: dict, timeout_s: float = ANSWER_S) -> dict:
         if threading.current_thread() is threading.main_thread():
@@ -138,10 +172,13 @@ class ViewLink(QObject):
     @Slot(int, str)
     def answered(self, n, reply):
         with self._lock:
-            box = self._waiting.pop(n, None)
+            box, then = self._waiting.pop(n, None), self._calls.pop(n, None)
         if box is not None:
             box[1] = json.loads(reply)
             box[0].set()
+        elif then is not None:
+            out = json.loads(reply)
+            then(out if out.get("ok") else f"3D view refused it: {out.get('error', 'no reason given')}")
 
     @Slot(str)
     def onDrawn(self, reply):
@@ -157,16 +194,19 @@ class ItemEngine:
 
     def __init__(self, link: ViewLink, engine):
         self.link, self.engine = link, engine
-        self._hash, self._scene = None, None
+        self._scene = None
         self.pid = os.getpid()                   # the process doing the live view's work (checks count its cycles)
 
     def ensure_scene(self, scene: dict) -> bool:
-        h = hashlib.sha256(json.dumps(scene, sort_keys=True).encode()).hexdigest()
         self._scene = scene
-        if h == self._hash:
+        line = self.link.needs(scene)
+        if line is None:
             return False
-        self.link.ask({"scene": scene})
-        self._hash = h
+        try:
+            self.link.ask({"scene": scene})
+        except Exception:
+            self.link._forget_scene()
+            raise
         return True
 
     def pick(self, **req) -> dict:

@@ -55,7 +55,7 @@ class Poses(QObject):
         self._run({"op": "pose.save", "target": targets, "args": args}, "Save pose")
         new = [p["id"] for p in self.b.doc.data.get("poses", []) if p["id"] not in before]
         if new and self.b.viewport is not None:       # the picture on screen now is the pose's thumbnail
-            pose_thumbs.save(self.b.doc, new[0], self.b.viewport.provider.requestImage("", None, None))
+            pose_thumbs.save(self.b.doc, new[0], self.b.viewport.picture())
             self.changed.emit()
 
     @Slot(str, bool)

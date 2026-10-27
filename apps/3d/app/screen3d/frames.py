@@ -132,17 +132,24 @@ class ViewRenderer(PictureWorker):
         return f"Error: viewport {job[0]} at frame {job[2].get('frame')}: {error}"
 
 
+def _program(eng):
+    """The engine program behind the viewport's engine (the window's view answers on the GUI thread, which these
+    callers block while they wait: view_item.ItemEngine.engine)."""
+    return getattr(eng, "engine", eng)
+
+
 class EngineVia:
-    """The viewport's engine as mesh.edit and mesh.unfold ask for it (ops_mesh.use_engine): each call waited for on its thread."""
+    """The viewport's engine program as mesh.edit and mesh.unfold ask for it (ops_mesh.use_engine): each call waited for
+    on its thread."""
 
     def __init__(self, worker):
         self.worker = worker
 
     def ensure_scene(self, scene):
-        return self.worker.wait_for(lambda e: e.ensure_scene(scene))
+        return self.worker.wait_for(lambda e: _program(e).ensure_scene(scene))
 
     def geometry(self, item):
-        return self.worker.wait_for(lambda e: e.geometry(item))
+        return self.worker.wait_for(lambda e: _program(e).geometry(item))
 
     def unfold(self, item, size):
-        return self.worker.wait_for(lambda e: e.unfold(item, size))
+        return self.worker.wait_for(lambda e: _program(e).unfold(item, size))

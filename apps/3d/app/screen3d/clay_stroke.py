@@ -114,6 +114,8 @@ class ClayStroke:
         worker = self.v._r
         rec = {"tMove": getattr(self, "_t_first", dab_trace.now()), "tSend": dab_trace.now(), "phase": phase,
                "brush": self._stroke["brush"], "points": len(points)} if dab_trace.on() and view is not None else None
+        if self.v.link is not None:                       # the window draws the view: straight to it, no worker hop
+            return self._post(drag, phase, req, scene, view, rec, answer, len(points))
 
         def job(eng):
             t0 = time.perf_counter()
@@ -134,6 +136,9 @@ class ClayStroke:
                         if pic is not None:
                             t = pic[4].get("timing", {})
                             rec.update(drawMs=t.get("drawMs"), totalMs=t.get("totalMs"), perf=pic[4].get("perf"))
+                    if pic is None and out.get("pictured") and rec is not None and dab_trace.RECORDS is not None:
+                        rec.update({k: out.get(k) for k in ("frame", "tRender0", "tRender1")})   # drawn in the window
+                        dab_trace.RECORDS.append(rec)
                     if pic is not None:
                         serial = worker.show(*pic, trace=rec)
                         out["pictured"] = True
@@ -148,6 +153,30 @@ class ClayStroke:
             if answer:
                 self.sculpted.emit((drag, phase, out, (time.perf_counter() - t0) * 1000, len(points)))
         self.v._r.call(job)
+
+    def _post(self, drag, phase, req, scene, view, rec, answer, n):
+        """`_send` to the window's own view (view_item.py): posted from this thread, answered here when the render
+        thread has done the dab and drawn the picture after it (in the same frame)."""
+        t0, link = time.perf_counter(), self.v.link
+        if rec is not None:
+            rec["tJob"] = rec["tEng0"] = dab_trace.now()
+
+        def then(out):
+            if isinstance(out, dict):
+                v = out.pop("view", None)
+                if v is not None:
+                    out["pictured"] = True
+                    link.drawn.emit({**v, "frame": out.get("frame")})
+                if rec is not None and v is not None and dab_trace.RECORDS is not None:
+                    t = v.get("timing", {})
+                    rec.update({k: out.get(k) for k in ("dabMs", "dabs", "applyMs", "meshMs", "usdMs", "blocks",
+                                                        "frame", "tRender0", "tRender1")})
+                    rec.update(tEng1=dab_trace.now(), drawMs=t.get("drawMs"), totalMs=t.get("totalMs"),
+                               lightMs=t.get("lightMs"), stormMs=t.get("stormMs"))
+                    dab_trace.RECORDS.append(rec)
+            if answer:
+                self._on_sculpted((drag, phase, out, (time.perf_counter() - t0) * 1000, n))
+        link.post({"sculpt": {**req, "view": view} if view is not None else req}, then, scene=scene)
 
     def _on_sculpted(self, answer):
         drag, phase, r, wall, n = answer

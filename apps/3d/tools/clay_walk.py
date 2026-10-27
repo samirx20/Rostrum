@@ -76,6 +76,26 @@ def pump(seconds=0.0, until=None, what=""):
         time.sleep(0.002)
 
 
+def clay_info(v, clay_id):
+    """The live clay's clay_info (ENGINE_CONTRACT): from the window's own view when it draws one (it answers on this
+    thread, so it is pumped for, never waited on), else from the viewport's engine."""
+    if v.link is None:
+        return clay_info(v, clay_id)
+    box = []
+    v.link.post({"clay_info": {"item": clay_id}}, box.append)
+    pump(60, lambda: box, "the clay's info")
+    if isinstance(box[0], str):
+        raise RuntimeError(box[0])
+    return box[0]
+
+
+def core_pid(v, scene):
+    """The process doing the live view's work: this one when the window draws it, else the engine program."""
+    if v.link is not None:
+        return os.getpid()
+    return core_pid(v, scene)
+
+
 def check(ok, line):
     print(("ok   " if ok else "FAIL ") + line)
     if not ok:
@@ -226,12 +246,12 @@ def mask_then_add(screen, win, at, radius, core):
     pick_tile(win, tool, "Mask", "mask")
     out = {"mask": stroke(screen, win, "Mask", "mask", at, radius, Qt.NoModifier, core, frm=(-band, -1.0), to=(-band, 0.1))}
     before = settled_picture(screen, win)
-    hash0 = v._r.wait_for(lambda e: e.clay_info(clay_id)).get("hash")
+    hash0 = clay_info(v, clay_id).get("hash")
     pick_tile(win, tool, "Add", "add")
     add = {"frm": (-0.95, row), "to": (0.95, row)}
     out["add"] = stroke(screen, win, "Add over the mask", "add", at, radius, Qt.NoModifier, core, **add)
     after = settled_picture(screen, win)
-    hash1 = v._r.wait_for(lambda e: e.clay_info(clay_id)).get("hash")
+    hash1 = clay_info(v, clay_id).get("hash")
     for _ in range(4):              # the control: Ctrl+Z back to before the Mask (a tile's brush is an undo step too)
         if len(screen.bridge.doc.item(clay_id)["steps"]) == steps0:
             break
@@ -372,7 +392,7 @@ def main():
         pump(60, screen.ready, "the first picture")
         vp_item = find(win.contentItem(), "viewport3d")
         scene = v.sent()[0]
-        core = K32.OpenProcess(0x1000, False, v._r.wait_for(lambda e: (e.ensure_scene(scene), e.pid)[1]))
+        core = K32.OpenProcess(0x1000, False, core_pid(v, scene))
 
         QTest.keyClick(win, Qt.Key_Q)                                   # Clay
         pump(0.3)
@@ -398,7 +418,7 @@ def main():
         check(v.clay.on and n == 6, f"V then Q: Clay on again with its six brush rows ({n} rows)")
         pick_tile(win, v.clay, "Add", "add")
         at, radius = clay_on_screen(screen, clay_id, vp_item)
-        info0 = v._r.wait_for(lambda e: e.clay_info(clay_id))
+        info0 = clay_info(v, clay_id)
         idle = []                                          # the same picture with nothing changing: the scene's own cost
         grab = lambda serial, ms, *rest: idle.append(round(ms, 2))  # noqa: E731
         v._r.ready.connect(grab)
@@ -418,7 +438,7 @@ def main():
                                         Qt.ControlModifier, core, invert=True))
         report["mask"] = mask_then_add(screen, win, at, radius, core)
         report["sizeDrag"] = size_drag(screen, win, at)
-        info1 = v._r.wait_for(lambda e: e.clay_info(clay_id))
+        info1 = clay_info(v, clay_id)
         report["lumpOnBoxMs"] = lump_on_object(screen, win, vp_item, "block")
         check(info1.get("hash") != info0.get("hash"), f"the clay's shape changed ({info0.get('hash')} -> {info1.get('hash')})")
         report["clayInfo"] = {"before": info0, "after": info1}

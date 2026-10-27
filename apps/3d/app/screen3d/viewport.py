@@ -66,6 +66,8 @@ class Viewport(QObject):
         self.final = FinalLook()
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
+        if self.link is not None:
+            self.link.shown.connect(dab_trace.shown)
         self._r.picked.connect(self._on_picked)
         self._r.failed.connect(self._on_failed)
         self._r.notice.connect(self._set_status)
@@ -360,6 +362,19 @@ class Viewport(QObject):
         """A material dropped at (x, y) device pixels: the item there gets it (picked like a click, never selected)."""
         self._drop = material_id
         self.click(x, y)
+
+    def picture(self):
+        """The viewport's picture as on screen now (a QImage): the window's own view grabbed from the window, else the
+        newest engine picture."""
+        item = self.link.item if self.link is not None else None
+        if item is None or self.final.on:
+            return self.provider.requestImage("", None, None)
+        from PySide6.QtCore import QPointF, QRectF
+        win = item.window()
+        dpr = win.devicePixelRatio()
+        top = item.mapToScene(QPointF(0, 0))
+        r = QRectF(top.x() * dpr, top.y() * dpr, item.width() * dpr, item.height() * dpr).toRect()
+        return win.grabWindow().copy(r)
 
     def close(self):
         if _ENGINE_FOR_OPS[0] is self:
