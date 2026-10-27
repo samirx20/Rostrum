@@ -199,7 +199,10 @@ AppShell {
         frameTicks: painter.drawingId !== ""
         rows: LayerRows { ruler: timeline.ruler; labelWidth: timeline.labelWidth; compact: timeline.compact }
         curves: CurveEditor { visible: backend.curves.on; ruler: timeline.ruler; labelWidth: timeline.labelWidth }
-        overlay: BeatLines { ruler: timeline.ruler; bottomY: timeline.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines
+        overlay: Item {
+            BeatLines { ruler: timeline.ruler; bottomY: timeline.height - Theme.gap }   // Show beats (the Sound row's menu): beat and bar lines
+            ReadyLine { ruler: timeline.ruler }     // the frames a scrub shows at once (scrub_ahead.py)
+        }
         Connections { target: timeline.ruler; function onScrubbed(t) { backend.soundtrack.scrub(t) } }   // a scrub plays a short burst of the sound
         RulerMenu { ruler: timeline.ruler }     // the ruler's right-click (markers, work area, go to) and the work area band
     }

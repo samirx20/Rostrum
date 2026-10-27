@@ -96,3 +96,14 @@ def test_an_anchor_drag_on_marker_keys_changes_those_keys(bridge):
         ts = [k["t"] for k in keys_of(bridge.doc.item("dot"), prop)]
         assert sorted(map(str, ts)) == ["#reveal", "3.0"], (prop, ts)       # changed in place: no plain key beside it
     assert {k["t"]: k["v"] for k in keys_of(bridge.doc.item("dot"), "anchorX")}["#reveal"] != 0.5
+
+
+def test_the_anchor_op_changes_a_marker_key_for_an_agent(bridge):
+    """layer.anchor (an agent's call) on a layer whose keys are timed on a marker: it reads the layer with its marker
+    keys placed (it used to fail) and changes the key on the marker at `at`, no plain key beside it."""
+    bridge.doc.apply([{"op": "key.add", "target": "dot", "args": {"prop": "anchorX", "t": "#reveal", "v": 0.5}},
+                      {"op": "key.add", "target": "dot", "args": {"prop": "anchorX", "t": 3.0, "v": 0.5}}], Who.person("sam"))
+    at = bridge.own_t("dot", 11.6)                       # the marker, in the layer's own seconds
+    bridge.doc.apply([{"op": "layer.anchor", "target": ["dot"], "args": {"x": 1.0, "at": at}}], Who.agent("claude"))
+    keys = {k["t"]: k["v"] for k in keys_of(bridge.doc.item("dot"), "anchorX")}
+    assert keys == {"#reveal": 1.0, 3.0: 0.5}

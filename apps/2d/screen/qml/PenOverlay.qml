@@ -80,11 +80,12 @@ Item {
             PathSvg { path: ov.svgOf(ov.pts, true) }
         }
     }
-    Repeater {  // by count, so a point keeps its delegate (and its drag) while the path changes under it
-        model: ov.pts.length
+    KeptRepeater {  // kept, so a point keeps its delegate (and its drag) while the path changes under it, and leaving
+        needed: ov.pts.length   // the points (Esc) only hides them: a destroyed knob's pointer item went wrong (cursor_item._follow)
         delegate: Item {
             id: knobs
             required property int index
+            visible: index < ov.pts.length
             readonly property var p: ov.pts[index] || ({})
             Knob { i: knobs.index; part: "in"; px: knobs.p.inX; py: knobs.p.inY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }
             Knob { i: knobs.index; part: "out"; px: knobs.p.outX; py: knobs.p.outY; visible: knobs.index === ov.sel && knobs.p.smooth === true; round: true; small: true }

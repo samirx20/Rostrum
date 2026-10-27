@@ -122,7 +122,7 @@ class LayerOrder(SlotMixin):
         calls = []
         for lay in layers:
             item, t = self.doc.item(lay), self.own_t(lay)
-            now = resolve(item, t)
+            now = resolve(self.placed_item(lay), self._t)        # keys on a marker placed
             calls += [route.value_call(item, p, round(now[p] + d, 2), t) for p, d in (("x", dx), ("y", dy)) if d]
         label = f"Nudge {self.label_of(self.doc.item(layers[0]))}" if len(layers) == 1 else f"Nudge {len(layers)} layers"
         return self._guard(lambda: self._done(self.doc.apply(calls, self.who, label=label, join=False), ""))

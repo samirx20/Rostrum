@@ -151,6 +151,13 @@ SmallPopup {
                 width: 3 * fly.tileW + 2 * 8
                 height: Math.min(groups.height, fly.room)
                 contentHeight: groups.height; clip: true; boundsBehavior: Flickable.StopAtBounds
+                WheelHandler {      // a wheel notch moves about a row of brushes (Flickable's own moved ~3 px a notch:
+                    target: null    // at 1280 x 720 My brushes was out of reach); a touchpad scrolls its own px
+                    onWheel: (e) => {
+                        const d = e.pixelDelta.y !== 0 ? e.pixelDelta.y : e.angleDelta.y / 120 * (fly.tileH + 22 + 4) * 1.5
+                        list.contentY = Math.max(0, Math.min(list.contentHeight - list.height, list.contentY - d))
+                    }
+                }
                 Column {
                     id: groups
                     width: parent.width

@@ -117,7 +117,7 @@ class Pen(QObject):
             subs = PD.to_points(item["d"])
         except ValueError:
             return []
-        fn = to_parent(resolve(item, self.b.own_t(item["id"], self.b.shown_t())))
+        fn = to_parent(resolve(self.b.placed_item(item["id"]), self.b.shown_t()))   # keys on a marker placed
         out = []
         for p in (p for s in subs for p in s["points"]):
             x, y = fn(p["x"], p["y"])
@@ -149,7 +149,7 @@ class Pen(QObject):
         if item is None or any(k["prop"] == "d" for k in item.get("keys", [])):
             return []
         subs = PD.to_points(item["d"])
-        fn = to_parent(resolve(item, self.b.own_t(item["id"])))
+        fn = to_parent(resolve(self.b.placed_item(item["id"]), self.b._t))
         out = []
         for s in subs:
             for k, p in enumerate(s["points"]):
@@ -192,7 +192,7 @@ class Pen(QObject):
         One change; the box follows (path.fit, as a point drag)."""
         item = self._layer()
         lid = item["id"]
-        local = to_local(resolve(item, self.b.own_t(lid)))
+        local = to_local(resolve(self.b.placed_item(lid), self.b._t))
         if zone == "remove":
             calls, label = [{"op": "path.remove_point", "target": [lid], "args": {"i": where}}], "Remove point"
         else:
@@ -283,7 +283,7 @@ class Pen(QObject):
             return False
         subs = PD.to_points(item["d"])
         s, k = PD.locate(subs, i)
-        props = resolve(item, self.b.own_t(item["id"]))
+        props = resolve(self.b.placed_item(item["id"]), self.b._t)
 
         def go():
             self._drag = Drag(self.b.doc, self.b.who, "Move point" if part == "point" else "Move handle")

@@ -71,7 +71,7 @@ class ShapeHandleSlots:
         layer = box.get("id")
         if not layer or layer != self.selectedLayer or box.get("type") != "shape" or not self.doc.has(layer):
             return {}
-        p = route.shown_values(self.doc.item(layer), self.own_t(layer))
+        p = self.shown_values(self.doc.item(layer))          # keys on a marker placed (hooks.py)
         g = self._grab if isinstance(self._grab, Grab) else None
         hs = placed(box, p, fit, g.name if g else "")
         return {"handles": hs, "covers": covered(box, fit, hs), "chip": g.state.get("chip", "") if g else "", "active": g.name if g else ""}

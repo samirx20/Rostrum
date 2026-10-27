@@ -14,6 +14,7 @@ from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 from rostrum2d.scene_keep import Keeper
 
 from . import bounds, colour_feed, drag_cancel, outline, picture_change, route, screen_seen
+from .scrub_ahead import ScrubAhead
 from .drags import DragSlots
 from .panel_hold import PanelHold
 from .command_words import CommandWords
@@ -120,6 +121,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
+        self._scrub_ahead = ScrubAhead(self)                # a scrub's quick pictures drawn ahead, the ruler's ready line (scrub_ahead.py)
         self.marks = MarkerWatch(doc.folder, self, self.who, self._fail, "2d")   # shared markers: flags, edits, snap
         ops_timing.use_project(doc.folder)                  # every operation's "#drop" reads this project's markers
         self.marks.changed.connect(self.markersChanged)
@@ -161,6 +163,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     opened = Property(QObject, lambda self: self._opened, constant=True)         # a painting open on its own (painting_open.py)
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     world = Property(QObject, lambda self: self._world, constant=True)           # the world picture on the canvas (world_view.py)
+    scrubAhead = Property(QObject, lambda self: self._scrub_ahead, constant=True)   # frames drawn ahead for a scrub (scrub_ahead.py)
     frameView = Property(QObject, lambda self: self._frame_view, constant=True)   # the frame's box on the canvas (frame_view.py)
     changeFlash = Property(QObject, lambda self: self._change_flash, constant=True)   # where the change outline goes (change_flash.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
@@ -411,7 +414,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         """The document's own picture is on screen: a frame landed, none is being drawn, and no paint picture of the
         state shown is still being made (until then the frame shows the last ones; a scripted picture waits for this), and
         no scrub is still moving (its pictures are the moving kind: playback.py)."""
-        return self.frames.idle() and self._frame > 0 and self._waiting is None and self._ahead is None and not self.play.scrubbing
+        return self.frames.idle() and self._frame > 0 and self._waiting is None and self._ahead is None and not self.play.moving()
 
     def _render_all(self):
         """Something outside the document changed (the markers, a 3D render): every node is described again."""
