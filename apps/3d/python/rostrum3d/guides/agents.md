@@ -186,6 +186,10 @@ Asking for something else in a call (`quality`, `width`) changes only that call,
   (script: `copies(id, source, layout=, count=)`), 10,000 at most, drawn as instances; scattered copies the shot camera never sees are
   left out, and `look_frame` says how many it saw. `copies.hold` keeps one copy where you put it; `effector.add` makes the ones near an
   item bigger, turned, pushed away or tinted, following that item as it moves. Guide `copies`.
+- **Things that fall and land.** `sim.body` kind `falls` on what drops (a copies item: every copy), `still` on what it lands on
+  (the ground at height 0 is there by default), `sim.set` for mass, bounce, friction; then the `run_simulation` tool (a job). It is
+  stored and only recomputed when something it depends on changes; renders compute it first when it is out of date, never
+  render an old one. `inspect_simulation` says where it stands; `sim.to_keys` turns it into ordinary keys you can nudge. Guide `simulate`.
 - **Clay.** For soft, organic forms (a head, a creature, a rock): `clay.add` makes a clay from a drawn outline
   (`draw`: scene points, `facing` the plane's normal towards the viewer, `puff` 1 = round), a spun profile (`spin`,
   `axis`) or a ball (`at`, `radius`); its shape is its list of steps, applied in order. `clay.draw` (`outline`) and

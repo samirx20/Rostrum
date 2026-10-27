@@ -7,9 +7,9 @@ from rostrum_core.mcp.combine import combine
 
 GROUPS = [
     ("look_frame", "See the composition as it renders: one frame (default; or `times: [0.5, 1.2, 3.0]` for one sheet of exactly those moments), a contact sheet of a range, the whole world with "
-     "the frame's path, the rig's bones over a frame, or which layers are in or out of the frame. Use \"frame\" to check "
+     "the frame's path, the rig's bones over a frame, or which layers are in or out of the frame, or where the piece is blank, pale or standing still (\"empty\", with times). Use \"frame\" to check "
      "a moment, \"sheet\" to check timing across a range, \"world\" when the frame moves over a big canvas.",
-     {"frame": "look_frame", "sheet": "look_sheet", "world": "look_world", "in_frame": "look_in_frame", "rig": "look_rig"}, "frame"),
+     {"frame": "look_frame", "sheet": "look_sheet", "world": "look_world", "in_frame": "look_in_frame", "rig": "look_rig", "empty": "look_empty"}, "frame"),
     ("look_motion", "How things move, from the document's keys (no rendering): every move's start, landing, ease and "
      "speed (default), one layer's path, one field's value curve, a layer's keys as the timeline shows them, or an IK "
      "rig's tip path and gaps.",

@@ -76,9 +76,9 @@ def paint_fill(ctx, targets, args):
 
 def _edges(frame: dict, w: int, h: int, only: str | None = None) -> np.ndarray:
     """HxW 0..1: the most paint any visible paint layer (or only the one `only`) has at each pixel (each layer's own,
-    whatever its blend)."""
+    whatever its blend). A toned layer (`ground`) covers every pixel, so it bounds nothing: it counts only when named."""
     alpha = np.zeros((h, w), np.float32)
     for p in frame.get("paints", []):
-        if p.get("visible", True) and p.get("strokes") and only in (None, p["id"]):
+        if p.get("visible", True) and p.get("strokes") and (only == p["id"] or only is None and not p.get("ground")):
             np.maximum(alpha, canvas.layer_rgba(frame, p["id"], w, h)[..., 3] / np.float32(255), out=alpha)
     return alpha

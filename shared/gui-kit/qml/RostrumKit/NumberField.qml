@@ -4,7 +4,8 @@ import "ValueKinds.js" as VK
 
 // A number. Drag sideways to scrub (Shift = coarse, 10 steps at a time; Alt = fine, a tenth of a step), or click to
 // type; Up / Down step while typing. Double-click puts it back to `defaultValue` (none set: nothing happens), and the
-// mouse wheel changes it only while it has keyboard focus (otherwise the wheel scrolls the panel under it).
+// mouse wheel changes it only while the caret is in it and the panel has not scrolled since (otherwise the wheel scrolls the
+// panel under it: a box clicked once and scrolled under the pointer never takes the wheel from the panel).
 // A scrub is one gesture: scrubStarted, many scrubbed(value), scrubEnded — the app records it as ONE change.
 // A typed value or an arrow step is one edited(value); a typed value outside from…to is refused (the field turns red and says
 // the range, `label` first: "Tempo is 20–400 bpm"), never clamped. Scrubbing, arrows and the wheel stop at the ends. `words` ([{value, label}]): a value that means something
@@ -159,8 +160,13 @@ FieldFrame {
     onArrow: (d, big) => f.edited(clamp(shownFrom() + d * (big ? 10 : 1) * showStep))
     function shownFrom() { return isFinite(shown) ? shown : showRange[0] }     // −∞ dB steps up from the floor
 
-    WheelHandler {  // a notch = one step (Shift ×10, Alt ÷10); only with keyboard focus, else the panel scrolls
-        enabled: f.input.activeFocus && !f.word
+    property int caretMoves: 0                       // the panel's scroll count when the caret went in (WheelLatch)
+    Connections {
+        target: f.input
+        function onActiveFocusChanged() { if (f.input.activeFocus) f.caretMoves = WheelLatch.moves }
+    }
+    WheelHandler {  // a notch = one step (Shift ×10, Alt ÷10); only with the caret in it, else the panel scrolls
+        enabled: f.input.activeFocus && !f.word && f.caretMoves === WheelLatch.moves
         acceptedModifiers: Qt.KeyboardModifierMask   // any: NoModifier is 0, so "None | Shift | Alt" meant Shift+Alt only (S36)
         onWheel: (e) => {
             const notch = (e.angleDelta.y || e.angleDelta.x) / 120

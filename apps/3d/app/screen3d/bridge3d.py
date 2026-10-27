@@ -42,6 +42,8 @@ from .queue import RenderQueue
 from .render_job import RenderJob
 from .project_qt import Projector
 from .send_qt import Sender
+from .sim_qt import SimJob
+from .sim_rows_qt import SimRows
 from .stretch3d import Stretch3D
 from .timeline3d import Mover
 
@@ -82,6 +84,8 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
         self.projector = Projector(self)                  # Project a picture from <shot> (project_qt.py); QML's `projector`
         self.send_to = Sender(self)                       # Send to 2D (send_qt.py); QML's `sender` (not a QObject attribute: sender() is Qt's)
         self.add = Adder(self)
+        self._sim = SimJob(self, render_engine)           # the shot's simulation: the timeline's Simulate row (sim_qt.py)
+        self._sim_rows = SimRows(self)                    # the Scene panel's Timing and Simplify (sim_rows_qt.py)
         self._poses = Poses(self)
         self._lipsync, self.open_lipsync = lipsync3d.make(self)     # Lip sync… on a mouth group (lipsync3d.py)
         self._mover, self._time_snap = Mover(self), TimeSnap(self)        # the timeline (timeline3d.py, key_pick3d.py)
@@ -122,6 +126,8 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     lipsync = Property(QObject, lambda self: self._lipsync, constant=True)   # QML: backend.lipsync (the kit's LipSyncSheet)
     importer = Property(QObject, lambda self: self._importer, constant=True)   # QML: backend.importer (importing.py)
     assets = Property(QObject, lambda self: self._assets, constant=True)   # QML: backend.assets (assets_qt.py)
+    sim = Property(QObject, lambda self: self._sim, constant=True)         # QML: backend.sim (sim_qt.py)
+    simRows = Property(QObject, lambda self: self._sim_rows, constant=True)   # QML: backend.simRows (sim_rows_qt.py)
 
     @Property(QObject, constant=True)
     def adder(self):
@@ -137,7 +143,7 @@ class Bridge3D(Signals3D, ShotMixin, SceneMixin, TimeMixin, RowsMixin, ActionPre
     def extra_commands(self):
         """Ctrl K: the actions (the same list as the panel, right-click and the keys), the key map's jobs that would do
         something now (job_when3d.py), then the render queue's operations (queue.commands)."""
-        return job_when3d.commands(self) + self.queue.commands()
+        return job_when3d.commands(self) + self.queue.commands() + self._sim.commands()
 
     # ---- the kit's hooks: the 3D animation model (route.py) ----------------------------------------------------
     def label_of(self, item):

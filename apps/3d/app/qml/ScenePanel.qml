@@ -119,6 +119,44 @@ Panel {
                     clickable: true; onClicked: backend.adder.add("light:dome")
                 }
 
+                // Simulation (SPEC §3.4): only while the scene has bodies. Its status line, Simulate while there is
+                // something to compute (the timeline's row runs the same job), the shot's Ground (a collider at height 0),
+                // Timing and Simplify (brief 26a, read off the stored result) and Turn into keys while it is stored
+                Title { text: "Simulation"; width: parent.width; visible: backend.sim.shown }
+                Text {
+                    objectName: "sceneSimLine"
+                    visible: backend.sim.shown; width: parent.width; height: Theme.row; verticalAlignment: Text.AlignVCenter
+                    text: backend.sim.line; elide: Text.ElideRight
+                    color: backend.sim.state === "failed" ? Theme.danger : Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
+                }
+                Text {
+                    visible: backend.sim.failure !== ""; width: parent.width; wrapMode: Text.WordWrap
+                    text: backend.sim.failure; color: Theme.danger; font.family: uiFont; font.pixelSize: Theme.label
+                }
+                Line {
+                    visible: backend.sim.shown && backend.sim.canRun; text: ""
+                    Button { objectName: "sceneSimRun"; anchors.verticalCenter: parent.verticalCenter
+                             text: backend.sim.state === "failed" ? "Try again" : "Simulate"; kind: "primary"
+                             help: "Computes how the bodies fall over the shot's frames and stores it."
+                             onClicked: backend.sim.simulate() }
+                }
+                Line {
+                    visible: backend.sim.shown; text: "Ground"
+                    Toggle { objectName: "sceneSimGround"; anchors.verticalCenter: parent.verticalCenter
+                             checked: backend.sim.ground; onToggled: (v) => backend.sim.setGround(v) }
+                }
+                Repeater {          // Timing and Simplify: the shot's own fields, the kit's rows (sim_rows_qt.py)
+                    model: backend.sim.shown ? backend.simRows.rows : null
+                    delegate: InspectorRow { width: col.width; bridge: backend.simRows; instant: backend.simRows.rows.instant }
+                }
+                Line {              // the stored result becomes ordinary keys; the bodies are Off after it (one undo step)
+                    visible: backend.sim.canKeys; text: ""
+                    Button { objectName: "sceneSimKeys"; anchors.verticalCenter: parent.verticalCenter
+                             text: "Turn into keys"
+                             help: "Each falling item gets the stored result as ordinary keys, and stops being simulated."
+                             onClicked: backend.sim.turnIntoKeys() }
+                }
+
                 Title { text: "Shot"; width: parent.width }
                 Repeater {
                     model: panel.state.shot.rows

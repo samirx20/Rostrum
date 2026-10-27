@@ -70,6 +70,18 @@ struct Surface {
   bool empty() const { return a.empty(); }
 };
 
+// A stored simulation of the copies (brief 25, the node's `sim`): rows `row`.. of `bodies.bin` (frames × `of` rows × 7
+// floats: x y z qx qy qz qw in the copies item's space), frames `start`..`end`. `step` holds each pose 2 or 3 frames (On 2s,
+// On 3s, counted from the shot's start); `smooth` keeps every nth pose and blends between (Simplify).
+struct SimTrack {
+  std::string file;
+  int row = 0, rows = 0, of = 0, start = 0, end = 0, step = 1, smooth = 1;
+  std::vector<float> data;
+  bool on() const { return !file.empty(); }
+  // copy c's pose at shot frame f (c < rows)
+  void pose(int c, int f, int shot_start, PXR_NS::GfVec3f* pos, PXR_NS::GfQuatf* rot) const;
+};
+
 // One copies item as built, kept by the core between requests (the live `copies` request, pick, the seen test).
 struct State {
   std::string id;
@@ -85,12 +97,13 @@ struct State {
   bool animated = false;                      // effectors baked per frame
   int seen = -1;                              // copies the camera sees (-1: not tested)
   std::vector<bool> shown;                    // per copy: drawn (the seen test); empty = all
+  SimTrack sim;                               // the stored fall, when it has one
 };
 
 // Reads the node (props, held, effectors), defines the instancer at `path` and builds the sources under it.
 // The layout waits for lay_out_all (a surface may be built after this item).
 void build(Item& it, const PXR_NS::JsArray& children, const PXR_NS::JsArray& held, const PXR_NS::JsArray& effectors,
-           const PXR_NS::SdfPath& path);
+           const PXR_NS::JsObject* sim, const PXR_NS::SdfPath& path);
 // After every item is built: each copies item's surface read, laid out and written.
 void lay_out_all(const PXR_NS::UsdStageRefPtr& stage, std::vector<State>& all);
 
@@ -98,6 +111,8 @@ void lay_out_all(const PXR_NS::UsdStageRefPtr& stage, std::vector<State>& all);
 // are laid out again and written on `stage` in one change. Returns the time taken, ms.
 double relay(const PXR_NS::UsdStageRefPtr& stage, State& s, const PXR_NS::JsObject& props, const PXR_NS::JsValue* held);
 
+// The copies at `frame` (layout + effectors, in the copies item's space) and the item's world place then.
+std::vector<Copy> at_frame(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame, PXR_NS::GfMatrix4d* world);
 // Each copy's points for the seen test at `frame` (world): its base and its bounds' centre, two per copy.
 std::vector<PXR_NS::GfVec3d> seen_points(const PXR_NS::UsdStageRefPtr& stage, const State& s, int frame);
 // Writes invisibleIds from s.shown.

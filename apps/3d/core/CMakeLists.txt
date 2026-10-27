@@ -42,6 +42,21 @@ target_compile_definitions(xatlas PRIVATE NOMINMAX _USE_MATH_DEFINES)
 target_include_directories(xatlas PUBLIC third_party/xatlas)
 target_compile_options(xatlas PRIVATE /EHsc /utf-8 /bigobj /W0)
 
+# Jolt Physics 5.6.0 (third_party/jolt, MIT, jrouwe/JoltPhysics v5.6.0, unmodified: Jolt/ and LICENSE): rigid bodies for the
+# `simulate` request (src/sim*.cpp). Its own Jolt.cmake, static, CPU only (no compute shaders, no debug renderer, no profiler),
+# SSE4.2 at most (runs on any x64) and cross-platform deterministic: the same inputs always give the same result.
+set(PHYSICS_REPO_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jolt)
+set(JPH_USE_DX12 OFF)
+set(JPH_USE_VK OFF)
+set(JPH_USE_MTL OFF)
+set(JPH_USE_CPU_COMPUTE OFF)
+set(CROSS_PLATFORM_DETERMINISTIC ON)
+set(USE_SSE4_1 ON)
+set(USE_SSE4_2 ON)
+set(INTERPROCEDURAL_OPTIMIZATION OFF)
+include(third_party/jolt/Jolt/Jolt.cmake)
+target_compile_options(Jolt PRIVATE /utf-8 /W0)
+
 # The core itself, as a library (r3d_core) that two programs link: the engine program (rostrum3d-core, the JSON
 # server of ENGINE_CONTRACT.md) and the app window's live view (the Rostrum3DView QML module below).
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp src/*.h)
@@ -60,7 +75,7 @@ target_link_directories(r3d_core PUBLIC ${BUNDLE}/python/313/libs ${BUNDLE}/tbb/
 target_link_libraries(r3d_core PUBLIC
   ${BUNDLE}/usd/lib/usd_ms.lib ${BUNDLE}/tbb/lib/tbb.lib ${BUNDLE}/epoxy/lib/epoxy.lib
   ${BUNDLE}/OpenImageIO/lib/OpenImageIO.lib ${BUNDLE}/OpenImageIO/lib/OpenImageIO_Util.lib ${BUNDLE}/opencolorio/lib/OpenColorIO.lib ${BUNDLE}/openvdb/lib/openvdb.lib
-  manifold opensubdiv_far xatlas opengl32 dxgi psapi)
+  manifold opensubdiv_far xatlas Jolt opengl32 dxgi psapi)
 
 # Imports of other formats (src/convert*.cpp): cgltf, tinyobjloader, ufbx (MIT, third_party/) and Alembic (BSD-3, static,
 # from the bundle); see convert.cmake.

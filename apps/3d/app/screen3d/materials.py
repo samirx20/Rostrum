@@ -39,7 +39,7 @@ class Materials3D(QObject):
         self._live = None                               # a live drag (material_live.Drag): the view only, until the release
         self.model = RowsModel(rows.ROLES, self)
         bridge.outlineChanged.connect(self._refresh)
-        bridge.frameChanged.connect(self._refresh)
+        bridge.frameChanged.connect(self._on_frame)
         if balls is not None:
             balls.updated.connect(self.changed)
 
@@ -123,8 +123,18 @@ class Materials3D(QObject):
         self.b.adder.add("material")
 
     # ---- the inline rows: InspectorRow's bridge -----------------------------------------------------------------
+    def _on_frame(self):
+        """A new frame changes only a keyed material's rows (their values at the playhead), never the picker's lists or
+        balls: a scrub step redrew every ball (~20 ms a frame with a few materials)."""
+        mat = self.b.doc.item(self._mat) if self._mat and self.b.doc.has(self._mat) else None
+        if mat is not None and mat.get("keys"):
+            self._rows()
+
     def _refresh(self):
         self.changed.emit()
+        self._rows()
+
+    def _rows(self):
         it = self._holder()
         mid = it.get("material", "") if it else ""
         mat = self.b.doc.item(mid) if mid and self.b.doc.has(mid) else None

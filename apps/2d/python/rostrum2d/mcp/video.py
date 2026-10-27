@@ -12,7 +12,7 @@ from rostrum_core.mcp.files import render_path
 
 from rostrum2d import project_sound
 
-from . import exporting, render
+from . import exporting, look_empty, render
 from .geometry import comp_size
 from .pick import ITEM_COMP, doc_and_comp
 
@@ -31,6 +31,18 @@ def manifest(item: str, doc, comp: dict, partial: Path, info: dict, start: float
             "checks": {"frame_count": "ok"}}
 
 
+def _quiet_stretches(mp4: Path, start: float) -> tuple[str, list]:
+    """The empty / washed-out / unchanged stretches of the finished file (look_empty), as a sentence and rows. A check that
+    fails says so in the reply: the export itself still stands."""
+    try:
+        rows = look_empty.scan_video(mp4, start)
+    except Exception as e:      # noqa: BLE001  (the render is done; the check's failure is reported, not hidden)
+        return f"(The empty-stretch check could not run: {e}.)", []
+    if not rows:
+        return "No empty, washed-out or unchanged stretch found.", []
+    return look_empty.tell(rows, start, start).replace("Stretches to look at", "Stretches to check").replace("look_frame at those times", "look_frame at those times (look_frame what \"empty\" re-checks)"), rows
+
+
 @tools.tool("render_video", {"properties": {**ITEM_COMP, "start": {"type": "number", "minimum": 0, "description": "Seconds. Default 0."},
                                             "end": {"type": "number", "minimum": 0, "description": "Seconds. Default: the end of the composition."},
                                             **exporting.QUALITY_ARGS,
@@ -43,7 +55,7 @@ def render_video(ctx, args):
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
     vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
-    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`)."""
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`). It also checks the finished file for blank, washed-out and unchanged stretches (look_frame what \"empty\") and names them with times and numbers (`quiet_stretches`); look at those times with look_frame."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
@@ -69,6 +81,7 @@ def render_video(ctx, args):
         target = partial / f'{item}_{comp["id"]}.mp4' if partial else out
         info = render.video(ctx.tool, scene, target, start, end, job.progress, s["quality"], s["bitrate"], job.on_cancel)
         exporting.with_sound(ctx.tool, info, target, s, folder or doc.folder)      # before it is finished or copied
+        quiet = _quiet_stretches(target, start)       # of the file itself, before it is finished
         files = [target]
         if partial:
             if info["frames"] != round((end - start) * info["fps"]):      # fail loudly: the .partial stays, nothing is finished
@@ -89,10 +102,11 @@ def render_video(ctx, args):
         also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
                      f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said} '
-                     f'Before calling it done, look at it: look_frame what "sheet", start {start:g}, end {end:g}.',
+                     f'{quiet[0]} Before calling it done, look at it: look_frame what "sheet", start {start:g}, end {end:g}.',
                      {"video": str(video), "has_sound": bool(info.get("sound")),
                       "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
                       **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
-                      "timing": info["timing"], "workers": info.get("workers")}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
+                      "timing": info["timing"], "workers": info.get("workers"), "quiet_stretches": quiet[1]}, files,
+                     warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}")

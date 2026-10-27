@@ -13,6 +13,7 @@ from .colors import linear
 from .light_fields import DOC_ONLY as LIGHT_DOC_ONLY
 from .render_fields import shutter_frames
 from . import clay_fields
+from .sim import fields as SIM_FIELDS
 
 FORMAT, VERSION = "rostrum-3d-scene", 1
 AIM_FIELDS = {"aim", "aimX", "aimY", "aimZ", "aimItem", "roll"}      # document-only: the compiler resolves them
@@ -23,7 +24,8 @@ SKINNED = "skinned"                            # a mesh's Bend with bones: sent 
 POSE = {p.name for p in clay_fields.POSE}  # a clay's joint settings and data: the document's alone (ops_pose.py; skinned goes as its `skin`)
 FILE_UNIT = "fileUnit"                         # an import's: what its file was in, for Keep original size (ops_import.py)
 COPIES_DATA = {copies_fields.HELD}              # a copies item's held copies go as `held` rows, never as a prop
-RESOLVED = COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
+SIMULATION = SIM_FIELDS.NAMES                   # what a body is made of: the simulation reads it (sim/), never sent as a prop
+RESOLVED = SIMULATION | COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
@@ -181,8 +183,11 @@ def _node(item: dict, fr: _Frames) -> dict:
     return node
 
 
-def describe(data: dict, shot_id: str, folder=None) -> dict:
-    """The contract § 2 scene of one shot. `folder`: the project folder (a path2d mesh reads its 2D document there)."""
+def describe(data: dict, shot_id: str, folder=None, sim: str = "use") -> dict:
+    """The contract § 2 scene of one shot. `folder`: the project folder (a path2d mesh reads its 2D document there).
+    `sim`: the shot's stored simulation laid over it (sim/overlay.py): "use" (the viewport: the result for the scene as it
+    is, else the older one), "none" (what a simulation starts from), "strict" (renders: raises sim.compute.SimError
+    unless the result for the scene as it is is stored; compute it first with sim.compute.ready)."""
     info, shot = shot_info(data, shot_id), _shot(data, shot_id)
     frames = range(info["start"], info["end"] + 1)
     fr = _Frames(data, frames, info["fps"], folder)
@@ -201,4 +206,5 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
         "items": [_node(i, fr) for i in data.get("items", [])],
     }
     paint_scene.paint(scene, data, _out, folder)          # painted meshes get their own material with the painted pictures
-    return scene
+    from .sim import overlay                              # here, not at the top: sim/ reads this module
+    return overlay.apply(scene, data, shot_id, folder, sim)

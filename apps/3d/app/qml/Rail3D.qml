@@ -15,7 +15,8 @@ import RostrumKit
 // painting. Last on both pages, the Materials ball: the project's materials (MaterialsList) beside the rail, a library
 // of things to put in the scene like the rest of the rail (header SPEC §3; also Ctrl+K). Import (Ctrl+I, Build page): a file
 // per format, landing at once on the surface in the middle of the view, then Asset library (ImportFiles.qml, importing.py).
-// Simulate isn't built yet: absent until it works (rule of individuality).
+// Simulate (Build page, while the selection can be a body: sim_actions.py): Falls, Stays still, Off, acting on the selection at
+// once (the same actions as right-click › Simulate and Ctrl+K; one undo step each).
 ToolRail {
     id: rail
     current: paintMode.on ? "paint" : viewport.clay.on ? "clay" : viewport.pose.on ? "pose" : "select"
@@ -28,6 +29,11 @@ ToolRail {
     // Pose (Shift+P): both pages, one clay selected (pose_qt.py); stays while it is on
     readonly property var poseGroups: viewport.pose.can || viewport.pose.on ? [{ id: "pose", items: [{ name: "Pose", icon: "pose-drag",
         kind: "shape3d", tool: "pose", job: "pose_tool", help: "Drag a part of the clay to pose it; click a spot to hold it still." }] }] : []
+    readonly property var simulateGroup: backend.sim.can ? [{ id: "simulate", name: "Simulate", items: [
+        { name: "Falls", icon: "sim-falls", kind: "shape3d", act: "sim:falls", help: "The selection falls and bumps when the shot is simulated." },
+        { name: "Stays still", icon: "sim-still", kind: "shape3d", act: "sim:still", help: "Falling things land on the selection; it never moves." },
+        { name: "Off", icon: "sim-off", kind: "shape3d", act: "sim:off", help: "The selection is no longer part of the simulation." }
+    ].filter(e => e.act !== "sim:" + backend.sim.kind) }] : []      // what it is already is absent (Off only for a body)
     readonly property var materialsGroup: ({ id: "materials", name: "Materials", panel: true, items: [{ name: "Materials", icon: "material",
         kind: "shape3d", job: "materials_list", help: "The project's materials: click one to edit it, drag one onto an item to give it that material." }] })
     // the Animate page (SPEC §2): Select, Poses (P), Onion skin (O), Bones (a mesh selected), Lights, Camera; Simulate joins when built
@@ -55,7 +61,7 @@ ToolRail {
         { sep: true },
         { id: "lights", name: "Lights", job: "lights_menu", items: rail.entries(backend.adder.rail.lights) },
         { id: "camera", name: "Camera", job: "camera_menu", items: rail.entries(backend.adder.rail.camera) }
-    ].concat([{ sep: true }], paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh or clay selected
+    ].concat(rail.simulateGroup, [{ sep: true }], paintMode.can || paintMode.on       // Paint (B): the Build page, one mesh or clay selected
              ? [{ id: "paint", items: [{ name: "Paint", icon: "brush", tool: "paint", job: "paint_tool",
                                          help: "Paint on the selected mesh or clay: colour, roughness, relief, metal or glow." }] }]
              : [], rail.poseGroups, [rail.materialsGroup])
@@ -98,7 +104,8 @@ ToolRail {
         if (e.tool === "clay") { if (paintMode.on) paintMode.leave(); return viewport.clay.toggle() }
         if (viewport.clay.on && (e.tool === "select" || e.tool === "paint")) viewport.clay.leave()
         if (e.tool === "paint" || (e.tool === "select" && paintMode.on)) return paintMode.toggle()
-        if (e.act === "bones") viewport.bones.start()
+        if (e.act && e.act.startsWith("sim:")) backend.actions.run(e.act)       // Simulate › Falls / Stays still / Off: at once
+        else if (e.act === "bones") viewport.bones.start()
         else if (e.act === "mesh:svg") svgDialog.open()
         else if (e.act === "mesh:path2d") rail.openDrawings()
         else if (e.act && e.act.startsWith("import:")) importFiles.open(e.act.slice(7))

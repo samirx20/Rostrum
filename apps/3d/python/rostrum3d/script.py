@@ -99,6 +99,12 @@ class Item:
             return self.set(aim="point", aimX=float(x), aimY=float(y), aimZ=float(z), **extra)
         return self.set(aim="item", aimItem=target, **extra)
 
+    def simulate(self, kind: str = "falls", **values) -> "Item":
+        """Make it part of the shot's simulation (only things directly in the scene): "falls", "still" or "off", with
+        Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", simShape="box"). Computing it is
+        the run_simulation tool (or sim.run), never the script."""
+        return self.set(simulate=kind, **values)
+
     def place_on(self, other, at=None, normal=None) -> "Item":
         """Stand this mesh on `other`. Without `at`: on top of a mesh made earlier in the same group, its base on that
         mesh's top, over its middle (move it along the top afterwards with .set(x=…, z=…)); both unturned. With

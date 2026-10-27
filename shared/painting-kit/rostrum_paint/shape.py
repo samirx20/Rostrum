@@ -1,5 +1,7 @@
 """How a stroke's line and dabs are shaped before they are laid: steadiness (the line trails the pen), tilt (the pen's
-lean turns and widens the tip), taper (thin start and end without pressure) and per-dab size / angle jitter.
+lean turns and widens the tip), taper (thin start and end without pressure), per-dab size / angle jitter, and the
+hand's line (`wobble`: the path drifts side to side; `swell`: the width breathes along the stroke as a hand's press
+does; `pool`: ink gathers where the brush lands and lifts), all without the points carrying any pressure.
 
 All of it is brush settings stored with the stroke and applied in `brush.plan`, so a replay, the native stamper and
 an export give the same pixels. Each piece does nothing at 0, so strokes made before it keep their pixels.
@@ -13,10 +15,14 @@ import math
 
 import numpy as np
 
-KEYS = ("steady", "tilt_angle", "tilt_size", "taper_start", "taper_end", "size_jitter", "angle_jitter")   # all 0 = off
+KEYS = ("steady", "tilt_angle", "tilt_size", "taper_start", "taper_end", "size_jitter", "angle_jitter",
+        "wobble", "swell", "pool")                                                                      # all 0 = off
 STEADY_PX = 40.0         # steadiness 100 % = the line trails the pen by up to this many canvas px
 TILT_FULL = 60.0         # degrees of lean that count as "on its side"
 TILT_WIDEN = 2.0         # tilt → size 100 %, on its side: the tip is this much wider again
+WOBBLE_WAVE = 9.0        # a wobble's drift turns about every this many brush sizes along the stroke
+SWELL_WAVE = 6.0         # the width swells and thins about every this many brush sizes
+POOL_REACH = 0.6         # the ink pools over about this many brush sizes at each end
 
 
 def points(raw) -> np.ndarray:
@@ -151,3 +157,31 @@ def step_scale(t, L, size, p) -> float:
             span = max(min(amount * size, L / 2), 1e-6)
             f = f * math.sin(min(max(d / span, 0.0), 1.0) * math.pi / 2) ** 0.8
     return max(f, 0.04)
+
+
+def _wave(n, size, step, wave, seed, salt):
+    """-1..1 per dab, smooth over `wave` brush sizes along the stroke; dab i the same however many follow."""
+    from .marks import _noise1_by_dab
+    return (_noise1_by_dab(n, max(2.0, wave * size / step), np.random.default_rng([int(seed), salt])) - 0.5) * 2
+
+
+def wobble(p, X, Y, th, size, step, seed):
+    """The path drifts side to side, smoothly, up to `wobble` brush sizes (a hand's line is never ruled). Off: X, Y."""
+    if p["wobble"] <= 0 or len(X) < 2:
+        return X, Y
+    d = p["wobble"] * size * _wave(len(X), size, step, WOBBLE_WAVE, seed, 10)
+    return X - np.sin(th) * d, Y + np.cos(th) * d
+
+
+def hand(p, t, length, size, step, seed):
+    """(swell, pool) per dab: the width times `swell` (1 - swell … 1, breathing along the stroke) and 1 + `pool` (the
+    tip that much wider and denser where it lands and lifts, fading over POOL_REACH sizes). Off: (1.0, 0.0). `length`:
+    the stroke's (an open stroke's is endless: its end has not pooled yet)."""
+    sw, pl = 1.0, 0.0
+    if p["swell"] > 0:
+        sw = 1 - p["swell"] * (_wave(len(t), size, step, SWELL_WAVE, seed, 11) + 1) / 2
+    if p["pool"] > 0:
+        reach = max(POOL_REACH * size, 1e-6)
+        t = np.asarray(t, float)
+        pl = p["pool"] * (np.exp(-(t / reach) ** 2) + np.exp(-((length - t) / reach) ** 2))
+    return sw, pl

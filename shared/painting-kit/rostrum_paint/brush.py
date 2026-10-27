@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from . import shape as shaping
-from . import native, pictures, wrap
+from . import native, pictures, wash, wrap
 from .marks import ALONG, EVEN, K, MODES, PARAMS, TIPS, UNDER, Coverage, Paper, _noise1, _noise1_by_dab, _ss, _up, apply_paint
 
 
@@ -64,10 +64,12 @@ def stamp_stroke(layer, points, color, size, brush="round", *, mask=None, under=
     if P is None:
         return None
     if carry is None:
-        return (lay or dabs)(layer, P, mask, under)
-    bx0, by0, bx1, by1 = P.bbox
-    got = (lay or dabs)(layer, P, mask, under, np.ascontiguousarray(carry[by0:by1, bx0:bx1], np.float32))
-    carry[by0:by1, bx0:bx1] = got.a
+        got = (lay or dabs)(layer, P, mask, under)
+    else:
+        bx0, by0, bx1, by1 = P.bbox
+        got = (lay or dabs)(layer, P, mask, under, np.ascontiguousarray(carry[by0:by1, bx0:bx1], np.float32))
+        carry[by0:by1, bx0:bx1] = got.a
+    wash.after(layer, got, color, size, {**PARAMS, **params}, paper or Paper(*layer.shape[:2]))
     return got
 
 
@@ -78,6 +80,7 @@ def _piece(layer, points, color, size, brush, mask, under, paper, lay, carry, pi
     P = plan(layer.shape[:2], points, color, size, brush, paper, params, (carry.next, float(from_t), bool(open_)))
     carry.next, carry.ahead = P.next, P.ahead
     if P.n == 0 or P.bbox is None:
+        _dried(layer, carry, open_, P, color, size, paper, params)
         return None
     if carry.cov is None:
         carry.cov = np.zeros(layer.shape[:2], np.float32)
@@ -93,7 +96,14 @@ def _piece(layer, points, color, size, brush, mask, under, paper, lay, carry, pi
     carry.cov[by0:by1, bx0:bx1] = got.a
     if res is not None and (res_in or any(x1 > x0 and y1 > y0 for x0, x1, y0, y1 in P.box.tolist())):
         carry.res = res
+    _dried(layer, carry, open_, P, color, size, paper, params)
     return got
+
+
+def _dried(layer, carry, open_, P, color, size, paper, params):
+    """The last piece (the pen lifted, every dab laid): the wash dries over the whole stroke (wash.py)."""
+    if not open_ and P.ahead is None:
+        wash.after_pieces(layer, carry.cov, color, size, {**PARAMS, **params}, paper or Paper(*layer.shape[:2]))
 
 
 def plan(shape, points, color, size, tip, paper, params, piece=None):
@@ -152,9 +162,13 @@ def plan(shape, points, color, size, tip, paper, params, piece=None):
     else:
         X = X + rng.normal(0, p["jitter"] * size, n)
         Y = Y + rng.normal(0, p["jitter"] * size, n)
+    X, Y = shaping.wobble(p, X, Y, th, size, step, seed)
     R = (size / 2) * (1 - sp * (1 - Pr))
     th, R = shaping.dabs(p, th, R, t, L, full, size, seed, by_dab, sized)
     A = p["opacity"] * (1 - p["opacity_pressure"] * (1 - Pr))
+    if p["swell"] > 0 or p["pool"] > 0:     # the hand's line (shape.hand); off, the stroke's pixels are as before
+        swell, pool = shaping.hand(p, t, L[-1] if sized is None else sized, size, step, seed)
+        R, A = R * swell * (1 + pool), np.minimum(1, A * (1 + pool))
     A, R = A * np.minimum(1, R / 0.5), np.maximum(R, 0.5)  # thinner than a pixel fades, never breaks
     most = R.max()
     if by_dab:          # the biggest the tip can be: full pressure, leaning on its side
