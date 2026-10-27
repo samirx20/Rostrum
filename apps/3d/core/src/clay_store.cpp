@@ -13,6 +13,7 @@
 
 #include "clay_cache.h"
 #include "clay_replay.h"
+#include "clay_shapes.h"
 #include "clay_stroke.h"
 #include "clay_usd.h"
 #include "clay_volume.h"
@@ -68,8 +69,9 @@ size_t undo_bytes(const std::deque<Unit>& u) {
 }  // namespace
 
 struct Store::Impl {
-  explicit Impl(const UsdStageRefPtr& stage) : blocks(stage) {}
+  explicit Impl(const UsdStageRefPtr& st) : blocks(st), stage(st) {}
   Blocks blocks;
+  UsdStageRefPtr stage;  // CL3: an item piece's source is read from it
   std::map<std::string, Entry> clays;
   struct Live {
     std::string item;
@@ -141,12 +143,47 @@ struct Store::Impl {
     e.full = true;
   }
 
+  // CL3: the fields of drawn, spun and item pieces, kept for the pieces applied lately (an item's level set is the
+  // costly one: an undo and redo doesn't make it again). By clay, step key and grain.
+  struct KeptField {
+    std::shared_ptr<const Field> field;
+    uint64_t used = 0;
+  };
+  static constexpr size_t kKeptFields = 8;  // an item's level set can be tens of MB
+  std::map<std::string, KeptField> fields;
+  uint64_t fieldUse = 0;
+
+  std::shared_ptr<const Field> field_of(const Entry& e, const StepNode& s) {
+    using K = ShapeSpec::Kind;
+    if (s.spec.kind == K::Ball) return nullptr;
+    const std::string id = e.path.GetString() + "|" + s.key + "|" + std::to_string(e.detail);
+    auto it = fields.find(id);
+    if (it == fields.end()) {
+      std::shared_ptr<const Field> f;
+      if (s.spec.kind == K::Outline) f = make_outline(s.spec, e.detail, s.where);
+      else if (s.spec.kind == K::Spin) f = make_spin(s.spec, e.detail, s.where);
+      else f = make_item(s.spec, stage, e.path, e.detail, item_half_width(s.shape.blend / e.detail), s.where);
+      while (fields.size() >= kKeptFields) {  // the least lately used goes
+        auto old = fields.begin();
+        for (auto j = fields.begin(); j != fields.end(); ++j)
+          if (j->second.used < old->second.used) old = j;
+        fields.erase(old);
+      }
+      it = fields.emplace(id, KeptField{std::move(f), 0}).first;
+    }
+    it->second.used = ++fieldUse;
+    return it->second.field;
+  }
+
   void apply(Entry& e, const StepNode& s, bool keepUndo) {
     std::unique_ptr<ChunkRecord> rec = keepUndo ? std::make_unique<ChunkRecord>() : nullptr;
     {
       Recording r(*e.vol, rec.get());
       if (s.piece) {
-        e.vol->apply(s.shape);
+        Step shape = s.shape;
+        const std::shared_ptr<const Field> field = field_of(e, s);  // null: a sphere / capsule
+        shape.field = field.get();
+        e.vol->apply(shape);
       } else if (s.path == StepNode::Path::Along) {
         stroke_along(*e.vol, s.brush, s.along, s.dir);
       } else {

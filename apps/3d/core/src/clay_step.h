@@ -28,6 +28,8 @@ inline V3 unit(V3 a) { return mul(a, 1.0f / std::max(1e-12f, len(a))); }
 enum class Op : uint8_t { Add, Carve, Smooth, Pull, Flatten, Crease, Mask };
 enum class Kind : uint8_t { Piece, Stamp };  // a shape put in (sphere / capsule, with blend), or one brush dab
 
+class Field;  // clay_shapes.h
+
 struct Step {
   Kind kind = Kind::Piece;
   Op op = Op::Add;
@@ -43,6 +45,8 @@ struct Step {
   float falloff = 0.5f;  // stamp: 0 soft .. 1 hard edge (0.5: CL1's curve, bit for bit)
   bool invert = false;   // stamp: Flatten puffs out, Crease makes a ridge, Mask takes the mask away
   float radiusScale = 1.0f, strengthScale = 1.0f;  // stamp: pen pressure, as stored in the dab file (CLD2)
+  const Field* field = nullptr;  // piece (CL3): a drawn / spun / item shape instead of a and b (its owner keeps it
+                                 // alive while the step is applied: clay_store.cpp)
 };
 
 struct Brush {

@@ -8,6 +8,7 @@
 #include <pxr/usd/sdf/path.h>
 
 #include "clay_dabs.h"
+#include "clay_shapes.h"
 #include "clay_step.h"
 
 namespace r3d {
@@ -21,7 +22,8 @@ struct StepNode {
   std::string key;     // the chain hash Python made; the core only compares keys
   std::string where;   // "<item id>.steps[i]", for errors while it is applied
   bool piece = true;
-  Step shape;          // a piece
+  Step shape;          // a piece (a sphere / capsule: shape.a, b, radius)
+  ShapeSpec spec;      // a piece's shape (CL3: outline, spin, item; Ball = shape.a, b, radius)
   Brush brush;         // a stroke
   enum class Path { File, Inline, Along } path = Path::File;
   std::string file;    // Path::File: absolute path of the .dabs file

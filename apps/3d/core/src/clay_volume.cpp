@@ -8,9 +8,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <optional>
 
 #include "clay_box.h"
 #include "clay_coarse.h"
+#include "clay_shapes.h"
 
 namespace r3d::clay {
 
@@ -212,9 +214,11 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
   std::vector<float> shift(n, 0), reachOf(n, 0);
   float k = 0;
   if (piece) {
-    const float r = s0.radius * iv;
-    pieceShapes.push_back({vox(s0.a), vox(s0.b), r});
-    if (s0.mirror) pieceShapes.push_back({vox(mirror_x(s0.a)), vox(mirror_x(s0.b)), r});
+    if (!s0.field) {
+      const float r = s0.radius * iv;
+      pieceShapes.push_back({vox(s0.a), vox(s0.b), r});
+      if (s0.mirror) pieceShapes.push_back({vox(mirror_x(s0.a)), vox(mirror_x(s0.b)), r});
+    }
     // a blend joins the piece to clay already there; on an empty clay (a new clay's first ball) there is nothing to
     // join, so none: the ball is its exact size, and only its thin shell is worked (CL1b: with the blend, a new 10 cm
     // clay widened and re-levelled a 30-million-voxel box and took 5 s to appear)
@@ -262,7 +266,15 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     lo[0] = std::min(lo[0], p.x - r), lo[1] = std::min(lo[1], p.y - r), lo[2] = std::min(lo[2], p.z - r);
     hi[0] = std::max(hi[0], p.x + r), hi[1] = std::max(hi[1], p.y + r), hi[2] = std::max(hi[2], p.z + r);
   };
-  if (piece) {
+  if (piece && s0.field) {  // CL3: a drawn / spun / item shape (clay_shapes.h), and its mirrored copy
+    const Field& f = *s0.field;
+    grow(f.lo, k + kBand + 1);
+    grow(f.hi, k + kBand + 1);
+    if (s0.mirror) {
+      grow(V3{-f.hi.x, f.lo.y, f.lo.z}, k + kBand + 1);
+      grow(V3{-f.lo.x, f.hi.y, f.hi.z}, k + kBand + 1);
+    }
+  } else if (piece) {
     for (const Shape& sh : pieceShapes) {
       grow(sh.a, sh.r + k + kBand + 1);
       grow(sh.b, sh.r + k + kBand + 1);
@@ -315,6 +327,7 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     const V3 c{b.lo.x() + 8.0f * cx + 3.5f, b.lo.y() + 8.0f * cy + 3.5f, b.lo.z() + 8.0f * cz + 3.5f};
     if (piece) {
       float d = 1e30f;
+      if (s0.field) d = FieldEval(*s0.field, s0.mirror)(c);
       for (const Shape& sh : pieceShapes) d = std::min(d, seg_dist(c, sh.a, sh.b) - sh.r);
       if (d < -(hd + kBand + 1)) {
         const float target = s0.op == Op::Add ? -kBand : kBand;
@@ -375,9 +388,12 @@ StepTiming Volume::run(const Step* steps, size_t n, Buffers* bufs, std::shared_m
     const auto P = [&](int x, int y, int z) { return V3{float(b.lo.x() + x), float(b.lo.y() + y), float(b.lo.z() + z)}; };
     par(extList, [&](int ci) { b.copy(ci, V, O); });
     par(extList, [&](int ci) {
+      std::optional<FieldEval> fe;  // CL3: one reader per chunk (an item's caches the grid's nodes)
+      if (s0.field) fe.emplace(*s0.field, s0.mirror);
       b.each(ci, [&](int x, int y, int z, size_t i) {
         const V3 p = P(x, y, z);
         float d = 1e30f;
+        if (fe) d = (*fe)(p);
         for (const Shape& sh : pieceShapes) d = std::min(d, seg_dist(p, sh.a, sh.b) - sh.r);
         if (s0.op == Op::Add) V[i] = smin(O[i], d, k);
         else if (s0.op == Op::Carve) V[i] = -smin(-O[i], d, k);
