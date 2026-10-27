@@ -68,8 +68,9 @@ pose.move_joint(target="c", joint="forearm.L", to=[x, y, z])   -> placed: kept w
 pose.names(target="c", names="humanoid")
 ```
 
-- **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`): a joint in the wrong place
-  is fixed with `pose.move_joint` before posing. `cells` (8–128, default 48) samples the shape more finely for thin
+- **Find, look, then pose.** After `pose.find_joints`, check the reply (or `look_frame`; `look_at` on a pixel names
+  the nearest joint, "forearm.R, 3 cm off"): a joint in the wrong place is fixed with `pose.move_joint` before posing.
+  `look_shape` measures the clay at rest, whatever its pose; `look_frame highlight="steps:arm"` outlines a step as posed. `cells` (8–128, default 48) samples the shape more finely for thin
   limbs.
 - **Grab by name** (`part="hand.R"`, `"RightHand"` or the bone id `c_hand_R`): the grabbed spot is the end of that
   bone. `grab` is a world point on the clay as it stands at `at`.
