@@ -131,16 +131,20 @@ first one's notes with changes); `section.duplicate` is for a section you or a p
 - **Drag a section's band** on the ruler to move it with everything that starts inside it. While you drag, the band,
   its outline and a picture of the notes and clips under it move with the pointer, and the place they leave is dimmed.
   Nothing in the song changes until you let go, so the drag keeps up with the pointer. The chip beside the pointer
-  names where the section's start will land ("bar 9.3"). It lands on the nearest beat; hold **Ctrl** to put it
+  names where the section's start will land ("bar 9.3") and by how much ("+2 bars"). It lands on the nearest beat; hold **Ctrl** to put it
   exactly where you let go. Letting go makes one `section.move`, one undo step. Press **Esc** before letting go to put
   it back. Drag a band's left or right edge to move that edge only; the section's contents stay where they are.
 - **A section stays on its bars when the tempo changes.** A section made from a time range ("Make a section") or
   given in seconds is kept on the beat it falls on, so a tempo change moves it with its notes. A section that starts
   on a marker (`"#cut"`) keeps following the marker.
-- **A clip's zones** (a selected clip; the pointer shows what a press does):
-  - **body**: an open hand. Drag to move it (a closed hand while it moves). Hold **Alt** to copy it.
-  - **left or right edge**: a sideways arrow. Drag to trim. The chip says by how much ("−1 bar 2" is a bar and two beats shorter).
-  - **Alt on the right edge**: stretch in time; the chip says "Stretch 125 %".
-  - **top-left or top-right corner**: the fade in or fade out ("Fade 120 ms").
-  - **level line**: an up-down arrow. Drag to set the clip's volume ("−3.0 dB").
+- **A clip's zones** (a selected clip; the pointer shows what a press does, and changes the moment you hold or let go
+  of **Alt**, with the mouse still):
+  - **body**: the arrow. Drag to move it (a closed hand while it moves); the chip beside the pointer says by how much
+    ("+1 bar 2 beats"). Hold **Alt** to copy it: the arrow gets a blue **+**.
+  - **left or right edge**: a sideways double arrow. Drag to trim. The chip says by how much ("−1 bar 2 beats" is a bar and two beats shorter).
+  - **Alt on the right edge**: the double arrow gets a dot in its middle: stretch in time; the chip says "Stretch 125 %".
+  - **top-left or top-right corner**: a slanted double arrow: the fade in or fade out ("Fade 120 ms").
+  - **level line**: an up-down double arrow. Drag to set the clip's volume ("−3.0 dB").
+  - Markers, tempo and key flags and the punch range's edges drag the same way, with a chip saying where they land
+    ("bar 9.3"). **Esc** before letting go puts any drag back as it was, with nothing to undo.
 

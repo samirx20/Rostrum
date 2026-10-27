@@ -1,6 +1,9 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "Picks.js" as Picks
+import "Pointers.js" as Pointers
+import "Tempo.js" as Tempo
 
 // The named markers above the ruler, each a small tag at its time. Click selects the marker and puts the playhead on
 // it; double-click (or F2, or M for a new one) opens its name field in place (Enter keeps, Esc cancels the renaming);
@@ -10,6 +13,8 @@ import "Picks.js" as Picks
 // with the snap line saying what it caught; Ctrl = free). The project's shared
 // markers show with a dashed edge; dragging one moves only its tag while the mouse is down, and the release is one
 // marker.move in the project's marker list (backend.moveSharedMarker), so it moves for every app.
+// The pointer (the kit's CanvasCursor) is pick over a tag, the closed hand while one moves; the kit's chip by the
+// pointer says where it lands ("bar 9.3"); Esc while dragging puts it back with no undo step (dragEsc).
 // The clicks are taken here in one place, so a drag keeps going while the tags are redrawn.
 Item {
     id: band
@@ -76,12 +81,30 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         property real x0: 0
         property bool dragging: false
-        cursorShape: band.markerAt(mouseX) !== null ? Qt.SizeHorCursor : Qt.ArrowCursor
+        property bool holding: false        // the drag holds Esc (dragEsc) once it has moved 4 px
+        property string dragId: ""
+        property real t0: 0
         hoverEnabled: true
+        readonly property string pointer: holding ? "moving" : "pick"
+        CanvasCursor { objectName: "markerCursor"; anchors.fill: parent; kind: Pointers.kind(grab.pointer) }
+        function letGo() { if (holding) { holding = false; dragEsc.letEsc() } }
+        Connections {   // Esc while a marker drag runs: it goes back, nothing written; the release then does nothing
+            target: dragEsc
+            function onCancelled() {
+                if (!grab.holding) return
+                grab.holding = false
+                if (band.sharedId === "") backend.cancelDrag()
+                band.sharedId = ""; band.sharedDx = 0; grab.dragging = false
+            }
+        }
+        function landsAt() {   // where the dragged marker is now (a shared one: its tag, before the release)
+            var k = band.marks.find(x => x.id === dragId)
+            return k ? k.t + (band.sharedId !== "" ? band.sharedDx / band.ruler.perSec : 0) : t0
+        }
         onDoubleClicked: (m) => { var hit = band.markerAt(m.x); if (hit !== null && !hit.shared) backend.startRename(hit.id) }
         onPressed: (m) => {
             var hit = band.markerAt(m.x)
-            x0 = m.x
+            x0 = m.x; dragId = hit !== null ? hit.id : ""; t0 = hit !== null ? hit.t : 0
             if (m.button === Qt.RightButton) {      // a song marker's menu (Rename, Delete, Put a sound here …): the selection's
                 if (hit === null || hit.shared) { m.accepted = false; return }
                 markMenu.marker = hit.id; markMenu.entries = backend.markerMenu(hit.id)
@@ -95,6 +118,7 @@ Item {
         }
         onPositionChanged: (m) => {
             if (!(dragging && pressed && (pressedButtons & Qt.LeftButton))) return
+            if (!holding && Math.abs(m.x - x0) >= 4) { holding = true; dragEsc.holdEsc() }
             if (band.sharedId !== "") band.sharedDx = m.x - x0
             else backend.dragTo((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0, false, false, band.ruler.perSec)
         }
@@ -104,9 +128,14 @@ Item {
             if (band.sharedId !== "")
                 backend.moveSharedMarker(band.sharedId, band.sharedDx / band.ruler.perSec, (m.modifiers & Qt.ControlModifier) !== 0)
             else if (dragging) backend.endDrag()
-            band.sharedId = ""; band.sharedDx = 0; dragging = false
+            band.sharedId = ""; band.sharedDx = 0; dragging = false; letGo()
         }
-        onCanceled: { if (dragging && band.sharedId === "") backend.cancelDrag(); band.sharedId = ""; band.sharedDx = 0; dragging = false }
+        onCanceled: { if (dragging && band.sharedId === "") backend.cancelDrag(); band.sharedId = ""; band.sharedDx = 0; dragging = false; letGo() }
+    }
+    DragLabel {   // where the marker lands, as the ruler names it (over the band's parent: the band clips)
+        parent: band.parent; z: 1000
+        at: Qt.point(band.x + grab.mouseX, band.y + band.height / 2)
+        text: grab.holding ? Tempo.barName(band.ruler.song, grab.landsAt()) : ""
     }
     ActionMenu { id: markMenu; objectName: "markerMenu"; property string marker: ""
                  onPicked: (v) => backend.markerPick(marker, v) }

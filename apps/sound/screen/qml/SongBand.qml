@@ -1,10 +1,14 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
+import "Pointers.js" as Pointers
+import "Tempo.js" as Tempo
 
 // The song's tempo, time signature and key changes on the ruler, each a small flag at its time ("♩ 96", "♩ 90 ↗" gliding up to the next, "3/4", "6/8", "D minor").
 // Click selects it (the inspector edits it; Delete removes it); drag moves it (one gesture = one undo step; a tempo
 // change on its beat, a quarter beat grid, Ctrl = free). The key at the start is not flagged (the header strip and the song view say it). Absent while the song has none. Clicks are taken here in
-// one place, as in MarkerBand.
+// one place, as in MarkerBand: pick over a flag, the closed hand while it moves (the kit's CanvasCursor), the kit's
+// chip by the pointer says where it lands ("♩ 96 at bar 5.2"), Esc puts it back with no undo step (dragEsc).
 Item {
     id: band
     property var ruler
@@ -51,23 +55,39 @@ Item {
         }
     }
     MouseArea {
+        id: flagArea
         anchors.fill: parent
         preventStealing: true
         property real x0: 0
         property bool dragging: false
+        property bool holding: false        // the drag holds Esc (dragEsc) once it has moved 4 px
+        property string dragId: ""
         hoverEnabled: true
-        cursorShape: band.markAt(mouseX) !== "" ? Qt.SizeHorCursor : Qt.ArrowCursor
+        CanvasCursor { objectName: "songFlagCursor"; anchors.fill: parent; kind: Pointers.kind(flagArea.holding ? "moving" : "pick") }
+        function letGo() { if (holding) { holding = false; dragEsc.letEsc() } }
+        Connections {   // Esc while a flag drag runs: it goes back, nothing written; the release then does nothing
+            target: dragEsc
+            function onCancelled() { if (flagArea.holding) { flagArea.holding = false; backend.cancelDrag(); flagArea.dragging = false } }
+        }
         onPressed: (m) => {
             var id = band.markAt(m.x)
             dragging = id !== "" && backend.beginDrag(id)
-            x0 = m.x
+            x0 = m.x; dragId = id
             if (!dragging) m.accepted = false
         }
-        onPositionChanged: (m) => { if (dragging && pressed)
+        onPositionChanged: (m) => { if (!(dragging && pressed)) return
+            if (!holding && Math.abs(m.x - x0) >= 4) { holding = true; dragEsc.holdEsc() }
             backend.dragBy((m.x - x0) / band.ruler.perSec, 0, (m.modifiers & Qt.ControlModifier) !== 0) }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                           (w.modifiers & Qt.ShiftModifier) !== 0, w.x / band.width, false)
-        onReleased: { if (dragging) backend.endDrag(); dragging = false }
-        onCanceled: { if (dragging) backend.cancelDrag(); dragging = false }
+        onReleased: { if (dragging) backend.endDrag(); dragging = false; letGo() }
+        onCanceled: { if (dragging) backend.cancelDrag(); dragging = false; letGo() }
+    }
+    DragLabel {   // the dragged flag and where it lands (over the band's parent: the band clips)
+        parent: band.parent; z: 1000
+        at: Qt.point(band.x + flagArea.mouseX, band.y + band.height / 2)
+        text: { if (!flagArea.holding) return ""
+                var k = band.marks.find(x => x.id === flagArea.dragId)
+                return k ? k.text + (k.arrow ? " " + k.arrow : "") + " at " + Tempo.barName(band.song, k.t) : "" }
     }
 }

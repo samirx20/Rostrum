@@ -6,6 +6,9 @@ import "MixFormat.js" as F
 // one gesture: scrubStarted, scrubbed(gain)…, scrubEnded (the app records it as ONE change). Only the knob is grabbed
 // (a stray click on the track does nothing); Alt-click resets to 0 dB, double-click asks to type the value (typeIt),
 // and the wheel nudges: 1 dB a notch, Shift 3 dB, Alt 0.1 dB (nudged(gain): one change on its own).
+// While the knob is dragged the kit's chip beside it says the level ("−3.0 dB"); Esc puts it back: scrubCancelled
+// (the owner drops the gesture, no undo step; the release then does nothing). A control, not a canvas: the pointing
+// hand stays.
 Item {
     id: f
     property real gain: 1
@@ -13,6 +16,7 @@ Item {
     signal scrubStarted()
     signal scrubbed(real gain)
     signal scrubEnded()
+    signal scrubCancelled()
     signal reset()
     signal typeIt()
     signal nudged(real gain)
@@ -53,16 +57,31 @@ Item {
         property real grab: 0           // where in the knob the press landed: the knob follows the pointer, it never jumps
         property bool live: false
         function at(y) { return F.gainOf(1 - Math.max(0, Math.min(1, (y - grab) / f.travel))) }
+        property real y0: 0
+        property bool holding: false    // the scrub holds Esc (dragEsc) once it has moved 4 px
+        function letGo() { if (holding) { holding = false; dragEsc.letEsc() } }
         onPressed: (m) => {
             if (m.modifiers & Qt.AltModifier) { f.reset(); return }
             live = m.y >= knob.y - 3 && m.y <= knob.y + knob.height + 3
             if (!live) return
-            grab = m.y - knob.y
+            grab = m.y - knob.y; y0 = m.y
             f.scrubStarted()
         }
-        onPositionChanged: (m) => { if (live) f.scrubbed(at(m.y)) }
-        onReleased: { if (live) f.scrubEnded(); live = false }
-        onCanceled: { if (live) f.scrubEnded(); live = false }
+        onPositionChanged: (m) => { if (!live) return
+            if (!holding && Math.abs(m.y - y0) >= 4) { holding = true; dragEsc.holdEsc() }
+            f.scrubbed(at(m.y)) }
+        onReleased: { if (live) f.scrubEnded(); live = false; letGo() }
+        onCanceled: { if (live) f.scrubEnded(); live = false; letGo() }
         onDoubleClicked: f.typeIt()
+    }
+    Connections {   // Esc while the knob is dragged: the level as it was
+        target: dragEsc
+        function onCancelled() { if (drag.holding) { drag.holding = false; drag.live = false; f.scrubCancelled() } }
+    }
+    DragLabel {   // the level while dragging, beside the knob (over the window: the strip is narrow)
+        parent: f.Window.contentItem || f; z: 1000
+        beside: true
+        at: { var p = f.mapToItem(parent, knob.x + knob.width, knob.y + knob.height / 2); return Qt.point(p.x, p.y) }
+        text: drag.holding ? F.faderText(f.gain) : ""
     }
 }

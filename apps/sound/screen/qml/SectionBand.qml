@@ -1,5 +1,6 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "Picks.js" as Picks
 import "Pointers.js" as Pointers
 import "Tempo.js" as Tempo
@@ -9,8 +10,11 @@ import "Tempo.js" as Tempo
 // Drag moves it and everything that started inside it at the press (markers stay) as one picture (PLAN S2): the band,
 // its outline and a picture of the lanes' notes under it (`shift`, drawn by the Timeline) ride the pointer every frame,
 // nothing in the song changes until the release, which is one `section.move` by the whole amount, one undo step. It
-// lands on the nearest beat (Ctrl: free); the chip names where ("bar 9.3"). Esc while dragging puts it back.
+// lands on the nearest beat (Ctrl: free); the kit's chip names where ("bar 9.3") and how far ("+2 bars"). Esc while
+// dragging puts it back (the kit's dragEsc: it holds Esc once the press has moved 4 px).
 // Drag the left or right edge: that edge only moves (`section.set` on release, one undo step), its contents stay.
+// Pointer (the kit's CanvasCursor, Pointers.js): pick on a section, resize (left-right) on its edges, the closed hand
+// while it moves; locked to the press's until the release.
 // Absent when the song has no sections. The clicks are taken here in one place, as in MarkerBand.
 Item {
     id: band
@@ -36,7 +40,11 @@ Item {
         if (keep && s && Math.abs(dx) >= 0.5) backend.dragBy(dt, 0, true)
         if (keep) backend.endDrag(); else backend.cancelDrag()     // (a click: nothing moved, nothing written)
         dragId = ""; dragEdge = ""; dx = 0; shift = null
-        if (press.focusWas) press.focusWas.forceActiveFocus(); press.focusWas = null
+        if (press.holding) { press.holding = false; dragEsc.letEsc() }
+    }
+    Connections {   // Esc while a section drag runs: it goes back, nothing written; the release then does nothing
+        target: dragEsc
+        function onCancelled() { if (press.holding) { press.holding = false; band.finish(false) } }
     }
     function sectionAt(x) {
         var best = ""
@@ -92,14 +100,13 @@ Item {
         preventStealing: true
         property real x0: 0
         property real t0: 0                  // the dragged time at the press (the start, or the edge held)
-        property var focusWas: null          // Esc is the drag's while it runs (before the kit's Step back), then handed back
+        property bool holding: false         // the drag holds Esc (dragEsc) once it has moved 4 px
         hoverEnabled: true
-        Keys.onShortcutOverride: (e) => { e.accepted = band.dragging && e.key === Qt.Key_Escape }
-        Keys.onEscapePressed: band.finish(false)            // puts it back
         onDoubleClicked: (m) => { var id = band.sectionAt(m.x); if (id !== "") backend.startRename(id) }
-        cursorShape: { if (band.dragging) return Pointers.of(band.dragEdge !== "" ? "trim" : "moving")
-                       var id = band.sectionAt(mouseX), e = band.edgeAt(id, mouseX)
-                       return Pointers.of(e !== "" ? "trim" : id !== "" ? "pick" : "") }
+        readonly property string pointer: band.dragging ? (band.dragEdge !== "" ? "trim" : holding ? "moving" : "pick")
+                                          : band.edgeAt(band.sectionAt(mouseX), mouseX) !== "" ? "trim" : "pick"
+        CanvasCursor { objectName: "sectionCursor"; anchors.fill: parent
+                       kind: Pointers.kind(press.pointer); badge: Pointers.badge(press.pointer); angle: Pointers.turn(press.pointer) }
         onPressed: (m) => {
             var id = band.sectionAt(m.x), e = band.edgeAt(id, m.x), s = band.sections.find(s => s.id === id)
             if (!s || !(e !== "" ? backend.beginEdge(id, e) : backend.beginDrag(id))) { m.accepted = false; return }
@@ -107,9 +114,9 @@ Item {
             band.dragEdge = e; band.dx = 0
             band.shift = e === "" ? { x0: band.ruler.xOf(s.t), x1: band.ruler.xOf(s.end) } : null
             band.dragId = id
-            focusWas = Window.activeFocusItem; forceActiveFocus()
         }
         onPositionChanged: (m) => { if (!band.dragging || !pressed) return
+            if (!holding && Math.abs(m.x - x0) >= 4) { holding = true; dragEsc.holdEsc() }
             var to = band.landed(t0 + (m.x - x0) / band.ruler.perSec, (m.modifiers & Qt.ControlModifier) !== 0 || !backend.snapOn)
             if (band.dragEdge !== "") {                     // an edge keeps a quarter beat from the other (song_edit.py)
                 var s = band.sections.find(s => s.id === band.dragId), q = band.ruler.song.spb / 4
@@ -126,5 +133,8 @@ Item {
         at: Qt.point(band.x + press.mouseX, band.y + band.height / 2)
         text: band.dragging && Math.abs(band.dx) >= 0.5
               ? Tempo.barName(band.ruler.song, press.t0 + band.dx / band.ruler.perSec) : ""
+        hint: { if (!band.dragging || Math.abs(band.dx) < 0.5) return ""
+                var song = band.ruler.song, t1 = press.t0 + band.dx / band.ruler.perSec
+                return Pointers.beats(backend, Tempo.along(song.beats, t1, song.spb) - Tempo.along(song.beats, press.t0, song.spb), song.barBeats) }
     }
 }
