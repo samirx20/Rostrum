@@ -5,7 +5,9 @@ for each shape (ENGINE_CONTRACT v1.17, clay `paint`) into a CLS1 file in the sha
 the clay's last step key, its detail and the paint size), and a clay stroke is kept as `anchors` on the surface
 ([x, y, z, nx, ny, nz, pressure] in the clay's own space) and `reach` (its brush radius in metres). Each time the
 paint pictures are made, `laid` turns those into the kit's stroke on this surface: the path is resampled densely in
-3D, each sample goes to the nearest point of the surface on its side (a triangle and where in it), that point's
+3D, each sample goes along its own normal to where the surface is now (so paint rides over a bulge raised under it,
+or sinks into a carve, instead of sliding to the nearest rim), then to the nearest point of the surface on its side
+(a triangle and where in it), that point's
 (u, v) to canvas pixels, the brush size from `reach` and the surface's metres per pixel there; where the path crosses
 a cut of the unfolded surface (a seam) the stroke is split, each half reaching one sample past the cut, so it crosses
 cleanly. Strokes with `points` and no anchors are used as they are (pixels).
@@ -22,12 +24,13 @@ from pathlib import Path
 import numpy as np
 from rostrum_core.cache import CACHE, cache_key
 
-VERSION = "rostrum3d-claysurf@1"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it
+VERSION = "rostrum3d-claysurf@2"     # bump with the core's CLS1 writer (its unfold) or this file's reading of it
 MAGIC, FORMAT = b"CLS1", 1
 STEP = 0.25                          # resample the path every STEP × reach in 3D ...
 MOST = 4000                          # ... and at most this many samples a stroke
 NEAR_VERTS, VALENCE = 8, 16          # nearest-point search: triangles round the 8 nearest points (≤ 16 each),
 CHUNK = 256                          # for this many samples at a time
+REACH_EDGES = 48                     # along the normal: up to this many edge lengths each way, one edge a step
 _LOCK = threading.RLock()
 
 
@@ -108,6 +111,35 @@ class Surface:
         pick = np.argmin(np.where(away, d2 + 1e6, d2), axis=1)            # facing its way first; else the nearest
         rows = np.arange(len(pts))
         return cand[rows, pick], bary[rows, pick]
+
+    def along_normal(self, pts: np.ndarray, nrm: np.ndarray) -> np.ndarray:
+        """Each of `pts` moved along its normal to where the surface is now: the step nearest the old place (either
+        way) whose nearest surface point is within an edge. A point with no surface along its line stays (the
+        nearest-point search then takes it)."""
+        if not len(pts) or not len(self.points):
+            return pts
+        tree, _ = self._index()
+        edge = self.edge
+        ts = np.arange(-REACH_EDGES, REACH_EDGES + 1) * edge
+        ts = ts[np.argsort(np.abs(ts), kind="stable")]                     # 0, -e, +e, -2e, … nearest first
+        out = pts.copy()
+        for i in range(0, len(pts), CHUNK):
+            p, n = pts[i:i + CHUNK], nrm[i:i + CHUNK]
+            line = p[:, None, :] + ts[None, :, None] * n[:, None, :]       # a × t × 3
+            d, _ = tree.query(line.reshape(-1, 3), 1)
+            near = d.reshape(len(p), len(ts)) < 0.75 * edge
+            first = np.argmax(near, axis=1)
+            hit = near[np.arange(len(p)), first]
+            out[i:i + CHUNK] = np.where(hit[:, None], p + ts[first][:, None] * n, p)
+        return out
+
+    @property
+    def edge(self) -> float:
+        """The surface's typical edge length (metres)."""
+        if getattr(self, "_edge", None) is None:
+            e = np.linalg.norm(self.points[self.tris[:, 1]] - self.points[self.tris[:, 0]], axis=1)
+            self._edge = float(np.median(e)) if len(e) else 1e-3
+        return self._edge
 
     def canvas_px(self, tri: np.ndarray, bary: np.ndarray) -> np.ndarray:
         """Canvas pixels (x right, y down) of points given as (triangle, barycentric): u × size, (1 − v) × size."""
@@ -190,7 +222,7 @@ def lay(surface: Surface, stroke: dict) -> list[dict]:
     """One anchored stroke → the kit's strokes on this surface (one per stretch between seams), each with `points`
     (canvas px, pressure) and `size` (px), `anchors` and `reach` left out. The first keeps the stroke's id."""
     a = _samples(np.asarray(stroke["anchors"], np.float64), float(stroke["reach"]))
-    tri, bary = surface.nearest(a[:, :3], a[:, 3:6])
+    tri, bary = surface.nearest(surface.along_normal(a[:, :3], a[:, 3:6]), a[:, 3:6])
     px = surface.canvas_px(tri, bary)
     mpp = surface.mpp[tri]
     step3 = np.linalg.norm(np.diff(a[:, :3], axis=0), axis=1)

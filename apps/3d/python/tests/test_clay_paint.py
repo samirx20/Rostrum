@@ -131,3 +131,28 @@ def test_a_clay_waits_for_its_surface_then_paints(tmp_path, monkeypatch):
 
 def test_height_is_shown_as_relief():
     assert CHANNELS["height"][0] == "Relief"
+
+
+def test_paint_rides_over_a_bulge_raised_under_it(tmp_path):
+    """A ridge 2 cm high raised under the middle of a stroke: the middle goes up onto the ridge's top along its normal,
+    not sideways to the ridge's foot (the nearest surface from deep inside it), seen in the real window."""
+    n = 41
+    xs, ys = np.meshgrid(np.linspace(0, W, n), np.linspace(0, W, n))
+    zs = np.where(np.abs(xs - W / 2) < 0.011, 0.02, 0.0)
+    pts = np.stack([xs.ravel(), ys.ravel(), zs.ravel()], 1)
+    tris = []
+    for j in range(n - 1):
+        for i in range(n - 1):
+            a, b, c, d = j * n + i, j * n + i + 1, (j + 1) * n + i, (j + 1) * n + i + 1
+            tris += [[a, b, d], [a, d, c]]
+    uv = [c for t in tris for k in t for c in _one_chart(pts[k])]
+    path = tmp_path / "r" / "surface.cls"
+    path.parent.mkdir(parents=True)
+    with open(path, "wb") as f:
+        f.write(b"CLS1" + struct.pack("<5I", 1, SIZE, len(pts), len(tris), 1))
+        f.write(np.asarray(pts, "<f4").tobytes() + np.tile([0, 0, 1], (len(pts), 1)).astype("<f4").tobytes())
+        f.write(np.asarray(tris, "<i4").tobytes() + np.asarray(uv, "<f4").tobytes())
+        f.write(np.asarray([0, 0, 0, len(tris)], "<i4").tobytes())
+    laid = [q for s_ in clay_paint.lay(clay_paint.Surface(path), STROKE) for q in s_["points"]]
+    mid_px = _one_chart([W / 2, 0.03])[0] * SIZE
+    assert min(abs(q[0] - mid_px) for q in laid) < 0.01 * SIZE          # the ridge's top is painted, middle included
