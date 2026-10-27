@@ -135,14 +135,15 @@ def main_():
         call(doc, [{"op": "paint.add", "target": ["blob"], "args": {"id": "relief1", "name": "Relief 1",
                                                                      "channel": "height"}}]
              + [{"op": "stroke.add", "target": ["relief1"], "args": {
-                 "anchors": r, "reach": 0.0015, "color": "#ffffff", "size": 4, "brush": "round", "opacity": 1.0}}
-                for r in rows if len(r) > 1])
+                 "anchors": r, "reach": 0.0015, "color": "#ffffff" if k < 2 else "#000000", "size": 4, "brush": "round",
+                 "opacity": 1.0}}
+                for k, r in enumerate(rows) if len(r) > 1])
         note("relief scene", ms=send(eng, doc, folder), lines=[len(r) for r in rows])
         f2 = final(eng, "r1")
         call(doc, [{"op": "paint.set", "target": ["relief1"], "args": {"visible": False}}])
         send(eng, doc, folder)
         f3 = final(eng, "r0")
-        strip([f3, f2], ["Final: no Relief", "Final: Relief wrinkles (white strokes = raised)"], OUT / "relief.png")
+        strip([f3, f2], ["Final: no Relief", "Final: Relief (top two raised: white; bottom sunk: black)"], OUT / "relief.png")
     (OUT / "clay_paint_shots.json").write_text(json.dumps(REPORT, indent=1), encoding="utf-8")
 
 

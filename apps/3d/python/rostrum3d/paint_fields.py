@@ -29,7 +29,7 @@ LAYER = [
     Param.choice("channel", list(CHANNELS), label="Paints", default="colour", importance=S,
                  labels={k: v[0] for k, v in CHANNELS.items()},
                  help="What the layer paints on the surface: Colour; Roughness (white = rough, black = mirror); Relief "
-                      "(`height`: white = raised, black = sunk, as bump: fine detail such as wrinkles, pores, "
+                      "(`height`: unpainted is middle grey, flat; white = raised, black = sunk, as bump: fine detail such as wrinkles, pores, "
                       "scratches); Metal (white = metal); Glow (its colours glow). Layers of one channel stack; each "
                       "sits over the material's own value where painted"),
 ]

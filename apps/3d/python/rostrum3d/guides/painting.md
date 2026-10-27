@@ -15,7 +15,7 @@ sculpt the clay again afterwards (see "Painting on clay").
    - **Brush**: the tip (round, bristle, chalk, flat, block, line), **Size** (in pixels of the paint picture, which is
      2048 px across unless you change it), **Colour** and **Opacity**.
    - **Paints**: what the active layer paints. **Colour**; **Roughness** (white = rough and dull, black = mirror);
-     **Relief** (white = raised, black = sunk: fine detail such as wrinkles, pores and scratches); **Metal** (white =
+     **Relief** (middle grey = flat, white = raised, black = sunk: fine detail such as wrinkles, pores and scratches); **Metal** (white =
      metal); **Glow** (its colours give off light).
    - **Paint layers**, top first. **+** adds a layer painting the same as the active one. Click a layer's name to
      paint on it; its dot shows or hides it. With no layer yet, your first stroke makes a Colour layer. A layer is
