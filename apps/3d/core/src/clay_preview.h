@@ -17,6 +17,7 @@
 #pragma once
 #include <tbb/task_arena.h>
 
+#include <chrono>
 #include <condition_variable>
 #include <deque>
 #include <exception>
@@ -35,6 +36,9 @@ namespace r3d::clay {
 // cost more than they save. Mask dabs never (they don't move the surface; the mask is shown on the fine blocks).
 // ROSTRUM3D_CLAY_PREVIEW=0 turns it off (to measure), =1 on for every brush but Mask.
 constexpr float kPreviewFrom = 16.0f;
+// A clay this fine or finer (metres a grain) usually previews (a 25 mm brush is 16 grains at 1.56 mm): it keeps its
+// coarse copy from the first scene on (Store::sync) and the preview's empty prims ready (3d-cl4, Store reserve_ring)
+constexpr float kKeepCopyGrain = 0.0016f;
 bool preview_stroke(const Brush& b, float grain);
 
 // The preview's prims sit beside the fine blocks under the clay's prim, named by their coarse block moved by this on x
@@ -50,6 +54,11 @@ constexpr float kSkirtGrains = 1.5f;
 // preview's copy, read from the clay before any dab writes it). Thread rules: the clay is the thread's from the
 // construction until finish() or cancel() returns; only these members may be called meanwhile, from one thread.
 // The arena is of low priority, and of half the cores (ROSTRUM3D_CLAY_CATCHUP_THREADS sets its threads).
+// 3d-cl4: while the brush moves and the clay keeps up, a dab runs in a narrow arena instead (1 thread,
+// ROSTRUM3D_CLAY_CATCHUP_MOVING_THREADS sets it; the thread itself below normal OS priority), so the preview's dab and
+// meshing get the cores. It goes wide when its dabs waiting would take more than kWidenMs at the wide pace, when no dab
+// came for kRestMs (the pointer rests) and from finish() on (the release waits for it). A dab is the same clay on any
+// number of threads (clay_coarse.h), so live = replay still holds.
 class Catchup {
  public:
   Catchup(Volume& clay, std::function<void()> first);
@@ -61,20 +70,30 @@ class Catchup {
   void push(const Step* dabs, size_t n);
   void finish();                       // until every dab pushed is applied; joins; rethrows
   void cancel();                       // the dabs not applied yet are dropped; joins (never throws)
-  double dab_ms() const;               // one dab on the clay, a running average (0: none yet)
+  // one dab on the clay at the wide pace, a running average (0: none yet; the first dab runs wide). The event budget
+  // (Store::sculpt_compute) reads it: what the clay can catch up with when it needs to
+  double dab_ms() const;
   double backlog_ms() const;           // the dabs waiting, at that average
+  int narrow_dabs() const;             // dabs run narrow so far (ROSTRUM3D_CLAY_PROFILE)
+
+  static constexpr double kWidenMs = 10.0;  // the dabs waiting (at the wide pace) over this: wide
+  static constexpr double kRestMs = 40.0;   // no dab pushed for this long: wide
 
  private:
   void loop();
+  double est_ms_locked() const;  // dab_ms() under m_
   Volume& vol_;
   std::function<void()> first_;
-  tbb::task_arena arena_;
+  tbb::task_arena wide_, narrow_;
+  bool narrowOn_ = true;  // ROSTRUM3D_CLAY_CATCHUP_MOVING_THREADS=0: always wide
   mutable std::mutex m_;
   std::condition_variable work_, ready_;
   std::deque<Step> q_;
   bool isReady_ = false, stop_ = false, cancel_ = false;
   std::exception_ptr err_;
-  double dabMs_ = 0;
+  double wideMs_ = 0, narrowMs_ = 0;
+  int narrowDabs_ = 0;
+  std::chrono::steady_clock::time_point lastPush_;
   std::thread th_;  // last: started once the rest is set
 };
 

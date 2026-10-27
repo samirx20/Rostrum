@@ -14,6 +14,10 @@
 
 #include "clay_box.h"
 
+#ifdef _WIN32
+#include <windows.h>  // SetThreadPriority (NOMINMAX, WIN32_LEAN_AND_MEAN: CMakeLists.txt)
+#endif
+
 namespace r3d::clay {
 
 using namespace detail;
@@ -199,6 +203,23 @@ int catchup_threads() {
   return std::max(2, int(std::thread::hardware_concurrency()) / 2);
 }
 
+// 3d-cl4: the catch-up's width while the brush moves and the clay keeps up (Catchup); 0: always wide (as 3d-v4, for an
+// A/B on one build)
+int catchup_moving_threads() {
+  if (const char* env = std::getenv("ROSTRUM3D_CLAY_CATCHUP_MOVING_THREADS")) {
+    const int n = std::atoi(env);
+    if (n >= 0) return n;
+  }
+  return 1;
+}
+
+// the calling thread below normal OS priority (the catch-up's own thread: the window's and the stroke's threads first)
+void lower_this_thread() {
+#ifdef _WIN32
+  SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+#endif
+}
+
 }  // namespace
 
 void Volume::refresh_coarse(const Volume& fine, const std::vector<Coord>& fineChunks,
@@ -227,15 +248,23 @@ std::unique_ptr<Volume> Volume::coarse_copy() const {
 
 Catchup::Catchup(Volume& clay, std::function<void()> first)
     // low priority: TBB's worker threads go to the stroke's own loops first whenever those have work
-    : vol_(clay), first_(std::move(first)), arena_(catchup_threads(), 1, tbb::task_arena::priority::low) {
+    : vol_(clay),
+      first_(std::move(first)),
+      wide_(catchup_threads(), 1, tbb::task_arena::priority::low),
+      narrow_(std::max(1, catchup_moving_threads()), 1, tbb::task_arena::priority::low),
+      narrowOn_(catchup_moving_threads() > 0),
+      lastPush_(std::chrono::steady_clock::now()) {
   th_ = std::thread([this] { loop(); });
 }
 
 Catchup::~Catchup() { cancel(); }
 
+double Catchup::est_ms_locked() const { return wideMs_ > 0 ? wideMs_ : narrowMs_; }
+
 void Catchup::loop() {
+  if (narrowOn_) lower_this_thread();  // (off: as 3d-v4)
   try {
-    if (first_) arena_.execute([&] { first_(); });
+    if (first_) wide_.execute([&] { first_(); });  // the first event waits for it
   } catch (...) {
     std::lock_guard<std::mutex> lk(m_);
     err_ = std::current_exception();
@@ -247,16 +276,21 @@ void Catchup::loop() {
   ready_.notify_all();
   for (;;) {
     Step s;
+    bool wide = true;
     {
       std::unique_lock<std::mutex> lk(m_);
       work_.wait(lk, [&] { return cancel_ || stop_ || !q_.empty(); });
       if (cancel_ || err_ || q_.empty()) return;  // cancelled, failed, or finished with every dab applied
       s = q_.front();
       q_.pop_front();
+      // narrow while the brush moves and the clay keeps up (the dab just taken counts as waiting). The first dab runs
+      // wide: the wide pace is what the waiting dabs and the event budget are measured in
+      const double rest = ms_since(lastPush_);
+      wide = !narrowOn_ || stop_ || wideMs_ <= 0 || rest >= kRestMs || wideMs_ * double(q_.size() + 1) > kWidenMs;
     }
     const auto t0 = std::chrono::steady_clock::now();
     try {
-      arena_.execute([&] { vol_.dab(s); });
+      (wide ? wide_ : narrow_).execute([&] { vol_.dab(s); });
     } catch (...) {
       std::lock_guard<std::mutex> lk(m_);
       err_ = std::current_exception();
@@ -265,7 +299,9 @@ void Catchup::loop() {
     }
     const double ms = ms_since(t0);
     std::lock_guard<std::mutex> lk(m_);
-    dabMs_ = dabMs_ > 0 ? 0.8 * dabMs_ + 0.2 * ms : ms;
+    double& avg = wide ? wideMs_ : narrowMs_;
+    avg = avg > 0 ? 0.8 * avg + 0.2 * ms : ms;
+    if (!wide) ++narrowDabs_;
   }
 }
 
@@ -281,6 +317,7 @@ void Catchup::push(const Step* dabs, size_t n) {
     std::lock_guard<std::mutex> lk(m_);
     if (err_) std::rethrow_exception(err_);
     q_.insert(q_.end(), dabs, dabs + n);
+    lastPush_ = std::chrono::steady_clock::now();
   }
   work_.notify_one();
 }
@@ -306,12 +343,17 @@ void Catchup::cancel() {
 
 double Catchup::dab_ms() const {
   std::lock_guard<std::mutex> lk(m_);
-  return dabMs_;
+  return est_ms_locked();
 }
 
 double Catchup::backlog_ms() const {
   std::lock_guard<std::mutex> lk(m_);
-  return dabMs_ * double(q_.size());
+  return est_ms_locked() * double(q_.size());
+}
+
+int Catchup::narrow_dabs() const {
+  std::lock_guard<std::mutex> lk(m_);
+  return narrowDabs_;
 }
 
 }  // namespace r3d::clay

@@ -104,6 +104,8 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
   Args a(o, "render", {"camera", "renderer", "frame", "frames", "width", "height", "samples", "denoise", "exr",
                        "png", "view", "exposure", "timeoutS", "progress", "passes"});
   need_scene("render");
+  if (clay_->previewing())  // 3d-cl4: the stage holds the stroke's coarse preview, never rendered
+    throw Error("render: a clay stroke is being drawn (on its quick preview); render once it has ended");
   const std::string renderer = a.str("renderer");
   Hydra::plugin_for(renderer);  // an unknown name fails before anything else
   const SdfPath cam = camera(a.str("camera"), "render");
@@ -203,6 +205,7 @@ JsObject Core::view(const JsObject& o) {
   need_scene("view");
   const std::string renderer = a.str("renderer", "storm");
   const bool final_look = renderer == "cycles";  // the Final look: progressive Cycles with the render's settings
+  final_look_ = final_look;
   DrawSettings s;
   s.samples = a.whole("samples", s.samples);
   s.denoise = a.flag("denoise", s.denoise);
@@ -329,6 +332,10 @@ JsObject Core::pick(const JsObject& o) {
   if (const auto spot = surface_spot(stage_, hit, f, ray)) {  // the face and its (u, v): where a brush lands
     out["face"] = JsValue(spot->face);
     if (spot->uv) out["uv"] = JsValue(JsArray{JsValue(double((*spot->uv)[0])), JsValue(double((*spot->uv)[1]))});
+    if (clay_->has(out["item"].GetString())) {  // 3d-cl4: where on the clay, in its own space (a stroke's anchors)
+      out["local"] = vec3(spot->local);
+      out["localNormal"] = vec3(spot->localNormal);
+    }
   }
   return out;
 }

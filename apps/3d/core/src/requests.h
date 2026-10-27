@@ -4,6 +4,7 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
 
+#include <atomic>
 #include <exception>
 #include <functional>
 #include <future>
@@ -73,6 +74,7 @@ class Core {
   std::string xform_id_;  // the item the last `xform` moved, and its prim
   PXR_NS::SdfPath xform_path_;
   std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
+  std::atomic<bool> final_look_{false};  // 3d-cl4: the last view was the Final look (Cycles): strokes begun get no coarse preview
   // the live stroke's camera and clay placement, from its begin (clay_requests.cpp: StrokeView)
   struct StrokeView;
   std::shared_ptr<const StrokeView> stroke_view_;

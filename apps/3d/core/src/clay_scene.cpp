@@ -211,6 +211,14 @@ clay::Node build_clay(Item& it, Reader& node, const SdfPath& path) {
   n.cache = node.str("cache");
   if (!n.cache.empty() && !std::filesystem::u8path(n.cache).is_absolute())
     fail(node.at("cache"), "\"" + n.cache + "\" is not an absolute path", "\"\" or the cache file's absolute path");
+  if (node.has("paint")) {  // 3d-cl4: the clay holds paint, its surface is unfolded (clay_surface.h)
+    Reader paint(node.object("paint"), node.at("paint"));
+    n.paintFile = paint.str("file");
+    if (!std::filesystem::u8path(n.paintFile).is_absolute())
+      fail(paint.at("file"), "\"" + n.paintFile + "\" is not an absolute path", "the surface file's absolute path");
+    n.paintSize = paint.count("size", 64, 16384);
+    paint.finish();
+  }
   const JsArray& steps = node.list("steps");
   for (size_t i = 0; i < steps.size(); ++i)
     n.steps.push_back(read_step(steps[i], it.id + ".steps[" + std::to_string(i) + "]"));

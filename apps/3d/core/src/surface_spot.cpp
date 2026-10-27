@@ -45,6 +45,16 @@ std::optional<SurfaceSpot> surface_spot(const UsdStageRefPtr& stage, const SdfPa
   if (face < 0) return std::nullopt;
   SurfaceSpot spot;
   spot.face = face;
+  spot.local = local.GetPoint(best);
+  VtVec3fArray nrm;
+  GfVec3d n(0.0);
+  if (m.GetNormalsAttr().Get(&nrm, t) && nrm.size() == pts.size() && m.GetNormalsInterpolation() != UsdGeomTokens->faceVarying)
+    for (int k = 0; k < 3; ++k) n += GfVec3d(nrm[indices[corner[k]]]) * weights[k];
+  if (n.GetLength() < 1e-12) {
+    const GfVec3d p0(pts[indices[corner[0]]]), p1(pts[indices[corner[1]]]), p2(pts[indices[corner[2]]]);
+    n = GfCross(p1 - p0, p2 - p0);
+  }
+  spot.localNormal = n.GetLength() > 0 ? n.GetNormalized() : GfVec3d(0, 0, 1);
   VtVec2fArray st;
   const UsdGeomPrimvar pv = UsdGeomPrimvarsAPI(m.GetPrim()).GetPrimvar(TfToken("st"));
   if (!pv || !pv.ComputeFlattened(&st, t)) return spot;

@@ -2,6 +2,8 @@
 // be painted (SPEC §5). The answer is face-varying: one (s, t) per face corner, in the mesh's own face order, the
 // same layout as the `st` the core writes (write_mesh) and the `uvs` a mesh item holds.
 #pragma once
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -22,5 +24,15 @@ struct Unfolded {
 // near one edge never bleeds into the next piece. Throws r3d::Error (naming `where`) when xatlas can't.
 Unfolded unfold_mesh(const PXR_NS::VtArray<PXR_NS::GfVec3f>& points, const PXR_NS::VtArray<int>& counts,
                      const PXR_NS::VtArray<int>& indices, int size, const std::string& where);
+
+// 3d-cl4: a clay's welded surface (clay_surface.h) laid flat the same way, with options for speed on big smooth
+// surfaces (charts grow further, pieces packed on 4-pixel steps). `points` xyz, `tris` 3 point indices each.
+struct UnfoldedTris {
+  std::vector<float> st;  // (s, t) per triangle corner, triangles in the order given: 6 per triangle; 0..1, t up
+  int charts = 0;
+  float used = 0;
+};
+UnfoldedTris unfold_triangles(const float* points, size_t npoints, const int32_t* tris, size_t ntris, int size,
+                              const std::string& where);
 
 }  // namespace r3d

@@ -39,6 +39,11 @@ struct Node {
   float detail = 0.002f; // metres per grain (voxel size)
   std::string cache;     // absolute path of the cache .vdb for exactly these steps, or "" (no cache)
   std::vector<StepNode> steps;
+  // 3d-cl4, `paint` (optional): the clay holds paint, so its surface is unfolded (clay_surface.h). `paintFile`: the
+  // absolute path of the CLS1 file for exactly these steps, detail and size ("" = no paint); `paintSize`: the paint
+  // picture's side in pixels
+  std::string paintFile;
+  int paintSize = 0;
 };
 
 }  // namespace clay

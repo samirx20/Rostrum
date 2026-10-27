@@ -7,6 +7,7 @@
 
 #include <pxr/base/gf/ray.h>
 #include <pxr/base/gf/vec2f.h>
+#include <pxr/base/gf/vec3d.h>
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/stage.h>
 
@@ -15,6 +16,9 @@ namespace r3d {
 struct SurfaceSpot {
   int face = -1;                       // the mesh's face (as written, after smoothing)
   std::optional<PXR_NS::GfVec2f> uv;   // none when the mesh has no usable st
+  // 3d-cl4: the spot and the surface's normal there in the prim's own space (a clay's block: the clay's space); the
+  // normal blended from the mesh's per-point normals, else the triangle's own
+  PXR_NS::GfVec3d local, localNormal;
 };
 
 // `ray` in world space through the picked pixel; `prim` the picked prim. None when `prim` is not a mesh or the ray
