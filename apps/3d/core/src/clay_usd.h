@@ -19,7 +19,7 @@ class Blocks {
  public:
   explicit Blocks(const PXR_NS::UsdStageRefPtr& stage);
   ~Blocks();
-  // Create or update block `key` of the clay at `clay` (an empty mesh removes it); `have` is that clay's block list.
+  // Create or update block `key` of the clay at `clay` (an empty mesh empties its prim, kept: 3d-v4); `have` is that clay's block list.
   // Call between begin() and end().
   void set(const PXR_NS::SdfPath& clay, const BlockKey& key, const BlockMesh& m, std::set<BlockKey>& have);
   void remove_all(const PXR_NS::SdfPath& clay, std::set<BlockKey>& have);

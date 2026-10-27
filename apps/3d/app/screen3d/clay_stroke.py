@@ -86,6 +86,7 @@ class ClayStroke:
         if self._phase in ("wait", "sculpt"):
             self._drag += 1
             self._send("cancel", [], answer=False)
+            self.v.redraw()                                 # the clay as it was (no picture comes with a cancel)
         self._phase, self._up = "", True
         self.strokeBrushChanged.emit()
 

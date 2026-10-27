@@ -97,6 +97,11 @@ on. The brush settings (Brush, Size, Strength; under More: Falloff, Spacing, Fro
 tool is on; with Select they are not in the settings. An agent can still read and set them any time (`clay.set`).
 Each stroke keeps its own copy of them, and whether it was Ctrl's opposite (`invert`).
 
+**While a stroke is drawn on fine clay** (a brush 16 grains or more across its radius: a 25 mm brush on clay at
+1 mm) the clay under the brush is shown a little coarser, so the brush keeps up with the pointer; a moment after you
+let go it sharpens to full detail. What is kept is always the full-detail stroke: an agent's `look_frame` after the
+stroke, and every render, show the full detail.
+
 ## For agents
 
 The Clay tool makes the same operations an agent calls (guides `agents` and `script`):

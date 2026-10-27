@@ -97,12 +97,18 @@ bool StrokeDabs::add(V3 o, V3 d, float maxDist, float pressure) {
     // one dab moves the clay at most 2 grains (the band it works on is 4 wide): a longer drag is cut into dabs at
     // the same spot that each move a part of it, so a fast drag still carries the clay along
     const V3 pull = mul(tang, std::min(1.0f, 2.0f * brush_.strength * ss));
-    const int k = std::min(kPullSplit, std::max(1, int(std::ceil(len(pull) / (2.0f * vol_.voxel())))));
+    const int k = std::min(kPullSplit, std::max(1, int(std::ceil(len(pull) / (2.0f * grain_)))));
     const V3 part = mul(pull, 1.0f / float(k));
+    const bool preview = grain_ != vol_.voxel();
     for (int i = 0; i < k; ++i) {
       const Step s = stamp(brush_, on, nrm, part, rs, ss);
-      vol_.dab(s);
+      if (!preview) vol_.dab(s);
       dabs_.push_back(s);
+    }
+    if (preview) {  // the preview's grain moves twice as far a dab: as few parts as it needs
+      const int kp = std::min(k, std::max(1, int(std::ceil(len(pull) / (2.0f * vol_.voxel())))));
+      const V3 pp = mul(pull, 1.0f / float(kp));
+      for (int i = 0; i < kp; ++i) vol_.dab(stamp(brush_, on, nrm, pp, rs, ss));
     }
     return true;
   }

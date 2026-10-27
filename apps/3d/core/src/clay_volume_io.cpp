@@ -204,6 +204,8 @@ bool Volume::load(const std::string& path, std::string* error) {
     dirty_.clear();
     live_.clear();
     live_.on = false;
+    changesAll_ = true;  // a coarse copy is made again
+    std::vector<Coord>().swap(changes_);
     return true;
   } catch (const std::exception& e) {
     if (error) *error = e.what();

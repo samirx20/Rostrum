@@ -50,4 +50,9 @@ void mesh_block(const float* dense, const float* wide, const BlockKey& key, floa
 // Appends `b` to `whole` (indices offset; a mask on one side only gets 0 for the other's vertices).
 void append(BlockMesh& whole, const BlockMesh& b);
 
+// 3d-v4: a wall `depth` (metres) deep into the clay under every rim edge of `m` (an edge only one triangle uses), its
+// vertices the rim's moved along minus their normal, with the rim's normals and mask. A coarse preview block meets the
+// fine blocks beside it with a gap of up to a coarse grain; the wall hides it (the inside never shows through).
+void add_skirts(BlockMesh& m, float depth);
+
 }  // namespace r3d::clay
