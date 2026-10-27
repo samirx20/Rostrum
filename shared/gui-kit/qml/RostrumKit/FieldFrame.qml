@@ -171,11 +171,8 @@ FocusScope {
     // ... and while it holds the keyboard with nothing typed yet: a value changed elsewhere (the colour picker's square,
     // with its hex box taking the keys from the open) is what the box holds, so its focus loss never sends the old text
     // back (the picked colour was undone at the close: 3D CL7b's grey eye). Still all selected: a typed key replaces it.
-    Connections {
-        target: f
-        function onTextChanged() { f._follow() }
-        function onEditTextChanged() { f._follow() }
-    }
+    onTextChanged: _follow()
+    onEditTextChanged: _follow()
     function _follow() {
         if (!input.activeFocus || input.typed) return
         input.text = f.editText !== "" ? f.editText : f.text
