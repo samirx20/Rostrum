@@ -59,6 +59,7 @@ Rectangle {
         onDoubleClicked: name.beginRename()
     }
     Item {  // the fold arrow (absent when there is nothing to fold)
+        objectName: "rowFold:" + name.rowData.id       // a scripted hand finds it
         x: name.indent - 2; width: 14; height: parent.height
         visible: name.rowData.fold !== ""
         Chevron { anchors.centerIn: parent; rotation: name.rowData.fold === "open" ? 0 : -90
