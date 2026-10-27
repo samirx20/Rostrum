@@ -107,7 +107,7 @@ MouseArea {
     function far(e) { return Math.abs(e.x - x0) >= 4 || Math.abs(e.y - y0) >= 4 }
 
     onWheel: (w) => {   // Ctrl zooms, Shift / sideways scrolls in time (the Timeline's view); else up and down
-        leave()                          // the view moves under a still pointer: no ghost left behind
+        m.leave()                        // the view moves under a still pointer: no ghost left behind
         if (!backend.viewWheel(w.angleDelta.x, w.angleDelta.y, ctrl(w), shift(w), w.x / width, true))
             flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, flick.contentY - w.angleDelta.y / 2))
     }
