@@ -1,5 +1,5 @@
 """The settings panel's rows for Bridge3D (a slot mix-in): the kit's rows with the data groups left out, the Final tags,
-a field that names another item shown as a choice, and facts_of: the SCREEN's facts added to the kind's (`animating`: a
+a field that names another item shown as a choice (and the "Stylized" / "Final · Stylized" tags), and facts_of: the SCREEN's facts added to the kind's (`animating`: a
 setting valid only while animating shows only on the Animate page; agents have no pages, so for them it always holds)."""
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from .materials import USERS
 
 FINAL_TIP = "Shows in Final, not in the Quick view"
 APPROX_TIP = "Shows fully in Final; the Quick view only hints at it"
+STYLIZED_TIP = "Shows in the Stylized look only"
+FINAL_STYLIZED_TIP = "Shows in Final and Stylized, not in the Quick view"
 NONE_FIRST = {"material", "item"}       # fields naming another item that may name none ("" = no material, focus on a distance)
 DATA_GROUPS = F.DATA_GROUPS              # data an operation writes (a mesh's points, a bone's head), never rows
 
@@ -27,6 +29,8 @@ def _without_data(r):
 class RowsMixin:
     FINAL_ONLY: dict = {}               # set by Bridge3D: fields the quick view can't show
     QUICK_APPROX: dict = {}             # set by Bridge3D: fields the quick view only hints at
+    STYLIZED_ONLY: dict = {}            # set by Bridge3D: fields only the Stylized look shows
+    FINAL_STYLIZED: dict = {}           # set by Bridge3D: fields Final and Stylized show, Quick doesn't
 
     def facts_of(self, item: dict) -> dict:
         """The kind's facts and what only the screen knows (the same names agents' facts carry): `animating`, so a
@@ -72,6 +76,10 @@ class RowsMixin:
                 r["tag"], r["tagHelp"] = "Final", FINAL_TIP
             elif r["row"] == "param" and r["id"] in self.QUICK_APPROX.get(type_, ()):
                 r["tag"], r["tagHelp"] = "Final", APPROX_TIP
+            elif r["row"] == "param" and r["id"] in self.STYLIZED_ONLY.get(type_, ()):
+                r["tag"], r["tagHelp"] = "Stylized", STYLIZED_TIP
+            elif r["row"] == "param" and r["id"] in self.FINAL_STYLIZED.get(type_, ()):
+                r["tag"], r["tagHelp"] = "Final · Stylized", FINAL_STYLIZED_TIP
             p = F.param(type_, r["id"]) if r["row"] == "param" else None
             if p is not None and p.type == "text" and p.kind:
                 doc_items = doc_items or list(self.doc.items())

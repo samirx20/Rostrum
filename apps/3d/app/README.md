@@ -84,6 +84,14 @@ bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 2
   steps down to half the pixels ("Final at half size: the graphics card is nearly full"); if still short, or Cycles fails, it
   goes back to Quick and says why in the viewport's status line. While the Render button's render runs, Final waits
   ("Final waits for the render"), so two Cycles never share the card.
+- **Look: Stylized** (brief 22; the Camera and look menu, listed only while a material has Lines or Halftone on,
+  `material_fields.any_stylized`): the live view drawn by the stylized plug-in (`renderer: "stylized"` in the same view
+  request, in the window and in pictures). When the last such material goes, the view falls back to Quick with a line in
+  the status bar. Shift+F stays Quick ↔ Final. The render sheet's Quality offers Stylized under the same rule
+  (`render_fields`: renderer stylized, `stylized: {supersample: 2}`); the Render button renders Stylized for such a shot.
+  A drag of a material's number or colour sends the view a light `material` request per move (`screen3d/material_live.py`)
+  and writes the document once, at the release. The plug-in is found in `apps\3d\stylized\.build\install`
+  (`rostrum3d/runtime.py`; ROSTRUM3D_STYLIZED overrides); without it, asking for Stylized says to run its build.bat.
 - **Screen state is not the document:** selection, playhead, folding, the viewport's camera and light settings.
 - **Rule of individuality:** controls that don't apply are absent, never greyed out (the inspector from
   `valid_when`; Render turns into "Rendering frame n…" while it runs).

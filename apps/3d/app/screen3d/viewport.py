@@ -8,6 +8,9 @@ the shot camera's view (a right drag, a touchpad's two-finger scroll and pinch t
 resting on Make this the shot draws the shot's frame where the camera would take it (`previewShot`).
 Look: Final (Shift+F, final_look.py) draws progressive Cycles in place with the Render button's
 settings; any change starts it over, and while the Render button's own render runs it waits (one Cycles on the card).
+Look: Stylized (brief 22) draws the live view with the stylized renderer (lines, halftone, light to colour), offered
+while a material of the project has Lines or Halftone on; when the last one goes, the view falls back to Quick and says
+so. Shift+F still flips Quick and Final.
 With a panel, bulb or sun light selected it can look through that light (to aim it by eye),
 following the light while it moves; moving the view there continues freely from it (the light stays where it is). It draws again when the document, the playhead frame or the selection changes.
 """
@@ -18,7 +21,8 @@ import sys
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 
-from rostrum3d import aim, ops_mesh, through
+from rostrum3d import aim, ops_mesh, runtime, through
+from rostrum3d.material_fields import any_stylized as can_stylize
 
 import math
 
@@ -69,6 +73,8 @@ class Viewport(QObject):
         self._dim = True                             # dim the scene outside the shot frame (screen state)
         self._preview = False                        # the shot frame drawn in the free view (Make this the shot's hover)
         self.final = FinalLook()
+        self._stylized = False                       # Look: Stylized (only while can_stylize())
+        self._can_stylize = can_stylize(bridge.doc.data)
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
         self._r.ready.connect(self._on_ready)
         if self.link is not None:
@@ -130,7 +136,9 @@ class Viewport(QObject):
     dof = Property(bool, lambda s: s._dof, notify=settingsChanged)
     # depth of field only matters when the camera looked through has it on (the engine says which, per picture)
     cameraDof = Property(bool, lambda s: s._cam_dof, notify=settingsChanged)
-    look = Property(str, lambda s: "final" if s.final.on else "quick", notify=settingsChanged)
+    look = Property(str, lambda s: "final" if s.final.on else "stylized" if s._stylized else "quick", notify=settingsChanged)
+    # Look offers Stylized: a material of the project has Lines or Halftone on (SPEC §6.4)
+    canStylize = Property(bool, lambda s: s._can_stylize, notify=settingsChanged)
     finalLine = Property(str, lambda s: s.final.line, notify=serialChanged)
     finalFraction = Property(float, lambda s: s.final.fraction, notify=serialChanged)
     dim = Property(bool, lambda s: s._dim, notify=settingsChanged)
@@ -146,6 +154,14 @@ class Viewport(QObject):
     # --- the scene and the shot (compiled once per document change, not per mouse move)
     def _on_doc(self, *_):
         self._scene = self._shot = self._wide = None
+        can = can_stylize(self.bridge.doc.data)
+        if can != self._can_stylize:
+            self._can_stylize = can
+            if not can and self._stylized:
+                self._stylized = False
+                # after the change's own status line (the bridge sets it when the same change reaches it), not under it
+                QTimer.singleShot(0, lambda: self.bridge.say("Look back to Quick: no material has Lines or Halftone on now"))
+            self.settingsChanged.emit()
         self.redraw()
 
     def swap_scene(self, drawn: dict, other: dict) -> bool:
@@ -268,9 +284,11 @@ class Viewport(QObject):
         # Draw / Spin armed: the clay under the pointer (a drag from there joins it) gets the thin hover outline;
         # sent only when there is one (an older core refuses the field)
         hovered = [c for c in self.clay_tool.drawer.outlined() if c in drawn and c != sel]
-        return {**cam, "renderer": "storm", "view": "",
+        return {**cam, "renderer": "stylized" if self._stylized else "storm", "view": "",
                 "exposure": self._exposure, "studio": self._studio, "sceneLights": self._lights,
-                "ao": self._ao if self._ao_on else 0.0, "dof": self._dof,
+                # Stylized: no contact shading or blur over it, so the live look is the Stylized render's picture
+                # (preview = export; the renderer draws its own shading and lines)
+                "ao": self._ao if self._ao_on and not self._stylized else 0.0, "dof": self._dof and not self._stylized,
                 "selected": ([sel] if sel in drawn and not self.clay_tool.sculpting(sel) else []),  # a material or key
                 #   has no outline; nor the clay being sculpted (the brush ring is its mark; CL1b: its outline doubled
                 #   every picture's time while sculpting)
@@ -333,15 +351,25 @@ class Viewport(QObject):
 
     @Slot(str)
     def setLook(self, look):
-        """"quick" (Storm) or "final" (progressive Cycles with the Render button's settings)."""
+        """"quick" (Storm), "final" (progressive Cycles with the Render button's settings) or "stylized" (the
+        stylized renderer, live; only while a material has Lines or Halftone on: else it says why and stays)."""
+        if look == "stylized" and not self._can_stylize:
+            return self.bridge.fail_line("Error: Look: Stylized needs a material with Lines or Halftone on")
+        if look == "stylized" and not runtime.stylized_found():
+            return self._guard(lambda: runtime.need_stylized("Look: Stylized"))      # says what to build
+        stylized = look == "stylized"
+        if (look == "final") == self.final.on and stylized == self._stylized:
+            return
+        self._stylized = stylized
         if (look == "final") != self.final.on:
             self.final.start() if look == "final" else self.final.stop()
-            self.settingsChanged.emit()
-            self.serialChanged.emit()
-            self.redraw()
+        self.settingsChanged.emit()
+        self.serialChanged.emit()
+        self.redraw()
 
     @Slot()
     def toggleLook(self):
+        """Shift+F: Quick ↔ Final (from Stylized: Final)."""
         self.setLook("quick" if self.final.on else "final")
 
     def _on_render_job(self):

@@ -1,6 +1,7 @@
 """The document's materials → the scene's `materials` (ENGINE_CONTRACT.md § 2, Materials), for compile.describe.
 
-Every field is sent (defaults filled in, colours linear) except `emissionRender`, which is resolved here: a 2D item's
+Every field is sent (defaults filled in, colours linear; the stylized blocks' Lines, Light to colour and Halftone too,
+the core writing them into each material's Stylized and Cycles shaders) except `emissionRender`, which is resolved here: a 2D item's
 newest finished "pictures" render (rostrum_core.project.latest_render) playing on the surface. It becomes
 `emissionTexture`: one PNG for a still render, else (in the material's `anim`) one PNG per frame of the shot, the
 2D frame at the same moment: shot frame f is at f / fps seconds, and the 2D file numbered n shows 2D time
@@ -61,6 +62,13 @@ def frames_for(where: str, ref: str, folder, shot_frames: range, fps: float) -> 
                                hint="Render the 2D item again.")
         out.append(str(pngs[n]))
     return out
+
+
+def prop_out(name: str, value):
+    """One material field's value as the scene sends it (a colour linear, as compile.describe does): the live
+    `material` request's props (ENGINE_CONTRACT.md § 4) are the same as the scene's."""
+    from .compile import _out
+    return _out(next(p for p in MATERIAL if p.name == name), value)
 
 
 def materials(data: dict, shot_frames: range, fps: float, folder, out_value) -> list[dict]:

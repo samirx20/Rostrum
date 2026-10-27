@@ -15,7 +15,7 @@ import argparse, ctypes, ctypes.wintypes as wt, glob, json, os, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUNDLE = os.path.normpath(os.path.join(HERE, "..", "3d-product", ".build", "cycles", "lib", "windows_x64"))
-PLUGINS = [os.path.join(HERE, ".build", "install"),
+PLUGINS = [os.path.normpath(os.path.join(HERE, "..", "..", "apps", "3d", "stylized", ".build", "install")),
            os.path.normpath(os.path.join(HERE, "..", "3d-product", ".build", "cycles", "install", "hydra"))]
 NAMES = {"rostrum": "HdRostrumPlugin", "storm": "HdStormRendererPlugin", "cycles": "HdCyclesPlugin"}
 

@@ -169,6 +169,7 @@ def _size(s: dict, k: int) -> tuple[int, int]:
 
 
 def _frame_ms(engine, info, s, frame, wh, png: Path) -> float:
-    cyc = {"samples": s["samples"], "denoise": s["denoise"]} if s["renderer"] == "cycles" else {}
-    r = engine.render(camera=info["camera"], renderer=s["renderer"], frame=frame, width=wh[0], height=wh[1], png=str(png), **cyc)
+    from .render_fields import engine_fields
+    r = engine.render(camera=info["camera"], renderer=s["renderer"], frame=frame, width=wh[0], height=wh[1], png=str(png),
+                      **engine_fields(s))
     return float(r["frames"][0]["ms"])

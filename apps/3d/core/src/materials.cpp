@@ -7,11 +7,17 @@
 #include <filesystem>
 
 #include <pxr/base/gf/vec4f.h>
+#include <pxr/usd/sdf/changeBlock.h>
+#include <pxr/usd/sdf/copyUtils.h>
+#include <pxr/usd/sdf/layer.h>
+#include <pxr/usd/sdf/primSpec.h>
 #include <pxr/usd/sdf/types.h>
 #include <pxr/usd/usdShade/material.h>
 
 #include "json_read.h"
+#include "light_to_color.h"
 #include "material_nodes.h"
+#include "material_stylized.h"
 #include "stage_items.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -92,6 +98,7 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   const float subsurface = float(p.num("subsurface"));
   const GfVec3f subsurface_colour = p.vec3("subsurfaceColor");
   const float subsurface_mm = float(p.num_min("subsurfaceRadius", 0.0, true));
+  const StylizedLook look = read_stylized(p);  // Lines, Light to colour, Halftone (material_stylized.h)
 
   // Cycles
   UsdShadeShader c = shader(stage, path, "Cycles", "cycles_principled_bsdf");
@@ -167,12 +174,13 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
   set(mask_shade, "varname", SdfValueTypeNames->String, std::string("rostrumMaskShade"));
   set(mask_shade, "fallback", kFloat, 1.0f);
   link(v, "occlusion", kFloat, mask_shade, "result", kFloat);
+  UsdShadeShader preview_base;  // the base colour image, for the Stylized shader too
   if (!base_tex.empty() || !rough_tex.empty() || !metal_tex.empty() || !glow_tex.empty()) {
     UsdShadeShader st = shader(stage, path, "PreviewUV", "UsdPrimvarReader_float2");
     set(st, "varname", SdfValueTypeNames->String, std::string("st"));
     if (!base_tex.empty()) {
-      UsdShadeShader t = preview_image(stage, path, "PreviewBaseColor", base_tex, true, st);
-      link(v, "diffuseColor", kColor, t, "rgb", SdfValueTypeNames->Float3);
+      preview_base = preview_image(stage, path, "PreviewBaseColor", base_tex, true, st);
+      link(v, "diffuseColor", kColor, preview_base, "rgb", SdfValueTypeNames->Float3);
     }
     if (!rough_tex.empty()) {
       UsdShadeShader t = preview_image(stage, path, "PreviewRoughness", rough_tex, false, st);
@@ -190,6 +198,10 @@ void build_one(const UsdStageRefPtr& stage, const std::string& id, Reader& p, co
     }
   }
   mat.CreateSurfaceOutput().ConnectToSource(v.CreateOutput(TfToken("surface"), SdfValueTypeNames->Token));
+
+  // The Stylized look's own shader, on every material (outputs:rostrum:surface). With Light to colour on, the Cycles
+  // surface is rewired once the scene's lights exist (light_to_color.h).
+  author_stylized(stage, path, look, base, preview_base, emission * emission_strength, 1.0f - 0.92f * see_through);
   p.finish();
 }
 
@@ -204,6 +216,34 @@ void check_file(const std::string& path, const std::string& where, const char* w
   const std::string accepted = std::string("\"\" or the absolute path of ") + what;
   if (!std::filesystem::path(path).is_absolute()) fail(where, "\"" + path + "\" is not absolute", accepted);
   if (!std::filesystem::is_regular_file(path)) fail(where, "\"" + path + "\" does not exist", accepted);
+}
+
+void rebuild_material(const UsdStageRefPtr& stage, const std::string& id, const JsObject& props,
+                      const JsObject* anim, int start, int end) {
+  const SdfPath path = material_path(id);
+  UsdStageRefPtr scratch = UsdStage::CreateInMemory();
+  Reader p(props, id);
+  build_one(scratch, id, p, anim, start, end);  // checked whole here: a problem leaves `stage` as it was
+  bool l2c = false;
+  if (const UsdShadeShader look{scratch->GetPrimAtPath(path.AppendChild(TfToken("Stylized")))})
+    look.GetInput(TfToken("lightToColor")).Get(&l2c);
+  if (l2c) apply_light_to_color(scratch, path, scene_light_terms(stage, start, end), start);
+  const SdfLayerHandle dst = stage->GetRootLayer();
+  const SdfPrimSpecHandle parent = dst->GetPrimAtPath(path.GetParentPath());
+  if (!parent) throw Error("material: the held stage has no " + path.GetParentPath().GetString());
+  const SdfChangeBlock block;  // one change for Hydra: the material's prims replaced
+  if (const SdfPrimSpecHandle old = dst->GetPrimAtPath(path)) parent->RemoveNameChild(old);
+  if (!SdfCopySpec(scratch->GetRootLayer(), path, dst, path))
+    throw Error("material: could not write " + path.GetString() + " into the held stage");
+}
+
+void restyle_material(const UsdStageRefPtr& stage, const std::string& id, const JsObject& props) {
+  Reader p(props, id);
+  const StylizedLook look = read_stylized(p);
+  UsdShadeShader s(stage->GetPrimAtPath(material_path(id).AppendChild(TfToken("Stylized"))));
+  if (!s) throw Error("material: \"" + id + "\" has no Stylized shader on the held stage");
+  const SdfChangeBlock block;
+  set_stylized_inputs(s, look);
 }
 
 std::set<std::string> build_materials(const UsdStageRefPtr& stage, const JsArray& materials, int start,
