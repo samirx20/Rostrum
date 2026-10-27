@@ -36,6 +36,28 @@ pub fn across(st: &Stroke, d: &Dab, out: &mut Vec<f64>) {
     }
 }
 
+/// The columns of row `y` where the dab's shape can cover anything (`coverage` is 0 outside them before grain,
+/// chalk and the mask, which only scale it): the circle around the tip's shape, 2 px wider for rounding.
+pub fn reach(st: &Stroke, d: &Dab, y: usize) -> std::ops::Range<usize> {
+    let r = d.r;
+    let reach = match st.tip {
+        Tip::Round | Tip::Chalk => r,
+        Tip::Line => r + 0.5,
+        Tip::Bristle => r * st.along.max(1.0),
+        Tip::Flat => r * st.along.hypot(1.0),
+        Tip::Block => r * st.along.hypot(d.wv),
+    } / d.cos.hypot(d.sin).min(1.0);
+    let dy = (y as f64 - d.y).abs();
+    if !(reach.is_finite() && reach > 0.0) {
+        return 0..usize::MAX; // no shape to trust: every pixel
+    }
+    if dy > reach + 2.0 {
+        return 0..0;
+    }
+    let half = (reach * reach - dy * dy).max(0.0).sqrt() + 2.0;
+    (d.x - half).floor().max(0.0) as usize..(d.x + half).ceil().max(0.0) as usize + 1
+}
+
 /// The dab's coverage at (x, y), with its strength, grain and mask; `idx` its place across the tip profile; `across`
 /// the dab's profile (`across`).
 pub fn coverage(st: &Stroke, d: &Dab, across: &[f64], x: usize, y: usize) -> (f64, usize) {
