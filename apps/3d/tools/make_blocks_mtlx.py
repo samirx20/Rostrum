@@ -6,7 +6,8 @@ apps/3d/core/mtlx/rostrum_blocks.mtlx: one nodedef per block output, ND_<rostrum
 the block's port: value, colour, normal), each with a nodegraph in MaterialX standard nodes so Storm's MaterialX code
 generator draws it (Final maps the nodedef to its Cycles node instead, core/src/material_blocks.cpp); plus
 rostrum_grey (a number into a colour) and rostrum_brightness (a colour into a number). Quick-view simplifications:
-Noise's Detail is whole layers; Bevel and Ambient occlusion show nothing (Final only); a ramp's / curve's stops come
+Noise runs Cycles' own noise (core/mtlx/rostrum_cycles_noise.glsl), so Quick and Final draw the same pattern; its Detail
+is whole layers; Bevel and Ambient occlusion show nothing (Final only); a ramp's / curve's stops come
 in as pos1..8 / col1..8 (val1..8) with count. apps/3d/stylized/mtlx/rostrum_stylized.mtlx: the rostrum_style type
 and the stylized blocks' nodedefs (no implementation: the stylized renderer reads the material's fields).
 The inputs come from graph_mtlx.inputs, the same table documents are written with.
@@ -43,18 +44,14 @@ def brightness(src: str, out: list) -> str:
     return "#grey"
 
 
-def noise(t):
+def noise(t):        # Cycles' own noise (rostrum_cycles_noise.glsl), so Quick draws the pattern Final draws
     body = [n("position", "pos", "vector3", i("space", "string", "object")),
             n("multiply", "scaled", "vector3", i("in1", "vector3", "#pos"), i("in2", "float", "@scale")),
-            n("noise3d", "warp", "vector3", i("position", "vector3", "#scaled"), i("pivot", "float", 0)),
-            n("multiply", "warped", "vector3", i("in1", "vector3", "#warp"), i("in2", "float", "@distortion")),
-            n("add", "p", "vector3", i("in1", "vector3", "#scaled"), i("in2", "vector3", "#warped")),
-            n("add", "octaves", "integer", i("in1", "integer", "@detail"), i("in2", "integer", 1)),
-            n("fractal3d", "f", t, i("position", "vector3", "#p"), i("octaves", "integer", "#octaves"),
-              i("lacunarity", "float", 2), i("diminish", "float", "@roughness")),
-            n("multiply", "half", t, i("in1", t, "#f"), i("in2", "float", 0.5)),
-            n("add", "mid", t, i("in1", t, "#half"), i("in2", "float", 0.5))]
-    return body, "#mid"
+            n("convert", "layers", "float", i("in", "integer", "@detail")),
+            n("rostrum_cycles_noise", "cn", "multioutput", i("position", "vector3", "#scaled"),
+              i("detail", "float", "#layers"), i("roughness", "float", "@roughness"),
+              i("distortion", "float", "@distortion"))]
+    return body, ("#cn.value" if t == "float" else "#cn.colour")
 
 
 def image(t):
@@ -158,9 +155,16 @@ def blocks_library() -> str:
             body, src = GRAPHS[b.type](t)
             out = B.out_name(b.type, port)
             rows += nodedef(nd, b.mtlx, ins, [(out, t)])
-            ref = f'nodename="{src[1:]}"' if src[0] == "#" else f'interfacename="{src[1:]}"'
+            node, _, port = src[1:].partition(".")         # "#node.output": one output of a multi-output node
+            ref = (f'nodename="{node}"' + (f' output="{port}"' if port else "")) if src[0] == "#" else f'interfacename="{node}"'
             rows += [f'  <nodegraph name="NG_{b.mtlx}_{t}" nodedef="{nd}">', *body,
                      f'    <output name="{out}" type="{t}" {ref}/>', "  </nodegraph>"]
+    rows += ['  <nodedef name="ND_rostrum_cycles_noise" node="rostrum_cycles_noise" nodegroup="rostrum">',
+             '    <input name="position" type="vector3" value="0, 0, 0"/>', '    <input name="detail" type="float" value="2"/>',
+             '    <input name="roughness" type="float" value="0.5"/>', '    <input name="distortion" type="float" value="0"/>',
+             '    <output name="value" type="float"/>', '    <output name="colour" type="color3"/>', "  </nodedef>",
+             '  <implementation name="IM_rostrum_cycles_noise_genglsl" nodedef="ND_rostrum_cycles_noise"'
+             ' file="rostrum_cycles_noise.glsl" function="mx_rostrum_cycles_noise" target="genglsl"/>']
     rows += nodedef("ND_rostrum_grey_color3", "rostrum_grey", [("in", "float", 0.0)], [("out", "color3")])
     rows += ['  <nodegraph name="NG_rostrum_grey_color3" nodedef="ND_rostrum_grey_color3">',
              n("convert", "c", "color3", i("in", "float", "@in")), '    <output name="out" type="color3" nodename="c"/>',
