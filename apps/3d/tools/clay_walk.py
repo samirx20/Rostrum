@@ -1,5 +1,5 @@
 # Clay walk (CL1, CL2): the Clay tool tried by real input in the real window (behind the person's work, never focused).
-# A scratch project with the sample scene; Q (the real key); a Lump click on the ground (a real click) makes a clay;
+# A scratch project with the sample scene; Q (the real key), the Lump tile; a Lump click on the ground (a real click) makes a clay;
 # then real drags across it: each of the six brushes that shape, its tile clicked (Add, Carve, Smooth, Pull, Flatten,
 # Crease); Ctrl on Add (carves), Shift (smooths), Ctrl on Flatten (puffs out: the step keeps `invert`); a Mask stroke
 # down the clay's left side and an Add across it (the masked band must not change in the picture, the free middle
@@ -406,7 +406,12 @@ def main():
 
         QTest.keyClick(win, Qt.Key_Q)                                   # Clay
         pump(0.3)
-        check(v.clay.on and v.clay.tool == "lump", "Q turns the Clay tool on, Lump chosen (nothing to sculpt yet)")
+        check(v.clay.on and v.clay.tool == "draw", "Q turns the Clay tool on, Draw chosen (SPEC § 1 0:00)")
+        lump = find(win.contentItem(), "clayMakeLump")
+        check(lump is not None, "the Lump tile is on the panel")
+        if lump is not None:
+            click(win, lump)
+        check(v.clay.tool == "lump", f"clicking Lump chooses it ({v.clay.tool})")
         ground = vp_item.mapToScene(QPointF(vp_item.width() * 0.5, vp_item.height() * 0.85))
         QTest.mouseMove(win, ground.toPoint())
         QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, ground.toPoint())
