@@ -3,6 +3,11 @@
 Rostrum2D makes motion graphics: type, shapes, images, UI animation. You and a person edit **the same document**, so
 whatever you build stays editable by hand, and whatever they move stays moved.
 
+**Your time.** Every reply ends with a clock line (time since your first call, and the minutes left when you were given a
+budget). A first version usually takes a fraction of the time: the rest is for looking at it (sheets of the whole span, the
+export, single frames, zooms) and refining what you see, in passes. `inspect_project` with `what: "session"` lists what is
+still unchecked. More in [Using your time](#using-your-time).
+
 ## Open or make a project
 
 The server starts on the person's last project. To work somewhere else, or to start a new piece:

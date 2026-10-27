@@ -96,7 +96,8 @@ class Clock:
             parts.append("the export has not been looked at")
         if self.budget_min is not None:
             left = self.budget_min * 60 - self.elapsed()
-            parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" if left > 0 else f"your {self.budget_min:g} min are used")
+            parts.append(f"{said_time(left)} of your {self.budget_min:g} min left" + (" (time to look and refine)" if left > 60 else "")
+                         if left > 0 else f"your {self.budget_min:g} min are used")
         return " · ".join(parts)
 
     def facts(self, span: float | None) -> Reply:
