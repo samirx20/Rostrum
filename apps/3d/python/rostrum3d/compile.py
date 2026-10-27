@@ -6,7 +6,7 @@ Frame n is at n / fps seconds; the one evaluator and easing are rostrum_core.key
 """
 from __future__ import annotations
 
-from . import aim, clay_scene, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
+from . import aim, clay_scene, copies_fields, fields as F, follow, material_scene, mirror, skies, outline as outlines, paint_scene, rigs, skin
 from .resolve import PIVOT, TIMING, Frames as _Frames, pivoted, world_at_start  # noqa: F401  (world_at_start: ops)
 from .outline_fields import FIELDS as _OUTLINE_PARAMS, OUTLINE_SHAPES
 from .colors import linear
@@ -21,7 +21,8 @@ CONSTRAINTS = {"follow", "followAmount", "stick"}             # follow.py: resol
 SKINNED = "skinned"                            # a mesh's Bend with bones: sent as its `skin` (skin.py), never as a prop
 POSE = {"jointNames", "holds", "jointsKey"}    # a clay's joint settings: the document's alone (ops_pose.py)
 FILE_UNIT = "fileUnit"                         # an import's: what its file was in, for Keep original size (ops_import.py)
-RESOLVED = AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
+COPIES_DATA = {copies_fields.HELD}              # a copies item's held copies go as `held` rows, never as a prop
+RESOLVED = COPIES_DATA | AIM_FIELDS | set(PIVOT) | CONSTRAINTS | POSE | set(mirror.FIELDS) | {FOCUS_ITEM, TIMING, SKINNED, FILE_UNIT}   # resolved, never sent
 DOCUMENT_ONLY = {p.name for p in _OUTLINE_PARAMS if p.group == "Shape"} | {"paintSize"}   # words, font, file … never sent
 
 
@@ -81,6 +82,40 @@ def _rig_node(item: dict, fr: _Frames) -> dict:
     return node
 
 
+def _effector(item: dict, copies: dict, fr: _Frames) -> dict:
+    """One effector as the core wants it: its settings at the start, its centre (the near item's world origin, or the
+    copies item's own when it names none) and every keyed number baked per frame (ENGINE_CONTRACT § 2, copies)."""
+    id_, near = item["id"], item.get("near") or copies["id"]
+    if near not in fr.items:
+        raise ValueError(f'{id_}: is near "{near}", which is not an item')
+    per = {f: fr.values(id_, f) for f in fr.frames}
+    centres = [[round(c, 6) for c in aim.point(fr.world(near, f), [0.0, 0.0, 0.0])] for f in fr.frames]
+    v0 = per[fr.frames[0]]
+    node = {"id": id_, "kind": v0["kind"], "radius": round(v0["radius"], 6), "falloff": v0["falloff"],
+            "amount": round(v0["amount"], 6), "axis": v0["axis"], "colour": linear(v0["colour"]), "centre": centres[0]}
+    anim = {name: [round(per[f][name], 6) for f in fr.frames] for name in ("amount", "radius")
+            if max(per[f][name] for f in fr.frames) - min(per[f][name] for f in fr.frames) > 1e-9}
+    if (colours := [linear(per[f]["colour"]) for f in fr.frames]) and any(c != colours[0] for c in colours):
+        anim["colour"] = colours
+    if any(c != centres[0] for c in centres):
+        anim["centre"] = centres
+    if anim:
+        node["anim"] = anim
+    return node
+
+
+def _copies_node(node: dict, item: dict, fr: _Frames) -> None:
+    """A copies item: its source children, its effectors, its held copies, and the camera that must see them."""
+    kids = item.get("children", [])
+    node["children"] = [_node(c, fr) for c in kids if c["type"] != "effector"]
+    node["effectors"] = [_effector(c, item, fr) for c in kids if c["type"] == "effector"]
+    node["held"] = [{"copy": int(r[0]), **dict(zip(("x", "y", "z", "rx", "ry", "rz", "s"), r[1:]))}
+                    for r in item.get(copies_fields.HELD) or []]
+    camera, size = getattr(fr, "shot_camera", ""), getattr(fr, "shot_size", [0, 0])
+    seen = node["props"]["layout"] == "surface" and node["props"]["onlySeen"] and camera
+    node["props"]["seenBy"], node["props"]["seenSize"] = (camera, size) if seen else ("", size)
+
+
 def _outline_props(id_: str, values: dict, props: dict, folder):
     """A text / svg / path2d mesh goes to the core as shape "outline": the flattened outline in metres, and none of the
     fields that only the document needs (the words, the font, the file …)."""
@@ -138,7 +173,9 @@ def _node(item: dict, fr: _Frames) -> dict:
     if type_ == "import":
         node["props"]["parts"] = [{"path": pt["path"], "material": pt["material"], "visible": pt["visible"]}
                                   for pt in item.get("parts", [])]
-    if type_ in F.HOLDERS:
+    if type_ == "copies":
+        _copies_node(node, item, fr)
+    elif type_ in F.HOLDERS:
         node["children"] = [_node(c, fr) for c in item.get("children", [])]
     return node
 
@@ -148,6 +185,7 @@ def describe(data: dict, shot_id: str, folder=None) -> dict:
     info, shot = shot_info(data, shot_id), _shot(data, shot_id)
     frames = range(info["start"], info["end"] + 1)
     fr = _Frames(data, frames, info["fps"], folder)
+    fr.shot_camera, fr.shot_size = info["camera"], [info["width"], info["height"]]      # copies: what must see them
     cam = fr.items.get(info["camera"])
     if cam is None or cam["type"] != "camera":
         raise ValueError(f'shot "{shot_id}": its camera "{info["camera"]}" is not a camera in this document')

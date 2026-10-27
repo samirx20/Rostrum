@@ -65,6 +65,8 @@ def look_frame(ctx, args):
                               width=w, height=h, png=str(dest), **_settings(renderer))
         t = seconds(info, frame)
         said, facts = picture_facts.line(dest, scene, renderer)
+        more, more_facts = picture_facts.copies_line(getattr(engine, "copies", {}), picture_facts.item_names(doc.data.get("items", [])))
+        said, facts = said + more, {**facts, **more_facts}
         return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}',
                      {"time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
                       **({"ghosts": [g["frame"] for g in ghosts]} if ghosts is not None else {}), "timing": out.get("timing", {}), "vram": out.get("vram", {}), **facts}, [dest], [dest], engine.take_notices())

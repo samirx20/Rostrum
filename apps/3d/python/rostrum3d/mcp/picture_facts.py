@@ -40,3 +40,26 @@ def line(png, scene: dict, renderer: str) -> tuple[str, dict]:
         text += (" Applied in Final: " if renderer != "cycles" else " Applied here (Final only): ") + ", ".join(final) + "."
     return text, {"clippedPercent": pct, "appliedInFinal": final}
 
+
+
+def copies_line(copies: dict, names: dict) -> tuple[str, dict]:
+    """(' Copies: buds 212 of 400 seen by Hero 01; rocks 60.', facts) from the engine's scene reply (`copies`: {id: {count, seen,
+    camera}}); `names`: item id -> the name a person sees. Nothing said when the scene has no copies."""
+    parts = []
+    for id_, c in sorted(copies.items()):
+        who = names.get(id_, id_)
+        if c.get("seen") is None:
+            parts.append(f"{who} {c['count']}")
+        else:
+            parts.append(f"{who} {c['seen']} of {c['count']} seen by {names.get(c.get('camera'), c.get('camera'))}")
+    return (f" Copies: {'; '.join(parts)}." if parts else ""), ({"copies": copies} if copies else {})
+
+
+def item_names(items: list[dict]) -> dict:
+    """Item id -> name over a document's item tree."""
+    out, stack = {}, list(items)
+    while stack:
+        it = stack.pop()
+        out[it["id"]] = it.get("name") or it["id"]
+        stack += it.get("children", [])
+    return out

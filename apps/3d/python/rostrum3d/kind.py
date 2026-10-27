@@ -4,6 +4,7 @@ operation per type (`mesh.set`, `light.set`, `material.set`, `shot.set` …) gen
     doc ─ items     ─ group  ─ children (items …) ─ keys
                     ─ import ─ children, parts ─ keys
                     ─ combine ─ children (2+ meshes / combines) ─ keys
+                    ─ copies ─ children (its source items, then its effectors) ─ keys
                     ─ mesh ─ bones (a chain: bone ─ bones …, keys) ─ keys
                     ─ clay ─ steps (claystep: pieces and strokes, in order), bones (its joints, as a mesh's chain),
                              paints (as a mesh's) ─ keys
@@ -21,10 +22,10 @@ from rostrum_core.tree import walk
 
 from rostrum_core.errors import codes
 
-from . import clay_dabs, clay_fields, fields as F, mirror, paint_fields
+from . import clay_dabs, clay_fields, copies_fields, fields as F, mirror, paint_fields
 
 LISTS = {**F.LISTS, **rostrum_paint.LISTS}          # a mesh is a paint canvas: paints › strokes (the shared kit)
-HOLDS = {"items": F.ITEMS, "children": F.ITEMS, "materials": ("material",), "shots": ("shot",),
+HOLDS = {"items": F.ITEMS, "children": (*F.ITEMS, "effector"), "materials": ("material",), "shots": ("shot",),
          "parts": ("part",), "keys": ("key",), "poses": ("pose",), "bones": ("bone",), "steps": ("claystep",), **rostrum_paint.HOLDS}
 PRIM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")    # scene items and materials become USD prim names
 
@@ -137,6 +138,10 @@ def check(data: dict) -> list[str]:
                 _ref(problems, item, "lightsOnly", linked, items - {item["id"]}, "item")
         if t == "combine":
             _check_combine(item, problems)
+        if t == "copies":
+            copies_fields.check(item, problems, items)
+        if t == "effector":
+            _ref(problems, item, "near", item.get("near"), items, "item")
         if t == "clay":
             by_id = {i["id"]: i for i in everything}               # a step made from an item names it (CL3)
             for step in item.get("steps", []):

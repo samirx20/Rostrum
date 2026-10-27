@@ -8,7 +8,7 @@ from rostrum_core.errors import RostrumError, codes
 from rostrum_core.mcp import Reply, Tools
 
 from ..ops_import import EXTENSIONS, unit_name
-from . import draw
+from . import draw, picture_facts
 from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()
@@ -83,6 +83,9 @@ def inspect_shot(ctx, args):
     length = frames / info["fps"]
     data = {**info, "frames": frames, "seconds": round(length, 4), "last_time": round(seconds(info, info["end"]), 4), "cameras": cams,
             "lights": lights, "items": len(items), "materials": [m["id"] for m in scene.get("materials", [])]}
+    drawn = [c for c in items if c["type"] == "copies"]
+    if drawn:       # what the engine last said about each (how many the shot camera sees) is in the reply of the last look
+        data["copies"] = {c["id"]: {"layout": c["props"]["layout"], "count": c["props"]["count"], **(getattr(draw.engine_of(ctx), "copies", {}).get(c["id"]) or {})} for c in drawn}
     return Reply(f'Shot {info["id"]}: frames {info["start"]}–{info["end"]} ({frames} frames, {length:.2f} s at {info["fps"]:g} fps), '
                  f'{info["width"]}×{info["height"]}, shot camera {info["camera"]}; {len(cams)} camera(s), {len(lights)} light(s), {len(items)} items.', data)
 

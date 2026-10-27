@@ -32,7 +32,7 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import aim, build, clay_detail, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
+from . import aim, build, clay_detail, copies_fields as CF, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -150,6 +150,16 @@ class Item:
         self.node["parts"].append(node)
         return Item(self._b, node)
 
+    def effector(self, kind: str = "scale", near=None, id=None, **values) -> "Item":
+        """Change the copies near an item: kind scale | turn | push | colour, `near` = the item the change is centred on
+        (a handle or an id), radius, amount, falloff, axis, colour. Key amount / radius / colour for change over time."""
+        if self.node["type"] != "copies":
+            raise ValueError(f"{self.id} is a {self.node['type']}; .effector() is for a copies item")
+        values = {"amount": CF.STARTING_AMOUNT.get(kind, 0.5), **values, "kind": kind}
+        if near is not None:
+            values["near"] = near
+        return self._b.add("effector", id, values, self.node["children"])
+
     def lump(self, at, radius: float = 0.15, to=None, **values) -> "Item":
         """A clay's piece: a sphere at `at` (a capsule to `to`), joined (mode="add") or carved; blend, symmetry, name."""
         return self._step(piece_values(self.node, {"at": list(at), "radius": radius,
@@ -210,6 +220,28 @@ def _clay(b: "Build", id_=None, draw=None, spin=None, facing=None, axis=None, pu
     first = make(it.node, local, local["points"], clay_steps.DEFAULT["detail"])
     it.set(brushSize=values.get("brushSize") or round(max(clay_steps.size_of(first) / 4, 0.0005), 4))
     return it._step(first)
+
+
+def _copies(b: "Build", id_=None, source=None, **values) -> Item:
+    """copies(id, source, layout=…, count=…): `source` (an item or a list of them, made earlier in the same list) goes inside
+    the new copies item, which takes its place (it stands at the copies item's origin, keeping its turn and size). Without
+    `source`, it is a holder: `with copies("buds", layout="circle", count=8): mesh(…)`."""
+    mine = list(source) if isinstance(source, (list, tuple)) else [] if source is None else [source]
+    it = b.item("copies", id_, **values)
+    if not mine:
+        return it
+    siblings = it._siblings()
+    nodes = [m.node if isinstance(m, Item) else next((n for n in siblings if n["id"] == m), None) for m in mine]
+    if None in nodes or any(n not in siblings for n in nodes):
+        raise ValueError(f"{it.id}: its source must be made earlier in the same list (the same group or the top level)")
+    it.node.update({k: round(sum(n.get(k, 0.0) for n in nodes) / len(nodes), 6) for k in "xyz"})
+    siblings.remove(it.node)
+    siblings[siblings.index(nodes[0]):siblings.index(nodes[0])] = [it.node]     # takes the first source's place
+    for n in nodes:
+        siblings.remove(n)
+        n.update(x=0.0, y=0.0, z=0.0)
+        it.node["children"].insert(len([c for c in it.node["children"] if c["type"] != "effector"]), n)
+    return it
 
 
 def _id_of(v):
@@ -286,10 +318,10 @@ def _import(name, *args, **kw):
 
 
 API = ["group(id, **fields)", "mesh(id, shape=, **fields)", "light(id, kind=, **fields)", "camera(id, **fields)", "rig(id, rig=orbit|crane|dolly, **fields)",
-       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
+       "import_usd(id, file=, parts=[...])", "combine(id, op=union|subtract|intersect)", "copies(id, source, layout=line|grid|circle|surface, count=, spacingX=, columns=, radius=, surface=, seed=, varyMove=, varyTurn=, varyScale=)", "copies.effector(kind=scale|turn|push|colour, near=, radius=, amount=)", "clay(id, **fields)", "clay(id, draw=[(x, y, z) …] or spin=[…], facing=, axis=, puff=)", "material(id, start=, **fields)", "shot(id, camera=, fps=, start=, end=)",
        "item.set(**fields)", "item.key(field, {seconds: value}, ease=)", "item.aim(item or (x, y, z), roll=)", "item.place_on(other mesh) / item.place_on(clay or mesh, at=(x, y, z), normal=)",
        "import.part(path, material=, visible=)",
-       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...):"]
+       "clay.lump(at, radius, to=, mode=add|carve, blend=)", "clay.draw(outline, facing=, puff=, mode=, blend=, name=)", "clay.spin(profile, axis=, mode=, blend=, name=)", "clay.stroke(path=, dir=, brush=, size=, strength=)", "with group(...): / with rig(...): / with import_usd(...): / with combine(...): / with copies(...):"]
 
 
 def run_source(source: str, name: str) -> dict:
@@ -300,6 +332,7 @@ def run_source(source: str, name: str) -> dict:
              "shot": lambda id=None, **v: b.add("shot", id, v, b.root["shots"]),
              "import_usd": lambda id=None, **v: b.item("import", id, **v),
              "clay": lambda id=None, **v: _clay(b, id, **v),
+             "copies": lambda id=None, source=None, **v: _copies(b, id, source, **v),
              **{t: (lambda id=None, _t=t, **v: b.item(_t, id, **v)) for t in ("group", "mesh", "combine", "light", "camera", "rig")}}
     try:
         exec(compile(source, name, "exec"), scope)
