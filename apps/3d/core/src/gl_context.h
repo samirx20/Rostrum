@@ -17,6 +17,9 @@ class GlContext {
   GlContext& operator=(const GlContext&) = delete;
   std::string renderer() const;  // GL_RENDERER: which chip draws (the RTX, we hope)
   void finish() const;
+  // borrowed: what is drawn next on this context (the window's own view post and Qt Quick) runs after it on the GPU
+  // anyway, so the view waits for nothing (a GL finish here held a dab's frame ~2-5 ms for the GPU)
+  bool borrowed() const { return rc_ == nullptr; }
 
  private:
   void* wnd_ = nullptr;

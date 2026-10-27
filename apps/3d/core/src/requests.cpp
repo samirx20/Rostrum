@@ -293,7 +293,7 @@ JsObject Core::view(const JsObject& o) {
                              {"samples", JsValue(int(std::lround(pic.final->fraction * s.samples)))},
                              {"of", JsValue(s.samples)}, {"seconds", JsValue(r1(pic.final->seconds))},
                              {"cyclesMb", JsValue(r1(pic.final->cyclesMb))}, {"status", JsValue(pic.final->status)}});
-  const GpuMem now = mem_.sample();
+  const GpuMem now = mem_.recent();  // a view is asked for every dab: a sample a quarter-second old is fine
   JsArray missing;  // product lighting the quick view can't show (light_extras.h): said, never faked
   for (const std::string& note : light_extras().stormNotes) missing.push_back(JsValue(note));
   JsObject reply{{"ok", JsValue(true)}, {"width", JsValue(w)}, {"height", JsValue(h)},

@@ -4,8 +4,12 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
 
+#include <exception>
 #include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
+#include <optional>
 
 #include "clay_store.h"
 #include "gpu_mem.h"
@@ -36,6 +40,16 @@ class Core {
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject info();
 
+  // A live stroke's dab, its clay work started early (clay_requests.cpp). The window (view/viewport_item.cpp) calls
+  // sculpt_ahead from the GUI thread when it posts a `sculpt` dab and nothing else is waiting for an answer: the dabs
+  // are applied and their blocks meshed on a worker while the request travels to the render thread, which then only
+  // writes the blocks to USD and draws. The worker never touches the stage (the camera and the clay's place come from
+  // the stroke's begin, cached in stroke_view_) and nothing else calls the clay store until the request is answered.
+  // True when it started. Thread rules: sculpt_ahead on any one thread, never while the render thread answers.
+  bool sculpt_ahead(const PXR_NS::JsObject& request);
+  // the render thread, before answering anything else: waits for a started dab (its result kept for its request)
+  void join_ahead();
+
  private:
   Hydra& hydra();  // the GL context and engines are made on first use
   void need_scene(const char* request) const;
@@ -59,6 +73,15 @@ class Core {
   std::string xform_id_;  // the item the last `xform` moved, and its prim
   PXR_NS::SdfPath xform_path_;
   std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
+  // the live stroke's camera and clay placement, from its begin (clay_requests.cpp: StrokeView)
+  struct StrokeView;
+  std::shared_ptr<const StrokeView> stroke_view_;
+  std::mutex ahead_m_;                          // ahead_ and ahead_key_: set on the GUI thread, taken on the render one
+  std::future<clay::SculptReply> ahead_;        // a dab started early, running
+  std::string ahead_key_;                       // its points (the request it belongs to)
+  std::optional<clay::SculptReply> ahead_done_;  // its result, waiting for its request
+  std::exception_ptr ahead_error_;
+  std::string ahead_done_key_;
 };
 
 }  // namespace r3d

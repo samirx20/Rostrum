@@ -1,5 +1,7 @@
 #include "gpu_mem.h"
 
+#include <chrono>
+
 #include <windows.h>
 #include <dxgi1_4.h>
 
@@ -69,7 +71,14 @@ GpuMem GpuMemWatch::sample() {
     }
   }
   if (m.processMb > peak_) peak_ = m.processMb;
+  last_ = m;
+  lastMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   return m;
+}
+
+GpuMem GpuMemWatch::recent(double ms) {
+  const double now = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  return now - lastMs_ < ms ? last_ : sample();
 }
 
 }  // namespace r3d

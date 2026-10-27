@@ -317,10 +317,10 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
     fb.bind_and_clear();
     e.Render(stage_->GetPseudoRoot(), params);
     const auto tf = std::chrono::steady_clock::now();
-    gl_.finish();
+    if (!gl_.borrowed() || !e.IsConverged()) gl_.finish();  // in the window: ordered on its context, no wait
     finish_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tf).count();
     e.keep_programs();
-    mem.sample();
+    mem.recent();
     throw_usd_errors(mark, "view (" + renderer + ", frame " + std::to_string(frame) + ")");
     if (e.IsConverged()) break;
     if (std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count() > 10)

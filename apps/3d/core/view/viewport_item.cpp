@@ -8,6 +8,7 @@
 #include <rhi/qrhi.h>  // Qt 6.12: in the versioned headers (Qt6::GuiPrivate)
 
 #include <chrono>
+#include <cstdlib>
 #include <future>
 #include <memory>
 
@@ -32,6 +33,7 @@ class Renderer : public QQuickRhiItemRenderer {
  public:
   ~Renderer() override {
     QObject::disconnect(swapped_);
+    if (Rostrum3DView* v = item_.data()) v->setCore(nullptr);
     if (ending_.valid()) ending_.wait();  // the worker uses the core
     core_.reset();  // render thread, the window's context current (the renderer is destroyed there)
   }
@@ -69,6 +71,7 @@ class Renderer : public QQuickRhiItemRenderer {
       const QString gl = QString::fromStdString(core_->gl_renderer());
       QPointer<Rostrum3DView> i = item_;
       QMetaObject::invokeMethod(item_, [i, gl] { if (i) i->setGlRenderer(gl); }, Qt::QueuedConnection);
+      if (item_) item_->setCore(core_.get());
     }
     const bool fresh = core_->set_texture(unsigned(colorTexture()->nativeTexture().object), sz.width(), sz.height());
     const int before = core_->views_drawn();
@@ -118,6 +121,7 @@ class Renderer : public QQuickRhiItemRenderer {
     if (!answers.empty() || !drawn.isEmpty())
       QMetaObject::invokeMethod(item_, [i, answers = std::move(answers), drawn] {
         if (!i) return;
+        i->answeredSome(int(answers.size()));  // before the replies: one may post the next dab, started early
         for (const auto& [id, r] : answers) Q_EMIT i->answered(id, r);
         if (!drawn.isEmpty()) Q_EMIT i->drawn(drawn);
       }, Qt::QueuedConnection);
@@ -159,11 +163,22 @@ Rostrum3DView::Rostrum3DView() {
 QQuickRhiItemRenderer* Rostrum3DView::createRenderer() { return new Renderer; }
 
 void Rostrum3DView::post(int id, const QString& line) {
+  std::string text = line.toStdString();
+  if (unanswered_.load() == 0 && r3d::WindowCore::is_stroke_dab(text) && !std::getenv("ROSTRUM3D_NO_AHEAD")) {
+    std::lock_guard<std::mutex> l(coreM_);
+    if (core_) core_->ahead(text);
+  }
+  ++unanswered_;
   {
     std::lock_guard<std::mutex> l(m_);
-    queue_.requests.emplace_back(id, line.toStdString());
+    queue_.requests.emplace_back(id, std::move(text));
   }
   request();
+}
+
+void Rostrum3DView::setCore(r3d::WindowCore* core) {
+  std::lock_guard<std::mutex> l(coreM_);
+  core_ = core;
 }
 
 void Rostrum3DView::show(const QString& viewLine) {
