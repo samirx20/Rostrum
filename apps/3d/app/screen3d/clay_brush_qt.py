@@ -32,9 +32,15 @@ class ClayBrush(QObject):
         it = self.t._item()
         # the screen's facts (bridge_rows.facts_of), not none: the rows are valid only while `sculpting` (CL1b: with {}
         # that fact read as off and Size, Strength and Mirror vanished from the Clay panel)
-        # update, not reset: a stroke's new step changes no brush row, and rebuilding all six rows' controls on every
-        # document change was the longest part of letting go of a stroke (3d-v3: ~30 ms of the GUI thread)
-        self.model.update(rows.evaluate(self._static, it, self.b.facts_of(it), False) if it is not None and self._static else [])
+        new = rows.evaluate(self._static, it, self.b.facts_of(it), False) if it is not None and self._static else []
+        # the same rows applying: only their values are patched. A stroke's new step changes no brush row, and
+        # rebuilding all six rows' controls on every document change was the longest part of letting go of a stroke
+        # (3d-v3: ~30 ms of the GUI thread). Other rows applying (the tool off, another clay): rebuilt, none kept hidden
+        shape = lambda rs: [(r.get("id"), r.get("valid", True)) for r in rs]  # noqa: E731
+        if new and shape(new) == shape(self.model.rows):
+            self.model.update(new)
+        else:
+            self.model.reset(new)
         self.changed.emit()
 
     rows = Property(QObject, lambda s: s.model, constant=True)
