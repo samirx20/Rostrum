@@ -12,8 +12,8 @@ uniform float u_brush_width = 3.0;     // stroke width, output pixels
 uniform float u_brush_angle = 35.0;    // stroke angle on screen (degrees) where the form gives none
 uniform float u_brush_follow = 0.7;    // 0 = all strokes at the angle, 1 = strokes follow the form
 uniform float u_shadow_soft = 1.5;     // shadow edge softness (shadow-map texels)
-uniform float u_shadow_offset = -1.0;  // push the lookup off the surface (scene units); < 0 = auto: 8 shadow-map
-                                       // texels of the lit scene's size (u_shadowAuto), so it fits a case or a room
+uniform float u_shadow_offset = -1.0;  // push the lookup off the surface (scene units); < 0 = auto: 8 texels of
+                                       // that light's map where the scene is (u_shadowAuto), so it fits a case or a room
 uniform float u_bg_color_x = 0.0, u_bg_color_y = 0.0, u_bg_color_z = 0.0;  // where nothing is drawn
 
 uniform sampler2D u_albedo, u_normal, u_world, u_ramps, u_mats;
@@ -23,8 +23,14 @@ uniform int u_lightCount;
 uniform vec4 u_lightPos[8], u_lightAxis[8], u_lightColor[8], u_lightExtra[8];
 uniform mat4 u_shadowMat[4];
 uniform float u_shadowTexel, u_ss;
-uniform float u_shadowAuto;
+uniform float u_shadowAuto[4];
 uniform mat4 u_camView;
+// the sky behind the scene (renderPass.cpp SkyUniforms): a dome picture by view direction, else u_bg_color
+uniform sampler2D u_sky;
+uniform int u_skyOn;
+uniform vec3 u_skyGain;
+uniform mat4 u_skyUnproj, u_skyLocal;
+uniform vec2 u_frame;
 out vec4 oColor;
 
 #include <noise.glsl>
@@ -33,7 +39,7 @@ const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
 
 float shadowAt(int layer, vec3 P, vec3 N)
 {
-    vec4 c = u_shadowMat[layer] * vec4(P + N * (u_shadow_offset < 0.0 ? u_shadowAuto : u_shadow_offset), 1.0);
+    vec4 c = u_shadowMat[layer] * vec4(P + N * (u_shadow_offset < 0.0 ? u_shadowAuto[layer] : u_shadow_offset), 1.0);
     vec3 q = c.xyz / c.w * 0.5 + 0.5;
     if (any(lessThan(q, vec3(0.0))) || any(greaterThan(q, vec3(1.0)))) return 1.0;
     float s = 0.0;
@@ -42,6 +48,17 @@ float shadowAt(int layer, vec3 P, vec3 N)
             s += texture(u_shadowMaps, vec4(q.xy + vec2(x, y) * 0.5 * u_shadow_soft * u_shadowTexel,
                                             float(layer), q.z - 1e-4));
     return s / 25.0;
+}
+
+// the sky this pixel looks at (USD's lat-long: top = the dome's +Y, centre column = its +Z)
+vec3 sky()
+{
+    if (u_skyOn == 0) return vec3(u_bg_color_x, u_bg_color_y, u_bg_color_z);
+    vec2 ndc = gl_FragCoord.xy / u_frame * 2.0 - 1.0;
+    vec4 a = u_skyUnproj * vec4(ndc, -1.0, 1.0), b = u_skyUnproj * vec4(ndc, 0.0, 1.0);
+    vec3 d = normalize((u_skyLocal * vec4(b.xyz / b.w - a.xyz / a.w, 0.0)).xyz);
+    vec2 uv = vec2((atan(d.z, d.x) + 1.5707963) / 6.2831853, acos(clamp(d.y, -1.0, 1.0)) / 3.1415927);
+    return textureLod(u_sky, uv, 0.0).rgb * u_skyGain;
 }
 
 vec4 mrow(int row, int k) { return texelFetch(u_mats, ivec2(k, row), 0); }
@@ -89,7 +106,7 @@ void main()
 {
     ivec2 p = ivec2(gl_FragCoord.xy);
     ivec2 ids = texelFetch(u_ids, p, 0).rg;
-    if (ids.r == 0) { oColor = vec4(u_bg_color_x, u_bg_color_y, u_bg_color_z, 0.0); return; }
+    if (ids.r == 0) { oColor = vec4(sky(), 0.0); return; }
     int row = ids.g;
     vec4 albedo = texelFetch(u_albedo, p, 0);
     vec3 emission = mrow(row, 0).rgb;

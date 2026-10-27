@@ -5,6 +5,7 @@
 
 #include <pxr/base/gf/vec4f.h>
 #include <pxr/base/gf/matrix4f.h>
+#include <pxr/base/gf/range3d.h>
 
 #include <vector>
 
@@ -25,14 +26,14 @@ struct RostrumFrameLights {
     // dome: xyz = what a white surface facing down shows (colour x brightness), w = -1
     GfVec4f extra[kMaxLights];
     GfMatrix4f shadowMat[kMaxShadows];  // world -> light clip
+    float shadowSpan[kMaxShadows] = {};   // how wide the map is at the bounds' centre (world units; / size = a texel)
     std::vector<float> ramps;     // kMaxLights rows x kRampSize texels x RGBA (legacy ramp lights' rows)
     bool legacy = false;          // some light has a legacy ramp
 };
 
 // The strongest kMaxLights lights at the bounds' centre (one dome: the brightest), the first
-// kMaxShadows that cast with a shadow map fitted to the bounds (centre / radius: what casts and
-// receives light). The order depends only on the lights and the bounds.
-RostrumFrameLights RostrumPackLights(std::map<SdfPath, RostrumLightData> const &lights,
-                                     GfVec3d const &centre, double radius);
+// kMaxShadows that cast with a shadow map fitted tightly around the bounds' corners as the light sees
+// them (`lit`: what casts and receives light). The order depends only on the lights and the bounds.
+RostrumFrameLights RostrumPackLights(std::map<SdfPath, RostrumLightData> const &lights, GfRange3d const &lit);
 
 PXR_NAMESPACE_CLOSE_SCOPE

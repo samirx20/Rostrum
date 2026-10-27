@@ -118,6 +118,8 @@ void HdRostrumMesh::Sync(HdSceneDelegate *sd, HdRenderParam *, HdDirtyBits *bits
         d.pivot = GfVec3f(float(c[0]), float(box.GetMin()[1]), float(c[2]));
         d.center = GfVec3f(c);
         d.radius = float(box.GetSize().GetLength() * 0.5);
+        d.boxMin = GfVec3f(box.GetMin());
+        d.boxMax = GfVec3f(box.GetMax());
     }
     VtValue cam = FindPrimvar(sd, id, TfToken("rostrum:bend:camera")).value;
     if (cam.IsHolding<std::string>()) d.bend.camera = cam.UncheckedGet<std::string>();

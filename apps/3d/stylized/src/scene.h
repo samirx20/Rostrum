@@ -36,6 +36,7 @@ struct RostrumMeshData {
     GfVec3f pivot{0, 0, 0};      // world-space bottom centre of the bounds (bend pivot)
     GfVec3f center{0, 0, 0};     // world-space bounds centre
     float radius = 1.0f;         // world-space bounds radius
+    GfVec3f boxMin{0, 0, 0}, boxMax{0, 0, 0};  // world-space bounds (the shadow maps are fitted to them)
     unsigned version = 0;        // bumped on every geometry change (GPU re-upload)
 };
 
@@ -80,6 +81,7 @@ struct RostrumLightData {
     float coneAngle = 180.0f, coneSoftness = 0.0f;   // half angle, degrees; 180 = no cone
     GfVec3f domeUp{1, 1, 1}, domeDown{1, 1, 1};      // dome: what a white matte surface facing up /
                                                      // down shows (its picture x colour x intensity)
+    std::string domeFile;            // dome: its picture (lat-long), "" = an even sky; shown behind the scene
     float gain = 1.0f;               // rostrum:gain (legacy ramp lights only)
     float wrap = 0.0f;               // rostrum:wrap: light wraps past the terminator (0..1)
     bool shadow = true;              // rostrum:shadow, else UsdLux shadow:enable

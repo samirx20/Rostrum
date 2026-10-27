@@ -156,6 +156,7 @@ void HdRostrumLight::Sync(HdSceneDelegate *sd, HdRenderParam *, HdDirtyBits *bit
         }
         l.domeUp = up;
         l.domeDown = down;
+        l.domeFile = file;
     }
     l.gain = r.Typed<float>("rostrum:gain", 1.0f);
     l.wrap = r.Typed<float>("rostrum:wrap", 0.0f);
