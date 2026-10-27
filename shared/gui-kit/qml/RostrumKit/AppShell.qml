@@ -45,6 +45,7 @@ QQC.ApplicationWindow {
     property string noExportWhy: ""          // said in plain words when Ctrl+E / Ctrl+Shift+E come while there is nothing to export (no `exporter`)
     property alias exportSettings: exportSheet.settings
     property alias exportSummary: exportSheet.summary   // the app's line above the sheet's button (3D: the time estimate)
+    property alias exportUnderRange: exportSheet.underRange   // the app's rows right under the range picker (2D: From / To)
     readonly property bool exportOpen: !!exporter && exporter.open
     property alias problems: topBar.problems    // the Problems chip's source ({rows}, jump(row))
     onHistoryOpenChanged: if (historyOpen && exportOpen) exporter.setOpen(false)

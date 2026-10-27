@@ -6,7 +6,7 @@ import "."
 // Export (INTERACTION.md 1.19 item 8): a sheet in the right column, in the settings panel's place, so the work stays in
 // sight. One heading (Export), then what for (a short list in words, each with its file type) · the chosen one's settings (`settings`: the app
 // fills it with kit rows) · range (only when the document has more than everything) · where (the project's Renders
-// folder; Browse) · the file's name (a field) · Export. A file already there is never replaced without asking: Replace / Keep
+// folder, typed in its box or picked with Browse) · the file's name (a field) · Export. A file already there is never replaced without asking: Replace / Keep
 // both / Cancel, the one blocking question. The export runs in the background (the top bar's job chip); done, the
 // message line says "Exported Main.mp4 · Play · Show in folder". A failure is red, in words; the old file stays.
 // `model`: the app's rostrum_gui.export_sheet.ExportSheet. Esc or × closes it.
@@ -16,6 +16,7 @@ Panel {
     readonly property int edge: 20                  // rows end where the settings panel's fields do (the keyframe column's width)
     property alias settings: settingsSlot.data      // the chosen item's settings only (the app's rows)
     property alias summary: summarySlot.data        // what it will come to, pinned just above the button (an app's estimate)
+    property alias underRange: underRangeSlot.data  // the app's own range rows, right under the range picker (2D's From / To)
     readonly property bool running: model && model.state === "running"
     // titled by what it is; the chosen item is the list's highlighted row (never said twice), or the model's own `sheetTitle`
     title: model && model.sheetTitle ? model.sheetTitle : "Export"
@@ -55,6 +56,7 @@ Panel {
                 height: has ? implicitHeight : Theme.field
                 ChoiceField { objectName: "exportRange"; visible: parent.has; width: parent.width; options: sheet.model ? sheet.model.ranges : []
                               current: sheet.model ? sheet.model.range : ""; onPicked: (v) => sheet.model.setRange(v) }
+                Column { id: underRangeSlot; width: parent.width; spacing: Theme.grid; visible: parent.has && children.length > 0 }
             }
             ChoiceField {   // an app with a few plain choices (model.choicesPicker): one picker, each option's `detail` under its name
                 objectName: "exportTarget"
@@ -102,13 +104,15 @@ Panel {
                     suffix: sheet.model ? sheet.model.nameExt : ""
                     onCommitted: (t) => sheet.model.setNameStem(t)
                 }
-                Text {   // the folder: one line, the middle left out when it is long (the whole path on hover), never broken mid-word
-                    id: whereText
-                    width: parent.width; elide: Text.ElideMiddle; maximumLineCount: 1
-                    text: sheet.model ? sheet.model.whereShort : ""
-                    color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body
-                    HoverHandler { id: whereHover }
-                    HoverTip { text: sheet.model ? sheet.model.where : ""; hovered: whereHover.hovered && (whereText.truncated || text !== whereText.text) }
+                FieldFrame {     // the folder: typed here (Enter keeps it, made if it isn't there; Esc puts the old one back), or Browse
+                    id: whereField
+                    objectName: "exportFolder"
+                    width: parent.width; editable: !sheet.running
+                    keepOnRefusal: true            // a folder that can't be made keeps the typing, red, with the reason
+                    text: sheet.model ? sheet.model.where : ""
+                    atRest: sheet.model ? sheet.model.whereShort : ""     // at rest: the middle left out when long (whole on hover)
+                    elide: Text.ElideMiddle
+                    onCommitted: (t) => problem = sheet.model.typeFolder(t)
                 }
                 Row {
                     spacing: Theme.gap; topPadding: Theme.grid

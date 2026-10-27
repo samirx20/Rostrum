@@ -115,7 +115,7 @@ Nothing is overwritten.
 
 - The mix: `<song>_mix` in the chosen format unless you name it (the name box; agents give `name` on `render_mix`, and on `render_midi` for the MIDI file). Characters a file name can't hold are replaced, and
   emptying the box goes back to `<song>_mix`. Agents get the same file from `render_mix`: `renders/<song>/vNNN/<song>_mix.wav`, absolute path in the reply's `file`. The sheet shows this exact name and the next version folder before you
-  export; **Browse** copies the mix into your folder under the same name.
+  export; **Browse**, or a folder typed in the folder box (Enter; made if it isn't there, Esc puts the old one back), copies the mix into that folder under the same name.
 - With stems: one file per track (named after it) and one per group. A track with nothing in it still gets its file, silent; the
   result line names it ("silent: Recording").
 - A manifest saying which file is which, and what format and rate was used.
