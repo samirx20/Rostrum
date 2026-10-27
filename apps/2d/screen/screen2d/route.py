@@ -42,7 +42,21 @@ class Route2D(KeyRoute):
         if written is not None:
             args = {k: v for k, v in call["args"].items() if k != "at"}
             call = {"op": "key.add", "target": call["target"], "args": {**args, "t": written}}
+        elif _holds_here(item, prop, value, t):     # the value it already shows here, on an animated field: a hold key,
+            args = {k: v for k, v in call["args"].items() if k != "at"}       # as After Effects writes (never "nothing changed")
+            call = {"op": "key.add", "target": call["target"], "args": {**args, "t": t}}
         return call
+
+
+def _holds_here(item: dict, prop: str, value, t: float) -> bool:
+    """An animated field with no key within a frame of `t` that already shows `value` there."""
+    keys = keys_of(item, prop)
+    if not keys or isinstance(value, (bool, str)) or not isinstance(value, (int, float)):
+        return False
+    if any(abs(k.get("t", -1e9) - t) < 1 / 60 for k in keys if not marked.marked(k)):
+        return False
+    now = value_at(item, prop, t)
+    return isinstance(now, (int, float)) and abs(float(now) - float(value)) < 1e-6
 
 
 _screen = [None]       # (placed_item(id), offset(id), fps()) of the open screen (bridge2d.py)
