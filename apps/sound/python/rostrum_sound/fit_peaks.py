@@ -22,6 +22,7 @@ MAX_MAKEUP_DB = 9.0       # more than this given back means the track is squashe
 MAX_TRACKS = 3
 STEP_DB = 1.0             # the threshold to the dB: finer moves the loudness less than the engine settles
 BALANCE_OK = 0.3          # a tamed track's loudness against the mix stays within this of as written
+LOWEST, HIGHEST = FX.EFFECTS["compressor"]["threshold"].lo, FX.EFFECTS["compressor"]["threshold"].hi   # what a compressor takes
 
 
 def db(x: float) -> float:
@@ -67,10 +68,24 @@ class Tamer:
         self.renders += 1
         return self.engine.request("render", schedule=schedule, out=self.out, stems=[])
 
+    def top(self, who: str) -> float:
+        """Where the depth counts down from: the track's own peak, or the compressor's highest threshold when that peak
+        stands over 0 dBFS (before its fader a loud track's peak can): a threshold there already catches the overs."""
+        return min(self.peak[who], HIGHEST)
+
+    def threshold(self, who: str, depth: float) -> float:
+        """Always one the compressor takes (the search's depth never proposes one outside LOWEST…HIGHEST)."""
+        return round(max(LOWEST, min(HIGHEST, self.top(who) - depth)), 1)
+
     def settings(self, who: str, depth: float) -> dict:
         have = _existing(self.tracks[who])
         base = {"ratio": RATIO, "attack": ATTACK, "release": RELEASE, "knee": KNEE} if not have else {}
-        return {**base, "threshold": round(self.peak[who] - depth, 1), "makeup": round(self.makeup.get(who, have.get("makeup", 0) if have else 0), 1)}
+        return {**base, "threshold": self.threshold(who, depth), "makeup": self.within("makeup", self.makeup.get(who, have.get("makeup", 0) if have else 0))}
+
+    @staticmethod
+    def within(field: str, v: float) -> float:
+        f = FX.EFFECTS["compressor"][field]
+        return round(max(f.lo, min(f.hi, v)), 1)
 
     def data(self, whos, depth: float) -> dict:
         data = copy.deepcopy(self.root)
@@ -106,7 +121,7 @@ class Tamer:
         out = []
         for w in whos:
             have = _existing(self.tracks[w])
-            args = {**self.settings(w, depth), "makeup": round(self.seen[(tuple(whos), depth)]["makeup"][w], 1)}
+            args = {**self.settings(w, depth), "makeup": self.within("makeup", self.seen[(tuple(whos), depth)]["makeup"][w])}
             if have:
                 out.append({"op": "effect.set", "target": [have["id"]], "args": {k: args[k] for k in ("threshold", "makeup")}})
                 continue
