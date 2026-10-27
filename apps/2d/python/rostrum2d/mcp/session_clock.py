@@ -92,7 +92,7 @@ class Clock:
         return gaps + ([[at, span]] if at < span - 1e-9 else [])
 
     def line(self) -> str:
-        parts = [f"Session {said_time(self.elapsed())} (since your first call this session)", f"{self.calls} call{'s' * (self.calls != 1)}"]
+        parts = [f"Session {said_time(self.elapsed())} of real time since your first call (your thinking included)", f"{self.calls} call{'s' * (self.calls != 1)}"]
         if not self.looked:
             parts.append("no look at the picture yet")
         elif self.edits_since_look:

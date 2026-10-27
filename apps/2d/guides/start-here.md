@@ -229,7 +229,7 @@ it done. A sheet from before your last edit doesn't count.
 
 ### Using your time
 
-Every reply ends with a clock line, e.g. *Session 6 min 12 s (since your first call this session) · 23 calls · last look at
+Every reply ends with a clock line, e.g. *Session 6 min 12 s of real time since your first call (your thinking included) · 23 calls · last look at
 the picture 4 edits ago*. The session starts at your first call; if `ROSTRUM_SESSION_BUDGET_MIN` is set it also says how many
 minutes are left. After an export it also names the kinds of look not done yet (a full-size single frame, the motion with
 `look_motion`). The clock is the only time you have: a long stretch without a reply is not time used up, and the time
