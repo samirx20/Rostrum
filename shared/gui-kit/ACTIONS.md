@@ -43,6 +43,12 @@ KeyMap { hub: backend.actions; enabled: !typing }               // in the root w
 
 Do not bind `hub: hub` when the context property is called `hub` (QML then reads the item's own empty property).
 
+**No action is silent (INTERACTION.md 1.21 rule 9; `rostrum_gui/told.py`).** While an action runs, the hub watches its
+host bridge's `docChanged` and `status` (the kit DocBridge has both). If the document changed and nothing was said,
+the hub says the action's own words: its `done` (`Action(..., done="Grouped {what}")`, or `done(what) -> str`), else
+"<label> · <what>" ("Auto layout · 3 layers"). An app's own sentence always wins; this is the floor, so a new action
+can never act silently. Give an action a `done` when its past tense reads better than its label.
+
 ## Notes for Team Hem (Rostrum2D)
 
 2D runs on the kit list on `team/sam` (commit 9a0ee57):

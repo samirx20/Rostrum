@@ -29,6 +29,7 @@ from .after_frame import AfterFrame
 from .amounts_page import AmountsPage
 from .keyhold import KeyHold
 from .match import starts
+from .told import Told, words as told_words
 
 
 class ActionHub(QObject):
@@ -52,6 +53,7 @@ class ActionHub(QObject):
         self._later = AfterFrame(self.refresh, self)        # refresh_later: once, the frame after
         self._subject = subject_fn or (lambda _id, facts: self._what(facts))
         self._page = AmountsPage(drag_fn, kept_fn or (lambda change, label: None), message_fn, self) if drag_fn else None
+        self._told = Told(parent)                      # no action is silent: the host's message line and document, watched per run
 
     def _now(self, shown=False):
         """(facts, entries). `shown`: for the list as shown, whose calls are never read (ActionList.listed)."""
@@ -232,11 +234,15 @@ class ActionHub(QObject):
 
     def _go(self, entry):
         self._refreshed = False
+        what = self._what(self._facts()) if self._told.watching else ""     # before the run: what it acts on
         try:
-            if entry["do"]:
-                self._do(entry["do"], entry)
-            else:
-                self._apply(entry["calls"], entry["label"])
+            with self._told.run() as r:
+                if entry["do"]:
+                    self._do(entry["do"], entry)
+                else:
+                    self._apply(entry["calls"], entry["label"])
+            if r.changed and not r.said:             # it changed the document and said nothing: its own words (told.py)
+                self._told.say(told_words(self.list.find(entry["id"]), entry["label"], what), self._say)
         except Exception:
             qt_faults.python_error(f'action "{entry["id"]}"', entry["label"])
         if not self._refreshed:         # the change's own listeners refreshed already (once per change is enough);
