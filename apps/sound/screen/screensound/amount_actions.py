@@ -64,8 +64,8 @@ def transpose_fit(f, a):
 
 # ---- Repeat… -----------------------------------------------------------------------------------------------------
 def repeat_valid(f) -> bool:
-    """Notes, hits or clips selected (and no newer time range)."""
-    return not f.on_range and bool(f.count) and f.kinds <= set(TIMED)
+    """Notes, hits or clips selected, or one section (and no newer time range)."""
+    return not f.on_range and bool(f.count) and (f.kinds <= set(TIMED) or f.one == "section")
 
 
 def repeat_range_valid(f) -> bool:
@@ -99,7 +99,10 @@ def until_options(f, times) -> list[dict]:
     """Just N times · End of <section> (the section the selection ends in) · End of the range (items picked under a
     time range that goes on past them; repeating the range itself up to its own end would copy nothing) · Next marker
     <name>."""
-    t, out = _end(f), [{"value": "times", "label": f"Just {int(times)} times"}]
+    out = [{"value": "times", "label": f"Just {int(times)} times"}]
+    if f.one == "section":                     # a section's copies make their own room: what follows moves, no end to fill to
+        return out
+    t = _end(f)
     sec = _section_at(f, t)
     if sec:
         out.append({"value": "section:" + sec["name"], "label": f"End of {sec['name']}"})

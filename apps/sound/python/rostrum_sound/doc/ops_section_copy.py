@@ -4,20 +4,28 @@ line is copied and one a hair before its end is left to the next section), place
 undo step; nothing after the section moves. Bars after it that already hold music (a note, hit or clip starting
 there, or another section) refuse the copy, saying what is there: stacked on top it would double the music under a
 hidden section. The copy is named with the next free number: "verse-2" (a copy of "verse-2" is "verse-3").
+`make_room` (Ctrl+D and Repeat… on a section in the app; critic r12) first makes room right after the section, as
+range.insert does (everything later moves later by the copies' length), so a middle section is copied, not refused.
+`times` makes that many copies one after another (Repeat…).
 """
 from __future__ import annotations
 
 import copy
 import re
 
-from rostrum_core import codes
+from rostrum_core import Param, codes
 
 from . import ids, sections
+from .ops_range import _apply as make_time
+from .repeat import TIMES
 from .ops_select_move import _new_id
 from .registry import REGISTRY, taken
 from .select_time import moved, start_of
 
 KINDS = {"notes": "note", "hits": "hit", "clips": "clip"}
+MAKE_ROOM = Param.toggle("make_room", default=False, group="Move", label="Make room", importance="secondary",
+                         help="Move everything after the section later by the copies' length first (as range.insert), "
+                              "so a section with music after it is copied instead of refused.")
 WORDS = {"notes": ("note", "notes"), "hits": ("drum hit", "drum hits"), "clips": ("clip", "clips")}
 
 
@@ -63,23 +71,35 @@ def _copy_name(s, root, ctx):
                     "each (the copy is named like it, with the next free number: verse-2); one step. A note, hit or "
                     "clip nudged up to a 1/32 note before the section's line counts as inside (one that close to its "
                     "end belongs to the next section). Refused when the bars after it "
-                    "already have music or another section (it says what is there).", target="section",
-                    label="Duplicate section")
+                    "already have music or another section (it says what is there), unless make_room moves them later first. "
+                    "times: that many copies, one after another.", target="section",
+                    params=[TIMES, MAKE_ROOM], label="Duplicate section")
 def duplicate(ctx, targets, args):
-    root = ctx.doc
-    for t in targets:
+    n = int(args.get("times", 1))
+    for t in sorted(targets, key=lambda t: -start_of(ctx.doc, ctx.item(t))):    # the latest first: room made for one never moves another's
         s = ctx.item(t)
-        a, b = start_of(root, s), start_of(root, {**s, "at": s["end"], "id": t})
-        by = round(b - a, 6)
-        _in_the_way(ctx, s, b, by)
-        for track, key, it in _starting(root, a, b):
-            new = copy.deepcopy(it)
-            new["at"] = moved(ctx, it, by)
-            new["id"] = _new_id(KINDS[key], track, new, ctx)
-            for fx in new.get("effects", []):
-                fx["id"] = ids.effect(new["id"], fx.get("effect", "effect"), taken(ctx) | {new["id"]})
-            ctx.insert(track, key, new)
-        name, id_ = _copy_name(s, root, ctx)
-        copy_ = {**copy.deepcopy(s), "id": id_, "name": name, "at": moved(ctx, s, by),
-                 "end": moved(ctx, {**s, "at": s["end"]}, by)}
-        ctx.insert("root", "sections", copy_, ctx.idx[t].index + 1)
+        a, b = start_of(ctx.doc, s), start_of(ctx.doc, {**s, "at": s["end"], "id": t})
+        if args.get("make_room"):                 # the room starts at its end, which stays put (never grows with it)
+            end = s["end"]
+            make_time(ctx, b, b + n * (b - a), True)
+            if ctx.item(t)["end"] != end:
+                ctx.set(t, "end", end)
+        for k in range(n):
+            _copy(ctx, ctx.item(t), a, b, round((k + 1) * (b - a), 6), k)
+
+
+def _copy(ctx, s, a, b, by, k):
+    """The k-th copy (from 0) of section `s` (from `a` to `b` s) and everything it owns, `by` seconds later."""
+    root, t = ctx.doc, s["id"]
+    _in_the_way(ctx, s, a + by, b - a)
+    for track, key, it in _starting(root, a, b):
+        new = copy.deepcopy(it)
+        new["at"] = moved(ctx, it, by)
+        new["id"] = _new_id(KINDS[key], track, new, ctx)
+        for fx in new.get("effects", []):
+            fx["id"] = ids.effect(new["id"], fx.get("effect", "effect"), taken(ctx) | {new["id"]})
+        ctx.insert(track, key, new)
+    name, id_ = _copy_name(s, root, ctx)
+    copy_ = {**copy.deepcopy(s), "id": id_, "name": name, "at": moved(ctx, s, by),
+             "end": moved(ctx, {**s, "at": s["end"]}, by)}
+    ctx.insert("root", "sections", copy_, ctx.idx[t].index + 1 + k)

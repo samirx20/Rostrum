@@ -8,8 +8,8 @@ make spoken lines again, and hand the song on.
 A group is one shared channel that several tracks play into. It gives you one row to mute, solo and fold away.
 
 1. Select two or more tracks (Ctrl+click or Shift+click their names).
-2. Press **Ctrl+G**, or use **Group** at the top of the settings panel. (In the Mixer, **+ Group** on the master's strip makes an
-   empty group.)
+2. Press **Ctrl+G**, or use **Group** at the top of the settings panel. (In the Mixer, a track's output list, "→ Master", has
+   **New group** for a group of just that track. A group is never made empty.)
 3. The group has its own row. Click the arrow at its left to **fold** its tracks away; Alt+click the arrow folds all
    groups. **M** and **S** on the row mute or solo every track in the group.
 4. To undo the grouping, select the group (or a track in it) and choose **Ungroup** (**Ctrl+Shift+G**).
@@ -90,8 +90,9 @@ It lists, in one place:
 - **Notes it can't play** (red): the newest render was refused because a track has a note outside its sound's range
   (Violins play G3–D6, so an octave too many up stops the mix). The line names the track, the note and the range; click
   it to select the track, then move those notes back (Down an octave) or pick another sound. Any other refusal of the
-  render is listed the same way as **Can't make the sound**. Until it is fixed the last good sound plays, and the
-  loudness chip says "Can't play: fix the notes" instead of the old mix's loudness.
+  render is listed the same way as **Can't make the sound**. Until it is fixed the last good sound plays. A refusal is
+  said in one place: the status line says it once, when it first happens, and from then on it is this chip's red line
+  (the loudness chip stays empty meanwhile, since the old mix's loudness is not the song's).
 - **Clipping** (red): the newest mix goes over full scale.
 
 Agents get the same list, except clipping, from the `inspect_diagnose` tool (each problem: kind, item, message, fix), plus **out-of-range**: a track with notes its recorded sound can't play, named with the sound's range (the render would refuse the whole song). `run_script` says the same in its reply.
@@ -101,14 +102,16 @@ Agents get the same list, except clipping, from the `inspect_diagnose` tool (eac
 A second verse or a "B" that answers "A": copy the section with everything in it, then change the copy.
 
 1. **Copy it.** On the screen, click the section's band on the ruler and choose **Duplicate section** at the top of
-   the settings panel (or press **Ctrl+D**). The copy's section is then selected on its own, so Ctrl+D again copies it
-   once more. An agent calls `edit_document` with
-   `{"op": "section.duplicate", "target": ["section.A"]}`. Every note, drum hit and clip that **starts** inside the
+   the settings panel (or press **Ctrl+D**). On the screen everything after the section (music, later sections and the
+   song's own markers) moves later to make room, so a middle section is copied too; **Ctrl+R** (Repeat…) makes several
+   copies the same way. The copy's section is then selected on its own, so Ctrl+D again copies it once more. An agent
+   calls `edit_document` with `{"op": "section.duplicate", "target": ["section.A"]}` (add `"make_room": true` to move
+   what follows later, as the screen does, and `"times": 3` for three copies). Every note, drum hit and clip that **starts** inside the
    section is copied to right after it (a hit Humanise or Feel nudged up to a 1/32 note before the section's line
    counts as inside; one that close to its end belongs to the next section), and the copy is a new section named like the first with the next free
-   number (`A-2`, id `section.A-2`; a copy of `A-2` is `A-3`). Nothing after the section moves, so the bars right
-   after it must be free: when they already hold notes, hits, clips or another section, the copy is refused and
-   says what is there (move what follows later first with `section.move`). Set the song's length (`doc.set`) if it
+   number (`A-2`, id `section.A-2`; a copy of `A-2` is `A-3`). Without `make_room` nothing after the section moves, so the
+   bars right after it must be free: when they already hold notes, hits, clips or another section, the copy is
+   refused and says what is there. Set the song's length (`doc.set`) if it
    should now run longer. One undo step.
 2. **List the copy's ids.** A copied note, hit or clip gets a new id made from its track and where it now starts, in
    milliseconds: `<track>.n<ms>` for a note (`melody.n22222` starts at 22.222 s), `<track>.<drum><ms>` for a hit
