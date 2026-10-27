@@ -201,9 +201,31 @@ class DragSlots(SlotMixin):
         if redraw:
             self._render()
 
+    @Slot(result=bool)
+    def cancelDrag(self) -> bool:
+        """Esc while a canvas or timeline drag is held: everything goes back to how it was at the press, nothing is
+        recorded (no undo step), and the pointer's later moves and release do nothing (they find no drag). False: none open."""
+        if self._drag is None:
+            return False
+        ghost, self._ghost = self._ghost, None          # a ghost move told the engine only: it draws the press again
+        d, self._drag, self._grab = self._drag, None, None
+        held, self.held_view = self.held_view, None
+        self._snap.end()
+        self.timeSnap.clear()
+        self._guard(lambda: d.end(cancel=True))
+        picked = getattr(self, "_picked_at_press", [])
+        if picked and list(self.selected_layers()) != picked:
+            self.selectMany(picked)
+        if held is not None and self._scene is None:
+            self._show()
+        if ghost is not None and ghost.moved:
+            self._render()
+        return True
+
     def _begin(self, label, grab) -> bool:
         self.endDrag()
 
         def go():
             self._drag, self._grab = Drag(self.doc, self.who, label), grab
+            self._picked_at_press = list(self.selected_layers())     # Esc picks these again (an Alt+drag picked its copies)
         return self._guard(go)

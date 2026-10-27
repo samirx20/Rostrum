@@ -13,7 +13,7 @@ from rostrum_core.tree import index
 from rostrum2d import fields as F, ops_timing, placement, project_sound, retime
 from rostrum2d.scene_keep import Keeper
 
-from . import bounds, colour_feed, outline, picture_change, route, screen_seen
+from . import bounds, colour_feed, drag_cancel, outline, picture_change, route, screen_seen
 from .drags import DragSlots
 from .command_words import CommandWords
 from .file_commands import FileCommands
@@ -108,6 +108,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.frames.note.connect(self._set_status)         # no graphics driver: said once (frames.py)
         self._opened = OpenedPainting(self)                 # a painting opened on its own (painting_open.py)
         self.painter = Painter(self)
+        self._esc = drag_cancel.watch(self)                # Esc mid-drag puts everything back (drag_cancel.py)
         self._paint_edge, self._world = PaintEdge(self), WorldView(self)   # paint_edge.py, world_view.py
         self.painter.ahead = RevealAhead(self.painter, self)      # the eraser's reveal, drawn before the press (reveal_ahead.py)
         self.frames.pictured.connect(self._world.shown)

@@ -228,6 +228,14 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         self.b.guard(go)
         self.changed.emit()
 
+    def cancelDrag(self):
+        """Esc mid-drag (drag_cancel.py): the strokes back where they were at the press, nothing recorded."""
+        d, self._drag, self._size0, self._xf = self._drag, None, {}, {}
+        self._comp = dict(self._start)
+        if d is not None:
+            self.b.guard(lambda: d.end(cancel=True))
+        self.changed.emit()
+
     @Slot()
     def endMove(self):
         """Let go: the previews are put back and the drag's stroke.transform is the one step (none if it went nowhere)."""

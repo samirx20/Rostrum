@@ -166,6 +166,13 @@ class Curves(QObject):
         args[Y[g["which"] - 1]] = round(min(max((v - v0) / (v1 - v0), -2.0), 3.0), 3)
         self.b.guard(lambda: self._drag.preview([{"op": "key.handles", "target": [g["key"]], "args": args}]))
 
+    def cancelDrag(self):
+        """Esc mid-drag (drag_cancel.py): the curve as at the press, nothing recorded."""
+        d, self._drag, self._grab, self._frozen = self._drag, None, None, {}
+        self.b.timeSnap.clear()
+        if d is not None:
+            self.b.guard(lambda: d.end(cancel=True))
+
     @Slot()
     def endDrag(self):
         d, self._drag, self._grab, self._frozen = self._drag, None, None, {}
