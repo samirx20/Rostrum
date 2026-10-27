@@ -4,7 +4,7 @@ from __future__ import annotations
 import copy
 
 from . import edits as E
-from . import formats
+from . import formats, pending
 from .diff import diff
 from .doc_door import _through_door
 from .errors import RostrumError, codes
@@ -40,14 +40,18 @@ class UndoMixin:
         _kept(targets)
         self.history.blockers(targets)
         edits = [e for c in sorted(targets, key=lambda c: c.seq) for e in c.edits]
-        return self._replay(edits, who, label or f"Redid: {targets[-1].label}", redoes=[c.seq for c in targets])
+        label = label or f"Redid: {targets[-1].label}"
+        self._intent = pending.intent("redo", who, label, seqs=[c.seq for c in targets])
+        return self._replay(edits, who, label, redoes=[c.seq for c in targets])
 
     @_through_door
     def undo_changes(self, targets, who, label=None) -> Change:
         _kept(targets)
         self.history.blockers(targets)
         rev = [E.reverse(e) for c in sorted(targets, key=lambda c: -c.seq) for e in reversed(c.edits)]
-        return self._replay(rev, who, label or f"Undid: {targets[-1].label}", undoes=[c.seq for c in targets])
+        label = label or f"Undid: {targets[-1].label}"
+        self._intent = pending.intent("undo", who, label, seqs=[c.seq for c in targets])
+        return self._replay(rev, who, label, undoes=[c.seq for c in targets])
 
     @_through_door
     def redo(self, who: Who) -> Change | None:
@@ -55,9 +59,7 @@ class UndoMixin:
         c = self.history.last_redoable(who)
         if not c:
             return None
-        _kept([c])
-        self.history.blockers([c])
-        return self._replay(c.edits, who, f"Redid: {c.label}", redoes=[c.seq])
+        return self.redo_changes([c], who)
 
     def _replay(self, edits, who, label, **kw) -> Change:
         self.make_way("undo", end=False)    # under a live drag or popover it would step the history under what it

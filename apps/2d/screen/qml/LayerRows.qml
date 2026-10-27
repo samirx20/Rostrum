@@ -17,7 +17,10 @@ ListView {
     interactive: !compact
     spacing: 2
     clip: true
-    cacheBuffer: 4000                   // rows are built ahead, off the click: a pick that scrolls the list to its row finds them made (was ~100 ms of row-making inside the click)
+    cacheBuffer: 200                    // only the rows in view and a few past it are built: a change to every row (a Stagger of
+                                        // 200 layers) updates those, not all 200 (~120 -> ~10 ms a step); a row scrolled into view
+                                        // is a kept one given its data (reuseItems), so a pick that scrolls the list stays flat.
+                                        // A key box passing rows that scroll away keeps them itself (KeyBox.qml).
     reuseItems: true                    // rows scrolled out are kept and given the next row's data, never made anew: a pick
                                         // far down the list made every row there (~3 ms each), more the further the list had
                                         // scrolled (a grab among 200 layers grew 70 -> 230 ms over 17 picks; now flat)

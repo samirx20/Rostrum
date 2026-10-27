@@ -39,6 +39,7 @@ from .history import History
 from .doc_write import DocWrite
 from .storage import _wrote, doc_hash, paths, read_history, save
 from . import edits as E
+from . import pending
 from .userhome import locked
 
 
@@ -69,6 +70,8 @@ class Live:
         self._windowed = False                   # a window folds on its own timer, never inside a change
         self._changed_at = 0.0                   # time.monotonic() of the last change saved through the door
         self._writing = None                     # a document-file write in progress (doc_write.DocWrite)
+        self._held = None                        # the lock of a change whose line comes the frame after (flush)
+        self.later = None                        # a window's way to call flush() the frame after (windowed)
 
     def _mine(self):
         h = self.doc.history
@@ -79,35 +82,80 @@ class Live:
         """Held around one change (re-entrant: undo inside a run of steps takes it once). Yields the steps caught up
         on entry, so a change planned on an older picture knows to rebase. A change appends its own line to the
         history file (a small cost that never grows with the song); the whole document file only as the module
-        docstring says."""
+        docstring says. In a window that gave `later`, a step the document can make again (pending.py) appends its
+        line the frame after instead: the lock stays held until then (`flush`), so nothing comes between."""
         if self._depth:
             yield []
             return
-        with locked(self.p["history"], "save", "another Rostrum program (a window or an agent)"):
-            self._depth += 1
-            try:
-                caught = self.catch_up()
-                before = self._mine()
-                yield caught
-                first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
-                w = self.doc._written                   # steps made before the door (an upgrade on open) go first:
-                lacks = w is not None and w.n < len(self.doc.history.changes)   # no document file may count a step
-                if self._mine() != before or first or lacks:    # the history file lacks; a plain first look writes nothing
-                    behind = not self._windowed and self.doc.seq - self._filed >= FOLD_STEPS
-                    whole = first or behind or not self._doc_there and not self.p["doc"].exists()
+        self.flush()                                # a line still owed goes first
+        held = contextlib.ExitStack()
+        held.enter_context(locked(self.p["history"], "save", "another Rostrum program (a window or an agent)"))
+        self._depth += 1
+        try:
+            self.doc._intent = None
+            caught = self.catch_up()
+            before = self._mine()
+            yield caught
+            first = not self._started and not (self.p["history"].exists() and self.p["doc"].exists())
+            w = self.doc._written                   # steps made before the door (an upgrade on open) go first:
+            lacks = w is not None and w.n < len(self.doc.history.changes)   # no document file may count a step
+            # a document file opening didn't trust (edited outside, or behind a step replaced since) is written whole
+            # at the first door: left as it was, a reopen or a crash before the quiet fold read it as an outside
+            # change again and took back every step made since (a muted, locked plugin track came back unmuted)
+            untrusted = not self._started and self.doc.file_at is None and self.p["doc"].exists()
+            if self._mine() != before or first or lacks or untrusted:   # (a plain first look writes nothing)
+                behind = not self._windowed and self.doc.seq - self._filed >= FOLD_STEPS
+                whole = first or behind or untrusted or not self._doc_there and not self.p["doc"].exists()
+                if not whole and self._owe(before, w):
+                    self._held, held = held, None   # the lock goes with the line owed (flush)
+                    pending.OWED[str(self.p["history"])] = self.flush
+                    self.later()
+                else:
                     save(self.doc, document=whole, p=self.p)
-                    self._doc_there = True                  # (asked of the disk once, not on every change)
+                    self._doc_there = True              # (asked of the disk once, not on every change)
                     if whole:
                         self._filed, self._filed_data = self.doc.seq, self.doc.kept
-                    self._changed_at = time.monotonic()
-                self._started = True
-            finally:
-                self._depth -= 1
+                self._changed_at = time.monotonic()
+            self._started = True
+        finally:
+            self._depth -= 1
+            self.doc._intent = None
+            if held is not None:
+                held.close()
 
-    def windowed(self):
+    def _owe(self, before, w) -> bool:
+        """This change's line may come the frame after: a window asked for it (`later`), the change is one step the
+        document can make again (an apply, undo or redo left its intent), and the file held everything before it.
+        Its note (pending.py) is written now, so a crash before the line still brings the step back."""
+        doc, it = self.doc, self.doc._intent
+        if (self.later is None or it is None or w is None or before[1] != doc.history.versions
+                or doc.script_bases != w.script):    # (a script's record isn't in the note: written now)
+            return False
+        n = len(doc.history.changes)
+        if not (w.n == n - 1 or (w.n == n and n and before[0] != doc.history.changes[-1].ident())):
+            return False                            # (a nudge merged into the last step replaces its line)
+        pending.note(self.p, before[0], it)
+        return True
+
+    def flush(self):
+        """Append the line a change owes (`door`), then let go of the history file's lock. A window calls it the frame
+        after the change; every door, catch-up, fold and close calls it first, so a step is never missing from the
+        file when anything reads or writes it. A failed write is raised (loud), and the lock is let go either way."""
+        held, self._held = self._held, None
+        if held is None:
+            return
+        pending.OWED.pop(str(self.p["history"]), None)
+        with held:
+            save(self.doc, document=False, p=self.p)
+            self._doc_there = True
+
+    def windowed(self, later=None):
         """A window holds this document: from now on its document file is written on the window's timer
-        (`fold_if_quiet`), on Save and on close, never inside a change (the kit's LiveLink says so)."""
+        (`fold_if_quiet`), on Save and on close, never inside a change (the kit's LiveLink says so). `later(...)`:
+        how the window runs `flush` the frame after a change, so a change's history line is written then."""
         self._windowed = True
+        if later is not None:
+            self.later = later
 
     def behind(self) -> bool:
         """The document file lacks something this program holds (a step of its own, or one taken in)."""
@@ -116,6 +164,7 @@ class Live:
     def fold(self, always=True):
         """Write the document file now, through the door (lock, catch up): Save and close (`always`), or only when
         it is behind. A background write still going is waited for first (a failed one is written again here)."""
+        self.flush()
         if self._writing is not None:
             self._writing.finish()                  # (its failure is not raised: this write replaces it)
             self._collect(raise_=False)
@@ -169,6 +218,7 @@ class Live:
     def settle(self):
         """Wait for a background write of the document file and take it in (a failure raises): a script or a check
         that reads the file right after a fold."""
+        self.flush()
         if self._writing is not None:
             self._writing.finish()
             self._collect()
@@ -176,7 +226,8 @@ class Live:
     def catch_up(self) -> list:
         """Take in what another program saved since we last looked; return those steps (oldest first). A window's
         timer and every door call it. Nothing happens during a person's drag (it is caught up when the drag ends).
-        Cheap: the file's size first, then only the lines added since (the whole file if it was rewritten)."""
+        Cheap: the file's size first, then only the lines added since (the whole file if it was rewritten). A line
+        still owed (`flush`) needs no writing first: its lock is held, so nobody else can have written."""
         doc, hist, w = self.doc, self.p["history"], self.doc._written
         try:
             st = hist.stat()

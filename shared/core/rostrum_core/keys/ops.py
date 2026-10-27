@@ -47,6 +47,12 @@ def checked_shape(ctx, args: dict, ease, where: str) -> dict:
     return out
 
 
+def still_of(owner: dict, prop: str, value):
+    """`value` (read from a key: a toggle's key holds 1.0 / 0.0) as the field's still value: a field that is on / off
+    on the item stays True / False, never 1.0 / 0.0."""
+    return bool(value) if isinstance(owner.get(prop), bool) and not isinstance(value, (str, dict)) else value
+
+
 def key_id(owner: str, prop: str, t) -> str:
     """`title.opacity.k1500` (1.5 s), `title.opacity.k_drop_p200` ("#drop+0.2"); before 0: `k-200`."""
     return f"{owner}.{prop}.{id_part(t)}"
@@ -135,7 +141,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
             loc = index(ctx.doc, ctx.kind.lists)[t]
             owner, key = ctx.item(loc.parent), loc.item
             if len(keys_of(owner, key["prop"])) == 1:
-                ctx.set(owner["id"], key["prop"], key_value(key))
+                ctx.set(owner["id"], key["prop"], still_of(owner, key["prop"], key_value(key)))
             ctx.remove(t)
 
     @registry.operation("value.set", "Change a field as a person sees it now: a still field changes; an animated field "
@@ -175,7 +181,7 @@ def register_key_ops(registry, *, owners, check_key: Callable, check_still: Call
                 ctx.fail(codes.BAD_ARGUMENT, f'prop "{args["prop"]}"', f"has keys timed on a marker on {t}; the "
                          "value they leave depends on where the markers are", hint="Set the still value you want "
                          "after: key.clear with no marker keys, or key.remove each key, then value.set.")
-            ctx.set(t, args["prop"], track_value(keys, args.get("at", 0.0)))
+            ctx.set(t, args["prop"], still_of(ctx.item(t), args["prop"], track_value(keys, args.get("at", 0.0))))
             for k in keys:
                 ctx.remove(k["id"])
 

@@ -8,6 +8,7 @@ person's undo / redo, what that step touched is selected again (read from the ch
 from __future__ import annotations
 
 import itertools
+from contextlib import contextmanager
 
 from PySide6.QtCore import Property, QTimer, Signal, Slot
 from PySide6.QtQml import qjsEngine
@@ -114,6 +115,8 @@ class SelectSlots:
 
     def _picks_changed(self):
         """Every reader of the selection told: the stamp first (the lanes read their rows' picks by it)."""
+        if "_rows_check" in self.__dict__:
+            self.__dict__["_rows_check"] = False        # (the lanes read their picks anew: `_picks_after`)
         self.__dict__["_pick_stamp"] = next(_STAMPS)
         self.pickRowsChanged.emit()
         self.picksChanged.emit()
@@ -124,11 +127,31 @@ class SelectSlots:
         again. The selection itself is the same: nothing else is told."""
         if not self._picks.ids:
             return
+        if "_rows_check" in self.__dict__:              # a change that may pick what it made: checked at its end
+            self.__dict__["_rows_check"] = True
+            return
         was = self.__dict__.get("_pick_rows_")
         if was is not None and was[0] is self._picks.ids and self._pick_rows()[2] == was[2]:
             return
         self.__dict__["_pick_stamp"] = next(_STAMPS)
         self.pickRowsChanged.emit()
+
+    @contextmanager
+    def _picks_after(self):
+        """A change that picks what it touched or made once its rows are sent (Ctrl+D, an undo, a redo): the rows'
+        check of the old selection (`_rows_sent`) waits for its end and is dropped when a new selection came meanwhile
+        (every lane reads its picks then anyway): a whole-song Ctrl+D or redo looked 3,607 picks up among 7,214 blocks
+        for a selection about to go."""
+        if "_rows_check" in self.__dict__:
+            yield
+            return
+        self.__dict__["_rows_check"] = False
+        try:
+            yield
+        finally:
+            due = self.__dict__.pop("_rows_check", False)
+        if due:
+            self._rows_sent()
 
     @Property(str, notify=picksChanged)
     def selectionWords(self):
@@ -360,13 +383,15 @@ class SelectSlots:
         # what the original step acted on, when its calls name it (a track moved down also shifts the one it passed:
         # only the moved one is selected again, as before the move)
         h = self.doc.history
-        aimed = {t for seq in (change.undoes or change.redoes) if 0 < seq <= len(h.changes)
-                 for c in h.get(seq).calls for t in (c.get("target") or [])}
+        aimed = dict.fromkeys(t for seq in (change.undoes or change.redoes) if 0 < seq <= len(h.changes)
+                              for c in h.get(seq).calls for t in (c.get("target") or []))     # (in the calls' order: a
+        # set's order scrambled a whole-song selection, so the next Ctrl+D made its copies out of order and every lane
+        # was sent them whole: ~2x the first Ctrl+D)
         touched = [i for i in touched if i in aimed] or touched      # a call aimed at a track that made notes: the notes
         idx = self.doc.locs()
         back = [i for i in touched if i in idx and idx[i].item["type"] in kinds]
         if not back:                # the step only made things (undo of a duplicate): what it was aimed at, like a Repeat's
-            back = [t for t in dict.fromkeys(t for t in aimed if t in idx and idx[t].item["type"] in kinds)]
+            back = [t for t in aimed if t in idx and idx[t].item["type"] in kinds]
         if set(back) == set(self._picks.ids):       # already what is selected (undo of a whole-song Right): picking it
             return                                  # again in the step's order redrew 3,352 outlines in every lane
         if back:                    # the outlines now; the settings panel once the undo is drawn (`_settle`)

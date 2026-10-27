@@ -320,6 +320,10 @@ class ActionSlots:
 
     def _act(self, calls, label, select_made=False):
         def go():
+            with self._picks_after():           # what it made is picked once its rows are sent
+                act()
+
+        def act():
             picked = list(self._picks.ids)      # (the change drops what it removed from the selection)
             change = self.doc.apply(calls, self.who, label=label)
             self._done(change, f"{label}: already so, nothing changed")    # a key never does nothing silently

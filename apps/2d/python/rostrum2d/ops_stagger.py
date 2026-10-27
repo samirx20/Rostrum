@@ -38,7 +38,7 @@ def _stack(ctx, ids: list[str]) -> list[str]:
 
 
 @R.operation("layer.stagger", "Make layers start one after another, `by` seconds apart, in an order: stack (top of "
-             "the layers list first), picked (the order given), left_to_right, top_to_bottom, centre (from the middle "
+             "the layers list first), picked (the order given), left_to_right (layers in one column start together), top_to_bottom (a row together), centre (from the middle "
              "of the group outwards; equal distances start together) or random (the same every time). Each layer "
              "moves in time with everything in it; the earliest start among them stays.",
              target=F.PLACED, label="Stagger", importance="secondary", min_targets=2,

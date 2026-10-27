@@ -6,6 +6,8 @@ picked and random need nothing.
 """
 from __future__ import annotations
 
+import bisect
+
 import random
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,6 +20,7 @@ BASIC = ["picked", "random"]
 SPATIAL = ["left_to_right", "top_to_bottom", "centre"]
 WORDS = {"stack": "Stack (top first)", "picked": "As picked", "left_to_right": "Left to right",
          "top_to_bottom": "Top to bottom", "centre": "From the centre", "random": "Random"}
+SAME_PLACE = 1.0    # px: layers this close along the axis share a column / row (a snapped or nudged layer is not a new step)
 
 
 @dataclass(frozen=True)
@@ -32,7 +35,7 @@ class Orders:
 
 def ranks(items: list[dict], order: str, stack: list[str]) -> list[int]:
     """Each item's place in the cascade (0 first; equal places start together: from the centre, two at the same
-    distance). `items` in pick order with their x / y at their start; `stack` the ids top of the list first."""
+    distance; left to right / top to bottom, one column / row). `items` in pick order with their x / y at their start; `stack` the ids top of the list first."""
     n = len(items)
     if order == "picked":
         return list(range(n))
@@ -49,8 +52,13 @@ def ranks(items: list[dict], order: str, stack: list[str]) -> list[int]:
         steps = sorted(set(far))
         return [steps.index(d) for d in far]
     axis = "x" if order == "left_to_right" else "y"
-    by = sorted(range(n), key=lambda i: (items[i][axis], i))
-    return [by.index(i) for i in range(n)]
+    steps, last = {}, None          # a column (row) starts together: places within SAME_PLACE px of the next one are one step
+    for v in sorted(it[axis] for it in items):
+        if last is None or v - last > SAME_PLACE:
+            steps[v] = len(steps)
+        last = v
+    starts = sorted(steps)          # (each item's step: the last start at or before it, found by halving)
+    return [bisect.bisect_right(starts, it[axis] + 1e-9) - 1 for it in items]
 
 
 def cascade(ctx, items: list[dict], args: dict, orders: Orders | None):

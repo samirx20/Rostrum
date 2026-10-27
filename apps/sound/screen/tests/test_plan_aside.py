@@ -52,13 +52,13 @@ def test_planned_aside_keeps_what_planned_at_once_keeps():
     d.end()
     aside, said = PlanAside(), []
     d = Drag(aside_doc, P, "Repeat")
-    aside.start(d, d.fresh_calls(_calls(aside_doc, 2)), said.append)
-    aside.start(d, d.fresh_calls(_calls(aside_doc, 4)), said.append)      # newer: the first is void
+    aside.start(d, d.fresh_calls(lambda: _calls(aside_doc, 2)), said.append)
+    aside.start(d, d.fresh_calls(lambda: _calls(aside_doc, 4)), said.append)      # newer: the first is void
     gen = aside._gen
-    aside.start(d, d.fresh_calls(_calls(aside_doc, 4)), said.append)      # the same asked again: that plan goes on
+    aside.start(d, d.fresh_calls(lambda: _calls(aside_doc, 4)), said.append)      # the same asked again: that plan goes on
     assert aside._gen == gen
     _land(aside)
-    assert said == [None]
+    assert said in ([None], [None, None])      # (the first plan may land before the newer one is asked: both shown)
     d.end()
     assert doc_hash(aside_doc.data) == doc_hash(at_once.data)
     assert len(aside_doc.item("a")["notes"]) == 600

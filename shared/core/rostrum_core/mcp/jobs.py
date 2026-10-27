@@ -225,10 +225,10 @@ class InProcessJobs:
         newest first."""
         with self._cv:
             rank = {RUNNING: 0, WAITING: 1}
-            live = [j for j in self._order if j.status in rank]
+            live = sorted((j for j in self._order if j.status in rank), key=lambda j: rank[j.status])   # sorted here: a job ending later can't fall out of `rank`
             ended = sorted((j for j in self._order if j.status in ENDED), key=lambda j: -(j.ended or 0))
         others = [_seen(s) for s in job_files.others()] if self._shared else []
-        return sorted(live, key=lambda j: rank[j.status]) + others + ended
+        return live + others + ended
 
 
 def outcome(job: Job, where: str) -> Reply:

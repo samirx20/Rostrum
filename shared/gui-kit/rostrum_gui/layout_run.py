@@ -226,8 +226,10 @@ def run_group(main_py: Path, group, out: Path, env) -> tuple[int, str, str]:
         listing.write_text(json.dumps(group), encoding="utf-8")
         cmd = [sys.executable, str(main_py), "--check-layout", str(out), "--check-batch", str(listing)]
         r = subprocess.run(cmd, env={**env, "ROSTRUM_SCRIPTED_HOME": str(Path(home) / "settings"),
-                                     "ROSTRUM_CHECK_T0": str(time.time())},
-                           capture_output=True, text=True, timeout=BATCH_TIMEOUT_S)
+                                     "ROSTRUM_CHECK_T0": str(time.time()),
+                                     "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},    # the child writes UTF-8 ...
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",   # ... and we read it so
+                           timeout=BATCH_TIMEOUT_S)
     print(r.stdout.replace("layout-start ", "start ").replace("layout-done ", "done "), end="")
     started = [ln.split(" ", 1)[1] for ln in r.stdout.splitlines() if ln.startswith("layout-start ")]
     ended = {ln.split(" ", 1)[1] for ln in r.stdout.splitlines() if ln.startswith("layout-done ")}

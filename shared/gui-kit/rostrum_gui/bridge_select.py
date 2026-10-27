@@ -227,26 +227,37 @@ class SelectSlots(SlotMixin):
         return entries[0].rows if len(entries) == 1 else row_memo.fold(entries, many.merge)
 
     def _entry(self, it) -> row_memo.Entry:
-        """The item's kept rows (row_memo), or worked out now and kept."""
+        """The item's kept rows (row_memo), else borrowed from an alike item's (row_memo.borrow: a Ctrl+A over 200
+        layers after an add worked out every one, ~2 ms each), else worked out now; kept."""
         k = self._kit
         opened = k.open_groups
         stamp = (self._static_of(it), k.more, k.search,
                  tuple(sorted(opened.items())) if isinstance(opened, dict) else tuple(sorted(opened)), self.rows_context())
         e = k.memo.get(it["id"], it, stamp, self.facts_of, self._redo_rows)
         if e is None:
-            seen, facts = {}, self.facts_of(it)
-            e = k.memo.put(it["id"], it, stamp, facts, seen, self._item_rows(it, facts, seen))
-        else:
-            k.evaluated[it["id"]] = (self.doc.data, k.static, e.rows)
+            facts, place = self.facts_of(it), (it["type"], self.doc.locs()[it["id"]].parent)
+            e = self._borrowed(it, stamp, place, facts)
+            if e is None:
+                seen = {}
+                return k.memo.put(it["id"], it, stamp, facts, seen, self._item_rows(it, facts, seen), place)
+        k.evaluated[it["id"]] = (self.doc.data, k.static, e.rows)
         return e
 
-    def _redo_rows(self, it, old):
+    def _borrowed(self, it, stamp, place, facts):
+        """The item's rows borrowed from an alike item's kept ones (row_memo.borrow), or None."""
+        shown, starts, gone = self.shown_values(it), self.starts(it), frozenset(self.on_page(it))
+        return self._kit.memo.borrow(it["id"], it, stamp, place, facts, shown, starts, gone,
+                                     lambda item, old: self._redo_rows(item, old, (shown, starts, gone)),
+                                     lambda name: self.list_choices(it, name))
+
+    def _redo_rows(self, it, old, known=None):
         """These rows of the item with their values, key marks and expressions read again (row_memo's patch):
-        (new rows, the values shown, starts, the key-mark reader, the fields shown elsewhere on the page)."""
-        shown = self.shown_values(it)
+        (new rows, the values shown, starts, the key-mark reader, the fields shown elsewhere on the page). `known`:
+        (shown, starts, gone) of the item, already read."""
+        shown, starts, gone = known or (self.shown_values(it), self.starts(it), frozenset(self.on_page(it)))
         anim, expr = (lambda name: self.anim_state(it, name)), (lambda name: self.expr_state(it, name))
         new = [rows._values({**r}, shown, anim, expr, None, {}) for r in old]        # (no list or pick: row_memo)
-        return new, shown, self.starts(it), anim, frozenset(self.on_page(it))
+        return new, shown, starts, anim, gone
 
     def rows_context(self):
         """What an item's rows read besides the document and the panel's own state, which no change announces (2D: the
@@ -260,13 +271,14 @@ class SelectSlots(SlotMixin):
         gone = self.on_page(it)
         if facts is None:
             facts = {} if step else self.facts_of(it)
-        evaluated = rows.evaluate(static, self.shown_values(it), facts, k.more,
+        shown, starts = self.shown_values(it), {} if step else self.starts(it)
+        evaluated = rows.evaluate(static, shown, facts, k.more,
                                   lambda name: self.anim_state(it, name), lambda name: self.expr_state(it, name),
                                   lambda name: self.list_choices(it, name), k.open_groups, k.search, gone,
-                                  {} if step else self.starts(it), step=step, kept=kept, seen=seen)
+                                  starts, step=step, kept=kept, seen=seen)
         k.evaluated[it["id"]] = (self.doc.data, k.static, evaluated)       # (what later steps keep: no copy)
         if seen is not None:
-            seen["gone"] = frozenset(gone)
+            seen["gone"], seen["shown"], seen["starts"] = frozenset(gone), shown, starts
         return rows.omit(evaluated, gone)
 
     def _static_of(self, it):
@@ -326,8 +338,9 @@ class SelectSlots(SlotMixin):
         sel = self._kit.selection
         if not step and self._kit.ready_kinds:      # (from the window's own first pass on: session.py)
             self._kinds_later().ask()
-        if any(not self.doc.has(i) for i in sel):
-            kept = [i for i in sel if self.doc.has(i)]
+        idx = self.doc.locs()                       # (once: 3,607 picked notes asked it one by one, ~10-19 ms a change)
+        if any(i not in idx for i in sel):
+            kept = [i for i in sel if i in idx]
             self.selectMany(kept) if len(kept) > 1 else self.select(kept[0] if kept else self._first())
         elif not self.reached(sel):                        # a change elsewhere leaves these rows as they are
             return

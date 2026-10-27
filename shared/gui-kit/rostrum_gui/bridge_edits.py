@@ -147,7 +147,7 @@ class EditSlots(SlotMixin):
 
     @Slot(str, result="QVariantList")
     def commands(self, query):
-        return [{k: c[k] for k in ("key", "label", "hint")} for c in commands.search(self._commands(), query)]
+        return [{k: c[k] for k in ("key", "label", "hint", "keys") if k in c} for c in commands.search(self._commands(), query)]
 
     @Slot(str, result=bool)
     def run(self, key):

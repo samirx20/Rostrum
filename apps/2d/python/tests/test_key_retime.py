@@ -64,7 +64,9 @@ def test_stagger_spreads_from_the_earliest_and_undoes(doc):
 def test_stagger_orders():
     items = [{"id": "l", "x": 0, "y": 50}, {"id": "m", "x": 50, "y": 0}, {"id": "r", "x": 100, "y": 50}]
     assert ranks(items, "left_to_right", []) == [0, 1, 2]
-    assert ranks(items, "top_to_bottom", []) == [1, 0, 2]
+    assert ranks(items, "top_to_bottom", []) == [1, 0, 1]                        # a row starts together
+    column = [{"id": "a", "x": 100, "y": 0}, {"id": "b", "x": 100.4, "y": 80}, {"id": "c", "x": 0, "y": 40}, {"id": "d", "x": 200, "y": 0}]
+    assert ranks(column, "left_to_right", []) == [1, 1, 0, 2]                    # a column (within a pixel) starts together
     assert ranks(items, "stack", ["r", "m", "l"]) == [2, 1, 0]
     assert ranks(items, "centre", [])[0] == ranks(items, "centre", [])[2]        # equal distance: together
     assert ranks(items, "random", []) == ranks(list(reversed(items)), "random", [])[::-1]   # stable
