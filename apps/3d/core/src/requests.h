@@ -44,6 +44,7 @@ class Core {
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject copies_live(const PXR_NS::JsObject& a); // copies_request.cpp (a Count / Spacing drag, a copy moved)
   PXR_NS::JsObject sees(const PXR_NS::JsObject& a);        // copies_request.cpp (which points a camera sees)
+  PXR_NS::JsObject texels(const PXR_NS::JsObject& a);      // texels_request.cpp (which texel each pixel sees)
   PXR_NS::JsObject info();
 
   // A live stroke's dab, its clay work started early (clay_requests.cpp). The window (view/viewport_item.cpp) calls

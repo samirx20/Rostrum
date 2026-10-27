@@ -205,12 +205,14 @@ Hydra::Engine& Hydra::engine(const std::string& renderer, bool viewport) {
 // The selection mask's own Storm engine (CL1b). Drawn by the viewport's engine with the selected prim as its root,
 // the mask flipped that engine's draw list between the whole scene and the selection twice a picture, and every
 // changed clay block was processed twice: the outline doubled the picture's time (22 -> 48 ms after a dab). Its own
-// engine keeps one root until the selection changes, and never shows the sky.
+// engine keeps one root until the selection changes, and never shows the sky. It also draws prim ids (brief 21:
+// ids(), for `sees` and `texels`), set once when made: each change of outputs restarts Storm's tasks.
 Hydra::Engine& Hydra::mask_engine() {
   auto it = engines_.find("mask:storm");
   if (it != engines_.end()) return *it->second;
   auto e = make_engine("storm");
   e->show_sky(false);
+  e->use_aovs({HdAovTokens->primId.GetString()});  // colour stays first: the masks are still presented as before
   return *(engines_["mask:storm"] = std::move(e));
 }
 
@@ -479,14 +481,13 @@ void roots_without(const UsdPrim& prim, const SdfPathVector& hide, SdfPathVector
 }
 }  // namespace
 
-// Storm's depth through the frustum (the selection mask's engine: no sky, unlit; drawn rarely, after a scene), each
-// point projected and compared with the depth drawn there as distances from the eye.
-std::vector<bool> Hydra::sees(const GfFrustum& f, int frame, int w, int h, const SdfPathVector& hide,
-                              const std::vector<GfVec3d>& points) {
+// The one id + depth drawing: Storm through the frustum with the selection mask's engine (no sky, unlit; drawn rarely,
+// after a scene or on request), everything but `hide`. Depth from the framebuffer it presents into, prim ids from
+// the engine's own primId output.
+IdPicture Hydra::ids(const GfFrustum& f, int frame, int w, int h, const SdfPathVector& hide, bool prim_ids) {
   TfErrorMark mark;
   auto& e = mask_engine();
-  const GfMatrix4d view = f.ComputeViewMatrix(), proj = f.ComputeProjectionMatrix();
-  e.SetCameraState(view, proj);
+  e.SetCameraState(f.ComputeViewMatrix(), f.ComputeProjectionMatrix());
   e.SetRenderBufferSize(GfVec2i(w, h));
   e.SetFraming(CameraUtilFraming(GfRect2i(GfVec2i(0, 0), w, h)));
   UsdImagingGLRenderParams params;
@@ -504,9 +505,28 @@ std::vector<bool> Hydra::sees(const GfFrustum& f, int frame, int w, int h, const
   e.PrepareBatch(stage_->GetPseudoRoot(), params);
   e.RenderBatch(roots, params);
   gl_.finish();
-  throw_usd_errors(mark, "sees (frame " + std::to_string(frame) + ")");
-  const std::vector<float> depth = sees_fb_->read_depth();
-  const GfMatrix4d to_clip = view * proj, from_clip = to_clip.GetInverse();
+  throw_usd_errors(mark, "ids (frame " + std::to_string(frame) + ")");
+  IdPicture out;
+  out.width = w;
+  out.height = h;
+  const std::vector<float> gl_rows = sees_fb_->read_depth();  // bottom row first
+  out.depth.resize(gl_rows.size());
+  for (int y = 0; y < h; ++y)
+    std::copy_n(gl_rows.begin() + size_t(h - 1 - y) * w, w, out.depth.begin() + size_t(y) * w);
+  if (prim_ids) {
+    Aovs read = read_aovs(e, {HdAovTokens->primId.GetString()}, w, h, [&](int id) { return e.rprim(id); });
+    out.primIds = std::move(read.primIds);
+    out.prims = std::move(read.prims);
+    throw_usd_errors(mark, "ids (prim ids, frame " + std::to_string(frame) + ")");
+  }
+  return out;
+}
+
+// ids()' depth, each point projected and compared with the depth drawn there as distances from the eye.
+std::vector<bool> Hydra::sees(const GfFrustum& f, int frame, int w, int h, const SdfPathVector& hide,
+                              const std::vector<GfVec3d>& points) {
+  const IdPicture pic = ids(f, frame, w, h, hide, false);
+  const GfMatrix4d to_clip = f.ComputeViewMatrix() * f.ComputeProjectionMatrix(), from_clip = to_clip.GetInverse();
   const GfVec3d eye = f.GetPosition();
   std::vector<bool> out(points.size(), false);
   for (size_t i = 0; i < points.size(); ++i) {
@@ -515,7 +535,7 @@ std::vector<bool> Hydra::sees(const GfFrustum& f, int frame, int w, int h, const
     const double x = c[0] / c[3], y = c[1] / c[3], z = c[2] / c[3];
     if (std::abs(x) > 1.05 || std::abs(y) > 1.05 || z > 1) continue;
     const int px = std::clamp(int((x * 0.5 + 0.5) * w), 0, w - 1), py = std::clamp(int((y * 0.5 + 0.5) * h), 0, h - 1);
-    const float d = depth[size_t(py) * w + px];
+    const float d = pic.depth[size_t(h - 1 - py) * w + px];  // py counts from the bottom
     if (d >= 1.f) { out[i] = true; continue; }  // nothing drawn there
     const GfVec4d q = GfVec4d(x, y, 2.0 * d - 1.0, 1) * from_clip;
     const double drawn = (GfVec3d(q[0], q[1], q[2]) / q[3] - eye).GetLength(), here = (points[i] - eye).GetLength();

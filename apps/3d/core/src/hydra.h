@@ -65,6 +65,15 @@ struct DrawSettings {
   bool castShadows = true;        // Cycles: off, no light casts a shadow (the Shadow pass's second render)
 };
 
+// One Storm picture of what each pixel shows (prim ids) and how deep (the selection mask's engine: no sky, unlit),
+// rows top first: what `sees` and the `texels` request both read (Hydra::ids).
+struct IdPicture {
+  int width = 0, height = 0;
+  std::vector<float> depth;                  // 0..1 window depth, 1 = nothing drawn
+  std::vector<int> primIds;                  // Hydra's prim id, -1 = nothing drawn; empty unless asked for
+  std::map<int, PXR_NS::SdfPath> prims;      // each prim id seen -> the scene prim it draws
+};
+
 class Hydra {
  public:
   explicit Hydra(PXR_NS::UsdStageRefPtr stage);
@@ -98,6 +107,10 @@ class Hydra {
   // `hide` left out, shows it (inside the picture, give or take 5 %, and not behind anything drawn there).
   std::vector<bool> sees(const PXR_NS::GfFrustum& frustum, int frame, int width, int height,
                          const PXR_NS::SdfPathVector& hide, const std::vector<PXR_NS::GfVec3d>& points);
+  // The one id + depth drawing (`sees`, `texels`): a width x height Storm picture through `frustum` at `frame`, the
+  // prims at `hide` left out; `prim_ids` also reads which prim each pixel shows.
+  IdPicture ids(const PXR_NS::GfFrustum& frustum, int frame, int width, int height, const PXR_NS::SdfPathVector& hide,
+                bool prim_ids);
 
  private:
   class Engine;  // UsdImagingGLEngine plus showing or hiding the dome behind the scene
@@ -112,7 +125,7 @@ class Hydra {
   std::map<std::string, std::unique_ptr<Engine>> engines_;  // renders and the viewport keep separate engines
   std::unique_ptr<Framebuffer> fb_, mask_fb_, hover_fb_;  // hover_fb_: the hover outline's mask (3d-v4)
   std::vector<std::unique_ptr<Framebuffer>> ghost_fbs_;  // one per onion-skin ghost
-  std::unique_ptr<Framebuffer> sees_fb_;  // the `sees` depth picture
+  std::unique_ptr<Framebuffer> sees_fb_;  // the ids() depth picture
 };
 
 }  // namespace r3d
