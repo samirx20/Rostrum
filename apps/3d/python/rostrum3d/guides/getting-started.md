@@ -155,7 +155,7 @@ Guide `posing` has the rest (keys at several times, `pose.rest`).
 ### 6. Render
 
 `render_still` (`shot: "shot_1"`) is a job: it answers with a `job_id` at once. Ask `inspect_job` with that `job_id`
-and `wait_s` (at most 25) until it says "Rendered"; the reply carries the picture. Before a big render, ask
+and `wait_s` (at most 25) until it says "Rendered"; the reply names the picture's file (open that file to see it). Before a big render, ask
 `render_estimate` (guide `agents`, "Render settings and the time estimate").
 
 ### When something looks wrong

@@ -3,7 +3,9 @@
 New here? `inspect_guide` `getting-started` first: a small clay character, from an empty project to a render, in five minutes.
 
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
-scene from the document each time you look. Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
+scene from the document each time you look. One `edit_document` call is one undo step, its operations in `ops`:
+`{"ops": [{"op": "mesh.add", "args": {"id": "ball", "shape": "sphere", "radius": 0.1}},
+{"op": "mesh.set", "target": ["ball"], "args": {"y": 0.1}}]}` (`op`, then `target` (ids) and `args` (the fields)). Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
 A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`), the sky `sky` (a dome light
 showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
