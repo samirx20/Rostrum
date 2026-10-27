@@ -213,3 +213,16 @@ def test_many_notes_fold_to_exactly_the_merge_of_each_notes_rows(bridge):
         items = [d.item(i) for i in bridge._kit.selection]
         each = [inspect.musical_rows(it, bridge._item_rows(it), d.data) for it in items]
         assert many_rows.merged(bridge, items, d.data) == many.merge(each)
+
+
+def test_esc_during_a_box_gives_back_the_selection_from_before_it(bridge):
+    bridge.pickMany([C, A])                              # anchor A (Shift's run starts there)
+    bridge.boxSelect(["lead"], 0.0, 60.0, False)         # a box over the whole track: it takes what it touches
+    assert bridge.selectedIds != [C, A]
+    bridge.boxSelect(["lead"], 0.0, 0.1, False)          # the box shrinks to nothing
+    bridge.cancelBox()                                   # Esc
+    assert bridge.selectedIds == [C, A] and bridge._picks.anchor == A
+    bridge.boxSelect(["lead"], 0.0, 60.0, True)          # the next box starts from that selection (Ctrl adds)
+    bridge.endBox()
+    bridge.cancelBox()                                   # an Esc after the box ended changes nothing
+    assert set(bridge.selectedIds) >= {A, C} and len(bridge.selectedIds) > 2

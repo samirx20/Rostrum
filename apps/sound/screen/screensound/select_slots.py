@@ -261,8 +261,10 @@ class SelectSlots:
 
     def _box(self, got, add):
         """A box's move: the outlines follow at once; the settings panel and the Editor's track once it ends (endBox):
-        making the panel's rows for each move cost 20-120 ms a move on a 31-s song (M4)."""
-        base = self.__dict__.setdefault("_box_base", list(self._picks.ids) if add else [])
+        making the panel's rows for each move cost 20-120 ms a move on a 31-s song (M4). Its first move remembers the
+        selection as it was (cancelBox gives it back)."""
+        was = self.__dict__.setdefault("_box_was", (list(self._picks.ids), self._picks.anchor))
+        base = self.__dict__.setdefault("_box_base", list(was[0]) if add else [])
         ids = [*base, *got] if add else got
         if ids != self._picks.ids:
             self._pick(ids, later=True)
@@ -270,6 +272,18 @@ class SelectSlots:
     @Slot()
     def endBox(self):
         self.__dict__.pop("_box_base", None)
+        self.__dict__.pop("_box_was", None)
+        self._settle()
+
+    @Slot()
+    def cancelBox(self):
+        """Esc while a box is drawn: the selection exactly as before the box began (the same items, in order, the same
+        anchor for Shift), and the box ends. Nothing to undo: a selection is not a change."""
+        was = self.__dict__.pop("_box_was", None)
+        self.__dict__.pop("_box_base", None)
+        if was is not None:
+            idx = self.doc.locs()                   # (an agent may have removed one meanwhile)
+            self._pick([i for i in was[0] if i in idx], was[1] if was[1] in idx else None, later=True, checked=True)
         self._settle()
 
     @Slot(str)
