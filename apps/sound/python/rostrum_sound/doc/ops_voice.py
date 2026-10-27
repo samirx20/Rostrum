@@ -12,7 +12,7 @@ ID = Param.text("id", label="Id", help="Optional; counted when left out (<track>
 
 
 @REGISTRY.operation("line.add", "Add a spoken line to a voice track: its words and when it starts (seconds, a beat "
-                    "or a marker like \"#drop+0.5\"). Make the audio afterwards with the render_voice tool.",
+                    "or a marker like \"#drop+0.5\"). Make the audio afterwards with the render_voice tool; render_voice (what \"estimate\") says how long it will be first.",
                     target="track", params=[ID, *FD.params("line", required=True)], label="Add line")
 def line_add(ctx, targets, args):
     for track in targets:

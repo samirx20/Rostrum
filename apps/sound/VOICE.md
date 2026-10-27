@@ -77,6 +77,17 @@ so asking again reads them and a re-render never runs the model. Models: `~/.ros
 About 3 GB of GPU memory and a gate of 2.5 GB free RAM (it refuses, loudly, below that). On this laptop's RTX 3050 a
 5.9 s line was made in 11.6 s. One line at a time; never more than one voice job at once.
 
+## How long a line takes (estimate before making it)
+
+`voice_estimate.estimate(text, language)` (MCP: `render_voice` with `what: "estimate"`) says how long words will take before
+they are made: seconds = 0.1 breath + syllables x rate + 0.15 per comma, colon or semicolon + 0.45 per sentence end after
+the first. Rate per syllable: 0.245 s in Latin scripts, 0.215 s per Chinese character, 0.135 s per Japanese kana (a kanji
+counts two), 0.2 s per Korean block. Range = the estimate +/- 22 % (at least 0.3 s).
+Measured on 17 real takes (Qwen3-TTS: aiden, ryan, vivian, ono_anna; English, German, Chinese, Japanese; with and
+without a style): 13 % off on average, 15 of 17 inside the range. The same words differ 10-25 % between seeds (one
+Chinese line of 17 characters came out 3.1 s and 5.4 s in two readings), and a style like "slow" or "excited" shifts the
+pace; Korean was not measured. The made take's `seconds` is always exact.
+
 ## Licences
 
 Qwen3-TTS weights: Apache-2.0. qwentts.cpp: MIT. Nothing here is GPL.

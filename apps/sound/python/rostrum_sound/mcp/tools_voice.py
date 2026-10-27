@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rostrum_core.mcp import Reply, Tools
 
-from .. import voice_lines, voice_words
+from .. import voice_estimate, voice_lines, voice_words
 
 ITEM = {"item": {"type": "string", "description": "The Sound document's item id. Optional when only one is open."}}
 
@@ -13,7 +13,7 @@ def register(tools: Tools):
     @tools.tool("render_voice", {"properties": {**ITEM, "ids": {"type": "array", "items": {"type": "string"},
         "description": "Only these line ids; left out = every voice line of the document."}}})
     def render_voice(ctx, args):
-        """Make the missing takes of the document's voice lines (loads the voice model per line, about twice the line's length each). Answers per line: id, file, seconds, generated or cached, start and end in seconds (so the next line can be timed). Then render_mix and listen with the look_* tools."""
+        """Make the missing takes of the document's voice lines (loads the voice model per line, about twice the line's length each). To fit a line to the music before making it, ask `render_voice` (what \"estimate\"). Answers per line: id, file, seconds, generated or cached, start and end in seconds (so the next line can be timed). Then render_mix and listen with the look_* tools."""
         doc = ctx.document(args.get("item"))
         ids = args.get("ids") or None
 
@@ -42,3 +42,16 @@ def register(tools: Tools):
             return Reply(f"Words of {len(rows)} voice line(s) ready ({new} heard now, {len(rows) - new} from storage).", {"lines": rows})
 
         return ctx.long(f"voice words {doc.item_id}", work, key=f"voice-words:{doc.item_id}:{ids}")
+
+    @tools.tool("render_voice_estimate", {"properties": {**ITEM, "ids": {"type": "array", "items": {"type": "string"},
+        "description": "Only these line ids; left out = every voice line of the document."},
+        "text": {"type": "string", "description": "Words to estimate without a document line (then no document is needed)."},
+        "language": {"type": "string", "description": "With `text`: the language, as on a voice track (default auto)."}}})
+    def render_voice_estimate(ctx, args):
+        """How long spoken words will take BEFORE they are made, so a line can be fitted to the music: `estimated_seconds` with a range (low-high; the same words differ 10-25 % between takes, and a style like "slow" moves it more). For the document's lines (or `ids`) it also gives `made_seconds` (exact, once the take exists) and `ends_about` (the line's start plus its length); or give `text` (and `language`) alone. Counted from syllables and pauses and measured on the real voice; the exact length comes only from render_voice."""
+        if args.get("text"):
+            e = voice_estimate.estimate(args["text"], args.get("language", "auto"))
+            return Reply(f"{args['text'][:40]!r}: {voice_estimate.said(e)}.", {"estimate": {"estimated_seconds": e["seconds"], "low": e["low"], "high": e["high"]}})
+        rows = voice_lines.estimates(ctx.document(args.get("item")), args.get("ids") or None)
+        return Reply("; ".join(f"{r['id']}: " + (f"{r['made_seconds']:.2f} s (made)" if r["made_seconds"] is not None else voice_estimate.said(
+            {"seconds": r["estimated_seconds"], "low": r["low"], "high": r["high"]})) for r in rows) or "No voice lines.", {"lines": rows})

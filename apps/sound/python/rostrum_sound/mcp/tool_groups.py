@@ -21,8 +21,8 @@ GROUPS = [
     ("inspect_library", "Sound files to use: installed packs and the person's own sound folders, searched by words, kind "
      "and shape (default), or recordings cut into single sounds (the cut pool).",
      {"sounds": "inspect_library", "cuts": "inspect_cuts"}, "sounds"),
-    ("render_voice", "Voice lines: make the missing takes (default), or find each spoken word's start and end.",
-     {"takes": "render_voice", "words": "render_voice_words"}, "takes"),
+    ("render_voice", "Voice lines: make the missing takes (default), find each spoken word's start and end, or estimate how long lines will take before they are made.",
+     {"takes": "render_voice", "words": "render_voice_words", "estimate": "render_voice_estimate"}, "takes"),
     ("render_mix", "Render the song: the mix and its stems as the next version (default), or the notes as a MIDI file.",
      {"mix": "render_mix", "midi": "render_midi"}, "mix"),
     ("run_open_project", "The person's songs: open one (default; every change is already saved, so nothing is lost), "
