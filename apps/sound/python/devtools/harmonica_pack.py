@@ -4,7 +4,7 @@
 
 `tree.json` is GitHub's recursive tree of sgossner/VCSL at COMMIT (the pin the other VCSL packs use). VCSL ships no
 SFZ for its harmonicas, only the samples: three breaths (Normal, Accented, Vib) each sampled on C, E and G of every
-octave from C2 to C6, plus a short breath-out "release" sound per sample. This writes one SFZ per breath (the release
+octave from C2 to C6 by VCSL's names (they sound an octave higher: C3 to C7), plus a short breath-out "release" sound per sample. This writes one SFZ per breath (the release
 sounds trigger when the key lifts, as VCSL's own note suggests, with a short attack: VCSL suggests 100 ms, but the sounds are only ~0.1 s long and it would swallow them) under
 `library_data/packs/sfz/vcsl-harmonica/`, and the pack's entry in `library_data/packs/files.json`. The files are stored
 under short names (no spaces) inside the pack folder.
@@ -22,11 +22,13 @@ DIR = "Aerophones/Free Aerophones/Harmonica-Hohner-Super64/"
 # the breaths: (VCSL's folder and name stem, the sustain's name pattern, our file, what it is)
 BREATHS = [("Normal", "Normal _", "harmonica.sfz"), ("Accented", "Accented_", "harmonica-accent.sfz"), ("Vib", "Vib_", "harmonica-vibrato.sfz")]
 ROOTS = {"C": 0, "E": 4, "G": 7}
-LOW, HIGH = 35, 86          # playable keys: one below the lowest sample to two above the highest
+LOW, HIGH = 47, 98          # playable keys: one below the lowest sample to two above the highest
 
 
 def key(name: str) -> int:
-    return 12 * (int(name[1:]) + 1) + ROOTS[name[0]]
+    """The key a sample sounds on. VCSL names the Super 64's notes an octave low ("C4" sounds C5, 523 Hz: measured),
+    so a name's octave is one more than it says (the instrument plays C3 to D7, as Hohner gives it)."""
+    return 12 * (int(name[1:]) + 2) + ROOTS[name[0]]
 
 
 def zones(names: list[str]) -> list[tuple[str, int, int, int]]:
@@ -47,7 +49,7 @@ def main(tree_path: str) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for folder, stem, sfz in BREATHS:
         names = sorted(p.rsplit("_", 1)[1][:-4] for p in blobs if p.startswith(f"{DIR}Sustains/{folder}/"))
-        lines = [f"// Rostrum: Hohner Super 64 harmonica, {folder} breath (VCSL, CC0), on every note C2 to C6; the breath-out sound plays when a key lifts (packMaps)."]
+        lines = [f"// Rostrum: Hohner Super 64 harmonica, {folder} breath (VCSL, CC0), on every note C3 to C7 (VCSL names them an octave low); the breath-out sound plays when a key lifts (packMaps)."]
         lines.append("<global> loop_mode=no_loop amp_veltrack=60 ampeg_attack=0.01 ampeg_release=0.12")
         for name, k, lo, hi in zones(names):
             src = f"{DIR}Sustains/{folder}/Hohner-Super64_{stem}{name}.wav"

@@ -63,7 +63,7 @@ pub const RECORDED: &[Recorded] = &[
     rec("uprightBass", "dsmolken-bass", "double bass, pizzicato (D. Smolken)", (24, 60), &[("pizzicato", "d_smolken_rubner_bass_pizz.sfz")]),
     rec("cello", "bigcat-cello", "solo cello (Karoryfer x bigcat)", (36, 77), &[("sustain", "Programs/vc_arco_sus_map.sfz"), ("pizzicato", "Programs/vc_pizz_basic.sfz")]),
     rec("tenorSax", "vcsl-sax", "tenor saxophone (VCSL)", (44, 89), &[("sustain", "Aerophones/Reed Aerophones/Tenor Saxophone - Non-Vibrato.sfz"), ("vibrato", "Aerophones/Reed Aerophones/Tenor Saxophone - Vibrato.sfz"), ("staccato", "Aerophones/Reed Aerophones/Tenor Saxophone - Staccato.sfz")]),
-    rec("harmonica", "vcsl-harmonica", "chromatic harmonica, Hohner Super 64 (VCSL): a plain breath, an accented one, a vibrato one; the breath-out sound plays when a key lifts", (35, 86), &[("sustain", "harmonica.sfz"), ("accent", "harmonica-accent.sfz"), ("vibrato", "harmonica-vibrato.sfz")]),
+    rec("harmonica", "vcsl-harmonica", "chromatic harmonica, Hohner Super 64 (VCSL): a plain breath, an accented one, a vibrato one; the breath-out sound plays when a key lifts", (47, 98), &[("sustain", "harmonica.sfz"), ("accent", "harmonica-accent.sfz"), ("vibrato", "harmonica-vibrato.sfz")]),
     rec("marimba", VM, "marimba (VCSL)", (41, 97), &[("mallet", "Idiophones/Struck Idiophones/Marimba.sfz")]),
     rec("vibraphone", VM, "vibraphone, hard mallets (VCSL)", (53, 89), &[("mallet", "Idiophones/Struck Idiophones/Vibraphone - Hard Mallets.sfz")]),
     rec("xylophone", VM, "xylophone (VCSL)", (55, 97), &[("mallet", "Idiophones/Struck Idiophones/Xylophone - Medium Mallets.sfz")]),
