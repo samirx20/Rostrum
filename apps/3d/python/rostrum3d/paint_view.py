@@ -14,7 +14,7 @@ A layer's projected picture (`projectSource` …; `projected_of`) is splatted th
 camera sees on the item gives its colour to the texel under it, averaged, small holes filled; what the camera
 doesn't see (behind something, facing away, off the frame) stays unpainted. The texel picture for it is asked at the canvas's density or more (`project_req`).
 
-`landed` reports where each view stroke went: [{stroke, item, layer, runs, canvasPx, offPx, share}] for agents.
+`landed` reports where each view stroke's paint shows through its camera (landed_on) for agents.
 """
 from __future__ import annotations
 
@@ -156,7 +156,36 @@ def _look(pic, idx: int, size: int, s: np.ndarray):
         acc += np.nan_to_num(c) * wt[:, None]
         wsum += wt
     spot = np.where(wsum[:, None] > 1e-9, acc / np.maximum(wsum, 1e-9)[:, None], np.nan_to_num(near))
-    return spot, hit, _scale(cpx, on, nx, ny), cpx, on
+    return spot, hit, _scale(cpx, on, nx, ny), _jacobian(cpx, on, nx, ny)
+
+
+def _jacobian(cpx: np.ndarray, on: np.ndarray, ix: np.ndarray, iy: np.ndarray) -> np.ndarray:
+    """(n, 2, 2): how the canvas spot moves per screen px right (column 0) and down (column 1) at pixels (ix, iy), from
+    the neighbours on the same item and piece (no seam: under 64 canvas px; both sides averaged); NaN with none."""
+    h, w = on.shape
+    cols = []
+    for dx, dy in ((1, 0), (0, 1)):
+        tot, n = np.zeros((len(ix), 2)), np.zeros(len(ix))
+        for sgn in (1, -1):
+            x2, y2 = np.clip(ix + sgn * dx, 0, w - 1), np.clip(iy + sgn * dy, 0, h - 1)
+            d = (cpx[y2, x2] - cpx[iy, ix]) * sgn
+            ok = on[y2, x2] & ((x2 != ix) | (y2 != iy)) & np.isfinite(d).all(axis=1) & (np.linalg.norm(np.nan_to_num(d, nan=1e9), axis=1) < 64)
+            tot += np.where(ok[:, None], np.nan_to_num(d), 0.0)
+            n += ok
+        cols.append(np.where(n[:, None] > 0, tot / np.maximum(n, 1)[:, None], np.nan))
+    return np.stack(cols, axis=2)
+
+
+def _across(jac: np.ndarray, s: np.ndarray) -> np.ndarray:
+    """Canvas px per screen px **across** the path at each sample: a band of half-width r round the drawn line is a
+    band of half-width r × |det J| / |J d| round its canvas path (d: the path's screen direction). On a surface seen at
+    a slant the canvas stretches one way more than the other; sizing the brush by this keeps the painted line as wide
+    on the screen as drawn instead of smearing sideways. NaN where unknown."""
+    d = np.gradient(s[:, :2], axis=0) if len(s) > 1 else np.array([[1.0, 0.0]])
+    d = d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-9)
+    along = np.linalg.norm(np.einsum("nij,nj->ni", jac, d), axis=1)
+    det = np.abs(jac[:, 0, 0] * jac[:, 1, 1] - jac[:, 0, 1] * jac[:, 1, 0])
+    return np.where(along > 1e-6, det / np.maximum(along, 1e-6), np.nan)
 
 
 def runs(stroke: dict, pic, item_id: str, size: int) -> list[dict]:
@@ -168,9 +197,11 @@ def runs(stroke: dict, pic, item_id: str, size: int) -> list[dict]:
     s = _samples(view_of(stroke)["points"])
     if not len(s):
         return []
-    spot, hit, scale, _, _ = _look(pic, idx, size, s)
+    spot, hit, scale, jac = _look(pic, idx, size, s)
     fallback = np.nanmedian(scale[hit]) if np.isfinite(scale[hit]).any() else 1.0
     scale = np.where(np.isfinite(scale), scale, fallback)
+    across = _across(jac, s)
+    across = np.where(np.isfinite(across) & (across > 0), across, scale)
     out, start = [], None
     for k in range(len(s) + 1):
         cut = k == len(s) or not hit[k]
@@ -178,23 +209,23 @@ def runs(stroke: dict, pic, item_id: str, size: int) -> list[dict]:
             screen = np.linalg.norm(s[k, :2] - s[k - 1, :2])
             cut_here = np.linalg.norm(spot[k] - spot[k - 1]) > JUMP * screen * max(scale[k], scale[k - 1]) + JUMP_PX
             if cut_here:
-                out.append(_run(stroke, s, spot, scale, start, k))
+                out.append(_run(stroke, s, spot, across, start, k))
                 start = k
                 continue
         if cut:
             if start is not None:
-                out.append(_run(stroke, s, spot, scale, start, k))
+                out.append(_run(stroke, s, spot, across, start, k))
             start = None
         elif start is None:
             start = k
     return out
 
 
-def _run(stroke, s, spot, scale, i, j) -> dict:
+def _run(stroke, s, spot, across, i, j) -> dict:
     pts = [[round(float(spot[q, 0]), 2), round(float(spot[q, 1]), 2), round(float(s[q, 2]), 4)] for q in range(i, j)]
     if len(pts) == 1:                                    # a click: one dab
         pts.append([pts[0][0] + 0.01, *pts[0][1:]])
-    size = max(0.5, float(stroke["size"]) * float(np.median(scale[i:j])))
+    size = max(0.5, float(stroke["size"]) * float(np.median(across[i:j])))
     return {"points": pts, "size": round(size, 3), "screen": s[i:j, :2]}
 
 
@@ -348,11 +379,23 @@ def _fill(acc: np.ndarray, count: np.ndarray) -> np.ndarray:
 
 # --- where view strokes landed
 
+OFF_OK, OFF_SHARE = 3.0, 0.25     # landed: no paint seen further outside the brush than max(OFF_OK, OFF_SHARE × radius)
+COVER_OK = 0.8                    # … the paint covers at least this share of the line's band on the item
+MORE_PIECES = 2                   # … and comes in at most this many more pieces than the band itself has
+
+
 def landed_on(item: dict, pic_of) -> list[dict]:
-    """Each view stroke of `item`: {stroke, item, layer, runs, canvasPx, offPx, share}. `pic_of(req)` -> its texel
-    picture. canvasPx: per run, its laid path in canvas px (at most 32 points); offPx {mean, max}: how far, in screen
-    px, each laid point is seen (re-looked through the same texel picture: the nearest pixel showing that texel) from
-    the drawn sample it came from; share: the part of the drawn path that is on this item."""
+    """Each view stroke of `item`, measured by where its paint **shows** through its own camera: {stroke, item, layer,
+    runs, canvasPx, share, seenPx, pieces, wantPieces, covered, offPx {median, max}, landed, verdict}. `pic_of(req)` ->
+    its texel picture.
+
+    The laid runs (canvas paths with their brush size) are turned back into the picture: a pixel showing the item is
+    painted when the texel it shows lies within the brush of a run (so paint the camera sees somewhere else, through
+    a stretched or shared part of the canvas, counts too). offPx: how far painted pixels lie outside the drawn line's
+    band (the brush's half-width round the path, screen px; 0 = all inside), median and max; pieces: the painted
+    pixels' separate patches (wantPieces: the band's own on this item); covered: the share of the band painted; share:
+    the part of the drawn path on this item; canvasPx: per run, its laid path (at most 32 points). `landed` follows
+    those numbers (OFF_OK, OFF_SHARE, COVER_OK, MORE_PIECES); `verdict` says them in words."""
     size = item.get("paintSize", 2048)
     out = []
     for layer in item.get("paints", []):
@@ -362,12 +405,31 @@ def landed_on(item: dict, pic_of) -> list[dict]:
                 continue
             pic = pic_of(req_of(v))
             rs = runs(s, pic, item["id"], size)
-            total = max(1, len(_samples(v["points"])))
-            off = _off(pic, item["id"], size, rs)
-            out.append({"stroke": s["id"], "item": item["id"], "layer": layer["id"], "runs": len(rs),
-                        "canvasPx": [_thin([p[:2] for p in r["points"]]) for r in rs],
-                        "offPx": off, "share": round(sum(len(r["screen"]) for r in rs) / total, 3)})
+            samples = _samples(v["points"])
+            seen = _seen(pic, item["id"], size, rs, samples, float(s["size"]) / 2)
+            row = {"stroke": s["id"], "item": item["id"], "layer": layer["id"], "runs": len(rs),
+                   "canvasPx": [_thin([p[:2] for p in r["points"]]) for r in rs],
+                   "share": round(sum(len(r["screen"]) for r in rs) / max(1, len(samples)), 3), **seen}
+            row["landed"], row["verdict"] = verdict(row, float(s["size"]) / 2)
+            out.append(row)
     return out
+
+
+def verdict(row: dict, radius: float) -> tuple[bool, str]:
+    """(landed, words) from a landed_on row's own numbers; never one without the other."""
+    if not row["runs"] or not row["seenPx"]:
+        return False, f'laid no paint: {row["item"]} is not under its path from that view'
+    tol = max(OFF_OK, OFF_SHARE * radius)
+    wrong = []
+    if row["offPx"]["max"] > tol:
+        wrong.append(f'up to {row["offPx"]["max"]:.0f} screen px outside the line')
+    if row["pieces"] > row["wantPieces"] + MORE_PIECES:
+        wrong.insert(0, f'in {row["pieces"]} pieces')
+    if row["covered"] < COVER_OK:
+        wrong.append(f'covering {row["covered"] * 100:.0f} % of the line')
+    if not wrong:
+        return True, "landed"
+    return False, f'painted {", ".join(wrong)} on {row["item"]} (seen through its camera)'
 
 
 def _thin(pts: list, most: int = 32) -> list:
@@ -377,21 +439,49 @@ def _thin(pts: list, most: int = 32) -> list:
     return [pts[i] for i in pick]
 
 
-def _off(pic, item_id: str, size: int, rs: list) -> dict:
-    if not rs:
-        return {"mean": None, "max": None}
+def _dense(pts: np.ndarray, step: float) -> np.ndarray:
+    """A polyline resampled at most `step` apart (its own points kept)."""
+    if len(pts) < 2:
+        return pts
+    out = [pts[:1]]
+    for a, b in zip(pts[:-1], pts[1:]):
+        n = int(min(4096, max(1, np.ceil(np.linalg.norm(b - a) / step))))
+        out.append(a + (b - a) * (np.arange(1, n + 1) / n)[:, None])
+    return np.concatenate(out)
+
+
+def _seen(pic, item_id: str, size: int, rs: list, samples: np.ndarray, radius: float) -> dict:
+    """Where the laid runs show through `pic` (landed_on's seenPx, pieces, wantPieces, covered, offPx)."""
+    from scipy import ndimage
     from scipy.spatial import cKDTree
     cpx = _canvas(pic, size)
     on = (pic.item == _index(pic, item_id)) & np.isfinite(cpx[..., 0])
     ys, xs = np.nonzero(on)
-    tree = cKDTree(cpx[ys, xs])
-    d = []
-    for r in rs:
-        _, at = tree.query(np.asarray([p[:2] for p in r["points"]][:len(r["screen"])]), 1)
-        seen = np.stack([xs[at] + 0.5, ys[at] + 0.5], axis=1)
-        d.append(np.linalg.norm(seen - r["screen"], axis=1))
-    d = np.concatenate(d)
-    return {"mean": round(float(d.mean()), 2), "max": round(float(d.max()), 2)}
+    painted = np.zeros(len(ys), bool)
+    if len(ys) and rs:
+        texel = cpx[ys, xs]
+        for r in rs:
+            path = np.asarray([p[:2] for p in r["points"]], np.float64)
+            half = float(r["size"]) / 2
+            tree = cKDTree(_dense(path, max(0.5, half / 4)))
+            d, _ = tree.query(texel, 1, distance_upper_bound=half + 1)
+            painted |= d <= half
+    if len(ys) and len(samples):
+        line = cKDTree(_dense(samples[:, :2], 0.5))
+        dist, _ = line.query(np.stack([xs + 0.5, ys + 0.5], axis=1), 1)
+    else:
+        dist = np.full(len(ys), np.inf)
+    band = dist <= radius
+    out = np.maximum(dist[painted] - radius, 0.0)
+
+    def patches(mask):
+        img = np.zeros(on.shape, bool)
+        img[ys[mask], xs[mask]] = True
+        return int(ndimage.label(img, np.ones((3, 3), bool))[1])
+    return {"seenPx": int(painted.sum()), "pieces": patches(painted), "wantPieces": patches(band),
+            "covered": round(float((painted & band).sum() / max(1, band.sum())), 3),
+            "offPx": {"median": round(float(np.median(out)), 2) if len(out) else None,
+                      "max": round(float(out.max()), 2) if len(out) else None}}
 
 
 def landed(scene: dict, data: dict, texels_fn, items=None) -> list[dict]:

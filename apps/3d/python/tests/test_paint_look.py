@@ -54,7 +54,7 @@ def test_coverage_counts_only_seen_pixels_and_no_uv_is_unpainted():
 def test_stroke_lines_say_where_and_in_which_unit():
     view = PS.stroke_line({"stroke": "s3", "layer": "colour_1", "view": True, "shot": "Hero 01", "items": ["case", "lid"],
                            "landed": True, "offPx": 1.24, "verdict": "landed"})
-    assert view == "stroke s3 (From the view, Hero 01, layer colour_1): landed on case and lid, 1.2 screen px off"
+    assert view == "stroke s3 (From the view, Hero 01, layer colour_1): landed on case and lid, at most 1.2 screen px outside the line"
     surf = PS.stroke_line({"stroke": "s1", "layer": "l", "items": ["lid"], "landed": True, "offPx": 0.4, "box": [10, 20, 90, 60], "verdict": "landed"})
     assert "canvas px off" in surf and "(canvas x 10–90, y 20–60)" in surf
     assert PS.stroke_line({"stroke": "s2", "layer": "l", "landed": False, "verdict": "missed by 5.0 px on average"}).endswith("missed by 5.0 px on average")
