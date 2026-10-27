@@ -53,6 +53,16 @@ def reporting(fn):
         _SINK.reset(token)
 
 
+def free_words(free: float, need: float) -> str:
+    """The free GB as it is said beside what is needed: one decimal, more where one decimal would round up to the need
+    ("2.46", never "2.5 GB free, needs 2.5"; hand maker C, C6)."""
+    for places in (1, 2, 3):
+        said = f"{free:.{places}f}"
+        if float(said) < need:
+            return said
+    return f"just under {need:g}"
+
+
 def _say(words):
     sink = _SINK.get()
     if sink is not None:
@@ -73,11 +83,11 @@ def gate(where: str, what: str, need_gb: float, wait: float | None = None, waiti
         waited = clock() - t0
         if waited >= limit:
             raise RostrumError(codes.NO_MEMORY, where, what,
-                               f"needs about {need_gb} GB of free memory; {f:.1f} GB was still free after waiting "
+                               f"needs about {need_gb} GB of free memory; {free_words(f, need_gb)} GB was still free after waiting "
                                f"{waited:.0f} s", hint="Close other programs (or wait for other work to finish) and try "
                                "again; ROSTRUM_MODEL_WAIT_S sets how long a job waits.")
         if told is None or clock() - told >= 10 or waiting or _SINK.get() is not None:
-            say(f"waiting for memory ({f:.1f} GB free, {what} needs {need_gb} GB; {waited:.0f} s so far)")
+            say(f"waiting for memory ({free_words(f, need_gb)} GB free, {what} needs {need_gb} GB; {waited:.0f} s so far)")
             told = clock()
         sleep(max(0.01, min(POLL_S, limit - waited)))
 

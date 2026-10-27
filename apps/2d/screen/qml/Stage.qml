@@ -370,6 +370,7 @@ Rectangle {
                 if (hit === "") { band = true; b0 = p; b1 = p; return }                         // nothing painted: a rubber band
                 if (Mods.alt(m)) { held = hit; return }                                          // Alt (and Shift: on a line): click or copy-drag, not yet known
                 if (Mods.shift(m)) { backend.keys.clear(); backend.multi.toggle(hit); return }   // Shift+click: add / remove
+                if (deep && backend.rig.rig !== "" && backend.rig.partAt(p.x, p.y) !== "") { backend.keys.clear(); moving = backend.beginMove(); return }   // Ctrl: the drawn part itself (a mouth set, an eye)
                 const rigged = deep || backend.rig.rig === "" ? "" : backend.rig.pressAt(p.x, p.y)   // a part of the rig in hand: its bone poses
                 if (rigged === "rig") { backend.keys.clear(); moving = backend.beginMove(); return }    // the body: the whole rig moves
                 if (rigged !== "") { backend.keys.clear(); posing = rigged; posed = backend.rig.dragger.beginPose(rigged, p.x, p.y); return }
@@ -389,9 +390,10 @@ Rectangle {
             }
             onReleased: (m) => {
                 if (posing !== "") {        // a pose drag is one undo step; a click (or a drag) picks the bone
-                    const still = Math.abs(m.x - sx) + Math.abs(m.y - sy) < 3
-                    if (posed) { if (still) backend.rig.dragger.cancel(); else backend.rig.dragger.end() }
-                    backend.rig.pickBone(posing, false); posing = ""; posed = false; return
+                    const moved = Math.abs(m.x - sx) + Math.abs(m.y - sy), still = moved < 3
+                    backend.rig.pickBone(posing, false)       // first: picking clears the status line, which may have words for this drag
+                    if (posed) { if (!still) backend.rig.dragger.end(); else if (moved > 0) backend.rig.dragger.short(); else backend.rig.dragger.cancel() }
+                    posing = ""; posed = false; return
                 }
                 if (held !== "") { const p = comp({ x: sx, y: sy }); if (!lined) { backend.keys.clear(); backend.multi.pickBehind(p.x, p.y, deep ? "deep" : "click") }; held = "" }   // Alt+click: the layer behind (Alt+Shift+click: the pick stays)
                 if (band) {

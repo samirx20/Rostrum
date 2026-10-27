@@ -28,7 +28,8 @@ FIELDS = {
         N("length", "Length", "Rest", 0, 20000, 1, "px", S, default=100.0),
     ],
     "ik": [
-        X("bone", "Lower bone", "Chain", "", help="The shin or forearm; its parent is the upper bone"),
+        X("bone", "Lower bone", "Chain", "", control="pick",       # screens: the rig's bones, by name
+          help="The shin or forearm; its parent is the upper bone"),
         CH("mode", ["ik", "fk"], "Pose by", "Chain", "ik", help="IK reaches the target; FK follows the bones' own turns"),
         N("chain", "Bones in chain", "Chain", 2, 32, 1, "", S, integer=True, default=2,
           help="2 = upper and lower bone (a leg); more = a spine, tail or arm with a hand, from the lower bone up"),
@@ -41,8 +42,9 @@ FIELDS = {
     ],
     "bind": [
         X("layer", "Layer", "Bind", "", help="A layer inside the rig"),
-        X("bone", "Bone", "Bind", "", help="The bone it follows"),
-        X("bone2", "Bends to", "Bind", "", help="A child bone of Bone: the layer bends across the joint; empty = rigid"),
+        X("bone", "Bone", "Bind", "", control="pick", help="The bone it follows"),       # screens: the rig's bones, by name
+        X("bone2", "Bends to", "Bind", "", control="pick", words={"": "None (rigid)"},
+          help="A child bone of Bone: the layer bends across the joint; empty = rigid"),
         N("grid", "Mesh", "Bend", 4, 64, 1, "", S, BENDING, integer=True, default=24, help="Divisions along each side"),
         N("soft", "Soft joint", "Bend", 0, 5000, 1, "px", S, BENDING, default=40.0, help="Half-width of the blend; 0 = a hard crease"),
     ],

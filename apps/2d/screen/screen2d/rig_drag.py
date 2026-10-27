@@ -32,6 +32,9 @@ def chain_bones(rig: dict, ik: dict) -> list[str]:
     return out + [b for b, p in up.items() if p == ik["bone"]]
 
 
+SHORT = "Not posed: the drag was too short to move the part (a click only picks its bone). Drag a little further."
+
+
 class RigDrag(QObject):
     changed = Signal()
 
@@ -110,10 +113,17 @@ class RigDrag(QObject):
 
     @Slot()
     def end(self):
-        """Let go: one change (nothing when it didn't move)."""
+        """Let go: one change. A drag too short to change the pose says so on the status line (hand maker C, C11: an
+        8 px drag left no key and no word)."""
         d, self._drag = self._drag, None
         if d is not None:
-            self.b.guard(lambda: self.b.done(d.end(), ""))
+            self.b.guard(lambda: self.b.done(d.end(), SHORT))
+
+    @Slot()
+    def short(self):
+        """A press that moved a little but less than a drag: it only picks the bone; the status line says so."""
+        self.cancel()
+        self.b._set_status(SHORT, False)
 
     @Slot()
     def cancel(self):

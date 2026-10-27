@@ -58,3 +58,9 @@ def test_an_agent_job_shows_the_wait_in_its_progress():
     job = jobs.submit("voice", work)
     jobs.wait(job.id, 10)
     assert job.status == "done" and any(n.startswith("waiting for memory (1.0 GB free") for n in seen), seen
+
+
+def test_the_note_never_says_the_need_is_free():
+    """C6: 2.46 GB free beside a 2.5 GB need read "2.5 GB free, needs 2.5"."""
+    assert memory.free_words(2.46, 2.5) == "2.46" and memory.free_words(1.94, 2.5) == "1.9"
+    assert memory.free_words(2.4999, 2.5) == "just under 2.5"

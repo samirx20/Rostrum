@@ -12,6 +12,7 @@ SIBLING_PICKS = {"matte": lambda s: s.get("type") != FRAME,       # any layer be
                  "pathLayer": lambda s: s.get("type") == "path",   # text follows a path layer beside it
                  "ridePath": lambda s: s.get("type") == "path" and not s.get("ridePath"),   # a layer rides one (not a riding one)
                  "parent": lambda s: s.get("type") == "bone"}       # a bone hangs from another bone of its rig, shown by name
+RIG_BONE_PICKS = {"bone": ("ik", "bind"), "bone2": ("bind",)}     # an IK chain's lower bone, a bind's bones: the rig's bones by name
 
 
 # A group's and a rig's box is their children's space, not a size to set; a text's words are typed on the canvas only.
@@ -140,6 +141,10 @@ class Hooks2D:
             return found
         if param == "textStyle":                     # the document's text styles (rostrum2d/text_styles.py)
             return [{"value": s["id"], "label": s["name"]} for s in self.doc.data.get("textStyles", [])]
+        if param in RIG_BONE_PICKS and item.get("type") in RIG_BONE_PICKS[param]:   # an IK chain's / bind's bone: by name
+            rig = self.doc.item(self.doc.parent_of(item["id"])[0])
+            return ([{"value": "", "label": "None (rigid)"}] if param == "bone2" else []) + [
+                {"value": s["id"], "label": outline.label_of(s, None)} for s in rig.get("bones", [])]
         if param not in SIBLING_PICKS:
             return []
         parent, key, _ = self.doc.parent_of(item["id"])
