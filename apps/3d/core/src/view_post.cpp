@@ -14,6 +14,7 @@ namespace r3d {
 namespace {
 constexpr float kAccent[3] = {0x4c / 255.f, 0x8d / 255.f, 0xff / 255.f};  // shared/gui-kit Theme.accent
 constexpr int kRing = 2;                                                  // selection ring, pixels
+constexpr float kHoverMix = 0.6f;  // the hover outline (1 px): the accent this much over the picture, softer than the ring
 constexpr float kMaxBlur = 32;                                            // depth of field, largest blur radius in pixels
 
 unsigned compile(GLenum kind, const std::string& src) {
@@ -173,14 +174,17 @@ void ViewPost::run(const ViewPostIn& in, unsigned char* dst, const ViewTarget* t
   const unsigned pf = program("final:" + in.view, head + glsl::kViewPos + glsl::kFinalHead + oc->glsl() + glsl::kFinalBody);
   glUseProgram(pf);
   set_common(pf, in);
-  use_textures(pf, {{"depthTex", in.depth}, {"litTex", lit}, {"maskTex", in.mask ? in.mask : in.color}});
-  oc->bind(pf, 3);
+  use_textures(pf, {{"depthTex", in.depth}, {"litTex", lit}, {"maskTex", in.mask ? in.mask : in.color},
+                    {"hoverTex", in.hover ? in.hover : in.color}});
+  oc->bind(pf, 4);
   const float gain = float(std::pow(2.0, in.exposure));
   glUniform1f(glGetUniformLocation(pf, "gain"), gain);
   glUniform3fv(glGetUniformLocation(pf, "bg"), 1, in.background);
   glUniform3fv(glGetUniformLocation(pf, "accent"), 1, kAccent);
   glUniform1i(glGetUniformLocation(pf, "hasMask"), in.mask ? 1 : 0);
   glUniform1i(glGetUniformLocation(pf, "ring"), kRing);
+  glUniform1i(glGetUniformLocation(pf, "hasHover"), in.hover ? 1 : 0);
+  glUniform1f(glGetUniformLocation(pf, "hoverMix"), kHoverMix);
   const Lens* l = in.lens ? &*in.lens : nullptr;
   const double f = l ? l->focalLength : 0, S = l ? l->focusDistance : 0;
   const bool lens = l && l->fStop > 0 && S > f && l->sensorWidth > 0;

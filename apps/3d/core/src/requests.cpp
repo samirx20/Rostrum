@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <utility>
 
 #include "args.h"
 #include "error.h"
@@ -198,7 +199,7 @@ JsObject Core::render(const JsObject& o, const std::function<void(const JsObject
 
 JsObject Core::view(const JsObject& o) {
   Args a(o, "view", {"camera", "eye", "target", "fov", "frame", "width", "height", "renderer", "exposure", "studio",
-                     "sceneLights", "selected", "view", "ao", "aoRadius", "dof", "samples", "denoise", "ghosts"});
+                     "sceneLights", "selected", "hovered", "view", "ao", "aoRadius", "dof", "samples", "denoise", "ghosts"});
   need_scene("view");
   const std::string renderer = a.str("renderer", "storm");
   const bool final_look = renderer == "cycles";  // the Final look: progressive Cycles with the render's settings
@@ -216,14 +217,18 @@ JsObject Core::view(const JsObject& o) {
   look.studio = a.num("studio", 1.0);
   if (look.studio < 0 || look.studio > 4) throw Error("view.studio: must be 0..4");
   look.sceneLights = a.flag("sceneLights", true);
-  if (a.has("selected")) {
-    const auto& sel = a.need("selected");
-    if (!sel.IsArray()) throw Error("view.selected: needs a list of item ids");
-    for (const auto& v : sel.GetJsArray()) {
-      if (!v.IsString()) throw Error("view.selected: needs a list of item ids");
+  // `selected`: the selection ring; `hovered` (3d-v4): the thin hover outline (the clay under the pointer)
+  for (const auto& [key, into] : {std::pair<const char*, SdfPathVector*>{"selected", &look.selected},
+                                  std::pair<const char*, SdfPathVector*>{"hovered", &look.hovered}}) {
+    if (!a.has(key)) continue;
+    const std::string where = std::string("view.") + key;
+    const auto& list = a.need(key);
+    if (!list.IsArray()) throw Error(where + ": needs a list of item ids");
+    for (const auto& v : list.GetJsArray()) {
+      if (!v.IsString()) throw Error(where + ": needs a list of item ids");
       const SdfPath p = item_path(stage_, v.GetString());
-      if (p.IsEmpty()) throw Error("view.selected: no item \"" + v.GetString() + "\" in the scene");
-      look.selected.push_back(p);
+      if (p.IsEmpty()) throw Error(where + ": no item \"" + v.GetString() + "\" in the scene");
+      into->push_back(p);
     }
   }
   if (a.has("ghosts")) {
@@ -256,6 +261,7 @@ JsObject Core::view(const JsObject& o) {
   post.color = pic.color;
   post.depth = pic.depth;
   post.mask = pic.mask;
+  post.hover = pic.hoverMask;
   for (size_t i = 0; i < pic.ghosts.size(); ++i) {
     GhostIn g;
     g.tex = pic.ghosts[i];

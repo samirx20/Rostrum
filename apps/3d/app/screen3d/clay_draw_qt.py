@@ -3,7 +3,7 @@
 
 - Draw: a left drag draws an outline (it never turns the view); the line follows the pointer, and a chip 16 px below-
   right of it says the outline's size ("18 × 30 cm") on the plane it will lie on. While armed, the clay under the
-  pointer is outlined (the viewport's selection outline, `outlined`): drawn from there, the shape joins it.
+  pointer has the thin hover outline (the view request's `hovered`, `outlined`): drawn from there, the shape joins it.
 - Spin: a vertical line stands at the pointer (the axis); the drag from it draws half a profile.
 - Release: the press's pick decides the plane (clay_draw.plane_for) and the pixels become points on it: on a clay,
   `clay.draw` / `clay.spin` on that clay in its own space; elsewhere `clay.add(draw=…)` / `clay.add(spin=…)` in the
