@@ -61,6 +61,10 @@ target_link_libraries(r3d_core PUBLIC
   ${BUNDLE}/OpenImageIO/lib/OpenImageIO.lib ${BUNDLE}/OpenImageIO/lib/OpenImageIO_Util.lib ${BUNDLE}/opencolorio/lib/OpenColorIO.lib ${BUNDLE}/openvdb/lib/openvdb.lib
   manifold opensubdiv_far xatlas opengl32 dxgi psapi)
 
+# Imports of other formats (src/convert*.cpp): cgltf, tinyobjloader, ufbx (MIT, third_party/) and Alembic (BSD-3, static,
+# from the bundle); see convert.cmake.
+include(convert.cmake)
+
 add_executable(rostrum3d-core src/main.cpp)
 target_compile_options(rostrum3d-core PRIVATE /EHsc /utf-8 /W3)
 target_link_libraries(rostrum3d-core PRIVATE r3d_core)

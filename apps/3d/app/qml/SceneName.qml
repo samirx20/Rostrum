@@ -7,6 +7,7 @@ import RostrumKit
 // of overlapping animations) is a dim name under its item, indented.
 Rectangle {
     id: row
+    objectName: field ? "" : "sceneRow:" + modelData.id      // a scripted hand finds a row by it
     required property var modelData
     property Item menu                  // the item menu (ContextMenu3D, SceneRows.qml)
     readonly property bool field: modelData.row === "field"

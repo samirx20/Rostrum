@@ -32,7 +32,7 @@ from rostrum_core import ids
 from rostrum_core.errors import RostrumError, codes
 from rostrum_core.keys import key_id
 
-from . import aim, build, clay_detail, clay_steps, fields as F, mirror, shape_size, surface_place
+from . import aim, build, clay_detail, clay_steps, fields as F, mirror, ops_import, shape_size, surface_place
 from .kind import KIND, PRIM_ID
 from .material_starts import STARTS, start_key, start_values
 from .clay_steps import piece_values, stroke_values
@@ -251,9 +251,14 @@ class Build:
     def item(self, type_: str, id_=None, **values) -> Item:
         into = self.holders[-1]["children"] if self.holders else self.root["items"]
         parts = values.pop("parts", []) if type_ == "import" else []
+        if type_ == "import" and values.get("file"):     # read like import.add: metres, upright, base on x y z, its meshes
+            keep = values.pop("keepSize", False)
+            values, found = ops_import.read_file(values, keep)
+            parts += [p for p in found if p not in parts]
         it = self.add(type_, id_, values, into)
+        names = ops_import.part_names(parts)
         for path in parts:
-            it.part(path)
+            it.part(path, name=names[path])
         return it
 
 

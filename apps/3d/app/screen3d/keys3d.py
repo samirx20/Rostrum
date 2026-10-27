@@ -59,12 +59,13 @@ NOT_HERE = ("preferences",                  # no setting of 3D is a person's to 
             "delete_close_gap", "rename", "forward", "backward", "front", "back", "group", "ungroup", "hide", "lock",
             "split", "join", "trim_start", "trim_end", "animated_rows",
             "actual_size", "fit", "fit_all",                # the viewport has no 100 % and no framing yet (` is the shot's view)
-            "find_item", "library", "add_file", "notes_tool")
+            "find_item", "library", "notes_tool")
 KEYS3D = KeyMap("Rostrum3D", OWN, drop=NOT_HERE, words={
     "move_tool": "Select (all handles; leaves Paint and Clay)", "paint_tool": "Paint on the mesh or clay",
     "go_in": "Go in (Edit mesh; cut with the Knife; make the bones)",
     "go_out": "Go out (leave Edit mesh; pick the group)",
     "copy_style": "Copy material", "paste_style": "Paste material",
+    "add_file": "Import (glTF, OBJ, FBX, Alembic, USD, Asset library)",
     "prev_event": "Previous key or marker", "next_event": "Next key or marker",
     "key_here": "Key what the gizmo moved, here", "jump": "Hold (no ease)",
     "nudge_left": "Nudge left (1 cm)", "nudge_right": "Nudge right (1 cm)", "nudge_up": "Nudge up (1 cm)",
@@ -94,7 +95,8 @@ ROUTES = {
     "shot_view": ("shotViewKey",), "look": ("lookKey",), "render": ("renderKey",),
 }
 # the window's own (Main.qml `windowJobs`): they need the rail
-WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "poses_panel", "materials_list", "quit")
+WINDOW = ("clay_tool", "shapes_menu", "type_menu", "lights_menu", "camera_menu", "add_file", "poses_panel", "materials_list",
+          "quit")
 # held keys a tool watches itself (clay_tool_qt.SizeKey: F down and up while Clay is on): no shortcut, no Ctrl+K row
 TOOL = ("clay_size",)
 # bound where they are made: the kit's AppShell (undo, redo, Ctrl+K, F1, Keys, History, Export, F6, Ctrl+\, Ctrl+F in the

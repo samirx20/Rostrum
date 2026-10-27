@@ -1,7 +1,7 @@
 # Building, looking and fixing a 3D shot
 
 You work on a document, never on the USD file: every change is an operation (`run_script`, `edit_document`), and the engine builds the
-scene from the document each time you look. Imported USD files stay untouched; your changes to them are overrides.
+scene from the document each time you look. Imported files (USD, glTF, OBJ, FBX, Alembic) stay untouched; your changes to them are overrides.
 
 A new scene is not empty: it holds a wide neutral `ground` (a plane, material `ground_material`), the sky `sky` (a dome light
 showing the photographed Studio sky, `texture="sky:studio"`) and the shot `shot_1` ("Shot 1") through the camera
@@ -11,7 +11,8 @@ and framed before you add anything; change or delete any of them like any item (
 ## The loop
 
 1. **Know the shot.** `inspect_shot` gives the frame rate, the frame range, the picture size, the shot camera and every light.
-   `inspect_usd_file` shows what a file you want to import holds (its parts, their materials and sizes) before you import it.
+   `inspect_model_file` shows what a file you want to import holds before you import it: USD, glTF / GLB, OBJ, FBX or Alembic; its
+   unit, up axis, animation (frames, fps) and parts (their materials and sizes).
 2. **Build with a script** (`inspect_guide` `script` is the whole script API on one page), small steps: the room and the subject first, then the camera, then light, then materials, then motion.
    Each step ends with a look.
 3. **Look through the shot's camera, not around the scene.** Everything you see is what the final picture will hold.
@@ -41,6 +42,15 @@ and framed before you add anything; change or delete any of them like any item (
    own render settings) and is a job. Sending again updates the same layer. 2D says "out of date" when this document's
    content changes after the render (an identical script re-run is not a change). `target: "editor"` fails: the Editor
    isn't built yet.
+
+## Asset library
+
+Free CC0 models from Poly Haven and ambientCG. `inspect_asset_sources` lists the sources and whether each is on;
+`inspect_assets` {source, query, page} searches an on source (40 a page: id, name, thumbnail address);
+`edit_import_asset` {source, id, x, y, z} downloads the model into the project folder (`assets/<source>/<id>/`,
+reused when already there) and imports it with `import.add`, its base at x y z, in one change. Every source is off
+until the person switches it on in Import › Asset library; you can't switch one on, and the tools fail plainly while
+it is off: tell the person instead. Then look at the model through the shot camera.
 
 ## Render settings and the time estimate
 

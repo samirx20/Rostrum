@@ -9,6 +9,7 @@
 
 #include <filesystem>
 
+#include "convert.h"
 #include "error.h"
 
 PXR_NAMESPACE_USING_DIRECTIVE
@@ -18,6 +19,15 @@ namespace r3d {
 namespace {
 JsArray vec(const GfVec3d& v) { return JsArray{JsValue(v[0]), JsValue(v[1]), JsValue(v[2])}; }
 constexpr size_t kMaxPrims = 2000;
+
+// Whether the file says what its unit is: a converter marks the formats that don't (convert.h); a USD file
+// without metersPerUnit authored doesn't either.
+bool units_known(const UsdStageRefPtr& s) {
+  const VtDictionary data = s->GetRootLayer()->GetCustomLayerData();
+  const auto it = data.find("rostrum:unitsKnown");
+  if (it != data.end() && it->second.IsHolding<bool>()) return it->second.UncheckedGet<bool>();
+  return s->HasAuthoredMetadata(UsdGeomTokens->metersPerUnit);
+}
 }  // namespace
 
 std::string material_of(const UsdStageRefPtr& stage, const SdfPath& path) {
@@ -48,10 +58,31 @@ SdfPath item_path(const UsdStageRefPtr& stage, const std::string& id) {
 
 JsObject inspect_usd(const std::string& file) {
   if (!std::filesystem::exists(file)) throw Error("inspect_usd.file: no file " + file);
+  const Format* format = format_for(file);
+  if (!is_usd(file) && !format) throw Error("inspect_usd.file: " + file + " is not " + accepted_files());
+  UsdStageRefPtr s;
+  if (format) {  // our own conversion: its readers fail loudly themselves (convert.cpp)
+    SdfLayerRefPtr layer;
+    try {
+      layer = converted_layer(file);
+    } catch (const Error& e) {
+      throw Error(std::string("inspect_usd.file: ") + e.what());
+    }
+    s = UsdStage::Open(layer);
+    if (!s) throw Error("inspect_usd.file: USD could not open the converted " + file);
+  }
   TfErrorMark mark;
-  UsdStageRefPtr s = UsdStage::Open(file);
-  if (!s || !mark.IsClean()) throw Error("inspect_usd.file: USD could not open " + file);
-  UsdGeomBBoxCache bbox(UsdTimeCode::Default(), {UsdGeomTokens->default_, UsdGeomTokens->render});
+  if (!format) s = UsdStage::Open(file);
+  if (!s || !mark.IsClean()) {
+    std::string why;
+    for (auto e = mark.GetBegin(); e != mark.GetEnd() && why.empty(); ++e)
+      why = ": " + (e->GetCommentary().empty() ? e->GetErrorCodeAsString() + " in " + e->GetSourceFunction()
+                                                 : e->GetCommentary());
+    if (!s) why += " (no stage)";
+    throw Error("inspect_usd.file: USD could not open " + file + why);
+  }
+  // The earliest time: an animated file (Alembic) may have no values outside its samples.
+  UsdGeomBBoxCache bbox(UsdTimeCode::EarliestTime(), {UsdGeomTokens->default_, UsdGeomTokens->render});
   JsArray prims;
   bool truncated = false;
   for (UsdPrim p : s->Traverse()) {
@@ -69,6 +100,12 @@ JsObject inspect_usd(const std::string& file) {
                   {"defaultPrim", JsValue(def ? def.GetPath().GetString() : std::string())},
                   {"upAxis", JsValue(UsdGeomGetStageUpAxis(s).GetString())},
                   {"metersPerUnit", JsValue(UsdGeomGetStageMetersPerUnit(s))},
+                  {"format", JsValue(format ? format->name : std::string("USD"))},
+                  {"unitsKnown", JsValue(units_known(s))},
+                  {"animated", JsValue(s->HasAuthoredTimeCodeRange())},
+                  {"startFrame", JsValue(s->GetStartTimeCode())},
+                  {"endFrame", JsValue(s->GetEndTimeCode())},
+                  {"framesPerSecond", JsValue(s->GetTimeCodesPerSecond())},
                   {"prims", JsValue(prims)},
                   {"truncated", JsValue(truncated)}};
 }

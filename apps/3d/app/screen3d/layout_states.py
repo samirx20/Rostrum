@@ -21,7 +21,8 @@ IGNORE = ()
 # The most important states: `main.py --check-layout <folder> --quick` runs just these, at 1646x900 (Sam's screen).
 QUICK = ("workspace", "nothing-selected", "mesh-selected", "light-selected", "camera-selected", "material-selected", "material-picker", "material-shared", "shapes-flyout",
          "lights-flyout", "camera-flyout", "rig-selected", "page-animate", "animate-stretch", "animate-poses", "animate-poses-onion", "animate-key-ease", "animate-onion", "commands", "guide", "two-solids", "combine-selected", "long-name", "long-status", "file-menu", "start-screen", "context-item", "mesh-edit-faces", "mesh-edit-bevel", "mesh-edit-knife", "paint-layers", "clay-tool", "clay-brush", "clay-brush-more", "clay-mask", "clay-drawn", "clay-turn-into", "pose-tool",
-         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished")
+         "render-sheet-shot", "render-sheet-exr", "bevel-too-big", "lens-menu", "take-view-hover", "shots-frame", "page-render", "render-queue-two", "render-queue-finished",
+         "import-menu", "import-unit-note")
 BATCH = 6
 SCRATCH = tempfile.TemporaryDirectory(prefix="rostrum-layout-")      # removed when the check run ends
 
@@ -71,6 +72,37 @@ def drawn_clay() -> list[str]:
     return ["--script", str(script)]
 
 
+TOY_USDA = """#usda 1.0
+(
+    defaultPrim = "Toy"
+    metersPerUnit = 0.01
+    upAxis = "Y"
+)
+def Xform "Toy"
+{
+    def Cube "Body"
+    {
+        double size = 20
+    }
+    def Sphere "Head"
+    {
+        double radius = 8
+        double3 xformOp:translate = (0, 18, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}
+"""
+
+
+def toy_import() -> list[str]:
+    """Start args for the sample with an import of a small file in centimetres (a body and a head: two parts)."""
+    folder = Path(tempfile.mkdtemp(dir=SCRATCH.name))
+    (folder / "toy.usda").write_text(TOY_USDA, encoding="utf-8")
+    script = folder / "toy_import.py"
+    script.write_text(SOURCE + f'import_usd("toy", file={str(folder / "toy.usda")!r}, x=0.6)\n', encoding="utf-8")
+    return ["--script", str(script)]
+
+
 def states() -> list[tuple[str, list[str], list[str]]]:
     s: list[str] = []                       # the plain sample document: no start arguments
     return [
@@ -87,6 +119,8 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("light-selected", s, ["select key"]),
         ("light-final-only", s, ["select key", "set spread 60", "set lightsOnly block"]),   # the Final badges
         ("lipsync-sheet", mouth_group(), ["lipsync mouth"]),                            # Lip sync… on a mouth group (the kit's sheet)
+        ("assets-off", s, ["assets"]),                                                  # Import › Asset library: every source off
+        ("assets-list", s, ["assets sample", "wait 300"]),                              # Poly Haven on, a fixed offline list (no network)
         ("context-light", s, ["context key"]),                                          # Pick what it lights
         ("dome-selected", s, ["select sky"]),
         ("camera-selected", s, ["select cam"]),
@@ -109,6 +143,10 @@ def states() -> list[tuple[str, list[str], list[str]]]:
         ("rig-orbit-armed", s, ["rail camera", "click Orbit"]),                # waiting for the click on what to circle
         ("rig-selected", s, ["rail camera", "wait 300", "click Crane"]),                   # the camera on a new crane: its settings
         ("type-flyout", s, ["rail type"]),
+        ("import-menu", s, ["rail import"]),                                    # Import (Ctrl+I): a file per format, Asset library
+        ("import-drop-hover", s, ["import-hover 420 300"]),                     # a file from Explorer over the viewport: its ring
+        ("import-unit-note", toy_import(), ["import-note toy", "settled"]),     # rescaled from centimetres: Keep original size
+        ("import-part-selected", toy_import(), ["select toy.Head", "settled"]),  # a part: its Material and Visible
         ("text-typing", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "type AURORA", "wait 600"]),
         ("drawings-list", s, ["drawings"]),
         ("bevel-too-big", s, ["arm mesh:text", "mouseclick 634 500", "wait 1500", "typeend", "set bevel 0.01", "wait 2500"]),

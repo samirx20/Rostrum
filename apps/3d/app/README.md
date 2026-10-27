@@ -16,6 +16,11 @@ right          the settings panel: the kit's sections layout (the kind's own gro
 bottom (full)  the scene list (240 px) with the keys on the same rows; 204 px, 284 on the Animate page
 ```
 
+- **Import** (importing.py, ImportFiles.qml, ImportDrop.qml, KeepSizeRow.qml). The rail's Import group (Ctrl+I) opens a file
+  dialog per format (ops_import.FORMATS) and lands the file on the surface under the view's centre; a file dragged from
+  Explorer lands under the drop point (picked like a click; a ring shows the spot while it hovers). One `import.add`
+  per file, one undo step, selected. A rescaled file: `unit_note` on the status line once and Keep original size
+  (`import.keep_size`) in the panel until the next edit. Real-input walk: tests/import_walk.py.
 - **Scene list** (SceneList.qml). A group's or import's children sit indented under it (the arrow folds them); an
   import's parts too; a combine is a row with the Combine icon, its inputs under it, a minus before a Subtract's cutters.
   Click a row to select it; Ctrl+click adds, Shift+click picks a run. Two or more solids selected: the settings panel's
