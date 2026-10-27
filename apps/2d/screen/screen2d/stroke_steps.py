@@ -29,7 +29,7 @@ from rostrum_gui.pointer import wait  # never QTest.qWait: it starves the worker
 
 from PySide6.QtCore import Q_ARG, QObject, QCoreApplication, QMetaObject, QPoint, QPointF, Qt
 from PySide6.QtGui import QKeySequence
-from PySide6.QtTest import QTest
+from rostrum_gui.lazy_qtest import QTest   # never at import: a person's launch must not count as scripted (lazy_qtest.py)
 from rostrum_gui.settle import save_snap
 
 WORDS = ("altpick", "altoff", "lasso", "selectstrokes", "strokesmove", "strokesturn", "strokeshandle", "grabhandle", "strokesdelete", "strokescopy",

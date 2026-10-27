@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, QPoint, QPointF, Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtTest import QTest
+from rostrum_gui.lazy_qtest import QTest   # never at import: a person's launch must not count as scripted (lazy_qtest.py)
 
 from .click_steps import _named
 
