@@ -7,7 +7,7 @@ The craft (when and why to use each technique) is in `inspect_guide 'writing-mus
 
 **Helpers or operations.** Helpers write a part from scratch in a script. For notes that already exist (a person's, or a finished
 script's) use the operations through `edit_document` instead: `note.chord`, `note.invert`, `note.strum`, `note.arpeggiate`,
-`note.transpose`, `note.fit_key` (`inspect_guide 'writing-parts'`, whole calls in `'start-here'`). The arpeggio rule is the same in `arp` and
+`note.transpose`, `note.fit_key`, `note.ramp_velocity` (a crescendo or fade across the selection: velocity from `start` on the first note to `end` on the last) (`inspect_guide 'writing-parts'`, whole calls in `'start-here'`). The arpeggio rule is the same in `arp` and
 `note.arpeggiate`; `voice` has finer voicings than `note.chord`.
 
 ```python
