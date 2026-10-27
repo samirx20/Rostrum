@@ -42,7 +42,11 @@ def _opened(tmp_path, monkeypatch):
     assert screen.files.openPath(str(tmp_path / "S"))
     QTest.qWait(400)
     b, win = screen.bridge, screen.win
-    click(win, header(win, "piano"))                      # the track's name: selected, the Editor shows it
+    hdr = header(win, "piano")
+    box = hdr.mapRectToScene(hdr.boundingRect())
+    click(win, next(i for i in items(win) if i.isVisible() and i.property("text") == "piano"            # the track's name (the
+                    and box.contains(i.mapRectToScene(i.boundingRect()).center())))                     # header's middle is a
+                                                                    # button in a tall row): selected, the Editor shows it
     b.workspace.setDock("editor")
     QTest.qWait(300)
     select = next(i for i in items(win) if i.isVisible() and i.property("text") == "Select")
