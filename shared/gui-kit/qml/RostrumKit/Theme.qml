@@ -105,7 +105,7 @@ QtObject {
 
     // canvas pointers (CURSORS.md); must match rostrum_gui/cursors.py (tests/test_cursors.py checks)
     readonly property var cursorKinds: ["pick", "resize", "rotate", "anchor", "text", "text-box", "make", "pen", "fill", "dropper", "hand", "hand-grab", "zoom-plus", "zoom-minus", "no", "none"]
-    readonly property var cursorBadges: ["copy", "remove", "deep", "point", "bend", "radius", "shape", "close", "x", "caret", "slash", "wrap", "centre"]
+    readonly property var cursorBadges: ["copy", "remove", "deep", "point", "bend", "radius", "shape", "close", "x", "caret", "slash", "wrap", "alt", "centre"]
 
     // words as a person reads them: first letter up, the rest as written ("next stroke" → "Next stroke", never
     // "Next Stroke"; Font.Capitalize upper-cases every word)
