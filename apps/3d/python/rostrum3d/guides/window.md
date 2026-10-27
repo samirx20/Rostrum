@@ -25,8 +25,8 @@ sits on top of it.
   too, dimmed, so you see what is in the picture and what is just out of it. (Dim outside, in the Scene panel, turns
   the dimming off.)
 - **Moving around works the same in every tool.** Right-drag turns the view (a right click, without dragging, opens the
-  menu). It turns round what is selected, else round everything in the scene (not the ground), so that stays where it
-  is in the picture. A left drag on empty space turns it too where the tool gives the left drag no other job (Select, the clay
+  menu). It turns round what is selected, else round everything in the scene (not the ground), and brings that to
+  the middle of the picture as it turns. A left drag on empty space turns it too where the tool gives the left drag no other job (Select, the clay
   brushes off the clay, Pose off the clay); while Draw, Spin, Paint or Edit mesh's box take the left drag, it never
   turns. Middle-drag also turns, Shift+drag pans, the wheel zooms. On a touchpad, two fingers turn the view and a pinch
   zooms. While you turn the pointer shows four arrows, while you pan a closed hand. Turning the view while looking

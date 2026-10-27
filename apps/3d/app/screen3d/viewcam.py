@@ -3,7 +3,7 @@
 - "shot": look through the shot's own camera (the request names it: `camera`).
 - "free": a turntable camera, `eye` looking at `target` with a vertical `fov`, Y up (ENGINE_CONTRACT.md § 4).
   Left drag orbits around the target, or around a pivot (the viewport's: what is selected, else what is in the scene)
-  so that the pivot stays where it is in the picture; pan slides both, zoom moves the eye along its line.
+  that eases to the middle of the picture as the view turns; pan slides both, zoom moves the eye along its line.
 - "light": through a light (rostrum3d.through), from where it stands along the way it shines, following it as it moves.
 
 `home` starts the free camera where the shot camera stands and looks, from the compiled scene (its world transform
@@ -17,6 +17,7 @@ from rostrum3d import aim, through
 
 ORBIT_DEG = 0.3              # degrees per mouse pixel
 ZOOM_STEP = 0.88             # distance factor per wheel step
+CENTRE_DEG = 30.0            # degrees of turning that bring the pivot to the middle of the picture
 DEFAULT = {"eye": [0.6, 0.45, 0.9], "target": [0.0, 0.0, 0.0], "fov": 35.0}
 
 
@@ -119,6 +120,12 @@ class ViewCam:
             v = _rotate(_rotate(_sub(p, pivot), tilt, new_pitch - pitch), turn, -dx * ORBIT_DEG)
             return _add(pivot, v)
         self.eye, self.target = spin(self.eye), spin(self.target)
+        # and the pivot eased to the middle of the picture as the view turns (95 % of the way after CENTRE_DEG), so a
+        # turn from a shot that holds it low or to a side ends with it framed in the middle
+        ease = 1.0 - 0.05 ** ((abs(dx) * ORBIT_DEG + abs(new_pitch - pitch)) / CENTRE_DEG)
+        ahead, there = _norm(_sub(self.target, self.eye)), _sub(pivot, self.eye)
+        look = _norm(_add([a * (1 - ease) for a in ahead], _norm(there), ease))
+        self.target = _add(self.eye, look, max(math.hypot(*there), 1e-3))
 
     def pan(self, dx: float, dy: float, height: int):
         """Slide by (dx, dy) picture pixels of a picture `height` pixels tall: what is under the pointer stays under it."""

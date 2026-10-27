@@ -38,7 +38,7 @@ def pivot_of(doc: dict, selected: str, t: float):
     """The middle of the box round `selected` (if it is something with a size), else round every top item that is not
     a ground (a plane or disc), a light or a camera; None when there is none or it can't be measured."""
     def ground(it):
-        return it.get("type") == "mesh" and it.get("props", {}).get("shape") in ("plane", "disc")
+        return it.get("type") == "mesh" and it.get("shape") in ("plane", "disc")
     tops = doc.get("items", [])
     found = {}
     stack = list(tops)
@@ -304,7 +304,7 @@ class Viewport(QObject):
         self._move(lambda: self.cam.orbit(dx, dy, self._pivot()))
 
     def _pivot(self):
-        """What a turn of the free view goes round, so it stays put in the picture: the middle of what is selected,
+        """What a turn of the free view goes round (and brings to the middle of the picture): the middle of what is selected,
         else of everything in the scene but grounds, lights and cameras; None (round the view's target) when that
         is nothing or can't be measured. Once per document change, selection and frame."""
         sel, cache = self.bridge.selected, getattr(self, "_pivots", None)

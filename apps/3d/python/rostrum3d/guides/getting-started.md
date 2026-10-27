@@ -17,7 +17,7 @@ delete.
 ## On the screen
 
 **Moving around** works the same in every tool: **right-drag** (or two fingers on a touchpad) turns the view round
-what is selected (else round everything you made, so it stays put in the picture), the
+what is selected (else round everything you made) and brings it to the middle of the picture, the
 **wheel** (or a pinch) comes closer or goes back. **F** brings the selection to the middle. Turning the view never
 moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, a stroke, a colour, a pose, a light.
 
