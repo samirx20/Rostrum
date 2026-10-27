@@ -407,12 +407,12 @@ Rectangle {
                     PathSvg { path: backend.paintEdge.path }
                 }
             }
-            Repeater {  // what an agent just changed: a 1-second outline in the agent colour (never moves the selection or the view)
-                model: backend.agent.flash.filter(id => backend.rectOf(id).w !== undefined)
+            Repeater {  // what an agent (or an undo) just changed: a 1-second outline (never moves the selection or the view);
+                model: backend.changeFlash.boxes    // it comes with the picture that shows the change, where it shows it (change_flash.py)
                 delegate: ChangeOutline {
                     id: change
-                    required property string modelData
-                    readonly property var b: backend.rectOf(modelData)
+                    required property var modelData
+                    readonly property var b: modelData
                     x: (b.x || 0) * view.zoom; y: (b.y || 0) * view.zoom
                     width: (b.w || 0) * view.zoom; height: (b.h || 0) * view.zoom
                     transform: Rotation { origin.x: (change.b.ax || 0) * change.width; origin.y: (change.b.ay || 0) * change.height; angle: change.b.rot || 0 }

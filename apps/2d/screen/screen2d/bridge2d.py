@@ -35,6 +35,7 @@ from .painting_open import OpenedPainting
 from .paint_edge import PaintEdge
 from .paint_pictures import PaintPictures
 from .frame_view import FrameView
+from .change_flash import ChangeFlash
 from .world_view import WorldView
 from .outline_news import OutlineNews
 from .reveal_ahead import RevealAhead
@@ -115,6 +116,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
         self.painter.ahead = RevealAhead(self.painter, self)      # the eraser's reveal, drawn before the press (reveal_ahead.py)
         self.frames.pictured.connect(self._world.shown)
         self._frame_view = FrameView(self)                  # frame_view.py
+        self._change_flash = ChangeFlash(self)              # the change outline's boxes (change_flash.py)
         self._make_tools()                                  # pen, curves, export, import, add, problems (tools2d.py)
         self.play = Playback(self)                          # playing: follows the clock (playback.py)
         self.play.changed.connect(self.playingChanged)
@@ -158,6 +160,7 @@ class Bridge2D(AgentView, ShownState, TimelineRows, KeyEdits, ClipboardSlots, Sc
     paintEdge = Property(QObject, lambda self: self._paint_edge, constant=True)   # the paint target's edge (paint_edge.py)
     world = Property(QObject, lambda self: self._world, constant=True)           # the world picture on the canvas (world_view.py)
     frameView = Property(QObject, lambda self: self._frame_view, constant=True)   # the frame's box on the canvas (frame_view.py)
+    changeFlash = Property(QObject, lambda self: self._change_flash, constant=True)   # where the change outline goes (change_flash.py)
     actions = Property(QObject, lambda self: self._hub, constant=True)   # the context bar, menus, keys (action_slots.py)
     soundtrack = Property(QObject, lambda self: self._soundtrack, constant=True)   # the Sound row, beats (soundtrack.py)
     cuePick = Property(QObject, lambda self: self._cuepick, constant=True)       # Add a sound here… (sound_cue_pick.py)

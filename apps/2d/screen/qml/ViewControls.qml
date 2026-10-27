@@ -53,7 +53,10 @@ Item {
         id: button
         kind: "normal"
         text: (vc.view.fitted ? "Fit · " : "") + vc.percent
+        // its room is kept for the longest usual words ("Fit · 888 %"), so a zoom change never moves the top bar beside it
+        width: Math.max(implicitWidth, room.implicitWidth)
         down: menu.opened
+        Button { id: room; visible: false; kind: "normal"; text: "Fit · 888 %" }
         onClicked: vc.openMenu()
     }
     ActionMenu { id: menu; onPicked: (key) => vc.act(key) }

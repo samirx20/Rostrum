@@ -12,6 +12,11 @@ Popover {
     title: "Stagger " + pop.st.what
     modal: true                         // the closing click does nothing else (the kit's Popover never dims the window)
     focusItem: byField
+    // Ctrl+A here is the popover's, never silent (K7): it selects the number to type over (the layers it staggers are
+    // fixed when it opens; picking others ends it). The window's Select all waits while it is open.
+    ownKeys: ["Enter", "Ctrl+A"]
+    Shortcut { sequence: "Ctrl+A"; enabled: pop.opened
+               onActivated: { byField.input.forceActiveFocus(); byField.input.selectAll() } }
     onEscaped: cancelled = true         // takes it back
     onAccepted: close()                 // keeps it
     onOpened: cancelled = false
