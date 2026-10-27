@@ -332,6 +332,16 @@ The same timeline as Rostrum2D's. It is taller on the Animate page.
     the curve (drag its two handles), and **Reverse** | **Delete**. One click on a preset eases it (one undo step). ‹ or Esc
     goes back to the item.
 
+## The bottom panel: a material's blocks
+
+A material's last settings row, **Edit as blocks**, turns the bottom panel into that material's blocks (taller, in the
+timeline's place): a header **‹ Back · <material> blocks**, then the blocks and their wires, the material's own
+settings as one **Surface** block. **+ Add block** (or Tab, a double-click or right-click on empty space) opens the list
+to add one by typing its name; drag from an output to an input to wire them; drag a block by its title to move it;
+Delete removes the picked block. The picked block's settings show in the settings panel. While the keyboard is in the
+blocks, Delete, Tab, Space, F and Esc are theirs. **‹ Back** or **Esc** goes back to the timeline, and so does picking
+an item with another material. Every change is one undo step. How each block works: *Materials › Blocks*.
+
 ## Keys
 
 Every key is listed on the Keys sheet (Ctrl+/) and found in Ctrl+K by what it does; nothing on the sheet is dead. The
@@ -363,7 +373,7 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 newest one); then a gizmo drag, a pose drag (or a hold or joint being moved), a clay stroke or an outline being drawn (Draw, Spin) still under way is cancelled (the item or the clay goes back, nothing
 is recorded); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
 for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
-Knife's line is dropped; then Edit mesh, Paint, the Clay tool or Pose is left; then an animation picked on the timeline goes back to its item;
+Knife's line is dropped; then Edit mesh, Paint, the Clay tool or Pose is left; then a material's blocks go back to the timeline; then an animation picked on the timeline goes back to its item;
 then several picked keys are let go; then the selection is let go (the Scene panel shows).
 
 ## Files
