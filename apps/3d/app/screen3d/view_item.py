@@ -137,6 +137,11 @@ class ViewLink(QObject):
             self._post_line(line, lambda out: self._forget_scene() if isinstance(out, str) else None)
         self._post_line(json.dumps(req), then)
 
+    def xform(self, item: str, fields: dict, then):
+        """A gizmo drag's move, light: the item's x y z rx ry rz sx sy sz (pivot resolved) on the live stage until the
+        next scene; the item draws its view again by itself (gizmo_live.py)."""
+        self.post({"xform": {"item": item, **fields}}, then)
+
     def _post_line(self, line: str, then):
         n = next(self._ids)
         with self._lock:

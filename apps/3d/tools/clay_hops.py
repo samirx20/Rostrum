@@ -17,6 +17,10 @@ os.environ.setdefault("ROSTRUM_BACKGROUND_WINDOWS", "1")
 os.environ.setdefault("ROSTRUM3D_PERF", "1")
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\Sam\.rostrum\waves\results\3d-cl2b")
 MOVES = int(sys.argv[2]) if len(sys.argv) > 2 else 200
+# (3d-v2) [grain m] [brush m] after the moves: set on the new clay by its own operation before the drags, e.g.
+# 0.000625 0.012 is the proof's fine-grain case (a 12 mm brush at 0.625 mm)
+GRAIN = float(sys.argv[3]) if len(sys.argv) > 3 else None
+BRUSH = float(sys.argv[4]) if len(sys.argv) > 4 else None
 sys.argv = sys.argv[:2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import clay_walk as W  # noqa: E402  (the walk's helpers: app, pump, find, click, clay_on_screen)
@@ -102,6 +106,12 @@ def main():
         W.pump(20, lambda: v.clay.clayId != "", "the new clay")
         W.pump(3)
         clay = v.clay.clayId
+        if GRAIN or BRUSH:
+            args = {"detailMode": "fixed", "detail": GRAIN} if GRAIN else {}
+            args.update({"brushSize": BRUSH} if BRUSH else {})
+            screen.bridge._apply([{"op": "clay.set", "target": [clay], "args": args}], "Grain and brush for the hops")
+            W.pump(30, lambda: False)                                   # the clay rebuilt at its grain
+        report.update(grain=GRAIN, brush=BRUSH)
         at, radius = W.clay_on_screen(screen, clay, vp)
         win.frameSwapped.connect(lambda: dab_trace.swapped(v.serial))
         for brush in ("Add", "Pull", "Smooth"):

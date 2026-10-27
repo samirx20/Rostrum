@@ -78,6 +78,7 @@ class Renderer : public QQuickRhiItemRenderer {
       ending_ = {};
     }
     size_t done = 0;
+    bool restaged = false;  // a request changed the stage without a picture of its own (xform): draw the view again
     for (; done < in_.size() && !ending_.valid(); ++done) {
       const auto& [id, line] = in_[done];
       const double t0 = now_ms();
@@ -95,6 +96,7 @@ class Renderer : public QQuickRhiItemRenderer {
         continue;
       }
       const std::string r = core_->answer(line);
+      restaged = restaged || line.rfind("{\"xform\"", 0) == 0;
       answers.emplace_back(id, stamped(r, frame, t0, now_ms()));
     }
     in_.erase(in_.begin(), in_.begin() + done);
@@ -102,7 +104,7 @@ class Renderer : public QQuickRhiItemRenderer {
     // the newest picture; the last one again on a new texture (a resize) unless a request (a dab) just drew one.
     // Nothing while a stroke's end runs on its worker: the core is its alone (the texture keeps the last picture)
     if (ending_.valid()) {
-    } else if (!view_.empty() && (newView_ || (fresh && core_->views_drawn() == before))) {
+    } else if (!view_.empty() && (newView_ || ((fresh || restaged) && core_->views_drawn() == before))) {
       const double t0 = now_ms();
       const std::string r = core_->answer(view_);
       if (newView_) drawn = stamped(r, frame, t0, now_ms());

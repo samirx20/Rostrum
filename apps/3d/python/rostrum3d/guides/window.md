@@ -25,8 +25,8 @@ sits on top of it.
 - Through the shot camera, the shot's frame sits in the middle with a thin edge. The scene just outside it is shown
   too, dimmed, so you see what is in the picture and what is just out of it. (Dim outside, in the Scene panel, turns
   the dimming off.)
-- Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. A click selects what is there; a click
-  on empty space selects nothing. Double-click goes back to the shot's view.
+- Middle-drag or drag on empty space orbits, Shift+drag pans, the wheel zooms. While you orbit the pointer shows four
+  arrows, while you pan a closed hand. A click selects what is there; a click on empty space selects nothing. Double-click goes back to the shot's view.
 - **Right-click** an item (here or in the scene list): the same actions as the settings panel's top and Ctrl+K, only what
   applies, six at most, each with its key: Edit mesh (Enter), Combine (two solids), Copy material (Ctrl+Alt+C) / Paste
   material (Ctrl+Alt+V) on shapes, Look through and Pick what it lights (lights), Focus on a point (a camera with depth of
@@ -50,8 +50,12 @@ page) shows only rings, on its head: a drag keys its Turn at the playhead (see B
 | D (hold) | The arrows move the **pivot** (the point it turns and scales around), not the item |
 | K | Keys what the gizmo moved, at the playhead (Position when nothing moved yet) |
 | Ctrl (while dragging) | No snapping |
+| Esc (while dragging) | Cancels the drag: the item goes back where it was, nothing is recorded |
 
-- Each drag is one undo step, and the settings panel follows as you drag.
+- The handle under the pointer lights up, and the pointer shows which way a press drags: a two-headed arrow along an
+  arrow, a cube or a ring, four ways on the middle square, a cross while D is held.
+- Each drag is one undo step. While you drag, a small box beside the pointer reads the move ("X 0.150 m", "Turn
+  15.0°", "Scale ×1.25"); the settings panel shows the new numbers when you let go.
 - Moves snap to the ground's 0 and to other items' places, turns to every 15°, scale to ×½, ×1 and ×2 (within 6 px,
   as in 2D).
 - The label at the top left says what the drag is doing ("X 0.150 m · ball", "Turn 15.0°").
@@ -70,7 +74,7 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   clay it joins) and, with a clay selected, **Brush** (Add, Carve, Smooth, Pull, Flatten, Crease, and Mask on its own
   row), then Size, Strength, Mirror, Falloff, Spacing and Front faces only. A drag on the clay sculpts (Ctrl: the
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; a drag on empty space turns
-  the view; F held and the pointer moved left or right sizes the brush. Q again, V or Esc goes back to Select. The
+  the view; F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select. The
   guide `sculpting` has it all.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
@@ -225,7 +229,8 @@ Hold), Ctrl+= / Ctrl+- zoom the view, V is Select, B is Paint. 3D's own:
 | F12 | Render (on the Render page: the shown shot's render, next in the queue) |
 
 **Esc steps back one thing per press**, always in this order: an open menu, list, popup or sheet closes first (the
-newest one); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
+newest one); then a gizmo drag or a clay stroke still under way is cancelled (the item or the clay goes back, nothing
+is recorded); then a running render is cancelled; then a render shown over the viewport is put away; then a shape waiting
 for its click is let go; then placing bones, picking a camera's focus or picking what a light lights stops; then the
 Knife's line is dropped; then Edit mesh, Paint or the Clay tool is left; then an animation picked on the timeline goes back to its item;
 then several picked keys are let go; then the selection is let go (the Scene panel shows).
