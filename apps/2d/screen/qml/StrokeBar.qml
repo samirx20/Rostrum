@@ -12,6 +12,6 @@ Row {
         text: sb.sel.count + (sb.sel.count === 1 ? " stroke" : " strokes")      // drag / corners / knob: the canvas shows them, no words over it
     }
     Button { anchors.verticalCenter: parent.verticalCenter; text: "Copy"; onClicked: sb.sel.copy() }
-    Button { anchors.verticalCenter: parent.verticalCenter; visible: sb.sel.canPaste; text: "Paste"; onClicked: sb.sel.paste() }
+    Button { anchors.verticalCenter: parent.verticalCenter; enabled: sb.sel.canPaste; opacity: enabled ? 1 : 0.4; text: "Paste"; onClicked: sb.sel.paste() }   // always there, dimmed until something is copied: the bar is centred, so a Paste appearing moved Copy under the pointer
     Button { anchors.verticalCenter: parent.verticalCenter; text: "Delete"; onClicked: sb.sel.remove() }
 }
