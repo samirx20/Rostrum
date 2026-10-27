@@ -4,16 +4,9 @@ Facts only; no taste.
 """
 from __future__ import annotations
 
-import math
-
 from rostrum_core.keys import key_value, keys_of
+from rostrum_core.motion.spans import HOLD_MIN_S, holds_between, peak, r, rates, steps, windows  # noqa: F401  (HOLD_MIN_S: motion_checks)
 from rostrum2d.evaluate import value_at
-
-HOLD_MIN_S = 0.5          # a still stretch shorter than this isn't reported as a hold
-
-
-def r(x: float, n: int = 3) -> float:
-    return round(float(x), n)
 
 
 def owners(layer: dict):
@@ -55,21 +48,6 @@ def _speed(owner, prop, t0, t1, a, b, fps) -> dict:
     return facts
 
 
-def windows(moves: list[dict]) -> list[tuple[float, float]]:
-    """The moves merged into the stretches of time where something of this layer is moving."""
-    out: list[list[float]] = []
-    for m in sorted(moves, key=lambda m: m["start"]):
-        if out and m["start"] <= out[-1][1]:
-            out[-1][1] = max(out[-1][1], m["end"])
-        else:
-            out.append([m["start"], m["end"]])
-    return [(a, b) for a, b in out]
-
-
-def holds_between(wins: list[tuple[float, float]]) -> list[dict]:
-    return [{"from": r(a1), "to": r(b0), "seconds": r(b0 - a1, 2)} for (_, a1), (b0, _) in zip(wins, wins[1:]) if b0 - a1 >= HOLD_MIN_S]
-
-
 def path_of(layer: dict, moves: list[dict], fps: float) -> dict | None:
     """Where the layer's anchor travels: start, end, length and peak speed (px/s, in its parent's coordinates)."""
     xy = [m for m in moves if m["field"] in ("x", "y")]
@@ -79,11 +57,11 @@ def path_of(layer: dict, moves: list[dict], fps: float) -> dict | None:
     n = max(4, min(400, round((t1 - t0) * fps)))
     ts = [t0 + (t1 - t0) * i / n for i in range(n + 1)]
     pts = [(value_at(layer, "x", t), value_at(layer, "y", t)) for t in ts]
-    steps = [math.dist(p, q) / (ts[i + 1] - ts[i]) for i, (p, q) in enumerate(zip(pts, pts[1:]))]
-    peak = max(range(len(steps)), key=steps.__getitem__)
+    speeds = rates(pts, ts)
+    top = peak(speeds)
     return {"from": [r(pts[0][0], 1), r(pts[0][1], 1)], "to": [r(pts[-1][0], 1), r(pts[-1][1], 1)],
-            "start": r(t0), "end": r(t1), "length_px": r(sum(math.dist(p, q) for p, q in zip(pts, pts[1:])), 1),
-            "peak_speed_px_s": r(steps[peak], 1), "peak_at": r(ts[peak] + (ts[1] - ts[0]) / 2)}
+            "start": r(t0), "end": r(t1), "length_px": r(sum(steps(pts)), 1),
+            "peak_speed_px_s": r(speeds[top], 1), "peak_at": r(ts[top] + (ts[1] - ts[0]) / 2)}
 
 
 def layer_facts(layer: dict, fps: float, within: tuple = ()) -> dict:

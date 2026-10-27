@@ -22,8 +22,9 @@ from rostrum_gui.frames import PictureWorker, image_from_pixels
 from rostrum_gui.screen_images import ScreenImages
 
 from screen3d.ball_studio import LOOK as STUDIO_LOOK, studio_picture
-from rostrum3d import build, fields as F, run_source
+from rostrum3d import build, run_source
 from rostrum3d.compile import describe
+from rostrum3d.material_ball import BALL_SHAPE, ball_values
 from rostrum3d.runtime import find_exe
 
 SIZE, SPACING, CAP = 96, 6.0, 600            # pixels; metres between balls in one scene; files kept on disk
@@ -46,15 +47,6 @@ def engine_stamp() -> str:
     return f"{exe.name}:{st.st_size}:{int(st.st_mtime)}" if st else "missing"
 
 
-def ball_values(values: dict) -> dict:
-    """The material fields that apply (a whole material item may be given): ids, names and switched-off settings go,
-    and a 2D render (a project's own file) is left out of the ball."""
-    names = {p.name for p in F.FIELDS["material"]} - {"emissionRender"}
-    kept = {k: v for k, v in values.items() if k in names}
-    off = set(F.not_valid("material", {**F.defaults("material"), **kept}, kept))
-    return {k: v for k, v in kept.items() if k not in off}
-
-
 def ball_key(values: dict, stamp: str) -> str:
     recipe = {"v": SETUP_VERSION, "studio": STUDIO_LOOK, "engine": stamp, "size": SIZE, "values": values}
     return hashlib.sha256(json.dumps(recipe, sort_keys=True, default=str).encode()).hexdigest()[:24]
@@ -65,8 +57,7 @@ def scene_of(batch: dict[str, dict]) -> dict:
     doc = run_source(STAGE.format(picture=studio_picture(folder()).replace("\\", "/")), "balls.py")
     for i, (key, values) in enumerate(batch.items()):
         doc["materials"].append(build.make("material", f"m{i}", {**values, "name": key}, "material ball"))
-        doc["items"].append(build.make("mesh", f"ball{i}", {"shape": "sphere", "radius": 0.5, "segments": 48,
-                                                             "material": f"m{i}", "x": i * SPACING}, "material ball"))
+        doc["items"].append(build.make("mesh", f"ball{i}", {**BALL_SHAPE, "material": f"m{i}", "x": i * SPACING}, "material ball"))
     return describe(doc, "s")
 
 

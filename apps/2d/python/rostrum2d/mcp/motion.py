@@ -7,6 +7,7 @@ from rostrum_core.mcp import Reply, Tools
 
 from rostrum_core.keys import keys_of
 from rostrum_core.keys.marked import order
+from rostrum_core.motion import spans
 
 from ..evaluate import value_at
 from ..motion_samples import _cameras, _screen
@@ -142,7 +143,7 @@ def path_of(comp: dict, layer: dict, rate: float, shown: int | None = None) -> d
     seen = _seen_at(comp, layer, times)
     samples = [{"t": r(t, 4), "x": r(value_at(layer, "x", t), 2), "y": r(value_at(layer, "y", t), 2),
                 "screen_x": r(sx, 2), "screen_y": r(sy, 2)} for t, (sx, sy) in zip(times, seen)]
-    steps = [((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5 for a, b in zip(seen, seen[1:])]
+    steps = spans.steps(seen)
     xs, ys = ({k["t"]: k for k in keys_of(layer, f)} for f in ("x", "y"))
     handle = lambda side, t: ([xs.get(t, {}).get(side, None), ys.get(t, {}).get(side, None)]  # noqa: E731
                               if side in xs.get(t, {}) or side in ys.get(t, {}) else None)

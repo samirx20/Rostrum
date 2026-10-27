@@ -30,7 +30,7 @@ Clay, Skin, Wax / soap, Stone, Matte plastic, Glossy plastic, Rubber, Polished m
 
 - **`material.from`** `start` (one of the starting points above, e.g. `"brushed metal"`), optional `name`, `id`, any material field to override, and `to` (a list of item ids): makes one new material from the start's values and gives it to those items, as one undo step. In a script: `material("alu", start="brushed metal", baseColor="#c9ccd1")`.
 - **`material.split`** on items: each gets its own copy of the material it shares ("<item> material"); the other users keep the original. It refuses loudly when the item has no material or is already its only user.
-- `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat).
+- `material.add / set / assign / remove` as before. Check the result with `look_frame` (`final` for glass, metal and coat); to judge one material on its own, `look_material` shows it on a ball in a strip of angles under the scene's lights and picks Final for you when it needs it.
 
 ## The four fields that decide most surfaces
 

@@ -14,16 +14,20 @@ text) and sent to the core inside the clay's `skin` as `parts` (ENGINE_CONTRACT.
 The rule (the core's skin.cpp does the same; `weights` here is its reference, for tests and follow.py):
 - a point's share of each piece (CL7b): each limb's cells spread through the clay's inside (never across air) within
   its reach of its joint (its first bone's head; root_reach: the whole patch where its root meets the body), each step
-  an inside cell there taking the mean of itself and its 6 inside neighbours, round(3.5 σ²) steps (at most SHARE_MOST)
+  an inside cell there that is not the limb's own taking the mean of itself and its 6 inside neighbours (3d-28: the
+  limb's own cells keep all their share, so the spread goes out into the body only; spreading the body back into a
+  thin arm left the upper arm a third the body's, and a raised arm came apart from the shoulder), round(3.5 σ²) steps (at most SHARE_MOST)
   with σ = SHARE_WIDTH × the blend in cells; cells beyond the reach keep their own piece. KEEP rings of outside cells
   round the clay take the mean of their 26 neighbours valued before them. Read trilinearly between the 8 cell centres
   round the point (cells with no value left out; none: the plain rule); beyond its reach a limb's share s is
   sharpened to smoothstep((s − 0.25) × 2), turning smoothly to s over the reach's last third (so a body point beside a
   resting limb's cell stays the body's, without cell-shaped marks); the body's share is what the limbs leave;
 - per piece, each bone counts 1 / distance⁴ to its rest segment (a point behind a limb bone's head farther by BEHIND ×
-  how far behind; not the body's own bones, or the low belly leans on the chest) times its gate: 1 for that piece's bones; for the bone where a piece meets its neighbour (a
-  limb's first bone seen from the body, the body bone a limb hangs from seen from the limb), 1 within the joint's
-  `blend` of the joint and fading to 0 at twice it; 0 for every other bone. The piece's weights: its 4 largest so,
+  how far behind; not the body's own bones, or the low belly leans on the chest) times its gate: 1 for that piece's bones; for the body bone a limb hangs from, seen
+  from the limb, 1 within the joint's `blend` of the joint and fading to 0 at twice it; 0 for every other bone (3d-28:
+  a limb's first bone seen from the body was gated in too; it is so much nearer than the body's middle bones that the
+  body round the joint, 2 × blend wide, turned rigidly with the arm and left a dented rim; the shares bring the limb
+  into the body smoothly instead). The piece's weights: its 4 largest so,
   normalised, × the largest neighbour gate g, plus (1 − g) × the 4 largest of its own bones alone, normalised (so a
   nearer neighbour bone's share falls evenly over the blend, not all at its far end);
 - the pieces' weights mixed by the point's shares; the 4 largest, normalised; an influence under PRUNE dropped and the
@@ -170,7 +174,7 @@ def shares(parts: dict, cells: np.ndarray, rest: list[list[float]]) -> tuple[np.
             sigma = max(SHARE_WIDTH * pc["blend"] / parts["cell"], 0.5)
             centre = np.asarray(parts["origin"]) + (np.indices(cells.shape).transpose(1, 2, 3, 0) + 0.5) * parts["cell"]
             reaches[n] = root_reach(parts, cells, n, rest[pc["first"]][:3])
-            free = inside & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
+            free = inside & (cells != n) & (((centre - rest[pc["first"]][:3]) ** 2).sum(-1) <= reaches[n] ** 2)
             for _ in range(min(SHARE_MOST, int(np.floor(3.5 * sigma * sigma + 0.5)))):
                 p = np.pad(f, 1)
                 s = f.astype(np.float64)
@@ -282,15 +286,9 @@ def weights(points, rest: list[list[float]], parts: dict | None, reach: bool = F
 def _gate(parts, piece, b, p, rest) -> float:
     if not parts or piece < 0:
         return 1.0
-    mine = parts["bone"][b]
-    if mine == piece:
+    if parts["bone"][b] == piece:
         return 1.0
-    pcs = parts["pieces"]
-    own, other = pcs[piece], pcs[mine]
+    own = parts["pieces"][piece]
     if piece > 0 and b == own["from"]:                            # the body bone this limb hangs from
-        joint, blend = rest[own["first"]][:3], own["blend"]
-    elif mine > 0 and b == other["first"] and other["from"] >= 0 and parts["bone"][other["from"]] == piece:
-        joint, blend = rest[b][:3], other["blend"]               # a limb hanging from this piece, at its joint
-    else:
-        return 0.0
-    return _fade(float(np.linalg.norm(np.asarray(p) - joint)) / max(blend, 1e-9))
+        return _fade(float(np.linalg.norm(np.asarray(p) - rest[own["first"]][:3])) / max(own["blend"], 1e-9))
+    return 0.0          # (3d-28: not a limb's first bone seen from the body: the shares bring it in, smoothly)

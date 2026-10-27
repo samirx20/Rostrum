@@ -23,12 +23,14 @@ using BoneMove = std::array<double, 12>;
 // CL7, a clay's `skin.parts` (ENGINE_CONTRACT.md § Clay with bones, Parts; Python: rostrum3d/skin_parts.py): which
 // piece (0 = the body, n = a limb) each cell of the clay's rest grid belongs to, each bone's piece, and per piece the
 // bone it hangs from, its first bone and how far round that joint the bend is shared. A point leans only on its own
-// piece's bones, and on the neighbour piece's bone at a joint within 2 × blend of it, so a raised arm never pulls
-// the body's side or hip (the bones near it through the air are another piece's).
+// piece's bones, and (a limb) on the body bone it hangs from within 2 × blend of its joint, so a raised arm never
+// pulls the body's side or hip (the bones near it through the air are another piece's).
 // CL7b: a point's piece is not one cell's but a share of each piece, read trilinearly between the cells round it, and
 // round each limb's joint (within 3 × its blend) spread through the clay's inside (never across air) over about 1.5 ×
 // the blend, so the weights change smoothly across a border: CL7's one-cell answer tore the chest open under a raised
 // arm and left "+" marks where the arms rest on the belly. Beyond the joint a touching limb keeps its own cells.
+// 3d-28: the spread goes out from a limb into the body only (its own cells keep all their share), and the body leans
+// on a limb's bones only through its share of it: a raised arm stays joined at the shoulder, no dented rim.
 struct SkinParts {
   std::array<double, 3> origin{};  // the grid's low corner; cell (i, j, k)'s centre is origin + (i + 0.5) × cell
   double cell = 1;

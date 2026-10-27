@@ -10,7 +10,7 @@ from rostrum_core.mcp.files import look_path
 
 from rostrum3d import through as thru
 
-from . import draw, onion_look, paint_canvas, picture_facts, step_look
+from . import draw, onion_look, paint_canvas, picture_facts, step_look, text_facts
 from .shape_look import length
 from .shot import ITEM_SHOT, LOOK, TIME, check_frame, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
@@ -44,7 +44,9 @@ def look_frame(ctx, args):
     can see. quality fast = Storm, final = Cycles (slower); renderer picks one by name (storm, cycles, stylized). stylized = the
     stylized look: the only one that draws materials' Lines and Halftone (Light to colour shows in final too). through = a light's
     id: see from the light instead (what it shines on is the middle of the picture). The reply says how much of the picture is clipped
-    (blown out) and which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known.
+    (blown out), which lighting settings only Final applies (spread, light linking), so a quick look's missing effects are known, and
+    for every text in the picture which way it reads from this camera (left to right, mirrored, upside down, seen from behind or
+    edge-on, its angle to the horizontal; data `text`).
     onion = {item, mode keys|frames}: the item's onion-skin ghosts (red before, green after) as the viewport draws them, to check an arc
     or a spacing; a quick look only (not final), drawn by the live view, so no studio light or outline. highlight = "steps:arm" or
     "steps:arm,foot": outline (2 px, tinted, one colour each, labelled) what those clay steps made, by name or id (look_at's `step`
@@ -72,6 +74,9 @@ def look_frame(ctx, args):
         said, facts = picture_facts.line(dest, scene, renderer)
         more, more_facts = picture_facts.copies_line(getattr(engine, "copies", {}), picture_facts.item_names(doc.data.get("items", [])))
         said, facts = said + more, {**facts, **more_facts}
+        if not args.get("through"):                    # a light's view has no shot camera to read the text through
+            words, text = text_facts.sentence(text_facts.seen_texts(doc, info, frame, w / h))
+            said, facts = said + words, {**facts, **text}
         lit, marks = _highlight(ctx, doc, info, frame, w, h, wanted, dest, engine, scene) if wanted else ("", {})
         return Reply(f'Frame {frame} ({t:.3f} s) of {info["id"]} through camera {info["camera"]}, {w}×{h}, {renderer}, {out["frames"][0]["ms"]:.0f} ms.{said}{lit}',
                      {**marks, "time": t, "frame": frame, "width": w, "height": h, "renderer": out.get("renderer", renderer), "camera": info["camera"],
