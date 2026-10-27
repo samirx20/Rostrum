@@ -166,7 +166,8 @@ class Engine:
         return out
 
     def simulate(self, progress=None, timeout_s: float = 900.0, **req) -> dict:
-        """Rigid bodies (brief 25): `start`, `end`, `fps`, `folder` (where it writes bodies.bin), `ground`, `bodies`; the
+        """Rigid bodies (brief 25) and cloth (26b): `start`, `end`, `fps`, `folder` (where it writes bodies.bin and each
+        cloth's cloth_<item>.bin), `ground`, `bodies`; the
         held scene must be the one without a stored result laid over it (sim/compute.py). `progress(i, of, line)` per
         frame. A refusal raises EngineError with the core's own words only (which thing, which frame, what to do)."""
         try:

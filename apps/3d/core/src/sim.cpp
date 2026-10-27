@@ -1,6 +1,8 @@
 // Rigid bodies with Jolt (sim.h). The world is scaled so a typical falling body is about a metre across (Jolt's own
 // tolerances — contact distance, sleep speeds, slop — are tuned for things that size; a 3 cm bud in metres would sink
 // and jitter), and scaled back on the way out: gravity, speeds and masses scale with it, so the motion is the same.
+// Cloth (brief 26b) is a Jolt soft body in the same world: it lands on the still bodies, the falling ones and the ground
+// (Jolt soft bodies don't collide with each other or with themselves).
 #include "sim.h"
 
 #include <Jolt/Jolt.h>
@@ -10,6 +12,7 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyFilter.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
@@ -19,6 +22,9 @@
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
+#include <Jolt/Physics/SoftBody/SoftBodyMotionProperties.h>
+#include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
@@ -26,6 +32,7 @@
 #include <cmath>
 #include <map>
 #include <mutex>
+#include <set>
 
 namespace r3d::sim {
 
@@ -40,6 +47,9 @@ constexpr double kGravity = 9.81;
 constexpr int kStepsPerSecond = 240;   // physics steps; a 24 fps frame is 10 of them
 constexpr int kMaxHullPoints = 4000;   // more points than this are thinned (the hull keeps at most 256 anyway)
 constexpr JPH::ObjectLayer kStill = 0, kMoving = 1;
+constexpr int kClothIterations = 8;    // a cloth's solver passes per physics step (each a sub-step)
+constexpr double kClothGap = 0.002;    // m: how far a cloth's points keep off what they touch (no flicker on a plinth)
+constexpr double kTear = 4;            // an edge stretched past this many times its length: the cloth came apart
 
 void once() {
   static std::once_flag f;
@@ -158,11 +168,76 @@ JPH::RefConst<JPH::Shape> shape_of(const Body& b, double k) {
   return b.falls ? hull(b, k) : exact_mesh(b, k);
 }
 
+// The pinned side's points (sim.h Cloth::Pin): within 1% of that side of its world bounds at the start.
+std::vector<bool> pinned_points(const Cloth& c) {
+  std::vector<bool> out(c.points.size(), false);
+  if (c.pinned == Cloth::None) return out;
+  const int axis = c.pinned == Cloth::Top || c.pinned == Cloth::Bottom ? 1
+                   : c.pinned == Cloth::Left || c.pinned == Cloth::Right ? 0 : 2;
+  const bool high = c.pinned == Cloth::Top || c.pinned == Cloth::Right || c.pinned == Cloth::Front;
+  V3 lo, hi;
+  span(c.points, &lo, &hi);
+  const double tol = 0.01 * (hi[size_t(axis)] - lo[size_t(axis)]) + 1e-6, edge = high ? hi[size_t(axis)] : lo[size_t(axis)];
+  for (size_t i = 0; i < c.points.size(); ++i) out[i] = std::abs(c.points[i][size_t(axis)] - edge) <= tol;
+  return out;
+}
+
+const char* side_name(Cloth::Pin p) {
+  static const char* names[] = {"none", "top", "bottom", "left", "right", "front", "back"};
+  return names[int(p)];
+}
+
+double dist(const V3& a, const V3& b) {
+  return std::sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2]));
+}
+
+// A cloth as Jolt's soft body settings in the scaled world: a point weighs a third of its triangles (weight × area), a
+// pinned point weighs nothing (Jolt holds it); edge, shear and bend constraints from the triangles, softer as Stiffness
+// goes down. Compliances are set against the cloth's own mean point weight and sub-step, so the same Stiffness folds the
+// same whatever its Weight or how fine it is: stretch at most a little (none at 1), bending from free (0) to card-like (1).
+JPH::Ref<JPH::SoftBodySharedSettings> cloth_settings(const Cloth& c, double k, double sub_dt, int frame) {
+  std::vector<double> mass(c.points.size(), 0.0);
+  for (const auto& t : c.triangles) {
+    const V3 &a = c.points[size_t(t[0])], &b = c.points[size_t(t[1])], &d = c.points[size_t(t[2])];
+    const JPH::Vec3 u = v3({b[0] - a[0], b[1] - a[1], b[2] - a[2]}, 1.0), w = v3({d[0] - a[0], d[1] - a[1], d[2] - a[2]}, 1.0);
+    const double area = 0.5 * double(u.Cross(w).Length());
+    for (int i : t) mass[size_t(i)] += std::max(0.0, c.weight) * area / 3;
+  }
+  const std::vector<bool> pin = pinned_points(c);
+  const size_t held = size_t(std::count(pin.begin(), pin.end(), true));
+  if (held == c.points.size())
+    throw Failure(c, frame, std::string("is flat along its ") + side_name(c.pinned) + " side, so pinning it holds all of it",
+                  "pin a side it has an edge on (a sheet lying flat: Front, Back, Left or Right)");
+  JPH::Ref<JPH::SoftBodySharedSettings> s = new JPH::SoftBodySharedSettings;
+  s->mVertices.reserve(c.points.size());
+  double inv_sum = 0;
+  for (size_t i = 0; i < c.points.size(); ++i) {
+    JPH::SoftBodySharedSettings::Vertex v;
+    const JPH::Vec3 p = v3(c.points[i], k);
+    v.mPosition = JPH::Float3(p.GetX(), p.GetY(), p.GetZ());
+    const double m = std::max(1e-9, mass[i] * k * k * k);
+    v.mInvMass = pin[i] ? 0.0f : float(1.0 / m);
+    if (!pin[i]) inv_sum += 1.0 / m;
+    s->mVertices.push_back(v);
+  }
+  for (const auto& t : c.triangles)
+    s->AddFace(JPH::SoftBodySharedSettings::Face(JPH::uint32(t[0]), JPH::uint32(t[1]), JPH::uint32(t[2])));
+  const double st = std::clamp(c.stiffness, 0.0, 1.0);
+  const double base = inv_sum / double(c.points.size() - held) * sub_dt * sub_dt;  // a constraint at this gives half way
+  const float stretch = float(0.02 * (1 - st) * base), bend = float(std::pow(10.0, 3.0 - 4.5 * st) * base);
+  using SS = JPH::SoftBodySharedSettings;
+  const SS::VertexAttributes va(stretch, stretch, bend, held ? SS::ELRAType::EuclideanDistance : SS::ELRAType::None, 1.03f);
+  s->CreateConstraints(&va, 1, SS::EBendType::Distance);
+  s->Optimize();
+  return s;
+}
+
 std::string mm(double metres) { return std::to_string(std::max(1, int(std::ceil(metres * 1000)))) + " mm"; }
 
 }  // namespace
 
-Result run(const Setup& setup, const std::vector<Body>& bodies, const std::function<void(int, int, int)>& progress) {
+Result run(const Setup& setup, const std::vector<Body>& bodies, const std::vector<Cloth>& cloths,
+           const std::function<void(int, int, int)>& progress) {
   using Clock = std::chrono::steady_clock;
   const auto t0 = Clock::now();
   once();
@@ -177,7 +252,12 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::funct
       if (b.points.empty()) throw Error("simulate: " + b.name() + " has no surface to simulate: give it a shape, or set Simulate to Off");
       sizes.push_back(span(b.points));
     }
-  if (sizes.empty()) throw Error("simulate: nothing falls: set Simulate › Falls on the things that should move");
+  for (const Cloth& c : cloths) {
+    if (c.triangles.empty() || c.points.empty())
+      throw Error("simulate: " + c.name() + " has no surface to drape: give it a shape (a plane drapes best), or set Simulate to Off");
+    sizes.push_back(span(c.points));
+  }
+  if (sizes.empty()) throw Error("simulate: nothing falls: set Simulate › Falls or Cloth on the things that should move");
   std::nth_element(sizes.begin(), sizes.begin() + sizes.size() / 2, sizes.end());
   const double k = std::clamp(1.0 / std::max(1e-4, sizes[sizes.size() / 2]), 0.01, 100.0);
 
@@ -185,7 +265,7 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::funct
   LayerVsBroad layer_vs_broad;
   LayerPairs pairs;
   JPH::PhysicsSystem physics;
-  const JPH::uint max_bodies = JPH::uint(bodies.size() + 8);
+  const JPH::uint max_bodies = JPH::uint(bodies.size() + cloths.size() + 8);
   physics.Init(max_bodies, 0, std::max<JPH::uint>(1024, max_bodies * 16), std::max<JPH::uint>(1024, max_bodies * 32), layers,
                layer_vs_broad, pairs);
   physics.SetGravity(JPH::Vec3(0, float(-kGravity * k), 0));
@@ -270,9 +350,53 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::funct
     throw Failure(b, setup.start, "starts inside " + into, move + " or set Starts: Asleep until hit");
   }
 
+  // how far a cloth's points keep off what they touch: at least kClothGap, and a third of its typical edge, since a
+  // triangle between two points bridges a sharp corner (a plinth's edge showed through a 2 cm grid at 2 mm)
+  const auto cloth_gap = [](const Cloth& cl) {
+    std::vector<double> e;
+    for (const auto& t : cl.triangles)
+      for (int i = 0; i < 3; ++i) {
+        const V3 &a = cl.points[size_t(t[i])], &b = cl.points[size_t(t[(i + 1) % 3])];
+        e.push_back(std::sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]) + (a[2] - b[2]) * (a[2] - b[2])));
+      }
+    if (e.empty()) return kClothGap;
+    std::nth_element(e.begin(), e.begin() + long(e.size() / 2), e.end());
+    return std::max(kClothGap, e[e.size() / 2] / 3);
+  };
+
   const int frames = setup.end - setup.start + 1;
   const int steps = std::max(1, int(std::ceil(kStepsPerSecond / setup.fps)));
   const float dt = float(1.0 / setup.fps / steps);
+
+  // the cloths, after the starts-inside test (a cloth may start lying on something)
+  struct Edge { int a, b; double rest; };
+  std::vector<JPH::BodyID> cloth_ids;
+  std::vector<std::vector<Edge>> cloth_edges(cloths.size());
+  std::vector<double> cloth_lowest(cloths.size());
+  for (size_t c = 0; c < cloths.size(); ++c) {
+    const Cloth& cl = cloths[c];
+    JPH::SoftBodyCreationSettings sb(cloth_settings(cl, k, double(dt) / kClothIterations, setup.start), JPH::RVec3::sZero(),
+                                     JPH::Quat::sIdentity(), kMoving);
+    sb.mNumIterations = kClothIterations;
+    sb.mFriction = float(std::max(0.0, cl.friction));
+    sb.mRestitution = 0.0f;
+    sb.mVertexRadius = float(cloth_gap(cl) * k);
+    sb.mFacesDoubleSided = true;
+    const JPH::BodyID id = bi.CreateAndAddSoftBody(sb, JPH::EActivation::Activate);
+    if (id.IsInvalid()) throw Error("simulate: too many bodies (" + std::to_string(bodies.size() + cloths.size()) + ")");
+    cloth_ids.push_back(id);
+    std::set<std::pair<int, int>> seen;
+    for (const auto& t : cl.triangles)
+      for (size_t e = 0; e < 3; ++e) {
+        const int a = std::min(t[e], t[(e + 1) % 3]), b = std::max(t[e], t[(e + 1) % 3]);
+        if (seen.insert({a, b}).second) cloth_edges[c].push_back({a, b, dist(cl.points[size_t(a)], cl.points[size_t(b)])});
+      }
+    V3 lo;
+    span(cl.points, &lo);
+    cloth_lowest[c] = std::min(floor, lo[1]) - std::max(5.0, 20 * span(cl.points));
+  }
+  out.cloth.resize(cloths.size());
+  for (size_t c = 0; c < cloths.size(); ++c) out.cloth[c].reserve(size_t(frames) * cloths[c].points.size() * 3);
   JPH::TempAllocatorImpl temp(32 * 1024 * 1024);
   JPH::JobSystemSingleThreaded jobs(JPH::cMaxPhysicsJobs);
   std::vector<double> lowest(out.rows.size());
@@ -307,6 +431,44 @@ Result run(const Setup& setup, const std::vector<Body>& bodies, const std::funct
                       "lower its Bounce, or check it doesn't start inside or right against something");
       if (row[j].pos[1] < lowest[j])
         throw Failure(b, setup.start + f, "fell past everything",
+                      "there is nothing under it: turn the ground on, or set what it should land on to Simulate › Stays still");
+    }
+    for (size_t c = 0; c < cloths.size(); ++c) {
+      const Cloth& cl = cloths[c];
+      JPH::BodyLockRead lock(physics.GetBodyLockInterfaceNoLock(), cloth_ids[c]);
+      if (!lock.Succeeded()) throw Error("simulate: " + cl.name() + " was lost by the physics");
+      const JPH::Body& body = lock.GetBody();
+      const auto* mp = static_cast<const JPH::SoftBodyMotionProperties*>(body.GetMotionProperties());
+      const JPH::RMat44 com = body.GetCenterOfMassTransform();
+      std::vector<float>& rows = out.cloth[c];
+      const size_t at = rows.size();
+      double top = -1e30, fastest = 0, farthest = 0;
+      size_t i = 0;
+      for (const JPH::SoftBodyVertex& v : mp->GetVertices()) {
+        if (i >= cl.points.size()) break;
+        const JPH::RVec3 w = com * v.mPosition;
+        const V3 p{double(w.GetX()) / k, double(w.GetY()) / k, double(w.GetZ()) / k};
+        for (double x : p) rows.push_back(float(x));
+        top = std::max(top, p[1]);
+        fastest = std::max(fastest, double(v.mVelocity.Length()) / k);
+        farthest = std::max(farthest, dist(p, cl.points[i++]));
+        if (!std::isfinite(p[0]) || !std::isfinite(p[1]) || !std::isfinite(p[2])) fastest = 1e30;
+      }
+      if (i != cl.points.size())
+        throw Error("simulate: " + cl.name() + ": the physics gave " + std::to_string(i) + " points, not " + std::to_string(cl.points.size()));
+      if (!std::isfinite(fastest) || fastest > 200 || farthest > 1000)
+        throw Failure(cl, setup.start + f, "flew apart",
+                      "lower its Stiffness, raise its Weight, or check it doesn't start inside or right against something");
+      for (const Edge& e : cloth_edges[c]) {
+        const float* a = &rows[at + size_t(e.a) * 3];
+        const float* b = &rows[at + size_t(e.b) * 3];
+        const double len = dist({a[0], a[1], a[2]}, {b[0], b[1], b[2]});
+        if (len > kTear * e.rest + 1e-4)
+          throw Failure(cl, setup.start + f, "tore apart (an edge stretched to " + std::to_string(int(len / std::max(1e-9, e.rest))) + " times its length)",
+                        "check it doesn't start inside something, lower its Stiffness, or pin fewer points");
+      }
+      if (top < cloth_lowest[c])
+        throw Failure(cl, setup.start + f, "fell past everything",
                       "there is nothing under it: turn the ground on, or set what it should land on to Simulate › Stays still");
     }
     if (progress) progress(f + 1, frames, setup.start + f);

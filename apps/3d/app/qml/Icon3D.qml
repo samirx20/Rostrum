@@ -40,6 +40,7 @@ Item {
         material: e(9, 9, 6.5, 6.5) + "M5.6 7.6a3.8 3.8 0 0 1 2.6-2.8",                             // a material ball and its shine
         "sim-falls": e(9, 4.5, 2.8, 2.8) + "M9 9v6.5M6 12.8l3 3 3-3",                              // Simulate › Falls: a ball, an arrow down
         "sim-still": "M5 5.5h8v6H5zM2 14.5h14M4 16.5l1.5-2M8 16.5l1.5-2M12 16.5l1.5-2",              // Stays still: a block on the ground
+        "sim-cloth": "M3 4h12M3 4q1.5 6-1 12M15 4q-1.5 6 1 12M2 16q3.5-2 7 0t7 0",                // Cloth: a sheet hanging from a rail
         "sim-off": e(9, 9, 5.5, 5.5) + "M5.1 12.9l7.8-7.8"                                         // Off: a ball, crossed out
     })
     Shape {

@@ -5,7 +5,7 @@
 
 compute runs its own engine process (never the viewport's), sends the scene without any stored result laid over it,
 asks the core's `simulate` with the cache entry's temporary folder, and writes `result.json` (the reply and the body
-order) beside the core's `bodies.bin`. A failure leaves nothing in the cache and raises with the core's own words (which
+order) beside the core's `bodies.bin` (and, for cloth, its `cloth_<item>.bin`). A failure leaves nothing in the cache and raises with the core's own words (which
 thing, which frame, what to do).
 """
 from __future__ import annotations
@@ -15,8 +15,8 @@ from pathlib import Path
 
 from rostrum_core.cache import CACHE
 
-from .inputs import JOLT_VERSION, KIND, SIM_VERSION, falling, nested, sim_inputs
-from .result import BIN, JSON, ROW
+from .inputs import JOLT_VERSION, KIND, SIM_VERSION, cloths, moving, nested, sim_inputs
+from .result import BIN, JSON, ROW, cloth_bytes, cloth_file
 
 
 class SimError(RuntimeError):
@@ -34,10 +34,10 @@ def _engine_factory():
 
 def check(data: dict, req: dict):
     if inside := nested(data):
-        raise SimError(f"{', '.join(inside)}: only things directly in the scene can fall or stay still, not inside a "
-                       "group or copies; move it out first (item.arrange), or set Simulate: Off")
-    if not falling(req):
-        raise SimError("nothing in this shot falls: set Simulate › Falls on something first")
+        raise SimError(f"{', '.join(inside)}: only things directly in the scene can fall, stay still or be cloth, not "
+                       "inside a group or copies; move it out first (item.arrange), or set Simulate: Off")
+    if not moving(req):
+        raise SimError("nothing in this shot falls: set Simulate › Falls or Cloth on something first")
 
 
 def _reply_checked(out: dict, req: dict, folder: Path) -> dict:
@@ -52,6 +52,14 @@ def _reply_checked(out: dict, req: dict, folder: Path) -> dict:
     if not f.is_file() or f.stat().st_size != want:
         raise SimError(f"the 3D engine said done but {f} is {f.stat().st_size if f.is_file() else 'missing'}, "
                        f"expected {want} bytes")
+    made = {c["item"]: c for c in out.get("cloth", [])}
+    for b in cloths(req):
+        c = made.get(b["item"])
+        f = folder / cloth_file(b["item"])
+        want = cloth_bytes(c["points"], c["triangles"], last - first + 1) if c else -1
+        if c is None or not f.is_file() or f.stat().st_size != want:
+            raise SimError(f"the 3D engine said done but the cloth {b['item']}'s {f} is "
+                           f"{f.stat().st_size if f.is_file() else 'missing'}, expected {want} bytes")
     return out
 
 
@@ -91,9 +99,9 @@ def compute(data: dict, shot_id: str, folder=None, engine_factory=None, progress
 
 
 def needed(data: dict) -> bool:
-    """Whether anything in the document Falls: every other render skips the simulation at no cost."""
-    from .inputs import bodies, value
-    return any(value(b, "simulate") == "falls" for b in bodies(data))
+    """Whether anything in the document Falls or is Cloth: every other render skips the simulation at no cost."""
+    from .inputs import MOVING, bodies, value
+    return any(value(b, "simulate") in MOVING for b in bodies(data))
 
 
 def ready(data: dict, shot_id: str, folder=None, scene: dict | None = None, engine_factory=None, progress=None,

@@ -179,6 +179,7 @@ A `copies` item draws its sources many times, laid out by the core (one place: t
 - **Layouts** (the copies item's own space): `line`: copy i at i × (spacingX, spacingY, spacingZ); `grid`: column (i mod `columns`) × spacingX, row (i div `columns`) × spacingZ, `count` copies in all; `circle`: `count` copies round Y at `radius`, the first on +Z, `faceOut` turns each so the source's +Z points outward; `surface`: on the meshes of item `surface` (a `mesh`, `combine` or `import`, as it is at the shot's first frame), area-weighted, each at least `minSpacing` from the ones before it, `count` of them or (`amountBy` density) world area × `density`; when the surface is full at `minSpacing` the rest come closer (the gap × 0.7 by steps, down to touching), so `count` is always met; `alongSurface` stands each on the surface's direction (+Y along the face's normal); `onTop` keeps only the faces whose world normal points up (within 60° of straight up: Y ≥ half its length), so a box gives its top alone. The first copies stay where they are when the count grows.
 - **Vary**, from `seed` alone (each copy has its own numbers: the same seed gives the same copies whatever else changes): `varyMove` moves each up to that many metres per axis (on a surface, along it only), `varyTurn` turns each up to ± that many degrees round its own up (Y), `varyScale` sizes each 1 ± up to that share. Several sources: each copy picks one from the seed.
 - **`held`**: a copy put somewhere by a person or `copies.hold` takes exactly that place (the copies item's space, rotate X then Y then Z, uniform size `s`), whatever the layout says; a held copy beyond the count is not drawn.
+  (v1.25) **A keyed copy** is a `held` entry with `"anim": {"x"?: [one per frame], "y"?, "z"?, "rx"?, "ry"?, "rz"?}` (Turn into keys on a falling copies item; `copies.key`): each track moves that value frame by frame (frames `start..end`, the length checked like an effector's), and with `anim` every one of `x y z rx ry rz s` may be left out: the layout's value stays (a turn given in part keeps the rest of the layout's turn, as X·Y·Z degrees; no `s`: the layout's size). Keyed copies are written as one time sample per frame of positions and orientations; effectors act on top of them. A copies node with a stored fall (`sim`, § Simulation) ignores the keys of its simulated copies.
 - **Effectors** ("Change near"), in order, at each frame: w = falloff(distance(the copy's place in the world, `centre`) / `radius`), `smooth` = smoothstep, `linear`, 0 outside. `scale`: size × max(0, 1 + amount × w) (−1: gone at the centre); `turn`: amount × w degrees round the copy's own `axis`; `push`: amount × w metres away from the centre; `colour`: the copy's colour mixed toward `colour` by amount × w (0..1). Plain values when nothing moves; when an effector's `anim` or the copies item moves, what the effectors change is written as one time sample per frame (no sub-frame samples: copies changed by an effector don't motion-blur).
 - **Colour per copy is limited — said, not faked:** it is `primvars:displayColor` on the instancer (interpolation `vertex`: one per copy; 0.5 grey where no colour effector reaches, Storm's own colour for a mesh with no material). **Storm** shows it only on sources with **no material** (a material's own colour wins: UsdPreviewSurface doesn't read it). **Cycles** is not expected to show it at all: its Hydra plug-in takes only the copies' places from an instancer (to be confirmed by a render; until then colour effectors are Quick-look only, on sources without a material).
 - **Seen test:** when `seenBy` names a camera (the shot's, when the layout is `surface` and the document's `onlySeen` is on), after the stage is built the core draws Storm depth pictures through it (480 wide, `seenSize`'s aspect) with this copies item left out, at the shot's first and last frame and every 12th between (8 at most), and a copy is seen when its base or its bounds' centre is seen (as in `sees`) in any of them. Copies not seen go into `invisibleIds`: neither Storm nor Cycles draws them. The scene reply's `copies` gives the numbers.
@@ -316,8 +317,9 @@ body and the exact triangles for a still one; `box` / `sphere` wrap the points. 
 determinism: the same request always gives the same file. With `progress` a line `{"progress": i, "of": n, "frame": f}`
 comes after each frame.
 
-Reply: `{"ok": true, "jolt": "5.6.0", "sim": 1, "frames": [start, end], "rows": n, "file": "<folder>/bodies.bin", "bodies":
-[{"item", "copy" (-1 for a plain item), "row"}, …], "atRest", "ms", "frameMs"}`. `bodies.bin`: float32 little-endian,
+Reply: `{"ok": true, "jolt": "5.6.0", "sim": 3, "frames": [start, end], "rows": n, "file": "<folder>/bodies.bin", "bodies":
+[{"item", "copy" (-1 for a plain item), "row"}, …], "cloth": [{"item", "file", "points", "triangles", "refined"}, …],
+"atRest", "ms", "frameMs"}` (`frameMs`: the engine's time per frame of the shot, bodies and cloth together). `bodies.bin`: float32 little-endian,
 frames × rows × [x y z qx qy qz qw], one row per falling body: a plain item's translate and turn (world = its own, it is
 top-level; its scale is kept), a copy's position and orientation in its copies item's space. `info` gives `jolt` and `sim`
 (the version of this behaviour: part of the stored result's key).
@@ -330,7 +332,36 @@ that falls past everything (nothing under it).
 node may carry `"sim": {"file", "row", "rows", "of", "start", "end", "step": 1..3, "smooth": 1..100}`: copy *c* < `rows`
 takes row `row + c` of each frame (frames outside `start..end` hold the ends; `step` holds each pose 2 or 3 frames from
 the shot's start, On 2s / On 3s; `smooth` keeps every nth pose and blends between, Simplify). The copies' sizes stay as
-laid out; effectors don't move simulated copies.
+laid out; effectors don't move simulated copies. (v1.25) The pick of a copy (`pick`'s `copy`) and the seen test use the copies as drawn: a
+simulated copy where it fell at that frame (its `place` in the pick reply stays the laid-out one, what a gizmo starts from);
+a simulation's start poses stay the laid-out ones (with keyed copies at `start`).
+
+**Cloth (v1.25, Sam brief 26b).** A body `{"item", "kind": "cloth", "weight" (kg per m², above 0), "stiffness" (0..1),
+"pinned": "none" | "top" | "bottom" | "left" | "right" | "front" | "back", "friction"}` is a top-level `mesh` item draped as a
+Jolt soft body: one particle per point (a third of each of its triangles' weight × area), edge, shear and distance-bend
+constraints from its triangles (`CreateConstraints`), 8 solver sub-steps per physics step. Stiffness sets the constraints'
+give against the cloth's own mean point weight: stretch from a little (0) to none (1), bending from free (0, folds like
+silk) to card-like (1). `pinned`: the points within 1% of that side of its world bounds at `start` (Top = highest y, Right
+= highest x, Front = highest z) weigh nothing and stay (with long-range attachments so it hangs without stretching); a
+side the cloth is flat along (Top on a sheet lying flat) is a failure. Its mesh is refined first: one four-point face (a
+plane) becomes a 40 × 40 grid (1681 points, 3200 triangles, diagonals alternating), anything else has every triangle split
+in four until no edge is longer than 1/40 of its size (at most 20000 triangles); faces with no area and unused points are
+dropped; u v follow (a seam keeps one side's). It lands on still and falling bodies and the ground and pushes falling
+bodies; cloths don't collide with each other or themselves (Jolt). Its points keep 2 mm off what they touch. Failures: it
+**tore apart** (an edge stretched past 4 times its length), **flew apart** (a point over 200 m/s or 1 km away), **fell past
+everything**; each `{"item", "copy": -1, "frame", "fix"}`.
+
+`<folder>/cloth_<item>.bin`, little-endian: `"RCL1"`, int32 points, triangles, frames (`end - start + 1`), start; int32 × 3
+× triangles; float32 × 2 × points (u v); float32 × 3 × points per frame: each point in the item's **own space as it stood
+at `start`** (its translate, turn and scale at `start` taken out).
+
+**Reading a stored cloth.** A `mesh` node may carry `"cloth": {"file", "start", "end", "step": 1..3, "smooth": 1..100}`: its
+faces become the file's triangles, its `st` the file's u v (face-varying), and its points, normals and extent one time
+sample per frame of the shot (`step` / `smooth` as a copies node's `sim`: On 2s / On 3s from the shot's start, Simplify's
+every nth frame with straight lines between; frames outside `start..end` hold the ends). It is double-sided; its `skin`,
+outline parts and `faceMaterials` don't apply (the item's `material` does). The Python side holds its place (x … sz) at
+the shot's first frame, so the stored points sit where they were simulated. A file that is missing or doesn't match its
+header is an error naming `<id>.cloth.file`.
 
 ## 5. Change log
 
@@ -360,3 +391,4 @@ laid out; effectors don't move simulated copies.
 - **v1.22** (Hem brief 21): request `texels` (§ Texels: which texel of which item each pixel of a camera's picture sees, a float file); `sees` draws through the same Storm id + depth pass.
 - **v1.4** (H22): materials: `coatTint`, `coatIor`, `sheen`, `sheenRoughness`, `sheenTint`, `brushDirection`, `emissionTexture`, and a material's `anim.emissionTexture` (a picture per frame).
 - **v1.24** (Sam brief 25): request `simulate` (§ Simulation: rigid bodies with Jolt Physics 5.6.0, `bodies.bin`, loud failures with `item`, `copy`, `frame`, `fix`); a `copies` node's `sim` (a stored fall); `info` gives `jolt` and `sim`.
+- **v1.25** (Sam brief 26b): cloth (§ Simulation › Cloth): `simulate` body kind `cloth` (Jolt soft bodies: `weight`, `stiffness`, `pinned`, `friction`), `cloth_<item>.bin`, reply `cloth`; a `mesh` node's `cloth` (a stored drape, read per frame); `sim` 2.

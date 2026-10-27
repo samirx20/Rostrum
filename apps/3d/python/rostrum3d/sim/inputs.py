@@ -5,6 +5,9 @@ The key is the content of everything that changes the result: each body's compil
 without what only changes its look: material, paint, which camera sees copies), its Simulation fields and its speed at the
 first frame; every still body's node; the ground; the frames and the frame rate; and the engine (SIM_ENGINE, mirrored in the
 core, which says its own in every reply). Timing and Simplify are not in it: they are applied when reading (result.py).
+
+Cloth (brief 26b): a shape set to Cloth goes as {"item", "kind": "cloth", "weight" (kg/m²), "stiffness" (0–1), "pinned",
+"friction"}; its compiled node and these settings are in the key like any body's.
 """
 from __future__ import annotations
 
@@ -15,12 +18,13 @@ from rostrum_core.cache import cache_key
 
 from . import fields as SF
 
-SIM_VERSION = 1                                  # the core's `sim` in its reply; bump both together
+SIM_VERSION = 3                                  # the core's `sim` in its reply; bump both together
 JOLT_VERSION = "5.6.0"                           # third_party/jolt (the core's `jolt` in its reply)
 SIM_ENGINE = f"rostrum3d-sim@{SIM_VERSION}+jolt@{JOLT_VERSION}"
 KIND = "sim"                                     # the shared cache's kind
+MOVING = ("falls", "cloth")                       # kinds that move (the rest only collide)
 LOOK_ONLY = {"material", "seenBy", "seenSize", "frontMaterial", "bevelMaterial", "sideMaterial", "backMaterial"}
-_DEFAULTS = {p.name: p.default for p in SF.ITEM}
+_DEFAULTS = {p.name: p.default for p in [*SF.ITEM, *SF.CLOTH_ITEM]}
 
 
 def value(item: dict, name: str):
@@ -52,7 +56,7 @@ def _look_free(node):
     """A compiled node without what only changes its look (the result is the same whatever its colour)."""
     if isinstance(node, dict):
         return {k: _look_free(v) for k, v in node.items()
-                if k not in LOOK_ONLY and not k.startswith("paint") and k not in ("sim",)}
+                if k not in LOOK_ONLY and not k.startswith("paint") and k not in ("sim", "cloth")}
     if isinstance(node, list):
         return [_look_free(v) for v in node]
     return node
@@ -76,6 +80,13 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
     reqs, recipe = [], []
     for item in bodies(data):
         kind, falls = value(item, "simulate"), value(item, "simulate") == "falls"
+        if kind == "cloth":
+            body = {"item": item["id"], "kind": "cloth", "weight": float(value(item, "clothWeight")),
+                    "stiffness": float(value(item, "stiffness")), "pinned": value(item, "pinned"),
+                    "friction": float(value(item, "friction"))}
+            reqs.append(body)
+            recipe.append({"body": body, "node": _look_free(nodes[item["id"]])})
+            continue
         body = {"item": item["id"], "kind": kind,
                 "mass": 0 if value(item, "massFromSize") else float(value(item, "mass")),
                 "bounce": float(value(item, "bounce")), "friction": float(value(item, "friction")),
@@ -94,3 +105,12 @@ def sim_inputs(data: dict, shot_id: str, folder=None, scene: dict | None = None)
 
 def falling(req: dict) -> list[dict]:
     return [b for b in req["bodies"] if b["kind"] == "falls"]
+
+
+def cloths(req: dict) -> list[dict]:
+    return [b for b in req["bodies"] if b["kind"] == "cloth"]
+
+
+def moving(req: dict) -> list[dict]:
+    """What the simulation moves: falling bodies and cloth."""
+    return [b for b in req["bodies"] if b["kind"] in MOVING]

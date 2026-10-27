@@ -100,9 +100,10 @@ class Item:
         return self.set(aim="item", aimItem=target, **extra)
 
     def simulate(self, kind: str = "falls", **values) -> "Item":
-        """Make it part of the shot's simulation (only things directly in the scene): "falls", "still" or "off", with
-        Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", simShape="box"). Computing it is
-        the run_simulation tool (or sim.run), never the script."""
+        """Make it part of the shot's simulation (only things directly in the scene): "falls", "still", "cloth" (a shape
+        only) or "off", with Simulation fields (mass=, massFromSize=, bounce=, friction=, starts="asleep", simShape="box";
+        cloth: clothWeight=, stiffness=, pinned="back"). Computing it is the run_simulation tool (or sim.run), never the
+        script."""
         return self.set(simulate=kind, **values)
 
     def place_on(self, other, at=None, normal=None) -> "Item":

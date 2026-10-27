@@ -40,7 +40,7 @@ sits on top of it.
   `mouth_closed`, `mouth_wide`; it opens a sheet in the settings panel: click a voice line from RostrumSound, check the
   mesh each shape shows, Apply: one undo step, keys on the timeline), **Make copies ›** (a shape, group, import or clay),
   **Scatter '<it>' on '<surface>'** (right-click a surface while something else was selected) and **Change near ›** (a
-  copies item), see *Copies and scatter* below, **Simulate ›** (Falls, Stays still, Off; the ✓ is what it is now), see
+  copies item), see *Copies and scatter* below, **Simulate ›** (Falls, Stays still, Cloth on a shape, Off; the ✓ is what it is now), see
   *Simulate* below, then Duplicate (Ctrl+D) and Delete (Delete). An item
   outside the selection is selected alone first. Right-click empty space (nothing there): Make this the shot (Ctrl+Alt+0),
   Back to the shot's view (`) and New shot from this view, while you look through the free camera; Frame the selection
@@ -88,8 +88,8 @@ Icons only. Hover one to see its name. A small corner mark means it opens a list
   opposite, Shift: Smooth; a pen's pressure sizes each touch), one undo step per stroke; with a brush chosen, a drag on empty space turns
   the view (with Draw or Spin a left drag always draws); F held and the pointer moved left or right sizes the brush (its size shows beside the ring). Q again, V or Esc goes back to Select, and so does picking a shape from
   Shapes (the next click places it). The guide `sculpting` has it all.
-- **Simulate** (while the selected items can be simulated): **Falls**, **Stays still** and **Off** act on the selection at
-  once (what it already is isn't listed). Same as right-click › Simulate; see *Simulate* below.
+- **Simulate** (while the selected items can be simulated): **Falls**, **Stays still**, **Cloth** (shapes only) and **Off**
+  act on the selection at once (what it already is isn't listed). Same as right-click › Simulate; see *Simulate* below.
 - **Shapes** (R): Box, Sphere, Cylinder, Cone, Torus, Capsule, Plane, Disc. Pick one, then click in the viewport
   where it goes: it sits on the surface under the pointer (the plinth's top, the side of a box, the ground), standing
   along that surface, sized to what you clicked: a fifth of it (a 10 cm box on a 50 cm plinth), 10 cm on the floor or
@@ -229,7 +229,8 @@ tool). By hand, twelve buds dropping into a bowl:
   badge on each body's row (an arrow down: falls; a block on the ground: stays still). Only items at the top of the scene
   list can be bodies (move one out of its group first). The ground at height 0 catches them too (Scene panel › Ground).
 - **Their settings:** the settings panel gains a **Simulation** group: Mass from size (as solid plastic) or Mass, Bounce,
-  Friction, Starts (Moving, or Asleep until hit) and Shape (Exact, Box, Sphere). Simulate › Off takes an item out again.
+  Friction, Starts (Moving, or Asleep until hit) and Shape (Exact, Box, Sphere); on a Cloth: Weight, Stiffness, Pinned edge
+  and Friction. Simulate › Off takes an item out again.
 - **Compute it:** a **Simulation** row appears under the timeline's rows: "Not computed" and **Simulate**. Click it: the bar
   fills left to right as frames are computed (you can scrub meanwhile), then reads "Stored · 120 frames". Scrubbing and
   renders read the stored result; nothing recomputes on its own. The record is one undo step.
