@@ -31,9 +31,12 @@ Rectangle {
     readonly property real laneGap: 2
     readonly property real rulerBottom: bars.y + bars.height   // where the bands and the ruler end
     readonly property int openLanes: slim ? 0 : rows.filter(r => r.auto).length
+    // The rows share the room (24-52 px); an automation lane opening or closing never takes it from them: the lane
+    // opens under its row and the rows below move down (scrolling when they run out), so the A just clicked, and every
+    // row above it, stays under the pointer (INTERACTION.md 1.21; the stability pass checks it).
     readonly property real rowH: rows.length === mixRows + groupRows ? 24
         : Math.max(slim ? 18 : 24, Math.min(slim ? 26 : 52,
-              (list.height - slack - addH - openLanes * (laneH + laneGap) - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
+              (list.height - slack - addH - mixRows * mixH - groupRows * groupH - rowGap * (rows.length - 1)) / (rows.length - mixRows - groupRows)))
     // A track just added (Library Add or double-click, + Track, an undo bringing one back): its row flashes once and
     // the rows scroll just enough to show it (PLAN S3). Seen as one new track while every track before stays, so
     // opening another song never flashes.

@@ -139,8 +139,9 @@ Rectangle {
                   rightMargin: corner.docked ? Theme.gap : 0 }
         onAddTrack: a.addTrack()
     }
-    Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest)
-        visible: a.empty; text: "Add a track"; kind: "primary"
+    Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest). It opens the Library,
+               // so it steps aside while the Library is open (centred, it would slide under the pointer as the Library pushes in)
+        visible: a.empty && !workspace.library; text: "Add a track"; kind: "primary"
         x: timeline.headerWidth + Theme.gap * 2 + Math.max(0, (a.width - timeline.headerWidth - Theme.gap * 2 - width) / 2)
         y: strip.height + Math.max(60, (a.height - strip.height - height) / 2 - 40)
         onClicked: a.addTrack()

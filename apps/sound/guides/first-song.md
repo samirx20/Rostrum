@@ -14,8 +14,9 @@ For a person using the RostrumSound app. This page takes you from an empty song 
   there: ⏮ (to the start), ▶ (play / stop, the one blue button), the loop button, **Record** and the metronome; then
   the position ("3.2  0:04.80": bars.beats, then the time; click it and type **5.3** or **9.6 s** to jump there (**Alt+Shift+J** does the same from the keyboard); a beat the bar does not have, like 5.9 in 4/4, is refused with the reason), and the song's tempo, beats and key as fields; **Grid ▾**, **Snap**, zoom − + and **Fit** sit at its right. The ruler counts **bars**: plain numbers, one per
   bar. For a seconds scale, right-click the ruler and choose **Show seconds** (the same entry hides it).
-- **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. ▾ folds
-  it away.
+- **Under it: the dock.** **Editor** (E) shows the selected track up close; **Mixer** (X) shows the faders. Their tabs sit on one strip
+  along the bottom of the window that never moves: the tool opens above it, ▾ folds it away, and the same tabs stay
+  under your pointer. Drag the dock's top edge to make it taller.
 - **Right: the settings panel.** It shows what is selected, or the song when nothing is. Times there read in
   **bars.beats**, like the ruler: At **5.3** is bar 5, beat 3 (**5.3.2** when it falls a sixteenth into the beat: the
   sixteenths are 1 to 4), and a Length is in words (**1 beat**, **2 bars 1 beat**) or a note value (**1/8**, **dotted 1/4**)
@@ -64,7 +65,7 @@ The **Colour** row shows the colour the track is drawn in.
 1. With the track selected, the **Editor** shows its notes beside a piano keyboard, centred on them (each track then stays where you scrolled it)
    (drums: a row per drum; recordings: their waveform). Each octave's C is labelled (C4 is middle C); **click a key
    to hear it** on the track's own instrument, or drag down the keys to play each one. The track's name, **Select** /
-   **Draw** and **Note ▾** sit on the dock's top line, beside the Editor / Mixer tabs.
+   **Draw** and **Note ▾** sit on the dock's bottom strip, beside the Editor / Mixer tabs.
 2. **Double-click** empty space to add a note (on a drum grid: a hit on that drum's row). Or press **B** for the
    **Draw** tool: then every click adds a note or a hit; **V** goes back to **Select**. A new note or hit goes in the
    grid cell under the pointer: a click anywhere after a grid line, up to the next one, starts it on that line.
@@ -165,7 +166,7 @@ The **Colour** row shows the colour the track is drawn in.
 - Each track's header shows a small picture of what it holds (keyboard: notes, drum, waveform: sound files,
   microphone: voice) and its name (one click selects the track and opens the Editor on it when the dock is folded; double-click the name to rename; hover it to see a long name in full), then four
   buttons that never move, whether the track is selected or not: **R** gets it ready to record (absent on a voice
-  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane. The buttons sit at the same place in every row, tall or short, and a soloed track fills its **S** in green. While any track or group is soloed the top bar shows a green **Solo on: Strings ×**: click it and every solo goes off (a solo holds the other tracks back from the export too). The same is the operation `mix.hear_all` (`what`: `solo`, `mute` or `both`). The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
+  track, which is typed, not recorded), **M** mutes it, **S** plays it alone, **A** opens its automation lane under the row (the rows above it stay where they are). The buttons sit at the same place in every row, tall or short, and a soloed track fills its **S** in green. While any track or group is soloed the top bar shows a green **Solo on: Strings ×**: click it and every solo goes off (a solo holds the other tracks back from the export too). The same is the operation `mix.hear_all` (`what`: `solo`, `mute` or `both`). The lane's head names what it draws ("Volume ▾"): open it to draw another lane of that track (pan, a send, an effect's setting). A volume lane reads in dB like the Mixer ("+2.1 dB", "−∞ dB" at silence); the song keeps the level as gain.
   Selecting a track only tints its row. Under them a thin bar shows how loud the track was in the last render (green,
   amber near 0 dB, red over). When rows are short the header is one line. Rows are as tall with the Editor or Mixer open as folded (they fit the room the open dock leaves), so opening the Editor never moves a name or a button. To lock a track (nobody can change it,
   agents included) right-click it and choose Lock, or press Ctrl+Shift+L; a locked track shows a small padlock by

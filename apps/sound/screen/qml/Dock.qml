@@ -1,9 +1,11 @@
 import QtQuick
 import RostrumKit
 
-// The bottom dock under the arrangement (DESIGN.md §2.2): one strip — Editor (E) | Mixer (X), the Editor's own header
-// (EditorHeader: the track, Select / Draw, Note ▾), fold ▾ / open ▴ — and the open tool under it: the Editor (the selection's track up close, EditorDock.qml) or the Mixer (Mixer.qml). Folded, only
-// the tab row stays (one click away). Drag the top edge to resize; both tools share one height (workspace.heights,
+// The bottom dock under the arrangement (DESIGN.md §2.2): one strip at the window's foot — Editor (E) | Mixer (X), the
+// Editor's own header (EditorHeader: the track, Select / Draw, Note ▾), fold ▾ / open ▴ — and the open tool above it: the
+// Editor (the selection's track up close, EditorDock.qml) or the Mixer (Mixer.qml). Folded, only the strip stays (one click
+// away). The strip never moves: opening, folding or switching grows the tool upward, so Editor, Mixer and the fold arrow
+// stay under the pointer (INTERACTION.md 1.21; the stability pass checks it). Drag the top edge to resize; both tools share one height (workspace.heights,
 // screen state), so switching E / X never moves the arrangement above (its rows were laid out and every lane painted
 // again on each switch). `preferred`: the window size's default height; `room`: the most it may take.
 Item {
@@ -24,7 +26,7 @@ Item {
 
     Rectangle {   // the tab row as one strip, open or folded: Editor | Mixer, then the fold / open arrow at its right
         id: tabs
-        width: parent.width; height: 36
+        width: parent.width; height: 36; anchors.bottom: parent.bottom
         radius: Theme.radiusPanel; color: Theme.panel
         Segmented {
             id: pick
@@ -43,11 +45,11 @@ Item {
         anchors { right: parent.right; rightMargin: Theme.grid; verticalCenter: tabs.verticalCenter }
         onClicked: workspace.setDock(d.tool !== "" ? "" : "editor")
     }
-    MouseArea {   // the top edge: drag to resize the open tool
+    MouseArea {   // the top edge (the gap above the open tool): drag to resize it
         id: edge
         visible: d.tool !== ""
-        anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: pick.width + Theme.gap + Theme.grid; rightMargin: Theme.button + Theme.gap + Theme.grid }
-        height: tabs.height; cursorShape: Qt.SizeVerCursor; preventStealing: true
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: Theme.grid; cursorShape: Qt.SizeVerCursor; preventStealing: true
         property real y0: 0
         property real h0: 0
         onPressed: (m) => { y0 = mapToItem(null, m.x, m.y).y; h0 = d.height }
@@ -56,7 +58,7 @@ Item {
     }
     function openInKey() { header.openInKey() }
     function openNote() { header.openNote() }
-    EditorHeader {   // on the same line as the tabs: the Editor has no second header row
+    EditorHeader {   // on the same line as the tabs (the foot): the Editor has no second header row
         id: header
         visible: d.tool === "editor"
         x: tabs.x + pick.x + pick.width + Theme.pad; width: fold.x - Theme.gap - x; y: tabs.y; height: tabs.height
@@ -74,7 +76,7 @@ Item {
     Loader {
         id: editorTool
         objectName: "editorTool"
-        anchors { left: parent.left; right: parent.right; top: tabs.bottom; topMargin: Theme.grid }
+        anchors { left: parent.left; right: parent.right; bottom: tabs.top }
         active: !!d.made.editor; visible: d.tool === "editor"; asynchronous: !visible
         height: d.editorHeight - tabs.height - Theme.grid
         sourceComponent: EditorDock { }
@@ -82,7 +84,7 @@ Item {
     Loader {
         id: mixerTool
         objectName: "mixerTool"
-        anchors { left: parent.left; right: parent.right; top: tabs.bottom; topMargin: Theme.grid }
+        anchors { left: parent.left; right: parent.right; bottom: tabs.top }
         active: !!d.made.mixer; visible: d.tool === "mixer"; asynchronous: !visible
         height: d.mixerHeight - tabs.height - Theme.grid
         sourceComponent: Mixer { }
