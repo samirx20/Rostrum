@@ -216,3 +216,18 @@ def test_a_raised_arm_leaves_the_body_beyond_the_shoulder():
     assert all(not set(w) & arm for w in SP.weights(far, rest, P))
     near = pts[off < blend]                                               # and the shoulders themselves are shared
     assert any(set(w) & arm and set(w) - arm for w in SP.weights(near, rest, P))
+
+
+def test_a_part_on_the_body_rides_a_body_bone_not_the_arm_beside_it():
+    """follow.nearest_bone weighs as the core bends (skin_parts): a part on the body's side (on it, or sitting just
+    off its surface) rides the body, though the hanging arm's bone is nearer through the air (the mirrored eye that
+    turned with the raised arm)."""
+    from rostrum3d import follow
+    joints, parts = PJ.find_parts(_buddy(HANGING))
+    clay = _clay(joints)
+    names = [b.get("joint") for b, _ in pose_ik.skin.bones_of(clay)]
+    for spot in ([-0.088, 0.09, 0.02], [-0.088, 0.09, 0.06]):
+        assert names[follow.nearest_bone(clay, spot)].startswith("forearm.")         # the plain rule
+        clay["jointParts"] = PJ.pack_parts(parts)
+        assert not names[follow.nearest_bone(clay, spot)].startswith(("arm.", "forearm.", "hand."))
+        del clay["jointParts"]

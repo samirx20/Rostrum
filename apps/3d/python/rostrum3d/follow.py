@@ -11,7 +11,9 @@ Follow the pose (`followPose`, on a clay or a mesh with bones): the ride is the 
 bends the surface there with (skin.py: the bone now times its rest), on top of the target's own move. It counts from
 rest, not from time 0, so an item placed before posing stays on the posed surface whatever time is posed; the bone is
 chosen again whenever the joints are found again. The nearest bone, by the distance the core weights the skin by
-(core/src/skin.cpp, a point behind a clay bone's head counted BEHIND × farther): the heaviest bone there.
+(core/src/skin.cpp, a point behind a clay bone's head counted BEHIND × farther): the heaviest bone there; on a clay
+whose joints split it into pieces (skin_parts.py), only the bones of the piece the item sits on count (an eye on the
+face rides the head, never the raised arm's bone beside it).
 
 Stick stands the item's Position (its pivot) on the top of a mesh's surface straight below, `y` above it.
 """
@@ -126,7 +128,13 @@ def nearest_bone(target: dict, p) -> int | None:
         return sum((x - y) ** 2 for x, y in zip(p, q)) ** 0.5 + behind * max(0.0, -t * n2 ** 0.5)
 
     rest = skin.transforms(chain)
-    return min(range(len(chain)), key=lambda i: far(skin.segment(rest[i], chain[i][0])))
+    segs = [skin.segment(m, b) for m, (b, _) in zip(rest, chain)]
+    if target.get("jointParts"):                # a clay's pieces: only its own piece's bones bend the surface there
+        from . import skin_parts
+        if parts := skin_parts.for_core(target["jointParts"], chain, segs):
+            w = skin_parts.weights([p], segs, parts, reach=True)[0]
+            return max(w, key=w.get)
+    return min(range(len(chain)), key=lambda i: far(segs[i]))
 
 
 def bone_move(fr, target: str, bone: int, g: int):

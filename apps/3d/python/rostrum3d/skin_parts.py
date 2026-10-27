@@ -87,12 +87,27 @@ def _fade(x: float) -> float:
     return t * t * (3 - 2 * t)
 
 
-def weights(points, rest: list[list[float]], parts: dict | None) -> list[dict[int, float]]:
-    """Each point's bones and weights {bone: weight} by the rule above (parts None: the plain rule)."""
+def piece_near(parts: dict, cells: np.ndarray, p) -> int:
+    """piece_at, else the piece of the nearest inside cell anywhere: a point off the clay (an eye on its face, a part
+    placed on it) belongs to the piece of the clay it sits on; −1 only for a grid with no inside cell."""
+    piece = piece_at(parts, cells, p)
+    if piece >= 0:
+        return piece
+    inside = np.argwhere(cells != 255)
+    if not len(inside):
+        return -1
+    c = (np.asarray(p, float) - parts["origin"]) / parts["cell"] - 0.5
+    j = inside[int(((inside - c) ** 2).sum(1).argmin())]
+    return int(cells[tuple(j)])
+
+
+def weights(points, rest: list[list[float]], parts: dict | None, reach: bool = False) -> list[dict[int, float]]:
+    """Each point's bones and weights {bone: weight} by the rule above (parts None: the plain rule). `reach`: a point
+    off the clay takes its nearest inside cell's piece (piece_near) instead of the plain rule (follow.py)."""
     cells = _cells(parts) if parts else None
     out = []
     for p in np.asarray(points, float):
-        piece = piece_at(parts, cells, p) if parts else -1
+        piece = (piece_near if reach else piece_at)(parts, cells, p) if parts else -1
         raw = {}
         for b, seg in enumerate(rest):
             a, t = np.array(seg[:3]), np.array(seg[3:])
