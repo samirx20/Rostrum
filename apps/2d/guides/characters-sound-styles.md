@@ -18,8 +18,8 @@ Pose the character on the canvas by dragging its bones: press on a bone's middle
 
 - **Save pose** keeps the pose at the playhead. A rig with no poses yet shows only this button.
 - Click a saved pose to key it at the playhead. Drag its slider to key only part of the way there from the pose the rig has now; the number beside it shows how much.
-- Click **⋯** at the end of a pose's row (or right-click it) to **Rename** or **Delete** it. Double-click a name to rename it too.
-- **Mirror pose** in the settings panel copies the left side onto the right, or the other way, or swaps them.
+- Click **⋯** at the end of a pose's row (or right-click it) to **Rename** or **Delete pose**. Double-click a name to rename it too.
+- **Mirror pose** in the settings panel offers **Left side onto the right**, **Right side onto the left** and **Swap left and right** (at the playhead).
 
 ### Lip sync
 
@@ -40,7 +40,7 @@ Pose the character on the canvas by dragging its bones: press on a bone's middle
 Sound is made in RostrumSound. Rostrum2D plays it with the picture and lets you place things on it. For hearing it, muting, beats and snapping, see [timing-to-music.md](timing-to-music.md).
 
 - **The Sound row** is the last row of the timeline. It shows the waveform and is there only when the project has sound.
-- **Add a sound here…**: select one layer and click **Add a sound** in the tool rail. Search for a sound (type words, then **Enter**), and click one. It is tied to the layer's start, so it moves with the layer. RostrumSound mixes it. This appears only when the project has sound.
+- **Add a sound here…**: select one layer and click **Add a sound** in the tool rail. Search for a sound (the list narrows as you type), and click one. It is tied to the layer's start, so it moves with the layer. RostrumSound mixes it. This appears only when the project has sound.
 - **A video's own sound** shows as a thin row **Its sound** under the video layer. Its speaker button mutes it in the song's mix. **Ctrl+Z** brings it back.
 - **MP4 with the project's sound:** open **Export**, pick **MP4**, and leave **Project sound** on. It shows only when the project has sound. See [exporting.md](exporting.md).
 
