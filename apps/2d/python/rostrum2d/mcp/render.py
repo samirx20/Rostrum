@@ -18,15 +18,16 @@ def _fail(where: str, what: str, e: Exception) -> RostrumError:
     return RostrumError(codes.RENDER_FAILED, where, what, f"could not be drawn: {e}", hint="The engine's log path, if any, is in the message.")
 
 
-def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None) -> dict:
+def scene_of(doc, comp_id: str, span: tuple[float, float] | None = None, frames: list[int] | None = None) -> dict:
     """The scene to draw; a text whose path layer is gone is refused here, in words (rostrum2d/follow.py).
-    `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe)."""
+    `span`: the (first, last) seconds that will be drawn, when not the whole composition (scene.describe); `frames`:
+    only these frame numbers in it will be drawn (a contact sheet)."""
     from rostrum2d import follow
     comp = next((c for c in doc.data.get("comps", []) if c["id"] == comp_id), None)
     if comp and (broken := follow.problems(comp)):
         raise RostrumError(codes.RENDER_FAILED, comp_id, "the composition", "can't be drawn: " + " ".join(broken))
     t0 = time.perf_counter()
-    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span)
+    scene = describe(doc.data, comp_id, markers.times(doc.folder), doc.folder, span, frames=frames)
     spent = time.perf_counter() - t0
     if spent >= SLOW_PICTURES_S:        # the painted pictures are made here, the first time (kept by content afterwards): say what it cost
         scene["warnings"] = [*scene.get("warnings", []), f"Making the painted pictures took {spent:.0f} s: strokes are drawn the first time a look or export needs "
@@ -79,6 +80,26 @@ def small_stills(where: str, scene: dict, items: list[tuple[float, Path]], width
         raise
     except Exception as e:
         raise _fail(where, "the engine", e) from e
+
+
+def area_still(where: str, scene: dict, t: float, area, width: int, png: Path) -> tuple[int, int]:
+    """Only `area` [x, y, w, h] (comp px) of the frame at `t`, drawn by the engine at `width` px wide (sharp: a zoom,
+    not a crop of a small picture), as `png`. Returns its size."""
+    from PIL import Image
+    from rostrum2d.engine import Engine
+    x, y, w, h = (float(v) for v in area)
+    try:
+        with Engine() as eng:
+            eng.load(scene)
+            view, pw, ph, stride = eng.pixels(t, view={"x": x, "y": y, "w": w, "h": h, "scale": width / w})
+            data = bytes(view)
+            view.release()
+            Image.frombuffer("RGBA", (pw, ph), data, "raw", "RGBA", stride, 1).save(png, "PNG")
+            return pw, ph
+    except RostrumError:
+        raise
+    except Exception as e:
+        raise _fail(where, f"the area {[x, y, w, h]} at {t:.3f} s", e) from e
 
 
 def video(where: str, scene: dict, mp4: Path, start: float, end: float, progress=None, quality=None, bitrate=None, on_stop=None) -> dict:

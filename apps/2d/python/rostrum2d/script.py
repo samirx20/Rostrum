@@ -97,6 +97,21 @@ class Item:
         self._b.fill(self.node, values)
         return self
 
+    def measure(self, at: float = 0) -> tuple[float, float]:
+        """A text's box (w, h) in its own px at `at` (before scale), measured by the engine code that draws it: lay
+        out a line by its real width (`x = 1800 - t.measure()[0] * t.scale`)."""
+        self._need("text", "measure")
+        from .evaluate import resolve
+        from .textsize import size
+        return size(resolve(self.node, at))
+
+    def pivot(self, x: float, y: float, at: float = 0) -> "Item":
+        """The anchor (what it turns and scales around) on the point (x, y) of the parent's px (comp px, or the group's
+        box), the picture staying where it shows at `at` (layer.anchor point). A drawing's canvas that grows with its
+        strokes keeps it on the same spot, so it may come before or after the strokes."""
+        script_frame.run(self._b, self.node, "layer.anchor", {"point": [x, y], "at": at})
+        return self
+
     def key(self, prop: str, keys: dict, ease: str = "smooth") -> "Item":
         allowed = F.animatable(self.node["type"])
         prop = W.field(prop, [p.name for p in F.FIELDS[self.node["type"]]], self.node["type"])
@@ -107,7 +122,7 @@ class Item:
         for t, v in sorted(keys.items(), key=lambda kv: marked.order(kv[0])):   # a time: seconds or "#drop+0.2"
             value, e, *shape = v if isinstance(v, tuple) else (v, ease)
             if prop == "d" and isinstance(value, str):
-                value = pathdata.shifted(value, self.d_shift)
+                value = pathdata.shifted(pathdata.check(value, f"{self.id}.d at {t} s"), self.d_shift)
             if len(shape) > 1 or (shape and not isinstance(shape[0], dict)):
                 raise ValueError(f'{self.id}.{prop}: a key is value, (value, "ease") or (value, "ease", {{"bounce": 0.3, "speed": 0.4}})')
             t = F.param("key", "t").check(t, f"{self.id}.{prop} key time")
@@ -158,12 +173,17 @@ class Item:
     # drawing layers (painting kit): drawing.frame(at) -> frame.paint() -> paint.stroke(points, **brush)
     def frame(self, at: int, id: str | None = None) -> "Item":
         self._need(("drawing", "painting"), "frame")
-        node = {"id": self._b.new_id("frame", id), "type": "frame", "at": F.param("frame", "at").check(at, "frame"),
-                "paints": [], "paintmasks": []}
+        at = F.param("frame", "at").check(at, "frame")
         frames = self.node["frames"]
-        if any(f["at"] == node["at"] for f in frames):
-            raise ValueError(f"{self.id} already has a drawing at frame {node['at']}: call {self.id}.frame({node['at']}) once, "
-                             f"keep what it returns (f = {self.id}.frame({node['at']})) and paint more on f, or use another frame")
+        same = next((f for f in frames if f["at"] == at), None)
+        if same is not None:                # asked again: the drawing already there, to paint more on
+            if id is not None and id != same["id"]:
+                raise ValueError(f'{self.id} already has a drawing at frame {at} ("{same["id"]}"); '
+                                 f"{self.id}.frame({at}) gives it again, or use another frame")
+            item = Item(self._b, same)
+            item.drawings = frames
+            return item
+        node = {"id": self._b.new_id("frame", id), "type": "frame", "at": at, "paints": [], "paintmasks": []}
         frames.insert(sum(1 for f in frames if f["at"] < node["at"]), node)
         item = Item(self._b, node)
         item.drawings = frames
@@ -189,12 +209,16 @@ class Item:
         if self.node["type"] == "painting":              # the shortcut: its first drawing and its Ink layer, made when missing
             return self._ink().stroke(points, id, **brush)
         self._need("paint", "stroke")
+        if "mask" in brush:             # mask=f.paintmask(...): the object it gave, or its id
+            brush["mask"] = getattr(brush["mask"], "id", brush["mask"])
         return self._b.add_kit("stroke", id, {"points": points, **brush}, self.node["strokes"])
 
     def fill(self, points, id: str | None = None, **values) -> "Item":
         """A filled polygon on this paint layer, sharp-edged, in painting order (the kit's fill: what paint.fill makes
         from a click): `ink.fill([(x, y), …], color="#2a2340")` for a ridge or a silhouette; [x, y, ring] for holes."""
         self._need("paint", "fill")
+        if "mask" in values:
+            values["mask"] = getattr(values["mask"], "id", values["mask"])
         return self._b.add_kit("fill", id, {"points": [[*p[:2], p[2] if len(p) > 2 else 0] for p in points], **values},
                                self.node["strokes"])
 
@@ -253,8 +277,8 @@ class Painted:
 class FrameItem(Item):
     """The scene's frame: an Item that also frames and cuts, through the operations (script_frame.py)."""
 
-    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
-        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation))
+    def fit(self, items=None, at=0, rect=None, pad=None, keep_rotation=None, ease=None) -> "FrameItem":
+        script_frame.run(self._b, self.node, "frame.fit", script_frame.args_of(items, at=at, rect=rect, pad=pad, keep_rotation=keep_rotation, ease=ease))
         return self
 
     def cut(self, at, to=None, items=None, rect=None, pad=None, keep_rotation=None) -> "FrameItem":
@@ -364,6 +388,11 @@ class Build:
     def layer(self, type_, id=None, **values) -> Item:
         if not self.holders:
             raise ValueError(f"make a composition first: comp(...) before {type_}(...)")
+        if type_ == "drawing":          # placed by its canvas: with no x / y its top-left is the comp's (or the group's
+            dflt = F.defaults("drawing")    # box's), so canvas px = comp px whatever its size and strokes go where given
+            for xy, size, anchor in (("x", "w", "anchorX"), ("y", "h", "anchorY")):
+                if xy not in values:
+                    values[xy] = float(values.get(size, dflt[size])) * float(values.get(anchor, dflt[anchor]))
         return self.add(type_, id, values, self.holders[-1]["layers"])
 
 
@@ -448,8 +477,8 @@ def run_source(source: str, name: str, doc=None) -> dict:
 run_source.wants_doc = True            # rostrum_core's run_script tool then passes the document
 
 API = ["comp(id, **fields)", "shape / text / image / path / group(id, **fields)", "frame(**fields): the scene's frame",
-       "frame().fit(layers | rect=(x, y, w, h), at=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
-       "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
+       "frame().fit(layers | rect=(x, y, w, h), at=, ease=) / .cut(at=, to=, rect=) / .home(at=)", "pin(layer, on=True, at=0)", "set_depth(layer, depth, at=0)", "item.key(field, {time: value}, ease=)",
+       "item.pivot(x, y): the anchor on a point in comp px, nothing moves", "text.measure(): (w, h) of a text's box", "item.effect(type, id, **fields)", "item.mask(id, **fields)", "item.set(**fields) / item.field = value",
        "with group(id, **fields): …", "with rig(id): bone(id, parent=, ...) / ik(id, bone=) / bind(layer=, bone=)",
        "path(id, d=star(5, 100, 45))", "plot_area / curve_points / line_d / nice_ticks / view3d / surface_lines / parse_table: guide data-math-and-graphs", "drawing.frame(at)", "frame.paint(id)", "paint.stroke(points, **brush)", "paint.fill(points, color=)",
        "frame.paintmask(points)", "painting(id, w=, h=, seamless=)", "painting.stroke(points, **brush)",

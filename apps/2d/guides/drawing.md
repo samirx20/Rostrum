@@ -199,7 +199,7 @@ How it draws:
 - Strokes and fills come in the order you painted them: the bottom paint layer first, then the one above it.
 - The pen moves at one speed. A long stroke takes longer than a short one, and a dot as long as the brush is wide.
 - Each stroke grows along its own path with the brush's round tip. What shows is the finished stroke itself, with its bristles, grain and taper. A soft brush comes in soft: its head and sides fade as its own edge does, and its glow comes in with it.
-- A fill fades in over its share of the time.
+- A fill is not drawn along a path: the whole area fades in, over as long as the pen would take to go round its outline. Mid-way it shows as a see-through ghost of its full shape. When a fill should look drawn, paint its outline as a stroke first (the pen draws the edge, then the area fades in inside it), or reveal it with a keyed mask on the layer.
 - With **Draw each frame** on, the drawing showing at each moment is drawn that far.
 - Ease the keys like any others (the curve view): ease in starts the pen slowly.
 - The in-between pictures are made the first time they're needed, those near the playhead first. Until a moment's picture is made, the canvas shows the whole drawing there; it fills in on its own, within a moment at the playhead. A change (a new stroke, an erase, a key) makes them again the same way, so the canvas always ends on what the export shows. An export always waits for every picture.

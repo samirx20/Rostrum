@@ -16,6 +16,7 @@ from __future__ import annotations
 from rostrum2d import drawing, fill_fields, fill_paint, paintings
 from rostrum2d.evaluate import resolve
 from rostrum_core.keys import keys_of
+from rostrum_gui.route import key_at
 from rostrum_gui.rows import matches
 
 from . import route
@@ -29,6 +30,8 @@ WORDS = {"fillScale": "Scale", "fillOpacity": "Opacity"}   # the picker's words:
 OPTIONS = {"maxStops": 32, "stopOpacity": True}         # the engine draws any number of stops, see-through too (E8)
 NEW = "layer:painted_new"                               # + New painting (actions.py)
 PAINT_IT = "layer:paint_fill"                           # Paint it: the Brush on the painted fill (actions.py)
+WORDS_OF = [{"label": p.label, "group": p.group, "help": p.help or ""}           # what a search reads of the hidden fields
+            for p in (*fill_fields.LAYER, *fill_fields.OPACITY, *fill_fields.PICTURE) if p.name in HIDDEN]
 
 
 def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0, query: str = "",
@@ -38,9 +41,11 @@ def rows(rows: list[dict], item: dict | None, t: float = 0.0, fps: float = 30.0,
     colour = fill_paint.colour_field(item)
     types = (["none"] if item["type"] != "text" else []) + list(fill_fields.TYPES if item["type"] != "text" else fill_fields.TEXT_TYPES)
     out = []
-    # The one row stands for the colour and every fill field it hides, so a search for any of them (gradient, angle, picture)
-    # finds it, whether or not that field applies now, and a search for anything else (blur) leaves it out.
-    own = bool(query.strip()) and any(r["row"] == "param" and r["id"] in HIDDEN and matches(r, query) for r in rows)
+    # The one row stands for the colour and every fill field it hides, so a search for any of them (gradient, angle,
+    # direction, picture) finds it, whether or not that field applies now, and a search for anything else (blur) leaves it
+    # out. Asked of the fields themselves: the panel's rows no longer hold them (bridge.on_page left them out), so asking
+    # the rows found nothing (hand maker row 22: "angle", "gradient" said "No setting matches").
+    own = bool(query.strip()) and any(matches(f, query) for f in WORDS_OF)
     raster = "painted" in types
     for r in rows:
         if r["row"] == "param" and r["id"] == colour:
@@ -150,7 +155,7 @@ def animate_calls(item: dict, t: float, fps: float, stop: bool = False) -> tuple
     parts = _parts(item)
     if stop:
         return [{"op": "key.clear", "target": [it["id"]], "args": {"prop": f, "at": t}} for it, f in parts if keys_of(it, f)],             f"Stop animating {fill_paint.row_label(item)}"
-    here = [k for it, f in parts if (k := route.key_at(keys_of(it, f), t, fps))]
+    here = [k for it, f in parts if (k := key_at(keys_of(it, f), t, fps))]
     if here:
         return [{"op": "key.remove", "target": [k["id"] for k in here], "args": {}}], f"Delete {fill_paint.row_label(item)} key at {t:.2f} s"
     calls = []

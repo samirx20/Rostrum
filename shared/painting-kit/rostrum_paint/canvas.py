@@ -275,10 +275,22 @@ def render(canvas: dict, w: int, h: int) -> Pixels:
     """The canvas's pixels (shared: never change them). Asked on two threads at once (a screen's picture job and a
     smudge's press), the second waits for the first's pixels instead of stamping the same strokes again."""
     key = (content_key(canvas, w, h), w, h)
-    while True:
+
+    def make():
+        pix = _render(canvas, w, h)
         got = _seen(key)
-        if got is not None and got[0] is not None:
-            return got[0]
+        _remember(key, pix, got[1] if got else None)
+        return pix
+    return _once(key, lambda: (_seen(key) or (None, None))[0], make)
+
+
+def _once(key, ready, make):
+    """`ready()` if it is there, else `make()`, once across threads: a second thread asking for the same canvas waits
+    for the first and then reads what it made (`ready()` again) instead of stamping the same strokes again."""
+    while True:
+        got = ready()
+        if got is not None:
+            return got
         with _LOCK:
             making = _MAKING.get(key)
             if making is None:
@@ -287,12 +299,10 @@ def render(canvas: dict, w: int, h: int) -> Pixels:
             break
         making.wait()
     try:
-        pix = _render(canvas, w, h)
-        _remember(key, pix, got[1] if got else None)
+        return make()
     finally:
         with _LOCK:
             _MAKING.pop(key).set()
-    return pix
 
 
 def forget():
@@ -339,10 +349,28 @@ def rgba8(canvas: dict, w: int, h: int) -> np.ndarray:
             u8 = np.asarray(im.convert("RGBA"))
         _remember(key, got[0] if got else None, u8)
         return u8
-    pix = render(canvas, w, h)
-    u8 = compose.straight8(pix.rgba)
-    _remember(key, pix, u8)
-    return u8
+
+    def make():
+        got = _seen(key)
+        if got is not None and got[0] is not None:
+            u8 = native.straight8(got[0].rgba)
+        else:
+            u8 = native.straight8(_over(_layers(canvas, w, h)[0], w, h))
+        got = _seen(key)
+        _remember(key, got[0] if got else None, u8)
+        return u8
+    return _once(key, lambda: (_seen(key) or (None, None))[1], make)
+
+
+def _over(layers, w, h) -> np.ndarray:
+    """The layers' pixels together for their RGBA8 picture only (not `render`'s: no stroke-on-top map). One plain
+    layer (most drawings) is its own pixels, not a copy clamped by compose.over: straight8 clamps the colour to the
+    alpha the same (min(rgb, a) / a and rgb / a cut at 1 are both 1), so the bytes are the same, without two passes
+    over a whole canvas per picture (a Drawn so far picture made 2-4 canvases)."""
+    shown = [(p, px) for p, px, _, _ in layers if p["visible"] and p["opacity"] > 0]
+    if len(shown) == 1 and shown[0][0]["mode"] == "normal" and shown[0][0]["opacity"] >= 1:
+        return shown[0][1]
+    return compose.over([(p, px) for p, px, _, _ in layers], w, h)
 
 
 def _seen(key):

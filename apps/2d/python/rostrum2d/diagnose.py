@@ -131,10 +131,16 @@ def _markers(exprs: dict, markers: dict | None) -> list[dict]:
 
 def _unseen(comp: dict) -> list[dict]:
     """Layers that can't be seen at any moment looked at (seen.py), in words: the commonest reason first."""
-    out = []
+    out, named = [], {}
+
+    def walk(n):
+        for l in n.get("layers", []):
+            named[l["id"]] = display_name(l)
+            walk(l)
+    walk(comp)
     for lay_id, reasons in unseen(comp).items():
-        top = max(reasons, key=reasons.get)
-        out.append(_p("invisible", lay_id, f"{lay_id} is never seen: {top}" + ("" if len(reasons) == 1 else f" (also: {', '.join(r for r in reasons if r != top)})"),
+        top = max(reasons, key=reasons.get)       # its name, as the timeline shows it ("Window", never "shape_1")
+        out.append(_p("invisible", lay_id, f"{named.get(lay_id, lay_id)} is never seen: {top}" + ("" if len(reasons) == 1 else f" (also: {', '.join(r for r in reasons if r != top)})"),
                       "Check its opacity, size and start / end times"))
     return out
 

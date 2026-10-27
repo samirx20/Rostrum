@@ -27,6 +27,19 @@ def display_name(item: dict) -> str:
     return str(name)
 
 
+def follows_words(item: dict) -> bool:
+    """A text nobody named: its stored name is still "Text" / "Text 2" …, so it reads as its words (or "Counter")."""
+    return item.get("type") == "text" and bool(re.fullmatch(rf"{F.LABELS['text']}( \d+)?", str(item.get("name") or "")))
+
+
+def copy_base(item: dict) -> str:
+    """The name a copy takes before its number (unique_name): "<name> copy" ("copy 2" for a copy's copy, never "copy
+    copy"); a text that reads as its words stays unnamed ("Text"), so its copy follows the words it is retyped with."""
+    if follows_words(item):
+        return F.LABELS["text"]
+    return re.sub(r" copy( \d+)?$", "", display_name(item)) + " copy"
+
+
 def words(item: dict, most: int = 32) -> str:
     """A text's first line, cut to `most` characters."""
     line = next((ln.strip() for ln in str(item.get("body", "")).splitlines() if ln.strip()), "")
@@ -43,12 +56,30 @@ def unique_name(taken: set[str], base: str) -> str:
     return f"{base} {n}"
 
 
+_COUNTER = re.compile(r"Counter( \d+)?")
+
+
+def counting(ctx, target: str) -> None:
+    """A text that starts or stops counting, still unnamed by hand: counting it is "Counter", "Counter 2" … (counted
+    among the counters, as the guide says); stopped, it reads as its words again ("Text …"). A name typed is kept."""
+    item = ctx.item(target)
+    on, name = bool(item.get("counter")), str(item.get("name") or "")
+    if item.get("type") != "text" or not (follows_words(item) if on else _COUNTER.fullmatch(name)):
+        return
+    from rostrum_core.tree import index
+    others = [loc.item for i, loc in index(ctx.doc, ctx.kind.lists).items() if i != target and loc.item.get("type") != "doc"]
+    taken = {i["name"] for i in others if i.get("name")} | {display_name(i) for i in others}
+    ctx.set(target, "name", unique_name(taken, "Counter" if on else F.LABELS["text"]))
+
+
 _DEFAULT_SHAPE = re.compile(rf"(Shape|{'|'.join(F.SHAPE_WORDS.values())})( \d+)?")
 
 
 def after_set(ctx, target: str, args: dict):
     """Called by every field operation after it set `args`: a shape that still has its default name takes its kind's
     ("Ellipse", then "Ellipse 2"): the numbers count per kind from 1, not per layer. A name a person typed is kept."""
+    if "counter" in args:
+        counting(ctx, target)
     item = ctx.item(target)
     if item["type"] != "shape" or args.get("shape") not in F.SHAPE_WORDS or not _DEFAULT_SHAPE.fullmatch(str(item.get("name", ""))):
         return

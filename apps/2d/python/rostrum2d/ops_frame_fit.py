@@ -12,7 +12,7 @@ from dataclasses import replace
 
 from rostrum_core import Param
 from rostrum_core.errors import codes
-from rostrum_core.keys import keys_of, marked
+from rostrum_core.keys import EASES, keys_of, marked
 
 from . import fields as F, retime
 from .evaluate import value_at
@@ -102,11 +102,26 @@ def _key(ctx, fid, field, at, v, **extra):
     put_key(ctx, fid, field, at, {"v": round(v, 4), **extra})
 
 
+EASE = Param.choice("ease", EASES, label="Ease", importance="deep",
+                    help="How the frame travels INTO this framing (the key before `at` gets it); the key names")
+
+
+def _ease_into(ctx, frame, fid, f, t, ease):
+    """The key of field f just before t (seconds) takes `ease`: a key's ease shapes the way to the next key."""
+    times = _times(ctx)
+    before = [k for k in keys_of(frame, f) if marked.seconds(k["t"], times, f"{fid}.{f}") < t - 1e-9]
+    if before:
+        last = max(before, key=lambda k: marked.seconds(k["t"], times, f"{fid}.{f}"))
+        ctx.set(last["id"], "ease", ease)
+
+
 @R.operation("frame.fit", "Frame something: `to` view or rect (the largest frame-shaped box inside `rect` [x, y, w, h], "
              "world px, keeping the frame's turn), or items (the layers `ids` as they show in the export at `at`, depth "
              "included, with `pad` room). Keys x, y, zoom at `at`; a field with no keys yet is also keyed at 0 s where "
-             "it was. `cut`: jump there (as frame.cut).", target=TYPE, label="Frame the view",
-             valid_when=UNLOCKED, params=[replace(TO[0], required=True), *TO[1:], AT,
+             "it was. `ease` (a key ease name) shapes the move into it. Already framed there: nothing changes (on an "
+             "animated frame after 0 s the place is keyed, a hold the next fit moves on from). `cut`: jump there (as "
+             "frame.cut).", target=TYPE, label="Frame the view",
+             valid_when=UNLOCKED, params=[replace(TO[0], required=True), *TO[1:], AT, EASE,
                                           Param.toggle("cut", label="As a cut", default=False, importance="deep")])
 def frame_fit(ctx, targets, args):
     for fid in targets:
@@ -119,13 +134,18 @@ def frame_fit(ctx, targets, args):
         at = args.get("at", 0.0)
         t = _seconds(ctx, at)
         goal, now = _goal(ctx, frame, timed, t, args, _now(timed, t)["rotation"]), _now(timed, t)
-        if all(abs(now[f] - v) < (1e-4 if f == "zoom" else 0.01) for f, v in goal.items()):     # keys that change nothing: none written
-            ctx.fail(codes.CONFLICT, f'target "{fid}"', f"is already framed there at {marked.label(at)}",
-                     hint="Nothing was keyed: the frame already shows this.")
+        if all(abs(now[f] - v) < (1e-4 if f == "zoom" else 0.01) for f, v in goal.items()):     # already framed there
+            # no move: a still frame changes nothing; an animated one after 0 s gets its place keyed (a hold the next
+            # fit moves on from, so a script can write its shots in time order)
+            if t <= 0 or not any(keys_of(frame, f) for f in goal):
+                continue
+        ease = args.get("ease")
         for f, v in goal.items():
             if keys_of(frame, f) or isinstance(at, str) or t > 0:
                 if not keys_of(frame, f) and t > 0:
-                    _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)))
+                    _key(ctx, fid, f, 0.0, float(frame.get(f, F.param(TYPE, f).default)), **({"ease": ease} if ease else {}))
+                elif ease:
+                    _ease_into(ctx, frame, fid, f, t, ease)
                 _key(ctx, fid, f, at, v)
             else:
                 ctx.set(fid, f, F.param(TYPE, f).check(round(v, 4), f"{ctx.where} › {fid}.{f}"))

@@ -6,7 +6,8 @@
         said = lipsync("take.wav", at=0.5, text="Every city keeps one hour.",
                        shapes={"X": rest, "A": mbp, "D": wide}, start=0, end=None, rest_gap=0.25)
 
-It keys the mouth layers made earlier in the same script (opacity, hold), so a re-run merges key by key and a
+`source` is a WAV, or "voice:<line id>": a RostrumSound voice line of the project (its made take, and its words when
+`text` is left out; voice_line.py). It keys the mouth layers made earlier in the same script (opacity, hold), so a re-run merges key by key and a
 person's edit to any mouth key stays. With `slot=<swap group>` (the mouths are its children) it keys the slot's
 `show` instead: one choice per change of mouth. The phones are computed once and cached; a re-run reads the cache. It returns
 the job's answer: phones, words and cues in comp seconds.
@@ -15,6 +16,14 @@ from __future__ import annotations
 
 from rostrum_core.lipsync.keys import check_shapes, slot_keys
 from rostrum_core.lipsync.track import track
+
+from . import voice_line
+
+
+def _folder():
+    """The project folder of the program running the script (placement's host), or None."""
+    from .. import placement
+    return placement._host.folder() if placement._host else None
 
 
 def _node(build, id_):
@@ -35,7 +44,8 @@ def for_script(build) -> dict:
             raise ValueError("make a composition first: comp(...) before lipsync(...)")
         shapes = check_shapes(shapes, "lipsync")
         fps = build.holders[0].get("fps", 30)
-        job = track(source, at, fps, shapes, text, start, end, language, pronounce, **timing)
+        source, words = voice_line.resolve(source, _folder())          # "voice:<line id>": a Sound voice line's take
+        job = track(source, at, fps, shapes, text if text is not None else words, start, end, language, pronounce, **timing)
         if slot is not None:            # a swap set: key its `show` instead of each layer's opacity
             node = _node(build, getattr(slot, "id", slot))
             kids = [c["id"] for c in node["layers"]]

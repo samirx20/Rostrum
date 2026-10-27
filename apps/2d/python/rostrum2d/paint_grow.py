@@ -28,8 +28,11 @@ PAD = 4              # canvas px spare beyond the brush's reach
 
 def reach(points, brush: dict) -> tuple[float, float, float, float]:
     """(x0, y0, x1, y1): the canvas px a stroke may paint, from its points and how far its brush reaches round them."""
+    from rostrum_paint.shape import TILT_WIDEN
     size = float(brush.get("size", 0))
-    r = size / 2 * (1 + brush.get("size_jitter", 0) + brush.get("tilt_size", 0)) + 3 * brush.get("jitter", 0) * size + PAD
+    # the widest tip the brush lays (brush.py: leaning on its side widens it TILT_WIDEN × tilt_size), plus scatter: the
+    # dabs wander a normal spread of jitter × size, so 4 of those holds all but a dab in ~30 000 (3 let a few cut hard)
+    r = size / 2 * (1 + brush.get("size_jitter", 0) + TILT_WIDEN * brush.get("tilt_size", 0)) + 4 * brush.get("jitter", 0) * size + PAD
     xs, ys = [p[0] for p in points], [p[1] for p in points]
     return min(xs) - r, min(ys) - r, max(xs) + r, max(ys) + r
 

@@ -105,7 +105,12 @@ class LayerOrder(SlotMixin):
         ids = levels.level_of(self.doc, self.selected_layers(), self.comp_id)
         if ids:
             self._select(ids)
+            self._all_picked = set(ids)               # picked_all: one-key actions that wrap layers ask for a pick by hand
             self._set_status(f"Picked {len(ids)} layer{'' if len(ids) == 1 else 's'}")
+
+    def picked_all(self) -> bool:
+        """The pick is still what Ctrl+A made (every layer at the level), not layers picked by hand."""
+        return len(getattr(self, "_all_picked", ())) > 1 and set(self.selected_layers()) == self._all_picked
 
     @Slot()
     def clearSelection(self):

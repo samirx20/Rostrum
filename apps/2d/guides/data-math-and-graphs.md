@@ -23,7 +23,7 @@ Two ways in:
 | `lines_d(list_of_point_lists, to=…)` | many lines as one path (a grid, a wireframe) |
 | `nice_ticks(lo, hi, count=5, extend=False)`, `tick_label(v, ticks, separator="")` | round tick values (1, 2, 5 steps) and their words (`separator=","` → "1,500") |
 | `view3d(yaw, pitch, scale, center, distance=None)` | `V(x, y, z)` → comp px, z up; `distance` adds perspective |
-| `surface_lines(f, (x0, x1), (y0, y1), lines=16, steps=48)` | `z = f(x, y)` as wireframe lines for `lines_d(…, to=V)` |
+| `surface_lines(f, (x0, x1), (y0, y1), lines=16, steps=48, fine=0.001)` | `z = f(x, y)` as wireframe lines for `lines_d(…, to=V)`; extra points where the surface bends sharply (a peak, a pit), so it never zigzags |
 | `parse_table(text)` | CSV text → `[{column: value}, …]`, numbers as numbers |
 
 A path made with `d` and none of `x`, `y`, `w`, `h` is read in comp px, so what `P` maps lands exactly there.

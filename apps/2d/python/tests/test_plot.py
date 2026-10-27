@@ -9,7 +9,7 @@ from rostrum_core.mcp import Runtime
 
 from rostrum2d import pathdata
 from rostrum2d.mcp import app_tools, make_app
-from rostrum2d.plot import curve_points, line_d, nice_ticks, plot_area, tick_label, view3d
+from rostrum2d.plot import curve_points, line_d, nice_ticks, plot_area, surface_lines, tick_label, view3d
 from rostrum2d.table import parse_table
 
 
@@ -45,6 +45,15 @@ def test_where_the_function_breaks_the_line_lifts():
 def test_a_3d_view_maps_axes_as_documented():
     V = view3d(yaw=0, pitch=0, scale=100, center=(0, 0))
     assert V(1, 0, 0) == pytest.approx((100, 0)) and V(0, 0, 1) == pytest.approx((0, -100))
+
+
+def test_a_wireframe_meets_at_its_crossings_and_follows_a_sharp_pit():
+    f = lambda x, y: math.hypot(x, y)                    # a cone: its pit is a sharp point at 0, 0
+    mesh = surface_lines(f, (-4, 4), (-4, 4), lines=5, steps=9)
+    along_y, along_x = mesh[4], mesh[5]                  # the middle lines, through the pit
+    assert (0.0, 0.0, 0.0) in along_y and (0.0, 0.0, 0.0) in along_x       # the two families meet on the surface
+    near = mesh[6]                                       # x = 2: flat far out, bends round its closest point to the pit
+    assert len(near) > 9 and all(p[2] == pytest.approx(f(p[0], p[1])) for p in near)
 
 
 def test_a_table_reads_as_numbers_and_refuses_a_bad_header():

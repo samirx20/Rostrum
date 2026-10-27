@@ -42,7 +42,8 @@ def render_video(ctx, args):
     ask with inspect_job (wait_s up to 25): frames done of total and how long since the last one. A frame stuck over 2 minutes
     fails the job with an error naming the frame; run_stop ends it at once, from this or another session. With a project folder it is a project render, renders/<item>/vNNN/ (the mp4 and a
     manifest.json, kind "pictures"), which Sound and the Editor find as the item's latest render; a failed export stays in
-    vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder."""
+    vNNN.partial/ and is never listed. Without a project folder it goes to the person's Videos folder. The finished reply
+    names the deliverable (`video`: the `path` copy when given, else the render) and says whether it has sound (`has_sound`)."""
     doc, comp = doc_and_comp(ctx, args)
     fps, duration = comp.get("fps", 30), comp.get("duration", 5.0)
     s = exporting.settings(ctx.tool, "mp4", duration, start=args.get("start"), end=args.get("end"), quality=args.get("quality"), bitrate=args.get("bitrate"),
@@ -81,10 +82,16 @@ def render_video(ctx, args):
                 beside = args.get("with_project") and project.save_beside(folder, item, files[0].parent, copy_to.with_name(copy_to.stem + ".project"))
         said = f" The project is saved beside the copy: {beside}." if partial and copy_to and beside else ""
         took = info["timing"]["totalS"]
+        video = files[-1] if len(files) > 1 else files[0]           # the deliverable: the copy asked for, else the render
+        heard = (f"with sound (the project's mix{', song ' + str(info['sound']['song']) if info['sound'].get('song') else ''}, "
+                 "checked present in the file)" if info.get("sound") else "silent (no sound track: the project has no "
+                 "sound, or sound was off)")
+        also = f" The same video is kept as the project's render {files[0]}." if len(files) > 1 else ""
         return Reply(f'Rendered {comp["id"]}: {info["frames"]} frames at {info["fps"]} fps, {start:g}–{end:g} s, in {took // 60:.0f} min {took % 60:02.0f} s '
-                     f'on {info.get("adapter") or "the processor"}.{said}',
-                     {"frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
-                      "project_copy": str(beside) if said else None, "seconds": round(took, 1), "adapter": info.get("adapter"),
+                     f'on {info.get("adapter") or "the processor"}. The video: {video}, {heard}.{also}{said}',
+                     {"video": str(video), "has_sound": bool(info.get("sound")),
+                      "frames": info["frames"], "fps": info["fps"], "start": start, "end": end, "sound": info.get("sound"),
+                      **({"project_copy": str(beside)} if said else {}), "seconds": round(took, 1), "adapter": info.get("adapter"),
                       "timing": info["timing"], "workers": info.get("workers")}, files, warnings=scene.get("warnings", []) + [w for w in [info.get("warning")] if w])
 
     return ctx.job(f'render_video {comp["id"]} {start:g}-{end:g}s', job_fn, key=f"video|{doc.item_id}|{comp['id']}|{start}|{end}|{s['quality']}|{s['bitrate']}|{s['sound']}|{doc.seq}|{out}|{args.get('with_project')}")

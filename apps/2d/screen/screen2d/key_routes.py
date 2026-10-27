@@ -12,7 +12,7 @@ from rostrum_gui.action_hub import ActionHub
 from rostrum_gui.parts import SlotMixin
 
 from . import levels
-from .keys2d import ASKED, ROUTES, SKIP, WINDOW
+from .keys2d import ASKED, BY_HAND, ROUTES, SKIP, WINDOW
 
 
 class KeyHub(ActionHub):
@@ -31,6 +31,9 @@ class KeyHub(ActionHub):
         pointer_quiet.acted()           # the person acting (a shortcut's key never reaches the window's watcher)
         if self.bridge.keys_take(job):
             return
+        if job in BY_HAND and self.bridge.picked_all():         # a stray key after Ctrl+A never wraps the whole scene
+            return self.bridge._set_status(f"{BY_HAND[job]} needs layers you pick by hand (Shift+click); Ctrl+A picked "
+                                           "every layer", True)
         if job in ROUTES:
             name, *args = ROUTES[job]
             getattr(self.bridge, name)(*args)
@@ -103,7 +106,11 @@ class KeyRoutes(SlotMixin):
 
     @Slot()
     def selectAllKey(self):
-        """Ctrl+A: every layer; the pick is about layers then (picked keys go)."""
+        """Ctrl+A: every layer; the pick is about layers then (picked keys go). Only while the keys are the canvas's or the
+        timeline's: a click that missed a box in the settings panel leaves the keys there, and the Ctrl+A meant for the
+        box's text must not pick the whole scene for the keys typed next."""
+        if getattr(self, "_focus_area", "") == "settings":
+            return self._set_status("Ctrl+A picks every layer from the canvas or the timeline; to pick a box's text, click the box first")
         if self._tool == "move":
             self._keys.clear()
             self.selectAllLayers()

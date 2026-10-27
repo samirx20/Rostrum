@@ -82,3 +82,4 @@ SHELL = ("undo", "redo", "history", "export", "export_again", "guides", "key_lis
          "find_setting", "problems", "go_to_time")
 HAVE_ROWS = ("new", "open", "save_version", "duplicate_file", "add_file",
            "zoom_in", "zoom_out", "fit_all", "fit_everything", "actual_size", "fit", "look_through")   # the view menu's rows are in Ctrl+K already (view_commands.py)
+BY_HAND = {"auto_layout": "Auto layout"}    # one-key actions that wrap layers: never on a Ctrl+A pick (a stray key wrapped a whole scene)

@@ -12,11 +12,12 @@ QML as `backend.strokeSelect`.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from rostrum2d import placement
 from rostrum2d.drawing import frame_at
 from rostrum2d.evaluate import resolve
+from rostrum_core.errors import RostrumError
 from rostrum_gui.edits import Drag
 
 from . import stroke_geom as G
@@ -121,7 +122,7 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         return [s for p in (f["paints"] if f else []) if not p.get("locked") for s in p["strokes"]]    # strokes and fills
 
     def _load(self):
-        """Comp-px points of the picked strokes from the document now (the place is kept from when they were picked)."""
+        """Comp-px points of the picked strokes from the document now, through the place last read (`_place_again`)."""
         self._ids = [i for i in self._ids if self.b.doc.has(i)]
         self._comp = {i: self._to_comp(self.b.doc.item(i)["points"]) for i in self._ids}
 
@@ -129,6 +130,20 @@ class StrokeSelect(StrokeClip, StrokeHandles, QObject):
         if self._ids and self._drag is None:
             self._load()
             self.changed.emit()
+            QTimer.singleShot(0, self._place_again)     # the scene is described again after docChanged's listeners
+
+    def _place_again(self):
+        """The layer's place read again once the change has its scene: a move past the edge grew the drawing (its box
+        and anchor changed), and the old place would show, copy and paste the strokes stretched off where they are."""
+        d = self._target()
+        if not self._ids or self._drag is not None or d is None:
+            return
+        try:
+            self._seen_on(d)
+        except (RostrumError, RuntimeError, ValueError):
+            return                                  # not on screen at the playhead now: the outline stays as it was
+        self._load()
+        self.changed.emit()
 
     # ---- the lasso -------------------------------------------------------------------------------------------------
     @Slot(bool)

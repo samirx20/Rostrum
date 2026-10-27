@@ -161,7 +161,7 @@ SmallPopup {
                         anchors { left: parent.left; leftMargin: Theme.gap - menu.padding + menu.checkW; verticalCenter: parent.verticalCenter }
                         width: parent.width - 2 * (Theme.gap - menu.padding) - menu.checkW - (chip.visible ? chip.width + Theme.gap : 0) - (row.sub ? 14 : 0)
                         text: row.modelData.label; elide: Text.ElideRight
-                        color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont
+                        color: row.modelData.faint ? Theme.fg3 : Theme.fg; font.pixelSize: Theme.body; font.family: uiFont   // faint: there, but not showing now
                     }
                     Text {
                         id: chip

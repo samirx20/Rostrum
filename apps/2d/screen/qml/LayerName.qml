@@ -59,12 +59,15 @@ Rectangle {
         onDoubleClicked: name.beginRename()
     }
     Item {  // the fold arrow (absent when there is nothing to fold)
+        objectName: "rowFold:" + name.rowData.id       // a scripted hand finds it
         x: name.indent - 2; width: 14; height: parent.height
         visible: name.rowData.fold !== ""
         Chevron { anchors.centerIn: parent; rotation: name.rowData.fold === "open" ? 0 : -90
                   color: foldArea.containsMouse ? Theme.fg : Theme.fg3 }
         MouseArea { id: foldArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; enabled: !name.rows.compact
-                    onClicked: backend.toggleFold(name.rowData.id) }
+                    onClicked: (m) => (m.modifiers & Qt.AltModifier)       // Alt: every row at this level, as After Effects
+                                      ? backend.foldLevel(name.rowData.id, name.rowData.fold !== "open")
+                                      : backend.toggleFold(name.rowData.id) }
     }
     LayerIcon {
         id: icon

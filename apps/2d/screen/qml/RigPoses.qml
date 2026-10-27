@@ -12,9 +12,9 @@ Column {
     readonly property var p: backend.poses
     readonly property real full: parent ? parent.width : 0
     readonly property real wide: Theme.wideFor(full)          // label + field: every row ends where the fields end
-    readonly property bool any: p.poses.length > 0
+    readonly property bool any: !!p && p.poses.length > 0       // !!p: the backend goes first when the window closes
     width: full
-    visible: p.shown
+    visible: !!p && p.shown
     spacing: 2
 
     Item {  // the heading, like a group's, with Save pose at its right; no poses yet: Save pose alone
@@ -31,7 +31,7 @@ Column {
         }
     }
     Repeater {
-        model: pl.p.poses
+        model: pl.p ? pl.p.poses : []
         delegate: Rectangle {
             id: row
             required property var modelData

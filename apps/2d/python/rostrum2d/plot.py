@@ -154,17 +154,48 @@ def view3d(yaw=30.0, pitch=25.0, scale=100.0, center=(960, 540), distance=None):
     return to
 
 
-def surface_lines(f, x, y, lines=16, steps=48):
+def surface_lines(f, x, y, lines=16, steps=48, fine=0.001):
     """A surface z = f(x, y) over x=(lo, hi), y=(lo, hi) as a wireframe: `lines` lines along each axis, each sampled
-    `steps` times, as 3D point lists (None where f fails) for lines_d(..., to=view3d(...))."""
+    at least `steps` times, as 3D point lists (None where f fails) for lines_d(..., to=view3d(...)). Every line is
+    sampled at each crossing with the other lines, so the two families meet on the surface; where the surface bends
+    sharply (a peak, a pit) a line gets more points until it is within `fine` of the box's size of the true surface,
+    so the straight pieces never show as a zigzag."""
+    if lines < 2:
+        raise ValueError("lines: at least 2 along each axis")
     (x0, x1), (y0, y1) = x, y
-    at = lambda lo, hi, i, n: lo + (hi - lo) * i / (n - 1)   # noqa: E731
-    out = []
+    per = max(1, math.ceil((steps - 1) / (lines - 1)))       # samples between two crossings
+    n = (lines - 1) * per + 1
+    us, vs = [x0 + (x1 - x0) * j / (n - 1) for j in range(n)], [y0 + (y1 - y0) * j / (n - 1) for j in range(n)]
+    grid = []
     for i in range(lines):
-        a, b = at(x0, x1, i, lines), at(y0, y1, i, lines)
-        out.append([_z(f, a, at(y0, y1, j, steps)) for j in range(steps)])
-        out.append([_z(f, at(x0, x1, j, steps), b) for j in range(steps)])
+        a, b = us[i * per], vs[i * per]
+        grid.append((lambda v, a=a: _z(f, a, v), vs))
+        grid.append((lambda u, b=b: _z(f, u, b), us))
+    zs = [p[2] for g, ts in grid for p in map(g, ts) if p]
+    span = (abs(x1 - x0) or 1.0, abs(y1 - y0) or 1.0, (max(zs) - min(zs)) if zs and max(zs) > min(zs) else 1.0)
+    return [_refined(g, ts, span, fine) for g, ts in grid]
+
+
+def _refined(g, ts, span, fine, depth=4):
+    """g(t) at every t, plus midpoints wherever the line bends more than `fine` (of `span`) off its straight piece."""
+    pts = [g(t) for t in ts]
+    out = [pts[0]]
+    for t0, p0, t1, p1 in zip(ts, pts, ts[1:], pts[1:]):
+        _between(g, t0, p0, t1, p1, span, fine, depth, out)
+        out.append(p1)
     return out
+
+
+def _between(g, t0, p0, t1, p1, span, fine, depth, out):
+    if depth == 0 or p0 is None or p1 is None:
+        return
+    tm = (t0 + t1) / 2
+    pm = g(tm)
+    if pm is None or max(abs(pm[k] - (p0[k] + p1[k]) / 2) / span[k] for k in range(3)) <= fine:
+        return
+    _between(g, t0, p0, tm, pm, span, fine, depth - 1, out)
+    out.append(pm)
+    _between(g, tm, pm, t1, p1, span, fine, depth - 1, out)
 
 
 def _z(f, x, y):

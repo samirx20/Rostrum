@@ -7,8 +7,11 @@ A person uses the Pen tool and writes the same path data the operations below wr
 
 - **`shape`**: a rect, ellipse, star, polygon, line, arrow … (`w`, `h`, `radius`, `fill`; `stroke`, `strokeColor`,
   `strokeWidth` for an outline; `filled=False` for an outline only, a ring). Simple, and its size and radius animate.
-- **`path`**: any outline. Its one truth is `d`: SVG path data with **absolute** commands only: `M x y`, `L x y`,
-  `C x1 y1 x2 y2 x y`, `Z`. `w` and `h` are the box (anchor and gradients use it). Bad data is refused, naming what is wrong.
+- **`path`**: any outline. Its one truth is `d`: SVG path data. Give it in any SVG form (`M L H V C S Q T A Z`, lower
+  case for relative, as an SVG file or icon has it); it is kept as absolute `M x y`, `L x y`, `C x1 y1 x2 y2 x y`, `Z`
+  (quadratics and arcs become cubics), so reading `d` back shows those. `w` and `h` are the box (anchor and gradients
+  use it). Bad data is refused, naming what is wrong. Shape keys morph between `d`s with the same commands: write
+  the keyed shapes the same way.
   Where the points are: in a script with none of `x`, `y`, `w`, `h` given, `d` is read as SVG reads it, in comp px (or
   the group's box), and the box is fitted around it, so a chart line drawn through each bar's top passes through them.
   With any of those given (and in operations), `d` is in the layer's own px from its box's top-left and `x`, `y` place
@@ -89,6 +92,11 @@ line = path("line", d="M 0 0 C 150 -120 350 120 500 0", filled=False, stroke=Tru
 line.key("trimEnd", {0.2: 0, 1.2: 1}, ease="easeInOut")
 line.key("trimStart", {1.6: 0, 2.4: 1}, ease="easeIn")       # then take it off from the other end
 ```
+
+When the drawn part is empty (`trimEnd` 0, or `trimStart` = `trimEnd`) nothing is drawn, caps included. As soon as
+any of it is drawn, a `round` or `square` cap draws its full end: the first frames of a draw-on show a dot
+`strokeWidth` wide where the line starts (with `easeInOut` the start is slow, so it sits there a few frames). That is
+the cap, not a stray: for a line that grows from nothing use `cap="butt"`, or a faster start (`easeOut`, `linear`).
 
 ## Variable width (taper and profile)
 

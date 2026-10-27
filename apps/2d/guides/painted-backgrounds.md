@@ -40,7 +40,7 @@ two tools, by what you want:
   grows. Run it again after you change the move. It is for a layer that stays still (not keyed, not pinned); a text has
   no size of its own.
 
-**The warning band.** With such a layer picked (one that covers the whole frame at some moment), a striped amber band
+**The warning band.** With such a layer picked (one that covers the whole frame at some moment while its own size holds still; a bar or wipe growing through the frame gets no band), a striped amber band
 lies inside each edge the frame sees past at another moment, with when it starts: "shows past the right edge from
 3.2 s". Cover the frame's move takes the band away. It is not shown while playing or looking through the frame.
 

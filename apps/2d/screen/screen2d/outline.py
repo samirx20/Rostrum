@@ -198,3 +198,23 @@ def rows(comp: dict, flipped: set[str], anim_only: set[str] = frozenset(), kept:
         kept.clear()
         kept.update(fresh, state=state)
     return out
+
+
+def fold_level(comp: dict, item_id: str, flipped: set[str], want_open: bool) -> tuple[set[str], set[str]]:
+    """Alt+click on a fold arrow (as After Effects and Figma): every row beside it (its parent's layers) that has
+    anything to fold, folded or opened alike; the folds the person made anywhere else are kept. (The new `flipped`,
+    the ids it set.)"""
+    def beside(layers):
+        if any(lay["id"] == item_id for lay in layers):
+            return layers
+        return next((got for lay in layers if (got := beside(lay.get("layers", []))) is not None), None)
+    out, done = set(flipped), set()
+    for lay in beside(comp.get("layers", [])) or []:
+        if not (_fields(lay) or _owned(lay) or lay.get("layers")):
+            continue
+        done.add(lay["id"])
+        if want_open != bool(lay.get("layers")):            # a group starts open, any other layer closed
+            out.add(lay["id"])
+        else:
+            out.discard(lay["id"])
+    return out, done

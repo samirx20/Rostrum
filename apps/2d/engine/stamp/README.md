@@ -11,13 +11,13 @@ are identical, the kit's replay, undo and pixel cache stay exact whether a machi
 numpy mixes float32 and float64: an f32 array with a Python number stays f32, an f32 array with an f64 array or a NumPy
 scalar becomes f64 (NEP 50). Every step here is written in the precision numpy uses for it, in the same order, never
 fused or reordered (Rust doesn't contract `a * b + c`). Things whose result depends on a maths library (cos, sin, hypot,
-powers) are computed in Python by the plan and passed in. One detail decides the wet reservoir: numpy takes it up in
+powers) are computed in Python by the plan and passed in, except in the spacing walk below. One detail decides the wet reservoir: numpy takes it up in
 f32 when the take-up amount is a Python number and in f64 when it is a NumPy scalar, which depends on the dab; the plan
 says which (`take_weak`).
 
 | File | Job |
 |---|---|
-| `src/lib.rs` | the C entries `rostrum2d_stamp_dabs` and `rostrum2d_stamp_straight8` (premultiplied float -> straight RGBA8 for a box, `compose.straight8`'s bytes), the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
+| `src/lib.rs` | the C entries `rostrum2d_stamp_dabs` and `rostrum2d_stamp_straight8` (premultiplied float -> straight RGBA8 for a box, `compose.straight8`'s bytes), `rostrum2d_stamp_spacing` and `rostrum2d_stamp_fill` (below), the layout of the numbers it reads (`LAYOUT`, `P_*`, `DAB`) |
 | `src/stroke.rs` | a stroke's dabs in order, the wet reservoir (on a seamless canvas it picks up across the joined edges, and a dab's other parts reuse its pick-up: the kit's `wrap.py`); the fast paths below |
 | `src/tip.rs` | one pixel's coverage per tip (round, bristle, chalk, flat, block, line), grain, mask; `reach`, the columns of a row the tip's shape can cover |
 | `src/paint.rs` | paint meets the layer (normal, multiply, erase, screen, add) |
@@ -28,6 +28,17 @@ The kit lays a live stroke a piece at a time (`brush.stamp_stroke`'s `piece`): e
 and the wet reservoir as the last piece left it (`res`, D×D×4, with `P_RES_IN`); it is written back after the last
 dab. The stroke's ends (a block's ragged ends) come from the whole stroke in `P_R0`, `P_RL`, `P_LENGTH`, not from the
 piece's first and last dab.
+
+## The spacing walk and the fill
+
+Two per-dab and per-pixel loops of the kit's Python, here because a look at a big hand-painted piece spent seconds in
+them (production round, 2026-10-27): `rostrum2d_stamp_spacing` is `brush._spacing` (where a stroke's dabs go: a
+step per dab, its taper's `shape.step_scale`), in f64 like Python's floats, its ties broken as Python's `max` / `min`
+break them; `rostrum2d_stamp_fill` is `marks.apply_paint` for a fill (normal, from no coverage), in numpy's f32 steps.
+The taper's sine and power are the C library's here, as Python's `math.sin` and `**` are; the kit's tests compare the
+walk with the Python on hundreds of strokes (`tests/test_native.py`), so a library that rounds differently shows
+there. They came after layout 5 without changing its calls: an older build lacks them and the kit uses its Python
+(`native.walks()`), the same numbers.
 
 ## Build
 

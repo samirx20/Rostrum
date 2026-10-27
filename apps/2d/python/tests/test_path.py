@@ -56,3 +56,33 @@ def test_path_width_refuses_a_bad_profile_and_is_one_undo_step():
     assert (doc.item("p")["taperEnd"], doc.item("p")["widthProfile"]) == (0.3, "0,0.5 0.5,2")
     doc.undo(ME)
     assert (doc.item("p")["taperEnd"], doc.item("p")["widthProfile"]) == (0.0, "")
+
+
+def test_any_svg_path_data_is_taken_and_kept_as_m_l_c_z():
+    """FRICTION A3-2: relative commands, H / V, Q / T, S and arcs are read as SVG reads them (script, path.set, a d key)
+    and kept as absolute M L C Z; anything SVG does not read is refused loudly."""
+    import math
+    import pytest
+    from rostrum2d import run_source
+    assert PD.normalize("m10 10 l20 0 h10 v10 H0 V0 z") == "M 10 10 L 30 10 L 40 10 L 40 20 L 0 20 L 0 0 Z"
+    assert PD.normalize("M0 0 Q50 -50 100 0 T200 0") == "M 0 0 C 33.333 -33.333 66.667 -33.333 100 0 C 133.333 33.333 166.667 33.333 200 0"
+    assert PD.normalize("M0 0 C10 0 20 10 20 20 s10 20 20 20") == "M 0 0 C 10 0 20 10 20 20 C 20 30 30 40 40 40"
+    arc = PD.commands(PD.normalize("M0 0 A50 50 0 0 1 100 0"))             # a half circle round (50, 0), over the top
+    assert PD.bounds(arc) == pytest.approx((0, -50, 100, 0), abs=0.01)
+    mid = arc[1][5:7]
+    assert math.hypot(mid[0] - 50, mid[1]) == pytest.approx(50, abs=0.01)
+    assert PD.normalize(CURVY) == CURVY                                        # already stored form: untouched
+    for bad, said in (("M0 0 X 4", '"X" is not an SVG path command'), ("M0 0 Q1 2", "Q needs 4 numbers"),
+                      ("10 10", "before a command"), ("M0 0 A10 10 0 2 1 5 5", "arc flag is 0 or 1")):
+        with pytest.raises(ValueError, match=said):
+            PD.normalize(bad)
+    doc = _doc({"op": "layer.add", "target": ["c"], "args": {"type": "path", "id": "p"}},
+               {"op": "path.set", "target": ["p"], "args": {"d": "M0 0 h100 v100 z"}},
+               {"op": "key.add", "target": ["p"], "args": {"prop": "d", "t": 1, "d": "M0 0 q50 50 100 0 z"}})
+    assert doc.item("p")["d"] == "M 0 0 L 100 0 L 100 100 Z"
+    assert doc.item("p")["keys"][0]["d"].startswith("M 0 0 C ")
+    src = 'comp("c")\np = path("q", d="M100 100 q50 -50 100 0", fill="none", stroke=True)\np.key("d", {0: "M100 100 h100", 1: "M100 100 l100 20"})\n'
+    d2 = Document.new(KIND)
+    d2.run_script("s.py", run_source(src, "s.py"))
+    assert all(set(PD.commands(k["d"])[1][0]) <= {"L"} for k in d2.item("q")["keys"])
+    assert d2.item("q")["d"].startswith("M 0 ")

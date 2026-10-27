@@ -184,6 +184,7 @@ QQC.ApplicationWindow {
         return false
     }
     Binding { target: OpenPopups; property: "focused"; value: win.activeFocusItem }   // a focused control's own keys (OpenPopups.takes)
+    onClosing: OpenPopups.windowClosing()        // a popup still open ends as a click away ends it: its change is kept
     // The window's ONE Esc: it closes the newest open popup, dialog, drawer or sheet (OpenPopups.top), one per press,
     // wherever the keyboard is. An application shortcut: a modal dialog's scrim stops the window's own shortcuts.
     KeyShortcut { objectName: "escCloses"; sequence: "Escape"; context: Qt.ApplicationShortcut; enabled: OpenPopups.escWanted
@@ -211,6 +212,9 @@ QQC.ApplicationWindow {
     TopBar {
         id: topBar
         anchors { left: parent.left; right: parent.right; top: parent.top }
+        // under the start screen (StartScreen.qml: the same files.startShown) its controls are hidden, not just covered:
+        // the start screen's top strip is drag room and keeps its own window buttons (layout check: no zone)
+        visible: !(typeof files !== "undefined" && !!files && files.startShown)
         bridge: win.bridge; appName: win.appName; documentName: win.documentName
         renamable: typeof files !== "undefined" && !!files && files.hasProject     // the kit's files (project_files.py)
         onRenameAsked: (name) => files.pickLater("rename:" + name)      // later: the window reopens under the new name

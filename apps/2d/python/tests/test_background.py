@@ -55,3 +55,17 @@ def test_the_warning_bands_shortcut_never_skips_a_layer_that_covers_the_frame():
     c = d.item("c")
     assert not cover.never_covers(c, d.item("sky"), B.shots(c))
     assert cover.report(c, d.item("sky"), B.shots(c), 10.0)[1]       # it covers: the band is worked out
+
+
+def test_a_bar_growing_through_the_frame_is_not_a_backdrop():
+    """Production round: a bar whose own size animates past the frame and back got warning stripes over the art."""
+    from rostrum2d import cover
+    d = Document.new(KIND)
+    d.run_script("s.py", run_source('comp("c", fps=10, duration=2)\n', "s.py"))
+    d.apply([{"op": "layer.add", "target": "c", "args": {"type": "shape", "id": "bar"}},
+             {"op": "shape.set", "target": "bar", "args": {"x": 960, "y": 540, "w": 40, "h": 10}}], AGENT)
+    for t, w, h in ((0, 40, 10), (1, 4000, 3000), (2, 40, 10)):
+        d.apply([{"op": "key.add", "target": ["bar"], "args": {"prop": "w", "t": t, "v": w}},
+                 {"op": "key.add", "target": ["bar"], "args": {"prop": "h", "t": t, "v": h}}], AGENT)
+    c = d.item("c")
+    assert not cover.report(c, d.item("bar"), B.shots(c), 10.0)[1]      # no band (cover_band shows edges only for a backdrop)

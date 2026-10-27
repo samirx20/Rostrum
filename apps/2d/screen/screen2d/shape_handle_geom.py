@@ -97,7 +97,7 @@ def _radius_place(c):
     def place(p, s):
         (cx, cy, _), (w, h) = CORNERS[c], _wh(p)
         r = _corner_r(p, c)
-        return cx * w + (1 - 2 * cx) * max(r, DOT_IN / s[0]), cy * h + (1 - 2 * cy) * max(r, DOT_IN / s[1])
+        return cx * w + (1 - 2 * cx) * max(r, DOT_IN / (s[0] or 1e-9)), cy * h + (1 - 2 * cy) * max(r, DOT_IN / (s[1] or 1e-9))   # scale 0 (a pop-in's first key): no divide by zero
     return place
 
 

@@ -7,13 +7,15 @@ A slot mix-in for Bridge2D (it declares `layersChanged`; outlineChanged and mark
 """
 from __future__ import annotations
 
+from PySide6.QtCore import Slot
 from rostrum_gui import row_facts
+from rostrum_gui.parts import SlotMixin
 from rostrum_gui.rows_model import RowsModel
 
 from . import outline, painting_open
 
 
-class TimelineRows:
+class TimelineRows(SlotMixin):
     _rows_at = None          # (placed, folds, A-opened, rows): the rows of that state
     _rows_kept = None        # outline.rows' memory: a layer unchanged since the last rows keeps its rows
     _rows_told = None        # the rows QML was last told about
@@ -36,6 +38,13 @@ class TimelineRows:
         if got is None or got[0] is not placed or got[1] != flipped or got[2] != only:
             got = self._rows_at = (placed, flipped, only, outline.rows(placed, self._flipped, self._anim_only, self._rows_kept))
         return got[3]
+
+    @Slot(str, bool)
+    def foldLevel(self, item_id, want_open):
+        """Alt+click on a fold arrow: every row at that level folds (or opens) with it (outline.fold_level)."""
+        self._flipped, done = outline.fold_level(self.placed(), item_id, self._flipped, want_open)
+        self._anim_only -= done                          # rows A opened there go with the rest
+        self.outlineChanged.emit()
 
     def _layers_check(self):
         """Something the rows may depend on changed: tell QML only when they differ from what it shows. While several

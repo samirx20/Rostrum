@@ -109,6 +109,8 @@ class KeyEdits(SlotMixin):
         if not self._guard(lambda: self._apply(calls, "Duplicate a key" if len(ids) == 1 else f"Duplicate {len(ids)} keys")):
             return False
         self._keys.click([k["id"] for o in owners for k in self.doc.item(o).get("keys", []) if k["id"] not in before], "", [])
+        n = len(ids)          # said every time: the layer still looks picked, and Ctrl+D copying keys surprised people
+        self._set_status(f"Copied {n} key{'s' if n > 1 else ''}: keys are picked. Esc, or click the layer, to copy the layer")
         return True
 
     # ---- , and . ------------------------------------------------------------------------------------------------
