@@ -74,3 +74,58 @@ def test_esc_records_nothing_and_enter_keeps_what_was_set_not_hovered():
     page.tryValue("ease", "out")                  # only hovered when Enter lands: not kept
     page.keep()
     assert drags[0].shown == "linear" and drags[0].ended not in (None, "cancel")
+
+
+CHOICE = b"""
+import QtQuick
+import QtQuick.Controls
+import RostrumKit
+ApplicationWindow { width: 400; height: 400; visible: true
+    property var picks: []
+    property string lastTried: ""
+    ChoiceField { objectName: "grid"; x: 20; y: 20; width: 160; height: 24
+                  options: ["1/4", "1/8", "1/16"]; current: "1/16"
+                  onTried: (v) => { lastTried = v; current = v }            // an amounts box shows the tried one in the field
+                  onUntried: { if (lastTried !== "") current = "1/16"; lastTried = "" }
+                  onPicked: (v) => { picks = picks.concat([v]); lastTried = ""; current = v } }
+}
+"""
+
+
+def test_a_click_on_the_hovered_choice_is_kept():
+    """Rest on a choice (it shows, tried), then pick that same choice: it is kept, never put back (member A's real-window
+    find: a click on the hovered option was lost, since `current` already showed it)."""
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtGui import QGuiApplication
+    from PySide6.QtQml import QQmlApplicationEngine
+    from PySide6.QtQuick import QQuickItem
+    from PySide6.QtTest import QTest
+    from rostrum_gui.app import KIT_QML
+    from rostrum_gui.pointer import hover, wait
+    _app = QGuiApplication.instance() or QGuiApplication([])
+    engine = QQmlApplicationEngine()
+    engine.addImportPath(str(KIT_QML))
+    engine.rootContext().setContextProperty("uiFont", "Segoe UI")
+    engine.loadData(CHOICE)
+    win = engine.rootObjects()[0]
+    wait(50)
+    field = win.findChild(QQuickItem, "grid")
+    c = field.mapToScene(field.boundingRect().center())
+    QTest.mouseClick(win, Qt.LeftButton, Qt.NoModifier, QPoint(int(c.x()), int(c.y())))
+    wait(200)
+    def items(it):
+        for c in it.childItems():
+            yield c
+            yield from items(c)
+    rows = win.findChild(QQuickItem, "choiceList")
+    opt = next(t for t in items(rows) if t.property("text") == "1/8")
+    p = opt.mapToScene(opt.boundingRect().center())
+    at = QPoint(int(p.x()), int(p.y()))
+    QTest.keyClick(win, Qt.Key_Up)                # ↑ rests on 1/8 (an offscreen window gets no hover in a popup)
+    wait(30)
+    assert win.property("lastTried") == "1/8" and field.property("current") == "1/8"
+    QTest.keyClick(win, Qt.Key_Return)            # and picks it: kept, never put back by the list's close
+    wait(300)
+    assert list(win.property("picks").toVariant() if hasattr(win.property("picks"), "toVariant") else win.property("picks")) == ["1/8"]
+    assert field.property("current") == "1/8"
+    engine.deleteLater()

@@ -45,7 +45,9 @@ FieldFrame {
             if (p && p.opened) { p.takeKeys(); return }
         }
     }
-    function open() { query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
+    property var atOpen: undefined        // the value set when the list opened: a pick is compared with it, not with `current`,
+                                          // which shows the option only hovered (tried) — a click on it must still be sent
+    function open() { atOpen = current; query = ""; pop.asynchronous = false; pop.active = true; pop.item.highlighted = Math.max(0, shown.indexOf(indexOf(current))); pop.item.placeNow(); pop.item.open() }
 
     text: indexOf(current) >= 0 ? labelAt(indexOf(current)) : String(current === undefined || current === null ? "" : current)
     engaged: f.opened
@@ -101,7 +103,7 @@ FieldFrame {
             Keys.onDownPressed: menu.highlighted = Math.min(f.shown.length - 1, menu.highlighted + 1)
             Keys.onReturnPressed: pickShown(menu.highlighted)
             Keys.onEnterPressed: pickShown(menu.highlighted)
-            function pick(i) { menu.close(); if (!f.same(f.valueAt(i), f.current)) f.picked(f.valueAt(i)) }
+            function pick(i) { const v = f.valueAt(i); if (!f.same(v, f.atOpen)) f.picked(v); menu.close() }   // sent before the close (its untried)
             function pickShown(k) { if (k >= 0 && k < f.shown.length) pick(f.shown[k]) }
             Rectangle {   // the search line (a long list or a font list): type to keep only what matches
                 visible: f.searchable
