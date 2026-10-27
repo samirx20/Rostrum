@@ -68,12 +68,13 @@ def seen_texts(doc, info: dict, frame: int, aspect: float) -> list[dict]:
     each {item, text, reads, angle, facing, why}."""
     at = round(frame / info["fps"] * 1000)
     fr = Frames(doc.data, range(at, at + 1), 1000.0)
+    texts = [id_ for id_, item in fr.items.items() if item.get("type") == "mesh" and item.get("shape") == "text"]
+    if not texts:                                               # no text: nothing to say, the camera isn't read
+        return []
     cam_world, cam = fr.world(info["camera"], at), fr.values(info["camera"], at)
     tan_x = cam["sensorWidth"] / 2 / cam["focalLength"]
     out = []
-    for id_, item in fr.items.items():
-        if item.get("type") != "mesh" or item.get("shape") != "text":
-            continue
+    for id_ in texts:
         v = fr.values(id_, at)
         if not v.get("visible", True):
             continue
