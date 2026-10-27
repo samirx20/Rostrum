@@ -31,7 +31,7 @@ from rostrum_gui.actions import SHORT_MENU, ActionList
 from . import action_calls as C
 from . import amount_actions as A
 from . import chord_actions as K
-from . import key_lock
+from . import key_lock, song_edit, song_list
 from . import voice_actions as V
 from .action_calls import REMOVABLE, TIMED
 from .keys import KEYMAP
@@ -109,6 +109,12 @@ ACTIONS = [
     # the song itself (nothing selected): absent once it is the main mix
     act("main_mix", "Make this the main mix", _can_make_main, importance="secondary", group="song", do="mainmix",
         panel=False),                                   # the Song panel has its own button for it
+    # the song's changes at the playhead, found by name in Ctrl+K ("tempo" + Return did nothing: production round);
+    # the Song panel's + Tempo change / + Time signature change are the same calls (song_slots.songDo)
+    act("add_tempo", "Add tempo change here", lambda f: song_list.can(f.doc.data, f.playhead)["tempo"],
+        lambda f: [song_edit.add_tempo_call(f.doc.data, f.playhead)], group="song", panel=False),
+    act("add_meter", "Add time signature change here", lambda f: song_list.can(f.doc.data, f.playhead)["meter"],
+        lambda f: [song_edit.add_meter_call(f.doc.data, f.playhead)], group="song", panel=False),
     # clips
     act("clean", "Clean up…", CLIP, importance="primary", group="clip", do="clean",
         panel=False),                                   # the panel's Cleanup group is the one place (its fields are right there); keys and Ctrl+K jump to it

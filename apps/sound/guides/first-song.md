@@ -209,7 +209,8 @@ A typed tempo outside 20–400 bpm is refused ("Tempo is 20–400 bpm"), never c
 - Under each list, **+ Tempo change**, **+ Time signature change**, **+ Key change** (once the song has a key), **+ Section** and **+ Marker**
   add one at the playhead. A new change starts at what already plays there and is selected, so you change it at once
   (pick 6 and 8 for a 6/8 bar). A **+** is there only where it makes sense: not at the very start (that is the song's
-  own tempo and time signature) and not where one already sits.
+  own tempo and time signature) and not where one already sits. From anywhere, **Ctrl+K** › "tempo" (Add tempo change
+  here) or "time signature" does the same.
 - A new section is named for its next musical role (intro, verse, chorus …); rename it in the settings panel.
 - Changes sit on the ruler as small flags: "♩ 132" for a tempo, "3/4" for a time signature, "D minor" for a key.
   Drag a flag to move it (one undo step). Click one and the settings panel shows it. A tempo flag has **Bpm**, **At**
