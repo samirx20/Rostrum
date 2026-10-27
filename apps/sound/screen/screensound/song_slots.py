@@ -65,6 +65,27 @@ class SongSlots:
             self._drag = Drag(self.doc, self.who, moves.LABELS["edge"])
         return self._guard(go)
 
+    @Slot(float)
+    def dropSection(self, dt):
+        """The release of a section moved `dt` seconds on the section band (a picture while it moved, landed on a beat
+        there): its one `section.move` runs once on the song as it was, as one change. Through the drag it was a
+        preview step and then that step kept as the change: the song's rows made and sent twice, ~170 ms on the Big
+        song. Anything else ends as any drag does."""
+        d, g = self._drag, self._grab
+        if d is None or not g or g.get("type") != "section" or "primary" in g or "handle" in g:
+            self.dragBy(dt, 0, True)
+            return self.endDrag()
+        label = d._ctx.label
+        self._drag, self._grab, self._to_track = None, None, ""
+        self._set_snap({})
+        self._guard(lambda: d.end(cancel=True))     # nothing was previewed: nothing shown is taken back
+
+        def go():
+            calls = moves.drag_calls(self.doc, g, dt, 0, True, self._grid_now, self.keepInKey)
+            self._done(self.doc.apply(calls, self.who, label=label, join=False), "")
+        self._guard(go)
+        self._settle()
+
 
 # ---- where the person is, kept across this window reopening the song (a rename) ------------------------------
 FRESH_S = 30.0          # a place saved this long ago or less is this window's own reopen (the song renamed)

@@ -10,7 +10,8 @@ import "Tempo.js" as Tempo
 // Drag moves it and everything that started inside it at the press (markers stay) as one picture (PLAN S2): the band,
 // its outline and a picture of the lanes' notes under it (`shift`, drawn by the Timeline) ride the pointer every frame,
 // nothing in the song changes until the release, which is one `section.move` by the whole amount, one undo step. It
-// lands on the nearest beat (Ctrl: free); the kit's chip names where ("bar 9.3") and how far ("+2 bars"). Esc while
+// lands on the nearest beat (Ctrl: free); the kit's chip names where ("bar 9.3") and how far ("+2 bars"). The picture
+// stays where it was let go until the song shows it there (`land`: the write after that frame). Esc while
 // dragging puts it back (the kit's dragEsc: it holds Esc once the press has moved 4 px).
 // Drag the left or right edge: that edge only moves (`section.set` on release, one undo step), its contents stay.
 // Pointer (the kit's CanvasCursor, Pointers.js): pick on a section, resize (left-right) on its edges, the closed hand
@@ -34,14 +35,31 @@ Item {
         var b = ruler.song.beats || [], i = Math.round(Tempo.along(b, t, ruler.song.spb))
         return i < 0 ? 0 : i < b.length ? b[i] : (b.length ? b[b.length - 1] : 0) + (i - b.length + 1) * ruler.song.spb
     }
+    // the release of a move: the picture stays where it was let go and that frame is drawn first; the one write
+    // follows (`land`), and the picture goes in the same turn as the song shows it there, so nothing moves again
+    property real landing: NaN
     function finish(keep) {      // the release (keep) or Esc: the one write, or none
-        if (!dragging) return
+        if (!dragging || !isNaN(landing)) return
         var s = sections.find(s => s.id === dragId), dt = dx / ruler.perSec
+        if (press.holding) { press.holding = false; dragEsc.letEsc() }
+        if (keep && s && Math.abs(dx) >= 0.5 && dragEdge === "") { landing = dt; landNow.start(); return }
         if (keep && s && Math.abs(dx) >= 0.5) backend.dragBy(dt, 0, true)
         if (keep) backend.endDrag(); else backend.cancelDrag()     // (a click: nothing moved, nothing written)
         dragId = ""; dragEdge = ""; dx = 0; shift = null
-        if (press.holding) { press.holding = false; dragEsc.letEsc() }
     }
+    function land() {
+        if (isNaN(landing)) return
+        var dt = landing
+        landNow.stop()
+        backend.dropSection(dt)
+        landing = NaN; dragId = ""; dragEdge = ""; dx = 0; shift = null
+    }
+    Connections {   // the frame showing the release is on screen: now the write (the timer: a window not drawing)
+        target: band.Window.window
+        enabled: !isNaN(band.landing)
+        function onFrameSwapped() { band.land() }
+    }
+    Timer { id: landNow; interval: 50; onTriggered: band.land() }
     Connections {   // Esc while a section drag runs: it goes back, nothing written; the release then does nothing
         target: dragEsc
         function onCancelled() { if (press.holding) { press.holding = false; band.finish(false) } }
@@ -108,6 +126,7 @@ Item {
         CanvasCursor { objectName: "sectionCursor"; anchors.fill: parent
                        kind: Pointers.kind(press.pointer); badge: Pointers.badge(press.pointer); angle: Pointers.turn(press.pointer) }
         onPressed: (m) => {
+            band.land()                      // a press before the last drop's write: that write first
             var id = band.sectionAt(m.x), e = band.edgeAt(id, m.x), s = band.sections.find(s => s.id === id)
             if (!s || !(e !== "" ? backend.beginEdge(id, e) : backend.beginDrag(id))) { m.accepted = false; return }
             x0 = m.x; t0 = e === "end" ? s.end : s.t
@@ -131,7 +150,7 @@ Item {
     DragLabel {   // where it lands, as the ruler names it
         parent: band.parent; z: 1000
         at: Qt.point(band.x + press.mouseX, band.y + band.height / 2)
-        text: band.dragging && Math.abs(band.dx) >= 0.5
+        text: band.dragging && isNaN(band.landing) && Math.abs(band.dx) >= 0.5
               ? Tempo.barName(band.ruler.song, press.t0 + band.dx / band.ruler.perSec) : ""
         hint: { if (!band.dragging || Math.abs(band.dx) < 0.5) return ""
                 var song = band.ruler.song, t1 = press.t0 + band.dx / band.ruler.perSec

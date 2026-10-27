@@ -39,6 +39,32 @@ def test_tempo_and_section_edits_are_one_undo_step_each_and_keep_form(bridge):  
     assert doc.item(section_id)["end"] == {"beat": 24.0}
 
 
+def test_a_section_dropped_on_the_band_is_the_drags_one_step(bridge):  # noqa: F811
+    """The band's release (dropSection: one write, no preview step first) lands the song exactly where the drag's
+    preview-then-keep did, as one undo step with the drag's name."""
+    doc = bridge.doc
+    bridge.setTime(4.0)
+    bridge.songDo("add_section", "")
+    section_id = doc.data["sections"][0]["id"]
+    bridge.beginDrag(section_id)
+    bridge.dragBy(2.0, 0, True)
+    bridge.endDrag()
+    by_drag = json.dumps(doc.data, sort_keys=True)
+    label = doc.history.changes[-1].label
+    bridge.undo()
+    before = json.dumps(doc.data, sort_keys=True)
+    n = len(doc.history.changes)
+    bridge.beginDrag(section_id)
+    bridge.dropSection(2.0)
+    assert len(doc.history.changes) == n + 1 and doc.history.changes[-1].label == label
+    assert json.dumps(doc.data, sort_keys=True) == by_drag
+    bridge.undo()
+    assert json.dumps(doc.data, sort_keys=True) == before
+    bridge.beginEdge(section_id, "end")                         # an edge ends as any drag does
+    bridge.dropSection(2.0)
+    assert doc.item(section_id)["end"] == {"beat": 28.0}
+
+
 def test_time_signature_change_from_the_song_panel_is_one_undo_step(bridge):  # noqa: F811
     doc = bridge.doc
     bridge.setTime(0.0)
