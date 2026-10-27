@@ -99,6 +99,7 @@ class Viewport(QObject):
         self._stylized = False                       # Look: Stylized (only while can_stylize())
         self._can_stylize = can_stylize(bridge.doc.data)
         self._next = QTimer(self, singleShot=True, interval=NEXT_MS, timeout=self.redraw)   # the next Final step
+        self._frame_due = QTimer(self, singleShot=True, interval=0, timeout=self.redraw)    # a new frame's picture
         self._r.ready.connect(self._on_ready)
         if self.link is not None:
             self.link.shown.connect(dab_trace.shown)
@@ -107,7 +108,7 @@ class Viewport(QObject):
         self._r.notice.connect(self._set_status)
         bridge.docChanged.connect(self._on_doc)
         bridge.shotChanged.connect(self._on_shot)
-        bridge.frameChanged.connect(self.redraw)
+        bridge.frameChanged.connect(self._on_frame)
         bridge.selectionChanged.connect(self.redraw)
         bridge.selectionChanged.connect(lambda *_: self.settingsChanged.emit())   # canThroughLight follows it
         bridge.render.changed.connect(self._on_render_job)     # Final waits while the Render button renders
@@ -320,8 +321,16 @@ class Viewport(QObject):
                 **self.onion.request(drawn)}                   # onion skin's ghosts, when on (quick look only)
 
     @Slot()
+    def _on_frame(self):
+        """A new frame: the handles placed now and the picture asked for once every other listener of the frame has
+        updated the screen (the playhead, the panel), so the window paints it all at once: after the picture they cost
+        a second paint of the whole window on every scrub step."""
+        self.gizmo._refresh()
+        self._frame_due.start()
+
     def redraw(self):
         self._next.stop()
+        self._frame_due.stop()
         if self.final.on and self.bridge.render.running():
             self.final.line = "Final waits for the render"
             return self.serialChanged.emit()
@@ -524,6 +533,7 @@ class Viewport(QObject):
             ops_mesh.use_engine(None)
             _ENGINE_FOR_OPS[0] = None
         self._next.stop()
+        self._frame_due.stop()
         self._r.close()
 
     # --- answers from the worker
