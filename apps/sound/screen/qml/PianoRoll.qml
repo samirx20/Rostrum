@@ -25,6 +25,9 @@ Panel {
         function onRollPatched(text) { p.show(Blocks.patch(p.blocks, text, bars.placing)) }
         function onRollBack() { p.show(p.was) }
         function onRollBlocksChanged() { p.patched = null; p.was = null }
+        // a Paste / Duplicate made these (backend._roll_follow; the time view already slid): after the roll has placed
+        // a track it just switched to, it slides up or down just enough to show their rows, and they flash once
+        function onRollShow(t0, t1, rows) { Qt.callLater(() => p.reveal(t0, t1, rows)) }
     }
     readonly property string kind: roll.kind
     readonly property int keysWidth: kind === "drums" ? 76 : 72     // drum names ("Open hat"); a keyboard wide enough to play
@@ -52,6 +55,16 @@ Panel {
             contentHeight: grid.height; boundsBehavior: Flickable.StopAtBounds; interactive: false
             RollGrid { id: grid; onDrumMenuAt: (drum, px, py) => { drumMenu.drum = drum; drumMenu.entries = backend.drumRowMenu(drum, input.lastT); var q = grid.mapToItem(null, px, py); drumMenu.openAt(q.x, q.y) }
                       width: view.width; viewHeight: view.height; scrollY: view.contentY; roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth }
+            Rectangle {   // what a Paste / Duplicate made, flashed once (reveal)
+                id: flash
+                property real t0: 0
+                property real t1: 0
+                x: p.keysWidth + bars.xOf(t0) - 2; width: Math.max(8, bars.xOf(t1) - bars.xOf(t0) + 4)
+                visible: opacity > 0; opacity: 0; radius: 3
+                color: "transparent"; border.color: Theme.accent; border.width: 2
+                Rectangle { anchors.fill: parent; radius: 3; color: Theme.accent; opacity: 0.25 }
+                NumberAnimation on opacity { id: fade; running: false; from: 1; to: 0; duration: 900; easing.type: Easing.InQuad }
+            }
             RollInput {   // every click, drag, box and right-click on the roll (select first, then act)
                 id: input
                 x: p.keysWidth; width: grid.width - x; height: grid.height
@@ -169,6 +182,21 @@ Panel {
     Connections {   // right-click on the roll's ruler: what the arrangement's ruler offers (Add marker here, Make a section …)
         target: bars
         function onMenuAt(t, px, py) { rollMenu.entries = backend.atMenu("", t, 1 / bars.perSec); var q = bars.mapToItem(null, px, py); rollMenu.openAt(q.x, q.y) }
+    }
+    function reveal(t0, t1, rows) {   // rows: keys (notes) or drum rows; the view moves only when they are out of it
+        var top = 1e9, bottom = -1
+        for (var i = 0; i < rows.length; i++) {
+            var r = p.kind === "notes" ? grid.rowOf(rows[i]) : rows[i]
+            if (r < 0) continue
+            top = Math.min(top, r); bottom = Math.max(bottom, r)
+        }
+        if (bottom < 0) return
+        var y0 = top * grid.rowH, y1 = (bottom + 1) * grid.rowH, pad = grid.rowH * 2
+        if (p.kind === "notes" && (y0 < view.contentY || y1 > view.contentY + view.height))
+            view.contentY = Math.max(0, Math.min(view.contentHeight - view.height,
+                                                 y1 - y0 > view.height - 2 * pad || y0 < view.contentY ? y0 - pad : y1 + pad - view.height))
+        flash.t0 = t0; flash.t1 = t1; flash.y = y0; flash.height = y1 - y0
+        fade.restart()
     }
     function drumMenuFor(drum, fillOpen) {   // a drum row's menu, open under its name, Fill ▸ open too (a scripted step: steps_select.py)
         drumMenu.drum = drum; drumMenu.entries = backend.drumRowMenu(drum, input.lastT)

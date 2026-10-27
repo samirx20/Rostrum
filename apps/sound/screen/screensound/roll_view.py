@@ -67,6 +67,8 @@ class RollView(RollHover):      # (what the pointer over the roll would do: roll
             self._roll_picks()
         if relaid:
             self.rollChanged.emit()
+        if moved:
+            self._roll_follow()             # a Paste / Duplicate on this track: shown (roll_hover.py)
 
     def _played_again(self, root):
         """Only the Editor's playing lane made again (a change no row shows: a point on the track's sustain lane)."""

@@ -2,13 +2,17 @@
 times relative to the first one and the tracks they came from; Ctrl+V puts them back at the playhead on the selected
 track (several tracks copied: that track and the ones below it, in order; nothing selected: the tracks they came
 from). Paste is operations an agent calls too (`note.add_many`, `hit.add_many`, `clip.add`, `line.add`), all in one
-change. Times keep their form: beats stay beats, a time on a marker stays on it with a new offset.
+change. Times keep their form: beats stay beats, a time on a marker stays on it with a new offset. The copy is kept in
+the person's Rostrum folder too, so Ctrl+V after a restart pastes it (critic r12: it did nothing and said nothing).
 """
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 
-from rostrum_core import RostrumError, codes
+from rostrum_core import RostrumError, codes, userhome
+from rostrum_core.storage import write_atomic
 from rostrum_sound.doc import media
 from rostrum_sound.doc import select_time as ST
 from rostrum_sound.doc.fields import DEFAULTS
@@ -20,15 +24,36 @@ KINDS = ("note", "hit", "clip", "line")
 MANY = {"note": "notes", "hit": "hits"}     # kinds with an add_many (one call per track)
 FITS = {"note": ("notes", "empty"), "hit": ("drums", "empty"), "clip": ("audio", "empty", "notes", "drums"),
         "line": ("audio",)}
-_KEPT = [{"items": [], "tracks": []}]       # the one clipboard of this run: every song open in the app shares it
+_KEPT: list = []        # the one clipboard: every song open in the app shares it, and it outlives the app (FILE)
+
+
+def _file() -> Path:
+    """Where a copy waits for the next run: the person's Rostrum folder (a scripted run's own scratch home)."""
+    return userhome.home() / "clipboard-sound.json"
 
 
 def kept() -> dict:
+    """What Ctrl+C kept, this run or the last one (read once a run; an unreadable file is an empty clipboard)."""
+    if not _KEPT:
+        board = {"items": [], "tracks": []}
+        try:
+            got = json.loads(_file().read_text(encoding="utf-8"))
+            if isinstance(got, dict) and isinstance(got.get("items"), list) and isinstance(got.get("tracks"), list):
+                board = got
+        except (OSError, ValueError):
+            pass
+        _KEPT.append(board)
     return _KEPT[0]
 
 
 def keep(board: dict) -> dict:
+    """The new copy, for this run and the next (a copy that can't be written still pastes in this run)."""
+    kept()
     _KEPT[0] = board
+    try:
+        write_atomic(_file(), json.dumps(board, ensure_ascii=False))
+    except (OSError, TypeError, ValueError):
+        pass
     return board
 
 

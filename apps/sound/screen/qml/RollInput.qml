@@ -65,6 +65,10 @@ MouseArea {
         grid.hoverKey = g && g.keys ? g.keys[0] : -1
     }
     function leave() { over = ({}); grid.hoverKey = -1 }
+    Connections {   // Alt pressed or let go with the pointer still: the pointer and the red light follow at once
+        target: backend.altWatch
+        function onChanged(held) { if (m.containsMouse && !m.pressed) m.altHeld = held }
+    }
     onExited: leave()
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     property real x0: 0
@@ -162,11 +166,16 @@ MouseArea {
     // What a Draw click would make (faint) or remove (lit red): one small item each, moved with the pointer.
     readonly property var ghost: !pressed && drawTool && over.ghost ? over.ghost : null
     readonly property bool lit: removes && mode === ""
-    Rectangle {   // a note
-        visible: !!m.ghost && !!m.ghost.keys
-        x: visible ? m.bars.xOf(m.ghost.t) : 0; y: visible ? m.grid.rowOf(m.ghost.keys[0]) * m.grid.rowH + 1 : 0
-        width: visible ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid ? m.grid.rowH - 2 : 0; radius: 3
-        color: m.grid ? m.grid.roll.hue : "transparent"; opacity: 0.4
+    Repeater {   // a note, or each key of the chord Note ▾ › Draw stamps (by count: a move re-places the same items)
+        model: m.ghost && m.ghost.keys ? m.ghost.keys.length : 0
+        Rectangle {
+            required property int index
+            readonly property int key: m.ghost ? m.ghost.keys[index] : 0
+            visible: !!m.ghost && m.grid.shows(key)
+            x: m.ghost ? m.bars.xOf(m.ghost.t) : 0; y: m.grid.rowOf(key) * m.grid.rowH + 1
+            width: m.ghost ? Math.max(4, m.bars.xOf(m.ghost.end) - x - 1) : 0; height: m.grid.rowH - 2; radius: 3
+            color: m.grid.roll.hue; opacity: 0.4
+        }
     }
     Diamond {   // a hit
         shown: !!m.ghost && m.ghost.row !== undefined

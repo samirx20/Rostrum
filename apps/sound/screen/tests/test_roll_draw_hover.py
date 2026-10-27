@@ -4,7 +4,7 @@ step beside a hit deleted the hit, and lost hats and a tom). Real pointer moves 
 - a click on a grid line lands in the step after it;
 - hovering an empty step shows the hit a click makes, hovering a hit lights it red with the erase pointer;
 - on the notes, the faint note sits on the key under the pointer and that key is lit on the keyboard; Draw+Alt click
-  erases the note under it."""
+  erases the note under it, and Alt lights it red without a move; a chord chosen in Note ▾ shows all its keys."""
 import os
 import sys
 from pathlib import Path
@@ -102,9 +102,19 @@ def test_draw_shows_what_a_click_does_and_a_hit_is_caught_only_on_its_diamond(tm
         QTest.mouseMove(win, QPoint(x(2) + 15, yk(60)))         # on the note's body: the pick pointer
         QTest.qWait(50)
         assert m.property("pointer") == "pick" and m.property("ghost") is None
+        QTest.keyPress(win, Qt.Key_Alt)                         # Alt with the pointer still: red, the erase pointer at once
+        QTest.qWait(30)
+        assert m.property("lit") and m.property("pointer") == "erase"
+        QTest.keyRelease(win, Qt.Key_Alt)
+        QTest.qWait(30)
+        assert m.property("pointer") == "pick"
         QTest.mouseClick(win, Qt.LeftButton, Qt.AltModifier, QPoint(x(2) + 16, yk(60)))   # Draw+Alt: erase it
         QTest.qWait(100)
         assert b.doc.item("piano").get("notes", []) == []
+        b.setDrawChord("major")                                 # a chord: every key it stamps shows, faint
+        QTest.mouseMove(win, QPoint(x(6) + 6, yk(60)))
+        QTest.qWait(50)
+        assert list(m.property("ghost")["keys"]) == [60, 64, 67]
     finally:
         screen.close()
         QTest.qWait(50)

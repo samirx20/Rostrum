@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from PySide6.QtCore import Slot
-from rostrum_sound.doc import meter, tempo
+from PySide6.QtCore import Property, QObject, Signal, Slot
+from rostrum_core import RostrumError
+from rostrum_sound.doc import chords, keys as K, meter, tempo
+from rostrum_sound.doc import select_time as ST
 
 from . import drum_steps as D, key_lock, moves, pick, timing
 
+FOLLOWED = ("Paste", "Duplicate")      # a step that makes notes the person didn't place by hand: the roll shows them
+MARGIN = 0.08                           # of the view's width, kept clear round what it slides to show
 END_PX = 6.0         # a note's end handle: its last 6 px (RollInput.snapPx)
 
 
@@ -31,6 +35,39 @@ def length_words(beats: float, bar: float) -> str:
 
 
 class RollHover:
+    rollShow = Signal(float, float, "QVariantList")     # Paste / Duplicate made these on the roll: its time span, its keys or drum rows
+
+    def _roll_follow(self):
+        """A Paste or Duplicate (Ctrl+V, Ctrl+D) put notes or hits on the roll's track: the view slides just enough in time
+        to show them (not at all when they are in view already) and the roll is told their span (`rollShow`: it slides
+        up or down the same way and flashes them once). Its undo and redo move nothing."""
+        hist = self.doc.history.changes
+        c = hist[-1] if hist else None
+        if c is None or not c.original or c.seq <= self.__dict__.get("_followed", 0) or not c.label.startswith(FOLLOWED):
+            return
+        self.__dict__["_followed"] = c.seq
+        by, drums = self.__dict__.get("_roll_by", {}), self._view["roll"].get("drums") or []
+        made = [by[i] for i in ST.inserted(c) if i in by and by[i]["type"] in ("note", "hit")]
+        if not made:
+            return
+        t0, t1 = min(b["t"] for b in made), max(b["t"] + b.get("dur", 0.0) for b in made)
+        rows = sorted({k for b in made for k in b["keys"]} if made[0]["type"] == "note"
+                      else {drums.index(b["drum"]) for b in made if b["drum"] in drums})
+        v = self._zoom
+        start, span = v.start, v.span
+        if not v.fit and (t0 < start or t1 > start + span):
+            pad = span * MARGIN
+            self._tv.setStart(t0 - pad if t1 - t0 > span - 2 * pad or t0 < start else t1 + pad - span)
+        self.rollShow.emit(t0, t1, rows)
+
+    def _alt_watch(self):
+        if "_alt" not in self.__dict__:
+            from .roll_keys import AltWatch
+            self.__dict__["_alt"] = AltWatch(self)
+        return self.__dict__["_alt"]
+
+    altWatch = Property(QObject, _alt_watch, constant=True)     # Alt's changes with the pointer still (roll_keys.py)
+
     @Slot(float, float, float, float, bool, result="QVariantMap")
     def rollHover(self, t, row, tol, px, draw):
         """The pointer at `t` seconds on roll row `row` (a key, or a drum row's index), `tol`: how near a block counts (on
@@ -63,7 +100,18 @@ class RollHover:
         key = int(round(row))
         key = key_lock.snapped(root, at, key) if self.keepInKey else key
         end = tempo.seconds_at(root, timing.beat(at, root) + self._draw_beats(timing.beat(t, root)))
-        return {"ghost": {"t": at, "end": end, "keys": [key]}}
+        return {"ghost": {"t": at, "end": end, "keys": self._stamped(key, at, root)}}
+
+    def _stamped(self, key, at, root) -> list[int]:
+        """The keys a Draw click stamps on `key` (Note ▾ › Draw: a single note, or a chord shape: note.chord's tones in
+        root position, the clicked key lowest); only the key when the shape has no chord there (the click says why)."""
+        shape = self.drawChord
+        if not shape:
+            return [key]
+        try:
+            return [m for m in chords.shape_tones(key, shape, K.key_for(root, at)) if 0 <= m <= 127] or [key]
+        except RostrumError:
+            return [key]
 
     def _hovered(self, item_id, part):
         b = self.__dict__.get("_roll_by", {}).get(item_id)
