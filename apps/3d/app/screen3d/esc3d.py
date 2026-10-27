@@ -8,6 +8,10 @@ A typing in place (a 3D text just placed: TypeInPlace.qml) ends on its own Esc b
 from __future__ import annotations
 
 ORDER = (
+    ("gizmo", "a gizmo drag: cancel it (the item goes back, no history step)",
+     lambda b, v: v is not None and v.gizmo.dragging, lambda b, v: v.gizmo.cancel()),
+    ("stroke", "a clay stroke in progress: cancel it (the clay goes back, no history step)",
+     lambda b, v: v is not None and v.clay_tool._phase in ("wait", "sculpt"), lambda b, v: v.clay_tool.cancel()),
     ("render", "a render running: cancel it",
      lambda b, v: b.render.state == "running", lambda b, v: b.render.cancel()),
     ("result", "a render shown over the viewport: put it away",

@@ -5,7 +5,8 @@ import RostrumKit
 // The insert chain of a track, bus or the master: one line per effect, top to bottom in insert order (it scrolls when
 // there are many), then "+ Effect" pinned under the lines so it is always there, on every strip.
 // A chip selects its effect (the inspector edits it); dragging a line up or down moves it in the chain (effect.move, one
-// change when you let go). "+ Effect" lists the effect types; picking one is effect.add. Right-click a line: its own
+// change when you let go; the kit's chip by the pointer says the place it lands, "Place 2 of 4"; Esc puts it back).
+// "+ Effect" lists the effect types; picking one is effect.add. Right-click a line: its own
 // menu, Remove (as the Delete key on the selected effect).
 Item {
     id: chain
@@ -53,19 +54,31 @@ Item {
                         preventStealing: moved
                         onPressed: (m) => { startY = m.y; shift = 0; moved = false
                                             if (m.button === Qt.RightButton) { backend.select(slot.modelData.id); chain.menuFor(slot.modelData.id, grab, m.x, m.y) } }
+                        property bool gone: false          // Esc'd: the release does nothing
                         onPositionChanged: (m) => {
-                            if (!pressed || !(pressedButtons & Qt.LeftButton)) return
-                            if (!moved && Math.abs(m.y - startY) > 4) { moved = true; list.dragging = true }
+                            if (!pressed || !(pressedButtons & Qt.LeftButton) || gone) return
+                            if (!moved && Math.abs(m.y - startY) > 4) { moved = true; list.dragging = true; dragEsc.holdEsc() }
                             if (moved) shift = Math.max(-slot.index * chain.rowStep, Math.min((chain.chips.length - 1 - slot.index) * chain.rowStep, m.y - startY))
                         }
                         onReleased: (m) => {
                             if (m.button === Qt.RightButton) return
                             const was = moved, to = target
+                            if (moved) dragEsc.letEsc()
                             moved = false; shift = 0; list.dragging = false
+                            if (gone) { gone = false; return }
                             if (!was) backend.select(slot.modelData.id)
                             else if (to !== slot.index) mixer.moveEffect(slot.modelData.id, to)
                         }
-                        onCanceled: { moved = false; shift = 0; list.dragging = false }
+                        onCanceled: { if (moved) dragEsc.letEsc(); moved = false; shift = 0; list.dragging = false; gone = false }
+                        Connections {   // Esc while a line is dragged: it goes back to its place
+                            target: dragEsc
+                            function onCancelled() { if (grab.moved) { grab.moved = false; grab.shift = 0; list.dragging = false; grab.gone = true } }
+                        }
+                    }
+                    DragLabel {   // the place it lands
+                        parent: chain; z: 1000
+                        at: grab.mapToItem(chain, grab.mouseX, grab.mouseY)
+                        text: grab.pressed && grab.moved ? "Place " + (grab.target + 1) + " of " + chain.chips.length : ""
                     }
                     Rectangle {   // where it will land: a line over the gap above / under the lines it passes
                         objectName: "effect-drop"

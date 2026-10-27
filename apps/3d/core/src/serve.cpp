@@ -73,6 +73,7 @@ std::string answer(Core& core, const std::string& line, const std::function<void
       {"sculpt", [&](const JsObject& a) { return core.sculpt(a); }},
       {"clay_info", [&](const JsObject& a) { return core.clay_info(a); }},
       {"clay_bench", [&](const JsObject& a) { return core.clay_bench(a); }},
+      {"xform", [&](const JsObject& a) { return core.xform(a); }},
       {"info", [&](const JsObject&) { return core.info(); }},
   };
   try {

@@ -1,10 +1,12 @@
 # View walk (3d-v1): the live view drawn inside the window, by real input, on a 300-object scene. A scratch project
 # (the sample scene plus 300 small boxes) in a fresh background window; then, with QTest's real mouse and keys:
 # a click picks the ball, a left drag on empty space orbits (120 moves at 60 a second), the ball's move arrow is
-# dragged (60 moves), a right-click opens the item's menu and the Materials list opens over the view, and Shift+F shows
+# dragged (60 moves; then a second drag cancelled by Esc mid-way), a right-click opens the item's menu and the Materials list opens over the view, and Shift+F shows
 # the Final look (the engine program's progressive Cycles picture) and back.
 # Each move's time to the screen: the move -> the frame that drew a view asked for after it -> that frame's swap
-# (the window's own frame counters: ViewLink.drawn / .shown, steady clock = time.perf_counter on Windows).
+# (the window's own frame counters: ViewLink.drawn / .shown, steady clock = time.perf_counter on Windows). A live
+# gizmo drag asks for no views: its moves go as `xform` requests (gizmo_live.py), so each move's time is the move ->
+# the swap of the frame that answered the first xform sent after it, and every frame shown during the drag is counted.
 #   heavy.ps1 run "priyam: view walk" gpu <venv python> apps\3d\tools\view_walk.py <out folder>
 import json
 import os
@@ -41,13 +43,22 @@ class Frames:
     """The window's view: when each view was asked for, which frame drew it, when that frame was on screen."""
 
     def __init__(self, link):
-        self.asks, self.drawn, self.shown = [], [], {}
-        show = link.show
+        self.asks, self.drawn, self.shown, self.xforms = [], [], {}, []
+        show, xform = link.show, link.xform
 
         def timed(req):
             self.asks.append(now())
             show(req)
-        link.show = timed
+
+        def timed_xform(item, fields, then):               # (sent, the frame that answered it)
+            t = now()
+
+            def got(out):
+                if isinstance(out, dict):
+                    self.xforms.append((t, out.get("frame")))
+                then(out)
+            xform(item, fields, got)
+        link.show, link.xform = timed, timed_xform
         link.drawn.connect(lambda r: self.drawn.append(r))
         link.shown.connect(lambda f, t: self.shown.__setitem__(f, t))
 
@@ -64,6 +75,18 @@ class Frames:
                     out.append(self.shown[r["frame"]] - tm)
                     break
         return out
+
+    def xform_latency(self, moves):
+        """Per move: ms from the move to the swap of the frame that answered the first xform sent after it."""
+        out = []
+        for tm in moves:
+            hit = next((f for t, f in self.xforms if t >= tm and f in self.shown), None)
+            if hit is not None:
+                out.append(self.shown[hit] - tm)
+        return out
+
+    def shown_between(self, t0, t1):
+        return sum(1 for t in self.shown.values() if t0 <= t <= t1)
 
 
 def stats(xs):
@@ -149,18 +172,45 @@ def main():
         k = on[len(on) // 2] if on else 0.9
         p0 = at(a[0] + k * (b[0] - a[0]), a[1] + k * (b[1] - a[1]))
         p1 = at(a[0] + (k + 1.0) * (b[0] - a[0]), a[1] + (k + 1.0) * (b[1] - a[1]))
-        n_asks, n_drawn = (len(fr.asks), len(fr.drawn)) if fr else (0, 0)
+        from screen3d import gizmo_live
+        why = gizmo_live.why_not(screen.bridge, v, v.gizmo._ctx)
+        report["gizmoLive"] = why or "live"
+        n_asks, n_drawn, n_x = (len(fr.asks), len(fr.drawn), len(fr.xforms)) if fr else (0, 0, 0)
+        steps = len(screen.bridge.doc.history.changes)
         moves = drag(win, p0, p1, 60)
         if fr:
-            # views asked / drawn during the drag (the viewport redraws a gizmo drag only when the pointer rests)
+            # views asked / drawn, xforms answered and frames shown during the drag: live, every move redraws
             report["gizmoAsksDrawn"] = [len(fr.asks) - n_asks, len(fr.drawn) - n_drawn]
+            report["gizmoXforms"] = len(fr.xforms) - n_x
+            report["gizmoFramesShown"] = [fr.shown_between(moves[0], moves[-1] + 1000 / 60), len(moves)]
         W.pump(5, lambda: v._r.idle(), "the gizmo's last picture")
         x1 = screen.bridge.doc.item("ball").get("x", 0.0)
         W.check(abs(x1 - x0) > 1e-3, f"dragging the move arrow moved the ball (x {x0:.3f} -> {x1:.3f})")
-        report["gizmo"] = stats(fr.latency(moves)) if fr else None
+        W.check(len(screen.bridge.doc.history.changes) == steps + 1, "the whole drag is one undo step")
+        report["gizmo"] = stats((fr.latency(moves) if why else fr.xform_latency(moves))) if fr else None
         report["gizmoGuiMsPerMove"] = stats(GUI)
         report["gizmoSceneLoadMs"] = stats([x for x in loads if x is not None])
         win.grabWindow().save(str(OUT / "view-walk-gizmo.png"))
+
+        # Esc mid-drag: the ball goes back, no undo step, the drag ends
+        steps = len(screen.bridge.doc.history.changes)
+        h = next(x for x in v.gizmo.handles if x.get("id") == "move0")
+        q0 = at(h["a"][0] + k * (h["b"][0] - h["a"][0]), h["a"][1] + k * (h["b"][1] - h["a"][1]))
+        QTest.mouseMove(win, q0)
+        W.pump(0.3)
+        QTest.mousePress(win, Qt.LeftButton, Qt.NoModifier, q0)
+        for i in range(1, 21):
+            QTest.mouseMove(win, QPoint(q0.x() + 4 * i, q0.y()))
+            W.pump(1 / 60)
+        QTest.keyClick(win, Qt.Key_Escape)
+        W.pump(0.3)
+        W.check(not v.gizmo.dragging, "Esc ends the gizmo drag")
+        win.grabWindow().save(str(OUT / "view-walk-gizmo-esc.png"))
+        QTest.mouseRelease(win, Qt.LeftButton, Qt.NoModifier, QPoint(q0.x() + 80, q0.y()))
+        W.pump(1.0)
+        W.check(abs(screen.bridge.doc.item("ball").get("x", 0.0) - x1) < 1e-9
+                and len(screen.bridge.doc.history.changes) == steps and screen.bridge.selected == "ball",
+                "Esc mid-drag: the ball stays where it was, no undo step, still selected (view-walk-gizmo-esc.png)")
 
         # popups over the view: the right-click menu on the ball (picked through the view), the Materials list
         QTest.mouseClick(win, Qt.RightButton, Qt.NoModifier, ball)

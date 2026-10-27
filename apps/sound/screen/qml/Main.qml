@@ -124,7 +124,9 @@ AppShell {
     right: Item {   // the selection's actions first (backend.actions: kit ActionsSection), then its settings
         id: side
         anchors.fill: parent
-        Inspector { visible: backend.selected !== ""; bridge: backend; actions: backend.actions   // the clean-up's result: under Cleanup
+        // actionLines: the action row keeps one line's room even when the selection has no actions (the Master, a bus),
+        // so the settings under it start at the same place from item to item (kit ActionsSection.holdLines)
+        Inspector { visible: backend.selected !== ""; bridge: backend; actions: backend.actions; actionLines: 1   // the clean-up's result: under Cleanup
                     below: [LayerRows { }, CleanTakeBar { width: parent ? parent.width : 0; height: implicitHeight }]
                     anchors.fill: parent }
         SongSettings { visible: backend.selected === ""; anchors.fill: parent }

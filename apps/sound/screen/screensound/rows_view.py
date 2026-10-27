@@ -95,7 +95,7 @@ class RowsView(RollView):
         tracks = timeline.track_rows(root, self._open, made, self._memo)
         rows = timeline.arrange(root, tracks, self._open, self._folded)
         self._marks_on([t for t in tracks if t["id"] not in made])
-        self._made, self._shown = {t["id"]: t for t in tracks}, root
+        self._made, self._shown, self._clocked = {t["id"]: t for t in tracks}, root, False
         marks = timeline.markers(root)
         song = timeline.song(root, tracks, marks, self._memo, self._picture_end())
         laid = [shape(r) for r in rows]
@@ -126,6 +126,10 @@ class RowsView(RollView):
             self._shown = root
             return
         relaid = change and self._lanes_now() != self._open
+        # the ruler still shows a drag's step of the clock (_clock_step; _rebuild clears it): a cancelled clock drag
+        # (Esc) brings back the very song the rows show, but the ruler, sections and flags must come back too
+        if root is self._shown and self.__dict__.get("_clocked"):
+            return self._rebuild()
         if root is self._shown and not relaid:    # a drag's drop: its last step already shows this very song
             return
         changed = stepped.changed_tracks(self._shown, root)
@@ -170,6 +174,7 @@ class RowsView(RollView):
             self.markersChanged.emit()
         if song != self._view["song"]:
             self._view["song"] = song
+            self._clocked = True
             self.songChanged.emit()
         self._rest.start()
 

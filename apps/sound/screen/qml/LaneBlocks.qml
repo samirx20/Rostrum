@@ -4,6 +4,7 @@ import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
 import "Picks.js" as Picks
+import "Pointers.js" as Pointers
 
 // One track's things in an arrangement row, drawn only (clicks are the Timeline's): notes as thin bars placed
 // by pitch (a chord: one per key), drum hits as ticks placed by drum, recorded clips as blocks with their
@@ -40,12 +41,17 @@ Item {
     opacity: track.mute ? 0.45 : track.group ? 0.5 : 1      // a folded group's tracks, faint
 
     property var cut: ({})        // block ids whose label is cut short (painted last): their whole name shows on hover
-    HoverHandler { id: over; onPointChanged: tipAt.x = point.position.x }
-    Item { id: tipAt; y: 0; width: 1; height: lane.height
-           Loader { id: tipPlace; anchors.fill: parent; active: over.hovered   // made only while hovered: one per lane (H65)
-               sourceComponent: HoverTip { parent: tipPlace; hovered: over.hovered; text: {
-               over.point.position; const b = lane.shown.find(b => lane.cut[b.id] && b.label
-                   && lane.ruler.xOf(b.t) <= over.point.position.x && over.point.position.x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
+    // Where the pointer rests on this lane (NaN: not here), told by the Timeline's LaneInput (Pointers.hoverLane): a
+    // hover handler of its own here took the hover from LaneInput under the rows, so its pointer never changed per zone
+    property real hoverX: NaN
+    readonly property bool hovered: !isNaN(hoverX)
+    Component.onCompleted: Pointers.addLane(lane)
+    Component.onDestruction: Pointers.dropLane(lane)
+    Item { id: tipAt; x: lane.hovered ? lane.hoverX : 0; y: 0; width: 1; height: lane.height
+           Loader { id: tipPlace; anchors.fill: parent; active: lane.hovered   // made only while hovered: one per lane (H65)
+               sourceComponent: HoverTip { parent: tipPlace; hovered: lane.hovered; text: {
+               const x = lane.hoverX, b = lane.shown.find(b => lane.cut[b.id] && b.label
+                   && lane.ruler.xOf(b.t) <= x && x <= lane.ruler.xOf(b.t) + lane.ruler.wOf(b.dur))
                return b ? b.label : "" } } } }
 
     ViewCanvas {   // painted whole on a new zoom, scroll or row look (a resize: stretched, then whole: ViewCanvas), else only where an edit or a selection changed (Blocks.js)

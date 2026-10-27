@@ -15,6 +15,7 @@ Item {
     signal scrubStarted()
     signal scrubbed(real gain)
     signal scrubEnded()
+    signal scrubCancelled()             // Esc during the fader's drag: the level goes back, no step
     signal reset()
     signal typeIt()
     signal nudged(real gain)
@@ -37,6 +38,7 @@ Item {
         onScrubStarted: lv.scrubStarted()
         onScrubbed: (g) => lv.scrubbed(g)
         onScrubEnded: lv.scrubEnded()
+        onScrubCancelled: lv.scrubCancelled()
         onReset: lv.reset()
         onTypeIt: lv.typeIt()
         onNudged: (g) => lv.nudged(g)

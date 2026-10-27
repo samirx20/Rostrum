@@ -111,7 +111,7 @@ Item {
                 visible: row.model.row === "more"
                 anchors.fill: parent
                 Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                          rotation: row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg2 }
+                          rotation: row.bridge && row.bridge.moreOpen ? 0 : -90; color: moreArea.containsMouse ? Theme.fg : Theme.fg2 }
                 Text { anchors.left: moreChev.right; anchors.leftMargin: Theme.grid + 2; anchors.verticalCenter: parent.verticalCenter
                        text: "More"; color: Theme.fg; font.pixelSize: Theme.body; font.family: uiFont }
                 MouseArea { id: moreArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -352,8 +352,8 @@ Item {
                          onScrubStarted: row.bridge.beginScrub(row.model.id)
                          onScrubbed: (v) => row.bridge.scrub(row.model.id, v)
                          onScrubEnded: row.bridge.endScrub() }
-                Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its words need ("Mixed")
-                         width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.restNeeds : 0)
+                Loader { id: amountField; anchors.right: parent.right; height: parent.height     // as wide as its widest words need ("Mixed", either end of its range)
+                         width: Math.max(row.model.display === "db" ? Theme.amountField : Theme.amountFieldShort, item ? item.widestNeeds : 0)
                          sourceComponent: number }
             } }
             Component { id: number; NumberField {

@@ -6,7 +6,7 @@ For a person using the RostrumSound app: turn your song into sound files you can
 
 - **Export** in the top bar, **≡ › Export…**, or **Ctrl+E**. It appears once the song makes a sound; before that, Ctrl+E says "Nothing to export yet: add a sound first".
 - The sheet (titled **Make the file**; its button says **Export**) opens on the right, in the settings panel's place, so the song stays in sight. × or Ctrl+E
-  closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type, **+ Another version**, **Stems**, **Cut the silence**, **More**, and the file's name (a box, the file type after it) with the folder under it, just above **Export**.
+  closes it. It reads top to bottom like a bounce dialog: the **range** first (only when the song has a time range or sections), then **what for** (with **For the Editor** under it), the file type with **More** (its quality) under it, **+ Another version** (each extra version opens under it), **Stems**, **Cut the silence**, and the file's name (a box, the file type after it) with the folder under it, just above **Export**.
   The chosen target shows in the picker. The folder line shows exactly where the file will land, the new version folder included (`…\renders\song\v001`); a long path leaves its middle out, the whole of it on hover.
 enders\song001`).
 enders\song001`).
@@ -96,7 +96,7 @@ A new song starts with the rate set in Preferences. MP3 offers only 44.1 and 48 
   is exported. The file is exactly that stretch (2 s to 6 s is 4.00 s long; any ring-out past the end is cut). Its loudness is the whole song's, matched
   by the master and then cut, so a quiet section stays quieter than a loud one, as it sounds in the song. The silent
   end is not cut for a range. Agents: `render_mix` with `from` and `to` (seconds, a beat or a marker).
-- **+ Another version** adds a row (**Version 2**, …; the first then reads **Version 1**) with its own target, file type and quality (for example Streaming WAV and a
+- **+ Another version** adds a row under it (**Another version**; with two or more, **Another version 1**, **2**, …) with its own target, file type and quality (for example Streaming WAV and a
   Podcast MP3 from one click). Each row has its own line: how far up or down the sound that plays now will be turned
   to reach it, and whether the loudest peak stays under the limit (when Normalize is off the line also says plainly how far the mix is from the song's loudness target, in amber, never a green tick; with the master's **Gentle limiting** on, a version whose peaks would need more limiting than **Most limiting** says it comes out that much quieter than its target instead, in amber). **Export** makes every row, each in its own
   numbered folder. A version's target does not change the song's own target. Stems come with the first version only.

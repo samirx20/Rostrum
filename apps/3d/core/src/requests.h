@@ -33,6 +33,7 @@ class Core {
   PXR_NS::JsObject sculpt(const PXR_NS::JsObject& a);     // clay_requests.cpp
   PXR_NS::JsObject clay_info(const PXR_NS::JsObject& a);  // clay_requests.cpp
   PXR_NS::JsObject clay_bench(const PXR_NS::JsObject& a); // clay_requests.cpp (a check: the replay bench)
+  PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject info();
 
  private:
@@ -55,6 +56,8 @@ class Core {
   PXR_NS::JsObject scene_;  // the loaded scene as sent (geometry names combine inputs from it)
   std::unique_ptr<Shm> shm_;  // the live viewport's pictures
   std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
+  std::string xform_id_;  // the item the last `xform` moved, and its prim
+  PXR_NS::SdfPath xform_path_;
   std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
 };
 

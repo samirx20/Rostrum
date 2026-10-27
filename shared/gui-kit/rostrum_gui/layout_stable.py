@@ -9,7 +9,8 @@ It fails (one line per click) when, after the click (AFTER_MS, the panel's next-
   itself  the clicked control moved or changed size (a Play that turns to Stop keeps its box; then it is fine);
   popup   a popup the click opened moved its frame's top or left edge between AFTER_MS (its opening motion done) and
           POPUP_MS later (a popup that grows downward as its content fills in is fine).
-Rows that appear below, a list growing downward, a panel elsewhere changing: all fine. What moves on its own (a meter, a
+Rows that appear below, a list growing downward, a panel elsewhere changing, a whole panel sliding sideways as one (a
+side panel opened beside it: `slid`): all fine. What moves on its own (a meter, a
 playhead, a blinking caret) is read twice before the click and left out.
 
 Which controls: clickable, enabled, wholly shown, not a text box, not the canvas (AREA_MAX of the window), not one whose
@@ -85,6 +86,7 @@ def candidates(win, spots: dict, tried: set) -> list:
             and layout_check.near(s.node.seen, s.rect) and s.rect.width() * s.rect.height() <= AREA_MAX * whole
             and min(s.rect.width(), s.rect.height()) >= layout_check.MIN_CLICK
             and s.node.item.property("danger") is not True and not typing(s.node.item) and not SKIP.search(words(s.node.item))]
+    full = [s for s in full if on_top(s, spots)]      # (a menu over it would take the click)
     layers = {s.node.layer for s in full}
     top = max(layers, key=lambda la: (la != "page", la.count("/")), default="page")
     full = [s for s in full if s.node.layer == top and sig(s) not in tried]     # an open popup takes the clicks
@@ -95,6 +97,36 @@ def candidates(win, spots: dict, tried: set) -> list:
     while any(rows):
         order += [r.pop(0) for r in rows if r]
     return order
+
+
+def _chain(item) -> list:
+    out = []
+    while item is not None:
+        out.append(item)
+        item = item.parentItem()
+    return out[::-1]
+
+
+def stacked_above(a, b) -> bool:
+    """Item `a` is drawn over item `b` (neither inside the other): at the first parent they part, a's branch comes
+    later in z, then in child order."""
+    ca, cb = _chain(a), _chain(b)
+    n = 0
+    while n < min(len(ca), len(cb)) and ca[n] is cb[n]:
+        n += 1
+    if n == 0 or n == len(ca) or n == len(cb):
+        return False
+    kids = ca[n - 1].childItems()
+    rank = lambda k: (k.z(), next((i for i, x in enumerate(kids) if x is k), -1))
+    return rank(ca[n]) > rank(cb[n])
+
+
+def on_top(s, spots) -> bool:
+    """No other control is drawn over this one's centre: a click there reaches it. An open menu drawn over a page
+    control would take the click (2026-10-27: a File menu's New, read as the page's button moving everything)."""
+    at = s.rect.center()
+    return not any(o is not s and o.rect.contains(at) and pressable(o.node.item) and stacked_above(o.node.item, s.node.item)
+                   for o in spots.values())
 
 
 def sig(s) -> str:
@@ -133,11 +165,12 @@ def try_one(win, c, wait, hover) -> tuple[list, list, dict, set]:
     laid_out.now(win)
     after = feel.spots(win)
     found = []
-    if c.key in after and feel.shift(c.rect, after[c.key].rect) > TOL:
+    dx, dy = slid(before, after, c.panel, alive)
+    if c.key in after and min(feel.shift(c.rect, after[c.key].rect), feel.shift(c.rect.translated(dx, dy), after[c.key].rect)) > TOL:
         found.append((c, after[c.key].rect, "itself"))
     for k, o in before.items():
         if k != c.key and k not in alive and o.panel == c.panel and k in after and before_it(o, c) \
-                and pressable(o.node.item) and corner(o.rect, after[k].rect) > TOL:     # (words can't be mis-clicked)
+                and pressable(o.node.item) and min(corner(o.rect, after[k].rect), corner(o.rect.translated(dx, dy), after[k].rect)) > TOL:   # (words can't be mis-clicked)
             found.append((o, after[k].rect, "above"))
     layers = sorted({s.node.layer for s in after.values()} - {s.node.layer for s in before.values()})
     if layers:
@@ -149,6 +182,25 @@ def try_one(win, c, wait, hover) -> tuple[list, list, dict, set]:
                 spot = next(s for s in after.values() if s.node.layer == la)
                 found.append((feel.Spot(f"popup {la}", frame, spot.node, c.panel), now, "popup"))
     return found, layers, before, alive
+
+
+def slid(before: dict, after: dict, panel: str, alive: set) -> tuple[float, float]:
+    """How far the panel's controls slid sideways as one, else (0, 0): a side panel the click opened (a Library) pushes
+    the work area beside it, every left-anchored control by the same step (right-anchored ones stay), nothing moving
+    within it, and what the click opened takes the next press. At least SLID of the controls that moved must share one
+    step of SLIDE_MIN px or more; a control that stayed or took that step is then fine. Only sideways and only that far: a panel growing up
+    under the pointer (a dock opening) or a row of buttons pushed by a widening label is still a find."""
+    steps = [(round(after[k].rect.left() - o.rect.left()), round(after[k].rect.top() - o.rect.top()))
+             for k, o in before.items() if o.panel == panel and k in after and k not in alive]
+    steps = [st for st in steps if st != (0, 0)]
+    if len(steps) < 4:
+        return 0, 0
+    top = max(set(steps), key=steps.count)
+    return top if abs(top[0]) >= SLIDE_MIN and top[1] == 0 and steps.count(top) >= SLID * len(steps) else (0, 0)
+
+
+SLID = 0.8
+SLIDE_MIN = 100
 
 
 def popup_frame(spots: dict, layer: str):

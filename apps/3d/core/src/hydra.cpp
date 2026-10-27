@@ -20,6 +20,7 @@
 #include "error.h"
 #include "sky.h"
 #include "storm_lights.h"
+#include "storm_programs.h"
 #include "storm_sun.h"
 #include "studio.h"
 
@@ -117,6 +118,10 @@ class Hydra::Engine : public UsdImagingGLEngine {
     return bool(sky);
   }
   bool storm = false;  // set when made: Storm alone gets the sun light (storm_sun.h)
+  // after a live picture: Storm's programs held, so a dab's clean-up doesn't drop the glass pass's (storm_programs.h)
+  void keep_programs() {
+    if (storm) programs_.keep(_renderer.Get(), _renderDelegate.Get());
+  }
 
   // The colour output plus `extra` (Cycles' passes, passes.h). Set only on a change: each change starts Cycles over.
   void use_aovs(const std::vector<std::string>& extra) {
@@ -135,6 +140,7 @@ class Hydra::Engine : public UsdImagingGLEngine {
   }
 
  private:
+  StormPrograms programs_;
   // Storm's shadow pass runs only when the task controller says so (hdx simpleLightTask: enableShadows)
   void enable_shadows(bool on) {
     if (_taskControllerSceneIndex) _taskControllerSceneIndex->SetEnableShadows(on);
@@ -306,10 +312,14 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   params.enableSceneLights = look.sceneLights;
   auto& fb = framebuffer(w, h);
   const auto t0 = std::chrono::steady_clock::now();
+  double finish_ms = 0;
   for (bool first = true;; first = false) {
     fb.bind_and_clear();
     e.Render(stage_->GetPseudoRoot(), params);
+    const auto tf = std::chrono::steady_clock::now();
     gl_.finish();
+    finish_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tf).count();
+    e.keep_programs();
     mem.sample();
     throw_usd_errors(mark, "view (" + renderer + ", frame " + std::to_string(frame) + ")");
     if (e.IsConverged()) break;
@@ -319,6 +329,7 @@ ViewDrawn Hydra::view(const std::string& renderer, const GfFrustum& frustum, int
   }
   ViewDrawn out{fb.color_texture(), fb.depth_texture()};
   out.lightMs = light_ms;
+  out.finishMs = finish_ms;
   out.renderMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   out.sceneDome = scene_dome;
   if (sun) out.sun = SunSeen{{sun->toward[0], sun->toward[1], sun->toward[2]}, sun->share, sun->angleDeg};

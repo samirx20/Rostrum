@@ -17,6 +17,9 @@ Popover {
     readonly property var page: hub ? hub.amounts : null
     title: page ? page.title : ""
     focusItem: keys
+    // Ctrl+A waits while it is open: selecting everything behind it changed what the session works on and the click-away
+    // rule then kept it as a change nobody asked for (Sound: a click in Repeat, Ctrl+A). A field in it still selects its text.
+    ownKeys: ["Enter", "Ctrl+A"]
     onAccepted: close()
     onEscaped: if (page) page.cancel()
     onClosed: if (page && page.live) page.keep()

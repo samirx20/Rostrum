@@ -1,6 +1,9 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "Picks.js" as Picks
+import "Tempo.js" as Tempo
+import "BeatWords.js" as BeatWords
 import "Pointers.js" as Pointers
 
 // Every click and drag on the Editor's piano roll / drum rows, in one place (the same rules as LaneInput):
@@ -15,10 +18,15 @@ import "Pointers.js" as Pointers
 // step; a chip beside the pointer says the length, "1/8"); its left end (its first 6 px, at most a third of it) moves its start, the end staying put.
 // Right-click: the item's actions (the kit's short menu, then Quantise, Humanise, Transpose ▸), or on empty space what
 // belongs there (Add note here, Paste here, Select all on this track, Select every C4: backend.rollMenu).
-// The pointer says what a press does there (CANVAS.md §4, Pointers.js): a note's body `pick` (Alt: `copy`; `moving` while
-// it moves), its ends `trim`, empty space with Draw `draw`, and what a Draw click would remove `erase`, lit red (a hit; a
-// note with Alt: Draw+Alt click erases it, Draw+Alt drag still copies). With Draw, a faint note or hit sits where a click
-// would put it (backend.rollHover: the click's own snap, key lock and length), its key lit on the keyboard (PLAN S1).
+// The pointer says what a press does there (CANVAS.md §4; the kit's CanvasCursor, CURSORS.md): `pointer` names the zone,
+// `cur` shows it. A note's body `pick` (Alt down: the copy badge, mouse still), a closed hand while it moves (a copy
+// badge while Alt copies), its ends `resize` sideways (the length), empty space with Draw `make`, and what a Draw click
+// would remove `pick` with the red remove badge, lit red (a hit; a note with Alt: Draw+Alt click erases it, Draw+Alt
+// drag still copies). With Draw, a faint note or hit sits where a click would put it (backend.rollHover: the click's
+// own snap, key lock and length), its key lit on the keyboard (PLAN S1). Locked during a drag (the mode says it).
+// A drag shows the kit's value chip by the pointer: a move "+1 bar 2 beats · +3 semitones" (what the dragged note
+// moved, snap included), a length "1/8". Esc during a drag (after the 4 px) puts everything back, no undo step
+// (dragEsc; the drum stroke and a note's end too). A box has no chip; Esc leaves it to the window.
 // A drum hit is caught only on the diamond you see (tol), never on the empty step beside it.
 MouseArea {
     id: m
@@ -46,9 +54,18 @@ MouseArea {
                                     : mode === "steps" ? (erasing ? "erase" : "draw")
                                     : mode === "erase" ? "erase"
                                     : mode !== "" ? ""
-                                    : removes ? "erase" : onEnd ? "trim" : over.part === "body" ? (altHeld ? "copy" : "pick")
+                                    : removes ? "erase" : onEnd ? "trim" : over.part === "body" ? "pick"
                                     : drawTool ? "draw" : ""
-    cursorShape: Pointers.of(pointer)
+    CanvasCursor {   // the zone's pointer: [kind, badge, angle] per name (CURSORS.md, "Moving Sound's stand-in over")
+        id: cur
+        objectName: "rollCursor"; anchors.fill: parent
+        readonly property var look: ({ pick: ["pick", ""], moving: ["hand-grab", ""], copy: ["hand-grab", "copy"],
+                                       trim: ["resize", ""], draw: ["make", ""], erase: ["pick", "remove"] })[m.pointer] || ["pick", ""]
+        kind: look[0]; angle: 0
+        // Alt on a body: the copy badge, mouse still, from Sound's own Alt watch (backend.altWatch, the same as the red
+        // light), not the kit's altBadge: in Sound's window the kit's key watch missed Alt's release (reported to the kit)
+        badge: m.pointer === "pick" && m.mode === "" && m.over.part === "body" && m.altHeld ? "copy" : look[1]
+    }
     // How near (seconds) a click must be to catch an item: the snapping 6 px; on the drum rows the diamond as drawn
     // (RollGrid.hitHalf, 1 px round it): as wide either side of the hit's time as the diamond is at the pointer's height,
     // -1 off it. Every press, hover and double-click asks with this one tolerance.
@@ -92,6 +109,23 @@ MouseArea {
             flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, flick.contentY - w.angleDelta.y / 2))
     }
     PinchGrow {}
+    // Esc while a drag runs: everything back as it was, no undo step; the release that follows does nothing
+    function holds(md) { return md === "drag" || md === "handle" || md === "steps" }
+    onModeChanged: { if (holds(mode)) dragEsc.holdEsc(); else dragEsc.letEsc() }
+    Connections {
+        target: dragEsc
+        function onCancelled() { if (m.holds(m.mode)) { backend.cancelDrag(); m.mode = "" } }
+    }
+    // The move chip: where the dragged note (hit) was at the press, and how far it is now, in bars and beats (and keys)
+    property var moveFrom: null
+    function blockOf(id) { var b = grid ? grid.blocks : []; for (var i = 0; i < b.length; i++) if (b[i].id === id) return b[i]; return null }
+    function moveWords() {
+        var now = blockOf(hit), f = moveFrom, song = bars.song
+        if (!now || !f) return ""
+        var db = Tempo.along(song.beats, now.t, song.spb) - Tempo.along(song.beats, f.t, song.spb)
+        var dk = now.keys && f.keys ? now.keys[0] - f.keys[0] : 0
+        return Pointers.beats(backend, db, song.barBeats) + (dk ? " · " + BeatWords.semitones(dk) : "")
+    }
     onPressed: (e) => {
         backend.focusArea("roll")
         x0 = x1 = e.x; y0 = y1 = e.y
@@ -131,6 +165,8 @@ MouseArea {
         if (mode === "handle") { backend.handleTo((e.x - x0) / bars.perSec, 0, ctrl(e)); return }
         if (mode === "press" && far(e)) {
             if (!Picks.all(backend, backend.pickStamp)[hit]) backend.clickSelect(hit, ctrl(e), false)
+            var b0 = blockOf(hit)
+            moveFrom = b0 ? { t: b0.t, keys: b0.keys ? [b0.keys[0]] : null } : null
             mode = backend.beginDrag(hit) ? "drag" : ""
         } else if (mode === "empty" && far(e)) {
             mode = "box"
@@ -201,8 +237,11 @@ MouseArea {
         property real side: 0                                // (an inline component can't read `m`: set where used)
         x: at.x - side / 2; y: at.y - side / 2; width: side; height: side; rotation: 45; antialiasing: true
     }
-    DragLabel {   // a note's length while its end is dragged ("1/8")
-        text: m.mode === "handle" && m.grid ? backend.lengthWords(m.hit, m.grid.blocks) : ""
+    DragLabel {   // a note's length while its end is dragged ("1/8"); a move's amount ("+1 bar 2 beats · +3 semitones")
+        objectName: "rollChip"
+        text: m.mode === "handle" && m.grid ? backend.lengthWords(m.hit, m.grid.blocks)
+            : m.mode === "drag" && m.grid ? (m.grid.blocks, m.moveWords()) : ""
+        hint: m.mode === "drag" ? (m.copying ? "copy" : "") : ""
         at: Qt.point(m.x1, m.y1)
     }
 

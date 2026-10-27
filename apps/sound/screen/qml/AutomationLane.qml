@@ -1,6 +1,9 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
 import "MixFormat.js" as F
+import "Pointers.js" as Pointers
+import "Tempo.js" as Tempo
 
 // The automation lane under a track's row (volume, pan, a send's level …): at the left a picker naming what the lane draws
 // ("Volume ▾": the lanes on offer for this track) and a close mark; across the time axis the points joined by
@@ -8,7 +11,9 @@ import "MixFormat.js" as F
 // drags are the Timeline's (backend.laneBegin / laneDrag), so a drag keeps going while the lane is redrawn.
 // `ruler` gives the time mapping; `plotX` is where the time axis starts in this row.
 // `inEditor`: the Editor's playing lane under its velocity strip (sustain, expression, bend): the picker sits in a row
-// above the plot, no close mark, and the lane takes its own presses (the same backend.laneBegin / laneDrag).
+// above the plot, no close mark, and the lane takes its own presses (the same backend.laneBegin / laneDrag), with
+// the same pointer as the Timeline's lanes (the kit's CanvasCursor: make on the line, pick+point over a point, kept
+// while a drag runs), the kit's chip ("−6.0 dB at bar 2.3") and Esc putting the point back with no undo step.
 Item {
     id: a
     property var row
@@ -99,11 +104,27 @@ Item {
         }
     }
     MouseArea {   // the Editor's lane takes its own presses (on the Timeline, LaneInput does)
+        id: laneArea
         enabled: a.inEditor; visible: enabled
         x: plotX; y: a.chipsH; width: ruler.width; height: parent.height - a.chipsH
         preventStealing: true
+        hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        property real x0: 0
+        property real y0: 0
+        property bool live: false            // a left press's gesture is open
+        property bool holding: false         // it holds Esc (dragEsc) once it has moved 4 px
+        property bool onPoint: false
         function yFrac(y) { return Math.max(0, Math.min(1, (y - a.pad) / a.plotH)) }
+        function near(x, y) { return Pointers.pointNear(a.auto.points, a.ruler.xOf, a.yOf, x, y, 7) >= 0 }
+        readonly property string pointer: live ? "point" : onPoint ? "point" : "draw"
+        CanvasCursor { objectName: "playLaneCursor"; anchors.fill: parent
+                       kind: Pointers.kind(laneArea.pointer); badge: Pointers.badge(laneArea.pointer) }
+        function letGo() { if (holding) { holding = false; dragEsc.letEsc() } }
+        Connections {   // Esc while a point is dragged: the lane as before, no undo step; the release then does nothing
+            target: dragEsc
+            function onCancelled() { if (laneArea.holding) { laneArea.holding = false; laneArea.live = false; backend.cancelDrag() } }
+        }
         onPressed: (e) => { backend.focusArea("roll")
             if (e.button === Qt.RightButton) {       // a point's menu (Delete point); off every point, none
                 pointMenu.entries = backend.pointMenu(a.rowv.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y),
@@ -111,10 +132,22 @@ Item {
                 if (pointMenu.entries.length) { var q = mapToItem(null, e.x, e.y); pointMenu.openAt(q.x, q.y) }
                 return
             }
+            x0 = e.x; y0 = e.y; live = true
             backend.laneBegin(a.rowv.id, a.auto.target, a.auto.lane, a.ruler.tOf(e.x), yFrac(e.y), 7 / a.ruler.perSec,
                               7 / a.plotH, (e.modifiers & Qt.ShiftModifier) !== 0, 1 / a.ruler.perSec) }
-        onPositionChanged: (e) => { if (pressed && (pressedButtons & Qt.LeftButton)) backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
-        onReleased: (e) => { if (e.button === Qt.LeftButton) backend.endDrag() }
+        onPositionChanged: (e) => {
+            if (!pressed) { onPoint = near(e.x, e.y); return }
+            if (!live || !(pressedButtons & Qt.LeftButton)) return
+            if (!holding && (Math.abs(e.x - x0) >= 4 || Math.abs(e.y - y0) >= 4)) { holding = true; dragEsc.holdEsc() }
+            backend.laneDrag(a.ruler.tOf(e.x), yFrac(e.y), (e.modifiers & Qt.ShiftModifier) !== 0) }
+        onReleased: (e) => { if (e.button === Qt.LeftButton && live) backend.endDrag(); live = false; letGo() }
+        onCanceled: { if (live) backend.cancelDrag(); live = false; letGo() }
+    }
+    DragLabel {   // the dragged point's value and place
+        at: Qt.point(laneArea.x + laneArea.mouseX, laneArea.y + laneArea.mouseY)
+        text: { if (!laneArea.holding || a.sel < 0) return ""
+                var p = a.auto.points[a.sel]
+                return p ? a.show(p.v) + " at " + Tempo.barName(a.ruler.song, p.t) : "" }
     }
     ActionMenu { id: pointMenu; objectName: "pointMenu"; onPicked: (v) => backend.menuPick(v) }
 }

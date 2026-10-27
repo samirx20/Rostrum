@@ -1,10 +1,15 @@
 import QtQuick
 import RostrumKit
+import RostrumCursors 1.0
+import "Pointers.js" as Pointers
+import "Tempo.js" as Tempo
 
 // The song's ruler: the kit's Ruler (range band, seconds scale only when the right-click menu turned it on, playhead, scrub, the wheel's zoom and scroll through
 // backend.timeView) with Sound's bars on its upper line, plus what is Sound's own: the punch range (with a take
 // armed and punch on: a drag across the scale sets it, its edges drag; takeSetup.setPunch, a quarter beat grid,
-// Ctrl = free; screen state, not an edit) and the right-click menu (menuAt). The range band's drag is one
+// Ctrl = free; screen state, not an edit; the kit's CanvasCursor resize (left-right) over its edges and while it is
+// drawn, the kit's chip "bar 3 → bar 5", Esc gives the range as it was) and the right-click menu (menuAt). Elsewhere
+// the pointer is the kit Ruler's own. The range band's drag is one
 // backend.setRange (each edge on a bar or beat line a few px away, else the nearest grid line: timing.snap); double-click clears it. xOf(t) / tOf(x) are the one mapping the rows,
 // markers and piano roll use too, the kit's, following backend.timeView.
 // A click or scrub on the scale (and the press that starts a punch scrub) puts the playhead through the one snap, in
@@ -81,14 +86,34 @@ Item {
         property int mode: -1                // 0: the time, 1: a new punch range, 2: its in edge, 3: its out edge
         property real x0: 0
         property real other: 0               // the edge that stays while one is dragged
-        cursorShape: r.punchEdge(mouseX) ? Qt.SizeHorCursor : Qt.ArrowCursor
+        property var was: []                 // the punch range at the press (Esc gives it back)
+        property bool holding: false         // a punch drag holds Esc (dragEsc)
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        HoverHandler { id: punchHover }      // (passive: the kit Ruler under it still hears the hover)
+        CanvasCursor {   // over a punch edge, and while the range is drawn or an edge dragged; else the kit Ruler's pointer
+            objectName: "punchCursor"
+            anchors.fill: parent
+            visible: punchArea.mode >= 1 || (punchArea.mode < 0 && punchHover.hovered && punchHover.point.position.y >= r.band
+                                             && r.punchEdge(punchHover.point.position.x) !== 0)
+            kind: Pointers.kind("trim"); angle: Pointers.turn("trim")
+        }
+        function letGo() { if (holding) { holding = false; dragEsc.letEsc() } }
+        Connections {   // Esc while the punch range is dragged: the range as it was; the release then does nothing
+            target: dragEsc
+            function onCancelled() {
+                if (!punchArea.holding) return
+                punchArea.holding = false
+                if (punchArea.was.length === 2) takeSetup.setPunch(punchArea.was[0], punchArea.was[1], true)
+                punchArea.mode = -1
+            }
+        }
         onPressed: (m) => {
             x0 = m.x
             if (m.button === Qt.RightButton) { mode = -1; r.menuAt(r.tOf(m.x), m.x, m.y); return }
             if (!r.punchOn || m.y < r.band) { m.accepted = false; return }       // the kit's (scrub, range band)
             var e = r.punchEdge(m.x)
             mode = e ? e + 1 : 0
+            was = r.punch.slice()
             if (e) other = r.punch[e === 1 ? 1 : 0]
             else r.snapTo(m.x, m.y, (m.modifiers & Qt.ControlModifier) !== 0)
         }
@@ -96,11 +121,18 @@ Item {
             if (!pressed || mode < 0) return
             var free = (m.modifiers & Qt.ControlModifier) !== 0       // Ctrl = no snapping (DESIGN.md §5)
             if (mode === 0 && Math.abs(m.x - x0) > 6) mode = 1
+            if (mode >= 1 && !holding && Math.abs(m.x - x0) >= 4) { holding = true; dragEsc.holdEsc() }
             if (mode === 0) r.snapTo(m.x, m.y, free)                     // the scale: scrub
             else if (mode === 1) takeSetup.setPunch(r.tOf(x0), r.tOf(m.x), free)
             else takeSetup.setPunch(r.tOf(m.x), other, free)
         }
-        onReleased: mode = -1
+        onReleased: { mode = -1; letGo() }
+        onCanceled: { mode = -1; letGo() }
         onWheel: (w) => { w.accepted = false }
+    }
+    DragLabel {   // the punch range being set
+        parent: r.parent; z: 1000
+        at: Qt.point(r.x + punchArea.mouseX, r.y + r.height / 2)
+        text: punchArea.holding && r.punchOn ? Tempo.barName(r.song, r.punch[0]) + " → " + Tempo.barName(r.song, r.punch[1]) : ""
     }
 }

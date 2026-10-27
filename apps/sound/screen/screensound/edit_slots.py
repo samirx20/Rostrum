@@ -8,7 +8,7 @@ it snaps, `snapLine` says where and to what (a marker's name, "" for the grid) f
 from __future__ import annotations
 
 from PySide6.QtCore import Property, Signal, Slot
-from rostrum_gui import snap
+from rostrum_gui import drag, snap
 from rostrum_gui.edits import Drag, Scrub
 
 from . import handles, moves, timing
@@ -18,6 +18,11 @@ from .actions import LIST
 class EditSlots:
     snapChanged = Signal()
     listeningChanged = Signal()             # = docChanged (bridge.py): a solo or mute may have moved
+
+    @Slot(float, int, result=str)
+    def wordsBeats(self, beats, per_bar):
+        """A drag's move or length in musical time for its value chip, in the kit's words ("+1 bar 2 beats")."""
+        return drag.words_beats(beats, per_bar or 4)
 
     @Property("QVariantMap", notify=snapChanged)
     def snapLine(self):
