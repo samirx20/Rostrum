@@ -279,11 +279,9 @@ file its reader can't read (`<id>.file: could not read model.fbx: <the reader's 
 - `distance`: metres from the camera's eye to the surface seen, −1 where nothing is drawn.
 
 How: one Storm picture through the camera (the selection mask's engine: no sky, unlit) gives each pixel's prim id
-and depth; the copies' `sees` and seen test draw through the same function. See-through meshes (a material Storm
-draws as glass: UsdPreviewSurface opacity below 1 or from a picture, on the mesh or a face set) are left out of that
-picture, because Storm's glass pass overwrites every pixel's prim id, and laid back over it on the CPU: each glass
-mesh takes the pixels where its surface is nearer than what Storm drew (the front of the vase, not what is behind it).
-A see-through material the core doesn't recognise as such is an error, never a picture of wrong items. Storm writes no `st` or face outputs, so for
+and depth (Storm's own depth output); the copies' `sees` and seen test draw through the same function. The id picture
+is drawn without the scene's materials, because Storm's glass pass overwrites every pixel's prim id: glass is seen as
+its front surface (the front of the vase, not what is behind it). Storm writes no `st` or face outputs, so for
 each mesh prim seen the core meets every one of its pixels' rays with the mesh's triangles (each triangle tests only
 the pixels it covers on screen; the face nearest the depth Storm drew wins) and blends the `st` of that face's
 corners (face-varying or per point), as `pick` does for one ray. A painted clay's blocks carry the clay's unfolding,
