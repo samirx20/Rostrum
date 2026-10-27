@@ -173,6 +173,11 @@ def stroke(screen, win, name, want, at, radius, mods, core, invert=False, frm=(-
                       "engineMs": last.get("engineMs"), "coreCpuMs": round(proc_cpu_ms(core) - e0, 2),
                       "dabs": last.get("dabs")})
     worker.ready.disconnect(on_ready)
+    prof = None
+    if os.environ.get("CLAY_WALK_PROFILE"):                 # (3d-v3) where the release's GUI time goes, per stroke
+        import cProfile
+        prof = cProfile.Profile()
+        prof.enable()
     t0 = time.perf_counter()
     QTest.mouseRelease(win, Qt.LeftButton, mods, p)
     blocks = [(time.perf_counter() - t0) * 1000]          # the GUI thread held by the release, then by each event pass
@@ -184,6 +189,11 @@ def stroke(screen, win, name, want, at, radius, mods, core, invert=False, frm=(-
         return not tool._ending and len(doc.item(clay_id)["steps"]) > before
     pump(10, landed, "the stroke's step")
     release = {"stepMs": round((time.perf_counter() - t0) * 1000, 1), "longestGuiBlockMs": round(max(blocks), 1)}
+    if prof is not None:
+        import pstats
+        prof.disable()
+        with open(OUT / ("release-profile-" + "".join(c if c.isalnum() else "-" for c in name.lower()).strip("-") + ".txt"), "w", encoding="utf-8") as f:
+            pstats.Stats(prof, stream=f).sort_stats("cumulative").print_stats(45)
     steps = doc.item(clay_id)["steps"]
     check(len(steps) == before + 1, f"{name}: one new step on the clay ({before} -> {len(steps)})")
     check(steps[-1].get("brush") == want and str(steps[-1].get("dabs", "")).startswith("clay/"),
