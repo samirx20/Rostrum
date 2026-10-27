@@ -10,6 +10,9 @@ import "Blocks.js" as Blocks
 // Its rows have one height (RollGrid.keyRow). A track opens centred on its notes the first time; after that each track
 // comes back where the person left it (the key at the view's middle, kept per track), through opening, folding, undo
 // and a reopen of the song (kept with it: view_kept.py).
+// Under the roll, top to bottom: the playing lane (or its one-line fold "› Sustain · Expression · Bend"), then the
+// velocity strip with its fold arrow at the bottom. A fold opens upward from where it was clicked and the roll gives
+// the room from its bottom edge, its rows staying where they are: nothing moves under the pointer (layout_stable.py).
 Panel {
     id: p
     readonly property var roll: backend.roll                // its layout: kind, keys, drum rows, hue
@@ -45,7 +48,8 @@ Panel {
     Rectangle {
         id: well
         visible: p.shows
-        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: p.hasStrip ? strip.top : parent.bottom; topMargin: Theme.grid
+        anchors { left: parent.left; right: parent.right; top: bars.bottom; bottom: !p.hasStrip ? parent.bottom : p.laneShown ? played.top : p.foldShown ? laneFold.top : strip.top
+                  topMargin: Theme.grid
                   bottomMargin: p.hasStrip ? Theme.grid : 0 }
         radius: Theme.radiusCtl; color: Theme.sunken; clip: true
 
@@ -113,7 +117,12 @@ Panel {
                 var lo = Math.min.apply(null, ks), hi = Math.max.apply(null, ks)
                 contentY = Math.max(0, Math.min(contentHeight - height, ((grid.rowOf(hi) + grid.rowOf(lo)) / 2 + 0.5) * grid.rowH - height / 2))
             }
-            onHeightChanged: frameLater()
+            // A fold under the roll opening or closing (or the dock resized) after the track was placed: the rows stay
+            // where they are and only the bottom edge moves (a re-centre slid every row under the pointer)
+            onHeightChanged: {
+                if (placedH < 0 || shown !== seenShown) return frameLater()
+                contentY = Math.max(0, Math.min(contentHeight - height, contentY)); placedH = height
+            }
             readonly property string shown: p.roll.id + "/" + p.kind + (grid.shownKeys ? "/rows" : "")      // another track (or kind): framed again
             onShownChanged: frameLater()
         }
@@ -144,11 +153,10 @@ Panel {
                        at: bars.xOf(parent.s.t || 0); name: parent.s.name || "" }
         }
     }
-    VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d)
+    VelocityStrip {   // one bar per note or hit; drag a bar, or draw a line across (DESIGN.md §3.3d); at the bottom
         id: strip
         visible: p.hasStrip
-        anchors { left: parent.left; right: parent.right; bottom: p.laneShown ? played.top : p.foldShown ? laneFold.top : parent.bottom
-                  bottomMargin: p.laneShown || p.foldShown ? Theme.grid : 0 }
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         roll: p.roll; blocks: p.blocks; ruler: bars; keysWidth: p.keysWidth
     }
     // The playing lane (sustain, expression, bend) stays folded while the track has none of them: a one-line "›" opens it.
@@ -160,7 +168,7 @@ Panel {
     Item {
         id: laneFold
         visible: p.foldShown
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; bottom: strip.top; bottomMargin: Theme.grid }
         height: 18
         Chevron { id: laneChev; x: 4; anchors.verticalCenter: parent.verticalCenter; rotation: -90
                   color: laneHover.hovered ? Theme.fg : Theme.fg3 }
@@ -170,10 +178,10 @@ Panel {
         HoverHandler { id: laneHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: p.lanesOpen = true }
     }
-    AutomationLane {   // the playing lane under the velocity strip: sustain pedal, expression, pitch bend (folds with it)
+    AutomationLane {   // the playing lane over the velocity strip: sustain pedal, expression, pitch bend (folds with it)
         id: played
         visible: p.laneShown
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        anchors { left: parent.left; right: parent.right; bottom: strip.top; bottomMargin: Theme.grid }
         height: 64; inEditor: true; plotX: p.keysWidth; ruler: bars
         row: ({ id: p.roll.id, hue: p.roll.hue, auto: p.playedLane })
     }

@@ -148,6 +148,8 @@ def missed(text: str, kind: str) -> dict:
     """What to say when `find(text, kind)` is empty: {say, chip}. A kind chip that hides the matches names where they
     are ("Show “brass” in Instruments", a button to that chip); else the closest names to what was typed ("No “clr” here.
     Closest: Clarinet")."""
+    if not text.split():                           # an empty search on a kind with nothing in it: nothing to be near
+        return {"say": f"No sounds under {dict(KINDS).get(kind, kind)} yet." if kind else "No sounds yet.", "chip": ""}
     if kind and (there := find(text, "")):
         where = there[0]["kind"]
         return {"say": f"Show “{text}” in {dict(KINDS)[where]}", "chip": where}

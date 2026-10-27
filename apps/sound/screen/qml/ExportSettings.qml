@@ -4,8 +4,9 @@ import "Listening.js" as L
 
 // Sound's part of the kit Export sheet (AppShell.exportSettings; the sheet's What for picker lists the delivery targets,
 // screensound/export.py; picking one sets the master's loudness and the sheet says so): the live check of the sound that plays now against the target (pass / miss), the file type,
-// stems, and trimming the silent end; then "+ Another version" rows (each its own target,
-// file type and quality, rendered as its own version; the live check under each is that row's pass / miss).
+// stems, and trimming the silent end; "› More" (the sample rate) sits right under File; "+ Another version" adds its rows under
+// itself (each its own target, file type and quality, rendered as its own version; the live check under each is that row's
+// pass / miss). Nothing a click opens appears above the click: the clicked word and what is above it stay put.
 // A delivery preset ("For the Editor", presets.py) is a labelled switch that sets file, quality, trimming, stems and markers; it
 // is on while the choices still equal it, and turning it off puts them back to the usual. Picking a target says what it set
 // on the master, with Undo beside it while that is still the newest step. When the master cannot reach the target as set, the
@@ -76,12 +77,6 @@ Column {
             HoverTip { text: pr.modelData.detail; hovered: prHover.hovered }
         }
     }
-    Text {   // with "+ Another version" rows below, the first one is named too: Version 1 (the What for above, File, Quality)
-        objectName: "exportVersion1"
-        visible: root.job.more.length > 0
-        width: root.width
-        text: "Version 1"; color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body
-    }
     Column {   // the verdict and what the target set: its room is kept, so picking a target never moves File, Stems or Export under the pointer
         width: root.width; spacing: Theme.gap
         height: Math.max(implicitHeight, 62, root.job.loudnessWay.shown ? tallest : 0)   // the two lines of the check + the line saying what was set (measured: 2 + 1 lines)
@@ -117,11 +112,21 @@ Column {
         label: "File"
         ChoiceField { width: parent.width; options: root.job.formats; current: root.job.format; onPicked: (v) => root.job.setFormat(v) }
     }
+    Item {   // "› More" like every other More: the chevron points down while it is open
+        width: root.width; height: Theme.rowDense
+        Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                  rotation: root.more ? 0 : -90; color: moreHover.hovered ? Theme.fg : Theme.fg2 }
+        Text { anchors { left: moreChev.right; leftMargin: Theme.grid + 2; verticalCenter: parent.verticalCenter }
+               text: "More"; color: moreHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
+        HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
+        TapHandler { onTapped: root.more = !root.more }
+    }
     Field {
         visible: root.more
         label: "Quality"; tip: "How finely the sound is stored (sample rate)"
         ChoiceField { width: parent.width; options: root.job.rates; current: root.job.rate; onPicked: (v) => root.job.setRate(v) }
     }
+    Action { text: "+ Another version"; onClicked: root.job.addVersion() }
     Repeater {   // "+ Another version": each row is its own target, file type and quality, made as its own version
         model: root.job.more
         delegate: Column {
@@ -132,7 +137,7 @@ Column {
             Row {
                 width: parent.width; spacing: Theme.gap
                 Text { width: parent.width - Theme.field - Theme.gap; anchors.verticalCenter: parent.verticalCenter
-                       text: "Version " + (ver.index + 2); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
+                       text: "Another version" + (root.job.more.length > 1 ? " " + (ver.index + 1) : ""); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.body }
                 IconButton { glyph: "×"; kind: "ghost"; tip: "Take this version out"; onClicked: root.job.removeVersion(ver.index) }
             }
             ChoiceField { width: parent.width; options: root.job.targets; current: ver.modelData.target
@@ -147,7 +152,6 @@ Column {
                    font.family: uiFont; font.pixelSize: Theme.body }
         }
     }
-    Action { text: "+ Another version"; onClicked: root.job.addVersion() }
     Field {
         label: "Stems"; tip: "Separate files for the Editor or a mix elsewhere; they add up to the mix"
         ChoiceField { objectName: "exportStems"; width: parent.width; options: root.job.stemChoices; current: root.job.stemsMode; onPicked: (v) => root.job.setStemsMode(v) }
@@ -156,13 +160,4 @@ Column {
                 label: "Markers file" }
     SwitchRow { wordsAfter: true; checked: root.job.trim; onToggled: (v) => root.job.setTrim(v)
                 label: "Cut the silence at the end" }
-    Item {   // "› More" like every other More: the chevron points down while it is open
-        width: root.width; height: Theme.rowDense
-        Chevron { id: moreChev; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                  rotation: root.more ? 0 : -90; color: moreHover.hovered ? Theme.fg : Theme.fg2 }
-        Text { anchors { left: moreChev.right; leftMargin: Theme.grid + 2; verticalCenter: parent.verticalCenter }
-               text: "More"; color: moreHover.hovered ? Theme.fg : Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body }
-        HoverHandler { id: moreHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: root.more = !root.more }
-    }
 }

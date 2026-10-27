@@ -173,7 +173,7 @@ vln.humanize(seed=3, timing=0.012, velocity=0.06)   # every note / hit on the tr
   each note's id (made from its written time), so a re-run gives the same values and keeps a person's edit;
   another seed gives another draw. The `dynamics` / `vibrato` / `sustain` / `bend` lanes are the same
   `automation.set` operation as volume / pan (lane `dynamics` / `vibrato` / `sustain` / `bend`); the screen calls
-  `dynamics` "Expression" and shows Sustain, Expression and Bend under the Editor's velocity strip. A note let go
+  `dynamics` "Expression" and shows Sustain, Expression and Bend above the Editor's velocity strip. A note let go
   while the pedal is down (0.5 or more) rings on until it lifts; a bend lane moves every note on the track (put a
   line that should stay in tune on its own track) and adds to a note's own `bend`.
 

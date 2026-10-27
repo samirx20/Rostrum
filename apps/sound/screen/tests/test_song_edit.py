@@ -115,3 +115,20 @@ def test_a_section_drag_carries_what_it_held_at_the_press_and_replays_exactly(br
     assert doc.data == start
     bridge.redo()
     assert doc.data == end
+
+
+def test_a_tempo_flag_drag_cancelled_by_esc_puts_the_flag_back_on_screen(bridge):  # noqa: F811
+    """Esc during a tempo-change drag: the song is as before, no undo step, and the ruler's flag (song.tempoMarks)
+    is drawn back where it was, not left where the drag had it."""
+    doc = bridge.doc
+    bridge.setTime(4.0)
+    bridge.songDo("add_tempo", "")
+    tempo_id = doc.data["tempos"][0]["id"]
+    at = [m["t"] for m in bridge.song["tempoMarks"] if m["id"] == tempo_id]
+    n = len(doc.history.changes)
+    assert bridge.beginDrag(tempo_id)
+    for f in (0.3, 0.6, 1.1):
+        bridge.dragBy(f, 0, False)
+    bridge.cancelDrag()
+    assert len(doc.history.changes) == n and doc.item(tempo_id)["at"] == {"beat": 8.0}
+    assert [m["t"] for m in bridge.song["tempoMarks"] if m["id"] == tempo_id] == at

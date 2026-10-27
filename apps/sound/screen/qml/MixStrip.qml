@@ -135,6 +135,7 @@ Rectangle {
             onScrubStarted: backend.beginScrubOn(s.model.id, "volume")
             onScrubbed: (g) => backend.scrub("volume", g)
             onScrubEnded: backend.endScrubOn()
+            onScrubCancelled: { backend.cancelScrub(); backend.endScrubOn() }   // Esc: back as it was, then the panel follows
             onReset: { s.pick(); backend.setValue("volume", 1) }
             onNudged: (g) => { s.pick(); backend.setValue("volume", g) }
             onTypeIt: { level.forceActiveFocus(); level.input.forceActiveFocus(); level.input.selectAll() }

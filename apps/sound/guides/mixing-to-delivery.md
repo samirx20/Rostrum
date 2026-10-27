@@ -54,7 +54,9 @@ off, so they sound as they did.
   and the peaks sit under the ceiling, the limiter does nothing; leave it, don't squeeze the bed.
 - **Automation:** `automation.set` with `lane` and the whole `points` list. Mix values, effect settings and plug-in
   parameters can be automated (inspect_operations lists the lanes). In the arrangement: a row's **A** button opens its lanes;
-  click adds a point (in the grid cell under the pointer), drag moves it, Delete removes it; one drag = one undo step.
+  click adds a point (in the grid cell under the pointer; the pointer is a small cross there), drag moves it (over a
+  point the arrow has a small square; the chip says "−6.0 dB at bar 2.3"), Delete removes it; one drag = one undo
+  step, Esc before letting go puts it back.
 
 ## The Mixer's strips
 

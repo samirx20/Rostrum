@@ -112,3 +112,11 @@ def test_a_qml_drag_owns_esc_and_beats_read_plainly(tmp_path):
     assert win.property("escs") == 2
     assert [words_beats(6), words_beats(-3), words_beats(0.5)] == ["+1 bar 2 beats", "−3 beats", "+½ beat"]
     _close(win, engine)
+
+
+def test_qml_sees_hold_esc_and_let_esc_as_slots():
+    """DRAG.md tells QML to call dragEsc.holdEsc() / letEsc(): they must be slots QML can see, not Python aliases."""
+    from rostrum_gui.drag_esc import ESC
+    mo = ESC.metaObject()
+    names = {bytes(mo.method(i).name()).decode() for i in range(mo.methodCount())}
+    assert {"holdEsc", "letEsc"} <= names

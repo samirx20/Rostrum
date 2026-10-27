@@ -23,11 +23,12 @@ Rectangle {
     readonly property alias picture: corner
     readonly property bool empty: !backend.tracks.some(r => !r.mix)
     // the height every row needs at its smallest (header strip, ruler, tracks, + Track, groups, Master): the dock leaves
-    // the arrangement this much (up to half the window), so the Master row is never cut off by an open dock
+    // the arrangement this much (up to half the window), so the Master row is never cut off by an open dock. Open
+    // automation lanes don't count: one opening must not resize the dock and with it every row (the A just clicked
+    // would move under the pointer); the lanes scroll with the rows instead
     readonly property real needs: strip.height + timeline.rulerBottom + Theme.grid + Theme.gap
         + (timeline.rows.length - timeline.mixRows - timeline.groupRows) * 24 + timeline.addH + timeline.mixRows * timeline.mixH
         + timeline.groupRows * timeline.groupH + Math.max(0, timeline.rows.length - 1) * timeline.rowGap
-        + timeline.openLanes * (timeline.laneH + timeline.laneGap)
     signal addTrack()
     function addFromFile() { fileDialog.open() }
     function openGrid() { gridBtn.clicked() }          // (the scripted `grid-open` step)
@@ -108,6 +109,10 @@ Rectangle {
             Button {   // Grid ▾: the step every snap uses (timing.GRID; screen state)
                 id: gridBtn; kind: "ghost"; height: Theme.field; down: gridMenu.visible
                 text: "Grid " + backend.gridLabel; chevron: true
+                // as wide as its widest label ("Grid Auto · 1/16"): Auto's step changing with the zoom never moves
+                // Snap, − + and Fit beside it
+                width: Math.max(implicitWidth, gridWide.advanceWidth("Grid Auto · 1/32") + implicitWidth - gridWide.advanceWidth(text))
+                FontMetrics { id: gridWide; font.family: uiFont; font.pixelSize: Theme.body }
                 onClicked: { const p = gridBtn.mapToItem(null, 0, gridBtn.height + 2); gridMenu.openAt(p.x, p.y) }
                 HoverTip { text: "The grid notes, clips and ranges snap to (Auto follows the zoom)"; hovered: parent.hovered && !gridMenu.visible }
                 ActionMenu { id: gridMenu; entries: backend.gridChoices; onPicked: (v) => backend.setGrid(v) }
@@ -139,8 +144,9 @@ Rectangle {
                   rightMargin: corner.docked ? Theme.gap : 0 }
         onAddTrack: a.addTrack()
     }
-    Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest)
-        visible: a.empty; text: "Add a track"; kind: "primary"
+    Button {   // a new song: the one thing to do first (no sentence; the + Add menu has the rest). It opens the Library,
+               // so it steps aside while the Library is open (centred, it would slide under the pointer as the Library pushes in)
+        visible: a.empty && !workspace.library; text: "Add a track"; kind: "primary"
         x: timeline.headerWidth + Theme.gap * 2 + Math.max(0, (a.width - timeline.headerWidth - Theme.gap * 2 - width) / 2)
         y: strip.height + Math.max(60, (a.height - strip.height - height) / 2 - 40)
         onClicked: a.addTrack()

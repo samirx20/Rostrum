@@ -3,15 +3,18 @@ import RostrumKit
 import "Blocks.js" as Blocks
 import "Slide.js" as Slide
 import "Marks.js" as Marks
+import RostrumCursors 1.0
 import "Picks.js" as Picks
-import "Pointers.js" as Pointers
 
 // The velocity strip under the Editor's roll (DESIGN.md §3.3d): one bar per note (or drum hit) at its start, as high
 // as it is loud. Drag a bar: that note (a selected bar takes every selected note with it by the same proportion;
 // Alt = all to the same height). Drag across empty space: a line, and each note under it (the selected ones, when
 // some are; the words beside the line say which: "every note", "3 selected notes") takes the line's height. One drag is one undo step (backend.beginVelocity … endVelocity); the number
-// beside the pointer is the height being set. The fold arrow at the left folds it to one thin row (the person's own
-// screen state: backend.velocityFolded); the roll takes the room. The value of the stem under the pointer, else of the
+// beside the pointer is the height being set (the kit's value chip, "Velocity 70 %"; a line adds what it sets). Esc
+// during a drag puts every bar back, no undo step (dragEsc). The pointer (the kit's CanvasCursor): a bar's top
+// `resize` up-down, empty space `make` (draw a line); kept while a drag runs. The fold arrow at the bottom left folds
+// it to one thin row (the person's own screen state: backend.velocityFolded); the arrow stays under the pointer (the
+// strip opens upward from it) and the roll takes the room. The value of the stem under the pointer, else of the
 // selected one (several: their range), is written beside it ("70 %").
 Item {
     id: s
@@ -65,8 +68,8 @@ Item {
         }
         return best
     }
-    Item {   // the fold arrow and the label: click either to fold or open the strip
-        x: 0; width: s.keysWidth; height: s.foldedHeight
+    Item {   // the fold arrow and the label, at the bottom: click either to fold or open the strip (it stays where it is)
+        x: 0; y: s.height - s.foldedHeight; width: s.keysWidth; height: s.foldedHeight
         Canvas {
             id: arrow
             x: Theme.gap; anchors.verticalCenter: parent.verticalCenter; width: 10; height: 10
@@ -139,12 +142,11 @@ Item {
             ctx.beginPath(); ctx.moveTo(s.keysWidth + s.x0, s.y0); ctx.lineTo(s.keysWidth + s.px, s.py); ctx.stroke()
         }
     }
-    Rectangle {   // the height being set, beside the pointer
-        visible: s.mode === "bar" || s.mode === "line"
-        x: Math.min(s.width - width - 2, s.keysWidth + s.px + 10); y: Math.max(0, s.py - height - 4)
-        width: tip.implicitWidth + 2 * Theme.grid; height: tip.implicitHeight + 4; radius: 3; color: Theme.raised; border.color: Theme.popupEdge
-        Text { id: tip; anchors.centerIn: parent; text: Math.round(100 * s.v) + " %" + (s.mode === "line" ? "  ·  " + s.lineScope : ""); color: Theme.fg; font.family: uiFont; font.pixelSize: Theme.label
-               font.features: { "tnum": 1 } }
+    DragLabel {   // the height being set, by the pointer (the kit's value chip)
+        objectName: "velocityChip"
+        text: s.mode === "bar" || s.mode === "line" ? "Velocity " + Math.round(100 * s.v) + " %" : ""
+        hint: s.mode === "line" ? s.lineScope : s.mode === "bar" && m.altAll ? "all the same" : ""
+        at: Qt.point(s.keysWidth + s.px, s.py)
     }
     Rectangle {   // the hovered or selected stem's value
         readonly property var r: s.shown
@@ -162,8 +164,17 @@ Item {
         x: s.keysWidth; width: s.width - x; height: s.height
         // a bar's top: `level` (drag it); empty: `draw` (a line across). The stem under the pointer is set as it moves (an
         // edit never re-reads every stem); during a drag, what the press began
-        preventStealing: true; cursorShape: Pointers.of(s.mode === "bar" || (s.mode !== "line" && s.hoverId !== "") ? "level" : "draw")
-                    hoverEnabled: true
+        preventStealing: true; hoverEnabled: true
+        property bool altAll: false             // Alt during a bar drag: every one to the same height
+        CanvasCursor {
+            objectName: "velocityCursor"; anchors.fill: parent
+            readonly property bool bar: s.mode === "bar" || (s.mode !== "line" && s.hoverId !== "")
+            kind: bar ? "resize" : "make"; angle: bar ? 90 : 0
+        }
+        Connections {   // Esc during a drag: every bar back, no undo step
+            target: dragEsc
+            function onCancelled() { if (s.mode === "bar" || s.mode === "line") { backend.cancelDrag(); s.mode = "" } }
+        }
         onWheel: (w) => backend.viewWheel(w.angleDelta.x, w.angleDelta.y, (w.modifiers & Qt.ControlModifier) !== 0,
                                          (w.modifiers & Qt.ShiftModifier) !== 0, w.x / width, true)
         onPressed: (e) => { backend.focusArea("roll"); s.hit = s.nearest(e.x); s.mode = "press"; s.x0 = s.px = e.x; s.y0 = s.py = e.y }
@@ -171,13 +182,14 @@ Item {
             if (!pressed) { s.hoverId = s.nearest(e.x); return }
             s.px = e.x; s.py = e.y; s.v = s.vAt(e.y)
             if (s.mode === "press" && (Math.abs(e.x - s.x0) >= 4 || Math.abs(e.y - s.y0) >= 4))
-                s.mode = backend.beginVelocity(s.hit) ? (s.hit !== "" ? "bar" : "line") : ""
-            if (s.mode === "bar") backend.velocityBar(s.v, (e.modifiers & Qt.AltModifier) !== 0)
+            { s.mode = backend.beginVelocity(s.hit) ? (s.hit !== "" ? "bar" : "line") : ""; if (s.mode !== "") dragEsc.holdEsc() }
+            altAll = (e.modifiers & Qt.AltModifier) !== 0
+            if (s.mode === "bar") backend.velocityBar(s.v, altAll)
             else if (s.mode === "line") {
                 backend.velocityLine(s.ruler.tOf(s.x0), s.vAt(s.y0), s.ruler.tOf(e.x), s.v); ln.requestPaint()
             }
         }
-        onReleased: { if (s.mode === "bar" || s.mode === "line") backend.endVelocity(); s.mode = "" }
-        onCanceled: { if (s.mode === "bar" || s.mode === "line") backend.cancelDrag(); s.mode = "" }
+        onReleased: { if (s.mode === "bar" || s.mode === "line") { dragEsc.letEsc(); backend.endVelocity() } s.mode = "" }
+        onCanceled: { if (s.mode === "bar" || s.mode === "line") { dragEsc.letEsc(); backend.cancelDrag() } s.mode = "" }
     }
 }
