@@ -234,7 +234,6 @@ Item {
                        text: row.model.label; color: Theme.fg2; font.pixelSize: Theme.body; font.family: uiFont
                        wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; lineHeight: 0.9   // never cut to "Width along the…"
                        HoverHandler { id: labelHover }
-                       TapHandler { enabled: row.model.type === "toggle"; onTapped: row.set(!row.model.value) }   // a switch's words flip it too (F12, F13)
                        HoverTip { text: row.model.help || label.truncated ? row.model.label : ""; help: row.model.help || ""
                                   hovered: labelHover.hovered } }   // hover help: the setting's name and its one sentence
                 Rectangle {  // an optional small tag after the label (model.tag, e.g. "Final"; its hover words model.tagHelp)
@@ -298,6 +297,18 @@ Item {
                            font.family: monoFont; wrapMode: Text.WrapAnywhere }
                 }
                 HoverHandler { id: rowHover }
+                TapHandler {  // a left click on the row's free room (beside the switch, between the label and a slider) is
+                              // its main control's: a switch flips, a box takes the caret. The widgets take their own clicks
+                              // first; the room around them was dead (hand A row 1: right of Depth of field; B: a slider's gap)
+                    acceptedButtons: Qt.LeftButton
+                    enabled: !row.driven && !!row.model.valid
+                    onTapped: (ev) => {
+                        const q = widget.mapFromItem(cell, ev.position.x, ev.position.y)
+                        if (q.x >= 0 && q.y >= 0 && q.x < widget.width && q.y < widget.height) return   // the widget's own area: its own click
+                        if (row.model.type === "toggle") return row.set(!row.model.value)     // its words too (F12, F13)
+                        row.focusWidget()
+                    }
+                }
                 TapHandler {  // right-click › Reset (left clicks and drags stay with the widgets)
                     acceptedButtons: Qt.RightButton
                     onTapped: (pt) => { if (!row.canReset) return; resetMenu.active = true; resetMenu.item.openAt(pt.scenePosition.x, pt.scenePosition.y) }

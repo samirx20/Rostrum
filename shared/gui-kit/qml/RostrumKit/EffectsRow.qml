@@ -71,7 +71,9 @@ Item {
                 Item {  // its settings, open or folded (height eases); a folded group makes no rows (each pick of a
                         // layer made every folded effect's settings: ~10 ms a click on a layer with effects)
                     id: body
-                    width: parent.width; clip: true
+                    width: parent.width
+                    clip: height < inner.height      // only while it folds or opens: open, a row at the panel's edge is the
+                                                     // panel's to cut (its scroll edge fades it), not this card's
                     height: grp.g.open ? inner.height : 0
                     visible: height > 0
                     // eased only on a fold / open: a card shown open (a pick, a new effect) is whole at once, never half
