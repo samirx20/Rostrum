@@ -43,6 +43,7 @@ class Core {
   PXR_NS::JsObject clay_grid(const PXR_NS::JsObject& a);  // clay_requests.cpp (CL5: the rest clay's inside, sampled)
   PXR_NS::JsObject xform(const PXR_NS::JsObject& a);      // xform_request.cpp (a gizmo drag's live move)
   PXR_NS::JsObject copies_live(const PXR_NS::JsObject& a); // copies_request.cpp (a Count / Spacing drag, a copy moved)
+  PXR_NS::JsObject material(const PXR_NS::JsObject& a);    // material_request.cpp (a material field's drag, live)
   PXR_NS::JsObject sees(const PXR_NS::JsObject& a);        // copies_request.cpp (which points a camera sees)
   PXR_NS::JsObject texels(const PXR_NS::JsObject& a);      // texels_request.cpp (which texel each pixel sees)
   PXR_NS::JsObject info();
@@ -84,6 +85,7 @@ class Core {
   std::unique_ptr<ViewPost> post_;  // after hydra_: released while its GL context is still there
   std::string xform_id_;  // the item the last `xform` moved, and its prim
   PXR_NS::SdfPath xform_path_;
+  std::map<std::string, PXR_NS::JsObject> material_props_;  // each material's props as the live `material` left them
   std::map<std::string, copies::State> copies_;  // the copies items as laid out (copies.h), by id
   std::unique_ptr<clay::Store> clay_;  // the clays' volumes and block prims (made with the stage, gone first)
   std::atomic<bool> final_look_{false};  // 3d-cl4: the last view was the Final look (Cycles): strokes begun get no coarse preview

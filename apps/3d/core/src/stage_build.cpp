@@ -10,6 +10,7 @@
 
 #include "json_read.h"
 #include "light_extras.h"
+#include "light_to_color.h"
 #include "materials.h"
 #include "stage_items.h"
 
@@ -66,6 +67,8 @@ BuildResult build_stage(const JsObject& scene, const UsdStageRefPtr& stage) {
   build_items(ctx, s.list("items"), SdfPath("/World"), "items");
   copies::lay_out_all(built, ctx.copies);  // a surface may come after its copies item
   link_lights(built);  // lightsOnly ids -> UsdLux lightLink collections, once every item exists
+  build_light_to_color(built, start, end);  // Light to colour materials' Cycles graphs, once the lights exist
+  publish_dome_levels(built);               // each dome's picture level, for the stylized renderer
   s.finish();
 
   BuildResult result;
