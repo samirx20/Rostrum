@@ -15,7 +15,13 @@ Rectangle {
     readonly property var lufs: mixer.loudness.lufs      // the last render's, whether or not the Mixer was ever opened
     readonly property var refused: backend.soundRefused
     readonly property bool blocked: !!refused.short
-    readonly property bool measured: !blocked && lufs !== undefined && lufs !== null && lufs > -70
+    readonly property bool rendered: !blocked && lufs !== undefined && lufs !== null && lufs > -70
+    // A loudness number needs music to average: one note's sound is a few hundred milliseconds of the loudest part, and
+    // "Quieter than streaming wants" on it is noise. The chip stays empty (its place kept) until the render
+    // has this many seconds of sound in it; the Mixer and the export sheet show the number whenever there is one.
+    readonly property real enoughSeconds: 5
+    readonly property bool measured: rendered && mixer.loudness.heardSeconds >= enoughSeconds
+    readonly property bool tooShort: rendered && !measured
     readonly property real goal: mixer.loudness.goal
     readonly property bool near: measured && Math.abs(lufs - goal) <= 1
     readonly property string aim: Math.round(goal) === -14 ? "streaming" : "the target"
@@ -40,11 +46,11 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter; color: r.near ? Theme.ok : Theme.warn }
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: r.blocked ? "" : !r.measured ? (r.compact ? "Loudness …" : "Loudness: rendering…") : r.said
+            text: r.blocked || r.tooShort ? "" : !r.measured ? (r.compact ? "Loudness …" : "Loudness: rendering…") : r.said
             color: Theme.fg2; font.family: uiFont; font.pixelSize: Theme.body; font.features: { "tnum": 1 }
         }
     }
-    MouseArea { id: area; anchors.fill: parent; enabled: !r.blocked; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: workspace.setDock("mixer") }
+    MouseArea { id: area; anchors.fill: parent; enabled: !r.blocked && !r.tooShort; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: workspace.setDock("mixer") }
     HoverTip { text: (r.measured ? "The whole song is " + F.num(r.lufs, 1) + " LUFS; the target is " + F.num(r.goal, 0) + " LUFS"
-                                 : "Measuring the loudness of the whole song") + ". Click to open the Mixer"; hovered: area.containsMouse && !r.blocked }
+                                 : "Measuring the loudness of the whole song") + ". Click to open the Mixer"; hovered: area.containsMouse && !r.blocked && !r.tooShort }
 }

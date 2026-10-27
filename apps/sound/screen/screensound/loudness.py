@@ -66,6 +66,7 @@ class LoudnessMeter(QObject):
         self.bridge = bridge
         self._series: dict = {}
         self._top: list = []          # running maximum of the true-peak series
+        self._heard = 0.0             # seconds of the render with sound in it (blocks above the gate): what the numbers average over
         self._now: dict = {"shortTerm": None, "peak": None, "integrated": None}
         self._upto: tuple = (-1, None)    # (blocks counted, their integrated loudness): counted again only when it grows
         bridge.renderChanged.connect(self._render)
@@ -88,6 +89,12 @@ class LoudnessMeter(QObject):
     @Property("QVariantList", notify=changed)
     def curve(self):
         return list(self._series.get("shortTerm") or [])
+
+    @Property(float, notify=changed)
+    def heardSeconds(self):
+        """How many seconds of the last render have sound in them (400 ms blocks above −70 LUFS, one per hop): a loudness
+        number over a note or two says little, so the top bar's chip waits for a few seconds of it (LoudnessReadout)."""
+        return self._heard
 
     @Property("QVariantMap", notify=changed)
     def axis(self):
@@ -151,6 +158,7 @@ class LoudnessMeter(QObject):
         self._series = dict((self.bridge.lastRender or {}).get("series") or {})
         self._upto = (-1, None)
         self._top = running_max(self._series.get("truePeak") or [])
+        self._heard = sum(1 for v in self._series.get("momentary") or [] if v > -70) * self._series.get("hop", 0.1)
         self.changed.emit()
         self._tick(self.bridge.time)
 

@@ -14,7 +14,7 @@ Row {
     // and the key's Minor box ran under the Picture button (critic r9 + r10). Full while everything fits, then short
     // (bar.beat only, "Min"), then the key fields step aside.
     readonly property real tonicW: key !== "" ? 56 : 84
-    function needs(short) { return (short ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4 + Theme.gap
+    function needs(short) { return (short ? measureShort.width : measureFull.width) + 2 * Theme.gap + 4 + Theme.grid
                                    + 76 + 56 + tonicW + 2 * Theme.grid + (key !== "" ? (short ? 64 : 92) + Theme.grid : 0) }
     readonly property bool isCompact: compact || (room >= 0 && room < needs(false))
     readonly property bool isTight: tight || (room >= 0 && room < needs(true))
