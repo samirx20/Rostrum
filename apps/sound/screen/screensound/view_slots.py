@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6.QtCore import Property, QCoreApplication, QObject, Slot
 from rostrum_sound.doc import musical
 
-from . import timing
+from . import timeline, timing
 from .view_kept import ViewKept
 from .signals import SoundSignals as S
 
@@ -75,7 +75,16 @@ class ViewSlots:
 
     @Slot()
     def fitView(self):
-        self._tv.showAll()
+        """Fit shows the music (to its last sound and a bar more), not the empty bars after it kept to write into
+        (timeline.SPARE_BARS); a song with nothing written yet, or a set length, shows whole."""
+        if not self._view or self.doc.data.get("length") is not None:
+            return self._tv.showAll()
+        song = self._view["song"]
+        written = timeline.written_end(self.doc.data, self._view["rows"], self._view["markers"], least=self._picture_end())
+        bar = song["spb"] * song["barBeats"]
+        if written <= 0:
+            return self._tv.showAll()
+        self._tv.fitTo(0.0, written + bar)
 
     @Slot(float)
     def setViewStart(self, t):

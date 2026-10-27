@@ -297,7 +297,8 @@ def markers(root: dict) -> list[dict]:
 
 
 EMPTY_BARS = 8              # a song always has room for at least this many bars to write in
-SPARE_BARS = 2              # and, once it has sound, this many empty bars after the last sound
+SPARE_BARS = 8              # and, once it has sound, this many empty bars after the last sound: a screen of room to
+                            # write forward at a working zoom (2 bars made a piece written bar by bar: production round)
 
 
 def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None,
@@ -306,6 +307,17 @@ def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | 
     `memo`: each row's last end kept, worked out again only from the blocks an edit changed (block_memo.last_end).
     `least`: where the picture ends (seconds): a song scored to picture has room for the whole picture before any
     music is written, so its cuts can be marked first (critic r7)."""
+    end = written_end(root, made, marks, memo, least)
+    bar = meter.start_bar(root) * timing.spb(root)
+    if root.get("length") is not None:
+        length = timing.sec(root["length"], root)
+    else:
+        length = max(EMPTY_BARS, math.ceil(end / bar) + SPARE_BARS) * bar
+    return max(length, 1.0)
+
+
+def written_end(root: dict, made=None, marks=None, memo: BlockMemo | None = None, least: float = 0.0) -> float:
+    """Where what is written ends (seconds): the last block's end, a marker, a section's end, the picture's end."""
     if made is not None and memo is not None:
         ends = [memo.last_end((r["id"], "end"), r["blocks"]) for r in made if r["blocks"]]
     else:
@@ -313,12 +325,7 @@ def song_length(root: dict, made: list[dict] | None = None, marks: list[dict] | 
         ends = [b["t"] + b["dur"] for bl in every for b in bl]
     ends += [m["t"] for m in (markers(root) if marks is None else marks)] + [s["end"] for s in music_map.sections(root)]
     ends.append(least)
-    bar = meter.start_bar(root) * timing.spb(root)
-    if root.get("length") is not None:
-        length = timing.sec(root["length"], root)
-    else:
-        length = max(EMPTY_BARS, math.ceil(max(ends, default=0) / bar) + SPARE_BARS) * bar
-    return max(length, 1.0)
+    return max(ends, default=0.0)
 
 
 def song(root: dict, made: list[dict] | None = None, marks: list[dict] | None = None, memo: BlockMemo | None = None,

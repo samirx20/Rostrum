@@ -154,9 +154,11 @@ The **Colour** row shows the colour the track is drawn in.
      down the list.
    - **Shift+M** mutes the selected tracks and **Shift+S** solos them.
    - **M** puts a marker at the playhead, its name box open: type a name and press Enter, or Esc to keep "Marker 2" (Ctrl+Z takes the marker away). With a marker already at the playhead, M selects that one and opens its name instead of adding a second. Single keys like M, R and Space are commands only when pressed on their own: a word typed with no box focused ("drums") runs nothing after its first letter. **Right-click a marker** to rename it, colour it, move it to the playhead, loop up to the next marker, put a sound there, start a bar there, or delete it (only the rows that make sense for that marker show). Paste here and Add marker here land on the grid line under the pointer while Snap is on.
-7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. **Fit** (Ctrl+0) shows the whole song. An
+7. Zoom with **Ctrl + wheel** and scroll in time with **Shift + wheel**. After the last sound there are always 8 empty
+   bars to scroll into and write on. **Fit** (Ctrl+0) shows the music, from the start to a bar past the last sound
+   (with a typed length, or nothing written yet, the whole song). An
    edit that makes the song longer or shorter never moves the view: the bars stay where they are under the pointer
-   (after a delete, empty room shows past the end), and **Fit** is lit only while the whole song is in view.
+   (after a delete, empty room shows past the end), and **Fit** is lit only while the whole length is in view.
 8. A mistake? **Ctrl+Z** undoes it (**Ctrl+Shift+Z** redoes). Every drag is one step.
 
 ## 5. Play it
