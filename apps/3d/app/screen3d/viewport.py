@@ -54,7 +54,7 @@ class Viewport(QObject):
         self.link = ViewLink(self) if view_item.on() else None   # the window draws the live view (view_item.py)
         self._r = ViewRenderer(self, link=self.link)
         self.provider = self._r.provider
-        self._serial, self._ms, self._status = 0, 0.0, ""
+        self._serial, self._ms, self._status, self._picture = 0, 0.0, "", 0
         self._exposure, self._studio, self._lights = 0.0, 1.0, True
         self._dome = False                           # the engine said the scene's own dome lit the last picture
         self._ao_on, self._ao, self._dof = True, 1.0, True    # contact shading (on, strength) and depth of field
@@ -98,6 +98,7 @@ class Viewport(QObject):
 
     # --- QML properties
     serial = Property(int, lambda s: s._serial, notify=serialChanged)
+    pictureSerial = Property(int, lambda s: s._picture, notify=serialChanged)   # the newest engine picture (image://view)
     # the live view is drawn in the window (LiveView.qml), not served as pictures; the Final look stays a picture
     inWindow = Property(bool, lambda s: s.link is not None, constant=True)
     viewLink = Property(QObject, lambda s: s.link, constant=True)
@@ -386,6 +387,8 @@ class Viewport(QObject):
     # --- answers from the worker
     def _on_ready(self, serial, ms, dome, cam_dof=False, extra=None):
         self._serial, self._ms = serial, ms
+        if (extra or {}).get("frame") is None:              # an engine picture, not a frame of the window's own view
+            self._picture = serial
         dab_trace.ready(serial)                          # (nothing unless tools/clay_hops.py traces dabs)
         if self.final.on and (extra or {}).get("final") is not None:
             step = self.final.take(extra)

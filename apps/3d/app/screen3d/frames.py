@@ -39,13 +39,37 @@ class ViewRenderer(PictureWorker):
         super().__init__("view3d", parent)
         self._final = False                          # the last view was the Final look (Cycles), worker thread only
         self.link = link                             # the window's own view (view_item.ViewLink), or None: pictures
+        self._want, self._loading = None, False      # its newest (scene, view) waiting for the scene in flight
         if link is not None:
             link.drawn.connect(self._drawn)
         self.start()
 
     def request(self, scene: dict, req: dict):
-        """Draw `req` (Engine.view's fields) of `scene`; replaces a view still waiting."""
+        """Draw `req` (Engine.view's fields) of `scene`; replaces a view still waiting. The window's own view takes it
+        straight from this (the GUI) thread: no worker hop (the scene first when the item doesn't hold it)."""
+        link = self.link
+        if link is not None and link.item is not None and req.get("renderer") != "cycles" and not self._final:
+            self._want = (scene, req)
+            if not self._loading:               # newest wins: one scene load in flight, the newest view after it
+                self._push()
+            return
         self.post_latest(("view", scene, req))
+
+    def _push(self):
+        (scene, req), self._want = self._want, None
+        line = self.link.needs(scene)
+        if line is not None:
+            self._loading = True
+            self.link._post_line(line, self._loaded)
+        self.link.show(req)
+
+    def _loaded(self, out):
+        self._loading = False
+        if isinstance(out, str):
+            self.link._forget_scene()
+            self.failed.emit(f"Error: viewport scene: {out}")
+        if self._want is not None:
+            self._push()
 
     def pick(self, scene: dict, req: dict):
         """What is at req's x, y (Engine.pick's fields); answered by `picked`."""

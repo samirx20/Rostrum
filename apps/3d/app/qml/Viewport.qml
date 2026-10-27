@@ -33,7 +33,7 @@ Rectangle {
     Image {
         anchors.fill: parent
         visible: !viewport.inWindow || vp.final
-        source: visible && viewport.serial > 0 ? "image://view/" + viewport.serial : ""
+        source: visible && viewport.pictureSerial > 0 ? "image://view/" + viewport.pictureSerial : ""
         cache: false; smooth: true
     }
 
