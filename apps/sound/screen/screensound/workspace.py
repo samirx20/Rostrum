@@ -1,5 +1,5 @@
 """The one workspace's screen state (not an edit, never saved in the song): which tool the bottom dock shows
-("editor", "mixer" or "" = folded away), how tall the person dragged each tool (0 = the window size's default),
+("editor", "mixer" or "" = folded away), how tall the person dragged each tool (0 = the window size's default; kept with the song's view),
 and whether the Library (instruments and sounds) is open on the left. Exposed to QML as `workspace`; the bridge reads
 `dock` for "a control once per screen" (onpage.py: the inspector leaves out what the open Mixer shows).
 """
@@ -14,6 +14,7 @@ OLD_PAGES = {"timeline": "editor", "mix": "mixer", "instruments": ""}     # `pag
 
 class Workspace(QObject):
     changed = Signal()
+    heightsChanged = Signal()         # a dock height dragged: the song's view keeps it (bridge, view_kept.py)
 
     def __init__(self, fail, on_dock, parent=None):
         super().__init__(parent)
@@ -66,10 +67,21 @@ class Workspace(QObject):
 
     @Slot(str, int)
     def setHeight(self, name, px):
-        """The dock's top edge dragged: remembered for that tool (this window only)."""
+        """The dock's top edge dragged: remembered for that tool, and kept with the song (view_kept.py)."""
         if name in self._heights and px != self._heights[name]:
             self._heights[name] = max(0, int(px))
             self.changed.emit()
+            self.heightsChanged.emit()
+
+    def restore(self, kept: dict):
+        """The dock a reopened song was left with (view_kept.py `tools`: `dock`, `heights`); anything else is ignored."""
+        heights = kept.get("heights")
+        if isinstance(heights, dict):
+            for k, v in heights.items():
+                if k in self._heights and isinstance(v, (int, float)) and v >= 0:
+                    self._heights[k] = int(v)
+        if kept.get("dock") in DOCKS:
+            self._dock = kept["dock"]
 
     @Slot(bool)
     def setLibrary(self, on):

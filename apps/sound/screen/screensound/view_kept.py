@@ -7,10 +7,11 @@ the document; a song with no folder keeps it only while it is open.
                                                  "rolls": {"<track id>/<kind>[/rows]": [key, into]},
                                                  "lanes": {"<track id>": [target, lane]},
                                                  "export": {"format", "rate", "trim", "stems", "markers"},
-                                                 "tools": {"grid", "note", "draw"}}
+                                                 "tools": {"grid", "note", "draw", "heights", "dock"}}
 
 `tools`: the Grid, Note ▾'s length and what Draw stamps, as the person left them (grid_slots.py): a 1/4 grid chosen
-for a piano piece is still 1/4 the next day (production round: every session started with the grid menu).
+for a piano piece is still 1/4 the next day (production round: every session started with the grid menu); `heights`:
+the dock's height per tool as dragged and `dock` the tool it showed (workspace.py), so the roll comes back as it was.
 
 `lanes`: the automation lanes open under the track rows (lane_slots.openLane), put back on the song's first build.
 
@@ -96,8 +97,10 @@ class ViewKept:
             self._later()
 
     def keep_tools(self, tools: dict):
-        if tools != self.tools:
-            self.tools = dict(tools)
+        """`tools`' entries over the kept ones (each keeper writes only its own)."""
+        now = {**self.tools, **tools}
+        if now != self.tools:
+            self.tools = now
             self._later()
 
     def _later(self):
