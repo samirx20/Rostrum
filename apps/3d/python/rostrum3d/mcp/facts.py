@@ -1,4 +1,4 @@
-"""inspect_3d_file, inspect_shot and inspect_exposure: facts, never changes."""
+"""inspect_model_file, inspect_shot and inspect_exposure: facts, never changes."""
 from __future__ import annotations
 
 import tempfile
@@ -12,6 +12,7 @@ from . import draw
 from .shot import ITEM_SHOT, LOOK, QUALITY, TIME, doc_and_shot, frame_of, renderer_of, seconds, size_of
 
 tools = Tools()
+tools.renamed("inspect_usd_file", "inspect_model_file")      # it reads every format an import reads now (brief 29)
 SHOWN = 24
 
 
@@ -25,11 +26,11 @@ def _frames(r: dict) -> str:
     return f', animated: frames {r.get("startFrame"):g}–{r.get("endFrame"):g} at {r.get("framesPerSecond"):g} fps'
 
 
-@tools.tool("inspect_3d_file", {"required": ["file"], "properties": {
+@tools.tool("inspect_model_file", {"required": ["file"], "properties": {
     "file": {"type": "string", "description": "A 3D file an import reads: USD (.usd .usda .usdc .usdz), glTF (.gltf .glb), OBJ, FBX or "
                                               "Alembic (.abc); absolute, or relative to the project folder."},
     "detail": {"enum": ["short", "full"], "default": "short", "description": "full adds every prim the engine listed (at most 2000)."}}})
-def inspect_3d_file(ctx, args):
+def inspect_model_file(ctx, args):
     """What a 3D file holds, without importing it: its format, its unit (and whether the file states one), up axis, animation
     (frames and fps), and its parts (path, type, material, size in the file's units). Use it before import.add to pick the parts
     you will give other materials or hide; import.add itself scales a file in another unit to metres and lists its meshes as parts."""

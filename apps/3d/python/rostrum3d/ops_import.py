@@ -121,7 +121,7 @@ def read_file(values: dict, keep_size: bool = False) -> tuple[dict, list[str]]:
              "MCP the file is read first: x y z is where its base (bottom middle) lands, a file in another unit is "
              "scaled to metres (fileUnit keeps what it was in; import.keep_size undoes it; keepSize skips it), a Z-up "
              "file is stood upright, and its meshes are listed as parts (each can get its own material or be hidden). "
-             "`parts`: extra prim paths (from inspect_3d_file) to list.", label="Import",
+             "`parts`: extra prim paths (from inspect_model_file) to list.", label="Import",
              params=[*PLACE, Param.toggle("keepSize", label="Keep the file's size", importance="deep",
                                           help="Don't scale a file in centimetres (or any other unit) to metres"),
                      Param.list("parts", "text", label="Parts", importance="deep",

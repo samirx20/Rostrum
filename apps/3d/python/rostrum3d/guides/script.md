@@ -106,7 +106,7 @@ Materials and shots always go to the top level, even when made inside a `with`.
   `item.key("visible", {0: False, 1.2: True})` shows and hides: on or off from each key to the next, never in between.
 - `item.aim(item_or_id)` or `item.aim((x, y, z))` points the item's −Z at an item's origin or a point, every frame (turns `rx ry rz` off while it aims).
   `item.aim(target, roll=90)` then turns it around the way it points: a strip light stands on end, a camera's horizon tilts. `roll` can be keyed.
-- `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_3d_file`).
+- `import.part(path, **fields)` an override on a prim inside an import's file (paths from `inspect_model_file`).
 
 ## Inside the script
 
