@@ -16,7 +16,8 @@ undone, and the clay comes back exactly the same when you open the scene again.
      line; a tiny one (a click, a scribble) makes a round lump the brush's size instead. While Draw is on, a left drag
      always draws (it never turns the view): turn the view with the right button or two fingers. **Esc** while
      drawing drops the line: nothing changes.
-   - **Join by drawing:** start the outline **on a clay** (the clay is outlined while the pencil is over it).
+   - **Join by drawing:** start the outline **on a clay** (a thin, light outline shows on the clay while the pencil is
+     over it; the selected thing keeps its thicker one).
      The new shape joins that clay smoothly, at the depth of the surface where you started, and is mirrored to the
      other side when Mirror is on. Starting just off the clay still joins it if the shape overlaps or nearly touches.
    - **Puff:** after a drawn shape, **Puff** sits at the top of the panel until your next stroke: drag it lower for a
@@ -52,28 +53,31 @@ undone, and the clay comes back exactly the same when you open the scene again.
      and gentler, within Size and Strength. A mouse always uses Size and Strength as they are.
    - **Drag on empty space** to turn the view around the clay, so you can work on its other side between strokes; no
      need for the middle button; the pointer shows four arrows while it turns. The wheel zooms. A click on another thing selects it.
-5. Under the brushes:
+5. Under the brushes, **Size** and **Strength**; then the **Steps** list (below); then **More**, a fold that is closed
+   at first and holds Falloff, Spacing, Front faces only and Mirror (it stays open or closed as you left it until the
+   app closes):
    - **Size**: the brush's radius, in metres (0.03 m = 3 cm). Faster: rest the pointer on the clay, **hold F** and move
      the pointer right (bigger) or left (smaller); the ring shows the new size as you move, with the size in millimetres
      beside it, and letting go of F keeps it (one undo step).
    - **Strength**: how much one stroke changes the clay.
-   - **Mirror**: **Left–right** (the start) makes every stroke on one side happen on the other side too, mirrored
-     across the clay's own middle, so a face or a body stays even. **Off** sculpts one side only.
    - **Falloff**: how the brush fades towards its edge: low is soft (it blends in), high is a hard edge (a crisp step).
    - **Spacing**: how far apart the brush's touches are along a stroke, as a share of its size. Low gives an even,
      smooth stroke; high leaves a row of separate dents or bumps.
    - **Front faces only** (on at the start): a stroke only touches the side of the clay facing you, so it never
      reaches through a thin part (an ear, a fin) to the far side. Turn it off to work both sides of a thin part at once.
+   - **Mirror**: **Left–right** (the start) makes every stroke on one side happen on the other side too, mirrored
+     across the clay's own middle, so a face or a body stays even. **Off** sculpts one side only.
    These are the clay's settings for its next stroke: changing them never changes strokes already made (each stroke
    keeps the settings it was made with). Each change is one undo step.
 6. **Esc** during a stroke cancels it: the clay goes back as it was and nothing is recorded. **Q** again, **V** or
-   **Esc** (with no stroke under way) goes back to Select. The move handles are hidden while the Clay tool is on, so they
+   **Esc** (with no stroke under way) goes back to Select, and so does picking a shape from the rail (Box, Sphere …):
+   the next click places the shape. The move handles are hidden while the Clay tool is on, so they
    never sit on the clay you are sculpting; with Select they are back.
 
 ## The Steps list
 
 A clay's shape is its list of steps, in order: what you drew, spun or dropped, then every stroke. The **Steps** group
-in the panel lists them, newest at the bottom, each by its name or what it is ("Drawn shape", "Spun shape", "From
+in the panel (under Size and Strength, above More) lists them, newest at the bottom, each by its name or what it is ("Drawn shape", "Spun shape", "From
 Box", "Lump", "Stroke · Add").
 
 - **The eye** hides a step: the clay is rebuilt without it, and showing it again brings it back. Use it to compare
@@ -89,7 +93,7 @@ A drawn shape is kept as its outline on a flat plane; a spun one as its profile 
 as a link to that item (change the item and the clay follows). A stroke is stored as the exact path of brush touches
 it made, in a small file in the project's `clay` folder, so it replays to exactly the same shape. The clay's
 **Detail** (how fine its grain is; it follows the shot cameras) is under **+ Detail** in its settings when Select is
-on. The brush settings (Brush, Size, Strength, Mirror, Falloff, Spacing, Front faces only) show only while the Clay
+on. The brush settings (Brush, Size, Strength; under More: Falloff, Spacing, Front faces only, Mirror) show only while the Clay
 tool is on; with Select they are not in the settings. An agent can still read and set them any time (`clay.set`).
 Each stroke keeps its own copy of them, and whether it was Ctrl's opposite (`invert`).
 
