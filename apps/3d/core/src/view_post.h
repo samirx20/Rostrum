@@ -1,6 +1,6 @@
 // The live viewport's picture, finished on the graphics card (H20): Storm's scene-linear colour and depth go in,
 // contact shading (screen-space ambient occlusion) and depth of field are laid in, then exposure, the background,
-// OpenColorIO's display transform (ocio_gpu.h) and the selection ring; only the finished 8-bit picture comes back,
+// OpenColorIO's display transform (ocio_gpu.h), the selection ring and the thin hover outline; only the finished 8-bit picture comes back,
 // top row first, straight into the screen's shared memory. Replaces reading back floats and the colour transform on
 // the CPU (~70 ms a picture at 1280 x 720). The GL context must be current while it lives.
 #pragma once
@@ -34,6 +34,7 @@ struct ViewTarget {
 struct ViewPostIn {
   int width = 0, height = 0;
   unsigned color = 0, depth = 0, mask = 0;  // GL textures from Hydra::view; mask 0 = nothing selected
+  unsigned hover = 0;                       // the hovered items' mask (thin outline); 0 = nothing hovered
   PXR_NS::GfMatrix4d projection;            // the frustum's (USD row-vector convention)
   float background[3] = {0, 0, 0};          // linear RGB, where the picture is transparent
   double exposure = 0;                      // stops

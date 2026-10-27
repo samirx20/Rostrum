@@ -10,10 +10,15 @@
 #include <QtQml/qqmlregistration.h>
 #include <QtQuick/QQuickRhiItem>
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace r3d {
+class WindowCore;
+}
 
 class Rostrum3DView : public QQuickRhiItem {
   Q_OBJECT
@@ -40,6 +45,9 @@ class Rostrum3DView : public QQuickRhiItem {
   };
   Taken take();
   void setGlRenderer(const QString& s);
+  // the render thread's core, for a dab started early (post): set when made, null before it goes
+  void setCore(r3d::WindowCore* core);
+  void answeredSome(int n) { unanswered_ -= n; }
 
  Q_SIGNALS:
   // replies carry, besides the engine's own fields, "frame" (the frame that drew it) and "tRender0"/"tRender1"
@@ -56,5 +64,11 @@ class Rostrum3DView : public QQuickRhiItem {
   void request();
   std::mutex m_;
   Taken queue_;
+  // A `sculpt` dab posted while no other request waits for its answer has its clay work started at once on a worker
+  // (WindowCore::ahead): it runs while the request travels to the render thread (Qt's polish and sync, or the frame
+  // before still being shown), which then only writes the blocks and draws.
+  std::mutex coreM_;
+  r3d::WindowCore* core_ = nullptr;
+  std::atomic<int> unanswered_{0};
   QString glRenderer_;
 };

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 #include <utility>
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -236,6 +237,41 @@ void append(BlockMesh& whole, const BlockMesh& b) {
   whole.points.insert(whole.points.end(), b.points.begin(), b.points.end());
   whole.normals.insert(whole.normals.end(), b.normals.begin(), b.normals.end());
   for (int32_t i : b.indices) whole.indices.push_back(i + base);
+}
+
+void add_skirts(BlockMesh& m, float depth) {
+  // the edges used by one triangle only, each kept with the direction its triangle walks it (a -> b)
+  std::unordered_map<uint64_t, int> uses;  // undirected edge -> uses, + 2 x (the triangle walks it low -> high)
+  const size_t nt = m.triangles();
+  uses.reserve(nt * 3);
+  auto key = [](int32_t a, int32_t b) { return (uint64_t(uint32_t(std::min(a, b))) << 32) | uint32_t(std::max(a, b)); };
+  for (size_t t = 0; t < nt; ++t)
+    for (int e = 0; e < 3; ++e) {
+      const int32_t a = m.indices[3 * t + e], b = m.indices[3 * t + (e + 1) % 3];
+      int& u = uses[key(a, b)];
+      u += 1 + (a < b ? 2 : 0);
+    }
+  std::unordered_map<int32_t, int32_t> below;  // a rim vertex -> its copy `depth` into the clay
+  auto lowered = [&](int32_t v) {
+    auto it = below.find(v);
+    if (it != below.end()) return it->second;
+    const int32_t c = int32_t(m.points.size() / 3);
+    for (int i = 0; i < 3; ++i) m.points.push_back(m.points[3 * size_t(v) + i] - depth * m.normals[3 * size_t(v) + i]);
+    for (int i = 0; i < 3; ++i) m.normals.push_back(m.normals[3 * size_t(v) + i]);
+    if (!m.mask.empty()) m.mask.push_back(m.mask[size_t(v)]);
+    below.emplace(v, c);
+    return c;
+  };
+  std::vector<int32_t> add;
+  for (const auto& kv : uses) {
+    if ((kv.second & 1) == 0 || kv.second > 3) continue;  // used twice (or more): inside the patch
+    const int32_t lo = int32_t(kv.first >> 32), hi = int32_t(kv.first & 0xffffffffu);
+    const int32_t a = kv.second == 3 ? lo : hi, b = kv.second == 3 ? hi : lo;  // as its triangle walks it
+    const int32_t a2 = lowered(a), b2 = lowered(b);
+    // the wall under a -> b, facing away from the triangle (counter-clockwise seen from outside the patch)
+    add.insert(add.end(), {a, a2, b2, a, b2, b});
+  }
+  m.indices.insert(m.indices.end(), add.begin(), add.end());
 }
 
 }  // namespace r3d::clay

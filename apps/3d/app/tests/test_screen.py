@@ -190,7 +190,32 @@ def test_clay_brush_rows_show_while_the_clay_tool_is_on(bridge):
     tool = Tool()
     bridge.viewport = SimpleNamespace(clay_tool=tool)      # what bridge_rows reads for `sculpting`
     brush = ClayBrush(tool)
-    assert brush.model.rowCount() == 6
+    assert brush.model.rowCount() == 2                     # Size, Strength
+    assert brush.finer_model.rowCount() == 1                                       # More starts closed
+    brush.toggleMore()
+    assert brush.moreOpen and [r["id"] for r in brush.finer_model.rows if r.get("valid", True)] ==         ["more", "brushFalloff", "brushSpacing", "frontOnly", "symmetry"]       # open: the four behind it, in order
+    brush.refresh()                                        # a document change keeps it open
+    assert brush.finer_model.rowCount() == 5
     tool.on = False
     brush.refresh()
-    assert brush.model.rowCount() == 0
+    assert brush.model.rowCount() == 0 and brush.finer_model.rowCount() == 0
+
+
+def test_a_shape_picked_from_the_rail_leaves_the_clay_tool(bridge):
+    """3d-v4: Box picked from the rail while Clay's Draw is on: Clay goes off, so the next press places the box."""
+    from types import SimpleNamespace
+
+    from PySide6.QtCore import QObject
+    from screen3d.clay_tool_qt import ClayTool
+
+    class View(QObject):
+        paint = mesh_edit = SimpleNamespace(leave=lambda: None)
+
+        def redraw(self):
+            pass
+    tool = ClayTool(bridge, View())
+    bridge.viewport = SimpleNamespace(clay_tool=tool, mode="", hasShot=False)
+    tool.enter()
+    assert tool.on and tool.draws
+    bridge.add.arm("mesh:box")
+    assert bridge.add.armed == "mesh:box" and not tool.on and not tool.draws

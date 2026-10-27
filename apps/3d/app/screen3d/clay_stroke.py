@@ -43,6 +43,7 @@ class ClayStroke:
             return
         self._drag += 1
         self._dpr, self._start, self._last, self._moved = dpr, (x, y), (x, y), False
+        self._t_first = dab_trace.now()                     # the press is the begin request's oldest move (dab_trace.py)
         self._phase, self._busy, self._up, self._pending, self.timings = "wait", False, False, [], []
         self._scene, self._cam = self.v.sent()             # one scene for the whole drag: the engine loads it once
         it = self._item()
@@ -85,6 +86,7 @@ class ClayStroke:
         if self._phase in ("wait", "sculpt"):
             self._drag += 1
             self._send("cancel", [], answer=False)
+            self.v.redraw()                                 # the clay as it was (no picture comes with a cancel)
         self._phase, self._up = "", True
         self.strokeBrushChanged.emit()
 
@@ -172,7 +174,7 @@ class ClayStroke:
                     rec.update({k: out.get(k) for k in ("dabMs", "dabs", "applyMs", "meshMs", "usdMs", "blocks",
                                                         "frame", "tRender0", "tRender1")})
                     rec.update(tEng1=dab_trace.now(), drawMs=t.get("drawMs"), totalMs=t.get("totalMs"),
-                               lightMs=t.get("lightMs"), stormMs=t.get("stormMs"))
+                               lightMs=t.get("lightMs"), stormMs=t.get("stormMs"), perf=v.get("perf"))
                     dab_trace.RECORDS.append(rec)
             if answer:
                 self._on_sculpted((drag, phase, out, (time.perf_counter() - t0) * 1000, n))

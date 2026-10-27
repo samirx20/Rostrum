@@ -94,12 +94,14 @@ void main() {
 })";
 
 // The shown picture: depth of field (a gather over a disc as wide as the lens blurs that point), exposure, the
-// background where the picture is transparent, OpenColorIO's display transform, the selection ring. Written top
+// background where the picture is transparent, OpenColorIO's display transform, the selection ring, then the thin hover outline (1 px, the accent laid over the
+// picture at hoverMix: lighter than the ring, which wins where both are). Written top
 // row first, so the read-back needs no flip.
 constexpr const char* kFinalHead = R"(
 uniform sampler2D litTex;
-uniform sampler2D maskTex;
-uniform int hasMask, ring, lens;
+uniform sampler2D maskTex, hoverTex;
+uniform int hasMask, hasHover, ring, lens;
+uniform float hoverMix;
 uniform float gain, cocScale, focus, maxR;  // depth of field: blur diameter in pixels = cocScale * |D - focus| / D
 uniform vec3 bg, accent;
 out vec4 frag;
@@ -133,12 +135,21 @@ void main() {
   float a = clamp(c.a, 0.0, 1.0);
   vec4 shown = OCIODisplay(vec4(c.rgb * gain + bg * gain * (1.0 - a), 1.0));
   shown.a = 1.0;
+  bool ringed = false;
   if (hasMask == 1 && texelFetch(maskTex, p, 0).a <= 0.5) {
     bool near = false;
     for (int y = -ring; y <= ring && !near; ++y)
       for (int x = -ring; x <= ring && !near; ++x)
         near = texelFetch(maskTex, clamp(p + ivec2(x, y), ivec2(0), isize - 1), 0).a > 0.5;
     if (near) shown.rgb = accent;
+    ringed = near;
+  }
+  if (hasHover == 1 && !ringed && texelFetch(hoverTex, p, 0).a <= 0.5) {
+    bool near = false;
+    for (int y = -1; y <= 1 && !near; ++y)
+      for (int x = -1; x <= 1 && !near; ++x)
+        near = texelFetch(hoverTex, clamp(p + ivec2(x, y), ivec2(0), isize - 1), 0).a > 0.5;
+    if (near) shown.rgb = mix(shown.rgb, accent, hoverMix);
   }
   frag = clamp(shown, 0.0, 1.0);
 })";

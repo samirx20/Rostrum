@@ -56,11 +56,26 @@ class Store {
   bool has(const std::string& item) const;
 
   // A live stroke on `item` (begin, points…, end or cancel). Points are pixels; `ray` turns them into clay-space rays.
+  // 3d-v4: a brush of kPreviewFrom grains or more (clay_preview.h) is shown on a coarse preview while it is drawn, and
+  // the clay itself catches up on a thread of the store's own; the end puts the clay's own blocks back.
   void sculpt_begin(const std::string& item, const Brush& brush);
-  // px: x, y and the pen pressure 0..1
+  // A dab event in two parts (3d-v4), so its work can run off the thread that owns the stage:
+  //  - sculpt_compute: resamples px (x, y and the pen pressure 0..1), applies the dabs, and meshes the changed blocks
+  //    into meshes the store keeps. It never reads or writes the stage; `ray` and `ppm` must not either. Fills dabs,
+  //    hit, point, normal, applyMs, meshMs, blocks and ms.
+  //  - sculpt_publish: writes the kept meshes to the stage (the thread that owns it); fills usdMs and adds it to ms.
+  // Thread rules: compute may run on any thread while the stage is read elsewhere (Hydra drawing), but no other call
+  // on this Store may run during it (publish included): the caller runs compute, then publish, one after the other.
+  // Meshes not yet published when the stroke ends or is cancelled are written by sculpt_end / sculpt_cancel (or
+  // dropped where they are no longer right).
+  SculptReply sculpt_compute(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
+                             const PixelsPerMetreFn& ppm);
+  void sculpt_publish(SculptReply& r);
+  // compute then publish
   SculptReply sculpt_points(const std::vector<std::array<float, 3>>& px, const RayFn& ray,
                             const PixelsPerMetreFn& ppm);
-  // applies the stroke as one unit and writes its dab file into <folder>/clay/; the stroke waits to be adopted
+  // applies the stroke as one unit and writes its dab file into <folder>/clay/; the stroke waits to be adopted. With a
+  // preview: waits for the catch-up, then the clay's blocks replace the preview's. Writes the stage.
   SculptReply sculpt_end(const std::string& folder, const std::string& where);
   void sculpt_cancel();
   bool sculpting() const;
