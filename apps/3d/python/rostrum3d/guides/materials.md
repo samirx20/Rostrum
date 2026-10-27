@@ -17,7 +17,7 @@ Two clicks, one undo step.
 - **Shared materials.** When other items use the same material, a grey line says **Used by 3 items**: changing a setting changes every one of them (that is what sharing is). **Make its own** gives this item its own copy in one click; the others keep the original.
 - **Edit** opens the material alone in the settings panel.
 - **Drag a ball** (from the picker or the Materials list) onto an item in the viewport or the scene list to give it that material.
-- **The header's Materials chip** lists the project's materials (ball, name, how many items use each). Click one to edit it; **+ New material** makes one.
+- **The Materials ball** at the bottom of the tool rail (or Ctrl+K › Materials) lists the project's materials (ball, name, how many items use each). Click one to edit it; **+ New material** makes one.
 - **Colours** are a swatch and a hex code: type the hex, or click the swatch for the colour picker.
 
 The balls are real renders through the same fast view as the viewport, made once per material setting and kept (a changed material is drawn again).
