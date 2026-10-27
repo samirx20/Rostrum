@@ -30,7 +30,7 @@ def test_a_part_on_a_face_is_sized_for_the_face_and_gets_its_pair():
     face = [0.04, 0.6, 0.1]                                               # on the head, a bit off the middle
     eye = SP.part_size(clay, world, face)
     head = 2 * 0.12 * math.sin(math.acos((0.35 - face[1]) / 0.35))       # the head's width there
-    assert eye and head / 10 <= eye <= head / 8                           # an eighth to a tenth of the head
+    assert eye and head / 7 <= eye <= head / 5                            # about a sixth of the head across
     belly = SP.part_size(clay, world, [0.0, 0.3, 0.15])
     assert belly > eye * 1.5                                              # the belly is wider: a bigger part there
     assert SP.mirrors(clay, world, face, eye)                             # 4 cm off the middle: a pair

@@ -62,7 +62,7 @@ def mirrors(clay: dict | None, clay_world, point, size: float) -> bool:
 
 
 # ---- a part's size from the spot (SPEC §1 at 3:40: "a small ball sits on the face, sized for the face") ------------
-SHARE = 0.11                         # a part on a clay: this share of the clay's width at the spot (an eye: ~1/9 face)
+SHARE = 0.16                         # a part on a clay: this share of the clay's width at the spot (an eye: ~1/6 face)
 SMALLEST = 0.004                     # metres: never smaller than this
 
 

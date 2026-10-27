@@ -78,7 +78,7 @@ def place_on(ctx, args):
     other side ("<mesh>_mirrored", named "<name> (mirrored)") that follows it: edit the original (edits sent to the copy go
     to it). On a clay the mesh also follows the clay's pose (Follow, followPose): posed later, it moves and turns with the
     bone nearest it, its copy with its own side's, so eyes stay on a turning head. The reply gives the size a part
-    placed by a click there gets (spotSize, about a ninth of the clay's width at the spot) when the mesh is far from
+    placed by a click there gets (spotSize, about a sixth of the clay's width at the spot) when the mesh is far from
     it. One change in the history. Then look_frame to see it."""
     doc, info = doc_and_shot(ctx, args)
     frame = frame_of(ctx, info, args)

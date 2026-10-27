@@ -31,7 +31,7 @@ moves Shot 1's camera. **↶** in the header (Ctrl+Z) undoes any step: a shape, 
    up (a brow), **Carve** takes it away (a mouth). Hold **Shift** to smooth with any brush, **Ctrl** for the opposite.
    **Size** is the brush's radius. Each stroke is one undo step.
 5. **Eyes.** **Shapes › Sphere**, then click on the face where one eye goes, a little off the middle. A small ball
-   sits on the face, sized for it (about a ninth of the face's width there), and its mirrored copy appears on the
+   sits on the face, sized for it (about a sixth of the face's width there), and its mirrored copy appears on the
    other side and follows it. Drag it with the arrows, or type its size in the panel. Both stay on the face when
    you pose the body later.
 6. **Colour.** Select the body and click the small coloured square beside **Base colour** (under its **Material ▾**):
@@ -99,7 +99,7 @@ Make the eye at its size in the script (`mesh("eye", shape="sphere", radius=0.01
 (and its `width`). It stands the eye on the surface there, and because the body's Mirror is on, makes its mirrored
 copy `eye_mirrored`, which follows it. Change the original only. Both also follow the body's pose (each rides the
 bone nearest it), so they stay on the face when the body bends. If the eye's size is far from what a click there
-would make, the reply says so (`spotSize`, about a ninth of the body's width at that spot).
+would make, the reply says so (`spotSize`, about a sixth of the body's width at that spot).
 
 - Not sure a pixel is on the face? `look_at` with `points` answers what is at each pixel; pick one a few pixels inside
   the surface, away from edges (`edit_place_on` checks two neighbours too).
