@@ -52,8 +52,9 @@ class StrokeDabs {
   bool havePrev_ = false;
 };
 
-// An agent's stroke along clay-space points: each dab where a ray along `dir` meets the clay (starting a little
-// before the point: max(0.08 m, 4 x radius), reaching as far past it). Applied as one unit; returns the dabs.
+// An agent's stroke along clay-space points: each dab where a ray along `dir` meets the clay (first looked for a
+// little before and past the point: max(0.08 m, 4 x radius); missed there, the ray goes on from the point as far as
+// the clay reaches). Applied as one unit; returns the dabs (none: no point's ray met the clay).
 std::vector<Step> stroke_along(Volume& v, const Brush& b, const std::vector<V3>& points, V3 dir);
 
 // a stroke's dabs from stored rows (a.xyz n.xyz b.xyz radiusScale strengthScale) and its brush

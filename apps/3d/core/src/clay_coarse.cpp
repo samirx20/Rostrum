@@ -196,6 +196,15 @@ void run_coarse(CoarseUnit& u) {
     if (!touched[(x >> 3) + b.cnx * ((y >> 3) + b.cny * (z >> 3))]) return 0.0f;
     return D[b.at(x, y, z)];
   };
+  std::vector<uint8_t> inCopy(nch, 0);  // the coarse chunks the copy holds (their values, re-levelled by the dabs)
+  for (int ci : extList) inCopy[ci] = 1;
+  auto cval = [&](int X, int Y, int Z, float& v) {  // the coarse distance after the dabs at (X, Y, Z), if the copy has it
+    const int x = X - b.lo.x(), y = Y - b.lo.y(), z = Z - b.lo.z();
+    if (x < 0 || y < 0 || z < 0 || x >= b.nx || y >= b.ny || z >= b.nz) return false;
+    if (!inCopy[(x >> 3) + b.cnx * ((y >> 3) + b.cny * (z >> 3))]) return false;
+    v = V[b.at(x, y, z)];
+    return true;
+  };
 
   // the fine chunks that read a change: a fine grain x reads coarse grains floor(x / 2) and the next one, so a coarse
   // chunk's change reaches its own 2x2x2 fine chunks and one grain into the chunks below. Fine chunk (i, j, k) of
@@ -252,7 +261,8 @@ void run_coarse(CoarseUnit& u) {
             int c[3];
             float f[3];
             for (int a = 0; a < 3; ++a) c[a] = floor_div(g[a], 2), f[a] = (g[a] & 1) ? 0.5f : 0.0f;
-            float acc = 0.0f;
+            float acc = 0.0f, after = 0.0f;
+            bool known = true;
             for (int cz = 0; cz < 2; ++cz) {
               const float wz = cz ? f[2] : 1.0f - f[2];
               if (wz == 0.0f) continue;
@@ -263,12 +273,21 @@ void run_coarse(CoarseUnit& u) {
                   const float wx = cx ? f[0] : 1.0f - f[0];
                   if (wx == 0.0f) continue;
                   acc += wx * wy * wz * dval(c[0] + cx, c[1] + cy, c[2] + cz);
+                  float cv;
+                  if (cval(c[0] + cx, c[1] + cy, c[2] + cz, cv)) after += wx * wy * wz * cv;
+                  else known = false;
                 }
               }
             }
             const int off = leaf_offset(lx, ly, lz);
             const float v = d ? d[off] : tile;
-            const float nv = std::min(kBand, std::max(-kBand, v + 2.0f * acc));
+            // a grain near the surface keeps its own detail and moves by the change; one at the band's edge holds no
+            // true distance (it was clamped there, "far"), so moving it by the change left a flat shelf of equal
+            // values that the next dabs pushed the surface onto, where tiny differences decided it: rough, furry
+            // patches under big Add / Carve strokes (CL7). It takes the copy's re-levelled distance instead.
+            float nv = v + 2.0f * acc;
+            if (acc != 0.0f && std::fabs(v) >= kBand - 1.0f && known) nv = 2.0f * after;
+            nv = std::min(kBand, std::max(-kBand, nv));
             w[off] = nv;
             changed |= nv != v;
             allOut &= nv >= kBand;

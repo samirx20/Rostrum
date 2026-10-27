@@ -51,6 +51,8 @@ class StormLights final : public HdSingleInputFilteringSceneIndexBase {
 
   HdSceneIndexPrim GetPrim(const SdfPath& path) const override {
     HdSceneIndexPrim prim = _GetInputSceneIndex()->GetPrim(path);
+    if ((prim.primType == HdPrimTypeTokens->rectLight || prim.primType == HdPrimTypeTokens->diskLight) && prim.dataSource)
+      return lambert(prim);
     if (prim.primType != HdPrimTypeTokens->sphereLight || !prim.dataSource) return prim;
     const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
     if (!light) return prim;
@@ -95,6 +97,21 @@ class StormLights final : public HdSingleInputFilteringSceneIndexBase {
   }
 
  private:
+  // A panel (rect, disk) shines like a matte glowing surface: cos θ off its face, nothing at its edge-on plane. Storm
+  // draws it as a point with a 90° cut and no fall-off (pow(cos θ, 0) = 1), so the floor beside a tilted panel was
+  // lit evenly up to a hard line where the panel's plane met it (CL7, the hard edge at the side of the Quick view;
+  // Cycles fades there). Focus 1 gives the cos θ; a panel with a focus of its own keeps it.
+  static HdSceneIndexPrim lambert(HdSceneIndexPrim prim) {
+    const HdContainerDataSourceHandle light = HdLightSchema::GetFromParent(prim.dataSource).GetContainer();
+    if (!light || value(light, HdLightTokens->shapingFocus, 0.0f) > 0.0f) return prim;
+    const TfToken name = HdLightTokens->shapingFocus;
+    const HdDataSourceBaseHandle one = HdRetainedTypedSampledDataSource<float>::New(1.0f);
+    prim.dataSource = HdOverlayContainerDataSource::New(
+        HdRetainedContainerDataSource::New(HdLightSchemaTokens->light, HdRetainedContainerDataSource::New(1, &name, &one)),
+        prim.dataSource);
+    return prim;
+  }
+
   explicit StormLights(const HdSceneIndexBaseRefPtr& in) : HdSingleInputFilteringSceneIndexBase(in) {}
 };
 }  // namespace
