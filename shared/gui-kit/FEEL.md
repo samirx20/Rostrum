@@ -62,9 +62,9 @@ It never clicks:
 After each click it presses Esc if the click opened a popup. If the screen still isn't as it was, it opens the
 state again.
 
-- `ROSTRUM_CHECK_STABLE=0` turns the pass off. Until the apps' first finds are fixed (2026-10-27: Sound 11, 2D 3), finds are
-  reported in `<out>/stable-finds.txt` with their pictures and the check still passes; `ROSTRUM_CHECK_STABLE=strict`
-  fails them (the default once the app teams have fixed theirs).
+- **Off by default for now.** `ROSTRUM_CHECK_STABLE=1` runs it: finds are listed in `<out>/stable-finds.txt` with their
+  pictures and the check still passes; `ROSTRUM_CHECK_STABLE=strict` fails them. It becomes the default once the app
+  teams have fixed their first finds (2026-10-27: Sound 11, 2D 3) and the Library crash its clicks reach.
 - `<folder>/stable.json` lists clicks, finds and seconds per state.
 - The run's last lines give the totals.
 

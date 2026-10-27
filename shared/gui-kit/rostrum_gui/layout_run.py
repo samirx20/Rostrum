@@ -14,8 +14,8 @@ settings home emptied between); a state that kills its process is reported and t
 per state its open and steps, then ~1.5 s per size (settle, check, picture).
 Then the stability pass (layout_stable.py, K2 "nothing moves under the pointer"): a few real clicks per state, at most
 layout_stable.BUDGET_S; its faults are kind "stable", with a before | after picture <state>-stable-<n>.png.
-ROSTRUM_CHECK_STABLE=0 skips it; until the apps' first finds are fixed they are reported (stable-finds.txt), not
-failed; ROSTRUM_CHECK_STABLE=strict fails them.
+ROSTRUM_CHECK_STABLE=1 runs it (finds reported in stable-finds.txt, not failed), =strict fails them; off by default
+until the apps' first finds are fixed.
 """
 from __future__ import annotations
 

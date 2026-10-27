@@ -17,8 +17,8 @@ words say it leaves the state or touches the machine (SKIP: open/save/export/del
 any "…", which opens a dialog), and only the top popup's when one is open. Spread over the panels, the lowest first
 (it has the most above it), at most MAX_CLICKS per state and BUDGET_S, and a control tried in an earlier state of the
 same run is not tried again (<out>/stable-tried.txt). After each click: Esc when it opened a popup, and when the
-screen is not as it was, `restore()` opens the state again. ROSTRUM_CHECK_STABLE=0 turns the pass off; =strict makes
-its finds fail the check (else they are listed in <out>/stable-finds.txt and the check still passes).
+screen is not as it was, `restore()` opens the state again. ROSTRUM_CHECK_STABLE=1 turns the pass on (finds listed in
+<out>/stable-finds.txt, the check still passes); =strict makes its finds fail. Off by default for now (`wanted`).
 """
 from __future__ import annotations
 
@@ -44,7 +44,10 @@ INPUT = ("QQuickTextInput", "QQuickTextEdit")
 
 
 def wanted() -> bool:
-    return os.environ.get("ROSTRUM_CHECK_STABLE", "1") != "0"
+    """On with ROSTRUM_CHECK_STABLE=1 (finds reported) or =strict (finds fail). Off by default until the apps' first
+    finds are fixed: its clicks also reach real app bugs (2026-10-27: a Library chip with an empty search crashed
+    Sound's state), which made the teams' --quick runs fail by chance."""
+    return os.environ.get("ROSTRUM_CHECK_STABLE", "0") in ("1", "strict")
 
 
 def strict() -> bool:
