@@ -12,7 +12,7 @@ deleted and the install fails, saying so), and what was installed is recorded in
     python -m rostrum_sound.packs list | install <pack> | verify <pack>      # the same in a terminal
 
 Which names play these recordings and which are synthesized (`warmPad`, `subBass`, `pluck`, `choirPad`, `classic.*`, `model=`, `synth=`):
-`inspect_engine` marks each "recorded" or "synthesized". No pack holds a pad: there is no recorded pad today.
+`inspect_engine` marks each "recorded" or "synthesized". No pack holds a pad: there is no recorded pad today. The harmonica (`harmonica`: a recorded chromatic Hohner Super 64, B1-D6, the plain breath; the pack also holds an accented and a vibrato breath, reachable today only through your own SFZ; the breath-out sound plays when a key lifts) is in the pack `vcsl-harmonica` (29 MB, CC0).
 
 A name whose pack is missing fails loudly and names the pack to install; it never falls back to another sound. Packs
 licensed CC-BY (Salamander piano, Wurlitzer, the rock kit) need a credit: a render or export that used them returns the

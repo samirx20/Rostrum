@@ -119,6 +119,11 @@
    "lufs": -20.94,
    "gain": 1.1574
   },
+  "builtIn:harmonica": {
+   "role": "lead",
+   "lufs": -12.37,
+   "gain": 0.4317
+  },
   "builtIn:harp": {
    "role": "comp",
    "lufs": -27.02,

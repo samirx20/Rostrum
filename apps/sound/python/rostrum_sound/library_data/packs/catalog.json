@@ -255,6 +255,15 @@
    "files": true
   },
   {
+   "id": "vcsl-harmonica",
+   "title": "VCSL Hohner Super 64 chromatic harmonica (normal, accented, vibrato breaths)",
+   "author": "Versilian Studios (VCSL)",
+   "group": "instruments",
+   "license": "CC0 1.0 (public domain): free for any use, commercial included; no attribution required",
+   "page": "https://github.com/sgossner/VCSL",
+   "files": true
+  },
+  {
    "id": "fsbs-clean-guitar",
    "title": "FreePats FSBS electric guitar, clean #1 (Fender, bridge pickup, amped)",
    "author": "FreePats project (freepats.zenvoid.org)",

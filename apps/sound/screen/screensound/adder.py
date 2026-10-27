@@ -116,16 +116,16 @@ def _note(e: dict) -> str:
 FAMILIES = {"strings": ("strings", "spiccatoStrings", "violins", "violas", "cellos", "basses", "violin", "cello", "harp",
                         "classic.analogStrings"),
             "brass": ("brass", "horn", "trumpet", "mutedTrumpet", "trombone", "tuba"),
-            "woodwinds": ("flute", "piccolo", "oboe", "clarinet", "bassoon", "saxophone"),
+            "woodwinds": ("flute", "piccolo", "oboe", "clarinet", "bassoon", "saxophone", "harmonica"),
             "percussion": ("marimba", "vibraphone", "xylophone", "glockenspiel", "tubularBells", "timpani")}
 # Words every orchestral sound is also found by (critic r12: "orchestra" found nothing though strings, brass, harp and
-# timpani are all there). Saxophone is a woodwind but not an orchestra's.
+# timpani are all there). Saxophone and harmonica are woodwinds but not an orchestra's.
 ORCHESTRA = "orchestra orchestral cinematic film score symphonic classical"
-FAMILY_OF = {f"builtIn:{k}": fam + ("" if k in ("saxophone", "classic.analogStrings") else f" {ORCHESTRA}")
+FAMILY_OF = {f"builtIn:{k}": fam + ("" if k in ("saxophone", "harmonica", "classic.analogStrings") else f" {ORCHESTRA}")
              for fam, keys in FAMILIES.items() for k in keys}
 FAMILY_OF["builtIn:classic.cinematicBrass"] = "brass cinematic film"
 # Other words people search a sound by (found, never shown).
-ALSO = {"builtIn:vibraphone": "vibes", "model:vibraphone": "vibes", "builtIn:saxophone": "tenor sax",
+ALSO = {"builtIn:vibraphone": "vibes", "model:vibraphone": "vibes", "builtIn:saxophone": "tenor sax", "builtIn:harmonica": "mouth organ blues harp folk country",
         "builtIn:electricPiano": "wurlitzer", "builtIn:piano": "grand", "builtIn:uprightBass": "double jazz",
         "kit:jazz": "brush swing"}
 
